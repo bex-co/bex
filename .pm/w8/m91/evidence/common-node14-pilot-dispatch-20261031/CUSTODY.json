@@ -1,0 +1,62 @@
+{
+  "dispatch/DISPATCH.json.gz": {
+    "source": "/private/tmp/bex-w8-node14-pilot-dispatch-20261031-7zxm94zm/DISPATCH.json",
+    "source_bytes": 217,
+    "source_sha256": "4ca8f10b89bcbf906f361ec69bda4c2eeaa85846007cec1381f2203234d2afb0",
+    "encoding": "gzip"
+  },
+  "dispatch/RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-node14-pilot-dispatch-20261031-7zxm94zm/RESULT.json",
+    "source_bytes": 580,
+    "source_sha256": "eea20714c69969531f48e6c203f4313d48b779b89f23b69647c983d13986d0b8",
+    "encoding": "gzip"
+  },
+  "dispatch/SCOPE.json.gz": {
+    "source": "/private/tmp/bex-w8-node14-pilot-dispatch-20261031-7zxm94zm/SCOPE.json",
+    "source_bytes": 523,
+    "source_sha256": "5104a5bf5364c3e154a8a74976e515386409a239a6c468f41ed4d23b554e733c",
+    "encoding": "gzip"
+  },
+  "dispatch/remote-before.json.gz": {
+    "source": "/private/tmp/bex-w8-node14-pilot-dispatch-20261031-7zxm94zm/remote-before.json",
+    "source_bytes": 318,
+    "source_sha256": "38de1fcfb30e3bd631517189992b5f0ba27248e0b12a792d0dd7e107c78e0c6c",
+    "encoding": "gzip"
+  },
+  "dispatch/runs-after.json.gz": {
+    "source": "/private/tmp/bex-w8-node14-pilot-dispatch-20261031-7zxm94zm/runs-after.json",
+    "source_bytes": 3767,
+    "source_sha256": "6ae72eb3f773961e7b564e55006c7d711a42896f2ea8fc475acecafd395e51f7",
+    "encoding": "gzip"
+  },
+  "dispatch/runs-before.json.gz": {
+    "source": "/private/tmp/bex-w8-node14-pilot-dispatch-20261031-7zxm94zm/runs-before.json",
+    "source_bytes": 3527,
+    "source_sha256": "ff34440b4cce633bae0016b99381c5e2ed38ff8b6b07b622b12681f7495053d2",
+    "encoding": "gzip"
+  },
+  "cancellation/jobs-41250787826.json.gz": {
+    "source": "/private/tmp/bex-w8-common-publication-metadata-20261031-1bvoklbq/jobs-41250787826.json",
+    "source_bytes": 706,
+    "source_sha256": "f97b24ece8e5b25d23ee91c1d32520b5d4089f79b95e02c04a45d4262a49583e",
+    "encoding": "gzip"
+  },
+  "cancellation/jobs-41250787826.stdout.gz": {
+    "source": "/private/tmp/bex-w8-common-publication-metadata-20261031-1bvoklbq/jobs-41250787826.stdout",
+    "source_bytes": 4552,
+    "source_sha256": "1903ed35425df06e5aedae162bc6679f08e9fbfa0b763b4bd9f9323893af16bf",
+    "encoding": "gzip"
+  },
+  "cancellation/jobs-41250787826.stderr.gz": {
+    "source": "/private/tmp/bex-w8-common-publication-metadata-20261031-1bvoklbq/jobs-41250787826.stderr",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "cancellation/common-runs.stdout.gz": {
+    "source": "/private/tmp/bex-w8-common-publication-metadata-20261031-1bvoklbq/common-runs.stdout",
+    "source_bytes": 117853,
+    "source_sha256": "37404ad8fe46b4372e3f44c9666399baea1c243a83c73c8c071357a536a47775",
+    "encoding": "gzip"
+  }
+}

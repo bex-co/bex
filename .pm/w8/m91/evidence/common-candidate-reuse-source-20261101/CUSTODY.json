@@ -1,0 +1,884 @@
+{
+  "design/CORRECTION-AND-SOURCE-EQUIVALENCE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-design-20261031-yltf9exx/CORRECTION-AND-SOURCE-EQUIVALENCE.json",
+    "source_bytes": 1118,
+    "source_sha256": "03814b9caa92724ca4894c00448002ca14efc7d065727cfb6258fa920f4e5e82",
+    "encoding": "gzip"
+  },
+  "design/CURRENT-SOURCE-EQUIVALENCE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-design-20261031-yltf9exx/CURRENT-SOURCE-EQUIVALENCE.json",
+    "source_bytes": 472,
+    "source_sha256": "7d2d4b546013a7a6d986857977e75e44b29b144c3b5bbd1423dfcab0735cb12b",
+    "encoding": "gzip"
+  },
+  "design/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-design-20261031-yltf9exx/MANIFEST.json",
+    "source_bytes": 659,
+    "source_sha256": "92c412067cb7685952e935faec59dbaa06f32b117450f49586fc4bad526cacb1",
+    "encoding": "gzip"
+  },
+  "design/PROPOSAL.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-design-20261031-yltf9exx/PROPOSAL.json",
+    "source_bytes": 16930,
+    "source_sha256": "a3f9c9bebcfbf6a739319b38adb1fe8289f430e535872471fa7673b835cb9846",
+    "encoding": "gzip"
+  },
+  "design/RECEIPT-SHAPE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-design-20261031-yltf9exx/RECEIPT-SHAPE.json",
+    "source_bytes": 5897,
+    "source_sha256": "dd32a18d2005bbb1cc27bdaedcd6890babd7b52e8e01f8d1a7d5a7589f3039a6",
+    "encoding": "gzip"
+  },
+  "design/REUSE-INPUTS.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-design-20261031-yltf9exx/REUSE-INPUTS.json",
+    "source_bytes": 1734,
+    "source_sha256": "a5fde85c1dce05a89c1413d4f6f231e17a3d70e3d64423f006a2b9e21ad5d99b",
+    "encoding": "gzip"
+  },
+  "design/SOURCE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-design-20261031-yltf9exx/SOURCE.json",
+    "source_bytes": 79444,
+    "source_sha256": "ebef12289f5c9d6060ef972acff8f20006e1700281baeac995200c2d8345b586",
+    "encoding": "gzip"
+  },
+  "design/MANIFEST-FINAL.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-design-20261031-yltf9exx/MANIFEST-FINAL.json",
+    "source_bytes": 935,
+    "source_sha256": "6ee98640466afd320e47230f01610c8a7df2885d6cfaa2aaaaf400a17619212c",
+    "encoding": "gzip"
+  },
+  "design-independent/CORRECTION-AND-SOURCE-EQUIVALENCE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-design-independent-20261031-df40sku8/CORRECTION-AND-SOURCE-EQUIVALENCE.json",
+    "source_bytes": 1118,
+    "source_sha256": "03814b9caa92724ca4894c00448002ca14efc7d065727cfb6258fa920f4e5e82",
+    "encoding": "gzip"
+  },
+  "design-independent/MANIFEST-FINAL.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-design-independent-20261031-df40sku8/MANIFEST-FINAL.json",
+    "source_bytes": 935,
+    "source_sha256": "6ee98640466afd320e47230f01610c8a7df2885d6cfaa2aaaaf400a17619212c",
+    "encoding": "gzip"
+  },
+  "design-independent/PROPOSAL.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-design-independent-20261031-df40sku8/PROPOSAL.json",
+    "source_bytes": 16930,
+    "source_sha256": "a3f9c9bebcfbf6a739319b38adb1fe8289f430e535872471fa7673b835cb9846",
+    "encoding": "gzip"
+  },
+  "design-independent/RECEIPT-SHAPE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-design-independent-20261031-df40sku8/RECEIPT-SHAPE.json",
+    "source_bytes": 5897,
+    "source_sha256": "dd32a18d2005bbb1cc27bdaedcd6890babd7b52e8e01f8d1a7d5a7589f3039a6",
+    "encoding": "gzip"
+  },
+  "design-independent/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-design-independent-20261031-df40sku8/REVIEW.json",
+    "source_bytes": 3769,
+    "source_sha256": "7646763196f6cec4b5d3e8c22fe4b7aea6ecb548ada851ad5b328d1adcb50d9d",
+    "encoding": "gzip"
+  },
+  "design-independent/SOURCE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-design-independent-20261031-df40sku8/SOURCE.json",
+    "source_bytes": 79444,
+    "source_sha256": "ebef12289f5c9d6060ef972acff8f20006e1700281baeac995200c2d8345b586",
+    "encoding": "gzip"
+  },
+  "design-independent/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-design-independent-20261031-df40sku8/MANIFEST.json",
+    "source_bytes": 792,
+    "source_sha256": "b4ba30019bb57f8fb5864b04d98e13d014db2f460890e7964f26ed8ec80d6677",
+    "encoding": "gzip"
+  },
+  "initial/CONTEXT.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/CONTEXT.json",
+    "source_bytes": 946,
+    "source_sha256": "e908534db8d081b8a80c566cbf7beb3296b24ddedf8b456a0a9822679731c734",
+    "encoding": "gzip"
+  },
+  "initial/LOCAL-PREVIEW-LIMIT.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/LOCAL-PREVIEW-LIMIT.json",
+    "source_bytes": 951,
+    "source_sha256": "85589d8c69560d2ff357392a1ece509356b0eabde88ab47f065d972953ccd461",
+    "encoding": "gzip"
+  },
+  "initial/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/MANIFEST.json",
+    "source_bytes": 4248,
+    "source_sha256": "0e57bcee9e9e8ba3c393d637ddf89bf4989f2b6b6078ec58dcd73fdbddd9abef",
+    "encoding": "gzip"
+  },
+  "initial/OWNED-PATHS.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/OWNED-PATHS.json",
+    "source_bytes": 204,
+    "source_sha256": "6dcf90192edbeae0e3f295a845627c3202669ef36395d444d62d762f8ad238d8",
+    "encoding": "gzip"
+  },
+  "initial/POSTAPPLY-SOURCE-PREVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/POSTAPPLY-SOURCE-PREVIEW.json",
+    "source_bytes": 75823,
+    "source_sha256": "9aa55be99e41231bb3bdeb1d05c63ef649eef460f63133e1114da7eadc53a632",
+    "encoding": "gzip"
+  },
+  "initial/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/REVIEW.json",
+    "source_bytes": 4192,
+    "source_sha256": "9c2681bb368b8b471dbc7df88484dcc4b8aa80f76d359084f6f71a62ce44870b",
+    "encoding": "gzip"
+  },
+  "initial/SOURCE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/SOURCE.json",
+    "source_bytes": 717,
+    "source_sha256": "073cb234f887f3a01a9230cbbc5abe74ea85c6a0b47dccc8349eab3e2eef5faf",
+    "encoding": "gzip"
+  },
+  "initial/UNCHANGED-GUARDS.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/UNCHANGED-GUARDS.json",
+    "source_bytes": 10694,
+    "source_sha256": "e3c5f104ee79bfc4ed08b79ec92a23de86779aa65001322d66c22282261ad57b",
+    "encoding": "gzip"
+  },
+  "initial/V11-SCHEMA-INPUT.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/V11-SCHEMA-INPUT.json",
+    "source_bytes": 2494,
+    "source_sha256": "e261ea9138e59e8ef2ff2502cfcfcac1ca449601a2a6f4a207085d84e7f3ebb5",
+    "encoding": "gzip"
+  },
+  "initial/WHITESPACE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/WHITESPACE.json",
+    "source_bytes": 88,
+    "source_sha256": "b67548a740ec9db49313a1b5f252cc5a9186880813d3c5bfab12126253850557",
+    "encoding": "gzip"
+  },
+  "initial/actionlint-control.yaml.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/actionlint-control.yaml",
+    "source_bytes": 39,
+    "source_sha256": "5244175f18ca5713658d653e620ccd9a17e261d43c5b5054bfb54d6ef1f15536",
+    "encoding": "gzip"
+  },
+  "initial/actionlint-final.log.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/actionlint-final.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "initial/actionlint-initial.log.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/actionlint-initial.log",
+    "source_bytes": 2797,
+    "source_sha256": "ca838f96c3c71a8094d731511360ad68f514679b06d8f3a937525e8a47074f6a",
+    "encoding": "gzip"
+  },
+  "initial/actionlint-with-capture.log.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/actionlint-with-capture.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "initial/before/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/before/.github/scripts/native-common-qualify.py",
+    "source_bytes": 22134,
+    "source_sha256": "778ba78b7512df0482045acfc0860362d6d1d6c25829f89b12e2151ed85a84c5",
+    "encoding": "gzip"
+  },
+  "initial/before/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/before/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 42321,
+    "source_sha256": "faf275c08e64e18ad6f0eb3e079a89aafc0c0b025181a0e704d2cd6ba1b595e7",
+    "encoding": "gzip"
+  },
+  "initial/before/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/before/.github/workflows/native-common-image.yml",
+    "source_bytes": 11453,
+    "source_sha256": "43b10713c0853e70940a646a50578a59a72dc337e240c8f4cc3e3c58839021f4",
+    "encoding": "gzip"
+  },
+  "initial/full.diff.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/full.diff",
+    "source_bytes": 59126,
+    "source_sha256": "e2246a871e7857fc7c422a3f4d50e351ba7df9da7f21af93a2339e54e7db55e8",
+    "encoding": "gzip"
+  },
+  "initial/host-controls-final.log.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/host-controls-final.log",
+    "source_bytes": 3729,
+    "source_sha256": "9c80bed99b5612416143f44fa92c43ce0e1375d4fdf8467adc742938dbe84734",
+    "encoding": "gzip"
+  },
+  "initial/host-controls-full-initial.log.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/host-controls-full-initial.log",
+    "source_bytes": 3429,
+    "source_sha256": "1f32673e27280f661d8806d59958f9f83f38d2cbafd9840302c7c29ffc9db947",
+    "encoding": "gzip"
+  },
+  "initial/host-controls-initial.log.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/host-controls-initial.log",
+    "source_bytes": 994,
+    "source_sha256": "7a621d35aa6600016a5d97fce6feaa0e611f75fab94960142555519e055e2cc3",
+    "encoding": "gzip"
+  },
+  "initial/host-controls-ultimate.log.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/host-controls-ultimate.log",
+    "source_bytes": 3948,
+    "source_sha256": "0fee785fd2327d9720d6c927109ac8c0515aca2748923685a8a54a753d920152",
+    "encoding": "gzip"
+  },
+  "initial/host-controls-with-capture.log.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/host-controls-with-capture.log",
+    "source_bytes": 3947,
+    "source_sha256": "f113913cc00616bd7014e0c3d79a85f985afbd372bdb7b6a495c615cd72c8efc",
+    "encoding": "gzip"
+  },
+  "initial/patch-check.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/patch-check.json",
+    "source_bytes": 895,
+    "source_sha256": "5475405c83bbc8428876fe0ca75e2c65afa349f372c5efad920b423bbb684d46",
+    "encoding": "gzip"
+  },
+  "initial/reuse-helper-fragment.py.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/reuse-helper-fragment.py",
+    "source_bytes": 15002,
+    "source_sha256": "cc17e7eb9c758b34b298be1c5456ebbda7af5d5a0632237570f573f570fd6461",
+    "encoding": "gzip"
+  },
+  "initial/reuse-test-fragment.py.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/reuse-test-fragment.py",
+    "source_bytes": 17834,
+    "source_sha256": "ede68ea90fd3d981201fa9a47c3e6f1c54bebc895603d3cfaca7b308a08d44ea",
+    "encoding": "gzip"
+  },
+  "initial/source/.github/native-common-test-candidate.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/source/.github/native-common-test-candidate.json",
+    "source_bytes": 66,
+    "source_sha256": "1cd872cd3a3de1b4eaf28af27e38dc42c793d541062a3fbf1f51b45b80d1fd68",
+    "encoding": "gzip"
+  },
+  "initial/source/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/source/.github/scripts/native-common-qualify.py",
+    "source_bytes": 43420,
+    "source_sha256": "d076266757f6a6cb3c92c841db55aebcf6f5cbc4264a324cb40664fb988ed88f",
+    "encoding": "gzip"
+  },
+  "initial/source/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/source/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 67070,
+    "source_sha256": "9627db915dac9c5a20185ff74a5558b00c13857574cad340585ab5cea68f8958",
+    "encoding": "gzip"
+  },
+  "initial/source/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/source/.github/workflows/native-common-image.yml",
+    "source_bytes": 13157,
+    "source_sha256": "bd40ba33077cb0df9acfca6164c52c9e2b8e00e849c698e71398c1f7b88bf723",
+    "encoding": "gzip"
+  },
+  "initial/MANIFEST-FINAL.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-source-20261031-640a_hho/MANIFEST-FINAL.json",
+    "source_bytes": 4848,
+    "source_sha256": "8e6776343c5206bd1a2889be58d361d67be925c4a070d574f3bf21712b27a1cc",
+    "encoding": "gzip"
+  },
+  "initial-independent/ACTUAL-SCHEMA-CONTEXT.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/ACTUAL-SCHEMA-CONTEXT.json",
+    "source_bytes": 919,
+    "source_sha256": "698653d564be79ff933234cb7980f2f8a05886a7418fb72ef71e79396643b1c0",
+    "encoding": "gzip"
+  },
+  "initial-independent/INPUTS.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/INPUTS.json",
+    "source_bytes": 7909,
+    "source_sha256": "b890b022d8405be58ff0104842ca82eb477eb02f8d55a9e5ebd1801facdfd486",
+    "encoding": "gzip"
+  },
+  "initial-independent/OWN-COPY-CLEANUP-START.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/OWN-COPY-CLEANUP-START.json",
+    "source_bytes": 354,
+    "source_sha256": "aab83430fd7ca1a5239e59173055ef76db930f159ada17bb089361759d3fd11e",
+    "encoding": "gzip"
+  },
+  "initial-independent/OWN-COPY-CLEANUP.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/OWN-COPY-CLEANUP.json",
+    "source_bytes": 3004,
+    "source_sha256": "c741db76f1b203bed926639ec542058290d2da84c0e20528c0281968eba75979",
+    "encoding": "gzip"
+  },
+  "initial-independent/PROBES.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/PROBES.json",
+    "source_bytes": 1508,
+    "source_sha256": "50f1f46ad9e13e5de82b5b5eaf9d2795d19dae9e62b94737f306b926a83c879a",
+    "encoding": "gzip"
+  },
+  "initial-independent/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/REVIEW.json",
+    "source_bytes": 5762,
+    "source_sha256": "c0f4ddb3abcc2f94cb9f29da7bc1aacbe16e408454b7e4dd3aee799bd4a7c512",
+    "encoding": "gzip"
+  },
+  "initial-independent/UNCHANGED-INDEPENDENT.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/UNCHANGED-INDEPENDENT.json",
+    "source_bytes": 151,
+    "source_sha256": "a68c0b6fa830ab112186b67c8d1765e7cd86599b806daf72c109a02c714f620d",
+    "encoding": "gzip"
+  },
+  "initial-independent/actionlint.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/actionlint.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "initial-independent/author-SOURCE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/author-SOURCE.json",
+    "source_bytes": 717,
+    "source_sha256": "073cb234f887f3a01a9230cbbc5abe74ea85c6a0b47dccc8349eab3e2eef5faf",
+    "encoding": "gzip"
+  },
+  "initial-independent/host-controls.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/host-controls.log",
+    "source_bytes": 3948,
+    "source_sha256": "46ace4f57f7025030d9a6c3c692fbb79ae2318d12bbc4f35636f7b6fc1ac17b4",
+    "encoding": "gzip"
+  },
+  "initial-independent/probe.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/probe.log",
+    "source_bytes": 1330,
+    "source_sha256": "bf2fed8ff34abf119fff4428071c2b82131f61d0b8211ac01f63dd288636aef5",
+    "encoding": "gzip"
+  },
+  "initial-independent/probe.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/probe.py",
+    "source_bytes": 2973,
+    "source_sha256": "c188d0ae8e1246c29691cb41e17490c816ec512ed95d1bae9f93254c23fb11f3",
+    "encoding": "gzip"
+  },
+  "initial-independent/retained-source-context/common-v11-adapter.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/retained-source-context/common-v11-adapter.py",
+    "source_bytes": 17897,
+    "source_sha256": "920f3bb8a9d7473933517f96029e6e722dd16c968c28f1c6d6edb27082d400a6",
+    "encoding": "gzip"
+  },
+  "initial-independent/retained-source-context/loopx-w8-native-review-v11.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/retained-source-context/loopx-w8-native-review-v11.py",
+    "source_bytes": 43608,
+    "source_sha256": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+    "encoding": "gzip"
+  },
+  "initial-independent/retained-source-context/loopx-w8-verify-native-artifact.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/retained-source-context/loopx-w8-verify-native-artifact.py",
+    "source_bytes": 40661,
+    "source_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/.github/native-common-test-candidate.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/.github/native-common-test-candidate.json",
+    "source_bytes": 66,
+    "source_sha256": "1cd872cd3a3de1b4eaf28af27e38dc42c793d541062a3fbf1f51b45b80d1fd68",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/.github/scripts/native-common-qualify.py",
+    "source_bytes": 43420,
+    "source_sha256": "d076266757f6a6cb3c92c841db55aebcf6f5cbc4264a324cb40664fb988ed88f",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 67070,
+    "source_sha256": "9627db915dac9c5a20185ff74a5558b00c13857574cad340585ab5cea68f8958",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/.github/scripts/test_native_oci_workflow.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/.github/scripts/test_native_oci_workflow.py",
+    "source_bytes": 16781,
+    "source_sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/.github/workflows/native-base-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/.github/workflows/native-base-image.yml",
+    "source_bytes": 18178,
+    "source_sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/.github/workflows/native-common-image.yml",
+    "source_bytes": 13157,
+    "source_sha256": "bd40ba33077cb0df9acfca6164c52c9e2b8e00e849c698e71398c1f7b88bf723",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/lego/operator/internal/build/native.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/lego/operator/internal/build/native.go",
+    "source_bytes": 25979,
+    "source_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/lego/operator/internal/build/nativecommon_elixir_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+    "source_bytes": 10725,
+    "source_sha256": "019e2bb64eab75d9c92e0d48e7d1d18ce20df556df0cbde0270d34c6f8642702",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/lego/operator/internal/build/nativecommon_gorust_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/lego/operator/internal/build/nativecommon_gorust_test.go",
+    "source_bytes": 12042,
+    "source_sha256": "08a76cc2a45656e323f99d792c6c13cae8ede4f2a99ab03b03dbdcbf143496ce",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "source_bytes": 9456,
+    "source_sha256": "030d47a93c738103484f97546dd058c1a92e4a50eeefc9ec9338f3f8608b4d4e",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+    "source_bytes": 12466,
+    "source_sha256": "d59edc33fe3b91ddf83bd9b7e0b862c3216bcceb40dc885ddb73e3220cbd2e6a",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/lego/operator/internal/build/nativecommon_ruby_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/lego/operator/internal/build/nativecommon_ruby_test.go",
+    "source_bytes": 16847,
+    "source_sha256": "126b2ae98914772b855e28f99bebb528a38baaf1478f2baf22a54275362bd9e2",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/lego/operator/internal/build/nativelegacy_python_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/lego/operator/internal/build/nativelegacy_python_test.go",
+    "source_bytes": 6537,
+    "source_sha256": "4b9e3dc8030b9c8de2d5d7a16e2c3f2dd8d03dcf9f8405a210e3b401edc34131",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/lego/operator/internal/build/nativemodern_python_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/lego/operator/internal/build/nativemodern_python_test.go",
+    "source_bytes": 7506,
+    "source_sha256": "24659b3d3ea9f5ad0670b928b25ac37a3a229926000e297a56e94c367e504607",
+    "encoding": "gzip"
+  },
+  "initial-independent/work/lego/operator/internal/build/nativequalification_init_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/work/lego/operator/internal/build/nativequalification_init_test.go",
+    "source_bytes": 33494,
+    "source_sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+    "encoding": "gzip"
+  },
+  "initial-independent/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-independent-20261101-hmp7ogtb/MANIFEST.json",
+    "source_bytes": 5249,
+    "source_sha256": "a1c4251357f34cf328e65d513b42690d12ede62ee262aaaf7337d4743af9f2d7",
+    "encoding": "gzip"
+  },
+  "corrected/CONTEXT.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/CONTEXT.json",
+    "source_bytes": 886,
+    "source_sha256": "1c5df5bf324e1a57be0db9e2f1c5ad562c2832c49988363618e1e37c6258017d",
+    "encoding": "gzip"
+  },
+  "corrected/CORRECTION-GUARDS.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/CORRECTION-GUARDS.json",
+    "source_bytes": 1769,
+    "source_sha256": "f1050c7d5b0ef2cdf5b07f4bdd439389bd67bcc6621e7594339428f8c0b4715c",
+    "encoding": "gzip"
+  },
+  "corrected/OWNED-PATHS.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/OWNED-PATHS.json",
+    "source_bytes": 204,
+    "source_sha256": "6dcf90192edbeae0e3f295a845627c3202669ef36395d444d62d762f8ad238d8",
+    "encoding": "gzip"
+  },
+  "corrected/PRIOR-GENERATION.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/PRIOR-GENERATION.json",
+    "source_bytes": 387,
+    "source_sha256": "6df1051dd701a0d209036b5a1931f7a52d9a9e935287d1baa4a8f514e72a473e",
+    "encoding": "gzip"
+  },
+  "corrected/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/REVIEW.json",
+    "source_bytes": 3789,
+    "source_sha256": "16c95d35902af65bab50bc6f08347a3420163a63e92ecf22abd3e80bc26156e4",
+    "encoding": "gzip"
+  },
+  "corrected/SOURCE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/SOURCE.json",
+    "source_bytes": 717,
+    "source_sha256": "b2ee1926aad18ad6f1da96d4cfb0799dc41fe624724a7303b6ead1a612f165fe",
+    "encoding": "gzip"
+  },
+  "corrected/actionlint-control.yaml.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/actionlint-control.yaml",
+    "source_bytes": 39,
+    "source_sha256": "5244175f18ca5713658d653e620ccd9a17e261d43c5b5054bfb54d6ef1f15536",
+    "encoding": "gzip"
+  },
+  "corrected/actionlint-final.log.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/actionlint-final.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "corrected/before/.github/native-common-test-candidate.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/before/.github/native-common-test-candidate.json",
+    "source_bytes": 66,
+    "source_sha256": "1cd872cd3a3de1b4eaf28af27e38dc42c793d541062a3fbf1f51b45b80d1fd68",
+    "encoding": "gzip"
+  },
+  "corrected/before/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/before/.github/scripts/native-common-qualify.py",
+    "source_bytes": 43420,
+    "source_sha256": "d076266757f6a6cb3c92c841db55aebcf6f5cbc4264a324cb40664fb988ed88f",
+    "encoding": "gzip"
+  },
+  "corrected/before/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/before/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 67070,
+    "source_sha256": "9627db915dac9c5a20185ff74a5558b00c13857574cad340585ab5cea68f8958",
+    "encoding": "gzip"
+  },
+  "corrected/before/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/before/.github/workflows/native-common-image.yml",
+    "source_bytes": 13157,
+    "source_sha256": "bd40ba33077cb0df9acfca6164c52c9e2b8e00e849c698e71398c1f7b88bf723",
+    "encoding": "gzip"
+  },
+  "corrected/corrected-focused-initial.log.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/corrected-focused-initial.log",
+    "source_bytes": 2606,
+    "source_sha256": "44439db18d1482b3060b7d8f2091fd08a586bf8d0a43035c5fcbed173a577f34",
+    "encoding": "gzip"
+  },
+  "corrected/correction.diff.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/correction.diff",
+    "source_bytes": 14729,
+    "source_sha256": "0bfb62e9ba0cc37ffad8108547c75192a31a7dbc13c2acc84fbd4d0658dcb347",
+    "encoding": "gzip"
+  },
+  "corrected/host-controls-final.log.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/host-controls-final.log",
+    "source_bytes": 5151,
+    "source_sha256": "510bc1b7312d08f8569c7488d490016c868c6740e83c4b895417445337da3da1",
+    "encoding": "gzip"
+  },
+  "corrected/source/.github/native-common-test-candidate.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/source/.github/native-common-test-candidate.json",
+    "source_bytes": 66,
+    "source_sha256": "1cd872cd3a3de1b4eaf28af27e38dc42c793d541062a3fbf1f51b45b80d1fd68",
+    "encoding": "gzip"
+  },
+  "corrected/source/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/source/.github/scripts/native-common-qualify.py",
+    "source_bytes": 45160,
+    "source_sha256": "7112401737d2d6dd8e26f104345cb0df1e6d95a8d3f8126eb15acacce7fd6503",
+    "encoding": "gzip"
+  },
+  "corrected/source/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/source/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 75000,
+    "source_sha256": "7cd844120de6813b8cf07d298872890053f6a0d9afd37461b84f376e44f6d1ee",
+    "encoding": "gzip"
+  },
+  "corrected/source/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/source/.github/workflows/native-common-image.yml",
+    "source_bytes": 13157,
+    "source_sha256": "bd40ba33077cb0df9acfca6164c52c9e2b8e00e849c698e71398c1f7b88bf723",
+    "encoding": "gzip"
+  },
+  "corrected/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-common-candidate-reuse-corrected-20261031-jg6seo79/MANIFEST.json",
+    "source_bytes": 3156,
+    "source_sha256": "c0b9efc6d82d0e09caf4e8d373e3aa66456e75b2c351ade9f97edce9d53aac86",
+    "encoding": "gzip"
+  },
+  "corrected-independent/INDEPENDENT-NONREGRESSION.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/INDEPENDENT-NONREGRESSION.json",
+    "source_bytes": 710,
+    "source_sha256": "86f452f9867d74db21b56050307f35bdcff56d64e8497ab9889ab2f97d89c0c6",
+    "encoding": "gzip"
+  },
+  "corrected-independent/INPUTS.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/INPUTS.json",
+    "source_bytes": 2611,
+    "source_sha256": "1c41689ba81dee23abf2cebea20ab0fe3e0e387b419a428eca72bc80864c979e",
+    "encoding": "gzip"
+  },
+  "corrected-independent/PROBES.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/PROBES.json",
+    "source_bytes": 1562,
+    "source_sha256": "f2a1ea18c9b9a4331bef8362041543d7621fd7b03cd9d389c6d124b89426c22c",
+    "encoding": "gzip"
+  },
+  "corrected-independent/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/REVIEW.json",
+    "source_bytes": 3557,
+    "source_sha256": "43e9994418280ae297f9f07da37b00bbae0923182b44c723a2ba8c50bc39348b",
+    "encoding": "gzip"
+  },
+  "corrected-independent/actionlint.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/actionlint.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "corrected-independent/host-controls.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/host-controls.log",
+    "source_bytes": 5151,
+    "source_sha256": "8f858ba49e2e80f42d7df60d36eaaab21a0c59d198e2fd91a2149b4471c40829",
+    "encoding": "gzip"
+  },
+  "corrected-independent/original-counterexamples.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/original-counterexamples.log",
+    "source_bytes": 1384,
+    "source_sha256": "1ac908e8889b4a0ffaeaa97ed75ca3329e9c2440d90a5e50c3cddf99295c79e1",
+    "encoding": "gzip"
+  },
+  "corrected-independent/original_counterexamples.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/original_counterexamples.py",
+    "source_bytes": 3031,
+    "source_sha256": "8a0900e97c96d3b7489b8408273e20a977a146c1c3269e8544e1f44088af6cdc",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/CONTEXT.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/CONTEXT.json",
+    "source_bytes": 886,
+    "source_sha256": "1c5df5bf324e1a57be0db9e2f1c5ad562c2832c49988363618e1e37c6258017d",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/CORRECTION-GUARDS.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/CORRECTION-GUARDS.json",
+    "source_bytes": 1769,
+    "source_sha256": "f1050c7d5b0ef2cdf5b07f4bdd439389bd67bcc6621e7594339428f8c0b4715c",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/OWNED-PATHS.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/OWNED-PATHS.json",
+    "source_bytes": 204,
+    "source_sha256": "6dcf90192edbeae0e3f295a845627c3202669ef36395d444d62d762f8ad238d8",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/PRIOR-GENERATION.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/PRIOR-GENERATION.json",
+    "source_bytes": 387,
+    "source_sha256": "6df1051dd701a0d209036b5a1931f7a52d9a9e935287d1baa4a8f514e72a473e",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/REVIEW.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/REVIEW.json",
+    "source_bytes": 3789,
+    "source_sha256": "16c95d35902af65bab50bc6f08347a3420163a63e92ecf22abd3e80bc26156e4",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/SOURCE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/SOURCE.json",
+    "source_bytes": 717,
+    "source_sha256": "b2ee1926aad18ad6f1da96d4cfb0799dc41fe624724a7303b6ead1a612f165fe",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/actionlint-control.yaml.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/actionlint-control.yaml",
+    "source_bytes": 39,
+    "source_sha256": "5244175f18ca5713658d653e620ccd9a17e261d43c5b5054bfb54d6ef1f15536",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/actionlint-final.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/actionlint-final.log",
+    "source_bytes": 0,
+    "source_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/before/.github/native-common-test-candidate.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/before/.github/native-common-test-candidate.json",
+    "source_bytes": 66,
+    "source_sha256": "1cd872cd3a3de1b4eaf28af27e38dc42c793d541062a3fbf1f51b45b80d1fd68",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/before/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/before/.github/scripts/native-common-qualify.py",
+    "source_bytes": 43420,
+    "source_sha256": "d076266757f6a6cb3c92c841db55aebcf6f5cbc4264a324cb40664fb988ed88f",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/before/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/before/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 67070,
+    "source_sha256": "9627db915dac9c5a20185ff74a5558b00c13857574cad340585ab5cea68f8958",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/before/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/before/.github/workflows/native-common-image.yml",
+    "source_bytes": 13157,
+    "source_sha256": "bd40ba33077cb0df9acfca6164c52c9e2b8e00e849c698e71398c1f7b88bf723",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/corrected-focused-initial.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/corrected-focused-initial.log",
+    "source_bytes": 2606,
+    "source_sha256": "44439db18d1482b3060b7d8f2091fd08a586bf8d0a43035c5fcbed173a577f34",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/correction.diff.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/correction.diff",
+    "source_bytes": 14729,
+    "source_sha256": "0bfb62e9ba0cc37ffad8108547c75192a31a7dbc13c2acc84fbd4d0658dcb347",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/host-controls-final.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/host-controls-final.log",
+    "source_bytes": 5151,
+    "source_sha256": "510bc1b7312d08f8569c7488d490016c868c6740e83c4b895417445337da3da1",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/.github/native-common-test-candidate.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/.github/native-common-test-candidate.json",
+    "source_bytes": 66,
+    "source_sha256": "1cd872cd3a3de1b4eaf28af27e38dc42c793d541062a3fbf1f51b45b80d1fd68",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/.github/scripts/native-common-qualify.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/.github/scripts/native-common-qualify.py",
+    "source_bytes": 45160,
+    "source_sha256": "7112401737d2d6dd8e26f104345cb0df1e6d95a8d3f8126eb15acacce7fd6503",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/.github/scripts/test_native_oci_common_qualification.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/.github/scripts/test_native_oci_common_qualification.py",
+    "source_bytes": 75000,
+    "source_sha256": "7cd844120de6813b8cf07d298872890053f6a0d9afd37461b84f376e44f6d1ee",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/.github/scripts/test_native_oci_workflow.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/.github/scripts/test_native_oci_workflow.py",
+    "source_bytes": 16781,
+    "source_sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/.github/workflows/native-base-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/.github/workflows/native-base-image.yml",
+    "source_bytes": 18178,
+    "source_sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/.github/workflows/native-common-image.yml.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/.github/workflows/native-common-image.yml",
+    "source_bytes": 13157,
+    "source_sha256": "bd40ba33077cb0df9acfca6164c52c9e2b8e00e849c698e71398c1f7b88bf723",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/lego/operator/internal/build/native.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/lego/operator/internal/build/native.go",
+    "source_bytes": 25979,
+    "source_sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+    "source_bytes": 10725,
+    "source_sha256": "019e2bb64eab75d9c92e0d48e7d1d18ce20df556df0cbde0270d34c6f8642702",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/lego/operator/internal/build/nativecommon_gorust_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/lego/operator/internal/build/nativecommon_gorust_test.go",
+    "source_bytes": 12042,
+    "source_sha256": "08a76cc2a45656e323f99d792c6c13cae8ede4f2a99ab03b03dbdcbf143496ce",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/lego/operator/internal/build/nativecommon_node_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "source_bytes": 9456,
+    "source_sha256": "030d47a93c738103484f97546dd058c1a92e4a50eeefc9ec9338f3f8608b4d4e",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+    "source_bytes": 12466,
+    "source_sha256": "d59edc33fe3b91ddf83bd9b7e0b862c3216bcceb40dc885ddb73e3220cbd2e6a",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/lego/operator/internal/build/nativecommon_ruby_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/lego/operator/internal/build/nativecommon_ruby_test.go",
+    "source_bytes": 16847,
+    "source_sha256": "126b2ae98914772b855e28f99bebb528a38baaf1478f2baf22a54275362bd9e2",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/lego/operator/internal/build/nativelegacy_python_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/lego/operator/internal/build/nativelegacy_python_test.go",
+    "source_bytes": 6537,
+    "source_sha256": "4b9e3dc8030b9c8de2d5d7a16e2c3f2dd8d03dcf9f8405a210e3b401edc34131",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/lego/operator/internal/build/nativemodern_python_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/lego/operator/internal/build/nativemodern_python_test.go",
+    "source_bytes": 7506,
+    "source_sha256": "24659b3d3ea9f5ad0670b928b25ac37a3a229926000e297a56e94c367e504607",
+    "encoding": "gzip"
+  },
+  "corrected-independent/work/source/lego/operator/internal/build/nativequalification_init_test.go.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/work/source/lego/operator/internal/build/nativequalification_init_test.go",
+    "source_bytes": 33494,
+    "source_sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+    "encoding": "gzip"
+  },
+  "corrected-independent/MANIFEST.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-corrected-independent-20261101-wwdeo8_a/MANIFEST.json",
+    "source_bytes": 5898,
+    "source_sha256": "f5d4828e5580bdf90f6392df2ecc958a83ca1c9bade508233a814f3246fc62ce",
+    "encoding": "gzip"
+  },
+  "root-validation/APPLY.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-root-validation-20261101-6t_08dwv/APPLY.json",
+    "source_bytes": 998,
+    "source_sha256": "0981c99b358eb36dade68139accfea935f53ad12f258fbaf9c641dbba9bfec05",
+    "encoding": "gzip"
+  },
+  "root-validation/RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-root-validation-20261101-6t_08dwv/RESULT.json",
+    "source_bytes": 4326,
+    "source_sha256": "ab8e49559f099dab7a44b4ee4f6b4eedcbe5a38b536cd738ddcf30c07e8a1b1c",
+    "encoding": "gzip"
+  },
+  "root-validation/SCOPE.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-root-validation-20261101-6t_08dwv/SCOPE.json",
+    "source_bytes": 4006,
+    "source_sha256": "8882bc2d03356df13a96c921d120ad14ffd827efdd90f450db8f0d525c8c8acb",
+    "encoding": "gzip"
+  },
+  "root-validation/build-lint-PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-root-validation-20261101-6t_08dwv/build-lint-PROCESS.json",
+    "source_bytes": 151,
+    "source_sha256": "e2bde0b2b3c7387a57b96de1da74d3991bb9c788fa94f4fff570f04339be22af",
+    "encoding": "gzip"
+  },
+  "root-validation/build-lint-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-root-validation-20261101-6t_08dwv/build-lint-RESULT.json",
+    "source_bytes": 251,
+    "source_sha256": "72dad92b471b075c6f77f2e4cdcc7ddaa7ae1af4cf5cdf02388fc77be1f56296",
+    "encoding": "gzip"
+  },
+  "root-validation/build-lint.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-root-validation-20261101-6t_08dwv/build-lint.log",
+    "source_bytes": 10,
+    "source_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "encoding": "gzip"
+  },
+  "root-validation/build-unit-PROCESS.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-root-validation-20261101-6t_08dwv/build-unit-PROCESS.json",
+    "source_bytes": 136,
+    "source_sha256": "e5e1e050dd04486b7fcdd1a07b69a8341ebc7d0d65dd2d7b1505c63faebddef0",
+    "encoding": "gzip"
+  },
+  "root-validation/build-unit-RESULT.json.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-root-validation-20261101-6t_08dwv/build-unit-RESULT.json",
+    "source_bytes": 237,
+    "source_sha256": "bdc5658964bef4ad8fd2b189c046868619f008b7a320b2230d1691b2d8632a99",
+    "encoding": "gzip"
+  },
+  "root-validation/build-unit.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-root-validation-20261101-6t_08dwv/build-unit.log",
+    "source_bytes": 63,
+    "source_sha256": "636bd2a8367b12660258e7e9aec60b7a55ef81c239ec104643e7073c64fb69a3",
+    "encoding": "gzip"
+  },
+  "root-validation/host-controls.log.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-root-validation-20261101-6t_08dwv/host-controls.log",
+    "source_bytes": 8169,
+    "source_sha256": "76af5be7a8109d19d52c1fc68412bead2e1855a60baa5cdd3e846d7bb392ff34",
+    "encoding": "gzip"
+  },
+  "root-validation/run.py.gz": {
+    "source": "/private/tmp/bex-w8-common-reuse-root-validation-20261101-6t_08dwv/run.py",
+    "source_bytes": 4953,
+    "source_sha256": "75bb110e06e24c8c086f63ec6a2f2ffe460e4524a7d8608c131a38cfe72450d8",
+    "encoding": "gzip"
+  }
+}

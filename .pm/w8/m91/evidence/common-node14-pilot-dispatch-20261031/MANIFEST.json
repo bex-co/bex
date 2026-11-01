@@ -1,0 +1,46 @@
+{
+  "CUSTODY.json": {
+    "bytes": 2783,
+    "sha256": "0bcb4144c3f02d4563a3de0e288ce96f55fe1dcaaaf42dbc6f1efdfcdce44392"
+  },
+  "cancellation/common-runs.stdout.gz": {
+    "bytes": 5178,
+    "sha256": "685ca6d50010771bf6c524e565adfaafeb9af9275034566f2214aeb18fe7f58a"
+  },
+  "cancellation/jobs-41250787826.json.gz": {
+    "bytes": 390,
+    "sha256": "9dc44b2b21da05bfdeed6c7ba095da6d0c88ec5efeab96ab4151e4696adcb788"
+  },
+  "cancellation/jobs-41250787826.stderr.gz": {
+    "bytes": 20,
+    "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+  },
+  "cancellation/jobs-41250787826.stdout.gz": {
+    "bytes": 819,
+    "sha256": "24fc6e3a11f5173388e4fca22232f56aa07b10d33a66f80afc09269e6165733a"
+  },
+  "dispatch/DISPATCH.json.gz": {
+    "bytes": 147,
+    "sha256": "06c6c085e7411ec435e9711124f061eb92a1bdf9615b4e5a3483285b7f105f73"
+  },
+  "dispatch/RESULT.json.gz": {
+    "bytes": 364,
+    "sha256": "88fbf9a26bfcc29990ae16c8f153f2c222bb900f36604a83db077c7ee3a5a866"
+  },
+  "dispatch/SCOPE.json.gz": {
+    "bytes": 370,
+    "sha256": "e3d20253a26d2781abb1038f2d53f68264275317a2cbc2b53165f73393e42bdf"
+  },
+  "dispatch/remote-before.json.gz": {
+    "bytes": 201,
+    "sha256": "173b4605ae53652cc8791f4247d65c6ce5cec2388c8e66f8b0a8ac63ac89445b"
+  },
+  "dispatch/runs-after.json.gz": {
+    "bytes": 900,
+    "sha256": "6e761bd06ac9a7e81a9def447d033656e7b41fe8c2c75b9b972f7026b408d4b7"
+  },
+  "dispatch/runs-before.json.gz": {
+    "bytes": 863,
+    "sha256": "371298a09a22064693bc956048c4aac58dcb1aae508d76030f9a28f7352d2a30"
+  }
+}

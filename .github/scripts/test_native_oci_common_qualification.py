@@ -25,6 +25,7 @@ def load(name, path):
 
 qualification = load("native_common_qualification", HERE / "native-common-qualify.py")
 publisher = load("native_publisher_controls", HERE / "test_native_oci_workflow.py")
+publisher.ROOT = HERE.parents[1]
 # Identity projection from the retained real Syft1.55.0 Docker-source report
 # in exact-python-default-20261029. Package rows below are small test controls,
 # not a replacement or newly generated SBOM.
@@ -56,7 +57,7 @@ class QualificationControls(unittest.TestCase):
                    TARGET_PLATFORM="linux/arm64", RUNNER_TEMP=str(directory),
                    GITHUB_RUN_ID="123", GITHUB_RUN_ATTEMPT="1",
                    GITHUB_OUTPUT=str(directory / "outputs"), GITHUB_ENV=str(directory / "environment"))
-        with patch.dict(os.environ, env):
+        with patch.dict(os.environ, env), patch.object(qualification, "source_inventory", return_value={"CONTROL_ONLY": "host init fixture"}):
             qualification.initialize()
         outputs = dict(line.split("=", 1) for line in (directory / "outputs").read_text().splitlines())
         root = Path(outputs["root"])
@@ -529,7 +530,8 @@ class ProfileRoutingControls(unittest.TestCase):
                 self.assertEqual(process.returncode, 0, process.stderr)
                 actual = dict(line.split("=", 1) for line in output.read_text().splitlines())
                 expected = qualification.profile_selection(profile, case)
-                self.assertEqual(actual, {key: expected[key] for key in ("profile", "case", "flag", "selector", "go_timeout", "job_minutes")})
+                self.assertEqual(actual, dict({key: expected[key] for key in ("profile", "case", "flag", "selector", "go_timeout", "job_minutes")},
+                                              source="fresh", ref="", producer="", verification="", receipt_sha256=""))
                 if profile == "utilities":
                     self.assertEqual(actual["case"], "all")
                     self.assertEqual(actual["selector"], "^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$")
@@ -570,6 +572,7 @@ class ProfileRoutingControls(unittest.TestCase):
         self.assertEqual(set(jobs), {"plan", "publish", "qualify", "qualify-profile"})
         self.assertIn("needs: plan\n", jobs["publish"])
         self.assertIn("runtime: common-bookworm\n", jobs["publish"])
+        self.assertIn("needs.plan.outputs.source == 'fresh'", jobs["publish"])
         self.assertEqual(sum("uses: ./.github/workflows/native-base-image.yml" in body for body in jobs.values()), 1)
         plan = jobs["plan"]
         self.assertNotIn("packages:", plan)
@@ -593,16 +596,23 @@ class ProfileRoutingControls(unittest.TestCase):
         self.assertIn("needs.plan.outputs.profile != 'utilities'", pilot)
         self.assertIn("needs.qualify.result == 'success'", pilot)
         self.assertIn("needs.publish.outputs.ref != ''", pilot)
+        self.assertIn("always() && !cancelled()", pilot)
+        self.assertIn("needs.publish.result == 'skipped'", pilot)
+        self.assertIn("needs.qualify.result == 'skipped'", pilot)
+        self.assertIn("needs.plan.outputs.receipt_sha256 != ''", pilot)
         self.assertIn("timeout-minutes: ${{ fromJSON(needs.plan.outputs.job_minutes) }}", pilot)
         for job in (original, pilot):
             for unchanged in ("max-parallel: 1", "arch: [amd64, arm64]", "use: false", "cleanup: false",
-                              "COMMON_IMAGE: ${{ needs.publish.outputs.ref }}", "PRODUCER_SHA: ${{ needs.publish.outputs.producer }}",
-                              "VERIFICATION_SHA: ${{ needs.publish.outputs.verification }}", "packages: read"):
+                              "packages: read"):
                 self.assertIn(unchanged, job)
             for retained in ("capacity", "cleanup", "manifest"):
                 self.assertIn("native-common-qualify.py " + retained, job)
             self.assertIn("if: always() && steps.owned.outputs.root != ''", job)
             self.assertIn("include-hidden-files: true", job)
+        for key in ("ref", "producer", "verification"):
+            self.assertIn("needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs." + key + " || needs.publish.outputs." + key, pilot)
+        self.assertIn("QUALIFICATION_SOURCE: ${{ needs.plan.outputs.source }}", pilot)
+        self.assertIn("CANDIDATE_RECEIPT_SHA256: ${{ needs.plan.outputs.receipt_sha256 }}", pilot)
         # Credential handling stays the same in both resource-bearing jobs.
         marker = "      - name: log in to GHCR using this qualification's isolated credentials\n"
         login = lambda job: job.split(marker, 1)[1].split("      - uses:", 1)[0]
@@ -645,6 +655,431 @@ sys.exit(int(os.environ['CONTROL_EXIT']))
                     self.assertEqual({key for key, value in actual["flags"].items() if key in {entry[1] for entry in qualification.PROFILES.values()} and value == "1"}, {selected["flag"]})
                     self.assertEqual(actual["integration"], "1")
                     self.assertEqual((temporary / "qualification.log").read_text(), "controlled case stdout\ncontrolled case stderr\n")
+
+
+class ReviewedCandidateControls(unittest.TestCase):
+    """Synthetic, real-filesystem admission controls; NOT real crypto or approval."""
+    def setUp(self):
+        self.temporary = tempfile.TemporaryDirectory()
+        self.addCleanup(self.temporary.cleanup)
+        self.root = Path(self.temporary.name).resolve()
+        self.ref = "ghcr.io/bex-co/bex-cnb-run@" + IMAGE
+        self.source = "a" * 40
+        self.tool_bytes = {name: ("CONTROL ONLY " + name).encode() for name in qualification.V11_TOOLS}
+        self.tool_hashes = {name: qualification.hashlib.sha256(raw).hexdigest() for name, raw in self.tool_bytes.items()}
+        patched = patch.dict(qualification.V11_TOOLS, self.tool_hashes, clear=True)
+        patched.start()
+        self.addCleanup(patched.stop)
+        self.support_bytes = {name: ("CONTROL ONLY SUPPORT " + name).encode() for name in qualification.V11_SUPPORT_INPUTS}
+        support_hashes = {name: qualification.hashlib.sha256(raw).hexdigest() for name, raw in self.support_bytes.items()}
+        support_patch = patch.dict(qualification.V11_SUPPORT_INPUTS, support_hashes, clear=True)
+        support_patch.start()
+        self.addCleanup(support_patch.stop)
+        self.env = patch.dict(os.environ, GITHUB_SHA="b" * 40, GITHUB_REF="refs/heads/main", GITHUB_EVENT_NAME="workflow_dispatch")
+        self.env.start()
+        self.addCleanup(self.env.stop)
+        for relative in set(qualification.SOURCE_FILES) | {"deploy/" + path for path in qualification.FACTORY_PATHS}:
+            self.write(relative, b"CONTROL ONLY SOURCE\n")
+        for package in qualification.SOURCE_PACKAGES:
+            self.write("lego/" + package + "/control.go", b"package control\n")
+        self.write("lego/operator/internal/build/native.go", b"package build\n")
+        self.originals = [{"mid": n, "runtime": "node" if n < 100 else "python"} for n in range(93, 106)]
+        self.write("lego/operator/internal/build/testdata/native-utilities/original-cases.json", self.originals)
+        inputs = qualification.source_inventory(self.root)
+        self.candidate = {"ref": self.ref, "base": "buildpack-deps:bookworm@sha256:" + "d" * 64,
+                          "producer": self.source, "verification": self.source,
+                          "platforms": {arch: {"manifest_digest": "sha256:" + digit * 64, "config_digest": "sha256:" + digit * 64}
+                                        for arch, digit in (("amd64", "c"), ("arm64", "e"))},
+                          "source": {"sha": self.source, "manifest": self.evidence("source.json", {"source": self.source, "files": inputs})}}
+        job_name = "publish / build (common-bookworm, buildpack-deps:bookworm@sha256:control)"
+        publication = dict(run_id=1, run_attempt=1, job_id=11)
+        publication["metadata"] = self.evidence("publication.json", self.job(publication, self.source, job_name, qualification.PUBLICATION_GATES))
+        self.candidate["publication"] = publication
+        custody = {}
+        tools = {}
+        for name, raw in self.tool_bytes.items():
+            original = "/retained/" + name
+            custody[original] = self.evidence("tools/" + name, raw)
+            tools[original] = custody[original]["sha256"]
+        support_inputs = {}
+        for name, raw in self.support_bytes.items():
+            original = "/retained/" + name
+            custody[original] = self.evidence("support/" + name, raw)
+            support_inputs[name] = original
+        payloads = []
+        for kind, arch in (("image-signature", None), ("sbom", "amd64"), ("sbom", "arm64"),
+                           ("vulnerability", "amd64"), ("vulnerability", "arm64")):
+            row = dict(kind=kind, architecture=arch)
+            for field in ("full_bundle_gzip", "full_predicate_gzip"):
+                original = "/retained/" + kind + "-" + str(arch) + "-" + field
+                custody[original] = self.evidence(original.removeprefix("/retained/"), b"CONTROL ONLY synthetic custody bytes")
+                row[field], row[field + "_sha256"] = original, custody[original]["sha256"]
+            payloads.append(row)
+        review = dict(ref=self.ref, official_base=self.candidate["base"], producer_workflow_sha=self.source,
+                      verification_workflow_sha=self.source, approved_supplier_candidate=True,
+                      anonymous_manifest_bytes_sha_verified=True, strict_keyless_signature_and_sbom_and_vulnerability_attestations_verified=True,
+                      strict_actual_Rekor_v2_and_RFC3161_TSA_verified=True, wrong_source_and_subject_negative_checks_rejected=True,
+                      anonymous_pull={"all_unique_config_and_layer_bytes_fully_hashed": True},
+                      producer_verification_provenance={"mode": "fresh-build", "producer_sha": self.source, "verification_sha": self.source},
+                      platforms=self.candidate["platforms"], evidence_tool_sha256=tools, signed_payloads=payloads,
+                      ci_runtime_scan_signing_evidence={"run_id": "1", "job_id": 11, "job_name": job_name,
+                                                      "job_conclusion": "success", "verified_steps": sorted(qualification.PUBLICATION_GATES)})
+        fixed = dict(schema="bex.native-common-review-plan/v1", name="common-bookworm", ref=self.ref,
+                     base=self.candidate["base"], producer_sha=self.source, verification_sha=self.source,
+                     factory_inputs={"deploy/" + path: {key: inputs["deploy/" + path][key] for key in ("sha256", "bytes", "mode")} for path in qualification.FACTORY_PATHS},
+                     selection_inputs={path: {key: inputs[path][key] for key in ("sha256", "bytes", "mode")} for path in ("deploy/native-common/matrix.py", "deploy/native-common/upstream.json")},
+                     freshness_sha256=inputs["scripts/lib/toolchain-freshness.py"]["sha256"], run_id=1, job_id=11)
+        plan = self.evidence("plan.json", fixed)
+        tools["/retained/fixed-review-plan.json"] = plan["sha256"]
+        custody["/retained/fixed-review-plan.json"] = plan
+        review["producer_verification_provenance"]["common_review_plan_sha256"] = plan["sha256"]
+        self.candidate["approval"] = dict(receipt=self.evidence("review.json", review), plan=plan,
+                                          custody=self.evidence("custody.json", {"files": custody, "support_inputs": support_inputs}))
+        self.candidate["utilities"] = {arch: self.utility(arch, 20 + n) for n, arch in enumerate(("amd64", "arm64"))}
+        self.save()
+
+    def write(self, relative, value):
+        path = self.root / relative
+        path.parent.mkdir(parents=True, exist_ok=True)
+        path.write_bytes(value if isinstance(value, bytes) else (json.dumps(value) + "\n").encode())
+        return path
+
+    def evidence(self, name, value):
+        path = self.write(".pm/w8/m91/evidence/CONTROL-ONLY/" + name, value)
+        return {"path": str(path.relative_to(self.root)), "sha256": qualification.sha(path), "bytes": path.stat().st_size}
+
+    def save(self):
+        self.write(qualification.CANDIDATE_PATH, {"schema": qualification.CANDIDATE_SCHEMA, "candidate": self.candidate})
+
+    def job(self, identity, source, name, gates):
+        return {"id": identity["job_id"], "run_id": identity["run_id"], "run_attempt": identity["run_attempt"],
+                "head_sha": source, "head_branch": "main", "name": name, "status": "completed", "conclusion": "success",
+                "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/" + str(identity["run_id"]),
+                "steps": [{"name": gate, "status": "completed", "conclusion": "success"} for gate in sorted(gates)]}
+
+    def utility(self, arch, job_id):
+        row = dict(run_id=2, run_attempt=1, job_id=job_id, artifact_id=100 + job_id)
+        row["metadata"] = self.evidence(arch + "-job.json", self.job(row, self.source, "qualify (" + arch + ")", {qualification.UTILITY_GATE}))
+        row["artifact_metadata"] = self.evidence(arch + "-artifact.json", {"id": row["artifact_id"],
+            "name": "common-generated-" + self.source + "-" + arch + "-1", "workflow_run": {"id": 2, "head_sha": self.source}})
+        row["root"] = ".pm/w8/m91/evidence/CONTROL-ONLY/" + arch
+        records = []
+        def put(path, value):
+            actual = self.write(row["root"] + "/" + path, value)
+            records.append({"path": path, "sha256": qualification.sha(actual), "bytes": actual.stat().st_size})
+        put("inputs.json", dict(common_image=self.ref, producer=self.source, verification=self.source, generator_source=self.source,
+                                platform="linux/" + arch, run_id="2", run_attempt="1", selection=qualification.profile_selection("utilities", "all")))
+        put("qualification-source.json", json.loads((self.root / self.candidate["source"]["manifest"]["path"]).read_text()))
+        put("qualification.log", b"CONTROL ONLY complete host fixture\n")
+        put("cleanup.json", {"CONTROL_ONLY": True})
+        prefix = "generated/native-utilities-control/"
+        for case in ("node-compute", "node-static", "python313-original", "python3148-default"):
+            put(prefix + case + "/receipt.json", dict(common_base=self.ref, image_platform="linux/" + arch, image_config_id=IMAGE,
+                network="none", runtime_command_executed=case != "node-static", static_artifacts_extracted=case == "node-static"))
+        for name in ("jq", "rsync", "python-metadata", "python-pip", "python-headers"):
+            put(prefix + "missing-" + name + "/omission-receipt.json", dict(removed_supplier=name, common_base=self.ref,
+                healthy_independent_prerequisites_observed=True, original_command_expected_failure_observed=True))
+        for case in self.originals:
+            name = "node-compute" if case["runtime"] == "node" else "python313-original"
+            put(prefix + name + "/qa-output/build-" + str(case["mid"]) + ".log", b"CONTROL ONLY authored build log")
+            put(prefix + name + "/qa-output/runtime-" + str(case["mid"]) + "-runtime.json", [{"pass": True}] * 3)
+        custody = {}
+        for kind in ("syft", "spdx"):
+            custody[kind] = {"roundtrip": True}
+            for form in ("raw", "gzip"):
+                name = "generated-" + kind + "." + form
+                put(prefix + "python3148-default/" + name, b"CONTROL ONLY full report")
+                custody[kind].update({form + "_file": name, form + "_sha256": records[-1]["sha256"], form + "_bytes": records[-1]["bytes"]})
+        put(prefix + "python3148-default/generated-spdx-binding.json", dict(platform="linux/" + arch, python="3.14.8",
+            image_config_id=IMAGE, syft_manifest_digest=MANIFEST, libbrotli1_versions=["CONTROL ONLY"], custody=custody))
+        path = self.write(row["root"] + "/MANIFEST.json", {"files": records, "scope": "CONTROL ONLY"})
+        row["manifest"] = {"path": str(path.relative_to(self.root)), "sha256": qualification.sha(path), "bytes": path.stat().st_size}
+        return row
+
+    def rewrite_evidence(self, descriptor, mutate):
+        path = self.root / descriptor["path"]
+        value = json.loads(path.read_text())
+        mutate(value)
+        path.write_text(json.dumps(value))
+        descriptor.update(sha256=qualification.sha(path), bytes=path.stat().st_size)
+        self.save()
+
+    def test_real_filesystem_positive_pm_only_and_receipt_exclusion(self):
+        self.write(".pm/w8/m91/README.md", b"new PM-only commit")
+        self.write("lego/go.work.sum", b"outside GOWORK=off")
+        actual = qualification.validate_test_candidate(self.root)
+        self.assertEqual(actual["producer"], self.source)
+        self.assertEqual(actual["generator_source"], "b" * 40)
+        self.assertEqual(actual["receipt_sha256"], qualification.sha(self.root / qualification.CANDIDATE_PATH))
+        self.assertNotIn(qualification.CANDIDATE_PATH, qualification.source_inventory(self.root))
+
+    def test_source_add_delete_bytes_mode_and_helper_changes_reject(self):
+        path = self.root / "lego/operator/internal/build/native.go"
+        before = path.read_bytes()
+        changes = (lambda: path.write_bytes(b"changed"), lambda: path.chmod(0o755), lambda: path.unlink(),
+                   lambda: self.write("lego/operator/internal/build/new-helper.py", b"added"))
+        for change in changes:
+            with self.subTest(change=change):
+                path.write_bytes(before); path.chmod(0o644)
+                added = self.root / "lego/operator/internal/build/new-helper.py"
+                added.unlink(missing_ok=True)
+                change()
+                with self.assertRaises((ValueError, FileNotFoundError)):
+                    qualification.validate_test_candidate(self.root)
+
+    def test_null_and_unreviewed_ref_or_identity_reject(self):
+        self.write(qualification.CANDIDATE_PATH, {"schema": qualification.CANDIDATE_SCHEMA, "candidate": None})
+        with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+        for field, value in (("ref", "ghcr.io/bex-co/bex-cnb-run:latest"), ("verification", "c" * 40)):
+            old = self.candidate[field]
+            self.candidate[field] = value; self.save()
+            with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+            self.candidate[field] = old
+
+    def test_tampered_retained_evidence_rejects(self):
+        for descriptor in (self.candidate["approval"]["receipt"], self.candidate["approval"]["custody"],
+                           self.candidate["source"]["manifest"], self.candidate["utilities"]["amd64"]["manifest"]):
+            with self.subTest(path=descriptor["path"]):
+                path = self.root / descriptor["path"]; before = path.read_bytes(); path.write_bytes(before + b" ")
+                with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+                path.write_bytes(before)
+
+    def test_wrong_v11_subject_flags_platform_and_report_custody_reject(self):
+        descriptor = self.candidate["approval"]["receipt"]
+        original = (self.root / descriptor["path"]).read_bytes()
+        original_descriptor = dict(descriptor)
+        for mutate in (lambda x: x.update(ref="ghcr.io/bex-co/bex-cnb-run@sha256:" + "f" * 64),
+                       lambda x: x.update(strict_actual_Rekor_v2_and_RFC3161_TSA_verified=False),
+                       lambda x: x["platforms"]["amd64"].update(config_digest="sha256:" + "f" * 64),
+                       lambda x: x["signed_payloads"][0].update(full_bundle_gzip_sha256="f" * 64)):
+            self.rewrite_evidence(descriptor, mutate)
+            with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+            (self.root / descriptor["path"]).write_bytes(original); descriptor.update(original_descriptor)
+
+    def test_wrong_job_arch_artifact_and_old_source_reject(self):
+        descriptor = self.candidate["utilities"]["amd64"]["metadata"]
+        original = (self.root / descriptor["path"]).read_bytes(); original_descriptor = dict(descriptor)
+        for mutate in (lambda x: x.update(conclusion="failure"), lambda x: x.update(status="in_progress"),
+                       lambda x: x.update(head_sha="f" * 40), lambda x: x.update(name="qualify (arm64)"),
+                       lambda x: x.update(run_attempt=2), lambda x: x["steps"][0].update(conclusion="skipped")):
+            self.rewrite_evidence(descriptor, mutate)
+            with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+            (self.root / descriptor["path"]).write_bytes(original); descriptor.update(original_descriptor)
+        self.candidate["utilities"]["amd64"]["artifact_id"] += 1; self.save()
+        with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+
+    def test_missing_arch_required_proof_or_full_report_reject(self):
+        utility = self.candidate["utilities"].pop("arm64"); self.save()
+        with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+        self.candidate["utilities"]["arm64"] = utility
+        descriptor = self.candidate["utilities"]["amd64"]["manifest"]
+        self.rewrite_evidence(descriptor, lambda x: x.update(files=[row for row in x["files"] if not row["path"].endswith("/missing-jq/omission-receipt.json")]))
+        with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+
+    def test_plan_rechecks_real_fixed_files_before_any_output(self):
+        env = dict(REQUESTED_SOURCE="reviewed-candidate", REQUESTED_PROFILE="node", REQUESTED_CASE="node-14",
+                   GITHUB_OUTPUT=str(self.root / "plan-output"))
+        with patch.dict(os.environ, env), patch.object(qualification, "__file__", str(self.root / ".github/scripts/native-common-qualify.py")):
+            qualification.plan()
+        actual = dict(line.split("=", 1) for line in (self.root / "plan-output").read_text().splitlines())
+        self.assertEqual(actual["ref"], self.ref)
+        self.assertEqual(actual["source"], "reviewed-candidate")
+        self.assertEqual(actual["receipt_sha256"], qualification.sha(self.root / qualification.CANDIDATE_PATH))
+        for event, ref, profile, source in (("push", "refs/heads/main", "node", "reviewed-candidate"),
+                                            ("workflow_dispatch", "refs/heads/other", "node", "reviewed-candidate"),
+                                            ("workflow_dispatch", "refs/heads/main", "utilities", "reviewed-candidate"),
+                                            ("workflow_dispatch", "refs/heads/main", "node", "unknown")):
+            (self.root / "plan-output").unlink(missing_ok=True)
+            with patch.dict(os.environ, env, GITHUB_EVENT_NAME=event, GITHUB_REF=ref, REQUESTED_PROFILE=profile, REQUESTED_SOURCE=source), \
+                 patch.object(qualification.tempfile, "mkdtemp", side_effect=AssertionError("no resources")):
+                with self.assertRaises(ValueError): qualification.plan()
+            self.assertFalse((self.root / "plan-output").exists())
+
+    def test_source_policy_and_fixed_plan_omitted_helper_reject(self):
+        helper = self.root / ".github/scripts/native-common-qualify.py"
+        before = helper.read_bytes(); helper.write_bytes(before + b"changed helper")
+        with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+        helper.write_bytes(before)
+        self.rewrite_evidence(self.candidate["approval"]["plan"], lambda x: x["factory_inputs"].pop("deploy/native-common/prepare-node14-tools.py"))
+        with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+
+    def test_unmatched_selector_platform_and_default_config_reject(self):
+        utility = self.candidate["utilities"]["amd64"]
+        descriptor = utility["manifest"]
+        path = self.root / utility["root"] / "inputs.json"
+        inputs = json.loads(path.read_text()); inputs["selection"]["selector"] = "^TestUnknown$"
+        path.write_text(json.dumps(inputs))
+        def update_manifest(value):
+            for row in value["files"]:
+                if row["path"] == "inputs.json":
+                    row.update(bytes=path.stat().st_size, sha256=qualification.sha(path))
+        self.rewrite_evidence(descriptor, update_manifest)
+        with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+
+    def test_old_job_without_captured_source_and_substituted_source_reject(self):
+        descriptor = self.candidate["utilities"]["amd64"]["manifest"]
+        self.rewrite_evidence(descriptor, lambda x: x.update(files=[row for row in x["files"] if row["path"] != "qualification-source.json"]))
+        with self.assertRaisesRegex(ValueError, "incomplete original utility artifacts"):
+            qualification.validate_test_candidate(self.root)
+
+    def test_substituted_current_manifest_cannot_claim_an_old_baseline(self):
+        descriptor = self.candidate["source"]["manifest"]
+        self.rewrite_evidence(descriptor, lambda x: x.update(source="f" * 40))
+        with self.assertRaisesRegex(ValueError, "stale qualification source"):
+            qualification.validate_test_candidate(self.root)
+
+    def add_sixth_payload(self):
+        descriptor = self.candidate["approval"]["receipt"]
+        review = json.loads((self.root / descriptor["path"]).read_text())
+        row = dict(next(x for x in review["signed_payloads"] if x["kind"] == "sbom" and x["architecture"] == "amd64"))
+        additions = {}
+        for key in ("full_bundle_gzip", "full_predicate_gzip"):
+            original = "/retained/extra-approved-sbom-amd64-" + key
+            additions[original] = self.evidence("sixth/" + key, b"CONTROL ONLY distinct accepted sixth payload")
+            row[key], row[key + "_sha256"] = original, additions[original]["sha256"]
+        self.rewrite_evidence(self.candidate["approval"]["custody"], lambda x: x["files"].update(additions))
+        self.rewrite_evidence(descriptor, lambda x: x["signed_payloads"].append(row))
+
+    def test_sixth_accepted_payload_is_retained_without_filtering(self):
+        self.add_sixth_payload()
+        descriptor = self.candidate["approval"]["receipt"]
+        before = (self.root / descriptor["path"]).read_bytes()
+        qualification.validate_test_candidate(self.root)
+        self.assertEqual((self.root / descriptor["path"]).read_bytes(), before)
+        self.assertEqual(len(json.loads(before)["signed_payloads"]), 6)
+
+    def test_every_extra_payload_requires_its_full_custody(self):
+        self.add_sixth_payload()
+        descriptor = self.candidate["approval"]["receipt"]
+        self.rewrite_evidence(descriptor, lambda x: x["signed_payloads"][-1].update(full_bundle_gzip_sha256="f" * 64))
+        with self.assertRaisesRegex(ValueError, "full signed report custody"):
+            qualification.validate_test_candidate(self.root)
+
+    def test_unsupported_payload_pair_is_rejected(self):
+        self.add_sixth_payload()
+        self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["signed_payloads"][-1].update(kind="unsupported"))
+        with self.assertRaisesRegex(ValueError, "complete supported signed"):
+            qualification.validate_test_candidate(self.root)
+
+    def test_adapter_identity_must_match_even_when_wrong_bytes_are_custodied(self):
+        original = "/retained/common-v11-adapter.py"
+        custody = self.candidate["approval"]["custody"]
+        entries = json.loads((self.root / custody["path"]).read_text())["files"]
+        descriptor = entries[original]
+        path = self.root / descriptor["path"]
+        path.write_bytes(b"CONTROL ONLY wrong adapter source")
+        replacement = dict(descriptor, sha256=qualification.sha(path), bytes=path.stat().st_size)
+        self.rewrite_evidence(custody, lambda x: x["files"].update({original: replacement}))
+        self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].update({original: replacement["sha256"]}))
+        with self.assertRaisesRegex(ValueError, "retained V11 tool differs"):
+            qualification.validate_test_candidate(self.root)
+
+    def test_missing_reported_adapter_is_rejected(self):
+        self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].pop("/retained/common-v11-adapter.py"))
+        with self.assertRaisesRegex(ValueError, "retained V11 tool differs"):
+            qualification.validate_test_candidate(self.root)
+
+    def test_missing_adapter_custody_is_rejected(self):
+        self.rewrite_evidence(self.candidate["approval"]["custody"], lambda x: x["files"].pop("/retained/common-v11-adapter.py"))
+        with self.assertRaisesRegex(ValueError, "executed tool/plan has no exact portable custody"):
+            qualification.validate_test_candidate(self.root)
+
+    def test_every_additional_reported_tool_requires_exact_custody(self):
+        self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].update({"/retained/extra.py": "f" * 64}))
+        with self.assertRaisesRegex(ValueError, "executed tool/plan has no exact portable custody"):
+            qualification.validate_test_candidate(self.root)
+
+    def test_additional_reported_input_is_hash_custodied_without_execution(self):
+        descriptor = self.evidence("additional-reported-input.txt", b"CONTROL ONLY an additional reported input")
+        original = "/retained/additional-reported-input.txt"
+        self.rewrite_evidence(self.candidate["approval"]["custody"], lambda x: x["files"].update({original: descriptor}))
+        self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].update({original: descriptor["sha256"]}))
+        qualification.validate_test_candidate(self.root)
+
+    def test_plan_hash_is_bound_to_actual_common_provenance(self):
+        self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["producer_verification_provenance"].update(common_review_plan_sha256="f" * 64))
+        with self.assertRaisesRegex(ValueError, "executed fixed review plan linkage differs"):
+            qualification.validate_test_candidate(self.root)
+
+    def test_executed_plan_entry_cannot_be_replaced_by_another_custodied_file(self):
+        replacement = self.evidence("another-plan.json", {"CONTROL_ONLY": "another fixed plan"})
+        self.rewrite_evidence(self.candidate["approval"]["custody"], lambda x: x["files"].update({"/retained/fixed-review-plan.json": replacement}))
+        self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].update({"/retained/fixed-review-plan.json": replacement["sha256"]}))
+        with self.assertRaisesRegex(ValueError, "executed fixed review plan linkage differs"):
+            qualification.validate_test_candidate(self.root)
+
+    def test_support_manifest_identity_is_not_an_executed_policy(self):
+        name = "loopx-w8-verify-native-artifact.py"
+        path = "/retained/" + name
+        custody = self.candidate["approval"]["custody"]
+        entry = json.loads((self.root / custody["path"]).read_text())["files"][path]
+        self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].update({path: entry["sha256"]}))
+        with self.assertRaisesRegex(ValueError, "review support identity differs or is mislabeled"):
+            qualification.validate_test_candidate(self.root)
+
+    def test_wrong_support_bytes_are_rejected_even_with_consistent_custody(self):
+        original = "/retained/loopx-w8-verify-native-artifact.py"
+        custody = self.candidate["approval"]["custody"]
+        descriptor = json.loads((self.root / custody["path"]).read_text())["files"][original]
+        path = self.root / descriptor["path"]; path.write_bytes(b"CONTROL ONLY wrong support source")
+        replacement = dict(descriptor, sha256=qualification.sha(path), bytes=path.stat().st_size)
+        self.rewrite_evidence(custody, lambda x: x["files"].update({original: replacement}))
+        with self.assertRaisesRegex(ValueError, "review support identity differs"):
+            qualification.validate_test_candidate(self.root)
+
+    def test_init_revalidates_before_creds_outputs_or_resources(self):
+        planned = qualification.validate_test_candidate(self.root)
+        env = dict(QUALIFICATION_PROFILE="node", QUALIFICATION_CASE="node-14", QUALIFICATION_SOURCE="reviewed-candidate",
+                   COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM="linux/arm64",
+                   CANDIDATE_RECEIPT_SHA256=planned["receipt_sha256"])
+        # Change an actual file after successful planning. The real validator,
+        # not a stubbed failure, must reject before any output/config/resources.
+        self.write("lego/operator/internal/build/native.go", b"changed after plan")
+        with patch.object(qualification, "__file__", str(self.root / ".github/scripts/native-common-qualify.py")), \
+             patch.object(qualification.tempfile, "mkdtemp", side_effect=AssertionError("no resources")), patch.dict(os.environ, env):
+            with self.assertRaisesRegex(ValueError, "stale qualification source"):
+                qualification.initialize()
+
+    def test_branch_table_never_heals_failed_fresh_and_init_records_reuse(self):
+        pilot = ProfileRoutingControls().jobs()["qualify-profile"]
+        expression = " ".join(pilot.split("    if: >-\n", 1)[1].split("    permissions:", 1)[0].split())
+        expression = expression.removeprefix("${{ ").removesuffix(" }}")
+        def actual_branch(mode, publish, utilities, valid, cancelled=False):
+            values = {"always()": True, "!cancelled()": not cancelled, "github.ref": "refs/heads/main",
+                      "github.event_name": "workflow_dispatch", "needs.plan.result": "success",
+                      "needs.plan.outputs.profile": "node", "needs.plan.outputs.source": mode,
+                      "needs.publish.result": publish, "needs.qualify.result": utilities,
+                      "needs.publish.outputs.ref": self.ref if publish == "success" else "",
+                      "needs.plan.outputs.ref": self.ref if valid else "",
+                      "needs.plan.outputs.receipt_sha256": "c" * 64 if valid else ""}
+            translated = expression
+            for token in sorted(values, key=len, reverse=True):
+                translated = translated.replace(token, repr(values[token]))
+            translated = translated.replace("&&", " and ").replace("||", " or ")
+            return eval(translated, {"__builtins__": {}}, {})
+        for mode in ("fresh", "reviewed-candidate", "unknown"):
+            for publish in ("success", "skipped", "failure", "cancelled"):
+                for utilities in ("success", "skipped", "failure", "cancelled"):
+                    for valid in (False, True):
+                        expected = (mode == "fresh" and publish == utilities == "success") or (mode == "reviewed-candidate" and valid and publish == utilities == "skipped")
+                        self.assertEqual(actual_branch(mode, publish, utilities, valid), expected)
+                        self.assertFalse(actual_branch(mode, publish, utilities, valid, cancelled=True))
+        candidate = qualification.validate_test_candidate(self.root)
+        env = dict(QUALIFICATION_PROFILE="node", QUALIFICATION_CASE="node-14", QUALIFICATION_SOURCE="reviewed-candidate",
+                   COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM="linux/arm64",
+                   CANDIDATE_RECEIPT_SHA256=candidate["receipt_sha256"], RUNNER_TEMP=str(self.root), GITHUB_RUN_ID="3", GITHUB_RUN_ATTEMPT="1",
+                   GITHUB_OUTPUT=str(self.root / "outputs"), GITHUB_ENV=str(self.root / "environment"))
+        with patch.dict(os.environ, env), patch.object(qualification, "validate_test_candidate", return_value=candidate), \
+             patch.object(qualification, "__file__", str(self.root / ".github/scripts/native-common-qualify.py")):
+            qualification.initialize()
+        outputs = dict(line.split("=", 1) for line in (self.root / "outputs").read_text().splitlines())
+        actual = json.loads((Path(outputs["root"]) / "inputs.json").read_text())
+        self.assertEqual(actual["candidate_receipt_sha256"], candidate["receipt_sha256"])
+        self.assertEqual(actual["utility_baseline_source"], self.source)
+        self.assertEqual(actual["generator_source"], "b" * 40)
+        self.assertEqual(actual["utility_jobs"], candidate["utilities"])
+        captured = json.loads((Path(outputs["root"]) / "qualification-source.json").read_text())
+        self.assertEqual(captured, {"source": "b" * 40, "files": qualification.source_inventory(self.root)})
 
 
 if __name__ == "__main__":
