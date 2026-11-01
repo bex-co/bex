@@ -635,7 +635,9 @@ program='import time;print("CONTROL owned pull",flush=True);time.sleep(30)'
 def controlled(command,**kwargs):
  assert command[:6]==['timeout','--kill-after=10s','180s','docker','pull','--quiet']
  process=real_popen([sys.executable,'-c',program],**kwargs)
- pathlib.Path(journal).write_text(json.dumps({'pid':process.pid,'group':process.pid}))
+ ready=pathlib.Path(journal+'.pending')
+ ready.write_text(json.dumps({'pid':process.pid,'group':process.pid}))
+ ready.replace(journal)
  if phase=='registration':time.sleep(.3)
  return process
 m.subprocess.Popen=controlled
@@ -936,7 +938,7 @@ class ProfileRoutingControls(unittest.TestCase):
         return "\n".join(lines) + "\n"
 
     def test_all_routes_are_exact_single_cases_and_bounds_are_fixed(self):
-        expected = {"node-addon": (4, 120, 150), "node": (8, 90, 120), "modern-python": (5, 110, 140),
+        expected = {"node-addon": (4, 120, 150), "node": (8, 90, 120), "node-donors": (6, 90, 120), "modern-python": (5, 110, 140),
                     "legacy-python": (2, 110, 140), "ruby": (8, 75, 105),
                     "go-rust": (2, 75, 105), "elixir": (5, 90, 120), "native-init": (1, 60, 90)}
         self.assertEqual(set(qualification.PROFILES), set(expected))
@@ -964,7 +966,7 @@ class ProfileRoutingControls(unittest.TestCase):
         def table_lines(runtime):
             block = table.split(runtime + ": {", 1)[1].split("\n\t}},", 1)[0]
             return re.findall(r'\{line: "([^"]+)"', block)
-        paths = {"node-addon": "nativecommon_nodeaddon_qualification_test.go", "node": "nativecommon_node_qualification_test.go", "modern-python": "nativemodern_python_test.go",
+        paths = {"node-addon": "nativecommon_nodeaddon_qualification_test.go", "node": "nativecommon_node_qualification_test.go", "node-donors": "nativecommon_node_qualification_test.go", "modern-python": "nativemodern_python_test.go",
                  "legacy-python": "nativelegacy_python_test.go", "ruby": "nativecommon_ruby_test.go",
                  "go-rust": "nativecommon_gorust_test.go", "elixir": "nativecommon_elixir_qualification_test.go",
                  "native-init": "nativequalification_init_test.go"}
@@ -978,9 +980,13 @@ class ProfileRoutingControls(unittest.TestCase):
                 self.assertIn('t.Run(tc.name,', raw)
                 self.assertNotIn('BEX_NATIVE_TEST_NODE14_TREE', raw)
             elif profile == "node":
+                raw = raw.split("func commonNodeQualificationCases()", 1)[1].split("\nfunc ", 1)[0]
                 lines = re.search(r'for _, line := range \[\]string\{([^}]+)\}', raw)[1]
                 actual = ["node-" + line for line in re.findall(r'"([^"]+)"', lines)]
                 actual += re.findall(r'commonNodeCase\{"([^"]+)",', raw)
+            elif profile == "node-donors":
+                raw = raw.split("func commonNodeDonorQualificationCases()", 1)[1].split("\nfunc ", 1)[0]
+                actual = re.findall(r'\{"([^"]+)",', raw)
             elif profile == "modern-python":
                 actual = re.findall(r'"([^"]+)"', re.search(r'var nativeModernPythonLines = \[\]string\{([^}]+)\}', raw)[1])
                 self.assertIn('t.Run(name,', raw)
@@ -1002,6 +1008,16 @@ class ProfileRoutingControls(unittest.TestCase):
                 self.assertIn('[]string{"npm", "yarn", "pnpm", "direct"}', raw)
             self.assertEqual(set(cases), set(actual), profile)
             self.assertEqual(len(cases), len(actual), profile)
+
+    def test_donor_route_cannot_substitute_an_unpublished_exact_patch(self):
+        self.assertEqual(qualification.profile_selection("node", "node-exact14212")["flag"],
+                         "BEX_NATIVE_TEST_NODE_PROFILE")
+        for case in ("node-exact14213", "ruby-node-exact14213"):
+            self.assertEqual(qualification.profile_selection("node-donors", case)["flag"],
+                             "BEX_NATIVE_TEST_NODE_DONORS")
+        for case in ("node-exact14212", "ruby-node-exact14212", "node-22", "all"):
+            with self.subTest(case=case), self.assertRaises(ValueError):
+                qualification.profile_selection("node-donors", case)
 
     def test_invalid_selections_fail_before_any_output_or_resource_operation(self):
         for profile, case in (("all", "pilot"), ("node", "all"), ("ruby", "node-14"),

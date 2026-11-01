@@ -19,6 +19,7 @@ package build
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 	"os/exec"
@@ -342,6 +343,65 @@ func TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes(t *test
 			must(t, err)
 			if !strings.Contains(prepared, choices[0].Image) || !strings.Contains(prepared, "poetry=="+defaultPoetryVersion) {
 				t.Fatal("prerequisite recipe did not retain the actual selected primary and tool")
+			}
+		})
+	}
+}
+
+func TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence(t *testing.T) {
+	original := nativeCommonBase
+	t.Cleanup(func() { nativeCommonBase = original })
+	nativeCommonBase = commonFixtureImage
+	reviewed, ok := nativeToolchains[nativePythonRuntime].find("3.14")
+	if !ok || reviewed.version == "3.14.8" {
+		t.Fatal("test requires a reviewed line distinct from the exact creation-date default")
+	}
+	for _, tc := range []struct {
+		name, note string
+		found      bool
+		lookupErr  error
+	}{
+		{name: "exact image", found: true},
+		{name: "missing tag", note: "No official image python:3.14.8-bookworm"},
+		{name: "lookup failure", note: "controlled lookup transport failure", lookupErr: errors.New("controlled lookup transport failure")},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fake := &fakeExact{digests: map[string]string{}, err: tc.lookupErr,
+				env: []string{"PYTHON_VERSION=3.14.8", "PATH=/usr/local/bin:/usr/bin"}, envByImage: map[string]fakeExactMetadata{}}
+			if tc.found {
+				fake.digests["python:3.14.8-bookworm"] = exactDigest
+			}
+			for runtime, toolchain := range nativeToolchains {
+				for _, line := range toolchain.lines {
+					fake.envByImage[line.image] = commonReviewedFixtureMetadata(runtime, line)
+				}
+			}
+			o := nativeOptions()
+			o.Runtime = nativePythonRuntime
+			bundle, path, source := writeResolveFixture(t, o, nil, nil)
+			choices, err := ResolveNativeBuildExact(t.Context(), fake, pythonCreationCutoff.Add(time.Second), o.Runtime, bundle, path, source)
+			must(t, err) // Existing exact-lookup fallback still resolves a build.
+			if !slices.Contains(fake.asked, "python:3.14.8-bookworm") || choices[0].Exact != "3.14.8" {
+				t.Fatalf("creation-date exact lookup changed: %+v; queries=%v", choices[0], fake.asked)
+			}
+			data, selectionErr := nativeUtilitySelectionReceipt(choices, "3.14.8")
+			var record struct {
+				Choices []struct{ Image, Narration string }
+				Passed  bool `json:"selection_precondition_passed"`
+			}
+			must(t, json.Unmarshal(data, &record))
+			if len(record.Choices) != len(choices) || record.Choices[0].Image != choices[0].Image {
+				t.Fatalf("selected identities were lost: %s", data)
+			}
+			if tc.found {
+				if selectionErr != nil || !record.Passed || choices[0].Line != "3.14.8" {
+					t.Fatalf("exact default rejected: %v; %s", selectionErr, data)
+				}
+			} else {
+				if choices[0].Image != reviewed.image || selectionErr == nil || record.Passed ||
+					!strings.Contains(selectionErr.Error(), reviewed.version) || !strings.Contains(record.Choices[0].Narration, tc.note) {
+					t.Fatalf("fallback was changed or counted as exact-default qualification: %v; %s", selectionErr, data)
+				}
 			}
 		})
 	}

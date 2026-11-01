@@ -40,6 +40,130 @@ func commonNodeQualificationFake() *fakeExact {
 	return fake
 }
 
+func TestCommonNodeQualificationDonorMode(t *testing.T) {
+	for _, mode := range []string{"", "0"} {
+		artifacts, err := commonNodeQualificationArtifacts(mode)
+		must(t, err)
+		if len(artifacts) != 0 {
+			t.Fatal("source mode acquired a runtime donor")
+		}
+	}
+	if _, err := commonNodeQualificationArtifacts("unreviewed"); err == nil {
+		t.Fatal("unknown donor mode accepted")
+	}
+	artifacts, err := commonNodeQualificationArtifacts("1")
+	must(t, err)
+	if len(artifacts) != 4 || len(commonNodeDonorQualificationCases()) != 6 {
+		t.Fatal("four published runtime donors and six separate qualification cells are required")
+	}
+	for source, artifact := range artifacts {
+		must(t, validateNativeBase(source))
+		must(t, validateNativeBase(artifact))
+		if !strings.HasPrefix(source, "node:") || !strings.HasPrefix(artifact, "ghcr.io/bex-co/bex-cnb-run@") {
+			t.Fatal("donor is not bound to an immutable official Node identity and reviewed public package")
+		}
+	}
+}
+
+func TestCommonNodeQualificationDonorCells(t *testing.T) {
+	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
+	var err error
+	nativeCommonBase, nativeSuppliedBases = commonFixtureImage, nil
+	nativeRuntimeArtifacts, err = commonNodeQualificationArtifacts("1")
+	must(t, err)
+	for _, tc := range commonNodeDonorQualificationCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			o := nativeOptions()
+			o.Runtime, o.BuildEnv, o.RuntimeEnvSecret = tc.runtime, nil, ""
+			o.BuildCommand, o.StartCommand = "/usr/bin/python3 check.py build", "/usr/bin/python3 check.py runtime"
+			bundle, path, source := writeResolveFixture(t, o, nil, commonNodeQualificationFiles(t, tc))
+			fake := commonNodeQualificationFake()
+			choices, err := ResolveNativeBuildExact(context.Background(), fake, time.Time{}, tc.runtime, bundle, path, source)
+			must(t, err)
+			expected, node, err := commonNodeQualificationExpectations(tc, choices)
+			must(t, err)
+			artifact, found := nativeRuntimeArtifacts[node.Image]
+			if !found || node.primaryImage != artifact {
+				t.Fatal("selected official identity did not choose its exact reviewed donor")
+			}
+			for _, asked := range fake.asked {
+				if strings.HasPrefix(asked, "node source ") {
+					t.Fatal("published donor unexpectedly requested compiler inputs")
+				}
+			}
+			canonical, err := os.ReadFile(path)
+			must(t, err)
+			executed, overlay, err := commonNodeQualificationRecipe(string(canonical), node)
+			must(t, err)
+			if overlay || executed != string(canonical) || strings.Contains(executed, "build-node") || strings.Contains(executed, "\nFROM "+artifact+"\n") {
+				t.Fatal("donor mode changed the common base or acquired a security compiler/network overlay")
+			}
+			var contract map[string]any
+			must(t, json.Unmarshal(expected, &contract))
+			if (contract["node_env"] != nil) != (tc.runtime == nativeNodeRuntime) {
+				t.Fatal("companion imported donor NODE_VERSION into its primary environment")
+			}
+			if tc.runtime == nativeRubyRuntime && !strings.Contains(executed, "COPY --link --from="+artifact+" /usr/local/include/node /usr/local/include/node\n") {
+				t.Fatal("companion headers did not come from its selected runtime donor")
+			}
+			for _, changed := range []string{
+				executed + "RUN /usr/libexec/bex-native/build-node --common-bookworm 14.21.3 unreviewed\n",
+				executed + "RUN --network=default unreviewed\n",
+				strings.ReplaceAll(executed, "--from="+artifact+" /usr/share/bex-node-brotli", "--from="+node.Image+" /usr/share/bex-node-brotli"),
+			} {
+				if _, _, err := commonNodeQualificationRecipe(changed, node); err == nil {
+					t.Fatal("donor recipe accepted a changed compiler, network or provenance boundary")
+				}
+			}
+		})
+	}
+}
+
+func TestCommonNodeQualificationDonorRequiresExactArtifact(t *testing.T) {
+	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
+	nativeCommonBase, nativeSuppliedBases = commonFixtureImage, nil
+	for _, runtime := range []string{nativeNodeRuntime, nativeRubyRuntime} {
+		for _, exactDonor := range []bool{false, true} {
+			t.Run(runtime+map[bool]string{false: "-missing", true: "-exact"}[exactDonor], func(t *testing.T) {
+				var err error
+				nativeRuntimeArtifacts, err = commonNodeQualificationArtifacts("1")
+				must(t, err)
+				exactImage := "node:14.21.2-bullseye@" + exactDigest
+				if exactDonor {
+					// Synthetic same-patch artifact for generator behavior only.
+					nativeRuntimeArtifacts[exactImage] = "ghcr.io/bex-co/bex-cnb-run@" + otherDigest
+				}
+				tc := commonNodeCase{"exact", "14.21.2", runtime}
+				o := nativeOptions()
+				o.Runtime = runtime
+				bundle, path, source := writeResolveFixture(t, o, nil, commonNodeQualificationFiles(t, tc))
+				choices, err := ResolveNativeBuildExact(context.Background(), commonNodeQualificationFake(), time.Time{}, runtime, bundle, path, source)
+				must(t, err)
+				_, node, err := commonNodeQualificationExpectations(tc, choices)
+				must(t, err)
+				if node.Image != exactImage || node.Line != "14.21.2" {
+					t.Fatal("different exact request was replaced by the reviewed14.21.3 donor")
+				}
+				canonical, err := os.ReadFile(path)
+				must(t, err)
+				executed, overlay, err := commonNodeQualificationRecipe(string(canonical), node)
+				if !exactDonor {
+					if err == nil || !strings.Contains(err.Error(), "requires an exact published artifact") {
+						t.Fatal("missing exact donor silently entered the source qualification path")
+					}
+					return
+				}
+				must(t, err)
+				if overlay || executed != string(canonical) || strings.Contains(executed, "build-node") {
+					t.Fatal("exact donor required a compiler or changed its canonical recipe")
+				}
+			})
+		}
+	}
+}
+
 func TestCommonNodeQualificationCanonicalCells(t *testing.T) {
 	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
 	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
@@ -140,7 +264,7 @@ func TestCommonNodeQualificationRejectsExactFallback(t *testing.T) {
 func TestCommonNodeQualificationGenericOptInSkipsExtraProfile(t *testing.T) {
 	command := exec.Command(os.Args[0], "-test.run=^TestCommonNodeGeneratedImages$", "-test.v")
 	for _, item := range os.Environ() {
-		if !strings.HasPrefix(item, "BEX_NATIVE_TEST_NODE_PROFILE=") && !strings.HasPrefix(item, "BEX_BUILDKIT_INTEGRATION=") {
+		if !strings.HasPrefix(item, "BEX_NATIVE_TEST_NODE_PROFILE=") && !strings.HasPrefix(item, "BEX_NATIVE_TEST_NODE_DONORS=") && !strings.HasPrefix(item, "BEX_BUILDKIT_INTEGRATION=") {
 			command.Env = append(command.Env, item)
 		}
 	}
@@ -148,6 +272,20 @@ func TestCommonNodeQualificationGenericOptInSkipsExtraProfile(t *testing.T) {
 	output, err := command.CombinedOutput()
 	if err != nil || !strings.Contains(string(output), "--- SKIP: TestCommonNodeGeneratedImages") {
 		t.Fatalf("generic integration acquired an extra profile/input requirement: %v\n%s", err, output)
+	}
+}
+
+func TestCommonNodeQualificationDonorOptInRequiresIntegration(t *testing.T) {
+	command := exec.Command(os.Args[0], "-test.run=^TestCommonNodeGeneratedImages$", "-test.v")
+	for _, item := range os.Environ() {
+		if !strings.HasPrefix(item, "BEX_NATIVE_TEST_NODE_PROFILE=") && !strings.HasPrefix(item, "BEX_NATIVE_TEST_NODE_DONORS=") && !strings.HasPrefix(item, "BEX_BUILDKIT_INTEGRATION=") {
+			command.Env = append(command.Env, item)
+		}
+	}
+	command.Env = append(command.Env, "BEX_NATIVE_TEST_NODE_DONORS=1")
+	output, err := command.CombinedOutput()
+	if err == nil || !strings.Contains(string(output), "Node profile also requires BEX_BUILDKIT_INTEGRATION=1") {
+		t.Fatalf("standalone donor opt-in did not require the actual integration boundary: %v\n%s", err, output)
 	}
 }
 

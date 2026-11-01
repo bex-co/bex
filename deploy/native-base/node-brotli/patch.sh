@@ -18,6 +18,11 @@ fi
 node_version=$(/usr/local/bin/node -p 'process.versions.node')
 [ "$common_mode" -eq 0 ] || [ "$node_version" = "$expected_version" ]
 case "$node_version" in
+  14.21.2)
+    node_sha=d8f09a0f16773a77613c3817606f6d455624992d9c43443aca15e91807a1ff03
+    brotli_version=1.0.10
+    brotli_sha=b517ebdb5266b963d28d6e639b973479874ec72086deb6ee4a2d639e1b13606b
+    ;;
   14.21.3)
     node_sha=458ec092e60ad700ddcf079cb63d435c15da4c7bb3d3f99b9a8e58a99e54075e
     brotli_version=1.0.10

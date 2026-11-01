@@ -17,3 +17,6 @@
 [完整交接 JSON](evidence/common-integration-handoff/common-integration-handoff.json)包含每个固定引用、producer/verifier、证明哈希、实际扫描处置、公共底资格条件和后续运行步骤；[原中文说明](evidence/common-integration-handoff/handoff.zh.txt)保留详细边界。
 
 本项不会临时写入逐语言租户基础镜像。旧 collector-v2 和直接11-pin写入计划已退役；后续应按实际合格公共底与运行时模型重新审阅采集工具。旧清单中的五行未知对象及所有新 App 必须在真实新 operator Ready 后重新核对，旧报告、无 Pod 或发布数量都不能充当最终安全或线上验收。
+
+
+2026-11-01协作代码已准备并通过完整operator与相关源控制，见[本轮实际记录](evidence/d2-common-collaboration-20261101/MANIFEST.json)。新的精确14.21.2发布入口修改了公共镜像的严格输入集合，旧56c58审阅只能保留历史范围；下一轮应使用新鲜发布/审阅和当前源码的完整双架构utilities，再进入donor/family及线上检查。手动新CI触发还需恢复可用本机GitHub登录或浏览器入口；已给用户具体登录动作，不把已同意协作、源码测试或旧run当作新资格通过。
