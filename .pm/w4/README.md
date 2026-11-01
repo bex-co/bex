@@ -50,7 +50,7 @@ Develop against `.pm/w4/dev-4/`, this worker's own isolated stack on the shared 
 
 - [x] **m224** — [Refresh Metrics status choices while the page stays open](done/m224/README.md) (6 tasks) — **DONE 2026-10-29** (live DoD replayed on pin `d66f96c06991`: a mounted Status Code picker offers a newly seen code (204 on 390, 409 on 1440) on its next background discovery poll, without a reload, and keeps the current selection and Path) 
 
-- [ ] **m223** — [Make first Postgres availability include vector](m223/README.md) (6 tasks) — **TODO（2026-10-31 解除阻塞：用户允许删除 `qa-20261017-64552e-pg14`，并在 bex-canary 使用短期付费 Postgres；worker 按 DoD 重放并清理）** t001–t005 done 2026-10-17: a never-served database stays creating until its vector child applies; initial failure is unavailable/ExtensionsFailed; established databases keep serving. Operator test/lint pass.
+- [x] **m223** — [Make first Postgres availability include vector](done/m223/README.md) (6 tasks) — **DONE 2026-11-01** (two fresh Free PG18: at the first UI/GraphQL Available, `vector_installed` is true, `CREATE EXTENSION IF NOT EXISTS vector` succeeds through the write confirmation and the distance query returns 1, at 1440 and 390; pg_trgm settled control passes; fixtures deleted) t001–t005 done 2026-10-17: a never-served database stays creating until its vector child applies; initial failure is unavailable/ExtensionsFailed; established databases keep serving. Operator test/lint pass.
 
 - [x] **m222** — [Ignore obsolete dotenv file reads](done/m222/README.md) (6 tasks) — **DONE 2026-10-29** (live DoD replayed on pin `d66f96c06991`: the latest selected .env file owns the import preview even if an older read finishes later, Cancel discards a pending read, and Save and deploy writes the second file's values) 
 
