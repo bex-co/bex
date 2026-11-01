@@ -27,7 +27,7 @@ on:
         description: Single-case measurement after both original utility cohorts
         type: choice
         default: utilities
-        options: [utilities, node-addon, node, modern-python, legacy-python, ruby, go-rust, elixir, native-init]
+        options: [utilities, node-addon, node, node-donors, modern-python, legacy-python, ruby, go-rust, elixir, native-init]
       case:
         description: Exact allowlisted Go case, or pilot for the first case; no family-wide run
         type: string

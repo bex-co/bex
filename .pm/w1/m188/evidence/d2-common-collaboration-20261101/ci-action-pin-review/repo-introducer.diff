@@ -1,0 +1,50 @@
+commit 5f20e81ab6bb82ab125d8d4cb89952c5833936dd
+Author: Tian Pan <puncsky@gmail.com>
+Date:   Sat Oct 31 20:58:48 2026 -0700
+
+    fix(ci): pre-download the Trivy DB with per-repo retries before the CVE scans
+    
+    Fixes red main run 41254794386: the operator report scan stalled on the
+    GHCR trivy-db transfer until Trivy's single 5m timeout expired, so the
+    GCR mirror listed after it was never tried. A setup step now fetches the
+    DB once with a 2m per-attempt timeout, alternating GHCR and GCR for three
+    rounds, then the ten scans skip their own DB update. The five blocking
+    CRITICAL gates are unchanged.
+
+diff --git a/.github/workflows/deploy.yml b/.github/workflows/deploy.yml
+index 43edff380..be8550381 100644
+--- a/.github/workflows/deploy.yml
++++ b/.github/workflows/deploy.yml
+@@ -341,6 +341,32 @@ jobs:
+           done
+ 
+       # --- 1f. CVE scan: CRITICAL fails CI, HIGH warns (w7/m10 t001) ---
++      # Fetch the vulnerability DB once, before the ten scans, with a short
++      # per-attempt timeout that alternates GHCR and the GCR mirror. Trivy's
++      # own download shares one 5m --timeout across every repository, so a
++      # stalled GHCR transfer used it all and the mirror was never tried
++      # (run 41254794386). Each scan then reads the job-local DB as is.
++      - uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
++        with:
++          version: v0.70.0
++          cache: false
++      - name: CVE scan — download the vulnerability DB (retried)
++        env:
++          TRIVY_CACHE_DIR: ${{ github.workspace }}/.cache/trivy
++        run: |
++          for attempt in 1 2 3; do
++            for repo in ${TRIVY_DB_REPOSITORY//,/ }; do
++              if trivy image --download-db-only --db-repository "$repo" --timeout 2m; then
++                echo "TRIVY_SKIP_DB_UPDATE=true" >> "$GITHUB_ENV"
++                exit 0
++              fi
++              echo "::warning::Trivy DB download from $repo failed (attempt $attempt)"
++            done
++            sleep 10
++          done
++          echo "::error::Trivy DB unavailable from every repository after 3 rounds"
++          exit 1
++
+       # Trivy scans both built+pushed images for known CVEs. Two passes per image:
+       # a non-blocking HIGH+CRITICAL report (always exits 0, shows the full picture)
+       # and a blocking CRITICAL-only gate (exit-code 1 if any CRITICAL is found).

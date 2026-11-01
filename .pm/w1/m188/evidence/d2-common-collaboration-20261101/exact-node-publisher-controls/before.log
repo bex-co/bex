@@ -1,0 +1,39 @@
+test_exact_node_publication_keeps_the_reviewed_line_separate (__main__.PublisherInputControls.test_exact_node_publication_keeps_the_reviewed_line_separate) ... FAIL
+test_common_exact_checksum_binding_and_general_source_fallback_are_preserved (__main__.NodeBackportInputControls.test_common_exact_checksum_binding_and_general_source_fallback_are_preserved) ... 
+  test_common_exact_checksum_binding_and_general_source_fallback_are_preserved (__main__.NodeBackportInputControls.test_common_exact_checksum_binding_and_general_source_fallback_are_preserved) (version='14.21.2', checksum='0000000000000000000000000000000000000000000000000000000000000000') ... FAIL
+test_exact_node_14212_uses_its_official_source_and_matching_security_release (__main__.NodeBackportInputControls.test_exact_node_14212_uses_its_official_source_and_matching_security_release) ... FAIL
+test_existing_reviewed_sources_remain_distinct_and_unreviewed_patch_is_refused (__main__.NodeBackportInputControls.test_existing_reviewed_sources_remain_distinct_and_unreviewed_patch_is_refused) ... ok
+
+======================================================================
+FAIL: test_exact_node_publication_keeps_the_reviewed_line_separate (__main__.PublisherInputControls.test_exact_node_publication_keeps_the_reviewed_line_separate)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/tianpan/projects/bex/.github/scripts/test_native_oci_workflow.py", line 271, in test_exact_node_publication_keeps_the_reviewed_line_separate
+    self.assertEqual(process.returncode, 0, process.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : runtime must match one reviewed matrix name
+
+
+======================================================================
+FAIL: test_common_exact_checksum_binding_and_general_source_fallback_are_preserved (__main__.NodeBackportInputControls.test_common_exact_checksum_binding_and_general_source_fallback_are_preserved) (version='14.21.2', checksum='0000000000000000000000000000000000000000000000000000000000000000')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/tianpan/projects/bex/.github/scripts/test_native_oci_workflow.py", line 319, in test_common_exact_checksum_binding_and_general_source_fallback_are_preserved
+    self.assertNotEqual(process.returncode, 0)
+    ~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 0 == 0
+
+======================================================================
+FAIL: test_exact_node_14212_uses_its_official_source_and_matching_security_release (__main__.NodeBackportInputControls.test_exact_node_14212_uses_its_official_source_and_matching_security_release)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/Users/tianpan/projects/bex/.github/scripts/test_native_oci_workflow.py", line 294, in test_exact_node_14212_uses_its_official_source_and_matching_security_release
+    self.assertEqual(process.returncode, 0, process.stderr)
+    ~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: 1 != 0 : Unreviewed EOL Node source: 14.21.2
+
+
+----------------------------------------------------------------------
+Ran 4 tests in 2.367s
+
+FAILED (failures=3)

@@ -7,7 +7,7 @@ on:
   workflow_dispatch:
     inputs:
       runtime:
-        description: "One existing reviewed runtime to finish, or common-bookworm; never an empty/full C matrix"
+        description: "One reviewed runtime donor or common-bookworm; never an empty/full C matrix"
         required: true
         type: string
   workflow_call:
@@ -56,6 +56,8 @@ jobs:
         run: |
           if [ "$TARGET_RUNTIME" = common-bookworm ]; then
             images=$(python3 deploy/native-common/matrix.py)
+          elif [ "$TARGET_RUNTIME" = node-14.21.2-bullseye ]; then
+            images='{"include":[{"name":"node-14.21.2-bullseye","base":"node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12"}]}'
           else
             images=$(python3 deploy/native-base/matrix.py)
             images=$(IMAGES="$images" python3 - <<'PY'

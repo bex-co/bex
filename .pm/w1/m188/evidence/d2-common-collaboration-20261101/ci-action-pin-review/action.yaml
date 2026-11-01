@@ -1,0 +1,103 @@
+name: 'Aqua Security Trivy installer'
+description: 'Install Trivy binary from release page'
+author: 'Aqua Security'
+
+inputs:
+  version:
+    description: 'Trivy version to install'
+    required: false
+    default: 'latest'
+  path:
+    description: 'Path in runner to install Trivy. Trivy will be installed in "<path>/trivy-bin" dir ("$HOME/.local/bin/trivy-bin" by default)'
+    required: false
+    default: '$HOME/.local/bin'
+  cache:
+    description: 'Used to specify whether caching is needed. Set to false, if you would like to disable caching.'
+    required: false
+    default: 'false'
+  token:
+    description: >
+      Access token used to check out the Trivy repository.
+      The token is required when using GitHub Enterprise Server (GHES).
+      https://github.com/actions/create-github-app-token can be used to obtain such a token.
+      The token should be limited to read access only for public repositories.
+      See more details in https://github.com/aquasecurity/setup-trivy/issues/10
+    required: false
+    ## ${{ github.token }} is default value for actions/checkout
+    ## cf. https://github.com/actions/checkout/blob/eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871/action.yml#L24
+    default: ${{ github.token }}
+  github-server-url:
+    description: The base URL for the GitHub instance to clone aquasecurity/trivy from. Defaults to public https://github.com
+    required: false
+    ## Note: we explicitly set the default to public rather than the current server api (in case of private GHES)
+    ## but it can optionally be set to '${{ github.server_url }}' on GHES if the repository has been mirrored (e.g., via actions/actions-sync).
+    ## Ref. https://github.com/aquasecurity/setup-trivy/issues/10 and https://github.com/aquasecurity/setup-trivy/pull/16
+    default: 'https://github.com'
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Binary dir
+      id: binary-dir
+      shell: bash
+      run: echo "dir=${{ inputs.path }}/trivy-bin" >> $GITHUB_OUTPUT
+
+    ## Don't cache `latest` version
+    - name: Check the version for caching
+      if: ${{ inputs.cache == 'true' && inputs.version == 'latest' }}
+      shell: bash
+      run: |
+        echo "'setup-trivy' doesn't currently support caching the 'latest' version"
+        echo "read https://github.com/aquasecurity/setup-trivy?tab=readme-ov-file#caching for more details"
+
+    - name: Restore Trivy binary from cache
+      if: ${{ inputs.cache == 'true' && inputs.version != 'latest' }}
+      id: cache
+      uses: actions/cache/restore@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+      with:
+        path: ${{ steps.binary-dir.outputs.dir }}
+        key: trivy-binary-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}
+
+    ## Security: Pin to a specific commit hash (not tag) to prevent supply chain attacks.
+    ## The install script is stable and can install different Trivy versions.
+    ## Update this ref as needed after reviewing changes to contrib/install.sh
+    - name: Checkout install script
+      if: steps.cache.outputs.cache-hit != 'true'
+      uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6.0.1
+      with:
+        repository: aquasecurity/trivy
+        sparse-checkout: |
+          contrib
+        path: trivy
+        fetch-depth: 1
+        ref: 75c4dc0f45c5d7ffd05ae26df1e0c666787bdf2a # main (with -c flag support)
+        github-server-url: ${{ inputs.github-server-url }}
+        token: ${{ inputs.token }}
+
+      ## Install Trivy using install script,
+      ## Copy the `contrib` directory to the directory with the binary
+      ## Remove the `trivy` directory produced by the checkout step, as it may cause errors in linters/checks in the calling code.
+    - name: Install Trivy
+      if: steps.cache.outputs.cache-hit != 'true'
+      shell: bash
+      run: |
+        echo "installing Trivy binary"
+        bash ./trivy/contrib/install.sh -b ${{ steps.binary-dir.outputs.dir }} -c setup-trivy ${{ inputs.version }}
+        cp -r ./trivy/contrib ${{ steps.binary-dir.outputs.dir }}/contrib
+        rm -rf ./trivy
+
+    ## Add the Trivy binary, retrieved from cache or installed by a script, to $GITHUB_PATH
+    - name: Add Trivy binary to $GITHUB_PATH
+      shell: bash
+      run: echo ${{ steps.binary-dir.outputs.dir }} >> $GITHUB_PATH
+
+    ## If one of the steps after setup-trivy fails,
+    ## we won't save the binary to the cache because the step after won't be run.
+    ## So we need to save the binary right after installation.
+    ## cf. https://github.com/aquasecurity/setup-trivy/issues/18
+    - name: Save Trivy binary to cache
+      if:  ${{ inputs.cache == 'true' && inputs.version != 'latest' && steps.cache.outputs.cache-hit != 'true' }}
+      uses: actions/cache/save@9255dc7a253b0ccc959486e2bca901246202afeb # v5.0.1
+      with:
+        path: ${{ steps.binary-dir.outputs.dir }}
+        key: trivy-binary-${{ inputs.version }}-${{ runner.os }}-${{ runner.arch }}

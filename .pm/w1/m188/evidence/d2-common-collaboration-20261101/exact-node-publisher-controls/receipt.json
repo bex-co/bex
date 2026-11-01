@@ -1,0 +1,95 @@
+{
+  "schema": "bex.exact-node14212-publisher-controls/v1",
+  "before": {
+    "file": "before.json",
+    "tests": 4,
+    "failures": 3,
+    "expected_red": true
+  },
+  "after": {
+    "file": "after.json",
+    "tests": 15,
+    "failures": 0
+  },
+  "additional_checks": {
+    "actionlint-default": {
+      "argv": [
+        "actionlint",
+        ".github/workflows/native-base-image.yml"
+      ],
+      "exit_code": 1,
+      "log": "actionlint-default.log"
+    },
+    "actionlint-configured": {
+      "argv": [
+        "actionlint",
+        "-config-file",
+        "/tmp/bex-w1-node14212-publisher-controls-_rxx7nho/actionlint.yaml",
+        ".github/workflows/native-base-image.yml"
+      ],
+      "exit_code": 0,
+      "log": "actionlint-configured.log"
+    },
+    "native-base-existing": {
+      "argv": [
+        "python3",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "deploy/native-base",
+        "-p",
+        "*_test.py"
+      ],
+      "exit_code": 0,
+      "log": "native-base-existing.log"
+    },
+    "shell-syntax": {
+      "argv": [
+        "sh",
+        "-n",
+        "deploy/native-base/node-brotli/patch.sh"
+      ],
+      "exit_code": 0,
+      "log": "shell-syntax.log"
+    },
+    "scoped-diff-check": {
+      "argv": [
+        "git",
+        "diff",
+        "--check",
+        "--",
+        ".github/workflows/native-base-image.yml",
+        "deploy/native-base/node-brotli/patch.sh",
+        ".github/scripts/test_native_oci_workflow.py"
+      ],
+      "exit_code": 0,
+      "log": "scoped-diff-check.log"
+    }
+  },
+  "unchanged": {
+    "entire_build_job_runtime_scan_sign_output_cleanup_bytes": true,
+    "entire_patch_script_except_exact14212_case": true,
+    "operator_runtime_matrix_rows": 27
+  },
+  "files": [
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "sha256": "0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47",
+      "bytes": 18402
+    },
+    {
+      "path": "deploy/native-base/node-brotli/patch.sh",
+      "sha256": "52aa5ce0a753d658a7c1d5423bbfd42bb9c57710079e46a12fdd98eb76fa7a63",
+      "bytes": 5560
+    },
+    {
+      "path": ".github/scripts/test_native_oci_workflow.py",
+      "sha256": "4d02e612c8b0ac19f57ac181acbbdf0b196b349314988411f5d27e8675cac2dc",
+      "bytes": 20871
+    }
+  ],
+  "scope": "Actual workflow selector and source-selection prefix exercised with temporary Node metadata stub. Existing signing shell controls use controlled tools. No container build, compilation, crypto/image security verification, workflow dispatch or production pin changes.",
+  "additional_checks_note": "Unconfigured actionlint rejects the existing repository runner labels; explicit local configuration permits exactly bex-ci/bex-production. Configured run passed. Earlier unconfigured invocation status was not captured by its shell; this record corrects that before handoff."
+}

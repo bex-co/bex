@@ -1,0 +1,138 @@
+{
+  "schema": "bex.w1.readonly-common-qualification-assessment/v1",
+  "observed_at": "2026-11-01T08:24:00.916261+00:00",
+  "observed_local_head": "b9e686fa3114a1c3ca759096c266e8dd4d11f213",
+  "candidate": {
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:56c58abb41abd6becfa1810834c6cba46b742703e2beffdb3a88387772b3b986",
+    "base": "buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6a9d6c2cc76438fae2c0988",
+    "producer": "99cdc5c5a5b53629e2a98963d43d373511a91c1f",
+    "verification": "99cdc5c5a5b53629e2a98963d43d373511a91c1f",
+    "publication": {
+      "run_id": 41249441151,
+      "run_attempt": 1,
+      "job_id": 124689058047,
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/publication/job.json",
+        "sha256": "b3c3bbca35a243794c3c91f8eba8865f7493df46f3161bb72ee7a79851c19b21",
+        "bytes": 5522
+      }
+    },
+    "platforms": {
+      "amd64": {
+        "manifest_digest": "sha256:7080be070ed01a7b856b5e3bdc1e83f56f782adab9eb64f7a712bf3378ca0f03",
+        "config_digest": "sha256:71c81d5536dfded543a554027b7158067418c5339597b6c8b60c88eb4921c881"
+      },
+      "arm64": {
+        "manifest_digest": "sha256:1388ddeca9ea568bff80341c438684f7cb761d89a0adfe04000f945995e91d4e",
+        "config_digest": "sha256:0fa42f2deaa79db2bfc41b5ab5cdea0e1b1c081445bce1298766649b65a6b7fd"
+      }
+    },
+    "approval": {
+      "receipt": {
+        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/actual/receipt.json",
+        "sha256": "f3cccfadddf2e5632de24d44fe6f43607d8964dd3c1dc98d5bf72457f7c442d2",
+        "bytes": 39125
+      },
+      "custody": {
+        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/CUSTODY.json",
+        "sha256": "a10d517077de29ed5897d8a284e53564593702ef4b6ff74ee862bae8f3e2f12f",
+        "bytes": 135790
+      },
+      "plan": {
+        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/tools/PLAN.json",
+        "sha256": "ffc6b6ce1173691851e1de5e5a1f744fb599fc582c70511f2b56e82ea2c0f51e",
+        "bytes": 6245
+      },
+      "inputs": {
+        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/IMAGE-INPUTS.json",
+        "sha256": "6d418e82b6b9be74b624c6660b07bebb3ab836bcd85eb65e437d13535f62d9c5",
+        "bytes": 6894
+      }
+    },
+    "source": null,
+    "utilities": null
+  },
+  "candidate_file_sha256": "eedf83744128a6945b6530f546fdc6e36e62c3fe85258f6654891ab56baa8ea8",
+  "image_critical_inputs_count": 33,
+  "image_critical_current_mismatches": [],
+  "newest_runs": [
+    {
+      "id": 41285940429,
+      "head_sha": "3d353cb976ff01c31b78fc469b3fc3dbf3203a95",
+      "event": "workflow_dispatch",
+      "status": "queued",
+      "conclusion": null,
+      "created_at": "2026-11-01T07:43:50Z",
+      "updated_at": "2026-11-01T09:04:09Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 41285887959,
+      "head_sha": "3d353cb976ff01c31b78fc469b3fc3dbf3203a95",
+      "event": "push",
+      "status": "queued",
+      "conclusion": null,
+      "created_at": "2026-11-01T07:43:01Z",
+      "updated_at": "2026-11-01T09:02:38Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 41280688171,
+      "head_sha": "fb73ecdd38ef5e20f269771ba493d16243841d05",
+      "event": "workflow_dispatch",
+      "status": "completed",
+      "conclusion": "failure",
+      "created_at": "2026-11-01T06:24:13Z",
+      "updated_at": "2026-11-01T09:13:56Z",
+      "run_attempt": 1
+    },
+    {
+      "id": 41280558929,
+      "head_sha": "fb73ecdd38ef5e20f269771ba493d16243841d05",
+      "event": "push",
+      "status": "in_progress",
+      "conclusion": null,
+      "created_at": "2026-11-01T06:22:18Z",
+      "updated_at": "2026-11-01T06:46:33Z",
+      "run_attempt": 1
+    }
+  ],
+  "utility_baseline_complete": false,
+  "candidate_source_and_utilities_null": true,
+  "latest_same_candidate_request": {
+    "run_id": 41285940429,
+    "source": "3d353cb976ff01c31b78fc469b3fc3dbf3203a95",
+    "profile": "utilities",
+    "source_mode": "reviewed-candidate",
+    "case": "all",
+    "publisher": "skipped",
+    "amd64": {
+      "job_id": 124791012251,
+      "status": "queued"
+    },
+    "arm64": {
+      "job_id": 124791012199,
+      "status": "queued"
+    },
+    "profile_inputs_basis": "plan success plus publisher skipped and both qualify jobs; latest job snapshot retained; source inputs not independently reread from GitHub event inputs"
+  },
+  "latest_completed_same_candidate_run": {
+    "run_id": 41280688171,
+    "source": "fb73ecdd38ef5e20f269771ba493d16243841d05",
+    "amd64": {
+      "job_id": 124773320642,
+      "result": "failure",
+      "cause": "all three bounded pinned BuildKit pulls failed; cleanup also failed and artifact upload ECONNRESET"
+    },
+    "arm64": {
+      "job_id": 124773320694,
+      "result": "failure",
+      "cause": "python3148-default version/environment guard failed; actual recipe copies generic python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd rather than exact3.14.8 donor",
+      "other_cases": "Node/Python313, all five omission controls and original HTTP oracles passed in this job; full utility baseline still fails"
+    }
+  },
+  "next_executable_gap": "Reuse existing queued3d request; diagnose exact3.14.8 donor/default/fallback path using retained ARM canonical recipe and metadata before any new dispatch. Fix source without changing required3.14.8 or weakening oracle if current source still affected; AMD pinned-pull transport/cleanup diagnostics remain separately observable. Family35-case execution requires both successful complete utility jobs/captured current source artifacts first.",
+  "transport": "Connected GitHub app jobs/logs and public GitHub API with TLS CA verification; no local credential file or insecure TLS bypass",
+  "capture_limits": "Log files preserve the connector-decoded UTF8 text, not original redirect ZIP bytes; jobs are normalized connector metadata; full public run response retained separately. Read-only snapshot, no CI wait/cancel/dispatch/source/PM/Git mutation.",
+  "production_common_pin": "unset (nativeCommonBase zero-value string), nativeSuppliedBases empty"
+}

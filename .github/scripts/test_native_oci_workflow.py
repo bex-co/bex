@@ -2,6 +2,7 @@
 import json
 import os
 from pathlib import Path
+import shlex
 import subprocess
 import sys
 import tempfile
@@ -15,6 +16,7 @@ DIGEST = "sha256:" + "a" * 64
 REF = REPOSITORY + "@" + DIGEST
 MATRIX_NAME = "node-18-bookworm"
 BASE = "node:18-bookworm@sha256:" + "d" * 64
+EXACT_NODE_BASE = "node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12"
 TRIVY_TYPE = "https://aquasecurity.github.io/trivy/attestation/vuln/v1"
 
 
@@ -258,11 +260,66 @@ class PublisherInputControls(unittest.TestCase):
                 self.assertEqual(records["publish"], "true")
 
     def test_empty_or_unknown_manual_request_cannot_launch_a_full_c_matrix(self):
-        for runtime in ("", "unknown-line"):
+        for runtime in ("", "unknown-line", "all", "node-14.21.1-bullseye", "node-14.21.2-bullseye; exit 0"):
             with self.subTest(runtime=runtime):
                 process, records = self.select(runtime)
                 self.assertNotEqual(process.returncode, 0)
                 self.assertNotIn("images", records)
+
+    def test_exact_node_publication_keeps_the_reviewed_line_separate(self):
+        process, records = self.select("node-14.21.2-bullseye")
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(json.loads(records["images"]), {"include": [{"name": "node-14.21.2-bullseye", "base": EXACT_NODE_BASE}]})
+        self.assertEqual(records["publish"], "true")
+        process, records = self.select("node-14-bullseye")
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(json.loads(records["images"]), {"include": [{"name": "node-14-bullseye", "base": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e"}]})
+
+
+class NodeBackportInputControls(unittest.TestCase):
+    def select(self, version, *arguments, brotli="1.0.9"):
+        source = (ROOT / "deploy/native-base/node-brotli/patch.sh").read_text()
+        selection = source.split("\n. /etc/os-release\n", 1)[0]
+        with tempfile.TemporaryDirectory(prefix="native-node-source-input-") as folder:
+            node = Path(folder) / "node"
+            node.write_text("#!" + sys.executable + "\nimport os, sys\nprint(os.environ['CONTROL_NODE_VERSION' if sys.argv[-1] == 'process.versions.node' else 'CONTROL_BROTLI_VERSION'])\n")
+            node.chmod(0o700)
+            selection = selection.replace("/usr/local/bin/node", shlex.quote(str(node)))
+            selection += '\nprintf "%s\\n" "$node_sha" "$brotli_version" "$brotli_sha"\n'
+            env = dict(os.environ, CONTROL_NODE_VERSION=version, CONTROL_BROTLI_VERSION=brotli)
+            return subprocess.run(["/bin/sh", "-c", selection, "patch.sh", *arguments], env=env, capture_output=True, text=True, timeout=5)
+
+    def test_exact_node_14212_uses_its_official_source_and_matching_security_release(self):
+        process = self.select("14.21.2")
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(process.stdout.splitlines(), ["d8f09a0f16773a77613c3817606f6d455624992d9c43443aca15e91807a1ff03", "1.0.10", "b517ebdb5266b963d28d6e639b973479874ec72086deb6ee4a2d639e1b13606b"])
+
+    def test_existing_reviewed_sources_remain_distinct_and_unreviewed_patch_is_refused(self):
+        for version, checksum in {
+            "14.21.3": "458ec092e60ad700ddcf079cb63d435c15da4c7bb3d3f99b9a8e58a99e54075e",
+            "16.20.2": "576f1a03c455e491a8d132b587eb6b3b84651fc8974bb3638433dd44d22c8f49",
+            "18.20.8": "36a7bf1a76d62ce4badd881ee5974a323c70e1d8d19165732684e145632460d9",
+            "20.20.2": "7aeeacdb858299e09a3e0510d4bb8b266923894a9e3ac0058ba89d4ecf4a4cca",
+        }.items():
+            with self.subTest(version=version):
+                process = self.select(version)
+                self.assertEqual(process.returncode, 0, process.stderr)
+                self.assertEqual(process.stdout.splitlines()[0], checksum)
+        process = self.select("14.21.1")
+        self.assertNotEqual(process.returncode, 0)
+        self.assertIn("Unreviewed EOL Node source", process.stderr)
+
+    def test_common_exact_checksum_binding_and_general_source_fallback_are_preserved(self):
+        checksum = "d8f09a0f16773a77613c3817606f6d455624992d9c43443aca15e91807a1ff03"
+        process = self.select("14.21.2", "--common-bookworm", "14.21.2", checksum)
+        self.assertEqual(process.returncode, 0, process.stderr)
+        for version, expected in (("14.21.2", "0" * 64), ("14.21.3", checksum)):
+            with self.subTest(version=version, checksum=expected):
+                process = self.select("14.21.2", "--common-bookworm", version, expected)
+                self.assertNotEqual(process.returncode, 0)
+        process = self.select("14.21.1", "--common-bookworm", "14.21.1", "b" * 64)
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(process.stdout.splitlines()[:2], ["b" * 64, "1.0.10"])
 
 
 if __name__ == "__main__":

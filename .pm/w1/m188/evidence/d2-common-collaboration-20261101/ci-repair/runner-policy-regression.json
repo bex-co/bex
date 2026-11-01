@@ -1,0 +1,10 @@
+[
+  {
+    "variant": "before",
+    "exit_code": 1
+  },
+  {
+    "variant": "after",
+    "exit_code": 0
+  }
+]

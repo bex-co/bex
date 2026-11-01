@@ -94,13 +94,19 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 				env = nil // Genuine creation-date default: no primary version signal.
 			}
 			bundle, dockerfile, source := writeResolveFixture(t, o, env, files)
-			_, err := ResolveNativeBuildAt(tc.created, tc.runtime, bundle, dockerfile, source)
+			choices, err := ResolveNativeBuildAt(tc.created, tc.runtime, bundle, dockerfile, source)
 			must(t, err)
 			recipe, err := os.ReadFile(dockerfile)
 			must(t, err)
 			evidence := filepath.Join(output, tc.name)
 			must(t, os.Mkdir(evidence, 0o700))
 			must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile.canonical"), recipe, 0o600))
+			for _, choice := range choices {
+				t.Logf("%s; image=%s", choice.Narration(), choice.Image)
+			}
+			selection, selectionErr := nativeUtilitySelectionReceipt(choices, tc.expectedPythonVersion)
+			must(t, os.WriteFile(filepath.Join(evidence, "resolved-choices.json"), selection, 0o600))
+			must(t, selectionErr)
 			caseWheels := wheelhouse
 			if prepareWheels && tc.runtime == nativePythonRuntime && commonImage != "" {
 				caseWheels = nativeUtilityPrepareWheels(t, docker, recipe, commonImage, bundle, source, evidence)
@@ -181,6 +187,7 @@ func TestNativeOriginalReplayHTTPOracles(t *testing.T) {
 
 type nativeUtilityCase struct {
 	name, runtime, interpreter, build, start string
+	expectedPythonVersion                    string
 	removal, wantFailure                     string
 	static, supplied                         bool
 	created                                  time.Time
@@ -196,7 +203,7 @@ func nativeUtilityCases(common, python string) []nativeUtilityCase {
 		cases = append(cases, nativeUtilityCase{name: "python313-original", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "original-cases.py build python", start: "original-cases.py runtime python", supplied: true})
 	}
 	if common != "" {
-		cases = append(cases, nativeUtilityCase{name: "python3148-default", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "check-runtime.py build 3.14.8", start: "check-runtime.py runtime 3.14.8", supplied: true, created: pythonCreationCutoff.Add(time.Second)})
+		cases = append(cases, nativeUtilityCase{name: "python3148-default", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "check-runtime.py build 3.14.8", start: "check-runtime.py runtime 3.14.8", expectedPythonVersion: "3.14.8", supplied: true, created: pythonCreationCutoff.Add(time.Second)})
 		for _, omitted := range []struct{ name, mid, failure string }{
 			{"jq", "98", "jq: command not found"},
 			{"rsync", "98", "rsync: command not found"},
@@ -208,6 +215,45 @@ func nativeUtilityCases(common, python string) []nativeUtilityCase {
 		}
 	}
 	return cases
+}
+
+// Keep lookup fallbacks before any prerequisite fetch or generated build; the
+// final in-image version/loader/extension checks remain independent evidence.
+func nativeUtilitySelectionReceipt(choices []NativeChoice, expectedPython string) ([]byte, error) {
+	selected := make([]map[string]any, 0, len(choices))
+	for _, choice := range choices {
+		versions := []string{}
+		for _, entry := range choice.imageEnv {
+			if strings.HasPrefix(entry, "PYTHON_VERSION=") || strings.HasPrefix(entry, "NODE_VERSION=") || strings.HasPrefix(entry, "RUBY_VERSION=") {
+				versions = append(versions, entry)
+			}
+		}
+		selected = append(selected, map[string]any{"label": choice.Label, "line": choice.Line, "image": choice.Image,
+			"source": choice.Source, "requested_exact": choice.Exact, "primary_image": choice.primaryImage,
+			"runtime_environment": versions, "narration": choice.Narration()})
+	}
+	var selectionErr error
+	if expectedPython != "" {
+		if len(choices) == 0 {
+			selectionErr = fmt.Errorf("exact-default qualification requires Python %s; resolver returned no primary", expectedPython)
+		} else {
+			version, err := commonImageVariable(choices[0].imageEnv, "PYTHON_VERSION")
+			if err != nil || version != expectedPython {
+				selectionErr = fmt.Errorf("exact-default qualification requires Python %s; resolved line %s with PYTHON_VERSION=%q: %s", expectedPython, choices[0].Line, version, choices[0].Narration())
+			}
+		}
+	}
+	record := map[string]any{"choices": selected, "expected_python_version": expectedPython,
+		"exact_default_precondition_applicable": expectedPython != "", "selection_precondition_passed": selectionErr == nil,
+		"scope": "resolved image metadata and selection only; not generated-runtime or qualification success"}
+	if selectionErr != nil {
+		record["selection_error"] = selectionErr.Error()
+	}
+	data, err := json.MarshalIndent(record, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(data, '\n'), selectionErr
 }
 
 func nativeUtilityRemovalFailedAtOriginalCommand(log, name, expected string) bool {

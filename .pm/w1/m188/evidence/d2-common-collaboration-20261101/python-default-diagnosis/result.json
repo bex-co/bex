@@ -1,0 +1,23 @@
+{
+  "started_at": "2026-11-01T08:33:44.588872+00:00",
+  "finished_at": "2026-11-01T08:33:50.595284+00:00",
+  "argv": [
+    "go",
+    "test",
+    "-p",
+    "1",
+    "./internal/build",
+    "-run",
+    "^TestNativeUtility(ExactDefaultSelectionKeepsLookupEvidence|WheelPreparationAcceptsActualResolvedPythonRecipes|OmissionEvidenceRequiresActualReadyStdout)$",
+    "-count=1",
+    "-timeout=3m",
+    "-v"
+  ],
+  "cwd": "/Users/tianpan/projects/bex/lego/operator",
+  "GOWORK": "off",
+  "GOMAXPROCS": "2",
+  "integration_optin_removed": true,
+  "exit_code": 0,
+  "log": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-w1-python3148-diagnosis-vmskkdpz/focused-unit.log",
+  "log_sha256": "ea955f0c8d9c15fe14abb9bc0538e9406d26d02c60dd0d6e585f9ac9e4e2f945"
+}

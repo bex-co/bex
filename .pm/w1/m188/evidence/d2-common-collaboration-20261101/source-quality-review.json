@@ -1,0 +1,39 @@
+{
+  "schema": "bex.m188.source-quality-review/v1",
+  "at": "2026-11-01T19:09:57.370058+00:00",
+  "base_commit": "26b983bd5e27304511b92cac7bc00548df08d673",
+  "source_diff_sha256": "928f8381ddc19b08aaf568970ea7ba23c14f4b5e10ddfcee9eca6a2029ce14a0",
+  "source_files": [
+    ".github/scripts/native-common-qualify.py",
+    ".github/scripts/test_native_oci_common_qualification.py",
+    ".github/scripts/test_native_oci_workflow.py",
+    ".github/workflows/native-base-image.yml",
+    ".github/workflows/native-common-image.yml",
+    "deploy/native-base/node-brotli/patch.sh",
+    "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "lego/operator/internal/build/nativeutility_integration_test.go",
+    "lego/operator/internal/build/nativeutility_qualification_test.go"
+  ],
+  "reviews": [
+    {
+      "reviewer": "cnb_followup",
+      "role": "reuse",
+      "result": "clean",
+      "finding": "Existing resolver, generator, fixture, build/run and metadata helpers reused; separate donor identities/cases justified."
+    },
+    {
+      "reviewer": "node_brotli_patch",
+      "role": "quality",
+      "result": "clean",
+      "finding": "Exact singleton/checksum and distinct case registries preserve default27, full build job, production pins and source identities."
+    },
+    {
+      "reviewer": "runtime_assessment",
+      "role": "efficiency",
+      "result": "clean",
+      "finding": "Single-case anchored donor routing avoids source compilation; all manual/source-byte/baseline gates preserved; atomic owned fixture journal avoids the observed race."
+    }
+  ],
+  "scope": "Read-only source quality review only; no runtime or artifact acceptance."
+}

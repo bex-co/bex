@@ -1,0 +1,8 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    ".github/scripts/test_native_oci_workflow.py"
+  ],
+  "exit_code": 0
+}

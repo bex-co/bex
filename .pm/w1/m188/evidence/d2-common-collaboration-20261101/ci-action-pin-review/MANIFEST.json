@@ -1,0 +1,44 @@
+{
+  "files": [
+    {
+      "file": "action.yaml",
+      "sha256": "7fe5630d90ffc0dd016fe27e9ff42077ab60874dcbc2a3419523c0f9ef2ebfff",
+      "bytes": 4912
+    },
+    {
+      "file": "cache-restore-action.yml",
+      "sha256": "bb552a94cec165255080b7e13fe3d2051c6c79e321e99435b5859dc7de5e9057",
+      "bytes": 1589
+    },
+    {
+      "file": "cache-save-action.yml",
+      "sha256": "5da400e1a7551cee617339fd1a5281483d71e6c56d86dd117fbd354f047308ec",
+      "bytes": 776
+    },
+    {
+      "file": "checkout-action.yml",
+      "sha256": "11b63452f6e43ffb5ab8bfdaaafb8a915b354318e3ad9bce4eb0686b9e380f90",
+      "bytes": 4593
+    },
+    {
+      "file": "install.sh",
+      "sha256": "e00df553be558995b994758bc8995956554a16937f456dc6615b0cc411bfec7a",
+      "bytes": 9945
+    },
+    {
+      "file": "repo-introducer.diff",
+      "sha256": "2ff44b8d513f13f59472c861d841514c16f6d00a6adb7b459f6e6553d64e5324",
+      "bytes": 2419
+    },
+    {
+      "file": "review.json",
+      "sha256": "fafc7d18eb11f26007b9b024a8af09e99a75952cd76016ccbbbd16a6c8ff235c",
+      "bytes": 1916
+    },
+    {
+      "file": "trivy-action.yaml",
+      "sha256": "c3cc09c5daa296bc02a1651f6ad1205c6839ac9f0f317ffb204bd5e641a57d73",
+      "bytes": 10553
+    }
+  ]
+}

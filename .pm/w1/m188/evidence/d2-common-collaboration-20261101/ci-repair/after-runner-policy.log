@@ -1,0 +1,1 @@
+PASS: third-party refs SHA-pinned, Node 20 absent, self-hosted runner trust separation, public-fork isolation and production-secret confinement intact (fixture: /tmp/bex-w1-common-credential-free-ci/after)

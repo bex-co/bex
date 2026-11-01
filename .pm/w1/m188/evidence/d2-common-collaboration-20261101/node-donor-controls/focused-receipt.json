@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "go",
+    "-C",
+    "lego/operator",
+    "test",
+    "./internal/build",
+    "-run",
+    "^TestCommonNodeQualification",
+    "-count=1",
+    "-v"
+  ],
+  "exit_code": 0,
+  "seconds": 33.27,
+  "stdout_sha256": "dd2db637f88106ab01e23f806983f39247f972304f2302c4f445a4ec3013e1f5",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "scope": "controlled fake resolver and host Go tests only; global and family integration flags unset, no Docker/network image or actual qualification",
+  "files": {
+    "lego/operator/internal/build/nativecommon_node_qualification_test.go": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4",
+    "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": "40d4b9607b0b831635890945c942eb124773bef48d3c8c2a3ec981f1337789bd"
+  }
+}

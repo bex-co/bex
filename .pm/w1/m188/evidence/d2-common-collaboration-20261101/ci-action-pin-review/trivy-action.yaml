@@ -1,0 +1,256 @@
+name: 'Aqua Security Trivy'
+description: 'Scans container images for vulnerabilities with Trivy'
+author: 'Aqua Security'
+
+inputs:
+  scan-type:
+    description: 'Scan type to use for scanning vulnerability'
+    required: false
+    default: 'image'
+  image-ref:
+    description: 'image reference (for backward compatibility)'
+    required: false
+  input:
+    description: 'reference of tar file to scan'
+    required: false
+    default: ''
+  scan-ref:
+    description: 'Scan reference'
+    required: false
+    default: '.'
+  exit-code:
+    description: 'exit code when vulnerabilities were found'
+    required: false
+  ignore-unfixed:
+    description: 'ignore unfixed vulnerabilities'
+    required: false
+    default: 'false'
+  vuln-type: # TODO: rename to pkg-types
+    description: 'comma-separated list of vulnerability types (os,library)'
+    required: false
+    default: 'os,library'
+  severity:
+    description: 'severities of vulnerabilities to be displayed'
+    required: false
+    default: 'UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL'
+  format:
+    description: 'output format (table, json, template)'
+    required: false
+    default: 'table'
+  template:
+    description: 'use an existing template for rendering output (@/contrib/gitlab.tpl, @/contrib/junit.tpl, @/contrib/html.tpl)'
+    required: false
+    default: ''
+  output:
+    description: 'writes results to a file with the specified file name'
+    required: false
+    default: ''
+  skip-dirs:
+    description: 'comma separated list of directories where traversal is skipped'
+    required: false
+    default: ''
+  skip-files:
+    description: 'comma separated list of files to be skipped'
+    required: false
+    default: ''
+  cache-dir:
+    description: 'specify where the cache is stored'
+    required: false
+    default: '${{ github.workspace }}/.cache/trivy'
+  timeout:
+    description: 'timeout (default 5m0s)'
+    required: false
+    default: ''
+  ignore-policy:
+    description: 'filter vulnerabilities with OPA rego language'
+    required: false
+    default: ''
+  hide-progress:
+    description: 'suppress progress bar and log output'
+    required: false
+  list-all-pkgs:
+    description: 'output all packages regardless of vulnerability'
+    required: false
+    default: 'false'
+  scanners:
+    description: 'comma-separated list of what security issues to detect'
+    required: false
+    default: ''
+  trivyignores:
+    description: 'comma-separated list of relative paths within the repository to one or more .trivyignore files, or a single .trivyignore.yaml file.'
+    required: false
+    default: ''
+  github-pat:
+    description: 'GitHub Personal Access Token (PAT) for submitting SBOM to GitHub Dependency Snapshot API'
+    required: false
+  trivy-config:
+    description: 'path to trivy.yaml config'
+    required: false
+  tf-vars:
+    description: "path to terraform tfvars file"
+    required: false
+  limit-severities-for-sarif:
+    description: 'limit severities for SARIF format'
+    required: false
+  docker-host:
+    description: 'unix domain socket path to use for docker scanning, ex. unix:///var/run/docker.sock'
+    required: false
+  version:
+    description: 'Trivy version to use'
+    required: false
+    default: 'v0.70.0'
+  cache:
+    description: 'Used to specify whether caching is needed. Set to false, if you would like to disable caching.'
+    required: false
+    default: 'true'
+  skip-setup-trivy:
+    description: 'skip calling the setup-trivy action to install trivy'
+    required: false
+    default: 'false'
+  token-setup-trivy:
+    description: >
+      `token-setup-trivy` is required when `github.token` in invalid for `https://github.com` server.
+      See https://github.com/aquasecurity/setup-trivy/?tab=readme-ov-file#install-trivy-with-non-default-token for more details.
+      `token-setup-trivy` is only used to fetch the Trivy repository in `setup-trivy`
+    required: false
+    ## ${{ github.token }} is default value for actions/checkout
+    ## cf. https://github.com/actions/checkout/blob/eef61447b9ff4aafe5dcd4e0bbf5d482be7e7871/action.yml#L24
+    default: ${{ github.token }}
+
+runs:
+  using: 'composite'
+  steps:
+    - name: Install Trivy
+      if: ${{ inputs.skip-setup-trivy == 'false' }}
+      # Pin to hash instead of tag for aquasecurity/setup-trivy action so that GitHub Actions 
+      # "allowing select actions" feature can be used to whitelist the dependent action by a hash.
+      # This is needed since some organizations have a policy to only allow pinned 3rd party actions to 
+      # be used.
+      uses: aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514 # v0.2.6
+      with:
+        version: ${{ inputs.version }}
+        cache: ${{ inputs.cache }}
+        token: ${{ inputs.token-setup-trivy }}
+
+    - name: Get current date
+      id: date
+      shell: bash
+      run: echo "date=$(date +'%Y-%m-%d')" >> $GITHUB_OUTPUT
+
+    - name: Restore DB from cache
+      if: ${{ inputs.cache == 'true' }}
+      uses: actions/cache@27d5ce7f107fe9357f9df03efb73ab90386fccae # v5.0.5
+      with:
+        path: ${{ inputs.cache-dir }}
+        key: cache-trivy-${{ steps.date.outputs.date }}
+        restore-keys: cache-trivy-
+
+    - name: Set GitHub Path
+      run: echo "$GITHUB_ACTION_PATH" >> $GITHUB_PATH # zizmor: ignore[github-env]
+      shell: bash
+      env:
+        GITHUB_ACTION_PATH: ${{ github.action_path }}
+
+    # Create and Clear Trivy Envs file
+    # See #422 for context
+    - name: Clear Trivy Envs file
+      shell: bash
+      run: |
+        rm -f trivy_envs.txt
+        touch trivy_envs.txt
+
+    - name: Set Trivy environment variables
+      shell: bash
+      env:
+        INPUT_INPUT: ${{ inputs.input }}
+        INPUT_EXIT_CODE: ${{ inputs.exit-code }}
+        INPUT_IGNORE_UNFIXED: ${{ inputs.ignore-unfixed }}
+        INPUT_VULN_TYPE: ${{ inputs.vuln-type }}
+        INPUT_SEVERITY: ${{ inputs.severity }}
+        INPUT_FORMAT: ${{ inputs.format }}
+        INPUT_TEMPLATE: ${{ inputs.template }}
+        INPUT_OUTPUT: ${{ inputs.output }}
+        INPUT_SKIP_DIRS: ${{ inputs.skip-dirs }}
+        INPUT_SKIP_FILES: ${{ inputs.skip-files }}
+        INPUT_TIMEOUT: ${{ inputs.timeout }}
+        INPUT_IGNORE_POLICY: ${{ inputs.ignore-policy }}
+        INPUT_HIDE_PROGRESS: ${{ inputs.hide-progress }}
+        INPUT_LIST_ALL_PKGS: ${{ inputs.list-all-pkgs }}
+        INPUT_SCANNERS: ${{ inputs.scanners }}
+        INPUT_TRIVY_CONFIG: ${{ inputs.trivy-config }}
+        INPUT_TF_VARS: ${{ inputs.tf-vars }}
+        INPUT_DOCKER_HOST: ${{ inputs.docker-host }}
+      run: |
+        # Note: There is currently no way to distinguish between undefined variables and empty strings in GitHub Actions.
+        # This limitation affects how we handle default values and empty inputs.
+        # For more information, see: https://github.com/actions/runner/issues/924
+
+        # The following logic implements the configuration priority described in the README:
+        #
+        # Inputs
+        # Environment Variables
+        # Config File
+        # Defaults
+        #
+        # As noted above defaults are awkward to handle as GitHub Actions will inject those values as the input
+        # if the caller doesn't provide them, thus if the input matches the default we don't set it as we
+        # can't tell the difference.  Plus if we did set it when it was the default value then it could potentially
+        # override an external environment variable, or something in the callers configuration file, which then wouldn't
+        # match the configuration priority that is documented.
+        set_env_var_if_provided() {
+          local var_name="$1"
+          local input_value="$2"
+          local default_value="$3"
+
+          if [ -n "$input_value" ] && [ "$input_value" != "$default_value" ]; then
+            # If action was provided with explicit input by the caller set that
+            # Use printf %q to safely escape special characters and prevent command injection
+            printf 'export %s=%q\n' "$var_name" "$input_value" >> trivy_envs.txt
+          fi
+        }
+
+        # Set environment variables, handling those with default values
+        # cf. https://aquasecurity.github.io/trivy/latest/docs/configuration/#environment-variables
+        set_env_var_if_provided "TRIVY_INPUT" "$INPUT_INPUT" ""
+        set_env_var_if_provided "TRIVY_EXIT_CODE" "$INPUT_EXIT_CODE" ""
+        set_env_var_if_provided "TRIVY_IGNORE_UNFIXED" "$INPUT_IGNORE_UNFIXED" "false"
+        set_env_var_if_provided "TRIVY_PKG_TYPES" "$INPUT_VULN_TYPE" "os,library"
+        set_env_var_if_provided "TRIVY_SEVERITY" "$INPUT_SEVERITY" "UNKNOWN,LOW,MEDIUM,HIGH,CRITICAL"
+        set_env_var_if_provided "TRIVY_FORMAT" "$INPUT_FORMAT" "table"
+        set_env_var_if_provided "TRIVY_TEMPLATE" "$INPUT_TEMPLATE" ""
+        set_env_var_if_provided "TRIVY_OUTPUT" "$INPUT_OUTPUT" ""
+        set_env_var_if_provided "TRIVY_SKIP_DIRS" "$INPUT_SKIP_DIRS" ""
+        set_env_var_if_provided "TRIVY_SKIP_FILES" "$INPUT_SKIP_FILES" ""
+        set_env_var_if_provided "TRIVY_TIMEOUT" "$INPUT_TIMEOUT" ""
+        set_env_var_if_provided "TRIVY_IGNORE_POLICY" "$INPUT_IGNORE_POLICY" ""
+        set_env_var_if_provided "TRIVY_QUIET" "$INPUT_HIDE_PROGRESS" ""
+        set_env_var_if_provided "TRIVY_LIST_ALL_PKGS" "$INPUT_LIST_ALL_PKGS" "false"
+        set_env_var_if_provided "TRIVY_SCANNERS" "$INPUT_SCANNERS" ""
+        set_env_var_if_provided "TRIVY_CONFIG" "$INPUT_TRIVY_CONFIG" ""
+        set_env_var_if_provided "TRIVY_TF_VARS" "$INPUT_TF_VARS" ""
+        set_env_var_if_provided "TRIVY_DOCKER_HOST" "$INPUT_DOCKER_HOST" ""
+
+    - name: Run Trivy
+      shell: bash
+      run: entrypoint.sh
+      env:
+        # For shell script
+        # > If the action is written using a composite, then it will not automatically get INPUT_<VARIABLE_NAME>
+        # cf. https://docs.github.com/en/actions/sharing-automations/creating-actions/metadata-syntax-for-github-actions#example-specifying-inputs
+        INPUT_SCAN_TYPE: ${{ inputs.scan-type }}
+        INPUT_IMAGE_REF: ${{ inputs.image-ref }}
+        INPUT_SCAN_REF: ${{ inputs.scan-ref }}
+        INPUT_TRIVYIGNORES: ${{ inputs.trivyignores }}
+        INPUT_GITHUB_PAT: ${{ inputs.github-pat }}
+        INPUT_LIMIT_SEVERITIES_FOR_SARIF: ${{ inputs.limit-severities-for-sarif }}
+
+        # For Trivy
+        TRIVY_CACHE_DIR: ${{ inputs.cache-dir }} # Always set
+
+    # Remove Trivy envs to keep envs within this action and avoid env leaks
+    # See #422 for context
+    - name: Remove Trivy Envs file
+      if: ${{ always() }}
+      shell: bash
+      run: |
+        rm -f trivy_envs.txt
