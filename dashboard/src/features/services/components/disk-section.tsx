@@ -13,7 +13,6 @@ import {
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { PanelCenteredState } from "@/common/components/panel-states";
-import { CardSkeleton } from "@/common/components/detail-skeletons";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import {
@@ -610,7 +609,32 @@ function SnapshotsCard({
           </Alert>
         ) : null}
         {loading && snapshots.length === 0 ? (
-          <CardSkeleton />
+          // The likeliest answer is the empty state, so its own box (invisible,
+          // same copy, same width) holds the height and bars sit over its
+          // icon, title and body: no snapshot rows are invented, and the
+          // Delete-disk card below does not move on arrival (w4/447).
+          <div
+            role="status"
+            aria-label={t("common.loading")}
+            className="relative"
+            data-snapshots-loading
+          >
+            <div aria-hidden="true" className="invisible">
+              <PanelCenteredState
+                icon={<HardDrive className="size-6" />}
+                title={t("services.diskSnapshotsEmptyTitle")}
+                body={t("services.diskSnapshotsEmptyBody")}
+              />
+            </div>
+            <div
+              aria-hidden="true"
+              className="absolute inset-0 flex flex-col items-center justify-center gap-2"
+            >
+              <Skeleton className="size-8 rounded-full" />
+              <Skeleton className="h-5 w-40" />
+              <Skeleton className="h-4 w-64 max-w-full" />
+            </div>
+          </div>
         ) : notConfigured ? (
           // Not a failure: this deployment never wired an object store for disk
           // snapshots (ADR082 D5). Say so plainly and name whose job it is —
