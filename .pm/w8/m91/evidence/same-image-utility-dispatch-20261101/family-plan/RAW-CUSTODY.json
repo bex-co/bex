@@ -1,0 +1,30 @@
+{
+  "MANIFEST.json": {
+    "raw_sha256": "ecaa9f67b3a3c9ca146615bddf65ac193587a77556e9b38681fd28d06923f529",
+    "raw_bytes": 377,
+    "file": "MANIFEST.json.gz",
+    "gzip_sha256": "8f673cdfc1532dae119ef222e88a40e8ac01d5195451d85550113558b6f04c0c",
+    "gzip_bytes": 242
+  },
+  "REVIEW.json": {
+    "raw_sha256": "a17eeec835d158004c22ca7ea6acba2a8079c3034d933f740e53d024ffac1729",
+    "raw_bytes": 682,
+    "file": "REVIEW.json.gz",
+    "gzip_sha256": "1eee3cfefe9cad6969b1b9e5caf81cb766d00f16ee7893331d315f7e2c1beca2",
+    "gzip_bytes": 452
+  },
+  "SCHEDULE.json": {
+    "raw_sha256": "1ea33e701c78acaf0861c8ff7b72c4ae504bbbd0a8421e8fe6d1e6a201ae1dd5",
+    "raw_bytes": 41016,
+    "file": "SCHEDULE.json.gz",
+    "gzip_sha256": "7fe8ee5fa816fd5889f1f4d58b00ded604f10ebbf160b48d3d69e58d48875d72",
+    "gzip_bytes": 2801
+  },
+  "SOURCE.json": {
+    "raw_sha256": "f7c4505bd593f8c5d28988d5a193c09052d60b4472b7f4c98a8df919f2cf7811",
+    "raw_bytes": 3538,
+    "file": "SOURCE.json.gz",
+    "gzip_sha256": "d4553343c25ada4065e59862e1bc2bd2e880068b9400d2fe5c3052d38bfdd459",
+    "gzip_bytes": 1029
+  }
+}

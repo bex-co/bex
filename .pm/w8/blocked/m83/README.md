@@ -59,3 +59,8 @@ Six tasks,160m total.
 [Final source preparation](evidence/live-transport-source-20261101/README.md) passes57 host controls, three syntax checks and independent retained-proof counterexamples. The original HTTP/stream/source/cleanup contract remains unchanged. All implementable runner corrections are complete; this is not live acceptance.
 
 The latest fix-containing platform run41254794386/source818 has passed the four suites and pre-build gates but is still building images. The actual retained runtime observation lacks a154. Resume t006 after the platform pipeline completes a qualified rollout, then obtain fresh strict operator/API readiness and actual current legal Free allowance before either exact-owned fixture. No user decision or proxy-version choice is needed.
+
+
+## Refreshed pipeline observation — 2026-11-01
+
+[The single refreshed metadata snapshot](evidence/deploy-readiness-snapshot-20261101/README.md) still finds818 building its fifth image and the newerbbec run pending. Both source gates pass, but no qualified deployment or new actual readiness is shown. The blocked release condition is unchanged; no new inventory or tenant resource action was performed.
