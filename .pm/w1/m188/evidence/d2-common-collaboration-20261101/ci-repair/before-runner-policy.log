@@ -1,0 +1,3 @@
+FAIL: CI and production runner trust classes overlap:
+/tmp/bex-w1-common-credential-free-ci/before/native-common-image.yml:qualify: credential-bearing job must use bex-production
+/tmp/bex-w1-common-credential-free-ci/before/native-common-image.yml:qualify-profile: credential-bearing job must use bex-production

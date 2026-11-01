@@ -1,0 +1,28 @@
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/actual_original_failure
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/Dockerfile_echo_is_not_stdout
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/unrelated_later_failure
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/another_probe_cannot_qualify
+=== RUN   TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/earlier_error_cannot_qualify
+--- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout (0.00s)
+    --- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/actual_original_failure (0.00s)
+    --- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/Dockerfile_echo_is_not_stdout (0.00s)
+    --- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/unrelated_later_failure (0.00s)
+    --- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/another_probe_cannot_qualify (0.00s)
+    --- PASS: TestNativeUtilityOmissionEvidenceRequiresActualReadyStdout/earlier_error_cannot_qualify (0.00s)
+=== RUN   TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes
+=== RUN   TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes/explicit313
+=== RUN   TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes/default3148
+--- PASS: TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes (0.00s)
+    --- PASS: TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes/explicit313 (0.00s)
+    --- PASS: TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes/default3148 (0.00s)
+=== RUN   TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence
+=== RUN   TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence/exact_image
+=== RUN   TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence/missing_tag
+=== RUN   TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence/lookup_failure
+--- PASS: TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence (0.01s)
+    --- PASS: TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence/exact_image (0.00s)
+    --- PASS: TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence/missing_tag (0.00s)
+    --- PASS: TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence/lookup_failure (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	0.466s

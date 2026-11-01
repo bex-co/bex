@@ -1,0 +1,163 @@
+diff --git a/lego/operator/internal/build/nativeutility_integration_test.go b/lego/operator/internal/build/nativeutility_integration_test.go
+index fbfe4f397..bfce1e26b 100644
+--- a/lego/operator/internal/build/nativeutility_integration_test.go
++++ b/lego/operator/internal/build/nativeutility_integration_test.go
+@@ -94,13 +94,19 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
+ 				env = nil // Genuine creation-date default: no primary version signal.
+ 			}
+ 			bundle, dockerfile, source := writeResolveFixture(t, o, env, files)
+-			_, err := ResolveNativeBuildAt(tc.created, tc.runtime, bundle, dockerfile, source)
++			choices, err := ResolveNativeBuildAt(tc.created, tc.runtime, bundle, dockerfile, source)
+ 			must(t, err)
+ 			recipe, err := os.ReadFile(dockerfile)
+ 			must(t, err)
+ 			evidence := filepath.Join(output, tc.name)
+ 			must(t, os.Mkdir(evidence, 0o700))
+ 			must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile.canonical"), recipe, 0o600))
++			for _, choice := range choices {
++				t.Logf("%s; image=%s", choice.Narration(), choice.Image)
++			}
++			selection, selectionErr := nativeUtilitySelectionReceipt(choices, tc.expectedPythonVersion)
++			must(t, os.WriteFile(filepath.Join(evidence, "resolved-choices.json"), selection, 0o600))
++			must(t, selectionErr)
+ 			caseWheels := wheelhouse
+ 			if prepareWheels && tc.runtime == nativePythonRuntime && commonImage != "" {
+ 				caseWheels = nativeUtilityPrepareWheels(t, docker, recipe, commonImage, bundle, source, evidence)
+@@ -181,6 +187,7 @@ func TestNativeOriginalReplayHTTPOracles(t *testing.T) {
+ 
+ type nativeUtilityCase struct {
+ 	name, runtime, interpreter, build, start string
++	expectedPythonVersion                    string
+ 	removal, wantFailure                     string
+ 	static, supplied                         bool
+ 	created                                  time.Time
+@@ -196,7 +203,7 @@ func nativeUtilityCases(common, python string) []nativeUtilityCase {
+ 		cases = append(cases, nativeUtilityCase{name: "python313-original", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "original-cases.py build python", start: "original-cases.py runtime python", supplied: true})
+ 	}
+ 	if common != "" {
+-		cases = append(cases, nativeUtilityCase{name: "python3148-default", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "check-runtime.py build 3.14.8", start: "check-runtime.py runtime 3.14.8", supplied: true, created: pythonCreationCutoff.Add(time.Second)})
++		cases = append(cases, nativeUtilityCase{name: "python3148-default", runtime: nativePythonRuntime, interpreter: "/usr/local/bin/python3", build: "check-runtime.py build 3.14.8", start: "check-runtime.py runtime 3.14.8", expectedPythonVersion: "3.14.8", supplied: true, created: pythonCreationCutoff.Add(time.Second)})
+ 		for _, omitted := range []struct{ name, mid, failure string }{
+ 			{"jq", "98", "jq: command not found"},
+ 			{"rsync", "98", "rsync: command not found"},
+@@ -210,6 +217,45 @@ func nativeUtilityCases(common, python string) []nativeUtilityCase {
+ 	return cases
+ }
+ 
++// Keep lookup fallbacks before any prerequisite fetch or generated build; the
++// final in-image version/loader/extension checks remain independent evidence.
++func nativeUtilitySelectionReceipt(choices []NativeChoice, expectedPython string) ([]byte, error) {
++	selected := make([]map[string]any, 0, len(choices))
++	for _, choice := range choices {
++		versions := []string{}
++		for _, entry := range choice.imageEnv {
++			if strings.HasPrefix(entry, "PYTHON_VERSION=") || strings.HasPrefix(entry, "NODE_VERSION=") || strings.HasPrefix(entry, "RUBY_VERSION=") {
++				versions = append(versions, entry)
++			}
++		}
++		selected = append(selected, map[string]any{"label": choice.Label, "line": choice.Line, "image": choice.Image,
++			"source": choice.Source, "requested_exact": choice.Exact, "primary_image": choice.primaryImage,
++			"runtime_environment": versions, "narration": choice.Narration()})
++	}
++	var selectionErr error
++	if expectedPython != "" {
++		if len(choices) == 0 {
++			selectionErr = fmt.Errorf("exact-default qualification requires Python %s; resolver returned no primary", expectedPython)
++		} else {
++			version, err := commonImageVariable(choices[0].imageEnv, "PYTHON_VERSION")
++			if err != nil || version != expectedPython {
++				selectionErr = fmt.Errorf("exact-default qualification requires Python %s; resolved line %s with PYTHON_VERSION=%q: %s", expectedPython, choices[0].Line, version, choices[0].Narration())
++			}
++		}
++	}
++	record := map[string]any{"choices": selected, "expected_python_version": expectedPython,
++		"exact_default_precondition_applicable": expectedPython != "", "selection_precondition_passed": selectionErr == nil,
++		"scope": "resolved image metadata and selection only; not generated-runtime or qualification success"}
++	if selectionErr != nil {
++		record["selection_error"] = selectionErr.Error()
++	}
++	data, err := json.MarshalIndent(record, "", "  ")
++	if err != nil {
++		return nil, err
++	}
++	return append(data, '\n'), selectionErr
++}
++
+ func nativeUtilityRemovalFailedAtOriginalCommand(log, name, expected string) bool {
+ 	// Require actual plain-progress stdout, not the echoed Dockerfile RUN
+ 	// instruction or a preflight failure which happens to name the same tool.
+diff --git a/lego/operator/internal/build/nativeutility_qualification_test.go b/lego/operator/internal/build/nativeutility_qualification_test.go
+index 50ec0f43f..50750341b 100644
+--- a/lego/operator/internal/build/nativeutility_qualification_test.go
++++ b/lego/operator/internal/build/nativeutility_qualification_test.go
+@@ -19,6 +19,7 @@ package build
+ import (
+ 	"context"
+ 	"encoding/json"
++	"errors"
+ 	"fmt"
+ 	"os"
+ 	"os/exec"
+@@ -346,3 +347,62 @@ func TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes(t *test
+ 		})
+ 	}
+ }
++
++func TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence(t *testing.T) {
++	original := nativeCommonBase
++	t.Cleanup(func() { nativeCommonBase = original })
++	nativeCommonBase = commonFixtureImage
++	reviewed, ok := nativeToolchains[nativePythonRuntime].find("3.14")
++	if !ok || reviewed.version == "3.14.8" {
++		t.Fatal("test requires a reviewed line distinct from the exact creation-date default")
++	}
++	for _, tc := range []struct {
++		name, note string
++		found      bool
++		lookupErr  error
++	}{
++		{name: "exact image", found: true},
++		{name: "missing tag", note: "No official image python:3.14.8-bookworm"},
++		{name: "lookup failure", note: "controlled lookup transport failure", lookupErr: errors.New("controlled lookup transport failure")},
++	} {
++		t.Run(tc.name, func(t *testing.T) {
++			fake := &fakeExact{digests: map[string]string{}, err: tc.lookupErr,
++				env: []string{"PYTHON_VERSION=3.14.8", "PATH=/usr/local/bin:/usr/bin"}, envByImage: map[string]fakeExactMetadata{}}
++			if tc.found {
++				fake.digests["python:3.14.8-bookworm"] = exactDigest
++			}
++			for runtime, toolchain := range nativeToolchains {
++				for _, line := range toolchain.lines {
++					fake.envByImage[line.image] = commonReviewedFixtureMetadata(runtime, line)
++				}
++			}
++			o := nativeOptions()
++			o.Runtime = nativePythonRuntime
++			bundle, path, source := writeResolveFixture(t, o, nil, nil)
++			choices, err := ResolveNativeBuildExact(t.Context(), fake, pythonCreationCutoff.Add(time.Second), o.Runtime, bundle, path, source)
++			must(t, err) // Existing exact-lookup fallback still resolves a build.
++			if !slices.Contains(fake.asked, "python:3.14.8-bookworm") || choices[0].Exact != "3.14.8" {
++				t.Fatalf("creation-date exact lookup changed: %+v; queries=%v", choices[0], fake.asked)
++			}
++			data, selectionErr := nativeUtilitySelectionReceipt(choices, "3.14.8")
++			var record struct {
++				Choices []struct{ Image, Narration string }
++				Passed  bool `json:"selection_precondition_passed"`
++			}
++			must(t, json.Unmarshal(data, &record))
++			if len(record.Choices) != len(choices) || record.Choices[0].Image != choices[0].Image {
++				t.Fatalf("selected identities were lost: %s", data)
++			}
++			if tc.found {
++				if selectionErr != nil || !record.Passed || choices[0].Line != "3.14.8" {
++					t.Fatalf("exact default rejected: %v; %s", selectionErr, data)
++				}
++			} else {
++				if choices[0].Image != reviewed.image || selectionErr == nil || record.Passed ||
++					!strings.Contains(selectionErr.Error(), reviewed.version) || !strings.Contains(record.Choices[0].Narration, tc.note) {
++					t.Fatalf("fallback was changed or counted as exact-default qualification: %v; %s", selectionErr, data)
++				}
++			}
++		})
++	}
++}

@@ -1,0 +1,53 @@
+{
+  "schema": "bex.native-common-test-candidate/v1",
+  "candidate": {
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:56c58abb41abd6becfa1810834c6cba46b742703e2beffdb3a88387772b3b986",
+    "base": "buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6a9d6c2cc76438fae2c0988",
+    "producer": "99cdc5c5a5b53629e2a98963d43d373511a91c1f",
+    "verification": "99cdc5c5a5b53629e2a98963d43d373511a91c1f",
+    "publication": {
+      "run_id": 41249441151,
+      "run_attempt": 1,
+      "job_id": 124689058047,
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/publication/job.json",
+        "sha256": "b3c3bbca35a243794c3c91f8eba8865f7493df46f3161bb72ee7a79851c19b21",
+        "bytes": 5522
+      }
+    },
+    "platforms": {
+      "amd64": {
+        "manifest_digest": "sha256:7080be070ed01a7b856b5e3bdc1e83f56f782adab9eb64f7a712bf3378ca0f03",
+        "config_digest": "sha256:71c81d5536dfded543a554027b7158067418c5339597b6c8b60c88eb4921c881"
+      },
+      "arm64": {
+        "manifest_digest": "sha256:1388ddeca9ea568bff80341c438684f7cb761d89a0adfe04000f945995e91d4e",
+        "config_digest": "sha256:0fa42f2deaa79db2bfc41b5ab5cdea0e1b1c081445bce1298766649b65a6b7fd"
+      }
+    },
+    "approval": {
+      "receipt": {
+        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/actual/receipt.json",
+        "sha256": "f3cccfadddf2e5632de24d44fe6f43607d8964dd3c1dc98d5bf72457f7c442d2",
+        "bytes": 39125
+      },
+      "custody": {
+        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/CUSTODY.json",
+        "sha256": "a10d517077de29ed5897d8a284e53564593702ef4b6ff74ee862bae8f3e2f12f",
+        "bytes": 135790
+      },
+      "plan": {
+        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/tools/PLAN.json",
+        "sha256": "ffc6b6ce1173691851e1de5e5a1f744fb599fc582c70511f2b56e82ea2c0f51e",
+        "bytes": 6245
+      },
+      "inputs": {
+        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/IMAGE-INPUTS.json",
+        "sha256": "6d418e82b6b9be74b624c6660b07bebb3ab836bcd85eb65e437d13535f62d9c5",
+        "bytes": 6894
+      }
+    },
+    "source": null,
+    "utilities": null
+  }
+}

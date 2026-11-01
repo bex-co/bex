@@ -1,0 +1,61 @@
+bash hack/go-install.test.sh
+PASS: success (1 install attempt(s), success)
+PASS: eof-once (2 install attempt(s), success)
+PASS: eof-always (3 install attempt(s), failure)
+PASS: http503 (2 install attempt(s), success)
+PASS: http404 (1 install attempt(s), failure)
+PASS: compile (1 install attempt(s), failure)
+PASS: version (1 install attempt(s), failure)
+PASS: source-eof (1 install attempt(s), failure)
+PASS: integrity (1 install attempt(s), failure)
+PASS: certificate (1 install attempt(s), failure)
+PASS: compile preserves exit 26
+PASS: eof-always preserves exit 23
+"/Users/tianpan/projects/bex/lego/operator/bin/controller-gen" rbac:roleName=manager-role crd webhook paths="./..." paths="../types/..." output:crd:artifacts:config=config/crd/bases
+"/Users/tianpan/projects/bex/lego/operator/bin/controller-gen" object:headerFile="hack/boilerplate.go.txt",year=2026 paths="../types/..."
+go fmt ./...
+go vet ./...
+Setting up envtest binaries for Kubernetes version 1.37...
+/Users/tianpan/projects/bex/lego/operator/bin/k8s/1.37.0-darwin-arm64KUBEBUILDER_ASSETS="/Users/tianpan/projects/bex/lego/operator/bin/k8s/1.37.0-darwin-arm64" go test -timeout 30m $(go list ./... | grep -v /e2e) -coverprofile cover.out
+ok  	github.com/bex-co/bex/lego/operator/cmd/activator	2.559s	coverage: 85.4% of statements
+ok  	github.com/bex-co/bex/lego/operator/cmd/backup-encrypt	(cached)	coverage: 70.6% of statements
+ok  	github.com/bex-co/bex/lego/operator/cmd/disk-snapshot	3.029s	coverage: 25.0% of statements
+	github.com/bex-co/bex/lego/operator/cmd/drain-guard		coverage: 0.0% of statements
+	github.com/bex-co/bex/lego/operator/cmd/edge-cache		coverage: 0.0% of statements
+	github.com/bex-co/bex/lego/operator/cmd/egress-meter		coverage: 0.0% of statements
+	github.com/bex-co/bex/lego/operator/cmd/health-probe		coverage: 0.0% of statements
+ok  	github.com/bex-co/bex/lego/operator/cmd/kv-internal-proxy	(cached)	coverage: 44.2% of statements
+ok  	github.com/bex-co/bex/lego/operator/cmd/kv-sni-proxy	0.998s	coverage: 52.0% of statements
+ok  	github.com/bex-co/bex/lego/operator/cmd/manager	0.549s	coverage: 8.1% of statements
+ok  	github.com/bex-co/bex/lego/operator/cmd/native-init	(cached)	coverage: 90.0% of statements
+ok  	github.com/bex-co/bex/lego/operator/cmd/native-resolve	1.101s	coverage: 47.1% of statements
+ok  	github.com/bex-co/bex/lego/operator/cmd/pg-sni-proxy	1.851s	coverage: 51.0% of statements
+ok  	github.com/bex-co/bex/lego/operator/cmd/registry-migrate	2.194s	coverage: 4.0% of statements
+ok  	github.com/bex-co/bex/lego/operator/cmd/staticserver	2.547s	coverage: 5.6% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/appwatch	2.471s	coverage: 40.9% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/build	8.361s	coverage: 89.7% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/controller	214.898s	coverage: 87.3% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/disksnapshot	1.975s	coverage: 65.3% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/drainguard	(cached)	coverage: 86.8% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/edgecache	(cached)	coverage: 92.7% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/egressmeter	2.265s	coverage: 27.3% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/execution	2.607s	coverage: 81.2% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/execution/executiontest	(cached)	coverage: 100.0% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/healthprobe	(cached)	coverage: 62.5% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/hostingdomain	(cached)	coverage: 100.0% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/httpclient	(cached)	coverage: 42.9% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/httpport	(cached)	coverage: 89.5% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/identity	(cached)	coverage: 77.2% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/imagecheck	(cached)	coverage: 75.8% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/kvinternalauth	(cached)	coverage: 84.6% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/migrate	(cached)	coverage: 86.1% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/portscan	(cached)	coverage: 48.5% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/predeploy	2.997s	coverage: 93.0% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/publish	5.790s	coverage: 93.3% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/registry	6.575s	coverage: 83.2% of statements
+	github.com/bex-co/bex/lego/operator/internal/runtime		coverage: 0.0% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/selfimage	(cached)	coverage: 100.0% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/sniproxy	4.195s	coverage: 56.3% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/staticserver	5.041s	coverage: 91.9% of statements
+ok  	github.com/bex-co/bex/lego/operator/internal/webhook	4.807s	coverage: 36.8% of statements
+	github.com/bex-co/bex/lego/operator/test/utils		coverage: 0.0% of statements

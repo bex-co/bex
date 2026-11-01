@@ -1,0 +1,52 @@
+{
+  "at": "2026-11-01T08:35:23.681117+00:00",
+  "actual_failure": {
+    "run_id": 41280688171,
+    "job_id": 124773320694,
+    "source": "fb73ecdd38ef5e20f269771ba493d16243841d05",
+    "cached_log": {
+      "file": "/tmp/bex-w1-common-readonly-assessment-20261101-oglwp2vp/job-124773320694.decoded.log",
+      "sha256": "5a6d09134c567847e77423477b0248274fa0b990f7e873f3db25c99340c9aba2",
+      "bytes": 85901
+    },
+    "observed_donor": "python:3.14-bookworm@sha256:a8cf203c684b61fd2676ec5a17159cf68ed38ad471481e1f4ebc4679825250bd",
+    "successful_in_image_version_guard": "3.14.10",
+    "required_exact_default": "3.14.8",
+    "failure": "default primary version/environment changed",
+    "precise_bound": "The selected donor/binary was reviewed3.14.10, not merely an absent environment variable. Lost exact lookup note prevents distinguishing prior lookup transport error from missing-tag response."
+  },
+  "current_tag_observation": {
+    "file": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-w1-python3148-diagnosis-vmskkdpz/current-tag-metadata.json",
+    "sha256": "7933f35cb4b4ab8fb56b37fa3ba003b31b5102a116bcfa790a2887bb79c92ad5",
+    "bytes": 732
+  },
+  "diagnostic_repair": {
+    "owned_files": [
+      {
+        "file": "/Users/tianpan/projects/bex/lego/operator/internal/build/nativeutility_integration_test.go",
+        "sha256": "c87e6b01bf86aee76affd3c1245f3bdf1660f18ded3d80afd1c9e43f88abc74b",
+        "bytes": 18913
+      },
+      {
+        "file": "/Users/tianpan/projects/bex/lego/operator/internal/build/nativeutility_qualification_test.go",
+        "sha256": "8de6b083d4d7afcd7e51736818063431d9b6f90a640291b26b123cde05ffbd74",
+        "bytes": 18823
+      }
+    ],
+    "diff": {
+      "file": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-w1-python3148-diagnosis-vmskkdpz/owned.diff",
+      "sha256": "48b562a8f35b8a1104530ea06dee92c05c84efbc042026e784d55275b3e3a711",
+      "bytes": 8617
+    },
+    "behavior": "Capture resolved choices, narration and public runtime-version metadata before prerequisite network/build; persist wrong-default evidence and refuse it as qualification. Final real image guard unchanged.",
+    "production_resolver_or_fallback_semantics_changed": false,
+    "real_default_qualification_claimed": false
+  },
+  "focused_tests": {
+    "file": "/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T/bex-w1-python3148-diagnosis-vmskkdpz/result.json",
+    "sha256": "4fe3748176cb77dc821801cbc003c9083e3afb1dca6c83485cfddba22180f7fb",
+    "bytes": 756
+  },
+  "next_actual_gate": "Fresh complete utilities on both architectures from exact current functional-source inventory, same reviewed56c58 candidate. All source/artifact/cleanup/full default SPDX records required before family reuse. Existing older queued run is not a current-source baseline after source edits.",
+  "no_Docker_build_CI_action_PM_Git_or_pin_changes": true
+}

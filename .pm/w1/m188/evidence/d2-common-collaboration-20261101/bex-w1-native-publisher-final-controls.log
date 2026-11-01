@@ -1,0 +1,20 @@
+test_common_exact_checksum_binding_and_general_source_fallback_are_preserved (__main__.NodeBackportInputControls.test_common_exact_checksum_binding_and_general_source_fallback_are_preserved) ... ok
+test_exact_node_14212_uses_its_official_source_and_matching_security_release (__main__.NodeBackportInputControls.test_exact_node_14212_uses_its_official_source_and_matching_security_release) ... ok
+test_existing_reviewed_sources_remain_distinct_and_unreviewed_patch_is_refused (__main__.NodeBackportInputControls.test_existing_reviewed_sources_remain_distinct_and_unreviewed_patch_is_refused) ... ok
+test_actual_publisher_selects_only_common_or_one_explicit_legacy_runtime (__main__.PublisherInputControls.test_actual_publisher_selects_only_common_or_one_explicit_legacy_runtime) ... ok
+test_empty_or_unknown_manual_request_cannot_launch_a_full_c_matrix (__main__.PublisherInputControls.test_empty_or_unknown_manual_request_cannot_launch_a_full_c_matrix) ... ok
+test_exact_node_publication_keeps_the_reviewed_line_separate (__main__.PublisherInputControls.test_exact_node_publication_keeps_the_reviewed_line_separate) ... ok
+test_only_common_foundation_is_automatically_published (__main__.PublisherInputControls.test_only_common_foundation_is_automatically_published) ... ok
+test_cosign_exhaustion_blocks_downstream_and_preserves_trust_flags (__main__.PublisherShellControls.test_cosign_exhaustion_blocks_downstream_and_preserves_trust_flags) ... ok
+test_happy_both_architectures_five_proofs_and_two_tags (__main__.PublisherShellControls.test_happy_both_architectures_five_proofs_and_two_tags) ... ok
+test_last_attestation_failure_never_moves_discovery (__main__.PublisherShellControls.test_last_attestation_failure_never_moves_discovery) ... ok
+test_low_disk_exits_before_any_stage_scan_or_sign (__main__.PublisherShellControls.test_low_disk_exits_before_any_stage_scan_or_sign) ... ok
+test_stage_amd_deadline_status_blocks_syft_attest_and_discovery (__main__.PublisherShellControls.test_stage_amd_deadline_status_blocks_syft_attest_and_discovery) ... ok
+test_stage_arm_failure_preserves_amd_proofs_but_never_publishes (__main__.PublisherShellControls.test_stage_arm_failure_preserves_amd_proofs_but_never_publishes) ... ok
+test_syft_arm_exhaustion_removes_partial_and_blocks_arm_proofs (__main__.PublisherShellControls.test_syft_arm_exhaustion_removes_partial_and_blocks_arm_proofs) ... ok
+test_syft_transient_failure_retries_scan_not_staging (__main__.PublisherShellControls.test_syft_transient_failure_retries_scan_not_staging) ... ok
+
+----------------------------------------------------------------------
+Ran 15 tests in 13.852s
+
+OK

@@ -1,0 +1,48 @@
+{
+  "files": [
+    {
+      "file": "SHASUMS256.txt",
+      "sha256": "9fa7fce0edb549c009d1f494d0e8ae94223ea1e58f43f4358d1cf853a3d6c0f2",
+      "bytes": 2953,
+      "url": "https://nodejs.org/dist/v14.21.2/SHASUMS256.txt"
+    },
+    {
+      "file": "root-index.raw.json",
+      "sha256": "cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12",
+      "bytes": 1206,
+      "url": "https://registry-1.docker.io/v2/library/node/manifests/14.21.2-bullseye",
+      "digest_header": "sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12"
+    },
+    {
+      "file": "amd64-manifest.raw.json",
+      "sha256": "417ac46d74ee176ceefdeee132999c76823e258d5782464e228f7b26e72f2047",
+      "bytes": 2215,
+      "url": "https://registry-1.docker.io/v2/library/node/manifests/sha256:417ac46d74ee176ceefdeee132999c76823e258d5782464e228f7b26e72f2047",
+      "digest_header": "sha256:417ac46d74ee176ceefdeee132999c76823e258d5782464e228f7b26e72f2047"
+    },
+    {
+      "file": "amd64-config.raw.json",
+      "sha256": "28d54959e06ddc16968ca6570c337526b5a490db7ef928fc2adbe0aa5fb66c90",
+      "bytes": 7518,
+      "url": "https://registry-1.docker.io/v2/library/node/blobs/sha256:28d54959e06ddc16968ca6570c337526b5a490db7ef928fc2adbe0aa5fb66c90"
+    },
+    {
+      "file": "arm64-manifest.raw.json",
+      "sha256": "d0eb09a184d7df6d45bc4f2ce9255595e55bee18a4e1293bc0e07ea17282ff0c",
+      "bytes": 2215,
+      "url": "https://registry-1.docker.io/v2/library/node/manifests/sha256:d0eb09a184d7df6d45bc4f2ce9255595e55bee18a4e1293bc0e07ea17282ff0c",
+      "digest_header": "sha256:d0eb09a184d7df6d45bc4f2ce9255595e55bee18a4e1293bc0e07ea17282ff0c"
+    },
+    {
+      "file": "arm64-config.raw.json",
+      "sha256": "f0158cf0c33c62664aa7e5a8cf7c29c2d271e29376d911c000c49cfc8d53cc18",
+      "bytes": 7532,
+      "url": "https://registry-1.docker.io/v2/library/node/blobs/sha256:f0158cf0c33c62664aa7e5a8cf7c29c2d271e29376d911c000c49cfc8d53cc18"
+    },
+    {
+      "file": "receipt.json",
+      "sha256": "dbb19bd66df3aed465aeb27c96a8c9aa9af32ace1d0afd599f0414c8b867a960",
+      "bytes": 2202
+    }
+  ]
+}

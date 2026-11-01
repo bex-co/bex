@@ -1,0 +1,30 @@
+{
+  "files": [
+    {
+      "file": "current-tag-metadata.json",
+      "sha256": "7933f35cb4b4ab8fb56b37fa3ba003b31b5102a116bcfa790a2887bb79c92ad5",
+      "bytes": 732
+    },
+    {
+      "file": "diagnosis.json",
+      "sha256": "724309a4bbb221a9460cdd4251d18de06fd4fa05d598c490ac6470aa1b596eee",
+      "bytes": 2887
+    },
+    {
+      "file": "focused-unit.log",
+      "sha256": "ea955f0c8d9c15fe14abb9bc0538e9406d26d02c60dd0d6e585f9ac9e4e2f945",
+      "bytes": 2450
+    },
+    {
+      "file": "owned.diff",
+      "sha256": "48b562a8f35b8a1104530ea06dee92c05c84efbc042026e784d55275b3e3a711",
+      "bytes": 8617
+    },
+    {
+      "file": "result.json",
+      "sha256": "4fe3748176cb77dc821801cbc003c9083e3afb1dca6c83485cfddba22180f7fb",
+      "bytes": 756
+    }
+  ],
+  "scope": "targeted non-Docker resolver controls and observed diagnostics; no actual common qualification"
+}

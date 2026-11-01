@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "python3",
+    "-B",
+    ".github/scripts/test_native_oci_workflow.py",
+    "PublisherInputControls.test_exact_node_publication_keeps_the_reviewed_line_separate",
+    "NodeBackportInputControls"
+  ],
+  "exit_code": 1,
+  "scope": "Actual selector and source-selection shell controls only; stubbed Node metadata, no image/compile/network/security execution."
+}

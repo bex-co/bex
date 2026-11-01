@@ -1,0 +1,4 @@
+{
+  ".github/workflows/native-common-image.yml": "/tmp/bex-w1-common-credential-free-ci/native-common-image.yml",
+  ".github/scripts/test_native_oci_common_qualification.py": "/tmp/bex-w1-common-credential-free-ci/test_native_oci_common_qualification.py"
+}

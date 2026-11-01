@@ -1,0 +1,50 @@
+{
+  "schema": "bex.readonly-assessment-file-manifest/v1",
+  "files": [
+    {
+      "file": "assessment.json",
+      "sha256": "9832a49f08d06cdd4397c209c46403175f8e5c2895de9b361ee9c1769da0bd89",
+      "bytes": 6139
+    },
+    {
+      "file": "candidate-observed.json",
+      "sha256": "eedf83744128a6945b6530f546fdc6e36e62c3fe85258f6654891ab56baa8ea8",
+      "bytes": 2202
+    },
+    {
+      "file": "job-124773320642.decoded.log",
+      "sha256": "98a6780c01f5923aa69431a4f0c490c4e4b7af7d14ea330fae08114c2a4edf03",
+      "bytes": 35240
+    },
+    {
+      "file": "job-124773320694.decoded.log",
+      "sha256": "5a6d09134c567847e77423477b0248274fa0b990f7e873f3db25c99340c9aba2",
+      "bytes": 85901
+    },
+    {
+      "file": "run-41280558929.jobs.connector.json",
+      "sha256": "1439112e4bc35c8a4793ab6e24d15cbd82e26bd89d2c0170b76c77f7de24eddd",
+      "bytes": 6896
+    },
+    {
+      "file": "run-41280688171.jobs.connector.json",
+      "sha256": "69acdd5d7ad10e528fe5bce7f9910e2c52d0d6e71362f624e3999aff89c14473",
+      "bytes": 8643
+    },
+    {
+      "file": "run-41285887959.jobs.connector.json",
+      "sha256": "39a944b9395957e3dc2e3b5f912772c76c928f3e63809a61bfb8337f0851b9f3",
+      "bytes": 1439
+    },
+    {
+      "file": "run-41285940429.jobs.connector.json",
+      "sha256": "52a061b0fbfbcec234096b5fd70a8263518ed701c15eccb75302dcb4e6589ce9",
+      "bytes": 1832
+    },
+    {
+      "file": "workflow-runs.public-api.raw.json",
+      "sha256": "0a21e8522e0a00fa6c18f9f2f0d2308a938f7b4c7c6b7ea8af3f3a71a03e2ea7",
+      "bytes": 117107
+    }
+  ]
+}

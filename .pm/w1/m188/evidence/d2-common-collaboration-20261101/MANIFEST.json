@@ -1,0 +1,432 @@
+{
+  "schema": "bex.w1.m188.d2-common-collaboration-source-controls/v1",
+  "observed_at": "2026-11-01T19:03:28.619265+00:00",
+  "published_filing": "d54a8ea366e9cde03e4bb800b7a730d624b6668c",
+  "published_ci_fix": "26b983bd5e27304511b92cac7bc00548df08d673",
+  "source_files": [
+    {
+      "path": ".github/scripts/native-common-qualify.py",
+      "bytes": 60360,
+      "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5"
+    },
+    {
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "bytes": 123083,
+      "sha256": "362bb9a9b9e31e6db4d4907f5eb61460c90b5257ac80ef70d35cbc4be8034caa"
+    },
+    {
+      "path": ".github/scripts/test_native_oci_workflow.py",
+      "bytes": 20871,
+      "sha256": "4d02e612c8b0ac19f57ac181acbbdf0b196b349314988411f5d27e8675cac2dc"
+    },
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "bytes": 18402,
+      "sha256": "0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47"
+    },
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "bytes": 19834,
+      "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1"
+    },
+    {
+      "path": "deploy/native-base/node-brotli/patch.sh",
+      "bytes": 5560,
+      "sha256": "52aa5ce0a753d658a7c1d5423bbfd42bb9c57710079e46a12fdd98eb76fa7a63"
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+      "bytes": 13945,
+      "sha256": "40d4b9607b0b831635890945c942eb124773bef48d3c8c2a3ec981f1337789bd"
+    },
+    {
+      "path": "lego/operator/internal/build/nativecommon_node_qualification_test.go",
+      "bytes": 12787,
+      "sha256": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 18913,
+      "sha256": "c87e6b01bf86aee76affd3c1245f3bdf1660f18ded3d80afd1c9e43f88abc74b"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 18823,
+      "sha256": "8de6b083d4d7afcd7e51736818063431d9b6f90a640291b26b123cde05ffbd74"
+    }
+  ],
+  "files": [
+    {
+      "path": "bex-w1-common-actions-guard-selftest.log",
+      "bytes": 2751,
+      "sha256": "9079bcc89779321ec133f998ae19ca03107024f7f95d4be0e6b1d122c260f753"
+    },
+    {
+      "path": "bex-w1-common-collaboration-operator-test.log",
+      "bytes": 5236,
+      "sha256": "f77a62848949b55fc9b933e7569385ae1dd671400e05a4b6bd388e4ea1cb3e39"
+    },
+    {
+      "path": "bex-w1-common-final-actions-gate.log",
+      "bytes": 290,
+      "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+    },
+    {
+      "path": "bex-w1-common-final-build-package.log",
+      "bytes": 63,
+      "sha256": "a745e73da9bf1fba8bc51a5553ab0ea57b19b15c9e7b7507e97896d2c480bd7d"
+    },
+    {
+      "path": "bex-w1-common-qualification-controls-journal-fixed.log",
+      "bytes": 24852,
+      "sha256": "a92dbb6ab347b650cbdcb6e17adf2871120408f8056e07d2efb6437afc5e5f40"
+    },
+    {
+      "path": "bex-w1-common-qualification-final-controls.log",
+      "bytes": 26299,
+      "sha256": "e48326b71674b7cc47997c70b6026976e1c6b70de4381a32a90c4b716b87650f"
+    },
+    {
+      "path": "bex-w1-native-base-final-controls.log",
+      "bytes": 103,
+      "sha256": "888a0c0ed615e57d32cf72be501b0c355f33b8613c81dfdaa99db33d7959487e"
+    },
+    {
+      "path": "bex-w1-native-publisher-final-controls.log",
+      "bytes": 2638,
+      "sha256": "b05a31f5b4a83c0e0e505457915c44b454f3f994b9c64bff1933fbb567811937"
+    },
+    {
+      "path": "ci-action-pin-review/MANIFEST.json",
+      "bytes": 1233,
+      "sha256": "8988747f0c91ad976eb7c70a8c11318f3e065a201061bb59347265eb503feaef"
+    },
+    {
+      "path": "ci-action-pin-review/action.yaml",
+      "bytes": 4912,
+      "sha256": "7fe5630d90ffc0dd016fe27e9ff42077ab60874dcbc2a3419523c0f9ef2ebfff"
+    },
+    {
+      "path": "ci-action-pin-review/cache-restore-action.yml",
+      "bytes": 1589,
+      "sha256": "bb552a94cec165255080b7e13fe3d2051c6c79e321e99435b5859dc7de5e9057"
+    },
+    {
+      "path": "ci-action-pin-review/cache-save-action.yml",
+      "bytes": 776,
+      "sha256": "5da400e1a7551cee617339fd1a5281483d71e6c56d86dd117fbd354f047308ec"
+    },
+    {
+      "path": "ci-action-pin-review/checkout-action.yml",
+      "bytes": 4593,
+      "sha256": "11b63452f6e43ffb5ab8bfdaaafb8a915b354318e3ad9bce4eb0686b9e380f90"
+    },
+    {
+      "path": "ci-action-pin-review/install.sh",
+      "bytes": 9945,
+      "sha256": "e00df553be558995b994758bc8995956554a16937f456dc6615b0cc411bfec7a"
+    },
+    {
+      "path": "ci-action-pin-review/repo-introducer.diff",
+      "bytes": 2419,
+      "sha256": "2ff44b8d513f13f59472c861d841514c16f6d00a6adb7b459f6e6553d64e5324"
+    },
+    {
+      "path": "ci-action-pin-review/review.json",
+      "bytes": 1916,
+      "sha256": "fafc7d18eb11f26007b9b024a8af09e99a75952cd76016ccbbbd16a6c8ff235c"
+    },
+    {
+      "path": "ci-action-pin-review/trivy-action.yaml",
+      "bytes": 10553,
+      "sha256": "c3cc09c5daa296bc02a1651f6ad1205c6839ac9f0f317ffb204bd5e641a57d73"
+    },
+    {
+      "path": "ci-repair/after/native-common-image.yml",
+      "bytes": 19821,
+      "sha256": "e56abb9c3518b294301d861bcddf7994f924a7d8f397f087808988d3dd613b3f"
+    },
+    {
+      "path": "ci-repair/after-runner-policy.log",
+      "bytes": 206,
+      "sha256": "707ca13f5d6eaaa417cabac59c8df6f2df4f736b6c6d9212795ed391baa6801b"
+    },
+    {
+      "path": "ci-repair/before/native-common-image.yml",
+      "bytes": 20519,
+      "sha256": "c449bcb07ec591d57151e89b5e48aa2aac160b321d4caf722da3e305457d57a4"
+    },
+    {
+      "path": "ci-repair/before-runner-policy.log",
+      "bytes": 312,
+      "sha256": "21ef73ca7601f3ddcfc8906e94bfec80aa7713b4d8d5bad5fc9f12c1d2b9f9f3"
+    },
+    {
+      "path": "ci-repair/native-common-image.yml",
+      "bytes": 19821,
+      "sha256": "e56abb9c3518b294301d861bcddf7994f924a7d8f397f087808988d3dd613b3f"
+    },
+    {
+      "path": "ci-repair/paths.json",
+      "bytes": 257,
+      "sha256": "f158b1d549404eebcaf449dd0b2d88fe6b6a6b235318cba6ce8ac43848790811"
+    },
+    {
+      "path": "ci-repair/runner-policy-regression.json",
+      "bytes": 108,
+      "sha256": "509bb5ff2dd455ccf7ffe416963686c5762542a6ded4e14fad620e282f28127f"
+    },
+    {
+      "path": "ci-repair/test_native_oci_common_qualification.py",
+      "bytes": 121973,
+      "sha256": "728e72e6a1e21b175fd0007dfb388f513c9f5c7b53ef4fd58c353baad2596b0b"
+    },
+    {
+      "path": "exact-node-official-intake/MANIFEST.json",
+      "bytes": 2108,
+      "sha256": "603cb4b84d45316a63b028a7e8a6ef0c679eb31a1648b59f2bdcbf8c248371af"
+    },
+    {
+      "path": "exact-node-official-intake/SHASUMS256.txt",
+      "bytes": 2953,
+      "sha256": "9fa7fce0edb549c009d1f494d0e8ae94223ea1e58f43f4358d1cf853a3d6c0f2"
+    },
+    {
+      "path": "exact-node-official-intake/amd64-config.raw.json",
+      "bytes": 7518,
+      "sha256": "28d54959e06ddc16968ca6570c337526b5a490db7ef928fc2adbe0aa5fb66c90"
+    },
+    {
+      "path": "exact-node-official-intake/amd64-manifest.raw.json",
+      "bytes": 2215,
+      "sha256": "417ac46d74ee176ceefdeee132999c76823e258d5782464e228f7b26e72f2047"
+    },
+    {
+      "path": "exact-node-official-intake/arm64-config.raw.json",
+      "bytes": 7532,
+      "sha256": "f0158cf0c33c62664aa7e5a8cf7c29c2d271e29376d911c000c49cfc8d53cc18"
+    },
+    {
+      "path": "exact-node-official-intake/arm64-manifest.raw.json",
+      "bytes": 2215,
+      "sha256": "d0eb09a184d7df6d45bc4f2ce9255595e55bee18a4e1293bc0e07ea17282ff0c"
+    },
+    {
+      "path": "exact-node-official-intake/receipt.json",
+      "bytes": 2202,
+      "sha256": "dbb19bd66df3aed465aeb27c96a8c9aa9af32ace1d0afd599f0414c8b867a960"
+    },
+    {
+      "path": "exact-node-official-intake/root-index.raw.json",
+      "bytes": 1206,
+      "sha256": "cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12"
+    },
+    {
+      "path": "exact-node-publisher-controls/MANIFEST.json",
+      "bytes": 1820,
+      "sha256": "cf7f2b63041bc20e9317275cf12283afdc31fb88aed3cf55dc8696d3a4693326"
+    },
+    {
+      "path": "exact-node-publisher-controls/actionlint-configured.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "exact-node-publisher-controls/actionlint-default.log",
+      "bytes": 1882,
+      "sha256": "ab3040315abe98e22577762b3d4ab78addc0509b3858d35c20972360458681b3"
+    },
+    {
+      "path": "exact-node-publisher-controls/actionlint.yaml",
+      "bytes": 64,
+      "sha256": "9e2bd46cf0ce187295503568378bd49fdedb0afaadb3f08da23c78a8d059575f"
+    },
+    {
+      "path": "exact-node-publisher-controls/after.json",
+      "bytes": 113,
+      "sha256": "881e9500f26ee4078a3e9a1adf439ff259903b77e7ba001bd4a05da549707a5f"
+    },
+    {
+      "path": "exact-node-publisher-controls/after.log",
+      "bytes": 2638,
+      "sha256": "da6a3228c8720ff47538145ef5d6257e08d4c140a89871e016a0f72fae01433a"
+    },
+    {
+      "path": "exact-node-publisher-controls/before.json",
+      "bytes": 377,
+      "sha256": "1a74b7b02b624b6fa7f5669431f175ce7acbc54bb0a263b2020e47e359d36629"
+    },
+    {
+      "path": "exact-node-publisher-controls/before.log",
+      "bytes": 3353,
+      "sha256": "98821d2beff48130a7b8f1db1a1ee289a691ea784e3503532c48a9e81713ebed"
+    },
+    {
+      "path": "exact-node-publisher-controls/implementation.diff",
+      "bytes": 7161,
+      "sha256": "b925fe227874c9824d9837ac9b402d80acb78c3303e425217764b78b74e94bf5"
+    },
+    {
+      "path": "exact-node-publisher-controls/native-base-existing.log",
+      "bytes": 113,
+      "sha256": "76b39b8e5afd8b2d5d0adde85a8cd743fa69786968723aa7c557728db65fed66"
+    },
+    {
+      "path": "exact-node-publisher-controls/receipt.json",
+      "bytes": 2894,
+      "sha256": "e6945e3631c2f3692f32948c9bf841893ae412645718d4faaf35f44c9f7b9583"
+    },
+    {
+      "path": "exact-node-publisher-controls/scoped-diff-check.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "exact-node-publisher-controls/shell-syntax.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "node-donor-controls/focused-receipt.json",
+      "bytes": 850,
+      "sha256": "028b871e8842aedb3267a3d71eede6da1b266fe08548dd83cad3fc08d9ba40ab"
+    },
+    {
+      "path": "node-donor-controls/focused.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "node-donor-controls/focused.stdout.log",
+      "bytes": 4386,
+      "sha256": "dd2db637f88106ab01e23f806983f39247f972304f2302c4f445a4ec3013e1f5"
+    },
+    {
+      "path": "node-donor-controls/full-build-package-receipt.json",
+      "bytes": 449,
+      "sha256": "01d50e42c98bcd7adec00b9a5ad1ecb202c2417649d4aa3abf9a02f40557639c"
+    },
+    {
+      "path": "node-donor-controls/full-build-package.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "node-donor-controls/full-build-package.stdout.log",
+      "bytes": 63,
+      "sha256": "f65b79c54737f3eafe9b010e3ee535455a539c01515f518cbab2ae0ab801fffe"
+    },
+    {
+      "path": "node-donor-controls/source-directory.txt",
+      "bytes": 28,
+      "sha256": "69e6ac2f48387305904c20dbbe949af675cdf0f659b40e5830be636ce834139e"
+    },
+    {
+      "path": "python-default-diagnosis/MANIFEST.json",
+      "bytes": 878,
+      "sha256": "f9feaa218dcacd588ca50811f13e1a69a27bc55b12802c0db612a8e474c9b3c1"
+    },
+    {
+      "path": "python-default-diagnosis/current-tag-metadata.json",
+      "bytes": 732,
+      "sha256": "7933f35cb4b4ab8fb56b37fa3ba003b31b5102a116bcfa790a2887bb79c92ad5"
+    },
+    {
+      "path": "python-default-diagnosis/diagnosis.json",
+      "bytes": 2887,
+      "sha256": "724309a4bbb221a9460cdd4251d18de06fd4fa05d598c490ac6470aa1b596eee"
+    },
+    {
+      "path": "python-default-diagnosis/focused-unit.log",
+      "bytes": 2450,
+      "sha256": "ea955f0c8d9c15fe14abb9bc0538e9406d26d02c60dd0d6e585f9ac9e4e2f945"
+    },
+    {
+      "path": "python-default-diagnosis/owned.diff",
+      "bytes": 8617,
+      "sha256": "48b562a8f35b8a1104530ea06dee92c05c84efbc042026e784d55275b3e3a711"
+    },
+    {
+      "path": "python-default-diagnosis/result.json",
+      "bytes": 756,
+      "sha256": "4fe3748176cb77dc821801cbc003c9083e3afb1dca6c83485cfddba22180f7fb"
+    },
+    {
+      "path": "shared-run-intake/MANIFEST.json",
+      "bytes": 1562,
+      "sha256": "f9eb2aeafc320c6a134a7ef3d9d2e9dc771b251d94fac5ab68ce97d4ed8e1155"
+    },
+    {
+      "path": "shared-run-intake/assessment.json",
+      "bytes": 6139,
+      "sha256": "9832a49f08d06cdd4397c209c46403175f8e5c2895de9b361ee9c1769da0bd89"
+    },
+    {
+      "path": "shared-run-intake/candidate-observed.json",
+      "bytes": 2202,
+      "sha256": "eedf83744128a6945b6530f546fdc6e36e62c3fe85258f6654891ab56baa8ea8"
+    },
+    {
+      "path": "shared-run-intake/job-124773320642.decoded.log",
+      "bytes": 35240,
+      "sha256": "98a6780c01f5923aa69431a4f0c490c4e4b7af7d14ea330fae08114c2a4edf03"
+    },
+    {
+      "path": "shared-run-intake/job-124773320694.decoded.log",
+      "bytes": 85901,
+      "sha256": "5a6d09134c567847e77423477b0248274fa0b990f7e873f3db25c99340c9aba2"
+    },
+    {
+      "path": "shared-run-intake/run-41280558929.jobs.connector.json",
+      "bytes": 6896,
+      "sha256": "1439112e4bc35c8a4793ab6e24d15cbd82e26bd89d2c0170b76c77f7de24eddd"
+    },
+    {
+      "path": "shared-run-intake/run-41280688171.jobs.connector.json",
+      "bytes": 8643,
+      "sha256": "69acdd5d7ad10e528fe5bce7f9910e2c52d0d6e71362f624e3999aff89c14473"
+    },
+    {
+      "path": "shared-run-intake/run-41285887959.jobs.connector.json",
+      "bytes": 1439,
+      "sha256": "39a944b9395957e3dc2e3b5f912772c76c928f3e63809a61bfb8337f0851b9f3"
+    },
+    {
+      "path": "shared-run-intake/run-41285940429.jobs.connector.json",
+      "bytes": 1832,
+      "sha256": "52a061b0fbfbcec234096b5fd70a8263518ed701c15eccb75302dcb4e6589ce9"
+    },
+    {
+      "path": "shared-run-intake/workflow-runs.public-api.raw.json",
+      "bytes": 117107,
+      "sha256": "0a21e8522e0a00fa6c18f9f2f0d2308a938f7b4c7c6b7ea8af3f3a71a03e2ea7"
+    },
+    {
+      "path": "source-quality-review.json",
+      "bytes": 1763,
+      "sha256": "f8b3f134dff32f9be3a91e9b52954f41959ccd9a2aa2239a901a76e1fea02c20"
+    },
+    {
+      "path": ".gitattributes",
+      "bytes": 353,
+      "sha256": "7deaf7c378fbbc439f2b496a2a330f072942bc1048f641eb91432a7d932d00b5"
+    }
+  ],
+  "scope": "Actual source/host tests and existing shared CI observations only; no Docker build, new dispatch, patched14.21.2 artifact acceptance, utility baseline, adoption or hosted claim.",
+  "control_results": {
+    "operator_make_test": 0,
+    "final_build_package": 0,
+    "common_host_controls_before_atomic_fixture_journal": 1,
+    "common_host_controls_after_atomic_fixture_journal": 0,
+    "publisher_controls": 0,
+    "base_matrix_controls": 0,
+    "canonical_actions_gate": 0,
+    "actions_guard_self_test": 0
+  },
+  "fixture_failure": "One existing real-signal control read its journal between creation and write completion; publish the owned test journal via atomic rename. Both signal/cleanup assertions retained; full84 controls passed after repair. The failed log is preserved.",
+  "image_56_context": "Prior image-only candidate remains historical; changed source-pinned publisher/patch inputs require fresh common publication/review and current-source full both-architecture utilities. No source alias or baseline update made.",
+  "runtime_14_21_2": "Official immutable metadata/source checksum independently checked by root, with publish-only controls; actual same-version patched artifact remains unbuilt/unverified.",
+  "remaining_external_action": "Local gh authentication unavailable, SSH UID501 lookup fails and computer-use service startup failed. Connected GitHub app ships exact gated trees, but has no fresh workflow dispatch capability. User asked to restore gh login; not yet verified.",
+  "source_diff_sha256": "928f8381ddc19b08aaf568970ea7ba23c14f4b5e10ddfcee9eca6a2029ce14a0",
+  "raw_whitespace_policy": "Only five exact archived raw upstream/CI payloads exempt whitespace normalization; all executable source gates unchanged."
+}

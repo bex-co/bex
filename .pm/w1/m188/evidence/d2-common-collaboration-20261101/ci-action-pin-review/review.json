@@ -1,0 +1,35 @@
+{
+  "schema": "bex.readonly-action-source-review/v1",
+  "reviewed_at": "2026-11-01T08:38:42.006566+00:00",
+  "action": "aquasecurity/setup-trivy@3fb12ec12f41e471780db15c232d5dd185dcb514",
+  "verdict": "supports_registering_already_used_pin",
+  "primary_entry": "https://github.com/aquasecurity/setup-trivy/blob/3fb12ec12f41e471780db15c232d5dd185dcb514/action.yaml",
+  "repo_usage": {
+    "file": ".github/workflows/deploy.yml",
+    "introduced_by": "5f20e81ab6bb82ab125d8d4cb89952c5833936dd",
+    "version": "v0.70.0",
+    "cache": false
+  },
+  "existing_nested_use": {
+    "action": "aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25",
+    "line": 129,
+    "setup_pin_identical": true
+  },
+  "execution_chain": {
+    "installer_source": "aquasecurity/trivy@75c4dc0f45c5d7ffd05ae26df1e0c666787bdf2a:contrib/install.sh",
+    "checkout": "actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8",
+    "optional_cache": "actions/cache@9255dc7a253b0ccc959486e2bca901246202afeb",
+    "nested_node_runtime": "node24",
+    "cache_steps_skipped_for_repo_usage": true
+  },
+  "installer_review": {
+    "asset_origin": "https://get.trivy.dev/trivy",
+    "checksum_origin": "https://github.com/aquasecurity/trivy/releases/download/<TAG>/trivy_<VERSION>_checksums.txt",
+    "checksum_verified_before_extract_install": true,
+    "sudo": false,
+    "arbitrary_remote_script_execution": false,
+    "token_scope": "github.token supplied only to pinned public repository checkout; no new production secret",
+    "trust_limit": "release assets and checksums are upstream HTTPS identities; not an independently embedded asset hash or detached-signature claim"
+  },
+  "scope": "Full composite YAML and full pinned installer reviewed. Nested checkout/cache metadata refs and Node runtime inspected; bundled JS dependency implementations not independently audited. No action execution, repository or remote mutation."
+}

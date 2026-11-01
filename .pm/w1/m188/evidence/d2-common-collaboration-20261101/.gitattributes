@@ -1,0 +1,6 @@
+# Preserve raw upstream line endings and CI whitespace in immutable evidence.
+ci-action-pin-review/checkout-action.yml -whitespace
+ci-action-pin-review/trivy-action.yaml -whitespace
+exact-node-publisher-controls/before.log -whitespace
+shared-run-intake/job-124773320642.decoded.log -whitespace
+shared-run-intake/job-124773320694.decoded.log -whitespace

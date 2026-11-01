@@ -1,0 +1,64 @@
+{
+  "files": [
+    {
+      "file": "actionlint-configured.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "actionlint-default.log",
+      "sha256": "ab3040315abe98e22577762b3d4ab78addc0509b3858d35c20972360458681b3",
+      "bytes": 1882
+    },
+    {
+      "file": "actionlint.yaml",
+      "sha256": "9e2bd46cf0ce187295503568378bd49fdedb0afaadb3f08da23c78a8d059575f",
+      "bytes": 64
+    },
+    {
+      "file": "after.json",
+      "sha256": "881e9500f26ee4078a3e9a1adf439ff259903b77e7ba001bd4a05da549707a5f",
+      "bytes": 113
+    },
+    {
+      "file": "after.log",
+      "sha256": "da6a3228c8720ff47538145ef5d6257e08d4c140a89871e016a0f72fae01433a",
+      "bytes": 2638
+    },
+    {
+      "file": "before.json",
+      "sha256": "1a74b7b02b624b6fa7f5669431f175ce7acbc54bb0a263b2020e47e359d36629",
+      "bytes": 377
+    },
+    {
+      "file": "before.log",
+      "sha256": "98821d2beff48130a7b8f1db1a1ee289a691ea784e3503532c48a9e81713ebed",
+      "bytes": 3353
+    },
+    {
+      "file": "implementation.diff",
+      "sha256": "b925fe227874c9824d9837ac9b402d80acb78c3303e425217764b78b74e94bf5",
+      "bytes": 7161
+    },
+    {
+      "file": "native-base-existing.log",
+      "sha256": "76b39b8e5afd8b2d5d0adde85a8cd743fa69786968723aa7c557728db65fed66",
+      "bytes": 113
+    },
+    {
+      "file": "receipt.json",
+      "sha256": "e6945e3631c2f3692f32948c9bf841893ae412645718d4faaf35f44c9f7b9583",
+      "bytes": 2894
+    },
+    {
+      "file": "scoped-diff-check.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    },
+    {
+      "file": "shell-syntax.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0
+    }
+  ]
+}

@@ -1,0 +1,13 @@
+{
+  "observed_at": "2026-11-01T08:30:25.523308+00:00",
+  "scope": "Current anonymous registry metadata only; no image build/pull/adoption. Decoded metadata retained; complete raw HTTP bodies were hash-verified in-process but not archived. This does not prove the historical lookup failure cause.",
+  "repo": "library/python",
+  "tag": "3.14.8-bookworm",
+  "head_status": 200,
+  "digest": "sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74",
+  "amd64_manifest": "sha256:36811ba1de0179e92a9537453e4ec8eb70b1af8dd926a9802c17a252f2c506ce",
+  "amd64_config": "sha256:7f4eff8458e49dcd22833ede0c387881a083e62064f2039df8836826a4fec3e7",
+  "PYTHON_VERSION": "3.14.8",
+  "config_os": "linux",
+  "config_arch": "amd64"
+}

@@ -1,0 +1,77 @@
+{
+  "jobs": [
+    {
+      "id": 124787144751,
+      "name": "plan",
+      "status": "completed",
+      "conclusion": "success",
+      "run_id": 41285940429,
+      "logs_url": null,
+      "steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1
+        },
+        {
+          "name": "Set up runner",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3
+        },
+        {
+          "name": "validate the fixed profile and case before publication resources",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9
+        }
+      ]
+    },
+    {
+      "id": 124791012199,
+      "name": "qualify (arm64)",
+      "status": "queued",
+      "conclusion": null,
+      "run_id": 41285940429,
+      "logs_url": null,
+      "steps": null
+    },
+    {
+      "id": 124791012251,
+      "name": "qualify (amd64)",
+      "status": "queued",
+      "conclusion": null,
+      "run_id": 41285940429,
+      "logs_url": null,
+      "steps": null
+    },
+    {
+      "id": 124791012687,
+      "name": "publish",
+      "status": "completed",
+      "conclusion": "skipped",
+      "run_id": 41285940429,
+      "logs_url": null,
+      "steps": null
+    }
+  ]
+}

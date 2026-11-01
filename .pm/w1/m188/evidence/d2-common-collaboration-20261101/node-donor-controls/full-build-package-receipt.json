@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "go",
+    "-C",
+    "lego/operator",
+    "test",
+    "./internal/build",
+    "-count=1"
+  ],
+  "exit_code": 0,
+  "seconds": 9.572,
+  "stdout_sha256": "f65b79c54737f3eafe9b010e3ee535455a539c01515f518cbab2ae0ab801fffe",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "scope": "Full host build package; integration flags unset, no actual Docker/runtime/ABI/security qualification claimed."
+}
