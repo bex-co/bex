@@ -513,9 +513,9 @@ func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceL
 // writable-layer + log disk — the axis PVC quotas cannot see. Per-container the
 // tier ladder already bounds it (resourcesForTier, 1→32Gi) and the LimitRange
 // defaults tierless containers to 1Gi/10Gi, so the plan budget is the
-// defense-in-depth ceiling sized to hold the services' worst case: paid ≈ 50
-// CPU-requested pro-ultra pods × 32 Gi ≈ 1.6 Ti < 2 Ti; free ≈ 50 tierless
-// containers × 1 Gi = 50 Gi < 100 Gi. The datastore room is added on top.
+// defense-in-depth ceiling sized to hold the services' worst case: ≈ 50
+// CPU-requested pro-ultra pods × 32 Gi ≈ 1.6 Ti < 2 Ti, on every plan since
+// Hobby shares the paid compute ceiling. The datastore room is added on top.
 //
 // The compute axes carry +1 surge pod of headroom above the plan's
 // steady-state budget: App Deployments use the default RollingUpdate strategy
@@ -524,22 +524,21 @@ func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceL
 // zero giveback, and a quota with no slack rejects the surge ReplicaSet
 // ("exceeded quota: tenant-compute-quota") and hangs the deploy at the health
 // gate.
-// Derivation: +1 of the largest tier the plan can reasonably run (tiers.yaml;
-// Guaranteed QoS, so the surge is charged on requests AND limits). Hobby = 2
-// CPU/4 Gi base + 1 standard surge (1 CPU/2 Gi) = 3/6 Gi; paid = 50 CPU/100 Gi
-// + 1 pro-ultra surge (8 CPU/32 Gi) = 58/132 Gi; limits.* stay at 2× requests.
-// pods needs no +1: the compute ceiling binds first (hobby: 3 CPU ÷ 100m
-// minimum-tier pod ≈ 30 pods < 50; paid: 58 CPU of pro-ultra pods ≈ 7 ≪ 500),
-// and the ephemeral axis likewise has surge slack once compute binds (30 × 1
-// Gi ≪ 100 Gi; 7 × 32 Gi ≪ 2 Ti).
+// Derivation: +1 of the largest tier (tiers.yaml; Guaranteed QoS, so the
+// surge is charged on requests AND limits): 50 CPU/100 Gi + 1 pro-ultra surge
+// (8 CPU/32 Gi) = 58/132 Gi; limits.* stay at 2× requests. Hobby has the same
+// ceiling (w2/061; it was 3 CPU/6 Gi, a plan-based cap Render does not have).
+// pods needs no +1: the compute ceiling binds first (58 CPU of pro-ultra pods
+// ≈ 7 ≪ 500), and the ephemeral axis likewise has surge slack (7 × 32 Gi ≪
+// 2 Ti).
 //
 // The compute axes are a budget for SERVICES only (w2/m247). Postgres and Key
 // Value Pods run under the datastore PriorityClass and the CPU/memory quota is
 // scoped to exclude it (baseResourceQuotas), because Render has no
 // per-workspace compute quota and gates high availability only on a ≥1-CPU
 // plan. Sizing this budget for datastores would have been a plan-based cap
-// Render does not have: a Hobby workspace's 3 CPU could never hold a `2c-4g`
-// HA pair, while the same plan allows 25 paid Postgres. Datastores are bounded
+// Render does not have: Hobby's former 3 CPU could never hold a `2c-4g` HA
+// pair, while the same plan allows 25 paid Postgres. Datastores are bounded
 // by their count caps (QuotaCapsForPlan) and per-instance billing instead.
 //
 // The count caps must also bind before every dimension datastores still share
@@ -571,9 +570,12 @@ func quotaForPlan(plan string) corev1.ResourceList {
 	ephReq, ephLim := "2Ti", "4Ti"
 	switch plan {
 	case PlanHobby, "", "free":
-		cpuReq, memReq, cpuLim, memLim, pods, jobs = "3", "6Gi", "6", "12Gi", "50", "25"
+		// Compute, pods and ephemeral storage stay at the paid ceiling: Render
+		// sets no instance-type or total-compute cap on Hobby (w2/061), so a
+		// Hobby service may run any paid instance type, bounded by the
+		// services count cap and per-instance billing.
+		jobs = "25"
 		storage, pvcs = "120Gi", "8"
-		ephReq, ephLim = "100Gi", "200Gi"
 	}
 	caps := QuotaCapsForPlan(plan)
 	quota := corev1.ResourceList{
