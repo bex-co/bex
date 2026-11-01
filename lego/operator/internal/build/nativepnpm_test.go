@@ -36,30 +36,32 @@ func TestNativePnpmFollowsTheSelectedNodeLine(t *testing.T) {
 			}
 			df, _ := os.ReadFile(dockerfile)
 			legacy := strings.Count(string(df), nativeLegacyPnpmInstall())
+			stages := strings.Count(string(df), nativeLegacyPnpmStages())
 			pkg := strings.Count(string(df), nativePnpmInstall())
 			want := line == "14" || line == "16"
-			if (want && (legacy != 1 || pkg != 0)) || (!want && (legacy != 0 || pkg != 1)) {
-				t.Fatalf("%s NODE_VERSION=%s: standalone=%d package=%d\n%s", runtime, line, legacy, pkg, df)
+			if (want && (legacy != 1 || stages != 1 || pkg != 0)) || (!want && (legacy != 0 || stages != 0 || pkg != 1)) {
+				t.Fatalf("%s NODE_VERSION=%s: standalone=%d stages=%d package=%d\n%s", runtime, line, legacy, stages, pkg, df)
 			}
 		}
 	}
 }
 
-func TestNativeLegacyPnpmInstallIsPinnedPerArchitecture(t *testing.T) {
-	lines := nativeLegacyPnpmInstall()
+func TestNativeLegacyPnpmIsFetchedByChecksumPerArchitecture(t *testing.T) {
+	stages := nativeLegacyPnpmStages()
 	for _, want := range []string{
-		"amd64) arch=x64 sum=" + strings.TrimPrefix(nativeLegacyPnpm.amd64, "sha256:"),
-		"arm64) arch=arm64 sum=" + strings.TrimPrefix(nativeLegacyPnpm.arm64, "sha256:"),
-		"linux-$arch-" + nativePnpm.version + ".tgz",
-		"sha256sum -c -",
-		"exit 1 ;; esac",
+		"FROM scratch AS bex-pnpm-amd64\nADD --checksum=" + nativeLegacyPnpm.amd64 + " https://registry.npmjs.org/@pnpm/linux-x64/-/linux-x64-" + nativePnpm.version + ".tgz",
+		"FROM scratch AS bex-pnpm-arm64\nADD --checksum=" + nativeLegacyPnpm.arm64 + " https://registry.npmjs.org/@pnpm/linux-arm64/-/linux-arm64-" + nativePnpm.version + ".tgz",
+		"FROM bex-pnpm-${TARGETARCH} AS bex-pnpm-tarball",
+		"FROM " + nativePreparerImage + " AS bex-pnpm",
 	} {
-		if !strings.Contains(lines, want) {
-			t.Fatalf("legacy pnpm install lacks %q:\n%s", want, lines)
+		if !strings.Contains(stages, want) {
+			t.Fatalf("legacy pnpm stages lack %q:\n%s", want, stages)
 		}
 	}
-	// A build ARG would reach the authored build's environment.
-	if strings.Contains(lines, "ARG ") || strings.Contains(lines, "TARGETARCH") {
-		t.Fatalf("legacy pnpm install must not declare build args:\n%s", lines)
+	// No download inside the image build, and no build ARG reaches the
+	// authored build's environment.
+	lines := nativeLegacyPnpmInstall()
+	if !strings.HasPrefix(lines, "COPY --link --from=bex-pnpm ") || strings.Contains(lines, "RUN ") || strings.Contains(lines, "ARG ") {
+		t.Fatalf("legacy pnpm install must only copy:\n%s", lines)
 	}
 }
