@@ -1675,16 +1675,47 @@ type cnpgClusterState struct {
 	phase          string
 	message        string
 	currentVersion string
+	// upgradeJobFailed reports CNPG's major-upgrade Job as Failed while the
+	// cluster phase still reads as a running upgrade (w4/m215).
+	upgradeJobFailed bool
 }
 
 func (s cnpgClusterState) majorUpgradeRunning() bool {
 	phase := strings.ToLower(s.phase)
-	return strings.Contains(phase, "upgrad") && strings.Contains(phase, "postgres") && !strings.Contains(phase, "fail")
+	return strings.Contains(phase, "upgrad") && strings.Contains(phase, "postgres") && !strings.Contains(phase, "fail") &&
+		!s.upgradeJobFailed
 }
 
 func (s cnpgClusterState) majorUpgradeFailed() bool {
 	phase := strings.ToLower(s.phase)
-	return strings.Contains(phase, "upgrad") && strings.Contains(phase, "postgres") && strings.Contains(phase, "fail")
+	return s.upgradeJobFailed ||
+		strings.Contains(phase, "upgrad") && strings.Contains(phase, "postgres") && strings.Contains(phase, "fail")
+}
+
+// failedMajorUpgradeJob reports whether CNPG's major-upgrade Job for cluster has
+// failed, with a message for the Database's Ready condition. CloudNativePG
+// 1.30 does not move the cluster to a failed phase when pg_upgrade refuses: the
+// Job reaches Failed (backoff limit) while the phase stays "Upgrading Postgres
+// major version" and CNPG logs "Major upgrade job not completed" forever.
+// Measured on a CNPG 1.30.1 kind cluster with a reg* column, 2026-10-31
+// (w4/m215). Reverting the image to the source major, which the failed branch
+// does, deletes the Job and restarts the original server with its data.
+func (r *DatabaseReconciler) failedMajorUpgradeJob(ctx context.Context, cluster *unstructured.Unstructured) (bool, string) {
+	var jobs batchv1.JobList
+	if err := r.List(ctx, &jobs, client.InNamespace(cluster.GetNamespace()), client.MatchingLabels{
+		"cnpg.io/cluster": cluster.GetName(), "cnpg.io/jobRole": "major-upgrade",
+	}); err != nil {
+		return false, ""
+	}
+	for _, job := range jobs.Items {
+		for _, c := range job.Status.Conditions {
+			if c.Type == batchv1.JobFailed && c.Status == corev1.ConditionTrue {
+				return true, "the PostgreSQL major-version upgrade failed (pg_upgrade did not complete: " + c.Message +
+					"); the database is returned to its previous version. Check the database logs for pg_upgrade's reason."
+			}
+		}
+	}
+	return false, ""
 }
 
 // cnpgConditionMessage returns the most useful condition message CNPG exposes,
@@ -1721,6 +1752,11 @@ func (r *DatabaseReconciler) readClusterStatus(
 	phase, _, _ := unstructured.NestedString(cluster.Object, "status", "phase")
 	major, _, _ := unstructured.NestedInt64(cluster.Object, "status", "pgDataImageInfo", "majorVersion")
 	state := cnpgClusterState{ready: ready, phase: phase, message: cnpgConditionMessage(cluster, phase)}
+	if state.majorUpgradeRunning() {
+		if failed, message := r.failedMajorUpgradeJob(ctx, cluster); failed {
+			state.upgradeJobFailed, state.message = true, message
+		}
+	}
 	if major > 0 {
 		state.currentVersion = fmt.Sprintf("%d", major)
 	}
