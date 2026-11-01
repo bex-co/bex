@@ -133,6 +133,28 @@ export function deriveStatus(d: {
   return fromStatus(d.status);
 }
 
+/**
+ * Why the SQL console cannot run right now, from a detail status key: a
+ * suspended database has no compute, and one still being created, upgraded
+ * offline or restarted is not serving yet (w4/177). Unavailable and unknown
+ * states are left to the server's own answer.
+ */
+export type SQLConsoleBlock =
+  "suspended" | "creating" | "upgrading" | "restarting";
+
+const SQL_CONSOLE_BLOCKS: ReadonlySet<string> = new Set([
+  "suspended",
+  "creating",
+  "upgrading",
+  "restarting",
+]);
+
+export function sqlConsoleBlock(statusKey: string): SQLConsoleBlock | null {
+  return SQL_CONSOLE_BLOCKS.has(statusKey)
+    ? (statusKey as SQLConsoleBlock)
+    : null;
+}
+
 /** True while the database is still converging (used to poll the list live). */
 export function isConverging(d: { status: string }): boolean {
   const key = fromStatus(d.status).key;

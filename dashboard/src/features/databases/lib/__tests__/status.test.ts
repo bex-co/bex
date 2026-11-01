@@ -6,6 +6,7 @@ import {
   deriveStatus,
   isConverging,
   computeStats,
+  sqlConsoleBlock,
 } from "@/features/databases/lib/status";
 import { statusLabel } from "@/features/databases/lib/labels";
 
@@ -292,5 +293,18 @@ describe("computeStats", () => {
       { status: "unavailable", suspended: "not_suspended" },
     ] as unknown as Parameters<typeof computeStats>[0]);
     expect(stats).toEqual({ total: 5, available: 2, creating: 1 });
+  });
+});
+
+describe("sqlConsoleBlock (w4/177)", () => {
+  it("blocks only the known not-serving lifecycle states", () => {
+    expect(sqlConsoleBlock("suspended")).toBe("suspended");
+    expect(sqlConsoleBlock("creating")).toBe("creating");
+    expect(sqlConsoleBlock("upgrading")).toBe("upgrading");
+    expect(sqlConsoleBlock("restarting")).toBe("restarting");
+    // Available runs; unavailable/unknown are left to the server's answer.
+    expect(sqlConsoleBlock("available")).toBeNull();
+    expect(sqlConsoleBlock("unavailable")).toBeNull();
+    expect(sqlConsoleBlock("unknown")).toBeNull();
   });
 });
