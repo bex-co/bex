@@ -170,6 +170,25 @@ describe("ApplicationMetricsCard", () => {
     );
   });
 
+  // w4/446: on a narrow header the instance filter wraps onto its own row, so
+  // while its choices load the card holds that box instead of growing late.
+  it("holds the instance filter's box while the inventory read loads", async () => {
+    mockUseMetrics.mockReturnValue({ ...emptyResult(), loading: true });
+    const loading = renderCard();
+    await screen.findByRole("tab", { name: "Total" });
+    expect(
+      loading.container.querySelector("[data-instance-filter-slot]"),
+    ).toHaveClass("h-9", "min-w-[9rem]");
+    loading.unmount();
+
+    mockUseMetrics.mockReturnValue(multiSeriesResult("cpu", { "web-a": [1] }));
+    const ready = renderCard();
+    await screen.findByRole("listbox", { name: "Instances" });
+    expect(
+      ready.container.querySelector("[data-instance-filter-slot]"),
+    ).toBeNull();
+  });
+
   it("owns the Percentage/Total tabs in its header, defaulting to Percentage (w5/m42)", async () => {
     mockUseMetrics.mockReturnValue(emptyResult());
 

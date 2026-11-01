@@ -1,7 +1,11 @@
 import { MetricUnavailable } from "@/features/metrics/components/metric-unavailable";
 import { MetricError } from "@/features/metrics/components/metric-error";
 import type { UseMetricsResult } from "@/features/metrics/hooks/use-metrics";
-import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
+import {
+  CHART_FRAME_STYLE,
+  EventLaneContext,
+} from "@/features/metrics/components/chart-layout";
+import { EventLaneSlot } from "@/features/metrics/components/chart-event-markers";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { planFeatureRequired } from "@/common/lib/graphql-error";
@@ -19,6 +23,9 @@ interface MetricSectionProps {
    * with the notice shown when bex-api refuses it on a lower plan (w8/m138).
    */
   planFeature?: { feature: string; message: string };
+  /** A service chart's event-marker lane sits above the plot; every frame
+   *  standing in for the chart reserves it too (w4/446). */
+  eventLane?: boolean;
   children: React.ReactNode;
 }
 
@@ -37,6 +44,7 @@ export function MetricSection({
   headerExtra,
   errorMessage,
   planFeature,
+  eventLane = false,
   children,
 }: MetricSectionProps) {
   const { t } = useTranslations();
@@ -55,6 +63,16 @@ export function MetricSection({
   const throttledStale = result.throttled && result.series.length > 0;
   const planRefused =
     !!planFeature && planFeatureRequired(result.error, planFeature.feature);
+  const chart = (
+    <>
+      {throttledStale && (
+        <p role="status" className="text-muted-foreground mb-2 text-xs">
+          {t("metrics.chartStaleThrottled")}
+        </p>
+      )}
+      {children}
+    </>
+  );
   const body = planRefused ? (
     <MetricUnavailable message={planFeature.message} />
   ) : result.storeUnavailable ? (
@@ -72,16 +90,7 @@ export function MetricSection({
     <MetricError message={t("metrics.chartThrottled")} />
   ) : errorEmpty ? (
     <MetricError message={errorMessage} />
-  ) : (
-    <>
-      {throttledStale && (
-        <p role="status" className="text-muted-foreground mb-2 text-xs">
-          {t("metrics.chartStaleThrottled")}
-        </p>
-      )}
-      {children}
-    </>
-  );
+  ) : null;
   return (
     <div>
       <div className="mb-2 flex items-center justify-between gap-2">
@@ -92,7 +101,11 @@ export function MetricSection({
         </div>
         {headerExtra}
       </div>
-      {body}
+      <EventLaneContext value={eventLane}>
+        {/* A stand-in frame reserves the lane; the chart draws its own. */}
+        {eventLane && body && <EventLaneSlot />}
+        {body ?? chart}
+      </EventLaneContext>
     </div>
   );
 }

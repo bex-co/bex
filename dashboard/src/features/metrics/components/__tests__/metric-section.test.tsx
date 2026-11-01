@@ -1,6 +1,7 @@
 import { describe, it, expect } from "vitest";
 import { render, screen } from "@testing-library/react";
 import { MetricSection } from "../metric-section";
+import { EmptyChart, SvgLineChart } from "../svg-line-chart";
 import type { UseMetricsResult } from "@/features/metrics/hooks/use-metrics";
 import type { ChartSeries } from "@/features/metrics/types";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
@@ -226,5 +227,56 @@ describe("MetricSection plan refusal", () => {
       </MetricSection>,
     );
     expect(screen.queryByText("Needs the Pro plan.")).toBeNull();
+  });
+});
+
+// w4/446: a service chart's 24px event lane sits above the plot whether the
+// section is loading, failed, empty or drawn, so no state change moves it.
+describe("MetricSection event lane", () => {
+  const lanes = (container: HTMLElement) =>
+    container.querySelectorAll(":scope > div > .h-6").length +
+    container.querySelectorAll(":scope > div > div.relative > .h-6").length;
+
+  it.each([
+    ["loading", result({ loading: true }), null],
+    ["failed", result({ error: new Error("boom") }), null],
+    ["empty", result(), <EmptyChart key="e" />],
+    [
+      "drawn without markers",
+      result({ series: [aSeries] }),
+      <SvgLineChart
+        key="c"
+        unit="count"
+        series={
+          [
+            {
+              label: "n",
+              color: "red",
+              points: [
+                { t: 0, v: 1 },
+                { t: 60_000, v: 2 },
+              ],
+            },
+          ] as unknown as ChartSeries[]
+        }
+        markersServiceId="srv-1"
+      />,
+    ],
+  ])("reserves exactly one lane while %s", (_state, res, child) => {
+    const { container } = render(
+      <MetricSection title="CPU" result={res} eventLane>
+        {child ?? CHILD}
+      </MetricSection>,
+    );
+    expect(lanes(container)).toBe(1);
+  });
+
+  it("reserves no lane on a section without one", () => {
+    const { container } = render(
+      <MetricSection title="CPU" result={result({ loading: true })}>
+        {CHILD}
+      </MetricSection>,
+    );
+    expect(lanes(container)).toBe(0);
   });
 });

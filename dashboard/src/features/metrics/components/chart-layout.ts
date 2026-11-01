@@ -1,3 +1,4 @@
+import { createContext, useContext } from "react";
 import { formatMetricShort } from "@/features/metrics/lib/format";
 import type { ChartPoint } from "@/features/metrics/types";
 import type { TooltipRow } from "@/features/metrics/components/svg-line-chart";
@@ -18,6 +19,19 @@ export const CHART_PAD = { top: 8, right: 8, bottom: 20, left: 44 };
 export const CHART_FRAME_STYLE = {
   aspectRatio: `${CHART_WIDTH} / ${CHART_HEIGHT}`,
 } as const;
+
+/**
+ * A service chart section keeps a fixed 24px event lane above its plot, empty
+ * or not, so the section is one height whether markers, data or neither have
+ * arrived (w4/446). MetricSection provides it; every frame that can stand in
+ * for the chart reserves it.
+ */
+export const EventLaneContext = createContext(false);
+
+/** Whether this chart frame sits in a section with an event lane. */
+export function useEventLane() {
+  return useContext(EventLaneContext);
+}
 
 // Tick labels are end-anchored TICK_LABEL_GAP left of the plot, at the
 // 9px axis font, and keep TICK_INSET clear of the canvas edge.

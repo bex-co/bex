@@ -1774,9 +1774,13 @@ export function ServiceLogsSkeleton() {
 function MetricsCardSkeleton({
   sections,
   compact = false,
+  eventLane = false,
 }: {
   sections: number;
   compact?: boolean;
+  /** Service charts: the empty 24px event lane above a ratio-sized plot,
+   *  as the ready MetricSection draws them (w4/446). */
+  eventLane?: boolean;
 }) {
   return (
     <Card>
@@ -1798,9 +1802,16 @@ function MetricsCardSkeleton({
               <Skeleton className="h-4 w-28" />
               <Skeleton className="h-7 w-32" />
             </div>
-            <Skeleton
-              className={compact ? "h-[154px] w-full" : "h-[180px] w-full"}
-            />
+            {eventLane ? (
+              <>
+                <div className="h-6" />
+                <Skeleton className="w-full" style={CHART_FRAME_STYLE} />
+              </>
+            ) : (
+              <Skeleton
+                className={compact ? "h-[154px] w-full" : "h-[180px] w-full"}
+              />
+            )}
           </div>
         ))}
       </CardContent>
@@ -1828,11 +1839,11 @@ export function ServiceMetricsSkeleton({
       </Region>
       {!staticSite ? (
         <Region name="application-metrics">
-          <MetricsCardSkeleton sections={3} />
+          <MetricsCardSkeleton sections={3} eventLane />
         </Region>
       ) : null}
       <Region name="network-metrics">
-        <MetricsCardSkeleton sections={3} />
+        <MetricsCardSkeleton sections={3} eventLane />
       </Region>
     </PendingFrame>
   );

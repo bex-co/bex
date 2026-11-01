@@ -15,10 +15,12 @@ import {
   frameTooltipRows,
   type SeriesInput,
   type ChartFrame,
+  useEventLane,
 } from "@/features/metrics/components/chart-layout";
 import {
   ChartEventLines,
   ChartEventStrip,
+  EventLaneSlot,
 } from "@/features/metrics/components/chart-event-markers";
 import {
   clusterMarkers,
@@ -267,13 +269,17 @@ export function EmptyChart({
   message?: string;
 }) {
   const { t } = useTranslations();
+  const lane = useEventLane();
   return (
-    <div
-      className="flex w-full items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground"
-      style={chartFrameStyle(height)}
-    >
-      {message ?? t("metrics.chartEmpty")}
-    </div>
+    <>
+      {lane && <EventLaneSlot />}
+      <div
+        className="flex w-full items-center justify-center rounded-md border border-dashed text-sm text-muted-foreground"
+        style={chartFrameStyle(height)}
+      >
+        {message ?? t("metrics.chartEmpty")}
+      </div>
+    </>
   );
 }
 

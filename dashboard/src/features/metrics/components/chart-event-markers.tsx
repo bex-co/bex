@@ -21,6 +21,11 @@ import type {
 // a hover tooltip). Both position by the same viewBox x — the strip converts
 // it to a percentage, which lines up because the SVG spans the full width.
 
+/** The event lane's reserved height with no badges in it (w4/446). */
+export function EventLaneSlot() {
+  return <div className="h-6" aria-hidden="true" />;
+}
+
 /** Vertical dashed line per event cluster — rendered inside the chart SVG. */
 export function ChartEventLines({ clusters }: { clusters: MarkerCluster[] }) {
   return (
@@ -69,7 +74,7 @@ export function ChartEventStrip({
   const base = useServiceBase();
   const [active, setActive] = useState<number | null>(null);
 
-  if (clusters.length === 0) return null;
+  if (clusters.length === 0) return <EventLaneSlot />;
 
   return (
     <div
