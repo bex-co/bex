@@ -18,7 +18,7 @@
 
 ## 证据与限制
 
-- [本次 tag 解析](evidence/upstream-digests.json) 与 [原不可变 SBOM 记录](../../evidence/136-brotli-upstream-20261028.json) 共同支撑已有 8 个包记录；Node14、Node16、Python3.7 的缺失项由固定 digest 的 arm64 容器直接检查：[Node14](evidence/node14-probe.json)、[Node16/Python3.7](evidence/missing-sbom.json)。这不是全部架构发布验收，发布时仍必须双架构检测。
+- [本次 tag 解析](evidence/upstream-digests.json) 与 [原不可变 SBOM 记录](../evidence/136-brotli-upstream-20261028.json) 共同支撑已有 8 个包记录；Node14、Node16、Python3.7 的缺失项由固定 digest 的 arm64 容器直接检查：[Node14](evidence/node14-probe.json)、[Node16/Python3.7](evidence/missing-sbom.json)。这不是全部架构发布验收，发布时仍必须双架构检测。
 - [CPython/Ruby 精确版本源码树](evidence/runtime-source-trees.json) 均未截断且没有 Brotli 路径；Python3.7 实测没有预装 Python Brotli 模块。结论只涉及基础解释器，不承诺用户安装的 pip/gem/npm 依赖已修复。
 - [生产只读记录](evidence/production-usage.json)：30 个 App；两个运行中的 native Node 服务分别是 24.22.1 / 22.23.4，系统库仍为 `1.0.9-2+b6`，由独立的 136 重建。另两个 Node App 失败或暂停且没有 pod，不能宣称其将来的版本已核实；没有 native Python/Ruby 或 CNB App。
 - 生产 SSH 访问通过成功的 [app-cluster run 40979246716](https://github.com/bex-co/bex/actions/runs/40979246716) 中受信任的稳定 CP 指纹与当前节点一致后恢复，未放宽 host-key 验证；凭据不进入 board。
