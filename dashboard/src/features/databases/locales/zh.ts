@@ -1530,6 +1530,21 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "按 Ctrl+Enter 或 ⌘+Enter 运行",
     description: "SQL console keyboard shortcut hint",
   },
+  "databases.sqlCreating": {
+    message:
+      "此数据库仍在创建中。状态变为“可用”后即可运行 SQL；您的查询和历史记录会保留。",
+    description: "SQL console notice while the database is creating (w4/177)",
+  },
+  "databases.sqlUpgrading": {
+    message:
+      "正在进行离线 PostgreSQL 升级。数据库恢复“可用”后即可再次运行 SQL；您的查询和历史记录会保留。",
+    description: "SQL console notice while the database is upgrading (w4/177)",
+  },
+  "databases.sqlRestarting": {
+    message:
+      "此数据库正在重启。请等待其变为“可用”后再运行 SQL；您的查询和历史记录会保留。",
+    description: "SQL console notice while the database is restarting (w4/177)",
+  },
   "databases.sqlSuspended": {
     message: "此数据库已暂停。请恢复后再运行 SQL；您的查询和历史记录会保留。",
     description: "SQL console notice while the database is suspended",

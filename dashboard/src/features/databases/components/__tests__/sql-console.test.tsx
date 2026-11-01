@@ -27,7 +27,9 @@ describe("SQLConsole", () => {
       truncated: false,
     });
     const user = userEvent.setup();
-    const { rerender } = render(<SQLConsole id="sleepy-db" suspended />);
+    const { rerender } = render(
+      <SQLConsole id="sleepy-db" blocked="suspended" />,
+    );
     const editor = screen.getByRole("textbox", { name: "SQL query" });
     await user.clear(editor);
     await user.type(editor, "SELECT 29 AS marker");
@@ -39,7 +41,7 @@ describe("SQLConsole", () => {
     await user.type(editor, "{Control>}{Enter}{/Control}");
     expect(mocks.execute).not.toHaveBeenCalled();
 
-    rerender(<SQLConsole id="sleepy-db" suspended={false} />);
+    rerender(<SQLConsole id="sleepy-db" blocked={null} />);
     expect(editor).toHaveValue("SELECT 29 AS marker");
     expect(screen.queryByText(/This database is suspended/)).toBeNull();
     await user.click(screen.getByRole("button", { name: "Run query" }));
@@ -48,7 +50,15 @@ describe("SQLConsole", () => {
     );
   });
 
-  it("does not run an open write confirmation once the database is suspended", async () => {
+  // a233: an open write confirmation that learns the database is suspended
+  // used to keep an enabled Run statement, then close silently on click.
+  it("disables an open write confirmation while blocked and runs only on a fresh confirm", async () => {
+    mocks.execute.mockResolvedValue({
+      columns: [],
+      rows: [],
+      rowCount: 1,
+      truncated: false,
+    });
     const user = userEvent.setup();
     const { rerender } = render(<SQLConsole id="sleepy-db" />);
     const editor = screen.getByRole("textbox", { name: "SQL query" });
@@ -57,10 +67,67 @@ describe("SQLConsole", () => {
     await user.click(screen.getByRole("button", { name: "Run query" }));
     const dialog = await screen.findByRole("alertdialog");
 
-    rerender(<SQLConsole id="sleepy-db" suspended />);
-    await user.click(within(dialog).getByRole("button", { name: /run/i }));
+    rerender(<SQLConsole id="sleepy-db" blocked="suspended" />);
+    const confirm = within(dialog).getByRole("button", {
+      name: "Run statement",
+    });
+    expect(confirm).toBeDisabled();
+    expect(
+      within(dialog).getByText(/This database is suspended/),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: /cancel/i }),
+    ).toBeEnabled();
+
+    // Readiness re-enables the action but never runs the queued write itself.
+    rerender(<SQLConsole id="sleepy-db" blocked={null} />);
     expect(mocks.execute).not.toHaveBeenCalled();
+    expect(confirm).toBeEnabled();
+    await user.click(confirm);
+    await waitFor(() =>
+      expect(mocks.execute).toHaveBeenCalledWith("DELETE FROM t", true),
+    );
   });
+
+  // a54 / a619: Creating, Upgrading and Restarting offered Run query and
+  // answered with an internal error.
+  it.each([
+    ["creating", /still being created/],
+    ["upgrading", /offline PostgreSQL upgrade is running/],
+    ["restarting", /This database is restarting/],
+  ] as const)(
+    "holds SQL while %s with its own explanation, keeping the draft",
+    async (blocked, message) => {
+      const user = userEvent.setup();
+      const { rerender } = render(
+        <SQLConsole id="busy-db" blocked={blocked} />,
+      );
+      const editor = screen.getByRole("textbox", { name: "SQL query" });
+      await user.clear(editor);
+      await user.type(editor, "SELECT 54 AS qa_a54_ready");
+
+      expect(screen.getByText(message)).toBeInTheDocument();
+      expect(screen.getByRole("button", { name: "Run query" })).toBeDisabled();
+      await user.type(editor, "{Control>}{Enter}{/Control}");
+      expect(mocks.execute).not.toHaveBeenCalled();
+
+      mocks.execute.mockResolvedValue({
+        columns: ["qa_a54_ready"],
+        rows: [["54"]],
+        rowCount: 1,
+        truncated: false,
+      });
+      rerender(<SQLConsole id="busy-db" blocked={null} />);
+      expect(editor).toHaveValue("SELECT 54 AS qa_a54_ready");
+      await user.click(screen.getByRole("button", { name: "Run query" }));
+      await waitFor(() =>
+        expect(mocks.execute).toHaveBeenCalledWith(
+          "SELECT 54 AS qa_a54_ready",
+          false,
+        ),
+      );
+    },
+  );
 
   it("runs read-only SQL, renders paginated rows, and recalls session history", async () => {
     const rows = Array.from({ length: 55 }, (_, index) => [

@@ -26,22 +26,30 @@ import {
   type QueryResult,
 } from "@/features/databases/hooks/use-execute-database-query";
 import { isReadOnlySQL } from "@/features/databases/lib/sql";
+import type { SQLConsoleBlock } from "@/features/databases/lib/status";
 
 const RESULT_PAGE_SIZE = 50;
 const HISTORY_LIMIT = 20;
+const BLOCK_MESSAGE = {
+  suspended: "databases.sqlSuspended",
+  creating: "databases.sqlCreating",
+  upgrading: "databases.sqlUpgrading",
+  restarting: "databases.sqlRestarting",
+} as const satisfies Record<SQLConsoleBlock, string>;
+
 /**
- * `suspended` comes from the detail page's database state. A suspended
- * database has no compute, so Run, the keyboard shortcut and an already-open
- * write confirmation are all held until it resumes; the draft and history
- * stay. The server refuses with the same reason if a stale cache slips by
- * (w4/177).
+ * While `blocked` is set, Run, the keyboard shortcut and an already-open write
+ * confirmation are all held, with the reason shown in the console and inside
+ * the dialog; the draft, history and pending statement stay. Readiness never
+ * runs a queued write by itself: the user confirms again. The server refuses a
+ * suspended database with the same reason if a stale cache slips by (w4/177).
  */
 export function SQLConsole({
   id,
-  suspended = false,
+  blocked = null,
 }: {
   id: string;
-  suspended?: boolean;
+  blocked?: SQLConsoleBlock | null;
 }) {
   const { t } = useTranslations();
   const { execute, loading } = useExecuteDatabaseQuery(id);
@@ -91,7 +99,7 @@ export function SQLConsole({
   }
 
   function requestRun() {
-    if (loading || suspended) return;
+    if (loading || blocked) return;
     const statement = sql.trim();
     if (!statement) return;
     if (isReadOnlySQL(statement)) void run(statement, false);
@@ -133,16 +141,16 @@ export function SQLConsole({
             </p>
             <Button
               onClick={requestRun}
-              disabled={!sql.trim() || loading || suspended}
+              disabled={!sql.trim() || loading || blocked !== null}
             >
               <Play className="size-4" aria-hidden="true" />
               {loading ? t("databases.sqlRunning") : t("databases.sqlRun")}
             </Button>
           </div>
 
-          {suspended ? (
+          {blocked ? (
             <Alert role="status">
-              <AlertDescription>{t("databases.sqlSuspended")}</AlertDescription>
+              <AlertDescription>{t(BLOCK_MESSAGE[blocked])}</AlertDescription>
             </Alert>
           ) : null}
 
@@ -302,12 +310,20 @@ export function SQLConsole({
         description={t("databases.sqlConfirmDescription")}
         cancelLabel={t("databases.sqlConfirmCancel")}
         confirmLabel={t("databases.sqlConfirmRun")}
+        confirmDisabled={blocked !== null}
         onConfirm={() => {
+          if (blocked) return;
           const statement = pendingWrite;
           setPendingWrite(null);
-          if (statement && !suspended) void run(statement, true);
+          if (statement) void run(statement, true);
         }}
-      />
+      >
+        {blocked ? (
+          <p role="status" className="text-sm text-muted-foreground">
+            {t(BLOCK_MESSAGE[blocked])}
+          </p>
+        ) : null}
+      </ConfirmDialog>
     </>
   );
 }
