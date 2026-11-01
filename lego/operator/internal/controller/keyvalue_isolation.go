@@ -50,37 +50,60 @@ func keyValueJobPeer(kv *appv1alpha1.KeyValue) *metav1.LabelSelector {
 	}
 }
 
-// holdIsolationLabel sets the isolation label on tmpl to want, unless its
-// workload already existed, the template is otherwise unchanged from before,
-// and the label differs: then the existing template value stays so the pods are
-// not rolled. The Valkey StatefulSet and its internal proxy Deployment both
-// follow it; their running pods are relabelled in place instead.
-func holdIsolationLabel(tmpl *corev1.PodTemplateSpec, existed bool, before *corev1.PodTemplateSpec, want string) {
+// inPlacePodLabels are the store's pod labels that follow its environment:
+// the isolation label (w8/220) and the environment label itself (w4/451).
+// NetworkPolicies select pods by both, and both change when the store joins,
+// leaves or is isolated with an environment, so for an existing workload
+// neither may roll a pod: they are relabelled in place instead.
+var inPlacePodLabels = []string{labelNetworkIsolation, labelEnvironment}
+
+// holdIsolationLabel sets the in-place labels on tmpl to the CR's values
+// (want), unless the workload already existed and the template is otherwise
+// unchanged from before: then the existing template values stay so the pods
+// are not rolled. The Valkey StatefulSet and its internal proxy Deployment
+// both follow it; their running pods are relabelled in place instead.
+func holdIsolationLabel(tmpl *corev1.PodTemplateSpec, existed bool, before *corev1.PodTemplateSpec, want map[string]string) {
+	setInPlaceLabels(tmpl, want)
+	if !existed || inPlaceLabelsEqual(before.Labels, tmpl.Labels) {
+		return
+	}
+	if templateEqualIgnoringIsolation(before, tmpl) {
+		setInPlaceLabels(tmpl, before.Labels)
+	}
+}
+
+func setInPlaceLabels(tmpl *corev1.PodTemplateSpec, from map[string]string) {
 	labels := maps.Clone(tmpl.Labels)
 	if labels == nil {
 		labels = map[string]string{}
 	}
-	set := func(v string) {
-		if v == "" {
-			delete(labels, labelNetworkIsolation)
+	for _, key := range inPlacePodLabels {
+		if v := from[key]; v == "" {
+			delete(labels, key)
 		} else {
-			labels[labelNetworkIsolation] = v
+			labels[key] = v
 		}
-		tmpl.Labels = labels
 	}
-	set(want)
-	if !existed || before.Labels[labelNetworkIsolation] == want {
-		return
-	}
-	if templateEqualIgnoringIsolation(before, tmpl) {
-		set(before.Labels[labelNetworkIsolation])
-	}
+	tmpl.Labels = labels
 }
 
+func inPlaceLabelsEqual(a, b map[string]string) bool {
+	for _, key := range inPlacePodLabels {
+		if a[key] != b[key] {
+			return false
+		}
+	}
+	return true
+}
+
+// templateEqualIgnoringIsolation compares two pod templates apart from the
+// in-place labels, which never roll a pod.
 func templateEqualIgnoringIsolation(a, b *corev1.PodTemplateSpec) bool {
 	strip := func(t *corev1.PodTemplateSpec) *corev1.PodTemplateSpec {
 		c := t.DeepCopy()
-		delete(c.Labels, labelNetworkIsolation)
+		for _, key := range inPlacePodLabels {
+			delete(c.Labels, key)
+		}
 		return c
 	}
 	return equality.Semantic.DeepEqual(strip(a), strip(b))
@@ -104,7 +127,6 @@ func (r *KeyValueReconciler) syncKeyValuePodIsolation(ctx context.Context, kv *a
 }
 
 func (r *KeyValueReconciler) relabelIsolation(ctx context.Context, kv *appv1alpha1.KeyValue, selector client.MatchingLabels, owned func(*metav1.OwnerReference) bool) error {
-	want := kv.Labels[labelNetworkIsolation]
 	var pods corev1.PodList
 	if err := r.List(ctx, &pods, client.InNamespace(kv.Namespace), selector); err != nil {
 		return err
@@ -115,14 +137,19 @@ func (r *KeyValueReconciler) relabelIsolation(ctx context.Context, kv *appv1alph
 		if owner == nil || !owned(owner) || !pod.DeletionTimestamp.IsZero() {
 			continue
 		}
-		if pod.Labels[labelNetworkIsolation] == want {
+		if inPlaceLabelsEqual(pod.Labels, kv.Labels) {
 			continue
 		}
 		patch := client.MergeFrom(pod.DeepCopy())
-		if want == "" {
-			delete(pod.Labels, labelNetworkIsolation)
-		} else {
-			pod.Labels[labelNetworkIsolation] = want
+		if pod.Labels == nil {
+			pod.Labels = map[string]string{}
+		}
+		for _, key := range inPlacePodLabels {
+			if v := kv.Labels[key]; v == "" {
+				delete(pod.Labels, key)
+			} else {
+				pod.Labels[key] = v
+			}
 		}
 		if err := client.IgnoreNotFound(r.Patch(ctx, pod, patch)); err != nil {
 			return err
