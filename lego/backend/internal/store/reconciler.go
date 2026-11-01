@@ -952,12 +952,17 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// (generation-attributed, so it is this row's own even when the release
 	// has moved past it) — never from this transition's clock, which is the
 	// close's observation time. A pre_deploy_failed close falls back to its own
-	// failed step's recorded start (w4/316). Without that evidence the start
-	// stays unknown.
+	// failed step's recorded start (w4/316), and a live close with no build
+	// window (a prebuilt image) to the operator's dispatch of its release
+	// (w4/449). Without that evidence the start stays unknown.
 	var startedAt *time.Time
 	switch status {
-	case DeployBuildFailed, DeployLive:
+	case DeployBuildFailed:
 		startedAt = buildRunStart(cur, open)
+	case DeployLive:
+		if startedAt = buildRunStart(cur, open); startedAt == nil {
+			startedAt = releaseDispatchStart(cur, open)
+		}
 	case DeployPreDeployFailed:
 		if startedAt = buildRunStart(cur, open); startedAt == nil {
 			startedAt = failedPreDeployStart(cur, open)
@@ -1774,6 +1779,22 @@ func failedPreDeployStart(app *appv1alpha1.App, open Deploy) *time.Time {
 		return nil
 	}
 	if start, ok := parseObservedTime(app.Status.PreDeploy.StartedAt); ok && !start.IsZero() {
+		return &start
+	}
+	return nil
+}
+
+// releaseDispatchStart is when the operator dispatched the row's own release
+// generation (status.releaseStart, w4/449): a prebuilt-image release that rolled
+// out between two observations was never seen in progress, but the operator
+// saw it begin. nil when the record is absent, another generation's, or
+// carries no parseable start — never the close's observation clock.
+func releaseDispatchStart(app *appv1alpha1.App, open Deploy) *time.Time {
+	rs := app.Status.ReleaseStart
+	if open.Generation <= 0 || rs == nil || rs.Generation != open.Generation {
+		return nil
+	}
+	if start, ok := parseObservedTime(rs.StartedAt); ok && !start.IsZero() {
 		return &start
 	}
 	return nil

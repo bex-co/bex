@@ -620,7 +620,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if err != nil {
 		return ctrl.Result{}, err
 	}
+	dispatched := app.Status.ReleaseGeneration
 	releaseDecision := prepareAppReleaseDecision(&app, view)
+	stampReleaseStart(&app, dispatched, time.Now())
 	if view != nil && releaseDecision.pinned {
 		// The pinned release builds and runs as it was adopted; the saved spec
 		// waits behind it (w8/m121). In memory only: no App spec write follows
