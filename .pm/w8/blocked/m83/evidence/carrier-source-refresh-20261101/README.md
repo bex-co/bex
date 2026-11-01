@@ -1,0 +1,9 @@
+# Reviewed m83 carrier source snapshot — 2026-11-01
+
+Later controller timing changes require fresh full-file expectations for the existing live runner. The reviewed94cf snapshot retains required a154 ancestry and exact bytes, sizes, Git modes and blob identities for both critical paths. The controller is367123 bytes; the unchanged compression edge file is3129 bytes. This updates the two source-data files and three necessary metadata records. All26 executable files and all original functional, source, cleanup and Free requirements remain unchanged.
+
+[Independent review](independent-review/REVIEW.json.gz) is CLEAN and independently passes26 focused source/guard controls, including old-carrier, tampered-field, missing/extra-path and null-Ready refusal. [Root review](root-review/REVIEW.json.gz) verifies all129 new and116 prior payloads, executable identity and actual Git source. [Source manifest](source/MANIFEST.json.gz) has SHA256 `49b76291234611554aeec6408fc0d98a01e8f300da7fc45b0d5887fc19e36b8c`; the [receipt](source/RECEIPT.json.gz) explicitly leaves every new live authority unset. Historical e392/old inventory and signature observations retain their original roles. Proxy version UNKNOWN remains nonblocking.
+
+The [single rollout refresh](rollout-snapshot/REVIEW.json.gz) finds041 run41273432991 canceled before jobs; the latest main run is pending. The [previously active a9c run](older-active-snapshot/REVIEW.json.gz) is still building after all six preceding gates passed. Neither observation establishes deployment or Ready. Fresh qualified rollout, strict signed operator/API readiness and actual legal Free preflight remain required before tenant fixtures. No login, inventory or tenant action occurred in this checkpoint.
+
+[Raw custody](RAW-CUSTODY.json) preserves every source/review/status record losslessly. Source approval is separate from runtime admission; m83/t006 remains blocked.

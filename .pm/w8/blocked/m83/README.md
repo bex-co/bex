@@ -69,3 +69,8 @@ The latest fix-containing platform run41254794386/source818 has passed the four 
 ## Scan transport gate — 2026-11-01
 
 [Actual release triage](evidence/deploy-scan-transport-20261101/README.md) finds818 passed its builds and signing but failed the first Trivy database transfer before analysis, so deployment was skipped. Peer5f20e81ab already fixes that transport path; a qualified fixed rollout remains unobserved. No inventory or tenant action was started. The source snapshot also needs a separately reviewed carrier refresh for later legitimate controller timing changes; required ancestry and full-file checks remain mandatory.
+
+
+## Reviewed carrier snapshot — 2026-11-01
+
+[The new data-only source capsule](evidence/carrier-source-refresh-20261101/README.md) passes Root and independent review, including26 focused controls. Both full critical-file identities and required a154 ancestry remain mandatory; all26 executable files are byte-identical to the final runner. The two source expectations and necessary metadata now describe the reviewed94cf carrier. The actual known041 pipeline was canceled before jobs, while the older a9c pipeline is still building; no qualified rollout or new Ready is observed. t006 remains blocked on that upstream rollout and subsequent fresh signed readiness/legal Free preflight.

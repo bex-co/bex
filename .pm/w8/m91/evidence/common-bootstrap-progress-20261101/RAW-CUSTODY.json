@@ -1,0 +1,186 @@
+{
+  "schema": "bex.lossless-raw-custody/v1",
+  "scope": "Exact raw source and observation records preserved with reversible gzip; no new live authority.",
+  "files": {
+    "plan-success/RESULT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-new-plan-observation-20261101-lu3m62ue/RESULT.json",
+      "bytes": 1779,
+      "sha256": "ff273cc6afe06252608240fc22e8d7308834b0c8c01031df3df233075975d6d4",
+      "retained_path": "plan-success/RESULT.json.gz",
+      "gzip_bytes": 461,
+      "gzip_sha256": "39c88cf74eb5ec22441e5380f5b36dee5fde9bed79a1d0d5eefdbd6481cf1f95",
+      "lossless_roundtrip": true
+    },
+    "plan-success/job.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-new-plan-observation-20261101-lu3m62ue/job.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "plan-success/job.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "plan-success/job.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-new-plan-observation-20261101-lu3m62ue/job.stdout",
+      "bytes": 1947,
+      "sha256": "f2bc4350e087bb02d665115c3dad1c75fc479a5c0862188e873f6927cc498678",
+      "retained_path": "plan-success/job.stdout.gz",
+      "gzip_bytes": 624,
+      "gzip_sha256": "a8f3cfe8f346dc508ae57dbf3639b385699b304297dcca9b5f085afda6af5ff5",
+      "lossless_roundtrip": true
+    },
+    "qualification-jobs/RESULT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-new-utility-jobs-20261101-2ktriede/RESULT.json",
+      "bytes": 1293,
+      "sha256": "2467ea0bcf233b8b0f1fcc0aa6eef171cf3673b9a10c5410ed210f46f2d56c99",
+      "retained_path": "qualification-jobs/RESULT.json.gz",
+      "gzip_bytes": 485,
+      "gzip_sha256": "9e5b85008f49e71d9537de233d4117d01123ce485b4a338a477fb263c858ba85",
+      "lossless_roundtrip": true
+    },
+    "qualification-jobs/run.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-new-utility-jobs-20261101-2ktriede/run.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "qualification-jobs/run.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "qualification-jobs/run.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-new-utility-jobs-20261101-2ktriede/run.stdout",
+      "bytes": 5095,
+      "sha256": "383a6cb5ee47a7658e4d65f0fe7a791e9a0ed4388eadc1b33d4d2fdc07565459",
+      "retained_path": "qualification-jobs/run.stdout.gz",
+      "gzip_bytes": 1090,
+      "gzip_sha256": "1ef962149bf6f3fb1d21c1956c18e12c532ce055dab7be6c16f30f5fb987e516",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/MANIFEST.json",
+      "bytes": 1942,
+      "sha256": "41222eae8517da5735cb11736f11083fe623b304835de1feade37a13c9709a63",
+      "retained_path": "amd64-setup/MANIFEST.json.gz",
+      "gzip_bytes": 683,
+      "gzip_sha256": "e22ad01453cdeaed8bc360ab15574bf5031aea98ee10479c934de99ecf410b25",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/READS.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/READS.json",
+      "bytes": 2465,
+      "sha256": "989e5cdbeeb074df646734021b02d0a31487ff0fcbc4ab14ce55081aa40a9dab",
+      "retained_path": "amd64-setup/READS.json.gz",
+      "gzip_bytes": 680,
+      "gzip_sha256": "f3d8873d37da2a5c983b534f579870b66900fd823988702a41a19aada5475270",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/REVIEW.json",
+      "bytes": 7353,
+      "sha256": "6f7f01ab35f5f2d6d5fd904eecde367da3ab9a640332a4c9f9d40ab11a396dda",
+      "retained_path": "amd64-setup/REVIEW.json.gz",
+      "gzip_bytes": 1656,
+      "gzip_sha256": "09e69649727ba14a57ec5cfb60451d3249044e6233e91c43f9d196d128371bd8",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/SCOPE.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/SCOPE.json",
+      "bytes": 319,
+      "sha256": "ebe0d850d3410403b1494b3b98fd9db7de55f34e22162c1de90e2543cfeb1f75",
+      "retained_path": "amd64-setup/SCOPE.json.gz",
+      "gzip_bytes": 242,
+      "gzip_sha256": "6603aff6a397f00dd91c29c5be86a91d134eb64ceaad0fc6f2714d39cfa7f800",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/amd64-read.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/amd64-read.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "amd64-setup/amd64-read.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/amd64-response.raw": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/amd64-response.raw",
+      "bytes": 4900,
+      "sha256": "5e0e8895a86aefb76e02d630fbff50ec410dccb6753dcab58134719c1bfb99b0",
+      "retained_path": "amd64-setup/amd64-response.raw.gz",
+      "gzip_bytes": 1815,
+      "gzip_sha256": "55beaa8b0d1d6a058fcece960b475d47856b3074f252ce862a889e2ec8611efa",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/amd64.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/amd64.json",
+      "bytes": 3496,
+      "sha256": "1a4eb45307a06d6e4de7ad0d5bcccee342c772f3107be59cd4f7c0d4fe9336ef",
+      "retained_path": "amd64-setup/amd64.json.gz",
+      "gzip_bytes": 1084,
+      "gzip_sha256": "9ee9a9e986531e1b07f8846aa5998b0151aecd3f8d000a80226affe75b00d2c8",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/arm64-read.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/arm64-read.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "amd64-setup/arm64-read.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/arm64-response.raw": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/arm64-response.raw",
+      "bytes": 2253,
+      "sha256": "dedc0e8c6799ee13a40e760bfa0339df47c8afda703c906b7c9796cbba69a96d",
+      "retained_path": "amd64-setup/arm64-response.raw.gz",
+      "gzip_bytes": 1163,
+      "gzip_sha256": "d78240fccc95506ed9259c23e703d8314316d3deb4c555cfbb8961774dc19c6d",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/arm64.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/arm64.json",
+      "bytes": 849,
+      "sha256": "e62e2d66e3861a81bb1ae32d03b04504f2ed97974a1583b69558c7f3d9d2400f",
+      "retained_path": "amd64-setup/arm64.json.gz",
+      "gzip_bytes": 439,
+      "gzip_sha256": "8b54f7e911847ab2c2dec80f342b46c5f224b7597a4bedbcb88bdebab263487a",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/jobs-plugin.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/jobs-plugin.json",
+      "bytes": 4794,
+      "sha256": "cbc50a109842afcab6beb7cf837bf5c831f2129ce468ae3fbc46f6ad0db4b348",
+      "retained_path": "amd64-setup/jobs-plugin.json.gz",
+      "gzip_bytes": 913,
+      "gzip_sha256": "23d3da47cf946d7ee33010053cd978604a12946df44e1b9906fdfe1366f9ab13",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/run-read.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/run-read.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "amd64-setup/run-read.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/run-response.raw": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/run-response.raw",
+      "bytes": 13049,
+      "sha256": "6e9763027c570a044326b0b4dfbec26da0d8ad32218fe59750d4ada3e97ae150",
+      "retained_path": "amd64-setup/run-response.raw.gz",
+      "gzip_bytes": 2451,
+      "gzip_sha256": "09f86536cc420d366ef7420919609fb8b742f19c1fd3dc01f0f88f55cd8c38fe",
+      "lossless_roundtrip": true
+    },
+    "amd64-setup/run.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utilities-progress-20261101-nxaj8igj/run.json",
+      "bytes": 11646,
+      "sha256": "791f74178bc2fdcd1275e16a9a999f3f7efb6bf81ecceb8ac403efc6febf61ea",
+      "retained_path": "amd64-setup/run.json.gz",
+      "gzip_bytes": 1716,
+      "gzip_sha256": "ee3722ad2f3bed2dfb76b8ed9b56536221d85ca70966cf2143a0e93afdb88928",
+      "lossless_roundtrip": true
+    }
+  }
+}
