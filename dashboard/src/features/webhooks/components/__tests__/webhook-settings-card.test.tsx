@@ -451,4 +451,20 @@ describe("WebhookSettingsSkeleton (w4/295)", () => {
       expect(frame.textContent).not.toContain(ENDPOINT.url);
     },
   );
+
+  // w4/445: the events card ran 4px short because the count line's bar was
+  // h-4 while the ready count is a text-sm paragraph (a 20px line box).
+  it("reserves the event count's text-sm line box", async () => {
+    const ready = renderCard();
+    const count = await screen.findByTestId("event-count");
+    expect(count.tagName).toBe("P");
+    expect(count).toHaveClass("text-sm");
+    expect(ready.container.querySelector("[data-event-count]")).toBeNull();
+
+    const pending = render(<WebhookSettingsSkeleton />);
+    const bar = pending.container.querySelector(
+      '[data-skeleton-region="settings-events"] [data-event-count]',
+    );
+    expect(bar).toHaveClass("h-5");
+  });
 });

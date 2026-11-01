@@ -412,10 +412,12 @@ function EditorSummarySkeleton({
   );
 }
 
+/** The ready EventPicker, inert. Its count line is a text-sm paragraph, so the
+ * bar reserves that 20px line box, not a 16px glyph height (w4/445). */
 function WebhookEventPickerSkeleton() {
   return (
     <div className="space-y-2">
-      <Skeleton className="h-4 w-28" />
+      <Skeleton data-event-count className="h-5 w-28" />
       <div className="overflow-hidden rounded-md border">
         <div className="space-y-2 border-b p-2">
           <Skeleton className="h-9 w-full" />
