@@ -342,3 +342,10 @@ The reviewed test-candidate record now has an actual complete300-file qualificat
 [The actual failed donor Node14 case and exact correction](evidence/node-yarn-wrapper-oracle-20261101/README.md) establish an oracle path defect: canonical Yarn resolves to its reviewed shell wrapper, while the check demanded the JavaScript file. Exact wrapper equality and a regression pass all10 host controls and the full Go build-package suite; original programs, positive projects and other assertions remain unchanged. The failed result is retained, and all owned resources are proven absent after cleanup.
 
 The amended qualification source needs a fresh full same-image utility CI cohort on both architectures before strict family reuse. The retained source1feba result remains historical; image0941 approval and empty production pins are unchanged. Full actual family, phase, adoption and original hosted acceptance remain open; t007 stays in progress.
+
+
+## Actual Node14 donor pass and native-init correction — 2026-11-01
+
+[The real ARM64 Node14 donor case](evidence/node14-local-diagnostic-20261101/README.md) now passes exact Node/header/ABI/addon identity, npm/Yarn/pnpm lifecycle/engine controls and network-disabled runtime. Independent replay and complete owned-resource/process/config cleanup pass. It is one source6883953 local case, not full-family, both-architecture or hosted acceptance.
+
+[The native-init run and narrow Yarn exit correction](evidence/native-init-yarn-exit-oracle-20261101/README.md) preserve the separate failed attempt: npm passes; Yarn drains its held response correctly but its normal SIGTERM exit1 was refused. Upstream1.22.22 source confirms that status. The corrected Yarn-only predicate leaves all exact drain/HTTP/identity/cleanup checks intact; old-predicate regression fails and the corrected full Go build-package suite passes. No four-launch success is claimed; the remaining launches and current-source CI baseline require fresh execution. Both original source-bound histories remain retained and t007 stays in progress.
