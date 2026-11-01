@@ -234,6 +234,27 @@ describe("DiskSection", () => {
     expect(screen.getByText(/don't restore a disk to recover a database/i)).toBeInTheDocument();
   });
 
+  // w4/447: while snapshots load, the card holds the empty state's own box
+  // (same copy, invisible) so Delete disk does not move on arrival.
+  it("holds the snapshots empty state's box while loading", () => {
+    mockUseDisk.mockReturnValue(attached);
+    mockUseDiskSnapshots.mockReturnValue({ ...noSnapshots, loading: true });
+    const { container, unmount } = render(
+      <DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />,
+    );
+    const slot = container.querySelector("[data-snapshots-loading]")!;
+    const reserved = slot.querySelector(".invisible")!.textContent;
+    unmount();
+
+    mockUseDiskSnapshots.mockReturnValue(noSnapshots);
+    const ready = render(
+      <DiskSection serviceId="srv-1" plan="starter" serviceType="web_service" />,
+    );
+    expect(ready.container.querySelector("[data-snapshots-loading]")).toBeNull();
+    const empty = screen.getByText(/no snapshots/i).parentElement!;
+    expect(reserved).toBe(empty.textContent);
+  });
+
   it("confirms before restoring, and says what is lost", async () => {
     const user = userEvent.setup();
     mockUseDisk.mockReturnValue(attached);
