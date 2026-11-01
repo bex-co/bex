@@ -19,6 +19,7 @@ import (
 	"errors"
 	"fmt"
 	"reflect"
+	"strconv"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -148,6 +149,10 @@ func TestDatastoreMembershipAuthorizedEmptyReplacementClears(t *testing.T) {
 					annotations = map[string]string{}
 				}
 				annotations[resourcemeta.UpdatedAtAnnotation] = got[i].GetAnnotations()[resourcemeta.UpdatedAtAnnotation]
+				if _, kv := want.(*appv1alpha1.KeyValue); kv {
+					// Dropping the environment's rules restarts no Key Value (w4/451).
+					annotations["app.bex.co/restart-free-generation"] = strconv.FormatInt(previous.GetGeneration()+1, 10)
+				}
 				want.SetAnnotations(annotations)
 				if !reflect.DeepEqual(got[i], want) {
 					t.Errorf("empty replacement failed to clear membership while preserving own rules: got=%+v want=%+v", got[i], want)
