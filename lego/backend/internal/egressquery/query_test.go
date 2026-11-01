@@ -51,20 +51,41 @@ func TestNonApplicableSourcesAreAbsent(t *testing.T) {
 }
 
 func TestHealthDetectsZerosAndMissingSamplesAcrossWholeWindow(t *testing.T) {
-	spec := App("srv-one", []string{"router@kubernetescrd"}, true)[2]
+	spec := App("srv-one", []string{"router@kubernetescrd"}, true)[1]
 	query := Health(spec, 3600)
 	for _, want := range []string{
-		`min_over_time(up{job="bex-egress-meter"}[3600s])`,
-		`count_over_time(up{job="bex-egress-meter"}[3600s])`,
-		`min_over_time(bex_egress_meter_healthy[3600s])`,
-		`count_over_time(bex_egress_meter_healthy[3600s])`,
-		`(sum(resets(bex_app_direct_egress_bytes_total{app_id="srv-one"}[3600s])) or vector(0)) == bool 0`,
-		`(max(bex_egress_meter_last_counter_loss_time_seconds) or vector(0)) < bool (time() - 3600)`,
+		`min_over_time(up{job="traefik-websocket-meter"}[3600s])`,
+		`count_over_time(up{job="traefik-websocket-meter"}[3600s])`,
+		`min_over_time(bex_websocket_meter_healthy[3600s])`,
+		`count_over_time(bex_websocket_meter_healthy[3600s])`,
 		`>= bool 192`,
 	} {
 		if !strings.Contains(query, want) {
 			t.Errorf("health query missing %q: %s", want, query)
 		}
+	}
+}
+
+// w4/442: the direct source is judged on the meters holding this app's
+// counter. A missed scrape loses no bytes from a persistent counter, so up is
+// not a term at all; the holders' health, sample coverage and loss time are,
+// with the fleet's as the fallback for an app no meter has counted yet.
+func TestDirectHealthIsScopedToTheMetersHoldingTheApp(t *testing.T) {
+	spec := App("srv-one", []string{"router@kubernetescrd"}, true)[2]
+	query := Health(spec, 3600)
+	holders := `and on(instance) group by (instance) (count_over_time(bex_app_direct_egress_bytes_total{app_id="srv-one"}[3600s]))`
+	for _, want := range []string{
+		`(min(min_over_time(bex_egress_meter_healthy[3600s]) ` + holders + `) or min(min_over_time(bex_egress_meter_healthy[3600s])))`,
+		`((min(count_over_time(bex_egress_meter_healthy[3600s]) ` + holders + `) >= bool 192) or (min(count_over_time(bex_egress_meter_healthy[3600s])) >= bool 192))`,
+		`(sum(resets(bex_app_direct_egress_bytes_total{app_id="srv-one"}[3600s])) or vector(0)) == bool 0`,
+		`((max(bex_egress_meter_last_counter_loss_time_seconds ` + holders + `) or max(bex_egress_meter_last_counter_loss_time_seconds) or vector(0)) < bool (time() - 3600))`,
+	} {
+		if !strings.Contains(query, want) {
+			t.Errorf("direct health missing %q: %s", want, query)
+		}
+	}
+	if strings.Contains(query, "up{") {
+		t.Errorf("direct health must not gate on any meter's scrape success: %s", query)
 	}
 }
 
