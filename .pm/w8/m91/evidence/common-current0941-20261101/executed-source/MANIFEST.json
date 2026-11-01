@@ -1,0 +1,38 @@
+{
+  "ADAPTATION-CORRECTION.json": {
+    "bytes": 479,
+    "sha256": "94366c91181c4d0ab1e1afcb3e42533d4a22c3b4afd4356c301229ac0fa40aac"
+  },
+  "INPUT-CUSTODY.json": {
+    "bytes": 2225,
+    "sha256": "0d25d52608bf8db6e5def6ffae4e4b0596742500467bead8ada1f0a4620de7ed"
+  },
+  "PLAN.json": {
+    "bytes": 6419,
+    "sha256": "c666aedc76b72c79aa677fc686c3d3d0cb3fc41a00e29d145b83493110908893"
+  },
+  "actual-inspect.stderr": {
+    "bytes": 88,
+    "sha256": "345b502a50f775f24cee098100960e134d198d9b4261ecd67f91cf6ba37849c1"
+  },
+  "actual-inspect.stdout": {
+    "bytes": 3,
+    "sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570"
+  },
+  "common499_review.py": {
+    "bytes": 19726,
+    "sha256": "49b3463bfa0fe896a704be4b80c12c7d5095b349126b2efad4701ea6546ecc43"
+  },
+  "linux_cosign.py": {
+    "bytes": 13213,
+    "sha256": "edf0c3235c1b7ade5d178f364b99b255edad5a0c75c1e01c80c59a5396e1b5be"
+  },
+  "run_review.py": {
+    "bytes": 10230,
+    "sha256": "36e1cb4dd95e89da4dcc2a2eb0e679707d42dc23417451fe7565fcf2ab3aa49a"
+  },
+  "test_common499.py": {
+    "bytes": 29411,
+    "sha256": "c259529e00a828d41cc66e8076796b6bea08b78e4fa04a8f42af0533d950215a"
+  }
+}

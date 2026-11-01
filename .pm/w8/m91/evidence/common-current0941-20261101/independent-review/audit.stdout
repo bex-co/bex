@@ -1,0 +1,1 @@
+{"PASS": true, "signed_payloads": 5, "strict_Linux_commands": 7, "anonymous_full_reads": 41, "full_read_bytes": 1522239193, "retained_findings_per_arch": {"arm64": 6920, "amd64": 6920}, "input_custody_files": 245, "network_crypto_Docker_repeated": false}

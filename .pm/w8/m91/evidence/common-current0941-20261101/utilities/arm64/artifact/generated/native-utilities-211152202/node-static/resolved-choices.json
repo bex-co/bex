@@ -1,0 +1,20 @@
+{
+  "choices": [
+    {
+      "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+      "label": "Node",
+      "line": "24",
+      "narration": "==\u003e Using Node 24 (from NODE_VERSION=24)",
+      "primary_image": "",
+      "requested_exact": "",
+      "runtime_environment": [
+        "NODE_VERSION=24.22.1"
+      ],
+      "source": "NODE_VERSION=24"
+    }
+  ],
+  "exact_default_precondition_applicable": false,
+  "expected_python_version": "",
+  "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+  "selection_precondition_passed": true
+}

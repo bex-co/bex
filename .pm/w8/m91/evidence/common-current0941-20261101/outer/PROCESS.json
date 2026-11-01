@@ -1,0 +1,24 @@
+{
+  "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "/private/tmp/bex-w8-common0941-final-source-20261101-kxl6d0xc/common499_review.py",
+    "review",
+    "--plan",
+    "/private/tmp/bex-w8-common0941-populated-plan-20261101-2g823lha/PLAN.json",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--output-root",
+    "/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942/evidence",
+    "--cache-root",
+    "/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942/cache",
+    "--lifecycle-root",
+    "/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942",
+    "--docker-config",
+    "/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942/anonymous-docker-config",
+    "--owner",
+    "3769e4dbb9535133"
+  ],
+  "pgid": 71173,
+  "pid": 71173
+}

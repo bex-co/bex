@@ -1,0 +1,319 @@
+{
+  "publisher": {
+    "job_id": 124954099391,
+    "job_name": "publish / build (common-bookworm, buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6...",
+    "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-01T19:30:49Z",
+    "completed_at": "2026-11-01T19:46:55Z",
+    "all_required_actual_steps": [
+      {
+        "number": 9,
+        "name": "verify real native tool transformations without network on both architectures",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:35:17Z",
+        "completed_at": "2026-11-01T19:36:11Z"
+      },
+      {
+        "number": 11,
+        "name": "scan amd64 candidate",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:36:11Z",
+        "completed_at": "2026-11-01T19:39:23Z"
+      },
+      {
+        "number": 12,
+        "name": "scan arm64 candidate",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:39:23Z",
+        "completed_at": "2026-11-01T19:42:04Z"
+      },
+      {
+        "number": 15,
+        "name": "sign and attest the immutable candidate",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:43:25Z",
+        "completed_at": "2026-11-01T19:46:36Z"
+      },
+      {
+        "number": 16,
+        "name": "expose the fully gated immutable image",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:46:36Z",
+        "completed_at": "2026-11-01T19:46:36Z"
+      },
+      {
+        "number": 17,
+        "name": "remove GHCR credentials",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:46:36Z",
+        "completed_at": "2026-11-01T19:46:36Z"
+      }
+    ],
+    "log_bytes": 437129,
+    "log_sha256": "6c8aa257bcd70e5cfc63d2c58c7e7c6b42cd4f5c1b95d0c7050b7480f95cb29e",
+    "immutable_refs": [
+      "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0"
+    ],
+    "actual_go_pass_lines": [],
+    "actual_test_pass_lines": [],
+    "actual_test_failure_lines": []
+  },
+  "amd64": {
+    "job_id": 124958175523,
+    "job_name": "qualify (amd64)",
+    "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-01T19:46:57Z",
+    "completed_at": "2026-11-01T19:57:43Z",
+    "all_required_actual_steps": [
+      {
+        "number": 5,
+        "name": "record gated inputs and assign ownership before creating resources",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:47:46Z",
+        "completed_at": "2026-11-01T19:47:46Z"
+      },
+      {
+        "number": 6,
+        "name": "pre-pull the pinned BuildKit image with bounded retries",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:47:46Z",
+        "completed_at": "2026-11-01T19:47:53Z"
+      },
+      {
+        "number": 7,
+        "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:47:53Z",
+        "completed_at": "2026-11-01T19:48:00Z"
+      },
+      {
+        "number": 8,
+        "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:48:00Z",
+        "completed_at": "2026-11-01T19:48:03Z"
+      },
+      {
+        "number": 9,
+        "name": "actual generated offline builds, original replays and exact-default SPDX",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:48:03Z",
+        "completed_at": "2026-11-01T19:57:21Z"
+      },
+      {
+        "number": 10,
+        "name": "record capacity observations before owned cleanup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:57:21Z",
+        "completed_at": "2026-11-01T19:57:21Z"
+      },
+      {
+        "number": 11,
+        "name": "remove only this job's labeled resources, exact builder and credentials",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:57:21Z",
+        "completed_at": "2026-11-01T19:57:32Z"
+      },
+      {
+        "number": 12,
+        "name": "hash retained successes and failures",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:57:32Z",
+        "completed_at": "2026-11-01T19:57:33Z"
+      },
+      {
+        "number": 13,
+        "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:57:33Z",
+        "completed_at": "2026-11-01T19:57:39Z"
+      }
+    ],
+    "log_bytes": 62622,
+    "log_sha256": "1572f8dda4c4a95c39e38d47288e54051438a65261d82f71d575f64a01115381",
+    "immutable_refs": [
+      "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0"
+    ],
+    "actual_go_pass_lines": [
+      "2026-11-01T19:57:21.2048434Z ok  \tgithub.com/bex-co/bex/lego/operator/internal/build\t552.118s"
+    ],
+    "actual_test_pass_lines": [
+      "TestNativeUtilityGeneratedImages (551.69s)",
+      "TestNativeUtilityGeneratedImages/supplier-removed (31.71s)",
+      "TestNativeUtilityGeneratedImages/node-compute (123.21s)",
+      "TestNativeUtilityGeneratedImages/node-static (58.11s)",
+      "TestNativeUtilityGeneratedImages/python313-original (130.96s)",
+      "TestNativeUtilityGeneratedImages/python3148-default (161.98s)",
+      "TestNativeUtilityGeneratedImages/missing-jq (9.02s)",
+      "TestNativeUtilityGeneratedImages/missing-rsync (8.18s)",
+      "TestNativeUtilityGeneratedImages/missing-python-metadata (9.81s)",
+      "TestNativeUtilityGeneratedImages/missing-python-pip (9.03s)",
+      "TestNativeUtilityGeneratedImages/missing-python-headers (9.67s)",
+      "TestNativeOriginalReplayHTTPOracles (0.42s)"
+    ],
+    "actual_test_failure_lines": [],
+    "artifact_metadata": {
+      "id": 13098498438,
+      "name": "common-generated-1feba939b4697894e800ed0abb4f25a0bf415641-amd64-1",
+      "size_in_bytes": 83732933,
+      "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13098498438",
+      "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13098498438/zip",
+      "expired": false,
+      "created_at": "2026-11-01T19:57:39Z",
+      "expires_at": "2026-12-01T19:57:33Z",
+      "updated_at": "2026-11-01T19:57:39Z",
+      "digest": "sha256:c2322acc3f7127a3bfbe09b9b6b70dfc3e6ab103e96b63d5deaf519572d233b6",
+      "workflow_run": {
+        "id": 41341287851,
+        "repository_id": 793852040,
+        "head_repository_id": 793852040,
+        "head_branch": "main",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641"
+      }
+    }
+  },
+  "arm64": {
+    "job_id": 124958175538,
+    "job_name": "qualify (arm64)",
+    "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "status": "completed",
+    "conclusion": "success",
+    "started_at": "2026-11-01T19:57:44Z",
+    "completed_at": "2026-11-01T20:07:25Z",
+    "all_required_actual_steps": [
+      {
+        "number": 5,
+        "name": "record gated inputs and assign ownership before creating resources",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:58:37Z",
+        "completed_at": "2026-11-01T19:58:37Z"
+      },
+      {
+        "number": 6,
+        "name": "pre-pull the pinned BuildKit image with bounded retries",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:58:37Z",
+        "completed_at": "2026-11-01T19:58:51Z"
+      },
+      {
+        "number": 7,
+        "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:58:51Z",
+        "completed_at": "2026-11-01T19:58:57Z"
+      },
+      {
+        "number": 8,
+        "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:58:57Z",
+        "completed_at": "2026-11-01T19:59:00Z"
+      },
+      {
+        "number": 9,
+        "name": "actual generated offline builds, original replays and exact-default SPDX",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T19:59:00Z",
+        "completed_at": "2026-11-01T20:07:07Z"
+      },
+      {
+        "number": 10,
+        "name": "record capacity observations before owned cleanup",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T20:07:07Z",
+        "completed_at": "2026-11-01T20:07:07Z"
+      },
+      {
+        "number": 11,
+        "name": "remove only this job's labeled resources, exact builder and credentials",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T20:07:07Z",
+        "completed_at": "2026-11-01T20:07:15Z"
+      },
+      {
+        "number": 12,
+        "name": "hash retained successes and failures",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T20:07:15Z",
+        "completed_at": "2026-11-01T20:07:16Z"
+      },
+      {
+        "number": 13,
+        "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-01T20:07:16Z",
+        "completed_at": "2026-11-01T20:07:22Z"
+      }
+    ],
+    "log_bytes": 62618,
+    "log_sha256": "20f7a84bf31a5d38ab0fc97f1bc025e4e8fa9894aeb946447abfac04ed43fe37",
+    "immutable_refs": [
+      "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0"
+    ],
+    "actual_go_pass_lines": [
+      "2026-11-01T20:07:07.5167910Z ok  \tgithub.com/bex-co/bex/lego/operator/internal/build\t482.462s"
+    ],
+    "actual_test_pass_lines": [
+      "TestNativeUtilityGeneratedImages (482.07s)",
+      "TestNativeUtilityGeneratedImages/supplier-removed (64.02s)",
+      "TestNativeUtilityGeneratedImages/node-compute (90.61s)",
+      "TestNativeUtilityGeneratedImages/node-static (54.41s)",
+      "TestNativeUtilityGeneratedImages/python313-original (100.85s)",
+      "TestNativeUtilityGeneratedImages/python3148-default (146.13s)",
+      "TestNativeUtilityGeneratedImages/missing-jq (6.12s)",
+      "TestNativeUtilityGeneratedImages/missing-rsync (4.33s)",
+      "TestNativeUtilityGeneratedImages/missing-python-metadata (5.14s)",
+      "TestNativeUtilityGeneratedImages/missing-python-pip (5.11s)",
+      "TestNativeUtilityGeneratedImages/missing-python-headers (5.35s)",
+      "TestNativeOriginalReplayHTTPOracles (0.38s)"
+    ],
+    "actual_test_failure_lines": [],
+    "artifact_metadata": {
+      "id": 13098737409,
+      "name": "common-generated-1feba939b4697894e800ed0abb4f25a0bf415641-arm64-1",
+      "size_in_bytes": 79098564,
+      "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13098737409",
+      "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13098737409/zip",
+      "expired": false,
+      "created_at": "2026-11-01T20:07:22Z",
+      "expires_at": "2026-12-01T20:07:16Z",
+      "updated_at": "2026-11-01T20:07:22Z",
+      "digest": "sha256:42d0280047b3a5022f383f54788d658ddb5ecac8d94864b4e3b605952684788e",
+      "workflow_run": {
+        "id": 41341287851,
+        "repository_id": 793852040,
+        "head_repository_id": 793852040,
+        "head_branch": "main",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641"
+      }
+    }
+  }
+}

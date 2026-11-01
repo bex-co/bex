@@ -1,0 +1,79 @@
+{
+  "verdict": "CLEAN_CURRENT0941_PORTABLE_IMAGE_AND_ORIGINAL_UTILITY_BASELINE_EXPORT",
+  "at_utc": "2026-11-01T21:44:35.269221+00:00",
+  "author_root": "/private/tmp/bex-w8-common0941-portable-export-20261101-66f0cxux",
+  "author_manifest_sha256": "ba2b27c4ab9ce27a3aa756a3fd7159282f9f321dd3088535bd41cb18f536d84c",
+  "author_receipt_sha256": "e90175002b394bb5b7e4e14eb86b6a8cf7ced76d0aa9968796593aba4c825442",
+  "apply_only": [
+    ".pm/w8/m91/evidence/common-current0941-20261101",
+    ".github/native-common-test-candidate.json"
+  ],
+  "candidate": {
+    "sha256": "0d7ba9d20a88213aed4c7b58d3afa52f5842199aef8b19d866603b96428e345e",
+    "bytes": 4485
+  },
+  "evidence_manifest_sha256": "fa94f06d4de9377e10bcf1105ac6fdaf409212b1de7b0e3dab8560b0ee5fba5f",
+  "evidence_bytes": 326691144,
+  "counts": {
+    "author_payloads": 1362,
+    "evidence_payloads": 1045,
+    "current_actual_image_case_files": 241,
+    "original_signed_gzip_forms": 10,
+    "original_utility_members": 712,
+    "CUSTODY_rows": 1043,
+    "RAW_CUSTODY_rows": 1050,
+    "current_image_critical_regular_Git_modes": 33,
+    "isolated_source_context": 300
+  },
+  "findings": [],
+  "verified": [
+    "Allauthor1362payload/fullpublic1045evidencepayload identities verified; only evidenceprefix and4485Bcandidate are applyscope. Other300staged source files remain UNITcontext only.",
+    "All241current actual retainedimage case files included except five large raw signed bundles whose complete existing10gzip forms are copiedASIS, hashes match original recordedgzipSHA and streamed decompression matches complete canonical rawSHA/bytes. No truncation/doublegzip/reformat.",
+    "All1043portableCUSTODY references and1050RAW-custody rows validate against exact originals/mappings; actualLinux7strict command/process/cleanup/rawoutputs, currentCI fullREST jobcollection and all6,920Trivy findings/architecture remain unchanged. No crypto re-executed.",
+    "Both356-member utility trees, originalMANIFEST bytes, wheels/fullrawSyftJSON/SPDX and gzip forms match original r5updvtw extraction by freshhash. Both qualification-source captures byteequal, actualsource1feba/currentcommon0941/arch/run/job/artifact/sourcebindings preserved.",
+    "All33imagecritical bodies/types/Gitmodes match capturedactualpublisher1feba/current code; fullisolated300source byte/mode/permission inventory exactly matches bothjob sourcecaptures.",
+    "Unchanged staged/current helperf564 validatesimage and complete actualboth-utility baseline under explicitUNIT GITHUB_SHA=f071 with subprocess and workflow/filewrite traps; nullsource/utilities still fails exact existing gate. Frozen stagecandidate and sharedold56candidate unchanged.",
+    "Assembler helperfunctions unchanged exceptmain plus3small newdata/schema/utility-copy functions. NewactualRESULT/SCOPE schema, rawREST jobcollection selection, original utilitydata and exact300UNITcontext are explicit; no validator/helper/schema change. Executed\u2192final assembler differs by exactly2non-authoritative metadata strings, retained losslessly."
+  ],
+  "UNIT_controls": {
+    "image": "PASS",
+    "both_original_utility_baseline": "PASS",
+    "nullbaseline": "family reuse requires a complete utility baseline source",
+    "controlled_GITHUB_SHA": "f071830616b2f55aa8636bb856454f4a218a9174",
+    "subprocess_and_workflow_file_writes_trapped": true,
+    "frozen_stage_candidate_unchanged": true
+  },
+  "utilities": {
+    "amd64": {
+      "members": 356,
+      "bytes": 140611548,
+      "original_manifest_sha256": "5d238f9dca9333496a556ea261b50d5b492fbbc7fcf145d12c210261ae9d6939",
+      "exact": true
+    },
+    "arm64": {
+      "members": 356,
+      "bytes": 136196559,
+      "original_manifest_sha256": "135fc4faab166112ce13dac1f7adab0cba95c8e63633a915a307fa8fed05f61c",
+      "exact": true
+    }
+  },
+  "metadata_only_string_deltas": [
+    {
+      "before": "bex.native-common-image-only-export/v1",
+      "after": "bex.native-common-image-and-utility-export/v1"
+    },
+    {
+      "before": "Complete original Trivy vulnerability reports and counts retained; no zero-findings or generated/runtime/utility/adoption/hosted claim.",
+      "after": "Complete original Trivy vulnerability reports and counts retained; no zero-findings or production/all-family/predeploy/native-init/hosted claim. Actual first-cohort generated utility evidence is documented separately."
+    }
+  ],
+  "limitations": [
+    "UNIT validation is local, not aCI/actualfamily build or runtime execution. Actualqualification source1feba, reviewgenerator f071 and publisher/verifier1feba roles remain separate.",
+    "No complete27/allfamily/predeploy/native-init/hosted28/222adoption or productionpin acceptance follows.",
+    "Physicalsharedworkingtree has twohistoricalignoredpycs which remain untouched. No physicalworkspacequalification or filteredphysical helper used; validators receive cleanstage.",
+    "Original utility runtime records retain their existing content limits, including some decoded/outcome proofs without full raw HTTP response bodies; export does not manufacture missing bytes.",
+    "No repo/Gitwrites, CI/workflow dispatch, GitHub/network, OCI/bodydownload, crypto, Docker, Go/build/testbinary/auth/resource actions. Originalinputs remain unchanged."
+  ],
+  "source_check": "check.py",
+  "details": "CHECKS.json"
+}

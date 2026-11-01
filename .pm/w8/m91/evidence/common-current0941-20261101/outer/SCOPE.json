@@ -1,0 +1,51 @@
+{
+  "candidate_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "capacity_semantics": "Operating entry/observation limits, no kernel reservation or future-allocation guarantee; no old56 artifact acceptance.",
+  "command": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "-B",
+    "/private/tmp/bex-w8-common0941-final-source-20261101-kxl6d0xc/common499_review.py",
+    "review",
+    "--plan",
+    "/private/tmp/bex-w8-common0941-populated-plan-20261101-2g823lha/PLAN.json",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--output-root",
+    "/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942/evidence",
+    "--cache-root",
+    "/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942/cache",
+    "--lifecycle-root",
+    "/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942",
+    "--docker-config",
+    "/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942/anonymous-docker-config",
+    "--owner",
+    "3769e4dbb9535133"
+  ],
+  "container_name": "bex-w8-common499-cosign-3769e4dbb9535133",
+  "crypto_memory_bytes": 536870912,
+  "generator": "f071830616b2f55aa8636bb856454f4a218a9174",
+  "layer_workers": 1,
+  "maximum_live_crypto_containers": 1,
+  "owned_cap_bytes": 671088640,
+  "owner": "3769e4dbb9535133",
+  "parent_pid": 71172,
+  "plan_sha256": "e86f10b0ed4757620db780c266b3e96ecc5ece8f753ddf4b536fca3fd3c5bc81",
+  "producer": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "remaining_floor_bytes": 1207959552,
+  "sizing_inputs": {
+    "bundles": {
+      "bytes": 1967,
+      "path": "/private/tmp/bex-w8-common0941-actual-sizing-20261101-s08iy5ly/metadata/bundles.json",
+      "sha256": "3103be8d6b1081a6077c5b30279d431cfebd66bb2aae4f831839dfc85727d613"
+    },
+    "layers": {
+      "bytes": 4395,
+      "path": "/private/tmp/bex-w8-common0941-actual-sizing-20261101-s08iy5ly/metadata/layers.json",
+      "sha256": "bbc4adeb6f3be7be2761dbec1e3a79f8a11d9fdf5456cc1b8720fa74c35ffbf0"
+    }
+  },
+  "source_manifest_sha256": "bc43ca57b0ffd3e73f9669fb57bfade9f03a88b2b1d7b6d96263880d8e3b6d1b",
+  "start_free_bytes": 53309984768,
+  "stop_owned_bytes": 637534208,
+  "verification": "1feba939b4697894e800ed0abb4f25a0bf415641"
+}

@@ -1,0 +1,61 @@
+{
+  "cancelled_signal": null,
+  "candidate_approved": true,
+  "container_cleanup": {
+    "absence_proved": true,
+    "after": {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-w8-common499-cosign-3769e4dbb9535133"
+      ],
+      "complete": true,
+      "exit": 1,
+      "stderr": "Error response from daemon: No such container: bex-w8-common499-cosign-3769e4dbb9535133\n",
+      "stdout": "[]\n"
+    },
+    "before": {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-w8-common499-cosign-3769e4dbb9535133"
+      ],
+      "complete": true,
+      "exit": 1,
+      "stderr": "Error response from daemon: No such container: bex-w8-common499-cosign-3769e4dbb9535133\n",
+      "stdout": "[]\n"
+    },
+    "container_id": null,
+    "errors": [],
+    "name": "bex-w8-common499-cosign-3769e4dbb9535133",
+    "owner": "3769e4dbb9535133",
+    "remove": null
+  },
+  "errors": [],
+  "exit": 0,
+  "final_observation": {
+    "free": 53047660544,
+    "global_drop": 262324224,
+    "log": 10938,
+    "owned": 236463289,
+    "seconds": 140.60743158403784
+  },
+  "generator": "f071830616b2f55aa8636bb856454f4a218a9174",
+  "minimum_free": 52972687360,
+  "peak_owned_bytes": 236463289,
+  "process_cleanup": {
+    "exit": 0,
+    "group_absent": true,
+    "pgid": 71173,
+    "pid": 71173,
+    "reaped": true
+  },
+  "producer": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "receipt": "/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942/evidence/native-common-bookworm-1feba939b4697894e800ed0abb4f25a0bf415641/receipt.json",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "scope": "New499 complete supplier review only if all inherited cryptographic/report/blob and source/CI plus owned execution gates pass. No production/generated/phase/hosted authority.",
+  "stop": null,
+  "verification": "1feba939b4697894e800ed0abb4f25a0bf415641"
+}

@@ -1,0 +1,6 @@
+{
+  "prior_source": "/private/tmp/bex-w8-common0941-review-source-20261101-16spayy6",
+  "prior_manifest_sha256": "a17278726075f1532b797e709a94d10bb2308598f0cb3adf308a7cedfb069d09",
+  "original_failed_host_check": "/private/tmp/bex-w8-common0941-root-source-check-20261101-5botdm7q",
+  "correction": "Restore original source-only null sizing key used by mock outer tests; change stale candidate test prefix to newcandidate digest so negative still differs. No runtime changes."
+}

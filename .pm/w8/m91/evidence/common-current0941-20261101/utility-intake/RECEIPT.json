@@ -1,0 +1,127 @@
+{
+  "at": "2026-11-01T21:10:20.254709+00:00",
+  "outcome": "PASS_CURRENT0941_UTILITY_CONTENT_INTAKE_NOT_BASELINE_OR_ADOPTION",
+  "run_id": 41341287851,
+  "source": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "candidate_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "CI_metadata_and_complete_logs": "/private/tmp/bex-w8-common-1feba-ci-intake-20261101-_97quqc2",
+  "CI_receipt_sha256": "6b837659d0e4aa4273b8261a25622b90e87509103dfced6a1d337f45b83b64aa",
+  "artifact_downloads": 2,
+  "original_ZIPs_retained": true,
+  "extractor": {
+    "path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/extract_utility_zip.py",
+    "sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4",
+    "source_unchanged": true,
+    "same_original_members_and_MANIFEST": true,
+    "CRC_and_SHA_every_member": true
+  },
+  "architectures": {
+    "amd64": {
+      "download": {
+        "artifact_id": 13098498438,
+        "arch": "amd64",
+        "expected_bytes": 83732933,
+        "expected_sha256": "c2322acc3f7127a3bfbe09b9b6b70dfc3e6ab103e96b63d5deaf519572d233b6",
+        "complete": true,
+        "scope": "approved connector file reference; one verified-TLS stream; signed URL never retained",
+        "started_at": "2026-11-01T21:05:31.904282+00:00",
+        "observed_bytes": 83732933,
+        "observed_sha256": "c2322acc3f7127a3bfbe09b9b6b70dfc3e6ab103e96b63d5deaf519572d233b6",
+        "minimum_free": 54520664064,
+        "seconds": 2.9996827498544008
+      },
+      "extraction": {
+        "complete": true,
+        "zip_bytes": 83732933,
+        "zip_sha256": "c2322acc3f7127a3bfbe09b9b6b70dfc3e6ab103e96b63d5deaf519572d233b6",
+        "completed_members": 356,
+        "member": null,
+        "observed_member_bytes": 4820,
+        "declared_bytes": 140611548,
+        "manifest_sha256": "5d238f9dca9333496a556ea261b50d5b492fbbc7fcf145d12c210261ae9d6939",
+        "observed_output_bytes": 140611548,
+        "actual_file_bytes": 140611548,
+        "minimum_free": 54246985728,
+        "peak_allocated": 141524992
+      },
+      "original_manifest": {
+        "bytes": 79609,
+        "sha256": "5d238f9dca9333496a556ea261b50d5b492fbbc7fcf145d12c210261ae9d6939"
+      }
+    },
+    "arm64": {
+      "download": {
+        "artifact_id": 13098737409,
+        "arch": "arm64",
+        "expected_bytes": 79098564,
+        "expected_sha256": "42d0280047b3a5022f383f54788d658ddb5ecac8d94864b4e3b605952684788e",
+        "complete": true,
+        "scope": "approved connector file reference; one verified-TLS stream; signed URL never retained",
+        "started_at": "2026-11-01T21:05:50.268004+00:00",
+        "observed_bytes": 79098564,
+        "observed_sha256": "42d0280047b3a5022f383f54788d658ddb5ecac8d94864b4e3b605952684788e",
+        "minimum_free": 54413631488,
+        "seconds": 3.9874725830741227
+      },
+      "extraction": {
+        "complete": true,
+        "zip_bytes": 79098564,
+        "zip_sha256": "42d0280047b3a5022f383f54788d658ddb5ecac8d94864b4e3b605952684788e",
+        "completed_members": 356,
+        "member": null,
+        "observed_member_bytes": 4818,
+        "declared_bytes": 136196559,
+        "manifest_sha256": "135fc4faab166112ce13dac1f7adab0cba95c8e63633a915a307fa8fed05f61c",
+        "observed_output_bytes": 136196559,
+        "actual_file_bytes": 136196559,
+        "minimum_free": 54106148864,
+        "peak_allocated": 137113600
+      },
+      "original_manifest": {
+        "bytes": 79299,
+        "sha256": "135fc4faab166112ce13dac1f7adab0cba95c8e63633a915a307fa8fed05f61c"
+      }
+    }
+  },
+  "content_review": {
+    "path": "REVIEW.json",
+    "sha256": "7c456d1674865029cd437b12332ac37b72e7ef7cac814f70cb878973618a42bf",
+    "outcome": "PASS_UTILITY_CONTENT_REVIEW_PENDING_NEW0941_IMAGE_APPROVAL"
+  },
+  "actual_checks": [
+    "300 producer Git source bytes/modes/blob IDs match each capturedqualification-source; selectedsourceclosure unchanged vs observedoriginmain.",
+    "All4 positive canonical/recordedPythonwheeloverlay generatedrecipes, genuine build/runtime phases +static extraction.",
+    "All13 original authored source/data identities and39HTTP outcome records perarchitecture.",
+    "Five freshomissions reach preciseoriginalerror afterindependentprerequisites plusfullsupplierremovalnegative.",
+    "All12 Go case outcomes andfullqualificationlog bound exact actualCI jobstdout.",
+    "BuildKit pre-pull fullstream hash/base64 custody, config/input owner, exact currentjob and declaredcleanup boundactualCIstdout.",
+    "ExactdefaultPython3.14.8 ENV/loader/Brotli andbuild-only packaging/Cextension; fullSyftJSON+SPDX config/platform/same-scanmanifestroot/package checks; allraw/gzip SHA+roundtrips.",
+    "Everymember preserved in originalZIP/extraction and originalMANIFEST; no filter/normalization/recompression."
+  ],
+  "current_differences": "DIFFERENCES.json:10new resolved-choices metadatafiles;3 transitive wheelversionreplacements in eachPythonwheelclosure, requiredPyvips/Django/Poetry pins unchanged;9 sourceclosure rows differ vs26b.",
+  "capacity": {
+    "free_before": 54609604608,
+    "free_after": 54106841088,
+    "floor": 1207959552,
+    "zip_cap_each": 268435456,
+    "extracted_cap_each": 536870912
+  },
+  "tool_sources": {
+    "download.py": "b10cd3ba1817e653721c83e16f995f6a5bc75690004e64fe60324d1b8644599c",
+    "audit.py": "95f6d937b540fefbb4883c76271cb5dd758f97f170aad57f33a801ad3aa14f49",
+    "prior_audit": "/private/tmp/bex-w8-peer26-utility-independent-20261101-978l8bf3/audit.py",
+    "prior_audit_sha256": "b09f7f9984c426912e8b2b1390ffc1996310f58a3926dc17e60260654fad7a3f"
+  },
+  "python": {
+    "executable": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "version": "3.14.3 (main, Feb  3 2026, 15:32:20) [Clang 17.0.0 (clang-1700.6.3.2)]"
+  },
+  "scope_limits": [
+    "No baseline/candidateauthority/adoption/productionpin/repository writes; Rootseparatecurrent0941 strictV11approval required.",
+    "No qualification/program/build/publish/Go/Docker/Kubernetes/CI action invoked. Extracted native/binary/program members onlyread/hash, neverexecute/import.",
+    "No full27family/native-init/predeploy/hosted28 acceptance claim. Exactdefaultgeneratedproof alone doesnotclosehosted222.",
+    "Some originalHTTPrecords retain decoded/outcomeproof withoutfullrawresponsebody; priorboundedlimitationpreserved, notfilledsynthetically.",
+    "No old499approval/result borrowed; current0941newsource/run/report identities bound independently.",
+    "All originalarchives/fullraw/gz reports retained privately. Signeddownloadlinks are not retained as evidence."
+  ]
+}

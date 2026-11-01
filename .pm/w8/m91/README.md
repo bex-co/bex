@@ -328,3 +328,10 @@ Run 41222919592 (source `874bec431`) published the common Bookworm candidate thr
 ## Actual common artifact review — 2026-11-01
 
 [The complete common artifact review](evidence/common-artifact-review-20261101/README.md) verifies the published immutable Bookworm image on both architectures. All five signed payloads, strict source/subject negatives and41 fresh complete config/layer reads totaling1,522,239,095 bytes pass; an independent in-place audit agrees. The full signed scans retain all6,887 findings per architecture. The portable record authorizes this image for testing with no utility baseline yet. Complete generated-image utilities, every supported runtime/companion, production adoption and the original28 hosted cases remain open.
+
+
+## Current image and complete utilities — 2026-11-01
+
+[The current0941 artifact and utility baseline](evidence/common-current0941-20261101/README.md) binds source1feba, the successful actual publisher and both full utility jobs. Full artifact review and independent audit pass;41 fresh complete blob reads, all five signed reports, strict rejection controls and exact verifier cleanup are retained. Both original356-member utility artifacts pass source/program/HTTP/omission/default-SBOM checks on amd64 and arm64, and their complete raw reports and wheels are preserved.
+
+The reviewed test-candidate record now has an actual complete300-file qualification-source baseline and both utility cohorts. The unchanged helper accepts it in a clean isolated source context; null baseline still refuses. Runtime-family/companion, native-init/pre-deploy, production adoption and the original28 hosted acceptance remain open. The exact14.21.2 prebuilt donor remains an actual execution dependency; no additional product decision is introduced. t007 stays in progress.

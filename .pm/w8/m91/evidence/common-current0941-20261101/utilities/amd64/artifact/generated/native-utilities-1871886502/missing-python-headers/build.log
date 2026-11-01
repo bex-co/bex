@@ -1,0 +1,151 @@
+#0 building with "bex-nq-d8f4fbf80979495dbc84a18b" instance using docker-container driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.28kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.1s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#5 DONE 0.0s
+
+#6 [internal] load metadata for ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+#6 DONE 0.0s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.1s
+
+#8 [stage-0 10/17] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#8 DONE 0.0s
+
+#9 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#9 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 0.0s done
+#9 DONE 0.0s
+
+#10 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#10 resolve docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea 0.0s done
+#10 DONE 0.0s
+
+#11 [stage-0  1/17] FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+#11 resolve ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0 0.0s done
+#11 CACHED
+
+#12 [internal] load build context
+#12 transferring context: 203.23kB done
+#12 DONE 0.0s
+
+#13 [internal] preparing inline document
+#13 CACHED
+
+#14 [stage-0  2/17] RUN --network=none /usr/bin/python3 -c 'import setuptools' && /usr/bin/python3 -m pip --version && /usr/bin/python3-config --includes && test -f /usr/include/python3.11/Python.h && rm -r /usr/include/python3.11 && test ! -e /usr/include/python3.11 && /usr/bin/python3 -c 'import setuptools' && /usr/bin/python3 -m pip --version && echo BEX_SUPPLIER_REMOVAL_READY missing-python-headers-1793563031870156676
+#14 0.765 pip 23.0.1 from /usr/lib/python3/dist-packages/pip (python 3.11)
+#14 0.971 -I/usr/include/python3.11 -I/usr/include/python3.11
+#14 1.546 pip 23.0.1 from /usr/lib/python3/dist-packages/pip (python 3.11)
+#14 1.585 BEX_SUPPLIER_REMOVAL_READY missing-python-headers-1793563031870156676
+#14 DONE 2.0s
+
+#15 [stage-0  3/17] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/lib/os-release /opt/bex-primary-os-release
+#15 merging 0.0s done
+#15 DONE 0.0s
+
+#16 [stage-0  4/17] RUN . /opt/bex-primary-os-release && [ -n "$VERSION_CODENAME" ] && primary_os="$VERSION_CODENAME" && . /etc/os-release && [ -n "$VERSION_CODENAME" ] && { [ "$primary_os" = "$VERSION_CODENAME" ] || { echo 'exact native primary and supplied base have different Debian distributions' >&2; exit 1; }; } && rm -f /opt/bex-primary-os-release && rm -rf /usr/local && mkdir -p /usr/local
+#16 DONE 0.2s
+
+#17 [stage-0  5/17] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/local/ /usr/local/
+#17 merging 0.6s done
+#17 DONE 0.6s
+
+#18 [stage-0  6/17] RUN --network=none /sbin/ldconfig
+#18 DONE 0.2s
+
+#19 [stage-0  7/17] RUN --network=none [ "$(/usr/local/bin/node -p 'process.versions.node')" = 24.22.1 ]
+#19 DONE 0.4s
+
+#20 [stage-0  8/17] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /opt/yarn-v1.22.22 /opt/yarn-v1.22.22
+#20 merging 0.5s done
+#20 DONE 0.5s
+
+#21 [stage-0  9/17] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg
+#21 DONE 0.1s
+
+#22 [stage-0 10/17] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#22 merging 0.5s done
+#22 DONE 0.6s
+
+#23 [stage-0 11/17] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx
+#23 DONE 0.5s
+
+#24 [stage-0 12/17] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /
+#24 merging 0.7s done
+#24 DONE 0.7s
+
+#25 [stage-0 13/17] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe
+#25 DONE 0.2s
+
+#26 [stage-0 14/17] WORKDIR /opt/render/project/src
+#26 DONE 0.1s
+
+#27 [stage-0 15/17] COPY . .
+#27 DONE 0.0s
+
+#28 [stage-0 16/17] COPY <<BEX_LOAD_ENV /opt/bex/load-env
+#28 DONE 0.0s
+
+#29 [stage-0 17/17] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n/usr/bin/python3 original-cases.py build node 103"]
+#29 2.037 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv
+#29 2.037 qa_native_ext.c:1:10: fatal error: Python.h: No such file or directory
+#29 2.037     1 | #include <Python.h>
+#29 2.037       |          ^~~~~~~~~~
+#29 2.037 compilation terminated.
+#29 2.037 error: command '/usr/bin/x86_64-linux-gnu-gcc' failed with exit code 1
+#29 2.037 QA_PYTOOLS_BEFORE {"marker": "QA424_dd7510_bex", "python": "3.11.2", "files": {"LICENSE": {"bytes": 1072, "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25", "tools": {"setuptools": true, "pip": true, "Python_h": false}}
+#29 2.037 running egg_info
+#29 2.037 creating qa_native_helper.egg-info
+#29 2.037 writing qa_native_helper.egg-info/PKG-INFO
+#29 2.037 writing dependency_links to qa_native_helper.egg-info/dependency_links.txt
+#29 2.037 writing top-level names to qa_native_helper.egg-info/top_level.txt
+#29 2.037 writing manifest file 'qa_native_helper.egg-info/SOURCES.txt'
+#29 2.037 reading manifest file 'qa_native_helper.egg-info/SOURCES.txt'
+#29 2.037 adding license file 'LICENSE'
+#29 2.037 writing manifest file 'qa_native_helper.egg-info/SOURCES.txt'
+#29 2.037 QA_PYTOOLS_METADATA {"marker": "QA424_dd7510_bex", "python": "3.11.2", "files": {"LICENSE": {"bytes": 1072, "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25", "tools": {"setuptools": true, "pip": true, "Python_h": false}, "distribution": {"name": "qa-native-helper", "version": "1.0"}}
+#29 2.037 Processing ./qa_local_data-1.0-py3-none-any.whl
+#29 2.037 Installing collected packages: qa-local-data
+#29 2.037 Successfully installed qa-local-data-1.0
+#29 2.037 QA_PYTOOLS_WHEEL {"marker": "QA424_dd7510_bex", "python": "3.11.2", "files": {"LICENSE": {"bytes": 1072, "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25", "tools": {"setuptools": true, "pip": true, "Python_h": false}, "distribution": {"name": "qa-native-helper", "version": "1.0"}, "wheel": {"label": "Crème brûlée & 李", "installed_module_sha256": "b63a48ce057becd06dd5cfab31f5d57ec4a0c0ee8d90c34e1a1f55bd38ebe4b5"}}
+#29 2.037 running build_ext
+#29 2.037 building 'qa_native_ext' extension
+#29 2.037 creating build
+#29 2.037 creating build/temp.linux-x86_64-cpython-311
+#29 2.037 x86_64-linux-gnu-gcc -Wsign-compare -DNDEBUG -g -fwrapv -O2 -Wall -g -fstack-protector-strong -Wformat -Werror=format-security -g -fwrapv -O2 -fPIC -I/usr/include/python3.11 -c qa_native_ext.c -o build/temp.linux-x86_64-cpython-311/qa_native_ext.o
+#29 2.038 Traceback (most recent call last):
+#29 2.038   File "/opt/render/project/src/original-cases.py", line 109, in <module>
+#29 2.039     print(json.dumps({'phase':PHASE,'mode':mode,'python':sys.version.split()[0],'original_cases':original_cases(),'pass':True},ensure_ascii=False))
+#29 2.039                                                                                                  ^^^^^^^^^^^^^^^^
+#29 2.039   File "/opt/render/project/src/original-cases.py", line 66, in original_cases
+#29 2.039     raise RuntimeError((command.args,command.returncode,command.stdout.decode(errors='replace')[-1500:],command.stderr.decode(errors='replace')[-1500:]))
+#29 2.040 RuntimeError: (['/bin/bash', '-c', "set -e\npython3 - <<'QPY'\nimport base64,lzma,json,pathlib,zipfile\nfor n,v in json.loads(lzma.decompress(base64.b64decode('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'))).items():\n if 'wheel' in v:\n  with zipfile.ZipFile(n,'w') as z:\n   for f,b in v['wheel'].items():\n    z.writestr(zipfile.ZipInfo(f,(2000,1,1,0,0,0)),b)\n else:pathlib.Path(n).write_text(v['text'])\nQPY\npython3 qapy.py before\npython3 setup.py egg_info\npython3 qapy.py metadata\npython3 -m pip install --no-index --no-deps --target qsite qa_local_data-1.0-py3-none-any.whl\npython3 qapy.py wheel\npython3 setup.py build_ext --inplace\npython3 qapy.py build"], 1, '5a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25", "tools": {"setuptools": true, "pip": true, "Python_h": false}, "distribution": {"name": "qa-native-helper", "version": "1.0"}}\nProcessing ./qa_local_data-1.0-py3-none-any.whl\nInstalling collected packages: qa-local-data\nSuccessfully installed qa-local-data-1.0\nQA_PYTOOLS_WHEEL {"marker": "QA424_dd7510_bex", "python": "3.11.2", "files": {"LICENSE": {"bytes": 1072, "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25", "tools": {"setuptools": true, "pip": true, "Python_h": false}, "distribution": {"name": "qa-native-helper", "version": "1.0"}, "wheel": {"label": "Crème brûlée & 李", "installed_module_sha256": "b63a48ce057becd06dd5cfab31f5d57ec4a0c0ee8d90c34e1a1f55bd38ebe4b5"}}\nrunning build_ext\nbuilding \'qa_native_ext\' extension\ncreating build\ncreating build/temp.linux-x86_64-cpython-311\nx86_64-linux-gnu-gcc -Wsign-compare -DNDEBUG -g -fwrapv -O2 -Wall -g -fstack-protector-strong -Wformat -Werror=format-security -g -fwrapv -O2 -fPIC -I/usr/include/python3.11 -c qa_native_ext.c -o build/temp.linux-x86_64-cpython-311/qa_native_ext.o\n', "WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv\nqa_native_ext.c:1:10: fatal error: Python.h: No such file or directory\n    1 | #include <Python.h>\n      |          ^~~~~~~~~~\ncompilation terminated.\nerror: command '/usr/bin/x86_64-linux-gnu-gcc' failed with exit code 1\n")
+#29 ERROR: process "/bin/bash -c . /opt/bex/load-env\n/usr/bin/python3 original-cases.py build node 103" did not complete successfully: exit code: 1
+------
+ > [stage-0 17/17] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n/usr/bin/python3 original-cases.py build node 103"]:
+2.037 creating build
+2.037 creating build/temp.linux-x86_64-cpython-311
+2.037 x86_64-linux-gnu-gcc -Wsign-compare -DNDEBUG -g -fwrapv -O2 -Wall -g -fstack-protector-strong -Wformat -Werror=format-security -g -fwrapv -O2 -fPIC -I/usr/include/python3.11 -c qa_native_ext.c -o build/temp.linux-x86_64-cpython-311/qa_native_ext.o
+2.038 Traceback (most recent call last):
+2.038   File "/opt/render/project/src/original-cases.py", line 109, in <module>
+2.039     print(json.dumps({'phase':PHASE,'mode':mode,'python':sys.version.split()[0],'original_cases':original_cases(),'pass':True},ensure_ascii=False))
+2.039                                                                                                  ^^^^^^^^^^^^^^^^
+2.039   File "/opt/render/project/src/original-cases.py", line 66, in original_cases
+2.039     raise RuntimeError((command.args,command.returncode,command.stdout.decode(errors='replace')[-1500:],command.stderr.decode(errors='replace')[-1500:]))
+2.040 RuntimeError: (['/bin/bash', '-c', "set -e\npython3 - <<'QPY'\nimport base64,lzma,json,pathlib,zipfile\nfor n,v in json.loads(lzma.decompress(base64.b64decode('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'))).items():\n if 'wheel' in v:\n  with zipfile.ZipFile(n,'w') as z:\n   for f,b in v['wheel'].items():\n    z.writestr(zipfile.ZipInfo(f,(2000,1,1,0,0,0)),b)\n else:pathlib.Path(n).write_text(v['text'])\nQPY\npython3 qapy.py before\npython3 setup.py egg_info\npython3 qapy.py metadata\npython3 -m pip install --no-index --no-deps --target qsite qa_local_data-1.0-py3-none-any.whl\npython3 qapy.py wheel\npython3 setup.py build_ext --inplace\npython3 qapy.py build"], 1, '5a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25", "tools": {"setuptools": true, "pip": true, "Python_h": false}, "distribution": {"name": "qa-native-helper", "version": "1.0"}}\nProcessing ./qa_local_data-1.0-py3-none-any.whl\nInstalling collected packages: qa-local-data\nSuccessfully installed qa-local-data-1.0\nQA_PYTOOLS_WHEEL {"marker": "QA424_dd7510_bex", "python": "3.11.2", "files": {"LICENSE": {"bytes": 1072, "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"}, "CHANGELOG": {"bytes": 18, "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}}, "fixture_sha256": "648688821eb4bf85607c6055ff0d8dc54ab45bd5ea00ebfc5227b16f9071af25", "tools": {"setuptools": true, "pip": true, "Python_h": false}, "distribution": {"name": "qa-native-helper", "version": "1.0"}, "wheel": {"label": "Crème brûlée & 李", "installed_module_sha256": "b63a48ce057becd06dd5cfab31f5d57ec4a0c0ee8d90c34e1a1f55bd38ebe4b5"}}\nrunning build_ext\nbuilding \'qa_native_ext\' extension\ncreating build\ncreating build/temp.linux-x86_64-cpython-311\nx86_64-linux-gnu-gcc -Wsign-compare -DNDEBUG -g -fwrapv -O2 -Wall -g -fstack-protector-strong -Wformat -Werror=format-security -g -fwrapv -O2 -fPIC -I/usr/include/python3.11 -c qa_native_ext.c -o build/temp.linux-x86_64-cpython-311/qa_native_ext.o\n', "WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv\nqa_native_ext.c:1:10: fatal error: Python.h: No such file or directory\n    1 | #include <Python.h>\n      |          ^~~~~~~~~~\ncompilation terminated.\nerror: command '/usr/bin/x86_64-linux-gnu-gcc' failed with exit code 1\n")
+------
+ERROR: failed to build: failed to solve: process "/bin/bash -c . /opt/bex/load-env\n/usr/bin/python3 original-cases.py build node 103" did not complete successfully: exit code: 1

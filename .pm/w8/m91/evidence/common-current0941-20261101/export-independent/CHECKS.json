@@ -1,0 +1,128 @@
+{
+  "PASS": true,
+  "author_manifest_sha256": "ba2b27c4ab9ce27a3aa756a3fd7159282f9f321dd3088535bd41cb18f536d84c",
+  "author_payloads": 1362,
+  "evidence_manifest_sha256": "fa94f06d4de9377e10bcf1105ac6fdaf409212b1de7b0e3dab8560b0ee5fba5f",
+  "evidence_payloads": 1045,
+  "evidence_bytes": 326691144,
+  "apply_only": [
+    ".pm/w8/m91/evidence/common-current0941-20261101",
+    ".github/native-common-test-candidate.json"
+  ],
+  "candidate": {
+    "sha256": "0d7ba9d20a88213aed4c7b58d3afa52f5842199aef8b19d866603b96428e345e",
+    "bytes": 4485
+  },
+  "RAW_custody_rows": 1050,
+  "CUSTODY_rows": 1043,
+  "representations": {
+    "byte-exact-copy": 1005,
+    "original-existing-gzip-no-recompression": 10,
+    "actual-local-Git-blob": 33,
+    "explicit-JSON-object-selection": 2
+  },
+  "all_original_case_files": 241,
+  "original_signed_gzip_forms": [
+    {
+      "kind": "sbom",
+      "architecture": "arm64",
+      "form": "full_bundle_gzip",
+      "sha256": "edd2b8708707fffb9ba4b9d1420faabab7a212b51a1c6ac548bed4e869fc22cf"
+    },
+    {
+      "kind": "sbom",
+      "architecture": "arm64",
+      "form": "full_predicate_gzip",
+      "sha256": "19957a66199ab9d3ad1a0548d9c3270b3a4afb9599dc1ece9f8385760dbdfff5"
+    },
+    {
+      "kind": "vulnerability",
+      "architecture": "arm64",
+      "form": "full_bundle_gzip",
+      "sha256": "a617a58dddbd66d17184577480b42b54e2f00c7093fcc9e199449e7ff63e9820"
+    },
+    {
+      "kind": "vulnerability",
+      "architecture": "arm64",
+      "form": "full_predicate_gzip",
+      "sha256": "3bb171eeea93b98fbdd85cd0344fc99d053fac5bf07b0aaed6a0ed27c848f4ba"
+    },
+    {
+      "kind": "sbom",
+      "architecture": "amd64",
+      "form": "full_bundle_gzip",
+      "sha256": "b459e03f8056286ad6c852cec5780dbaf0db01b17848abb36ddba983febf7eb1"
+    },
+    {
+      "kind": "sbom",
+      "architecture": "amd64",
+      "form": "full_predicate_gzip",
+      "sha256": "ad1ad4bcb5797768bfa76775a2d237298260026e590c13c98cee97ec0e82c1db"
+    },
+    {
+      "kind": "image-signature",
+      "architecture": null,
+      "form": "full_bundle_gzip",
+      "sha256": "05c7712a324b840a12925e49b572ee3985c2031f8d9255bfdd67186ad087127e"
+    },
+    {
+      "kind": "image-signature",
+      "architecture": null,
+      "form": "full_predicate_gzip",
+      "sha256": "b38c200c6dc7f986cc1df00fb83f27887b4e186b848cfb8a4332e03510238117"
+    },
+    {
+      "kind": "vulnerability",
+      "architecture": "amd64",
+      "form": "full_bundle_gzip",
+      "sha256": "128888dd4dc44e78f9a03592f44c128bfb9aff8c0ee5446683a8e9b39afca10d"
+    },
+    {
+      "kind": "vulnerability",
+      "architecture": "amd64",
+      "form": "full_predicate_gzip",
+      "sha256": "310acb87bcd26c6784636b7277dc6d426e94ee312db89f60c1e80842930f79ee"
+    }
+  ],
+  "utilities": {
+    "amd64": {
+      "members": 356,
+      "bytes": 140611548,
+      "original_manifest_sha256": "5d238f9dca9333496a556ea261b50d5b492fbbc7fcf145d12c210261ae9d6939",
+      "exact": true
+    },
+    "arm64": {
+      "members": 356,
+      "bytes": 136196559,
+      "original_manifest_sha256": "135fc4faab166112ce13dac1f7adab0cba95c8e63633a915a307fa8fed05f61c",
+      "exact": true
+    }
+  },
+  "all_original_members": 712,
+  "source300_exact": true,
+  "image33_bytes_modes_exact": true,
+  "validator_sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+  "UNIT_validators": {
+    "image": "PASS",
+    "both_original_utility_baseline": "PASS",
+    "nullbaseline": "family reuse requires a complete utility baseline source",
+    "controlled_GITHUB_SHA": "f071830616b2f55aa8636bb856454f4a218a9174",
+    "subprocess_and_workflow_file_writes_trapped": true,
+    "frozen_stage_candidate_unchanged": true
+  },
+  "assembler_AST": {
+    "old_existing_functions_unchanged_except": [
+      "main"
+    ],
+    "new_functions": [
+      "metadata",
+      "outer_complete",
+      "utility_baseline"
+    ],
+    "executed_to_final_change": "string constants only; author metadata calibration retained"
+  },
+  "all6920_findings_per_architecture_retained": true,
+  "shared_candidate_unchanged": true,
+  "physical_worktree_qualification_claim": false,
+  "actual_network_crypto_Docker_Go_CI_auth_repo_writes": false
+}

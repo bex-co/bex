@@ -1,0 +1,13 @@
+{
+  "PASS": true,
+  "actual_inputs_unchanged": 245,
+  "crypto_aggregate_five_exact_accepted_bundles": true,
+  "prior_current_source_review": {
+    "root": "/private/tmp/bex-w8-common0941-independent-review-20261101-4ig86hts",
+    "review_sha256": "201e17c131c030d084507b2ee35208d0a3b8a1abda9707edf5b0ca9c847c459b",
+    "manifest_sha256": "5330635f81fbde72dee7bf8665114b23604611d92777a615253aa688d9adc5f7",
+    "scope": "Already independently verified current20factory+33image-critical full-byte/Git-mode/blob closure at actual1feba versus generatorf071; actualV11 tool pins and retained producer/verifier/generator22-file inventories independently rechecked in audit.py."
+  },
+  "receipt_sha256": "aa36b6922c4b3b3e7afe5ceedee21f489de5f00c20a54983b92ba6d00949f263",
+  "RESULT_sha256": "5885c8cb079bc3fc8c430a1a561bd256c2eec6e0fea72dda104a15a0eeaada45"
+}

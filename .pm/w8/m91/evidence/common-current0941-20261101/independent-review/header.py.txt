@@ -1,0 +1,95 @@
+"""In-place CURRENT0941 retained result audit; no external verifier/actions."""
+from pathlib import Path
+import base64,collections,datetime,gc,gzip,hashlib,json,urllib.parse
+R=Path(__file__).resolve().parent
+ROOT=Path('/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942')
+SOURCE=Path('/private/tmp/bex-w8-common0941-final-source-20261101-kxl6d0xc')
+PLAN=Path('/private/tmp/bex-w8-common0941-populated-plan-20261101-2g823lha/PLAN.json')
+E=ROOT/'evidence/native-common-bookworm-1feba939b4697894e800ed0abb4f25a0bf415641'
+REF='ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0'
+SHA='1feba939b4697894e800ed0abb4f25a0bf415641'
+BINARY=Path('/private/tmp/bex-w8-cosign-linux-verified-20261101-iqdmo3bn/cosign-linux-arm64')
+BINARY_SHA='ade83b7aac62e131cacfe96d958948b2150cc9efec46a570a2649b8e27dedad2'
+IMAGE='sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4'
+custody={}
+def digest_file(path,compressed=False):
+ p=Path(path);assert p.is_file() and not p.is_symlink();h=hashlib.sha256();n=0
+ with (gzip.open(p,'rb') if compressed else p.open('rb')) as f:
+  while b:=f.read(1<<20):h.update(b);n+=len(b)
+ if not compressed:custody[str(p)]={'sha256':h.hexdigest(),'bytes':n}
+ return h.hexdigest(),n
+def load(p):
+ p=Path(p);assert p.is_file() and not p.is_symlink() and p.stat().st_size<1<<20
+ digest_file(p);return json.loads(p.read_bytes())
+def instant(x):return datetime.datetime.fromisoformat(x.replace('Z','+00:00'))
+result=load(ROOT/'RESULT.json');scope=load(ROOT/'SCOPE.json');process=load(ROOT/'PROCESS.json');cleanup=load(ROOT/'CLEANUP.json');receipt=load(E/'receipt.json');plan=load(PLAN)
+assert result['exit']==0 and result['stop'] is None and result['cancelled_signal'] is None and result['candidate_approved'] is True and result['errors']==[]
+assert result['minimum_free']>=1207959552 and result['peak_owned_bytes']<608<<20 and result['final_observation']['owned']==result['peak_owned_bytes']
+assert result['process_cleanup']==cleanup['group'] and cleanup['group']=={'exit':0,'group_absent':True,'pgid':process['pgid'],'pid':process['pid'],'reaped':True}
+assert cleanup['errors']==[] and result['container_cleanup']==cleanup['container']
+assert scope['command']==process['command'] and process['pid']==process['pgid'] and type(process['pid']) is int
+assert (ROOT/'anonymous-docker-config/config.json').read_bytes()==b'{"auths":{}}\n'
+owner=scope['owner'];name='bex-w8-common499-cosign-'+owner
+def absent(row):
+ assert row['argv']==['docker','container','inspect',name] and row['complete'] is True and type(row['exit']) is int and row['exit']==1
+ assert row['stdout']=='[]\n' and row['stderr']=='Error response from daemon: No such container: '+name+'\n'
+def cleaned(c):
+ assert c['absence_proved'] is True and c['errors']==[] and c['owner']==owner and c['name']==name
+ absent(c['after'])
+ if c['remove'] is not None:
+  assert c['remove']=={'argv':['docker','rm','--force',name],'complete':True,'exit':0,'stderr':'','stdout':name+'\n'}
+cleaned(cleanup['container'])
+assert scope['source_manifest_sha256']==digest_file(SOURCE/'MANIFEST.json')[0]=='bc43ca57b0ffd3e73f9669fb57bfade9f03a88b2b1d7b6d96263880d8e3b6d1b'
+for file,row in load(SOURCE/'MANIFEST.json').items():assert digest_file(SOURCE/file)==(row['sha256'],row['bytes'])
+assert scope['plan_sha256']==digest_file(PLAN)[0]=='e86f10b0ed4757620db780c266b3e96ecc5ece8f753ddf4b536fca3fd3c5bc81'
+for k,d in scope['sizing_inputs'].items():assert digest_file(d['path'])==(d['sha256'],d['bytes'])
+assert scope['remaining_floor_bytes']==1207959552 and scope['owned_cap_bytes']==640<<20 and scope['stop_owned_bytes']==608<<20 and scope['layer_workers']==1 and scope['maximum_live_crypto_containers']==1 and scope['crypto_memory_bytes']==512<<20
+assert receipt['ref']==result['ref']==scope['candidate_ref']==plan['ref']==REF
+for k in ['approved_supplier_candidate','anonymous_manifest_bytes_sha_verified','strict_keyless_signature_and_sbom_and_vulnerability_attestations_verified','strict_actual_Rekor_v2_and_RFC3161_TSA_verified','wrong_source_and_subject_negative_checks_rejected']:assert receipt[k] is True
+assert receipt['verification_workflow_sha']==receipt['producer_workflow_sha']==plan['verification_sha']==plan['producer_sha']==SHA
+assert receipt['new_manual_layer_reads']==0 and receipt['spdx_additional_verified_root_bindings']==[] and receipt['unaccepted_attachment_results']==[]
+for path,expected in receipt['evidence_tool_sha256'].items():assert digest_file(path)[0]==expected
+prov=receipt['producer_verification_provenance'];assert prov==load(E/'producer-verification-provenance.json') and prov['mode']=='fresh-build' and prov['generator_sha']==plan['generator_sha']=='f071830616b2f55aa8636bb856454f4a218a9174'
+assert prov['common_review_plan_sha256']==digest_file(PLAN)[0]
+eq=load(E/'common-source-equivalence.json');assert hashlib.sha256(json.dumps(eq,sort_keys=True).encode()).hexdigest()==prov['common_factory_equivalence_sha256'] and eq['factory_equivalent'] is True
+for role in ['producer','verification','generator']:
+ assert eq['roles'][role]=={'sha':plan[role+'_sha'],'factory_inputs':plan['factory_inputs']}
+ index=load(E/'common-source'/(role+'-source-files.json'));assert index['sha']==plan[role+'_sha']
+ for path,desc in index['files'].items():
+  assert digest_file(E/'common-source'/role/path)==(desc['sha256'],desc['bytes'])
+  if path in plan['factory_inputs']:assert desc==plan['factory_inputs'][path]
+  if path in plan['selection_inputs']:assert desc==plan['selection_inputs'][path]
+ci=receipt['ci_runtime_scan_signing_evidence'];assert ci==load(E/'ci-runtime-scan-signing-gates.json') and ci['run_id']=='41341287851' and ci['job_id']==124954099391 and ci['job_conclusion']=='success' and ci['primary_build_conclusion']=='success' and ci['recovery_selection_conclusion']=='skipped'
+assert set(ci['verified_steps'])=={'expose the fully gated immutable image','scan amd64 candidate','scan arm64 candidate','sign and attest the immutable candidate','verify real native tool transformations without network on both architectures'}
+for field in ('runs','jobs'):
+ desc=ci['actual_metadata_inputs'][field];assert digest_file(desc['path'])==(desc['sha256'],desc['bytes'])
+scope_start=datetime.datetime.fromtimestamp((ROOT/'SCOPE.json').stat().st_mtime,datetime.timezone.utc)
+reviewed_at=instant(receipt['reviewed_at'])
+assert digest_file(BINARY)==(BINARY_SHA,136437761)
+identity='https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main';issuer='https://token.actions.githubusercontent.com'
+tufs=set();command_rows=[]
+def check_command(record,row,label):
+ source=SHA if label!='wrong-source' else '0'*40;digest=REF.split(':')[-1] if label!='wrong-subject' else '0'*64
+ inner=['/usr/local/bin/cosign','verify-blob-attestation','--bundle','/bundle.json','--type',row['predicate_type'],'--digest',digest,'--digestAlg','sha256','--certificate-identity',identity,'--certificate-oidc-issuer',issuer,'--certificate-github-workflow-sha',source,'--use-signed-timestamps','--timeout','5m']
+ assert len(record['attempts'])==1 and type(record['exit_code']) is int and record['exit_code']==(0 if label=='positive' else 1)
+ attempt=record['attempts'][0];tuf=Path(attempt['tuf_cache']);assert tuf.is_relative_to(E/'bundles/cosign-tuf-cache') and tuf.is_dir() and str(tuf) not in tufs;tufs.add(str(tuf))
+ outer=['docker','run','--pull=never','--name',name,'--label','bex.w8.owned='+owner,'--read-only','--user','501:20','--cap-drop','ALL','--security-opt','no-new-privileges','--cpus','1','--memory','512m','--pids-limit','64','--network','bridge','--tmpfs','/tmp:rw,noexec,nosuid,size=16m','--mount','type=bind,source='+str(BINARY)+',target=/usr/local/bin/cosign,readonly','--mount','type=bind,source='+row['path']+',target=/bundle.json,readonly','--mount','type=bind,source='+str(tuf)+',target=/tuf','--mount','type=bind,source='+str(ROOT/'anonymous-docker-config')+',target=/docker,readonly','--env','TUF_ROOT=/tuf','--env','DOCKER_CONFIG=/docker','--env','XDG_CACHE_HOME=/tuf/cache','--env','GODEBUG=http2client=0','--entrypoint','/usr/local/bin/cosign',IMAGE,*inner[1:]]
+ for rec in (record,attempt):
+  assert rec['command']==outer and rec['cosign_argv']==inner and rec['tool_sha256']==BINARY_SHA and rec['container_image_id']==IMAGE and rec['container_cleanup_proved'] is True and rec['bundle_digest']==row['bundle_digest'] and rec['exit_code']==record['exit_code']
+ raw=load(attempt['raw_process_receipt']);assert raw['command']==outer and raw['cosign_argv']==inner and raw['complete'] is True and raw['error_class'] is None and raw['process_exit']==record['exit_code'] and raw['owner']==owner and raw['tool_sha256']==BINARY_SHA and raw['container_image_id']==IMAGE
+ cleaned(raw['cleanup']);obj=raw['container'];cfg=obj['Config'];hc=obj['HostConfig'];state=obj['State']
+ assert obj['Name']=='/'+name and obj['Image']==IMAGE and cfg['Labels']['bex.w8.owned']==owner and cfg['Entrypoint']==['/usr/local/bin/cosign'] and cfg['Cmd']==inner[1:] and obj['Args']==inner[1:] and cfg['User']=='501:20'
+ assert hc['Memory']==512<<20 and hc['NanoCpus']==1_000_000_000 and hc['PidsLimit']==64 and hc['ReadonlyRootfs'] is True and hc['CapDrop']==['ALL'] and hc['Privileged'] is False and hc['NetworkMode']=='bridge' and hc['SecurityOpt']==['no-new-privileges']
+ assert state['Status']=='exited' and state['Running'] is False and type(state['ExitCode']) is int and state['ExitCode']==record['exit_code'] and state['OOMKilled'] is False and not state['Error']
+ binds={m['Destination']:(m['Source'],m['RW']) for m in obj['Mounts'] if m['Type']=='bind'}
+ assert binds=={'/usr/local/bin/cosign':(str(BINARY),False),'/bundle.json':(row['path'],False),'/tuf':(str(tuf),True),'/docker':(str(ROOT/'anonymous-docker-config'),False)}
+ assert raw['cleanup']['container_id']==obj['Id'] and raw['cleanup']['before']['exit']==0 and json.loads(raw['cleanup']['before']['stdout'])[0]==obj
+ err=Path(attempt['stderr']);text=err.read_text();out=err.with_name(err.name.replace('.stderr.log','.stdout.log'));assert out.is_file()
+ if label=='positive':assert 'Verified OK' in text
+ elif label=='wrong-source':assert 'expected GithubWorkflowSHA' in text and SHA in text
+ else:assert 'provided artifact digest does not match any digest in statement' in text
+ tuf_rows=[]
+ for p in sorted(tuf.rglob('*')):
+  if p.is_file():assert not p.is_symlink();h,n=digest_file(p);tuf_rows.append({'path':str(p),'sha256':h,'bytes':n})
+ assert tuf_rows
+ command_rows.append({'label':label,'bundle_digest':row['bundle_digest'],'exit':record['exit_code'],'outer_command':outer,'inner_command':inner,'raw_process_receipt':attempt['raw_process_receipt'],'process_receipt_sha256':digest_file(attempt['raw_process_receipt'])[0],'container_id':obj['Id'],'started':state['StartedAt'],'finished':state['FinishedAt'],'stderr_sha256':digest_file(err)[0],'stderr_bytes':err.stat().st_size,'stdout_sha256':digest_file(out)[0],'stdout_bytes':out.stat().st_size,'tuf_root':str(tuf),'tuf_files':tuf_rows,'own_cleanup_proved':True})

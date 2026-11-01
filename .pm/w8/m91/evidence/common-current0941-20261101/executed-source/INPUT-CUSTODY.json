@@ -1,0 +1,44 @@
+{
+  "parent": {
+    "path": "/private/tmp/bex-w8-common499-linux-final-source-20261101-pdomyu4h/MANIFEST.json",
+    "bytes": 2473,
+    "sha256": "7953ee2a57e44f3155f38c38d8b6a17f590655a38c8edb49d5116d272ec30117"
+  },
+  "inspect_overlay": {
+    "path": "/private/tmp/bex-w8-common499-linux-v3-inspect-overlay-20261101-ye57wq7d/MANIFEST.json",
+    "bytes": 1661,
+    "sha256": "9d95403e58e892a70f2e89520d56d1ab82b4d64b4b1f92f00cd8b5bdf2f42134"
+  },
+  "current_CI": {
+    "path": "/private/tmp/bex-w8-common-1feba-ci-intake-20261101-_97quqc2/MANIFEST.json",
+    "bytes": 1261,
+    "sha256": "e49e29c06ea2c7ad1acb40fd78f4a5bf607e121627b07a15f82d71f31480e606"
+  },
+  "base_adapter": {
+    "path": "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/common-v11-adapter.py",
+    "bytes": 20496,
+    "sha256": "4746a5022ab6df57ed95b6354d56b92eff15976d1737c2aa5a5ca15aa0080a4b",
+    "role": "pinned imported common source/CI adapter4746 unchanged"
+  },
+  "retained": {
+    "loopx-w8-native-review-v11.py": {
+      "path": "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/retained/loopx-w8-native-review-v11.py",
+      "bytes": 43608,
+      "sha256": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+      "role": "unchanged executed V11 driver/policy"
+    },
+    "loopx-w8-verify-native-artifact-ranged.py": {
+      "path": "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/retained/loopx-w8-verify-native-artifact-ranged.py",
+      "bytes": 40720,
+      "sha256": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
+      "role": "unchanged executed V11 driver/policy"
+    },
+    "loopx-w8-verify-native-artifact.py": {
+      "path": "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/retained/loopx-w8-verify-native-artifact.py",
+      "bytes": 40661,
+      "sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+      "role": "pinned support source, not relabeled executed policy"
+    }
+  },
+  "delta": "Candidate data constants only; Linux parser V3 separately reviewed, inherited policy/runtime cleanup/resource gates unchanged. Old candidate499 historical failed run retained."
+}

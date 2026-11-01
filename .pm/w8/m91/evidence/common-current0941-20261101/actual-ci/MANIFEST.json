@@ -1,0 +1,42 @@
+{
+  "CI-GATES.json": {
+    "bytes": 12130,
+    "sha256": "7747f3de986ccba65c648cb72693534f3a420c1dc3f1475cd5a82660e2210b1e"
+  },
+  "DONOR-STATUS.json": {
+    "bytes": 8689,
+    "sha256": "3e140872b14358faf164e8251310095298a03097617d2eb6c56984421361ba18"
+  },
+  "RECEIPT.json": {
+    "bytes": 3483,
+    "sha256": "6b837659d0e4aa4273b8261a25622b90e87509103dfced6a1d337f45b83b64aa"
+  },
+  "amd64.log": {
+    "bytes": 62622,
+    "sha256": "1572f8dda4c4a95c39e38d47288e54051438a65261d82f71d575f64a01115381"
+  },
+  "arm64.log": {
+    "bytes": 62618,
+    "sha256": "20f7a84bf31a5d38ab0fc97f1bc025e4e8fa9894aeb946447abfac04ed43fe37"
+  },
+  "artifacts.json": {
+    "bytes": 2614,
+    "sha256": "6cba66990eb6cd12371ccc05c70875966586d97c5ca2a795f4a0a9bbf3da0945"
+  },
+  "jobs.json": {
+    "bytes": 18959,
+    "sha256": "9d796266474e3c224e93fa1407f2f3020cd7cf07e9409a3bcf0f85ce7653b6de"
+  },
+  "publisher.log": {
+    "bytes": 437129,
+    "sha256": "6c8aa257bcd70e5cfc63d2c58c7e7c6b42cd4f5c1b95d0c7050b7480f95cb29e"
+  },
+  "run.json": {
+    "bytes": 12482,
+    "sha256": "c454254a9ea8e12ad07899ef489b68883389b368ae008fe2b6b85f7d364026f3"
+  },
+  "source-runs.json": {
+    "bytes": 99644,
+    "sha256": "f5a23a4574858266d8db618cdc424f63acc11e5e4c465b91ad1504c13eb73fd0"
+  }
+}
