@@ -260,7 +260,7 @@ print('controlled login succeeded')
                 if output.exists():
                     self.assertIn("ref=" + publisher.REPOSITORY + "@" + IMAGE, output.read_text())
         common = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
-        for fragment in ("needs: publish", "needs.publish.outputs.ref != ''", "arch: [amd64, arm64]", "max-parallel: 1", "use: false", "cleanup: false", "BEX_NATIVE_TEST_PREPARE_WHEELS:", "BEX_NATIVE_TEST_SYFT:", "if: always() && steps.owned.outputs.root != ''"):
+        for fragment in ("needs: [plan, publish]", "needs.publish.outputs.ref != ''", "arch: [amd64, arm64]", "max-parallel: 1", "use: false", "cleanup: false", "BEX_NATIVE_TEST_PREPARE_WHEELS:", "BEX_NATIVE_TEST_SYFT:", "if: always() && steps.owned.outputs.root != ''"):
             self.assertIn(fragment, common)
 
     def test_real_report_shape_binds_distinct_config_and_manifest(self):
@@ -531,7 +531,7 @@ class ProfileRoutingControls(unittest.TestCase):
                 actual = dict(line.split("=", 1) for line in output.read_text().splitlines())
                 expected = qualification.profile_selection(profile, case)
                 self.assertEqual(actual, dict({key: expected[key] for key in ("profile", "case", "flag", "selector", "go_timeout", "job_minutes")},
-                                              source="fresh", ref="", producer="", verification="", receipt_sha256=""))
+                                              source="fresh", ref="", producer="", verification="", receipt_sha256="", baseline_status="fresh-execution"))
                 if profile == "utilities":
                     self.assertEqual(actual["case"], "all")
                     self.assertEqual(actual["selector"], "^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$")
@@ -581,7 +581,7 @@ class ProfileRoutingControls(unittest.TestCase):
         self.assertIn("REQUESTED_CASE: ${{ inputs.case || 'pilot' }}", plan)
         self.assertIn("native-common-qualify.py plan", plan)
         original = jobs["qualify"]
-        self.assertIn("needs: publish\n", original)
+        self.assertIn("needs: [plan, publish]\n", original)
         self.assertIn("timeout-minutes: 180", original)
         self.assertIn("BEX_NATIVE_TEST_PREPARE_WHEELS:", original)
         self.assertIn("BEX_NATIVE_TEST_SYFT:", original)
@@ -678,7 +678,7 @@ class ReviewedCandidateControls(unittest.TestCase):
         self.env = patch.dict(os.environ, GITHUB_SHA="b" * 40, GITHUB_REF="refs/heads/main", GITHUB_EVENT_NAME="workflow_dispatch")
         self.env.start()
         self.addCleanup(self.env.stop)
-        for relative in set(qualification.SOURCE_FILES) | {"deploy/" + path for path in qualification.FACTORY_PATHS}:
+        for relative in set(qualification.SOURCE_FILES) | qualification.IMAGE_INPUT_PATHS:
             self.write(relative, b"CONTROL ONLY SOURCE\n")
         for package in qualification.SOURCE_PACKAGES:
             self.write("lego/" + package + "/control.go", b"package control\n")
@@ -686,6 +686,7 @@ class ReviewedCandidateControls(unittest.TestCase):
         self.originals = [{"mid": n, "runtime": "node" if n < 100 else "python"} for n in range(93, 106)]
         self.write("lego/operator/internal/build/testdata/native-utilities/original-cases.json", self.originals)
         inputs = qualification.source_inventory(self.root)
+        image_inputs = qualification.image_source_inventory(self.root)
         self.candidate = {"ref": self.ref, "base": "buildpack-deps:bookworm@sha256:" + "d" * 64,
                           "producer": self.source, "verification": self.source,
                           "platforms": {arch: {"manifest_digest": "sha256:" + digit * 64, "config_digest": "sha256:" + digit * 64}
@@ -733,8 +734,15 @@ class ReviewedCandidateControls(unittest.TestCase):
         tools["/retained/fixed-review-plan.json"] = plan["sha256"]
         custody["/retained/fixed-review-plan.json"] = plan
         review["producer_verification_provenance"]["common_review_plan_sha256"] = plan["sha256"]
-        self.candidate["approval"] = dict(receipt=self.evidence("review.json", review), plan=plan,
-                                          custody=self.evidence("custody.json", {"files": custody, "support_inputs": support_inputs}))
+        image_custody = {}
+        for path in sorted(qualification.IMAGE_INPUT_PATHS):
+            original = "/retained/verifier-source/" + path
+            image_custody[path] = original
+            custody[original] = self.evidence("verifier-source/" + path, (self.root / path).read_bytes())
+        image_manifest = self.evidence("image-inputs.json", {"source": self.source, "files": image_inputs})
+        custody["/retained/image-inputs.json"] = image_manifest
+        self.candidate["approval"] = dict(receipt=self.evidence("review.json", review), plan=plan, inputs=image_manifest,
+                                          custody=self.evidence("custody.json", {"files": custody, "support_inputs": support_inputs, "image_inputs": image_custody}))
         self.candidate["utilities"] = {arch: self.utility(arch, 20 + n) for n, arch in enumerate(("amd64", "arm64"))}
         self.save()
 
@@ -853,7 +861,7 @@ class ReviewedCandidateControls(unittest.TestCase):
                        lambda x: x["platforms"]["amd64"].update(config_digest="sha256:" + "f" * 64),
                        lambda x: x["signed_payloads"][0].update(full_bundle_gzip_sha256="f" * 64)):
             self.rewrite_evidence(descriptor, mutate)
-            with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
+            with self.assertRaises(ValueError): qualification.validate_image_candidate(self.root)
             (self.root / descriptor["path"]).write_bytes(original); descriptor.update(original_descriptor)
 
     def test_wrong_job_arch_artifact_and_old_source_reject(self):
@@ -944,7 +952,7 @@ class ReviewedCandidateControls(unittest.TestCase):
         self.add_sixth_payload()
         descriptor = self.candidate["approval"]["receipt"]
         before = (self.root / descriptor["path"]).read_bytes()
-        qualification.validate_test_candidate(self.root)
+        qualification.validate_image_candidate(self.root)
         self.assertEqual((self.root / descriptor["path"]).read_bytes(), before)
         self.assertEqual(len(json.loads(before)["signed_payloads"]), 6)
 
@@ -953,13 +961,13 @@ class ReviewedCandidateControls(unittest.TestCase):
         descriptor = self.candidate["approval"]["receipt"]
         self.rewrite_evidence(descriptor, lambda x: x["signed_payloads"][-1].update(full_bundle_gzip_sha256="f" * 64))
         with self.assertRaisesRegex(ValueError, "full signed report custody"):
-            qualification.validate_test_candidate(self.root)
+            qualification.validate_image_candidate(self.root)
 
     def test_unsupported_payload_pair_is_rejected(self):
         self.add_sixth_payload()
         self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["signed_payloads"][-1].update(kind="unsupported"))
         with self.assertRaisesRegex(ValueError, "complete supported signed"):
-            qualification.validate_test_candidate(self.root)
+            qualification.validate_image_candidate(self.root)
 
     def test_adapter_identity_must_match_even_when_wrong_bytes_are_custodied(self):
         original = "/retained/common-v11-adapter.py"
@@ -972,41 +980,41 @@ class ReviewedCandidateControls(unittest.TestCase):
         self.rewrite_evidence(custody, lambda x: x["files"].update({original: replacement}))
         self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].update({original: replacement["sha256"]}))
         with self.assertRaisesRegex(ValueError, "retained V11 tool differs"):
-            qualification.validate_test_candidate(self.root)
+            qualification.validate_image_candidate(self.root)
 
     def test_missing_reported_adapter_is_rejected(self):
         self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].pop("/retained/common-v11-adapter.py"))
         with self.assertRaisesRegex(ValueError, "retained V11 tool differs"):
-            qualification.validate_test_candidate(self.root)
+            qualification.validate_image_candidate(self.root)
 
     def test_missing_adapter_custody_is_rejected(self):
         self.rewrite_evidence(self.candidate["approval"]["custody"], lambda x: x["files"].pop("/retained/common-v11-adapter.py"))
         with self.assertRaisesRegex(ValueError, "executed tool/plan has no exact portable custody"):
-            qualification.validate_test_candidate(self.root)
+            qualification.validate_image_candidate(self.root)
 
     def test_every_additional_reported_tool_requires_exact_custody(self):
         self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].update({"/retained/extra.py": "f" * 64}))
         with self.assertRaisesRegex(ValueError, "executed tool/plan has no exact portable custody"):
-            qualification.validate_test_candidate(self.root)
+            qualification.validate_image_candidate(self.root)
 
     def test_additional_reported_input_is_hash_custodied_without_execution(self):
         descriptor = self.evidence("additional-reported-input.txt", b"CONTROL ONLY an additional reported input")
         original = "/retained/additional-reported-input.txt"
         self.rewrite_evidence(self.candidate["approval"]["custody"], lambda x: x["files"].update({original: descriptor}))
         self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].update({original: descriptor["sha256"]}))
-        qualification.validate_test_candidate(self.root)
+        qualification.validate_image_candidate(self.root)
 
     def test_plan_hash_is_bound_to_actual_common_provenance(self):
         self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["producer_verification_provenance"].update(common_review_plan_sha256="f" * 64))
         with self.assertRaisesRegex(ValueError, "executed fixed review plan linkage differs"):
-            qualification.validate_test_candidate(self.root)
+            qualification.validate_image_candidate(self.root)
 
     def test_executed_plan_entry_cannot_be_replaced_by_another_custodied_file(self):
         replacement = self.evidence("another-plan.json", {"CONTROL_ONLY": "another fixed plan"})
         self.rewrite_evidence(self.candidate["approval"]["custody"], lambda x: x["files"].update({"/retained/fixed-review-plan.json": replacement}))
         self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].update({"/retained/fixed-review-plan.json": replacement["sha256"]}))
         with self.assertRaisesRegex(ValueError, "executed fixed review plan linkage differs"):
-            qualification.validate_test_candidate(self.root)
+            qualification.validate_image_candidate(self.root)
 
     def test_support_manifest_identity_is_not_an_executed_policy(self):
         name = "loopx-w8-verify-native-artifact.py"
@@ -1015,7 +1023,7 @@ class ReviewedCandidateControls(unittest.TestCase):
         entry = json.loads((self.root / custody["path"]).read_text())["files"][path]
         self.rewrite_evidence(self.candidate["approval"]["receipt"], lambda x: x["evidence_tool_sha256"].update({path: entry["sha256"]}))
         with self.assertRaisesRegex(ValueError, "review support identity differs or is mislabeled"):
-            qualification.validate_test_candidate(self.root)
+            qualification.validate_image_candidate(self.root)
 
     def test_wrong_support_bytes_are_rejected_even_with_consistent_custody(self):
         original = "/retained/loopx-w8-verify-native-artifact.py"
@@ -1025,7 +1033,195 @@ class ReviewedCandidateControls(unittest.TestCase):
         replacement = dict(descriptor, sha256=qualification.sha(path), bytes=path.stat().st_size)
         self.rewrite_evidence(custody, lambda x: x["files"].update({original: replacement}))
         with self.assertRaisesRegex(ValueError, "review support identity differs"):
+            qualification.validate_image_candidate(self.root)
+
+    def test_reviewed_image_with_null_baseline_plans_full_utilities_but_not_family(self):
+        self.candidate['source'] = None
+        self.candidate['utilities'] = None
+        self.save()
+        approved = qualification.validate_image_candidate(self.root)
+        self.assertEqual(approved['baseline_status'], 'image-only-requalification')
+        with self.assertRaisesRegex(ValueError, 'family reuse requires'):
             qualification.validate_test_candidate(self.root)
+        output = self.root / 'plan-output'
+        env = dict(REQUESTED_SOURCE='reviewed-candidate', REQUESTED_PROFILE='utilities', REQUESTED_CASE='all', GITHUB_OUTPUT=str(output))
+        with patch.object(qualification, '__file__', str(self.root / '.github/scripts/native-common-qualify.py')), \
+             patch.object(qualification.tempfile, 'mkdtemp', side_effect=AssertionError('plan creates no resources')), patch.dict(os.environ, env):
+            qualification.plan()
+        planned = dict(line.split('=', 1) for line in output.read_text().splitlines())
+        self.assertEqual(planned['baseline_status'], 'image-only-requalification')
+        self.assertEqual(planned['ref'], self.ref)
+        self.assertEqual(planned['case'], 'all')
+        self.assertEqual(planned['selector'], qualification.profile_selection('utilities', 'all')['selector'])
+        output.unlink()
+        with patch.object(qualification, '__file__', str(self.root / '.github/scripts/native-common-qualify.py')), \
+             patch.dict(os.environ, env, REQUESTED_PROFILE='node', REQUESTED_CASE='node-14'), self.assertRaises(ValueError):
+            qualification.plan()
+        self.assertFalse(output.exists())
+
+    def test_generator_and_qualification_changes_allow_image_requalification_only(self):
+        for path in ('lego/operator/internal/build/native.go', '.github/scripts/native-common-qualify.py',
+                     '.github/workflows/native-common-image.yml', '.github/scripts/test_native_oci_common_qualification.py'):
+            self.assertNotIn(path, qualification.IMAGE_INPUT_PATHS)
+            self.write(path, b'CONTROL ONLY changed generator or qualification source')
+        self.assertEqual(qualification.validate_image_candidate(self.root)['ref'], self.ref)
+        with self.assertRaisesRegex(ValueError, 'stale qualification source'):
+            qualification.validate_test_candidate(self.root)
+
+    def test_partial_or_failed_old_utilities_never_authorize_a_family(self):
+        original = self.candidate['utilities']
+        self.candidate['utilities'] = {'amd64': original['amd64']}
+        self.save()
+        qualification.validate_image_candidate(self.root)
+        with self.assertRaisesRegex(ValueError, 'both original utility architectures'):
+            qualification.validate_test_candidate(self.root)
+        self.candidate['utilities'] = original
+        self.rewrite_evidence(original['amd64']['metadata'], lambda x: x.update(conclusion='failure'))
+        qualification.validate_image_candidate(self.root)
+        with self.assertRaisesRegex(ValueError, 'actual job/source/status differs'):
+            qualification.validate_test_candidate(self.root)
+
+    def test_null_or_stale_baseline_init_captures_new_source_without_relabeling_image(self):
+        original_source, original_utilities = self.candidate['source'], self.candidate['utilities']
+        for prior in ('absent', 'stale'):
+            self.candidate['source'] = None if prior == 'absent' else original_source
+            self.candidate['utilities'] = None if prior == 'absent' else original_utilities
+            if prior == 'stale':
+                self.write('lego/operator/internal/build/native.go', b'CONTROL ONLY new generator after prior baseline')
+            self.save()
+            approved = qualification.validate_image_candidate(self.root)
+            env = dict(QUALIFICATION_PROFILE='utilities', QUALIFICATION_CASE='all', QUALIFICATION_SOURCE='reviewed-candidate',
+                       COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM='linux/arm64',
+                       CANDIDATE_RECEIPT_SHA256=approved['receipt_sha256'], RUNNER_TEMP=str(self.root), GITHUB_RUN_ID='3', GITHUB_RUN_ATTEMPT='1',
+                       GITHUB_OUTPUT=str(self.root / 'outputs'), GITHUB_ENV=str(self.root / 'environment'))
+            with patch.object(qualification, '__file__', str(self.root / '.github/scripts/native-common-qualify.py')), patch.dict(os.environ, env):
+                qualification.initialize()
+            outputs = dict(line.split('=', 1) for line in (self.root / 'outputs').read_text().splitlines())
+            evidence = Path(outputs['root'])
+            recorded = json.loads((evidence / 'inputs.json').read_text())
+            self.assertEqual((recorded['producer'], recorded['verification'], recorded['generator_source']), (self.source, self.source, 'b' * 40))
+            self.assertEqual(recorded['baseline_status'], 'image-only-requalification')
+            self.assertEqual(recorded['previous_baseline_state'], 'absent' if prior == 'absent' else 'unvalidated-existing')
+            self.assertIsNone(recorded['utility_baseline_source'])
+            self.assertIsNone(recorded['utility_jobs'])
+            self.assertEqual(recorded['image_approval_inputs_sha256'], self.candidate['approval']['inputs']['sha256'])
+            self.assertEqual(json.loads((evidence / 'qualification-source.json').read_text()),
+                             {'source': 'b' * 40, 'files': qualification.source_inventory(self.root)})
+            config = Path(recorded['docker_config'])
+            self.assertEqual(config.stat().st_mode & 0o777, 0o700)
+            self.assertFalse((config / 'config.json').exists())  # No login occurred.
+
+    def test_requalification_init_revalidates_image_before_credentials(self):
+        self.candidate['source'] = None
+        self.candidate['utilities'] = None
+        self.save()
+        planned = qualification.validate_image_candidate(self.root)
+        env = dict(QUALIFICATION_PROFILE='utilities', QUALIFICATION_CASE='all', QUALIFICATION_SOURCE='reviewed-candidate',
+                   COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM='linux/arm64',
+                   CANDIDATE_RECEIPT_SHA256=planned['receipt_sha256'])
+        self.write('deploy/native-common/prepare-node14-tools.py', b'changed after planning')
+        with patch.object(qualification, '__file__', str(self.root / '.github/scripts/native-common-qualify.py')), \
+             patch.object(qualification.tempfile, 'mkdtemp', side_effect=AssertionError('no resources')), patch.dict(os.environ, env):
+            with self.assertRaisesRegex(ValueError, 'image-critical inputs'):
+                qualification.initialize()
+
+    def test_image_critical_changed_bytes_mode_and_type_reject(self):
+        target = self.root / 'deploy/native-base/check-tools.py'
+        original = target.read_bytes()
+        permissions = target.stat().st_mode & 0o777
+        for mutation in ('bytes', 'mode', 'type'):
+            with self.subTest(mutation=mutation):
+                if mutation == 'bytes': target.write_bytes(b'changed publisher check')
+                elif mutation == 'mode': target.chmod(0o755)
+                else: target.unlink(); target.mkdir()
+                with self.assertRaises(ValueError): qualification.validate_image_candidate(self.root)
+                if target.is_dir(): target.rmdir()
+                target.write_bytes(original); target.chmod(permissions)
+
+    def test_image_source_proof_must_be_original_verifier_and_exact_set(self):
+        descriptor = self.candidate['approval']['inputs']
+        self.rewrite_evidence(descriptor, lambda x: x.update(source='b' * 40))
+        with self.assertRaisesRegex(ValueError, 'wrong verifier-source image-critical inputs'):
+            qualification.validate_image_candidate(self.root)
+
+    def test_omitted_image_source_path_is_not_an_equivalence_boolean(self):
+        self.rewrite_evidence(self.candidate['approval']['inputs'], lambda x: x['files'].pop('.github/scripts/native-oci-mirror.py'))
+        with self.assertRaisesRegex(ValueError, 'image-critical inputs'):
+            qualification.validate_image_candidate(self.root)
+
+    def test_image_source_body_and_manifest_need_portable_custody(self):
+        self.rewrite_evidence(self.candidate['approval']['custody'], lambda x: x['image_inputs'].pop('.github/scripts/native-oci-stage.py'))
+        with self.assertRaisesRegex(ValueError, 'image-critical source custody set differs'):
+            qualification.validate_image_candidate(self.root)
+
+    def test_image_manifest_itself_needs_portable_custody(self):
+        self.rewrite_evidence(self.candidate['approval']['custody'], lambda x: x['files'].pop('/retained/image-inputs.json'))
+        with self.assertRaisesRegex(ValueError, 'image input manifest has no portable custody'):
+            qualification.validate_image_candidate(self.root)
+
+    def test_image_only_requalification_still_rejects_wrong_index_and_platform(self):
+        self.candidate['platforms']['amd64']['config_digest'] = 'sha256:' + 'f' * 64
+        self.save()
+        with self.assertRaisesRegex(ValueError, 'V11 platform identities differ'):
+            qualification.validate_image_candidate(self.root)
+
+    def test_image_only_requalification_requires_successful_original_publication(self):
+        self.rewrite_evidence(self.candidate['publication']['metadata'], lambda x: x.update(conclusion='failure'))
+        with self.assertRaisesRegex(ValueError, 'actual job/source/status differs'):
+            qualification.validate_image_candidate(self.root)
+
+    def test_complete_utility_command_and_resource_bounds_remain_unchanged(self):
+        jobs = ProfileRoutingControls().jobs()
+        original = jobs['qualify']
+        for literal in ('timeout-minutes: 180', 'max-parallel: 1', 'arch: [amd64, arm64]', 'QUALIFICATION_PROFILE: utilities', 'QUALIFICATION_CASE: all'):
+            self.assertIn(literal, original)
+        command = ProfileRoutingControls().run_block(original, qualification.UTILITY_GATE)
+        self.assertIn("-run '^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$'", command)
+        self.assertIn('-timeout 150m', command)
+        self.assertNotIn('QUALIFICATION_SELECTOR', command)
+        self.assertIn("needs.plan.outputs.baseline_status == 'current-complete'", jobs['qualify-profile'])
+
+    def test_actual_utility_job_branch_table_has_no_failed_fresh_fallback(self):
+        job = ProfileRoutingControls().jobs()['qualify']
+        expression = ' '.join(job.split('    if: >-\n', 1)[1].split('    permissions:', 1)[0].split())
+        expression = expression.removeprefix('${{ ').removesuffix(' }}')
+        import itertools
+        options = itertools.product(('fresh', 'reviewed-candidate', 'unknown'), ('utilities', 'node'),
+                                    ('success', 'failure', 'cancelled', 'skipped'),
+                                    ('image-only-requalification', 'current-complete', ''), ('push', 'workflow_dispatch'),
+                                    (False, True), ('success', 'failure', 'cancelled', 'skipped'), (False, True))
+        for mode, profile, published, baseline, event, cancelled, plan_result, bound in options:
+            values = {'always()': True, '!cancelled()': not cancelled, 'github.ref': 'refs/heads/main',
+                      'github.event_name': event, 'needs.plan.result': plan_result,
+                      'needs.plan.outputs.source': mode, 'needs.plan.outputs.profile': profile,
+                      'needs.plan.outputs.baseline_status': baseline, 'needs.publish.result': published,
+                      'needs.publish.outputs.ref': self.ref if published == 'success' else '',
+                      'needs.plan.outputs.ref': self.ref if bound else '',
+                      'needs.plan.outputs.receipt_sha256': 'c' * 64 if bound else ''}
+            translated = expression
+            for token in sorted(values, key=len, reverse=True):
+                translated = translated.replace(token, repr(values[token]))
+            actual = eval(translated.replace('&&', ' and ').replace('||', ' or '), {'__builtins__': {}}, {})
+            expected = not cancelled and plan_result == 'success' and ((mode == 'fresh' and published == 'success') or
+                (mode == 'reviewed-candidate' and profile == 'utilities' and event == 'workflow_dispatch'
+                 and baseline == 'image-only-requalification' and published == 'skipped' and bound))
+            self.assertEqual(actual, expected, (mode, profile, published, baseline, event, cancelled, plan_result, bound))
+
+    def test_image_only_status_cannot_start_a_family_even_with_bound_ref(self):
+        job = ProfileRoutingControls().jobs()['qualify-profile']
+        expression = ' '.join(job.split('    if: >-\n', 1)[1].split('    permissions:', 1)[0].split())
+        expression = expression.removeprefix('${{ ').removesuffix(' }}')
+        base = {'always()': True, '!cancelled()': True, 'github.ref': 'refs/heads/main',
+                'github.event_name': 'workflow_dispatch', 'needs.plan.result': 'success',
+                'needs.plan.outputs.source': 'reviewed-candidate', 'needs.plan.outputs.profile': 'node',
+                'needs.publish.result': 'skipped', 'needs.qualify.result': 'skipped', 'needs.publish.outputs.ref': '',
+                'needs.plan.outputs.ref': self.ref, 'needs.plan.outputs.receipt_sha256': 'c' * 64}
+        for baseline, expected in (('image-only-requalification', False), ('', False), ('current-complete', True)):
+            values = dict(base, **{'needs.plan.outputs.baseline_status': baseline})
+            translated = expression
+            for token in sorted(values, key=len, reverse=True):
+                translated = translated.replace(token, repr(values[token]))
+            self.assertEqual(eval(translated.replace('&&', ' and ').replace('||', ' or '), {'__builtins__': {}}, {}), expected)
 
     def test_init_revalidates_before_creds_outputs_or_resources(self):
         planned = qualification.validate_test_candidate(self.root)
@@ -1048,6 +1244,7 @@ class ReviewedCandidateControls(unittest.TestCase):
             values = {"always()": True, "!cancelled()": not cancelled, "github.ref": "refs/heads/main",
                       "github.event_name": "workflow_dispatch", "needs.plan.result": "success",
                       "needs.plan.outputs.profile": "node", "needs.plan.outputs.source": mode,
+                      "needs.plan.outputs.baseline_status": "current-complete" if valid else "image-only-requalification",
                       "needs.publish.result": publish, "needs.qualify.result": utilities,
                       "needs.publish.outputs.ref": self.ref if publish == "success" else "",
                       "needs.plan.outputs.ref": self.ref if valid else "",

@@ -46,6 +46,7 @@ jobs:
     # Keep the planning job bounded while allowing setup before validation.
     timeout-minutes: 15
     outputs:
+      baseline_status: ${{ steps.selection.outputs.baseline_status }}
       source: ${{ steps.selection.outputs.source }}
       ref: ${{ steps.selection.outputs.ref }}
       producer: ${{ steps.selection.outputs.producer }}
@@ -78,8 +79,15 @@ jobs:
       runtime: common-bookworm
 
   qualify:
-    needs: publish
-    if: github.ref == 'refs/heads/main' && needs.publish.outputs.ref != ''
+    needs: [plan, publish]
+    # Requalify the SAME approved image after a generator fix; image approval
+    # does not require the utility baseline this complete job is about to run.
+    if: >-
+      ${{ always() && !cancelled() && github.ref == 'refs/heads/main' && needs.plan.result == 'success' &&
+          ((needs.plan.outputs.source == 'fresh' && needs.publish.result == 'success' && needs.publish.outputs.ref != '') ||
+           (github.event_name == 'workflow_dispatch' && needs.plan.outputs.source == 'reviewed-candidate' &&
+            needs.plan.outputs.profile == 'utilities' && needs.plan.outputs.baseline_status == 'image-only-requalification' &&
+            needs.publish.result == 'skipped' && needs.plan.outputs.ref != '' && needs.plan.outputs.receipt_sha256 != '')) }}
     permissions:
       contents: read
       packages: read
@@ -105,9 +113,13 @@ jobs:
       - id: owned
         name: record gated inputs and assign ownership before creating resources
         env:
-          COMMON_IMAGE: ${{ needs.publish.outputs.ref }}
-          PRODUCER_SHA: ${{ needs.publish.outputs.producer }}
-          VERIFICATION_SHA: ${{ needs.publish.outputs.verification }}
+          COMMON_IMAGE: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.ref || needs.publish.outputs.ref }}
+          PRODUCER_SHA: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.producer || needs.publish.outputs.producer }}
+          VERIFICATION_SHA: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.verification || needs.publish.outputs.verification }}
+          QUALIFICATION_PROFILE: utilities
+          QUALIFICATION_CASE: all
+          QUALIFICATION_SOURCE: ${{ needs.plan.outputs.source }}
+          CANDIDATE_RECEIPT_SHA256: ${{ needs.plan.outputs.receipt_sha256 }}
           TARGET_PLATFORM: linux/${{ matrix.arch }}
         run: python3 .github/scripts/native-common-qualify.py init
       - name: log in to GHCR using this qualification's isolated credentials
@@ -132,7 +144,7 @@ jobs:
         working-directory: lego/operator
         env:
           BEX_BUILDKIT_INTEGRATION: "1"
-          BEX_NATIVE_TEST_COMMON_IMAGE: ${{ needs.publish.outputs.ref }}
+          BEX_NATIVE_TEST_COMMON_IMAGE: ${{ needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.ref || needs.publish.outputs.ref }}
           BEX_NATIVE_TEST_BUILDER: ${{ steps.owned.outputs.owner }}
           BEX_NATIVE_TEST_OWNER: ${{ steps.owned.outputs.owner }}
           BEX_NATIVE_TEST_PLATFORM: linux/${{ matrix.arch }}
@@ -175,14 +187,15 @@ jobs:
   qualify-profile:
     needs: [plan, publish, qualify]
     # A failed fresh run cannot fall back to a prior candidate. Reuse skips both
-    # fresh jobs intentionally and requires plan's fixed, validated receipt.
+    # fresh jobs only for a fully current family baseline; utility requalification
+    # runs the complete qualify job above and cannot start a family case.
     if: >-
       ${{ always() && !cancelled() && github.ref == 'refs/heads/main' &&
           github.event_name == 'workflow_dispatch' && needs.plan.result == 'success' &&
           needs.plan.outputs.profile != 'utilities' &&
           ((needs.plan.outputs.source == 'fresh' && needs.publish.result == 'success' &&
             needs.qualify.result == 'success' && needs.publish.outputs.ref != '') ||
-           (needs.plan.outputs.source == 'reviewed-candidate' && needs.publish.result == 'skipped' &&
+           (needs.plan.outputs.source == 'reviewed-candidate' && needs.plan.outputs.baseline_status == 'current-complete' && needs.publish.result == 'skipped' &&
             needs.qualify.result == 'skipped' && needs.plan.outputs.ref != '' && needs.plan.outputs.receipt_sha256 != '')) }}
     permissions:
       contents: read

@@ -91,7 +91,7 @@ CANDIDATE_SCHEMA = "bex.native-common-test-candidate/v1"
 V11_TOOLS = {
     "loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
     "loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
-    "common-v11-adapter.py": "920f3bb8a9d7473933517f96029e6e722dd16c968c28f1c6d6edb27082d400a6",
+    "common-v11-adapter.py": "4746a5022ab6df57ed95b6354d56b92eff15976d1737c2aa5a5ca15aa0080a4b",
 }
 # Checked by the adapter PINNED manifest; not an additional executed policy.
 V11_SUPPORT_INPUTS = {
@@ -123,6 +123,20 @@ SOURCE_FILES = (
     ".github/scripts/native-oci-mirror.py", "deploy/native-common/matrix.py", "deploy/native-common/upstream.json",
     "scripts/lib/toolchain-freshness.py",
 )
+# These are the common publisher's actual local execution inputs, independent
+# of the generator/qualification code whose baseline may need requalification.
+IMAGE_POLICY_FILES = (
+    ".github/workflows/native-base-image.yml", ".github/scripts/native-oci-stage.py",
+    ".github/scripts/native-oci-mirror.py", "deploy/native-base/check.Dockerfile",
+    "deploy/native-base/check-tools.py", "deploy/native-base/check-brotli.py",
+    "deploy/native-base/check-primary-python.py", "deploy/native-base/testdata/archive.dump.b64",
+    "deploy/native-base/testdata/rows.txt", "deploy/native-common/matrix.py",
+    "deploy/native-common/upstream.json", "scripts/lib/toolchain-freshness.py",
+    "lego/operator/internal/build/toolchain-freshness.json",
+)
+IMAGE_INPUT_PATHS = {"deploy/" + path for path in FACTORY_PATHS} | set(IMAGE_POLICY_FILES)
+
+
 PUBLICATION_GATES = {
     "verify real native tool transformations without network on both architectures",
     "scan amd64 candidate", "scan arm64 candidate", "sign and attest the immutable candidate",
@@ -182,6 +196,15 @@ def source_inventory(root):
     return {path: file_identity(regular_path(root, path)) for path in sorted(paths)}
 
 
+def image_source_inventory(root):
+    """Current checked-out image-critical bytes/type/Git mode; no generator gate."""
+    inventory = {}
+    for path in sorted(IMAGE_INPUT_PATHS):
+        observed = file_identity(regular_path(root, path))
+        inventory[path] = {key: observed[key] for key in ("sha256", "bytes", "mode", "type")}
+    return inventory
+
+
 def evidence_file(root, descriptor):
     require(isinstance(descriptor, dict) and set(descriptor) == {"path", "sha256", "bytes"}, "bad evidence descriptor")
     require(descriptor["path"].startswith(".pm/w8/m91/evidence/")
@@ -216,7 +239,8 @@ def completed_job(root, descriptor, identity, source, name, gates):
     return job
 
 
-def validate_test_candidate(root=None):
+def validate_image_candidate(root=None):
+    """Existing strict artifact approval; does not authorize a family baseline."""
     root = Path(root) if root is not None else Path(__file__).resolve().parents[2]
     record = json_file(regular_path(root, CANDIDATE_PATH))
     require(set(record) == {"schema", "candidate"} and record["schema"] == CANDIDATE_SCHEMA
@@ -233,22 +257,21 @@ def validate_test_candidate(root=None):
     for platform in c["platforms"].values():
         require(set(platform) == {"manifest_digest", "config_digest"}
                 and all(IMAGE.fullmatch(value) for value in platform.values()), "bad common platform identity")
-    baseline = c["source"]
-    require(set(baseline) == {"sha", "manifest"} and re.fullmatch(r"[a-f0-9]{40}", baseline["sha"]), "bad utility baseline source")
-    expected = evidence_json(root, baseline["manifest"])
-    require(set(expected) == {"source", "files"} and expected["source"] == baseline["sha"] and expected["files"] == source_inventory(root), "stale qualification source set/bytes/modes")
     approval = c["approval"]
-    require(set(approval) == {"receipt", "custody", "plan"}, "bad retained approval fields")
+    require(set(approval) == {"receipt", "custody", "plan", "inputs"}, "bad retained approval fields")
     review, custody, fixed = (evidence_json(root, approval[key]) for key in ("receipt", "custody", "plan"))
+    image_inputs = evidence_json(root, approval["inputs"])
+    require(set(image_inputs) == {"source", "files"} and image_inputs["source"] == c["verification"]
+            and image_inputs["files"] == image_source_inventory(root), "stale or wrong verifier-source image-critical inputs")
     require(review.get("ref") == fixed.get("ref") == c["ref"] and review.get("official_base") == fixed.get("base") == c["base"]
             and review.get("producer_workflow_sha") == fixed.get("producer_sha") == c["producer"]
             and review.get("verification_workflow_sha") == fixed.get("verification_sha") == c["verification"], "V11 subject/source/base differs")
     require(fixed.get("schema") == "bex.native-common-review-plan/v1" and fixed.get("name") == "common-bookworm", "not a common V11 review")
-    factory = {"deploy/" + path: {key: expected["files"]["deploy/" + path][key] for key in ("sha256", "bytes", "mode")} for path in FACTORY_PATHS}
-    selection = {path: {key: expected["files"][path][key] for key in ("sha256", "bytes", "mode")}
+    factory = {"deploy/" + path: {key: image_inputs["files"]["deploy/" + path][key] for key in ("sha256", "bytes", "mode")} for path in FACTORY_PATHS}
+    selection = {path: {key: image_inputs["files"][path][key] for key in ("sha256", "bytes", "mode")}
                  for path in ("deploy/native-common/matrix.py", "deploy/native-common/upstream.json")}
     require(fixed.get("factory_inputs") == factory and fixed.get("selection_inputs") == selection
-            and fixed.get("freshness_sha256") == expected["files"]["scripts/lib/toolchain-freshness.py"]["sha256"], "V11 factory/selection policy differs")
+            and fixed.get("freshness_sha256") == image_inputs["files"]["scripts/lib/toolchain-freshness.py"]["sha256"], "V11 factory/selection policy differs")
     require(all(review.get(key) is True for key in ("approved_supplier_candidate", "anonymous_manifest_bytes_sha_verified",
             "strict_keyless_signature_and_sbom_and_vulnerability_attestations_verified",
             "strict_actual_Rekor_v2_and_RFC3161_TSA_verified", "wrong_source_and_subject_negative_checks_rejected"))
@@ -260,10 +283,18 @@ def validate_test_candidate(root=None):
     require(set(review.get("platforms", {})) == {"amd64", "arm64"}
             and all(all(review["platforms"][arch].get(key) == value for key, value in c["platforms"][arch].items()) for arch in c["platforms"]),
             "V11 platform identities differ")
-    require(isinstance(custody, dict) and set(custody) == {"files", "support_inputs"}, "missing portable full custody manifest")
+    require(isinstance(custody, dict) and set(custody) == {"files", "support_inputs", "image_inputs"}, "missing portable full custody manifest")
     files = custody["files"]
     for descriptor in files.values():
         evidence_file(root, descriptor)
+    require(approval["inputs"] in files.values(), "image input manifest has no portable custody")
+    retained_image_inputs = custody["image_inputs"]
+    require(isinstance(retained_image_inputs, dict) and set(retained_image_inputs) == IMAGE_INPUT_PATHS,
+            "image-critical source custody set differs")
+    for path, original in retained_image_inputs.items():
+        require(isinstance(original, str) and original in files
+                and all(files[original][key] == image_inputs["files"][path][key] for key in ("sha256", "bytes")),
+                "image-critical source body has no exact portable custody")
     tools = review.get("evidence_tool_sha256", {})
     require(isinstance(tools, dict), "missing executed-tool identities")
     for path, digest in tools.items():
@@ -307,7 +338,19 @@ def validate_test_candidate(root=None):
     recovery = [step for step in publication_job["steps"] if step["name"] == "select a reviewed recovery artifact when its recipe is unchanged"]
     require(ci.get("recovery_selection_conclusion") in (None, "skipped")
             and all(step.get("conclusion") == "skipped" for step in recovery), "common recovery is unsupported")
-    require(set(c["utilities"]) == {"amd64", "arm64"}, "both original utility architectures required")
+    return dict(c, receipt_sha256=sha(root / CANDIDATE_PATH), generator_source=os.environ["GITHUB_SHA"],
+                baseline_status="image-only-requalification")
+
+
+def validate_test_candidate(root=None):
+    """Family reuse additionally needs both complete current utility artifacts."""
+    root = Path(root) if root is not None else Path(__file__).resolve().parents[2]
+    c = validate_image_candidate(root)
+    baseline = c["source"]
+    require(isinstance(baseline, dict) and set(baseline) == {"sha", "manifest"} and re.fullmatch(r"[a-f0-9]{40}", baseline["sha"]), "family reuse requires a complete utility baseline source")
+    expected = evidence_json(root, baseline["manifest"])
+    require(set(expected) == {"source", "files"} and expected["source"] == baseline["sha"] and expected["files"] == source_inventory(root), "stale qualification source set/bytes/modes")
+    require(isinstance(c["utilities"], dict) and set(c["utilities"]) == {"amd64", "arm64"}, "both original utility architectures required")
     for arch, utility in c["utilities"].items():
         require(set(utility) == {"run_id", "run_attempt", "job_id", "artifact_id", "artifact_metadata", "metadata", "root", "manifest"}
                 and type(utility["artifact_id"]) is int and utility["artifact_id"] > 0, "bad utility artifact identity")
@@ -374,7 +417,7 @@ def validate_test_candidate(root=None):
                 report_path = str(Path(path).parent / reports.get(form + "_file", ""))
                 require(report_path in retained and retained[report_path]["sha256"] == reports.get(form + "_sha256")
                         and retained[report_path]["bytes"] == reports.get(form + "_bytes"), "full generated report custody differs")
-    return dict(c, receipt_sha256=sha(root / CANDIDATE_PATH), generator_source=os.environ["GITHUB_SHA"])
+    return dict(c, baseline_status="current-complete")
 
 
 def plan():
@@ -387,15 +430,15 @@ def plan():
     mode = os.environ.get("REQUESTED_SOURCE", "fresh")
     require(mode in ("fresh", "reviewed-candidate"), "unknown qualification image source")
     if mode == "reviewed-candidate":
-        require(event == "workflow_dispatch" and os.environ.get("GITHUB_REF") == "refs/heads/main"
-                and profile != "utilities", "candidate reuse is manual family qualification only")
-        candidate = validate_test_candidate()
+        require(event == "workflow_dispatch" and os.environ.get("GITHUB_REF") == "refs/heads/main", "candidate reuse requires explicit manual main qualification")
+        candidate = validate_image_candidate() if profile == "utilities" else validate_test_candidate()
         selection.update(ref=candidate["ref"], producer=candidate["producer"], verification=candidate["verification"],
-                         receipt_sha256=candidate["receipt_sha256"])
+                         receipt_sha256=candidate["receipt_sha256"], baseline_status=candidate["baseline_status"])
+    selection.setdefault("baseline_status", "fresh-execution")
     selection["source"] = mode
     # Validate everything before opening any output or creating any resources.
     with Path(os.environ["GITHUB_OUTPUT"]).open("a") as output:
-        for key in ("profile", "case", "flag", "selector", "go_timeout", "job_minutes", "source", "ref", "producer", "verification", "receipt_sha256"):
+        for key in ("profile", "case", "flag", "selector", "go_timeout", "job_minutes", "source", "ref", "producer", "verification", "receipt_sha256", "baseline_status"):
             output.write(key + "=" + selection.get(key, "") + "\n")
 
 
@@ -422,9 +465,8 @@ def initialize():
     mode = os.environ.get("QUALIFICATION_SOURCE", "fresh")
     reuse = None
     if mode == "reviewed-candidate":
-        require(os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch" and os.environ.get("GITHUB_REF") == "refs/heads/main"
-                and selection["profile"] != "utilities", "reuse cannot replace a fresh original utility gate")
-        reuse = validate_test_candidate()
+        require(os.environ.get("GITHUB_EVENT_NAME") == "workflow_dispatch" and os.environ.get("GITHUB_REF") == "refs/heads/main", "reuse requires explicit manual main qualification")
+        reuse = validate_image_candidate() if selection["profile"] == "utilities" else validate_test_candidate()
         require((ref, producer, verification, os.environ.get("CANDIDATE_RECEIPT_SHA256")) ==
                 (reuse["ref"], reuse["producer"], reuse["verification"], reuse["receipt_sha256"]), "reuse env differs from reviewed receipt")
     require(mode in ("fresh", "reviewed-candidate"), "unknown qualification image source")
@@ -444,8 +486,11 @@ def initialize():
                                "verification": verification, "platform": platform,
                                "generator_source": os.environ["GITHUB_SHA"], "selection": selection,
                                "image_source": mode, "candidate_receipt_sha256": reuse["receipt_sha256"] if reuse else None,
-                               "utility_baseline_source": reuse["source"]["sha"] if reuse else None,
-                               "utility_jobs": reuse["utilities"] if reuse else None,
+                               "baseline_status": reuse["baseline_status"] if reuse else "fresh-execution",
+                               "image_approval_inputs_sha256": reuse["approval"]["inputs"]["sha256"] if reuse else None,
+                               "utility_baseline_source": reuse["source"]["sha"] if reuse and selection["profile"] != "utilities" else None,
+                               "utility_jobs": reuse["utilities"] if reuse and selection["profile"] != "utilities" else None,
+                               "previous_baseline_state": ("absent" if reuse["source"] is None or reuse["utilities"] is None else "unvalidated-existing") if reuse and selection["profile"] == "utilities" else None,
                                "docker_config": str(docker_config),
                                "run_id": os.environ["GITHUB_RUN_ID"],
                                "run_attempt": os.environ["GITHUB_RUN_ATTEMPT"],
