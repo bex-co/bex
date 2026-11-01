@@ -60,7 +60,10 @@ def original_cases():
     if target.exists():assert target.read_bytes()==archive
     else:target.write_bytes(archive)
    command=subprocess.run(['/bin/bash','-c',x['commands']['initial']['build']],cwd=work,env=env,stdout=subprocess.PIPE,stderr=subprocess.PIPE,timeout=90)
-   if command.returncode:raise RuntimeError((command.args,command.returncode,command.stdout.decode(errors='replace')[-1500:],command.stderr.decode(errors='replace')[-1500:]))
+   if command.returncode:
+    sys.stdout.buffer.write(command.stdout);sys.stdout.buffer.flush()
+    sys.stderr.buffer.write(command.stderr);sys.stderr.buffer.flush()
+    raise RuntimeError((command.args,command.returncode,command.stdout.decode(errors='replace')[-1500:],command.stderr.decode(errors='replace')[-1500:]))
    verify_authored_files(x,work)
    stdout=command.stdout
    (OUTPUT/('build-'+str(mid)+'.log')).write_bytes(stdout)

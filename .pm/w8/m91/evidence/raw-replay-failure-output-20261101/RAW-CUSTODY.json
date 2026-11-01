@@ -1,0 +1,654 @@
+{
+  "schema": "bex.lossless-raw-custody/v1",
+  "scope": "Actual failed qualification, narrow raw-output repair, source/host checks and retained earlier failures. No complete utility baseline or hosted approval.",
+  "files": {
+    "actual-failure/ARTIFACT-READ.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/ARTIFACT-READ.json",
+      "bytes": 251,
+      "sha256": "3696b34f81e9f75e6b37d7368e7c1d9f1954990ccba195d286cb5d36f636cc11",
+      "retained_path": "actual-failure/ARTIFACT-READ.json.gz",
+      "gzip_bytes": 200,
+      "gzip_sha256": "c3ae6b5ae5d14169ecbf2ac8c88fe3bd55acde9de9601cd03be423515303a67c",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/DERIVATION-CORRECTION.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/DERIVATION-CORRECTION.json",
+      "bytes": 439,
+      "sha256": "61c55ecf8270f63e7f2f558bc157d33d6a98d68615f4aa5a2e99e7461bde6d1f",
+      "retained_path": "actual-failure/DERIVATION-CORRECTION.json.gz",
+      "gzip_bytes": 331,
+      "gzip_sha256": "dabdc0a9349e29acd8055aea88e6b04cb03e7361242e9ba29178163f0ae4701b",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/ERROR-EXCERPT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/ERROR-EXCERPT.json",
+      "bytes": 7722,
+      "sha256": "0e8d035542aa0895069e586d1b288a9cb09c15ed6a605c91807ebad9906bcc22",
+      "retained_path": "actual-failure/ERROR-EXCERPT.json.gz",
+      "gzip_bytes": 2329,
+      "gzip_sha256": "d7773cdfb4b446307006a45784bacca605c071f1f4eeb8b01faf1c806ff37957",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/FAILURE-DETAIL.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/FAILURE-DETAIL.json",
+      "bytes": 8885,
+      "sha256": "58e2b4f852c31f88176d6daffe9f8fde05d59e16a52e6d5884ede0bb22069ed8",
+      "retained_path": "actual-failure/FAILURE-DETAIL.json.gz",
+      "gzip_bytes": 2793,
+      "gzip_sha256": "20292cf7e70d61a2cba36822630c13235af25c025f5e7d9a164868a6c21e5bdd",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/LOG-CUSTODY.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/LOG-CUSTODY.json",
+      "bytes": 501,
+      "sha256": "56dae552e027f28c2f96effea741fbabbfcb0187a97d3cc114df8d635e0413ca",
+      "retained_path": "actual-failure/LOG-CUSTODY.json.gz",
+      "gzip_bytes": 344,
+      "gzip_sha256": "c3a93fa207530d296249d07f27087fcd372fd26e1829f4a8ba2a6df697826054",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/MANIFEST.json",
+      "bytes": 4143,
+      "sha256": "a5c47d0a7ded7fa2cffe8734e30093f0c6cf54effdb403fcec29a2edbe7b4542",
+      "retained_path": "actual-failure/MANIFEST.json.gz",
+      "gzip_bytes": 1387,
+      "gzip_sha256": "1eaf27d5640b3c04e583fceea368c037858a3f6e619b9a646a275b1eae06ce48",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/READS.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/READS.json",
+      "bytes": 7558,
+      "sha256": "53d3dcf065ced0c384d746deb0d3832145c42854cead7864b0fa3066447a428d",
+      "retained_path": "actual-failure/READS.json.gz",
+      "gzip_bytes": 1477,
+      "gzip_sha256": "3d7872a37f01335c82b5399d2c28433e764f9436e45af4de78d760fc34bacceb",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/REVIEW.json",
+      "bytes": 7578,
+      "sha256": "a1c8d252a95bf1143c7a8d881696a150acf99c21957175f589eddd9de02d6a9c",
+      "retained_path": "actual-failure/REVIEW.json.gz",
+      "gzip_bytes": 2938,
+      "gzip_sha256": "69fab3b44212b8d71f96da93f1f783156f293d8ef124666be7e822019b03ad3c",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/SCOPE.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/SCOPE.json",
+      "bytes": 305,
+      "sha256": "a6eb6c6912a6b65a258731766ec1b8bdeb5f07348ee1bc9586fc62be13f39082",
+      "retained_path": "actual-failure/SCOPE.json.gz",
+      "gzip_bytes": 234,
+      "gzip_sha256": "7bd95a994203fc09fb2fc600a97c081d3a2a6dc966447b7e59d842874f0a3b79",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/SOURCE-CAUSE.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/SOURCE-CAUSE.json",
+      "bytes": 2115,
+      "sha256": "ef1662a21fe313fc4cc6adff5e908b35fedaeb5fd1958c2912320ed58abfaa5d",
+      "retained_path": "actual-failure/SOURCE-CAUSE.json.gz",
+      "gzip_bytes": 1145,
+      "gzip_sha256": "2b6ca95a72003152e701781c5efb41c94027a368630a3214e42bbea499cce76f",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/amd64-job-plugin.log": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/amd64-job-plugin.log",
+      "bytes": 82027,
+      "sha256": "ac115fdcee513b4039f8e04f1443c715bcd2bddea407bdeb2b081895e43eaa6a",
+      "retained_path": "actual-failure/amd64-job-plugin.log.gz",
+      "gzip_bytes": 20640,
+      "gzip_sha256": "f482a5717e2b9d1effd1b4b1a6526bb39a63407de425574b0ebafe0d303d9fa6",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/amd64-response.raw": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/amd64-response.raw",
+      "bytes": 5828,
+      "sha256": "a69465c1f1f3f55f96e994e2019d0938f1bcb83e26acd8499facf393db47f595",
+      "retained_path": "actual-failure/amd64-response.raw.gz",
+      "gzip_bytes": 1889,
+      "gzip_sha256": "804003028bb7571ee088f703cde7a67e15b47b7720a378bd64d8e354be1156c9",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/amd64.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/amd64.json",
+      "bytes": 4426,
+      "sha256": "8dfa49c4be4a4d565807ea6558a8d849bd1bf12254dc14d931dc7d49460ba6eb",
+      "retained_path": "actual-failure/amd64.json.gz",
+      "gzip_bytes": 1162,
+      "gzip_sha256": "95e48229a1141916583b230b5e73797868937c4e4f380ff202e8a9fefb8d3e21",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/amd64.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/amd64.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "actual-failure/amd64.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/arm64-response.raw": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/arm64-response.raw",
+      "bytes": 5331,
+      "sha256": "9b7a498bb54333b5a3df7cada1d934165e209511a3aa3694bfc3ce0809437302",
+      "retained_path": "actual-failure/arm64-response.raw.gz",
+      "gzip_bytes": 1865,
+      "gzip_sha256": "7275688dd7dfb8cd7ac578e52078286dc7ef5325648defc0132c4eb0da01cc9a",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/arm64.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/arm64.json",
+      "bytes": 3929,
+      "sha256": "fbfceb76caf1eb4b1c0838060a4ecab87cf25240223306599b340db7eb99d56c",
+      "retained_path": "actual-failure/arm64.json.gz",
+      "gzip_bytes": 1137,
+      "gzip_sha256": "150ef5fe72e5c82abdae680664069abc9f7349b8c89038de84eca4a9f1a1ab7b",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/arm64.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/arm64.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "actual-failure/arm64.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/artifact-13072096664-response.raw": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/artifact-13072096664-response.raw",
+      "bytes": 2114,
+      "sha256": "11e6865d78e7e5756b7b031cc072b35441e9f193479d2e2209ddb2dffbe48171",
+      "retained_path": "actual-failure/artifact-13072096664-response.raw.gz",
+      "gzip_bytes": 1144,
+      "gzip_sha256": "5674153be38f8c86a1bbac5af7fa2888e1e8904644428c014f3d51fbb0d312c2",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/artifact-13072096664.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/artifact-13072096664.json",
+      "bytes": 713,
+      "sha256": "7386dd47aaee8c4c1cd43c3cc4000e866081432360646362fd2e72f93d62c13b",
+      "retained_path": "actual-failure/artifact-13072096664.json.gz",
+      "gzip_bytes": 414,
+      "gzip_sha256": "d36d66351730bc8ce64291633e4471e17425cae2bd2e13e1b35b3a0c313aa939",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/artifact-13072096664.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/artifact-13072096664.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "actual-failure/artifact-13072096664.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/artifact-list-response.raw": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/artifact-list-response.raw",
+      "bytes": 2147,
+      "sha256": "9d16ec7b36c707e82fd20d8eea1a15f12a2f27f57e06da4f41c4f1842e63ae44",
+      "retained_path": "actual-failure/artifact-list-response.raw.gz",
+      "gzip_bytes": 1164,
+      "gzip_sha256": "578b323df2cc8b02ca729f78ff61921ab571c4cd7255242ec472a462d57c22f7",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/artifact-list.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/artifact-list.json",
+      "bytes": 745,
+      "sha256": "d78ce0fecd79c6af0d6d24b561e9cfa3f25ccd5cddc7657eab9df75d8058399b",
+      "retained_path": "actual-failure/artifact-list.json.gz",
+      "gzip_bytes": 434,
+      "gzip_sha256": "b845a9ef58b112e5c3e658301bc812dd074a0b9a961ab0753184ab648184fdcd",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/artifact-list.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/artifact-list.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "actual-failure/artifact-list.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/derived-omission-build-log-first.txt": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/derived-omission-build-log-first.txt",
+      "bytes": 17473,
+      "sha256": "c05ddff4e803456031833a2604ef86d1fba27b83429f2f46a2a53f14eea0e042",
+      "retained_path": "actual-failure/derived-omission-build-log-first.txt.gz",
+      "gzip_bytes": 5668,
+      "gzip_sha256": "51ea98a4ca0600f0b5a78d362ed20a29e7be348074182c276c513dcd1fd20156",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/derived-omission-build-log.txt": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/derived-omission-build-log.txt",
+      "bytes": 17346,
+      "sha256": "6e968d9db91153aef5dd34846a50f31560b80b360bdae35124d19794f0246404",
+      "retained_path": "actual-failure/derived-omission-build-log.txt.gz",
+      "gzip_bytes": 5657,
+      "gzip_sha256": "4600f17b334b0b5f985c9f7edbbe4cf3096523143be90d708090bd51c30ff1a3",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/run-response.raw": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/run-response.raw",
+      "bytes": 13052,
+      "sha256": "bfbd75f10e67aa5b3fefa642b71bfd50a4a512362594a791e7880d392c986ff3",
+      "retained_path": "actual-failure/run-response.raw.gz",
+      "gzip_bytes": 2455,
+      "gzip_sha256": "17c00a0e6ae008f5985051dc1b308e06ba2dc271e50999e0d8cc3799a3dfebad",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/run.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/run.json",
+      "bytes": 11651,
+      "sha256": "3b1b2fb697c757c2cb0585629c3444a52f9f4665138fbad13b9a9e7d1ca87d71",
+      "retained_path": "actual-failure/run.json.gz",
+      "gzip_bytes": 1721,
+      "gzip_sha256": "68bd88399b95956177d05414c4525a3dbeac315d213adc8e0ec692ece8c3750f",
+      "lossless_roundtrip": true
+    },
+    "actual-failure/run.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-failure-20261101-p6n9t2ji/run.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "actual-failure/run.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "diagnosis-review/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-omission-diagnosis-independent-20261101-nhsxxh4b/MANIFEST.json",
+      "bytes": 166,
+      "sha256": "f48543a0a8e8e153d66183a4fc368a62ecbd030ea6cc0e60768232fb15c064f6",
+      "retained_path": "diagnosis-review/MANIFEST.json.gz",
+      "gzip_bytes": 150,
+      "gzip_sha256": "dbaaf8e5fd3a7c601d052d0725bf522789c16e93a07a4a82669a08ea297e061a",
+      "lossless_roundtrip": true
+    },
+    "diagnosis-review/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-omission-diagnosis-independent-20261101-nhsxxh4b/REVIEW.json",
+      "bytes": 2032,
+      "sha256": "14f8159ba4c6c8671bf3a72d14f202ab794f2a5bad7e9388c8fb33b36d3e40e5",
+      "retained_path": "diagnosis-review/REVIEW.json.gz",
+      "gzip_bytes": 1153,
+      "gzip_sha256": "ecd1c02a8ebbce9da83cde867c471a50013dfbb0bce0fbd1df4ae023fe43abb1",
+      "lossless_roundtrip": true
+    },
+    "source/ACTUAL-FAILURE-CUSTODY.json": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/ACTUAL-FAILURE-CUSTODY.json",
+      "bytes": 1409,
+      "sha256": "3154da7537e3a1adb3c1cb4364823a3e0fec5c3a32021b7c6ffc2cda01302043",
+      "retained_path": "source/ACTUAL-FAILURE-CUSTODY.json.gz",
+      "gzip_bytes": 709,
+      "gzip_sha256": "091f50b3b6aee8fef98d86b63bdf28b416da4b8f40e22833e8ff7a0f5dbb82a6",
+      "lossless_roundtrip": true
+    },
+    "source/BASELINE.json": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/BASELINE.json",
+      "bytes": 856,
+      "sha256": "03be68033416550bdf76d225b3aa55c69cea31980222b18116f7cebe020e9044",
+      "retained_path": "source/BASELINE.json.gz",
+      "gzip_bytes": 500,
+      "gzip_sha256": "88d029b1226bdba0f05729c0518c54bdec55ab4808487d37f6a3016a4aca2f76",
+      "lossless_roundtrip": true
+    },
+    "source/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/MANIFEST.json",
+      "bytes": 2181,
+      "sha256": "0637a3ee470d0db0122f78ebb3be4f5d8cc1d9cb91691c31c32a986046dbfaf2",
+      "retained_path": "source/MANIFEST.json.gz",
+      "gzip_bytes": 976,
+      "gzip_sha256": "2082ea000b47b7824a15de5ab18854b2a25c5c9966701152b404d4ee8127c2ab",
+      "lossless_roundtrip": true
+    },
+    "source/RECEIPT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/RECEIPT.json",
+      "bytes": 3063,
+      "sha256": "1758e0e2eed373708a81e42553aa4705b45770a91bf1a9073be6d3d9460b868a",
+      "retained_path": "source/RECEIPT.json.gz",
+      "gzip_bytes": 1455,
+      "gzip_sha256": "1543d765ed1de86498b70dc0679f73a25373bdf986de912ce1755c9bbed7a278",
+      "lossless_roundtrip": true
+    },
+    "source/REPLAY-CONTROL-COMMAND.txt": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/REPLAY-CONTROL-COMMAND.txt",
+      "bytes": 1126,
+      "sha256": "647c82038a82e7721938ac331f491eb15f6602846a6b48193ba20157d204abf6",
+      "retained_path": "source/REPLAY-CONTROL-COMMAND.txt.gz",
+      "gzip_bytes": 607,
+      "gzip_sha256": "767838a38e14cbd9da67db00a07c7454c7d5cf46cc3113543009424bdf8feb64",
+      "lossless_roundtrip": true
+    },
+    "source/SOURCE-PRESERVATION.json": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/SOURCE-PRESERVATION.json",
+      "bytes": 13255,
+      "sha256": "2adcb22ddf9e8f9f14e8406ce3929c01c5d87f1f562c91f448727bb9eccda0cf",
+      "retained_path": "source/SOURCE-PRESERVATION.json.gz",
+      "gzip_bytes": 3379,
+      "gzip_sha256": "1b81496c6554d3704f5eff91bb8c6f17d791c7bdc69ebc3b390bf34c2c8e9dab",
+      "lossless_roundtrip": true
+    },
+    "source/diffs/original-cases.py.diff": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/diffs/original-cases.py.diff",
+      "bytes": 1050,
+      "sha256": "4e5ee2ad1a046d46ee38d90dafeea4104857d9a5268f9c7c391d3a2c28533a67",
+      "retained_path": "source/diffs/original-cases.py.diff.gz",
+      "gzip_bytes": 442,
+      "gzip_sha256": "22de01cd9a315661fce45e590a7b3f176342cfe4362fd374bcdaaedcb32d09f3",
+      "lossless_roundtrip": true
+    },
+    "source/diffs/original-cases_test.py.diff": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/diffs/original-cases_test.py.diff",
+      "bytes": 3585,
+      "sha256": "9f3b54cfbeb9c06555edebd86215630a9f7186fec2d81ec4eab330355178dc3a",
+      "retained_path": "source/diffs/original-cases_test.py.diff.gz",
+      "gzip_bytes": 1515,
+      "gzip_sha256": "d55be71c4fb44a81db59d1d11238bde5383ddac500b46ad9080c223b0f0d2ab3",
+      "lossless_roundtrip": true
+    },
+    "source/regression-before.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/regression-before.stdout",
+      "bytes": 1005,
+      "sha256": "b3957fa235f8f795e56a8022c154582803d8a502ddf6e0995939a88839bc9f0b",
+      "retained_path": "source/regression-before.stdout.gz",
+      "gzip_bytes": 370,
+      "gzip_sha256": "b5b9725e11297e133c088842853433dbf24240fb6c49b44b80d3ba15d91f37d1",
+      "lossless_roundtrip": true
+    },
+    "source/replay-suite-fixture-root-error.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/replay-suite-fixture-root-error.stdout",
+      "bytes": 37410,
+      "sha256": "aabbd1d7090944335c864993e91e43bf9e807af1d9ace775be372f06954abbdd",
+      "retained_path": "source/replay-suite-fixture-root-error.stdout.gz",
+      "gzip_bytes": 1568,
+      "gzip_sha256": "4e04930913a248fb1396dd995c9bb11db5052a84103bb1b9321e443cc3f234cb",
+      "lossless_roundtrip": true
+    },
+    "source/replay-suite.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/replay-suite.stdout",
+      "bytes": 1663,
+      "sha256": "717de3682c16a0d904db2e06f408b557dea892d4bd52ffe2bbbc92764c217178",
+      "retained_path": "source/replay-suite.stdout.gz",
+      "gzip_bytes": 448,
+      "gzip_sha256": "fb4cf17a892b989fc9314c5c5adcf95850184fdfc04a79aeca4df1b54feb2185",
+      "lossless_roundtrip": true
+    },
+    "source/source/lego/operator/internal/build/testdata/native-utilities/original-cases.py": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/source/lego/operator/internal/build/testdata/native-utilities/original-cases.py",
+      "bytes": 6384,
+      "sha256": "554dea2d7a3d1a4c23d2dc45b43e67517142f7b9ea4ab50e6f5bcd9d33c7a010",
+      "retained_path": "source/source/lego/operator/internal/build/testdata/native-utilities/original-cases.py.gz",
+      "gzip_bytes": 2673,
+      "gzip_sha256": "344f6a3acd02d903613764377020ae1df7c3126c656ebd2fc7d8b00afa3970a4",
+      "lossless_roundtrip": true
+    },
+    "source/source/lego/operator/internal/build/testdata/native-utilities/original-cases_test.py": {
+      "private_raw_path": "/private/tmp/bex-w8-original-replay-raw-failure-source-20261101-jlnsvekt/source/lego/operator/internal/build/testdata/native-utilities/original-cases_test.py",
+      "bytes": 9401,
+      "sha256": "c4c7b427631902294ad9f935fdf63b099a58272d187038ce665d071edd58f11c",
+      "retained_path": "source/source/lego/operator/internal/build/testdata/native-utilities/original-cases_test.py.gz",
+      "gzip_bytes": 3083,
+      "gzip_sha256": "ebd7ed4833bf4171e75a185fdbf8eeef6003afcbf415057ae1a57867f920fc52",
+      "lossless_roundtrip": true
+    },
+    "independent-review/CHECKS.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/CHECKS.json",
+      "bytes": 920,
+      "sha256": "cdc2e3404201e4511c109f3bedcb627038b3f5bb2c38565598a1243311a3619d",
+      "retained_path": "independent-review/CHECKS.json.gz",
+      "gzip_bytes": 531,
+      "gzip_sha256": "cab2e81a1678e56babc02008130f57d0a2f866809d066d5c719accf8bd9c4a52",
+      "lossless_roundtrip": true
+    },
+    "independent-review/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/MANIFEST.json",
+      "bytes": 2202,
+      "sha256": "41ed07ce21c2ad54f9573333f1dc2488a6f6cf2d667ff1965062937a4e5bcd74",
+      "retained_path": "independent-review/MANIFEST.json.gz",
+      "gzip_bytes": 917,
+      "gzip_sha256": "53627e4108fed784fe01d38e2e4d4896a2a939defcd731e70f71554709b960a1",
+      "lossless_roundtrip": true
+    },
+    "independent-review/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/REVIEW.json",
+      "bytes": 5632,
+      "sha256": "316d41a3b0826ceac0bbb7e32937a2ae0849e3c40391a41f632130faf737033f",
+      "retained_path": "independent-review/REVIEW.json.gz",
+      "gzip_bytes": 2545,
+      "gzip_sha256": "46f40aa8c4c66602cbc1e67db31d45c0293afd3e45cf730143c99fa29fab5916",
+      "lossless_roundtrip": true
+    },
+    "independent-review/author-history/regression-before.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/author-history/regression-before.stdout",
+      "bytes": 1005,
+      "sha256": "b3957fa235f8f795e56a8022c154582803d8a502ddf6e0995939a88839bc9f0b",
+      "retained_path": "independent-review/author-history/regression-before.stdout.gz",
+      "gzip_bytes": 370,
+      "gzip_sha256": "b5b9725e11297e133c088842853433dbf24240fb6c49b44b80d3ba15d91f37d1",
+      "lossless_roundtrip": true
+    },
+    "independent-review/author-history/replay-suite-fixture-root-error.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/author-history/replay-suite-fixture-root-error.stdout",
+      "bytes": 37410,
+      "sha256": "aabbd1d7090944335c864993e91e43bf9e807af1d9ace775be372f06954abbdd",
+      "retained_path": "independent-review/author-history/replay-suite-fixture-root-error.stdout.gz",
+      "gzip_bytes": 1568,
+      "gzip_sha256": "4e04930913a248fb1396dd995c9bb11db5052a84103bb1b9321e443cc3f234cb",
+      "lossless_roundtrip": true
+    },
+    "independent-review/before/original-cases.py": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/before/original-cases.py",
+      "bytes": 6239,
+      "sha256": "c0490ebecc5a4c940aa5d64b6c5c8d70f87527ace424bf5c21a2c45159e608b0",
+      "retained_path": "independent-review/before/original-cases.py.gz",
+      "gzip_bytes": 2632,
+      "gzip_sha256": "2eb4285a14fa385ab0f78c064fc8a4be953a78e8457836612538e868e8e920b7",
+      "lossless_roundtrip": true
+    },
+    "independent-review/before/original-cases_test.py": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/before/original-cases_test.py",
+      "bytes": 6613,
+      "sha256": "bf7128b692b6d062402665c478bb604a9439e31b7252eb13c5611fef66201159",
+      "retained_path": "independent-review/before/original-cases_test.py.gz",
+      "gzip_bytes": 2137,
+      "gzip_sha256": "63530fede702daed1105db67c1ac52cd41397d11793009ef3737c6c6ac3d0fef",
+      "lossless_roundtrip": true
+    },
+    "independent-review/new-all-RESULT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/new-all-RESULT.json",
+      "bytes": 572,
+      "sha256": "693fb33eef7eb472e95caf85b9e586857ccc93a60e9c07dd638e1f0dffd75b1d",
+      "retained_path": "independent-review/new-all-RESULT.json.gz",
+      "gzip_bytes": 391,
+      "gzip_sha256": "c9357771129f9e6f01b4a540112bfcf9a12653969f3fabea56e24ad04b561429",
+      "lossless_roundtrip": true
+    },
+    "independent-review/new-all.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/new-all.stderr",
+      "bytes": 1717,
+      "sha256": "eb93235703c3235ee2c1da2f07a3690816162569d30e06e17a5470df4c236ef3",
+      "retained_path": "independent-review/new-all.stderr.gz",
+      "gzip_bytes": 452,
+      "gzip_sha256": "95e62f87d6af0028c9b43d7fc1c0a119153138e959ee0f040b9c64db84b8f055",
+      "lossless_roundtrip": true
+    },
+    "independent-review/new-all.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/new-all.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "independent-review/new-all.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "independent-review/old-negative-RESULT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/old-negative-RESULT.json",
+      "bytes": 590,
+      "sha256": "6ed6d937faf3b2430a6415e12e62c96721995d5b949a0aaaef8da031ae91e570",
+      "retained_path": "independent-review/old-negative-RESULT.json.gz",
+      "gzip_bytes": 347,
+      "gzip_sha256": "e274220df0a3920502ed85dc9ad8d280c18282b4053720cf9798dc14eb5daddd",
+      "lossless_roundtrip": true
+    },
+    "independent-review/old-negative.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/old-negative.stderr",
+      "bytes": 1003,
+      "sha256": "0dfde1c1fb7bfd9e86a3a92bad8eb90dbef00c07ea28284306b3a1dc4e0fdf31",
+      "retained_path": "independent-review/old-negative.stderr.gz",
+      "gzip_bytes": 376,
+      "gzip_sha256": "c106588a1b0898e38b811383fbf3e94b1ac15e546fbc1560d28d001365488d5d",
+      "lossless_roundtrip": true
+    },
+    "independent-review/old-negative.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/old-negative.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "independent-review/old-negative.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "independent-review/original-cases.py": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/original-cases.py",
+      "bytes": 6384,
+      "sha256": "554dea2d7a3d1a4c23d2dc45b43e67517142f7b9ea4ab50e6f5bcd9d33c7a010",
+      "retained_path": "independent-review/original-cases.py.gz",
+      "gzip_bytes": 2673,
+      "gzip_sha256": "344f6a3acd02d903613764377020ae1df7c3126c656ebd2fc7d8b00afa3970a4",
+      "lossless_roundtrip": true
+    },
+    "independent-review/original-cases_test.py": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/original-cases_test.py",
+      "bytes": 9401,
+      "sha256": "c4c7b427631902294ad9f935fdf63b099a58272d187038ce665d071edd58f11c",
+      "retained_path": "independent-review/original-cases_test.py.gz",
+      "gzip_bytes": 3083,
+      "gzip_sha256": "ebd7ed4833bf4171e75a185fdbf8eeef6003afcbf415057ae1a57867f920fc52",
+      "lossless_roundtrip": true
+    },
+    "independent-review/run_controls.py": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-fix-independent-review-20261101-fq3c5der/run_controls.py",
+      "bytes": 2051,
+      "sha256": "2d005024e6f2397f4eadf63413a535f65ef736a45fcc8e6d061f88a34cca3f83",
+      "retained_path": "independent-review/run_controls.py.gz",
+      "gzip_bytes": 997,
+      "gzip_sha256": "7ad22443fdd9e15112c054f83be6445a8d5c50963217a77ed1819649a450900e",
+      "lossless_roundtrip": true
+    },
+    "root-validation/APPLY.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/APPLY.json",
+      "bytes": 1489,
+      "sha256": "f438bf6874d3933ab7f47b33cf81984a633f5525c9f9e784412d1c0117842266",
+      "retained_path": "root-validation/APPLY.json.gz",
+      "gzip_bytes": 655,
+      "gzip_sha256": "c04c5bbda61903265e5b27f1c38450138e901915194e9ed31cd6cecc4d44505d",
+      "lossless_roundtrip": true
+    },
+    "root-validation/DERIVATION.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/DERIVATION.json",
+      "bytes": 507,
+      "sha256": "8288c537f44a963d62274909876bf19837ae0de9cd73536c1a49cff4f7498076",
+      "retained_path": "root-validation/DERIVATION.json.gz",
+      "gzip_bytes": 373,
+      "gzip_sha256": "82de844129d6fbefffa07ab771310185f922e2d8333e51277de35fdf0b864af9",
+      "lossless_roundtrip": true
+    },
+    "root-validation/GUARD.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/GUARD.json",
+      "bytes": 750,
+      "sha256": "a53ce52fafb206c1710e655c319e213a9cc5392bffff5fddd4ceeaa41e8f31ce",
+      "retained_path": "root-validation/GUARD.json.gz",
+      "gzip_bytes": 479,
+      "gzip_sha256": "9d0173f3cf886c4039fbc0888dfcf9a8e881bc2b633e34a5474096c1163579c5",
+      "lossless_roundtrip": true
+    },
+    "root-validation/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/MANIFEST.json",
+      "bytes": 1810,
+      "sha256": "a1031aa90a6b8e768dff22a63e80f1349657dee56c6d71253d2530c3b8621adf",
+      "retained_path": "root-validation/MANIFEST.json.gz",
+      "gzip_bytes": 719,
+      "gzip_sha256": "f64f44776c42819f4e1054261b0ae1c74e0df8e8ca9d23e327d130ebd26d61be",
+      "lossless_roundtrip": true
+    },
+    "root-validation/RESULT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/RESULT.json",
+      "bytes": 5045,
+      "sha256": "3b3b5b83ddd98f1f48878bf0a060df218c5b0e995fe1ce34ecfdfa2e73377efb",
+      "retained_path": "root-validation/RESULT.json.gz",
+      "gzip_bytes": 2154,
+      "gzip_sha256": "c97357b048a1dfbfeb3853f9596d112e3a36e264b4b483400cad23e1b7af1758",
+      "lossless_roundtrip": true
+    },
+    "root-validation/SCOPE.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/SCOPE.json",
+      "bytes": 4689,
+      "sha256": "9e557f3a999534585a7d9aa907ed86ca0dc50001b46c1670ad25b0fda9cf1dbd",
+      "retained_path": "root-validation/SCOPE.json.gz",
+      "gzip_bytes": 2033,
+      "gzip_sha256": "a3642c6f0e1d85e444f2d5f8fe4fbfcc5d109062403d1f982f59dc980f6551ba",
+      "lossless_roundtrip": true
+    },
+    "root-validation/build-lint-PROCESS.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/build-lint-PROCESS.json",
+      "bytes": 151,
+      "sha256": "8cf1b4bf6cfb632b9924370473aaad99a5407ddeaffd32dcc643c6051b1ace5a",
+      "retained_path": "root-validation/build-lint-PROCESS.json.gz",
+      "gzip_bytes": 125,
+      "gzip_sha256": "486cf81de2ee66e3857634552fec498be7abe4012fb63da40365510e68774cbe",
+      "lossless_roundtrip": true
+    },
+    "root-validation/build-lint-RESULT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/build-lint-RESULT.json",
+      "bytes": 251,
+      "sha256": "967c9b30e4797dee2dcf065278545473b721860290af6de418c5bc9b48822392",
+      "retained_path": "root-validation/build-lint-RESULT.json.gz",
+      "gzip_bytes": 199,
+      "gzip_sha256": "1eeb4f9fc40c27cdf79a0f06d7d8dc7ff3aba265a4a2126a1ae1f9d9d2bf52c2",
+      "lossless_roundtrip": true
+    },
+    "root-validation/build-lint.log": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/build-lint.log",
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+      "retained_path": "root-validation/build-lint.log.gz",
+      "gzip_bytes": 30,
+      "gzip_sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728",
+      "lossless_roundtrip": true
+    },
+    "root-validation/build-unit-PROCESS.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/build-unit-PROCESS.json",
+      "bytes": 136,
+      "sha256": "2d3b7847b38d6fda0732e334c8939d878d4444da08b07443a7706b0fda739c99",
+      "retained_path": "root-validation/build-unit-PROCESS.json.gz",
+      "gzip_bytes": 104,
+      "gzip_sha256": "068c26fa1da80e3be7fbc3fa7d7620ed920e482ecb38d9d02d134bebe2c092be",
+      "lossless_roundtrip": true
+    },
+    "root-validation/build-unit-RESULT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/build-unit-RESULT.json",
+      "bytes": 237,
+      "sha256": "ed376c39ad59618c1f0a22899ce25dcdb54657357f3a9209fdb247f40bc90a6b",
+      "retained_path": "root-validation/build-unit-RESULT.json.gz",
+      "gzip_bytes": 182,
+      "gzip_sha256": "fe9e3c048adf4ed379b0403c8d97686109776ce9c6140aba9ed9d70317966b30",
+      "lossless_roundtrip": true
+    },
+    "root-validation/build-unit.log": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/build-unit.log",
+      "bytes": 63,
+      "sha256": "7475273f4be96f34ad026f0a6a00e45400dc04a78ab96481e632e96eb10a4c47",
+      "retained_path": "root-validation/build-unit.log.gz",
+      "gzip_bytes": 80,
+      "gzip_sha256": "57739078b0d22e56a24432fab9b2fe9e02f9c539bc3c8883a506dcc93b837e78",
+      "lossless_roundtrip": true
+    },
+    "root-validation/run.py": {
+      "private_raw_path": "/private/tmp/bex-w8-raw-replay-root-validation-20261101-0ln8ka7l/run.py",
+      "bytes": 5354,
+      "sha256": "48dea0bd1d85dfe1842173e1faafd1da4de629bcb168c69a2764e454da6048a0",
+      "retained_path": "root-validation/run.py.gz",
+      "gzip_bytes": 2156,
+      "gzip_sha256": "257235ff3a934d37bddaa1cf9b0f02a246acc65879fd30a8d236f768c4fa7000",
+      "lossless_roundtrip": true
+    }
+  }
+}
