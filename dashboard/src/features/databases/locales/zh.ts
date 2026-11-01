@@ -215,6 +215,11 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "磁盘大小（GB）",
     description: "Create-database form field label (storage size)",
   },
+  "databases.fieldDiskFixed": {
+    message: "此实例类型的磁盘固定为 {size} GB。",
+    description:
+      "Create-database hint under a plan's fixed disk size, e.g. Free (w4/376)",
+  },
   "databases.fieldDiskError": {
     message: "请输入 {min} 到 {max} GB 之间的整数。",
     description:

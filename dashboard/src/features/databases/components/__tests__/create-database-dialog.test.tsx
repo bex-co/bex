@@ -327,7 +327,9 @@ describe("CreateDatabaseDialog", () => {
     );
   });
 
-  it("keeps free storage at the API's fixed limit while allowing blank defaults", async () => {
+  // w4/376: Free's disk is fixed at 1 GB, so the field shows it read-only
+  // with a hint; a "between 1 and 1 GB" range message must never appear.
+  it("shows Free's fixed disk read-only and never a one-value range error", async () => {
     const user = userEvent.setup();
     render(<CreateDatabaseDialog onCreated={vi.fn()} />);
 
@@ -339,19 +341,19 @@ describe("CreateDatabaseDialog", () => {
     });
     const disk = within(dialog).getByLabelText("Disk size (GB)");
 
-    expect(disk).toHaveAttribute("min", "1");
-    expect(disk).toHaveAttribute("max", "1");
-    await user.type(disk, "2");
-    expect(within(dialog).getByText(/between 1 and 1 GB/i)).toBeInTheDocument();
-    expect(submit).toBeDisabled();
-    expect(create).not.toHaveBeenCalled();
-    await user.clear(disk);
+    expect(disk).toHaveValue(1);
+    expect(disk).toHaveAttribute("readonly");
+    expect(disk).toHaveAccessibleDescription(
+      "This plan has a fixed 1 GB disk.",
+    );
+    await user.type(disk, "5");
+    expect(disk).toHaveValue(1);
+    expect(within(dialog).queryByText(/between 1 and 1 GB/i)).toBeNull();
     expect(submit).toBeEnabled();
-    await user.type(disk, "1");
-    expect(submit).toBeEnabled();
-    await user.clear(disk);
-    await user.type(disk, "0");
-    expect(submit).toBeDisabled();
+    await user.click(submit);
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ plan: "free", diskSizeGB: 0 }),
+    );
   });
 
   it("uses the selected tier's disk bounds and retains the entered size across plan changes", async () => {
@@ -372,10 +374,15 @@ describe("CreateDatabaseDialog", () => {
     await user.clear(disk);
     await user.type(disk, "25");
     expect(submit).toBeEnabled();
+    // Free's disk is fixed (w4/376): it shows 1 GB and creates, while the
+    // entered size is kept for when a paid plan is chosen again.
     await user.click(screen.getByRole("combobox", { name: "Instance type" }));
     await user.click(await screen.findByRole("option", { name: /^Free/ }));
+    expect(disk).toHaveValue(1);
+    expect(submit).toBeEnabled();
+    await user.click(screen.getByRole("combobox", { name: "Instance type" }));
+    await user.click(await screen.findByRole("option", { name: /Basic 1GB/ }));
     expect(disk).toHaveValue(25);
-    expect(submit).toBeDisabled();
     expect(create).not.toHaveBeenCalled();
   });
 

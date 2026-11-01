@@ -219,6 +219,11 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Disk size (GB)",
     description: "Create-database form field label (storage size)",
   },
+  "databases.fieldDiskFixed": {
+    message: "This plan has a fixed {size} GB disk.",
+    description:
+      "Create-database hint under a plan's fixed disk size, e.g. Free (w4/376)",
+  },
   "databases.fieldDiskError": {
     message: "Enter a whole number between {min} and {max} GB.",
     description:
