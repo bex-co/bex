@@ -247,18 +247,16 @@ describe("MetricSection event lane", () => {
       <SvgLineChart
         key="c"
         unit="count"
-        series={
-          [
-            {
-              label: "n",
-              color: "red",
-              points: [
-                { t: 0, v: 1 },
-                { t: 60_000, v: 2 },
-              ],
-            },
-          ] as unknown as ChartSeries[]
-        }
+        series={[
+          {
+            label: "n",
+            color: "red",
+            points: [
+              { timestamp: "2026-11-01T00:00:00Z", value: 1 },
+              { timestamp: "2026-11-01T00:01:00Z", value: 2 },
+            ],
+          },
+        ]}
         markersServiceId="srv-1"
       />,
     ],
