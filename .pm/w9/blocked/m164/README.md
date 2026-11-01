@@ -187,3 +187,13 @@ The trap also catches Render's documented open-access rule: a Postgres or Key Va
 ## CLI QA addendum — 2026-10-20 (w8 sweep 1260): a suspended database fails the same opaque way
 
 `bex pg suspend <id>` on a free PG18 (`suspended: suspended`, `suspenders: ["user"]`), followed by `bex psql <id> -c 'select 1'`, gives exit 1: `psql: error: connection to server at "<id>.db.bex.co" (<AAAA>), port 5432 failed: SSL error: unexpected eof while reading`. That is the same bare TLS EOF this milestone's legibility goal targets, reached through a suspension rather than an allow-list denial. After `bex pg resume` the database is `available` in 22 s and the same query returns its row. When the legibility work (b′) lands, include “suspended” among the named refusals so a client is told the database is suspended rather than being dropped. The Key Value front door behaves the same way (w8 sweep 1262): a suspended free Key Value gives `redis-cli` `SSL_connect failed: unexpected eof while reading` over IPv4, while `connection-info` still answers 200.
+
+## Live reconfirmation (`/qa-find-bugs w4` loop, 2026-11-01 UTC, pin `fdd51c53ef3f`)
+
+Still reproduces unchanged. Free Postgres 17 `qa-20261101-1612-pg` (`dpg-dbjma1jbb81s739b3dng`, `bex-canary`, created with `ipAllowList: [<caller IPv4>/32]`, deleted afterwards → 404). `dpg-dbjma1jbb81s739b3dng.db.bex.co` publishes both `AAAA 2a01:4f8:c01e:3d1f::1` and `A 49.12.20.236`.
+
+- The connection-info `externalConnectionString` as copied → `psql: … (2a01:4f8:c01e:3d1f::1), port 5432 failed: SSL error: unexpected eof while reading` (libpq tries IPv6 first).
+- The same string with `hostaddr=49.12.20.236&sslmode=require` → connects (`17.11`, `ssl on`, write and read OK). `sslmode=disable` → refused (correct).
+- Control: `PATCH /v1/postgres/<id>` with `[<IPv4>/32, <IPv6>/128]`, then the plain copied string → connects (`t|42`).
+
+The blocking decision (t002: drop AAAA, make the denial legible, or both) is still the user's.
