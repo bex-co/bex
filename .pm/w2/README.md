@@ -25,6 +25,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] [059 — `highAvailabilityEnabled` reads false right after creating or enabling HA](059.md) — **NEXT: return the configured HA value on every surface, as Render does** (Render checked live 2026-11-01: `creating` + `true`) ← found in w2/m171 t011, 2026-10-31
 - [x] [060 — A deploy refused by the workspace compute quota says "Waiting for the container to start" until it times out](done/060.md) — **DONE 2026-11-01** (`5e586886f`): on production the deploy names the quota and its numbers within one reconcile, on REST and the dashboard
 - [ ] [061 — Hobby workspaces cap services at 3 CPU; Render documents no such cap](061.md) — **NEXT: lift the Hobby services compute cap to the paid ceiling (user decision 2026-11-01: match Render)** ← split from 060, 2026-10-31
+- [ ] [062 — Hobby workspaces cap service disks at 120 GiB / 8 PVCs; check Render](062.md) ← found in w2/061, 2026-11-01
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
 
