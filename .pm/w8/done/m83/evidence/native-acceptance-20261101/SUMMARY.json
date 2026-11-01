@@ -1,0 +1,165 @@
+{
+  "state": "PASS",
+  "completed_at": "2026-11-01T21:24:57.924187+00:00",
+  "roles": {
+    "bex": {
+      "state": "PASS",
+      "id": "srv-dbjqobji5cus73dpdh1g",
+      "first_deploy": "dep-dbjqobji5cus73dpdh20",
+      "public_canonical_url": "https://qa-20261101-53f090e1584-aca338.onbex.co",
+      "native_binary_sha256": "8c1eaa38e0ce3de0c9cae814ec432bcc1648737fd06d11a6950e910c7ede4081",
+      "native_exit": 0,
+      "HTTP": 38,
+      "streams": 6,
+      "upgrade": 1,
+      "settings": 3,
+      "build_log_pages": 2,
+      "program_sha256": "45f5a5bcdc3d5433fafda0d061203e533c374bb61e8fa564795a6fe5c062af0c",
+      "payload_bytes": 315000,
+      "payload_sha256": "05464b757344c61503b7a987de63d3df221d0893cb34de296e6f7273b4492415",
+      "actual_Node": "v24.22.1",
+      "first_only_source_commit": "6e3606f2892df213e8fa738b51a36ba711e86ce8",
+      "all_own_children_deleted": true,
+      "former_canonical_url_status": 404
+    },
+    "render": {
+      "state": "PASS",
+      "id": "srv-dbjqqct56d9s73cdho20",
+      "first_deploy": "dep-dbjqqct56d9s73cdho2g",
+      "public_canonical_url": "https://qa-20261101-53f090e1584-41f192.onbex.co",
+      "native_binary_sha256": "327d91b7c0f9af859d66b36a61cb0fc66fc44a0dff6b5a5cd763561f8dfea36b",
+      "native_exit": 0,
+      "HTTP": 38,
+      "streams": 6,
+      "upgrade": 1,
+      "settings": 3,
+      "build_log_pages": 3,
+      "program_sha256": "b3a6b339f7486de110e56dd85e41b5eb5ed049c8177af6e94c9694e2ae4580ea",
+      "payload_bytes": 330000,
+      "payload_sha256": "58de0028112674e01e0b1aabddb882c7d595ec1d1d97f1be6fbce4dd20ed2f51",
+      "actual_Node": "v24.22.1",
+      "first_only_source_commit": "6e3606f2892df213e8fa738b51a36ba711e86ce8",
+      "all_own_children_deleted": true,
+      "former_canonical_url_status": 404
+    }
+  },
+  "source_manifest_sha256": "3e5addf88d41525701d21d5374453ca56e05f852bc3b2e2606a7668edc2d4f64",
+  "ready_input_sha256": "8882666f5f74873094ff0670d502915cfb390a24a053934e8e9b6f966ebc1c5a",
+  "readiness_custody": {
+    "state": "PASS",
+    "source": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "image": "ghcr.io/bex-co/bex-operator@sha256:f687b29f87d16e606437312d36fe9aea51312a90925b0df9736d721e2be54580",
+    "observed_at": "2026-11-01T21:13:22Z",
+    "requiredAncestor": "a15472735e63d9217b4db49f873ceaa69324f5d3",
+    "actualProxyVersion": "UNKNOWN",
+    "input_sha256": "8882666f5f74873094ff0670d502915cfb390a24a053934e8e9b6f966ebc1c5a",
+    "private_input": "/private/tmp/bex-w8-m83-log-pages-ready-launch-20261101-ppgwwb21/READY.json",
+    "signature": {
+      "path": "/private/tmp/bex-w8-m83-current-platform-signature-20261101-y5n08m8i/SIGNATURE-RECEIPT.json",
+      "bytes": 3060,
+      "sha256": "931e84a599b3232b6ba53abe3fdf13ddad2cdec9c91a94de1fdcd8914e233664"
+    },
+    "signature_stdout": {
+      "path": "/private/tmp/bex-w8-m83-current-platform-signature-20261101-y5n08m8i/verify-stdout.json",
+      "bytes": 627,
+      "sha256": "a723b019452522f45cc931bde1a464665476db50fae78efbf661baeee29c2dcb"
+    },
+    "inventory": {
+      "path": "/private/tmp/bex-w8-m83-log-pages-ready-launch-20261101-ppgwwb21/inventory.json",
+      "bytes": 7334,
+      "sha256": "5ded1851b77a3e862e8e934695fcb5ca991a2dd8a9f5edef5d969a34f42f8804"
+    },
+    "observer": {
+      "path": "/private/tmp/bex-w8-m83-log-pages-ready-launch-20261101-ppgwwb21/observer-entry.json",
+      "bytes": 1305,
+      "sha256": "43be15f3d431c050902f6d452334eb4fcef58730afaf20326be7f0c92279e2ec"
+    },
+    "scope": "Projection and private hash-bound references only; full production inventory and deployment/pod metadata are excluded. This capsule is not a standalone complete cryptographic or Ready proof."
+  },
+  "actualProxyVersion": "UNKNOWN",
+  "signed_differences": [
+    "gzip remains enabled despite origin Cache-Control:no-transform",
+    "Strong origin ETag retained on transformed gzip entity"
+  ],
+  "Free": [
+    {
+      "state": "PASS",
+      "workspace": "tea-da2isimlm39c739m4ofg",
+      "period": "2026-11",
+      "free_hours_remaining": 749.6791666666667,
+      "services_before": {
+        "used": 1,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 0
+      },
+      "coverage_diagnostic": {
+        "state": "partial",
+        "through": "2026-11-01T00:00:00Z",
+        "degradedSources": [
+          "direct"
+        ]
+      },
+      "input_sha256": "6c36abb0f87911b1ae9474cf4e9054d851845de9a1590c39ad127d0491544eda"
+    },
+    {
+      "state": "PASS",
+      "workspace": "tea-da2isimlm39c739m4ofg",
+      "period": "2026-11",
+      "free_hours_remaining": 749.6791666666667,
+      "services_before": {
+        "used": 1,
+        "terminating": 0,
+        "limit": 25,
+        "freeUsed": 0,
+        "freeLimit": 0
+      },
+      "coverage_diagnostic": {
+        "state": "partial",
+        "through": "2026-11-01T00:00:00Z",
+        "degradedSources": [
+          "direct"
+        ]
+      },
+      "input_sha256": "f04c603bda145318d55532478ff08e69ed26772f385067d41e66c939aa3e23f1"
+    }
+  ],
+  "cleanup": {
+    "state": "PASS",
+    "baseline_preserved": true,
+    "own_resources_absent": true,
+    "own_used_count_delta": 0,
+    "concurrent_additions": []
+  },
+  "logout": {
+    "at": "2026-11-01T21:24:57.654277+00:00",
+    "native_logout_exit": 0,
+    "Kratos_logout_exit": 0,
+    "resources_created_by_run": 2,
+    "scope": "only this own native OAuth credential and own QA session",
+    "own_credential_files_removed": true,
+    "own_oauth_chain_upstream204": true
+  },
+  "host_controls": {
+    "tests": 93,
+    "PASS": true,
+    "pager_new_tests": 10,
+    "independent_extra_pager_probes": 8
+  },
+  "limitations": [
+    "No live Render platform comparison. Original native clients target Bex through supported isolated host/config selection.",
+    "Curl captures raw encoded entity after transfer framing removal; it does not capture TLS/TCP or HTTP2 frames.",
+    "Image/grpc rows prove content-type exclusion, not complete PNG parsing or gRPC application semantics. Upgrade is finite HTTP1 WebSocket; HTTP2 extended CONNECT is not claimed.",
+    "Full private Ready/signature/inventory and baseline metadata remain private; portable evidence only contains explicit projected/hash-bound references."
+  ],
+  "destination": ".pm/w8/done/m83/evidence/native-acceptance-20261101",
+  "original_history": "All earlier source generations and failed actual attempts remain immutable; this capsule records only the completed92317733e66c75cf run.",
+  "omissions": [
+    "All runtime/private auth/config/cookie/jar/session files; never read by this audit/export.",
+    "Full original production inventory and deployment/pod metadata; only exact private descriptors and hash-bound admission projection retained.",
+    "Raw before/after/interim service/metadata baselines, ledgers, raw owner/usage/limit bodies and generic metadata response entities; only complete-preservation/typedquota summary and hashes retained.",
+    "No original binaries copied; exact public binary source hashes are freshly checked and actual sanitized native command receipts retained."
+  ],
+  "scope": "Portable exact own wire/content/stream/settings/source/build/cleanup evidence plus explicit projections. Complete private readiness/raw inventory remain required for standalone admission replay. No new platform or Render-provider claim."
+}
