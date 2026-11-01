@@ -1,0 +1,9 @@
+{
+  "mode": "fresh-build",
+  "producer_sha": "99cdc5c5a5b53629e2a98963d43d373511a91c1f",
+  "verification_sha": "99cdc5c5a5b53629e2a98963d43d373511a91c1f",
+  "generator_sha": "8ae50548300ce79a06109e8b7e49dc1d19cf80ce",
+  "common_factory_equivalence_sha256": "87bf84b4dbb99b21a8f193d11f05ffb425a7fedf464264daa8c517c739a93d59",
+  "common_review_plan_sha256": "ffc6b6ce1173691851e1de5e5a1f744fb599fc582c70511f2b56e82ea2c0f51e",
+  "scope": "Fresh common producer/verifier; separately identified current generator with equivalent factory inputs"
+}

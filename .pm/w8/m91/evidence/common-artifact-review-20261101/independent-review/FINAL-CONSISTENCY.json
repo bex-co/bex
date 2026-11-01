@@ -1,0 +1,12 @@
+{
+  "official_base_and_all_source_roles_match_plan": true,
+  "all_positive_and_negative_result_files_match_crypto_summary": true,
+  "final_progress_complete_and_same_ref": true,
+  "actual_log_size_matches_wrapper_final_observation": true,
+  "no_failed_review_receipt": true,
+  "receipt_unchanged_during_audit": true,
+  "manual_decompression_performed_or_claimed": false,
+  "large_files_copied": false,
+  "crypto_or_network_repeated": false,
+  "scope_note": "The auditor streamed/read EXISTING local retained bundle/predicate/gzip files in place. No new registry body download, crypto invocation or report verification run occurred."
+}

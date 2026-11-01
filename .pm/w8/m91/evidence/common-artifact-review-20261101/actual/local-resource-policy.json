@@ -1,0 +1,17 @@
+{
+  "remaining_free_bytes": 1207959552,
+  "layer_workers": 1,
+  "layer_file_budget_bytes": 2147483648,
+  "maximum_owned_bytes": 671088640,
+  "outer_monitor_interval_seconds": 1,
+  "outer_guard_required": true,
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:56c58abb41abd6becfa1810834c6cba46b742703e2beffdb3a88387772b3b986",
+  "sizing_provenance": {
+    "layer_sizing_sha256": "d34e94b21af5010d104cb680ceae8c23b5f5d3efd7d9d69594c9c14cebf8aa14",
+    "bundle_sizing_sha256": "9645bc41e17d9dc5d17952fa0f00c15af0b9beeefa734c4377937082b6ec2104",
+    "referrer_index_sha256": "81a53040f0a3e6777c84282be95f01e86436680f9f060c8000e05c5e92a056e8"
+  },
+  "effective_layer_free_reserve": 1207959552,
+  "unchanged_driver_disk_reserve": 536870912,
+  "unchanged_driver_start_free": 1073741824
+}

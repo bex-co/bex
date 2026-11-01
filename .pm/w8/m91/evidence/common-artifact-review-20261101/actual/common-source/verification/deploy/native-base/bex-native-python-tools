@@ -1,0 +1,9 @@
+#!/bin/sh
+set -eu
+
+# The Debian system interpreter retains apt's matching modules and headers.
+# Only an official primary Python tree needs these additional pure modules.
+if [ ! -x /usr/local/bin/python3 ]; then
+  exit 0
+fi
+exec /usr/local/bin/python3 -I /opt/bex/python-tools/install-python-tools.py

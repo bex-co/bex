@@ -1,0 +1,125 @@
+{
+  "sha": "8ae50548300ce79a06109e8b7e49dc1d19cf80ce",
+  "files": {
+    ".github/workflows/native-base-image.yml": {
+      "sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8",
+      "bytes": 18178,
+      "mode": "100644"
+    },
+    ".github/workflows/native-common-image.yml": {
+      "sha256": "bd40ba33077cb0df9acfca6164c52c9e2b8e00e849c698e71398c1f7b88bf723",
+      "bytes": 13157,
+      "mode": "100644"
+    },
+    "deploy/native-base/bex-native-python-tools": {
+      "sha256": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+      "bytes": 301,
+      "mode": "100644"
+    },
+    "deploy/native-base/fetch-python-tools.py": {
+      "sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+      "bytes": 2686,
+      "mode": "100644"
+    },
+    "deploy/native-base/install-python-tools.py": {
+      "sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+      "bytes": 2281,
+      "mode": "100644"
+    },
+    "deploy/native-base/install.sh": {
+      "sha256": "23ee0d1507d5bcecba7e41c8a5eda10051eaa6ad41ffe164a735c6b0b25dfb2b",
+      "bytes": 2516,
+      "mode": "100644"
+    },
+    "deploy/native-base/node-brotli/check.js": {
+      "sha256": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e",
+      "bytes": 1705,
+      "mode": "100644"
+    },
+    "deploy/native-base/node-brotli/patch.sh": {
+      "sha256": "c428b8e1554bb635e72e0726536ec45be351743f78fcfb81a8d303eaf4fb01b8",
+      "bytes": 5358,
+      "mode": "100644"
+    },
+    "deploy/native-base/package-lock.json": {
+      "sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2",
+      "bytes": 57293,
+      "mode": "100644"
+    },
+    "deploy/native-base/package.json": {
+      "sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703",
+      "bytes": 162,
+      "mode": "100644"
+    },
+    "deploy/native-base/patch-system-brotli.sh": {
+      "sha256": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+      "bytes": 2355,
+      "mode": "100644"
+    },
+    "deploy/native-base/python-tools.json": {
+      "sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "bytes": 4110,
+      "mode": "100644"
+    },
+    "deploy/native-base/tsc": {
+      "sha256": "92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30",
+      "bytes": 111,
+      "mode": "100644"
+    },
+    "deploy/native-base/webpack": {
+      "sha256": "fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0",
+      "bytes": 115,
+      "mode": "100644"
+    },
+    "deploy/native-common/Dockerfile": {
+      "sha256": "b2241bca632cd565d0fb22e6abedb6cb1bfaaeaa87e3562701019edfea1cd0e6",
+      "bytes": 2886,
+      "mode": "100644"
+    },
+    "deploy/native-common/Dockerfile.dockerignore": {
+      "sha256": "06e4a655846e6992d952c3af42b518612af72a0c824e8e7a8291cb90772ea9d9",
+      "bytes": 647,
+      "mode": "100644"
+    },
+    "deploy/native-common/build-otp": {
+      "sha256": "eb23c89dac02f69a7204e536054195ed1016aef55ad4ad24df4ade12c874070b",
+      "bytes": 1983,
+      "mode": "100644"
+    },
+    "deploy/native-common/check-common.py": {
+      "sha256": "a5a06180d7262d65160b13500f5ff1a242d5c7fbef5d1ccb2eb4d67198eadfd6",
+      "bytes": 2668,
+      "mode": "100644"
+    },
+    "deploy/native-common/legacy-libs.preferences": {
+      "sha256": "dcc092fb55ce5c3c3896891befd695f460bb795fa86d316c3dad6aecd592e52e",
+      "bytes": 124,
+      "mode": "100644"
+    },
+    "deploy/native-common/legacy-libs.sources": {
+      "sha256": "05506782b25c3aaba325dfb2020ad96cec122fb18b6e7dc6f0e532fbafe98fd1",
+      "bytes": 433,
+      "mode": "100644"
+    },
+    "deploy/native-common/matrix.py": {
+      "sha256": "0254b2efab94b82d06abed9ad706d60d13f0c1ef1d96caa0845248e7e7006f5c",
+      "bytes": 644,
+      "mode": "100644"
+    },
+    "deploy/native-common/otp-features.py": {
+      "sha256": "a6f41446dba00d5e50484d5162c6198eb70385ec35aed73ffb803d2b42c3c3e2",
+      "bytes": 1853,
+      "mode": "100644"
+    },
+    "deploy/native-common/prepare-node14-tools.py": {
+      "sha256": "4a82ea76f5bb829b0211d8489862cc4b32729436fdb46de8175386c8cde85459",
+      "bytes": 2870,
+      "mode": "100644"
+    },
+    "deploy/native-common/upstream.json": {
+      "sha256": "fc2828c54271282b6159fd75193062a95fb630849ddbb84443544c894260ca98",
+      "bytes": 511,
+      "mode": "100644"
+    }
+  }
+}

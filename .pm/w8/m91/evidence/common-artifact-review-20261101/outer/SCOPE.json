@@ -1,0 +1,51 @@
+{
+  "at": "2026-11-01T01:51:36.461648+00:00",
+  "argv": [
+    "python3",
+    "-B",
+    "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/common-v11-adapter.py",
+    "review",
+    "--plan",
+    "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/PLAN.json",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--output-root",
+    "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/evidence",
+    "--cache-root",
+    "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/cache",
+    "--layer-workers",
+    "1"
+  ],
+  "entry": {
+    "reviewed_entry": true,
+    "adapter": "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/common-v11-adapter.py",
+    "plan": "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/PLAN.json",
+    "repo": "/Users/tianpan/projects/bex7",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:56c58abb41abd6becfa1810834c6cba46b742703e2beffdb3a88387772b3b986",
+    "layer_workers": 1,
+    "projected_required_start_bytes": 1787765459,
+    "pinned_sources": {
+      "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/run.py": "6e25fd7f69ecca980ad4990fb8ac6f0e7ac833de8af10af0a2c7672e649898cd",
+      "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/common-v11-adapter.py": "4746a5022ab6df57ed95b6354d56b92eff15976d1737c2aa5a5ca15aa0080a4b",
+      "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/PLAN.json": "ffc6b6ce1173691851e1de5e5a1f744fb599fc582c70511f2b56e82ea2c0f51e",
+      "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/retained/loopx-w8-native-review-v11.py": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85",
+      "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/retained/loopx-w8-verify-native-artifact-ranged.py": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15",
+      "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/retained/loopx-w8-verify-native-artifact.py": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+      "/Users/tianpan/projects/bex7/scripts/lib/toolchain-freshness.py": "4031b8338c1c1bf7771c93cb46917cb6404379b2dabe58cd4d8f61d05bf70490",
+      "/private/tmp/bex7-native-acceptance-novb586u/cosign": "9f9b8cd557cf2e5b3df3373a00baa005a86b02391e3e06dd0ce37b3a1533d3a4",
+      "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/sizing/layers.json": "d34e94b21af5010d104cb680ceae8c23b5f5d3efd7d9d69594c9c14cebf8aa14",
+      "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/sizing/bundles.json": "9645bc41e17d9dc5d17952fa0f00c15af0b9beeefa734c4377937082b6ec2104"
+    },
+    "source_reviews": {
+      "adapter_root_review": "457c5fe02edb1a4299507e4140f4725702feb61a8e3628039841c76d0541e504",
+      "outer_independent_review": "3624ab792582fe9c27fe33cf06d9a022cba83e0dfce427108988fe2572a1035c"
+    },
+    "scope": "Root-authorized actual complete read-only artifact review only; no production/common pin, runtime generation, tenant auth/resources or hosted acceptance"
+  },
+  "start_free": 2625355776,
+  "remaining_floor": 1207959552,
+  "own_byte_cap": 671088640,
+  "stop_own_bytes": 637534208,
+  "all_kernel_quota_claims": false,
+  "scope": "One exact owned actual V11 review; no foreign files/caches/resources altered; complete evidence retained"
+}

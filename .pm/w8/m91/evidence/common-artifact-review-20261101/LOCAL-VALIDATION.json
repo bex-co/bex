@@ -1,0 +1,15 @@
+{
+  "image_candidate": "PASS",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:56c58abb41abd6becfa1810834c6cba46b742703e2beffdb3a88387772b3b986",
+  "baseline_status": "image-only-requalification",
+  "full_family": "EXPECTED_REFUSAL",
+  "full_family_error": "family reuse requires a complete utility baseline source",
+  "source": null,
+  "utilities": null,
+  "validator_source": "/Users/tianpan/projects/bex7/.github/scripts/native-common-qualify.py",
+  "validator_sha256": "bccfd53a1d0d683671baeb7a786f42e1942a1c11ceca0f9b2163cdeb50e24e2d",
+  "controlled_GITHUB_SHA": "8ae50548300ce79a06109e8b7e49dc1d19cf80ce",
+  "repository_HEAD": "1c06ac916e342828f1e7619dc7a3a79c2b2ec2db",
+  "command": "import CURRENT .github/scripts/native-common-qualify.py; validate_image_candidate(root=STAGING); validate_test_candidate(root=STAGING) expects missing source refusal",
+  "not_CI": "Localvalidation only; GITHUB_SHA is explicit task control, not a GitHub run/utility/source approval."
+}

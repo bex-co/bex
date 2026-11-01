@@ -1,0 +1,56 @@
+{
+  "bundle_digest": "sha256:c66a204c36c4f15a2def3996b0fa41a45921a84c6d9d858809dd5a63266bdbd8",
+  "exit_code": 0,
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/evidence/native-common-bookworm-99cdc5c5a5b53629e2a98963d43d373511a91c1f/bundles/c66a204c36c4f15a2def3996b0fa41a45921a84c6d9d858809dd5a63266bdbd8.bundle.json",
+    "--type",
+    "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+    "--digest",
+    "56c58abb41abd6becfa1810834c6cba46b742703e2beffdb3a88387772b3b986",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "99cdc5c5a5b53629e2a98963d43d373511a91c1f",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "stderr": "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/evidence/native-common-bookworm-99cdc5c5a5b53629e2a98963d43d373511a91c1f/bundles/c66a204c36c4f15a2def3996b0fa41a45921a84c6d9d858809dd5a63266bdbd8-positive-attempt1.stderr.log",
+  "tuf_cache": "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/evidence/native-common-bookworm-99cdc5c5a5b53629e2a98963d43d373511a91c1f/bundles/cosign-tuf-cache/c66a204c36c4f15a2def3996b0fa41a45921a84c6d9d858809dd5a63266bdbd8-positive-attempt1-t10ry3pu",
+  "attempts": [
+    {
+      "bundle_digest": "sha256:c66a204c36c4f15a2def3996b0fa41a45921a84c6d9d858809dd5a63266bdbd8",
+      "exit_code": 0,
+      "command": [
+        "/private/tmp/bex7-native-acceptance-novb586u/cosign",
+        "verify-blob-attestation",
+        "--bundle",
+        "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/evidence/native-common-bookworm-99cdc5c5a5b53629e2a98963d43d373511a91c1f/bundles/c66a204c36c4f15a2def3996b0fa41a45921a84c6d9d858809dd5a63266bdbd8.bundle.json",
+        "--type",
+        "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+        "--digest",
+        "56c58abb41abd6becfa1810834c6cba46b742703e2beffdb3a88387772b3b986",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "99cdc5c5a5b53629e2a98963d43d373511a91c1f",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "stderr": "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/evidence/native-common-bookworm-99cdc5c5a5b53629e2a98963d43d373511a91c1f/bundles/c66a204c36c4f15a2def3996b0fa41a45921a84c6d9d858809dd5a63266bdbd8-positive-attempt1.stderr.log",
+      "tuf_cache": "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/evidence/native-common-bookworm-99cdc5c5a5b53629e2a98963d43d373511a91c1f/bundles/cosign-tuf-cache/c66a204c36c4f15a2def3996b0fa41a45921a84c6d9d858809dd5a63266bdbd8-positive-attempt1-t10ry3pu"
+    }
+  ]
+}

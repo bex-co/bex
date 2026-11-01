@@ -1,0 +1,8 @@
+{
+  "at": "2026-11-01T01:51:36.335782+00:00",
+  "free_bytes": 2625568768,
+  "minimum_measured_start_bytes": 1787765459,
+  "entry_fits": true,
+  "config_sha256": "335dc8a11001ed875522e9062a99a7d61fbcd05fc1193eab7a4359e82ad3d974",
+  "no_kernel_quota_claim": true
+}

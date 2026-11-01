@@ -1,0 +1,61 @@
+{
+  "at": "2026-11-01T02:19:34.490091+00:00",
+  "verdict": "CLEAN_ACTUAL_IDENTITY_AND_REVIEWED_SUPPLIER_TEST_CANDIDATE_ONLY",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:56c58abb41abd6becfa1810834c6cba46b742703e2beffdb3a88387772b3b986",
+  "actual_final_receipt": "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/evidence/native-common-bookworm-99cdc5c5a5b53629e2a98963d43d373511a91c1f/receipt.json",
+  "actual_final_receipt_sha256": "f3cccfadddf2e5632de24d44fe6f43607d8964dd3c1dc98d5bf72457f7c442d2",
+  "actual_wrapper_RESULT_sha256": "cd9c33520d251c295d8cc1caa79f3cda694c8f0200df6ba4964aacf5f6afa449",
+  "audit_source_sha256": "baa302f25fa7bb4b56090a5a2fac26361f407382ec10143cb7abd0a20a1e3a54",
+  "audit_actual_exit": 0,
+  "audit": "AUDIT.json",
+  "final_consistency": "FINAL-CONSISTENCY.json",
+  "actual_outcome": {
+    "wrapper_exit": 0,
+    "stop": null,
+    "source_unchanged": true,
+    "own_group_absent_at_completion": true,
+    "seconds": 783.353,
+    "peak_owned_bytes": 235617798,
+    "minimum_free_bytes": 2241777664
+  },
+  "verified": [
+    "Actual outer6e25/adapter4746/planffc6/all3originals/currentfreshness4031/Cosign9f9 and sizing inputs match all10 configuration pin hashes; SCOPE/config/PROCESS/RESULT/log and source roles agree.",
+    "Completed exact99 publication job includes real botharch runtime/scan/sign/output gates, fresh build and recovery skipped. Whole workflow still recorded queued; no whole-workflow green inferred.",
+    "All20factory source roles and two selection inputs match fixed plan/captured source bytes/Git-mode records; common source equivalence and actual producer/verifier99 versus generator8ae remain distinct.",
+    "Canonical index56c58 and exact amd64/arm64 manifests/configs hash-match. Official Bookworm config diffID prefixes are coherent; both SPDX predicates bind directly to exact registry child roots with independent package architecture. No Docker-export alias or manual decompression is performed/claimed.",
+    "All5full raw bundles hash-match immutable blob descriptors; full bundle gzip SHA+roundtrip match raw; full predicate gzip SHA+canonical JSON payload SHA/bytes match signed DSSE predicate. Signed subject is same index, actual hashedrekord0.0.2/Rekorv2 material and RFC3161 TSA retained.",
+    "All5actual positive strict Cosign results exit0/VerifiedOK, both source/subject negatives exit1 with exact expected policy reason, all7 exact command arrays preserve issuer/workflow/source/subject/TSA and each has unique owned TUF root. No verification was rerun.",
+    "All41fresh anonymous full-read receipts exactly cover2configs+39uniquecompressedlayers1,522,239,095B, each within actual run timestamp and current descriptor size; all41range read metadata show complete. No cache borrowing or second independent layer rehash claimed.",
+    "Every signed Trivy finding remains in its complete canonical signed predicate and gzip:6887records/architecture, including73CRITICAL/1020HIGH/2596MEDIUM/3092LOW/106UNKNOWN. This artifact identity review is not zero-CVE assurance."
+  ],
+  "findings_per_architecture": {
+    "amd64": {
+      "count": 6887,
+      "severity_counts": {
+        "LOW": 3092,
+        "HIGH": 1020,
+        "MEDIUM": 2596,
+        "UNKNOWN": 106,
+        "CRITICAL": 73
+      },
+      "all_records_remain_in_full_signed_predicate": true
+    },
+    "arm64": {
+      "count": 6887,
+      "severity_counts": {
+        "LOW": 3092,
+        "HIGH": 1020,
+        "MEDIUM": 2596,
+        "UNKNOWN": 106,
+        "CRITICAL": 73
+      },
+      "all_records_remain_in_full_signed_predicate": true
+    }
+  },
+  "limits": [
+    "Approval scope is this reviewed supplier TEST candidate identity and actual signed report/custody evidence only. No production/common catalog pin, generated-image/runtime/27-family/default3.14.8/hosted acceptance follows.",
+    "No actual crypto/network/GH/OCI/body download/Go/Docker/CI/auth/API/product or resource action repeated. Existing retained bundles/reports were streamed/read in place one statement at a time; no235MBreport/evidence copy made.",
+    "No full image layer bodies remain for this audit to rehash; original pinned verifier actual complete-read receipts and source gates were audited against all descriptors.",
+    "No files under the completed actual case were written or removed. Only this new private metadata/source/log audit directory is written; below1MiB."
+  ]
+}

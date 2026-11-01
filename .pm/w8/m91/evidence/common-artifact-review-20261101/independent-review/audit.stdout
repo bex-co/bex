@@ -1,0 +1,1 @@
+{"audit_pass": true, "signed_payloads": 5, "strict_commands": 7, "anonymous_full_reads": 41, "full_read_bytes": 1522239095, "findings_per_arch": {"amd64": 6887, "arm64": 6887}, "no_new_crypto_or_network": true}

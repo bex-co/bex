@@ -1,0 +1,19 @@
+{
+  "run_id": "41249441151",
+  "url": "https://github.com/bex-co/bex/actions/runs/41249441151",
+  "run_status": "queued",
+  "run_conclusion": "",
+  "job_id": 124689058047,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41249441151/job/124689058047",
+  "job_name": "publish / build (common-bookworm, buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6...",
+  "job_conclusion": "success",
+  "verified_steps": [
+    "expose the fully gated immutable image",
+    "scan amd64 candidate",
+    "scan arm64 candidate",
+    "sign and attest the immutable candidate",
+    "verify real native tool transformations without network on both architectures"
+  ],
+  "primary_build_conclusion": "success",
+  "recovery_selection_conclusion": "skipped"
+}
