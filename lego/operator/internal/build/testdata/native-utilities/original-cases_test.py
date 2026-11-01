@@ -1,6 +1,8 @@
 """Offline HTTP-oracle controls; these do not execute a new supplier image."""
 import base64
 import copy
+import contextlib
+import io
 import gzip
 import importlib.util
 import json
@@ -11,6 +13,7 @@ from pathlib import Path
 import threading
 import tempfile
 import unittest
+from unittest.mock import patch
 
 ROOT = Path(__file__).resolve().parent
 spec = importlib.util.spec_from_file_location('original_replay', ROOT / 'original-cases.py')
@@ -128,6 +131,48 @@ class OriginalNodeHTTPControls(unittest.TestCase):
             (work / marker).write_text(json.dumps('foreign-packaging-marker'))
             with self.assertRaisesRegex(AssertionError, 'wrong prepared marker'):
                 replay.verify_authored_files(dict(x, source_file_identities={marker: x['source_file_identities'][marker]}), work)
+
+
+class OriginalBuildFailureOutputControls(unittest.TestCase):
+    def test_failed_build_emits_exact_raw_streams_before_unchanged_exception(self):
+        # A real bash process fails; no authored program, image or subprocess
+        # implementation is replaced. Prefix bytes are outside the old1500
+        # character diagnostic tails, so this also catches clipped forwarding.
+        expected_stdout = "own 'stdout' — café 雪\n".encode() + b'\x00\xff\n' + b'O' * 1700
+        expected_stderr = b"No module named 'setuptools'\n" + "own 'stderr' — café 雪\n".encode() + b'\x00\xfe\n' + b'E' * 1700
+        def octets(value):
+            return ''.join('\\0%03o' % byte for byte in value)
+        command = "printf '%b' '" + octets(expected_stdout) + "'; printf '%b' '" + octets(expected_stderr) + "' >&2; exit 23"
+        case = {'mid': 999, 'primary_reference': {'files': {}},
+                'commands': {'initial': {'build': command}}, 'source_file_identities': {}}
+        raw_stdout, raw_stderr = io.BytesIO(), io.BytesIO()
+        stdout = io.TextIOWrapper(io.BufferedWriter(raw_stdout), encoding='utf-8')
+        stderr = io.TextIOWrapper(io.BufferedWriter(raw_stderr), encoding='utf-8')
+        try:
+            with tempfile.TemporaryDirectory() as directory:
+                root = Path(directory)
+                output = root / 'qa-output'
+                output.mkdir()
+                with patch.multiple(replay, ROOT=root, OUTPUT=output, PHASE='build', SPECS=[case],
+                                    ENV={'PATH': '/usr/bin:/bin', 'LC_ALL': 'C'}), \
+                     contextlib.redirect_stdout(stdout), contextlib.redirect_stderr(stderr):
+                    with self.assertRaises(RuntimeError) as raised:
+                        replay.original_cases()
+                # Check BEFORE closing/flushing the wrappers: the driver must
+                # flush its binary buffers for Docker's log consumer itself.
+                self.assertEqual(raw_stdout.getvalue(), expected_stdout)
+                self.assertEqual(raw_stderr.getvalue(), expected_stderr)
+                self.assertIn(b"No module named 'setuptools'", raw_stderr.getvalue())
+                self.assertEqual(raised.exception.args,
+                    ((['/bin/bash', '-c', command], 23,
+                      expected_stdout.decode(errors='replace')[-1500:],
+                      expected_stderr.decode(errors='replace')[-1500:]),))
+                self.assertFalse((output / 'build-999.log').exists())
+                self.assertEqual(list((output / 'm999').iterdir()), [])
+                self.assertNotIn(b'original_authored_build', raw_stdout.getvalue())
+        finally:
+            stdout.close()
+            stderr.close()
 
 
 if __name__ == '__main__':
