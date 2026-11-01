@@ -2862,6 +2862,63 @@ func TestReconcileImageDeployFirstSeenLiveHasUnknownStart(t *testing.T) {
 	}
 }
 
+// TestReconcileImageDeployFirstSeenLiveUsesReleaseDispatch is the w4/449
+// repro: a prebuilt-image release that rolled out between two passes closes
+// live with the operator's dispatch of its own release generation as its start.
+// A dispatch record for another generation, or one with no parseable time, is
+// not evidence and leaves the start unknown.
+func TestReconcileImageDeployFirstSeenLiveUsesReleaseDispatch(t *testing.T) {
+	const recorded = "2026-11-01T02:13:59Z"
+	for _, tc := range []struct {
+		name   string
+		genOff int64
+		at     string
+		want   bool
+	}{
+		{name: "own release dispatch", at: recorded, want: true},
+		{name: "other generation's dispatch", genOff: -1, at: recorded},
+		{name: "malformed dispatch time", at: "not-a-time"},
+		{name: "zero dispatch time", at: "0001-01-01T00:00:00Z"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			rec, st, cl := newTestReconciler(t)
+			ten, _ := st.CreateTenant(ctx, "acme", "free")
+			const image = "busybox:1.36"
+			row, _ := st.CreateApp(ctx, App{
+				TenantID: ten.ID, Name: "web", Image: image, Port: 8080, Replicas: 1, Tier: "free",
+			})
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("create projection: %v", err)
+			}
+			open := onlyDeploy(t, st, row.ID)
+			app := getApp(t, cl)
+			liveStatus(app, open.Generation, image)
+			app.Status.ReleaseStart = &appv1alpha1.ReleaseStart{Generation: open.Generation + tc.genOff, StartedAt: tc.at}
+			if err := cl.Status().Update(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatalf("observe live: %v", err)
+			}
+			got, _ := st.GetDeploy(ctx, row.ID, open.ID)
+			if got.Status != DeployLive || got.FinishedAt == nil {
+				t.Fatalf("deploy = %+v, want live with a finish", got)
+			}
+			if !tc.want {
+				if got.StartedAt != nil {
+					t.Fatalf("started_at = %v, want unknown without owned evidence", got.StartedAt)
+				}
+				return
+			}
+			want, _ := time.Parse(time.RFC3339, recorded)
+			if got.StartedAt == nil || !got.StartedAt.Equal(want) {
+				t.Fatalf("started_at = %v, want the release dispatch %v", got.StartedAt, want)
+			}
+		})
+	}
+}
+
 // TestReconcileBuildFirstSeenLiveUsesOwnBuildWindow: a repo build first seen
 // already live takes its start from the operator's recorded build window when
 // that window is attributed to the deploy's own release generation — on both

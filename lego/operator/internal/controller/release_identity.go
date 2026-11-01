@@ -24,6 +24,7 @@ import (
 	"fmt"
 	"strconv"
 	"strings"
+	"time"
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -762,4 +763,23 @@ func clearCacheApplies(app *appv1alpha1.App) bool {
 		return false
 	}
 	return clearGen == releaseGeneration(app)
+}
+
+// stampReleaseStart records when a release generation was dispatched (w4/449):
+// only when this pass moved ReleaseGeneration forward past before, the value
+// it held going in. A cancel's revert to the last successful release and a
+// survivor's redispatch move it backward and keep the record they had, so no
+// generation is ever given a start the operator did not see it begin.
+func stampReleaseStart(app *appv1alpha1.App, before int64, now time.Time) {
+	gen := app.Status.ReleaseGeneration
+	if gen <= before {
+		return
+	}
+	if rs := app.Status.ReleaseStart; rs != nil && rs.Generation >= gen {
+		return
+	}
+	app.Status.ReleaseStart = &appv1alpha1.ReleaseStart{
+		Generation: gen,
+		StartedAt:  now.UTC().Format(time.RFC3339),
+	}
 }

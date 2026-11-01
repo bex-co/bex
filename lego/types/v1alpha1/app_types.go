@@ -1415,6 +1415,15 @@ const (
 	PreDeployFailed    = "Failed"
 )
 
+// ReleaseStart pairs a release generation with the time the operator
+// dispatched it (RFC3339), so a reader can tell whose start it is.
+type ReleaseStart struct {
+	// +required
+	Generation int64 `json:"generation"`
+	// +required
+	StartedAt string `json:"startedAt"`
+}
+
 // PreDeployStatus records the outcome of the pre-deploy command
 // (spec.preDeployCommand) for the revision the operator is currently rolling
 // out, or for a canceled release whose step was left to finish (w5/085). It is
@@ -1736,6 +1745,15 @@ type AppStatus struct {
 	// holds a one-way digest only, never Secret contents.
 	// +optional
 	ReleaseArtifactFingerprint string `json:"releaseArtifactFingerprint,omitempty"`
+
+	// ReleaseStart is when the operator dispatched a release generation: the
+	// moment ReleaseGeneration moved forward to it (w4/449). It is the start of
+	// a prebuilt-image deploy, which has no build window, so a release that
+	// rolls out between two control-plane passes still closes with a start.
+	// Stamped only on a forward move, never by a cancel's revert or a
+	// survivor's redispatch, and read only when its generation is the deploy's.
+	// +optional
+	ReleaseStart *ReleaseStart `json:"releaseStart,omitempty"`
 
 	// ConfigSnapshotGeneration is the release generation whose configuration
 	// sources have been copied into immutable per-release Secrets (0 = none, the

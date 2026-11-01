@@ -21,6 +21,7 @@ import (
 	"reflect"
 	"sort"
 	"testing"
+	"time"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
@@ -631,5 +632,36 @@ func TestPendingReleaseOwedAfterTheCurrentReleaseSettles(t *testing.T) {
 		if got := pendingReleaseOwed(app); got != tc.want {
 			t.Errorf("release %d pending %d: owed = %v, want %v", tc.release, tc.pending, got, tc.want)
 		}
+	}
+}
+
+// TestStampReleaseStart pins w4/449's dispatch record: a forward move of the
+// release generation stamps that generation's start, while a cancel's revert,
+// a survivor's redispatch, an unchanged generation and a re-stamp of an
+// already-recorded generation keep the record they had.
+func TestStampReleaseStart(t *testing.T) {
+	now := time.Date(2026, 11, 1, 2, 13, 59, 0, time.UTC)
+	prior := &appv1alpha1.ReleaseStart{Generation: 4, StartedAt: "2026-10-31T00:00:00Z"}
+	for _, tc := range []struct {
+		name          string
+		before, after int64
+		record        *appv1alpha1.ReleaseStart
+		want          *appv1alpha1.ReleaseStart
+	}{
+		{name: "first dispatch", before: 0, after: 1, want: &appv1alpha1.ReleaseStart{Generation: 1, StartedAt: "2026-11-01T02:13:59Z"}},
+		{name: "forward move", before: 4, after: 6, record: prior, want: &appv1alpha1.ReleaseStart{Generation: 6, StartedAt: "2026-11-01T02:13:59Z"}},
+		{name: "unchanged generation", before: 4, after: 4, record: prior, want: prior},
+		{name: "cancel revert", before: 6, after: 4, record: prior, want: prior},
+		{name: "already recorded", before: 3, after: 4, record: prior, want: prior},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := &appv1alpha1.App{}
+			app.Status.ReleaseGeneration = tc.after
+			app.Status.ReleaseStart = tc.record
+			stampReleaseStart(app, tc.before, now)
+			if !reflect.DeepEqual(app.Status.ReleaseStart, tc.want) {
+				t.Fatalf("releaseStart = %+v, want %+v", app.Status.ReleaseStart, tc.want)
+			}
+		})
 	}
 }
