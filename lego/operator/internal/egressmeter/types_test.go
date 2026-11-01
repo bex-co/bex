@@ -147,6 +147,32 @@ func TestDesiredPodResourcesUsesUIDToRejectStaleIPReuse(t *testing.T) {
 	}
 }
 
+// w4/452: a platform Job pod carries the App label without its id. It is
+// skipped, never an attribution failure that turns the node's meter unhealthy.
+func TestDesiredPodResourcesSkipsJobPodsWithoutAnAppID(t *testing.T) {
+	app := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "web-1", Namespace: "default", UID: "app-uid",
+			Labels: map[string]string{PodLabelApp: "web", PodLabelAppID: "srv-one"},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning, PodIPs: []corev1.PodIP{{IP: "10.244.1.11"}}},
+	}
+	job := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "pub-web-rev-1-x", Namespace: "default", UID: "job-uid",
+			Labels: map[string]string{PodLabelApp: "web"},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning, PodIPs: []corev1.PodIP{{IP: "10.244.1.12"}}},
+	}
+	v4, _, expected, err := desiredPodResources([]corev1.Pod{app, job})
+	if err != nil || expected != 1 || len(v4) != 1 {
+		t.Fatalf("attribution = (%v, expected %d, %v), want only the App pod", v4, expected, err)
+	}
+	if _, ok := v4[[4]byte{10, 244, 1, 12}]; ok {
+		t.Fatal("a Job pod without an app id was attributed")
+	}
+}
+
 func TestDesiredPodResourcesRejectsMissingStableIdentity(t *testing.T) {
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "no-uid", Namespace: "default", Labels: map[string]string{PodLabelAppID: "srv-one"}},
