@@ -7,9 +7,11 @@ import json
 import os
 from pathlib import Path
 import re
+import signal
 import shutil
 import subprocess
 import tempfile
+import time
 import urllib.parse
 import uuid
 
@@ -572,6 +574,207 @@ def owned_docker_config(root, inputs):
     return expected
 
 
+def pull_buildkit(command, environment, cancellation=None):
+    """Bound this pre-pull; signals only flag cancellation until its group is gone."""
+    cancellation = cancellation if cancellation is not None else {"signal": None}
+    previous = {}
+    process = None
+    bound = None
+    stdout, stderr = b"", b""
+    reaped, group_absent = True, True
+
+    def cancel(signum, frame):
+        if cancellation["signal"] is None:
+            cancellation["signal"] = signum
+
+    try:
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            previous[signum] = signal.getsignal(signum)
+            signal.signal(signum, cancel)
+        if cancellation["signal"] is None:
+            # A nonraising handler cannot interrupt Popen's PID registration.
+            process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
+                                       env=environment, start_new_session=True)
+            deadline = time.monotonic() + 195
+            while cancellation["signal"] is None:
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    bound = "python-timeout"
+                    break
+                try:
+                    stdout, stderr = process.communicate(timeout=min(1, remaining))
+                    break
+                except subprocess.TimeoutExpired as error:
+                    stdout, stderr = error.output or stdout, error.stderr or stderr
+    finally:
+        try:
+            if process is not None:
+                try:
+                    os.killpg(process.pid, 0)
+                    alive = True
+                except ProcessLookupError:
+                    alive = False
+                except PermissionError:
+                    alive = True
+                if alive:
+                    bound = bound or "remaining-process-group"
+                    try:
+                        os.killpg(process.pid, signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    except PermissionError:
+                        bound = "process-group-permission"
+                if bound is not None or process.returncode is None:
+                    try:
+                        stdout, stderr = process.communicate(timeout=5)
+                    except subprocess.TimeoutExpired as error:
+                        bound = "incomplete-output-after-group-stop"
+                        stdout, stderr = error.output or stdout, error.stderr or stderr
+                        process.stdout.close()
+                        process.stderr.close()
+                try:
+                    process.wait(timeout=1)
+                    reaped = True
+                except subprocess.TimeoutExpired:
+                    reaped = False
+                deadline = time.monotonic() + 5
+                while True:
+                    try:
+                        os.killpg(process.pid, 0)
+                    except ProcessLookupError:
+                        group_absent = True
+                        break
+                    except PermissionError:
+                        pass
+                    if time.monotonic() >= deadline:
+                        group_absent = False
+                        break
+                    time.sleep(0.05)
+        finally:
+            restoration_errors = []
+            for signum, handler in reversed(list(previous.items())):
+                try:
+                    signal.signal(signum, handler)
+                except (OSError, ValueError, RuntimeError) as error:
+                    restoration_errors.append(type(error).__name__)
+            if restoration_errors:
+                raise RuntimeError("BuildKit pull signal-handler restoration failed")
+    if cancellation["signal"] is not None:
+        bound = "cancelled"
+    return {"exit_code": process.returncode if process is not None else None, "bound": bound,
+            "cancel_signal": cancellation["signal"],
+            "direct_child_reaped": reaped, "process_group_absent": group_absent}, stdout, stderr
+
+
+def bootstrap(root):
+    """Pre-pull the committed production BuildKit before bounded builder setup."""
+    if root.is_symlink() or not root.is_dir() or root.stat().st_uid != os.getuid() or root.stat().st_mode & 0o077:
+        raise ValueError("bootstrap evidence ownership differs from qualification")
+    inputs_path = root / "inputs.json"
+    if inputs_path.is_symlink() or not inputs_path.is_file():
+        raise ValueError("bootstrap requires initialized qualification inputs")
+    inputs = json.loads(inputs_path.read_text())
+    owner = inputs.get("owner")
+    if not isinstance(owner, str) or not OWNER.fullmatch(owner):
+        raise ValueError("bootstrap requires an exact qualification owner")
+    docker_config = owned_docker_config(root, inputs)
+    if docker_config is None or not docker_config.is_dir():
+        raise ValueError("bootstrap requires the existing owned Docker configuration")
+    policy_path = Path(__file__).resolve().parents[2] / "lego/operator/internal/build/toolchain-freshness.json"
+    policy_bytes = policy_path.read_bytes()
+    entries = [row for row in json.loads(policy_bytes)["images"] if row.get("id") == "helper-buildkit"]
+    if len(entries) != 1 or entries[0].get("kind") != "helper":
+        raise ValueError("missing or ambiguous production BuildKit pin")
+    image = entries[0].get("committed", "")
+    if not isinstance(image, str) or not re.fullmatch(r"moby/buildkit:v[0-9]+\.[0-9]+\.[0-9]+@sha256:[a-f0-9]{64}", image):
+        raise ValueError("production BuildKit pin must be an immutable moby image")
+    output_path = Path(os.environ["GITHUB_OUTPUT"])
+    command = ["timeout", "--kill-after=10s", "180s", "docker", "pull", "--quiet", image]
+    receipt = {"owner": owner, "image": image,
+               "policy_path": "lego/operator/internal/build/toolchain-freshness.json",
+               "policy_sha256": hashlib.sha256(policy_bytes).hexdigest(),
+               "command": command, "maximum_attempts": 3, "retry_delay_seconds": 15,
+               "python_timeout_seconds": 195, "output_drain_seconds": 5,
+               "direct_child_wait_seconds": 1, "group_absence_wait_seconds": 5,
+               "attempts": [], "image_output_emitted": False,
+               "scope": "bounded setup input only; no generated-runtime or acceptance claim"}
+    receipt_path = root / "bootstrap.json"
+    if receipt_path.exists() or receipt_path.is_symlink():
+        raise ValueError("refusing to overwrite an earlier bootstrap receipt")
+    dump(receipt_path, receipt)
+    environment = dict(os.environ, DOCKER_CONFIG=str(docker_config))
+    cancellation = {"signal": None}
+    previous = {}
+    succeeded = False
+
+    def cancel(signum, frame):
+        if cancellation["signal"] is None:
+            cancellation["signal"] = signum
+
+    try:
+        for signum in (signal.SIGINT, signal.SIGTERM):
+            previous[signum] = signal.getsignal(signum)
+            signal.signal(signum, cancel)
+        for number in range(1, 4):
+            if cancellation["signal"] is not None:
+                break
+            started = datetime.datetime.now(datetime.timezone.utc).isoformat()
+            try:
+                result, stdout, stderr = pull_buildkit(command, environment, cancellation)
+                attempt = {"number": number, "started_at": started,
+                           "finished_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                           **result, "timeout_exit": result["exit_code"] in (124, 137)}
+            except OSError as error:
+                attempt = {"number": number, "started_at": started,
+                           "finished_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
+                           "exit_code": None, "launch_error": type(error).__name__, "timeout_exit": False}
+                stdout, stderr = b"", type(error).__name__.encode()
+            for label, raw in (("stdout", stdout), ("stderr", stderr)):
+                path = root / ("bootstrap-" + str(number) + "." + label + ".log")
+                path.write_bytes(raw)
+                attempt[label] = {"path": path.name, "bytes": len(raw), "sha256": sha(path)}
+            attempt["cancel_signal"] = cancellation["signal"]
+            receipt["attempts"].append(attempt)
+            dump(receipt_path, receipt)
+            if cancellation["signal"] is not None:
+                break
+            if (type(attempt["exit_code"]) is int and attempt["exit_code"] == 0
+                    and attempt.get("bound") is None and attempt.get("direct_child_reaped") is True
+                    and attempt.get("process_group_absent") is True):
+                succeeded = True
+                break
+            if attempt.get("process_group_absent") is False or attempt.get("direct_child_reaped") is False:
+                raise RuntimeError("bounded BuildKit pull cleanup incomplete; exact result retained")
+            if number < 3:
+                # Preserve the15s delay while observing cancellation within1s.
+                for _ in range(15):
+                    if cancellation["signal"] is not None:
+                        break
+                    time.sleep(1)
+    finally:
+        restoration_errors = []
+        for signum, handler in reversed(list(previous.items())):
+            try:
+                signal.signal(signum, handler)
+            except (OSError, ValueError, RuntimeError) as error:
+                restoration_errors.append(type(error).__name__)
+        if cancellation["signal"] is not None:
+            receipt["cancel_signal"] = cancellation["signal"]
+            if receipt["attempts"]:
+                receipt["attempts"][-1]["cancel_signal"] = cancellation["signal"]
+            dump(receipt_path, receipt)
+        if restoration_errors:
+            raise RuntimeError("BuildKit bootstrap signal-handler restoration failed")
+    if cancellation["signal"] is not None:
+        raise RuntimeError("BuildKit bootstrap cancelled; exact result retained without retry or image output")
+    if not succeeded:
+        raise RuntimeError("all three bounded production BuildKit pulls failed; exact results retained")
+    with output_path.open("a") as output:
+        output.write("image=" + image + "\n")
+    receipt["image_output_emitted"] = True
+    dump(receipt_path, receipt)
+
+
 def cleanup(root):
     inputs = json.loads((root / "inputs.json").read_text())
     owner = inputs["owner"]
@@ -737,7 +940,7 @@ def main():
     commands.add_parser("init")
     commands.add_parser("plan")
     commands.add_parser("profile-env")
-    for name in ("cleanup", "manifest"):
+    for name in ("bootstrap", "cleanup", "manifest"):
         commands.add_parser(name).add_argument("root", type=Path)
     observation = commands.add_parser("capacity")
     observation.add_argument("root", type=Path)
@@ -752,6 +955,8 @@ def main():
         profile_environment()
     elif args.command == "init":
         initialize()
+    elif args.command == "bootstrap":
+        bootstrap(args.root)
     elif args.command == "cleanup":
         cleanup(args.root)
     elif args.command == "manifest":
