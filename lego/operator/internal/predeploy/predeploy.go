@@ -59,10 +59,12 @@ import (
 // "app.bex.co/build") so the backend can find the step's pod for its logs; the
 // component label lets a namespace-wide list distinguish pre-deploy Jobs.
 const (
-	LabelService   = "app.bex.co/predeploy"
-	LabelComponent = "app.bex.co/component"
-	ComponentValue = "predeploy"
-	labelWorkspace = "app.bex.co/workspace"
+	LabelService = "app.bex.co/predeploy"
+	// LabelEgressAppID mirrors egressmeter.PodLabelEgressAppID.
+	LabelEgressAppID = "app.bex.co/egress-app-id"
+	LabelComponent   = "app.bex.co/component"
+	ComponentValue   = "predeploy"
+	labelWorkspace   = "app.bex.co/workspace"
 	// containerName is the Job's single container.
 	containerName = "predeploy"
 )
@@ -115,7 +117,12 @@ type Options struct {
 	SecurityContext  *corev1.SecurityContext
 	ContainerPolicy  string // persisted App policy, projected for workload admission
 	FreePlan         bool   // a free-plan App: the pod carries execution.LabelFreePlan (w8/m127)
-	Resources        corev1.ResourceRequirements
+	// EgressAppID is the App's public id, stamped as LabelEgressAppID so the
+	// direct egress meter bills the command's outbound traffic to its service,
+	// as Render counts traffic any service initiates (w4/453). The pod still
+	// carries no bex.co/app-id, so no Service selects it (w4/m181).
+	EgressAppID string
+	Resources   corev1.ResourceRequirements
 	// Volumes/VolumeMounts carry the app pod's /etc/secrets projection so a
 	// migration can read the same secret files; nil when the app has none.
 	Volumes      []corev1.Volume
@@ -173,6 +180,9 @@ func Job(o Options) *batchv1.Job {
 	}
 	if o.FreePlan {
 		podLabels[execution.LabelFreePlan] = execution.FreePlanValue
+	}
+	if o.EgressAppID != "" {
+		podLabels[LabelEgressAppID] = o.EgressAppID
 	}
 	var owners []metav1.OwnerReference
 	// App owner references are valid only for co-located Jobs. They also bind
