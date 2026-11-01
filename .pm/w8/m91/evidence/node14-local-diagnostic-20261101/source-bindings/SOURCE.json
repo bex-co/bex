@@ -1,0 +1,2706 @@
+{
+  "source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "closure": "Same exact300 functional source paths as frozen1feba, actual shipped Git bytes/modes; only two oracle changes; no foreign work.sum/untracked pyc",
+  "files": {
+    ".github/scripts/native-common-qualify.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b9684b81db8ab60d1d5aa867e8ebb8b1a46c85e8",
+      "bytes": 60360,
+      "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+      "permissions": 420,
+      "type": "regular"
+    },
+    ".github/scripts/native-oci-mirror.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "dca1bf5bf3b1723d4cd497041ba71a34cbc183b5",
+      "bytes": 15940,
+      "sha256": "78b070104bfe1c532b6dcca099dd0d0046250dda32ec425ab27f305ef353ac06",
+      "permissions": 420,
+      "type": "regular"
+    },
+    ".github/scripts/native-oci-stage.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "92107591aecc0452dba27da232ea91b03c83a9b3",
+      "bytes": 18041,
+      "sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "permissions": 420,
+      "type": "regular"
+    },
+    ".github/scripts/test_native_oci_common_qualification.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "8af6ce505e264cbaaf248c2d6baf88e8e5c65046",
+      "bytes": 123083,
+      "sha256": "362bb9a9b9e31e6db4d4907f5eb61460c90b5257ac80ef70d35cbc4be8034caa",
+      "permissions": 420,
+      "type": "regular"
+    },
+    ".github/workflows/native-base-image.yml": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "65b6a7e33e43322b9b8240447337753a0fd5b6bb",
+      "bytes": 18402,
+      "sha256": "0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47",
+      "permissions": 420,
+      "type": "regular"
+    },
+    ".github/workflows/native-common-image.yml": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "0bd2e7efaa1b459cbf41a926fc594e956049dc3a",
+      "bytes": 19834,
+      "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/bex-native-python-tools": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "ce192a671c38144f191b506baaffc75a42c8df5a",
+      "bytes": 301,
+      "sha256": "931e2ed7afe9396829cef733e2f3f3be2cfc3abc1b6ea7e0df1c8d173d9b1e92",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/check-brotli.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6ca42112ff14fed463004323b86eca8df3831faf",
+      "bytes": 4029,
+      "sha256": "9daf1e2193245a27961e7d0a75b4c173f4e001a424e0e3f73b555db16934b814",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/check-primary-python.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "5c8251ca52cee1deeed2b753b5c2f1e55ea9b660",
+      "bytes": 5485,
+      "sha256": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/check-tools.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "8140223ad18127367b27cf6c2ec4270e65227847",
+      "bytes": 5099,
+      "sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/check.Dockerfile": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "029615b06e291d50e0056ce184a9cc88a9feba13",
+      "bytes": 2210,
+      "sha256": "866cd357970d435734616980aa52c50969c02ee7f035afd08aa29828fddcff9e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/fetch-python-tools.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "171309cafe4652908e85687fd158761dff360322",
+      "bytes": 2686,
+      "sha256": "eccbb9cb2befa6b37870a06e833ac41b647423639e163282be5a4ebd23e86afe",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/install-python-tools.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c03257ad25fdb557120ef4884fc1277905a344d0",
+      "bytes": 2281,
+      "sha256": "718230b4678fe451c7927e2fff4bf2f72a55545c81a9ded9fb4631314b860608",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/install.sh": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "420f116c1531fefcd0bad2a3c6a9b99114db0914",
+      "bytes": 2516,
+      "sha256": "23ee0d1507d5bcecba7e41c8a5eda10051eaa6ad41ffe164a735c6b0b25dfb2b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/node-brotli/check.js": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "72dcf51a95baa8b8edd079d60e8d5f7da07fda8e",
+      "bytes": 1705,
+      "sha256": "ef25b3362fb17e9792afb39de312ad83f94e117fda7e16a193a963868a416e3e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/node-brotli/patch.sh": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d5ddeeafff1651e90a5189711ffc7c48202af23e",
+      "bytes": 5560,
+      "sha256": "52aa5ce0a753d658a7c1d5423bbfd42bb9c57710079e46a12fdd98eb76fa7a63",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/package-lock.json": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "f17be474dabb1286ccca27571f5974363ea9d6f3",
+      "bytes": 57293,
+      "sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/package.json": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "cc19d22c8c9535f3eefe35178542bfdc17654161",
+      "bytes": 162,
+      "sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/patch-system-brotli.sh": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c632b4958b7b1f70c343036b5d3e0b1e9240d976",
+      "bytes": 2355,
+      "sha256": "8b1bab19a877d177a1a238f014639125154a79170d089aa581fe90069397bc0b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/python-tools.json": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "1a7a71f7171d552f95e60bd5cec0dddb9a6131b2",
+      "bytes": 4110,
+      "sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/testdata/archive.dump.b64": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "69368b1cb80580276b2b551c952520bab123f845",
+      "bytes": 2679,
+      "sha256": "5f2c6098b9b6b79681ac78792955d2104916298d6cc5010c1e98a6508ff53dc0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/testdata/archive.sql": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "884844a99160e7b8e1b13dcb26867b831b7aee60",
+      "bytes": 161,
+      "sha256": "5a3165fae984ca77c03945e8945c99bb9b4607c33be128e21c5816c5868f2d73",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/testdata/rows.txt": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "686466b2e8036b21efa480d40b01626b7b2bd04a",
+      "bytes": 33,
+      "sha256": "504f196d8a6cbc57cbf1e3b125cbc6419f08efb4e4995e9d06392d8c992b839b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/tsc": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "f78f6adacf6dccadd33fd5a3feec8f02011cf6c9",
+      "bytes": 111,
+      "sha256": "92b8ebd1f88da5732a1cb69c5459bf0cc95919ff2e7df880eb4c576aac344c30",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-base/webpack": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "4e5bf658679d6b71c69cab6483a90e82bcc24558",
+      "bytes": 115,
+      "sha256": "fc36859deda37230112ae1771afe75278a788891b451bc11440127f22efc8fe0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-common/Dockerfile": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "a0dd30c1ab8a990ba1bedeb8f92dcefc21f4f9fb",
+      "bytes": 2886,
+      "sha256": "b2241bca632cd565d0fb22e6abedb6cb1bfaaeaa87e3562701019edfea1cd0e6",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-common/Dockerfile.dockerignore": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3984c6545846647079185a2cf6acb18682df4485",
+      "bytes": 647,
+      "sha256": "06e4a655846e6992d952c3af42b518612af72a0c824e8e7a8291cb90772ea9d9",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-common/build-otp": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "837b136064172257e20fa2deacdfc5c954076cc4",
+      "bytes": 1983,
+      "sha256": "eb23c89dac02f69a7204e536054195ed1016aef55ad4ad24df4ade12c874070b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-common/check-common.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "77b911f3e6f6b2efecd263e86bc7b6ff227bd11b",
+      "bytes": 2668,
+      "sha256": "a5a06180d7262d65160b13500f5ff1a242d5c7fbef5d1ccb2eb4d67198eadfd6",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-common/check-runtime.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "4495cb1ffc48c285ef6032e9f2a760c80fc1239e",
+      "bytes": 1946,
+      "sha256": "7913748f1b9a52b57653efb4ac3efe6974c8151427a9145fa9544ec3c01c000f",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-common/legacy-libs.preferences": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "76debdd22662d62ef67c3e7dae54fdb695af6ba9",
+      "bytes": 124,
+      "sha256": "dcc092fb55ce5c3c3896891befd695f460bb795fa86d316c3dad6aecd592e52e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-common/legacy-libs.sources": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "4f49fe513243ba73ebe32a27f3813609fa509f34",
+      "bytes": 433,
+      "sha256": "05506782b25c3aaba325dfb2020ad96cec122fb18b6e7dc6f0e532fbafe98fd1",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-common/matrix.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "cfa158eee01a6c50d3fbd969a673a1b105d3f107",
+      "bytes": 644,
+      "sha256": "0254b2efab94b82d06abed9ad706d60d13f0c1ef1d96caa0845248e7e7006f5c",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-common/otp-features.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d93738ec8ebb3735dc15cb400a1f738c8437c28d",
+      "bytes": 1853,
+      "sha256": "a6f41446dba00d5e50484d5162c6198eb70385ec35aed73ffb803d2b42c3c3e2",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-common/prepare-node14-tools.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "9894ce0e964f9b210ce0932f9901ba65b0f92bd1",
+      "bytes": 2870,
+      "sha256": "4a82ea76f5bb829b0211d8489862cc4b32729436fdb46de8175386c8cde85459",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "deploy/native-common/upstream.json": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "f9412f48dc7241cddef855f32a0f7bd5d1d95fe4",
+      "bytes": 511,
+      "sha256": "fc2828c54271282b6159fd75193062a95fb630849ddbb84443544c894260ca98",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/.dockerignore": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "57a66b101069d71a41c5c1bfcb07e5722760e74c",
+      "bytes": 1936,
+      "sha256": "49b98df0050c8919689300e39d7716b6fc103859c293a667f331168fb4d4794f",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/Dockerfile": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "34affdeb0705739b03f434084e7b36a9037fa443",
+      "bytes": 5681,
+      "sha256": "8f321cf44077d59c0250680a157f3310d8cc3c65cc6fb779a216bb6817cd1e9b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/cmd/native-init/main.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "50dd0ca2a1a7bf91acf9e278afdbabaa0a44b289",
+      "bytes": 4775,
+      "sha256": "58fc81e63236cdb15ecff86e889eaf7f45f32902665f670ec29287fc114f2fc0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/cmd/native-init/main_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "83afa9adfe649cb1ad14e24bae8eb5750fc9656c",
+      "bytes": 7585,
+      "sha256": "4dc65be110ab503ae431c3d6b7dd2cd6ca48b78614f01dc53b3d4a0988dace59",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/cmd/native-init/subreaper_linux.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b3049d57ebc73684b8c225edcd68b43f23d84239",
+      "bytes": 786,
+      "sha256": "f789ec810e2d89f19a052718c5eb76f28152ac4afe722614a6fe768c81e4a564",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/cmd/native-init/subreaper_other.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "4e72269cc929ed4d6b471b66c400195f3af84970",
+      "bytes": 734,
+      "sha256": "ddd65d39a77eeda59166a5018ac945bff42b9015628b872256967e3f83c57002",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/go.mod": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "e71c45195a92c90f3738c18a61e4204b2dfdb4e2",
+      "bytes": 8376,
+      "sha256": "076d70eb1ea867c59a5d392c82b8da813faf1a9752cf0cce79283ac6f3f55754",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/go.sum": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "2779e877f0c10f84bdb55eb1c5e88ca873d47417",
+      "bytes": 56204,
+      "sha256": "334ce02a18708ec1b6204c72f34d94030cc9ba22c01c457eb26d8ba553a98eb5",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/artifacts.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "51817672b71dda548e286a6981bffc4ba4871a92",
+      "bytes": 11969,
+      "sha256": "ae7a9f2b5d3f682310a48c495492184174b3cc76bd58693db08973e5dd9fbdd4",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/artifacts_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "1d25c63e3499298b67587347edc1c92e8b57ab48",
+      "bytes": 4995,
+      "sha256": "8381bb76be56adacf4d5e3f72d9b371a19196a652c8d55f5294fcfea5b4148f1",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/build.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "0f620322f4ee7071cd1274ef7d0ac000f0eff59a",
+      "bytes": 82371,
+      "sha256": "4084ce797660ecf64a2a7acff113bffa5e130391eed5303e3ff4ec4cb765b061",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/build_cache_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "ff4042ee6b77fe9fc38f28004f24b3ad5c43e256",
+      "bytes": 22108,
+      "sha256": "5ee3af73fbb89bfb7deca536104abf17db60e4c3e168266a084ebe6712cda6c0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/build_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "4a4a7a6068d4c94d633023ad69d8658c6f217868",
+      "bytes": 71570,
+      "sha256": "101ed470f96e13712b025d6d72d4476bba384660a7d2d025d8c38fe8574e0d0e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/census.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "2da5fc2d5a21a4dd3131c3efe8433cb62db7b357",
+      "bytes": 6849,
+      "sha256": "5feffcaae40d851dac99245f0906f409d896cc348fc3af8abf2335b6867ef084",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/census_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "75387f102e692a304e71ce951a4f4a81ca50eb1d",
+      "bytes": 8528,
+      "sha256": "f1fa02f12d38f4398617233911af3485dad4c3d3cd4c20a2c6e093781cf938be",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/clone_submodule_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "398bc1a30963b7c7d5f0f84e0fd0735d8771ff8c",
+      "bytes": 13381,
+      "sha256": "aaba171ce72272b080783d984cab2558a7d918c88621e7003d84f2ab3756d698",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/dockerhub.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "cbe0eac32229d82bcb32ecbdfda995de6f29ad4a",
+      "bytes": 11671,
+      "sha256": "e13cc111374c6e69f78eb6891c2206b86ddd0655461280f40424dbe3a298d90b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/dockerhub_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "dde765fac1ba835ce8f1a60318116ced7bdadc15",
+      "bytes": 1810,
+      "sha256": "bbe41298a43a774b61d00ace30d861228b2b727681ae8aea30c7fdf4eaa0af18",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/dockerinputs.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "610480d93914aca00e63b517a9933d5898b6ed0b",
+      "bytes": 5711,
+      "sha256": "1c0a517d411b1b80762533d2a271175248f4dce1504088cc437300c1511939a6",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/dockerinputs_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "817add4200819897027f8591d0c91e7a1dfc7849",
+      "bytes": 9252,
+      "sha256": "f21a34fd98d2bda265151ef65ac4b5367dc87af3f71db3226605f20e297c1ce7",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/freshness.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "866076078c0b5f174a48e3f9a9a46e40919248ab",
+      "bytes": 5452,
+      "sha256": "bf41ce1f76d06a304ea468f8153f35705176f6d9d8717044528ff4c5c6d7d775",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/freshness_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "0926187205bb6258c9c90a72c248a4b4c2b4a4fe",
+      "bytes": 4780,
+      "sha256": "fdc21a5d7d3c807e95417b48c323a49a6fce5b61fdf528ed891522dccb52af71",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/jobname_contract_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "39b427caf6d9dd795c3c597d42a97d834cef9f3b",
+      "bytes": 3348,
+      "sha256": "8b64c48fde2e1a1999db810c569b8e4c4bd5190ca4ede2f715c35018bf1ebf31",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/kpack.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7c51371782fa6ebb199445d6ad31ce95d3a27ee9",
+      "bytes": 19025,
+      "sha256": "f01b2d3bd256b35bacdfbabffeeca97d28902189c48e833bd42d5494cefc899e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/kpack_prune_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "81e0eaf2431413690221abbbd4175ce918582d37",
+      "bytes": 5985,
+      "sha256": "902c6bfed530cbb89a42639ffef6d7d448a04263ea6fc62c0b07db5f1251ab9d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/kubernetes_literal_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "8f822115a365bef52b4dccef7c5a29945b29566e",
+      "bytes": 7940,
+      "sha256": "29456a41cbc5f3101e51191cf4103042aa08138e56372a799d16ec61bfe9f368",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/native.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d7c65df48f2d3f5382861ef0d55b3c589392dfeb",
+      "bytes": 25979,
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/native_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d46c0ec06a4068c457097b6d557478c4ebc1e315",
+      "bytes": 52736,
+      "sha256": "f91fc04b4fa7c8bb39dc4491394c0ab483992439bfa898612f38acee5c201378",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativebackport_python_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "9ad64cf293870da242e6695f1c8e478f74563537",
+      "bytes": 3463,
+      "sha256": "98837a71294d5e21e94e5a97b2b46de566f72b8f223cc767bded90f6ac52ecd0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativebackport_ruby_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "0a80e4167e2b34a777d16dde4c55e612e78e1ef3",
+      "bytes": 3448,
+      "sha256": "1235fd131b4a8baca769846aaaae6beb0202047bb1a42e15615b2d5cf5d7234c",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativebackport_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "a8fc663fc71b6bf060e6d91e77de24bcbfc07b55",
+      "bytes": 3663,
+      "sha256": "dbcd3a8de4cf3c7019fcaae1dd18870b911bab983e372e040a038e7df4a27834",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativebases.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "959fa805c36c429602be4134409a065ba568a5f9",
+      "bytes": 10006,
+      "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativebases_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "fb3a8719bd25ebb096e68f3fcd50d68b5dc8718c",
+      "bytes": 22731,
+      "sha256": "15c8e5283b7b814a0e1986101c82bdb697aa6ddb3f8845f9b4f2065138455491",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "84a1f2c3aaa4bb62cb25abefbd4ca4c15b21a4df",
+      "bytes": 8351,
+      "sha256": "a36780e1c2ff677df49a765c2b82722173936e6df28c1251eb5055ad673357dd",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_elixir_qualification_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "40ebc824a16a504b5d5378b17c2e67e3e9f5e0f1",
+      "bytes": 10725,
+      "sha256": "019e2bb64eab75d9c92e0d48e7d1d18ce20df556df0cbde0270d34c6f8642702",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_erlang.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "f002cc54cc58d32b7b63672d5a6dc4c1e3986dc7",
+      "bytes": 6162,
+      "sha256": "ff7e7f6f4753d7614acbe26f41be508f7503fb2922a753407b634b75445f4a1a",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_erlang_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "4a549b1e12079f40d481a5cf90828f2ea1fdbf24",
+      "bytes": 7354,
+      "sha256": "183f913ffbce10db515eb35c714b333cfdb374b857c078c50308ff8cda94032c",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_gorust_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "4507267811473fea646763596b40d0661fb9a309",
+      "bytes": 12042,
+      "sha256": "08a76cc2a45656e323f99d792c6c13cae8ede4f2a99ab03b03dbdcbf143496ce",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_node14_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "4f40f4ea983afbe1cfb6ea9cd78e4abd17f3a00d",
+      "bytes": 7399,
+      "sha256": "a81b5198e8952250dc37379740ba6a82d1d35e6ea2a0383700ed1e9377c931ba",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "e146cff6863f386c3586621213345ed2a97a79f3",
+      "bytes": 13945,
+      "sha256": "40d4b9607b0b831635890945c942eb124773bef48d3c8c2a3ec981f1337789bd",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6794c3332de84d524158347d3f0388868edce093",
+      "bytes": 12787,
+      "sha256": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c2dc9baf7113db67187dfe7a8c19ab083697ab41",
+      "bytes": 12466,
+      "sha256": "d59edc33fe3b91ddf83bd9b7e0b862c3216bcceb40dc885ddb73e3220cbd2e6a",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_ruby_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "cc5539c56ecb96fa201cda58e263022433d6b997",
+      "bytes": 16847,
+      "sha256": "126b2ae98914772b855e28f99bebb528a38baaf1478f2baf22a54275362bd9e2",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "326d3bc234c5a1dc9bc2ab44be410a7bd9991eea",
+      "bytes": 17816,
+      "sha256": "260286b4ff60c968f8253956fba3eb18623f0e018ae7a874208bde6230157ac4",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeerlang.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3352fff3cead97626033c182ce8ad51a2bddfcc9",
+      "bytes": 6268,
+      "sha256": "d6e7b4d637016630648c078c1141519127f33c62c55917cb920c67152ea1f640",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeerlang_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "35fdeb9c6d05fcaf952b2b43d311fb6b1b03fb97",
+      "bytes": 10266,
+      "sha256": "088c987b65331fab65d96b66299183a80b8dedb5b9ce6f2504042e912ddf3eb7",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeexact_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3ecbb001d5e0973b9af9c81b3d95bae36eb1f737",
+      "bytes": 14100,
+      "sha256": "09447aefb86f1ac015ca51fc093305efe089a39516b41d22aa5f013dccc6f33b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeffmpeg.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "bb9854b150a3f5d12fa19104e7a47ac8a2999000",
+      "bytes": 2098,
+      "sha256": "5e2a25677c4cbd6f70d63206d80a8761b2a101ec03e1c7dba52af4289e77c72b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeffmpeg_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "9d255daf3fec8a01332b53346ed4ca652e271371",
+      "bytes": 7944,
+      "sha256": "7f4480467067d1cb61139ff70efdae7f6d8ecdceeb19025f538dbe75d909cffb",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativehugo.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "89a3062e637eb47626cbdcbf7a3a0a208d8cc036",
+      "bytes": 3117,
+      "sha256": "4bace38cdf6801220f82b94dd6d94ec138807cd5beb63a6be45b9754cc54672b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativehugo_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "851feb944c5251bcc61a7d77e46c360ced63f1b5",
+      "bytes": 7039,
+      "sha256": "4be0c93beff5e3c8aebfb5ffe2234dc5691e115d4e762d8d5e7b6503fd916333",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeinit.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "06fa6d5d0f3b310bb80e1ee321a0429edf2931ee",
+      "bytes": 3182,
+      "sha256": "c6e0015f340bbc482a3922a6c5ee16f9c7531e3e5cadde09f0d0efdd6b3452a4",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeinit_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "bc9e204ae69e3970da94b389cad4e953f4d2c96c",
+      "bytes": 12243,
+      "sha256": "312181ad76490aaacf02d81259f053d2d0d9ec896b95f8eb4b0655610e0b9c21",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativelegacy_python_controls_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "913ac80bac91722b9f70ec64f4a6a067ecfcb34b",
+      "bytes": 5518,
+      "sha256": "692a916c8eac5360d2de5044af9d974698e67fd4f19898f5c417cb7dbfa4a148",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativelegacy_python_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d4dc611bca6d7d09d8f545eb0762030a6c48afae",
+      "bytes": 6537,
+      "sha256": "4b9e3dc8030b9c8de2d5d7a16e2c3f2dd8d03dcf9f8405a210e3b401edc34131",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativemodern_python_controls_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "a029354a3db6cf4ec5ba536ef755780f18689b37",
+      "bytes": 9519,
+      "sha256": "e6dc52d6c0aae90d52db6a4652e8b8fd162b08b5f2478d8a82d58637d364386b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativemodern_python_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b6423023c96b272f6abe6f0d6a8bf2110808a05e",
+      "bytes": 7506,
+      "sha256": "24659b3d3ea9f5ad0670b928b25ac37a3a229926000e297a56e94c367e504607",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativenodepython.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "5dc0fdee23616e089ef6e329284f9bfca98885b7",
+      "bytes": 1978,
+      "sha256": "f829e4de967b4ac47249142553fefd6e402fc64b987d3d0f041c8e63c27dff1c",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativenodepython.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "9894ce0e964f9b210ce0932f9901ba65b0f92bd1",
+      "bytes": 2870,
+      "sha256": "4a82ea76f5bb829b0211d8489862cc4b32729436fdb46de8175386c8cde85459",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativenodepython_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "1a38695dfa2397fc150429da2a31d81335f6730e",
+      "bytes": 7571,
+      "sha256": "04bdf95385004ff20634440449c7272c5028de98154707bf8217385f4dcb2b3e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativepnpm.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "1bd44ef557f1aa57717fc225253eb3b0aaa39db2",
+      "bytes": 7181,
+      "sha256": "0a99ba7093130554708da2a3b5a376b58c17697049cf0d4fd3d516a127ccb86d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativepnpm_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "f8f44dc3c991c8d789c3d901f01eecdd08cd3170",
+      "bytes": 2892,
+      "sha256": "edff15f2e02af899efe8ec4cde23baacb1c45d72bca0d7eaa924a7ab79715ee6",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativepoetry_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "814a568085c79a4220be41b74ff90e714a7fffdf",
+      "bytes": 7970,
+      "sha256": "362d9c5f2d2168fb55976517c67dd21d2b0ed9e09607efd690022b94e45aa3b9",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativepython_qualification_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "0a75c6f120dd7ceec86c053ddd6f649c611a9611",
+      "bytes": 4911,
+      "sha256": "acee218281602eee389cb99fb05e583a2a9af58ed3d0b2c415f4325e3147114d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativequalification_init_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6d14f339d552c8ff9e5adf2c880f477b3970478b",
+      "bytes": 33494,
+      "sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeresolve.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "820d90ca800f8306acc3db1d003d987fbcbfe0dd",
+      "bytes": 20417,
+      "sha256": "48fb455fba8bf07a4e62f95def7912dfc448e2e487f30ccf5690ff241ae78c06",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeruby_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "5f1be64da5c28a53b2965ed7dd4de684d6ca0108",
+      "bytes": 3004,
+      "sha256": "4afabb1e1fd86e1df66feb14ab9f42505e06c9530ea117f08da26dabdae89db3",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeruntimeenv_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d54e10dbf6251f84ae7329e2efb0abdc9ea80bcd",
+      "bytes": 23301,
+      "sha256": "158ed32e14e2db61987bfd10e920ec013a4d023782759c40345fce9d143b9604",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativestaticdeps.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "76351f6a382afa1d1c923b075cd29d0f63162c02",
+      "bytes": 6413,
+      "sha256": "2ec3c3cc70262a89825629154c93b8a18c84d892a76b5e8498c266ac59988d05",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativestaticdeps_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "ce18778732cf8a2d3f4b50fe8d2659720c963857",
+      "bytes": 25652,
+      "sha256": "9acd2be65070dfc13bb4c07ae2e1dc1a2b06af9c28937fbac1767dc221657be4",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeutility_integration_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "bfce1e26b2e8382e54e8191a0d51fc3c52a75ba0",
+      "bytes": 18913,
+      "sha256": "c87e6b01bf86aee76affd3c1245f3bdf1660f18ded3d80afd1c9e43f88abc74b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeutility_qualification_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "50750341b9b71ead4f1b0a8584bc81e7c4214f18",
+      "bytes": 18823,
+      "sha256": "8de6b083d4d7afcd7e51736818063431d9b6f90a640291b26b123cde05ffbd74",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeuv_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6d506407f9ecc949bc59a08c392b92abf029677d",
+      "bytes": 12825,
+      "sha256": "4707c1ac91e115cff27f08c0039e28bc4aedd9df0e957c6f2af70591efc18f30",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeversion.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "10e037db74d9122eb86900bf1991ad2a06f759d6",
+      "bytes": 28936,
+      "sha256": "8466dd2cea67f24df1882c594bf62593ba9a8164f6045c2b50be04734d376873",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativeversion_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "23e9a481a9a5fc9cec2d75f8f546fc7c0662312f",
+      "bytes": 34272,
+      "sha256": "5bad8de510c19738d2a47285914e9752fb68e0322d9f5dacbbfe01666899a8bd",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/signals.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "102bff255f0ae3abe6697d39f34f718351a3c5eb",
+      "bytes": 9545,
+      "sha256": "91dd13b4dc924843751796d3114de65e0cf3b4d75d53f93ee435bb35ecd765c3",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/signals_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "734d926d460cf76426d76837ba08cf8403f900c4",
+      "bytes": 8127,
+      "sha256": "627f431f779f35fe1e70f2d80572b7592a36a02579b3bf0fd2dfee010fcd047a",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/source_paths_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b52155ec6a0f7bb2c3ed05490af2b02887a62dfc",
+      "bytes": 3726,
+      "sha256": "20e39b57669a116591c1a92276c0b6248443e166356ba1a91e111d94ca80482a",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/Cargo.lock": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "72c285959112a73130e6c5204e61ca79cbda6d04",
+      "bytes": 128,
+      "sha256": "96ca666ab8d15918a206816f5bc3a2a7682311a3032e2cc10d336d7932a406d3",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/Cargo.toml": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6e5c9cde1b6e24ba5729b67f7af3f51687165654",
+      "bytes": 66,
+      "sha256": "80d6e628e7ee92e1823e024186dad074878f3080dd3a43da67409ed5d24b60b1",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/check.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3b25e2a923d7f896be4922c29373982f036a76cf",
+      "bytes": 8934,
+      "sha256": "0101a87529a21ec2beb52071e98b7b21f6e8de29d05e02217e55a74fe927a977",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/check_test.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "f1ba909eea9b2749ce36075f8432f9c25fbfdad2",
+      "bytes": 4312,
+      "sha256": "7dc71ea5fd8b016a08220814629dc87ff83712628ee8a558374f7fb66063a81e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/go-cgo/main.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c680dd9adff5f90d9f9f0ac84afb0cd8de0cd4ff",
+      "bytes": 1128,
+      "sha256": "5fef1b1a809a990ca84c3da2ada7d8f08a80bdc1887db7bd08e68085996b6e9e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/go-pure/main.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "87f5780454aaf7305d73803e643fdf9dfc0d1d38",
+      "bytes": 781,
+      "sha256": "30589e0fbdd2b2f977c29ee5de265bd89c48b4b878850c0adab9d3d6adab7126",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/go.mod": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "a77018dce0eba5bfe00205aded7663639f229a10",
+      "bytes": 57,
+      "sha256": "76b6873605f846720707abd038b459a16040bf647d3f261b7e96a833830c11fa",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-native/Cargo.toml": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "a7750598a9cb7ee2dd549bf63ee64474d4f15549",
+      "bytes": 92,
+      "sha256": "f5e3a9cf61a8e4157de528adc50d44bdb60dcfdd96c41c0bcaf4011398b83193",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-native/build.rs": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "a7bbe0c1af955fbaa5b3f227a81bbd689f7071f4",
+      "bytes": 728,
+      "sha256": "a853711ab72de9137d9b4073f8f047a5895342e3788463416ee73b9afb94f6f6",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-native/probe.c": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "252ab287d3ba33d77cf3605614493a9ffd5bdc45",
+      "bytes": 374,
+      "sha256": "f1ea3aab549172e52df827fcde46db02f7736088c8d9cf5a08712b5f9ec8e0ce",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-native/src/main.rs": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "31067ab6f2227ba48236e209d8eda7ac3126b608",
+      "bytes": 657,
+      "sha256": "32c3cef2265c229b9de11e5c5dd7c855811a767b421608a7b13bb888e2a95f92",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-pure/Cargo.toml": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c9fcfb20be5145c5f68507c371d81dbba2f4947c",
+      "bytes": 71,
+      "sha256": "da7cd83a9fa7f8bf6dff461b5dba2d8d45c8cf20c2c5cb65abe120ede188c9cf",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-gorust/rust-pure/src/main.rs": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "fc67e93eb4084b9c4cc1a960e0d5391bb204e10a",
+      "bytes": 234,
+      "sha256": "9b8d1f5af916052c78559fa38ef7d199994c3fa16eb3c8645ac1fb0a28d76e82",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-init/.node-version": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "a45fd52cc5891570d6299fab38643103c3955474",
+      "bytes": 3,
+      "sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-init/build.js": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d26e2695c296ecc457d0a2de20c3420fe5381166",
+      "bytes": 315,
+      "sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-init/capture-env.js": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "ff9b2a6bf6db4eed7b70df88788d0015a0171954",
+      "bytes": 367,
+      "sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-init/identity.js": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "51cfbeb4302953a9132b3d3963fb27442b65eac7",
+      "bytes": 2232,
+      "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-init/package.json": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "fed132a8842323c1b00ac80d77f1052572b894c4",
+      "bytes": 144,
+      "sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-common-init/server.js": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "90c522b072fadec34910761f77647168295dd997",
+      "bytes": 1550,
+      "sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/bex_nif.c": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "2848560e6695e73cfa26aa9b5fa7f455c83b60f3",
+      "bytes": 1419,
+      "sha256": "78bfbcf99fcbfd1d3a84602ca119cbe54906c681c8a2c962ffef8ffb7007f540",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/check.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "368d2973ded4bd190d42b83b5a985d67e88caab2",
+      "bytes": 4364,
+      "sha256": "9b9e55057896df16a097e856d040aeadad24f79ea3bd46cc19d5550e387c73a2",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/check_test.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "33a5542e1a8780eb40c4d6b8d8ff50fcc61b48a7",
+      "bytes": 811,
+      "sha256": "164a424e20de98fd31aa3d5501659c8ce4b25db6dd00f203387509ea2974bae7",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/lib/bex_mix.ex": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "92d0a8e8f1bb5b97197f450019747d3f83954902",
+      "bytes": 61,
+      "sha256": "8333e47d2f1d3fbfc70afa4c6e8446c0d1992be8356f871c1601199c8a8046c6",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/mix.exs": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c10e46bd252ae807c55c29aba9d8c6e1a8ea319a",
+      "bytes": 208,
+      "sha256": "3e9ed1eb4453cecdbf95a7eb24e546de94d4e964e26209f793dd716ec398301b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/rebar.config": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "818d57f18d432fd6064cb9ddad5640e624cbd595",
+      "bytes": 58,
+      "sha256": "861d36de5b4c4015c259c575d8539aaf7665f8825ff88b7ee411e3d4be4ec8c3",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_nif.erl": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3ad6120524c06deda71ac38144c2505ca0449682",
+      "bytes": 215,
+      "sha256": "1ad19323149c92831fc080716fe427e556db2aedfaf70c12fa66937da5eb2189",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_probe.app.src": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "f726bb5ca0c175850cfe11e660f9d518893cf205",
+      "bytes": 220,
+      "sha256": "d3f855ee9a2d871fac850903fea872c8c5b6f240790631e773fda42f873c17a1",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_probe.erl": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "421f4c73d5d6dd21d8273de3dac3ed0e620f0602",
+      "bytes": 377,
+      "sha256": "706ac74db50bcf06a0c8129e3fbf370b53bfdc273195c051df41c7e37c2389ff",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/check-tool.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "fd3f77ab37c79f21defee1d6189f2f00a3c6aa3d",
+      "bytes": 1025,
+      "sha256": "3a2df48cb70504940390dc8f6945a1dd6b8873499597dee361758e2ecc55652d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/check.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "edd7165a4479cf5cd29ff7f38b8a722bf63490d0",
+      "bytes": 5960,
+      "sha256": "afbc081f5d59208ef02e1ef077dd860e203a58a10e7577ca47508b1afc30c45b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/check_test.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b0e363d6b6b234a2261b33a52f7bc9376f8a0921",
+      "bytes": 4201,
+      "sha256": "cb531be9d4e1f7403a78c57ad0ce2ea5498170ee8edd223780e01990cc5cd345",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/legacy_probe.c": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "f18e08388732200b0f72449b3b78617f2059f416",
+      "bytes": 548,
+      "sha256": "942aaeb9a03e7ea2ccec4ca4a085550746198f12080f7e5b3415d83a67e696fa",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/pyproject.toml": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "dedc330b93cb77798a298cd8fe0a297b44bd0421",
+      "bytes": 259,
+      "sha256": "331714699e25ad5a241fe669ee775d7c2dc293ea29be705cae3512ff9708104c",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-legacy-python/setup.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "1baee2a7493cce2579eb7e948beb9d482b9ef2b8",
+      "bytes": 165,
+      "sha256": "196100598999d18c7509d3356c1f46088d8298067ebcba12364e2e9fd6a3ed5e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-modern-python/check-tool.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "78268c3f61a29cbbf2e30a6a02469e3743e2d86b",
+      "bytes": 1757,
+      "sha256": "c81bcbe21bb8e1b59c02811a1903f07e1c232f0bf9c6e2a682b72e7221df59ac",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-modern-python/check_tool_test.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "494babd43df4dc207805c994eaa0179c18fd2b48",
+      "bytes": 4655,
+      "sha256": "f4f99cf1635c54aeef17f14bfbdc8a91e0ce69563ff685ca2b134d66a36d442f",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node-addon-qualification/check.js": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7bc7be5fe5a6ea13fda676f7e9d75e62e2228d37",
+      "bytes": 1132,
+      "sha256": "5fc86c2def067543f01189ab9e46aa6e72575b24fe3c08c1394c1d9809cdbcc1",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node-addon-qualification/check.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "f9028384e0d11ec0718b30c6e03191779f023c96",
+      "bytes": 16634,
+      "sha256": "98f23e2a4b9a86b39920644b140f65c944345907d5f430ad8e2d49bbcc386cba",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node-addon-qualification/check_test.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "e5748dd1db02cb06ed9294814c517576ce3d315c",
+      "bytes": 15916,
+      "sha256": "0d495f1f6bb579325e9dfa500d8396b958af933507b8d0b620e3829d7c6224c4",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/addon.c": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "588f2bd2cad20f38022edafcfccf133b826bb02b",
+      "bytes": 1231,
+      "sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/check.js": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3f3871c93929a409f05bf31a148e477ccd538380",
+      "bytes": 3401,
+      "sha256": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/check.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "eb815c733e1306a3027846dc3656abce31a305e8",
+      "bytes": 13293,
+      "sha256": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/check_test.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "67090730bb8705d33885bc5e9a9b6ce90c5ff584",
+      "bytes": 12755,
+      "sha256": "a265df54f4b26e44d2b922af0865e5fd69db4aa687f198fdac010cb84c1872fa",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/package.json": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "8c49abf2bf93c6962fa591b29020fc1f2fe2eb9f",
+      "bytes": 74,
+      "sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node14-addon/addon.c": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "bae382b8d6a79589022a96af3449dacb5e4952cd",
+      "bytes": 588,
+      "sha256": "f5a64ddf893528ef6560d80c9c3967294a58f4cb14ade393de1fe263c56d0ed5",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node14-addon/binding.gyp": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "370a65e991befea66b2980b7a5f81183ddd822da",
+      "bytes": 64,
+      "sha256": "875af09b39571267156015c97590b0cf2a47203de771908719b0ee7d008dedf5",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node14-addon/check-build.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "bc5eb88dda92d11058f1324f4d7955bfb3b912ef",
+      "bytes": 1787,
+      "sha256": "305ae15aecdd106e912d7bd905d96f0740df92a55223ec27d7ed2077647e8ff0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node14-addon/check.js": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c4866dbd5204292a7463f35b5b06c5311af6f220",
+      "bytes": 526,
+      "sha256": "c45e315fcb9daf50a104d7e703f5f7cb2d46cb1eea0f22a2d307d5026b115f7c",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-node14-addon/package.json": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "59d2911bd135e8b788590b2100c6db097b2e142f",
+      "bytes": 92,
+      "sha256": "ddb67ef3b5aaeb9c28b2514e72ce5b9e32971cffacfc47f98ce5ef0e242d5e1e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/Gemfile": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c36334ae0dc1bd98f7889cddb13efcf1a7154c3d",
+      "bytes": 71,
+      "sha256": "64e0245498491c9ca88b40d21fc207f04d5ecf34dacc056805ef87a20acde743",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/Gemfile.lock": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "83f331dafcd33673ac161833d3da7ce5f4b8b610",
+      "bytes": 45,
+      "sha256": "47721c7d0cc398e770ae3dd99ff29afdc642046da031e4068ebeb6fb875fa93b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/build.rb": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "99ae76d5c19a581a9d0ee0d2b7e7739c4fcf7a50",
+      "bytes": 884,
+      "sha256": "0fd903e4b57077a71abd42f8773dafdbc21c9211fb34a69317bea38fde6b653c",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/check.rb": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "fbe561dbdf1bbf1de9e06c829d6a2a6a02ebaa70",
+      "bytes": 3871,
+      "sha256": "36bf12ce0ed5fca238776e88250a2e78e373c2f8d4b3800a4a8ac528642d6082",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/ext/bex_ruby_probe.c": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7d95b4da350a90a006addaf06dcd0d4cff0e012c",
+      "bytes": 727,
+      "sha256": "de7fd17cc64fbf66a14865e8a8d4065e2a9f08a8bd4e0d3d8941932318816b2a",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/ext/extconf.rb": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3667f8c08ff7dd94e4d75562bf95a4797ee063c4",
+      "bytes": 150,
+      "sha256": "7e5dcc2662c3491eaa9077fbb9a97729f76420baa462896860d4b7169ebdcfc6",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-ruby-qualification/static.js": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "67264ebb2625bd965f500512053cbca95dd70bb6",
+      "bytes": 1082,
+      "sha256": "a92f110bde5a96bbe1acc29fc6bd40fdc6fe2c881b54abc292ce314362ada241",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m100/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "cd3b80e1c139bd10fa919c5137c4231da919a5ab",
+      "bytes": 1301,
+      "sha256": "81bb386b11c2aad0896d45d1b48597bc03373c8af977d9af4e2cebdcb5d88b69",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m100/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "57661f3c0a52e0990a7f8cdd3d9715a01dce82e5",
+      "bytes": 784,
+      "sha256": "986ccddf422b19d220a5e4c2108a2858814d8df4445a7cde4f45ac07482651a0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m101/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b0a989b38bb46a53a1e938382e1ebc3229c78c7a",
+      "bytes": 1224,
+      "sha256": "2d0fb551b23822b2301a71db30605ba910d816af13657836d773cb0bdd4c4634",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m101/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "28d91242f99d4fb2aa6e1f7c2bd17d2995542b6f",
+      "bytes": 794,
+      "sha256": "63ae3cae9e37db7f9e60a233b6fe214747af47656ad17dd7a41db317ccea4ed3",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m102/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "318581673b39cf9a543234f2afec55fdee9495b1",
+      "bytes": 1782,
+      "sha256": "63b6e563fbf9e9cccbbaa58af87ce73eab5dd8910b64e769ecf0ec54d80504fe",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m102/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7efb54209057e3cd1cd254e27617ec3c4a03c345",
+      "bytes": 846,
+      "sha256": "899060770d761dbe8255cc51d18ba6bbdde923f5b26dee8057ac9adb3702648e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m103/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "0a745695452bbfb5827d97f5ab04efe3921db421",
+      "bytes": 1346,
+      "sha256": "21649c018aa68b1e9bd027d165a0498dae3e4d8cfbe18228b7246a465c223189",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m103/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3be8622e4b1cdfaca13c1acdbcce6faa3c4daba6",
+      "bytes": 1007,
+      "sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m107/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "00cfb6990f33bbc963a3eccc6039d28b12c04e79",
+      "bytes": 2704,
+      "sha256": "f659f8a44cd73db33da8902ab4e3dbad4f5713ca91677a67a48a5696b34db06d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m107/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "43e0d0eb51275e70358df5be71a0ce129aabc1fc",
+      "bytes": 444,
+      "sha256": "e3c01915a1d5fa7b81890bd553be3654d416685ee1295d8ff5b0da272272b634",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m91/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "41bb46275fdc402fbec921839c8d842869b4651d",
+      "bytes": 760,
+      "sha256": "9476c0fb42d65a8a6fd7a32f64307003a5746aefe062b85304be29e8d6763803",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m91/qa402.dump.b64": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "e3bfc015cbb10acf3cf8be7a4cfff166a3a0ed34",
+      "bytes": 2297,
+      "sha256": "8697ff567103ca61423fc1a0b4f364d191ffa22086e547c64f89c1f2fa41d0bd",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m91/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6657833edee79db76d5fa2d7c0abb4540f36320f",
+      "bytes": 868,
+      "sha256": "bcea54ec9a58a9f8c97676680f6d5cee9876feb16d16cc809cda26056856ace1",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m93/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "76c5ae403b65db34e3a635a6b6bcd15697efb71e",
+      "bytes": 1490,
+      "sha256": "1c6dd3da3d568ba52fdd9728ce7c0f9f38c6e928060358eb55c5814a9b2cdfc0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m93/sweep407-html.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "703b9bd8754229c192eee2d501ffc223b5be63d6",
+      "bytes": 918,
+      "sha256": "43314330690433d298e850a047460b848f286a3824bbb8e2509831e1de8be597",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m93/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6c760aeff0c9222feda6aeda8633c32f272ca148",
+      "bytes": 903,
+      "sha256": "14a6714bfddf409acfc8eee1f75666eeeac7be18b4b2d9674b239417e5fa03d7",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m94/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "16d64fbf02fd1d3b2fcbc9e653e0c7d4121a9186",
+      "bytes": 823,
+      "sha256": "dc67c77b617c59cb5d66bae199ad315d5c4344f42ba0cb82040216ba8dbb9e8b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m95/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "e2985d4e45098432ab22c23989a53f8315cb1848",
+      "bytes": 1513,
+      "sha256": "27d85a80e1e0ac250ee526593ff694918af83e1d378c464e1f68b9825553d878",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m95/sweep406-png.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6c2056164d431c3abd653ae5afb5da9a8d46bfd8",
+      "bytes": 950,
+      "sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m95/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b6648fa8053681823c5e9e2970c093f438469415",
+      "bytes": 729,
+      "sha256": "8a9f007446916ac3f60a16476527517fe22b4c4475fe6cc343d6370e3e8735aa",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m96/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "8aa806502d1991b283fd5cc73af9e913aa578287",
+      "bytes": 1769,
+      "sha256": "7d361863070b3d7bc794a1dd182b4f95f854770ee15de5893c38caab8207627a",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m96/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "76f5b3fd0ea10159d3bd4f0ee5f006b0e1b72518",
+      "bytes": 951,
+      "sha256": "998088b1aa2fa9162ff1ec0ae304072b92e4dd0b6cda0b62605db0ae97a1690b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m97/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "effef3a6f8f7e5b91a40ecc09c122c07403ce38a",
+      "bytes": 1901,
+      "sha256": "d38910713883276aec60ffc9ad4cf7ef84fb7fe7fbf4b7a4c58d2a74a0cd38c9",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m97/sweep406-png.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6c2056164d431c3abd653ae5afb5da9a8d46bfd8",
+      "bytes": 950,
+      "sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m97/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "365a47cf6053e260aba006ae212a133a8f5bdb37",
+      "bytes": 537,
+      "sha256": "ef78852f2d8a39da81d40b9da023ab97de2221ee6d30d9a268589bdeca826eb9",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m98/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "cfc2a929167e9ef9a9a3b8b2f954f79b742444ac",
+      "bytes": 1179,
+      "sha256": "69d6823694a2ec9d55b925213688c5d0e6b297cb7fb795fab3567d6fca726438",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m98/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c9a665372c54fb79aaf15ac47c006049edf7fc66",
+      "bytes": 1132,
+      "sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m99/http.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c30119572ce13856cf79b49bb6ecb0b3f209378b",
+      "bytes": 1188,
+      "sha256": "4631fc56dcf3498a080af4cce09bb50ed127404b0e3d9068963cf1fb8f6a447b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/cases/m99/validators.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7e5ec08ee806a481c99d46ed83296b75f1aaf81d",
+      "bytes": 708,
+      "sha256": "2dec2aca1c6eb8b1d2a1cca35bbc2c9e47849d65148ec417b8854e022ad04008",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/gettext-reference.json": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6879f5b223c340f7f9598892cb0d15ec096e8b62",
+      "bytes": 777,
+      "sha256": "cf8dc598500148d80e44606c138449154847cd7d639ade59886d9cf9f10b9edb",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/messages.po": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "02b5f787e1a61156e535e294436491d2b9487e39",
+      "bytes": 508,
+      "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/original-cases.json": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c7d9f9523eb83a438121fcee137721b6496d6bdc",
+      "bytes": 83949,
+      "sha256": "c8387719f59d574e71732faca7c1c06e6e421fec1bf7766f2b3c0d7bf7063ce5",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/original-cases.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6b7a984c36115936a77b66e76a646166a27bbfec",
+      "bytes": 6384,
+      "sha256": "554dea2d7a3d1a4c23d2dc45b43e67517142f7b9ea4ab50e6f5bcd9d33c7a010",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/original-cases_test.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "58335e9bbf2d090ec8aaadebfe02da23017830f3",
+      "bytes": 9401,
+      "sha256": "c4c7b427631902294ad9f935fdf63b099a58272d187038ce665d071edd58f11c",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/png-decoder.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "f86cf20d32c3032e7b67af90630af47cf4391b91",
+      "bytes": 1933,
+      "sha256": "723d510abad384f74069b445c31f80c79e3930281ed5d6542e12453455c2150e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/provenance.json": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "9ce1d491d32897b4f079c11de0281d9ed93faeb7",
+      "bytes": 21602,
+      "sha256": "48a9fb0691b00879f07b200ffb560dc338b8bb4e2f9a8cd3e875df5fbb9d782d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/recorded-node-http.json.gz": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6d7283f6e8505ae18e8cbd037295d31731d0f49c",
+      "bytes": 12008,
+      "sha256": "5510f0dfe1fa2838cdc7213dc94a631c93056bb08c10b48481e6617f62b3564e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/source-carrier/CHANGELOG": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d3ff53e0564a9f87d8e84b6e28e5060e517008aa",
+      "bytes": 18,
+      "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/source-carrier/LICENSE": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c192bd6a24ea1ab01d78686e417c8bdc7c3d197f",
+      "bytes": 1072,
+      "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/native-utilities/utility-check.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "ae2d11dd0a40545ad5dccbd828c77f780d3b597e",
+      "bytes": 11577,
+      "sha256": "3e895819b0b650ac9f9def487d0f396d5fbf00fc3ae3c2ff7f9df7f5fc9d41fb",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/.ruby-version": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "fa7adc7ac72a28b18982dcdd7e284124f2a87b50",
+      "bytes": 6,
+      "sha256": "649819783a78ba424b97fcf4d29fb809866b0b3659f901c0c0dac285ad9cca78",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/404.html": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c472b4ea0a781061dab1f394627222735d4215bd",
+      "bytes": 398,
+      "sha256": "6e4c2c947e9d48243abc4207c99606f41c9531a106c0db4b06bce12f9cca77c6",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/Gemfile": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7ceec014a88baaa28c984ffcb44fed344ba40303",
+      "bytes": 1007,
+      "sha256": "46bd29e6de1dffff356e789e463cf5af452c65d159aa87940f9d3083f2e948cf",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/Gemfile.lock": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d792db420aba85854857d4fdebf9b330c24e157f",
+      "bytes": 2014,
+      "sha256": "6e5cabe8fa6c9fa0faf38a81d067020afa6b4bb360420296d79df30c2a99e5a8",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/LICENSE": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b3f4102b3981556030dc2c7b604aba5fb512e73c",
+      "bytes": 1085,
+      "sha256": "53dc8377b5fa8b72eb5096ca3f833a19f489c2646196e1ce24368c7133410677",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/SOURCE.txt": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "00bcb1762a3985738d7c948ad3668c60dee6fb33",
+      "bytes": 269,
+      "sha256": "a4a6513af49c26867f3b6a40fff7bd65348ac28e5382a143cc3c97ab44dc0d93",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/_config.yml": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b8095667698d5253577213aa13bc72031da13b67",
+      "bytes": 1786,
+      "sha256": "8ca83b6c5e52a9630db83adedd0c7c31fdbd45c5a9fe9e5ab90152f6e0c0399d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/_posts/2019-01-04-welcome-to-jekyll.markdown": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "4241b8a05661c054270f50d403356713d7a27342",
+      "bytes": 1207,
+      "sha256": "f649e1e7f402281abeb62e999bf49b5827144057e33d6d8cc6017735c3e69260",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/about.md": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "8b4e0b28c83e707c74fcfc6a53f3f084033cfd58",
+      "bytes": 539,
+      "sha256": "f9d5fc87ba00e6639215aa830b91a435fb576102930651370eba2438ba4fc196",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/testdata/render-jekyll/index.md": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "06715078416fe7a0f7153a3d1e9ec351217c99ad",
+      "bytes": 175,
+      "sha256": "a5383927fa36f1317893fd2c3823a5c7a45e0ef1a33b1f9071b67b8751af95e0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/toolchain-freshness.json": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c3cf32e3aa21f864019859d3a6a851b518b01cba",
+      "bytes": 27224,
+      "sha256": "be63de042bcff1899db87f36d4c3a093bb3b31282079e478603b10e7359d94fc",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/unschedulable_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "2e29c0d4332a76cf3e7650551b95d8de6d1c4076",
+      "bytes": 1603,
+      "sha256": "3115756b750eaaee233805a010ccf4cf904d2a95003846db237c3fcea5e334bf",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/artifacts.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "09411864a544bcf88b3f883b6b772c6bfc44b392",
+      "bytes": 1860,
+      "sha256": "b33769c1ae5d9eed250dacf71ff784fecb33d632cd8af91d364e039dded2dff4",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/ensure_owned_job_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "0919bc7351eb0ca3b15c49d5ec64b6c858093abf",
+      "bytes": 6359,
+      "sha256": "a001b99820620b35ed975af1e4f9e9e1cf5d3421a6076727605d5de4678456f0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/executiontest/expand.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "f2b5a40d7360631699e1d4639391ea9c73707545",
+      "bytes": 1871,
+      "sha256": "c42544aa8686d4ec6741097119cf247111f2d86279792e2a5d98c03e8dd4552e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/executiontest/expand_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d59b257ba3aa84cbb89d5b85d291f4c45c8f59b0",
+      "bytes": 1424,
+      "sha256": "261336592ddb3fd8e4ab2ccadb19fa47c932a7d9b5d05014cb165d49fcd60a22",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/gitcredential.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "0d4ce134a2f376acf9469d3934a88b5c87d528cf",
+      "bytes": 2849,
+      "sha256": "ba3388bc68677764b5f261228b171592b34a155e46cef30d7e3f1a18b52ddf94",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/gitcredential_guard_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "21d1a14490b4ea03a583a9bb16634fb4299ce93d",
+      "bytes": 5342,
+      "sha256": "9a95ec7a4ba77b72740cdd7d3657480a02169587dcce809a2247f4a02428ef35",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/gitsubmodule.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "55932de1bb6a503fdb5c0ea67df0184d76cdbf7b",
+      "bytes": 2739,
+      "sha256": "986a224dab731db8b03b3d67d29c554e99129f69c7aaccb06948ddd10554c0c0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/job.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "fda2e4d17aab294d532e1afde2933c4810e0927a",
+      "bytes": 6235,
+      "sha256": "517b2bb45573266b4c0a73b568c58f16b3fe55983e195086e99b3e505e9e5a72",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/job_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "259f3b66d0b1ad4a8ccbc61a2f535791b1aa7f6a",
+      "bytes": 7543,
+      "sha256": "8690d1918daf16448abef649979e43ddd5960f79b9394c35ccdbfe8c44de7b09",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/literal.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3be515c23ae886dd60f88a0d02e27a6028484128",
+      "bytes": 915,
+      "sha256": "ea69cbdf5322143d8fa0f590ba412e7e43921a6a1f12a777635ac3416096a6cf",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/literal_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "accc1525cd3926f4641826c4f5dbebda990a044f",
+      "bytes": 1240,
+      "sha256": "29c51087f8fb904d2d93c1f90289fd88eeded5121cc0b6abf6d5bf93ffc268ab",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/execution/security.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3e244630cadec5cb6657313502bb028a70dd0961",
+      "bytes": 5430,
+      "sha256": "52051249d74093d426e0054b1e5ad7a0acd77c3e86f6930ea228b79cb728a04c",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/httpclient/httpclient.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "79c442f3971cea61328058d35d94ecba34b3108b",
+      "bytes": 3086,
+      "sha256": "9dfe856ac0885bdd150c50d1625bf24b0fafc82fd7072011ab3ad3e63ed760ac",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/httpclient/httpclient_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "e57caa3d72c128ebddaa89625b39d66da5cd8bcf",
+      "bytes": 3184,
+      "sha256": "f1006844063be212593bcbecbb1a00543a2be7573976008e4f26d01a67ada7b1",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/identity/identity.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6998f05c9b04fabf641618bb1b0c9176656daf9f",
+      "bytes": 8577,
+      "sha256": "00fac572480e4817b8efa82cfd8ea08024a84d2c122124e176d1f27fc5711580",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/identity/identity_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7136646ce07cee5054dd4a2baf142c300c8fe065",
+      "bytes": 5698,
+      "sha256": "c1d1b84701549fd72a2b07a83bff83ada38d5bf9fe69ea75f1d4b90339747a3b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/publish/clone_submodule_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b7f6c5802be285fa56958875e1aa366176c143fd",
+      "bytes": 4943,
+      "sha256": "2520a7d370e2d03a8427fd1c3dc7d16bd33089018c60afba47906c92104e9f76",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/publish/publish.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "84e46ea6f29ef0eeef3c9db457ed75ffe03f3793",
+      "bytes": 33250,
+      "sha256": "18d2919ea3d318510e27dc13727e2c9d8fd8d3962625f5a72c66c338a879734b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/publish/publish_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "a82f259530322d2d0b807708ac528aeb3c0a5d79",
+      "bytes": 28859,
+      "sha256": "c7b9d359f1e116d27667090d5a8288a27133975daf3918a88f4e92a4d02977bd",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/publish/retained_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "03e7bdb1c44051ea0a4b80564db2f009ebea8eb0",
+      "bytes": 7906,
+      "sha256": "64f7d7c98e24084ab02092f7c90314ec3b2e1bcaac1f04c0841a0240bf4e9ed0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/bearer_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "03918c94370169f77331bc61e759fb86965b61be",
+      "bytes": 2636,
+      "sha256": "ed5d93fd51e4ce4f245c08e8f66dfd84ad7a25a0128442f96bc16662914262f9",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/cache_repo_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7078d770829db8c48f1000d37011ff473b7eee26",
+      "bytes": 12191,
+      "sha256": "47133d08ade033f3358e71f5f1df37b9d1b923a23a9cdfa326319483f15c7819",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/creds.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "63bcbe4144c299dc4b1ed71d04855f1b4f50ee2a",
+      "bytes": 25573,
+      "sha256": "a4c813d8126e8100fa1989f6a459bac788a7748cd052befd2da9740c96a42c6e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/creds_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "175e8eb5f98b22787515891b0374cb801f22730a",
+      "bytes": 43790,
+      "sha256": "29e39f15645170449794459e54b62d170183152d1b59b9ee6120dbbae630670b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/digest.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c65941ca8fc8b3060667a4fee9edfa0aff7f6707",
+      "bytes": 9296,
+      "sha256": "0e7523e2c9bd684b68705cc2454f9b2f651c199505f4431aebf4f2636e093e08",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/digest_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c48931e1a843e8105423ca226ccf61207553736e",
+      "bytes": 4955,
+      "sha256": "3ff148045e252a37289a6018b2f1edfb478a1e4d7b55f2715d3796d83d88f4f6",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/gc_invariant_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "75188bda865cb878563a671f599cd3bfca96e5e6",
+      "bytes": 1465,
+      "sha256": "f8ebbe578cd75f1dd663d16c2568a93fd818c60b546d5de7a2eedbab95e9ced7",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/htpasswd.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "2c12639f4bef412b8347ae9ab696408baa4e0341",
+      "bytes": 4395,
+      "sha256": "5e89a3b22fe57de12d09d3490e5fbb5a4d25ce342a3ef8c5b1252bed1de06a84",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/image_config.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7d2a8c99b0ea240553533e95902bc1f42560e687",
+      "bytes": 16264,
+      "sha256": "a6932d931322f32cc13e845208e42e74e550d6ade62cc2265312570a60905d98",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/image_config_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "0cd52bf6b4e05d5df583f225bff4d36faeaa3398",
+      "bytes": 14580,
+      "sha256": "a17c0a82403d6d3c4cfecb964038a701b882b0fd46ea9ba9315e7f480235ab0a",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/livetag.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "ab2c3522ee1972f1c5fee479e2a275cd8dd8bc2a",
+      "bytes": 2888,
+      "sha256": "0ed7896911de1778a79a3f575bbe54c464827355922a7caccd8c3c985a936aad",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/secretwrite.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "1dd57f09b6678bd01fe3f3a4174403d95c81d6dc",
+      "bytes": 3695,
+      "sha256": "64e90a1f75c5e416252aa0addaa3f3619e12be55a508ebb01888d087c70015dc",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/snapshot_creds.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "de9b3228014bda7fee849659c64ee125f4ed3fa4",
+      "bytes": 5097,
+      "sha256": "b5b9a88ecba687ca14d48be6e8b764dac6a4323865bd20f9f7b271ca12afddf5",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/snapshot_creds_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "917325b831a4091b338da25cb66bc619b4ef7d40",
+      "bytes": 11456,
+      "sha256": "93d897b31129ebb17ff746c83f6d6c1e9c2fcd94469164ba205c78489f4e6629",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/transport_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7ab6f7ad47c0f74c9c3ad2b48cf455d285d9779f",
+      "bytes": 5294,
+      "sha256": "72e532199b0351078e9519fadccbe22b030aaf2b62680a69d54d069a146e8fa0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/verify.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "ce8644786c0c6fc67990fb55ddbb56c7622bc29c",
+      "bytes": 10223,
+      "sha256": "53e933b3095e98f17dabb8f8b043ecc684998e256d4ae40ce0d672c6f57bdc07",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/verify_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "024d485477b1eb8d918444fd2ec65f459804392b",
+      "bytes": 10234,
+      "sha256": "c9484cc00b5e9fdeeefa4c3e694963a54fdf6db876d501d076aa51565defd612",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/registry/zotconfig.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "94a355af14c053dfbcebd5e68457e7f229f27215",
+      "bytes": 17338,
+      "sha256": "b270ca9b5bea94f324b1b141817ebb4e5eceb45e616b28356e79150f1e6cd1a2",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/go.mod": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d768add21c6d0fd4056c0741eb74ce51701998a5",
+      "bytes": 965,
+      "sha256": "cba2bf22d538d7ce02f95d553dfef4c821d62ac1155b720ba57a9204c2af3bcb",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/go.sum": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "4ef0e726f4afe5c4282332c273bab9ef4302b4fa",
+      "bytes": 5225,
+      "sha256": "0c84289bdb8ce67987ba21a59adadddc4d770e5c01ec7a8179533c23a48a6d67",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/k8sname/k8sname.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "e77c8a7d1acca6a1519812a61c62389a2d145767",
+      "bytes": 2476,
+      "sha256": "8aa724533403289521d1159c2925e87d9d468eb88e5e9890dc91cf554c9a67ed",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/k8sname/k8sname_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "635d4b74cdc445fe2f0aa1d9023e8297904b3df3",
+      "bytes": 4195,
+      "sha256": "82186371eadf480533bf691b139f5298473a863b2b1729ecca4d540a8ac04e13",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/netutil/ssrf.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "227d1360394d56b791c14e2f720c62b043d69941",
+      "bytes": 5872,
+      "sha256": "0288b564aa66bce3c70259019c6657da7245c468eb48a3d4543bc30856e41eac",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/netutil/ssrf_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6133a60a8a6e086522b4275aec07dd0faf2db758",
+      "bytes": 7416,
+      "sha256": "2790f971238e267a6319baabdfc5cc0d8e1fc67cf8bb55c205e538870fef089c",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/app_hosts_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "aa8e69fcc277a9c93131bfdad4966c15fb3ff83c",
+      "bytes": 1822,
+      "sha256": "0d032f53dbf3e537cf388ecf487160075e3643f56d8bc8812dcb686f237f0312",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/app_identity.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "73aa14dc9f89e286626cf9780a92e871da75108d",
+      "bytes": 7556,
+      "sha256": "6bd8b8002edef29e56d5b33a785881b66a13264cf9e9c143b0f33b8bd2cbe568",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/app_types.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7e9b279538738f72587aea9e6d3a9731cf71ed1f",
+      "bytes": 95401,
+      "sha256": "1b78314109c3837864943100802ca37dc79c21edd50522c5d4b48e6dc6045752",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/container_policy.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "20d0997d6c95ae1540b3fb40f19f834eb43e4fa4",
+      "bytes": 2271,
+      "sha256": "7f7efd2eddf3b5b246d6e0418e1b4bf3b752830518c0ced80b8f93c95a457c62",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/cron.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "c02140778d6447bd6057d7b81060114c5ab77284",
+      "bytes": 1612,
+      "sha256": "f79118c89b16f8b1aa8b0423072b68283647b8a1173a6e47e753ed2f4a109bc7",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/database_identifiers_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b113507dd8f7946c8616f8c2623f97faeaa6c6db",
+      "bytes": 3321,
+      "sha256": "b0187ef88fc83fd10764e7ca54dab7430561e4df0d6917e61fb8561a8500cb6b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/database_types.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "a6838521a161c02c031b0125e1e94c7f91c30efd",
+      "bytes": 31164,
+      "sha256": "d35765cf4bd1bf91b96417bdf4237ade657c64bbf1dced6c5586ae05d5e602cc",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/datastore_priority.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "6c1d357a19f47787327a74595b34ee0337db75ba",
+      "bytes": 1629,
+      "sha256": "431d9046d9deb2cfce059c01b2b937f8d72a00ff559d2a7df50bcbf4db1cc56a",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/diskbackup.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "5b80d5eddbc14dde597f4aa7b8f082cbbe1aee16",
+      "bytes": 2437,
+      "sha256": "1d76225daefd8d081cada777b33b302608c599e2221d81daad3d94b33472aa80",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/disknames.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "fe7e83ed57b17b30b19c389d22ba40811cbad919",
+      "bytes": 3312,
+      "sha256": "77e3837a5b1239b9064343e47b94691887d1fbf6c875ad4e352d703102e87ea2",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/groupversion_info.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "e03a89bafc1f4c1d8067367266fe729a1200c8bb",
+      "bytes": 2083,
+      "sha256": "c93dafcb3caa5cc17f17b5c263ef2023e156c9752971f077b2ad773ea83dcb29",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/image_network.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "e3605de50a787011909461db510ac155890a1f0b",
+      "bytes": 8101,
+      "sha256": "3e82b0947b1deb613cf7bff55a575c019453001d6893c5e28f380f2434dfdbfb",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/image_network_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "050ef4b4d9aa2d658e87efa74862addd18bdc3a6",
+      "bytes": 6432,
+      "sha256": "94be426e90d7bf6cad6b71d0850f908fdb3a34bfdda7df6ee9eee5d87b44db0e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/ipallowlist_types.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "8cc125ea5b532e0e610cab6b418080047d310bb4",
+      "bytes": 3183,
+      "sha256": "37ce01469aeecb0f64243190236d6969159e88c787500a144a9990efc7bae6af",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/ipallowlist_types_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "870b5714007203a4a9056faa3432a00397dae859",
+      "bytes": 4850,
+      "sha256": "58f39e47f26890d98b57978fc8bcf664f357e9b34ce22065e0798cc324919ea0",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/jobnames.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "1fd6d081da6e02205a1eb25e1470bee41a09ad84",
+      "bytes": 2912,
+      "sha256": "6c4b98fe25e973b692877fc22ab701274ef50bca49b1675c258f50e13cd21bdd",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/jobnames_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "233aef1a49a23a349886d45ddc9477b08ddc9af3",
+      "bytes": 2996,
+      "sha256": "462695e39750675b4bbbf685141a1981c3bbfcc9538c0867c8909d2c0695a791",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/keyvalue_types.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "d1dfb9e0459a175215101dd27db1d28d93f9b3cf",
+      "bytes": 14782,
+      "sha256": "2efb6c98c148a799fdd177686c4fe5373a99084ac8f9dba424cb840874e1828b",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/maintenance_mode_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "11e3e8ccd13665ac7c0318616e7b1f538111b3dd",
+      "bytes": 2159,
+      "sha256": "6e43668eeec5427b4e213fb66f3e60b310a65f35ee28596ff1bf1535dfc8eb4e",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/notification_policy.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "2b4f78d9db6871b3332df305070bf3ee1fbc4874",
+      "bytes": 1645,
+      "sha256": "ac6960f34aa1955efd078844d3c176d69dbbd8bfe663ff6dfac157a5ca2e3ae5",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/release_config_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "385bdbede4fc11f467198d302aef992841f1eb41",
+      "bytes": 1467,
+      "sha256": "ab1a59b6a5d803cccb4f606fcc749805a5c20fdd727d5a013c2faff2975eb9a7",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/releasesnapshots.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3609d8a08fbafe5b5a1154db53d6014459678fc0",
+      "bytes": 9752,
+      "sha256": "29bc27e64080b503800b703d4ef6e7ed9178b87d31a84b0c414c0cf6a3095da4",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/releasesnapshots_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "db36f62c00c6ba8da9bafc4696230c8d1a17c9bc",
+      "bytes": 2543,
+      "sha256": "bfe45cf6b0b8819c708a11790881811c1dedc5ce77cc1ef7021d6fab2ec3028d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/repourl.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "bde92b114d383a31a39ffc60a21823ddd6cd94a6",
+      "bytes": 1539,
+      "sha256": "29f6fa50b4dbde56378539f1e3324b7e18e88af001907517e406f9fd4b786428",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/resourcename.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "a101e145f229ad7abd8d19c4e212728f1d74e6c5",
+      "bytes": 1390,
+      "sha256": "1baf31170e34966cd933fc752ea6afc95aac0b6e3d22fecdf4e3dc0bad231385",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/resourcename_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "20e29985ca925f931c1b9f7a4e5352fd45d38204",
+      "bytes": 1507,
+      "sha256": "8582d539e3066f210c7fbc06e7ff258757065503815822eb1096c7a5fe8c229d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/secretnames.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "9558064512ef5ad2f38896ac64bd4ab778f0911b",
+      "bytes": 3444,
+      "sha256": "7fd98e32fe6ab87d1a9b075135687bdd617d765b20bed37e3d2dbd5348697590",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/secretnames_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "b6e0a16654d89b1573e252defec745ae522dffab",
+      "bytes": 4629,
+      "sha256": "2e5b0694f71f0d4422b29726a783c92e17d2f6789800197993df442c94e7e73d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/serving_condition.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "143b2097ed011bfb8912b1a55e5b1a5d21d84cd1",
+      "bytes": 1263,
+      "sha256": "c36b9d100e31d32989c27807f241f62094720526987b990022223a5a787f1751",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/stall_message.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "be4a7982b8fb68d681101ea095c99a9e8e33d0cd",
+      "bytes": 2034,
+      "sha256": "87fac82f0b9a5c439b83e7cb653caabebc8c94eb75a406fc0ae066c6c652f5db",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/stall_message_test.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3ee89d0e29ea61f4eb20d385254fd73ccacdf4c1",
+      "bytes": 1187,
+      "sha256": "748828aaa20bfd6739d07645f7928122be1d5a5b053fa500f4d0a87a557fe8a3",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/static_headers.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "7bfcdd608b2154e8ca9caeb7bb85e847760ac21c",
+      "bytes": 1351,
+      "sha256": "753fe48e13cd264c7e6dfaa1069b6eff98cb5eee22af60c16a09803b20a1c43d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/types/v1alpha1/zz_generated.deepcopy.go": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "efe2f7a1dee4aa129dbfa16dba3e86263d31f593",
+      "bytes": 31285,
+      "sha256": "03441c1849bf99adb4112635355318db520a0362abfccde23d4852021b77d85d",
+      "permissions": 420,
+      "type": "regular"
+    },
+    "scripts/lib/toolchain-freshness.py": {
+      "git_mode": "100644",
+      "git_type": "blob",
+      "git_blob": "3aa3be3acf35cbfb6435abd62e3e35c62c4a0875",
+      "bytes": 19339,
+      "sha256": "4031b8338c1c1bf7771c93cb46917cb6404379b2dabe58cd4d8f61d05bf70490",
+      "permissions": 420,
+      "type": "regular"
+    }
+  }
+}

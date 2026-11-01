@@ -1,0 +1,22 @@
+{
+  "PLAN.diff": {
+    "sha256": "2e06f8a7664395fc17a97a0d18754751e6c9b28e1ffa19e783539f98e0215064",
+    "bytes": 4273
+  },
+  "PLAN.json": {
+    "sha256": "d178e61ccbc4f1f9adcccb9026780bed17298250fc37d3b0f5575af296321ac0",
+    "bytes": 4341
+  },
+  "RECEIPT.json": {
+    "sha256": "cbdfc824a82be604c98d33cd291f98d4bd26fbbd1fa166011cf81e09aa2d44d8",
+    "bytes": 1606
+  },
+  "pilot.sh": {
+    "sha256": "97274b433581d9b0ce2c94b0ad478c1f3661810061ef8da8de17ff3ef70b1004",
+    "bytes": 2010
+  },
+  "run_pilot.py": {
+    "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03",
+    "bytes": 22064
+  }
+}

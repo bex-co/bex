@@ -1,0 +1,11 @@
+{
+  "command": [
+    "ldd",
+    "/usr/local/bin/node"
+  ],
+  "cwd": ".",
+  "returncode": 0,
+  "stdout": "\tlinux-vdso.so.1 (0x0000ffff9f5d6000)\n\tlibdl.so.2 => /lib/aarch64-linux-gnu/libdl.so.2 (0x0000ffff9b580000)\n\tlibstdc++.so.6 => /lib/aarch64-linux-gnu/libstdc++.so.6 (0x0000ffff9b360000)\n\tlibm.so.6 => /lib/aarch64-linux-gnu/libm.so.6 (0x0000ffff9b2b0000)\n\tlibgcc_s.so.1 => /lib/aarch64-linux-gnu/libgcc_s.so.1 (0x0000ffff9b270000)\n\tlibpthread.so.0 => /lib/aarch64-linux-gnu/libpthread.so.0 (0x0000ffff9b240000)\n\tlibc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x0000ffff9b090000)\n\t/lib/ld-linux-aarch64.so.1 (0x0000ffff9f590000)\n",
+  "stderr": "",
+  "timed_out": false
+}

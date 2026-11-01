@@ -1,0 +1,11 @@
+{
+  "PASS": false,
+  "scope": "ONE current-source native-init ARM64 local four-launch diagnostic; no newCI/baseline/adoption/botharch/fullfamily/hosted/K8s claim",
+  "failure": "AssertionError:",
+  "cleanup_or_artifact_errors": [],
+  "owner": "bex-nq-aee1f0f347f04cfe8d6032cc",
+  "case_pass": false,
+  "cancel_signal": null,
+  "pending_pgids": [],
+  "elapsed_seconds": 138.419
+}

@@ -1,0 +1,7 @@
+# Native-init Yarn SIGTERM exit oracle — 2026-11-01
+
+The actual generated Node24/native-init image passes npm, then fails its Yarn stopped-wrapper status assertion. The Yarn application emits the complete expected drain proof: one held request completes, exactly one SIGTERM arrives and the server closes. The actual localhost response was successful; the stopped wrapper reports exit1. The original failing result and exact cleanup are retained.
+
+[Yarn Classic1.22.22 explicitly exits1 from its SIGTERM handler](https://github.com/yarnpkg/yarn/blob/v1.22.22/src/util/signal-handler.js). Native-init correctly preserves that wrapper status while waiting for the application to drain. The qualification predicate incorrectly allowed only0/143. The correction accepts1 only for Yarn, after the unchanged exact identity, event sequence, held-response, signal and cleanup checks. npm/pnpm/direct exit1 and Yarn137 remain refused.
+
+The new regression cases fail with the old predicate and pass with the correction; the complete Go build-package suite passes. This is an oracle repair, not a product behavior change or a successful four-launch qualification. pnpm and direct launch were not reached in this failed attempt. All owned resources are absent and the complete immutable compiler tree is unchanged. A fresh source-bound run and amended full CI baseline remain necessary before further acceptance; production pins stay empty.

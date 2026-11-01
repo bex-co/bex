@@ -1,0 +1,34 @@
+{
+  "PASS": true,
+  "cases": [
+    {
+      "label": "old-red",
+      "args": [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-yarn-signal-oracle-check-20261101-mj99u8jo/overlay.json",
+        "-run",
+        "^TestNativeInitQualificationDrainAndTransportControls$",
+        "./internal/build"
+      ],
+      "exit": 1,
+      "timeout": false,
+      "group_absent": true,
+      "seconds": 4.015
+    },
+    {
+      "label": "corrected-suite",
+      "args": [
+        "go",
+        "test",
+        "./internal/build"
+      ],
+      "exit": 0,
+      "timeout": false,
+      "group_absent": true,
+      "seconds": 8.126
+    }
+  ],
+  "source_sha256": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466"
+}

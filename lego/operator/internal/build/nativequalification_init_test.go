@@ -290,8 +290,10 @@ func nativeInitQualificationAddress(state nativeInitQualificationContainer, id, 
 }
 
 func nativeInitQualificationExit(launch string, status int) bool {
-	// native-init preserves a wrapper's SIGTERM status while orphaned Node drains.
-	return status == 0 || (launch != "direct" && status == 143)
+	// native-init preserves the wrapper status while orphaned Node drains.
+	// Yarn Classic's SIGTERM handler exits 1; the complete drain proof is
+	// validated separately before accepting this stopped-wrapper status.
+	return status == 0 || (launch != "direct" && status == 143) || (launch == "yarn" && status == 1)
 }
 
 func nativeInitQualificationCleanup(t *testing.T, evidence, id, owner string) {
@@ -562,7 +564,7 @@ func TestNativeInitQualificationDrainAndTransportControls(t *testing.T) {
 		launch string
 		status int
 		accept bool
-	}{{"direct", 0, true}, {"direct", 143, false}, {"npm", 143, true}, {"yarn", 143, true}, {"pnpm", 143, true}, {"pnpm", 0, true}, {"npm", 1, false}, {"yarn", 137, false}} {
+	}{{"direct", 0, true}, {"direct", 143, false}, {"npm", 143, true}, {"yarn", 143, true}, {"pnpm", 143, true}, {"pnpm", 0, true}, {"yarn", 1, true}, {"direct", 1, false}, {"npm", 1, false}, {"pnpm", 1, false}, {"yarn", 137, false}} {
 		if nativeInitQualificationExit(test.launch, test.status) != test.accept {
 			t.Fatalf("unexpected stopped-wrapper status policy: %+v", test)
 		}

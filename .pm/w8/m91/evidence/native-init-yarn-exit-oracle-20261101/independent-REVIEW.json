@@ -1,0 +1,82 @@
+{
+  "decision": "CLEAN_SOURCE_ONLY_NARROW_ORACLE_FIX",
+  "reviewed_source": {
+    "repo_path": "lego/operator/internal/build/nativequalification_init_test.go",
+    "sha256": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466",
+    "bytes": 33727
+  },
+  "primary_source": {
+    "url": "https://raw.githubusercontent.com/yarnpkg/yarn/v1.22.22/src/util/signal-handler.js",
+    "independently_read": "web tool primary tagged source,15lines",
+    "lines3_to12": "SIGTERM handler forwards signal to spawned processes then calls process.exit(1)",
+    "raw_HTTP_custody_claimed": false
+  },
+  "actual_first_attempt": {
+    "runtime_root": "/private/tmp/bex-w8-native-init-local-pilot-aee1f0f347f04cfe8d6032cc/evidence/generated/native-common-init-3145559275/yarn",
+    "runtime_proof_sha256": "47e7712906156cadb77c198db1560624f9f9299b41c1822d0b83ff14f58599ca",
+    "stopped_sha256": "bc218ec6b817e5a8f44c194102a9898c3a38835ebbef2a1b4ed1231d6e0b58d1",
+    "wrapperExitCode": 1,
+    "Running": false,
+    "events": [
+      "listening",
+      "hold_begin",
+      "SIGTERM",
+      "hold_end",
+      "closed"
+    ],
+    "holds": 1,
+    "completed": 1,
+    "signals": 1,
+    "pass": true,
+    "original_result_remains_FAIL": true
+  },
+  "preservation": {
+    "inverse_predicate_comment_and_table_replacements_byte_exact_baseline": true,
+    "all_other_code_byte_exact_including_drain_identity_HTTP_cleanup": true,
+    "fullValidate_precedes_status_acceptance": true,
+    "only_new_status_allowed": "launch=yarn,status1",
+    "nonYarn_status1_refused": [
+      "direct",
+      "npm",
+      "pnpm"
+    ],
+    "SIGKILL137_refused": true,
+    "new_table_preserves_alloldentries": true,
+    "no_product_code_or_fixture_program_change": true
+  },
+  "executed_validation": {
+    "author_root_exact_result": "/private/tmp/bex-w8-yarn-signal-oracle-check-20261101-mj99u8jo/RESULT.json",
+    "result_sha256": "cc1f773755ab9f9217e21cad3d6515468a6aa94b292278fe7e36874207e181a1",
+    "old_predicate_newYarn_case_RED": {
+      "label": "old-red",
+      "args": [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-yarn-signal-oracle-check-20261101-mj99u8jo/overlay.json",
+        "-run",
+        "^TestNativeInitQualificationDrainAndTransportControls$",
+        "./internal/build"
+      ],
+      "exit": 1,
+      "timeout": false,
+      "group_absent": true,
+      "seconds": 4.015
+    },
+    "corrected_fullbuildpackage_PASS": {
+      "label": "corrected-suite",
+      "args": [
+        "go",
+        "test",
+        "./internal/build"
+      ],
+      "exit": 0,
+      "timeout": false,
+      "group_absent": true,
+      "seconds": 8.126
+    },
+    "independent_review": "Static inverse byte comparison +actualretainedYarn drain/status JSON +fresh primarysource read; no duplicatedGo/Docker execution"
+  },
+  "limitations": "Source correctness only. No corrected native-init runtime PASS inferred. Current688CI becomes historical for this new testsource until amended sameimage baseline; no gate waived.",
+  "at": "2026-11-01T23:34:11.845543+00:00"
+}

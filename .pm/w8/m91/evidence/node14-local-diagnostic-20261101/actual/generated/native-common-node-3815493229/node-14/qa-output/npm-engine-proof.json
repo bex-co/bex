@@ -1,0 +1,7 @@
+{
+  "manager": "npm",
+  "package": "bex-node-engine-sentinel",
+  "range": ">=15",
+  "diagnostic": "ENOTSUP",
+  "returncode": 1
+}

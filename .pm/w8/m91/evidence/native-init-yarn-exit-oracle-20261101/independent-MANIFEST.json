@@ -1,0 +1,18 @@
+{
+  "REVIEW.json": {
+    "sha256": "540c8652b331be24e1bc6125779ff7e142ac43901ad89dbcc2e5a9d9fbce7caa",
+    "bytes": 3066
+  },
+  "before.go": {
+    "sha256": "2d0c5db74690b9a8d9e61e735871683e11f3338a0440489fbe2058d64302af96",
+    "bytes": 33494
+  },
+  "reviewed.diff": {
+    "sha256": "bfedacf7915ebda514ccb9e18503d18cbac63d6ce4c3c8d5755dd968230c80da",
+    "bytes": 1728
+  },
+  "source.go": {
+    "sha256": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466",
+    "bytes": 33727
+  }
+}

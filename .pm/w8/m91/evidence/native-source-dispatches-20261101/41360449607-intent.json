@@ -1,0 +1,9 @@
+{
+  "id": 41360449607,
+  "name": "common-utility-requalification",
+  "inputs": {
+    "source": "reviewed-candidate",
+    "profile": "utilities",
+    "case": "all"
+  }
+}

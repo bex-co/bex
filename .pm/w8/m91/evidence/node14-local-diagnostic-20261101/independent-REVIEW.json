@@ -1,0 +1,136 @@
+{
+  "verdict": "CLEAN_ACTUAL_ONE_LOCAL_ARM64_NODE14_PUBLISHED_DONOR_DIAGNOSTIC",
+  "at_utc": "2026-11-01T23:25:15.860163+00:00",
+  "actual_root": "/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2",
+  "actual_RESULT": {
+    "bytes": 339,
+    "sha256": "a8df6a929f9183a1c469b274566b06c3d65dfe1f9be0014fef8addd4c6f4daf6"
+  },
+  "actual_MANIFEST": {
+    "bytes": 34234,
+    "sha256": "fe7132b220ec1bef2c5d9cbdbbcbe70f3b4a9eab3a090f90ecfb316792843979"
+  },
+  "actual_elapsed_seconds": 256.686,
+  "source_commit": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "source300_manifest": {
+    "bytes": 102859,
+    "sha256": "497e75f16b11a723fae593ee6847ea772da638679d06ad9f677333ab8ad28d0a"
+  },
+  "actual_test_ELF": {
+    "bytes": 41726878,
+    "sha256": "8e7f06b11fcfe0edda9c8b9618b1872cdddcd62f0f3142953b68f12aac1ae45f"
+  },
+  "actual_controller": {
+    "bytes": 22064,
+    "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03"
+  },
+  "actual_PLAN": {
+    "bytes": 4341,
+    "sha256": "d178e61ccbc4f1f9adcccb9026780bed17298250fc37d3b0f5575af296321ac0"
+  },
+  "findings": [],
+  "verified": [
+    "Exactcurrent688source300 fullbytes/modes and actualstaticARM64Go testELF8e7f06 bind unchangedqualifiedV4controller/sourceplan. Localprofile flags/regex select only TestCommonNodeGeneratedImages/node-14; no GITHUB/CI identity manufactured.",
+    "Common0941/upstreamofficialc0bff/reviewedpublishedruntime donor4fec/sourcechoices match actualcustody; executed recipe bytes equal canonicalf8882058\u2026 with both network/prerequisite overlays false.",
+    "Retained actualbuild/runtime existingNodeoracles reapplyPASS: appNode14.21.3/NODE_VERSION/PATH/executable,ABI83,NAPI8/matching14.21.3Cheaders/addonanswer, genuineARM64addonELF, libc dependencies and crypto/Brotli/gzip/CA behaviors.",
+    "Actualtoolversions npm6.14.18/Yarn1.22.22/pnpm10.34.7 and package metadata/entrypoints match. All3offlinedependency-free builds execute exact preinstall/postinstall and probe; bothphases pnpmexec stayactualappNode; all3wrong-engine controls returncanonical1 with preciseexisting diagnostics/identity/range.",
+    "Actualoffline runtime networknone bound to unchanged sourceand generatedreceipt; no unqualifiedsource overlays/Node substitution or packageversion relaxation. Fullraw outputs retained, no negative/skipped result recast asPASS.",
+    "All63recorded commandgroups complete/reaped/absent. Duringobservercommands only stillrunningcase group is registered; it clears beforecleanup. Raw exactrunner/builder/volume/labelledoutput absence provescleanup; helperexit0/logoutexit0 and freshfilesystem ownconfigabsence agree. No defaultbuilder/cache cleanup inferred.",
+    "All200originalevidencepayloads plus originalMANIFEST retained unchanged in place after audit. Capsuleincludes200byteexact originalevidencefiles including MANIFEST, excludes only719BcopiedBuildxconfigstate, retainsfullprogram/proof/log/command/cleanup bodies and sourcehash bindings. Two deleted-temp source inputs are explicitly derived and custodyhash-matched, never labeledcopiedruntimefiles."
+  ],
+  "coverage": [
+    {
+      "phase": "build",
+      "Node": "14.21.3",
+      "ABI": 83,
+      "NAPI": "8",
+      "versions": {
+        "npm": "6.14.18",
+        "yarn": "1.22.22",
+        "pnpm": "10.34.7"
+      },
+      "Yarn_CLI": "/opt/yarn-v1.22.22/bin/yarn",
+      "pnpm_package": {
+        "name": "pnpm",
+        "standalone": "/opt/bex/pnpm/bin/pnpm"
+      },
+      "npm_package_sha256": "0b8176131720da0c97115fff28fd64efc06cea7871b019c293cf42eae1d6b5ed",
+      "identity_addon_core_tools_lifecycle_exec": true
+    },
+    {
+      "phase": "runtime",
+      "Node": "14.21.3",
+      "ABI": 83,
+      "NAPI": "8",
+      "versions": {
+        "npm": "6.14.18",
+        "yarn": "1.22.22",
+        "pnpm": "10.34.7"
+      },
+      "Yarn_CLI": "/opt/yarn-v1.22.22/bin/yarn",
+      "pnpm_package": {
+        "name": "pnpm",
+        "standalone": "/opt/bex/pnpm/bin/pnpm"
+      },
+      "npm_package_sha256": "0b8176131720da0c97115fff28fd64efc06cea7871b019c293cf42eae1d6b5ed",
+      "identity_addon_core_tools_lifecycle_exec": true
+    }
+  ],
+  "capsule": {
+    "PASS": true,
+    "capsule": "/private/tmp/bex-w8-node14-actual-independent-20261101-oUandnZp/capsule",
+    "files": 226,
+    "bytes": 814918,
+    "manifest": {
+      "bytes": 34608,
+      "sha256": "8328cac23b7c3c02c690b379ffea38e2b9764893ff4efe87a42ebcb2f90c024e"
+    },
+    "custody": {
+      "bytes": 82821,
+      "sha256": "6848722cbe3ec4287c8b842258a54fd853fdfb8cb4d8acc9c93b6fbef5195590"
+    },
+    "all_included_actual_bytes_unmodified": true,
+    "actual_evidence_files_included": 200,
+    "actual_evidence_files_omitted": [
+      {
+        "path": "own-builder-state.json",
+        "bytes": 719,
+        "sha256": "73bd2309c5c807dc1b81b73b1f33e4ca2cb2a47414007bc9ba8b13ad409685a3",
+        "reason": "copied own Buildx config state; kept private. Raw builder command/inspection/cleanup evidence remains included."
+      }
+    ],
+    "all_Node_oracles_reapplied_without_execution": true,
+    "resource_network_Go_Node_commands": false,
+    "Markdown_authored": false
+  },
+  "source_emission_note": {
+    "copied_source_fixture4": {
+      ".node-version": "9a92adbc0cee38ef658c71ce1b1bf8c65668f166bfb213644c895ccb1ad07a25",
+      "addon.c": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+      "check.js": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+      "check.py": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+      "expected-node.json": "e4fdc9b4bd00bd0be417856548f04f145e7e7613c3891d4f6920b3ea783e5a74",
+      "package.json": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60"
+    },
+    "node_version": "14\n from unchanged commonNodeQualificationFiles, hash matches retained custody",
+    "expected_node_source": "captured expected-node.json plus one authored finalLF, hash matches retained source custody; original evidence file stays byteexact withoutLF"
+  },
+  "scope_limits": [
+    "No tests, Node/native programs, command/resource/network/Go/Docker execution repeated. Existing pure validator functions re-applied only to retained actual outputs.",
+    "Some runtime recipe/command facts bind actual retained receipt to exact source/ELF; no new daemon inspection or full runtime image export.",
+    "Compiler/test ELF and source300 bodies remain private; portable capsule contains exact hashes/manifests and selected original fixture/program bodies.",
+    "One local ARM64Node14donor diagnostic only. No amendedcompleteCIbaseline, Node16/otherNode/AMD64/fullfamily/hosted/native-init/predeploy/production/adoption authority.",
+    "Existingactualcommon+bothutility baseline source1feba remains distinct from localdiagnostic source688. NewchangedsourceCI baseline pending.",
+    "No resourcecommands, actualNode/program/Go/test execution, Docker/network/pulls/crypto/CI/auth/repo/PM/ship actions repeated. Config/auth bodies were not read/copied; copiedownBuildxstate intentionally omitted.",
+    "No new Markdown authored. Captured source/program/JSON/report/log bytes remain byteexact; source300 and binary are represented by exactexistingmanifest/hash receipts, not tree/binary copies."
+  ],
+  "review_harness_history": [
+    "Initialownaudit expected empty pendinggroups for nestedobserver commands; corrected to source-defined still-runningcasePGID only beforecasecompletion, with finalemptygroups and allowncommandgroups absence preserved. Canonicalownerlabelfixed to actualsourceconstant.",
+    "Initialexport referenced legacyBINARY-BUILDINFO filename absent from freshcompile. Source/logfailure retained; only ownunsealedpartialcopies removed, then correctoriginalfreshcompile metadata filenames retained. No originaldata or acceptanceoracle changed."
+  ],
+  "details": "AUDIT.json",
+  "input_custody": "INPUT-CUSTODY.json",
+  "final_consistency": "FINAL-CONSISTENCY.json",
+  "audit_source": "audit.py",
+  "export_source": "export.py"
+}
