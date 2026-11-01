@@ -59,6 +59,55 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            !/**
+            /.github/
+            /.pm/
+            /deploy/
+            /lego/
+            /scripts/
+            /.pm/w8/
+            /deploy/native-base/
+            /deploy/native-common/
+            /lego/operator/
+            /lego/types/
+            /scripts/lib/
+            /.pm/w8/m91/
+            /lego/operator/cmd/
+            /lego/operator/internal/
+            /lego/types/k8sname/
+            /lego/types/netutil/
+            /lego/types/v1alpha1/
+            /.pm/w8/m91/evidence/
+            /lego/operator/cmd/native-init/
+            /lego/operator/internal/build/
+            /lego/operator/internal/execution/
+            /lego/operator/internal/httpclient/
+            /lego/operator/internal/identity/
+            /lego/operator/internal/publish/
+            /lego/operator/internal/registry/
+            /.github/**
+            /deploy/native-base/**
+            /deploy/native-common/**
+            /lego/operator/internal/build/**
+            /lego/operator/cmd/native-init/**
+            /lego/operator/internal/execution/**
+            /lego/operator/internal/httpclient/**
+            /lego/operator/internal/identity/**
+            /lego/operator/internal/publish/**
+            /lego/operator/internal/registry/**
+            /lego/types/k8sname/**
+            /lego/types/netutil/**
+            /lego/types/v1alpha1/**
+            /.pm/w8/m91/evidence/**
+            /lego/operator/go.mod
+            /lego/operator/go.sum
+            /lego/types/go.mod
+            /lego/types/go.sum
+            /lego/Dockerfile
+            /lego/.dockerignore
+            /scripts/lib/toolchain-freshness.py
       - id: selection
         name: validate the fixed profile and case before publication resources
         env:
@@ -106,6 +155,55 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            !/**
+            /.github/
+            /.pm/
+            /deploy/
+            /lego/
+            /scripts/
+            /.pm/w8/
+            /deploy/native-base/
+            /deploy/native-common/
+            /lego/operator/
+            /lego/types/
+            /scripts/lib/
+            /.pm/w8/m91/
+            /lego/operator/cmd/
+            /lego/operator/internal/
+            /lego/types/k8sname/
+            /lego/types/netutil/
+            /lego/types/v1alpha1/
+            /.pm/w8/m91/evidence/
+            /lego/operator/cmd/native-init/
+            /lego/operator/internal/build/
+            /lego/operator/internal/execution/
+            /lego/operator/internal/httpclient/
+            /lego/operator/internal/identity/
+            /lego/operator/internal/publish/
+            /lego/operator/internal/registry/
+            /.github/**
+            /deploy/native-base/**
+            /deploy/native-common/**
+            /lego/operator/internal/build/**
+            /lego/operator/cmd/native-init/**
+            /lego/operator/internal/execution/**
+            /lego/operator/internal/httpclient/**
+            /lego/operator/internal/identity/**
+            /lego/operator/internal/publish/**
+            /lego/operator/internal/registry/**
+            /lego/types/k8sname/**
+            /lego/types/netutil/**
+            /lego/types/v1alpha1/**
+            /.pm/w8/m91/evidence/**
+            /lego/operator/go.mod
+            /lego/operator/go.sum
+            /lego/types/go.mod
+            /lego/types/go.sum
+            /lego/Dockerfile
+            /lego/.dockerignore
+            /scripts/lib/toolchain-freshness.py
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
@@ -122,6 +220,12 @@ jobs:
           CANDIDATE_RECEIPT_SHA256: ${{ needs.plan.outputs.receipt_sha256 }}
           TARGET_PLATFORM: linux/${{ matrix.arch }}
         run: python3 .github/scripts/native-common-qualify.py init
+      - id: buildkit
+        name: pre-pull the pinned BuildKit image with bounded retries
+        timeout-minutes: 11
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"
       - name: log in to GHCR using this qualification's isolated credentials
         timeout-minutes: 2
         env:
@@ -130,8 +234,10 @@ jobs:
           printf '%s' "$GHCR_TOKEN" | timeout --kill-after=10s 60s \
             docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        timeout-minutes: 5
         with:
           name: ${{ steps.owned.outputs.owner }}
+          driver-opts: image=${{ steps.buildkit.outputs.image }}
           use: false
           keep-state: false
           # The action's post cleanup also removes shared certificate files.
@@ -215,6 +321,55 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            !/**
+            /.github/
+            /.pm/
+            /deploy/
+            /lego/
+            /scripts/
+            /.pm/w8/
+            /deploy/native-base/
+            /deploy/native-common/
+            /lego/operator/
+            /lego/types/
+            /scripts/lib/
+            /.pm/w8/m91/
+            /lego/operator/cmd/
+            /lego/operator/internal/
+            /lego/types/k8sname/
+            /lego/types/netutil/
+            /lego/types/v1alpha1/
+            /.pm/w8/m91/evidence/
+            /lego/operator/cmd/native-init/
+            /lego/operator/internal/build/
+            /lego/operator/internal/execution/
+            /lego/operator/internal/httpclient/
+            /lego/operator/internal/identity/
+            /lego/operator/internal/publish/
+            /lego/operator/internal/registry/
+            /.github/**
+            /deploy/native-base/**
+            /deploy/native-common/**
+            /lego/operator/internal/build/**
+            /lego/operator/cmd/native-init/**
+            /lego/operator/internal/execution/**
+            /lego/operator/internal/httpclient/**
+            /lego/operator/internal/identity/**
+            /lego/operator/internal/publish/**
+            /lego/operator/internal/registry/**
+            /lego/types/k8sname/**
+            /lego/types/netutil/**
+            /lego/types/v1alpha1/**
+            /.pm/w8/m91/evidence/**
+            /lego/operator/go.mod
+            /lego/operator/go.sum
+            /lego/types/go.mod
+            /lego/types/go.sum
+            /lego/Dockerfile
+            /lego/.dockerignore
+            /scripts/lib/toolchain-freshness.py
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
@@ -234,6 +389,12 @@ jobs:
           CANDIDATE_RECEIPT_SHA256: ${{ needs.plan.outputs.receipt_sha256 }}
           TARGET_PLATFORM: linux/${{ matrix.arch }}
         run: python3 .github/scripts/native-common-qualify.py init
+      - id: buildkit
+        name: pre-pull the pinned BuildKit image with bounded retries
+        timeout-minutes: 11
+        env:
+          QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+        run: python3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"
       - name: log in to GHCR using this qualification's isolated credentials
         timeout-minutes: 2
         env:
@@ -242,8 +403,10 @@ jobs:
           printf '%s' "$GHCR_TOKEN" | timeout --kill-after=10s 60s \
             docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        timeout-minutes: 5
         with:
           name: ${{ steps.owned.outputs.owner }}
+          driver-opts: image=${{ steps.buildkit.outputs.image }}
           use: false
           keep-state: false
           # The action's post cleanup also removes shared certificate files.
