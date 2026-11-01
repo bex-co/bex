@@ -1,0 +1,12 @@
+{
+  "inventory.json": {
+    "source": "/private/tmp/bex-w8-m83-actual-ready-20261031-5sxtlquq/inventory.json",
+    "source_bytes": 8981,
+    "source_sha256": "4b3ac86c33429ce89ffb535c017712d64bf2b5c22c03dc3078cbbbb592f25d87"
+  },
+  "job.log": {
+    "source": "/private/tmp/bex-w8-m83-actual-ready-20261031-5sxtlquq/job.log",
+    "source_bytes": 39222,
+    "source_sha256": "23ea6f7427b9572c2a55d0654b1a152d3422d882a018f626274fe344a3ef591d"
+  }
+}

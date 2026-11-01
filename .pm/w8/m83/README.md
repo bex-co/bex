@@ -47,3 +47,8 @@ Six tasks,160m total.
 - **后续：** 上游修复（traefik/yaegi 的 Flusher 包装，或 compress 增加 no-transform/ETag 选项）出来后可以消除这两处差异，worker 另立 follow-up。
 - **用户门槛：** 无。
 - **worker 下一步：** 从 t001 起实施（基于 [attempt](evidence/edge-compression-attempt/README.md) 的补丁），覆盖 t002 的共享路由和 HTTP 邻居审计；验收：可压缩响应解码后内容与原文逐字节一致，流式响应不被缓冲，Range 响应正确；记录 ADR018 的签字差异。
+
+
+## Actual rollout gate — 2026-10-31 (`/loopx w8`)
+
+[Fresh inventory, actual signature and source verification](evidence/readiness-source-gate-20261031/README.md) establish healthy operator/API rollouts but reject the deployed operator: signed source d147703d predates a154 and both required critical-file checks fail. The one inventory run41251157373 performed no rollout or fixture action. Release triage finds a still-pending fix-containing pipeline and no qualified candidate from the two inspected canceled runs. t006 remains open; no tenant fixture or live PASS is claimed. The private plan's literal proxy-version precondition was corrected to UNKNOWN as a documented limit, preserving every actual wire/stream and signed-source requirement.
