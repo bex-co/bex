@@ -414,6 +414,15 @@ func desiredPodResources(pods []corev1.Pod) (map[[4]byte]ResourceKey, map[[16]by
 		if pod.Status.Phase == corev1.PodSucceeded || pod.Status.Phase == corev1.PodFailed {
 			continue
 		}
+		// The platform's Job pods (pre-deploy, static publish, purge, disk
+		// backup) carry the App label without its id, so no Service selects them
+		// (w4/m181). They are not App serving pods: skip them rather than fail
+		// the node's whole attribution, which marked the meter unhealthy and
+		// skipped every app's direct egress on the node for as long as one ran
+		// (w4/452).
+		if pod.Labels[PodLabelAppID] == "" {
+			continue
+		}
 		if pod.UID == "" {
 			return nil, nil, 0, fmt.Errorf("pod %s has no immutable UID", pod.Name)
 		}
