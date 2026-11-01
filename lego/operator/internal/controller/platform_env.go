@@ -43,7 +43,8 @@ type platformEnvInputs struct {
 }
 
 // platformEnv is Render's default set for app's container (w5/m148; ADR018):
-// renderenv's static set, the pod name as RENDER_INSTANCE_ID, and the image's
+// renderenv's static set, the pod's public instance id as RENDER_INSTANCE_ID,
+// read from the annotation the admission webhook stamps (w4/386), and the image's
 // commit. As on Render, the documented names are platform values the operator
 // owns the way it owns PORT; any other RENDER_ name is the user's.
 func platformEnv(app *appv1alpha1.App, in platformEnvInputs) []corev1.EnvVar {
@@ -53,7 +54,10 @@ func platformEnv(app *appv1alpha1.App, in platformEnvInputs) []corev1.EnvVar {
 		env = append(env, corev1.EnvVar{Name: v.Name, Value: v.Value})
 	}
 	env = append(env, corev1.EnvVar{Name: renderenv.InstanceID, ValueFrom: &corev1.EnvVarSource{
-		FieldRef: &corev1.ObjectFieldSelector{APIVersion: "v1", FieldPath: "metadata.name"},
+		FieldRef: &corev1.ObjectFieldSelector{
+			APIVersion: "v1",
+			FieldPath:  "metadata.annotations['" + renderenv.InstanceIDAnnotation + "']",
+		},
 	}})
 	if in.gitCommit != "" {
 		env = append(env, corev1.EnvVar{Name: renderenv.GitCommit, Value: in.gitCommit})

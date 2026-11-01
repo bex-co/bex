@@ -16,7 +16,11 @@ limitations under the License.
 
 package id
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/bex-co/bex/lego/types/renderenv"
+)
 
 func TestServiceInstanceIDIsNameDerivedAndStable(t *testing.T) {
 	resource := "srv-c185th5c2rvvnhbfiltg"
@@ -93,5 +97,21 @@ func TestResolveInstanceSelectorsDropsUnresolved(t *testing.T) {
 	}
 	if got := ResolveInstanceSelectors([]string{"nobody"}, resource, cands); len(got) != 0 {
 		t.Fatalf("all-unresolved = %#v, want empty", got)
+	}
+}
+
+// TestServiceInstanceIDMatchesTheInPodDerivation pins the operator-stamped
+// RENDER_INSTANCE_ID (lego/types/renderenv) to the id every API surface
+// reports for the same pod (w4/386).
+func TestServiceInstanceIDMatchesTheInPodDerivation(t *testing.T) {
+	for _, pod := range []string{
+		"tea-daif693dqjvc73e7as3g-qa-20261021-e2v5-env-5ff6c9466c-l4hnb",
+		"web-7d4b9c-abcde",
+		"predeploy-tea-x-qa-20261031-9d3-093ac3bvvcs9",
+		"",
+	} {
+		if got, want := renderenv.PublicInstanceID("srv-dbcad3603oos73cqipm0", pod), ServiceInstanceID("srv-dbcad3603oos73cqipm0", pod); got != want {
+			t.Errorf("pod %q: renderenv %q, id %q", pod, got, want)
+		}
 	}
 }

@@ -309,6 +309,11 @@ func main() {
 	setupDatastoreReconcilers(mgr, uncachedClient, appsNamespace)
 	// +kubebuilder:scaffold:builder
 
+	// RENDER_INSTANCE_ID: stamp each tenant pod's public instance id at
+	// admission (w4/386). failurePolicy Ignore, so an outage leaves the
+	// variable empty instead of blocking pods.
+	bexwebhook.RegisterInstanceID(mgr)
+
 	// Admission-time tenant-image signature verification (w7/m11): active only
 	// when BEX_TENANT_SIGNING_KEY_SECRET is set AND the Secret contains cosign.pub.
 	if signKey := os.Getenv("BEX_TENANT_SIGNING_KEY_SECRET"); signKey != "" {
