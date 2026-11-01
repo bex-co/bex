@@ -573,8 +573,10 @@ func TestQueryEgressBytesAllSourcesUnhealthyRecordsSuccessfulZero(t *testing.T) 
 	prom := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		query := r.URL.Query().Get("query")
 		value := "1"
-		if strings.Contains(query, "min_over_time(up{") {
-			value = "0" // every source's up-term fails
+		// Every source's up term fails, and the direct source, which has none
+		// (w4/442), fails on its meter's health.
+		if strings.Contains(query, "min_over_time(up{") || strings.Contains(query, "min_over_time(bex_egress_meter_healthy") {
+			value = "0"
 		}
 		if strings.Contains(query, "increase(") {
 			value = "9999" // must not leak into the sum
