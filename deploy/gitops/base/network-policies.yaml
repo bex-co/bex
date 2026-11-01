@@ -235,6 +235,31 @@ spec:
           port: 8000
 
 ---
+# The kube-apiserver calls the operator's admission webhooks (the Pod
+# instance-id stamp, w4/386; the verify-image Pod check) on the manager's
+# webhook port. The apiservers run on the control-plane hosts, so their traffic
+# carries no namespace and deny-tenant-ingress above dropped every call: the
+# Ignore-policy instance-id webhook timed out and failed open, leaving
+# RENDER_INSTANCE_ID empty (w4/386 live check, 2026-11-01). The rule names no
+# peer because a host-network caller matches no namespace or pod selector;
+# it is scoped to the controller-manager pods' TLS webhook port alone.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: allow-apiserver-to-operator-webhooks
+  namespace: bex-system
+spec:
+  podSelector:
+    matchLabels:
+      control-plane: controller-manager
+  policyTypes:
+    - Ingress
+  ingress:
+    - ports:
+        - protocol: TCP
+          port: 9443
+
+---
 # The dashboard's SSR fetches bex-api in-cluster (VITE_SSR_API_URL =
 # bex-api.bex-system.svc:8090, docs/ADR012-auth.md + dashboard/AGENTS.md) and
 # the m52 readiness latch probes the same origin before a fresh pod takes
