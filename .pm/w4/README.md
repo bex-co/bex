@@ -467,7 +467,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [x] **362** — [REST refuses `?confirm=` on the three datastore routes whose own refusal asks for it](done/362.md) — **DONE 2026-10-19 (loopx w4):** live acceptance with w4/m233/t007 on pin `d98d07f62c13` — the confirmed REST first enable returned `200` and enabled access; wrong/missing phrases kept the coded refusal. Implementation done 2026-10-19: `confirm` allowed on `update-key-value`, `update-postgres` and `failover-postgres`; a route table plus call-site count guard every `?confirm=` reader.
 
-- [ ] **361** — [A manual deploy queued behind a build-command change stays "queued" after it goes live](361.md) — **TODO（2026-10-31 解除阻塞：w8/m119、w8/m120 均已 DONE 并部署；worker 在 bex-canary 重放 repro，修复或附证据关闭）** Found in the w4/341 replay 2026-10-19.
+- [x] **361** — [A manual deploy queued behind a build-command change stays "queued" after it goes live](done/361.md) — **DONE 2026-11-01** (not reproducible after w8/m119/m120: the static-site repro goes live with the new build command; a deploy queued behind another runs once it settles; on web the older one closes "Superseded by …") Found in the w4/341 replay 2026-10-19.
 
 - [x] **360** — [A Postgres recovery takes the plan's default disk and default parameters, not the source's](done/360.md) — **DONE 2026-10-19 (loopx w4):** a recovery's disk is floored at the source's high-water mark, it carries the source's (tenant) parameters, and a plan that cannot hold the data is refused up front.
 
