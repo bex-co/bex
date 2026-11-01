@@ -413,6 +413,425 @@ print('controlled login succeeded')
             self.assertFalse((root / "capacity-after-tests.json").exists())
 
 
+class BuildKitBootstrapControls(unittest.TestCase):
+    """Only fake pull processes and retained policy inputs; no Docker/network."""
+    def fixture(self, directory):
+        temporary = Path(directory).resolve()
+        root, inputs, config = QualificationControls().initialize_owned(temporary)
+        source = temporary / "source"
+        policy = source / "lego/operator/internal/build/toolchain-freshness.json"
+        policy.parent.mkdir(parents=True)
+        policy.write_bytes((publisher.ROOT / "lego/operator/internal/build/toolchain-freshness.json").read_bytes())
+        output = temporary / "bootstrap-output"
+        return root, inputs, config, policy, source / ".github/scripts/native-common-qualify.py", output
+
+    @staticmethod
+    def result(code, bound=None, absent=True):
+        return ({"exit_code": code, "bound": bound, "direct_child_reaped": True,
+                 "process_group_absent": absent}, b"CONTROL stdout\xff\n", b"CONTROL stderr\n")
+
+    def test_pinned_success_records_full_policy_and_emits_only_after_pull(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = self.fixture(directory)
+            pin = next(row["committed"] for row in json.loads(policy.read_text())["images"] if row["id"] == "helper-buildkit")
+            def controlled(command, environment, cancellation):
+                self.assertFalse(output.exists())
+                self.assertEqual(command, ["timeout", "--kill-after=10s", "180s", "docker", "pull", "--quiet", pin])
+                self.assertEqual(environment["DOCKER_CONFIG"], str(config))
+                self.assertEqual(json.loads((config / ".qualification-owner.json").read_text())["owner"], inputs["owner"])
+                return self.result(0)
+            with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                 patch.object(qualification, "pull_buildkit", side_effect=controlled) as pull, patch.object(qualification.time, "sleep") as sleep:
+                qualification.bootstrap(root)
+            self.assertEqual(pull.call_count, 1)
+            sleep.assert_not_called()
+            self.assertEqual(output.read_text(), "image=" + pin + "\n")
+            receipt = json.loads((root / "bootstrap.json").read_text())
+            self.assertEqual(receipt["policy_sha256"], qualification.sha(policy))
+            self.assertEqual(receipt["owner"], inputs["owner"])
+            self.assertTrue(receipt["image_output_emitted"])
+            self.assertEqual((root / receipt["attempts"][0]["stdout"]["path"]).read_bytes(), b"CONTROL stdout\xff\n")
+            qualification.manifest(root)
+            self.assertIn("bootstrap-1.stdout.log", (root / "MANIFEST.json").read_text())
+
+    def test_timeout_retries_are_preserved_before_success(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = self.fixture(directory)
+            results = iter([self.result(124), self.result(137), self.result(0)])
+            def controlled(*args):
+                self.assertFalse(output.exists())
+                return next(results)
+            with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                 patch.object(qualification, "pull_buildkit", side_effect=controlled), patch.object(qualification.time, "sleep") as sleep:
+                qualification.bootstrap(root)
+            rows = json.loads((root / "bootstrap.json").read_text())["attempts"]
+            self.assertEqual([row["exit_code"] for row in rows], [124, 137, 0])
+            self.assertEqual([row["timeout_exit"] for row in rows], [True, True, False])
+            self.assertEqual([call.args for call in sleep.call_args_list], [(1,)] * 30)
+            for row in rows:
+                for label in ("stdout", "stderr"):
+                    self.assertEqual(row[label]["sha256"], qualification.sha(root / row[label]["path"]))
+
+    def test_all_failed_attempts_refuse_output_and_remain_manifested(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = self.fixture(directory)
+            with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                 patch.object(qualification, "pull_buildkit", side_effect=[self.result(1), self.result(124), self.result(137)]), \
+                 patch.object(qualification.time, "sleep") as sleep:
+                with self.assertRaisesRegex(RuntimeError, "all three"):
+                    qualification.bootstrap(root)
+            self.assertFalse(output.exists())
+            receipt = json.loads((root / "bootstrap.json").read_text())
+            self.assertEqual([row["exit_code"] for row in receipt["attempts"]], [1, 124, 137])
+            self.assertFalse(receipt["image_output_emitted"])
+            qualification.manifest(root)
+            self.assertIn("bootstrap-3.stderr.log", (root / "MANIFEST.json").read_text())
+
+    def test_outer_bound_or_unreaped_group_cannot_emit_success(self):
+        for result in (self.result(0, "python-timeout"), self.result(0, "remaining-process-group"), self.result(0, absent=False), self.result(False)):
+            with self.subTest(result=result[0]), tempfile.TemporaryDirectory() as directory:
+                root, inputs, config, policy, helper, output = self.fixture(directory)
+                with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                     patch.object(qualification, "pull_buildkit", return_value=result), patch.object(qualification.time, "sleep"):
+                    with self.assertRaises(RuntimeError):
+                        qualification.bootstrap(root)
+                self.assertFalse(output.exists())
+
+    def test_mutable_foreign_missing_or_ambiguous_pin_refuses_before_command(self):
+        for mutation in ("mutable", "foreign", "missing", "duplicate"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root, inputs, config, policy, helper, output = self.fixture(directory)
+                value = json.loads(policy.read_text())
+                row = next(row for row in value["images"] if row["id"] == "helper-buildkit")
+                if mutation == "mutable":
+                    row["committed"] = "moby/buildkit:buildx-stable-1"
+                elif mutation == "foreign":
+                    row["committed"] = "other/buildkit:v0.30.0@sha256:" + "a" * 64
+                elif mutation == "missing":
+                    value["images"].remove(row)
+                else:
+                    value["images"].append(dict(row))
+                policy.write_text(json.dumps(value))
+                with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                     patch.object(qualification, "pull_buildkit") as pull:
+                    with self.assertRaises(ValueError):
+                        qualification.bootstrap(root)
+                pull.assert_not_called()
+                self.assertFalse(output.exists())
+
+    def test_invalid_owner_missing_scope_or_changed_marker_refuses_before_command(self):
+        for mutation in ("owner", "missing", "foreign", "marker", "symlink"):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as directory:
+                root, inputs, config, policy, helper, output = self.fixture(directory)
+                if mutation == "owner":
+                    inputs["owner"] = "foreign"
+                elif mutation == "missing":
+                    (config / ".qualification-owner.json").unlink()
+                    config.rmdir()
+                elif mutation == "foreign":
+                    inputs["docker_config"] = str(config.parent / "foreign")
+                elif mutation == "marker":
+                    (config / ".qualification-owner.json").write_text('{}')
+                else:
+                    actual = config.with_name(config.name + "-moved")
+                    config.rename(actual)
+                    config.symlink_to(actual, target_is_directory=True)
+                (root / "inputs.json").write_text(json.dumps(inputs))
+                with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                     patch.object(qualification, "pull_buildkit") as pull:
+                    with self.assertRaises(ValueError):
+                        qualification.bootstrap(root)
+                pull.assert_not_called()
+                self.assertFalse(output.exists())
+
+    def test_python_outer_timeout_kills_even_exited_leader_group(self):
+        class ControlledProcess:
+            pid = 404040
+            returncode = 0  # Leader has exited; inherited output pipe remains held.
+            def __init__(self):
+                self.calls = []
+            def communicate(self, timeout):
+                self.calls.append(timeout)
+                if len(self.calls) == 1:
+                    raise subprocess.TimeoutExpired("CONTROL", timeout, output=b"partial stdout", stderr=b"partial stderr")
+                return b"partial stdout", b"partial stderr"
+            def wait(self, timeout):
+                return self.returncode
+        process = ControlledProcess()
+        seen = []
+        def group(pid, sig):
+            self.assertEqual(pid, process.pid)
+            seen.append(sig)
+            if len(seen) >= 3:
+                raise ProcessLookupError
+        with patch.object(qualification.subprocess, "Popen", return_value=process) as popen, patch.object(qualification.os, "killpg", side_effect=group), \
+             patch.object(qualification.time, "monotonic", side_effect=[0, 0, 196, 197]):
+            actual, stdout, stderr = qualification.pull_buildkit(["CONTROL"], {"CONTROL": "fake"})
+        self.assertTrue(popen.call_args.kwargs["start_new_session"])
+        self.assertEqual(process.calls, [1, 5])
+        self.assertEqual(seen, [0, qualification.signal.SIGKILL, 0])
+        self.assertEqual(actual["bound"], "python-timeout")
+        self.assertTrue(actual["process_group_absent"])
+        self.assertEqual((stdout, stderr), (b"partial stdout", b"partial stderr"))
+
+    def test_nominal_success_requires_absent_group_and_canonical_exit(self):
+        class ControlledProcess:
+            pid = 404041
+            returncode = 0
+            def communicate(self, timeout):
+                return b"complete stdout", b"complete stderr"
+            def wait(self, timeout):
+                return 0
+        with patch.object(qualification.subprocess, "Popen", return_value=ControlledProcess()), \
+             patch.object(qualification.os, "killpg", side_effect=ProcessLookupError):
+            actual, stdout, stderr = qualification.pull_buildkit(["CONTROL"], {})
+        self.assertEqual(actual, {"exit_code": 0, "bound": None, "cancel_signal": None, "direct_child_reaped": True, "process_group_absent": True})
+        self.assertEqual((stdout, stderr), (b"complete stdout", b"complete stderr"))
+
+    def test_real_exited_leader_pipeholder_is_stopped_without_docker(self):
+        # Only an owned Python fixture runs; its descendant holds inherited pipes.
+        actual_popen = subprocess.Popen
+        processes = []
+        timed_out = [False]
+        actual_clock = qualification.time.monotonic
+        def shortened(*args, **kwargs):
+            process = actual_popen(*args, **kwargs)
+            communicate = process.communicate
+            def bounded(timeout):
+                try:
+                    return communicate(timeout=min(timeout, 0.2))
+                except subprocess.TimeoutExpired:
+                    timed_out[0] = True
+                    raise
+            process.communicate = bounded
+            processes.append(process)
+            return process
+        script = ("import json,os,pathlib,subprocess,sys; "
+                  "child=subprocess.Popen([sys.executable,'-c','import time;time.sleep(30)']); "
+                  "pathlib.Path(sys.argv[1]).write_text(json.dumps({'child':child.pid,'group':os.getpgrp()}))")
+        with tempfile.TemporaryDirectory() as directory:
+            journal = Path(directory) / "owned-process.json"
+            try:
+                with patch.object(qualification.subprocess, "Popen", side_effect=shortened), \
+                     patch.object(qualification.time, "monotonic", side_effect=lambda: actual_clock() + (196 if timed_out[0] else 0)):
+                    actual, stdout, stderr = qualification.pull_buildkit([sys.executable, "-c", script, str(journal)], dict(os.environ))
+                recorded = json.loads(journal.read_text())
+                self.assertEqual(recorded["group"], processes[0].pid)
+                self.assertEqual(actual["bound"], "python-timeout")
+                self.assertTrue(actual["direct_child_reaped"])
+                self.assertTrue(actual["process_group_absent"])
+                with self.assertRaises(ProcessLookupError):
+                    os.killpg(recorded["group"], 0)
+            finally:
+                for process in processes:
+                    try:
+                        os.killpg(process.pid, qualification.signal.SIGKILL)
+                    except ProcessLookupError:
+                        pass
+                    process.wait(timeout=2)
+
+    def test_permission_unknown_group_is_bounded_failure(self):
+        class ControlledProcess:
+            pid = 404042
+            returncode = 0
+            def communicate(self, timeout):
+                return b"complete stdout", b"complete stderr"
+            def wait(self, timeout):
+                return 0
+        with patch.object(qualification.subprocess, "Popen", return_value=ControlledProcess()), \
+             patch.object(qualification.os, "killpg", side_effect=PermissionError), \
+             patch.object(qualification.time, "monotonic", side_effect=[0, 0, 0, 6]):
+            actual, stdout, stderr = qualification.pull_buildkit(["CONTROL"], {})
+        self.assertEqual(actual["bound"], "process-group-permission")
+        self.assertFalse(actual["process_group_absent"])
+
+    def test_real_sigint_and_sigterm_cancel_once_record_and_restore_handlers(self):
+        import signal
+        import time
+        runner_source = r"""import importlib.util,json,os,pathlib,signal,subprocess,sys,time
+helper,logical,root,journal,result,phase=sys.argv[1:]
+spec=importlib.util.spec_from_file_location('controlled_bootstrap',helper)
+m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m)
+m.__file__=logical
+before={s:signal.getsignal(s) for s in (signal.SIGINT,signal.SIGTERM)}
+real_popen=subprocess.Popen
+program='import time;print("CONTROL owned pull",flush=True);time.sleep(30)'
+def controlled(command,**kwargs):
+ assert command[:6]==['timeout','--kill-after=10s','180s','docker','pull','--quiet']
+ process=real_popen([sys.executable,'-c',program],**kwargs)
+ pathlib.Path(journal).write_text(json.dumps({'pid':process.pid,'group':process.pid}))
+ if phase=='registration':time.sleep(.3)
+ return process
+m.subprocess.Popen=controlled
+caught=None
+try:m.bootstrap(pathlib.Path(root))
+except RuntimeError as error:caught=type(error).__name__
+pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':all(signal.getsignal(s)==h for s,h in before.items())}))
+"""
+        for phase, signum in (("registration", signal.SIGTERM), ("communicate", signal.SIGINT)):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
+                root, inputs, config, policy, logical, output = self.fixture(directory)
+                journal, result = Path(directory) / "owned-pull.json", Path(directory) / "runner-result.json"
+                environment = dict(os.environ, GITHUB_OUTPUT=str(output), PYTHONDONTWRITEBYTECODE="1")
+                runner = subprocess.Popen([sys.executable, "-c", runner_source, qualification.__file__, str(logical), str(root),
+                                           str(journal), str(result), phase], env=environment, stdout=subprocess.PIPE,
+                                          stderr=subprocess.PIPE, start_new_session=True)
+                child_group = None
+                try:
+                    deadline = time.monotonic() + 3
+                    while not journal.exists() and runner.poll() is None and time.monotonic() < deadline:
+                        time.sleep(.01)
+                    self.assertTrue(journal.exists(), "owned fake pull did not register")
+                    child_group = json.loads(journal.read_text())["group"]
+                    os.kill(runner.pid, signum)
+                    stdout, stderr = runner.communicate(timeout=8)
+                    self.assertEqual(runner.returncode, 0, stderr)
+                    report = json.loads(result.read_text())
+                    self.assertEqual(report, {"caught": "RuntimeError", "handlers_restored": True})
+                    receipt = json.loads((root / "bootstrap.json").read_text())
+                    self.assertEqual(receipt["cancel_signal"], signum)
+                    self.assertEqual(len(receipt["attempts"]), 1)
+                    self.assertEqual(receipt["attempts"][0]["cancel_signal"], signum)
+                    self.assertTrue(receipt["attempts"][0]["direct_child_reaped"])
+                    self.assertTrue(receipt["attempts"][0]["process_group_absent"])
+                    self.assertFalse(receipt["image_output_emitted"])
+                    self.assertFalse(output.exists())
+                    with self.assertRaises(ProcessLookupError):os.killpg(child_group, 0)
+                finally:
+                    for group in (child_group, runner.pid):
+                        if group is not None:
+                            try:os.killpg(group, signal.SIGKILL)
+                            except ProcessLookupError:pass
+                    runner.communicate(timeout=2)
+
+    def test_partial_signal_installation_restores_each_saved_handler_before_spawn(self):
+        for target in ("pull", "bootstrap"):
+            with self.subTest(target=target), tempfile.TemporaryDirectory() as directory:
+                root, inputs, config, policy, helper, output = self.fixture(directory)
+                originals = {qualification.signal.SIGINT: object(), qualification.signal.SIGTERM: object()}
+                current = dict(originals)
+                failed = [False]
+                def install(signum, handler):
+                    current[signum] = handler
+                    if signum == qualification.signal.SIGTERM and handler is not originals[signum] and not failed[0]:
+                        failed[0] = True
+                        raise RuntimeError("CONTROL partial signal installation")
+                with patch.object(qualification.signal, "getsignal", side_effect=lambda s: current[s]), \
+                     patch.object(qualification.signal, "signal", side_effect=install), \
+                     patch.object(qualification.subprocess, "Popen") as popen, \
+                     patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)):
+                    with self.assertRaisesRegex(RuntimeError, "partial"):
+                        if target == "pull":qualification.pull_buildkit(["CONTROL"], {})
+                        else:qualification.bootstrap(root)
+                self.assertEqual(current, originals)
+                popen.assert_not_called()
+                self.assertFalse(output.exists())
+
+    def test_signal_before_pid_registration_prevents_spawn_and_restores_handlers(self):
+        originals = {s: qualification.signal.getsignal(s) for s in (qualification.signal.SIGINT, qualification.signal.SIGTERM)}
+        actual_signal = qualification.signal.signal
+        triggered = [False]
+        def install(signum, handler):
+            result = actual_signal(signum, handler)
+            if signum == qualification.signal.SIGINT and callable(handler) and handler is not originals[signum] and not triggered[0]:
+                triggered[0] = True
+                handler(signum, None)
+            return result
+        with patch.object(qualification.signal, "signal", side_effect=install), patch.object(qualification.subprocess, "Popen") as popen:
+            result, stdout, stderr = qualification.pull_buildkit(["CONTROL"], {})
+        self.assertEqual(result["cancel_signal"], qualification.signal.SIGINT)
+        self.assertEqual(result["bound"], "cancelled")
+        self.assertTrue(result["process_group_absent"])
+        popen.assert_not_called()
+        self.assertEqual({s: qualification.signal.getsignal(s) for s in originals}, originals)
+
+    def test_late_cancel_during_pull_cleanup_or_handler_restoration_blocks_output(self):
+        for phase in ("cleanup", "restoration"):
+            with self.subTest(phase=phase), tempfile.TemporaryDirectory() as directory:
+                root, inputs, config, policy, helper, output = self.fixture(directory)
+                originals = {s: qualification.signal.getsignal(s) for s in (qualification.signal.SIGINT, qualification.signal.SIGTERM)}
+                actual_signal = qualification.signal.signal
+                triggered = [False]
+                def install(signum, handler):
+                    active = qualification.signal.getsignal(signum)
+                    if (phase == "restoration" and handler is originals[signum] and active is not handler
+                            and not triggered[0]):
+                        triggered[0] = True
+                        active(signum, None)
+                    return actual_signal(signum, handler)
+                def controlled(command, environment, cancellation):
+                    if phase == "cleanup":cancellation["signal"] = qualification.signal.SIGTERM
+                    return self.result(0)
+                with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                     patch.object(qualification, "pull_buildkit", side_effect=controlled) as pull, \
+                     patch.object(qualification.signal, "signal", side_effect=install):
+                    with self.assertRaisesRegex(RuntimeError, "cancelled"):
+                        qualification.bootstrap(root)
+                self.assertEqual(pull.call_count, 1)
+                self.assertFalse(output.exists())
+                self.assertIsNotNone(json.loads((root / "bootstrap.json").read_text())["cancel_signal"])
+                self.assertEqual({s: qualification.signal.getsignal(s) for s in originals}, originals)
+
+    def test_retry_delay_cancellation_records_last_attempt_without_retry(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = self.fixture(directory)
+            def cancel_delay(seconds):
+                self.assertEqual(seconds, 1)
+                qualification.signal.getsignal(qualification.signal.SIGINT)(qualification.signal.SIGINT, None)
+            with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                 patch.object(qualification, "pull_buildkit", return_value=self.result(1)) as pull, \
+                 patch.object(qualification.time, "sleep", side_effect=cancel_delay):
+                with self.assertRaisesRegex(RuntimeError, "cancelled"):
+                    qualification.bootstrap(root)
+            self.assertEqual(pull.call_count, 1)
+            receipt = json.loads((root / "bootstrap.json").read_text())
+            self.assertEqual(receipt["cancel_signal"], qualification.signal.SIGINT)
+            self.assertEqual(len(receipt["attempts"]), 1)
+            self.assertFalse(output.exists())
+
+    def test_corrected_patterns_are_the_exact_closed_reset_and_recursive_set(self):
+        workflow = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
+        text = workflow.split("          sparse-checkout: |\n", 1)[1]
+        patterns = []
+        for line in text.splitlines():
+            if not line.startswith("            "):break
+            patterns.append(line[12:])
+        raw = ("\n".join(patterns) + "\n").encode()
+        self.assertEqual(qualification.hashlib.sha256(raw).hexdigest(), "574ae1c282c7e7c7cfd0908ea303b4f49ae124e080f489e5cde87f22379e79aa")
+        self.assertEqual(len(patterns), 47)
+        self.assertEqual(patterns[0], "!/**")
+        self.assertEqual(sum(p.endswith('/**') and not p.startswith('!') for p in patterns), 14)
+        self.assertIn('/lego/operator/internal/build/**', patterns)
+        self.assertIn('/.pm/w8/m91/evidence/**', patterns)
+
+    def test_both_bootstrap_stanzas_use_only_successful_output_and_preserve_auth_order(self):
+        jobs = ProfileRoutingControls.jobs()
+        for name in ("qualify", "qualify-profile"):
+            body = jobs[name]
+            prepull = body.split("      - id: buildkit\n", 1)[1].split("      - name: log in to GHCR", 1)[0]
+            self.assertIn("timeout-minutes: 11", prepull)
+            self.assertIn('native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"', prepull)
+            self.assertLess(body.index("id: owned"), body.index("id: buildkit"))
+            self.assertLess(body.index("id: buildkit"), body.index("name: log in to GHCR"))
+            buildx = body.split("      - uses: docker/setup-buildx-action@", 1)[1].split("      - ", 1)[0]
+            self.assertIn("timeout-minutes: 5", buildx)
+            self.assertIn("driver-opts: image=${{ steps.buildkit.outputs.image }}", buildx)
+            self.assertNotIn("buildx-stable", body)
+            self.assertNotIn("continue-on-error", body)
+
+    def test_all_three_checkouts_use_the_same_closed_noncone_set(self):
+        workflow = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
+        blocks = re.findall(r'(?ms)^      - uses: actions/checkout@[^\n]+\n(.*?)(?=^      - |\Z)', workflow)
+        self.assertEqual(len(blocks), 3)
+        self.assertEqual(blocks, [blocks[0]] * 3)
+        self.assertIn("sparse-checkout-cone-mode: false", blocks[0])
+        self.assertIn("persist-credentials: false", blocks[0])
+        for literal in ("/.github/", "/.pm/w8/m91/evidence/", "/lego/operator/internal/build/", "/lego/operator/cmd/native-init/", "/lego/types/v1alpha1/", "/lego/operator/go.mod", "/lego/types/go.sum", "/scripts/lib/toolchain-freshness.py"):
+            self.assertIn("            " + literal + "\n", blocks[0])
+        self.assertNotIn("fetch-depth:", blocks[0])
+        self.assertNotIn("${{", blocks[0])
+
+
 class ProfileRoutingControls(unittest.TestCase):
     @staticmethod
     def jobs():
@@ -576,7 +995,9 @@ class ProfileRoutingControls(unittest.TestCase):
         self.assertEqual(sum("uses: ./.github/workflows/native-base-image.yml" in body for body in jobs.values()), 1)
         plan = jobs["plan"]
         self.assertNotIn("packages:", plan)
-        self.assertNotIn("docker", plan)
+        self.assertNotIn("uses: docker/", plan)
+        self.assertEqual(re.findall(r"(?m)^        run: (.+)$", plan),
+                         ["python3 .github/scripts/native-common-qualify.py plan"])
         self.assertIn("REQUESTED_PROFILE: ${{ inputs.profile || 'utilities' }}", plan)
         self.assertIn("REQUESTED_CASE: ${{ inputs.case || 'pilot' }}", plan)
         self.assertIn("native-common-qualify.py plan", plan)
