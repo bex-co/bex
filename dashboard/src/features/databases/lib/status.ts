@@ -76,7 +76,13 @@ export function toDatabaseDetailView(
     statusReasonCode: d.statusReasonCode || null,
     databaseName: d.databaseName ?? null,
     databaseUser: d.databaseUser ?? null,
-    highAvailabilityEnabled: d.highAvailabilityEnabled ?? false,
+    // The view keeps "enabled" as the observed standby. Since w2/059 the wire's
+    // highAvailabilityEnabled is the configured value (as on Render) and the
+    // observed one is highAvailabilityReady; an older API has no Ready field
+    // and reported the observed value as enabled. highAvailabilityRequested is
+    // the configured value on both.
+    highAvailabilityEnabled:
+      d.highAvailabilityReady ?? d.highAvailabilityEnabled ?? false,
     highAvailabilityRequested:
       d.highAvailabilityRequested ?? d.highAvailabilityEnabled ?? false,
     diskAutoscalingEnabled: d.diskAutoscalingEnabled ?? false,

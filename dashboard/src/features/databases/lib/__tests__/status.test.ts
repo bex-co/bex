@@ -97,6 +97,7 @@ describe("toDatabaseDetailView", () => {
       diskAutoscalingEnabled: false,
       highAvailabilityEnabled: false,
       highAvailabilityRequested: null,
+      highAvailabilityReady: null,
       suspended: "not_suspended",
       createdAt: null,
       updatedAt: null,
@@ -135,6 +136,7 @@ describe("toDatabaseDetailView", () => {
       diskAutoscalingEnabled: false,
       highAvailabilityEnabled: false,
       highAvailabilityRequested: null,
+      highAvailabilityReady: null,
       suspended: "not_suspended",
       createdAt: null,
       updatedAt: null,
@@ -167,6 +169,7 @@ describe("toDatabaseDetailView", () => {
       diskAutoscalingEnabled: false,
       highAvailabilityEnabled: false,
       highAvailabilityRequested: null,
+      highAvailabilityReady: null,
       suspended: "not_suspended",
       createdAt: null,
       updatedAt: null,
@@ -200,6 +203,7 @@ describe("toDatabaseDetailView", () => {
       diskAutoscalingEnabled: false,
       highAvailabilityEnabled: false,
       highAvailabilityRequested: null,
+      highAvailabilityReady: null,
       suspended: "not_suspended",
       createdAt: null,
       updatedAt: null,
@@ -306,5 +310,59 @@ describe("sqlConsoleBlock (w4/177)", () => {
     expect(sqlConsoleBlock("available")).toBeNull();
     expect(sqlConsoleBlock("unavailable")).toBeNull();
     expect(sqlConsoleBlock("unknown")).toBeNull();
+  });
+});
+
+describe("toDatabaseDetailView high availability (w2/059)", () => {
+  const node = (
+    enabled: boolean | null,
+    requested: boolean | null,
+    ready: boolean | null,
+  ) =>
+    toDatabaseDetailView({
+      __typename: "Database",
+      expiresAt: null,
+      statusReason: null,
+      statusReasonCode: null,
+      id: "db",
+      name: "db",
+      plan: "1c-2g",
+      version: "18",
+      status: "creating",
+      databaseName: "db",
+      databaseUser: "db_user",
+      diskSizeGB: 10,
+      diskAutoscalingEnabled: false,
+      highAvailabilityEnabled: enabled,
+      highAvailabilityRequested: requested,
+      highAvailabilityReady: ready,
+      suspended: "not_suspended",
+      createdAt: null,
+      updatedAt: null,
+      externalHost: null,
+      public: true,
+      poolerEnabled: false,
+      backupsEnabled: null,
+      ipAllowList: null,
+      region: null,
+      readReplicas: null,
+    });
+
+  it("treats the wire's enabled field as the request and ready as the standby", () => {
+    // Enabling: the API already says enabled (as on Render); no standby yet.
+    const starting = node(true, true, false);
+    expect(starting.highAvailabilityRequested).toBe(true);
+    expect(starting.highAvailabilityEnabled).toBe(false);
+    // Disabling: the request is off while the standby still runs.
+    const stopping = node(false, false, true);
+    expect(stopping.highAvailabilityRequested).toBe(false);
+    expect(stopping.highAvailabilityEnabled).toBe(true);
+  });
+
+  it("still reads an older API, whose enabled field was the observed value", () => {
+    // Requested on, standby not up yet: older API said enabled=false.
+    const old = node(false, true, null);
+    expect(old.highAvailabilityEnabled).toBe(false);
+    expect(old.highAvailabilityRequested).toBe(true);
   });
 });

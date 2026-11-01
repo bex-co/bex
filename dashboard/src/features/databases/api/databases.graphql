@@ -54,10 +54,12 @@ query Database($id: String!) {
     databaseUser
     diskSizeGB
     diskAutoscalingEnabled
+    # The configured value, as on Render (w2/059).
     highAvailabilityEnabled
-    # Spec intent (bex extension, w2/m171): the HA switch's position while the
-    # standby converges toward it.
+    # Same as highAvailabilityEnabled; kept so an older API still answers.
     highAvailabilityRequested
+    # Observed standby (bex extension, w2/059): HA on and two instances ready.
+    highAvailabilityReady
     readReplicas {
       ...ReadReplicaFields
     }
@@ -162,6 +164,7 @@ mutation UpdateDatabaseHighAvailability($id: String!, $enabled: Boolean!) {
     status
     highAvailabilityEnabled
     highAvailabilityRequested
+    highAvailabilityReady
   }
 }
 
