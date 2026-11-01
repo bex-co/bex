@@ -1,0 +1,194 @@
+{
+  "architecture": "arm64",
+  "job_id": 124791012199,
+  "source": "3d353cb976ff01c31b78fc469b3fc3dbf3203a95",
+  "status": "completed",
+  "conclusion": "success",
+  "started_at": "2026-11-01T09:50:19Z",
+  "completed_at": "2026-11-01T09:15:54Z",
+  "selected_steps": [
+    {
+      "number": 6,
+      "name": "pre-pull the pinned BuildKit image with bounded retries",
+      "started_at": "2026-11-01T08:55:08Z",
+      "completed_at": "2026-11-01T08:57:02Z",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 8,
+      "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+      "started_at": "2026-11-01T08:57:05Z",
+      "completed_at": "2026-11-01T08:57:40Z",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 9,
+      "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+      "started_at": "2026-11-01T08:57:40Z",
+      "completed_at": "2026-11-01T08:58:06Z",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 10,
+      "name": "actual generated offline builds, original replays and exact-default SPDX",
+      "started_at": "2026-11-01T08:58:06Z",
+      "completed_at": "2026-11-01T09:14:54Z",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 11,
+      "name": "record capacity observations before owned cleanup",
+      "started_at": "2026-11-01T09:14:54Z",
+      "completed_at": "2026-11-01T09:14:54Z",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 12,
+      "name": "remove only this job's labeled resources, exact builder and credentials",
+      "started_at": "2026-11-01T09:14:54Z",
+      "completed_at": "2026-11-01T09:15:04Z",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 13,
+      "name": "hash retained successes and failures",
+      "started_at": "2026-11-01T09:15:04Z",
+      "completed_at": "2026-11-01T09:15:04Z",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 14,
+      "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "started_at": "2026-11-01T09:15:04Z",
+      "completed_at": "2026-11-01T09:15:48Z",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "actual_go_case_results": [
+    {
+      "state": "PASS",
+      "name": "TestNativeUtilityGeneratedImages",
+      "seconds": 991.8
+    },
+    {
+      "state": "PASS",
+      "name": "TestNativeUtilityGeneratedImages/supplier-removed",
+      "seconds": 203.28
+    },
+    {
+      "state": "PASS",
+      "name": "TestNativeUtilityGeneratedImages/node-compute",
+      "seconds": 297.02
+    },
+    {
+      "state": "PASS",
+      "name": "TestNativeUtilityGeneratedImages/node-static",
+      "seconds": 59.68
+    },
+    {
+      "state": "PASS",
+      "name": "TestNativeUtilityGeneratedImages/python313-original",
+      "seconds": 117.83
+    },
+    {
+      "state": "PASS",
+      "name": "TestNativeUtilityGeneratedImages/python3148-default",
+      "seconds": 283.28
+    },
+    {
+      "state": "PASS",
+      "name": "TestNativeUtilityGeneratedImages/missing-jq",
+      "seconds": 8.99
+    },
+    {
+      "state": "PASS",
+      "name": "TestNativeUtilityGeneratedImages/missing-rsync",
+      "seconds": 4.8
+    },
+    {
+      "state": "PASS",
+      "name": "TestNativeUtilityGeneratedImages/missing-python-metadata",
+      "seconds": 4.78
+    },
+    {
+      "state": "PASS",
+      "name": "TestNativeUtilityGeneratedImages/missing-python-pip",
+      "seconds": 5.34
+    },
+    {
+      "state": "PASS",
+      "name": "TestNativeUtilityGeneratedImages/missing-python-headers",
+      "seconds": 6.79
+    },
+    {
+      "state": "PASS",
+      "name": "TestNativeOriginalReplayHTTPOracles",
+      "seconds": 0.45
+    }
+  ],
+  "verified_full_pull_records": [
+    {
+      "attempt": {
+        "number": 1,
+        "started_at": "2026-11-01T08:55:08.795488+00:00",
+        "finished_at": "2026-11-01T08:57:02.505612+00:00",
+        "exit_code": 0,
+        "bound": null,
+        "cancel_signal": null,
+        "direct_child_reaped": true,
+        "process_group_absent": true,
+        "timeout_exit": false,
+        "stdout": {
+          "path": "bootstrap-1.stdout.log",
+          "bytes": 104,
+          "sha256": "cb4d3b0e70f2d4e52c28206c6c799c01616f7ac12aad9490b930290737cdc621"
+        },
+        "stderr": {
+          "path": "bootstrap-1.stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+      "command": [
+        "timeout",
+        "--kill-after=10s",
+        "180s",
+        "docker",
+        "pull",
+        "--quiet",
+        "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
+      ],
+      "owner": "bex-nq-38ba2808c482446f85864a68"
+    }
+  ],
+  "cleanup_records": [
+    {
+      "owner": "bex-nq-38ba2808c482446f85864a68",
+      "operations": [
+        {
+          "resource": "builder",
+          "identity": "bex-nq-38ba2808c482446f85864a68",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": "bex-nq-38ba2808c482446f85864a68 removed\n"
+        },
+        {
+          "resource": "docker-auth",
+          "logout_exit_code": 0,
+          "exit_code": 0,
+          "removed": true
+        }
+      ]
+    }
+  ],
+  "underlying_amd64_Buildx_rootcause": null
+}

@@ -1,0 +1,152 @@
+{
+  "schema": "bex.common-utility-run-readonly-outcomes/v1",
+  "at": "2026-11-01T13:30:15.819244+00:00",
+  "run_id": 41285940429,
+  "source": "3d353cb976ff01c31b78fc469b3fc3dbf3203a95",
+  "attempt": 1,
+  "run_outcome": "completed/failure",
+  "plan": "success",
+  "publisher": "skipped",
+  "family": "skipped",
+  "arm64": {
+    "job_id": 124791012199,
+    "job_outcome": "success",
+    "whole_log": {
+      "path": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/arm64-final/job.log",
+      "bytes": 61283,
+      "sha256": "c3f94c5c14d40310af0ff56430da5d0774ae000e637e5b6aea4f6a6828308a77"
+    },
+    "result": {
+      "path": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/arm64-final/RESULT.json",
+      "bytes": 5593,
+      "sha256": "a8696787e70a618fa6f453226fa0de66d7c1ed777ec8f4ad2e7f3e2b128a2e92"
+    },
+    "utility_step10": "success",
+    "all_actual_Go_results": [
+      {
+        "state": "PASS",
+        "name": "TestNativeUtilityGeneratedImages",
+        "seconds": 991.8
+      },
+      {
+        "state": "PASS",
+        "name": "TestNativeUtilityGeneratedImages/supplier-removed",
+        "seconds": 203.28
+      },
+      {
+        "state": "PASS",
+        "name": "TestNativeUtilityGeneratedImages/node-compute",
+        "seconds": 297.02
+      },
+      {
+        "state": "PASS",
+        "name": "TestNativeUtilityGeneratedImages/node-static",
+        "seconds": 59.68
+      },
+      {
+        "state": "PASS",
+        "name": "TestNativeUtilityGeneratedImages/python313-original",
+        "seconds": 117.83
+      },
+      {
+        "state": "PASS",
+        "name": "TestNativeUtilityGeneratedImages/python3148-default",
+        "seconds": 283.28
+      },
+      {
+        "state": "PASS",
+        "name": "TestNativeUtilityGeneratedImages/missing-jq",
+        "seconds": 8.99
+      },
+      {
+        "state": "PASS",
+        "name": "TestNativeUtilityGeneratedImages/missing-rsync",
+        "seconds": 4.8
+      },
+      {
+        "state": "PASS",
+        "name": "TestNativeUtilityGeneratedImages/missing-python-metadata",
+        "seconds": 4.78
+      },
+      {
+        "state": "PASS",
+        "name": "TestNativeUtilityGeneratedImages/missing-python-pip",
+        "seconds": 5.34
+      },
+      {
+        "state": "PASS",
+        "name": "TestNativeUtilityGeneratedImages/missing-python-headers",
+        "seconds": 6.79
+      },
+      {
+        "state": "PASS",
+        "name": "TestNativeOriginalReplayHTTPOracles",
+        "seconds": 0.45
+      }
+    ],
+    "cleanup12": "success",
+    "manifest13": "success",
+    "upload14": "success"
+  },
+  "amd64": {
+    "job_id": 124791012251,
+    "job_outcome": "failure",
+    "whole_log": {
+      "path": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/amd64-final/job.log",
+      "bytes": 47659,
+      "sha256": "f183cbe14bdd0ff39bdf94baac469ee7361fd6c14f59bf1b84d65eae40814c87"
+    },
+    "result": {
+      "path": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/amd64-final/RESULT.json",
+      "bytes": 5324,
+      "sha256": "11f47371775789be02764e193b9d64953ea4fcc6b2c991b83cd9c7f7f99a184d"
+    },
+    "exact_error": "docker/setup-buildx-action timed out after5minutes at08:49:14.620094Z; lastbootingbuildkit08:49:11.441927Z.",
+    "prepull6": "success after actualattempt1exit124, attempt2exit0; allfullbase64 streams bytes/SHA verified",
+    "Buildx8": "failure",
+    "Syft9": "skipped",
+    "utility10": "skipped",
+    "cleanup12": "success",
+    "manifest13": "success",
+    "upload14": "success",
+    "rootcause_limit": "Outeractiontimeout proven; underlying booting delay/network/host/OOM causeUNKNOWN. No application/runtime failure or sourcefix claim."
+  },
+  "artifact_metadata": {
+    "proof": {
+      "path": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/artifacts-after-amd64/body.json",
+      "bytes": 1456,
+      "sha256": "be0dc1d38ffa183d50f2e1ab64a52953efd4f7cbd6daf6ce514d19517432e359"
+    },
+    "artifacts": [
+      {
+        "id": 13077598836,
+        "name": "common-generated-3d353cb976ff01c31b78fc469b3fc3dbf3203a95-arm64-1",
+        "size_in_bytes": 79087333,
+        "digest": "sha256:a2dda7c5dcb155f21a2459c0c2aed568459040ae286fca46c288b30c8e535a3e",
+        "expired": false
+      },
+      {
+        "id": 13076976855,
+        "name": "common-generated-3d353cb976ff01c31b78fc469b3fc3dbf3203a95-amd64-1",
+        "size_in_bytes": 20746,
+        "digest": "sha256:91124516ed4f05bd34ae7234778bc82801a0671df2964771f98e55cb4869ef06",
+        "expired": false
+      }
+    ],
+    "body_downloads": 0
+  },
+  "read_failures_retained": [
+    "Initial gh TLS x509 OSStatus-26276 run/jobs/historical reads; no TLS trust/host/keychain changes.",
+    "Historical direct-job connector endpoint400 unsupported; no historical completion inference.",
+    "003 run connector ConnectTimeout while same003jobs succeeded; PARTIAL-003 retained."
+  ],
+  "observation_gap": {
+    "path": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/OBSERVATION-GAP.json",
+    "bytes": 490,
+    "sha256": "d3920a47e6c9016228b13a6eba25f3e87a4f21e8d4d7e6fd2299756e2b62b6f9"
+  },
+  "metadata_timestamp_limit": "Raw job-level started_at fields conflict with steps/log chronology; no timestamp normalization or job-duration inference. Report step/logtimes only.",
+  "admission": "NOT_ELIGIBLE_FOR_TWO_ARCH_BASELINE: AMD didnotrunutilities. CI job successalone isnotartifact approval. No ZIPbody/newutilitydispatch/cancel/rerun/resource/auth/repoactions.",
+  "actual_external_actions": "Only authorizedGitHubGET metadata/wholecompletedjoblogs; no signature replay or product/Go/Docker/Kube/resources/PM/repo changes.",
+  "current_process_state": "No active ghwatch/client process; monitoring stopped after both terminal outcomes."
+}

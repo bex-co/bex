@@ -1,0 +1,133 @@
+{
+  "schema": "bex.selected-lossless-evidence/v1",
+  "at": "2026-11-01T19:08:38.088829+00:00",
+  "scope": "Selected complete raw original text records, no truncation or reserialization. Full private freezes remain referenced; repo Git retains exact before/applied source.",
+  "records": [
+    {
+      "original": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/amd64-final/job.log",
+      "retained": "actual/amd64.log",
+      "bytes": 47659,
+      "sha256": "f183cbe14bdd0ff39bdf94baac469ee7361fd6c14f59bf1b84d65eae40814c87"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/arm64-final/job.log",
+      "retained": "actual/arm64.log",
+      "bytes": 61283,
+      "sha256": "c3f94c5c14d40310af0ff56430da5d0774ae000e637e5b6aea4f6a6828308a77"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/015-run/body.json",
+      "retained": "actual/run.json",
+      "bytes": 11657,
+      "sha256": "f603d03aa2842f3887652fab444a416992de61b40c6b4236aad63c3eb66ab974"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/015-jobs/body.json",
+      "retained": "actual/jobs.json",
+      "bytes": 12534,
+      "sha256": "1341c8810775339277c3b8a4b525d06042abbfdb6e134350c4f8cbda57cec1d3"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/RECEIPT.json",
+      "retained": "actual/outcomes.json",
+      "bytes": 5809,
+      "sha256": "461ac9c6e66b62ccef96f112fc16ae79f55d1c29475b2b4b306b70192e70100b"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/amd64-final/RESULT.json",
+      "retained": "actual/amd64-result.json",
+      "bytes": 5324,
+      "sha256": "11f47371775789be02764e193b9d64953ea4fcc6b2c991b83cd9c7f7f99a184d"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-utility-3d353-monitor-20261101-mz_wn9gw/arm64-final/RESULT.json",
+      "retained": "actual/arm64-result.json",
+      "bytes": 5593,
+      "sha256": "a8696787e70a618fa6f453226fa0de66d7c1ed777ec8f4ad2e7f3e2b128a2e92"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/RECEIPT.json",
+      "retained": "proposal/RECEIPT.json",
+      "bytes": 3390,
+      "sha256": "c2e3e96eee5f6bd0075509e7cf75ec041eadb37d407ea1a2711b5d6cbf038f09"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/SOURCE-VERIFICATION.json",
+      "retained": "proposal/SOURCE-VERIFICATION.json",
+      "bytes": 1890,
+      "sha256": "7e8d76527287951ffa94faf4ee620c313cc559f579731a8c3581e3f13f7f61cb"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/HOST-RESULT.json",
+      "retained": "proposal/HOST-RESULT.json",
+      "bytes": 361,
+      "sha256": "d0a8f3e0aeb2462d21e881647b04e40ead48d4b064dbcb69918329b087a1e60d"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/host-tests.stdout",
+      "retained": "proposal/host-tests.stdout",
+      "bytes": 24695,
+      "sha256": "a5b39f62adf3ef98a6a4d5cc939b910f99e960ceaffcb4aafaf9f77c1a0a034a"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/host-tests.stderr",
+      "retained": "proposal/host-tests.stderr",
+      "bytes": 16858,
+      "sha256": "15ba8983fc2cafd0c2efc2e9117287726c192050068e4d9bf7741c5eed022163"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/ACTIONLINT-RESULT.json",
+      "retained": "proposal/ACTIONLINT-RESULT.json",
+      "bytes": 448,
+      "sha256": "2f6bf46de147569054fa484aa743a40e1cf3387079e5aa4afe5f331fda4c0c0f"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/actionlint.stdout",
+      "retained": "proposal/actionlint.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/actionlint.stderr",
+      "retained": "proposal/actionlint.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/source.patch",
+      "retained": "proposal/source.patch",
+      "bytes": 1924,
+      "sha256": "0031f5c23ca29991fd8375c78811e56b89bbc83d7fe284b0beafbe22a6a86646"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/TRIGGER-AND-DISPATCH.json",
+      "retained": "proposal/TRIGGER-AND-DISPATCH.json",
+      "bytes": 797,
+      "sha256": "4af980e8007b4c4a49f7b4ee02714e38561ea3c0266fa645fd0139d51735c5bc"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-root-20261101-8sqqlz5k/REVIEW.json",
+      "retained": "root/REVIEW.json",
+      "bytes": 1273,
+      "sha256": "c092a0e7bf7b1f29d45ef82830c73f317d89d932a2854ff2ac58e99d28763c6a"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-root-20261101-8sqqlz5k/actionlint.stdout",
+      "retained": "root/actionlint.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-root-20261101-8sqqlz5k/actionlint.stderr",
+      "retained": "root/actionlint.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-buildx-root-20261101-8sqqlz5k/RESTORE.json",
+      "retained": "root/RESTORE.json",
+      "bytes": 1086,
+      "sha256": "66a0798e555f36b411b058c93df793d9463b456bd1677e0241a85b0d1f0fa315"
+    }
+  ]
+}

@@ -1,0 +1,58 @@
+{
+  "base_head": "3c6d73e890bd59286b9a84c04b28296210c847da",
+  "owned_proposal_paths": [
+    ".github/workflows/native-common-image.yml",
+    ".github/scripts/test_native_oci_common_qualification.py"
+  ],
+  "files": [
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "mode": "0o644",
+      "before": {
+        "bytes": 19821,
+        "sha256": "e56abb9c3518b294301d861bcddf7994f924a7d8f397f087808988d3dd613b3f"
+      },
+      "after": {
+        "bytes": 19975,
+        "sha256": "77226f77bbd0a8493105258f2d619964906b2d339cfa0d07ab3351164635b21a"
+      }
+    },
+    {
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "mode": "0o644",
+      "before": {
+        "bytes": 121973,
+        "sha256": "728e72e6a1e21b175fd0007dfb388f513c9f5c7b53ef4fd58c353baad2596b0b"
+      },
+      "after": {
+        "bytes": 121974,
+        "sha256": "c2e23ae23fff2297b92dfbc0cad95912f66fe559fa47ae63d4c39a002424b329"
+      }
+    }
+  ],
+  "context": [
+    {
+      "path": ".github/scripts/native-common-qualify.py",
+      "bytes": 60136,
+      "sha256": "67dc0bb93d34daa8b11aab0088ea17eedc1fb3b47ab62c3315e0bf8250aa2325"
+    },
+    {
+      "path": ".github/scripts/test_native_oci_workflow.py",
+      "bytes": 16781,
+      "sha256": "514094854b20ed283e3949721573170a374570b31808435c1c7acfe404d90696"
+    },
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "bytes": 18178,
+      "sha256": "5934f90afba6dcc6312e6e6e85dd92404444160a8824c427cff0fd47a89d2db8"
+    },
+    {
+      "path": "lego/operator/internal/build/toolchain-freshness.json",
+      "bytes": 27224,
+      "sha256": "be63de042bcff1899db87f36d4c3a093bb3b31282079e478603b10e7359d94fc"
+    }
+  ],
+  "entire_workflow_restores_exactly_by_only2timeouts_and2comments": true,
+  "entire83_test_source_restores_by_only1existing_assertion_constant": true,
+  "repo_files_unchanged": true
+}

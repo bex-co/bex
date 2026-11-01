@@ -1,0 +1,80 @@
+{
+  "schema": "bex.common-buildx-setup-budget-source/v1",
+  "at": "2026-11-01T19:06:32.430820+00:00",
+  "state": "PRIVATE_SOURCE_HOST_TESTS_AND_ACTIONLINT_PASS_PENDING_ROOT",
+  "root": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0",
+  "base_head": "3c6d73e890bd59286b9a84c04b28296210c847da",
+  "source_files": [
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "mode": "0o644",
+      "before": {
+        "bytes": 19821,
+        "sha256": "e56abb9c3518b294301d861bcddf7994f924a7d8f397f087808988d3dd613b3f"
+      },
+      "after": {
+        "bytes": 19975,
+        "sha256": "77226f77bbd0a8493105258f2d619964906b2d339cfa0d07ab3351164635b21a"
+      }
+    },
+    {
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "mode": "0o644",
+      "before": {
+        "bytes": 121973,
+        "sha256": "728e72e6a1e21b175fd0007dfb388f513c9f5c7b53ef4fd58c353baad2596b0b"
+      },
+      "after": {
+        "bytes": 121974,
+        "sha256": "c2e23ae23fff2297b92dfbc0cad95912f66fe559fa47ae63d4c39a002424b329"
+      }
+    }
+  ],
+  "actual_evidence": "AMD3d12479101225147,659B wholelogSHAf183cbe14bdd0ff39bdf94baac469ee7361fd6c14f59bf1b84d65eae40814c87. Buildx binary download292.829s succeeded; outer5m thenleft~3s bootstrap. ARMBuildx35s passed. No boot/runtime defect claimed.",
+  "change": "Onlybothsetup-buildx5\u219210m+shortcomment; updateexistingdouble-stanza source assertion5\u219210. No new test.",
+  "preserved": "Peer26bsecretless permissions/login removal, commands/BuildKitpin/actionpin/prepull/retries/cleanup/runtime/Go/job bounds/matrix/selectors/gates byte-exact.",
+  "host_result": {
+    "command": [
+      "/opt/homebrew/bin/python3.14",
+      "-B",
+      "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/host-tests.py"
+    ],
+    "at": "2026-11-01T19:04:22.316348+00:00",
+    "ended": "2026-11-01T19:04:32.334441+00:00",
+    "seconds": 10.018,
+    "exit_code": 0,
+    "stop": null,
+    "interpreter": "Python 3.14.3",
+    "test_count": 83
+  },
+  "actionlint_result": {
+    "argv": [
+      "/opt/homebrew/bin/actionlint",
+      "-config-file",
+      "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/actionlint.yaml",
+      "-stdin-filename",
+      ".github/workflows/native-common-image.yml",
+      "-"
+    ],
+    "at": "2026-11-01T19:04:22.316352+00:00",
+    "exit_code": 0,
+    "seconds": 0.226,
+    "runner_labels": "Only existing bex-ci/bex-production registered in private actionlint config; no ignoredrules"
+  },
+  "host_scope": "83existing tests compiled under original logical source path; narrow read-only Path.open/stat view redirects ONLY2 proposed files. No repo tree copy or symlink context. No target/image/Go/CI/network execution.",
+  "source_verification": {
+    "bytes": 1890,
+    "sha256": "7e8d76527287951ffa94faf4ee620c313cc559f579731a8c3581e3f13f7f61cb"
+  },
+  "trigger_inspection": {
+    "bytes": 797,
+    "sha256": "4af980e8007b4c4a49f7b4ee02714e38561ea3c0266fa645fd0139d51735c5bc"
+  },
+  "actual_CI_fix_execution": null,
+  "repo_applied": false,
+  "no_current_retry_active_or_submitted_by_this_agent": true,
+  "limits": [
+    "Actual10m jobsetup/functional qualification remains unexecuted.",
+    "Ordinarypush wouldfreshpublish; same-candidate manualdispatch still needs a supported authorized route, not automaticpush confusion."
+  ]
+}

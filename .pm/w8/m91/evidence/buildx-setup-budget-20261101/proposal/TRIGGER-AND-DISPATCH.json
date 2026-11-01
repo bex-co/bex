@@ -1,0 +1,10 @@
+{
+  "push_paths_match_both_proposal_files": true,
+  "push_source_default": "fresh",
+  "publish_condition": "github.ref == 'refs/heads/main' && needs.plan.outputs.source == 'fresh'",
+  "effect_of_ordinary_source_push": "A NEW common-bookworm image publication, followed by fullutilities, would be requested automatically. NOT same56 reviewed-candidate reuse.",
+  "available_workflow_dispatch_connector_tool": false,
+  "available_job_rerun": "Re-executes oldsource workflow only; cannot use this10m source repair. Perarch attempts may differ under validator, but current sourceclosure must still match.",
+  "no_actions": "No push, dispatch, rerun, credentialread/change, image/resource operation.",
+  "scope": "Read-only current source/tool-surface conclusion; no new trigger mechanism proposed."
+}

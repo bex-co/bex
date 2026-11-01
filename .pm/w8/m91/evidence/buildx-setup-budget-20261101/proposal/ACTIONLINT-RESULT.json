@@ -1,0 +1,14 @@
+{
+  "argv": [
+    "/opt/homebrew/bin/actionlint",
+    "-config-file",
+    "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/actionlint.yaml",
+    "-stdin-filename",
+    ".github/workflows/native-common-image.yml",
+    "-"
+  ],
+  "at": "2026-11-01T19:04:22.316352+00:00",
+  "exit_code": 0,
+  "seconds": 0.226,
+  "runner_labels": "Only existing bex-ci/bex-production registered in private actionlint config; no ignoredrules"
+}
