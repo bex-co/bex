@@ -1,0 +1,330 @@
+{
+  "schema": "bex.lossless-raw-custody/v1",
+  "scope": "Exact source preparation, review, compile-only and actual status records; no actual predeploy or completed utility acceptance.",
+  "files": {
+    "minimal-plan/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-plan-20261101-fz366pkx/MANIFEST.json",
+      "bytes": 466,
+      "sha256": "3f2df105df2b1f32cf4052ac00a4c25776c121d0a29d01d88a1f491195593b29",
+      "retained_path": "minimal-plan/MANIFEST.json.gz",
+      "gzip_bytes": 273,
+      "gzip_sha256": "d87ae5359c4b6c1d546d0b822440a3073818000d6e2afc300f4bc72eaca8c5ca",
+      "lossless_roundtrip": true
+    },
+    "minimal-plan/PLAN.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-plan-20261101-fz366pkx/PLAN.json",
+      "bytes": 13386,
+      "sha256": "2cb39bb41fbda636c6de2753ce26c0f2de1fe25daf880bc8d9bad70e3bdab512",
+      "retained_path": "minimal-plan/PLAN.json.gz",
+      "gzip_bytes": 5625,
+      "gzip_sha256": "d75a31a714a6b14749facb57d1f6d6af50f568d97ee964a743cb8f1ee12bea34",
+      "lossless_roundtrip": true
+    },
+    "minimal-plan/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-plan-20261101-fz366pkx/REVIEW.json",
+      "bytes": 1919,
+      "sha256": "8199b15aa4aeafe438da2b0e23614f8d2ca1dddb6c69bbb87b19072a736efc51",
+      "retained_path": "minimal-plan/REVIEW.json.gz",
+      "gzip_bytes": 1121,
+      "gzip_sha256": "4cbc6d6af65d0ae54a6b4f7f8abc613d46236b6f1d1c0f2cbe63256b96d48fb1",
+      "lossless_roundtrip": true
+    },
+    "minimal-plan/SOURCE-CUSTODY.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-plan-20261101-fz366pkx/SOURCE-CUSTODY.json",
+      "bytes": 14460,
+      "sha256": "87e065d10ef0c48576367f4c609df117a1acbc729c5c3a42497236b2d14aa956",
+      "retained_path": "minimal-plan/SOURCE-CUSTODY.json.gz",
+      "gzip_bytes": 3910,
+      "gzip_sha256": "5ce6dd0eb49e0dc68459786462f9b47163809d5b0eacc42fd0f740a637642fb2",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/CANONICAL-SOURCE-HASHES.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/CANONICAL-SOURCE-HASHES.json",
+      "bytes": 2139,
+      "sha256": "6dad0f0c9940be4912176e936b57060b4237f52386c9d0c7041fe5f62af98c5d",
+      "retained_path": "controller-observer-source/CANONICAL-SOURCE-HASHES.json.gz",
+      "gzip_bytes": 872,
+      "gzip_sha256": "c6044c6cda841ed62ea6f03a927557d4dc34ad50888d7ae9a1a5f09dc5494ad2",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/DERIVATION-AND-INTERFACES.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/DERIVATION-AND-INTERFACES.json",
+      "bytes": 8025,
+      "sha256": "d6966978a96c5903e833076c049fd16d8ab32c63818c3e8a9d57065bea4f878b",
+      "retained_path": "controller-observer-source/DERIVATION-AND-INTERFACES.json.gz",
+      "gzip_bytes": 3654,
+      "gzip_sha256": "21ddb3ce5a39cdb24148c5e5027728acd1497c8338eac391cbaef56768c5efe7",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/EXPECTED-FIXTURE-BYTES.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/EXPECTED-FIXTURE-BYTES.json",
+      "bytes": 5579,
+      "sha256": "96ffa4921210e2197e1d368105e9ad5b50532ce52db1e58d0a2669b14bb00161",
+      "retained_path": "controller-observer-source/EXPECTED-FIXTURE-BYTES.json.gz",
+      "gzip_bytes": 2181,
+      "gzip_sha256": "0819f3f6606efd09d47fac9f32cecdc313161ccba16b8db03a50456ffe696ce4",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/HOST-CONTROLS.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/HOST-CONTROLS.json",
+      "bytes": 3192,
+      "sha256": "b12420769ec3f2ecaf3866459734f456b784d2d349439955df13e839464bfe1c",
+      "retained_path": "controller-observer-source/HOST-CONTROLS.json.gz",
+      "gzip_bytes": 1000,
+      "gzip_sha256": "0bddadaf76a202e9ed2dd73663aa49654a4f661829a3f886580c2551ae6583e1",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/INPUT-CUSTODY.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/INPUT-CUSTODY.json",
+      "bytes": 20245,
+      "sha256": "de477711d07d843420af87dbceed158eee0b551a3deae1d2b192c3e63a73e223",
+      "retained_path": "controller-observer-source/INPUT-CUSTODY.json.gz",
+      "gzip_bytes": 5137,
+      "gzip_sha256": "da0b686a2b09988e211564a73f9e7a6b34f1194010562e4ead79845c22a7bf41",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/MANIFEST.json",
+      "bytes": 1709,
+      "sha256": "9b12c8f70463e412c83b8db73b2dee8a79788b547b610b7c7272f7a0220f8043",
+      "retained_path": "controller-observer-source/MANIFEST.json.gz",
+      "gzip_bytes": 820,
+      "gzip_sha256": "9eca42dd1a4d85a2a89058196f1110d3c20e34efa503a6f7af380f41458ad6b4",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/RECEIPT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/RECEIPT.json",
+      "bytes": 1613,
+      "sha256": "549da3787f425d85ed9c205fa65e883acd36c9cf1be4de1732980adb421f85b5",
+      "retained_path": "controller-observer-source/RECEIPT.json.gz",
+      "gzip_bytes": 805,
+      "gzip_sha256": "591bc33a10cbd2e620bb2733bb7dd58f0c8c0383df48ae5d0aeaa820d97679f5",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/command.txt": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/command.txt",
+      "bytes": 13850,
+      "sha256": "e911bebf2cddc77ccd00a8667b0d6669512432be9480858b43dee443d371e232",
+      "retained_path": "controller-observer-source/command.txt.gz",
+      "gzip_bytes": 5722,
+      "gzip_sha256": "a33573f086a899161f9838e487aceaafe877c9c1d19f0b2eb8659171b38e1da4",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/future-input.example.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/future-input.example.json",
+      "bytes": 336,
+      "sha256": "2951d3b09fe8604d7ed73e203d78e47d37cac5b8f31d7b34d966a4cbfada84cb",
+      "retained_path": "controller-observer-source/future-input.example.json.gz",
+      "gzip_bytes": 190,
+      "gzip_sha256": "c36c3aec0e394e0ac4195f79ad3a826ab7e267fba1bec940748281dcd0d96672",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/overlay.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/overlay.json",
+      "bytes": 225,
+      "sha256": "6250128cd0fc0ce0218fdd614a2968c2cfa964e6649c316e7d58b5985e92c588",
+      "retained_path": "controller-observer-source/overlay.json.gz",
+      "gzip_bytes": 176,
+      "gzip_sha256": "ac0dcaeef065b107dd59fa7aba1d3875500861b720773a170466ba798c3d291b",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/predeploy-observer.py": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/predeploy-observer.py",
+      "bytes": 13767,
+      "sha256": "3f4098666e1d55a4dc3395e8501adf9598dbfddbb622a5dff698755815420861",
+      "retained_path": "controller-observer-source/predeploy-observer.py.gz",
+      "gzip_bytes": 5701,
+      "gzip_sha256": "41928d6eba5c5426dcde59db11938cae3c7e81ee9ab4f64de6c33149053ea272",
+      "lossless_roundtrip": true
+    },
+    "controller-observer-source/predeploy_pull_secret_test.overlay.go": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-source-20261101-6i5po0e2/predeploy_pull_secret_test.overlay.go",
+      "bytes": 15314,
+      "sha256": "cd7a53a4e555d023ebbf30495dd6c9df791bec58216dae5b318446ee2283d044",
+      "retained_path": "controller-observer-source/predeploy_pull_secret_test.overlay.go.gz",
+      "gzip_bytes": 5652,
+      "gzip_sha256": "af3b963f88cea3687915455f0454e71dc8cca75317f2c132f254604f4936a093",
+      "lossless_roundtrip": true
+    },
+    "build-context-source/APPENDED.go.txt": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-export-source-20261101-6273khmb/APPENDED.go.txt",
+      "bytes": 6305,
+      "sha256": "4f3aaec0ab210a7106feb12be950479a9fe80270eb4d1ad4cf59e110dd821c87",
+      "retained_path": "build-context-source/APPENDED.go.txt.gz",
+      "gzip_bytes": 2276,
+      "gzip_sha256": "5b59c62e52c4de3a4cbe3e51100eaa1223e03121765fae9e047cba3036919ab6",
+      "lossless_roundtrip": true
+    },
+    "build-context-source/FUTURE-INVOCATION.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-export-source-20261101-6273khmb/FUTURE-INVOCATION.json",
+      "bytes": 2224,
+      "sha256": "a6d562de1b7bee5e1676478d8685a5a51abbecb3127d351e79105f362ab29b85",
+      "retained_path": "build-context-source/FUTURE-INVOCATION.json.gz",
+      "gzip_bytes": 1224,
+      "gzip_sha256": "00d3b27f5a050a1e1adca1951b4605e9eb8751f652964a2c3c22bc24b8ff20f9",
+      "lossless_roundtrip": true
+    },
+    "build-context-source/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-export-source-20261101-6273khmb/MANIFEST.json",
+      "bytes": 1104,
+      "sha256": "7d4334354ee4edb0b79c25ab5247bd7438aa40480759fc9e4c2e57e593308fea",
+      "retained_path": "build-context-source/MANIFEST.json.gz",
+      "gzip_bytes": 531,
+      "gzip_sha256": "6f3d5e9eebee3b5d50646ca11208276a0414ed104efc4426eb9bf8b2570b31be",
+      "lossless_roundtrip": true
+    },
+    "build-context-source/PREFIX-CUSTODY.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-export-source-20261101-6273khmb/PREFIX-CUSTODY.json",
+      "bytes": 720,
+      "sha256": "c25667cb2f149a537dace7230c3930bc08a4785a0e8796b6ad6fd0a546d1e4d2",
+      "retained_path": "build-context-source/PREFIX-CUSTODY.json.gz",
+      "gzip_bytes": 432,
+      "gzip_sha256": "551077aee09612fb2b5459a9e0c21f65e0160bbb61366f8c4682871327b555ea",
+      "lossless_roundtrip": true
+    },
+    "build-context-source/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-export-source-20261101-6273khmb/REVIEW.json",
+      "bytes": 2202,
+      "sha256": "70d6178135a8e1dc1cf897b71ca4127fc4a174a7d56748249310098c1e67d682",
+      "retained_path": "build-context-source/REVIEW.json.gz",
+      "gzip_bytes": 1276,
+      "gzip_sha256": "5dc1d840f09de12a6f0f445bd894f1d8bdc89cc4922e4e00356ae11efa1c41a4",
+      "lossless_roundtrip": true
+    },
+    "build-context-source/SOURCE-CUSTODY.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-export-source-20261101-6273khmb/SOURCE-CUSTODY.json",
+      "bytes": 33388,
+      "sha256": "6309b2653d2575f0e346420a6d3866a6bfabd4f4faa09bace6013a36c8c5078a",
+      "retained_path": "build-context-source/SOURCE-CUSTODY.json.gz",
+      "gzip_bytes": 6432,
+      "gzip_sha256": "43b411e36c5b22a3d195a4dcf773f8054b6e2273dc61842b25c1254195d312e2",
+      "lossless_roundtrip": true
+    },
+    "build-context-source/nativeutility_integration_test.overlay.go": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-export-source-20261101-6273khmb/nativeutility_integration_test.overlay.go",
+      "bytes": 22861,
+      "sha256": "a2b1877953dc57a850c9379e29a5f360b79132ab2996dc7529504cf8ccdb8e3c",
+      "retained_path": "build-context-source/nativeutility_integration_test.overlay.go.gz",
+      "gzip_bytes": 6905,
+      "gzip_sha256": "99a16ec50aff6abdf9401ee2f24685cfb8ca475525da91c9e8367dee6141022e",
+      "lossless_roundtrip": true
+    },
+    "build-context-source/overlay.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-export-source-20261101-6273khmb/overlay.json",
+      "bytes": 235,
+      "sha256": "3f28b983da59bc9efcfe76a1be1eb0db272dfa01154f7c0dba2fc65010d07ba4",
+      "retained_path": "build-context-source/overlay.json.gz",
+      "gzip_bytes": 185,
+      "gzip_sha256": "8682c2e8e1a691e2efeb65778622e90a2c8fe575f44b1f6a0ffc03abcae95042",
+      "lossless_roundtrip": true
+    },
+    "independent-review/CHECKS.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-independent-review-20261101-86r5yg2u/CHECKS.json",
+      "bytes": 32902,
+      "sha256": "948eed7722915e0e6da90d1022f588edf297b7bdd8654e0a183665671b638e9e",
+      "retained_path": "independent-review/CHECKS.json.gz",
+      "gzip_bytes": 8662,
+      "gzip_sha256": "c4ac020e8cde1aa485a54ecb171e3b9d02d7a22e842e3db434c9cce52a56cbce",
+      "lossless_roundtrip": true
+    },
+    "independent-review/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-independent-review-20261101-86r5yg2u/MANIFEST.json",
+      "bytes": 459,
+      "sha256": "09224e5fc1bffdd6f6e5cd2dec3ca23d873585a8ea33318f3758a04ad9f83e10",
+      "retained_path": "independent-review/MANIFEST.json.gz",
+      "gzip_bytes": 291,
+      "gzip_sha256": "edc6b23999dfeb385eb2c227f378a6ff286a87d656ee356411f25e054630028e",
+      "lossless_roundtrip": true
+    },
+    "independent-review/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-independent-review-20261101-86r5yg2u/REVIEW.json",
+      "bytes": 5090,
+      "sha256": "7909abd33ddcc12e74b60abc43a38ecceaf45254449b9617ae5e35d8361891aa",
+      "retained_path": "independent-review/REVIEW.json.gz",
+      "gzip_bytes": 2336,
+      "gzip_sha256": "094d4660440ecf25167e6ebe8ef37ca07cfeb79aaa7a199d45dc61eb9a245a78",
+      "lossless_roundtrip": true
+    },
+    "independent-review/check.py": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-independent-review-20261101-86r5yg2u/check.py",
+      "bytes": 7816,
+      "sha256": "e9ac22c92ea369a63d6c3967922857cc606059b12c7f253d2075a69cc7481c24",
+      "retained_path": "independent-review/check.py.gz",
+      "gzip_bytes": 3565,
+      "gzip_sha256": "2fa76a51283c3fa044b1d691802ea83c0e2f690472bd659550d8835022173f69",
+      "lossless_roundtrip": true
+    },
+    "root-compile/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-compile-20261101-zs2v1kyr/MANIFEST.json",
+      "bytes": 1042,
+      "sha256": "cf4ad7222300f0b73874d5fa95e0dfd276ff386b8b0a16a684c9a62d64ffedc2",
+      "retained_path": "root-compile/MANIFEST.json.gz",
+      "gzip_bytes": 440,
+      "gzip_sha256": "59336bf9432ea88c555bc7917bab0c2339a2d1424509845d8817b02f9c3609f0",
+      "lossless_roundtrip": true
+    },
+    "root-compile/PROGRESS.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-compile-20261101-zs2v1kyr/PROGRESS.json",
+      "bytes": 1828,
+      "sha256": "cc62e24447b5b75ea609c27fbca462ec9dd7d81fec25203973f687f48c892b82",
+      "retained_path": "root-compile/PROGRESS.json.gz",
+      "gzip_bytes": 642,
+      "gzip_sha256": "328dfaa405f8d7e9efacb6ecb82694a3f03e0d8127f623b44868be5eb424d01c",
+      "lossless_roundtrip": true
+    },
+    "root-compile/RESULT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-compile-20261101-zs2v1kyr/RESULT.json",
+      "bytes": 2620,
+      "sha256": "c3762bf6cf94deb99a51f9df2bbde5ac440289b745230c4245e544ab716ffc06",
+      "retained_path": "root-compile/RESULT.json.gz",
+      "gzip_bytes": 943,
+      "gzip_sha256": "a702bbd1250bd7cfadd4f0143282a805281e0bf513477ef0c2c0d45eb72a1115",
+      "lossless_roundtrip": true
+    },
+    "root-compile/ROOT-REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-compile-20261101-zs2v1kyr/ROOT-REVIEW.json",
+      "bytes": 1113,
+      "sha256": "e214e881e56ee93cf003cb40c34b4abddfcd3cd4de9ba4d810a1e64a2051b6c0",
+      "retained_path": "root-compile/ROOT-REVIEW.json.gz",
+      "gzip_bytes": 649,
+      "gzip_sha256": "3a55db631e8273c72bc9009e567a26742f6a3abdc4b22e175570203a70400d59",
+      "lossless_roundtrip": true
+    },
+    "root-compile/SCOPE.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-compile-20261101-zs2v1kyr/SCOPE.json",
+      "bytes": 1170,
+      "sha256": "0dcecbf9707f4f56a28c7e11825718a0e4498a20288f20e858ff4442c5e07650",
+      "retained_path": "root-compile/SCOPE.json.gz",
+      "gzip_bytes": 692,
+      "gzip_sha256": "13cfb3ffd40047fc76042eac5a21323207b78786d15e41a80c00c21ff4164d5a",
+      "lossless_roundtrip": true
+    },
+    "root-compile/build.log": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-compile-20261101-zs2v1kyr/build.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "root-compile/build.log.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "root-compile/compile.py": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-compile-20261101-zs2v1kyr/compile.py",
+      "bytes": 6154,
+      "sha256": "2674234c603ece96d8dc9a55a1c8f6b8755e296225c4285c1825efa6353e5e05",
+      "retained_path": "root-compile/compile.py.gz",
+      "gzip_bytes": 2476,
+      "gzip_sha256": "55cc83d938301ddd9643bb0df637446bb9c5d833ff60cd2984f35536296486df",
+      "lossless_roundtrip": true
+    },
+    "root-compile/controller.log": {
+      "private_raw_path": "/private/tmp/bex-w8-common-predeploy-compile-20261101-zs2v1kyr/controller.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "root-compile/controller.log.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    }
+  }
+}

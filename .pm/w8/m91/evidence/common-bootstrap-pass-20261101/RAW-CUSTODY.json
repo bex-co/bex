@@ -1,0 +1,123 @@
+{
+  "schema": "bex.lossless-raw-custody/v1",
+  "scope": "Exact source preparation, review, compile-only and actual status records; no actual predeploy or completed utility acceptance.",
+  "files": {
+    "actual-status/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/MANIFEST.json",
+      "bytes": 1776,
+      "sha256": "bc90ec80bec01fba87be1d3a084c37ecfaa0560d630ce337b7d1cf7df1ced89d",
+      "retained_path": "actual-status/MANIFEST.json.gz",
+      "gzip_bytes": 613,
+      "gzip_sha256": "d39c019b380db9f30aa545be358a0ce3cf2fb61bb1b76dc318f55729ad70041d",
+      "lossless_roundtrip": true
+    },
+    "actual-status/READS.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/READS.json",
+      "bytes": 3926,
+      "sha256": "14524b222c7264824e1a769295e6b9fe301dc6d0b73b4dc78e080ea6e2850463",
+      "retained_path": "actual-status/READS.json.gz",
+      "gzip_bytes": 1012,
+      "gzip_sha256": "47546e3f85fcbe76050916f8b607db55ff59099124000cb9074a4f643d0bcdfd",
+      "lossless_roundtrip": true
+    },
+    "actual-status/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/REVIEW.json",
+      "bytes": 2906,
+      "sha256": "5e74ad32b58020195ecd62971c2242ecc2f6eca3e8434267092d7f2bca0951d3",
+      "retained_path": "actual-status/REVIEW.json.gz",
+      "gzip_bytes": 1111,
+      "gzip_sha256": "3a22a41d5e944d0e2e775b90a3460e3f3529539e774b408732c093ea2bb9d1e4",
+      "lossless_roundtrip": true
+    },
+    "actual-status/SCOPE.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/SCOPE.json",
+      "bytes": 301,
+      "sha256": "26204aa76b63e05e8adb029b85307d39451f0ccc14613f399562591d9b81f902",
+      "retained_path": "actual-status/SCOPE.json.gz",
+      "gzip_bytes": 237,
+      "gzip_sha256": "64028c69b55d6581bb4f5b42302189002e79d75fb05fa23b86431b553676b3a6",
+      "lossless_roundtrip": true
+    },
+    "actual-status/amd64-response.raw": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/amd64-response.raw",
+      "bytes": 5332,
+      "sha256": "4a32dd61e391438a822d620fcce1b4c162f5f8444c54ae0986c41e9ca0e29703",
+      "retained_path": "actual-status/amd64-response.raw.gz",
+      "gzip_bytes": 1872,
+      "gzip_sha256": "3b044bc40bcb7618ea24399fb301487c81ad4e081f8f1543b48326072dc46d9a",
+      "lossless_roundtrip": true
+    },
+    "actual-status/amd64.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/amd64.json",
+      "bytes": 3929,
+      "sha256": "8fad3eddc500b6024a0cebf93689d6a3f325b1bdf9bf4a630a74aeb57d11c515",
+      "retained_path": "actual-status/amd64.json.gz",
+      "gzip_bytes": 1142,
+      "gzip_sha256": "9e65a92db046e6f53e5d6a36aebb5c42bc6dda36d5047811fe85bc0b55bc012d",
+      "lossless_roundtrip": true
+    },
+    "actual-status/amd64.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/amd64.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "actual-status/amd64.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "actual-status/arm64-response.raw": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/arm64-response.raw",
+      "bytes": 2252,
+      "sha256": "eb9dac75065afad63784f8a1edf0c6012565308d6148f35a28b9f2f2ba21c997",
+      "retained_path": "actual-status/arm64-response.raw.gz",
+      "gzip_bytes": 1160,
+      "gzip_sha256": "0aa44d62387af81abf7c5cad924f08f46641c28e706cc2b8f83c0e38723843e2",
+      "lossless_roundtrip": true
+    },
+    "actual-status/arm64.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/arm64.json",
+      "bytes": 849,
+      "sha256": "e62e2d66e3861a81bb1ae32d03b04504f2ed97974a1583b69558c7f3d9d2400f",
+      "retained_path": "actual-status/arm64.json.gz",
+      "gzip_bytes": 439,
+      "gzip_sha256": "8b54f7e911847ab2c2dec80f342b46c5f224b7597a4bedbcb88bdebab263487a",
+      "lossless_roundtrip": true
+    },
+    "actual-status/arm64.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/arm64.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "actual-status/arm64.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "actual-status/run-response.raw": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/run-response.raw",
+      "bytes": 13050,
+      "sha256": "85e18621e375318d29e544b739daaebd5ace5957e78b20c1878d94b30dbfb753",
+      "retained_path": "actual-status/run-response.raw.gz",
+      "gzip_bytes": 2451,
+      "gzip_sha256": "10bfa8d187e1b0ee4999902bfd43778573d97729864d41f6875ce66630ebe8e9",
+      "lossless_roundtrip": true
+    },
+    "actual-status/run.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/run.json",
+      "bytes": 11646,
+      "sha256": "791f74178bc2fdcd1275e16a9a999f3f7efb6bf81ecceb8ac403efc6febf61ea",
+      "retained_path": "actual-status/run.json.gz",
+      "gzip_bytes": 1716,
+      "gzip_sha256": "ee3722ad2f3bed2dfb76b8ed9b56536221d85ca70966cf2143a0e93afdb88928",
+      "lossless_roundtrip": true
+    },
+    "actual-status/run.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-common-bootstrap-pass-20261101-hkfj63u7/run.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "actual-status/run.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    }
+  }
+}
