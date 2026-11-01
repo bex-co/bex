@@ -1,0 +1,92 @@
+{
+  "verdict": "CLEAN_TWO_NARROW_SOURCE_CORRECTIONS",
+  "at_utc": "2026-11-01T23:00:38.405619+00:00",
+  "oracle_packet": {
+    "root": "/private/tmp/bex-w8-node-yarn-oracle-fix-20261101-ha7bihu9",
+    "manifest_sha256": "a93346edd4d79b8d3dc1319ceac0e629d8cbecad4cac07eadf38d8bafe58187d",
+    "receipt_sha256": "5d1fbc653fefdcf9863c6f088f6efbd738556c89143644765e573fcf39b15a66"
+  },
+  "private_plugin_packet": {
+    "root": "/private/tmp/bex-w8-node14-local-pilot-v4-source-20261101-bop3sbht",
+    "manifest_sha256": "881a6ae1d6483d172a005cd39189fe002f0d71cbb8055e93f64557a673fd155e",
+    "receipt_sha256": "67f50a8326f11f30e4cc48b8ed1d55517f0b3a077f1f6f0b3242df39a5cf1e18",
+    "controller_sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03"
+  },
+  "findings": [],
+  "verified": [
+    "Canonicalnativeresolve copies /opt/yarn-v1.22.22 and links archive/bin/yarn wrapper. CapturedactualNode14tools-build commandexit0 proves exactresolvedwrapper and yarn1.22.22; old.js-onlyassertion refuses this valididentity. Correctedexactcanonical equality accepts, while .js/wrongroot/wrongversion/unresolvedPATH forms refuse.",
+    "Driver fullbytes restore oldpreimage by reversing only thatassertion. Existing9testASTs restore exactly after one syntheticfixture-path calibration and removal of newregression; all otherdriverassertions/functions exact. All9positiveprojectmanifestbytes,43protectedfixturehashes and original28source hash exact.",
+    "Privatecontroller fullbytes restore reviewedV3 by deleting onlyhostplugin SHAguard and ownconfig plugin-directory write. Resource/cleanup/group/unknowncreate/selector/Go proof code and Linuxfixedpluginmount unchanged.",
+    "Planchanges onlyfreshownowner/runroot/status plushostpluginpath/SHA/rebindnote; originalnumericlimits/shell/old14hosttest sources exact. Pluginentry resolves to fixedhashedhost docker-tools; freshownedconfig contains only cliPluginsExtraDirs and ownerproof, no copiedambientauth.",
+    "Twofocusedcontrols pass including badSHA refusalbeforedaemon and actualisolated localbuildx0.37.2 version discovery. This localversion invocation does not contact/create Dockerresources or constitutequalification."
+  ],
+  "checks": {
+    "PASS": true,
+    "packet_counts": {
+      "oracle_packet": 20,
+      "plugin_packet": 14
+    },
+    "oracle_changed_assertion_only": true,
+    "old9_test_AST_after_fixture_calibration_exact": true,
+    "protected_other_fixtures": 43,
+    "original28_source_hash_only_exact": true,
+    "actual_captured_tools_identity": "/opt/yarn-v1.22.22/bin/yarn",
+    "captured_versions": {
+      "npm": "6.14.18",
+      "yarn": "1.22.22",
+      "pnpm": "10.34.7"
+    },
+    "old_captured_proof": "REFUSAL",
+    "new_captured_proof": "PASS",
+    "positive9_manifest_bytes_exact": {
+      "14.21.3/npm": "cad72aed61d01b1936a6dea05cf2ea662932e890e167fb5c9fe19b0e1b50646c",
+      "14.21.3/yarn": "fb7ae3e356f7ddb4909b0b7355a9369df276f484ec4d64d9da998c5965eaa6aa",
+      "14.21.3/pnpm": "6b4b32887175a4dcc56f91d5bf07c72da12b957880694bc27583318d8187c2da",
+      "16.20.2/npm": "ec1f5608f7d2196ab6c1877fbb25a391bbabeda1cf6f3c3ab50be4ecec9b633f",
+      "16.20.2/yarn": "37ac57c056b3866d1860351341057530165d73b56f0696f1f84a55f743769104",
+      "16.20.2/pnpm": "bb092c360d4162dd646c32a5265c8b0297ab3e4d8a61e3826ff7b34966b9304b",
+      "26.2.0/npm": "f30a84c84fd07a574dc069e5ab62b1bea11282067a42e4f2ffead2591864f36e",
+      "26.2.0/yarn": "2c75619be12a7aafc6d5206a1038ec100ccb9fcfa6e5358db78937f207db19e2",
+      "26.2.0/pnpm": "4741210986559462046f2db5bf7c5a7d0f04da45c6dfc8f71ec02f706c727fa9"
+    },
+    "canonical_yarn_archive_wrapper_matches": true,
+    "plugin_inverse2statements_entireV3_exact": true,
+    "old14_test_sources_and_shell_exact": true,
+    "plugin_PLAN_changes": [
+      "host_buildx_plugin_dir",
+      "host_buildx_plugin_sha256",
+      "owner",
+      "run_root",
+      "source_rebind_note",
+      "status"
+    ],
+    "host_plugin_SHA_verified": "4a728ee98f89005a90198a9be791e8fdaebbcb5e6af9721251efe0113df37759",
+    "Linux_plugin_fixed_mount_unchanged": true,
+    "old_source_baseline_still_explicit_not_current": true,
+    "actual_build_pilot_family_resources_network_CI_Go_auth_repo_writes": false
+  },
+  "independent_tests": {
+    "ORACLE": {
+      "tests": 10,
+      "PASS": true,
+      "seconds": 0.008,
+      "stdout_sha256": "c60c7e9bb21a8ee51c08239bb752402c906ae4538c10d34d6570fcb247015895",
+      "stderr_sha256": "49d07bfa7117cbc45442ea3ff5ae0b1287922fe8c6816ab88799d95c34392787"
+    },
+    "PLUGIN": {
+      "tests": 2,
+      "PASS": true,
+      "seconds": 0.236,
+      "stdout_sha256": "dfd720a659b314ceb8d4a78573851548c50828878977d251fb07e362132ea6f6",
+      "stderr_sha256": "4da82b94b1c5999d21c14bc420a2f280ffff1ee01fcb4884b1d478d18796d502"
+    }
+  },
+  "limits": [
+    "Failedactual6e772Node14pilot remainsFAIL; correction of a fixture assertion is not a Node/family/runtime acceptance result.",
+    "PrivateV4retains explicitold1feba300/ELFbaseline reference. The repo fixturefix is absent from that snapshot; Rootmust amend/rebind source and actualcompiled context before anothercase. No oldCIbaseline silentlyrelabeledcurrent.",
+    "No realDockerdaemon/resource/pull/build, network, Go, family, CI, userauth or repowrites. Only own tempfiles, pureoracle calls and approvedlocalplugin version metadata invoked.",
+    "Existingother14pilotcontrols not repeated; theirsourcebytes and entirecontroller outside2statements remainexact."
+  ],
+  "details": "CHECKS.json",
+  "review_source": "check.py"
+}

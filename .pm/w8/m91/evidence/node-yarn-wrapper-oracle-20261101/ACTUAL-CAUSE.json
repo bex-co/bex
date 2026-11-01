@@ -1,0 +1,9 @@
+{
+  "raw_log": "/private/tmp/bex-w8-node14-local-pilot-6e77270dc2ec7e6dbfd465bb/evidence/generated/native-common-node-3690510352/node-14/build.log",
+  "raw_log_sha256": "39cb5228ac24bc6fe5a81306a59dfdd608a535a8e1c25ae61dd8bd968c50d455",
+  "raw_log_bytes": 79436,
+  "actual_yarn_cli": "/opt/yarn-v1.22.22/bin/yarn",
+  "canonical_source": "lego/operator/internal/build/nativeresolve.go:237-239",
+  "defect": "check.py expected .js while canonical symlink resolves archive shell wrapper",
+  "scope": "oracle correction only; no compatibility pass inferred"
+}

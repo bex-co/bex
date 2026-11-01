@@ -1,0 +1,13 @@
+{
+  "PASS": false,
+  "scope": "ONE current donorNode14 ARM64 local generated case only; no adoption/botharch/fullfamily/hosted/K8s claim",
+  "failure": "AssertionError:",
+  "cleanup_or_artifact_errors": [
+    "existing cleanup helper nonzero"
+  ],
+  "owner": "bex-nq-6e77270dc2ec7e6dbfd465bb",
+  "case_pass": false,
+  "cancel_signal": null,
+  "pending_pgids": [],
+  "elapsed_seconds": 133.901
+}

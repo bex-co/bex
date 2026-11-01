@@ -1,0 +1,21 @@
+{
+  "schema": "bex.node-yarn-oracle-repair/v1",
+  "decision": "Confirmed fixture path assertion defect; no product installation defect established",
+  "actual_failed_pilot": "/private/tmp/bex-w8-node14-local-pilot-6e77270dc2ec7e6dbfd465bb/evidence",
+  "actual_yarn_cli": "/opt/yarn-v1.22.22/bin/yarn",
+  "actual_package_and_version": "yarn1.22.22",
+  "source": "nativeresolve.go237–239 explicitly links the reviewed archive wrapper",
+  "fix": "Require exact canonical /opt/yarn-v${expected}/bin/yarn equality; no suffix relaxation",
+  "tests": {
+    "complete_host_suite": "10 PASS",
+    "new_control": "captured canonical wrapper accepts; .js, foreign root, wrong version and unresolved symlink path refuse",
+    "captured_actual_tools_proof": "old oracle REFUSAL; corrected oracle PASS",
+    "existing_9_test_AST": "exact except corrected synthetic yarn_cli input; one new regression",
+    "other_driver_functions_AST": "exact",
+    "nine_positive_manifest_bytes": "exact before/after",
+    "other_tracked_fixture_files": "43 exact HEAD bytes in PROTECTED.json",
+    "original28_spec": "exact ebcc5c79060d4cc6107f2aa01107586ad8b35b01a8adc70220a32b5129ee8fdb, hash-only"
+  },
+  "limits": "No new actual Node/image/family qualification; pilot remains FAIL. No new Docker resources, Go, CI, auth or network calls. Local docker buildx version only used own config (no daemon resource operation). Root owns ship and future actual rerun.",
+  "private_controller_component": "/private/tmp/bex-w8-node14-local-pilot-v4-source-20261101-bop3sbht"
+}

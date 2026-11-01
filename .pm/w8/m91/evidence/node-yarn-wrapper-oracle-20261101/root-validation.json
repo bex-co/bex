@@ -1,0 +1,19 @@
+{
+  "python_controls": {
+    "command": "python3 -B check_test.py",
+    "exit_code": 0,
+    "tests": 10
+  },
+  "go_build_package": {
+    "command": "GOWORK=off GOPROXY=off GOSUMDB=off go test ./internal/build",
+    "exit_code": 0,
+    "output": "ok  github.com/bex-co/bex/lego/operator/internal/build 5.559s"
+  },
+  "actual_failure_remains_failed": true,
+  "same_image_current_source_utility_requalification_required": true,
+  "main_latest_completed_deploy": {
+    "id": 41341287887,
+    "sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "conclusion": "success"
+  }
+}

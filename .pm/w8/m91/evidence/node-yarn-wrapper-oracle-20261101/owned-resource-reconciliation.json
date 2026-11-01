@@ -1,0 +1,91 @@
+{
+  "at": "2026-11-01T22:50:07.657608+00:00",
+  "state": "ALL_EXACT_OWN_DAEMON_RESOURCES_ABSENT",
+  "owner": "bex-nq-6e77270dc2ec7e6dbfd465bb",
+  "resources": [
+    "runner",
+    "builder-container",
+    "builder-state-volume",
+    "owner-labeled-containers",
+    "owner-labeled-images"
+  ],
+  "records": [
+    {
+      "label": "exact-absence-0",
+      "args": [
+        "container",
+        "inspect",
+        "bex-nq-6e77270dc2ec7e6dbfd465bb-runner"
+      ],
+      "exit": 1,
+      "group_absent": true,
+      "stdout_bytes": 3,
+      "stdout_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "stderr_bytes": 86,
+      "stderr_sha256": "d42d0babff49d650b0766c6ed9e93d38eaf7f7f1c58e78fe2d0a89cfe55f232d"
+    },
+    {
+      "label": "exact-absence-1",
+      "args": [
+        "container",
+        "inspect",
+        "buildx_buildkit_bex-nq-6e77270dc2ec7e6dbfd465bb0"
+      ],
+      "exit": 1,
+      "group_absent": true,
+      "stdout_bytes": 3,
+      "stdout_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "stderr_bytes": 96,
+      "stderr_sha256": "6f05ca4c35b3e8593f934d59c8edfaf43d28f1a8307f04dd3dac7c14cb8df2d3"
+    },
+    {
+      "label": "exact-absence-2",
+      "args": [
+        "volume",
+        "inspect",
+        "buildx_buildkit_bex-nq-6e77270dc2ec7e6dbfd465bb0_state"
+      ],
+      "exit": 1,
+      "group_absent": true,
+      "stdout_bytes": 3,
+      "stdout_sha256": "37517e5f3dc66819f61f5a7bb8ace1921282415f10551d2defa5c3eb0985b570",
+      "stderr_bytes": 103,
+      "stderr_sha256": "c561c10d7e6bd0569bab85af8fd5dc8cd4825fef68e5a3389e15b71103f01baa"
+    },
+    {
+      "label": "container-owner-label-absence",
+      "args": [
+        "ps",
+        "-aq",
+        "--filter",
+        "label=co.bex.native-qualification=bex-nq-6e77270dc2ec7e6dbfd465bb"
+      ],
+      "exit": 0,
+      "group_absent": true,
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "image-owner-label-absence",
+      "args": [
+        "image",
+        "ls",
+        "-q",
+        "--filter",
+        "label=co.bex.native-qualification=bex-nq-6e77270dc2ec7e6dbfd465bb"
+      ],
+      "exit": 0,
+      "group_absent": true,
+      "stdout_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_bytes": 0,
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "errors": [],
+  "original_result_sha256": "eb04b77f179c7c606bf70178ed9a4ac4df871dc6df6fd90ee90e77bb7e97a1bb",
+  "original_result_unchanged": true,
+  "qualification": "Original failed result retained; this reconciliation proves cleanup only. Shared immutable input-image cache retained."
+}

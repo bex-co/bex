@@ -1,0 +1,66 @@
+{
+  "ACTUAL-CAUSE.json": {
+    "sha256": "ee76dbcf931608aafc301f299ed6c3151ccd29f91ed0bba7ebcc84a7d90fa536",
+    "bytes": 556
+  },
+  "CAPTURED-PROOF-REGRESSION.json": {
+    "sha256": "ff08803539e205566ff88bcc7a5e43bd45b26227f01d1b4ca6c7c79b608632a9",
+    "bytes": 1080
+  },
+  "PROTECTED.json": {
+    "sha256": "f211da3069fca6f49b745d218e9953e2caa816048e903615ff06462a37a6fea7",
+    "bytes": 8739
+  },
+  "README.md": {
+    "sha256": "bc404738665250c3d01804491c752eb017bad3a359ab2f4a1c0c28c1cd6b1de0",
+    "bytes": 1785
+  },
+  "RECEIPT.json": {
+    "sha256": "5d1fbc653fefdcf9863c6f088f6efbd738556c89143644765e573fcf39b15a66",
+    "bytes": 1543
+  },
+  "SOURCE.json": {
+    "sha256": "fb6d30d3b9e72d1299c02be1871207581fb4c7fc493c475c5eb54b819c389ea1",
+    "bytes": 380
+  },
+  "actual-build.log": {
+    "sha256": "39cb5228ac24bc6fe5a81306a59dfdd608a535a8e1c25ae61dd8bd968c50d455",
+    "bytes": 79436
+  },
+  "actual-failed-result.json": {
+    "sha256": "eb04b77f179c7c606bf70178ed9a4ac4df871dc6df6fd90ee90e77bb7e97a1bb",
+    "bytes": 395
+  },
+  "check.py.diff": {
+    "sha256": "6941c5ae46d2216dce416c7084f5a33c66bda5c570c1ebd4fbc858b73af54fea",
+    "bytes": 759
+  },
+  "check_test.py.diff": {
+    "sha256": "7e087f5d492c9d7cdb540d4d098df75b5a741132204bc7c6bca7c48dff9743ad",
+    "bytes": 1563
+  },
+  "host-tests.stderr": {
+    "sha256": "efb8104e50cda0f7752fae37b02362581a5abcc179efc97a6ccfac5e6552519b",
+    "bytes": 1535
+  },
+  "host-tests.stdout": {
+    "sha256": "c60c7e9bb21a8ee51c08239bb752402c906ae4538c10d34d6570fcb247015895",
+    "bytes": 163
+  },
+  "owned-resource-reconciliation.json": {
+    "sha256": "29408c83cebcae566843ab86b090a06388d0ae40536077abcfec2db361746025",
+    "bytes": 2926
+  },
+  "root-validation.json": {
+    "sha256": "5520dc525c77092e8d274238a1b61b15bc1a6cdd9c16c25db3cce1c3131185cd",
+    "bytes": 573
+  },
+  "independent-REVIEW.json": {
+    "sha256": "3d1bde4eb926b04e7684cf84f1077c5c77e83142f330fede603461a980b809b3",
+    "bytes": 5530
+  },
+  "independent-MANIFEST.json": {
+    "sha256": "5a4182b66bd436c6c6d650be86b118a0cce37233074528b672a6de088421652e",
+    "bytes": 1954
+  }
+}

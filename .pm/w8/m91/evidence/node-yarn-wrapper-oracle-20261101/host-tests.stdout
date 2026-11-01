@@ -1,0 +1,1 @@
+{"command_result": "timed", "command": ["npm"], "cwd": ".", "returncode": null, "stdout": "partial actual output", "stderr": "timeout context", "timed_out": true}

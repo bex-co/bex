@@ -1,0 +1,15 @@
+test_actual_npm_metadata_drives_exactpatch_expectation (check_test.OutputOracle.test_actual_npm_metadata_drives_exactpatch_expectation) ... ok
+test_engine_rejection_requires_specific_reason_package_and_range (check_test.OutputOracle.test_engine_rejection_requires_specific_reason_package_and_range) ... ok
+test_lifecycle_node_must_not_leak_private_host (check_test.OutputOracle.test_lifecycle_node_must_not_leak_private_host) ... ok
+test_negative_is_local_dependency_and_positive_stays_dependency_free (check_test.OutputOracle.test_negative_is_local_dependency_and_positive_stays_dependency_free) ... ok
+test_pnpm_negative_uses_project_engines_and_real_cwd (check_test.OutputOracle.test_pnpm_negative_uses_project_engines_and_real_cwd) ... ok
+test_pnpm_reporter_requires_project_current_node_and_wanted_range (check_test.OutputOracle.test_pnpm_reporter_requires_project_current_node_and_wanted_range) ... ok
+test_real_semantics_are_required_not_presence (check_test.OutputOracle.test_real_semantics_are_required_not_presence) ... ok
+test_selected_runtime_headers_and_env_are_required (check_test.OutputOracle.test_selected_runtime_headers_and_env_are_required) ... ok
+test_timeout_and_failure_outputs_survive_before_refusal (check_test.OutputOracle.test_timeout_and_failure_outputs_survive_before_refusal) ... ok
+test_yarn_uses_the_canonical_archive_wrapper (check_test.OutputOracle.test_yarn_uses_the_canonical_archive_wrapper) ... ok
+
+----------------------------------------------------------------------
+Ran 10 tests in 0.007s
+
+OK

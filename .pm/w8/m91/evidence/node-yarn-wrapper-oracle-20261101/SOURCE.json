@@ -1,0 +1,10 @@
+{
+  "lego/operator/internal/build/testdata/native-node-qualification/check.py": {
+    "sha256": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+    "bytes": 13293
+  },
+  "lego/operator/internal/build/testdata/native-node-qualification/check_test.py": {
+    "sha256": "a265df54f4b26e44d2b922af0865e5fd69db4aa687f198fdac010cb84c1872fa",
+    "bytes": 12755
+  }
+}
