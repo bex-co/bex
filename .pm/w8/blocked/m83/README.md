@@ -1,6 +1,6 @@
 # w8 · m83 — Supply automatic compression for web responses
 
-**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** blocked — t001–t005 done; final live runner preparation passes independent review, but t006 requires a qualified deployed operator containing a154 and fresh source-bound signed Ready evidence. The fix-containing platform build is still running; actual legal Free allowance remains to be checked.
+**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** blocked — t001–t005 done; the qualifieda9 rollout and signed source/runtime checks passed. The corrected59-control preflight is ready; renewed07:55:54 readiness passes; t006 needs current Free admission and the complete native live acceptance. Both pre-create attempts created0services and cleaned their sessions; no user decision is needed.
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | [t003](done/t003.md) | Render parity — **DONE** | 20m | t002 |
 | [t004](done/t004.md) | Simplify — **DONE** | 10m | t003 |
 | [t005](done/t005.md) | Test coverage — **DONE** | 35m | t003 |
-| [t006](t006.md) | Closeout — **BLOCKED (qualified rollout)** | 20m | t004, t005 |
+| [t006](t006.md) | Closeout — **BLOCKED (current Free admission and live verification)** | 20m | t004, t005 |
 
 Six tasks,160m total.
 
@@ -74,3 +74,12 @@ The latest fix-containing platform run41254794386/source818 has passed the four 
 ## Reviewed carrier snapshot — 2026-11-01
 
 [The new data-only source capsule](evidence/carrier-source-refresh-20261101/README.md) passes Root and independent review, including26 focused controls. Both full critical-file identities and required a154 ancestry remain mandatory; all26 executable files are byte-identical to the final runner. The two source expectations and necessary metadata now describe the reviewed94cf carrier. The actual known041 pipeline was canceled before jobs, while the older a9c pipeline is still building; no qualified rollout or new Ready is observed. t006 remains blocked on that upstream rollout and subsequent fresh signed readiness/legal Free preflight.
+
+
+## Verified rollout and corrected preflight — 2026-11-01
+
+[Actual proof, attempts and source correction](evidence/ready-and-free-contract-20261101/README.md) clear the former rollout gate: a9 deploys successfully; actual operator/API image, strict signature and required compression-source checks pass. The06:54:12 observation is historical and expires07:54:12; renewed inventory41285461644 and the new07:55:54 source-bound Ready checks now pass.
+
+The two attempted runners create0services and revoke both own sessions. V4 captures the previously missing refusal inputs. V5 binds the actualtian-personal name to the unchanged QA workspace ID and follows the real Free instance-second budget contract, retaining aggregate egress coverage as diagnostic. Primary API/store/sweeper source establishes the correction; this is a verified engineering finding, not a user waiver. Independent59host+36response controls and Root source preservation checks pass.
+
+The worker resumes the original two native journeys after fresh readiness and current successful Free/capacity responses. All first-deployment, representation/stream, settings, source and exact cleanup criteria remain open. No user decision, new account/workspace, paid fixture or budget override is needed.

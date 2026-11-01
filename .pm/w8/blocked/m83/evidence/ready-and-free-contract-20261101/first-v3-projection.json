@@ -1,0 +1,46 @@
+{
+  "attempt": "first-v3",
+  "at": "2026-11-01T07:04:55.380429+00:00",
+  "failure": "case-bex-admission:Unproved",
+  "resources_created": 0,
+  "cleanup": {
+    "state": "PASS",
+    "baseline_preserved": true,
+    "own_resources_absent": true,
+    "own_used_count_delta": 0,
+    "concurrent_additions": []
+  },
+  "logout": {
+    "at": "2026-11-01T07:04:55.366956+00:00",
+    "native_logout_exit": 0,
+    "Kratos_logout_exit": 0,
+    "resources_created_by_run": 0,
+    "scope": "only this own native OAuth credential and own QA session",
+    "own_credential_files_removed": true
+  },
+  "service_counts_before": {
+    "used": 1,
+    "terminating": 0,
+    "limit": 25,
+    "freeUsed": 0,
+    "freeLimit": 0
+  },
+  "service_counts_after": {
+    "used": 1,
+    "terminating": 0,
+    "limit": 25,
+    "freeUsed": 0,
+    "freeLimit": 0
+  },
+  "baseline_metadata_counts": {
+    "/v1/env-groups": 0,
+    "/v1/projects": 0,
+    "/v1/blueprints": 0
+  },
+  "post_metadata_counts": {
+    "/v1/env-groups": 0,
+    "/v1/projects": 0,
+    "/v1/blueprints": 0
+  },
+  "scope": "No service IDs/names or foreign raw metadata bodies exported; full originals remain private with exact hashes."
+}
