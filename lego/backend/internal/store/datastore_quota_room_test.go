@@ -205,8 +205,9 @@ func TestHobbyServicesStillBoundedBesideDatastores(t *testing.T) {
 		want     string
 	}{
 		{"26th service", repeatCharge(26, countCharge(AppsQuotaCountKey)), string(AppsQuotaCountKey)},
-		{"51st Pod", repeatCharge(51, podCharge("", "10m", "16Mi", 1)), core.TenantComputeQuotaName + ": pods"},
-		{"CPU past the budget", repeatCharge(4, podCharge("", "1", "1Gi", 1)), core.TenantComputeQuotaName + ": requests.cpu"},
+		// Hobby's services share the paid ceiling (w2/061): 500 pods, 58 CPU.
+		{"501st Pod", repeatCharge(501, podCharge("", "10m", "16Mi", 1)), core.TenantComputeQuotaName + ": pods"},
+		{"CPU past the budget", repeatCharge(59, podCharge("", "1", "1Gi", 1)), core.TenantComputeQuotaName + ": requests.cpu"},
 		{"disk past the storage ceiling", []quotaCharge{pvcCharge("10000Gi")}, core.TenantQuotaName + ": requests.storage"},
 	} {
 		refused := quotaRefusal(t, quotas, append(slices.Clone(datastores), tc.services...))
@@ -232,7 +233,7 @@ func TestDatastoreQuotaRoomCoversLargestShape(t *testing.T) {
 		pvcs, jobs                          int64
 		storage, ephemeralReq, ephemeralLim string
 	}{
-		{PlanHobby, 208, 400, "1995Gi", "975Gi", "6475Gi"},
+		{PlanHobby, 208, 400, "1995Gi", "2923Gi", "10371Gi"},
 		{PlanPro, 400, 625, "6995Gi", "2923Gi", "10371Gi"},
 	} {
 		quota := quotaForPlan(tc.plan)
