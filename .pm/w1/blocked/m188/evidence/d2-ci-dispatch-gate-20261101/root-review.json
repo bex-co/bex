@@ -1,0 +1,12 @@
+{
+  "schema": "bex.w1.offline-preparation-root-review/v1",
+  "source_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "reviewed_scope": "Exact adapter source-only preparation and8 offline controls; retained V11 native policy changes only the literal exact-row matrix resolver, plus restrictive metadata binding. No actual artifact review/approval, source alias, baseline or production adoption.",
+  "adapter_sha256": "45b757ddeffbf606addd27126d5a5f0f0be4111530a1cdb3d5e2c630441c8cb7",
+  "plan_sha256": "3e43a25785dab033949dbb07a5a405f4fb89eed65a8271e85889eed90a8da250",
+  "root_controls_exit_code": 0,
+  "actual_run_job_digest_unknown": true,
+  "future_source_rule": "Board-only main advances require a NEW literal actual-source plan and independent review; never relabel a future run as1feba.",
+  "prior26_scope": "41289957408 is push-triggered fresh499706 publication with two successful original utility cohorts, NOT reviewed56 reuse. Its artifact ZIPs were not downloaded/intaken; no current1feba baseline or image admission is claimed.",
+  "immutable_preservation": "Existing evidence files remain byte-identical; human Markdown links are relocated only outside evidence."
+}

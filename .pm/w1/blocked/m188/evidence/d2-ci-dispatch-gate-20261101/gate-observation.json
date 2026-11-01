@@ -1,0 +1,546 @@
+{
+  "schema": "bex.w1.exact-node-dispatch-gate/v1",
+  "observed_at": "2026-11-01 19:37:59 UTC",
+  "source_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "head": {
+    "ref": "refs/heads/main",
+    "node_id": "REF_kwDOL1E4iK9yZWZzL2hlYWRzL21haW4",
+    "url": "https://api.github.com/repos/bex-co/bex/git/refs/heads/main",
+    "object": {
+      "sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+      "type": "commit",
+      "url": "https://api.github.com/repos/bex-co/bex/git/commits/1feba939b4697894e800ed0abb4f25a0bf415641"
+    }
+  },
+  "common_run_id": 41341287851,
+  "common_jobs": {
+    "jobs": [
+      {
+        "id": 124951647304,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 41341287851,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Set up runner",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "validate the fixed profile and case before publication resources",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          }
+        ]
+      },
+      {
+        "id": 124952369902,
+        "name": "publish / matrix",
+        "status": "completed",
+        "conclusion": "success",
+        "run_id": 41341287851,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Set up runner",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "test verified OCI staging and publication gates",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "Run if [ \"$TARGET_RUNTIME\" = common-bookworm ]; then",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "Complete job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 11
+          }
+        ]
+      },
+      {
+        "id": 124954099391,
+        "name": "publish / build (common-bookworm, buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6...",
+        "status": "in_progress",
+        "conclusion": null,
+        "run_id": 41341287851,
+        "logs_url": null,
+        "steps": [
+          {
+            "name": "Set up job",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 1
+          },
+          {
+            "name": "Set up runner",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 2
+          },
+          {
+            "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 3
+          },
+          {
+            "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 4
+          },
+          {
+            "name": "log in to GHCR with bounded transport retries",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 5
+          },
+          {
+            "name": "select a reviewed recovery artifact when its recipe is unchanged",
+            "status": "completed",
+            "conclusion": "skipped",
+            "number": 6
+          },
+          {
+            "name": "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 7
+          },
+          {
+            "name": "Run digest=\"${RECOVERED:-$BUILT}\"",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 8
+          },
+          {
+            "name": "verify real native tool transformations without network on both architectures",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 9
+          },
+          {
+            "name": "prepare bounded full-scan retries",
+            "status": "completed",
+            "conclusion": "success",
+            "number": 10
+          },
+          {
+            "name": "scan amd64 candidate",
+            "status": "in_progress",
+            "conclusion": null,
+            "number": 11
+          },
+          {
+            "name": "scan arm64 candidate",
+            "status": "pending",
+            "conclusion": null,
+            "number": 12
+          },
+          {
+            "name": "Run sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6",
+            "status": "pending",
+            "conclusion": null,
+            "number": 13
+          },
+          {
+            "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+            "status": "pending",
+            "conclusion": null,
+            "number": 14
+          },
+          {
+            "name": "sign and attest the immutable candidate",
+            "status": "pending",
+            "conclusion": null,
+            "number": 15
+          },
+          {
+            "name": "expose the fully gated immutable image",
+            "status": "pending",
+            "conclusion": null,
+            "number": 16
+          },
+          {
+            "name": "remove GHCR credentials",
+            "status": "pending",
+            "conclusion": null,
+            "number": 17
+          },
+          {
+            "name": "Post scan amd64 candidate",
+            "status": "pending",
+            "conclusion": null,
+            "number": 30
+          },
+          {
+            "name": "Post verify real native tool transformations without network on both architectures",
+            "status": "pending",
+            "conclusion": null,
+            "number": 31
+          },
+          {
+            "name": "Post Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
+            "status": "pending",
+            "conclusion": null,
+            "number": 32
+          },
+          {
+            "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+            "status": "pending",
+            "conclusion": null,
+            "number": 33
+          },
+          {
+            "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+            "status": "pending",
+            "conclusion": null,
+            "number": 34
+          }
+        ]
+      }
+    ]
+  },
+  "manual_run_dedupe": {
+    "scope": "Latest 30 workflow_dispatch runs on main; bounded observation, not a lease",
+    "runs": [
+      {
+        "id": 41285940429,
+        "path": ".github/workflows/native-common-image.yml",
+        "head_sha": "3d353cb976ff01c31b78fc469b3fc3dbf3203a95",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-11-01T07:43:50Z"
+      },
+      {
+        "id": 41285461644,
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "head_sha": "d08e4b80edfb57828c3420e14d17234ce8108825",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-11-01T07:36:22Z"
+      },
+      {
+        "id": 41281339483,
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "head_sha": "fb73ecdd38ef5e20f269771ba493d16243841d05",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-11-01T06:33:55Z"
+      },
+      {
+        "id": 41280688171,
+        "path": ".github/workflows/native-common-image.yml",
+        "head_sha": "fb73ecdd38ef5e20f269771ba493d16243841d05",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-11-01T06:24:13Z"
+      },
+      {
+        "id": 41273908642,
+        "path": ".github/workflows/native-common-image.yml",
+        "head_sha": "94cf04f950aba179fc1bfbdbc3161c2c144d8a58",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-11-01T04:38:59Z"
+      },
+      {
+        "id": 41265687046,
+        "path": ".github/workflows/native-common-image.yml",
+        "head_sha": "130745f283ffa54e76731cb3d98fe1b81203d537",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-11-01T02:33:24Z"
+      },
+      {
+        "id": 41251157373,
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "head_sha": "e392c101b74329428fd1f1a058fbdb233a049924",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T23:07:11Z"
+      },
+      {
+        "id": 41250787826,
+        "path": ".github/workflows/native-common-image.yml",
+        "head_sha": "e392c101b74329428fd1f1a058fbdb233a049924",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "created_at": "2026-10-31T23:02:12Z"
+      },
+      {
+        "id": 41231665431,
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "head_sha": "9634bba9e186e4a122d103d477028edb3dec9132",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T18:54:33Z"
+      },
+      {
+        "id": 41197243038,
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "head_sha": "fa85c44184ffa59879b8c1a77c991e3ce87fa028",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T11:32:03Z"
+      },
+      {
+        "id": 41192091394,
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "head_sha": "7153509db2afcd2702f2a5a3d7dcacc9ea565772",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T10:16:44Z"
+      },
+      {
+        "id": 41190806242,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "e48dd4a66d30343d2b5073ce3c210c7e0dd828cc",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T09:58:07Z"
+      },
+      {
+        "id": 41190693730,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "d95dcd88505c5d6825343dbfbc74244242ccad25",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T09:56:18Z"
+      },
+      {
+        "id": 41190561558,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "d95dcd88505c5d6825343dbfbc74244242ccad25",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T09:54:15Z"
+      },
+      {
+        "id": 41187749759,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "dbc493ba688c19758c9a489635761419fb2c1af6",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T09:12:40Z"
+      },
+      {
+        "id": 41159591513,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "created_at": "2026-10-31T02:20:59Z"
+      },
+      {
+        "id": 41144656779,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T23:28:15Z"
+      },
+      {
+        "id": 41142870861,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T23:10:46Z"
+      },
+      {
+        "id": 41129372376,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-10-30T21:13:16Z"
+      },
+      {
+        "id": 41129321189,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:12:53Z"
+      },
+      {
+        "id": 41129277963,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:12:31Z"
+      },
+      {
+        "id": 41129224760,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:12:07Z"
+      },
+      {
+        "id": 41129176570,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:11:47Z"
+      },
+      {
+        "id": 41129116273,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-10-30T21:11:20Z"
+      },
+      {
+        "id": 41129082245,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:11:05Z"
+      },
+      {
+        "id": 41129044087,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-10-30T21:10:47Z"
+      },
+      {
+        "id": 41129008590,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-10-30T21:10:29Z"
+      },
+      {
+        "id": 41128855169,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:09:22Z"
+      },
+      {
+        "id": 41127588682,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T20:59:56Z"
+      },
+      {
+        "id": 41121921308,
+        "path": ".github/workflows/native-base-image.yml",
+        "head_sha": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T20:17:02Z"
+      }
+    ]
+  },
+  "dispatch": {
+    "performed": false,
+    "exact_14212_artifact_verified": false,
+    "blocker": "No working fresh workflow_dispatch interface in this worker session",
+    "observations": [
+      {
+        "surface": "gh api",
+        "result": "TLS x509 OSStatus -26276; authentication not reached"
+      },
+      {
+        "surface": "gh auth token -h github.com",
+        "result": "exit 1; no usable credential returned; no token retained/printed"
+      },
+      {
+        "surface": "git SSH",
+        "result": "No user exists for uid 501"
+      },
+      {
+        "surface": "GitHub connected App",
+        "result": "Repository/Git writes and run reads work; enabled tools do not expose fresh workflow_dispatch"
+      },
+      {
+        "surface": "cua.getState",
+        "result": "apps/browsers empty; Sky Computer Use service startup request failed"
+      },
+      {
+        "surface": "cua.createBrowserTab(iab, official GitHub workflow URL)",
+        "result": "Browser is not available: iab"
+      }
+    ],
+    "owner": "User with working GitHub Actions access, or session environment owner restoring the worker's existing dispatch access",
+    "minimal_next_command": "gh workflow run native-base-image.yml --repo bex-co/bex --ref main -f runtime=node-14.21.2-bullseye",
+    "release_condition": "A real deduplicated exact-version run is observable with actual source/inputs, or fresh workflow dispatch becomes usable; this alone is not artifact/utility/family/production acceptance"
+  },
+  "preserved": {
+    "d1": "platform-prebuilt same-version security repairs",
+    "d2": "w1 collaborates with w8 common implementation",
+    "common_run_not_cancelled": true,
+    "production_pin_and_map_unchanged": true,
+    "old_candidate_not_reauthorized": true
+  }
+}
