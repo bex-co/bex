@@ -1467,6 +1467,24 @@ spec:
                   the release that caused them.
                 format: int64
                 type: integer
+              releaseStart:
+                description: |-
+                  ReleaseStart is when the operator dispatched a release generation: the
+                  moment ReleaseGeneration moved forward to it (w4/449). It is the start of
+                  a prebuilt-image deploy, which has no build window, so a release that
+                  rolls out between two control-plane passes still closes with a start.
+                  Stamped only on a forward move, never by a cancel's revert or a
+                  survivor's redispatch, and read only when its generation is the deploy's.
+                properties:
+                  generation:
+                    format: int64
+                    type: integer
+                  startedAt:
+                    type: string
+                required:
+                - generation
+                - startedAt
+                type: object
               runs:
                 description: |-
                   Runs is the recent run history of a cron_job (newest first), populated from
