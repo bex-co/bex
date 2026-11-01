@@ -103,6 +103,9 @@ func Health(spec Spec, seconds int64) string {
 	if expected < 1 {
 		expected = 1
 	}
+	if spec.Source == Direct {
+		return directHealth(spec, seconds, expected)
+	}
 	up := fmt.Sprintf(`up{job=%q}`, spec.Job)
 	parts := []string{
 		fmt.Sprintf(`min(min_over_time(%s[%ds]))`, up, seconds),
@@ -127,17 +130,35 @@ func Health(spec Spec, seconds int64) string {
 			fmt.Sprintf(`(max(max_over_time(%s[%ds])) < bool (time() - %d))`, spec.ProcessMetric, seconds, seconds),
 		)
 	}
-	// A direct-meter process restart reopens its pinned monotonic counter. A
-	// lost/recreated map can only restore the last node checkpoint, however, so
-	// a decrease means the exact delta is unknowable. Reject that entire window
-	// instead of letting increase() interpret the restored absolute value as new
-	// traffic.
-	if spec.Source == Direct {
-		parts = append(parts,
-			fmt.Sprintf(`((max(bex_egress_meter_last_counter_loss_time_seconds) or vector(0)) < bool (time() - %d))`, seconds),
-		)
-	}
 	return strings.Join(parts, " * ")
+}
+
+// directHealth judges the direct source on the meters that hold this app's
+// counter (w4/442), not the whole fleet. Each node meter keeps a persistent,
+// monotonic counter per app it has seen, so a missed scrape loses no bytes:
+// increase() across the gap is exact, and only a counter loss or decrease can
+// misstate it (resets and the loss time below). The fleet-wide up term failed
+// every app's hour on one missed scrape anywhere, billing that hour's direct
+// egress as zero. What still rejects the hour is the evidence the app's bytes
+// depend on: a meter holding its counter reporting unhealthy hooks or
+// attribution, or too few of that meter's health samples, or a loss on it. An
+// app no meter has counted yet is judged on the whole fleet's health, so a
+// broken meter can never pass as an app with no traffic.
+func directHealth(spec Spec, seconds, expected int64) string {
+	counter := fmt.Sprintf(`%s{%s}`, spec.Counter, spec.Matchers)
+	holders := fmt.Sprintf(`group by (instance) (count_over_time(%s[%ds]))`, counter, seconds)
+	scoped := func(agg, series string) string {
+		return fmt.Sprintf(`(%s(%s and on(instance) %s) or %s(%s))`, agg, series, holders, agg, series)
+	}
+	healthMin := fmt.Sprintf(`min_over_time(%s[%ds])`, spec.HealthMetric, seconds)
+	healthCount := fmt.Sprintf(`count_over_time(%s[%ds])`, spec.HealthMetric, seconds)
+	const loss = "bex_egress_meter_last_counter_loss_time_seconds"
+	return strings.Join([]string{
+		scoped("min", healthMin),
+		fmt.Sprintf(`((min(%s and on(instance) %s) >= bool %d) or (min(%s) >= bool %d))`, healthCount, holders, expected, healthCount, expected),
+		fmt.Sprintf(`((sum(resets(%s[%ds])) or vector(0)) == bool 0)`, counter, seconds),
+		fmt.Sprintf(`((max(%s and on(instance) %s) or max(%s) or vector(0)) < bool (time() - %d))`, loss, holders, loss, seconds),
+	}, " * ")
 }
 
 func Increase(spec Spec, seconds int64) string {

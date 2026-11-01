@@ -32,9 +32,11 @@ import (
 // "egress source X unhealthy" error. The billing rollup's strict refusal is
 // pinned separately by usage's TestQueryEgressBytesRejectsPartialSourceHealth.
 
-// bandwidthFakeProm serves health instants per source (by job substring) and a
-// fixed matrix for the range query.
-func bandwidthFakeProm(t *testing.T, unhealthyJobs ...string) (*httptest.Server, *[]string) {
+// bandwidthFakeProm serves health instants per source and a fixed matrix for
+// the range query. A health query reads 0 when it contains any of unhealthy:
+// an `up{job="…"}` selector, or the direct meter's health metric (its query has
+// no up term, w4/442).
+func bandwidthFakeProm(t *testing.T, unhealthy ...string) (*httptest.Server, *[]string) {
 	t.Helper()
 	var queries []string
 	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -45,9 +47,9 @@ func bandwidthFakeProm(t *testing.T, unhealthyJobs ...string) (*httptest.Server,
 			return
 		}
 		value := "1"
-		for _, job := range unhealthyJobs {
+		for _, marker := range unhealthy {
 			// `up{job="traefik"}` must not match `up{job="traefik-websocket-meter"}`.
-			if strings.Contains(query, `up{job="`+job+`"}`) {
+			if strings.Contains(query, marker) {
 				value = "0"
 			}
 		}
@@ -65,7 +67,7 @@ func bandwidthReq() RequestMetricsRequest {
 }
 
 func TestBandwidthServesSeriesWithDegradedSourceLabel(t *testing.T) {
-	ts, queries := bandwidthFakeProm(t, "bex-egress-meter")
+	ts, queries := bandwidthFakeProm(t, "bex_egress_meter_healthy")
 	defer ts.Close()
 
 	series, err := NewPrometheusRequestSource(ts.URL, ts.Client())(context.Background(), bandwidthReq())
