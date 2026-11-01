@@ -1,0 +1,5 @@
+# Actual same-image complete utility dispatch — 2026-11-01
+
+[Run41265687046](https://github.com/bex-co/bex/actions/runs/41265687046) was dispatched once at02:33:22–24UTC from exact source130745f283ffa54e76731cb3d98fe1b81203d537 with `source=reviewed-candidate`, `profile=utilities`, `case=all`. The offline plan passes for the actual reviewed56c58 image and selects the complete original utility/HTTP-oracle tests with the unchanged both-architecture matrix. [Raw command, before/after run metadata and source linkage](RAW-CUSTODY.json) are retained losslessly. The first actual run observation is queued, not a utility success.
+
+No supplier is republished by this manual branch. Actual successful full utility results and captured executing-source manifests from both architectures remain necessary before family reuse. The candidate source/utility fields and all production pins remain unpopulated. The [data-only35-case family schedule](family-plan/RAW-CUSTODY.json) lists every original31 plus four addon cases once; its first Node14 addon measurement must be reviewed before executing the remaining cases. That schedule is preparation, not dispatch or family evidence.

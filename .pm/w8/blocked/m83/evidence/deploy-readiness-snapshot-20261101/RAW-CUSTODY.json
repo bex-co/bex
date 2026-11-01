@@ -1,0 +1,100 @@
+{
+  "MANIFEST.json": {
+    "raw_sha256": "1573d66fef16204e7cd367f59fdd878903e3ed95b72eb6d46d53989b647fda4e",
+    "raw_bytes": 1725,
+    "file": "MANIFEST.json.gz",
+    "gzip_sha256": "155bd775836544bbdf445e751a0ba541971a68ca731eb681eb4aefe80a6bb9bc",
+    "gzip_bytes": 786
+  },
+  "PROPOSED-INVENTORY-REQUEST.json": {
+    "raw_sha256": "13d04530250399385b6fa575b133f9c20841645eac1d0641fcfbb323202baaf3",
+    "raw_bytes": 98,
+    "file": "PROPOSED-INVENTORY-REQUEST.json.gz",
+    "gzip_sha256": "f484a3d8e5d351dc7eb2f25732f8fdb6a8f11cefb15dc3229304b04998863c09",
+    "gzip_bytes": 99
+  },
+  "REVIEW.json": {
+    "raw_sha256": "84b211343849b6c85da8a0f4426ac8b59a2e98ef07605e6364ce70c26a52ef8b",
+    "raw_bytes": 6017,
+    "file": "REVIEW.json.gz",
+    "gzip_sha256": "3d6c1aec4bcf47ae6c4b79a00198047433ae206b35c4153e0f0019e77548f968",
+    "gzip_bytes": 2600
+  },
+  "SCOPE.json": {
+    "raw_sha256": "0c69a1bff444cc8cafd7d298781c86e9489ad891de7853efa7740e6273163a74",
+    "raw_bytes": 267,
+    "file": "SCOPE.json.gz",
+    "gzip_sha256": "99cf5f1a5044578a9e51dd21ffd800ed4a8354c55f5789c81a4c83e20f9dbaae",
+    "gzip_bytes": 228
+  },
+  "SOURCE-GATE.json": {
+    "raw_sha256": "b68bcda9a566f28284505b5f4601363d078caa03bca7e82ae467847b766d8bc0",
+    "raw_bytes": 2699,
+    "file": "SOURCE-GATE.json.gz",
+    "gzip_sha256": "a30b77a5ffbd2e8f1bdd0386770c4bed89720af3ec814669d344871ba5f91fcd",
+    "gzip_bytes": 722
+  },
+  "deploy-818.yml": {
+    "raw_sha256": "ac3266d21aa12277116c35221f9f6b8497389763d7473f984f47af4a00237e98",
+    "raw_bytes": 59103,
+    "file": "deploy-818.yml.gz",
+    "gzip_sha256": "4f7ecded38aa82484b78185deaa408931d2abfa48a1a8bf6889a5a376113403e",
+    "gzip_bytes": 17222
+  },
+  "existing-inventory-workflow.yml": {
+    "raw_sha256": "f5c61d5ae3d6bae61e2ab424db817f3bb50f3978e377ed8b4f2ac09176b174fa",
+    "raw_bytes": 8454,
+    "file": "existing-inventory-workflow.yml.gz",
+    "gzip_sha256": "092e576fbc17deb14206f1da97fc4b841b73a9995bfa641525a28f03a410b0a5",
+    "gzip_bytes": 2493
+  },
+  "observed-run-command.json": {
+    "raw_sha256": "496ddf8140966072908f6f0a204bb294cf198a7d63a233ec045bfceec874eefe",
+    "raw_bytes": 266,
+    "file": "observed-run-command.json.gz",
+    "gzip_sha256": "41c1f45c5392237928a21e17a47ff531f8e48dac44af8a3e0c8352a100da119b",
+    "gzip_bytes": 202
+  },
+  "observed-run.stderr": {
+    "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "raw_bytes": 0,
+    "file": "observed-run.stderr.gz",
+    "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "gzip_bytes": 20
+  },
+  "observed-run.stdout": {
+    "raw_sha256": "75580843c59994c5a8b670c66d75225f41e8d4719da68719b056b85f965e0684",
+    "raw_bytes": 20506,
+    "file": "observed-run.stdout.gz",
+    "gzip_sha256": "11696d887560398a9d31db44c0e4cba99c44145f2d120a1200edeb84531d36bb",
+    "gzip_bytes": 2509
+  },
+  "prior-blocked-summary.json": {
+    "raw_sha256": "2992b022bb384e5ca82f6625737fb0ac44fb53c1e82ec50fc44e22bde872167f",
+    "raw_bytes": 2257,
+    "file": "prior-blocked-summary.json.gz",
+    "gzip_sha256": "c4f679b7f33d38a10a60e6ac77354d1dffdd6fdfd2f8fa56e1287167e3182578",
+    "gzip_bytes": 1205
+  },
+  "recent-runs-command.json": {
+    "raw_sha256": "baef70f5ed6ab26032e30d90372bdb26f7b15da625fefc50db490da9b7332952",
+    "raw_bytes": 289,
+    "file": "recent-runs-command.json.gz",
+    "gzip_sha256": "4f9e9d64bebf4ecc8891042209d2c681c0e2e0abe2f52176cbb6bf0940762551",
+    "gzip_bytes": 201
+  },
+  "recent-runs.stderr": {
+    "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "raw_bytes": 0,
+    "file": "recent-runs.stderr.gz",
+    "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "gzip_bytes": 20
+  },
+  "recent-runs.stdout": {
+    "raw_sha256": "343711cbd8543c1e3d40579d21cecf5e453e274892e77caab5e8f0efed90ac76",
+    "raw_bytes": 2336,
+    "file": "recent-runs.stdout.gz",
+    "gzip_sha256": "50740096ec817d3b5e3c1bfa7041aa97a9a656a3505246918aeb785d0464a32a",
+    "gzip_bytes": 610
+  }
+}
