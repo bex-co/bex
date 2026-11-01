@@ -1,0 +1,53 @@
+{
+  "schema": "bex.w1.dispatch-gate-closeout/v1",
+  "source_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "payload_files": 9,
+  "files": [
+    {
+      "file": "adapter-root-audit.json",
+      "bytes": 351,
+      "sha256": "ba675860088a84763e8dcd195c8f6e0f2c21d1cdb861e7dea6c988b293e51c11"
+    },
+    {
+      "file": "earlier-dispatch-inspection.json",
+      "bytes": 16796,
+      "sha256": "032ba237d809855fe7ee88caf3742143ce3e307334227c74031c17bdb101b780"
+    },
+    {
+      "file": "earlier-dispatch-manifest.json",
+      "bytes": 171,
+      "sha256": "a62128621d0b7931fc02399f651e9f8fea06d8f3921f0fb0e4fbe37393d848d2"
+    },
+    {
+      "file": "exact-adapter-draft.tar.gz",
+      "bytes": 110566,
+      "sha256": "e7dfb09f161b97b70e2a9827a59a17754bc469e75564303e1d08fc0bd39fe584"
+    },
+    {
+      "file": "gate-observation.json",
+      "bytes": 18190,
+      "sha256": "4403b105d535d8005075d7dc00f05d0c7fbb9fafa56c9845b879a3e2294d12b6"
+    },
+    {
+      "file": "prior26-readonly-scope.tar.gz",
+      "bytes": 128648,
+      "sha256": "f0790bef1d1229ceedad4cc5af082d7219b3d524217e08d48cf1bbf532b9a530"
+    },
+    {
+      "file": "root-final-controls.stderr.log.gz",
+      "bytes": 437,
+      "sha256": "063fa52bc2d67302c9279b815193529f8696dcaa40bb9b8273d2b2c9d8364dfd"
+    },
+    {
+      "file": "root-final-controls.stdout.log.gz",
+      "bytes": 20,
+      "sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64"
+    },
+    {
+      "file": "root-review.json",
+      "bytes": 1183,
+      "sha256": "34222d296b4893a15e4467a4435d7723efa1c801307e9f1ae676852a2c1c18d2"
+    }
+  ],
+  "scope": "Offline prepared work and bounded read-only run observations. No fresh exact dispatch or artifact acceptance. Tar members preserve original raw byte manifests and path roots; extract only to a new owned directory."
+}

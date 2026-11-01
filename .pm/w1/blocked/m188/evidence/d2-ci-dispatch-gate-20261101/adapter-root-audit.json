@@ -1,0 +1,9 @@
+{
+  "manifest_sha256": "bbc9fc178adeb3e0f078414f4789bee3d6d489dde32f3062d94e0c5229cf3174",
+  "payload_files": 47,
+  "payload_bytes": 335625,
+  "tar_sha256": "e7dfb09f161b97b70e2a9827a59a17754bc469e75564303e1d08fc0bd39fe584",
+  "tar_bytes": 110566,
+  "audit": "PASS",
+  "scope": "Offline preparation only; actual artifact verification not performed"
+}

@@ -1,0 +1,470 @@
+{
+  "schema": "bex.exact14212-readonly-dispatch-probe/v1",
+  "gh_probe": {
+    "argv": [
+      "gh",
+      "api",
+      "repos/bex-co/bex/actions/workflows/native-base-image.yml",
+      "--jq",
+      ".state"
+    ],
+    "exit_code": 1,
+    "error": "TLS certificate verification: x509: OSStatus -26276",
+    "authenticated_response_observed": false
+  },
+  "anonymous_metadata_probe": {
+    "url": "https://api.github.com/repos/bex-co/bex/actions/workflows/native-base-image.yml/runs?per_page=30",
+    "result": "HTTP403 rate limit exceeded"
+  },
+  "connector_fallback": {
+    "supported_collection": "https://api.github.com/repos/bex-co/bex/actions/runs",
+    "workflow_specific_collection": "rejected by connector endpoint allowlist",
+    "capture_format": "normalized connector JSON fields, not raw HTTP response bytes"
+  },
+  "head_filtered_query": {
+    "url": "https://api.github.com/repos/bex-co/bex/actions/runs?head_sha=1feba939b4697894e800ed0abb4f25a0bf415641&per_page=100",
+    "total_count": 8,
+    "rows": [
+      {
+        "id": 41341403074,
+        "path": "dynamic/dependabot/dependabot-updates",
+        "event": "dynamic",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+        "status": "in_progress",
+        "conclusion": null,
+        "created_at": "2026-11-01T19:22:26Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41341287826,
+        "path": ".github/workflows/govulncheck.yml",
+        "event": "push",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+        "status": "in_progress",
+        "conclusion": null,
+        "created_at": "2026-11-01T19:21:03Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41341287827,
+        "path": ".github/workflows/go-lint.yml",
+        "event": "push",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+        "status": "in_progress",
+        "conclusion": null,
+        "created_at": "2026-11-01T19:21:03Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41341287507,
+        "path": "dynamic/github-code-quality/codeql",
+        "event": "dynamic",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+        "status": "in_progress",
+        "conclusion": null,
+        "created_at": "2026-11-01T19:21:03Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41341287887,
+        "path": ".github/workflows/deploy.yml",
+        "event": "push",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+        "status": "queued",
+        "conclusion": null,
+        "created_at": "2026-11-01T19:21:03Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41341287839,
+        "path": ".github/workflows/scripts.yml",
+        "event": "push",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+        "status": "in_progress",
+        "conclusion": null,
+        "created_at": "2026-11-01T19:21:03Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41341287851,
+        "path": ".github/workflows/native-common-image.yml",
+        "event": "push",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+        "status": "queued",
+        "conclusion": null,
+        "created_at": "2026-11-01T19:21:03Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41341287819,
+        "path": ".github/workflows/docs.yml",
+        "event": "push",
+        "head_sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-11-01T19:21:03Z",
+        "run_attempt": 1
+      }
+    ]
+  },
+  "latest_manual_query": {
+    "url": "https://api.github.com/repos/bex-co/bex/actions/runs?event=workflow_dispatch&per_page=30",
+    "rows": [
+      {
+        "id": 41285940429,
+        "name": "common Bookworm native image (build + verify)",
+        "path": ".github/workflows/native-common-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "3d353cb976ff01c31b78fc469b3fc3dbf3203a95",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-11-01T07:43:50Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41285461644,
+        "name": "hcloud CSI (manual inventory, reviewed rollout or owned fixture)",
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "d08e4b80edfb57828c3420e14d17234ce8108825",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-11-01T07:36:22Z",
+        "run_attempt": 2
+      },
+      {
+        "id": 41281339483,
+        "name": "hcloud CSI (manual inventory, reviewed rollout or owned fixture)",
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "fb73ecdd38ef5e20f269771ba493d16243841d05",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-11-01T06:33:55Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41280688171,
+        "name": "common Bookworm native image (build + verify)",
+        "path": ".github/workflows/native-common-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "fb73ecdd38ef5e20f269771ba493d16243841d05",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-11-01T06:24:13Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41273908642,
+        "name": "common Bookworm native image (build + verify)",
+        "path": ".github/workflows/native-common-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "94cf04f950aba179fc1bfbdbc3161c2c144d8a58",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-11-01T04:38:59Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41265687046,
+        "name": "common Bookworm native image (build + verify)",
+        "path": ".github/workflows/native-common-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "130745f283ffa54e76731cb3d98fe1b81203d537",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-11-01T02:33:24Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41251157373,
+        "name": "hcloud CSI (manual inventory, reviewed rollout or owned fixture)",
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "e392c101b74329428fd1f1a058fbdb233a049924",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T23:07:11Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41250787826,
+        "name": "common Bookworm native image (build + verify)",
+        "path": ".github/workflows/native-common-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "e392c101b74329428fd1f1a058fbdb233a049924",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "created_at": "2026-10-31T23:02:12Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41231665431,
+        "name": "hcloud CSI (manual inventory, reviewed rollout or owned fixture)",
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "9634bba9e186e4a122d103d477028edb3dec9132",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T18:54:33Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41197243038,
+        "name": "hcloud CSI (manual inventory, reviewed rollout or owned fixture)",
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "fa85c44184ffa59879b8c1a77c991e3ce87fa028",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T11:32:03Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41192091394,
+        "name": "hcloud CSI (manual inventory, reviewed rollout or owned fixture)",
+        "path": ".github/workflows/hcloud-csi-rollout.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "7153509db2afcd2702f2a5a3d7dcacc9ea565772",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T10:16:44Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41190806242,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "e48dd4a66d30343d2b5073ce3c210c7e0dd828cc",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T09:58:07Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41190693730,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "d95dcd88505c5d6825343dbfbc74244242ccad25",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T09:56:18Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41190561558,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "d95dcd88505c5d6825343dbfbc74244242ccad25",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T09:54:15Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41187749759,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "dbc493ba688c19758c9a489635761419fb2c1af6",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-31T09:12:40Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41159591513,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "da0e56e80a1e4eb08cacabd67efde3c768a6ae81",
+        "status": "completed",
+        "conclusion": "cancelled",
+        "created_at": "2026-10-31T02:20:59Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41144656779,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "9cb21ded95659fdc6eb9aeef449457f1a50c00a2",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T23:28:15Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41142870861,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "8af93065a6a83299e8db7977aaf6527a5bad3e5d",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T23:10:46Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41129372376,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-10-30T21:13:16Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41129321189,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:12:53Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41129277963,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:12:31Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41129224760,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:12:07Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41129176570,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:11:47Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41129116273,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-10-30T21:11:20Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41129082245,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:11:05Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41129044087,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-10-30T21:10:47Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41129008590,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "failure",
+        "created_at": "2026-10-30T21:10:29Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41128855169,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T21:09:22Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41127588682,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "83c1e30e35eeeadab499de4d8d96c1f6c0349077",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T20:59:56Z",
+        "run_attempt": 1
+      },
+      {
+        "id": 41121921308,
+        "name": "native base images (build + verify)",
+        "path": ".github/workflows/native-base-image.yml",
+        "event": "workflow_dispatch",
+        "head_sha": "846a56038319f1b5c212d1fcda8291d20e49c2b0",
+        "status": "completed",
+        "conclusion": "success",
+        "created_at": "2026-10-30T20:17:02Z",
+        "run_attempt": 1
+      }
+    ]
+  },
+  "prior_utility_run": {
+    "id": 41289957408,
+    "path": ".github/workflows/native-common-image.yml",
+    "event": "push",
+    "head_sha": "26b983bd5e27304511b92cac7bc00548df08d673",
+    "status": "completed",
+    "conclusion": "success",
+    "created_at": "2026-11-01T09:42:05Z",
+    "run_attempt": 1
+  },
+  "duplicate_assessment": {
+    "current_source": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "current_source_direct_native_base_runs": 0,
+    "latest_manual_native_base_created_at": "2026-10-31T09:58:07Z",
+    "no_current_exact_request_observed": true,
+    "scope": "Snapshot only: complete head-filtered eight runs and latest30 manual runs. Existing common push41341287851 is distinct and retained. Not a durable lease against a later concurrent dispatch; fresh pre-dispatch dedupe still required."
+  },
+  "mutations": {
+    "source": false,
+    "pm": false,
+    "git": false,
+    "dispatch": false,
+    "cancellation": false,
+    "token_read_or_print": false
+  }
+}
