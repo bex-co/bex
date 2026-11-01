@@ -6568,6 +6568,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		SecurityContext:  appSecCtx(app.Spec),
 		ContainerPolicy:  app.Spec.ContainerPolicy,
 		FreePlan:         isFreeApp(app),
+		EgressAppID:      appIDOrName(app),
 		Resources:        resourcesForTier(app.Spec.Tier),
 		Volumes:          vols,
 		VolumeMounts:     mounts,

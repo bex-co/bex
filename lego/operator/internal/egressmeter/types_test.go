@@ -173,6 +173,25 @@ func TestDesiredPodResourcesSkipsJobPodsWithoutAnAppID(t *testing.T) {
 	}
 }
 
+// w4/453: a pre-deploy pod runs the service's own command, so its egress is
+// the service's, through the egress-only label.
+func TestDesiredPodResourcesAttributesPreDeployEgress(t *testing.T) {
+	pre := corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: "predeploy-web-x", Namespace: "default", UID: "pre-uid",
+			Labels: map[string]string{PodLabelApp: "web", PodLabelEgressAppID: "srv-one"},
+		},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning, PodIPs: []corev1.PodIP{{IP: "10.244.1.13"}}},
+	}
+	v4, _, expected, err := desiredPodResources([]corev1.Pod{pre})
+	if err != nil || expected != 1 {
+		t.Fatalf("attribution = (%d, %v), want (1, nil)", expected, err)
+	}
+	if _, appID := v4[[4]byte{10, 244, 1, 13}].Labels(); appID != "srv-one" {
+		t.Fatalf("pre-deploy egress attributed to %q, want srv-one", appID)
+	}
+}
+
 func TestDesiredPodResourcesRejectsMissingStableIdentity(t *testing.T) {
 	pod := corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{Name: "no-uid", Namespace: "default", Labels: map[string]string{PodLabelAppID: "srv-one"}},
