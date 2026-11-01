@@ -64,3 +64,8 @@ The latest fix-containing platform run41254794386/source818 has passed the four 
 ## Refreshed pipeline observation — 2026-11-01
 
 [The single refreshed metadata snapshot](evidence/deploy-readiness-snapshot-20261101/README.md) still finds818 building its fifth image and the newerbbec run pending. Both source gates pass, but no qualified deployment or new actual readiness is shown. The blocked release condition is unchanged; no new inventory or tenant resource action was performed.
+
+
+## Scan transport gate — 2026-11-01
+
+[Actual release triage](evidence/deploy-scan-transport-20261101/README.md) finds818 passed its builds and signing but failed the first Trivy database transfer before analysis, so deployment was skipped. Peer5f20e81ab already fixes that transport path; a qualified fixed rollout remains unobserved. No inventory or tenant action was started. The source snapshot also needs a separately reviewed carrier refresh for later legitimate controller timing changes; required ancestry and full-file checks remain mandatory.

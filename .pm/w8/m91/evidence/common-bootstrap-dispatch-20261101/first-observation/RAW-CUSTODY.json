@@ -1,0 +1,58 @@
+{
+  "MANIFEST.json": {
+    "raw_sha256": "c72a04ba99892f103c923a124721c63f23a090c6e657cc3619600351c9b9f28c",
+    "raw_bytes": 1050,
+    "file": "MANIFEST.json.gz",
+    "gzip_sha256": "25dd299262d633d36011f57fa970b758156206b37f933193e8880ff2d399629c",
+    "gzip_bytes": 480
+  },
+  "REVIEW.json": {
+    "raw_sha256": "6575cffe0edb5ba6538b1ed8477cdc412571f8d9838b4d48b7c982a851934d58",
+    "raw_bytes": 1775,
+    "file": "REVIEW.json.gz",
+    "gzip_sha256": "1de157fdd3c23947a0c46bd3546536c561fd513100b8adea5ba1f35028196725",
+    "gzip_bytes": 980
+  },
+  "RUN-READ.json": {
+    "raw_sha256": "b4b1dbe43142bd9cb803514d2676f2d6d6bafdfc3c0fc7247353748d5534e850",
+    "raw_bytes": 300,
+    "file": "RUN-READ.json.gz",
+    "gzip_sha256": "36d82019b9816bf665b08f165be87b7b00cc95c7cf832d389498ab9063efe3a6",
+    "gzip_bytes": 220
+  },
+  "SCOPE.json": {
+    "raw_sha256": "64376689f596ddd835015bda805569f32b4054c9856d97794ed5ca98c8f84183",
+    "raw_bytes": 247,
+    "file": "SCOPE.json.gz",
+    "gzip_sha256": "12aeda5c8159aa2b82e87732e1af95dd0b6e2e656e7fbced06889e865ee3ccd4",
+    "gzip_bytes": 211
+  },
+  "jobs-plugin.json": {
+    "raw_sha256": "e7c5c4ca4df440d458fd72fc00945cd3db3d38c5cac727ab7e79ccf9a6a4de54",
+    "raw_bytes": 205,
+    "file": "jobs-plugin.json.gz",
+    "gzip_sha256": "90dc17fbb5f1e01542148bf96022b1408914f32c0f29c6c88645371c25198bfe",
+    "gzip_bytes": 148
+  },
+  "run-read.stderr": {
+    "raw_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "raw_bytes": 0,
+    "file": "run-read.stderr.gz",
+    "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+    "gzip_bytes": 20
+  },
+  "run-response.raw": {
+    "raw_sha256": "06610a8d3f6cfd1b4ad9b72257b7d75cfa672bbda33abb92ced04ef807445f1e",
+    "raw_bytes": 13049,
+    "file": "run-response.raw.gz",
+    "gzip_sha256": "d7649531a69c6cc4b2a71c783c3f9e649ac6db388845122e08e9a7674ab2ee1a",
+    "gzip_bytes": 2447
+  },
+  "run.json": {
+    "raw_sha256": "c74d34a4120191a2c6d44d521c62ae98004d49e5137344a2006ac6bcc44f64ac",
+    "raw_bytes": 11646,
+    "file": "run.json.gz",
+    "gzip_sha256": "e87ef9160f9182c76bfdcd73a968fa3008afe198079ebca59a59f9120003afc3",
+    "gzip_bytes": 1710
+  }
+}
