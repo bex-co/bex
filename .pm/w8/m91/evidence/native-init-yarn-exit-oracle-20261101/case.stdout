@@ -1,0 +1,9 @@
+=== RUN   TestCommonNativeInitQualification
+    nativequalification_init_test.go:207: retained native-init evidence: /private/tmp/bex-w8-native-init-local-pilot-aee1f0f347f04cfe8d6032cc/evidence/generated/native-common-init-3145559275
+=== RUN   TestCommonNativeInitQualification/npm
+=== RUN   TestCommonNativeInitQualification/yarn
+    nativequalification_init_test.go:262: owned drain container did not preserve a successful/terminated wrapper status: {"ID":"9035fd2b313e6e2d419980dc5ee7ac5cc9f187454b5469fba8a2c18b9425afef","Image":"sha256:dae6c64a4d57ff559e9f325619dbbf6eee138179d4c447b6e7e6e921c4442430","Network":"bridge","Running":false,"ExitCode":1,"Labels":{"co.bex.native-qualification":"bex-nq-aee1f0f347f04cfe8d6032cc","org.opencontainers.image.revision":"1feba939b4697894e800ed0abb4f25a0bf415641","org.opencontainers.image.source":"https://github.com/bex-co/bex"},"Ports":{}}
+--- FAIL: TestCommonNativeInitQualification (123.40s)
+    --- PASS: TestCommonNativeInitQualification/npm (12.68s)
+    --- FAIL: TestCommonNativeInitQualification/yarn (10.64s)
+FAIL

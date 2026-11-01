@@ -1,0 +1,6 @@
+{
+  "scope": "Actual normal GitHub UI workflow_dispatch after fresh no-duplicate visible list; one existing workflow per exact request; neither approval nor success inferred",
+  "source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "user_manual_requests_superseded": true,
+  "browser": "Fresh own Chrome tab using existing signed-in profile, no credential access or host changes"
+}

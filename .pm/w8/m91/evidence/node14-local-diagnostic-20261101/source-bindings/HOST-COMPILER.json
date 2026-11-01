@@ -1,0 +1,12 @@
+{
+  "path": "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+  "sha256": "fd8876aadf9d8774884fd83c7df759883f107d2f8668796f37ef3622f9cd301a",
+  "bytes": 14481762,
+  "host": "darwin/arm64",
+  "target": "linux/arm64",
+  "GOROOT": "/opt/homebrew/Cellar/go/1.26.4/libexec",
+  "module_source_cache": "/Users/tianpan/go/pkg/mod",
+  "module_source_write_policy": "seatbelt denied file writes",
+  "offline": "network denied by seatbelt; GOPROXYoff/GOSUMDBoff/GOTOOLCHAINlocal",
+  "limit": "This is a Darwin compiler for crosscompilation. It is not a Linux Go compiler executable for native-init in-test builds."
+}

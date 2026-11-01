@@ -1,0 +1,8 @@
+{
+  "path": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/bin/build-linux-arm64.test",
+  "bytes": 41726878,
+  "sha256": "8e7f06b11fcfe0edda9c8b9618b1872cdddcd62f0f3142953b68f12aac1ae45f",
+  "format": "ELF64 little-endian AArch64",
+  "PT_INTERP": false,
+  "executed": false
+}

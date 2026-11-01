@@ -1,0 +1,59 @@
+{
+  "schema": "bex.local-common-node14-pilot/v1",
+  "status": "PREPARATION_LOCAL_DIAGNOSTIC_ONLY_PENDING_AMENDED_FULLUTILITY_CI_BASELINE",
+  "owner": "bex-nq-bc3f5cecb438454c85f0edc2",
+  "run_root": "/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2",
+  "source_root": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/source",
+  "source_manifest": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/SOURCE.json",
+  "source_manifest_sha256": "497e75f16b11a723fae593ee6847ea772da638679d06ad9f677333ab8ad28d0a",
+  "source_sha": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "test_binary": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/bin/build-linux-arm64.test",
+  "test_binary_sha256": "8e7f06b11fcfe0edda9c8b9618b1872cdddcd62f0f3142953b68f12aac1ae45f",
+  "tools_root": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools",
+  "tools_sha256": {
+    "docker": "8d1f0003ab751833dc596e6b96dbc321b6af95d67feefef64be14e7369f04b08",
+    "docker-buildx": "45abc802d2ed109a68314371b2dbdcfea21b33e5e8144212709f94294e0d5c32"
+  },
+  "runner_image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+  "common_image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "official_node14": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+  "reviewed_node14_donor": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "buildkit_image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+  "profile": "node-donors",
+  "case": "node-14",
+  "platform": "linux/arm64",
+  "endpoint": "unix:///Users/tianpan/.orbstack/run/docker.sock",
+  "VM_socket_source": "/var/run/docker.sock",
+  "inside_socket_destination": "/Users/tianpan/.orbstack/run/docker.sock",
+  "bounds": {
+    "whole_seconds": 7200,
+    "pull_seconds": 195,
+    "bootstrap_seconds": 300,
+    "go_timeout": "90m",
+    "runner_memory_bytes": 536870912,
+    "runner_cpus": 2,
+    "builder_memory_bytes": 2147483648,
+    "builder_cpus": 2,
+    "host_files_bytes": 536870912,
+    "remaining_host_floor_bytes": 8589934592,
+    "builder_state_polled_bytes": 17179869184,
+    "observe_interval_seconds": 15
+  },
+  "cache_scope": "Fresh exactowner builder/node/statevolume require beforeabsence; shareddaemon input-image cache observed, never purged. No allcache-cold claim. Onecase only; no automatic widening.",
+  "resource_scope": "Operating guards and limits, not source-only minimum-footprint proof/reservation or ABI acceptance gate. A resource hit leaves qualificationUNPROVED. Runtime-generated image/container commands remain canonical existing harness; no shim/limit edits.",
+  "upstream_prerequisite_inputs": {
+    "strict0941_supplier_review": "Root actual completed2ff8 current0941 review; already approved separately, not rerun/reimplemented by this pilot",
+    "Linux_daemon_metadata": "/private/tmp/bex-w8-linux-family-daemon-preflight-20261101-nqo5yogn/RECEIPT.json",
+    "LinuxGo_metadata": "/private/tmp/bex-w8-linux-resolver-probe-actual-20261101-2wzu2tmh/RECEIPT.json",
+    "historical_both_arch_1feba_CI": "/private/tmp/bex-w8-common-1feba-ci-intake-20261101-_97quqc2/RECEIPT.json"
+  },
+  "no_claims": [
+    "No productionpin/map/adoption/hosted/Kubernetes/staticpublication/native-init/gyp companion/allfamilies/botharch pass",
+    "Only existing Node donor14 generated-image case on arm64; original13/28 and9positiveNodeprograms unchanged"
+  ],
+  "at": "2026-11-01T22:11:33.968224+00:00",
+  "host_buildx_plugin_dir": "/Applications/OrbStack.app/Contents/MacOS/xbin",
+  "host_buildx_plugin_sha256": "4a728ee98f89005a90198a9be791e8fdaebbcb5e6af9721251efe0113df37759",
+  "source_rebind_note": "Actual shipped6883953 source300 includes only two amended Yarn oracle files versus producer1feba. Same0941 artifact producer/verifier remains1feba. This ONE local diagnostic cannot replace the pending amended fullutility CI baseline or establish current family acceptance/adoption.",
+  "qualification_scope": "ONE current-source local diagnostic, Node14 donor existing case linux/arm64. Amended botharch fullutility CI baseline pending; no acceptance/adoption/hosted/K8s conclusion."
+}

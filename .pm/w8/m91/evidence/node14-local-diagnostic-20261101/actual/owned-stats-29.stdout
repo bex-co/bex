@@ -1,0 +1,2 @@
+{"BlockIO":"767MB / 3.32GB","CPUPerc":"8.41%","Container":"buildx_buildkit_bex-nq-bc3f5cecb438454c85f0edc20","ID":"28f651824614","MemPerc":"6.32%","MemUsage":"129.4MiB / 2GiB","Name":"buildx_buildkit_bex-nq-bc3f5cecb438454c85f0edc20","NetIO":"1.41GB / 9.65MB","PIDs":"23"}
+{"BlockIO":"770kB / 41kB","CPUPerc":"6.63%","Container":"bex-nq-bc3f5cecb438454c85f0edc2-runner","ID":"27483cd7b889","MemPerc":"10.07%","MemUsage":"51.58MiB / 512MiB","Name":"bex-nq-bc3f5cecb438454c85f0edc2-runner","NetIO":"114kB / 24.2kB","PIDs":"20"}

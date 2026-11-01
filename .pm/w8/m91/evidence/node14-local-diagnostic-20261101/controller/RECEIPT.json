@@ -1,0 +1,28 @@
+{
+  "schema": "bex.local-diagnostic-plan-rebind/v1",
+  "status": "PREPARATION_ONLY_NO_EXECUTION_BY_AUTHOR",
+  "reviewed_controller_root": "/private/tmp/bex-w8-node14-local-pilot-v4-source-20261101-bop3sbht",
+  "controller_bytes_unchanged": true,
+  "shell_bytes_unchanged": true,
+  "plan_sha256": "d178e61ccbc4f1f9adcccb9026780bed17298250fc37d3b0f5575af296321ac0",
+  "source_manifest_sha256": "497e75f16b11a723fae593ee6847ea772da638679d06ad9f677333ab8ad28d0a",
+  "binary": {
+    "path": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/bin/build-linux-arm64.test",
+    "bytes": 41726878,
+    "sha256": "8e7f06b11fcfe0edda9c8b9618b1872cdddcd62f0f3142953b68f12aac1ae45f",
+    "format": "ELF64 little-endian AArch64",
+    "PT_INTERP": false,
+    "executed": false
+  },
+  "source_commit": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "same_common_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "profile": "node-donors",
+  "case": "node-14",
+  "platform": "linux/arm64",
+  "classification": "ONE local diagnostic only, pending amended complete botharch utility CI baseline. No family/adoption/hosted/Kubernetes conclusion.",
+  "run_root": "/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2",
+  "run_root_absent": true,
+  "pure_verify": "PASS exact physicalsource300/ELF/hostplugin SHA/selection; no resources",
+  "compile_receipt": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/RECEIPT.json",
+  "cache_cleanup": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/CACHE-CLEANUP.json"
+}

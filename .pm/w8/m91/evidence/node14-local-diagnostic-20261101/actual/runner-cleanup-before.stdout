@@ -1,0 +1,325 @@
+[
+    {
+        "Id": "27483cd7b8897376790400aefcaedcae639df447cd6d24736bdb2523487bd4f4",
+        "Created": "2026-11-01T23:08:29.686571092Z",
+        "Path": "/bin/sh",
+        "Args": [
+            "/pilot.sh"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-11-01T23:08:29.927257014Z",
+            "FinishedAt": "2026-11-01T23:12:21.726510078Z"
+        },
+        "Image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+        "ResolvConfPath": "/var/lib/docker/containers/27483cd7b8897376790400aefcaedcae639df447cd6d24736bdb2523487bd4f4/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/27483cd7b8897376790400aefcaedcae639df447cd6d24736bdb2523487bd4f4/hostname",
+        "HostsPath": "/var/lib/docker/containers/27483cd7b8897376790400aefcaedcae639df447cd6d24736bdb2523487bd4f4/hosts",
+        "LogPath": "/var/lib/docker/containers/27483cd7b8897376790400aefcaedcae639df447cd6d24736bdb2523487bd4f4/27483cd7b8897376790400aefcaedcae639df447cd6d24736bdb2523487bd4f4-json.log",
+        "Name": "/bex-nq-bc3f5cecb438454c85f0edc2-runner",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {
+                    "max-file": "5",
+                    "max-size": "20m"
+                }
+            },
+            "NetworkMode": "bridge",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": true,
+            "SecurityOpt": null,
+            "Tmpfs": {
+                "/tmp": "rw,nosuid,nodev,size=64m"
+            },
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 8408530944,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 536870912,
+            "NanoCpus": 2000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 1073741824,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": 128,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "Mounts": [
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2",
+                    "Target": "/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2"
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/source",
+                    "Target": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/source",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/bin/build-linux-arm64.test",
+                    "Target": "/bex-build.test",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker",
+                    "Target": "/usr/local/bin/docker",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker-buildx",
+                    "Target": "/usr/libexec/docker/cli-plugins/docker-buildx",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/var/run/docker.sock",
+                    "Target": "/Users/tianpan/.orbstack/run/docker.sock",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-node14-local-pilot-v4-yarn-rebind-20261101-zejnlirm/pilot.sh",
+                    "Target": "/pilot.sh",
+                    "ReadOnly": true
+                }
+            ],
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "27483cd7b8897376790400aefcaedcae639df447cd6d24736bdb2523487bd4f4",
+                "LowerDir": "/var/lib/docker/overlay2/199d7b0960d309d478b7e1aff4d3c8c63b3b8477b8626e667da699fce585e8fc-init/diff:/var/lib/docker/overlay2/ede07570786a91d70253d93ce4a604932e5a10026ce330efa7166946a3f625a8/diff",
+                "MergedDir": "/var/lib/docker/overlay2/199d7b0960d309d478b7e1aff4d3c8c63b3b8477b8626e667da699fce585e8fc/merged",
+                "UpperDir": "/var/lib/docker/overlay2/199d7b0960d309d478b7e1aff4d3c8c63b3b8477b8626e667da699fce585e8fc/diff",
+                "WorkDir": "/var/lib/docker/overlay2/199d7b0960d309d478b7e1aff4d3c8c63b3b8477b8626e667da699fce585e8fc/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/bin/build-linux-arm64.test",
+                "Destination": "/bex-build.test",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-node14-local-pilot-v4-yarn-rebind-20261101-zejnlirm/pilot.sh",
+                "Destination": "/pilot.sh",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2",
+                "Destination": "/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/source",
+                "Destination": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/source",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker",
+                "Destination": "/usr/local/bin/docker",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/var/run/docker.sock",
+                "Destination": "/Users/tianpan/.orbstack/run/docker.sock",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker-buildx",
+                "Destination": "/usr/libexec/docker/cli-plugins/docker-buildx",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "27483cd7b889",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "BEX_NATIVE_TEST_NODE_ADDON_PROFILE=0",
+                "BEX_NATIVE_TEST_RUBY_PROFILE=0",
+                "BEX_NATIVE_TEST_COMMON_IMAGE=ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+                "TMPDIR=/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2/private-tmp",
+                "PILOT_NODE=bex-nq-bc3f5cecb438454c85f0edc20",
+                "GOPROXY=off",
+                "PILOT_EVIDENCE=/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2/evidence",
+                "PILOT_BUILDER_CONTAINER=buildx_buildkit_bex-nq-bc3f5cecb438454c85f0edc20",
+                "BEX_NATIVE_TEST_NODE_PROFILE=0",
+                "BEX_NATIVE_TEST_OUTPUT=/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2/evidence/generated",
+                "BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE=0",
+                "BEX_NATIVE_TEST_INIT_PROFILE=0",
+                "BEX_BUILDKIT_INTEGRATION=1",
+                "BEX_NATIVE_TEST_OWNER=bex-nq-bc3f5cecb438454c85f0edc2",
+                "DOCKER_CONFIG=/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2/bex-nq-bc3f5cecb438454c85f0edc2-docker-config",
+                "GOTMPDIR=/private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2/gotmp",
+                "GOWORK=off",
+                "BEX_NATIVE_TEST_NODE_DONORS=1",
+                "BEX_NATIVE_TEST_GORUST_PROFILE=0",
+                "BEX_NATIVE_ELIXIR_INTEGRATION=0",
+                "BEX_NATIVE_TEST_BUILDER=bex-nq-bc3f5cecb438454c85f0edc2",
+                "BEX_NATIVE_TEST_PLATFORM=linux/arm64",
+                "DOCKER_HOST=unix:///Users/tianpan/.orbstack/run/docker.sock",
+                "GOMAXPROCS=2",
+                "GOTOOLCHAIN=local",
+                "GOSUMDB=off",
+                "GOFLAGS=-mod=readonly",
+                "PILOT_BUILDKIT=moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+                "BEX_NATIVE_LEGACY_PYTHON_INTEGRATION=0",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+                "/pilot.sh"
+            ],
+            "Image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+            "Volumes": null,
+            "WorkingDir": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/source/lego/operator/internal/build",
+            "Entrypoint": [
+                "/bin/sh"
+            ],
+            "Labels": {
+                "co.bex.native-qualification": "bex-nq-bc3f5cecb438454c85f0edc2"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "bridge": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "0dbbd4593099855957c1e246093eab955c3e62d90d79a10b7909e717f289eff6",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        }
+    }
+]

@@ -1,0 +1,116 @@
+{
+  "PASS": true,
+  "scope": "ONE actual ARM64 Node14 published-donor local diagnostic; pending amended complete utilityCI baseline, no fullfamily/adoption/hosted/native-init/K8s claim",
+  "owner": "bex-nq-bc3f5cecb438454c85f0edc2",
+  "result": {
+    "PASS": true,
+    "scope": "ONE current donorNode14 ARM64 local generated case only; no adoption/botharch/fullfamily/hosted/K8s claim",
+    "failure": null,
+    "cleanup_or_artifact_errors": [],
+    "owner": "bex-nq-bc3f5cecb438454c85f0edc2",
+    "case_pass": true,
+    "cancel_signal": null,
+    "pending_pgids": [],
+    "elapsed_seconds": 256.686
+  },
+  "source_commit": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "source_manifest": {
+    "bytes": 102859,
+    "sha256": "497e75f16b11a723fae593ee6847ea772da638679d06ad9f677333ab8ad28d0a"
+  },
+  "ELF": {
+    "bytes": 41726878,
+    "sha256": "8e7f06b11fcfe0edda9c8b9618b1872cdddcd62f0f3142953b68f12aac1ae45f"
+  },
+  "controller": {
+    "bytes": 22064,
+    "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03"
+  },
+  "PLAN": {
+    "bytes": 4341,
+    "sha256": "d178e61ccbc4f1f9adcccb9026780bed17298250fc37d3b0f5575af296321ac0"
+  },
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "official_Node14": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+  "reviewed_donor": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "canonical_executed_sha256": "f8882058e2825458bb8feb317ea2efd8a3ca7dc2191b2d6b6908fc77bf558e29",
+  "network_overlay": false,
+  "runtime_network": "none (actual receipt and unchanged source-bound run helper)",
+  "phases": [
+    {
+      "phase": "build",
+      "Node": "14.21.3",
+      "ABI": 83,
+      "NAPI": "8",
+      "versions": {
+        "npm": "6.14.18",
+        "yarn": "1.22.22",
+        "pnpm": "10.34.7"
+      },
+      "Yarn_CLI": "/opt/yarn-v1.22.22/bin/yarn",
+      "pnpm_package": {
+        "name": "pnpm",
+        "standalone": "/opt/bex/pnpm/bin/pnpm"
+      },
+      "npm_package_sha256": "0b8176131720da0c97115fff28fd64efc06cea7871b019c293cf42eae1d6b5ed",
+      "identity_addon_core_tools_lifecycle_exec": true
+    },
+    {
+      "phase": "runtime",
+      "Node": "14.21.3",
+      "ABI": 83,
+      "NAPI": "8",
+      "versions": {
+        "npm": "6.14.18",
+        "yarn": "1.22.22",
+        "pnpm": "10.34.7"
+      },
+      "Yarn_CLI": "/opt/yarn-v1.22.22/bin/yarn",
+      "pnpm_package": {
+        "name": "pnpm",
+        "standalone": "/opt/bex/pnpm/bin/pnpm"
+      },
+      "npm_package_sha256": "0b8176131720da0c97115fff28fd64efc06cea7871b019c293cf42eae1d6b5ed",
+      "identity_addon_core_tools_lifecycle_exec": true
+    }
+  ],
+  "positive_projects": {
+    "npm": {
+      "bytes": 289,
+      "sha256": "cad72aed61d01b1936a6dea05cf2ea662932e890e167fb5c9fe19b0e1b50646c"
+    },
+    "yarn": {
+      "bytes": 293,
+      "sha256": "fb7ae3e356f7ddb4909b0b7355a9369df276f484ec4d64d9da998c5965eaa6aa"
+    },
+    "pnpm": {
+      "bytes": 329,
+      "sha256": "6b4b32887175a4dcc56f91d5bf07c72da12b957880694bc27583318d8187c2da"
+    }
+  },
+  "all_three_engine_negatives_canonical_exit1": true,
+  "npm_yarn_pnpm_pre_post_probe_and_pnpm_exec": true,
+  "addon_ELF_ARM64": true,
+  "commands": 63,
+  "all_recorded_command_groups_reaped_absent": true,
+  "runner_builder_volume_labelled_outputs_absent": true,
+  "own_config_absent": true,
+  "original_evidence_files": 200,
+  "fixture_emission_custody": {
+    "copied_source_fixture4": {
+      ".node-version": "9a92adbc0cee38ef658c71ce1b1bf8c65668f166bfb213644c895ccb1ad07a25",
+      "addon.c": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+      "check.js": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+      "check.py": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+      "expected-node.json": "e4fdc9b4bd00bd0be417856548f04f145e7e7613c3891d4f6920b3ea783e5a74",
+      "package.json": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60"
+    },
+    "node_version": "14\n from unchanged commonNodeQualificationFiles, hash matches retained custody",
+    "expected_node_source": "captured expected-node.json plus one authored finalLF, hash matches retained source custody; original evidence file stays byteexact withoutLF"
+  },
+  "limits": [
+    "No tests, Node/native programs, command/resource/network/Go/Docker execution repeated. Existing pure validator functions re-applied only to retained actual outputs.",
+    "Some runtime recipe/command facts bind actual retained receipt to exact source/ELF; no new daemon inspection or full runtime image export.",
+    "Compiler/test ELF and source300 bodies remain private; portable capsule contains exact hashes/manifests and selected original fixture/program bodies."
+  ]
+}

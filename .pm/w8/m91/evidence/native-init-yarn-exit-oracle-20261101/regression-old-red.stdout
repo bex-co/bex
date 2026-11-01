@@ -1,0 +1,5 @@
+--- FAIL: TestNativeInitQualificationDrainAndTransportControls (0.00s)
+    nativequalification_init_test.go:569: unexpected stopped-wrapper status policy: {launch:yarn status:1 accept:true}
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/build	0.616s
+FAIL

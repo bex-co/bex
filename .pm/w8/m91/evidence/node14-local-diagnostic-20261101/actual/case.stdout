@@ -1,0 +1,7 @@
+=== RUN   TestCommonNodeGeneratedImages
+    nativecommon_node_qualification_test.go:206: retained Node profile evidence: /private/tmp/bex-w8-node14-local-pilot-bc3f5cecb438454c85f0edc2/evidence/generated/native-common-node-3815493229
+=== RUN   TestCommonNodeGeneratedImages/node-14
+    nativecommon_node_qualification_test.go:212: node-14 passed actual generated network-off commands; image sha256:8a0a6dfaad4013571e36afb8fda6e4d67239b4e6273a0ff86eee102fa8280570
+--- PASS: TestCommonNodeGeneratedImages (230.20s)
+    --- PASS: TestCommonNodeGeneratedImages/node-14 (230.20s)
+PASS

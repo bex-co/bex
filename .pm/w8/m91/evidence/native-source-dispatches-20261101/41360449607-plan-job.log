@@ -1,0 +1,321 @@
+﻿2026-11-01T23:07:22.1057675Z Current runner version: '2.337.0'
+2026-11-01T23:07:22.1060778Z Runner name: 'b4c61561483f'
+2026-11-01T23:07:22.1061170Z Runner group name: 'bex-ci'
+2026-11-01T23:07:22.1061672Z Machine name: 'b4c61561483f'
+2026-11-01T23:07:22.1063120Z ##[group]GITHUB_TOKEN Permissions
+2026-11-01T23:07:22.1064336Z Contents: read
+2026-11-01T23:07:22.1064632Z Metadata: read
+2026-11-01T23:07:22.1064924Z ##[endgroup]
+2026-11-01T23:07:22.1065937Z Secret source: Actions
+2026-11-01T23:07:22.1066399Z Cache mode: write
+2026-11-01T23:07:22.1066770Z Prepare workflow directory
+2026-11-01T23:07:22.1251880Z Prepare all required actions
+2026-11-01T23:07:22.1282000Z Getting action download info
+2026-11-01T23:07:22.6380807Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-01T23:07:23.2810362Z Complete job name: plan
+2026-11-01T23:07:23.3052923Z A job started hook has been configured by the self-hosted runner administrator
+2026-11-01T23:07:23.3125070Z ##[group]Run '/home/docker/actions-runner/hooks/job-started.sh'
+2026-11-01T23:07:23.3134252Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-01T23:07:23.3134888Z ##[endgroup]
+2026-11-01T23:07:23.3536689Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-01T23:07:23.3537435Z with:
+2026-11-01T23:07:23.3537916Z   persist-credentials: false
+2026-11-01T23:07:23.3538316Z   sparse-checkout-cone-mode: false
+2026-11-01T23:07:23.3542857Z   sparse-checkout: !/**
+/.github/
+/.pm/
+/deploy/
+/lego/
+/scripts/
+/.pm/w8/
+/deploy/native-base/
+/deploy/native-common/
+/lego/operator/
+/lego/types/
+/scripts/lib/
+/.pm/w8/m91/
+/lego/operator/cmd/
+/lego/operator/internal/
+/lego/types/k8sname/
+/lego/types/netutil/
+/lego/types/v1alpha1/
+/.pm/w8/m91/evidence/
+/lego/operator/cmd/native-init/
+/lego/operator/internal/build/
+/lego/operator/internal/execution/
+/lego/operator/internal/httpclient/
+/lego/operator/internal/identity/
+/lego/operator/internal/publish/
+/lego/operator/internal/registry/
+/.github/**
+/deploy/native-base/**
+/deploy/native-common/**
+/lego/operator/internal/build/**
+/lego/operator/cmd/native-init/**
+/lego/operator/internal/execution/**
+/lego/operator/internal/httpclient/**
+/lego/operator/internal/identity/**
+/lego/operator/internal/publish/**
+/lego/operator/internal/registry/**
+/lego/types/k8sname/**
+/lego/types/netutil/**
+/lego/types/v1alpha1/**
+/.pm/w8/m91/evidence/**
+/lego/operator/go.mod
+/lego/operator/go.sum
+/lego/types/go.mod
+/lego/types/go.sum
+/lego/Dockerfile
+/lego/.dockerignore
+/scripts/lib/toolchain-freshness.py
+
+2026-11-01T23:07:23.3547364Z   repository: bex-co/bex
+2026-11-01T23:07:23.3549915Z   token: ***
+2026-11-01T23:07:23.3550250Z   ssh-strict: true
+2026-11-01T23:07:23.3550825Z   ssh-user: git
+2026-11-01T23:07:23.3551163Z   clean: true
+2026-11-01T23:07:23.3551468Z   fetch-depth: 1
+2026-11-01T23:07:23.3551855Z   fetch-tags: false
+2026-11-01T23:07:23.3552170Z   show-progress: true
+2026-11-01T23:07:23.3552475Z   lfs: false
+2026-11-01T23:07:23.3552816Z   submodules: false
+2026-11-01T23:07:23.3553142Z   set-safe-directory: true
+2026-11-01T23:07:23.3553486Z   allow-unsafe-pr-checkout: false
+2026-11-01T23:07:23.3553845Z ##[endgroup]
+2026-11-01T23:07:23.4238672Z Syncing repository: bex-co/bex
+2026-11-01T23:07:23.4239814Z ##[group]Getting Git version info
+2026-11-01T23:07:23.4240300Z Working directory is '/home/docker/actions-runner/_work/bex/bex'
+2026-11-01T23:07:23.4241329Z [command]/usr/bin/git version
+2026-11-01T23:07:23.4252804Z git version 2.34.1
+2026-11-01T23:07:23.4262427Z ##[endgroup]
+2026-11-01T23:07:23.4266860Z Copying '/home/docker/.gitconfig' to '/home/docker/actions-runner/_work/_temp/474902bb-be3f-47f4-8dd1-4c17021235de/.gitconfig'
+2026-11-01T23:07:23.4268350Z Temporarily overriding HOME='/home/docker/actions-runner/_work/_temp/474902bb-be3f-47f4-8dd1-4c17021235de' before making global git config changes
+2026-11-01T23:07:23.4269547Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-01T23:07:23.4301337Z [command]/usr/bin/git config --global --add safe.directory /home/docker/actions-runner/_work/bex/bex
+2026-11-01T23:07:23.4358336Z Deleting the contents of '/home/docker/actions-runner/_work/bex/bex'
+2026-11-01T23:07:23.4366499Z ##[group]Determining repository object format
+2026-11-01T23:07:23.4367245Z ##[endgroup]
+2026-11-01T23:07:23.4368045Z ##[group]Initializing the repository
+2026-11-01T23:07:23.4368806Z [command]/usr/bin/git init /home/docker/actions-runner/_work/bex/bex
+2026-11-01T23:07:23.4411498Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-01T23:07:23.4421441Z hint: is subject to change. To configure the initial branch name to use in all
+2026-11-01T23:07:23.4422232Z hint: of your new repositories, which will suppress this warning, call:
+2026-11-01T23:07:23.4422831Z hint: 
+2026-11-01T23:07:23.4423322Z hint: 	git config --global init.defaultBranch <name>
+2026-11-01T23:07:23.4423845Z hint: 
+2026-11-01T23:07:23.4424341Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-01T23:07:23.4425092Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-01T23:07:23.4425714Z hint: 
+2026-11-01T23:07:23.4426597Z hint: 	git branch -m <name>
+2026-11-01T23:07:23.4427240Z Initialized empty Git repository in /home/docker/actions-runner/_work/bex/bex/.git/
+2026-11-01T23:07:23.4441605Z [command]/usr/bin/git remote add origin https://github.com/bex-co/bex
+2026-11-01T23:07:23.4473011Z ##[endgroup]
+2026-11-01T23:07:23.4473673Z ##[group]Disabling automatic garbage collection
+2026-11-01T23:07:23.4474267Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-01T23:07:23.4519018Z ##[endgroup]
+2026-11-01T23:07:23.4519635Z ##[group]Setting up auth
+2026-11-01T23:07:23.4520049Z Removing SSH command configuration
+2026-11-01T23:07:23.4522795Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-01T23:07:23.4562228Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-01T23:07:23.4873016Z Removing HTTP extra header
+2026-11-01T23:07:23.4873841Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-01T23:07:23.4888345Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-01T23:07:23.5036522Z Removing includeIf entries pointing to credentials config files
+2026-11-01T23:07:23.5043140Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-01T23:07:23.5061740Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-01T23:07:23.5262110Z [command]/usr/bin/git config --file /home/docker/actions-runner/_work/_temp/git-credentials-08f75d1d-157f-48ae-9622-66e69f6bd163.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-01T23:07:23.5309938Z [command]/usr/bin/git config --local includeIf.gitdir:/home/docker/actions-runner/_work/bex/bex/.git.path /home/docker/actions-runner/_work/_temp/git-credentials-08f75d1d-157f-48ae-9622-66e69f6bd163.config
+2026-11-01T23:07:23.5333023Z [command]/usr/bin/git config --local includeIf.gitdir:/home/docker/actions-runner/_work/bex/bex/.git/worktrees/*.path /home/docker/actions-runner/_work/_temp/git-credentials-08f75d1d-157f-48ae-9622-66e69f6bd163.config
+2026-11-01T23:07:23.5373121Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-08f75d1d-157f-48ae-9622-66e69f6bd163.config
+2026-11-01T23:07:23.5467850Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-08f75d1d-157f-48ae-9622-66e69f6bd163.config
+2026-11-01T23:07:23.5469376Z ##[endgroup]
+2026-11-01T23:07:23.5470239Z ##[group]Fetching the repository
+2026-11-01T23:07:23.5471658Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --filter=blob:none --depth=1 origin +6883953e58e750fb41763d1d5e4bd4103bdb74c5:refs/remotes/origin/main
+2026-11-01T23:07:24.4762821Z From https://github.com/bex-co/bex
+2026-11-01T23:07:24.4763291Z  * [new ref]         6883953e58e750fb41763d1d5e4bd4103bdb74c5 -> origin/main
+2026-11-01T23:07:24.4775595Z [command]/usr/bin/git branch --list --remote origin/main
+2026-11-01T23:07:24.4793970Z   origin/main
+2026-11-01T23:07:24.4799940Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-11-01T23:07:24.4820757Z 6883953e58e750fb41763d1d5e4bd4103bdb74c5
+2026-11-01T23:07:24.4822014Z ##[endgroup]
+2026-11-01T23:07:24.4822306Z ##[group]Determining the checkout info
+2026-11-01T23:07:24.4822628Z ##[endgroup]
+2026-11-01T23:07:24.4822882Z ##[group]Setting up sparse checkout
+2026-11-01T23:07:24.4824290Z [command]/usr/bin/git config core.sparseCheckout true
+2026-11-01T23:07:24.4847463Z [command]/usr/bin/git rev-parse --git-path info/sparse-checkout
+2026-11-01T23:07:24.4866900Z .git/info/sparse-checkout
+2026-11-01T23:07:24.4869375Z ##[endgroup]
+2026-11-01T23:07:24.4869920Z ##[group]Checking out the ref
+2026-11-01T23:07:24.4873625Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-11-01T23:08:23.9987532Z Updating files:   0% (2/8756)
+2026-11-01T23:08:24.0056126Z Updating files:   1% (88/8756)
+2026-11-01T23:08:24.0533185Z Updating files:   2% (176/8756)
+2026-11-01T23:08:24.1179795Z Updating files:   3% (263/8756)
+2026-11-01T23:08:24.1231078Z Updating files:   4% (351/8756)
+2026-11-01T23:08:24.1649028Z Updating files:   5% (438/8756)
+2026-11-01T23:08:24.1718035Z Updating files:   6% (526/8756)
+2026-11-01T23:08:24.1766096Z Updating files:   7% (613/8756)
+2026-11-01T23:08:24.1814675Z Updating files:   8% (701/8756)
+2026-11-01T23:08:24.1892615Z Updating files:   9% (789/8756)
+2026-11-01T23:08:24.1999560Z Updating files:  10% (876/8756)
+2026-11-01T23:08:24.2365078Z Updating files:  11% (964/8756)
+2026-11-01T23:08:24.3124498Z Updating files:  12% (1051/8756)
+2026-11-01T23:08:24.3192584Z Updating files:  13% (1139/8756)
+2026-11-01T23:08:24.3598941Z Updating files:  14% (1226/8756)
+2026-11-01T23:08:24.3678225Z Updating files:  15% (1314/8756)
+2026-11-01T23:08:24.4158809Z Updating files:  16% (1401/8756)
+2026-11-01T23:08:24.4578499Z Updating files:  17% (1489/8756)
+2026-11-01T23:08:24.7249872Z Updating files:  18% (1577/8756)
+2026-11-01T23:08:24.7264242Z Updating files:  18% (1650/8756)
+2026-11-01T23:08:24.7374677Z Updating files:  19% (1664/8756)
+2026-11-01T23:08:24.7833201Z Updating files:  20% (1752/8756)
+2026-11-01T23:08:24.8219012Z Updating files:  21% (1839/8756)
+2026-11-01T23:08:24.9257976Z Updating files:  22% (1927/8756)
+2026-11-01T23:08:24.9409111Z Updating files:  23% (2014/8756)
+2026-11-01T23:08:24.9514110Z Updating files:  24% (2102/8756)
+2026-11-01T23:08:24.9618072Z Updating files:  25% (2189/8756)
+2026-11-01T23:08:24.9697530Z Updating files:  26% (2277/8756)
+2026-11-01T23:08:24.9793380Z Updating files:  27% (2365/8756)
+2026-11-01T23:08:24.9874130Z Updating files:  28% (2452/8756)
+2026-11-01T23:08:24.9946592Z Updating files:  29% (2540/8756)
+2026-11-01T23:08:24.9987373Z Updating files:  30% (2627/8756)
+2026-11-01T23:08:25.0026614Z Updating files:  31% (2715/8756)
+2026-11-01T23:08:25.0175965Z Updating files:  32% (2802/8756)
+2026-11-01T23:08:25.0260907Z Updating files:  33% (2890/8756)
+2026-11-01T23:08:25.0366126Z Updating files:  34% (2978/8756)
+2026-11-01T23:08:25.0447864Z Updating files:  35% (3065/8756)
+2026-11-01T23:08:25.0552934Z Updating files:  36% (3153/8756)
+2026-11-01T23:08:25.0607552Z Updating files:  37% (3240/8756)
+2026-11-01T23:08:25.0709662Z Updating files:  38% (3328/8756)
+2026-11-01T23:08:25.0802392Z Updating files:  39% (3415/8756)
+2026-11-01T23:08:25.0982253Z Updating files:  40% (3503/8756)
+2026-11-01T23:08:25.1071012Z Updating files:  41% (3590/8756)
+2026-11-01T23:08:25.1124517Z Updating files:  42% (3678/8756)
+2026-11-01T23:08:25.1239162Z Updating files:  43% (3766/8756)
+2026-11-01T23:08:25.1309948Z Updating files:  44% (3853/8756)
+2026-11-01T23:08:25.1408505Z Updating files:  45% (3941/8756)
+2026-11-01T23:08:25.1478273Z Updating files:  46% (4028/8756)
+2026-11-01T23:08:25.1549406Z Updating files:  47% (4116/8756)
+2026-11-01T23:08:25.1653021Z Updating files:  48% (4203/8756)
+2026-11-01T23:08:25.1736363Z Updating files:  49% (4291/8756)
+2026-11-01T23:08:25.1787594Z Updating files:  50% (4378/8756)
+2026-11-01T23:08:25.1913669Z Updating files:  51% (4466/8756)
+2026-11-01T23:08:25.2010749Z Updating files:  52% (4554/8756)
+2026-11-01T23:08:25.2173750Z Updating files:  53% (4641/8756)
+2026-11-01T23:08:25.2271975Z Updating files:  54% (4729/8756)
+2026-11-01T23:08:25.2440303Z Updating files:  55% (4816/8756)
+2026-11-01T23:08:25.2909437Z Updating files:  56% (4904/8756)
+2026-11-01T23:08:25.3204441Z Updating files:  57% (4991/8756)
+2026-11-01T23:08:25.3413352Z Updating files:  58% (5079/8756)
+2026-11-01T23:08:25.3923960Z Updating files:  59% (5167/8756)
+2026-11-01T23:08:25.3984971Z Updating files:  60% (5254/8756)
+2026-11-01T23:08:25.4034027Z Updating files:  61% (5342/8756)
+2026-11-01T23:08:25.4087592Z Updating files:  62% (5429/8756)
+2026-11-01T23:08:25.5104157Z Updating files:  63% (5517/8756)
+2026-11-01T23:08:25.5315429Z Updating files:  64% (5604/8756)
+2026-11-01T23:08:25.6182490Z Updating files:  65% (5692/8756)
+2026-11-01T23:08:25.6428432Z Updating files:  66% (5779/8756)
+2026-11-01T23:08:25.6518400Z Updating files:  67% (5867/8756)
+2026-11-01T23:08:25.7151599Z Updating files:  68% (5955/8756)
+2026-11-01T23:08:25.7174556Z Updating files:  69% (6042/8756)
+2026-11-01T23:08:25.7294019Z Updating files:  69% (6053/8756)
+2026-11-01T23:08:25.7704865Z Updating files:  70% (6130/8756)
+2026-11-01T23:08:25.8092379Z Updating files:  71% (6217/8756)
+2026-11-01T23:08:25.8159452Z Updating files:  72% (6305/8756)
+2026-11-01T23:08:25.8690625Z Updating files:  73% (6392/8756)
+2026-11-01T23:08:25.8933712Z Updating files:  74% (6480/8756)
+2026-11-01T23:08:25.9438428Z Updating files:  75% (6567/8756)
+2026-11-01T23:08:25.9760027Z Updating files:  76% (6655/8756)
+2026-11-01T23:08:26.0468440Z Updating files:  77% (6743/8756)
+2026-11-01T23:08:26.0558017Z Updating files:  78% (6830/8756)
+2026-11-01T23:08:26.0931949Z Updating files:  79% (6918/8756)
+2026-11-01T23:08:26.1330692Z Updating files:  80% (7005/8756)
+2026-11-01T23:08:26.1441615Z Updating files:  81% (7093/8756)
+2026-11-01T23:08:26.1476113Z Updating files:  82% (7180/8756)
+2026-11-01T23:08:26.1528021Z Updating files:  83% (7268/8756)
+2026-11-01T23:08:26.1572719Z Updating files:  84% (7356/8756)
+2026-11-01T23:08:26.1674248Z Updating files:  85% (7443/8756)
+2026-11-01T23:08:26.1744793Z Updating files:  86% (7531/8756)
+2026-11-01T23:08:26.1856652Z Updating files:  87% (7618/8756)
+2026-11-01T23:08:26.1918263Z Updating files:  88% (7706/8756)
+2026-11-01T23:08:26.2610843Z Updating files:  89% (7793/8756)
+2026-11-01T23:08:26.2678498Z Updating files:  90% (7881/8756)
+2026-11-01T23:08:26.2729159Z Updating files:  91% (7968/8756)
+2026-11-01T23:08:26.2810940Z Updating files:  92% (8056/8756)
+2026-11-01T23:08:26.2923366Z Updating files:  93% (8144/8756)
+2026-11-01T23:08:26.3071398Z Updating files:  94% (8231/8756)
+2026-11-01T23:08:26.3167365Z Updating files:  95% (8319/8756)
+2026-11-01T23:08:26.3240521Z Updating files:  96% (8406/8756)
+2026-11-01T23:08:26.3325090Z Updating files:  97% (8494/8756)
+2026-11-01T23:08:26.3436587Z Updating files:  98% (8581/8756)
+2026-11-01T23:08:26.3509522Z Updating files:  99% (8669/8756)
+2026-11-01T23:08:26.3548296Z Updating files: 100% (8756/8756)
+2026-11-01T23:08:26.3548603Z Updating files: 100% (8756/8756), done.
+2026-11-01T23:08:26.4044017Z Switched to a new branch 'main'
+2026-11-01T23:08:26.4044309Z Branch 'main' set up to track remote branch 'main' from 'origin'.
+2026-11-01T23:08:26.4273880Z ##[endgroup]
+2026-11-01T23:08:26.4303199Z [command]/usr/bin/git log -1 --format=%H
+2026-11-01T23:08:26.4323829Z 6883953e58e750fb41763d1d5e4bd4103bdb74c5
+2026-11-01T23:08:26.4329091Z ##[group]Removing auth
+2026-11-01T23:08:26.4329515Z Removing SSH command configuration
+2026-11-01T23:08:26.4331422Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-01T23:08:26.4401732Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-01T23:08:26.5040692Z Removing HTTP extra header
+2026-11-01T23:08:26.5041078Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-01T23:08:26.5093876Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-01T23:08:26.5286022Z Removing includeIf entries pointing to credentials config files
+2026-11-01T23:08:26.5288418Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-01T23:08:26.5304088Z includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git.path
+2026-11-01T23:08:26.5304784Z includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git/worktrees/*.path
+2026-11-01T23:08:26.5305116Z includeif.gitdir:/github/workspace/.git.path
+2026-11-01T23:08:26.5315822Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-01T23:08:26.5316766Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git.path
+2026-11-01T23:08:26.5326917Z /home/docker/actions-runner/_work/_temp/git-credentials-08f75d1d-157f-48ae-9622-66e69f6bd163.config
+2026-11-01T23:08:26.5333885Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git.path \/home\/docker\/actions\-runner\/_work\/_temp\/git\-credentials\-08f75d1d\-157f\-48ae\-9622\-66e69f6bd163\.config
+2026-11-01T23:08:26.5424077Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git/worktrees/*.path
+2026-11-01T23:08:26.5448150Z /home/docker/actions-runner/_work/_temp/git-credentials-08f75d1d-157f-48ae-9622-66e69f6bd163.config
+2026-11-01T23:08:26.5450495Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git/worktrees/*.path \/home\/docker\/actions\-runner\/_work\/_temp\/git\-credentials\-08f75d1d\-157f\-48ae\-9622\-66e69f6bd163\.config
+2026-11-01T23:08:26.5532868Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-01T23:08:26.5550016Z /github/runner_temp/git-credentials-08f75d1d-157f-48ae-9622-66e69f6bd163.config
+2026-11-01T23:08:26.5561117Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-08f75d1d\-157f\-48ae\-9622\-66e69f6bd163\.config
+2026-11-01T23:08:26.5588837Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-01T23:08:26.5610119Z /github/runner_temp/git-credentials-08f75d1d-157f-48ae-9622-66e69f6bd163.config
+2026-11-01T23:08:26.5620780Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-08f75d1d\-157f\-48ae\-9622\-66e69f6bd163\.config
+2026-11-01T23:08:26.5660218Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-01T23:08:26.5894844Z Removing credentials config '/home/docker/actions-runner/_work/_temp/git-credentials-08f75d1d-157f-48ae-9622-66e69f6bd163.config'
+2026-11-01T23:08:26.5898193Z ##[endgroup]
+2026-11-01T23:08:26.6042470Z ##[group]Run python3 .github/scripts/native-common-qualify.py plan
+2026-11-01T23:08:26.6042921Z [36;1mpython3 .github/scripts/native-common-qualify.py plan[0m
+2026-11-01T23:08:26.6052678Z shell: /usr/bin/bash -e {0}
+2026-11-01T23:08:26.6052838Z env:
+2026-11-01T23:08:26.6052984Z   REQUESTED_SOURCE: reviewed-candidate
+2026-11-01T23:08:26.6053335Z   REQUESTED_PROFILE: utilities
+2026-11-01T23:08:26.6053482Z   REQUESTED_CASE: all
+2026-11-01T23:08:26.6053615Z ##[endgroup]
+2026-11-01T23:08:26.9163756Z Post job cleanup.
+2026-11-01T23:08:26.9790886Z [command]/usr/bin/git version
+2026-11-01T23:08:26.9830746Z git version 2.34.1
+2026-11-01T23:08:26.9859019Z Copying '/home/docker/.gitconfig' to '/home/docker/actions-runner/_work/_temp/0d1372a2-f6dc-440c-824e-03d353afe9d7/.gitconfig'
+2026-11-01T23:08:26.9866685Z Temporarily overriding HOME='/home/docker/actions-runner/_work/_temp/0d1372a2-f6dc-440c-824e-03d353afe9d7' before making global git config changes
+2026-11-01T23:08:26.9867530Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-01T23:08:26.9869819Z [command]/usr/bin/git config --global --add safe.directory /home/docker/actions-runner/_work/bex/bex
+2026-11-01T23:08:26.9928480Z Removing SSH command configuration
+2026-11-01T23:08:26.9935141Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-01T23:08:26.9970403Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-01T23:08:27.0215513Z Removing HTTP extra header
+2026-11-01T23:08:27.0218767Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-01T23:08:27.0242730Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-01T23:08:27.0539589Z Removing includeIf entries pointing to credentials config files
+2026-11-01T23:08:27.0541569Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-01T23:08:27.0586438Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-01T23:08:27.0976320Z Evaluate and set job outputs
+2026-11-01T23:08:27.0981134Z Set output 'baseline_status'
+2026-11-01T23:08:27.0982012Z Set output 'source'
+2026-11-01T23:08:27.0982491Z Set output 'ref'
+2026-11-01T23:08:27.0982677Z Set output 'producer'
+2026-11-01T23:08:27.0982873Z Set output 'verification'
+2026-11-01T23:08:27.0983137Z Set output 'receipt_sha256'
+2026-11-01T23:08:27.0983326Z Set output 'profile'
+2026-11-01T23:08:27.0983489Z Set output 'case'
+2026-11-01T23:08:27.0983649Z Set output 'job_minutes'
+2026-11-01T23:08:27.0983978Z Cleaning up orphan processes

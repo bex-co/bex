@@ -1,0 +1,7 @@
+{
+  "url": "https://github.com/yarnpkg/yarn/blob/v1.22.22/src/util/signal-handler.js",
+  "version": "v1.22.22",
+  "observed_behavior": "SIGTERM invokes forwardSignalAndExit, forwards the signal and explicitly calls process.exit(1).",
+  "short_code": "process.exit(1);",
+  "scope": "Supports the wrapper-status expectation only; all actual identity/drain/HTTP checks stay required."
+}

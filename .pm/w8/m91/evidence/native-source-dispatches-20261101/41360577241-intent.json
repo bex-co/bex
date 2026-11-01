@@ -1,0 +1,7 @@
+{
+  "id": 41360577241,
+  "name": "node-exact14212-publication",
+  "inputs": {
+    "runtime": "node-14.21.2-bullseye"
+  }
+}
