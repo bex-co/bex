@@ -129,7 +129,10 @@ export function CreateDatabaseDialog({
     (isValidPostgresIdentifier(databaseUser) && !databaseUserReserved);
   const diskFloor = selectedPlan?.storageGB ?? 1;
   const diskCeiling = selectedPlan?.maxStorageGB;
-  const diskEntered = diskSizeGB.trim() !== "";
+  // A plan whose floor is its ceiling (Free: 1 GB) has a fixed disk: show it,
+  // never validate a range of one, and let the server apply it (w4/376).
+  const diskFixed = diskCeiling != null && diskFloor === diskCeiling;
+  const diskEntered = !diskFixed && diskSizeGB.trim() !== "";
   const diskNum = Number(diskSizeGB);
   const diskValid =
     !diskEntered ||
@@ -174,7 +177,7 @@ export function CreateDatabaseDialog({
       databaseUser,
       plan,
       version: version === VERSION_DEFAULT ? "" : version,
-      diskSizeGB: Number(diskSizeGB) || 0,
+      diskSizeGB: diskFixed ? 0 : Number(diskSizeGB) || 0,
       public: isPublic,
       highAvailability: enableHighAvailability,
       environmentId: environmentId ?? undefined,
@@ -356,14 +359,26 @@ export function CreateDatabaseDialog({
                 min={diskFloor}
                 max={diskCeiling ?? undefined}
                 disabled={diskCeiling == null}
-                value={diskSizeGB}
+                readOnly={diskFixed}
+                value={diskFixed ? String(diskFloor) : diskSizeGB}
                 onChange={(e) => setDiskSizeGB(e.target.value)}
                 placeholder={
                   selectedPlan ? String(selectedPlan.storageGB) : undefined
                 }
                 aria-invalid={showDiskError}
-                aria-describedby={showDiskError ? "db-disk-error" : undefined}
+                aria-describedby={
+                  showDiskError
+                    ? "db-disk-error"
+                    : diskFixed
+                      ? "db-disk-fixed"
+                      : undefined
+                }
               />
+              {diskFixed ? (
+                <p id="db-disk-fixed" className="text-sm text-muted-foreground">
+                  {t("databases.fieldDiskFixed", { size: diskFloor })}
+                </p>
+              ) : null}
               {showDiskError ? (
                 <p id="db-disk-error" className="text-sm text-destructive">
                   {t("databases.fieldDiskError", {
