@@ -262,9 +262,10 @@ func restartFreePending(kv *appv1alpha1.KeyValue) bool {
 }
 
 // markRestartFree records, on the write itself, whether the generation it
-// lands at restarts nothing: only the name, the allow-list or external access
-// change, and turning access on does not add the listener. A write that leaves
-// the spec alone bumps no generation, so it marks nothing.
+// lands at restarts nothing: only the name, the allow-list, the environment's
+// allow-list layer (the SNI proxy's, w4/451) or external access change, and
+// turning access on does not add the listener. A write that leaves the spec
+// alone bumps no generation, so it marks nothing.
 func markRestartFree(before, after *appv1alpha1.KeyValue) {
 	if apiequality.Semantic.DeepEqual(after.Spec, before.Spec) {
 		return
@@ -272,6 +273,7 @@ func markRestartFree(before, after *appv1alpha1.KeyValue) {
 	spec, prior := after.Spec, before.Spec
 	spec.Name, prior.Name = "", ""
 	spec.IPAllowList, prior.IPAllowList = nil, nil
+	spec.EnvironmentIPAllowList, prior.EnvironmentIPAllowList = nil, nil
 	spec.Public, prior.Public = false, false
 	if !apiequality.Semantic.DeepEqual(spec, prior) || (after.Spec.Public && externalAccessRestarts(before)) {
 		delete(after.Annotations, annotationRestartFreeGeneration)
@@ -786,9 +788,11 @@ func (s *Service) setProjectID(ctx context.Context, kv *appv1alpha1.KeyValue, pr
 		return nil
 	}
 	// A concurrent assignment must conflict, never lose its environment or rules.
-	patch := client.MergeFromWithOptions(kv.DeepCopy(), client.MergeFromWithOptimisticLock{})
+	before := kv.DeepCopy()
+	patch := client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})
 	delete(kv.Labels, core.LabelEnvironment)
 	kv.Spec.EnvironmentIPAllowList = nil
+	markRestartFree(before, kv)
 	if projectID == "" {
 		delete(kv.Labels, core.LabelProject)
 	} else {
@@ -814,8 +818,10 @@ func (s *Service) SetEnvironmentIPAllowList(ctx context.Context, name, expectedE
 	if kv.Labels[core.LabelEnvironment] != expectedEnvironmentID || slices.Equal(kv.Spec.EnvironmentIPAllowList, cidrs) {
 		return nil
 	}
-	patch := client.MergeFromWithOptions(kv.DeepCopy(), client.MergeFromWithOptimisticLock{})
+	before := kv.DeepCopy()
+	patch := client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})
 	kv.Spec.EnvironmentIPAllowList = cidrs
+	markRestartFree(before, kv)
 	resourcemeta.Touch(kv, s.Now())
 	return s.Client.Patch(ctx, kv, patch)
 }
@@ -878,7 +884,8 @@ func (s *Service) setEnvironmentID(ctx context.Context, kv *appv1alpha1.KeyValue
 	if kv.Labels[core.LabelEnvironment] == environmentID && (environmentID != "" || (len(kv.Spec.EnvironmentIPAllowList) == 0 && !core.HasNetworkIsolation(kv.Labels))) {
 		return nil
 	}
-	patch := client.MergeFromWithOptions(kv.DeepCopy(), client.MergeFromWithOptimisticLock{})
+	before := kv.DeepCopy()
+	patch := client.MergeFromWithOptions(before, client.MergeFromWithOptimisticLock{})
 	if environmentID == "" {
 		delete(kv.Labels, core.LabelEnvironment)
 	} else {
@@ -889,6 +896,7 @@ func (s *Service) setEnvironmentID(ctx context.Context, kv *appv1alpha1.KeyValue
 	}
 	delete(kv.Labels, core.LabelNetworkIsolation)
 	kv.Spec.EnvironmentIPAllowList = nil
+	markRestartFree(before, kv)
 	resourcemeta.Touch(kv, s.Now())
 	return s.Client.Patch(ctx, kv, patch)
 }
