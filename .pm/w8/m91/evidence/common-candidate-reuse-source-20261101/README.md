@@ -9,3 +9,8 @@ Independent review found and corrected two defects before application: an exact-
 The corrected source passes48 host controls and Actionlint in author, independent and repository checks. Root also passes the full Go build package in11.251s and scoped lint in2.021s, without a resource stop or source drift; peak own temporary data is30,722,640B and the directory is removed. All35 selectors and their existing per-case bounds, two serial architectures, credential ownership, cleanup/report steps, full original utility job and13/28 frozen application inputs remain intact.
 
 This is source evidence only. No actual common artifact approval, original utility baseline, family result, production pin or hosted acceptance follows from these checks. [CUSTODY.json](CUSTODY.json) preserves raw histories, defects, corrections, independent probes and actual local validation as lossless gzip. The initial independent review also records and cleans up its accidentally broad owned context copy; original files were unchanged.
+
+
+## Integrated source recheck
+
+The ship rebased onto peer native-build changes through `7e2ec974c`, including the standalone pnpm checksum fetch. A fresh [post-rebase validation](postrebase/MANIFEST.json) on shipped `0e1ebb4dc` passes the complete Go build package in12.266s and scoped lint in5.031s, with source hashes unchanged, no resource stop,43,440,029B peak own temporary data and exact temporary-directory removal. The initial frozen manifest and payloads above remain unchanged.
