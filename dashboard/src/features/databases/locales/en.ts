@@ -1583,6 +1583,21 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Press Ctrl+Enter or ⌘+Enter to run",
     description: "SQL console keyboard shortcut hint",
   },
+  "databases.sqlCreating": {
+    message:
+      "This database is still being created. SQL runs once it is Available; your query and history are kept.",
+    description: "SQL console notice while the database is creating (w4/177)",
+  },
+  "databases.sqlUpgrading": {
+    message:
+      "An offline PostgreSQL upgrade is running. SQL runs again once the database is Available; your query and history are kept.",
+    description: "SQL console notice while the database is upgrading (w4/177)",
+  },
+  "databases.sqlRestarting": {
+    message:
+      "This database is restarting. Wait until it is Available to run SQL; your query and history are kept.",
+    description: "SQL console notice while the database is restarting (w4/177)",
+  },
   "databases.sqlSuspended": {
     message:
       "This database is suspended. Resume it to run SQL; your query and history are kept.",
