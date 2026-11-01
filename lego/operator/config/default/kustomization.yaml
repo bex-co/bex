@@ -153,6 +153,14 @@ replacements:
           delimiter: '/'
           index: 0
           create: true
+      - select:
+          kind: MutatingWebhookConfiguration
+        fieldPaths:
+          - .metadata.annotations.[cert-manager.io/inject-ca-from]
+        options:
+          delimiter: '/'
+          index: 0
+          create: true
   # Inject the Certificate name into the VWC cert-manager inject annotation (component 1).
   - source:
       kind: Certificate
@@ -163,6 +171,14 @@ replacements:
     targets:
       - select:
           kind: ValidatingWebhookConfiguration
+        fieldPaths:
+          - .metadata.annotations.[cert-manager.io/inject-ca-from]
+        options:
+          delimiter: '/'
+          index: 1
+          create: true
+      - select:
+          kind: MutatingWebhookConfiguration
         fieldPaths:
           - .metadata.annotations.[cert-manager.io/inject-ca-from]
         options:

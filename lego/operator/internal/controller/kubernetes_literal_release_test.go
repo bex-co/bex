@@ -43,7 +43,7 @@ func TestRuntimePlatformLiteralsKeepBuildInputsRaw(t *testing.T) {
 		t.Fatalf("build branch=%q, want unescaped%q", got, branch)
 	}
 	for _, value := range runtime {
-		if value.Name == "RENDER_INSTANCE_ID" && (value.ValueFrom == nil || value.ValueFrom.FieldRef == nil || value.ValueFrom.FieldRef.FieldPath != "metadata.name") {
+		if value.Name == "RENDER_INSTANCE_ID" && (value.ValueFrom == nil || value.ValueFrom.FieldRef == nil || value.ValueFrom.FieldRef.FieldPath != "metadata.annotations['app.bex.co/instance-id']") {
 			t.Fatalf("field reference became a literal: %+v", value)
 		}
 	}
