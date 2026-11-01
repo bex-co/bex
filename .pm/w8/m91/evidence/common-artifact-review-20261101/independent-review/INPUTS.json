@@ -1,0 +1,6 @@
+{
+  "root": "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf",
+  "receipt": "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/evidence/native-common-bookworm-99cdc5c5a5b53629e2a98963d43d373511a91c1f/receipt.json",
+  "initial_receipt_sha256": "f3cccfadddf2e5632de24d44fe6f43607d8964dd3c1dc98d5bf72457f7c442d2",
+  "scope": "Read existing evidence in place. No copying reports/body files, external requests, crypto invocation or verification rerun. New outputs limited to1MiB metadata."
+}

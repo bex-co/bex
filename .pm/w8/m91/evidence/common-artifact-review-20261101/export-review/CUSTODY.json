@@ -1,0 +1,139 @@
+{
+  "author/MANIFEST.json": {
+    "original": "/private/tmp/bex-w8-common-artifact-export-20261101-048lr4rd/MANIFEST.json",
+    "raw_sha256": "00b4bc7eaa279ff6cfbf3ec39a5a832f88c7c012340e3af7d4e20e0b2afa2280",
+    "raw_bytes": 78334,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/author/MANIFEST.json.gz",
+    "gzip_sha256": "0858825730be784e330292742690c498670d212c289a31cdd3f9c2fccd961685",
+    "gzip_bytes": 12641
+  },
+  "author/RECEIPT.json": {
+    "original": "/private/tmp/bex-w8-common-artifact-export-20261101-048lr4rd/RECEIPT.json",
+    "raw_sha256": "26033e1bfe8cfdd43a33b9d3c918f76cf527a093925b6618d42fee045426fd83",
+    "raw_bytes": 2302,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/author/RECEIPT.json.gz",
+    "gzip_sha256": "486b24bd8430b79dbc4b54be8a224373934cd74e2295178c9e1a84fcdf1161fa",
+    "gzip_bytes": 1177
+  },
+  "author/assemble.py": {
+    "original": "/private/tmp/bex-w8-common-artifact-export-20261101-048lr4rd/assemble.py",
+    "raw_sha256": "59e8931d46e8a1c7851764a6a0c62f92025d611d7c8aa8cd2c7818a7510c8905",
+    "raw_bytes": 15585,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/author/assemble.py.gz",
+    "gzip_sha256": "1ba7bb5c36f93e05b680843d10918bceebe3df4b0c3a29f475530e7d29d1409f",
+    "gzip_bytes": 5696
+  },
+  "author/ASSEMBLER-DERIVATION.json": {
+    "original": "/private/tmp/bex-w8-common-artifact-export-20261101-048lr4rd/ASSEMBLER-DERIVATION.json",
+    "raw_sha256": "bcd8952977f4c76725e17c5dcd8ec79f7700fb81cdb9bc944d56b0153b78f8d0",
+    "raw_bytes": 1427,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/author/ASSEMBLER-DERIVATION.json.gz",
+    "gzip_sha256": "561b171cb2dc73ecbeb21eafed4b0d773a3516b9386138c775f4418c342385e3",
+    "gzip_bytes": 876
+  },
+  "author/ASSEMBLY-RESULT.json": {
+    "original": "/private/tmp/bex-w8-common-artifact-export-20261101-048lr4rd/ASSEMBLY-RESULT.json",
+    "raw_sha256": "738a0650db46bbbce13e3224ba7d6695e12628ac183e114212f52e5ca6d63bbe",
+    "raw_bytes": 466,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/author/ASSEMBLY-RESULT.json.gz",
+    "gzip_sha256": "a8e8fa2d1ea2a21135f5f951cf02dab300eb0cdce8a80ebae0a879fe3a5d10df",
+    "gzip_bytes": 286
+  },
+  "author/PREFLIGHT.json": {
+    "original": "/private/tmp/bex-w8-common-artifact-export-20261101-048lr4rd/PREFLIGHT.json",
+    "raw_sha256": "f5987b89dbeeea69444f3ca06427d1b35701e306c02f5c04472ff25a1f24c82b",
+    "raw_bytes": 7549,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/author/PREFLIGHT.json.gz",
+    "gzip_sha256": "3648728c6d5ae08e3b79f2f2db6ca1c56b87cfba77086be6f085993a6ab1015c",
+    "gzip_bytes": 2396
+  },
+  "author/COPY-PLAN.json": {
+    "original": "/private/tmp/bex-w8-common-artifact-export-20261101-048lr4rd/COPY-PLAN.json",
+    "raw_sha256": "bd25772c85f9e62589544ed1c09223161dc4a8a985935254810d54f54080d2bd",
+    "raw_bytes": 587,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/author/COPY-PLAN.json.gz",
+    "gzip_sha256": "76ea46ae66638c59b475046b4fc4ee63705527311a00a73574320e95fbfd502e",
+    "gzip_bytes": 380
+  },
+  "author/CAPACITY.json": {
+    "original": "/private/tmp/bex-w8-common-artifact-export-20261101-048lr4rd/CAPACITY.json",
+    "raw_sha256": "75f91bf48c8b2aadbd1e640c2ec34ac871689897ebd9857640833e57b77d19e9",
+    "raw_bytes": 264,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/author/CAPACITY.json.gz",
+    "gzip_sha256": "8c8686e82f8ad4b6c4b9a07b3d8c2a5c5fc783f4d8b20c39bdfd22c871c9c5e6",
+    "gzip_bytes": 193
+  },
+  "root/RESULT.json": {
+    "original": "/private/tmp/bex-w8-common-export-root-review-20261101-3dc2gjj_/RESULT.json",
+    "raw_sha256": "133560433431af21c9ced4286fb816bfbb943615f51f9a095d051114c2a637f4",
+    "raw_bytes": 1298,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/root/RESULT.json.gz",
+    "gzip_sha256": "c1cc0fe403ac8b6f171489a856b450fcbba04104a275ff130f0e998ff8825b30",
+    "gzip_bytes": 771
+  },
+  "root/host-controls.log": {
+    "original": "/private/tmp/bex-w8-common-export-root-host-controls-20261101.log",
+    "raw_sha256": "eb1d094b52f4846dd81e37af67d724aea5ee6dd562f285a3ea6c61e848a750a1",
+    "raw_bytes": 8557,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/root/host-controls.log.gz",
+    "gzip_sha256": "896e28ca4f483c2397121b92b2bdcb81b8a9e9666afbd2c530051e0856850dda",
+    "gzip_bytes": 1773,
+    "result": "63 PASS in12.584s; actual applied image-only record; no external resources"
+  },
+  "independent/MANIFEST.json": {
+    "original": "/private/tmp/bex-w8-common-export-independent-review-20261101-pvrobfao/MANIFEST.json",
+    "raw_sha256": "539c7678d3722c0b07c7870f9b9d85f418b4e1438fef51a7a9192dc13bf9f0c2",
+    "raw_bytes": 757,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/independent/MANIFEST.json.gz",
+    "gzip_sha256": "bbc01b64023fbd7db5b3154def30d44b71dbbb036c4f26c3de800148a5d91112",
+    "gzip_bytes": 387
+  },
+  "independent/RESULT.json": {
+    "original": "/private/tmp/bex-w8-common-export-independent-review-20261101-pvrobfao/RESULT.json",
+    "raw_sha256": "a24ba0216fb656640de78209dbba0734a71832c41e0739c4f592e43d61a6eccb",
+    "raw_bytes": 8996,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/independent/RESULT.json.gz",
+    "gzip_sha256": "7633133c9d2f42866f21e266442f8222b25fd9b756f0412701967b2c9cecd662",
+    "gzip_bytes": 2483
+  },
+  "independent/REVIEW.json": {
+    "original": "/private/tmp/bex-w8-common-export-independent-review-20261101-pvrobfao/REVIEW.json",
+    "raw_sha256": "4087cd4d8fdbd131d6706a88912d692805fef1c9d4fc46898443d1b5341279f5",
+    "raw_bytes": 4665,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/independent/REVIEW.json.gz",
+    "gzip_sha256": "ae7e3399c17804582547273000e979957cff174aada3b2c5feaf07b0fac57487",
+    "gzip_bytes": 2263
+  },
+  "independent/review-initial.log": {
+    "original": "/private/tmp/bex-w8-common-export-independent-review-20261101-pvrobfao/review-initial.log",
+    "raw_sha256": "ea462d0b74cafaca92aff9559bec90b0153460131e99e26cb91e8993739cb5d6",
+    "raw_bytes": 1053,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/independent/review-initial.log.gz",
+    "gzip_sha256": "99f78f6919f3732781e278247a2d068f3e04638449cf7dfc83eeb9f871f2560a",
+    "gzip_bytes": 504
+  },
+  "independent/review-initial.py": {
+    "original": "/private/tmp/bex-w8-common-export-independent-review-20261101-pvrobfao/review-initial.py",
+    "raw_sha256": "381feff0420986a32bf60ad0973771b2b3d0e26bdca6c92690de26a70da10c6d",
+    "raw_bytes": 9676,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/independent/review-initial.py.gz",
+    "gzip_sha256": "a169fa8074c1c2fd540fbda409f9b7e36dd685b9ee5c572884ccf765957b87b1",
+    "gzip_bytes": 3944
+  },
+  "independent/review.log": {
+    "original": "/private/tmp/bex-w8-common-export-independent-review-20261101-pvrobfao/review.log",
+    "raw_sha256": "056d8a0fdf932fda9f007d8329c2cbc6948f8688979bb5f48dad41ed4dd3e68c",
+    "raw_bytes": 2312,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/independent/review.log.gz",
+    "gzip_sha256": "eb77ee27662cc9d482013f21599ac186543a157f002598374c863cf9aaac714e",
+    "gzip_bytes": 1121
+  },
+  "independent/review.py": {
+    "original": "/private/tmp/bex-w8-common-export-independent-review-20261101-pvrobfao/review.py",
+    "raw_sha256": "9900d7722c40f49909320cd59504316aa6d93a6a0f20a988cf518e521f294385",
+    "raw_bytes": 9687,
+    "retained": ".pm/w8/m91/evidence/common-artifact-review-20261101/export-review/independent/review.py.gz",
+    "gzip_sha256": "9d1986d273bf467944d5e629b722929ceb0192e6a8a46761e821f9c706e30c73",
+    "gzip_bytes": 3948
+  }
+}

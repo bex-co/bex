@@ -1,0 +1,20 @@
+{
+  "pid": 17741,
+  "pgid": 17741,
+  "argv": [
+    "python3",
+    "-B",
+    "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/common-v11-adapter.py",
+    "review",
+    "--plan",
+    "/private/tmp/bex-w8-common-v11-resource-source-20261101-ipmv7y8i/source/PLAN.json",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--output-root",
+    "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/evidence",
+    "--cache-root",
+    "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/cache",
+    "--layer-workers",
+    "1"
+  ]
+}

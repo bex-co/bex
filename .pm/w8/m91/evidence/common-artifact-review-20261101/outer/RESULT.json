@@ -1,0 +1,22 @@
+{
+  "at": "2026-11-01T02:04:39.843430+00:00",
+  "exit": 0,
+  "stop": null,
+  "seconds": 783.353,
+  "source_unchanged": true,
+  "minimum_free": 2241777664,
+  "peak_owned_bytes": 235617798,
+  "final_observation": {
+    "free": 10615156736,
+    "owned": 235617798,
+    "global_drop": -7989800960,
+    "seconds": 783.3532352501061,
+    "log": 15662
+  },
+  "cancelled_signal": null,
+  "own_group_absent": true,
+  "log_sha256": "14c844f029e0c73f0ce2677e3a21dd3d4c5e23aa7ef6f9bd1cdfe8b9ff70e5bc",
+  "candidate_approved": true,
+  "receipt": "/private/tmp/bex-w8-common-actual-review-run-20261101-qq32k8wf/evidence/native-common-bookworm-99cdc5c5a5b53629e2a98963d43d373511a91c1f/receipt.json",
+  "scope": "Actual complete review only if inherited gates and bounded finish succeed; no production/generated/hosted acceptance"
+}
