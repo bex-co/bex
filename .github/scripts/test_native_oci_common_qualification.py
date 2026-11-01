@@ -1,5 +1,8 @@
 """Local command/source controls only; no images, registry or actual SBOM claim."""
 import argparse
+import base64
+import contextlib
+import io
 import gzip
 import importlib.util
 import json
@@ -830,6 +833,114 @@ pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':
             self.assertIn("            " + literal + "\n", blocks[0])
         self.assertNotIn("fetch-depth:", blocks[0])
         self.assertNotIn("${{", blocks[0])
+
+
+class JobLogDiagnosticsControls(unittest.TestCase):
+    def test_real_failed_pull_bytes_survive_artifact_unavailability_without_image_output(self):
+        real_popen = subprocess.Popen
+        processes = []
+        stdout = "CONTROL stdout 'quoted' café 雪\n".encode() + b'\x00\xff\n'
+        stderr = "CONTROL pull failure 'quoted' café 雪\n".encode() + b'\x00\xfe\n'
+        program = ("import os,sys;assert sys.stdin.buffer.read()==b'';"
+                   "os.write(1,bytes.fromhex(" + repr(stdout.hex()) + "));"
+                   "os.write(2,bytes.fromhex(" + repr(stderr.hex()) + "));sys.exit(17)")
+        class FlushedLog(io.StringIO):
+            flushes = 0
+            def flush(self):
+                self.flushes += 1
+                super().flush()
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = BuildKitBootstrapControls().fixture(directory)
+            log = FlushedLog()
+            def controlled(command, **kwargs):
+                self.assertEqual(command[:6], ['timeout', '--kill-after=10s', '180s', 'docker', 'pull', '--quiet'])
+                self.assertEqual(kwargs['env']['DOCKER_CONFIG'], str(config))
+                self.assertEqual({p.name for p in config.iterdir()}, {'.qualification-owner.json'})
+                self.assertTrue(kwargs['start_new_session'])
+                kwargs['stdin'] = subprocess.DEVNULL
+                process = real_popen([sys.executable, '-c', program], **kwargs)
+                processes.append(process)
+                return process
+            try:
+                with patch.object(qualification, '__file__', str(helper)), \
+                     patch.dict(os.environ, GITHUB_OUTPUT=str(output), CONTROL_PRIVATE_ENV='CONTROL_DO_NOT_PRINT_ENV'), \
+                     patch.object(qualification.subprocess, 'Popen', side_effect=controlled), \
+                     patch.object(qualification.time, 'sleep'), contextlib.redirect_stdout(log):
+                    with self.assertRaisesRegex(RuntimeError, 'all three bounded'):
+                        qualification.bootstrap(root)
+                self.assertEqual(len(processes), 3)
+                self.assertFalse(output.exists())
+                stored = json.loads((root / 'bootstrap.json').read_text())
+                self.assertFalse(stored['image_output_emitted'])
+                lines = log.getvalue().splitlines()
+                self.assertEqual(len(lines), 3)
+                self.assertGreaterEqual(log.flushes, 3)
+                messages = []
+                for number, line in enumerate(lines, 1):
+                    self.assertTrue(line.startswith('BEX_BUILDKIT_PULL_ATTEMPT '))
+                    message = json.loads(line.split(' ', 1)[1])
+                    self.assertEqual(message['attempt'], stored['attempts'][number - 1])
+                    self.assertEqual(message['attempt']['exit_code'], 17)
+                    self.assertEqual(message['attempt']['number'], number)
+                    self.assertTrue(message['attempt']['process_group_absent'])
+                    for label, raw in [('stdout', stdout), ('stderr', stderr)]:
+                        self.assertEqual((root / message['attempt'][label]['path']).read_bytes(), raw)
+                        self.assertEqual(base64.b64decode(message[label + '_base64'], validate=True), raw)
+                        self.assertEqual(message['attempt'][label]['bytes'], len(raw))
+                        self.assertEqual(message['attempt'][label]['sha256'], qualification.hashlib.sha256(raw).hexdigest())
+                    messages.append(message)
+                self.assertNotIn('CONTROL_DO_NOT_PRINT_ENV', log.getvalue())
+                # Simulate an unavailable artifact channel after retaining the
+                # files: exact diagnostic bytes must still exist in joblog alone.
+                for path in root.glob('bootstrap*'):
+                    if path.is_file():path.unlink()
+                self.assertFalse((root / 'bootstrap.json').exists())
+                self.assertEqual([base64.b64decode(m['stderr_base64']) for m in messages], [stderr] * 3)
+                for process in processes:
+                    with self.assertRaises(ProcessLookupError):os.killpg(process.pid, 0)
+            finally:
+                for process in processes:
+                    try:os.killpg(process.pid, qualification.signal.SIGKILL)
+                    except ProcessLookupError:pass
+                    process.wait(timeout=2)
+
+    def test_cleanup_joblog_keeps_fixed_owned_errors_without_auth_content_or_path(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = BuildKitBootstrapControls().fixture(directory)
+            credential = config / 'config.json'
+            credential.write_text('{"CONTROL_ONLY_PRIVATE_AUTH":"NEVER_PRINT_AUTH_CONTENT"}')
+            credential.chmod(0o600)
+            calls = []
+            def controlled(argv, **kwargs):
+                calls.append(argv)
+                self.assertEqual(kwargs['env']['DOCKER_CONFIG'], str(config))
+                args = argv[1:]
+                if args[:2] == ['buildx', 'rm']:
+                    self.assertEqual(args, ['buildx', 'rm', inputs['owner']])
+                    return subprocess.CompletedProcess(argv, 7, "CONTROL builder 'missing' 雪\n", 'CONTROL fixed cleanup error\n')
+                if args[:2] == ['ps', '-aq'] or args[:3] == ['image', 'ls', '-q']:
+                    self.assertEqual(args[-2:], ['--filter', 'label=' + qualification.LABEL + '=' + inputs['owner']])
+                    return subprocess.CompletedProcess(argv, 0, '', '')
+                self.assertEqual(args, ['logout', 'ghcr.io'])
+                self.assertIs(kwargs['stdout'], subprocess.DEVNULL)
+                self.assertIs(kwargs['stderr'], subprocess.DEVNULL)
+                return subprocess.CompletedProcess(argv, 0, None, None)
+            log = io.StringIO()
+            with patch.object(qualification.subprocess, 'run', side_effect=controlled), contextlib.redirect_stdout(log):
+                with self.assertRaisesRegex(RuntimeError, 'owned resource cleanup failed'):
+                    qualification.cleanup(root)
+            self.assertFalse(config.exists())
+            line = log.getvalue().strip()
+            self.assertTrue(line.startswith('BEX_NATIVE_CLEANUP_RESULT '))
+            message = json.loads(line.split(' ', 1)[1])
+            self.assertEqual(message['owner'], inputs['owner'])
+            self.assertEqual(message['operations'][0], {'resource': 'builder', 'identity': inputs['owner'],
+                'exit_code': 7, 'stdout': "CONTROL builder 'missing' 雪\n", 'stderr': 'CONTROL fixed cleanup error\n'})
+            self.assertEqual(message['operations'][-1], {'resource': 'docker-auth', 'exit_code': 0,
+                'logout_exit_code': 0, 'removed': True})
+            self.assertNotIn(str(config), log.getvalue())
+            self.assertNotIn('NEVER_PRINT_AUTH_CONTENT', log.getvalue())
+            self.assertEqual(json.loads((root / 'cleanup.json').read_text())['operations'][0], message['operations'][0])
 
 
 class ProfileRoutingControls(unittest.TestCase):
