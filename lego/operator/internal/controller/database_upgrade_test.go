@@ -20,6 +20,8 @@ import (
 	"context"
 	"testing"
 
+	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
@@ -71,7 +73,7 @@ func TestCNPGConditionMessagePreservesUpgradeFailure(t *testing.T) {
 	}
 }
 
-func newMajorUpgradeReconciler(t *testing.T, phase string) (*DatabaseReconciler, client.Client, reconcile.Request) {
+func newMajorUpgradeReconciler(t *testing.T, phase string, extra ...client.Object) (*DatabaseReconciler, client.Client, reconcile.Request) {
 	t.Helper()
 	scheme := runtime.NewScheme()
 	if err := clientgoscheme.AddToScheme(scheme); err != nil {
@@ -114,7 +116,7 @@ func newMajorUpgradeReconciler(t *testing.T, phase string) (*DatabaseReconciler,
 		},
 	}}
 	cluster.SetGroupVersionKind(cnpgClusterGVK)
-	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(db, cluster).
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(append([]client.Object{db, cluster}, extra...)...).
 		WithStatusSubresource(&appv1alpha1.Database{}).Build()
 	return &DatabaseReconciler{Client: cl, Scheme: scheme, Backup: testStore}, cl, reconcile.Request{
 		NamespacedName: types.NamespacedName{Name: db.Name, Namespace: db.Namespace},
@@ -183,6 +185,61 @@ func TestReconcileMajorVersionUpgradeLifecycle(t *testing.T) {
 	backup.SetGroupVersionKind(cnpgBackupGVK)
 	if err := cl.Get(ctx, types.NamespacedName{Name: "upgrade-db-post-upgrade-pg17", Namespace: "default"}, backup); err != nil {
 		t.Fatalf("post-upgrade base backup: %v", err)
+	}
+}
+
+// majorUpgradeJob is CNPG's pg_upgrade Job for the helper's cluster, as CNPG
+// 1.30 labels it, in the given terminal state (none = still running).
+func majorUpgradeJob(failed bool) *batchv1.Job {
+	job := &batchv1.Job{ObjectMeta: metav1.ObjectMeta{
+		Name: "upgrade-db-1-major-upgrade", Namespace: "default",
+		Labels: map[string]string{"cnpg.io/cluster": "upgrade-db", "cnpg.io/jobRole": "major-upgrade"},
+	}}
+	if failed {
+		job.Status.Conditions = []batchv1.JobCondition{{
+			Type: batchv1.JobFailed, Status: corev1.ConditionTrue, Reason: "BackoffLimitExceeded",
+			Message: "Job has reached the specified backoff limit",
+		}}
+	}
+	return job
+}
+
+// TestFailedUpgradeJobBehindARunningPhaseRollsBack (w4/m215): CNPG 1.30 keeps
+// "Upgrading Postgres major version" after pg_upgrade refuses; only its Job
+// reports Failed. The failed branch must still revert, or the database reads
+// Upgrading forever with no server running.
+func TestFailedUpgradeJobBehindARunningPhaseRollsBack(t *testing.T) {
+	ctx := context.Background()
+	r, cl, req := newMajorUpgradeReconciler(t, "Upgrading Postgres major version", majorUpgradeJob(true))
+	if _, err := r.Reconcile(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+	var db appv1alpha1.Database
+	if err := cl.Get(ctx, req.NamespacedName, &db); err != nil {
+		t.Fatal(err)
+	}
+	if db.Spec.Version != "16" || db.Status.Phase != appv1alpha1.DBPhaseFailed {
+		t.Fatalf("spec.version %q phase %q, want 16 Failed", db.Spec.Version, db.Status.Phase)
+	}
+	ready := meta.FindStatusCondition(db.Status.Conditions, appv1alpha1.ConditionReady)
+	if ready == nil || ready.Reason != appv1alpha1.ReasonMajorVersionUpgradeFailed {
+		t.Fatalf("Ready = %+v, want MajorVersionUpgradeFailed", ready)
+	}
+}
+
+// A Job still running behind the same phase is an upgrade in progress.
+func TestRunningUpgradeJobStaysUpgrading(t *testing.T) {
+	ctx := context.Background()
+	r, cl, req := newMajorUpgradeReconciler(t, "Upgrading Postgres major version", majorUpgradeJob(false))
+	if _, err := r.Reconcile(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+	var db appv1alpha1.Database
+	if err := cl.Get(ctx, req.NamespacedName, &db); err != nil {
+		t.Fatal(err)
+	}
+	if db.Spec.Version != "17" || db.Status.Phase != appv1alpha1.DBPhaseUpgrading {
+		t.Fatalf("spec.version %q phase %q, want 17 Upgrading", db.Spec.Version, db.Status.Phase)
 	}
 }
 
