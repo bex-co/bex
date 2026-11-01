@@ -1,0 +1,21 @@
+{
+  "at": "2026-11-01T19:09:23.289484+00:00",
+  "state": "OWN_PROPOSAL_RESTORED_WITHOUT_COMMIT",
+  "reason": "A newer real peer26b common workflow run41289957408/source26b983bd5e27304511b92cac7bc00548df08d673 completed success. Its exact full job results are being inspected before deciding newqualification work; preserve current source for possible valid baseline.",
+  "source_files": [
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "before_sha256": "e56abb9c3518b294301d861bcddf7994f924a7d8f397f087808988d3dd613b3f",
+      "after_sha256": "bfef5f3e0531f26507ff18a0eb0f99bd79dcbc4a58c3de963e2ded485ac1d886",
+      "bytes": 19969
+    },
+    {
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "before_sha256": "728e72e6a1e21b175fd0007dfb388f513c9f5c7b53ef4fd58c353baad2596b0b",
+      "after_sha256": "c2e23ae23fff2297b92dfbc0cad95912f66fe559fa47ae63d4c39a002424b329",
+      "bytes": 121974
+    }
+  ],
+  "foreign_sum_sha256": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6",
+  "no_reset_no_foreign_edits": true
+}

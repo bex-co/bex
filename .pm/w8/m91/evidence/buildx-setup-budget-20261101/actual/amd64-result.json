@@ -1,0 +1,167 @@
+{
+  "architecture": "amd64",
+  "job_id": 124791012251,
+  "source": "3d353cb976ff01c31b78fc469b3fc3dbf3203a95",
+  "status": "completed",
+  "conclusion": "failure",
+  "started_at": "2026-11-01T09:22:39Z",
+  "completed_at": "2026-11-01T09:49:59Z",
+  "selected_steps": [
+    {
+      "number": 6,
+      "name": "pre-pull the pinned BuildKit image with bounded retries",
+      "started_at": "2026-11-01T08:38:27Z",
+      "completed_at": "2026-11-01T08:44:12Z",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 8,
+      "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+      "started_at": "2026-11-01T08:44:14Z",
+      "completed_at": "2026-11-01T08:49:14Z",
+      "status": "completed",
+      "conclusion": "failure"
+    },
+    {
+      "number": 9,
+      "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+      "started_at": "2026-11-01T08:49:14Z",
+      "completed_at": "2026-11-01T08:49:14Z",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 10,
+      "name": "actual generated offline builds, original replays and exact-default SPDX",
+      "started_at": "2026-11-01T08:49:14Z",
+      "completed_at": "2026-11-01T08:49:14Z",
+      "status": "completed",
+      "conclusion": "skipped"
+    },
+    {
+      "number": 11,
+      "name": "record capacity observations before owned cleanup",
+      "started_at": "2026-11-01T08:49:14Z",
+      "completed_at": "2026-11-01T08:49:14Z",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 12,
+      "name": "remove only this job's labeled resources, exact builder and credentials",
+      "started_at": "2026-11-01T08:49:14Z",
+      "completed_at": "2026-11-01T08:49:14Z",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 13,
+      "name": "hash retained successes and failures",
+      "started_at": "2026-11-01T08:49:14Z",
+      "completed_at": "2026-11-01T08:49:14Z",
+      "status": "completed",
+      "conclusion": "success"
+    },
+    {
+      "number": 14,
+      "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+      "started_at": "2026-11-01T08:49:14Z",
+      "completed_at": "2026-11-01T08:49:35Z",
+      "status": "completed",
+      "conclusion": "success"
+    }
+  ],
+  "actual_go_case_results": [],
+  "verified_full_pull_records": [
+    {
+      "attempt": {
+        "number": 1,
+        "started_at": "2026-11-01T08:38:27.359551+00:00",
+        "finished_at": "2026-11-01T08:41:27.361029+00:00",
+        "exit_code": 124,
+        "bound": null,
+        "cancel_signal": null,
+        "direct_child_reaped": true,
+        "process_group_absent": true,
+        "timeout_exit": true,
+        "stdout": {
+          "path": "bootstrap-1.stdout.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        },
+        "stderr": {
+          "path": "bootstrap-1.stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+      "command": [
+        "timeout",
+        "--kill-after=10s",
+        "180s",
+        "docker",
+        "pull",
+        "--quiet",
+        "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
+      ],
+      "owner": "bex-nq-1187c67177624e5985d55d4c"
+    },
+    {
+      "attempt": {
+        "number": 2,
+        "started_at": "2026-11-01T08:41:42.377520+00:00",
+        "finished_at": "2026-11-01T08:44:12.749120+00:00",
+        "exit_code": 0,
+        "bound": null,
+        "cancel_signal": null,
+        "direct_child_reaped": true,
+        "process_group_absent": true,
+        "timeout_exit": false,
+        "stdout": {
+          "path": "bootstrap-2.stdout.log",
+          "bytes": 104,
+          "sha256": "cb4d3b0e70f2d4e52c28206c6c799c01616f7ac12aad9490b930290737cdc621"
+        },
+        "stderr": {
+          "path": "bootstrap-2.stderr.log",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+        }
+      },
+      "image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+      "command": [
+        "timeout",
+        "--kill-after=10s",
+        "180s",
+        "docker",
+        "pull",
+        "--quiet",
+        "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
+      ],
+      "owner": "bex-nq-1187c67177624e5985d55d4c"
+    }
+  ],
+  "cleanup_records": [
+    {
+      "owner": "bex-nq-1187c67177624e5985d55d4c",
+      "operations": [
+        {
+          "resource": "builder",
+          "identity": "bex-nq-1187c67177624e5985d55d4c",
+          "exit_code": 0,
+          "stdout": "",
+          "stderr": "bex-nq-1187c67177624e5985d55d4c removed\n"
+        },
+        {
+          "resource": "docker-auth",
+          "logout_exit_code": 0,
+          "exit_code": 0,
+          "removed": true
+        }
+      ]
+    }
+  ],
+  "underlying_amd64_Buildx_rootcause": "UNKNOWN; outeraction5m timeout during bootingbuildkit, no runtime test ran"
+}

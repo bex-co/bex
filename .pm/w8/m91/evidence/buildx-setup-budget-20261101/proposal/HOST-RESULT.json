@@ -1,0 +1,14 @@
+{
+  "command": [
+    "/opt/homebrew/bin/python3.14",
+    "-B",
+    "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0/host-tests.py"
+  ],
+  "at": "2026-11-01T19:04:22.316348+00:00",
+  "ended": "2026-11-01T19:04:32.334441+00:00",
+  "seconds": 10.018,
+  "exit_code": 0,
+  "stop": null,
+  "interpreter": "Python 3.14.3",
+  "test_count": 83
+}

@@ -1,0 +1,22 @@
+{
+  "at": "2026-11-01T19:07:36.295074+00:00",
+  "state": "APPLIED_ROOT_REVIEW_PASS",
+  "source_proposal": "/private/tmp/bex-w8-common-buildx-setup-budget-source-20261101-yal9jba0",
+  "source_files": [
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "before_sha256": "e56abb9c3518b294301d861bcddf7994f924a7d8f397f087808988d3dd613b3f",
+      "after_sha256": "bfef5f3e0531f26507ff18a0eb0f99bd79dcbc4a58c3de963e2ded485ac1d886",
+      "bytes": 19969
+    },
+    {
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "before_sha256": "728e72e6a1e21b175fd0007dfb388f513c9f5c7b53ef4fd58c353baad2596b0b",
+      "after_sha256": "c2e23ae23fff2297b92dfbc0cad95912f66fe559fa47ae63d4c39a002424b329",
+      "bytes": 121974
+    }
+  ],
+  "source_semantics": "Both existing setup-buildx bounds5to10minutes; existing assertion updated; Root only reworded two comments. All commands, pins, prepull bounds, runtime/job limits, secretless peer policy unchanged.",
+  "validation": "Author existing83controls PASS9.842s+ActionlintPASS; appliedRoot actionlint and gitdiffcheck PASS; no new source logic or runtime tests needed for setup bound.",
+  "foreign_sum_sha256_unchanged": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6"
+}
