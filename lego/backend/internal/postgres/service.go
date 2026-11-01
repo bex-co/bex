@@ -121,15 +121,19 @@ type PostgresView struct {
 	// intentionally asymmetric enableDiskAutoscaling input name.
 	DiskAutoscalingEnabled bool `json:"diskAutoscalingEnabled"`
 
-	// HighAvailabilityEnabled reflects the operator's observed state (≥2 ready
-	// instances) on GET. A PATCH/update that sets enableHighAvailability echoes
-	// the requested value on that response so CLI diffs are meaningful (w5/065);
-	// a subsequent GET still reports observed readiness.
+	// HighAvailabilityEnabled is the configured value (spec.highAvailability),
+	// as on Render: its create response already says true while the database
+	// is still `creating` (checked live 2026-11-01, w2/059), so a request is
+	// never reported as ignored while the standby comes up.
 	HighAvailabilityEnabled bool `json:"highAvailabilityEnabled"`
-	// HighAvailabilityRequested is spec.highAvailability — the intent a
-	// standby is converging to. GraphQL only (the dashboard's HA switch,
-	// w2/m171); Render's object has no such field, so REST and MCP omit it.
+	// HighAvailabilityRequested mirrors HighAvailabilityEnabled. GraphQL only,
+	// kept for clients written when the enabled field reported observed state
+	// (w2/m171).
 	HighAvailabilityRequested bool `json:"-"`
+	// HighAvailabilityReady is the operator's observed state: HA on and two
+	// instances ready. GraphQL only (bex extension); the dashboard shows a
+	// standby still being added from it. Render's object has no such field.
+	HighAvailabilityReady bool `json:"-"`
 	// ReadReplicas is the named replica array — each with its host info.
 	// Password is not included here; use PostgresConnectionInfo for credentials.
 	// Render's readReplicas: [{name, connectionInfo}]. Required in Render's
@@ -579,8 +583,9 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		DatabaseUser:              dbUser,
 		DiskSizeGB:                DatabaseStorageHighWater(d),
 		DiskAutoscalingEnabled:    d.Spec.DiskAutoscaling,
-		HighAvailabilityEnabled:   d.Status.HighAvailabilityEnabled,
+		HighAvailabilityEnabled:   d.Spec.HighAvailability,
 		HighAvailabilityRequested: d.Spec.HighAvailability,
+		HighAvailabilityReady:     d.Status.HighAvailabilityEnabled,
 		ReadReplicas:              replicas,
 		Suspended:                 core.SuspendedEnum(d.Spec.Suspended),
 		Suspenders:                suspenders,
@@ -1696,12 +1701,11 @@ func (s *Service) updatePostgres(ctx context.Context, name string, patch Postgre
 	if !dryRun {
 		s.recordUpdateEffects(ctx, d, before)
 	}
-	// PATCH responses echo desired highAvailabilityEnabled when the caller just
-	// set it (w5/065): GET stays observed (≥2 ready instances), but the update
-	// response must match sibling fields (diskSizeGB, connectionPool) so the
-	// CLI's before/after diff is not always {}.
+	// A dry run returns the view of the unchanged CR, so echo the requested
+	// value there too: the CLI's before/after diff must show it (w5/065).
 	if patch.EnableHighAvailability != nil {
 		view.HighAvailabilityEnabled = *patch.EnableHighAvailability
+		view.HighAvailabilityRequested = *patch.EnableHighAvailability
 	}
 	return view, nil
 }
