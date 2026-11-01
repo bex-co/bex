@@ -1,0 +1,42 @@
+{
+  "CUSTODY.json": {
+    "bytes": 2391,
+    "sha256": "95a22b456ec3469479270619cd493580e70acd50db8728f27047cc9152f8bdc3"
+  },
+  "RESULT.json.gz": {
+    "bytes": 2029,
+    "sha256": "17b6f60fad0d5ad1aec97edc8d54e7615f9f113548f4585620aaa4143db23dc6"
+  },
+  "SCOPE.json.gz": {
+    "bytes": 1922,
+    "sha256": "5f4501d7f3dc0f377ab0bc82e9f1767712ae395ae49b68997e636678536c6c7b"
+  },
+  "build-lint-PROCESS.json.gz": {
+    "bytes": 125,
+    "sha256": "6ec94f64c2e560668a38d0bf1d7902ef045bdec8254d3050165710793360aa48"
+  },
+  "build-lint-RESULT.json.gz": {
+    "bytes": 199,
+    "sha256": "ce5f244286f94313e37a06940487727efacc163ba379e3c92972ed4cd36221be"
+  },
+  "build-lint.log.gz": {
+    "bytes": 30,
+    "sha256": "bafcb04d67f6157ff3d4a1fdf228afd2df6cc6d786c61642c1125b1fe879e728"
+  },
+  "build-unit-PROCESS.json.gz": {
+    "bytes": 104,
+    "sha256": "f4e567ea440ec80f13404263b09de4c1062f558a20822e9ddb538940f00c4ce9"
+  },
+  "build-unit-RESULT.json.gz": {
+    "bytes": 183,
+    "sha256": "44c3807b0bcd13dd23b3452b027003903d564e71471e9be6137874d83f9d538a"
+  },
+  "build-unit.log.gz": {
+    "bytes": 80,
+    "sha256": "d8753c8473c290b60ffacfbccfeb2c88349b0e122379f055bce68c2ae916ad37"
+  },
+  "run.py.gz": {
+    "bytes": 2086,
+    "sha256": "4671abe90a4f98e9bacaf0b7a051b7fe2ef98db1ca5fa4825d51769934c2a31e"
+  }
+}

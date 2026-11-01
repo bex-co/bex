@@ -1,6 +1,6 @@
 # w8 · m83 — Supply automatic compression for web responses
 
-**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** in progress — t001–t005 done 2026-10-31 (gzip-only Traefik `compress`, ADR018 signed differences); t006 live closeout waits for the operator deploy and a Free web-service window in bex-canary (Free hours reset 2026-11-01 00:00 UTC)
+**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** blocked — t001–t005 done; final live runner preparation passes independent review, but t006 requires a qualified deployed operator containing a154 and fresh source-bound signed Ready evidence. The fix-containing platform build is still running; actual legal Free allowance remains to be checked.
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | [t003](done/t003.md) | Render parity — **DONE** | 20m | t002 |
 | [t004](done/t004.md) | Simplify — **DONE** | 10m | t003 |
 | [t005](done/t005.md) | Test coverage — **DONE** | 35m | t003 |
-| [t006](t006.md) | Closeout | 20m | t004, t005 |
+| [t006](t006.md) | Closeout — **BLOCKED (qualified rollout)** | 20m | t004, t005 |
 
 Six tasks,160m total.
 
@@ -52,3 +52,10 @@ Six tasks,160m total.
 ## Actual rollout gate — 2026-10-31 (`/loopx w8`)
 
 [Fresh inventory, actual signature and source verification](evidence/readiness-source-gate-20261031/README.md) establish healthy operator/API rollouts but reject the deployed operator: signed source d147703d predates a154 and both required critical-file checks fail. The one inventory run41251157373 performed no rollout or fixture action. Release triage finds a still-pending fix-containing pipeline and no qualified candidate from the two inspected canceled runs. t006 remains open; no tenant fixture or live PASS is claimed. The private plan's literal proxy-version precondition was corrected to UNKNOWN as a documented limit, preserving every actual wire/stream and signed-source requirement.
+
+
+## Final runner and remaining rollout gate — 2026-11-01
+
+[Final source preparation](evidence/live-transport-source-20261101/README.md) passes57 host controls, three syntax checks and independent retained-proof counterexamples. The original HTTP/stream/source/cleanup contract remains unchanged. All implementable runner corrections are complete; this is not live acceptance.
+
+The latest fix-containing platform run41254794386/source818 has passed the four suites and pre-build gates but is still building images. The actual retained runtime observation lacks a154. Resume t006 after the platform pipeline completes a qualified rollout, then obtain fresh strict operator/API readiness and actual current legal Free allowance before either exact-owned fixture. No user decision or proxy-version choice is needed.

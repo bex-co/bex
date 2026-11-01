@@ -1,0 +1,22 @@
+# m83 live transport source and correction history
+
+This capsule preserves source preparation only. No actual tenant login, API request, native deployment or hosted acceptance was executed with these programs. The deployed operator source check remains inadmissible; [actual source evidence](../readiness-source-gate-20261031/README.md) records the separate rollout gate.
+
+The original plan exposed two producer/oracle defects: an extra emitted heredoc newline and incomplete quota validation. V1 corrects those boundaries while preserving the frozen application bytes, adds the concrete bounded transport, and passes34 host tests plus three Node syntax checks. Independent review then reproduced three further defects: credential parser error text could enter evidence, partial relay startup could leak its listener, and API readiness incorrectly required the operator's image.
+
+V2 uses safe phase/class credential errors, suppresses unparseable rotated-config output while preserving private reconciliation material, closes partially started relay resources without shutdown-before-start deadlock, and validates a separately approved signed API image. The operator retains the required compression ancestry and critical-source checks. All43 host tests and three syntax checks pass. Independent V2 review confirms the credential and relay corrections and reruns all43 tests and three syntax checks. It reproduces one remaining proof-binding defect for both operator and API: the retained receipt bytes are hashed without matching their actual signed image/source and strict command to the claimed approval. V3 must bind these fields and retained inventory facts before live use. Test results do not grant live admission.
+
+The planned actual run retains both genuine clients, once-only create intents, first-deployment source/artifacts,38 HTTP checks, six finite stream checks, a finite upgrade, complete baseline/typed quota accounting and exact owned cleanup/logout. The actual proxy version stays UNKNOWN unless measured, with no invented literal-version prerequisite. Every functional and source requirement remains.
+
+[CUSTODY.json](CUSTODY.json) binds each lossless gzip payload to its private raw input. Histories and synthetic counterexample files contain controlled test credentials only; actual credentials were never acquired. No production pin or runtime setting changed.
+
+
+## Final source review
+
+V3 binds both claimed carrier images/sources to the retained strict command, tool, successful result and actual signature output. It also binds normalized operator/API Deployments and every active pod to the complete retained inventory, successful observer run/job/step, exact log extraction and conservative observation time. A narrow follow-on checks that both observer metadata records match the workflow's actual main-branch contract. This is a consistency addition; the earlier preparation helper also omitted that explicit branch comparison. No API compression-ancestry or literal proxy-version requirement was added.
+
+Final independent review is CLEAN for source preparation: all57 host controls and three Node syntax checks pass. Fifteen additional retained-proof controls preserve the expected12 rejected relabel/staleness cases and three historical custody-only positives. Those positives do not establish current readiness or m83 acceptance. All earlier frozen generations and their findings remain intact.
+
+The latest fix-containing platform run [41254794386](https://github.com/bex-co/bex/actions/runs/41254794386), source `818ed42189624f421e190424529afc031aef72d7`, has passed all four suites, secret scan and supersession gate; its image build is still running, with the observed build-push step starting00:59:40UTC. It has no completed qualified deployment in this snapshot. The older successful ea5a pipeline predates the required fix. A newly completed rollout followed by fresh source-bound signed operator/API readiness and actual legal Free preflight is required before tenant fixtures. No login or fixture was started.
+
+Full actual inventory and raw job-log inputs remain private with exact hashes in [PRIVATE-INPUT-CUSTODY.json](PRIVATE-INPUT-CUSTODY.json). The source capsules and independent reviews retain their complete manifest identities; the public subset deliberately omits those raw inputs. Original actual platform projections remain in the separate rollout-source capsule.

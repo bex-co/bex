@@ -1,0 +1,50 @@
+{
+  "v3/binding-context/actual-current-inventory.json": {
+    "source": "/private/tmp/bex-w8-m83-live-transport-v3-source-20261101-zfoass8w/binding-context/actual-current-inventory.json",
+    "bytes": 8981,
+    "sha256": "4b3ac86c33429ce89ffb535c017712d64bf2b5c22c03dc3078cbbbb592f25d87",
+    "reason": "Full actual inventory/job log retained privately; projected platform evidence and exact hashes are public."
+  },
+  "v3/binding-context/actual-current-job.log": {
+    "source": "/private/tmp/bex-w8-m83-live-transport-v3-source-20261101-zfoass8w/binding-context/actual-current-job.log",
+    "bytes": 39222,
+    "sha256": "23ea6f7427b9572c2a55d0654b1a152d3422d882a018f626274fe344a3ef591d",
+    "reason": "Full actual inventory/job log retained privately; projected platform evidence and exact hashes are public."
+  },
+  "v3-independent/work/binding-context/actual-current-inventory.json": {
+    "source": "/private/tmp/bex-w8-m83-v3-independent-20261101-0hr5w1np/work/binding-context/actual-current-inventory.json",
+    "bytes": 8981,
+    "sha256": "4b3ac86c33429ce89ffb535c017712d64bf2b5c22c03dc3078cbbbb592f25d87",
+    "reason": "Full actual inventory/job log retained privately; projected platform evidence and exact hashes are public."
+  },
+  "v3-independent/work/binding-context/actual-current-job.log": {
+    "source": "/private/tmp/bex-w8-m83-v3-independent-20261101-0hr5w1np/work/binding-context/actual-current-job.log",
+    "bytes": 39222,
+    "sha256": "23ea6f7427b9572c2a55d0654b1a152d3422d882a018f626274fe344a3ef591d",
+    "reason": "Full actual inventory/job log retained privately; projected platform evidence and exact hashes are public."
+  },
+  "v3-main/binding-context/actual-current-inventory.json": {
+    "source": "/private/tmp/bex-w8-m83-live-transport-v3-main-source-20261101-9b2_pe4q/binding-context/actual-current-inventory.json",
+    "bytes": 8981,
+    "sha256": "4b3ac86c33429ce89ffb535c017712d64bf2b5c22c03dc3078cbbbb592f25d87",
+    "reason": "Full actual inventory/job log retained privately; projected platform evidence and exact hashes are public."
+  },
+  "v3-main/binding-context/actual-current-job.log": {
+    "source": "/private/tmp/bex-w8-m83-live-transport-v3-main-source-20261101-9b2_pe4q/binding-context/actual-current-job.log",
+    "bytes": 39222,
+    "sha256": "23ea6f7427b9572c2a55d0654b1a152d3422d882a018f626274fe344a3ef591d",
+    "reason": "Full actual inventory/job log retained privately; projected platform evidence and exact hashes are public."
+  },
+  "v3-main-independent/work/binding-context/actual-current-inventory.json": {
+    "source": "/private/tmp/bex-w8-m83-v3-main-independent-20261101-qjbz13qb/work/binding-context/actual-current-inventory.json",
+    "bytes": 8981,
+    "sha256": "4b3ac86c33429ce89ffb535c017712d64bf2b5c22c03dc3078cbbbb592f25d87",
+    "reason": "Full actual inventory/job log retained privately; projected platform evidence and exact hashes are public."
+  },
+  "v3-main-independent/work/binding-context/actual-current-job.log": {
+    "source": "/private/tmp/bex-w8-m83-v3-main-independent-20261101-qjbz13qb/work/binding-context/actual-current-job.log",
+    "bytes": 39222,
+    "sha256": "23ea6f7427b9572c2a55d0654b1a152d3422d882a018f626274fe344a3ef591d",
+    "reason": "Full actual inventory/job log retained privately; projected platform evidence and exact hashes are public."
+  }
+}
