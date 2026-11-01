@@ -1,17 +1,17 @@
 # w4 · m215 — Keep accepted Postgres upgrades non-Ready
 
-**Worker:** worker4 **Goal:** An accepted major upgrade never returns to Available before the target major is healthy, and the dashboard follows its progress without a reload. **Status:** todo（2026-10-31 解除阻塞；已完成任务保持 DONE，详见文末“解除阻塞记录”）
+**Worker:** worker4 **Goal:** An accepted major upgrade never returns to Available before the target major is healthy, and the dashboard follows its progress without a reload. **Status:** done (2026-10-31: isolated controls pass; CNPG 1.30 failed-upgrade detection fixed)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Hold readiness while an accepted major upgrade awaits CNPG acknowledgement — **DONE** | 45m | — |
-| t002 | Replay the native upgrade status sequence and recovery controls | 35m | t001 |
+| t002 | Replay the native upgrade status sequence and recovery controls — **DONE** | 35m | t001 |
 | t003 | Render parity — **DONE** | 15m | t002 |
 | t004 | Simplify — **DONE** | 10m | t003 |
 | t005 | Test coverage — **DONE** | 25m | t003 |
-| t006 | Closeout | 10m | t004, t005 |
+| t006 | Closeout — **DONE** | 10m | t004, t005 |
 
 Total: **140m, 6 tasks**. [Researched finding](finding.md), [durable observations](evidence.json), [isolated diagnostic](diagnostic.go.txt), [diagnostic output](diagnostic.log.txt).
 
