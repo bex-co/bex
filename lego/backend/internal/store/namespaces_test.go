@@ -255,10 +255,10 @@ func TestResourceQuotaCarriesStoragePVCandLBCaps(t *testing.T) {
 		wantStorage string
 		wantPVCs    int64
 	}{
-		// The plan budget (hobby 120Gi / 8: a couple of default 10 GB disks,
-		// ADR082 D10; paid 5Ti / 200) plus room for every datastore the count
-		// caps allow at its largest shape (w2/056): 1875Gi / 200.
-		{free.ID, "1995Gi", 208},
+		// The plan budget (5Ti / 200 on every plan since w2/062; Hobby had
+		// 120Gi / 8) plus room for every datastore the count caps allow at its
+		// largest shape (w2/056): 1875Gi / 200.
+		{free.ID, "6995Gi", 400},
 		{paid.ID, "6995Gi", 400},
 	} {
 		q := quotaFor(tc.nsID)
