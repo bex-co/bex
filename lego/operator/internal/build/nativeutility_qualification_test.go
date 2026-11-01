@@ -137,6 +137,22 @@ func (d nativeUtilityDocker) buildArgs(extra []string, source string, load bool)
 	return append(append(args, extra...), source)
 }
 
+// prerequisiteBuildArgs is buildArgs for the one export that fetches test
+// prerequisites. A build-level --network none also binds every
+// RUN --network=default, so the wheel download could never resolve a host;
+// this build's default network is the daemon's, and every RUN that must stay
+// offline names --network=none itself.
+func (d nativeUtilityDocker) prerequisiteBuildArgs(extra []string, source string) []string {
+	args := d.buildArgs(extra, source, false)
+	for i := range args[:len(args)-1] {
+		if args[i] == "--network" && args[i+1] == "none" {
+			args[i+1] = "default"
+			break
+		}
+	}
+	return args
+}
+
 func (d nativeUtilityDocker) runImage(t *testing.T, tc nativeUtilityCase, tag, evidence string, prerequisites bool) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Minute)
@@ -229,7 +245,7 @@ func nativeUtilityExportWheels(t *testing.T, d nativeUtilityDocker, prepared, bu
 	wheels := filepath.Join(evidence, "prepared-wheels")
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Minute)
 	defer cancel()
-	args := d.buildArgs([]string{"--file", recipePath, "--secret", "id=render-env,src=" + bundle, "--output", "type=local,dest=" + wheels}, source, false)
+	args := d.prerequisiteBuildArgs([]string{"--file", recipePath, "--secret", "id=render-env,src=" + bundle, "--output", "type=local,dest=" + wheels}, source)
 	command := exec.CommandContext(ctx, "docker", args...)
 	log, err := command.CombinedOutput()
 	must(t, os.WriteFile(filepath.Join(evidence, "prerequisites.log"), log, 0o600))
@@ -280,8 +296,16 @@ func TestNativeUtilityBuildUsesExplicitBuilderPlatformAndOwner(t *testing.T) {
 	if !slices.Equal(args[:7], []string{"buildx", "build", "--builder", d.builder, "--platform", d.platform, "--load"}) || !slices.Contains(args, d.label()) {
 		t.Fatalf("build escaped explicit builder/platform/owner: %v", args)
 	}
-	if slices.Contains(d.buildArgs([]string{"--output", "type=local,dest=wheels"}, "source", false), "--load") {
+	prerequisites := d.prerequisiteBuildArgs([]string{"--output", "type=local,dest=wheels"}, "source")
+	if slices.Contains(prerequisites, "--load") {
 		t.Fatal("prerequisite export loaded an unnecessary image")
+	}
+	// Only the prerequisite export may reach the network; image builds stay offline.
+	if i := slices.Index(prerequisites, "--network"); i < 0 || prerequisites[i+1] != "default" {
+		t.Fatalf("prerequisite export cannot fetch its wheels: %v", prerequisites)
+	}
+	if i := slices.Index(args, "--network"); i < 0 || args[i+1] != "none" {
+		t.Fatalf("image build left the network open: %v", args)
 	}
 }
 
