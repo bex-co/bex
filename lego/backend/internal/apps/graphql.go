@@ -810,7 +810,7 @@ var serverGQLType = graphql.NewObject(graphql.ObjectConfig{
 var customDomainGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "CustomDomain",
 	Fields: graphql.Fields{
-		"id":                 gqlutil.StrField(func(d DomainView) any { return d.Name }),
+		"id":                 gqlutil.StrField(func(d DomainView) any { return d.ID }),
 		"name":               gqlutil.StrField(func(d DomainView) any { return d.Name }),
 		"domainType":         gqlutil.StrField(func(d DomainView) any { return d.DomainType }),
 		"verificationStatus": gqlutil.StrField(func(d DomainView) any { return d.VerificationStatus }),
