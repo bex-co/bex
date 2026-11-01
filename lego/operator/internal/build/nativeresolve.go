@@ -198,9 +198,11 @@ func rewriteNativePrimaryBase(dockerfile, runtime string, choice NativeChoice) (
 		return "", err
 	}
 	if lines != "" {
-		return afterNativeBase(rewritten, choice.Image, lines)
+		if rewritten, err = afterNativeBase(rewritten, choice.Image, lines); err != nil {
+			return "", err
+		}
 	}
-	return rewritten, nil
+	return prependNativeRuntimeStage(rewritten, choice.Image, nativeLegacyPnpmStages())
 }
 
 // addNativeBun copies the chosen Bun binary into the toolchain image right

@@ -166,6 +166,12 @@ func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, runti
 	if err != nil {
 		return NativeChoice{}, "", err
 	}
+	// The caller prepends primaryStage before the final base; a Node 14/16
+	// companion's standalone pnpm stages ride with it (w8/226).
+	legacyPnpm := ""
+	if runtime == nativeNodeRuntime && nativeLegacyPnpmLine(choice.Line) {
+		legacyPnpm = nativeLegacyPnpmStages()
+	}
 	if nativeCommonBase != "" {
 		pinned, err := pinNativePrimary(ctx, exact, runtime, choice)
 		if err != nil {
@@ -174,10 +180,12 @@ func resolveNativeCompanion(ctx context.Context, exact ExactImageResolver, runti
 		if runtime == nativeRubyRuntime {
 			return pinned, commonNativeRubyToolLines(pinned), nil
 		}
+		pinned.primaryStage += legacyPnpm
 		return pinned, commonNativeJSToolLines(pinned), nil
 	}
 	if runtime == nativeRubyRuntime {
 		return choice, nativeRubyToolLines(choice.Image), nil
 	}
+	choice.primaryStage += legacyPnpm
 	return choice, nativeJSToolLines(choice.Image, choice.Line), nil
 }

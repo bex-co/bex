@@ -86,11 +86,29 @@ func nativePnpmFor(line string) string {
 	return nativePnpmInstall()
 }
 
-// nativeLegacyPnpmInstall puts the standalone under /opt/bex/pnpm and fronts
-// it with launchers on the image PATH where the package would link pnpm and
-// pnpx. The architecture comes from dpkg, not a TARGETARCH build ARG, which
-// would reach the authored build's environment. Two things the JavaScript
-// package does on its own the launcher restores for the standalone:
+// nativeLegacyPnpmStages fetches the standalone the way nativeStaticTools
+// fetches Hugo: each architecture's tarball is an ADD --checksum (fetched by
+// BuildKit, so it needs no network inside the build and is stored once), only
+// the build platform's (TARGETARCH) is reached, and the pinned busybox unpacks
+// just the executable. Builders are amd64 or arm64 only; another TARGETARCH
+// names no stage and fails the build.
+func nativeLegacyPnpmStages() string {
+	tarball := func(arch string) string {
+		return "https://registry.npmjs.org/@pnpm/linux-" + arch + "/-/linux-" + arch + "-" + nativePnpm.version + ".tgz"
+	}
+	return "FROM scratch AS bex-pnpm-amd64\n" +
+		"ADD --checksum=" + nativeLegacyPnpm.amd64 + " " + tarball("x64") + " /pnpm.tgz\n" +
+		"FROM scratch AS bex-pnpm-arm64\n" +
+		"ADD --checksum=" + nativeLegacyPnpm.arm64 + " " + tarball("arm64") + " /pnpm.tgz\n" +
+		"FROM bex-pnpm-${TARGETARCH} AS bex-pnpm-tarball\n" +
+		"FROM " + nativePreparerImage + " AS bex-pnpm\n" +
+		"RUN --mount=type=bind,from=bex-pnpm-tarball,target=/in mkdir /out && tar -xzof /in/pnpm.tgz -C /out package/pnpm\n"
+}
+
+// nativeLegacyPnpmInstall copies the standalone (nativeLegacyPnpmStages) to
+// /opt/bex/pnpm and fronts it with launchers on the image PATH where the
+// package would link pnpm and pnpx. Two things the JavaScript package does on
+// its own the launcher restores for the standalone:
 //
 //   - Lifecycle scripts get NODE and npm_node_execpath from pnpm's own
 //     executable unless NODE is set, which would point them at the pnpm
@@ -103,15 +121,7 @@ func nativePnpmFor(line string) string {
 //     npm_config_node_gyp naming a real file and otherwise runs the node-gyp
 //     the app's own npm bundles, with the app's node.
 func nativeLegacyPnpmInstall() string {
-	registry := "https://registry.npmjs.org/@pnpm/linux-$arch/-/linux-$arch-" + nativePnpm.version + ".tgz"
-	return "RUN case \"$(dpkg --print-architecture)\" in" +
-		" amd64) arch=x64 sum=" + strings.TrimPrefix(nativeLegacyPnpm.amd64, "sha256:") + " ;;" +
-		" arm64) arch=arm64 sum=" + strings.TrimPrefix(nativeLegacyPnpm.arm64, "sha256:") + " ;;" +
-		" *) echo \"pnpm: no standalone build for $(dpkg --print-architecture)\" >&2; exit 1 ;; esac" +
-		" && mkdir -p /opt/bex/pnpm/bin /opt/bex/pnpm/node-gyp-bin" +
-		" && curl -fsSL --retry 3 -o /opt/bex/pnpm.tgz \"" + registry + "\"" +
-		" && echo \"$sum  /opt/bex/pnpm.tgz\" | sha256sum -c - >/dev/null" +
-		" && tar -xzf /opt/bex/pnpm.tgz -C /opt/bex/pnpm/bin --strip-components=1 --no-same-owner package/pnpm && rm /opt/bex/pnpm.tgz\n" +
+	return "COPY --link --from=bex-pnpm /out/package/pnpm /opt/bex/pnpm/bin/pnpm\n" +
 		"COPY --chmod=755 <<'BEX_PNPM' /usr/local/bin/pnpm\n" +
 		"#!/bin/sh\n" +
 		"if [ -z \"${NODE+x}\" ] && node=$(command -v node); then export NODE=\"$node\"; fi\n" +
