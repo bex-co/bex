@@ -1,6 +1,6 @@
 # w8 · m83 — Supply automatic compression for web responses
 
-**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** blocked — t001–t005 done; the qualifieda9 rollout and signed source/runtime checks passed. The corrected59-control preflight is ready; renewed07:55:54 readiness passes; t006 needs current Free admission and the complete native live acceptance. Both pre-create attempts created0services and cleaned their sessions; no user decision is needed.
+**Worker:** worker8 **Goal:** eligible ordinary web responses transfer compressed with exact decoded content and correct neighboring HTTP behavior. **Status:** done — 2026-11-01: both native first deployments, all76 HTTP and12 streaming checks, two finite upgrades and shared settings pass; exact resource, quota and session cleanup passes.
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | [t003](done/t003.md) | Render parity — **DONE** | 20m | t002 |
 | [t004](done/t004.md) | Simplify — **DONE** | 10m | t003 |
 | [t005](done/t005.md) | Test coverage — **DONE** | 35m | t003 |
-| [t006](t006.md) | Closeout — **BLOCKED (current Free admission and live verification)** | 20m | t004, t005 |
+| [t006](done/t006.md) | Closeout — **DONE** | 20m | t004, t005 |
 
 Six tasks,160m total.
 
@@ -83,3 +83,10 @@ The latest fix-containing platform run41254794386/source818 has passed the four 
 The two attempted runners create0services and revoke both own sessions. V4 captures the previously missing refusal inputs. V5 binds the actualtian-personal name to the unchanged QA workspace ID and follows the real Free instance-second budget contract, retaining aggregate egress coverage as diagnostic. Primary API/store/sweeper source establishes the correction; this is a verified engineering finding, not a user waiver. Independent59host+36response controls and Root source preservation checks pass.
 
 The worker resumes the original two native journeys after fresh readiness and current successful Free/capacity responses. All first-deployment, representation/stream, settings, source and exact cleanup criteria remain open. No user decision, new account/workspace, paid fixture or budget override is needed.
+
+
+## Completed two-client acceptance — 2026-11-01
+
+[The actual native acceptance](evidence/native-acceptance-20261101/README.md) completes t006 on the reviewed1feba platform. Both unchanged native clients create one permitted Free service, reach the first deployment Live with exact source/build/runtime artifacts, and pass38 HTTP, six streaming, one upgrade and shared-settings checks each. All owned parents/children/former URLs are absent, baseline/quota checks pass and both own credentials/sessions are removed and revoked. The actual runner exits0 with PASS and no cleanup errors.
+
+The final runner passes93 host controls, with an independent focused review. Its log-query correction honors the public100-line paging contract and retains every original content/stream/source/cleanup oracle. Prior failed attempts remain unchanged. User-approved gzip-only/no-transform/strong-ETag behavior stays in ADR018, and the actual proxy version is explicitly unknown. All six tasks are done; the milestone is archived here with no stub.

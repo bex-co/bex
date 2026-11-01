@@ -1,0 +1,1879 @@
+{
+  "schema": "bex.m83.exact-own-evidence-export/v1",
+  "files": {
+    "actual/RESULT.json.gz": {
+      "bytes": 16514,
+      "sha256": "2dfba137a3e1eba8f368b67b1166a3d3055a045e904e0d67adb4540839c4aea8",
+      "original_bytes": 173196,
+      "original_sha256": "5826b7a2246753eb709f44e072c897966893ca2a7c95df4812fa88bd09d50490",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/RESULT.json"
+    },
+    "actual/MANIFEST.json.gz": {
+      "bytes": 14688,
+      "sha256": "48f1fd92c03c86b6ecff8d3011c628369416e32c71be09b0f4cbba2fe82b62c7",
+      "original_bytes": 43648,
+      "original_sha256": "e3cb7b151fea8ec870f77da4f375ef4ccd0cd506b69d0a272a8f4ddb79b8f300",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/MANIFEST.json"
+    },
+    "actual/inputs.json.gz": {
+      "bytes": 920,
+      "sha256": "e8d0349f22260decd0831b0d20393d895f158571c57f33c6823d494b9d6b53ef",
+      "original_bytes": 1851,
+      "original_sha256": "b1433d8080f9fc58fb190a36543d97ed8cf47264c6c1d87d691b7fb2a54d7298",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/inputs.json"
+    },
+    "actual/cleanup-comparison.json.gz": {
+      "bytes": 120,
+      "sha256": "734f2cbbb89da412589004823845397a77c77eb869cc68f621c36c2185410e46",
+      "original_bytes": 122,
+      "original_sha256": "2ac2aa0837258014b3a5488144d854e61f20bf9a29512bcc801ac915a0180517",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/cleanup-comparison.json"
+    },
+    "actual/logout.json.gz": {
+      "bytes": 205,
+      "sha256": "271892589e3f37db68e8a52d105b8a807aa2b00a8983a31e5b974ad8d0dcb775",
+      "original_bytes": 255,
+      "original_sha256": "9da372dae317c27731cffe332a54d361901ab7456cb14802b4f616d595e44652",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/logout.json"
+    },
+    "actual/logout-command.json.gz": {
+      "bytes": 384,
+      "sha256": "12a015d42e38927b47bfa21dd51bd8441fa02c9b172e26dc882c69cbdc3b7e74",
+      "original_bytes": 578,
+      "original_sha256": "5d4a4f9c325aeaf27f14a73c4288c9acd0015c964e89699e95728aaaf1808b67",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/logout-command.json"
+    },
+    "actual/auth-command.json.gz": {
+      "bytes": 401,
+      "sha256": "6fc79480db9a9180e8ff7b1641015b96c9b25d377b4122a38864e56ea4f7a303",
+      "original_bytes": 600,
+      "original_sha256": "f567df78eb347da68ef4064875872c3392fe544b0cf92ef6c33d9330450a70e5",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/auth-command.json"
+    },
+    "actual/capacity.jsonl.gz": {
+      "bytes": 7158,
+      "sha256": "9da1867fce7d827696a21e35ed8d4983fcd006a136e16a397324f0d1d41a23d1",
+      "original_bytes": 96007,
+      "original_sha256": "9bcd5932fba58a0ae4da5083fb20d6dfbf95bf728b8964b51c9cded3cba409af",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/capacity.jsonl"
+    },
+    "actual/bex-HTTP.json.gz": {
+      "bytes": 785,
+      "sha256": "c583a2f80776a2febf80491103b4c3493e7ca4cc680484e97c06153949e56355",
+      "original_bytes": 10844,
+      "original_sha256": "119fac40ffb8d076f6f83f266dbb844a5da664801d380c6418f855d3c754e70b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/bex-HTTP.json"
+    },
+    "actual/bex-streams.json.gz": {
+      "bytes": 3169,
+      "sha256": "42e89f77ab92d190da9fc47c986eeb36f05722e09abb43669efcb74e35135ea5",
+      "original_bytes": 55259,
+      "original_sha256": "95de9de4199fc7bf587c71d55c4f3bbcb038e5b0d3003bd782e99410830516fb",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/bex-streams.json"
+    },
+    "actual/bex-upgrade.json.gz": {
+      "bytes": 619,
+      "sha256": "ddeb7b21cb4c22171946f5c4f0a016b7fcda137e3bd863c9ce3a45d8e48fe4ce",
+      "original_bytes": 952,
+      "original_sha256": "d88cf674ff35d0f32e46cf2e08d2489c9dd25e88b928119e0c41e14d129fd3ef",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/bex-upgrade.json"
+    },
+    "actual/bex-settings.json.gz": {
+      "bytes": 3226,
+      "sha256": "216d0005027dd446898d7880c701dbb44a6feab67acc0cc6ff07285aa934147e",
+      "original_bytes": 11956,
+      "original_sha256": "d95ea8a247cce77f9226244fe37973b34d599751a4533bf56d3b9d7ac4f700a3",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/bex-settings.json"
+    },
+    "actual/bex-first-live.json.gz": {
+      "bytes": 1261,
+      "sha256": "aa694b6c8fd462dbaf7da53e3b2397e22d956d1775183462604c6cd6ddb3119b",
+      "original_bytes": 2394,
+      "original_sha256": "3c06ef7013b180c311b72fdecbd1c2971db0fc22c2e556cfbf0e91cc99949dc1",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/bex-first-live.json"
+    },
+    "actual/render-HTTP.json.gz": {
+      "bytes": 830,
+      "sha256": "a7e7d05a27a57ee0e165a8cfa430869c2ec03bbc7661c2f035830ebf621bf4a1",
+      "original_bytes": 10844,
+      "original_sha256": "1558f563682f59f768b48e3fe3e721fee26385cbd0518940e024f602f4272ae0",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/render-HTTP.json"
+    },
+    "actual/render-streams.json.gz": {
+      "bytes": 3244,
+      "sha256": "f410cf20d14f89d83d0ba77c651342c8f81bcc30fb86a29d9e14593edd550449",
+      "original_bytes": 55522,
+      "original_sha256": "aea060234e520417b20c76617e5419bcbb54d2d7536f05de69288d87072d32a6",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/render-streams.json"
+    },
+    "actual/render-upgrade.json.gz": {
+      "bytes": 619,
+      "sha256": "11e890c383b8267fdac122560a16c2cabf8d67dd79f6197e39b251b41daf9b0f",
+      "original_bytes": 958,
+      "original_sha256": "5fa5a15166aac968e6c15d08117caba5779a55641ac0af18a1cf072644897998",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/render-upgrade.json"
+    },
+    "actual/render-settings.json.gz": {
+      "bytes": 3223,
+      "sha256": "424b81df03bb8ca7a1929c27023f641f75445488d9c920914de14176cd37b3af",
+      "original_bytes": 11971,
+      "original_sha256": "3f3037dbe56961bc6507db329a7984dc1f91e7feddb4891c63f663320f720266",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/render-settings.json"
+    },
+    "actual/render-first-live.json.gz": {
+      "bytes": 1273,
+      "sha256": "bce75593e03a79b4b0511cd266a33a66485fd25b25db45468325b3142b23ada4",
+      "original_bytes": 2410,
+      "original_sha256": "220de217ea7b5859d02057559dfd089cf26bfb80005220fdbab8c0f2a2e48b78",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/render-first-live.json"
+    },
+    "actual/entities/public-00105.json.gz": {
+      "bytes": 936,
+      "sha256": "1e117f902e1f44153dd3c38faa0357f4cf15fb5be64cecfbdab05de371e5fe66",
+      "original_bytes": 1355,
+      "original_sha256": "433c9ede5cc5942336f4907c401badddd7ba17c19cb6ae407c360c01703fea4d",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00105.json"
+    },
+    "actual/entities/public-00108.json.gz": {
+      "bytes": 953,
+      "sha256": "1a46a86e5750bca2cbed5cf4ed8fa5d29f9a7afdff7f2a4f68bd189b10ec2010",
+      "original_bytes": 1593,
+      "original_sha256": "469e3bc540031d5863e5b01d427167b534021f57c10f4cdefb516916e6064074",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00108.json"
+    },
+    "actual/entities/public-00109.json.gz": {
+      "bytes": 959,
+      "sha256": "03bf2a4eb0a486cbaf6bedc76fdd3557edfad0f7a7a39ad066381c45dad83735",
+      "original_bytes": 1600,
+      "original_sha256": "a6dc9e24e45dbac47a9a1ea07791932ddbaee26a1db344118f43f6afb467f02b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00109.json"
+    },
+    "actual/entities/public-00110.json.gz": {
+      "bytes": 823,
+      "sha256": "3d9f9cb30983931f0ba8d1ad5e6db45f80cf3861d5cb393d283d5ad3ce01b671",
+      "original_bytes": 2622,
+      "original_sha256": "56c1a9957af529fe8ee23693bca51944e0a474bf945075951508101aedfab9b3",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00110.json"
+    },
+    "actual/entities/public-00111.json.gz": {
+      "bytes": 817,
+      "sha256": "4473c79e684663885010326c5371b8d6836b8a26f56cfb88c8f1f3ac7fa4a92e",
+      "original_bytes": 2629,
+      "original_sha256": "5ce07e0d95460362983669fbf52f5e17ca63c4a017fedf7d55491665512ca39c",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00111.json"
+    },
+    "actual/entities/public-00112.json.gz": {
+      "bytes": 818,
+      "sha256": "6c52d46252fb20fca12aa242aaf67b5302e26a4eb56b8d8e33a0d0e9bfa5e6eb",
+      "original_bytes": 2621,
+      "original_sha256": "d76fce70ecb4c97e894fda9f90098f2df3451558ab9a2bf17bfc5e84632735cf",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00112.json"
+    },
+    "actual/entities/public-00113.json.gz": {
+      "bytes": 819,
+      "sha256": "a9e029b65c6d9a8bf2abd3bdc9664a92d60b74edb0853b63b2c06e659e9211e9",
+      "original_bytes": 2618,
+      "original_sha256": "a2b4524314c06528d8bee46649d47914b129dba4998f603df4dabf147969aff9",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00113.json"
+    },
+    "actual/entities/public-00114.json.gz": {
+      "bytes": 834,
+      "sha256": "09d548d4919c895550c1cafb5f8e34fc93e479a1094421f0602a379cb43dd2e2",
+      "original_bytes": 2636,
+      "original_sha256": "c5a0aee59ebba58fe1967fc95603bcfe9a102b5f0d39370bc1bca2fe5568699a",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00114.json"
+    },
+    "actual/entities/public-00115.json.gz": {
+      "bytes": 980,
+      "sha256": "db10880b5216088b5c0ccc4a6a786ea0686b213e728317baa0ff312b9830d0a1",
+      "original_bytes": 1745,
+      "original_sha256": "9e9fc4251d770118e2b4d00cf13f38bdb6164f6a45c3385f19e3bd47a88395f2",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00115.json"
+    },
+    "actual/entities/public-00116.json.gz": {
+      "bytes": 973,
+      "sha256": "d51088bd95ec3371ee08f8d1f4c6f316df19f894aef7307937aaaef6fcd49f31",
+      "original_bytes": 1699,
+      "original_sha256": "b523a78d8ab839f0950aaa2cc1e904ef2f782d3b7f288d42a06cf65d9f371ec8",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00116.json"
+    },
+    "actual/entities/public-00117.json.gz": {
+      "bytes": 924,
+      "sha256": "b041e1a6513091b2d7312d3ae645f48b8a078e79fdd3ae3f8a47ecc60f73a435",
+      "original_bytes": 1622,
+      "original_sha256": "d4a16b845dd921f8c270b151a6a0c382cf685108624c5ed0c6c77e404f05d9a5",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00117.json"
+    },
+    "actual/entities/public-00118.json.gz": {
+      "bytes": 731,
+      "sha256": "24287782205d43429165455b7440bcfb89437ee61b58d00bf2ff1ea2d1cd8604",
+      "original_bytes": 1297,
+      "original_sha256": "9c444f441e45a5788a36b8bad708e31f14dee52287cf3d6285c3d01dc50dab46",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00118.json"
+    },
+    "actual/entities/public-00119.json.gz": {
+      "bytes": 707,
+      "sha256": "ed0478ec2226565ec980555b65fcd54fb2bd95bcdd2be45f1a7293a15ec40c29",
+      "original_bytes": 1314,
+      "original_sha256": "cd8b8b4e4fc8ec9ac6e62b8d167daa9886aa7bf82eea218c8f4a4d4c5bbf47bf",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00119.json"
+    },
+    "actual/entities/public-00120.json.gz": {
+      "bytes": 844,
+      "sha256": "a5c7a96f9161e63065deac3f94258fd252f96017d509564f268338bde06cf74b",
+      "original_bytes": 1425,
+      "original_sha256": "b3fcb82982a56c70b2c918dc638d23c46fd56e5ceba2fbccaf53622e9ca4ed8e",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00120.json"
+    },
+    "actual/entities/public-00121.json.gz": {
+      "bytes": 840,
+      "sha256": "fd3f8d545cac27d67e08a58c7e71b683dcf84e2cfd7f29e7be9cc4df322023b1",
+      "original_bytes": 2656,
+      "original_sha256": "41101b840e3a7615a919257a56a60eb11921df5d0e4df269cd890fd2b8eba945",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00121.json"
+    },
+    "actual/entities/public-00122.json.gz": {
+      "bytes": 843,
+      "sha256": "6e80de03328897ff9b0268dff4f7cc7869e0679fdb4de914bd09d12cd148a786",
+      "original_bytes": 2667,
+      "original_sha256": "e4403fee5c321a0f9cacecfdd6656a80cd7d9589ad91d09afda38fd6eb1c0c7d",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00122.json"
+    },
+    "actual/entities/public-00123.json.gz": {
+      "bytes": 908,
+      "sha256": "2e55effee34c68517291af3dc76960b07099fc14d50a89868887b50dc3cc79c1",
+      "original_bytes": 1597,
+      "original_sha256": "bbe7e4ea874e5ec78327fcaa042ab272cb0959793819dc18c0e8a2efac1b0098",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00123.json"
+    },
+    "actual/entities/public-00124.json.gz": {
+      "bytes": 964,
+      "sha256": "07015dee5a32823b8eba01f709201c41799579fcf728a3a90f454b6a0f876ccc",
+      "original_bytes": 2447,
+      "original_sha256": "fce4ca44b8a7487899ee98d30865938045cb9fa26aa3cbc851b292a7ad720a04",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00124.json"
+    },
+    "actual/entities/public-00125.json.gz": {
+      "bytes": 916,
+      "sha256": "a84063dbe4b4f883dfb72b6b467b0e730677372b4346236a5e54ca23e27800e4",
+      "original_bytes": 1681,
+      "original_sha256": "ebdfb5f9cedf85dee42a8dcea2f83e43b2b4c4f2fcbbcd638aea2ba6044cc68d",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00125.json"
+    },
+    "actual/entities/public-00126.json.gz": {
+      "bytes": 993,
+      "sha256": "36708e16652899abd6440ed2ac6262849d6a62148cb2afb991ed2a722f2f75da",
+      "original_bytes": 1668,
+      "original_sha256": "9a41c1a2b6e89d08faa45763004c1aad07b5a63f973c811f3b55bffd966466ee",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00126.json"
+    },
+    "actual/entities/public-00127.json.gz": {
+      "bytes": 930,
+      "sha256": "0140cc3d42cf4110c5880e926722326198b574c2da8d781fce52abf56a54d2ff",
+      "original_bytes": 1585,
+      "original_sha256": "e33a96d54d560d2a7836270d2dfe2d442e3d72f9fe3a9b4ce1faf14fc77dc004",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00127.json"
+    },
+    "actual/entities/public-00128.json.gz": {
+      "bytes": 936,
+      "sha256": "8aeef34a5487689cdc9b94651d2876f12296bc68ee9068d6c5e4851a10594b63",
+      "original_bytes": 1592,
+      "original_sha256": "84a87f18c0cb2b8dbbe13e5246c02da9546a1b5a2ab89dbf75a3e7d5e2666cad",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00128.json"
+    },
+    "actual/entities/public-00129.json.gz": {
+      "bytes": 803,
+      "sha256": "1689aa0b6940ff3da401c464d761861aa628eb6ed48f517aa9224212cece8961",
+      "original_bytes": 2614,
+      "original_sha256": "15238ce9fc3ba997f23c0f01f43ea1abc992cf5d662c9dcaec53bb6c9dd11666",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00129.json"
+    },
+    "actual/entities/public-00130.json.gz": {
+      "bytes": 795,
+      "sha256": "f84df73360a8c41b2e9291ba05717288d4bbf584063ca8c5af6910ace2f911e1",
+      "original_bytes": 2621,
+      "original_sha256": "800801281d37c2698e227681f349f21ddd92526f588b8d4b0fb8855a76055e0e",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00130.json"
+    },
+    "actual/entities/public-00131.json.gz": {
+      "bytes": 798,
+      "sha256": "4509c268a84f3266524a304664ffd236ef9ee184d362f82766581bd03b7478f2",
+      "original_bytes": 2613,
+      "original_sha256": "12826db5e2336df69a1512084b2689ddbd06e1fd5476ceb48d093683c4cdbf1d",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00131.json"
+    },
+    "actual/entities/public-00132.json.gz": {
+      "bytes": 798,
+      "sha256": "844cca84a0420ad5f4613dcf2c28bd13d215bcd1f472f1673076475f979d6fcc",
+      "original_bytes": 2610,
+      "original_sha256": "bf8ee76afa3b8d47a7233c6976a74a4ecfe3f662da376fa8a62777ad0d9d4174",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00132.json"
+    },
+    "actual/entities/public-00133.json.gz": {
+      "bytes": 811,
+      "sha256": "619ee3228742b2c78b8ed50a96467c4beaf60e691fb7ea46e3dd35f2835dd4f0",
+      "original_bytes": 2628,
+      "original_sha256": "7a596746f223554594bccd940fd546c0e8ba11e228448f1ac475cd8ba92175c6",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00133.json"
+    },
+    "actual/entities/public-00134.json.gz": {
+      "bytes": 957,
+      "sha256": "5555f82bbd791bc7ad875ffd2c8b50933095e0744105452b38e5f3742e49d16c",
+      "original_bytes": 1737,
+      "original_sha256": "8fa3f73d93049d34fc55b413b5f4dc6001ce0f17b5375a6690522f99133e04a8",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00134.json"
+    },
+    "actual/entities/public-00135.json.gz": {
+      "bytes": 950,
+      "sha256": "d30ade1c909fe657a95e8033e3b9dea930365b5d29b58b11477a50ae13645d08",
+      "original_bytes": 1692,
+      "original_sha256": "1360673ea641dbc3012676ae93d290d2f6b9f4dba5e3c38ced8c94b0a2b71629",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00135.json"
+    },
+    "actual/entities/public-00136.json.gz": {
+      "bytes": 902,
+      "sha256": "fe032b178a49818c3925d6bd4a0835b2b7f135c412fc57a0de9e27d4b18ee0a3",
+      "original_bytes": 1613,
+      "original_sha256": "2adce327369825a1031467df77ee08f7f698745590983b4ffe13e67f4ee82583",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00136.json"
+    },
+    "actual/entities/public-00137.json.gz": {
+      "bytes": 708,
+      "sha256": "66f0837795c10207a218590d51cf88603f36e5736aec0c61d63b0e763b759154",
+      "original_bytes": 1289,
+      "original_sha256": "d078b6928a4432358bf906a0764d56f1f591753acbc736c537eb5cc7a4f85085",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00137.json"
+    },
+    "actual/entities/public-00138.json.gz": {
+      "bytes": 721,
+      "sha256": "ead6a1d608d2754850d71b9905f36280e01ceca03c5adefd25e08810b0da2eec",
+      "original_bytes": 1381,
+      "original_sha256": "0fc5f5937f0fe8340f9bb1ac1902f86774daeb697f0e1ae7844a8a1d438cc666",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00138.json"
+    },
+    "actual/entities/public-00139.json.gz": {
+      "bytes": 822,
+      "sha256": "bfbc65385a09c4117c6c29f46f18b24f4d9e1da5a570834666769bb252cce8f3",
+      "original_bytes": 1417,
+      "original_sha256": "e2ac7dde6a89fd49a4b7dbc743c186ea7dcc7c926f2da70224fd9b881aff4ffd",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00139.json"
+    },
+    "actual/entities/public-00140.json.gz": {
+      "bytes": 818,
+      "sha256": "731fd5b26e441d4113d5bf58469699c765ab3a4e6c4be9d932540b0a295ca144",
+      "original_bytes": 2648,
+      "original_sha256": "698f7df6ad75377c6e53145ed7790e72e5187236702a983e50e452a6b46f4d20",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00140.json"
+    },
+    "actual/entities/public-00141.json.gz": {
+      "bytes": 819,
+      "sha256": "c1cf2e6fc44b4b5e3171a629038ac77ede689b6cf1a0ffa5933f964ba07a9569",
+      "original_bytes": 2659,
+      "original_sha256": "b896e7de10be2f673b126377d7591bdd39aab5c9956ea9b9763b6440acd3155d",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00141.json"
+    },
+    "actual/entities/public-00142.json.gz": {
+      "bytes": 875,
+      "sha256": "fd43db972a7997a171fc157f3b01999b04c7895bc99bdee99db9c62b293fba69",
+      "original_bytes": 1576,
+      "original_sha256": "5a1ba8d479a905045d99638e42648dcb486425ec1853d3566849a18bda0f922f",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00142.json"
+    },
+    "actual/entities/public-00143.json.gz": {
+      "bytes": 937,
+      "sha256": "107e95b01da51259e6b90e72c243e4a0f5cd160e54d20f662c6d8aeaa621a3b3",
+      "original_bytes": 2426,
+      "original_sha256": "21182864a4b472a0af332ac79e7e73e7f1b95b98b1d9eb80edf670923983ba46",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00143.json"
+    },
+    "actual/entities/public-00144.json.gz": {
+      "bytes": 881,
+      "sha256": "b4603284c3008ee9ef931669e9591d40e15f3b4fcf8efae0fd833f072e3c89b6",
+      "original_bytes": 1661,
+      "original_sha256": "ff66b4e826b15235597df9018911b1266bda826a0533835d151bffc43d73e3a5",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00144.json"
+    },
+    "actual/entities/public-00145.json.gz": {
+      "bytes": 973,
+      "sha256": "2a82077a5c0f81fc1dc2759fe5d0cf89ac6b500127a562c306588512ed7510cc",
+      "original_bytes": 1660,
+      "original_sha256": "0850ecb0d2cf68e61d6ad1c6eb0bcf7f8bdf42c5046a5001842b93f6ba5074ee",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00145.json"
+    },
+    "actual/entities/public-00162-former-url.json.gz": {
+      "bytes": 517,
+      "sha256": "493f20a1cf17626e4215743cf8ba8c52fde51b4f01675cb0eaad806a85c200a2",
+      "original_bytes": 853,
+      "original_sha256": "69b10e079818d1753cbf48284b645cc7200414daaeb9e0ff6713a1f088a4a47d",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00162-former-url.json"
+    },
+    "actual/entities/public-00255.json.gz": {
+      "bytes": 944,
+      "sha256": "ae355b81ed0a9d534fb06500811119be2b71c2bb40edd2e94372d2367617f7e7",
+      "original_bytes": 1365,
+      "original_sha256": "94d3017f08e2fa561fe11b57f477d9b121c9e372da2dc63762b1537cabd0f67a",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00255.json"
+    },
+    "actual/entities/public-00259.json.gz": {
+      "bytes": 961,
+      "sha256": "497983c92902742fa63e497782fb609949ad8d26dffcc1bc99cc6cc68620579a",
+      "original_bytes": 1615,
+      "original_sha256": "f77e0ef807d99d59c03c99611aa8d8ee9a65e24bb59aaa44d9d4d6543e027a8d",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00259.json"
+    },
+    "actual/entities/public-00260.json.gz": {
+      "bytes": 1008,
+      "sha256": "532ef3836230ee49738fdb8a677744c9dd5cb2459c30761e27d76d2ad1c7444b",
+      "original_bytes": 1670,
+      "original_sha256": "4ad504961487e37d2c1fd8bf6f75f56bfa833afd2796f5c27fae52f7469190a9",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00260.json"
+    },
+    "actual/entities/public-00261.json.gz": {
+      "bytes": 845,
+      "sha256": "c3f272a68c35051fd95a70a3dd903c21cc3fa76f22a040bf9d2479cf70f6d9a1",
+      "original_bytes": 2900,
+      "original_sha256": "0fe826abfd47149e8dcdf34e3f65aa7fa37e239b6734ed60f4b15c27ce06b88a",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00261.json"
+    },
+    "actual/entities/public-00262.json.gz": {
+      "bytes": 838,
+      "sha256": "395117810807b4bc7eb9e7f3ddc2414f30ca3b5bec9cf7266e1d24727d7e3538",
+      "original_bytes": 2907,
+      "original_sha256": "bf7c6c8688729b9e95c9b3c98b4e97c811c6d973e816426eec30535b5b2d39f3",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00262.json"
+    },
+    "actual/entities/public-00263.json.gz": {
+      "bytes": 840,
+      "sha256": "c2406481f24b51983fe7b2998be8310506c7d9003ceb2f46c456a108dcc1b673",
+      "original_bytes": 2899,
+      "original_sha256": "81bebaeb5d8c5964a4e244574198953a74224cdf8e61085adbdba87d28144926",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00263.json"
+    },
+    "actual/entities/public-00264.json.gz": {
+      "bytes": 840,
+      "sha256": "aeaafe5fa1e29cd96139f075287d6cb785cfc0324fd6b07953417cfce59b2347",
+      "original_bytes": 2896,
+      "original_sha256": "5066027c9f99cb24e02babe9461bca568eb28eab9108683314d5864b2f42a6e0",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00264.json"
+    },
+    "actual/entities/public-00265.json.gz": {
+      "bytes": 854,
+      "sha256": "2fae88eb8bca47a61b1449237062b37dfcb3d966047239e047a7ddd356c1d4b3",
+      "original_bytes": 2914,
+      "original_sha256": "da23f3c3432c31054a9b00b69796ce3b106213d08ce9f1310cac80dffc3e9031",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00265.json"
+    },
+    "actual/entities/public-00266.json.gz": {
+      "bytes": 991,
+      "sha256": "5d6d682f63064df4ff363bbf0f0233d701cb9b22d3f3f929ac08892fd2b1ff52",
+      "original_bytes": 1767,
+      "original_sha256": "8db0e12ecfcfbd8d9c303e0e40e36560a6d6988b04ae502ab11dfceb9efb6fb6",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00266.json"
+    },
+    "actual/entities/public-00267.json.gz": {
+      "bytes": 982,
+      "sha256": "f2868ade258ab7df7cf2374830b84acf0c0889fb47c595dbf7db419b6abe7798",
+      "original_bytes": 1722,
+      "original_sha256": "41108ee6be1ac1742854230cdc0b671ebed3e42fa382506eba9a1eaf33259382",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00267.json"
+    },
+    "actual/entities/public-00268.json.gz": {
+      "bytes": 930,
+      "sha256": "0666566e3b2ccd840d1e51ae9927e10794d5855123c6616966c67985a1251766",
+      "original_bytes": 1636,
+      "original_sha256": "e447f27049458c01efc8a99a296d59836a8cdd884c730ed08e2800053b3ddbf0",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00268.json"
+    },
+    "actual/entities/public-00269.json.gz": {
+      "bytes": 731,
+      "sha256": "045b0a485cd55f12c287d43f6a97b63c629e1f6e0943bc2564627a3d3f627f21",
+      "original_bytes": 1303,
+      "original_sha256": "08024d008b73f6005f0dd019e574d52905d029dd709bf268bf3a2db43f5ee778",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00269.json"
+    },
+    "actual/entities/public-00270.json.gz": {
+      "bytes": 710,
+      "sha256": "1582e8f62ec92b7c690c52e65787f535a2f752b165eb3f215f7148cb6fa0ce1e",
+      "original_bytes": 1320,
+      "original_sha256": "2ff9c2939b678b0c00fdd987b008b5e8a48b90efe81c37fddcd6ec3c05eac6ca",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00270.json"
+    },
+    "actual/entities/public-00271.json.gz": {
+      "bytes": 848,
+      "sha256": "4d445a9ac9aa3560c8054452541a4d0d2f9b4fa286a5d56cd71b6c02b878951c",
+      "original_bytes": 1435,
+      "original_sha256": "498ad44e2f1f7d7ff478df303e8cbcbec3428c386604588efc53b77b98b64ba9",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00271.json"
+    },
+    "actual/entities/public-00272.json.gz": {
+      "bytes": 862,
+      "sha256": "86c4394446b2116a15e5f333888bb3d85a17f6f01463eeb8b503db15be60c834",
+      "original_bytes": 2934,
+      "original_sha256": "d3e9027ec9151a8b95f4b954492c028f11bf17991a2b7b483e26934f11544e73",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00272.json"
+    },
+    "actual/entities/public-00273.json.gz": {
+      "bytes": 863,
+      "sha256": "497f2ca5a226ccb48e1005c39fa23babe972ec71b1c3313de1d0353cb7ef9957",
+      "original_bytes": 2945,
+      "original_sha256": "703465e807677f1f4dfd22475a1b099c0ab4cfe2a666691668e849f87d6066fd",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00273.json"
+    },
+    "actual/entities/public-00274.json.gz": {
+      "bytes": 909,
+      "sha256": "1fe683c8aa10f05b1394cd1eac6c32ff0027aaa49be0e6beb5e58d35bc4d9ed1",
+      "original_bytes": 1607,
+      "original_sha256": "de0517772ab5a7dfd1656c91b706b4a97c8ec2cb76431c2411a3713242121c0b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00274.json"
+    },
+    "actual/entities/public-00275.json.gz": {
+      "bytes": 988,
+      "sha256": "830257d0250dfd9ca069628c7fd785679a82a555d676c9adc10b19a6fde6fc47",
+      "original_bytes": 2585,
+      "original_sha256": "efbed50c71f1253e00e7231f472acdfe09b84e78a6ce2a2929a824f5dd8b24a3",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00275.json"
+    },
+    "actual/entities/public-00276.json.gz": {
+      "bytes": 919,
+      "sha256": "87ae1607d6606adf795f61331828d2bf3e41ee32ec68d1bb71803e0dd8391ac8",
+      "original_bytes": 1692,
+      "original_sha256": "df7ef7f1ddc67fc1a35fb8d49f113175c1828a0f11c54a1f95cf065735996c5d",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00276.json"
+    },
+    "actual/entities/public-00277.json.gz": {
+      "bytes": 1004,
+      "sha256": "dec02c25da7552babc25092e62fc924a02de947617fa7412cff4b3c3633dea6e",
+      "original_bytes": 1690,
+      "original_sha256": "274af55fad7d99b42c185bdff1d8137411a185b5acbfdba1f2f99aeea2e7148b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00277.json"
+    },
+    "actual/entities/public-00278.json.gz": {
+      "bytes": 938,
+      "sha256": "cb05bcb986967fcada9d986acfd4dd4c1f01480dd8366dc3eb808a81279b8f40",
+      "original_bytes": 1607,
+      "original_sha256": "537ea5a7dddf0a7cf0ff86ad68960e8fbc938b7ff9837f13d837b143ddd4ef1c",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00278.json"
+    },
+    "actual/entities/public-00279.json.gz": {
+      "bytes": 945,
+      "sha256": "2354b5737b1677e8daa2d34f90911fe2e5f69cca498ef845ff3f2cc3891754a3",
+      "original_bytes": 1614,
+      "original_sha256": "3aaa1fb359fd04af8106a2994dd260e52dacfd51bc30284e49af590efce575d5",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00279.json"
+    },
+    "actual/entities/public-00280.json.gz": {
+      "bytes": 825,
+      "sha256": "af7422f155df7cadce39cf67ec9f8f589d4b02f350c26065b7ebb73da4d000f1",
+      "original_bytes": 2891,
+      "original_sha256": "8cd13438bfda320e02cf6b5807b7b4e69218f87ba0493550fb77b7bea773274c",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00280.json"
+    },
+    "actual/entities/public-00281.json.gz": {
+      "bytes": 818,
+      "sha256": "f1989060d83c37b7c71059707690c8ead5135affa9e040e1033b92e4ba817eb0",
+      "original_bytes": 2899,
+      "original_sha256": "3b99f09af8eb0ea419c412b155c507417b63638ad79cd8d9494c1188c530d833",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00281.json"
+    },
+    "actual/entities/public-00282.json.gz": {
+      "bytes": 822,
+      "sha256": "27c7a6b21f7c1eb19092659d8de3df3765fb55beaef4ec55544f47de94116bff",
+      "original_bytes": 2891,
+      "original_sha256": "0e5eb2bbe90d5c03b116d357c32fb803ad666c5261c56ea40ec80dbd3a678b04",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00282.json"
+    },
+    "actual/entities/public-00283.json.gz": {
+      "bytes": 819,
+      "sha256": "04efa449c514707f972a31f30ddcdd0d72a7a0b3e36f87e6242a6562248ba6f7",
+      "original_bytes": 2888,
+      "original_sha256": "db6fbf8809f8d3efcdc7b1270d384dee2eadabadaf42b3099d4fe5c7340325f3",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00283.json"
+    },
+    "actual/entities/public-00284.json.gz": {
+      "bytes": 835,
+      "sha256": "b373f25fee622373e43f57919ba3f84ebcb74f9b6375e83d06223f960886211a",
+      "original_bytes": 2906,
+      "original_sha256": "709d4e049242429d78664f195951224930e5dd871074b400f0a5ba8ce02dde6c",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00284.json"
+    },
+    "actual/entities/public-00285.json.gz": {
+      "bytes": 968,
+      "sha256": "3bdabc60cc7832e25ba79a968da50bae71b2d14f71624879c90555eb09a217ba",
+      "original_bytes": 1759,
+      "original_sha256": "ed9f85b899df4ab79ff9a3b59c023d279ede898f86a49e30daf0c3fea82514ab",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00285.json"
+    },
+    "actual/entities/public-00286.json.gz": {
+      "bytes": 958,
+      "sha256": "49d11112d45e6624f7f6019c32e6324785ac51577ee401ddb90491b9e45542b4",
+      "original_bytes": 1714,
+      "original_sha256": "c31a9175fa746bb77c3bdf3788299c81031d74b74ddabee4f3f09e5d03dd3a39",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00286.json"
+    },
+    "actual/entities/public-00287.json.gz": {
+      "bytes": 908,
+      "sha256": "86a970db574862ee9f326dfac51f7e234918b1fe3ab6222677819eb57ccae617",
+      "original_bytes": 1628,
+      "original_sha256": "4f6104a0008f1bc828cd0acd74d5a7d1a60b6c4131f560995a1046521c39f489",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00287.json"
+    },
+    "actual/entities/public-00288.json.gz": {
+      "bytes": 708,
+      "sha256": "f84fc9eb661c3489aab423d6ebff59a942800221199f41003c9923cdfa86affe",
+      "original_bytes": 1295,
+      "original_sha256": "5d081a65c8d2b5492bd760abce5ae33c9d3279cdd3eec2a9d44d3655747118b6",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00288.json"
+    },
+    "actual/entities/public-00289.json.gz": {
+      "bytes": 723,
+      "sha256": "f9576ccc234853bf06bbbb763ce3fadbbffad39eba258cc1375c5720f186538d",
+      "original_bytes": 1388,
+      "original_sha256": "6cec5b5e34c2b2b44ac5fac86ae7f67c96a66503b74a77a4e078826870b6373c",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00289.json"
+    },
+    "actual/entities/public-00290.json.gz": {
+      "bytes": 824,
+      "sha256": "c1b782a73a68f0f5214b0a240c3d2814992a3e645709c3a2a63e5719439297dd",
+      "original_bytes": 1427,
+      "original_sha256": "631ba9d018e025c3668c6caca1326c11087624487c2e2d78693e5f9f46062185",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00290.json"
+    },
+    "actual/entities/public-00291.json.gz": {
+      "bytes": 843,
+      "sha256": "9dbfc75ecef62694af5f1913af82590c9ee32a39031475d09f0755c19594811b",
+      "original_bytes": 2926,
+      "original_sha256": "8cb2119c7721b716beb2a6861c16f41206e68f1448560181b34d6327f12dc705",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00291.json"
+    },
+    "actual/entities/public-00292.json.gz": {
+      "bytes": 843,
+      "sha256": "0efe296d84a302e62cbc9b23ffe19b5c049bccf8b3beebfb8cee8ee67f996e87",
+      "original_bytes": 2937,
+      "original_sha256": "bfb7e914adde75fe94e351ef52c56589d2b3a24b89a8b25013995fd7ab728e99",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00292.json"
+    },
+    "actual/entities/public-00293.json.gz": {
+      "bytes": 875,
+      "sha256": "192c2a58483f61a0c174c43270a0abc040dafdfc0386ec0700b1e31cb5407216",
+      "original_bytes": 1586,
+      "original_sha256": "f605f9233bee9fd35ebbb7e0565652b3074fcd3f9cebf3d3d3e5742cae27843f",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00293.json"
+    },
+    "actual/entities/public-00294.json.gz": {
+      "bytes": 956,
+      "sha256": "6c95acbbd37315e455950c53a7dd9e35e84ea6cf0650c4471f6ba9ca1b4977cd",
+      "original_bytes": 2564,
+      "original_sha256": "626fb0a925f0dc0e04c653f0cb06c77aea4492575ecfabea06e73b92d0dd3aa2",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00294.json"
+    },
+    "actual/entities/public-00295.json.gz": {
+      "bytes": 884,
+      "sha256": "7a6363267b4cdafd9980a9b398ade0061dafbd370fa84840c0a9027f13fcb14d",
+      "original_bytes": 1671,
+      "original_sha256": "b1b6041f8f77cd9ecc96308532e78a823c958589105b6d703c89d6596d72f5c7",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00295.json"
+    },
+    "actual/entities/public-00296.json.gz": {
+      "bytes": 982,
+      "sha256": "7dbb9d2c7f61277e6b2b2565a9bff9da7ec02f7cd6a4351a525fcd992db7625f",
+      "original_bytes": 1682,
+      "original_sha256": "a3c5f206cf610f1eaba2b21fe6a251692f6af776803d62e4de70a206e793db0b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00296.json"
+    },
+    "actual/entities/public-00313-former-url.json.gz": {
+      "bytes": 516,
+      "sha256": "e063087a1a155df4ffa2153626d175cacb4daa77ca9c848db54a36d4f7d9da26",
+      "original_bytes": 853,
+      "original_sha256": "88e1a381fc8bef6e4f5141d6ed03e4d64bc92fe515aa9d19ece9d9d5a1d98340",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/entities/public-00313-former-url.json"
+    },
+    "actual/native-POST-00027.json.gz": {
+      "bytes": 5579,
+      "sha256": "3099ab2b3dfd52d79d3d145f20b4a96833839e445faa5ddf506d5c5e109df893",
+      "original_bytes": 7369,
+      "original_sha256": "80a11b396fe69cadb8ef7b7f3fd26c0428bb973529e8c041256035bf020660f5",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/native-POST-00027.json"
+    },
+    "actual/native-POST-00185.json.gz": {
+      "bytes": 5576,
+      "sha256": "626b46d3f35a52530478ddc9deb0e160703343e4826724e0f7ee24f86207445a",
+      "original_bytes": 7372,
+      "original_sha256": "ea64aa9becde8af95451937d3ded4fc01fcbded4f89a91002d1f907f6a2d8601",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/native-POST-00185.json"
+    },
+    "actual/deployments-00030.json.gz": {
+      "bytes": 244,
+      "sha256": "ad6181bb61b404c2ee158437744a8e3386313e97c8973303e6631b07a006b78d",
+      "original_bytes": 373,
+      "original_sha256": "a5958275c9239d1d76cc8e6612d03379ebc30a215a66998a6752a69a2d65a894",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00030.json"
+    },
+    "actual/deployments-00032.json.gz": {
+      "bytes": 244,
+      "sha256": "ad6181bb61b404c2ee158437744a8e3386313e97c8973303e6631b07a006b78d",
+      "original_bytes": 373,
+      "original_sha256": "a5958275c9239d1d76cc8e6612d03379ebc30a215a66998a6752a69a2d65a894",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00032.json"
+    },
+    "actual/deployments-00034.json.gz": {
+      "bytes": 244,
+      "sha256": "ad6181bb61b404c2ee158437744a8e3386313e97c8973303e6631b07a006b78d",
+      "original_bytes": 373,
+      "original_sha256": "a5958275c9239d1d76cc8e6612d03379ebc30a215a66998a6752a69a2d65a894",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00034.json"
+    },
+    "actual/deployments-00036.json.gz": {
+      "bytes": 255,
+      "sha256": "1a41b8d94d13376ae4b7c895a501a7c8e3ab92beb2e8e27d4ba61f033da647cd",
+      "original_bytes": 372,
+      "original_sha256": "8afa7de95ea0a8b1c9ceeceb723a51696cc809b7bd111e26e7637fa19cc26e26",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00036.json"
+    },
+    "actual/deployments-00038.json.gz": {
+      "bytes": 255,
+      "sha256": "1a41b8d94d13376ae4b7c895a501a7c8e3ab92beb2e8e27d4ba61f033da647cd",
+      "original_bytes": 372,
+      "original_sha256": "8afa7de95ea0a8b1c9ceeceb723a51696cc809b7bd111e26e7637fa19cc26e26",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00038.json"
+    },
+    "actual/deployments-00040.json.gz": {
+      "bytes": 255,
+      "sha256": "1a41b8d94d13376ae4b7c895a501a7c8e3ab92beb2e8e27d4ba61f033da647cd",
+      "original_bytes": 372,
+      "original_sha256": "8afa7de95ea0a8b1c9ceeceb723a51696cc809b7bd111e26e7637fa19cc26e26",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00040.json"
+    },
+    "actual/deployments-00042.json.gz": {
+      "bytes": 255,
+      "sha256": "1a41b8d94d13376ae4b7c895a501a7c8e3ab92beb2e8e27d4ba61f033da647cd",
+      "original_bytes": 372,
+      "original_sha256": "8afa7de95ea0a8b1c9ceeceb723a51696cc809b7bd111e26e7637fa19cc26e26",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00042.json"
+    },
+    "actual/deployments-00044.json.gz": {
+      "bytes": 255,
+      "sha256": "1a41b8d94d13376ae4b7c895a501a7c8e3ab92beb2e8e27d4ba61f033da647cd",
+      "original_bytes": 372,
+      "original_sha256": "8afa7de95ea0a8b1c9ceeceb723a51696cc809b7bd111e26e7637fa19cc26e26",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00044.json"
+    },
+    "actual/deployments-00046.json.gz": {
+      "bytes": 255,
+      "sha256": "1a41b8d94d13376ae4b7c895a501a7c8e3ab92beb2e8e27d4ba61f033da647cd",
+      "original_bytes": 372,
+      "original_sha256": "8afa7de95ea0a8b1c9ceeceb723a51696cc809b7bd111e26e7637fa19cc26e26",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00046.json"
+    },
+    "actual/deployments-00048.json.gz": {
+      "bytes": 255,
+      "sha256": "1a41b8d94d13376ae4b7c895a501a7c8e3ab92beb2e8e27d4ba61f033da647cd",
+      "original_bytes": 372,
+      "original_sha256": "8afa7de95ea0a8b1c9ceeceb723a51696cc809b7bd111e26e7637fa19cc26e26",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00048.json"
+    },
+    "actual/deployments-00050.json.gz": {
+      "bytes": 255,
+      "sha256": "1a41b8d94d13376ae4b7c895a501a7c8e3ab92beb2e8e27d4ba61f033da647cd",
+      "original_bytes": 372,
+      "original_sha256": "8afa7de95ea0a8b1c9ceeceb723a51696cc809b7bd111e26e7637fa19cc26e26",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00050.json"
+    },
+    "actual/deployments-00052.json.gz": {
+      "bytes": 255,
+      "sha256": "1a41b8d94d13376ae4b7c895a501a7c8e3ab92beb2e8e27d4ba61f033da647cd",
+      "original_bytes": 372,
+      "original_sha256": "8afa7de95ea0a8b1c9ceeceb723a51696cc809b7bd111e26e7637fa19cc26e26",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00052.json"
+    },
+    "actual/deployments-00054.json.gz": {
+      "bytes": 255,
+      "sha256": "1a41b8d94d13376ae4b7c895a501a7c8e3ab92beb2e8e27d4ba61f033da647cd",
+      "original_bytes": 372,
+      "original_sha256": "8afa7de95ea0a8b1c9ceeceb723a51696cc809b7bd111e26e7637fa19cc26e26",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00054.json"
+    },
+    "actual/deployments-00056.json.gz": {
+      "bytes": 255,
+      "sha256": "1a41b8d94d13376ae4b7c895a501a7c8e3ab92beb2e8e27d4ba61f033da647cd",
+      "original_bytes": 372,
+      "original_sha256": "8afa7de95ea0a8b1c9ceeceb723a51696cc809b7bd111e26e7637fa19cc26e26",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00056.json"
+    },
+    "actual/deployments-00058.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00058.json"
+    },
+    "actual/deployments-00060.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00060.json"
+    },
+    "actual/deployments-00062.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00062.json"
+    },
+    "actual/deployments-00064.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00064.json"
+    },
+    "actual/deployments-00066.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00066.json"
+    },
+    "actual/deployments-00068.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00068.json"
+    },
+    "actual/deployments-00070.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00070.json"
+    },
+    "actual/deployments-00072.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00072.json"
+    },
+    "actual/deployments-00074.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00074.json"
+    },
+    "actual/deployments-00076.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00076.json"
+    },
+    "actual/deployments-00078.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00078.json"
+    },
+    "actual/deployments-00080.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00080.json"
+    },
+    "actual/deployments-00082.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00082.json"
+    },
+    "actual/deployments-00084.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00084.json"
+    },
+    "actual/deployments-00086.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00086.json"
+    },
+    "actual/deployments-00088.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00088.json"
+    },
+    "actual/deployments-00090.json.gz": {
+      "bytes": 271,
+      "sha256": "7d178f6aa728140b1894b4a34b8836ff3911ed213bddd97df589394656495e97",
+      "original_bytes": 425,
+      "original_sha256": "cee5e677372332f192f29b446077cabfe2bbacf0f36305b08764350551fa926b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00090.json"
+    },
+    "actual/deployments-00092.json.gz": {
+      "bytes": 275,
+      "sha256": "e07ccad26960b11cdf873bb913b4000041f2998072c4d5419763416f7e55ec9e",
+      "original_bytes": 425,
+      "original_sha256": "019d5ec1dbf58058b9c93221f0fa9d630dbfe0908150a52b599e6accd2195542",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00092.json"
+    },
+    "actual/deployments-00094.json.gz": {
+      "bytes": 275,
+      "sha256": "e07ccad26960b11cdf873bb913b4000041f2998072c4d5419763416f7e55ec9e",
+      "original_bytes": 425,
+      "original_sha256": "019d5ec1dbf58058b9c93221f0fa9d630dbfe0908150a52b599e6accd2195542",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00094.json"
+    },
+    "actual/deployments-00096.json.gz": {
+      "bytes": 275,
+      "sha256": "e07ccad26960b11cdf873bb913b4000041f2998072c4d5419763416f7e55ec9e",
+      "original_bytes": 425,
+      "original_sha256": "019d5ec1dbf58058b9c93221f0fa9d630dbfe0908150a52b599e6accd2195542",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00096.json"
+    },
+    "actual/deployments-00098.json.gz": {
+      "bytes": 275,
+      "sha256": "e07ccad26960b11cdf873bb913b4000041f2998072c4d5419763416f7e55ec9e",
+      "original_bytes": 425,
+      "original_sha256": "019d5ec1dbf58058b9c93221f0fa9d630dbfe0908150a52b599e6accd2195542",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00098.json"
+    },
+    "actual/deployments-00100.json.gz": {
+      "bytes": 275,
+      "sha256": "e07ccad26960b11cdf873bb913b4000041f2998072c4d5419763416f7e55ec9e",
+      "original_bytes": 425,
+      "original_sha256": "019d5ec1dbf58058b9c93221f0fa9d630dbfe0908150a52b599e6accd2195542",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00100.json"
+    },
+    "actual/deployments-00102.json.gz": {
+      "bytes": 275,
+      "sha256": "e07ccad26960b11cdf873bb913b4000041f2998072c4d5419763416f7e55ec9e",
+      "original_bytes": 425,
+      "original_sha256": "019d5ec1dbf58058b9c93221f0fa9d630dbfe0908150a52b599e6accd2195542",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00102.json"
+    },
+    "actual/deployments-00104.json.gz": {
+      "bytes": 277,
+      "sha256": "6dade73da6a96f67f28d4d135cde525ef50a6564589ce8cf786f5d9437b53a6b",
+      "original_bytes": 454,
+      "original_sha256": "d4a3194f3714d26e410454b6f9f4d0429827d1445011a23d8710799316a961c3",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00104.json"
+    },
+    "actual/deployments-00157.json.gz": {
+      "bytes": 277,
+      "sha256": "6dade73da6a96f67f28d4d135cde525ef50a6564589ce8cf786f5d9437b53a6b",
+      "original_bytes": 454,
+      "original_sha256": "d4a3194f3714d26e410454b6f9f4d0429827d1445011a23d8710799316a961c3",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00157.json"
+    },
+    "actual/deployments-00188.json.gz": {
+      "bytes": 243,
+      "sha256": "85e1a85442742f2a217cb1e05b416540ae4676c628e153c1e93733c85ce51e9e",
+      "original_bytes": 371,
+      "original_sha256": "a375887a3258b37b9cdcd4a474b27b90f1a0e367846e59c70c12b86667e39a9b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00188.json"
+    },
+    "actual/deployments-00190.json.gz": {
+      "bytes": 243,
+      "sha256": "85e1a85442742f2a217cb1e05b416540ae4676c628e153c1e93733c85ce51e9e",
+      "original_bytes": 371,
+      "original_sha256": "a375887a3258b37b9cdcd4a474b27b90f1a0e367846e59c70c12b86667e39a9b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00190.json"
+    },
+    "actual/deployments-00192.json.gz": {
+      "bytes": 243,
+      "sha256": "85e1a85442742f2a217cb1e05b416540ae4676c628e153c1e93733c85ce51e9e",
+      "original_bytes": 371,
+      "original_sha256": "a375887a3258b37b9cdcd4a474b27b90f1a0e367846e59c70c12b86667e39a9b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00192.json"
+    },
+    "actual/deployments-00194.json.gz": {
+      "bytes": 243,
+      "sha256": "85e1a85442742f2a217cb1e05b416540ae4676c628e153c1e93733c85ce51e9e",
+      "original_bytes": 371,
+      "original_sha256": "a375887a3258b37b9cdcd4a474b27b90f1a0e367846e59c70c12b86667e39a9b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00194.json"
+    },
+    "actual/deployments-00196.json.gz": {
+      "bytes": 243,
+      "sha256": "85e1a85442742f2a217cb1e05b416540ae4676c628e153c1e93733c85ce51e9e",
+      "original_bytes": 371,
+      "original_sha256": "a375887a3258b37b9cdcd4a474b27b90f1a0e367846e59c70c12b86667e39a9b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00196.json"
+    },
+    "actual/deployments-00198.json.gz": {
+      "bytes": 243,
+      "sha256": "85e1a85442742f2a217cb1e05b416540ae4676c628e153c1e93733c85ce51e9e",
+      "original_bytes": 371,
+      "original_sha256": "a375887a3258b37b9cdcd4a474b27b90f1a0e367846e59c70c12b86667e39a9b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00198.json"
+    },
+    "actual/deployments-00200.json.gz": {
+      "bytes": 243,
+      "sha256": "85e1a85442742f2a217cb1e05b416540ae4676c628e153c1e93733c85ce51e9e",
+      "original_bytes": 371,
+      "original_sha256": "a375887a3258b37b9cdcd4a474b27b90f1a0e367846e59c70c12b86667e39a9b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00200.json"
+    },
+    "actual/deployments-00202.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00202.json"
+    },
+    "actual/deployments-00204.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00204.json"
+    },
+    "actual/deployments-00206.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00206.json"
+    },
+    "actual/deployments-00208.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00208.json"
+    },
+    "actual/deployments-00210.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00210.json"
+    },
+    "actual/deployments-00212.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00212.json"
+    },
+    "actual/deployments-00214.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00214.json"
+    },
+    "actual/deployments-00216.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00216.json"
+    },
+    "actual/deployments-00218.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00218.json"
+    },
+    "actual/deployments-00220.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00220.json"
+    },
+    "actual/deployments-00222.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00222.json"
+    },
+    "actual/deployments-00224.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00224.json"
+    },
+    "actual/deployments-00226.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00226.json"
+    },
+    "actual/deployments-00228.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00228.json"
+    },
+    "actual/deployments-00230.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00230.json"
+    },
+    "actual/deployments-00232.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00232.json"
+    },
+    "actual/deployments-00234.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00234.json"
+    },
+    "actual/deployments-00236.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00236.json"
+    },
+    "actual/deployments-00238.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00238.json"
+    },
+    "actual/deployments-00240.json.gz": {
+      "bytes": 269,
+      "sha256": "a05226012b11f2db7ba094006ef3137b1f447a260a0068b39f5614490c97b79b",
+      "original_bytes": 424,
+      "original_sha256": "418f3601f9e5234cb0ba99a5037f83080ca6f0980ba67c38092115a0b05e17aa",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00240.json"
+    },
+    "actual/deployments-00242.json.gz": {
+      "bytes": 276,
+      "sha256": "adf8c25aeeafb56a2f7245842d8775abf9bcc48792247f63f978cc9d57ba2d27",
+      "original_bytes": 425,
+      "original_sha256": "ce4f814d277f594284481f501fc994285821222cf88a64fd10a2fb9d2551b7ab",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00242.json"
+    },
+    "actual/deployments-00244.json.gz": {
+      "bytes": 276,
+      "sha256": "adf8c25aeeafb56a2f7245842d8775abf9bcc48792247f63f978cc9d57ba2d27",
+      "original_bytes": 425,
+      "original_sha256": "ce4f814d277f594284481f501fc994285821222cf88a64fd10a2fb9d2551b7ab",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00244.json"
+    },
+    "actual/deployments-00246.json.gz": {
+      "bytes": 479,
+      "sha256": "23d2275d45950969884d47bccf208370675cf32a3eb22e3ef877a20b770c8cf9",
+      "original_bytes": 756,
+      "original_sha256": "2278b3cd477ca2a611960fcbfd05b324dc2eee27be22248b4b51f8dd2ed3328b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00246.json"
+    },
+    "actual/deployments-00248.json.gz": {
+      "bytes": 479,
+      "sha256": "23d2275d45950969884d47bccf208370675cf32a3eb22e3ef877a20b770c8cf9",
+      "original_bytes": 756,
+      "original_sha256": "2278b3cd477ca2a611960fcbfd05b324dc2eee27be22248b4b51f8dd2ed3328b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00248.json"
+    },
+    "actual/deployments-00250.json.gz": {
+      "bytes": 479,
+      "sha256": "23d2275d45950969884d47bccf208370675cf32a3eb22e3ef877a20b770c8cf9",
+      "original_bytes": 756,
+      "original_sha256": "2278b3cd477ca2a611960fcbfd05b324dc2eee27be22248b4b51f8dd2ed3328b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00250.json"
+    },
+    "actual/deployments-00252.json.gz": {
+      "bytes": 479,
+      "sha256": "23d2275d45950969884d47bccf208370675cf32a3eb22e3ef877a20b770c8cf9",
+      "original_bytes": 756,
+      "original_sha256": "2278b3cd477ca2a611960fcbfd05b324dc2eee27be22248b4b51f8dd2ed3328b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00252.json"
+    },
+    "actual/deployments-00254.json.gz": {
+      "bytes": 276,
+      "sha256": "7f31c65f4e24818ad916f4208a9dc05220fc7edaa33ea408d7694f5e4712b028",
+      "original_bytes": 454,
+      "original_sha256": "639883b1afaff9737d26ac4b9c2e73190148c39f9296be45da555664902e3cf0",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00254.json"
+    },
+    "actual/deployments-00308.json.gz": {
+      "bytes": 276,
+      "sha256": "7f31c65f4e24818ad916f4208a9dc05220fc7edaa33ea408d7694f5e4712b028",
+      "original_bytes": 454,
+      "original_sha256": "639883b1afaff9737d26ac4b9c2e73190148c39f9296be45da555664902e3cf0",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/deployments-00308.json"
+    },
+    "actual/owned-delete-00159.json.gz": {
+      "bytes": 67,
+      "sha256": "576d0ebd60dca64fc8d734d595451c2eb002dd0d394f9ed765d1c4cc8b379eea",
+      "original_bytes": 47,
+      "original_sha256": "94208f1839fba6ecbb28fa6cb54c607d6cea89784c3615f452bab2d4eafca356",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/owned-delete-00159.json"
+    },
+    "actual/owned-delete-00310.json.gz": {
+      "bytes": 67,
+      "sha256": "bf02180bcd149b537c418bee2fa570dea02e7a62bb83e5d8c9df7265fba2fb45",
+      "original_bytes": 47,
+      "original_sha256": "21b9f5c998fb8d4af6c5b28fca4c1ed20ac2a46746e6e82eef30e66976e5dfb1",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/owned-delete-00310.json"
+    },
+    "actual/public-head-00025.json.gz": {
+      "bytes": 449,
+      "sha256": "2299794b5cb8923b5ade968e2bd8f59ba51ca9ee7af21f9c1b44bfbe100801e3",
+      "original_bytes": 709,
+      "original_sha256": "b1b73231f1dc008938a327222631f47fd462d6c1c7f1aa190f4b36bc9a1709ba",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/public-head-00025.json"
+    },
+    "actual/public-head-00183.json.gz": {
+      "bytes": 450,
+      "sha256": "b68bf7d29471bb726ec4ff315030dbbc2cde93554067b9b74f6e0d3c1e3c8869",
+      "original_bytes": 709,
+      "original_sha256": "bd28596f1b9057c0f4fa0ad6797750f978144bfda7e5e0cd7b752e48b37da676",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/public-head-00183.json"
+    },
+    "actual/ready-00001.json.gz": {
+      "bytes": 760,
+      "sha256": "7721a2ef992b994bfa8d712b4fb9dd77c4825c99679a7855807e5028d9be6fbd",
+      "original_bytes": 1731,
+      "original_sha256": "7c8f396c902bf50d16dc7506d48bafeff699d15b69eb62c1654e7e42ea56d854",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/ready-00001.json"
+    },
+    "actual/ready-00018.json.gz": {
+      "bytes": 760,
+      "sha256": "7721a2ef992b994bfa8d712b4fb9dd77c4825c99679a7855807e5028d9be6fbd",
+      "original_bytes": 1731,
+      "original_sha256": "7c8f396c902bf50d16dc7506d48bafeff699d15b69eb62c1654e7e42ea56d854",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/ready-00018.json"
+    },
+    "actual/ready-00176.json.gz": {
+      "bytes": 760,
+      "sha256": "7721a2ef992b994bfa8d712b4fb9dd77c4825c99679a7855807e5028d9be6fbd",
+      "original_bytes": 1731,
+      "original_sha256": "7c8f396c902bf50d16dc7506d48bafeff699d15b69eb62c1654e7e42ea56d854",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/ready-00176.json"
+    },
+    "actual/outputs/native-00028.json.gz": {
+      "bytes": 3422,
+      "sha256": "f933ea3edbedb22701f2e5127d0260f6c8e314cba45eae35d98ed0d73adb6f22",
+      "original_bytes": 8060,
+      "original_sha256": "90371c8fd1b4a9b2b1b9850622d81076a278d6b1f66f2831335db30cc319070f",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/native-00028.json"
+    },
+    "actual/outputs/native-00186.json.gz": {
+      "bytes": 3418,
+      "sha256": "e4bafd4ad747a4918727b5886c6d5ad6a331e81c77e625b60d9f11f452a4fd7d",
+      "original_bytes": 8069,
+      "original_sha256": "7afeb96831ee32b79f6edb146b0bde2b5a13251a5a1d73a38fa383a438361dbb",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/native-00186.json"
+    },
+    "actual/outputs/bex-build-log-page-1.json.gz": {
+      "bytes": 4648,
+      "sha256": "cda79a54c73352df41f3b9f46f41c52d95daa1223822c6c4edb68aa9a77f6f1e",
+      "original_bytes": 11143,
+      "original_sha256": "e9b7c337f9b774a60742872513981de8cb046d6832861bde62e06909ff8a1ad5",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/bex-build-log-page-1.json"
+    },
+    "actual/outputs/bex-build-log-page-2.json.gz": {
+      "bytes": 7296,
+      "sha256": "387e3987dc29f4818029d1bf11dc99c9cddf8f554db34364ce4e1a4cdf1c22fc",
+      "original_bytes": 18008,
+      "original_sha256": "bf467d78fec857140b68295a3630d74882db154b4de3fcd0233aae28bb3f96f7",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/bex-build-log-page-2.json"
+    },
+    "actual/outputs/bex-build-log.json.gz": {
+      "bytes": 9268,
+      "sha256": "bad174d2b7e05f60a2246592b52db04793a39fdd6645376d1ca785bca940f697",
+      "original_bytes": 79779,
+      "original_sha256": "3e013974fab3ea4b405084608188aa4cb4721a3409e25b70ef5b0bfaab119051",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/bex-build-log.json"
+    },
+    "actual/outputs/render-build-log-page-1.json.gz": {
+      "bytes": 4816,
+      "sha256": "e2e209c46ac7fa505922d5fc8983c20f86fe91f51e0bb369db0da3c6728376d5",
+      "original_bytes": 11591,
+      "original_sha256": "47c4840f5565487035e4fdd8f525427758b431e903b046d66985ce2c468ba24a",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/render-build-log-page-1.json"
+    },
+    "actual/outputs/render-build-log-page-2.json.gz": {
+      "bytes": 7685,
+      "sha256": "f34daee3b2c08020281bf0aa4490149aa797aff70f474a9e225b871e055cd68f",
+      "original_bytes": 19055,
+      "original_sha256": "8d458f1bfdf2c45511162d4ebec9bd9d9874ef6490eefd0bf8f9e3dacd4e542e",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/render-build-log-page-2.json"
+    },
+    "actual/outputs/render-build-log-page-3.json.gz": {
+      "bytes": 1274,
+      "sha256": "bc98e83e22ee1d458057c6488b77d9e6b5a61a5b35e865ccfb97d24214ab3636",
+      "original_bytes": 2486,
+      "original_sha256": "be5d7acdc2fae898d6e893b996cd652904e2375df519f3cccbe61635a17827df",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/render-build-log-page-3.json"
+    },
+    "actual/outputs/render-build-log.json.gz": {
+      "bytes": 10120,
+      "sha256": "6b7d1d2d2ad210d6b8fe7634ffc04385da66b3e1f8dc5921ccc364fdff837867",
+      "original_bytes": 90117,
+      "original_sha256": "d8b99d0b3bc04c05a7461baf70219a7f9336ffb97df254badd738f4f7df28282",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/render-build-log.json"
+    },
+    "actual/outputs/stream-command-00146.json.gz": {
+      "bytes": 1370,
+      "sha256": "2d3e3ab11367e37f056bb83988b87c5a1692406fc0a804150ee4366cd3083101",
+      "original_bytes": 3276,
+      "original_sha256": "b88504ff72ac5f20758ead2cbcf5e1d6668f6b63f1eafc800b529d1c4b8d43a9",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00146.json"
+    },
+    "actual/outputs/stream-command-00147.json.gz": {
+      "bytes": 1387,
+      "sha256": "7149390c5207b6a4f6d0dd6a1cb99ea3b3e2acfcdea0cc145e8cbaa3f58ef2a9",
+      "original_bytes": 3305,
+      "original_sha256": "3f94d23fd998f2e5469ab2f68c8a86fb49ca64f1b406825d90210d5e95e6ee1a",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00147.json"
+    },
+    "actual/outputs/stream-command-00148.json.gz": {
+      "bytes": 1363,
+      "sha256": "8a977968cfd20dea401ca36f206b8008ab23b97e6121715902e9ccb9cf25142c",
+      "original_bytes": 21577,
+      "original_sha256": "0d17d91394ce3f5dd3c76ff87e6738b488ca13f14057a976bd1e470563de3d08",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00148.json"
+    },
+    "actual/outputs/stream-command-00149.json.gz": {
+      "bytes": 1354,
+      "sha256": "8c0c941381e6581068ccff86414aaa88ed8f8fa88bf68db15a4c221a964e78c1",
+      "original_bytes": 3252,
+      "original_sha256": "948f84a8482bb9ccb6cb38d0750127cb22cf6ae5ee59102cfb7a5992bb927722",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00149.json"
+    },
+    "actual/outputs/stream-command-00150.json.gz": {
+      "bytes": 1376,
+      "sha256": "61f62e46c59669b743145efb1c70d9b6d46c130cfdc7cce22c934dc7590f3cb5",
+      "original_bytes": 3280,
+      "original_sha256": "656432ecb116aaedc573a6c06217bd0bb85b8a770e8eb5faa9b4fad73a471bef",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00150.json"
+    },
+    "actual/outputs/stream-command-00151.json.gz": {
+      "bytes": 1329,
+      "sha256": "8e5856c1debc557919e5f334ed249d7a99b35ee8d68aa43b7b34a50b7a598a25",
+      "original_bytes": 21553,
+      "original_sha256": "5504d8b9ae93bbd2bef3090f66a07d3833d0864c7a9c3643a4fd03661d1c06a1",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00151.json"
+    },
+    "actual/outputs/stream-command-00297.json.gz": {
+      "bytes": 1379,
+      "sha256": "0ec5af893d11664a2da4de4b4a0421f6c77d30630a65f0651c6c53cd2415e53b",
+      "original_bytes": 3323,
+      "original_sha256": "eab2e44962e0ce28d000b374e28c2a702c1698e012acbf079a8d620c8c62469c",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00297.json"
+    },
+    "actual/outputs/stream-command-00298.json.gz": {
+      "bytes": 1395,
+      "sha256": "3ba4d5f57765a6355430709515244156919499f0127907db33edb7278e68e1b6",
+      "original_bytes": 3353,
+      "original_sha256": "5355013f03c099f29697e3e9287c05a9e47f0dcedcd4421ae9dd4645418efe5d",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00298.json"
+    },
+    "actual/outputs/stream-command-00299.json.gz": {
+      "bytes": 1352,
+      "sha256": "3d9e7940e2e1f4cb22825c38c7a41426c41d1c3a9b173def03c154b475c36acb",
+      "original_bytes": 21617,
+      "original_sha256": "95037a04549599942f0d1ddc64162e1df4f3367026321de9398d4c77f4b3b5a4",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00299.json"
+    },
+    "actual/outputs/stream-command-00300.json.gz": {
+      "bytes": 1362,
+      "sha256": "2bc01d356b59dd49a65707ef746dd71d9780a901b02951b898bf7fbf64974ce2",
+      "original_bytes": 3300,
+      "original_sha256": "84db73542a3ff69f54faf64deb4a8125939b445b6eea1cfd5eb26e682dfbb5e3",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00300.json"
+    },
+    "actual/outputs/stream-command-00301.json.gz": {
+      "bytes": 1387,
+      "sha256": "97c7d776aa774579d62f0e51c7799a7e3c954eb1c5816d4c58a7532b694c49cd",
+      "original_bytes": 3329,
+      "original_sha256": "bd398dfb5a98b30f1e4ba66c5c7a3db0b0ca11fd1405193435869bba19cccbe0",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00301.json"
+    },
+    "actual/outputs/stream-command-00302.json.gz": {
+      "bytes": 1346,
+      "sha256": "25d38c94f987abeaef5a8fc38658bfa9eecf8e4935702ae72926ab41e4cd5012",
+      "original_bytes": 21584,
+      "original_sha256": "6c0f69910ae28335b4194231cecb6f994325ce85e700978c575a06f469dd5b79",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/stream-command-00302.json"
+    },
+    "actual/outputs/upgrade-command-00152.json.gz": {
+      "bytes": 630,
+      "sha256": "bdfe5537ae782d1d8ada0523a3d5f8d1e7722d2701212d325b7157c8f3dab7d0",
+      "original_bytes": 993,
+      "original_sha256": "d642130588d16d05a61ef53e9a9c4512d105d5020d2501209f848a684ca49f06",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/upgrade-command-00152.json"
+    },
+    "actual/outputs/upgrade-command-00303.json.gz": {
+      "bytes": 632,
+      "sha256": "f6fb6cc9fbe8841118604f10a9770777b22191efc6177c21bcda52b2fdc6ee8e",
+      "original_bytes": 999,
+      "original_sha256": "7d5fabcbac87acb66cfa83b512b69e9aee6572adbc7bac11b8625f7716819736",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/upgrade-command-00303.json"
+    },
+    "actual/outputs/api-00026.json.gz": {
+      "bytes": 3747,
+      "sha256": "0a78a507f418e0ca1b353ee0998c405145541e1f4785de0a2b5f6f9bdb6c615f",
+      "original_bytes": 4977,
+      "original_sha256": "2daf56953dc41f0b1eaba16c9e9a0ee14bf0774d2a988a9735ef9fd790017026",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/api-00026.json"
+    },
+    "actual/outputs/api-00161.json.gz": {
+      "bytes": 631,
+      "sha256": "35662ca3f1bbc738929e27f7d16650f9a2d2b6d260e01960233acdb3ddf9e5e0",
+      "original_bytes": 1030,
+      "original_sha256": "222b739a518afdd6e090e096fc07ee1f90258ffb3ef9b45bc40fc95b08769d8b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/api-00161.json"
+    },
+    "actual/outputs/api-00160.json.gz": {
+      "bytes": 616,
+      "sha256": "a01d4cbf248a836c92800cc3092d6930d5b2cdb2848ab7f3447e396cf58e42b9",
+      "original_bytes": 996,
+      "original_sha256": "c8970fe875efaaca6343050038ffaa68bee8ddc417651405dd4999704836b986",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/api-00160.json"
+    },
+    "actual/outputs/api-00184.json.gz": {
+      "bytes": 3747,
+      "sha256": "2e7b346c8a07bcdf303cda9b1c941f8c2e4d34c4931da809f238c9798b650d34",
+      "original_bytes": 4977,
+      "original_sha256": "5834cb28c6b96a2718914b1551ca31b3229b2b6477ca13a2a8a96c906439cd04",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/api-00184.json"
+    },
+    "actual/outputs/api-00312.json.gz": {
+      "bytes": 631,
+      "sha256": "01186844d0da97e15fd899be15e3493620f11ab0f112e2c121415fb69f6e084c",
+      "original_bytes": 1030,
+      "original_sha256": "c9e37dd9ab6b8ee304449df042e9b928c6ca1d2dc704d8955fcec6b14b367ae5",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/api-00312.json"
+    },
+    "actual/outputs/api-00311.json.gz": {
+      "bytes": 618,
+      "sha256": "2221e3af46d09e4faed281312031e8f02daeb7f02237f8812ab6e49b80ed95b8",
+      "original_bytes": 996,
+      "original_sha256": "60efe633bc632e82c801a9ecef19f651cc14ae7feff4d5d0fcd0454572345a80",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/api-00311.json"
+    },
+    "actual/outputs/api-00340.json.gz": {
+      "bytes": 554,
+      "sha256": "b051599b2b4f5ed82f2c68892482c4cd3e0cf06e88d120b7d97e11f02cbbaa38",
+      "original_bytes": 965,
+      "original_sha256": "bdf09283eea6292555ee47c684cd769557d4a8e34bed83b7cf24e5170f9087ea",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-live-run-92317733e66c75cf/evidence/outputs/api-00340.json"
+    },
+    "source/controller.py.gz": {
+      "bytes": 10178,
+      "sha256": "c040b0a1cbd4f7b7943d4d11f764a417e10a78887fd7335fa7ef8313613c8ded",
+      "original_bytes": 33793,
+      "original_sha256": "30df8d767cbd3ec1d9fe8c4f02fa579ebfc4cd20bf3cf86d38b720130357a6c9",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-final-source-20261101-y2xgf8e0/controller.py"
+    },
+    "source/transport.py.gz": {
+      "bytes": 19605,
+      "sha256": "bd71568f23bc4ad5fc8d334d3ce61424adc0764df850c3137919a72959da5eca",
+      "original_bytes": 73483,
+      "original_sha256": "6d94eb9ef31d24d487e6395d35a68c2739c5e24412d9cc5074000d5fa32b5f6b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-final-source-20261101-y2xgf8e0/transport.py"
+    },
+    "source/host.py.gz": {
+      "bytes": 3789,
+      "sha256": "dad6220360b92ae644a18c8a3dbf0c6f1034d8479cef5f9d6d862e491aa20a53",
+      "original_bytes": 12107,
+      "original_sha256": "92db2b995dbecb37efc6f5da50c72a234f0adeec43fe3355b069cd04109f7b83",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-final-source-20261101-y2xgf8e0/host.py"
+    },
+    "source/proof_binding.py.gz": {
+      "bytes": 4875,
+      "sha256": "759c09a19980cd9fbc0fe67750715a766d98a9daa0fe822b48be4dd316d33928",
+      "original_bytes": 15268,
+      "original_sha256": "befc393cf59c7563bb5b833745190124504aa2662b837ab776f52a55748c5028",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-final-source-20261101-y2xgf8e0/proof_binding.py"
+    },
+    "source/fixture.js.gz": {
+      "bytes": 1991,
+      "sha256": "7aa0cc622a4a5d1723f42d350bd85d9e4e70a36b1758c986604162a6feeaa82e",
+      "original_bytes": 4634,
+      "original_sha256": "499cbb44d6589c417f5124babc0ec39dae53fac94d534f0c01be412c0c91a50f",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-final-source-20261101-y2xgf8e0/fixture.js"
+    },
+    "source/stream-observer.js.gz": {
+      "bytes": 1624,
+      "sha256": "6c0c41b90e02b5c7aa22075c34dc1b203cfa440b37cd52a8f8dea606edcc16a8",
+      "original_bytes": 4061,
+      "original_sha256": "eb46e5617f8dbce009000bdeb6bfe945e125a2051f9c50ba2c3fe4cbe109db84",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-final-source-20261101-y2xgf8e0/stream-observer.js"
+    },
+    "source/upgrade-observer.js.gz": {
+      "bytes": 1043,
+      "sha256": "aee224c652efbe61edf7a289d23ed280046cdae806caf68d0ece174e603eca96",
+      "original_bytes": 2242,
+      "original_sha256": "8c8805353e750c733245cd3cae88bea747507d07fcdcf2b3fadfc752eb55f8d9",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-final-source-20261101-y2xgf8e0/upgrade-observer.js"
+    },
+    "source/test_build_logs.py.gz": {
+      "bytes": 2577,
+      "sha256": "9545b251ca54697d0cb192274ea7cac22c7a02719fee02d21f2e9ff7d6e3e91d",
+      "original_bytes": 7578,
+      "original_sha256": "2970e05ba1675587ef3c00f5699ac2231f2ef497490a1b5fbad6f52896067c98",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-final-source-20261101-y2xgf8e0/test_build_logs.py"
+    },
+    "source/PINNED-LOG-CONTRACT.json.gz": {
+      "bytes": 789,
+      "sha256": "c9b683b2f11e10f16462e3f46dd83674a1ffde556bda9bfc63004bf32f91f1ef",
+      "original_bytes": 1335,
+      "original_sha256": "f4bfa6d1f78b07ebaa4522dd5f434f491d23567af9f5a13db3b1f0e6ee752c00",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-final-source-20261101-y2xgf8e0/PINNED-LOG-CONTRACT.json"
+    },
+    "source/MANIFEST.json.gz": {
+      "bytes": 11164,
+      "sha256": "47301b5bdf20e34b59e13d7e45ba5a78c45287299d186788b3ebf69a70e74965",
+      "original_bytes": 33555,
+      "original_sha256": "3e5addf88d41525701d21d5374453ca56e05f852bc3b2e2606a7668edc2d4f64",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-final-source-20261101-y2xgf8e0/MANIFEST.json"
+    },
+    "source/merged93/HOST-RESULT.json.gz": {
+      "bytes": 242,
+      "sha256": "6b9c46e6b1637342049b9458d41ef0b9b40bb352981040986cc28f064f0940af",
+      "original_bytes": 325,
+      "original_sha256": "29d7a089da41870f47b6dec8dc031e8bfdf24262bfd16c5bd3b8a27d3acc05d5",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-root-review-20261101-3t3jbjsx/HOST-RESULT.json"
+    },
+    "source/merged93/root-host.py.gz": {
+      "bytes": 1099,
+      "sha256": "e50ff3ff0eb1fca2b91c346ed06689d9d0e76df1bfc48e5763c859025df35fc9",
+      "original_bytes": 2052,
+      "original_sha256": "b4c3a145ffe281f2270d47e08f6340ae95a96c913c0d81795484dadeeb8b6c8b",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-root-review-20261101-3t3jbjsx/root-host.py"
+    },
+    "source/merged93/host.stderr.gz": {
+      "bytes": 3614,
+      "sha256": "b872707d709becfa08741b95a8419bd3fb988e91388fa964b77b08f0ee4b1a9a",
+      "original_bytes": 17579,
+      "original_sha256": "fc1f377d25eb2cbb7d51ba2d904892bd722230f1c49b485325841a40ef3bacf6",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-root-review-20261101-3t3jbjsx/host.stderr"
+    },
+    "source/pager-independent/REVIEW.json.gz": {
+      "bytes": 1455,
+      "sha256": "d8f74143eabb9037837238172436f525044c3fbfdb640c0ec8d3c2a155f7c84b",
+      "original_bytes": 2811,
+      "original_sha256": "3b7c8261fd113ecb2fb3490942f81d3eabd77f7498539798c007cc1f8ba45aa3",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-independent-review-20261101-uPn0KE49/REVIEW.json"
+    },
+    "source/pager-independent/MANIFEST.json.gz": {
+      "bytes": 400,
+      "sha256": "9f71951b48ee7bdc49ccadf3d80dcb0013169a20e1c2d9d24105ba5358be8197",
+      "original_bytes": 751,
+      "original_sha256": "606d9354f822b58e56104cb8de3de66e9e16d3aaca82a0d8dadfe998b84c90dd",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-independent-review-20261101-uPn0KE49/MANIFEST.json"
+    },
+    "source/pager-independent/CHECKS.json.gz": {
+      "bytes": 1640,
+      "sha256": "d1d86c70ad9637c0c921c647a9948a865206c0a6ec4d7a99681eb68de97a8f0a",
+      "original_bytes": 4004,
+      "original_sha256": "b096f68ee7e3ce2ff7ac0114d955a5a7cb1f4fcaa036d13d5046bdff495095da",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-independent-review-20261101-uPn0KE49/CHECKS.json"
+    },
+    "source/pager-independent/FOCUSED.log.gz": {
+      "bytes": 467,
+      "sha256": "afd08ea941beb6b933d2c13c83e6adbbd8ee7a209a8b3f202a40ff1351b2404a",
+      "original_bytes": 1735,
+      "original_sha256": "06545b5713afc0497847726d4935304f2d5568458b888ba9c90e9e93af26f2e3",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-log-pages-independent-review-20261101-uPn0KE49/FOCUSED.log"
+    },
+    "audit/AUDIT.json.gz": {
+      "bytes": 2813,
+      "sha256": "e99d1a9b14af8fbf73091e88d4a0f5383644f3b9daecad652d7322a5ff1a41f8",
+      "original_bytes": 7070,
+      "original_sha256": "7b6c207c416bc58b2c77c1f0d8178683e2863f378531a58ca00f13a533f35504",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-actual-closeout-20261101-zgToDD2C/AUDIT.json"
+    },
+    "audit/INPUT-CUSTODY.json.gz": {
+      "bytes": 13463,
+      "sha256": "57bc3a784d52b14a8878176812bc22e2a97115fc1ae20f5653fe70b7e0ebdb54",
+      "original_bytes": 65596,
+      "original_sha256": "2d778c120f2a479102730caf47cbba2cef3fba5b9ab32df0376c019770c2ba51",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-actual-closeout-20261101-zgToDD2C/INPUT-CUSTODY.json"
+    },
+    "audit/audit.py.gz": {
+      "bytes": 5922,
+      "sha256": "7e940d3d46c1081bcc8267d493497cc6f0a094b9d6f6e371eca3f126f88e06ca",
+      "original_bytes": 16498,
+      "original_sha256": "b7db9f3fed2f63c49cf64016654988b1efe2ca9b8a8a8a1c7705e7ad4cd5e795",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-actual-closeout-20261101-zgToDD2C/audit.py"
+    },
+    "platform-signature/SIGNATURE-RECEIPT.json.gz": {
+      "bytes": 1342,
+      "sha256": "3e1be1415b520ec2731773eb2af2f0562f4d3e08245fb483431a581cf3407a17",
+      "original_bytes": 3060,
+      "original_sha256": "931e84a599b3232b6ba53abe3fdf13ddad2cdec9c91a94de1fdcd8914e233664",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-current-platform-signature-20261101-y5n08m8i/SIGNATURE-RECEIPT.json"
+    },
+    "platform-signature/signature-stdout.json.gz": {
+      "bytes": 233,
+      "sha256": "e57e56abf4692986d100d16edda09cd15bed29b67c01564761b64981e0650e91",
+      "original_bytes": 627,
+      "original_sha256": "a723b019452522f45cc931bde1a464665476db50fae78efbf661baeee29c2dcb",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-current-platform-signature-20261101-y5n08m8i/verify-stdout.json"
+    },
+    "platform-signature/VERIFY-RECEIPT.json.gz": {
+      "bytes": 1145,
+      "sha256": "11803e8977207c637731c69129994393db169d9a577e8e83f650eaa851d2fda6",
+      "original_bytes": 2583,
+      "original_sha256": "f178356cc52906cfa276a0088c21e144dca9cddd090f31d88ae2a7fe14e0697f",
+      "encoding": "gzip; exact original bytes after decompression",
+      "original_private_path": "/private/tmp/bex-w8-m83-current-platform-signature-20261101-y5n08m8i/VERIFY-RECEIPT.json"
+    }
+  },
+  "safe_scope": "Included original bytes are unchanged; every gzip decompresses exactly. No full foreign baseline/production inventory or credential body copied.",
+  "decoded_payload_scans": 19213
+}
