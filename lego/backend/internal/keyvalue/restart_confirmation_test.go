@@ -291,3 +291,44 @@ func TestARestartFreeMarkNeverLandsOnARacingWrite(t *testing.T) {
 		t.Fatalf("the save marked generation %s restart-free after a racing plan change", marked)
 	}
 }
+
+// w4/451: joining or leaving an environment changes only its allow-list layer
+// (the SNI proxy's) and labels the operator relabels in place, so the write is
+// restart-free: the store reads available while the operator catches up.
+func TestEnvironmentMembershipIsRestartFree(t *testing.T) {
+	ctx := context.Background()
+	member := func() *appv1alpha1.KeyValue {
+		kv := memoryOnlyStore(func(kv *appv1alpha1.KeyValue) {
+			kv.Labels = map[string]string{core.LabelEnvironment: "env-a"}
+		})
+		kv.Generation = 4
+		return kv
+	}
+	marked := func(t *testing.T, cl client.Client) {
+		t.Helper()
+		var kv appv1alpha1.KeyValue
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "red-cache"}, &kv); err != nil {
+			t.Fatal(err)
+		}
+		if got := kv.Annotations[annotationRestartFreeGeneration]; got != "5" {
+			t.Fatalf("restart-free mark = %q, want the write's generation 5", got)
+		}
+	}
+
+	t.Run("environment rules projected", func(t *testing.T) {
+		svc, cl := newService(member())
+		if err := svc.SetEnvironmentIPAllowList(ctx, "red-cache", "env-a", []string{"203.0.113.0/24"}); err != nil {
+			t.Fatal(err)
+		}
+		marked(t, cl)
+	})
+	t.Run("leaving drops the rules", func(t *testing.T) {
+		kv := member()
+		kv.Spec.EnvironmentIPAllowList = []string{"203.0.113.0/24"}
+		svc, cl := newService(kv)
+		if err := svc.ClearEnvironmentID(ctx, "red-cache", "env-a"); err != nil {
+			t.Fatal(err)
+		}
+		marked(t, cl)
+	})
+}

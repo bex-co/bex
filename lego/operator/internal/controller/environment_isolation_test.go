@@ -23,6 +23,7 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
+	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	k8slabels "k8s.io/apimachinery/pkg/labels"
 	"k8s.io/apimachinery/pkg/types"
@@ -309,5 +310,72 @@ func assertKeyValueInternalBridgeBoundaries(t *testing.T, kv *appv1alpha1.KeyVal
 		if len(ports) != 2 || ports[0].Port.IntValue() != kvPort || ports[1].Port.IntValue() != kvTLSPort {
 			t.Fatalf("bridge opens ports beyond plaintext and TLS Valkey: %+v", ports)
 		}
+	}
+}
+
+// w4/451: moving a store into, between or out of environments changes its
+// environment label, which NetworkPolicies select by. On an existing store the
+// template keeps its label (a Valkey restart is downtime) and the running pod
+// is relabelled in place.
+func TestKeyValueEnvironmentMoveNeverRollsTheTemplate(t *testing.T) {
+	kv := isolatedKV("")
+	delete(kv.Labels, labelEnvironment)
+	plan, storage := resolveKVPlan(kv.Spec)
+	sts := &appsv1.StatefulSet{}
+	applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false, false))
+	sts.CreationTimestamp = metav1.Now()
+	settled := sts.Spec.Template.DeepCopy()
+
+	for _, env := range []string{"env-a", "env-b", ""} {
+		if env == "" {
+			delete(kv.Labels, labelEnvironment)
+		} else {
+			kv.Labels[labelEnvironment] = env
+		}
+		applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false, false))
+		if !equality.Semantic.DeepEqual(settled, &sts.Spec.Template) {
+			t.Fatalf("environment %q rolled the pod template: %v", env, sts.Spec.Template.Labels)
+		}
+	}
+
+	kv.Labels[labelEnvironment] = "env-b"
+	kv.Spec.Plan = "starter"
+	plan, storage = resolveKVPlan(kv.Spec)
+	applyKeyValueStatefulSet(sts, kv, keyValueIntentFor(kv, plan, storage, "kv.example.test", false, false))
+	if got := sts.Spec.Template.Labels[labelEnvironment]; got != "env-b" {
+		t.Fatalf("a rolling template did not adopt the environment label: %q", got)
+	}
+}
+
+func TestSyncKeyValuePodIsolationRelabelsTheEnvironment(t *testing.T) {
+	scheme := keyValueBackupTestScheme(t)
+	kv := isolatedKV("")
+	ctrl := true
+	server := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{
+		Name: "cache-0", Namespace: "default", Labels: map[string]string{labelKeyValue: "cache"},
+		OwnerReferences: []metav1.OwnerReference{{APIVersion: "apps/v1", Kind: "StatefulSet", Name: "cache", UID: "u", Controller: &ctrl}},
+	}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(kv, server).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme}
+	ctx := context.Background()
+	get := func() map[string]string {
+		p := &corev1.Pod{}
+		if err := cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "cache-0"}, p); err != nil {
+			t.Fatal(err)
+		}
+		return p.Labels
+	}
+	if err := r.syncKeyValuePodIsolation(ctx, kv); err != nil {
+		t.Fatal(err)
+	}
+	if got := get()[labelEnvironment]; got != "env-a" {
+		t.Fatalf("server pod environment = %q, want env-a", got)
+	}
+	delete(kv.Labels, labelEnvironment)
+	if err := r.syncKeyValuePodIsolation(ctx, kv); err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := get()[labelEnvironment]; ok {
+		t.Fatal("leaving the environment left the label on the running pod")
 	}
 }
