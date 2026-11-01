@@ -349,7 +349,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 ## Inbox
 
 - [x] **441** — [Every production deploy now fails: the `*.onbex.co` fallback certificate is inside its 30-day renewal window](done/441.md) (~20m) — **DONE 2026-10-31** (live on pin `d147703d7657`: `*.onbex.co` now Let's Encrypt YR1, valid to 2027-01-29, via cert-manager DNS-01; fix `e12166f37`, ADR093) ← `/qa-find-bugs w4` loop, 2026-10-31 04:45 UTC (blocker for deploys). Deploy `e60b99f25` failed `validate onbex.co fallback TLS certificate`: the served cert (`*.onbex.co`, Let's Encrypt YE2) expires 2026-11-30 01:00 UTC.
-- [ ] **446** — [Service Metrics loading frames sit 24 px per chart above where the charts land](446.md) (~30m) ← w4/m209 census, loopx w4, 2026-10-31 (minor).
+- [x] **446** — [Service Metrics loading frames sit 24 px per chart above where the charts land](done/446.md) (~30m) ← w4/m209 census, loopx w4, 2026-10-31 (minor). — **DONE 2026-10-31** (constant 24 px event lane on service charts; instance-filter box held while loading).
 - [ ] **450** — [A Postgres plan change reads Available for a moment before it reads config_restart](450.md) (~1h) ← w4/364 live control, loopx w4, 2026-11-01 (minor).
 - [ ] **451** — [Moving a Key Value into or out of an environment restarts it](451.md) (~1h) ← w4/364 + m214 follow-up, loopx w4, 2026-11-01 (minor-to-major: downtime on a grouping change).
 - [ ] **449** — [A fast prebuilt-image deploy closes Live without a start time](449.md) (~45m) ← w4/316 live replay, loopx w4, 2026-11-01 (minor). `dep-dbja0phf06vc73aao82g` went created → live with no `startedAt`; only build windows and (since 316) failed pre-deploys supply a start.
