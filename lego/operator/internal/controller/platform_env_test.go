@@ -62,8 +62,8 @@ func TestPlatformEnvMatchesRendersDocumentedSet(t *testing.T) {
 		}
 	}
 	for _, e := range env {
-		if e.Name == "RENDER_INSTANCE_ID" && (e.ValueFrom == nil || e.ValueFrom.FieldRef.FieldPath != "metadata.name") {
-			t.Errorf("RENDER_INSTANCE_ID must be the pod name, got %+v", e)
+		if e.Name == "RENDER_INSTANCE_ID" && (e.ValueFrom == nil || e.ValueFrom.FieldRef.FieldPath != "metadata.annotations['app.bex.co/instance-id']") {
+			t.Errorf("RENDER_INSTANCE_ID must read the stamped public instance id (w4/386), got %+v", e)
 		}
 	}
 
