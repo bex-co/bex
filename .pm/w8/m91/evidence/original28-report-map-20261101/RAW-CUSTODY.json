@@ -1,0 +1,51 @@
+{
+  "schema": "bex.lossless-raw-custody/v1",
+  "scope": "Preparation/source/synthetic or read-only metadata records only; no actualutilitybaseline/phase/adoption/hosted approval.",
+  "files": {
+    "map-source/CUSTODY.json": {
+      "private_raw_path": "/private/tmp/bex-w8-original28-retained-reports-20261101-j6cnj1n1/CUSTODY.json",
+      "bytes": 14824,
+      "sha256": "3cd79c95e2b08c175c5c880d54578685ffcf9626db13c95a05bfe88d588b5080",
+      "retained_path": "map-source/CUSTODY.json.gz",
+      "gzip_bytes": 2780,
+      "gzip_sha256": "823c2ce90091f5a141e8ec3c8fc06df4f030e3ab39530222582587dc2b037bde",
+      "lossless_roundtrip": true
+    },
+    "map-source/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-original28-retained-reports-20261101-j6cnj1n1/MANIFEST.json",
+      "bytes": 581,
+      "sha256": "4218447013d349c32d486a4f8cfc20bfbb818fb16acec2778b55d91e3730b379",
+      "retained_path": "map-source/MANIFEST.json.gz",
+      "gzip_bytes": 360,
+      "gzip_sha256": "6d9740d6f1fbde60744a79ccabc73f1dd24b2e46505cc2b170b48ca7ed732ac5",
+      "lossless_roundtrip": true
+    },
+    "map-source/RECEIPT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-original28-retained-reports-20261101-j6cnj1n1/RECEIPT.json",
+      "bytes": 812,
+      "sha256": "87405a0001aa54af8f9795051279337f98e2438a3ff508057514fadb161301a3",
+      "retained_path": "map-source/RECEIPT.json.gz",
+      "gzip_bytes": 533,
+      "gzip_sha256": "5621a40664a6ecd36e9d66b275665b34401bfd9088d637151077fc4088617fd9",
+      "lossless_roundtrip": true
+    },
+    "map-source/RETAINED-REPORTS.json": {
+      "private_raw_path": "/private/tmp/bex-w8-original28-retained-reports-20261101-j6cnj1n1/RETAINED-REPORTS.json",
+      "bytes": 5371,
+      "sha256": "efab56d7624fd77681b770baf5a924ed52b1b89f0f35c7e37fbceeab851535bc",
+      "retained_path": "map-source/RETAINED-REPORTS.json.gz",
+      "gzip_bytes": 1010,
+      "gzip_sha256": "199aa1fa57a0e688eb7e3429fedc8c0863de353abc4e5ff1aad991e26d226d02",
+      "lossless_roundtrip": true
+    },
+    "root-review/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-original28-report-map-root-review-20261101-ki34v6en/REVIEW.json",
+      "bytes": 842,
+      "sha256": "d0a8f520efd0cd630a64c14a5a1a2b68a5d1bffd6489eff514ad79d9740f05d8",
+      "retained_path": "root-review/REVIEW.json.gz",
+      "gzip_bytes": 560,
+      "gzip_sha256": "76b95446ec954fae2aaffbf65a2bbe1ce18250aa2f53fb1cbfc4305e0c92dd80",
+      "lossless_roundtrip": true
+    }
+  }
+}

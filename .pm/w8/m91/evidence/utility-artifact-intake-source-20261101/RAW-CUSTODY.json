@@ -1,0 +1,879 @@
+{
+  "schema": "bex.lossless-raw-custody/v1",
+  "scope": "Preparation/source/synthetic or read-only metadata records only; no actualutilitybaseline/phase/adoption/hosted approval.",
+  "files": {
+    "historical-intake-plan/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-intake-plan-20261101-bi9oeark/MANIFEST.json",
+      "bytes": 259,
+      "sha256": "b15f1f52aac2918e0272aca4350194c86ac8e3dc2b39a5ac837d47190eab5b07",
+      "retained_path": "historical-intake-plan/MANIFEST.json.gz",
+      "gzip_bytes": 215,
+      "gzip_sha256": "a2e8ad3a9fa531a4b41993a72fb3904b817b70576b9929830caa619962916e99",
+      "lossless_roundtrip": true
+    },
+    "historical-intake-plan/PLAN.json": {
+      "private_raw_path": "/private/tmp/bex-w8-common-utility-intake-plan-20261101-bi9oeark/PLAN.json",
+      "bytes": 18448,
+      "sha256": "9eb14ce6a05f5bd69569e59e3119a05541cdc127fef87c9af9dfc8b940c66e64",
+      "retained_path": "historical-intake-plan/PLAN.json.gz",
+      "gzip_bytes": 7635,
+      "gzip_sha256": "8d29225de9fd5169db17c5fb3b1cad0dd7c86c7b1038bfc390d1079201fc7d55",
+      "lossless_roundtrip": true
+    },
+    "v1-source/FORMAT-ONLY.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/FORMAT-ONLY.json",
+      "bytes": 290,
+      "sha256": "c7a869d6b160099eca70d12ce55cafd23635fb66909824de2ad77938d24a54bb",
+      "retained_path": "v1-source/FORMAT-ONLY.json.gz",
+      "gzip_bytes": 224,
+      "gzip_sha256": "a0ddc689314a690412e6b481ea86e602d0535ca210d78dc7a64ec86b6b9a65ff",
+      "lossless_roundtrip": true
+    },
+    "v1-source/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/MANIFEST.json",
+      "bytes": 2336,
+      "sha256": "f507d2bfcdc429a57638bda0647acbb7cfde93c13bed4b06781714277e2856cf",
+      "retained_path": "v1-source/MANIFEST.json.gz",
+      "gzip_bytes": 804,
+      "gzip_sha256": "c72e9fa790da25197b368e92fca489181ebb979a13d782f4639a8ea6b6812c67",
+      "lossless_roundtrip": true
+    },
+    "v1-source/PROTOCOL.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/PROTOCOL.json",
+      "bytes": 3646,
+      "sha256": "f1db060b573ce258c9cfdcc241145646883db895cd4414b93af3c1db3d5a87b5",
+      "retained_path": "v1-source/PROTOCOL.json.gz",
+      "gzip_bytes": 1976,
+      "gzip_sha256": "0b7db22362fe58fb83c15ca756a7b59ce36f5cc399d6b2341b95b02e7c428e43",
+      "lossless_roundtrip": true
+    },
+    "v1-source/RECEIPT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/RECEIPT.json",
+      "bytes": 2581,
+      "sha256": "4f16a4cf94f4969ea79076eda20ed66f49b7a97787f4b2afc1cc0bec516c80ef",
+      "retained_path": "v1-source/RECEIPT.json.gz",
+      "gzip_bytes": 1320,
+      "gzip_sha256": "d4d9c030f11704ea1858df981781c3709b7a3c0e3e9318530d911be66bca49e7",
+      "lossless_roundtrip": true
+    },
+    "v1-source/SOURCE-REFERENCES.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/SOURCE-REFERENCES.json",
+      "bytes": 1045,
+      "sha256": "72780061808eb143dcadbce499680a930f90869829db4dac7a578add61a28e3b",
+      "retained_path": "v1-source/SOURCE-REFERENCES.json.gz",
+      "gzip_bytes": 620,
+      "gzip_sha256": "f304d0f4fcb5e6903c6c1602fbd4605db5dbd6fbb980d4710c7f96678f2e7fa8",
+      "lossless_roundtrip": true
+    },
+    "v1-source/extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/extract_utility_zip.py",
+      "bytes": 14544,
+      "sha256": "67a3f742a4c59227ad4a56b4e2f411a876e6a44aa0455a7cc3536088c4120a63",
+      "retained_path": "v1-source/extract_utility_zip.py.gz",
+      "gzip_bytes": 4400,
+      "gzip_sha256": "28fd02b24e761151a60707ad7c657af7fb8e853939e153b015b45ba39765165d",
+      "lossless_roundtrip": true
+    },
+    "v1-source/test_extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/test_extract_utility_zip.py",
+      "bytes": 16700,
+      "sha256": "60ee7b5fa41f1d5babe88173294cac8862db2bbc50a97d53a4212fb0b26b2974",
+      "retained_path": "v1-source/test_extract_utility_zip.py.gz",
+      "gzip_bytes": 4626,
+      "gzip_sha256": "06ed96b20f299027abed5497e064bf160aba629284f0dcd4416cc059f43eb7a3",
+      "lossless_roundtrip": true
+    },
+    "v1-source/tests-final.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/tests-final.stderr",
+      "bytes": 2745,
+      "sha256": "30c9b7c2e8274521e44788375e8b0d2bd3a76e7bf92d643f294c745a4e609ee4",
+      "retained_path": "v1-source/tests-final.stderr.gz",
+      "gzip_bytes": 729,
+      "gzip_sha256": "c32c652e1dddb9e737b36c14690e7150ec058df4e7be5a992ca9e1aa1b06472f",
+      "lossless_roundtrip": true
+    },
+    "v1-source/tests-final.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/tests-final.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v1-source/tests-final.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v1-source/tests-first.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/tests-first.stderr",
+      "bytes": 2123,
+      "sha256": "4a74b1a6a9183ba587edb4b2dacccf93395500856d59359956c480bf87b243cc",
+      "retained_path": "v1-source/tests-first.stderr.gz",
+      "gzip_bytes": 588,
+      "gzip_sha256": "f43ee6e8dd54566db6e5d0129459d4b5ff1f570297d1f5979d172ed04a964fdf",
+      "lossless_roundtrip": true
+    },
+    "v1-source/tests-first.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/tests-first.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v1-source/tests-first.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v1-source/tests-second.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/tests-second.stderr",
+      "bytes": 2596,
+      "sha256": "e0904bee3ccff4188023f436f33860dd3f199214515992d09c6b96ea0b07aa6d",
+      "retained_path": "v1-source/tests-second.stderr.gz",
+      "gzip_bytes": 696,
+      "gzip_sha256": "861ec53b9cc76a4237b163223d974a7b129e174dc96ffa6812e95e53300eb571",
+      "lossless_roundtrip": true
+    },
+    "v1-source/tests-second.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/tests-second.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v1-source/tests-second.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v1-source/tests-third-before-oracle-correction.py.txt": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/tests-third-before-oracle-correction.py.txt",
+      "bytes": 16484,
+      "sha256": "3b8f6c80ff018fb097a3e387bb359f1f56b0422db58739c1527c7c389725e187",
+      "retained_path": "v1-source/tests-third-before-oracle-correction.py.txt.gz",
+      "gzip_bytes": 4597,
+      "gzip_sha256": "e565739f5452d61f24392d5f9c37b194a9697f3e1d00b84181fb3c54f289a940",
+      "lossless_roundtrip": true
+    },
+    "v1-source/tests-third.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/tests-third.stderr",
+      "bytes": 3648,
+      "sha256": "4785514f39696bb7a2acd3a0b1ace57f0f3e08ec92c2dde03f3d08d3a44f7ab8",
+      "retained_path": "v1-source/tests-third.stderr.gz",
+      "gzip_bytes": 990,
+      "gzip_sha256": "59b249bce2a75e8549c9d91f02019de95e3d808956707c899a0473eaf7235c38",
+      "lossless_roundtrip": true
+    },
+    "v1-source/tests-third.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-source-20261101-fthbuewt/tests-third.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v1-source/tests-third.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v1-independent-review/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-independent-review-20261101-z3bz7i1o/MANIFEST.json",
+      "bytes": 1387,
+      "sha256": "037598a5472aeca11368cbd5c07212054273a632c21d8a97a1a260c86d1ca141",
+      "retained_path": "v1-independent-review/MANIFEST.json.gz",
+      "gzip_bytes": 585,
+      "gzip_sha256": "5bd494fef162303deccdca3b8710bf0f1ef1167feae102288c40533d593196b7",
+      "lossless_roundtrip": true
+    },
+    "v1-independent-review/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-independent-review-20261101-z3bz7i1o/REVIEW.json",
+      "bytes": 7965,
+      "sha256": "186614ae69240c7712d576436877a47c6451705595f66b4ece7e8448fbecb4f2",
+      "retained_path": "v1-independent-review/REVIEW.json.gz",
+      "gzip_bytes": 3217,
+      "gzip_sha256": "5a2b0cd833f66e37093101aa41d9fca6e69365957012c946a407d38540b12b23",
+      "lossless_roundtrip": true
+    },
+    "v1-independent-review/extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-independent-review-20261101-z3bz7i1o/extract_utility_zip.py",
+      "bytes": 14544,
+      "sha256": "67a3f742a4c59227ad4a56b4e2f411a876e6a44aa0455a7cc3536088c4120a63",
+      "retained_path": "v1-independent-review/extract_utility_zip.py.gz",
+      "gzip_bytes": 4400,
+      "gzip_sha256": "28fd02b24e761151a60707ad7c657af7fb8e853939e153b015b45ba39765165d",
+      "lossless_roundtrip": true
+    },
+    "v1-independent-review/late-cancel-result.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-independent-review-20261101-z3bz7i1o/late-cancel-result.json",
+      "bytes": 1360,
+      "sha256": "e4652d583a1c949905285cbed65b2f89b57342d2a3f54f1f7df458984c95e674",
+      "retained_path": "v1-independent-review/late-cancel-result.json.gz",
+      "gzip_bytes": 530,
+      "gzip_sha256": "e38f99fd82feb96c7c29009bb0d6b3a0405c78c9181800995d5677fdf80fd7c7",
+      "lossless_roundtrip": true
+    },
+    "v1-independent-review/late_cancel_probe.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-independent-review-20261101-z3bz7i1o/late_cancel_probe.py",
+      "bytes": 2331,
+      "sha256": "5257df0110e841fe8998158dbdee72f488fa4df68198d5c74103eb0ca52b5d4e",
+      "retained_path": "v1-independent-review/late_cancel_probe.py.gz",
+      "gzip_bytes": 1114,
+      "gzip_sha256": "cb7debba2976f5d29c33fa2a8ba80fa3d9838fd38455d02f37e55dfcd59a0777",
+      "lossless_roundtrip": true
+    },
+    "v1-independent-review/test_extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-independent-review-20261101-z3bz7i1o/test_extract_utility_zip.py",
+      "bytes": 16700,
+      "sha256": "60ee7b5fa41f1d5babe88173294cac8862db2bbc50a97d53a4212fb0b26b2974",
+      "retained_path": "v1-independent-review/test_extract_utility_zip.py.gz",
+      "gzip_bytes": 4626,
+      "gzip_sha256": "06ed96b20f299027abed5497e064bf160aba629284f0dcd4416cc059f43eb7a3",
+      "lossless_roundtrip": true
+    },
+    "v1-independent-review/tests-independent-python314.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-independent-review-20261101-z3bz7i1o/tests-independent-python314.stderr",
+      "bytes": 3033,
+      "sha256": "44246ef015e1ac27b733dd493778d6e38dc700f3288e1c5506a453e637d01479",
+      "retained_path": "v1-independent-review/tests-independent-python314.stderr.gz",
+      "gzip_bytes": 740,
+      "gzip_sha256": "d35b52681ec62f68dd6700a1a7a541221a4c1c44ed0a1adc8e17a69ff6271f7f",
+      "lossless_roundtrip": true
+    },
+    "v1-independent-review/tests-independent-python314.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-independent-review-20261101-z3bz7i1o/tests-independent-python314.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v1-independent-review/tests-independent-python314.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v1-independent-review/tests-independent-python39.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-independent-review-20261101-z3bz7i1o/tests-independent-python39.stderr",
+      "bytes": 3223,
+      "sha256": "a1e400b012d22654aec541c65017ebda08146b070b3f80b9052a529d7d1ab310",
+      "retained_path": "v1-independent-review/tests-independent-python39.stderr.gz",
+      "gzip_bytes": 1046,
+      "gzip_sha256": "78bde284762743865e0bb69676a6ecd6472c057294ec01f01e0ea07f13543243",
+      "lossless_roundtrip": true
+    },
+    "v1-independent-review/tests-independent-python39.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-independent-review-20261101-z3bz7i1o/tests-independent-python39.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v1-independent-review/tests-independent-python39.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-source/EXECUTION.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/EXECUTION.json",
+      "bytes": 1724,
+      "sha256": "7f24544bd83197838136134a07de32f2e455591eda28e0d0407bc336988cac44",
+      "retained_path": "v2-source/EXECUTION.json.gz",
+      "gzip_bytes": 510,
+      "gzip_sha256": "6a1dfce46435e63ccde3027944d696e85a45fc4b47c57a487cb1583617a91314",
+      "lossless_roundtrip": true
+    },
+    "v2-source/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/MANIFEST.json",
+      "bytes": 7758,
+      "sha256": "90d944abcd6c54ce1254bd640debfd8b14a3b3ed6979d15ff3a76f224e838b08",
+      "retained_path": "v2-source/MANIFEST.json.gz",
+      "gzip_bytes": 1997,
+      "gzip_sha256": "03eefcccce331ea343557e10f7738db8411979eedbdb4509e412a4e6042c240f",
+      "lossless_roundtrip": true
+    },
+    "v2-source/RECEIPT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/RECEIPT.json",
+      "bytes": 5517,
+      "sha256": "580ce784bba6c6cf093e7dde3bdfb5ac7d84100480f8a07ecf4ff9d050a04166",
+      "retained_path": "v2-source/RECEIPT.json.gz",
+      "gzip_bytes": 2053,
+      "gzip_sha256": "32769a6f20e9fc7e83a43c27ab6482862343368e6d42b967de23e1b91dbd1462",
+      "lossless_roundtrip": true
+    },
+    "v2-source/SCOPE.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/SCOPE.json",
+      "bytes": 1041,
+      "sha256": "7c6b19ca735ce56ec9b8f0b924ec8cfb0f457e4ce9d934de6bd104930faf5a75",
+      "retained_path": "v2-source/SCOPE.json.gz",
+      "gzip_bytes": 636,
+      "gzip_sha256": "6e569d99a07ccd7cb5f97ecfe00cd68fbd23c0556729d480abd498c1cb44766a",
+      "lossless_roundtrip": true
+    },
+    "v2-source/SOURCE-MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/SOURCE-MANIFEST.json",
+      "bytes": 674,
+      "sha256": "c71e71c949e12dbbc2b8cfaf0ce5642b0d994bc21df4ec3d7a8cc676fb1e45ad",
+      "retained_path": "v2-source/SOURCE-MANIFEST.json.gz",
+      "gzip_bytes": 233,
+      "gzip_sha256": "fcd7b66648e889384082c3f5c8e6ef11d104734d632ced187e4c81d44d2edb8a",
+      "lossless_roundtrip": true
+    },
+    "v2-source/extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/extract_utility_zip.py",
+      "bytes": 14716,
+      "sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4",
+      "retained_path": "v2-source/extract_utility_zip.py.gz",
+      "gzip_bytes": 4421,
+      "gzip_sha256": "2ce92cae352ecbb0ec07b09268836928035361213c358dde3e19166008c5f48a",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/review/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/review/REVIEW.json",
+      "bytes": 7965,
+      "sha256": "186614ae69240c7712d576436877a47c6451705595f66b4ece7e8448fbecb4f2",
+      "retained_path": "v2-source/history/review/REVIEW.json.gz",
+      "gzip_bytes": 3217,
+      "gzip_sha256": "5a2b0cd833f66e37093101aa41d9fca6e69365957012c946a407d38540b12b23",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/review/late-cancel-result.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/review/late-cancel-result.json",
+      "bytes": 1360,
+      "sha256": "e4652d583a1c949905285cbed65b2f89b57342d2a3f54f1f7df458984c95e674",
+      "retained_path": "v2-source/history/review/late-cancel-result.json.gz",
+      "gzip_bytes": 530,
+      "gzip_sha256": "e38f99fd82feb96c7c29009bb0d6b3a0405c78c9181800995d5677fdf80fd7c7",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/review/late_cancel_probe.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/review/late_cancel_probe.py",
+      "bytes": 2331,
+      "sha256": "5257df0110e841fe8998158dbdee72f488fa4df68198d5c74103eb0ca52b5d4e",
+      "retained_path": "v2-source/history/review/late_cancel_probe.py.gz",
+      "gzip_bytes": 1114,
+      "gzip_sha256": "cb7debba2976f5d29c33fa2a8ba80fa3d9838fd38455d02f37e55dfcd59a0777",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/review/original-review-MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/review/original-review-MANIFEST.json",
+      "bytes": 1387,
+      "sha256": "037598a5472aeca11368cbd5c07212054273a632c21d8a97a1a260c86d1ca141",
+      "retained_path": "v2-source/history/review/original-review-MANIFEST.json.gz",
+      "gzip_bytes": 585,
+      "gzip_sha256": "5bd494fef162303deccdca3b8710bf0f1ef1167feae102288c40533d593196b7",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/review/tests-independent-python314.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/review/tests-independent-python314.stderr",
+      "bytes": 3033,
+      "sha256": "44246ef015e1ac27b733dd493778d6e38dc700f3288e1c5506a453e637d01479",
+      "retained_path": "v2-source/history/review/tests-independent-python314.stderr.gz",
+      "gzip_bytes": 740,
+      "gzip_sha256": "d35b52681ec62f68dd6700a1a7a541221a4c1c44ed0a1adc8e17a69ff6271f7f",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/review/tests-independent-python314.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/review/tests-independent-python314.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-source/history/review/tests-independent-python314.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/review/tests-independent-python39.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/review/tests-independent-python39.stderr",
+      "bytes": 3223,
+      "sha256": "a1e400b012d22654aec541c65017ebda08146b070b3f80b9052a529d7d1ab310",
+      "retained_path": "v2-source/history/review/tests-independent-python39.stderr.gz",
+      "gzip_bytes": 1046,
+      "gzip_sha256": "78bde284762743865e0bb69676a6ecd6472c057294ec01f01e0ea07f13543243",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/review/tests-independent-python39.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/review/tests-independent-python39.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-source/history/review/tests-independent-python39.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/FORMAT-ONLY.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/FORMAT-ONLY.json",
+      "bytes": 290,
+      "sha256": "c7a869d6b160099eca70d12ce55cafd23635fb66909824de2ad77938d24a54bb",
+      "retained_path": "v2-source/history/v1/FORMAT-ONLY.json.gz",
+      "gzip_bytes": 224,
+      "gzip_sha256": "a0ddc689314a690412e6b481ea86e602d0535ca210d78dc7a64ec86b6b9a65ff",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/MANIFEST.json",
+      "bytes": 2336,
+      "sha256": "f507d2bfcdc429a57638bda0647acbb7cfde93c13bed4b06781714277e2856cf",
+      "retained_path": "v2-source/history/v1/MANIFEST.json.gz",
+      "gzip_bytes": 804,
+      "gzip_sha256": "c72e9fa790da25197b368e92fca489181ebb979a13d782f4639a8ea6b6812c67",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/PROTOCOL.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/PROTOCOL.json",
+      "bytes": 3646,
+      "sha256": "f1db060b573ce258c9cfdcc241145646883db895cd4414b93af3c1db3d5a87b5",
+      "retained_path": "v2-source/history/v1/PROTOCOL.json.gz",
+      "gzip_bytes": 1976,
+      "gzip_sha256": "0b7db22362fe58fb83c15ca756a7b59ce36f5cc399d6b2341b95b02e7c428e43",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/RECEIPT.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/RECEIPT.json",
+      "bytes": 2581,
+      "sha256": "4f16a4cf94f4969ea79076eda20ed66f49b7a97787f4b2afc1cc0bec516c80ef",
+      "retained_path": "v2-source/history/v1/RECEIPT.json.gz",
+      "gzip_bytes": 1320,
+      "gzip_sha256": "d4d9c030f11704ea1858df981781c3709b7a3c0e3e9318530d911be66bca49e7",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/SOURCE-REFERENCES.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/SOURCE-REFERENCES.json",
+      "bytes": 1045,
+      "sha256": "72780061808eb143dcadbce499680a930f90869829db4dac7a578add61a28e3b",
+      "retained_path": "v2-source/history/v1/SOURCE-REFERENCES.json.gz",
+      "gzip_bytes": 620,
+      "gzip_sha256": "f304d0f4fcb5e6903c6c1602fbd4605db5dbd6fbb980d4710c7f96678f2e7fa8",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/extract_utility_zip.py",
+      "bytes": 14544,
+      "sha256": "67a3f742a4c59227ad4a56b4e2f411a876e6a44aa0455a7cc3536088c4120a63",
+      "retained_path": "v2-source/history/v1/extract_utility_zip.py.gz",
+      "gzip_bytes": 4400,
+      "gzip_sha256": "28fd02b24e761151a60707ad7c657af7fb8e853939e153b015b45ba39765165d",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/test_extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/test_extract_utility_zip.py",
+      "bytes": 16700,
+      "sha256": "60ee7b5fa41f1d5babe88173294cac8862db2bbc50a97d53a4212fb0b26b2974",
+      "retained_path": "v2-source/history/v1/test_extract_utility_zip.py.gz",
+      "gzip_bytes": 4626,
+      "gzip_sha256": "06ed96b20f299027abed5497e064bf160aba629284f0dcd4416cc059f43eb7a3",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/tests-final.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/tests-final.stderr",
+      "bytes": 2745,
+      "sha256": "30c9b7c2e8274521e44788375e8b0d2bd3a76e7bf92d643f294c745a4e609ee4",
+      "retained_path": "v2-source/history/v1/tests-final.stderr.gz",
+      "gzip_bytes": 729,
+      "gzip_sha256": "c32c652e1dddb9e737b36c14690e7150ec058df4e7be5a992ca9e1aa1b06472f",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/tests-final.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/tests-final.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-source/history/v1/tests-final.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/tests-first.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/tests-first.stderr",
+      "bytes": 2123,
+      "sha256": "4a74b1a6a9183ba587edb4b2dacccf93395500856d59359956c480bf87b243cc",
+      "retained_path": "v2-source/history/v1/tests-first.stderr.gz",
+      "gzip_bytes": 588,
+      "gzip_sha256": "f43ee6e8dd54566db6e5d0129459d4b5ff1f570297d1f5979d172ed04a964fdf",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/tests-first.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/tests-first.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-source/history/v1/tests-first.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/tests-second.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/tests-second.stderr",
+      "bytes": 2596,
+      "sha256": "e0904bee3ccff4188023f436f33860dd3f199214515992d09c6b96ea0b07aa6d",
+      "retained_path": "v2-source/history/v1/tests-second.stderr.gz",
+      "gzip_bytes": 696,
+      "gzip_sha256": "861ec53b9cc76a4237b163223d974a7b129e174dc96ffa6812e95e53300eb571",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/tests-second.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/tests-second.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-source/history/v1/tests-second.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/tests-third-before-oracle-correction.py.txt": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/tests-third-before-oracle-correction.py.txt",
+      "bytes": 16484,
+      "sha256": "3b8f6c80ff018fb097a3e387bb359f1f56b0422db58739c1527c7c389725e187",
+      "retained_path": "v2-source/history/v1/tests-third-before-oracle-correction.py.txt.gz",
+      "gzip_bytes": 4597,
+      "gzip_sha256": "e565739f5452d61f24392d5f9c37b194a9697f3e1d00b84181fb3c54f289a940",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/tests-third.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/tests-third.stderr",
+      "bytes": 3648,
+      "sha256": "4785514f39696bb7a2acd3a0b1ace57f0f3e08ec92c2dde03f3d08d3a44f7ab8",
+      "retained_path": "v2-source/history/v1/tests-third.stderr.gz",
+      "gzip_bytes": 990,
+      "gzip_sha256": "59b249bce2a75e8549c9d91f02019de95e3d808956707c899a0473eaf7235c38",
+      "lossless_roundtrip": true
+    },
+    "v2-source/history/v1/tests-third.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/history/v1/tests-third.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-source/history/v1/tests-third.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-source/interpreter314.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/interpreter314.json",
+      "bytes": 148,
+      "sha256": "6f4c2e011e674b577fdc106858529e7ed5610d3256b4e1730826c2b9e65ed79c",
+      "retained_path": "v2-source/interpreter314.json.gz",
+      "gzip_bytes": 146,
+      "gzip_sha256": "6fe47bdf18e68f51cfbb6b474e816561fd07e63a8a6d2ff70ca8204e75292733",
+      "lossless_roundtrip": true
+    },
+    "v2-source/interpreter39.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/interpreter39.json",
+      "bytes": 168,
+      "sha256": "4f684d98a7b96e024d873db807c9552caf7feeabb606bcf143cc5d68ef48322b",
+      "retained_path": "v2-source/interpreter39.json.gz",
+      "gzip_bytes": 166,
+      "gzip_sha256": "9046d00894cf2fdb45dce37e90ebb9974e0b2fea90319020d3ac0ee21516fb8b",
+      "lossless_roundtrip": true
+    },
+    "v2-source/probe314/extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/probe314/extract_utility_zip.py",
+      "bytes": 14716,
+      "sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4",
+      "retained_path": "v2-source/probe314/extract_utility_zip.py.gz",
+      "gzip_bytes": 4421,
+      "gzip_sha256": "2ce92cae352ecbb0ec07b09268836928035361213c358dde3e19166008c5f48a",
+      "lossless_roundtrip": true
+    },
+    "v2-source/probe314/late-cancel-result.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/probe314/late-cancel-result.json",
+      "bytes": 1032,
+      "sha256": "6f92cee1f1b5e093bfb6d722fdc0b1c8d28f410b3736ff92b5d874126b371bac",
+      "retained_path": "v2-source/probe314/late-cancel-result.json.gz",
+      "gzip_bytes": 571,
+      "gzip_sha256": "ffd5386a9e1fc65bad9ddbb3eb49e94e8ffa4ab4ef3a55599f9f3dc82d73d8a9",
+      "lossless_roundtrip": true
+    },
+    "v2-source/probe314/late_cancel_probe.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/probe314/late_cancel_probe.py",
+      "bytes": 2331,
+      "sha256": "5257df0110e841fe8998158dbdee72f488fa4df68198d5c74103eb0ca52b5d4e",
+      "retained_path": "v2-source/probe314/late_cancel_probe.py.gz",
+      "gzip_bytes": 1114,
+      "gzip_sha256": "cb7debba2976f5d29c33fa2a8ba80fa3d9838fd38455d02f37e55dfcd59a0777",
+      "lossless_roundtrip": true
+    },
+    "v2-source/probe314.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/probe314.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-source/probe314.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-source/probe314.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/probe314.stdout",
+      "bytes": 190,
+      "sha256": "188c2ff64c8b2b7aae13edaf194528c9f7433742d4ca4648728e97df176b5917",
+      "retained_path": "v2-source/probe314.stdout.gz",
+      "gzip_bytes": 147,
+      "gzip_sha256": "6e660ec467e5fcf9e5b7a0e2d2aa3564cbdf6e8a5fd657f066faccb6f865f842",
+      "lossless_roundtrip": true
+    },
+    "v2-source/probe39/extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/probe39/extract_utility_zip.py",
+      "bytes": 14716,
+      "sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4",
+      "retained_path": "v2-source/probe39/extract_utility_zip.py.gz",
+      "gzip_bytes": 4421,
+      "gzip_sha256": "2ce92cae352ecbb0ec07b09268836928035361213c358dde3e19166008c5f48a",
+      "lossless_roundtrip": true
+    },
+    "v2-source/probe39/late-cancel-result.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/probe39/late-cancel-result.json",
+      "bytes": 1032,
+      "sha256": "6f92cee1f1b5e093bfb6d722fdc0b1c8d28f410b3736ff92b5d874126b371bac",
+      "retained_path": "v2-source/probe39/late-cancel-result.json.gz",
+      "gzip_bytes": 571,
+      "gzip_sha256": "ffd5386a9e1fc65bad9ddbb3eb49e94e8ffa4ab4ef3a55599f9f3dc82d73d8a9",
+      "lossless_roundtrip": true
+    },
+    "v2-source/probe39/late_cancel_probe.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/probe39/late_cancel_probe.py",
+      "bytes": 2331,
+      "sha256": "5257df0110e841fe8998158dbdee72f488fa4df68198d5c74103eb0ca52b5d4e",
+      "retained_path": "v2-source/probe39/late_cancel_probe.py.gz",
+      "gzip_bytes": 1114,
+      "gzip_sha256": "cb7debba2976f5d29c33fa2a8ba80fa3d9838fd38455d02f37e55dfcd59a0777",
+      "lossless_roundtrip": true
+    },
+    "v2-source/probe39.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/probe39.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-source/probe39.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-source/probe39.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/probe39.stdout",
+      "bytes": 190,
+      "sha256": "188c2ff64c8b2b7aae13edaf194528c9f7433742d4ca4648728e97df176b5917",
+      "retained_path": "v2-source/probe39.stdout.gz",
+      "gzip_bytes": 147,
+      "gzip_sha256": "6e660ec467e5fcf9e5b7a0e2d2aa3564cbdf6e8a5fd657f066faccb6f865f842",
+      "lossless_roundtrip": true
+    },
+    "v2-source/source.diff": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/source.diff",
+      "bytes": 1020,
+      "sha256": "7ccf4cbe2057ad79231ece15b9dba989000cec49f913ec9c73073c9add6eabad",
+      "retained_path": "v2-source/source.diff.gz",
+      "gzip_bytes": 425,
+      "gzip_sha256": "d242cf42ecf43278b74307505232adccd440467e4f0d377cdb5199ab75d2bc45",
+      "lossless_roundtrip": true
+    },
+    "v2-source/test_extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/test_extract_utility_zip.py",
+      "bytes": 17701,
+      "sha256": "e37aff39f8c0f3880644ccb0060ca9c12d39159532406e64c057399e2288cd87",
+      "retained_path": "v2-source/test_extract_utility_zip.py.gz",
+      "gzip_bytes": 4791,
+      "gzip_sha256": "245ebaa58c01ad03bf61d287f202d96a7c65ff061060bf2e6e3214b83c0fdf85",
+      "lossless_roundtrip": true
+    },
+    "v2-source/tests.diff": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/tests.diff",
+      "bytes": 1331,
+      "sha256": "8776567b719b036fb2bc6c93303e2824182d2269d5ead0ac8891108d5b62349a",
+      "retained_path": "v2-source/tests.diff.gz",
+      "gzip_bytes": 618,
+      "gzip_sha256": "a9a389050fa79f7229981a5fc6c9428f4a62ab21aee38300efaf827a884673aa",
+      "lossless_roundtrip": true
+    },
+    "v2-source/tests314.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/tests314.stderr",
+      "bytes": 2910,
+      "sha256": "2a366698922afd65489b07f972d4eab2ca645ca3598ad21bd5efbae68804f3a0",
+      "retained_path": "v2-source/tests314.stderr.gz",
+      "gzip_bytes": 761,
+      "gzip_sha256": "15b8e964542d6a17ead69191a56a3b0a4e50dc435630cb5ddd7b5685bfe18b8e",
+      "lossless_roundtrip": true
+    },
+    "v2-source/tests314.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/tests314.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-source/tests314.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-source/tests39.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/tests39.stderr",
+      "bytes": 1742,
+      "sha256": "6e221e1d3ca93c9a2877318f34dc8c726234b90c16fb9d966dd06d796960521e",
+      "retained_path": "v2-source/tests39.stderr.gz",
+      "gzip_bytes": 660,
+      "gzip_sha256": "e1f717519553ecbd572d0a58c3c25e51ee4401732a101fc91e4750564e78c101",
+      "lossless_roundtrip": true
+    },
+    "v2-source/tests39.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/tests39.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-source/tests39.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/CHECKS.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/CHECKS.json",
+      "bytes": 442,
+      "sha256": "ec9bf11f55b319f1c7411f766332540e0c44d015b39119c2996e3ea2096584fc",
+      "retained_path": "v2-independent-review/CHECKS.json.gz",
+      "gzip_bytes": 269,
+      "gzip_sha256": "c76874e5900d89cd36eac22dc6288d4761742b639bf97c996ca9611132334d48",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/MANIFEST.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/MANIFEST.json",
+      "bytes": 2676,
+      "sha256": "535e57748d59cfc97f1fd25bbfd1ea0b3a66d19df98f097f9f467532f89e3f16",
+      "retained_path": "v2-independent-review/MANIFEST.json.gz",
+      "gzip_bytes": 708,
+      "gzip_sha256": "838fa08dd2d4beb2cd852fcfbc95589c408a15249edbe6ae6f867fdba0659d1c",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/REVIEW.json",
+      "bytes": 4384,
+      "sha256": "e4418d9ef9c8dccd0c525f5eb3e1b5448b4ea6b365950bdbf3a004a1e74a8b14",
+      "retained_path": "v2-independent-review/REVIEW.json.gz",
+      "gzip_bytes": 1862,
+      "gzip_sha256": "04587dfe481461824454813f03ed41d631e9b38608571f0aaaa5d590e25091e8",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe314/extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe314/extract_utility_zip.py",
+      "bytes": 14716,
+      "sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4",
+      "retained_path": "v2-independent-review/probe314/extract_utility_zip.py.gz",
+      "gzip_bytes": 4421,
+      "gzip_sha256": "2ce92cae352ecbb0ec07b09268836928035361213c358dde3e19166008c5f48a",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe314/focused.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe314/focused.stderr",
+      "bytes": 472,
+      "sha256": "a65d36fe3b0f6e69e165530a455666d6b0e431afaa13c52562da3e2a095c0d37",
+      "retained_path": "v2-independent-review/probe314/focused.stderr.gz",
+      "gzip_bytes": 196,
+      "gzip_sha256": "cf2be6427227753ec4c9591e578dbeeec88e0a7ff2d0c84162d0aa9e9b1b79a7",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe314/focused.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe314/focused.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-independent-review/probe314/focused.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe314/late-cancel-result.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe314/late-cancel-result.json",
+      "bytes": 1032,
+      "sha256": "c324f996a48ed6db6a94360615579bb17e09577aa7b8594ad25520138ffb8ccd",
+      "retained_path": "v2-independent-review/probe314/late-cancel-result.json.gz",
+      "gzip_bytes": 571,
+      "gzip_sha256": "de312a3a06b1cd19323a4898af1ae40afc6f7a9d4b1713aeffffcf5d52d1fb70",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe314/late_cancel_probe.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe314/late_cancel_probe.py",
+      "bytes": 2331,
+      "sha256": "5257df0110e841fe8998158dbdee72f488fa4df68198d5c74103eb0ca52b5d4e",
+      "retained_path": "v2-independent-review/probe314/late_cancel_probe.py.gz",
+      "gzip_bytes": 1114,
+      "gzip_sha256": "cb7debba2976f5d29c33fa2a8ba80fa3d9838fd38455d02f37e55dfcd59a0777",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe314/probe.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe314/probe.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-independent-review/probe314/probe.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe314/probe.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe314/probe.stdout",
+      "bytes": 190,
+      "sha256": "188c2ff64c8b2b7aae13edaf194528c9f7433742d4ca4648728e97df176b5917",
+      "retained_path": "v2-independent-review/probe314/probe.stdout.gz",
+      "gzip_bytes": 147,
+      "gzip_sha256": "6e660ec467e5fcf9e5b7a0e2d2aa3564cbdf6e8a5fd657f066faccb6f865f842",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe314/test_extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe314/test_extract_utility_zip.py",
+      "bytes": 17701,
+      "sha256": "e37aff39f8c0f3880644ccb0060ca9c12d39159532406e64c057399e2288cd87",
+      "retained_path": "v2-independent-review/probe314/test_extract_utility_zip.py.gz",
+      "gzip_bytes": 4791,
+      "gzip_sha256": "245ebaa58c01ad03bf61d287f202d96a7c65ff061060bf2e6e3214b83c0fdf85",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe39/extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe39/extract_utility_zip.py",
+      "bytes": 14716,
+      "sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4",
+      "retained_path": "v2-independent-review/probe39/extract_utility_zip.py.gz",
+      "gzip_bytes": 4421,
+      "gzip_sha256": "2ce92cae352ecbb0ec07b09268836928035361213c358dde3e19166008c5f48a",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe39/focused.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe39/focused.stderr",
+      "bytes": 326,
+      "sha256": "9eb408b150645e6504388201bb19004a6233b15055f398665f50f4b00a5393bb",
+      "retained_path": "v2-independent-review/probe39/focused.stderr.gz",
+      "gzip_bytes": 188,
+      "gzip_sha256": "17e44f50b7ed3307913b40adf7a56d784219bf698b75a6460fe666601ed07d22",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe39/focused.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe39/focused.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-independent-review/probe39/focused.stdout.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe39/late-cancel-result.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe39/late-cancel-result.json",
+      "bytes": 1032,
+      "sha256": "c324f996a48ed6db6a94360615579bb17e09577aa7b8594ad25520138ffb8ccd",
+      "retained_path": "v2-independent-review/probe39/late-cancel-result.json.gz",
+      "gzip_bytes": 571,
+      "gzip_sha256": "de312a3a06b1cd19323a4898af1ae40afc6f7a9d4b1713aeffffcf5d52d1fb70",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe39/late_cancel_probe.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe39/late_cancel_probe.py",
+      "bytes": 2331,
+      "sha256": "5257df0110e841fe8998158dbdee72f488fa4df68198d5c74103eb0ca52b5d4e",
+      "retained_path": "v2-independent-review/probe39/late_cancel_probe.py.gz",
+      "gzip_bytes": 1114,
+      "gzip_sha256": "cb7debba2976f5d29c33fa2a8ba80fa3d9838fd38455d02f37e55dfcd59a0777",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe39/probe.stderr": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe39/probe.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "retained_path": "v2-independent-review/probe39/probe.stderr.gz",
+      "gzip_bytes": 20,
+      "gzip_sha256": "9ceffb7310338057cfe71a4ae1e2c98d2c485d81cdef906532a801f457a38d64",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe39/probe.stdout": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe39/probe.stdout",
+      "bytes": 190,
+      "sha256": "188c2ff64c8b2b7aae13edaf194528c9f7433742d4ca4648728e97df176b5917",
+      "retained_path": "v2-independent-review/probe39/probe.stdout.gz",
+      "gzip_bytes": 147,
+      "gzip_sha256": "6e660ec467e5fcf9e5b7a0e2d2aa3564cbdf6e8a5fd657f066faccb6f865f842",
+      "lossless_roundtrip": true
+    },
+    "v2-independent-review/probe39/test_extract_utility_zip.py": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-v2-independent-review-20261101-flpecm0_/probe39/test_extract_utility_zip.py",
+      "bytes": 17701,
+      "sha256": "e37aff39f8c0f3880644ccb0060ca9c12d39159532406e64c057399e2288cd87",
+      "retained_path": "v2-independent-review/probe39/test_extract_utility_zip.py.gz",
+      "gzip_bytes": 4791,
+      "gzip_sha256": "245ebaa58c01ad03bf61d287f202d96a7c65ff061060bf2e6e3214b83c0fdf85",
+      "lossless_roundtrip": true
+    },
+    "root-review/REVIEW.json": {
+      "private_raw_path": "/private/tmp/bex-w8-utility-zip-root-review-20261101-dswpaa3g/REVIEW.json",
+      "bytes": 1871,
+      "sha256": "703bc41ee5c462688e10cd04571affd2119e4b99db7a8bb7232346a61ab02acd",
+      "retained_path": "root-review/REVIEW.json.gz",
+      "gzip_bytes": 1027,
+      "gzip_sha256": "028b1f9b30a9ed82a3f8b05cf7dfcb1fdac0035780e8cb2df222d7488f8157c1",
+      "lossless_roundtrip": true
+    }
+  }
+}
