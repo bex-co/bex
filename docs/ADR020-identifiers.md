@@ -84,7 +84,7 @@ Prose rules rot; these don't — the enforcement is layered, compiler first:
 
   The sync id (`bsr-` vs Render's `exe-`) is **unverified rather than confirmed safe**: no path parameter in the currently-embedded spec is constrained to a sync id — sync runs appear only in response bodies, never as an addressable path segment — so the same gate cannot currently reject one. If a future spec refresh introduces such a parameter on a route bex serves, the guard test above fails and this entry is where to record the outcome.
 
-- **REST and GraphQL `Domain.id` return the hostname, not the minted `cdm-…` id.** Deliberate: domains are addressed by hostname in most Render flows (DNS instructions, the custom domain itself), making the hostname the honest identity contract. Both REST (`internal/apps/domains.go::toRenderCustomDomain`) and GraphQL (`internal/apps/graphql.go::customDomainGQLType`) emit `d.Name` consistently — no surface divergence.
+- ~~REST and GraphQL `Domain.id` return the hostname~~ — **closed by w4/389 (2026-10-31)**: the hostname id was never signed off in ADR018, so for Render parity REST, GraphQL and MCP now return the claim's minted `cdm-…` id (`DomainView.ID`). Get, verify and delete take Render's `{customDomainIdOrName}`: a `cdm-` id resolves to its claim on that service, anything else is a hostname (`internal/apps/domains.go::domainHost`). A legacy storeless domain with no claim row keeps its hostname as id.
 
 ## Alternatives considered
 
