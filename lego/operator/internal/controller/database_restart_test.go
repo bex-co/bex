@@ -23,6 +23,7 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/types"
@@ -61,12 +62,18 @@ func restartFixture(t *testing.T, restartedAt time.Time, podRestartedAt string) 
 		t.Fatal(err)
 	}
 
+	// CNPG's instance carries its plan's resources on its postgres container,
+	// as the reconciler projects them onto the Cluster (w4/450 reads them).
+	plan, _ := resolvePlan(db.Spec)
+	planned := corev1.ResourceList{corev1.ResourceCPU: resource.MustParse(plan.CPU), corev1.ResourceMemory: resource.MustParse(plan.Memory)}
+	resources := corev1.ResourceRequirements{Requests: planned, Limits: planned.DeepCopy()}
 	pod := &corev1.Pod{
 		ObjectMeta: metav1.ObjectMeta{
 			Name: req.Name + "-1", Namespace: req.Namespace,
 			Labels:      map[string]string{"cnpg.io/cluster": req.Name, "cnpg.io/podRole": "instance"},
 			Annotations: map[string]string{restartAnnotation: podRestartedAt},
 		},
+		Spec:   corev1.PodSpec{Containers: []corev1.Container{{Name: "postgres", Image: "postgres", Resources: resources}}},
 		Status: corev1.PodStatus{Conditions: []corev1.PodCondition{{Type: corev1.PodReady, Status: corev1.ConditionTrue}}},
 	}
 	if err := cl.Create(ctx, pod); err != nil {
@@ -161,5 +168,66 @@ func TestDatabaseRestartHoldIsBounded(t *testing.T) {
 	}
 	if db, ready := readyCondition(t, cl, req); db.Status.Phase != appv1alpha1.DBPhaseReady || ready.Status != metav1.ConditionTrue {
 		t.Fatalf("past the bound: phase %q ready %+v, want Ready", db.Status.Phase, ready)
+	}
+}
+
+// w4/450: a plan change patches the Cluster's resources while CNPG still
+// counts the old instance ready, so the pass that wrote the new resources read
+// Ready at the new generation (`available` before the restart). The Database
+// stays Restarting until a ready instance carries the new resources; extra
+// keys on the Pod (CNPG's ephemeral-storage) do not count against it.
+func TestDatabaseResourceChangeStaysNotReadyUntilInstancesCarryIt(t *testing.T) {
+	ctx := context.Background()
+	r, cl, req := restartFixture(t, time.Date(2026, 11, 1, 2, 0, 0, 0, time.UTC), "")
+	var db appv1alpha1.Database
+	if err := cl.Get(ctx, req.NamespacedName, &db); err != nil {
+		t.Fatal(err)
+	}
+	db.Spec.RestartedAt = ""
+	if err := cl.Update(ctx, &db); err != nil {
+		t.Fatal(err)
+	}
+	var pod corev1.Pod
+	if err := cl.Get(ctx, types.NamespacedName{Name: req.Name + "-1", Namespace: req.Namespace}, &pod); err != nil {
+		t.Fatal(err)
+	}
+	// The running instance predates the change: a smaller plan's resources.
+	small := corev1.ResourceList{corev1.ResourceCPU: resource.MustParse("10m"), corev1.ResourceMemory: resource.MustParse("64Mi")}
+	pod.Spec.Containers[0].Resources = corev1.ResourceRequirements{Requests: small, Limits: small.DeepCopy()}
+	if err := cl.Update(ctx, &pod); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Reconcile(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+	if db, ready := readyCondition(t, cl, req); db.Status.Phase == appv1alpha1.DBPhaseReady || ready == nil || ready.Reason != "Restarting" {
+		t.Fatalf("before CNPG rolls the new resources: phase %q ready %+v, want Restarting", db.Status.Phase, ready)
+	}
+
+	// CNPG brings the instance back with the Cluster's resources, plus its own
+	// ephemeral-storage request and limit.
+	cluster := &unstructured.Unstructured{}
+	cluster.SetGroupVersionKind(cnpgClusterGVK)
+	if err := cl.Get(ctx, req.NamespacedName, cluster); err != nil {
+		t.Fatal(err)
+	}
+	want, ok := clusterResources(cluster)
+	if !ok {
+		t.Fatal("cluster carries no resources")
+	}
+	want.Requests[corev1.ResourceEphemeralStorage] = resource.MustParse("1Gi")
+	want.Limits[corev1.ResourceEphemeralStorage] = resource.MustParse("10Gi")
+	if err := cl.Get(ctx, types.NamespacedName{Name: req.Name + "-1", Namespace: req.Namespace}, &pod); err != nil {
+		t.Fatal(err)
+	}
+	pod.Spec.Containers[0].Resources = want
+	if err := cl.Update(ctx, &pod); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := r.Reconcile(ctx, req); err != nil {
+		t.Fatal(err)
+	}
+	if db, ready := readyCondition(t, cl, req); db.Status.Phase != appv1alpha1.DBPhaseReady || ready == nil || ready.Status != metav1.ConditionTrue {
+		t.Fatalf("after the roll: phase %q ready %+v, want Ready", db.Status.Phase, ready)
 	}
 }
