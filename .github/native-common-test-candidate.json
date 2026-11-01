@@ -1,53 +1,105 @@
 {
   "schema": "bex.native-common-test-candidate/v1",
   "candidate": {
-    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:56c58abb41abd6becfa1810834c6cba46b742703e2beffdb3a88387772b3b986",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
     "base": "buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6a9d6c2cc76438fae2c0988",
-    "producer": "99cdc5c5a5b53629e2a98963d43d373511a91c1f",
-    "verification": "99cdc5c5a5b53629e2a98963d43d373511a91c1f",
+    "producer": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "verification": "1feba939b4697894e800ed0abb4f25a0bf415641",
     "publication": {
-      "run_id": 41249441151,
+      "run_id": 41341287851,
       "run_attempt": 1,
-      "job_id": 124689058047,
+      "job_id": 124954099391,
       "metadata": {
-        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/publication/job.json",
-        "sha256": "b3c3bbca35a243794c3c91f8eba8865f7493df46f3161bb72ee7a79851c19b21",
-        "bytes": 5522
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/publication/jobs.json",
+        "sha256": "9d796266474e3c224e93fa1407f2f3020cd7cf07e9409a3bcf0f85ce7653b6de",
+        "bytes": 18959
       }
     },
     "platforms": {
       "amd64": {
-        "manifest_digest": "sha256:7080be070ed01a7b856b5e3bdc1e83f56f782adab9eb64f7a712bf3378ca0f03",
-        "config_digest": "sha256:71c81d5536dfded543a554027b7158067418c5339597b6c8b60c88eb4921c881"
+        "manifest_digest": "sha256:bcd147e4f7403693e2ec78ad68598c4a1f2b1bdb828c8267f70c2a5dbbaf7a9e",
+        "config_digest": "sha256:7107d56675797aa659f0cf2af932704dac349bc5140a35ea25e584e3fdc179b4"
       },
       "arm64": {
-        "manifest_digest": "sha256:1388ddeca9ea568bff80341c438684f7cb761d89a0adfe04000f945995e91d4e",
-        "config_digest": "sha256:0fa42f2deaa79db2bfc41b5ab5cdea0e1b1c081445bce1298766649b65a6b7fd"
+        "manifest_digest": "sha256:ee17ccbc1cfe853209f8fd694091bf58ed54adf38b32339f6515797af440260d",
+        "config_digest": "sha256:f81cfc5901179b9f34b1f994dbfd122274df39215b7bc54bf498805a48955452"
       }
     },
     "approval": {
       "receipt": {
-        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/actual/receipt.json",
-        "sha256": "f3cccfadddf2e5632de24d44fe6f43607d8964dd3c1dc98d5bf72457f7c442d2",
-        "bytes": 39125
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/actual/receipt.json",
+        "sha256": "aa36b6922c4b3b3e7afe5ceedee21f489de5f00c20a54983b92ba6d00949f263",
+        "bytes": 40223
       },
       "custody": {
-        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/CUSTODY.json",
-        "sha256": "a10d517077de29ed5897d8a284e53564593702ef4b6ff74ee862bae8f3e2f12f",
-        "bytes": 135790
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/CUSTODY.json",
+        "sha256": "81021a7a09354cd1315ea266c14e7d97c912502e65fb1417f9aaf5e56235943b",
+        "bytes": 485809
       },
       "plan": {
-        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/tools/PLAN.json",
-        "sha256": "ffc6b6ce1173691851e1de5e5a1f744fb599fc582c70511f2b56e82ea2c0f51e",
-        "bytes": 6245
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/tools/PLAN.json",
+        "sha256": "e86f10b0ed4757620db780c266b3e96ecc5ece8f753ddf4b536fca3fd3c5bc81",
+        "bytes": 7247
       },
       "inputs": {
-        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/IMAGE-INPUTS.json",
-        "sha256": "6d418e82b6b9be74b624c6660b07bebb3ab836bcd85eb65e437d13535f62d9c5",
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/IMAGE-INPUTS.json",
+        "sha256": "822f75fe0b44129c5b4fefa9ec0f30fd5f6e325aaf3674f6234f24f540a20797",
         "bytes": 6894
       }
     },
-    "source": null,
-    "utilities": null
+    "source": {
+      "sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
+      "manifest": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact/qualification-source.json",
+        "sha256": "367614dfe0806cbd99efa4145150960c0b2453bccba764d54e7a7fb9557f2a4d",
+        "bytes": 75098
+      }
+    },
+    "utilities": {
+      "amd64": {
+        "run_id": 41341287851,
+        "run_attempt": 1,
+        "job_id": 124958175523,
+        "artifact_id": 13098498438,
+        "artifact_metadata": {
+          "path": ".pm/w8/m91/evidence/common-current0941-20261101/utility-metadata/amd64-artifact.json",
+          "sha256": "e493ab10fbc44c171621dfc7853c860fb41bd6167f3ceffb417f02e9a38fc2d7",
+          "bytes": 747
+        },
+        "metadata": {
+          "path": ".pm/w8/m91/evidence/common-current0941-20261101/publication/jobs.json",
+          "sha256": "9d796266474e3c224e93fa1407f2f3020cd7cf07e9409a3bcf0f85ce7653b6de",
+          "bytes": 18959
+        },
+        "root": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact",
+        "manifest": {
+          "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact/MANIFEST.json",
+          "sha256": "5d238f9dca9333496a556ea261b50d5b492fbbc7fcf145d12c210261ae9d6939",
+          "bytes": 79609
+        }
+      },
+      "arm64": {
+        "run_id": 41341287851,
+        "run_attempt": 1,
+        "job_id": 124958175538,
+        "artifact_id": 13098737409,
+        "artifact_metadata": {
+          "path": ".pm/w8/m91/evidence/common-current0941-20261101/utility-metadata/arm64-artifact.json",
+          "sha256": "525e9725e5b181d0f948bb7b94e5b0f1987f03c7789340710d50faf987f7af49",
+          "bytes": 747
+        },
+        "metadata": {
+          "path": ".pm/w8/m91/evidence/common-current0941-20261101/publication/jobs.json",
+          "sha256": "9d796266474e3c224e93fa1407f2f3020cd7cf07e9409a3bcf0f85ce7653b6de",
+          "bytes": 18959
+        },
+        "root": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/arm64/artifact",
+        "manifest": {
+          "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/arm64/artifact/MANIFEST.json",
+          "sha256": "135fc4faab166112ce13dac1f7adab0cba95c8e63633a915a307fa8fed05f61c",
+          "bytes": 79299
+        }
+      }
+    }
   }
 }
