@@ -289,6 +289,7 @@ metadata:
 spec:
   clusterName: bex
   replicas: 1
+  rolloutAfter: "2026-11-02T06:59:18Z" # CVE-2026-98432: roll onto the kernel-6.8.0-147 snapshot (applied out of band)
   selector: {matchLabels: null}
   template:
     metadata:
