@@ -536,9 +536,11 @@ class BuildKitBootstrapControls(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root, inputs, config, policy, helper, output = self.fixture(directory)
             pin = next(row["committed"] for row in json.loads(policy.read_text())["images"] if row["id"] == "helper-buildkit")
-            def controlled(command, environment, cancellation, output_limit=None):
+            def controlled(command, environment, cancellation, output_limit=None, deadline=None):
                 self.assertFalse(output.exists())
-                self.assertEqual(command, ["timeout", "--kill-after=10s", "180s", "docker", "pull", pin])
+                self.assertEqual(command[:2] + command[3:], ["timeout", "--kill-after=10s", "docker", "pull", pin])
+                self.assertTrue(180 < int(command[2][:-1]) <= 554)
+                self.assertIsNotNone(deadline)
                 self.assertEqual(output_limit, qualification.BOOTSTRAP_OUTPUT_LIMIT)
                 self.assertEqual(environment["DOCKER_CONFIG"], str(config))
                 self.assertEqual(json.loads((config / ".qualification-owner.json").read_text())["owner"], inputs["owner"])
@@ -556,6 +558,81 @@ class BuildKitBootstrapControls(unittest.TestCase):
             self.assertEqual((root / receipt["attempts"][0]["stdout"]["path"]).read_bytes(), b"CONTROL stdout\xff\n")
             qualification.manifest(root)
             self.assertIn("bootstrap-1.stdout.log", (root / "MANIFEST.json").read_text())
+
+    def test_shared_budget_allows_one_uninterrupted_pull_beyond180(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = self.fixture(directory)
+            now = [1000.0]
+            def controlled(command, environment, cancellation, output_limit=None, deadline=None):
+                self.assertEqual(command[2], "554s")
+                self.assertEqual(deadline, 1564.0)
+                now[0] += 400  # A successful continuous pull that the old180s wrapper would kill.
+                return self.result(0)
+            with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                 patch.object(qualification.time, "monotonic", side_effect=lambda: now[0]), \
+                 patch.object(qualification, "pull_buildkit", side_effect=controlled) as pull:
+                qualification.bootstrap(root)
+            self.assertEqual(pull.call_count, 1)
+            receipt = json.loads((root / "bootstrap.json").read_bytes())
+            self.assertEqual(receipt["whole_timeout_seconds"], 570)
+            self.assertEqual(receipt["cleanup_reserve_seconds"], 16)
+            self.assertEqual(receipt["elapsed_seconds"], 400)
+            self.assertTrue(receipt["image_output_emitted"])
+
+    def test_shared_budget_no_retry_when_only_cleanup_reserve_remains(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = self.fixture(directory)
+            now = [1000.0]
+            def controlled(*args, **kwargs):
+                now[0] = 1554.0
+                return self.result(124)
+            with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                 patch.object(qualification.time, "monotonic", side_effect=lambda: now[0]), \
+                 patch.object(qualification, "pull_buildkit", side_effect=controlled) as pull, patch.object(qualification.time, "sleep") as sleep:
+                with self.assertRaisesRegex(RuntimeError, "budget"):
+                    qualification.bootstrap(root)
+            self.assertEqual(pull.call_count, 1)
+            sleep.assert_not_called()
+            self.assertFalse(output.exists())
+            receipt = json.loads((root / "bootstrap.json").read_bytes())
+            self.assertIn("insufficient-budget", receipt["whole_budget_stop"])
+            self.assertEqual((root / "bootstrap-1.stdout.log").read_bytes(), b"CONTROL stdout\xff\n")
+
+    def test_shared_budget_early_error_retry_uses_only_remaining_time(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = self.fixture(directory)
+            now, commands = [1000.0], []
+            def controlled(command, environment, cancellation, output_limit=None, deadline=None):
+                commands.append((command[2], deadline))
+                now[0] += 20 if len(commands) == 1 else 25
+                return self.result(1 if len(commands) == 1 else 0)
+            def sleep(seconds):now[0] += seconds
+            with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                 patch.object(qualification.time, "monotonic", side_effect=lambda: now[0]), \
+                 patch.object(qualification.time, "sleep", side_effect=sleep), \
+                 patch.object(qualification, "pull_buildkit", side_effect=controlled):
+                qualification.bootstrap(root)
+            self.assertEqual(commands, [("554s", 1564.0), ("519s", 1564.0)])
+            self.assertEqual(json.loads((root / "bootstrap.json").read_bytes())["elapsed_seconds"], 60)
+            self.assertTrue(output.exists())
+
+    def test_shared_budget_late_success_refuses_image_and_preserves_raw(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = self.fixture(directory)
+            now = [1000.0]
+            def controlled(*args, **kwargs):
+                now[0] = 1571.0
+                return self.result(0)
+            with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                 patch.object(qualification.time, "monotonic", side_effect=lambda: now[0]), \
+                 patch.object(qualification, "pull_buildkit", side_effect=controlled) as pull:
+                with self.assertRaisesRegex(RuntimeError, "budget"):
+                    qualification.bootstrap(root)
+            self.assertEqual(pull.call_count, 1)
+            self.assertFalse(output.exists())
+            receipt = json.loads((root / "bootstrap.json").read_bytes())
+            self.assertEqual(receipt["whole_budget_stop"], "whole-bootstrap-deadline")
+            self.assertEqual((root / "bootstrap-1.stderr.log").read_bytes(), b"CONTROL stderr\n")
 
     def test_timeout_retries_are_preserved_before_success(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -760,7 +837,8 @@ before={s:signal.getsignal(s) for s in (signal.SIGINT,signal.SIGTERM)}
 real_popen=subprocess.Popen
 program='import time;print("CONTROL owned pull",flush=True);time.sleep(30)'
 def controlled(command,**kwargs):
- assert command[:5]==['timeout','--kill-after=10s','180s','docker','pull']
+ assert command[:2]+command[3:5]==['timeout','--kill-after=10s','docker','pull']
+ assert 0<int(command[2][:-1])<=554
  process=real_popen([sys.executable,'-c',program],**kwargs)
  ready=pathlib.Path(journal+'.pending')
  ready.write_text(json.dumps({'pid':process.pid,'group':process.pid}))
@@ -864,7 +942,7 @@ pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':
                         triggered[0] = True
                         active(signum, None)
                     return actual_signal(signum, handler)
-                def controlled(command, environment, cancellation, output_limit=None):
+                def controlled(command, environment, cancellation, output_limit=None, deadline=None):
                     if phase == "cleanup":cancellation["signal"] = qualification.signal.SIGTERM
                     return self.result(0)
                 with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
@@ -1042,7 +1120,7 @@ class BuildKitProgressOutputControls(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root, inputs, config, policy, helper, output = BuildKitBootstrapControls().fixture(directory)
             budgets = []
-            def controlled(command, environment, cancellation, output_limit=None):
+            def controlled(command, environment, cancellation, output_limit=None, deadline=None):
                 budgets.append(output_limit)
                 body = b"A" * 56 if len(budgets) == 1 else b"B" * 9
                 result = {"exit_code": 124, "bound": None if len(budgets) == 1 else "output-byte-limit",
@@ -1083,7 +1161,8 @@ class JobLogDiagnosticsControls(unittest.TestCase):
             root, inputs, config, policy, helper, output = BuildKitBootstrapControls().fixture(directory)
             log = FlushedLog()
             def controlled(command, **kwargs):
-                self.assertEqual(command[:5], ['timeout', '--kill-after=10s', '180s', 'docker', 'pull'])
+                self.assertEqual(command[:2]+command[3:5], ['timeout', '--kill-after=10s', 'docker', 'pull'])
+                self.assertTrue(0 < int(command[2][:-1]) <= 554)
                 self.assertEqual(kwargs['env']['DOCKER_CONFIG'], str(config))
                 self.assertEqual({p.name for p in config.iterdir()}, {'.qualification-owner.json'})
                 self.assertTrue(kwargs['start_new_session'])
