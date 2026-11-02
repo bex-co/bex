@@ -562,7 +562,7 @@ for i in "${!ds_files[@]}"; do
   esac
 done
 daemonset_floor() {
-  local key="$1" value="$2" i file q bytes milli cpu_expr
+  local key="$1" value="$2" i file q bytes milli cpu_expr name
   ds_mem=0 ds_cpu=0 ds_names=()
   for i in "${!ds_files[@]}"; do
     file="${ds_files[$i]}"
@@ -601,7 +601,7 @@ overlay_one() { yq -N ea "[select(.kind==\"$1\" and .metadata.name==\"$2\") | $3
 md_field() { overlay_one MachineDeployment "$1" "$2"; }
 md_hint() { md_field "$1" ".metadata.annotations.\"$2\""; }
 
-# tier_fits <tier line> <pool label> <md> <server type>: the tier's pod plus the
+# tier_fits <id> <cpu> <mem> <disk> <where> <md> <server type>: the tier's pod plus the
 # DaemonSet floor (ds_mem/ds_cpu, set by the caller) must fit what the CA
 # capacity hint promises AND what the node really allocates.
 tier_fits() {
@@ -624,7 +624,7 @@ tier_fits() {
     echo "      the CA hint offers ${cpu_hint}000m / $(mib "$hint_bytes")Mi and the node allocates $((vcpus * 1000))m / $(mib $((alloc * 1024)))Mi — it would sit Pending with no scale-up (w2/m250)" >&2
     fail=1
   fi
-  if [ -n "$disk" ] && [ "$where" = "its serving pool" ]; then
+  if [ -n "$disk" ]; then
     disk_hint="$(md_hint "$md" capacity.cluster-autoscaler.kubernetes.io/ephemeral-disk)"
     if ! disk_b="$(mem_bytes "$disk")" || [ -z "$disk_hint" ] || ! hint_bytes="$(mem_bytes "$disk_hint")" || ((disk_b > hint_bytes)); then
       echo "FAIL: tier $id requests $disk ephemeral-storage but $md's CA ephemeral-disk hint is '$disk_hint' — a scale-from-zero template node without room for it fits no pod (w2/m250)" >&2

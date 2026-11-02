@@ -36,6 +36,7 @@ import (
 	"github.com/bex-co/bex/lego/operator/internal/disksnapshot"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/types/k8sname"
+	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -354,7 +355,7 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 		// That node may be one of the App's dedicated serving pool (a large
 		// tier, w2/m250), whose taint would otherwise strand the snapshot
 		// beside a volume it can never reach.
-		execution.TolerateServingPool(&podSpec, servingPoolForTier(app.Spec.Tier))
+		execution.TolerateServingPool(&podSpec, tiers.Compute.ServingPool(app.Spec.Tier))
 	}
 	podSpec.Containers = []corev1.Container{container}
 
