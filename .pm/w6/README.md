@@ -37,6 +37,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 - [x] **m151** — [`render-v1` runtime pods run in a pod user namespace (`hostUsers: false`)](done/m151/README.md) (7 tasks) ← promoted from w6/086 (2026-10-21) — **done 2026-10-21**, live in every workspace
 - [x] **m152** — [A disk owner sees when nightly snapshots are not running](done/m152/README.md) (6 tasks) ← promoted from 094 (w6/089 finding, 2026-10-22)
+- [ ] **m155** — [Image builds run on their own runner pool, so production deploys never wait behind them](m155/README.md) (8 tasks) ← user decision D4 2026-11-01, after w6/099 waited 11h17m to deploy behind native image builds
 - [x] **m153** — [Production cluster access survives a control-plane roll](done/m153/README.md) (9 tasks) ← 2026-10-24 diagnosis (w5/174 roll broke every kubeconfig fetch) — **done 2026-10-29**: stable CP host key via the KCP bootstrap (`192c2c442`), wildcard pin; a full roll fetched with no pin edit (runs 40844324975, 40848838767)
 - [x] **m154** — [A failed nightly disk backup says why](done/m154/README.md) (7 tasks) ← 2026-10-24 diagnosis of w6/089 (three nights of silent dskbak- failures)
 - [x] **m150** — [`render-v1` runs `io_uring` and unprivileged-userns workloads, as on Render (seccomp slice)](done/m150/README.md) (8 tasks) ← promoted from w6/085 (2026-10-20), ADR008 § Render parity first — **done 2026-10-21**, live in production

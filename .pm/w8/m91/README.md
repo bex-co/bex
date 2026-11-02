@@ -380,3 +380,15 @@ The earlier run41397092125 at8d genuinely passed, but its publisher built998171c
 [The compact wheel-export packet](evidence/common-addon-python-wheel-fix-20261102/README.md) preserves the real common-Python3.13/Node16 ARM64 failure: verified downloads/configure succeeded, but the wheel-export prefix unnecessarily compiled Node16 and hit its30-minute context at1803.8seconds before any gyp/project work. The auxiliary canonical fixture omits only the Node16 version signal in its own file copy, requires identical full application-Python and Poetry choices, and uses the ordinary default Node24 without a legacy compiler dependency. The generic30-minute wheel helper, original main Node16 canonical/files/expected-addon, final45-minute source compilation, implicit manager installs and runtime checks remain unchanged.
 
 The exact one-file implementation is applied. Focused/full host Go checks pass in0.452/7.517seconds, pinned scoped lint reports zero issues, all303 source inputs and the foreign sum remain unchanged during checks, and ownedTMP/process groups are gone. All five formerly running old jobs are now failed, preserving the original17success/53failure record; actual revised generated/compiler/gyp/runtime success remains open. The refined35+6case plan permits only proof-backed dated nonimpact coverage rather than inventing82mandatorynewjobs. Existing strict current-source fullutility/candidate admission remains unchanged. m91 and t007 stay in progress; affected actual families, production adoption and original28hosted acceptance remain open, with every original DoD/history preserved.
+
+## 用户决定 — D3（架构范围），2026-11-01
+
+- **来源：** 用户在 w6 会话中明确选择"生产只验 amd64"（推荐项）。核查依据：生产集群 13 个节点全部是 amd64（2026-11-01 `kubectl get nodes`）；arm64 只用于本地 Apple Silicon 开发集群；Render 的 native 环境也只提供 amd64。这些镜像是平台级通用镜像（operator 只接受 `ghcr.io/bex-co/bex-cnb-run@<digest>`，见 `lego/operator/internal/build/nativecommon.go:30`），成本按版本线计，与租户数量无关。
+- **适用范围：** w1/m188 与 w8/m91（t007 公共底及各运行时资格）。旧版本线的同版本补丁、各运行时与 companion 资格、完整 utilities、Trivy 扫描、SBOM、签名和生产采用，只要求 **linux/amd64**。
+- **arm64 的保留部分：** 只保留在公共 Bookworm 底这一个镜像上，供本地开发使用，并只做轻量检查（能启动、核心工具可用）。不做逐运行时的 arm64 资格，不做 arm64 全量扫描或签名，不以 arm64 结果阻塞生产。逐运行时的旧版补丁镜像不再发布 arm64。
+- **对既有决定的影响：** D1=A（平台集中修补、同版本）与 D2=A（w1 协同 w8）不变。本决定只把原 DoD 和 D2 中"双架构验收"收窄为生产 amd64。用户已明确接受代价：在 Mac 本地运行旧版运行时，没有经过验证的 arm64 补丁版本。
+- **worker 下一步：**
+  1. 调整 `native-base-image.yml` / `native-common-image.yml`：每个镜像的 `platforms` 和逐架构的检查、扫描、签名都改为 amd64。公共底额外出一个 arm64 变体，只做轻量检查。同步更新相关 `test_native_oci_*` 测试与 README。
+  2. 已经在跑的双架构 run 可以收尾，不必为了改架构而取消；新的精确版本触发（例如 node-14.21.2）应在第 1 步合入后再启动，避免白跑 arm64。
+  3. 验收条件改为：同一固定公共底在 amd64 上完成完整 utilities 与实际运行时/companion 资格，arm64 公共底通过轻量检查。其余 DoD 不变。
+- **相关：** D4（为镜像构建拆出 `bex-build` runner 池）在 [w6/m155](../../w6/m155/README.md) 跟进。不阻塞本项，但上线后这些构建不再与生产部署抢 runner。
