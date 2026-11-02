@@ -408,7 +408,7 @@ func TestCommonNodeRuntimeArtifactPolicy(t *testing.T) {
 		name, request, line, version, image string
 		exact, missing, source              bool
 	}
-	var cases []policyCase
+	cases := make([]policyCase, 0, 8)
 	for _, requested := range []string{"14", "16", "18", "20"} {
 		line, found := nativeToolchains[nativeNodeRuntime].find(requested)
 		if !found {

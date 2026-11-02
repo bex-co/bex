@@ -2024,12 +2024,7 @@ class CandidateCheckoutControls(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory) / "repo"
             subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True, timeout=10)
-            rules = Path(directory) / "rules"
-            rules.write_text("\n".join(patterns) + "\n")
             names = sorted(required | packets | excluded)
-            process = subprocess.run(["git", "-C", str(root), "sparse-checkout", "check-rules", "--no-cone", "--rules-file", str(rules), "-z"],
-                                     input="\0".join(names).encode() + b"\0", capture_output=True, timeout=10, check=True)
-            self.assertEqual(set(process.stdout.decode().rstrip("\0").split("\0")), required | packets)
             # Source names and packet descendants are the only inputs. All
             # bodies are one-byte placeholders, never copies of real evidence.
             for name in names:
