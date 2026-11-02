@@ -1,0 +1,12 @@
+{
+  "status": "ROOT_ALL_THREE_FROZEN_FAILED95_PACKETS_FULLY_COVERED",
+  "at": "2026-11-02T19:31:47.165290+00:00",
+  "verified_original_manifest_payloads_selected": {
+    "failed95-attempt1": 68,
+    "failed95-attempt2": 97,
+    "failed95-attempt3": 58
+  },
+  "all_original_full_logs_metadata_streams_unchanged": true,
+  "ZIP_body_requests": 0,
+  "no_current97_result_or_baseline_claim": true
+}

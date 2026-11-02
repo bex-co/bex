@@ -1,0 +1,20 @@
+{
+  "status": "ROOT_REVIEWED_COMPACT_LOSSLESS_PROGRESS_PUBLICATION",
+  "at": "2026-11-02T19:30:57.016772+00:00",
+  "selection_copy_plan_sha256": "1826bf03110841774f9a9a7357c5cafe49c8f01ef36013d594f2901dbec89b12",
+  "checks": {
+    "seven_metadata_payloads_verified": true,
+    "seven_public_copy_sources_verified": true,
+    "selected_original_records": 543,
+    "archive_members": 349,
+    "all_archive_raw_bytes_modes_uid_gid_mtime_checked": true,
+    "all543_source_bytes_modes_Git_blob_identities_checked": true,
+    "public_body_reference_rows": 34,
+    "unique_public_Git_bodies_and_modes_checked": 6,
+    "all30_probe_originals_plus_Rootreview_included": true,
+    "all18_selected_so3_outputs_included_plus19identity_manifest": true,
+    "compiledbinary_and_coveragebody_private_only": true
+  },
+  "review": "Authored README/origin/scope/staleclaims/omissions/publicrefs fully read. Existing source-only claims remain a dated proposal; no terminal97 or4urp outcome admitted. Every failed history remains failure. Production/common current candidate and hosted authorities unset.",
+  "copy_authorization": "Copy only seven exact plan paths to new PM evidence directory, permit formatting only authored README and a separate Root custody note. Original archive/metadata untouched. Append minimal PM checkpoint after reread; no task closure or source adoption."
+}

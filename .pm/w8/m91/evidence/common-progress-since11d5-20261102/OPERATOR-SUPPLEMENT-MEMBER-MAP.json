@@ -1,0 +1,693 @@
+{
+  "schema": "bex.append-only-local-source-gates-supplement/v1",
+  "archive": {
+    "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/operator-source-gates-supplement.tar.gz",
+    "bytes": 289940,
+    "sha256": "7e2b46512c20b0f23bd9659aaeb139d64468b8d6f277aeb00bf6cae4e54f637b",
+    "mode": "0644"
+  },
+  "rows": [
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/ACTUAL-RECEIPT.json",
+      "path": "ACTUAL-RECEIPT.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 8459,
+        "sha256": "78dc5a95835b693133a95de39a752fff1b003c52dc4de8faab64701cba43ef82",
+        "mode": "0644"
+      },
+      "object_identity_key": "78dc5a95835b693133a95de39a752fff1b003c52dc4de8faab64701cba43ef82.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/78dc5a95835b693133a95de39a752fff1b003c52dc4de8faab64701cba43ef82.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/COMMANDS.json",
+      "path": "COMMANDS.json",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 841,
+        "sha256": "0d82ef0d2f769564520d4be6ee00a4987ea3a966ae84e4f558d8b7d6e3778c9d",
+        "mode": "0644"
+      },
+      "object_identity_key": "0d82ef0d2f769564520d4be6ee00a4987ea3a966ae84e4f558d8b7d6e3778c9d.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/0d82ef0d2f769564520d4be6ee00a4987ea3a966ae84e4f558d8b7d6e3778c9d.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/CURRENT-GIT-PREIMAGES.json",
+      "path": "CURRENT-GIT-PREIMAGES.json",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 352947,
+        "sha256": "51e73415e1382ab33af149f3673999759bcdc257127048c87e7a19e81d80650b",
+        "mode": "0644"
+      },
+      "object_identity_key": "51e73415e1382ab33af149f3673999759bcdc257127048c87e7a19e81d80650b.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/51e73415e1382ab33af149f3673999759bcdc257127048c87e7a19e81d80650b.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/CURRENT-SOURCE-EXTENSION.json",
+      "path": "CURRENT-SOURCE-EXTENSION.json",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 3826,
+        "sha256": "e69d62b8f83401ac88cedf7c2ab0fb98896b88f3886af88a93874036a269a142",
+        "mode": "0644"
+      },
+      "object_identity_key": "e69d62b8f83401ac88cedf7c2ab0fb98896b88f3886af88a93874036a269a142.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/e69d62b8f83401ac88cedf7c2ab0fb98896b88f3886af88a93874036a269a142.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/EXECUTION-MANIFEST.json",
+      "path": "EXECUTION-MANIFEST.json",
+      "role": "frozen approval/seal/Root admission",
+      "identity": {
+        "bytes": 4907,
+        "sha256": "7a443b1f7d2a4db40c1adc47fbdd97b13287db23303ae81acae2c84c83c37a2f",
+        "mode": "0644"
+      },
+      "object_identity_key": "7a443b1f7d2a4db40c1adc47fbdd97b13287db23303ae81acae2c84c83c37a2f.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/7a443b1f7d2a4db40c1adc47fbdd97b13287db23303ae81acae2c84c83c37a2f.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/EXECUTION-PLAN.json",
+      "path": "EXECUTION-PLAN.json",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 6091,
+        "sha256": "1778ebefc7278bb11782dd894afb9ff817467afff33459066cb436e2216b2d10",
+        "mode": "0644"
+      },
+      "object_identity_key": "1778ebefc7278bb11782dd894afb9ff817467afff33459066cb436e2216b2d10.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/1778ebefc7278bb11782dd894afb9ff817467afff33459066cb436e2216b2d10.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/INITIAL-VIEW-MANIFEST.json",
+      "path": "INITIAL-VIEW-MANIFEST.json",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 212669,
+        "sha256": "babe20508fbec3e6243ee8508b3ff16df41cb6062473701372b32e0d8f38e673",
+        "mode": "0644"
+      },
+      "object_identity_key": "babe20508fbec3e6243ee8508b3ff16df41cb6062473701372b32e0d8f38e673.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/babe20508fbec3e6243ee8508b3ff16df41cb6062473701372b32e0d8f38e673.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/INPUTS.json",
+      "path": "INPUTS.json",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 74157,
+        "sha256": "3e103a2a9d91064886d81bcaf5ead9b0efd2037748abd86247a6d3c61d67478c",
+        "mode": "0644"
+      },
+      "object_identity_key": "3e103a2a9d91064886d81bcaf5ead9b0efd2037748abd86247a6d3c61d67478c.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/3e103a2a9d91064886d81bcaf5ead9b0efd2037748abd86247a6d3c61d67478c.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/LAUNCH.json",
+      "path": "LAUNCH.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 365,
+        "sha256": "020317bda8529238ea8ea53ea0227d76a5716d9938ad39fcd094bbac220d304f",
+        "mode": "0644"
+      },
+      "object_identity_key": "020317bda8529238ea8ea53ea0227d76a5716d9938ad39fcd094bbac220d304f.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/020317bda8529238ea8ea53ea0227d76a5716d9938ad39fcd094bbac220d304f.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/MANIFEST.json",
+      "path": "MANIFEST.json",
+      "role": "frozen approval/seal/Root admission",
+      "identity": {
+        "bytes": 2407,
+        "sha256": "20dcdc3cd1cf28869c30963bff381c1e5969bd398fc6c027b7576b437c65f45e",
+        "mode": "0644"
+      },
+      "object_identity_key": "20dcdc3cd1cf28869c30963bff381c1e5969bd398fc6c027b7576b437c65f45e.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/20dcdc3cd1cf28869c30963bff381c1e5969bd398fc6c027b7576b437c65f45e.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/OUTPUT-MANIFEST.json",
+      "path": "OUTPUT-MANIFEST.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 4296,
+        "sha256": "f4d9749dcac726b429e55a1a552541823f3213d27879abd932c6d6ddf03a3b45",
+        "mode": "0644"
+      },
+      "object_identity_key": "f4d9749dcac726b429e55a1a552541823f3213d27879abd932c6d6ddf03a3b45.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/f4d9749dcac726b429e55a1a552541823f3213d27879abd932c6d6ddf03a3b45.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/OVERLAYS.json",
+      "path": "OVERLAYS.json",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 5604,
+        "sha256": "b319f4db74311e0da3d086252997858d5d8bda0e716f24f68bb5ce54480aecf5",
+        "mode": "0644"
+      },
+      "object_identity_key": "b319f4db74311e0da3d086252997858d5d8bda0e716f24f68bb5ce54480aecf5.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/b319f4db74311e0da3d086252997858d5d8bda0e716f24f68bb5ce54480aecf5.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/PROBE-PHASE-REFERENCES.json",
+      "path": "PROBE-PHASE-REFERENCES.json",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 1317,
+        "sha256": "8a72f58cf6e22733d2e6bec8652504061ad7c07d96b83db0f40b6fbf6d62728c",
+        "mode": "0644"
+      },
+      "object_identity_key": "8a72f58cf6e22733d2e6bec8652504061ad7c07d96b83db0f40b6fbf6d62728c.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/8a72f58cf6e22733d2e6bec8652504061ad7c07d96b83db0f40b6fbf6d62728c.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/ROOT-ACTUAL-CHECK-ADMISSION.json",
+      "path": "ROOT-ACTUAL-CHECK-ADMISSION.json",
+      "role": "frozen approval/seal/Root admission",
+      "identity": {
+        "bytes": 1954,
+        "sha256": "641514d661a9f756bad911f4b0abd54b857b4ed8935acbdfebbb410ff075b383",
+        "mode": "0644"
+      },
+      "object_identity_key": "641514d661a9f756bad911f4b0abd54b857b4ed8935acbdfebbb410ff075b383.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/641514d661a9f756bad911f4b0abd54b857b4ed8935acbdfebbb410ff075b383.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/ROOT-EXECUTION-APPROVAL.json",
+      "path": "ROOT-EXECUTION-APPROVAL.json",
+      "role": "frozen approval/seal/Root admission",
+      "identity": {
+        "bytes": 1775,
+        "sha256": "eccb3a3cbdd98ee7d4e12203233ecfd930f2fcd6d332d3ac4bc63e2b9df7e537",
+        "mode": "0644"
+      },
+      "object_identity_key": "eccb3a3cbdd98ee7d4e12203233ecfd930f2fcd6d332d3ac4bc63e2b9df7e537.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/eccb3a3cbdd98ee7d4e12203233ecfd930f2fcd6d332d3ac4bc63e2b9df7e537.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/SOURCE-REFERENCES.json",
+      "path": "SOURCE-REFERENCES.json",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 2607,
+        "sha256": "c7d3094704a2196dbdb791edfae23d2aaa16321c75f1736d4a8e6989f44a5b39",
+        "mode": "0644"
+      },
+      "object_identity_key": "c7d3094704a2196dbdb791edfae23d2aaa16321c75f1736d4a8e6989f44a5b39.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/c7d3094704a2196dbdb791edfae23d2aaa16321c75f1736d4a8e6989f44a5b39.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/V2-TO-V3-CONTROLLER.diff",
+      "path": "V2-TO-V3-CONTROLLER.diff",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 5366,
+        "sha256": "7f9e49d1d336c57973aedf6fdd3a840dc7cf59ac7c0399b838c94bfa3b79b271",
+        "mode": "0644"
+      },
+      "object_identity_key": "7f9e49d1d336c57973aedf6fdd3a840dc7cf59ac7c0399b838c94bfa3b79b271.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/7f9e49d1d336c57973aedf6fdd3a840dc7cf59ac7c0399b838c94bfa3b79b271.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/controller.stderr",
+      "path": "controller.stderr",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mode": "0600"
+      },
+      "object_identity_key": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.0600",
+      "storage": {
+        "kind": "existing-public-Git-exact-body",
+        "reference": {
+          "commit": "3a15c2a44aa3c3a465ed056a75df61f7971ed9bc",
+          "path": ".pm/w1/blocked/m188/evidence/SYNTHETIC-writer-locals-regression/proposal/SYNTHETIC-writer-harness.stderr.log",
+          "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "git_mode": "100644"
+        },
+        "original_mode_recorded_separately": "0600"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/controller.stdout",
+      "path": "controller.stdout",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 2321,
+        "sha256": "47a7833931cebfe512c8a7ade60ebdb6f24fd91ee327da35fb0ebd35af4b168c",
+        "mode": "0600"
+      },
+      "object_identity_key": "47a7833931cebfe512c8a7ade60ebdb6f24fd91ee327da35fb0ebd35af4b168c.0600",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/47a7833931cebfe512c8a7ade60ebdb6f24fd91ee327da35fb0ebd35af4b168c.0600"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/FINAL-OBSERVED-GROUPS.json",
+      "path": "evidence/FINAL-OBSERVED-GROUPS.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 33,
+        "sha256": "76346e14fb0a55dd901d42808dc5f794a97d66b71084dbd0595891bbf38cf6df",
+        "mode": "0644"
+      },
+      "object_identity_key": "76346e14fb0a55dd901d42808dc5f794a97d66b71084dbd0595891bbf38cf6df.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/76346e14fb0a55dd901d42808dc5f794a97d66b71084dbd0595891bbf38cf6df.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/GENERATED-DELTA.json",
+      "path": "evidence/GENERATED-DELTA.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 670,
+        "sha256": "36df2295975f5304464607264288f295129fabe2b264ce819a87ab1b34e29160",
+        "mode": "0644"
+      },
+      "object_identity_key": "36df2295975f5304464607264288f295129fabe2b264ce819a87ab1b34e29160.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/36df2295975f5304464607264288f295129fabe2b264ce819a87ab1b34e29160.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/RESULT.json",
+      "path": "evidence/RESULT.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 1786,
+        "sha256": "1e73f7cec2b83f9ebac929fe9f49773387e562b89f2b2c507cf8f8dfe67d46b9",
+        "mode": "0644"
+      },
+      "object_identity_key": "1e73f7cec2b83f9ebac929fe9f49773387e562b89f2b2c507cf8f8dfe67d46b9.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/1e73f7cec2b83f9ebac929fe9f49773387e562b89f2b2c507cf8f8dfe67d46b9.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/RUNTIME-DIRECTORIES-AFTER.json",
+      "path": "evidence/RUNTIME-DIRECTORIES-AFTER.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 234,
+        "sha256": "4b7bbfc9d99a410ebbc7e5afc115e4605ae1dd312096a909f8a95ecd3e8ad013",
+        "mode": "0644"
+      },
+      "object_identity_key": "4b7bbfc9d99a410ebbc7e5afc115e4605ae1dd312096a909f8a95ecd3e8ad013.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/4b7bbfc9d99a410ebbc7e5afc115e4605ae1dd312096a909f8a95ecd3e8ad013.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/RUNTIME-DIRECTORIES-BEFORE.json",
+      "path": "evidence/RUNTIME-DIRECTORIES-BEFORE.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 232,
+        "sha256": "7a74f12009f74df882345b54ec9857893800bbc6332163b8f1aed3f6b9723be9",
+        "mode": "0644"
+      },
+      "object_identity_key": "7a74f12009f74df882345b54ec9857893800bbc6332163b8f1aed3f6b9723be9.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/7a74f12009f74df882345b54ec9857893800bbc6332163b8f1aed3f6b9723be9.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/SCOPE.json",
+      "path": "evidence/SCOPE.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 7626,
+        "sha256": "565310afe512760442e6e10bab2d70e7b8ffac18d60bb4389190b3cda08b4f70",
+        "mode": "0644"
+      },
+      "object_identity_key": "565310afe512760442e6e10bab2d70e7b8ffac18d60bb4389190b3cda08b4f70.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/565310afe512760442e6e10bab2d70e7b8ffac18d60bb4389190b3cda08b4f70.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/SOURCE-AFTER.json",
+      "path": "evidence/SOURCE-AFTER.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 70383,
+        "sha256": "9b0da6576eaa57f8f004b8ec9ba6d42bcba169b3dd99721eb706aeef6140bb03",
+        "mode": "0644"
+      },
+      "object_identity_key": "9b0da6576eaa57f8f004b8ec9ba6d42bcba169b3dd99721eb706aeef6140bb03.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/9b0da6576eaa57f8f004b8ec9ba6d42bcba169b3dd99721eb706aeef6140bb03.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/SOURCE-BEFORE.json",
+      "path": "evidence/SOURCE-BEFORE.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 70383,
+        "sha256": "9b0da6576eaa57f8f004b8ec9ba6d42bcba169b3dd99721eb706aeef6140bb03",
+        "mode": "0644"
+      },
+      "object_identity_key": "9b0da6576eaa57f8f004b8ec9ba6d42bcba169b3dd99721eb706aeef6140bb03.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/9b0da6576eaa57f8f004b8ec9ba6d42bcba169b3dd99721eb706aeef6140bb03.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/VIEW-AFTER.json",
+      "path": "evidence/VIEW-AFTER.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 212829,
+        "sha256": "db602de8f243ed4fa193c88dc24ba998ac8ea492d3390652e475bc313ef288ee",
+        "mode": "0644"
+      },
+      "object_identity_key": "db602de8f243ed4fa193c88dc24ba998ac8ea492d3390652e475bc313ef288ee.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/db602de8f243ed4fa193c88dc24ba998ac8ea492d3390652e475bc313ef288ee.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/VIEW-BEFORE.json",
+      "path": "evidence/VIEW-BEFORE.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 212669,
+        "sha256": "babe20508fbec3e6243ee8508b3ff16df41cb6062473701372b32e0d8f38e673",
+        "mode": "0644"
+      },
+      "object_identity_key": "babe20508fbec3e6243ee8508b3ff16df41cb6062473701372b32e0d8f38e673.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/babe20508fbec3e6243ee8508b3ff16df41cb6062473701372b32e0d8f38e673.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/build-scoped-lint-OWNED-DESCENDANTS.json",
+      "path": "evidence/build-scoped-lint-OWNED-DESCENDANTS.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 3101,
+        "sha256": "4d2ac202ab88b19b3b07acf6af9c452fe19376d11c86e53a7317c8337ac29ec7",
+        "mode": "0644"
+      },
+      "object_identity_key": "4d2ac202ab88b19b3b07acf6af9c452fe19376d11c86e53a7317c8337ac29ec7.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/4d2ac202ab88b19b3b07acf6af9c452fe19376d11c86e53a7317c8337ac29ec7.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/build-scoped-lint-PROCESS.json",
+      "path": "evidence/build-scoped-lint-PROCESS.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 5188,
+        "sha256": "f5c1ae213ad08ec3e9560543171859aa4f17d8d14d2d95131c0d6713f7788093",
+        "mode": "0644"
+      },
+      "object_identity_key": "f5c1ae213ad08ec3e9560543171859aa4f17d8d14d2d95131c0d6713f7788093.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/f5c1ae213ad08ec3e9560543171859aa4f17d8d14d2d95131c0d6713f7788093.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/build-scoped-lint-RESULT.json",
+      "path": "evidence/build-scoped-lint-RESULT.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 475,
+        "sha256": "418b1b6198db6a963ce2a7145c39640255b18a2762d076266df596fd0a75cc2f",
+        "mode": "0644"
+      },
+      "object_identity_key": "418b1b6198db6a963ce2a7145c39640255b18a2762d076266df596fd0a75cc2f.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/418b1b6198db6a963ce2a7145c39640255b18a2762d076266df596fd0a75cc2f.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/build-scoped-lint.stderr",
+      "path": "evidence/build-scoped-lint.stderr",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mode": "0644"
+      },
+      "object_identity_key": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855.0644",
+      "storage": {
+        "kind": "existing-public-Git-exact-body",
+        "reference": {
+          "commit": "3a15c2a44aa3c3a465ed056a75df61f7971ed9bc",
+          "path": ".pm/w1/blocked/m188/evidence/SYNTHETIC-writer-locals-regression/proposal/SYNTHETIC-writer-harness.stderr.log",
+          "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+          "git_mode": "100644"
+        },
+        "original_mode_recorded_separately": "0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/build-scoped-lint.stdout",
+      "path": "evidence/build-scoped-lint.stdout",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 10,
+        "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+        "mode": "0644"
+      },
+      "object_identity_key": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/operator-make-test-OWNED-DESCENDANTS.json",
+      "path": "evidence/operator-make-test-OWNED-DESCENDANTS.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 140066,
+        "sha256": "0671d29ace0abbf7a19fc688ff9b692cf3d8b8f7bf9aa50b018da304e8808733",
+        "mode": "0644"
+      },
+      "object_identity_key": "0671d29ace0abbf7a19fc688ff9b692cf3d8b8f7bf9aa50b018da304e8808733.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/0671d29ace0abbf7a19fc688ff9b692cf3d8b8f7bf9aa50b018da304e8808733.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/operator-make-test-PROCESS.json",
+      "path": "evidence/operator-make-test-PROCESS.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 5362,
+        "sha256": "8fa23c67b8992634cc95dfb56b7546a6a05450205aa6966f662e1de485889142",
+        "mode": "0644"
+      },
+      "object_identity_key": "8fa23c67b8992634cc95dfb56b7546a6a05450205aa6966f662e1de485889142.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/8fa23c67b8992634cc95dfb56b7546a6a05450205aa6966f662e1de485889142.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/operator-make-test-RESULT.json",
+      "path": "evidence/operator-make-test-RESULT.json",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 480,
+        "sha256": "6f0540acd79d20b8e2613d315ce640535e0318226c65cebb0c458352b720f30e",
+        "mode": "0644"
+      },
+      "object_identity_key": "6f0540acd79d20b8e2613d315ce640535e0318226c65cebb0c458352b720f30e.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/6f0540acd79d20b8e2613d315ce640535e0318226c65cebb0c458352b720f30e.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/operator-make-test.stderr",
+      "path": "evidence/operator-make-test.stderr",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 348,
+        "sha256": "9e88057159a3df3e7bb1456efe54e4a53c2785564fd387dbc326bb8b5476bf6a",
+        "mode": "0644"
+      },
+      "object_identity_key": "9e88057159a3df3e7bb1456efe54e4a53c2785564fd387dbc326bb8b5476bf6a.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/9e88057159a3df3e7bb1456efe54e4a53c2785564fd387dbc326bb8b5476bf6a.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/operator-make-test.stdout",
+      "path": "evidence/operator-make-test.stdout",
+      "role": "actual completed raw/proof output",
+      "identity": {
+        "bytes": 5224,
+        "sha256": "8ca2382064646e0356baa1d70bd83649b0fc8d30dbf3f9980389c61efd4b640c",
+        "mode": "0644"
+      },
+      "object_identity_key": "8ca2382064646e0356baa1d70bd83649b0fc8d30dbf3f9980389c61efd4b640c.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/8ca2382064646e0356baa1d70bd83649b0fc8d30dbf3f9980389c61efd4b640c.0644"
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/owned_descendants.py",
+      "path": "owned_descendants.py",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 5789,
+        "sha256": "dea4500dc94be6164d20aa8ed78a07b23943b0b5e4c7a3124e97cb0f46cf7edf",
+        "mode": "0644"
+      },
+      "object_identity_key": "dea4500dc94be6164d20aa8ed78a07b23943b0b5e4c7a3124e97cb0f46cf7edf.0644",
+      "storage": {
+        "kind": "previous-reviewed-publication-archive-object",
+        "archive_sha256": "b169347fee18dd87de1e851c25d88eaa0865eafa83bbb88aa20f0c049cd50830",
+        "archive_bytes": 1337396,
+        "publication_path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/unpublished-progress.tar.gz",
+        "retained_archive": "/private/tmp/bex-w8-progress-publication-v2-select-20261102-p24o6sw1/unpublished-progress.tar.gz",
+        "member": "objects/dea4500dc94be6164d20aa8ed78a07b23943b0b5e4c7a3124e97cb0f46cf7edf.0644",
+        "commit": null,
+        "scope": "Already copied exact publication body; not yet claimed committed. Immutable SHA/member reference, never prior execution substitution."
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/process_identity.py",
+      "path": "process_identity.py",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 3111,
+        "sha256": "722e5a0cddf267c3d792d867d3cb83dd9cb2a10e8dcd1c4cfeea866179234d61",
+        "mode": "0644"
+      },
+      "object_identity_key": "722e5a0cddf267c3d792d867d3cb83dd9cb2a10e8dcd1c4cfeea866179234d61.0644",
+      "storage": {
+        "kind": "previous-reviewed-publication-archive-object",
+        "archive_sha256": "b169347fee18dd87de1e851c25d88eaa0865eafa83bbb88aa20f0c049cd50830",
+        "archive_bytes": 1337396,
+        "publication_path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/unpublished-progress.tar.gz",
+        "retained_archive": "/private/tmp/bex-w8-progress-publication-v2-select-20261102-p24o6sw1/unpublished-progress.tar.gz",
+        "member": "objects/722e5a0cddf267c3d792d867d3cb83dd9cb2a10e8dcd1c4cfeea866179234d61.0644",
+        "commit": null,
+        "scope": "Already copied exact publication body; not yet claimed committed. Immutable SHA/member reference, never prior execution substitution."
+      }
+    },
+    {
+      "source": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/run_checks.py",
+      "path": "run_checks.py",
+      "role": "exact frozen preparation",
+      "identity": {
+        "bytes": 16846,
+        "sha256": "8219e87471c58276406075f7a469a07753ed5c869ab831256c0666e813e96ca4",
+        "mode": "0644"
+      },
+      "object_identity_key": "8219e87471c58276406075f7a469a07753ed5c869ab831256c0666e813e96ca4.0644",
+      "storage": {
+        "kind": "new-supplement-object",
+        "member": "objects/8219e87471c58276406075f7a469a07753ed5c869ab831256c0666e813e96ca4.0644"
+      }
+    }
+  ],
+  "selected_original_records": 42,
+  "frozen_prep": 13,
+  "actual_output_identities": 26,
+  "actual_body_count": 25,
+  "private_cover_reference": [
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/view/lego/operator/cover.out",
+        "bytes": 1015776,
+        "sha256": "4d72aa3db552481c9cbb655adb45ac2c19088684fee037308b458447e663ae15",
+        "mode": "0644"
+      },
+      "copied": false,
+      "reason": "Generated cover body remains retained privately; exact26-output manifest and Root admission bind its identity."
+    }
+  ],
+  "new_objects": 36,
+  "new_unique_raw_bytes": 1162802,
+  "reuse_rows": 4,
+  "previous_archive_reused_objects": 2,
+  "all_new_and_reused_archive_bytes_modes_verified": true,
+  "raw_diff_policy": "Exact original diff/source bytes remain inside gzip; full hash/size/mode/object mapping.",
+  "existing_publication_unchanged": {
+    "path": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/RECEIPT.json",
+    "bytes": 1027,
+    "sha256": "1612dafae7cf33e91f227ecd4d436ce08afcfc7a1a2beb05537641efa6a77752",
+    "mode": "0644"
+  }
+}

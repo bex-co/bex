@@ -1,0 +1,214 @@
+{
+  "frozen_origins": [
+    {
+      "group": "adoption-prior",
+      "immutable_copyplan": {
+        "path": "/private/tmp/bex-w8-adoption-fixtures-publication-plan-20261102-udkqh3e7/SELECT-COPY-PLAN.json",
+        "bytes": 5775,
+        "sha256": "efe6b9eac0399d4e8629538aa74f0d07ab1e09dc508152b6579a389ff741c502",
+        "mode": "0644"
+      },
+      "immutable_manifest": {
+        "path": "/private/tmp/bex-w8-adoption-fixtures-publication-plan-20261102-udkqh3e7/MANIFEST.json",
+        "bytes": 1877,
+        "sha256": "fd4fcc94567451219b0a2838f829e9eb9516eccb13458599d7560adeb2185ec1",
+        "mode": "0644"
+      },
+      "original_member_map": {
+        "path": "/private/tmp/bex-w8-adoption-fixtures-publication-plan-20261102-udkqh3e7/MEMBER-MAP.json",
+        "bytes": 78046,
+        "sha256": "007627ad8297d102cc781d5f3dad1843d5a0c5c1e954cb93c5effea49315455b",
+        "mode": "0644"
+      },
+      "source_packet_untouched": true
+    },
+    {
+      "group": "failed95-attempt1",
+      "root": "/private/tmp/bex-w8-currentf30-0941-utility-run95-20261102-7alewmfm",
+      "manifest": {
+        "path": "/private/tmp/bex-w8-currentf30-0941-utility-run95-20261102-7alewmfm/TERMINAL-FAILURE-MANIFEST.json",
+        "bytes": 12743,
+        "sha256": "228a496a84fe42b55c804521c25c4facdfd04d4a1aa3481c7c8ca79dd6a7d7e5",
+        "mode": "0644"
+      }
+    },
+    {
+      "group": "failed95-attempt2",
+      "root": "/private/tmp/bex-w8-f30-run95-failed-job-retry-monitor-20261102-mwp01utk",
+      "manifest": {
+        "path": "/private/tmp/bex-w8-f30-run95-failed-job-retry-monitor-20261102-mwp01utk/TERMINAL-FAILURE-MANIFEST.json",
+        "bytes": 18013,
+        "sha256": "e8ceff3d5aa31146f9d5c3b0ee0b39fd54ace60694184bef85bc5f60d66f073c",
+        "mode": "0644"
+      }
+    },
+    {
+      "group": "failed95-attempt3",
+      "root": "/private/tmp/bex-w8-f30-run95-registry-retry-monitor-20261102-_ucv1qsv",
+      "manifest": {
+        "path": "/private/tmp/bex-w8-f30-run95-registry-retry-monitor-20261102-_ucv1qsv/TERMINAL-FAILURE-MANIFEST.json",
+        "bytes": 11135,
+        "sha256": "6024d3c5902498e7965d05f9685035da7353ed704d0b398da0cec4026fc34d70",
+        "mode": "0644"
+      }
+    },
+    {
+      "group": "shared-budget-source",
+      "root": "/private/tmp/bex-w8-buildkit-shared-budget-source-20261102-0uykv5sz",
+      "manifest": {
+        "path": "/private/tmp/bex-w8-buildkit-shared-budget-source-20261102-0uykv5sz/MANIFEST.json",
+        "bytes": 2220,
+        "sha256": "fb4557d188d883970f9807b4fdc3be8c1636f37b515036efc4399aaad98c0c7c",
+        "mode": "0644"
+      }
+    },
+    {
+      "group": "shared-budget-checks-source",
+      "root": "/private/tmp/bex-w8-buildkit-shared-budget-checks-20261102-njf8t0o6",
+      "manifest": {
+        "path": "/private/tmp/bex-w8-buildkit-shared-budget-checks-20261102-njf8t0o6/MANIFEST.json",
+        "bytes": 2702,
+        "sha256": "153563aeb4816460b57ff71044516d3d301640fdb6c2536d448cb442f7bb6324",
+        "mode": "0644"
+      }
+    },
+    {
+      "group": "current3a-static-extension",
+      "root": "/private/tmp/bex-w8-current3a-source-extension-20261102-kyny1ukg",
+      "manifest": {
+        "path": "/private/tmp/bex-w8-current3a-source-extension-20261102-kyny1ukg/MANIFEST.json",
+        "bytes": 1587,
+        "sha256": "b660a7ca5ce65bd41f19624f21ce80524ef3f0c531f564f67631e98fd2f87262",
+        "mode": "0644"
+      }
+    },
+    {
+      "group": "operator-v2-source",
+      "root": "/private/tmp/bex-w8-private-adoption-operator-gates-v2-20261102-so3ki_y5",
+      "manifest": {
+        "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v2-20261102-so3ki_y5/MANIFEST.json",
+        "bytes": 2420,
+        "sha256": "56a49f721128fbd7a4ab32948a6ff45c89217579e0a402e5c48b353c5c01b2cd",
+        "mode": "0644"
+      }
+    },
+    {
+      "group": "adoption15-fixtures17-overlays",
+      "root": "/private/tmp/bex-w8-future-adoption-test-support-v4-20261102-qs730zdq",
+      "manifest": {
+        "path": "/private/tmp/bex-w8-future-adoption-test-support-v4-20261102-qs730zdq/MANIFEST.json",
+        "bytes": 4229,
+        "sha256": "4ea2de830efe3f1e944b22d567803e0d2a82c5a8a129358362aebc854fda184a",
+        "mode": "0644"
+      }
+    },
+    {
+      "group": "operator-closure-v2",
+      "root": "/private/tmp/bex-w8-operator-view-closure-plan-v2-20261102-294q31ix",
+      "manifest": {
+        "path": "/private/tmp/bex-w8-operator-view-closure-plan-v2-20261102-294q31ix/MANIFEST.json",
+        "bytes": 1032,
+        "sha256": "5e009500aeb7549e467aac12afa24fe256e990df70ed7aab4bc87e227e8c2efa",
+        "mode": "0644"
+      }
+    },
+    {
+      "group": "group-probe-source-policy",
+      "root": "/private/tmp/bex-w8-snapshot-group-probe-source-20261102-maifb68m",
+      "manifest": {
+        "path": "/private/tmp/bex-w8-snapshot-group-probe-source-20261102-maifb68m/MANIFEST.json",
+        "bytes": 1244,
+        "sha256": "90059d2cde3c04d2e85f5203cebc10cbca7aa1d62af21bf40f6bd1a900ef90d4",
+        "mode": "0644"
+      }
+    }
+  ],
+  "old_udk_unchanged": {
+    "path": "/private/tmp/bex-w8-adoption-fixtures-publication-plan-20261102-udkqh3e7/RECEIPT.json",
+    "bytes": 796,
+    "sha256": "8be2ac1589daaaeea23aa344a30f03931f0295070dd89467464d21ee2734db4a",
+    "mode": "0644"
+  },
+  "phase_outcomes": [
+    {
+      "phase": "evidence",
+      "result": {
+        "path": "/private/tmp/bex-w8-snapshot-group-probe-source-20261102-maifb68m/evidence/RESULT.json",
+        "bytes": 3498,
+        "sha256": "9ce222abbe549502e621f6b032b73b17c61f78cbf64ae02cbd1152c84f35cede",
+        "mode": "0644"
+      },
+      "controller_PASS": true,
+      "actual_probe": {
+        "cleanup_errors": null,
+        "completed": true,
+        "failure": "",
+        "gid": 20,
+        "own_run_root_absent": true,
+        "scope": "Only new five owned directories; no original journals, product code, tenant contents or user group membership changed. Hypothesis support is separate from experiment completion.",
+        "supports_group_hypothesis": false,
+        "uid": 501
+      }
+    },
+    {
+      "phase": "ordinary-execution-evidence",
+      "result": {
+        "path": "/private/tmp/bex-w8-snapshot-group-probe-source-20261102-maifb68m/ordinary-execution-evidence/RESULT.json",
+        "bytes": 2546,
+        "sha256": "638668fb4fbd25ab3f4d433447ef93967d5927c3cc6f20dee8acf77ccd302604",
+        "mode": "0644"
+      },
+      "controller_PASS": true,
+      "actual_probe": {
+        "cleanup_errors": null,
+        "completed": true,
+        "failure": "",
+        "gid": 20,
+        "own_run_root_absent": true,
+        "scope": "Only new five owned directories; no original journals, product code, tenant contents or user group membership changed. Hypothesis support is separate from experiment completion.",
+        "supports_group_hypothesis": true,
+        "uid": 501
+      }
+    },
+    {
+      "phase": "scoped-mode-evidence",
+      "result": {
+        "path": "/private/tmp/bex-w8-snapshot-group-probe-source-20261102-maifb68m/scoped-mode-evidence/RESULT.json",
+        "bytes": 2488,
+        "sha256": "3d6a12cad6c674063a07df139388a7ce9ca9e70f45c1032dd5af447335290ffd",
+        "mode": "0644"
+      },
+      "controller_PASS": true,
+      "actual_probe": {
+        "cleanup_errors": null,
+        "completed": true,
+        "failure": "",
+        "gid": 20,
+        "own_run_root_absent": true,
+        "scope": "Only new five owned directories; no original journals, product code, tenant contents or user group membership changed. Hypothesis support is separate from experiment completion.",
+        "supports_group_hypothesis": true,
+        "uid": 501
+      }
+    }
+  ],
+  "scope": [
+    "95 attempt1Syft download failure; attempt2Python3.14.8 config metadata timeout; attempt3three BuildKit180s timeouts. Causes limited to actual raw diagnostics; no CDN/TLS/429 fiction.",
+    "Sharedbudget actualoldRED/new165PASS is a sourcecheck, not an actualsuccessfulBuildKit pull/currentCI. Actual3aship/UI97 and current3astatic extension separate.",
+    "Earlier14test/2data hostpackage254/37 pass remains narrow; actualso3fullmake9topfailures/242of244controllers is not relabeled. New15fixture/17overlay and closure repairs are source review only.",
+    "Group probe firstsupportfalse versus ordinary/scoped supporttrue preserved as separate actualobservations; no product/runtime claim."
+  ],
+  "all_current_adoption_live_authorities": null,
+  "probe_root_review": {
+    "path": "/private/tmp/bex-w8-snapshot-group-probe-source-20261102-maifb68m/ROOT-ACTUAL-PROBE-REVIEW.json",
+    "bytes": 6714,
+    "sha256": "35694c36c6e942e50cf0aa0b7a2471e3fa5b43c56e185d65a5542ef98a354a53",
+    "mode": "0644"
+  },
+  "predecessor_selection": {
+    "path": "/private/tmp/bex-w8-progress-publication-select-20261102-uh7fv2jo/RECEIPT.json",
+    "bytes": 731,
+    "sha256": "f319044764b26ed1ae29b03bb0f18972d4615d6fc791636611585158d319278b",
+    "mode": "0644"
+  },
+  "original_udk_logical_paths_restored_in_mapping": true
+}

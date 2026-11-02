@@ -1,0 +1,38 @@
+{
+  "OPERATOR-SUPPLEMENT-MEMBER-MAP.json": {
+    "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/OPERATOR-SUPPLEMENT-MEMBER-MAP.json",
+    "bytes": 30705,
+    "sha256": "f9344c6a8e097d35678660a14183769d3db2fb8cb034229cc2cc636c7d4ad523",
+    "mode": "0644"
+  },
+  "OPERATOR-SUPPLEMENT-REFERENCES.json": {
+    "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/OPERATOR-SUPPLEMENT-REFERENCES.json",
+    "bytes": 3325,
+    "sha256": "128f69858e5b2eaddf542a02c11cba639798a89be3c6fda0ed83109b7dd51ede",
+    "mode": "0644"
+  },
+  "OPERATOR-SUPPLEMENT-RESULT.json": {
+    "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/OPERATOR-SUPPLEMENT-RESULT.json",
+    "bytes": 4597,
+    "sha256": "27b6ddb03bc60e00d7dab801231a99ccdc47a5990e4f16abea67f6a61b6a99cc",
+    "mode": "0644"
+  },
+  "OPERATOR-SUPPLEMENT.md": {
+    "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/OPERATOR-SUPPLEMENT.md",
+    "bytes": 2285,
+    "sha256": "7605d68f7e0aee0840c9d12c7c0e601672e1d08ebc9df2517454a513ff6a6b9e",
+    "mode": "0644"
+  },
+  "SELECT-COPY-PLAN.json": {
+    "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/SELECT-COPY-PLAN.json",
+    "bytes": 2757,
+    "sha256": "1858ed3908a4690eb5512eb67aa9804c908a1036d0dcd623b8902fbac4d6a0a8",
+    "mode": "0644"
+  },
+  "operator-source-gates-supplement.tar.gz": {
+    "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/operator-source-gates-supplement.tar.gz",
+    "bytes": 289940,
+    "sha256": "7e2b46512c20b0f23bd9659aaeb139d64468b8d6f277aeb00bf6cae4e54f637b",
+    "mode": "0644"
+  }
+}

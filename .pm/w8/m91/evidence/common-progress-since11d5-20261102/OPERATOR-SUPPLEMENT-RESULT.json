@@ -1,0 +1,139 @@
+{
+  "scope": "ROOT_ADMITTED_ACTUAL_LOCAL_UNAPPLIED_FUTURE_FIXTURE_SOURCE_GATES_ONLY",
+  "actual_receipt": {
+    "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/ACTUAL-RECEIPT.json",
+    "bytes": 8459,
+    "sha256": "78dc5a95835b693133a95de39a752fff1b003c52dc4de8faab64701cba43ef82",
+    "mode": "0644"
+  },
+  "Root_admission": {
+    "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/ROOT-ACTUAL-CHECK-ADMISSION.json",
+    "bytes": 1954,
+    "sha256": "641514d661a9f756bad911f4b0abd54b857b4ed8935acbdfebbb410ff075b383",
+    "mode": "0644"
+  },
+  "actual_results": {
+    "make_test_seconds": 341.8081279161852,
+    "scoped_lint_seconds": 6.030027332948521,
+    "lint_issues": 0,
+    "whole_seconds": 348.25765004218556,
+    "controller_package_seconds": 214.928,
+    "disksnapshot_package_seconds": 0.485,
+    "native_resolve_package_seconds": 0.403
+  },
+  "full_make_targets": "test-tool-download,manifests,generate,fmt,vet,setup-envtest,all operator packages excluding existing e2e with original30m package timeout+coverage",
+  "scoped_lint_scope": "./internal/build only, as authorized; not full workspace lint",
+  "source": {
+    "after": {
+      "bytes": 70383,
+      "mode": "0o644",
+      "sha256": "9b0da6576eaa57f8f004b8ec9ba6d42bcba169b3dd99721eb706aeef6140bb03"
+    },
+    "all17_proposal_bytes_modes_unchanged": true,
+    "before": {
+      "bytes": 70383,
+      "mode": "0o644",
+      "sha256": "9b0da6576eaa57f8f004b8ec9ba6d42bcba169b3dd99721eb706aeef6140bb03"
+    },
+    "external_source301_proposals_tools_assets_references_foreign_sum_unchanged": true,
+    "generated_change_only": [
+      "lego/operator/cover.out"
+    ],
+    "generated_delta": {
+      "bytes": 670,
+      "mode": "0o644",
+      "sha256": "36df2295975f5304464607264288f295129fabe2b264ce819a87ab1b34e29160"
+    },
+    "view_after": {
+      "bytes": 212829,
+      "mode": "0o644",
+      "sha256": "db602de8f243ed4fa193c88dc24ba998ac8ea492d3390652e475bc313ef288ee"
+    },
+    "view_before": {
+      "bytes": 212669,
+      "mode": "0o644",
+      "sha256": "babe20508fbec3e6243ee8508b3ff16df41cb6062473701372b32e0d8f38e673"
+    }
+  },
+  "normalization": {
+    "after": {
+      "home": {
+        "device": 16777231,
+        "gid": 20,
+        "inode": 536959166,
+        "mode": "0o700",
+        "uid": 501
+      },
+      "tmp": {
+        "device": 16777231,
+        "gid": 20,
+        "inode": 536959165,
+        "mode": "0o700",
+        "uid": 501
+      }
+    },
+    "before": {
+      "home": {
+        "device": 16777231,
+        "gid": 0,
+        "inode": 536959166,
+        "mode": "0o700",
+        "uid": 501
+      },
+      "tmp": {
+        "device": 16777231,
+        "gid": 0,
+        "inode": 536959165,
+        "mode": "0o700",
+        "uid": 501
+      }
+    },
+    "only_new_own_TMP_HOME": true,
+    "operation": "UID/dev/inode-verified fd fchown only to primary20;0700 and owner501 unchanged",
+    "profile_allowance": "file-write-setugid only under this new own TMP subtree; every previous repo/modulecache/network/tool denial retained",
+    "raw_after": {
+      "bytes": 234,
+      "mode": "0o644",
+      "sha256": "4b7bbfc9d99a410ebbc7e5afc115e4605ae1dd312096a909f8a95ecd3e8ad013"
+    },
+    "raw_before": {
+      "bytes": 232,
+      "mode": "0o644",
+      "sha256": "7a74f12009f74df882345b54ec9857893800bbc6332163b8f1aed3f6b9723be9"
+    }
+  },
+  "cleanup": {
+    "TMP_HOME_gone": true,
+    "final_selected_groups": {
+      "84883": {},
+      "90032": {}
+    },
+    "fresh_view_and_raws_retained": true,
+    "incoming_cancel_signals": [],
+    "old_failed_journals_and_all_probe_phases_preserved": true,
+    "pending_direct_pgids": [],
+    "resource_errors": [],
+    "scope": "Only selected observed ancestry/birth/UID/PGID records. No global process census or unobserved-descendant completeness claim. Record set does not include executable paths/argv; assets/tool hashes are bound independently."
+  },
+  "all14_observed_groups_absent": [
+    84883,
+    88314,
+    88328,
+    89149,
+    89151,
+    89174,
+    89176,
+    89537,
+    89539,
+    90032,
+    90039,
+    90079,
+    90095,
+    90109
+  ],
+  "existing_warnings_retained": "Two existing Xcode cache/event-stream warnings retained verbatim; target still exit0. No false zero-stderr claim.",
+  "earlier_so3_failure_and_three_probe_phases_unchanged": true,
+  "historical_rdyp_outcomeNULL_snapshot_unchanged": true,
+  "actual_CI97_baseline_candidate_adoption_family_hosted_Ready_Free_auth_contract": null,
+  "supplement_preparation_tests_imports_network_API_runtime_repo_writes": false
+}

@@ -1,0 +1,66 @@
+{
+  "state": "PRIVATE_APPEND_ONLY_SUPPLEMENT_NOT_APPLIED",
+  "target": ".pm/w8/m91/evidence/common-progress-since11d5-20261102",
+  "files": [
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/operator-source-gates-supplement.tar.gz",
+        "bytes": 289940,
+        "sha256": "7e2b46512c20b0f23bd9659aaeb139d64468b8d6f277aeb00bf6cae4e54f637b",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/operator-source-gates-supplement.tar.gz",
+      "git_mode": "100644"
+    },
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/OPERATOR-SUPPLEMENT-MEMBER-MAP.json",
+        "bytes": 30705,
+        "sha256": "f9344c6a8e097d35678660a14183769d3db2fb8cb034229cc2cc636c7d4ad523",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/OPERATOR-SUPPLEMENT-MEMBER-MAP.json",
+      "git_mode": "100644"
+    },
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/OPERATOR-SUPPLEMENT-REFERENCES.json",
+        "bytes": 3325,
+        "sha256": "128f69858e5b2eaddf542a02c11cba639798a89be3c6fda0ed83109b7dd51ede",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/OPERATOR-SUPPLEMENT-REFERENCES.json",
+      "git_mode": "100644"
+    },
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/OPERATOR-SUPPLEMENT-RESULT.json",
+        "bytes": 4597,
+        "sha256": "27b6ddb03bc60e00d7dab801231a99ccdc47a5990e4f16abea67f6a61b6a99cc",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/OPERATOR-SUPPLEMENT-RESULT.json",
+      "git_mode": "100644"
+    },
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-operator-pass-publication-supplement-20261102-7bdigj1j/OPERATOR-SUPPLEMENT.md",
+        "bytes": 2285,
+        "sha256": "7605d68f7e0aee0840c9d12c7c0e601672e1d08ebc9df2517454a513ff6a6b9e",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/OPERATOR-SUPPLEMENT.md",
+      "git_mode": "100644"
+    }
+  ],
+  "copy_count": 5,
+  "copy_bytes": 330852,
+  "does_not_replace_existing_publication_payloads": true,
+  "Root_admission_included": {
+    "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/ROOT-ACTUAL-CHECK-ADMISSION.json",
+    "bytes": 1954,
+    "sha256": "641514d661a9f756bad911f4b0abd54b857b4ed8935acbdfebbb410ff075b383",
+    "mode": "0644"
+  },
+  "no_tests_or_repo_writes": true
+}

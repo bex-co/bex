@@ -1,0 +1,12 @@
+{
+  "status": "ROOT_REVIEWED_APPEND_ONLY_OPERATOR_PASS_PUBLICATION",
+  "at": "2026-11-02T19:37:57.686504+00:00",
+  "copy_plan_sha256": "1858ed3908a4690eb5512eb67aa9804c908a1036d0dcd623b8902fbac4d6a0a8",
+  "all42_sources_bytes_modes_verified": true,
+  "all36_new_objects_and4_reused_rows_verified": true,
+  "all13prep_and25selected_actual_bodies_present": true,
+  "all26actual_identities_bound": true,
+  "Root_admission_sha256": "641514d661a9f756bad911f4b0abd54b857b4ed8935acbdfebbb410ff075b383",
+  "full_narrative_result_reference_read": true,
+  "scope": "Actual local private fixture fullmake/scopedlint only; prior failure/probes preserved. No CI97/currentcandidate/adoption/hosted claim. Only five reviewed supplemental paths plus custody/review/provenance notes, no previous frozen payload replacement."
+}

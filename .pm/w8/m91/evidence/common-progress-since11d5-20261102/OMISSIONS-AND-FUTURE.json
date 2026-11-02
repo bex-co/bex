@@ -1,0 +1,55 @@
+{
+  "omissions": [
+    {
+      "role": "generated coverage body",
+      "source": {
+        "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v2-20261102-so3ki_y5/view/lego/operator/cover.out",
+        "bytes": 1015776,
+        "sha256": "89dfbfe2c8e1539b1eff2266bfa81fe2df9a1423e9d09ae55cf91c253b24284e",
+        "mode": "0644"
+      },
+      "copied": false,
+      "reason": "Raw19-output manifest preserves exact identity; full coverage body stays private, no qualification oracle depends on publishing it."
+    },
+    {
+      "role": "compiled group probe executable",
+      "source": {
+        "path": "/private/tmp/bex-w8-snapshot-group-probe-source-20261102-maifb68m/probe-bin",
+        "bytes": 2936930,
+        "sha256": "14900d31669aaf6b5188045224e81eb9b79ef22a6ad32c717de6197586b7aeb9",
+        "mode": "0755"
+      },
+      "copied": false,
+      "reason": "Exact source/compiler process and binary identity retained in phase evidence; no binary mirror needed."
+    }
+  ],
+  "never_copied": [
+    "ZERO95ZIPbodies",
+    "914/full640/sourceviewphysical bodies",
+    "shared caches",
+    "TMP/HOME/credential/config/kubeconfig/env journals",
+    "signed image/layer archives"
+  ],
+  "so3_full19": "All19 original output identities/manifests retained;18payload bodies selected, generatedcover.out only referenced privately. No deletion.",
+  "future_operator": {
+    "source_root": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t",
+    "frozen_source_manifest": {
+      "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/MANIFEST.json",
+      "bytes": 2407,
+      "sha256": "20dcdc3cd1cf28869c30963bff381c1e5969bd398fc6c027b7576b437c65f45e",
+      "mode": "0644"
+    },
+    "actual_result": null,
+    "actual_outputs": null,
+    "actual_admission": null,
+    "claim": "Root separately reports execution active; this selection reads no new actual runtime outputs and keeps terminal outcome/admission null.",
+    "source_execution_approval": {
+      "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/ROOT-EXECUTION-APPROVAL.json",
+      "bytes": 1775,
+      "sha256": "eccb3a3cbdd98ee7d4e12203233ecfd930f2fcd6d332d3ac4bc63e2b9df7e537",
+      "mode": "0644"
+    }
+  },
+  "run97": "Active metadata/onceUI dispatch only; no current run97 test/artifact/success inferred.",
+  "actual_success_candidate_adoption_Ready_contract_Free_auth": null
+}

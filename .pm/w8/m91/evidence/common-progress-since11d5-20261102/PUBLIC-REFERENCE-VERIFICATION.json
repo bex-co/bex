@@ -1,0 +1,141 @@
+{
+  "scope": "Actual local immutableGit body reads only; no API or selectedsource execution",
+  "selected_reference_rows": 34,
+  "unique_actual_blob_reads": 6,
+  "all_SHA256_size_and_Git_blob_equal": true,
+  "records": [
+    {
+      "reference": {
+        "commit": "3a15c2a44aa3c3a465ed056a75df61f7971ed9bc",
+        "path": ".pm/w8/m91/evidence/original28-free-contract-20261102/capsule/source/proof_binding.py",
+        "git_blob": "58bfc14956fa807f6b3bf4a8fa092437ada00ebb",
+        "git_mode": "100644"
+      },
+      "expected_identity": {
+        "bytes": 12691,
+        "sha256": "5bbe60a1aca6f15d11105f028b635d98337d29f23b1aa6366c66f5bddd0658e2"
+      },
+      "actual_Git_blob_bytes_identity": {
+        "bytes": 12691,
+        "sha256": "5bbe60a1aca6f15d11105f028b635d98337d29f23b1aa6366c66f5bddd0658e2"
+      },
+      "read_only_argv": [
+        "git",
+        "cat-file",
+        "blob",
+        "58bfc14956fa807f6b3bf4a8fa092437ada00ebb"
+      ]
+    },
+    {
+      "reference": {
+        "commit": "3a15c2a44aa3c3a465ed056a75df61f7971ed9bc",
+        "path": ".pm/w8/m91/evidence/common-family-qualification-source-20261031/legacy-python/context/lego/operator/internal/build/nativebases.go",
+        "git_blob": "959fa805c36c429602be4134409a065ba568a5f9",
+        "git_mode": "100644"
+      },
+      "expected_identity": {
+        "bytes": 10006,
+        "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf"
+      },
+      "actual_Git_blob_bytes_identity": {
+        "bytes": 10006,
+        "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf"
+      },
+      "read_only_argv": [
+        "git",
+        "cat-file",
+        "blob",
+        "959fa805c36c429602be4134409a065ba568a5f9"
+      ]
+    },
+    {
+      "reference": {
+        "commit": "3a15c2a44aa3c3a465ed056a75df61f7971ed9bc",
+        "path": ".pm/w8/m91/evidence/original28-free-contract-20261102/capsule/source/core.py",
+        "git_blob": "a62303e52786cbf47632c8d0dad10c804275a0d1",
+        "git_mode": "100644"
+      },
+      "expected_identity": {
+        "bytes": 5251,
+        "sha256": "aed473dc11c651f5146658c52898a1c4aeed951350897b4708e8f70bb6a6c143"
+      },
+      "actual_Git_blob_bytes_identity": {
+        "bytes": 5251,
+        "sha256": "aed473dc11c651f5146658c52898a1c4aeed951350897b4708e8f70bb6a6c143"
+      },
+      "read_only_argv": [
+        "git",
+        "cat-file",
+        "blob",
+        "a62303e52786cbf47632c8d0dad10c804275a0d1"
+      ]
+    },
+    {
+      "reference": {
+        "commit": "3a15c2a44aa3c3a465ed056a75df61f7971ed9bc",
+        "path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/capsule/tools/retained-v4.py",
+        "git_blob": "abff096eb28b97bcff7f490619baf8d56e3d3653",
+        "git_mode": "100644"
+      },
+      "expected_identity": {
+        "bytes": 22064,
+        "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03"
+      },
+      "actual_Git_blob_bytes_identity": {
+        "bytes": 22064,
+        "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03"
+      },
+      "read_only_argv": [
+        "git",
+        "cat-file",
+        "blob",
+        "abff096eb28b97bcff7f490619baf8d56e3d3653"
+      ]
+    },
+    {
+      "reference": {
+        "commit": "3a15c2a44aa3c3a465ed056a75df61f7971ed9bc",
+        "path": ".pm/w8/m91/evidence/common-artifact-review-20261101/verifier-source/lego/operator/internal/build/toolchain-freshness.json",
+        "git_blob": "c3cf32e3aa21f864019859d3a6a851b518b01cba",
+        "git_mode": "100644"
+      },
+      "expected_identity": {
+        "bytes": 27224,
+        "sha256": "be63de042bcff1899db87f36d4c3a093bb3b31282079e478603b10e7359d94fc"
+      },
+      "actual_Git_blob_bytes_identity": {
+        "bytes": 27224,
+        "sha256": "be63de042bcff1899db87f36d4c3a093bb3b31282079e478603b10e7359d94fc"
+      },
+      "read_only_argv": [
+        "git",
+        "cat-file",
+        "blob",
+        "c3cf32e3aa21f864019859d3a6a851b518b01cba"
+      ]
+    },
+    {
+      "reference": {
+        "commit": "3a15c2a44aa3c3a465ed056a75df61f7971ed9bc",
+        "path": ".pm/w1/blocked/m188/evidence/SYNTHETIC-writer-locals-regression/proposal/SYNTHETIC-writer-harness.stderr.log",
+        "git_blob": "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391",
+        "git_mode": "100644"
+      },
+      "expected_identity": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "actual_Git_blob_bytes_identity": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "read_only_argv": [
+        "git",
+        "cat-file",
+        "blob",
+        "e69de29bb2d1d6434b8b29ae775ad8c2e48c5391"
+      ]
+    }
+  ],
+  "mode_scope": "Original selected permission modes remain in selection-map. Public Git bodies have recorded executableGitmode; byte reuse never claims a private0600 source originally had public0644 permissions."
+}

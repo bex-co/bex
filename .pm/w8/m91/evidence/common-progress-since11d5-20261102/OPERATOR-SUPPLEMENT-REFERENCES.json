@@ -1,0 +1,73 @@
+{
+  "preceding_publication": {
+    "path": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/RECEIPT.json",
+    "bytes": 1027,
+    "sha256": "1612dafae7cf33e91f227ecd4d436ce08afcfc7a1a2beb05537641efa6a77752",
+    "mode": "0644"
+  },
+  "preceding_archive": {
+    "path": "/private/tmp/bex-w8-progress-publication-v2-select-20261102-p24o6sw1/unpublished-progress.tar.gz",
+    "bytes": 1337396,
+    "sha256": "b169347fee18dd87de1e851c25d88eaa0865eafa83bbb88aa20f0c049cd50830",
+    "mode": "0644"
+  },
+  "existing_copied_public_archive": {
+    "path": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/common-progress-since11d5-20261102/unpublished-progress.tar.gz",
+    "bytes": 1337396,
+    "sha256": "b169347fee18dd87de1e851c25d88eaa0865eafa83bbb88aa20f0c049cd50830",
+    "mode": "0644"
+  },
+  "already_copied_failed95_coverage_review": {
+    "path": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/common-progress-since11d5-20261102/ROOT-FAILED95-COVERAGE-REVIEW.json",
+    "bytes": 394,
+    "sha256": "0d45af51e61384df272c5e5e485f39cb6f0d01d51d13a5bfa855c3b3b9bea9f5",
+    "mode": "0644"
+  },
+  "its_commit": null,
+  "no_duplicate_failed95_review_copy": true,
+  "current_source": "3a15c2a44aa3c3a465ed056a75df61f7971ed9bc",
+  "1147_git_preimages": {
+    "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/CURRENT-GIT-PREIMAGES.json",
+    "bytes": 352947,
+    "sha256": "51e73415e1382ab33af149f3673999759bcdc257127048c87e7a19e81d80650b",
+    "mode": "0644"
+  },
+  "1147_initial_view_manifest": {
+    "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/INITIAL-VIEW-MANIFEST.json",
+    "bytes": 212669,
+    "sha256": "babe20508fbec3e6243ee8508b3ff16df41cb6062473701372b32e0d8f38e673",
+    "mode": "0644"
+  },
+  "1148_actual_after_view_manifest": {
+    "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/evidence/VIEW-AFTER.json",
+    "bytes": 212829,
+    "sha256": "db602de8f243ed4fa193c88dc24ba998ac8ea492d3390652e475bc313ef288ee",
+    "mode": "0644"
+  },
+  "overlays17": {
+    "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/OVERLAYS.json",
+    "bytes": 5604,
+    "sha256": "b319f4db74311e0da3d086252997858d5d8bda0e716f24f68bb5ce54480aecf5",
+    "mode": "0644"
+  },
+  "inputs_and_tool_receipt_bindings": {
+    "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/INPUTS.json",
+    "bytes": 74157,
+    "sha256": "3e103a2a9d91064886d81bcaf5ead9b0efd2037748abd86247a6d3c61d67478c",
+    "mode": "0644"
+  },
+  "omissions": [
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-private-adoption-operator-gates-v3-20261102-4urp534t/view/lego/operator/cover.out",
+        "bytes": 1015776,
+        "sha256": "4d72aa3db552481c9cbb655adb45ac2c19088684fee037308b458447e663ae15",
+        "mode": "0644"
+      },
+      "copied": false,
+      "reason": "Generated cover body remains retained privately; exact26-output manifest and Root admission bind its identity."
+    }
+  ],
+  "no_physical_view_cache_toolbinary_TMPHOME_or_cover_body_copy": true,
+  "reconstruct": "Use exact retained3a Git blobs/modes and17 archived prior proposal overlay identities/bodies; current preimages, overlays and all sourcebindings retained. No full sourceview mirror."
+}
