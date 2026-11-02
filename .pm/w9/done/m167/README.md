@@ -35,7 +35,7 @@
 - **Goal linkage:**
   - [ADR008](../../../docs/ADR008-vision.md): an AI-native developer surface with one coherent command namespace across bex CLI and bex desktop.
   - [ADR054](../../../docs/ADR054-open-in-zed.md): agent-sandbox editor remoting gets a terminal entry point.
-  - Complements [ADR092](../../../docs/ADR092-coding-agent-mcp.md).
+  - Complements the planned coding-agent MCP ADR (not yet in `docs/`; ADR092 is the Postgres extension supply ADR).
 - **Expected outcome:**
   - Existing desktop users keep typing `bex .`.
   - Platform users never lose `bex login` or `bex services` to an editor link.
