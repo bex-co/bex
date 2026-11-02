@@ -1,0 +1,15 @@
+{
+  "parent": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42",
+  "source_manifest_sha256": "f63e0be8a3b90504fa4d30860f1abf6cebdd90b599fa400fe10609deae07c3ca",
+  "full_manifest_sha256": "d503dacefee5c26bfcac4bba7adf2ef4863f74aad0829a129a25554770e764ec",
+  "root_approval_sha256": "9b8fe606f3ee19ff2f5561df9d586f3035d167dbd6065849da51b3067224bda5",
+  "view": "exact current tracked regular files from listed source/test/validation scopes plus the8 private overlays; no ignored pyc/private credentials/evidence copied",
+  "view_base_files": 560,
+  "view_base_bytes": 4832774,
+  "view_final_files": 561,
+  "view_final_bytes": 4844551,
+  "changes_from_reviewed_proposal": [
+    "one actual-workflow SHA/size/mode/type binding control",
+    "README dated0b7 utilities/current D3 and family/hosted limits + number spacing"
+  ]
+}

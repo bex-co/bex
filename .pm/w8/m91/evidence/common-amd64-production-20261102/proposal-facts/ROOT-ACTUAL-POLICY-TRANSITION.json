@@ -1,0 +1,32 @@
+{
+  "at": "2026-11-02T09:37:25.374900+00:00",
+  "result": "PASS_REAL_RETAINED_0941_INPUT_TRANSITION_ONLY",
+  "original_input_manifest": {
+    "path": ".pm/w8/m91/evidence/common-current0941-20261101/IMAGE-INPUTS.json",
+    "sha256": "822f75fe0b44129c5b4fefa9ec0f30fd5f6e325aaf3674f6234f24f540a20797",
+    "bytes": 6894
+  },
+  "source_helper_sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797",
+  "current_non_D3_policy_refused": true,
+  "exact_proposed_D3_policy_accepted": true,
+  "all_other_32_actual_current_inputs_equal_retained": true,
+  "proposed_publisher": {
+    "sha256": "fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759",
+    "bytes": 15859,
+    "mode": "100644",
+    "type": "regular"
+  },
+  "negative_checks": [
+    "changed publisher sha256",
+    "changed publisher bytes",
+    "changed publisher mode",
+    "changed publisher type",
+    "changed another factory/policy input",
+    "another ref",
+    "another producer",
+    "another verification",
+    "different original approval manifest"
+  ],
+  "original_proof_bodies_not_reexecuted_or_relabelled": true,
+  "scope": "Read-only real candidate/image-input mapping. Does not claim full new-source utility/family/ARM/publication/adoption acceptance."
+}

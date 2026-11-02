@@ -1,0 +1,42 @@
+{
+  ".github/scripts/native-common-qualify.py": {
+    "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797",
+    "bytes": 62244,
+    "mode": "0o644"
+  },
+  ".github/scripts/test_native_oci_common_qualification.py": {
+    "sha256": "92b3ce0610dfa32dca543c6d216a0c9123970fcfb08518da362a5968301b3bba",
+    "bytes": 129847,
+    "mode": "0o644"
+  },
+  ".github/scripts/test_native_oci_workflow.py": {
+    "sha256": "bfb9ad20287ccc2121fc2306701a045af08ee3ddec1a3f29cd6e746a4f0846a4",
+    "bytes": 21411,
+    "mode": "0o644"
+  },
+  ".github/workflows/native-base-image.yml": {
+    "sha256": "fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759",
+    "bytes": 15859,
+    "mode": "0o644"
+  },
+  ".github/workflows/native-common-image.yml": {
+    "sha256": "021adb7a8407e88373da608a4a2388b5ad5df8caee4177c63c7e89d159482709",
+    "bytes": 23110,
+    "mode": "0o644"
+  },
+  "deploy/native-base/README.md": {
+    "sha256": "758cd0b0fa516c0ddcfc2d9102e4b08ba5ab77cad7bbaa57094702e9afc50b72",
+    "bytes": 10804,
+    "mode": "0o644"
+  },
+  "deploy/native-common/README.md": {
+    "sha256": "2c9e34722551ab2072a31073f85675bb7202ae2b47ab2890e5a31a72ea8016ab",
+    "bytes": 6506,
+    "mode": "0o644"
+  },
+  "deploy/native-common/check-local.Dockerfile": {
+    "sha256": "30460593bdfcb3f2820841ded935e465868168e2bf2d3fd92e7d85c77b456d9b",
+    "bytes": 607,
+    "mode": "0o644"
+  }
+}

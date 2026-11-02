@@ -1,0 +1,20 @@
+{
+  "status": "ACTUAL_FIRST_AUDIT_EXIT1_PRESERVED_NOT_ARTIFACT_FAILURE",
+  "command": "/opt/homebrew/bin/python3.14 -B audit.py",
+  "exit": 1,
+  "source": {
+    "bytes": 13405,
+    "sha256": "b86883ea001d0dd98d1c0ec7dc8c97eeeaf5e67f710bcad91493adf956e2c318"
+  },
+  "stdout": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stderr": {
+    "bytes": 904,
+    "sha256": "b1e4db59b3321eff60094bbea5e1ff60148f842ff55d4ee5a34c998550b97148"
+  },
+  "reason": "Inherited modern-only manual libpython3.7.so prefix rejects actual libpython3.7m.so.1.0. Original pure validate_identity already passed at first failed proof; Root independently checked both 3.7 architectures/runtime app+project. No original oracle failure or product runtime defect inferred.",
+  "original_author_source_files_unchanged": true,
+  "retry_authorization": "Root explicitly approved auditor-only3.7m ABI correction plus one offline rerun; no new download or target execution."
+}

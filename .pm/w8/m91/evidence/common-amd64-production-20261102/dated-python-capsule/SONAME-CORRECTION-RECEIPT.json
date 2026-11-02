@@ -1,0 +1,42 @@
+{
+  "at": "2026-11-02T09:09:17.609347+00:00",
+  "scope": "Only audit expression expects3.7m ABI for legacy3.7; no originalprogram/oracle/source/fixture/ZIP/member modification. Every modern prefix and all three-link/SSL conditions unchanged.",
+  "old_source": {
+    "bytes": 13405,
+    "sha256": "b86883ea001d0dd98d1c0ec7dc8c97eeeaf5e67f710bcad91493adf956e2c318"
+  },
+  "corrected_source": {
+    "bytes": 13434,
+    "sha256": "52667c50ace913e0a3d76bcb5007101dbe80b1d1ac0bb391ef7ea3623541bfad"
+  },
+  "diff": {
+    "bytes": 2450,
+    "sha256": "a505f4c7b953ea18d23493c1495332621c40231dac013d814841fb41f147dc37"
+  },
+  "prior_failed_attempt": {
+    "bytes": 1002,
+    "sha256": "27d4ede331dac607896b28c96f8b30eb118ecd9ee38cd225853c21a053de0ea6"
+  },
+  "actual_abi_evidence": {
+    "bytes": 10389,
+    "sha256": "ebed01e6bdbe87c2569748ead99fb111412ae2c4bfb3d6f64fb6234d00e349a1"
+  },
+  "controls": {
+    "command": "/opt/homebrew/bin/python3.14 -B test_soname_correction.py",
+    "exit": 0,
+    "methods": 4,
+    "actual_oldRED_newPASS_proofs": 8,
+    "unchanged_modern_actual_proofs": 12,
+    "invalid_ABI_mutations": 4,
+    "link_SSL_mutations": 3,
+    "stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stderr": {
+      "bytes": 718,
+      "sha256": "765377a2f4b55a03fa6f580e55310f7d3b65f27d4f040e63dc141077beaa2d09"
+    }
+  },
+  "rerun_authorization": "Root explicitly approved this one auditor-onlycorrection and one offline rerun, no redownload/target execution/repo mutation."
+}

@@ -1,0 +1,38 @@
+{
+  "PASS": false,
+  "results": [
+    {
+      "label": "native-oci",
+      "argv": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        ".github/scripts",
+        "-p",
+        "test_native_oci_*.py"
+      ],
+      "exit": 1,
+      "bound": null,
+      "seconds": 53.34325850009918,
+      "group_absent": true,
+      "stdout_sha256": "0a858149e1a83b5b4892e7fb9bbab57aec6ad4bae15bc8aba7be744591a3e6f7",
+      "stderr_sha256": "94f53ff4c9683e53ac10d348c88187eb77911011b7e69c2b40a7398db2af99ec"
+    }
+  ],
+  "failure": null,
+  "source_unchanged": true,
+  "view_unchanged": true,
+  "minimum_free_bytes": 10798452736,
+  "peak_TMP_bytes": 95974,
+  "own_TMP_gone": true,
+  "pending_pgids": [],
+  "signals": [],
+  "elapsed_seconds": 53.4786559168715,
+  "actual_runtime_or_adoption_claim": false
+}

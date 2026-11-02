@@ -1,0 +1,1590 @@
+{
+  "state": "FINAL_PRIVATE_PUBLICATION_PROPOSAL_NOT_APPLIED",
+  "destination": ".pm/w8/m91/evidence/common-amd64-production-20261102",
+  "evidence_tree": "/private/tmp/bex-w8-d3-production-publication-draft-20261102-loapmg9i/evidence",
+  "files": [
+    {
+      "source": "/private/tmp/bex-w8-d3-production-publication-draft-20261102-loapmg9i/evidence/original-proposal.tar.gz",
+      "path": "original-proposal.tar.gz",
+      "bytes": 165609,
+      "sha256": "6fd9ecb58c65a6ce8f5da0fd1265eda1572eec098b8485b067819026d472546c",
+      "kind": "lossless normalized tar/gzip of exact originals"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/D3-TRANSITION.json",
+      "path": "proposal-facts/D3-TRANSITION.json",
+      "bytes": 712,
+      "sha256": "454bfc52df76327822fc40331644462f319bb008591c087815e2a0d0f4145b57",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/IMAGE-POLICY-IMPACT.json",
+      "path": "proposal-facts/IMAGE-POLICY-IMPACT.json",
+      "bytes": 1200,
+      "sha256": "abac1ea5328acf9c55ac4b3768af0814491e510f5f4f1dbc49a0854011b9d956",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/SOURCE-INVENTORY-IMPACT.json",
+      "path": "proposal-facts/SOURCE-INVENTORY-IMPACT.json",
+      "bytes": 2098,
+      "sha256": "4fb8fe5885c15b08978f31645737d0c99bb04b098395ad7e066d516882127c46",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/ROOT-SOURCE-REVIEW.json",
+      "path": "proposal-facts/ROOT-SOURCE-REVIEW.json",
+      "bytes": 961,
+      "sha256": "9b8fe606f3ee19ff2f5561df9d586f3035d167dbd6065849da51b3067224bda5",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/ROOT-ACTUAL-POLICY-TRANSITION.json",
+      "path": "proposal-facts/ROOT-ACTUAL-POLICY-TRANSITION.json",
+      "bytes": 1257,
+      "sha256": "c714871a98d74ebd040de7ddb6fd0b5b258c1aa0e32e2a356ae442fb30ec9ce5",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-production-publication-draft-20261102-loapmg9i/evidence/first-host-failure.tar.gz",
+      "path": "first-host-failure.tar.gz",
+      "bytes": 105986,
+      "sha256": "8a98df9f509cf9b35b9d8f70a281ce8481737e30cfe2820f0d33600477a65bbe",
+      "kind": "lossless normalized tar/gzip of exact originals"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/RESULT.json",
+      "path": "first-host-failure/RESULT.json",
+      "bytes": 1031,
+      "sha256": "30536f26bf73ad6c83e1db7161fb7978ce8166319dd152ac54b83c3c6e4b3dc9",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/PARENT.json",
+      "path": "first-host-failure/PARENT.json",
+      "bytes": 839,
+      "sha256": "0139cf0847a382fb4f1ab654a296c0ddd4e7874c5af017c6737fe0c5898db248",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/SCOPE.json",
+      "path": "first-host-failure/SCOPE.json",
+      "bytes": 3932,
+      "sha256": "0162ca08192acf9c59d7a2f7c00d93eaffe12cd6638a51452f843b3d48569979",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-coverage-plan-20261102-at4lplhr/CHECKS.json",
+      "path": "coverage-plan/CHECKS.json",
+      "bytes": 712,
+      "sha256": "b03481eb6fe9c9eb9c86fb7ef8d7a2de596dcdd82b5e1183acdabb760690f7f3",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-coverage-plan-20261102-at4lplhr/DATED-AMD64-NONIMPACT.tsv",
+      "path": "coverage-plan/DATED-AMD64-NONIMPACT.tsv",
+      "bytes": 3305,
+      "sha256": "7b1667c22a8af6bbc0dfe987f1377ce2f2802482ba9d4dd676e073b4b27bf42e",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-coverage-plan-20261102-at4lplhr/INPUT-CUSTODY.json",
+      "path": "coverage-plan/INPUT-CUSTODY.json",
+      "bytes": 9461,
+      "sha256": "9ffa0f2c4b9fa967b4b67babcb3797ae6e0acde69882c00ef6f1ea15239743a0",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-coverage-plan-20261102-at4lplhr/MANIFEST.json",
+      "path": "coverage-plan/MANIFEST.json",
+      "bytes": 1114,
+      "sha256": "bbf18ef575af0d0cca15cd15cb272b2fb857495261a2f312d8ef3f3a49d4764e",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-coverage-plan-20261102-at4lplhr/PLAN.json",
+      "path": "coverage-plan/PLAN.json",
+      "bytes": 98752,
+      "sha256": "925c6d949d4a3a46cb4929358f228e116371559aeb2538b49945760d143f0605",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-coverage-plan-20261102-at4lplhr/REQUIRED-ORIGINAL-AMD64.tsv",
+      "path": "coverage-plan/REQUIRED-ORIGINAL-AMD64.tsv",
+      "bytes": 8414,
+      "sha256": "1f95cb229cdc1be20030192618a726ba5d030e6cea68ec873c0bf858f41101cc",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-coverage-plan-20261102-at4lplhr/SUMMARY.json",
+      "path": "coverage-plan/SUMMARY.json",
+      "bytes": 3318,
+      "sha256": "50759728df823bb1adca87978059387961bcd7a0dc2df9b0fe1248e91f439db2",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-coverage-plan-20261102-at4lplhr/SUPPLEMENTAL-AMD64.tsv",
+      "path": "coverage-plan/SUPPLEMENTAL-AMD64.tsv",
+      "bytes": 2313,
+      "sha256": "8d825707a413a3afff63809cdd2d33ec2a309659c1bd8890720a6b40d7eabdd0",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/ACTUAL-3.7-ABI-EVIDENCE.json",
+      "path": "dated-python-capsule/ACTUAL-3.7-ABI-EVIDENCE.json",
+      "bytes": 10389,
+      "sha256": "ebed01e6bdbe87c2569748ead99fb111412ae2c4bfb3d6f64fb6234d00e349a1",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/ACTUAL-CUSTODY.json",
+      "path": "dated-python-capsule/ACTUAL-CUSTODY.json",
+      "bytes": 18813,
+      "sha256": "a2a04eaec009838bc4f82a401dfef2abb9d5a7a6696edabb4fd3f5e230b42a02",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/ACTUAL-RECEIPT.json",
+      "path": "dated-python-capsule/ACTUAL-RECEIPT.json",
+      "bytes": 2057,
+      "sha256": "05bc6cef28e25831967558106325e851942ac5fcd0b0822c9a6158d962c068a0",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/ACTUAL-SUMMARY.json",
+      "path": "dated-python-capsule/ACTUAL-SUMMARY.json",
+      "bytes": 3301,
+      "sha256": "80bc7396cc8f50156af9994bb72bdf87c20847af0cb23b3bf41fe82c8494d2b2",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/AUDIT-SONAME-CORRECTION.diff",
+      "path": "dated-python-capsule/AUDIT-SONAME-CORRECTION.diff",
+      "bytes": 2450,
+      "sha256": "a505f4c7b953ea18d23493c1495332621c40231dac013d814841fb41f147dc37",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/CAPSULE-MANIFEST.json",
+      "path": "dated-python-capsule/CAPSULE-MANIFEST.json",
+      "bytes": 6711,
+      "sha256": "2ffcf2be8dae876f36f6c8e90f7978ca21b37a210d6055fd0a035b634a4135a2",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/EXPECTED-SOURCE.json",
+      "path": "dated-python-capsule/EXPECTED-SOURCE.json",
+      "bytes": 75099,
+      "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/FIRST-AUDIT-FAILURE.json",
+      "path": "dated-python-capsule/FIRST-AUDIT-FAILURE.json",
+      "bytes": 1002,
+      "sha256": "27d4ede331dac607896b28c96f8b30eb118ecd9ee38cd225853c21a053de0ea6",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/HOST-FIRST-FAILURE.json",
+      "path": "dated-python-capsule/HOST-FIRST-FAILURE.json",
+      "bytes": 491,
+      "sha256": "a2e2d5d1f281b173a2b3faee9c937f9d3c78109a40c63e640f54f317066e8509",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/INPUTS.json",
+      "path": "dated-python-capsule/INPUTS.json",
+      "bytes": 5006,
+      "sha256": "1d6e9c27594e8a8165d0b464aa15604302c41c5c439acb9d90b9ad14dabe1c0e",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/MANIFEST.json",
+      "path": "dated-python-capsule/MANIFEST.json",
+      "bytes": 5520,
+      "sha256": "4298a7013f16bfe6c53a6be5adb13229916853c16c5b17e7a87381202228c754",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/PACKAGING-RESOLUTION.json",
+      "path": "dated-python-capsule/PACKAGING-RESOLUTION.json",
+      "bytes": 1359,
+      "sha256": "ecaf1f59c1f70221bedcaab8a4204e43d6cf0a8a8bba9524dd5367273a52a4ad",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/PLAN.json",
+      "path": "dated-python-capsule/PLAN.json",
+      "bytes": 9615,
+      "sha256": "6423eea8eaa2acdbe1dcaba95df1ac1153a9b58aaa9b1edd77cb0ae4839c4e5a",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/RECEIPT.json",
+      "path": "dated-python-capsule/RECEIPT.json",
+      "bytes": 1225,
+      "sha256": "f7ebc3b4f42f80f389f2cc2abd58c58d9679b7f87e77ad808580f5866a510ec3",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/REVIEW.json",
+      "path": "dated-python-capsule/REVIEW.json",
+      "bytes": 5913,
+      "sha256": "cb4e0fa456df5bc5bcba90050945f9e3f01ce7c9759483f77cc593bf031709ba",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/ROOT-APPROVAL.json",
+      "path": "dated-python-capsule/ROOT-APPROVAL.json",
+      "bytes": 894,
+      "sha256": "50e8625c8c69a1d4f9aed1096477b03adea1c42e3687d38dcd85dd6e1dae80f0",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/SONAME-CORRECTION-MANIFEST.json",
+      "path": "dated-python-capsule/SONAME-CORRECTION-MANIFEST.json",
+      "bytes": 1743,
+      "sha256": "5453bcfa1352dd632124eb74f7d348fcfc08ca6ba3a29db90cee8f4ae5b7ba94",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/SONAME-CORRECTION-RECEIPT.json",
+      "path": "dated-python-capsule/SONAME-CORRECTION-RECEIPT.json",
+      "bytes": 1557,
+      "sha256": "7d8c340eacd9b311902ff458face3ea8800254de10fbc904f89cdff82cb7a7fe",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/actual-audit-soname-v2.stderr",
+      "path": "dated-python-capsule/actual-audit-soname-v2.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/actual-audit-soname-v2.stdout",
+      "path": "dated-python-capsule/actual-audit-soname-v2.stdout",
+      "bytes": 276,
+      "sha256": "90e3ffd3ea45fe8cdce2f286243ce02a9e562369261a58e3d6d0a75cfead4d53",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/actual-audit.stderr",
+      "path": "dated-python-capsule/actual-audit.stderr",
+      "bytes": 904,
+      "sha256": "b1e4db59b3321eff60094bbea5e1ff60148f842ff55d4ee5a34c998550b97148",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/actual-audit.stdout",
+      "path": "dated-python-capsule/actual-audit.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/audit-soname-v2.py",
+      "path": "dated-python-capsule/audit-soname-v2.py",
+      "bytes": 13434,
+      "sha256": "52667c50ace913e0a3d76bcb5007101dbe80b1d1ac0bb391ef7ea3623541bfad",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/audit.py",
+      "path": "dated-python-capsule/audit.py",
+      "bytes": 13405,
+      "sha256": "b86883ea001d0dd98d1c0ec7dc8c97eeeaf5e67f710bcad91493adf956e2c318",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/audit.py.diff",
+      "path": "dated-python-capsule/audit.py.diff",
+      "bytes": 19201,
+      "sha256": "3a9e9f5755534f1665d46aa1e0062a0becc6220fe36f58286ccdba4377951374",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/host-checks.stderr",
+      "path": "dated-python-capsule/host-checks.stderr",
+      "bytes": 1475,
+      "sha256": "a262b4b9da731d07a80145846be7c4028bfe8f6bd930a2bd17ad85bd3a8bcd09",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/host-checks.stdout",
+      "path": "dated-python-capsule/host-checks.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/legacy-python-3.7-amd64.log",
+      "path": "dated-python-capsule/legacy-python-3.7-amd64.log",
+      "bytes": 64860,
+      "sha256": "9a7b64a8e0c99c8e2e30ea76789b1e83ed1384d19d500a520dbfe7e925e66049",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/legacy-python-3.7-arm64.log",
+      "path": "dated-python-capsule/legacy-python-3.7-arm64.log",
+      "bytes": 63715,
+      "sha256": "740df82c99165c04e26cc157a5411647d64d5abcec603b3f8c8136626314af7e",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/metadata/artifacts-41375428758.json",
+      "path": "dated-python-capsule/metadata/artifacts-41375428758.json",
+      "bytes": 1573,
+      "sha256": "d3974681ec44fff498bae448a88947024fb9527de51a9225895e153ad7c00bc8",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/metadata/artifacts-41375434664.json",
+      "path": "dated-python-capsule/metadata/artifacts-41375434664.json",
+      "bytes": 1575,
+      "sha256": "c353b3c33f3e7be94463a4d999ac1e070cdc8e65fb8cede927da5e7b72f8744b",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/metadata/artifacts-41375455883.json",
+      "path": "dated-python-capsule/metadata/artifacts-41375455883.json",
+      "bytes": 1575,
+      "sha256": "415b41d8c1fd5c6fbc67803a8f83ed30e5ae044e3af34bd75962eb2e0200d84c",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/metadata/artifacts-41375700551.json",
+      "path": "dated-python-capsule/metadata/artifacts-41375700551.json",
+      "bytes": 1573,
+      "sha256": "ee7ba662d759ff560771a3b85e640da15320d2594a1bdb113a71e5bc5deabac5",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/metadata/jobs-41375428758.json",
+      "path": "dated-python-capsule/metadata/jobs-41375428758.json",
+      "bytes": 12092,
+      "sha256": "ccb0a3300737aa3294bbe3813efd0bd2aa69196555f1d58a46bea9a3b7fce3a4",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/metadata/jobs-41375434664.json",
+      "path": "dated-python-capsule/metadata/jobs-41375434664.json",
+      "bytes": 12092,
+      "sha256": "70064ca319edf2a196dcef84830fe4288d7098e456fa17a14f273829adcd312b",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/metadata/jobs-41375455883.json",
+      "path": "dated-python-capsule/metadata/jobs-41375455883.json",
+      "bytes": 12092,
+      "sha256": "7700df6c387b43eae7b4c63ebb5d1faed6b05902ddcf53607e79623815facfe3",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/metadata/jobs-41375700551.json",
+      "path": "dated-python-capsule/metadata/jobs-41375700551.json",
+      "bytes": 12092,
+      "sha256": "5f0f1f579106481141401a1854c35666b33916d35ad7bacca2e35adfe172998b",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/modern-python-3.10-arm64.log",
+      "path": "dated-python-capsule/modern-python-3.10-arm64.log",
+      "bytes": 64665,
+      "sha256": "d5c6cf13a522c2f2a38f59bd3be2c7d1b17364cb19796f152a44b923dc0f7827",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/modern-python-3.11-arm64.log",
+      "path": "dated-python-capsule/modern-python-3.11-arm64.log",
+      "bytes": 63679,
+      "sha256": "dda6ea76b06740104a63c1890731db669542a253b93d4b3d28488b87b5b7e29f",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/modern-python-3.9-arm64.log",
+      "path": "dated-python-capsule/modern-python-3.9-arm64.log",
+      "bytes": 63596,
+      "sha256": "b8c96ce896e1f74af4262f888b797daeba836998102d8bc7646fcce6859743e0",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/soname-controls.stderr",
+      "path": "dated-python-capsule/soname-controls.stderr",
+      "bytes": 718,
+      "sha256": "765377a2f4b55a03fa6f580e55310f7d3b65f27d4f040e63dc141077beaa2d09",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/soname-controls.stdout",
+      "path": "dated-python-capsule/soname-controls.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/capsule/test_soname_correction.py",
+      "path": "dated-python-capsule/test_soname_correction.py",
+      "bytes": 2832,
+      "sha256": "be46ac1e92e613160f1cb9631f704421dd4787583975ab7f99755666b343f7a3",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/ROOT-CONTENT-ADMISSION.json",
+      "path": "dated-python-capsule/ROOT-CONTENT-ADMISSION.json",
+      "bytes": 709,
+      "sha256": "10e28a8032809805a8f1d2fcd5f91b4bcf08385b6d877d0f6a5d8ae4ddfb7d1f",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/ACTUAL-PAYLOAD-MANIFEST.json",
+      "path": "dated-python-capsule/ACTUAL-PAYLOAD-MANIFEST.json",
+      "bytes": 136674,
+      "sha256": "821932b2cf8506929511f993b22688df7b3d9c91fb2848524ab8dd8c1b8c6856",
+      "kind": "immutable original regular file; do not format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-production-publication-draft-20261102-loapmg9i/evidence/final-tested-source-and-checks.tar.gz",
+      "path": "final-tested-source-and-checks.tar.gz",
+      "bytes": 326370,
+      "sha256": "b0efda5639f8aee5da2bdbef27f86f40eb3df4584a34587925be6ddc812841dc",
+      "kind": "lossless original-byte tar/gzip, header mode normalized0600; original modes retained in manifest"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/FINAL-CHECKS.json",
+      "path": "final-tested/FINAL-CHECKS.json",
+      "bytes": 1999,
+      "sha256": "230bc9eb9d767a884b59dd53e9884e6579f66049e70a7d3a9d4369798bbdf72b",
+      "kind": "immutable exact original, never format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/RECEIPT.json",
+      "path": "final-tested/RECEIPT.json",
+      "bytes": 1063,
+      "sha256": "21c00179d00cf280cc7e7c70b2541ec5f02fd180c9e562c8bd8afd6b636a68b1",
+      "kind": "immutable exact original, never format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/SOURCE-MANIFEST.json",
+      "path": "final-tested/SOURCE-MANIFEST.json",
+      "bytes": 1400,
+      "sha256": "4e448c52a05449f1fb2e40de3f793aa2d0252061f952784af39b2aa1d0e60ae6",
+      "kind": "immutable exact original, never format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/REVIEWED-TO-FINAL.diff",
+      "path": "final-tested/REVIEWED-TO-FINAL.diff",
+      "bytes": 10915,
+      "sha256": "ff751fc46607e51acac3776da29f20f8a37a00c5bd1d5b6b9085c16ae0166acb",
+      "kind": "immutable exact original, never format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/PARENT.json",
+      "path": "final-tested/PARENT.json",
+      "bytes": 954,
+      "sha256": "bb840ecd541a9bc3154afa725414eb1be826a5939a71824754daabf79ca3f0e3",
+      "kind": "immutable exact original, never format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-root-applied-20261102-rcpbb2ni/APPLIED.json",
+      "path": "ROOT-APPLIED.json",
+      "bytes": 2774,
+      "sha256": "3192416da0b06fecdffe31c774ec548ca218c91679ce842b8288bcf350d77e66",
+      "kind": "immutable exact original, never format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/RESULT.json",
+      "path": "final-tested/INITIAL-UNCONFIGURED-ACTIONLINT-RESULT.json",
+      "bytes": 3142,
+      "sha256": "12b4c4c95355d1e7834389780e681ec9c649647371acea7069148d64f392ed2d",
+      "kind": "immutable exact original, never format/edit"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-production-publication-draft-20261102-loapmg9i/evidence/PUBLICATION-EXCLUSIONS.json",
+      "path": "PUBLICATION-EXCLUSIONS.json",
+      "bytes": 5587,
+      "sha256": "ab5cd154b50e19686dff191704c9054fdaa599d9eb3d42196865461cb93819e0",
+      "kind": "authored explicit publication scope"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-production-publication-draft-20261102-loapmg9i/evidence/README.md",
+      "path": "README.md",
+      "bytes": 4115,
+      "sha256": "ee9b9f78e9da282cd5592b2122f986ca347324f0edbd6f1b8b4f738fa5e4b35d",
+      "kind": "authored README; Root may format separately"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-root-applied-20261102-rcpbb2ni/MERGE-VERIFICATION.json",
+      "path": "current-tree/MERGE-VERIFICATION.json",
+      "bytes": 946,
+      "sha256": "b7eaea02ebcc77fb6ff9230295bf5c73adf1d67948b6a56e4e8b66c2c8a3a2a5",
+      "kind": "immutable actual Root current-tree merge check"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-root-applied-20261102-rcpbb2ni/actions-guard.log",
+      "path": "current-tree/actions-guard.log",
+      "bytes": 290,
+      "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3",
+      "kind": "immutable actual Root current-tree merge check"
+    },
+    {
+      "source": "/private/tmp/bex-w8-d3-root-applied-20261102-rcpbb2ni/actions-selftests.log",
+      "path": "current-tree/actions-selftests.log",
+      "bytes": 3566,
+      "sha256": "ecdc9a493c21415259459803fa8831314e2db8064ec55b41bab2466dede33289",
+      "kind": "immutable actual Root current-tree merge check"
+    }
+  ],
+  "archives": [
+    {
+      "path": "original-proposal.tar.gz",
+      "bytes": 165609,
+      "sha256": "6fd9ecb58c65a6ce8f5da0fd1265eda1572eec098b8485b067819026d472546c",
+      "members": [
+        {
+          "member": "BASE.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/BASE.json",
+          "bytes": 554,
+          "sha256": "7a74adfeca1a4c8e9848086043fdbce0fd4af3325e356bd13727ee3e8f6e02a8"
+        },
+        {
+          "member": "D3-TRANSITION.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/D3-TRANSITION.json",
+          "bytes": 712,
+          "sha256": "454bfc52df76327822fc40331644462f319bb008591c087815e2a0d0f4145b57"
+        },
+        {
+          "member": "IMAGE-POLICY-IMPACT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/IMAGE-POLICY-IMPACT.json",
+          "bytes": 1200,
+          "sha256": "abac1ea5328acf9c55ac4b3768af0814491e510f5f4f1dbc49a0854011b9d956"
+        },
+        {
+          "member": "MANIFEST.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/MANIFEST.json",
+          "bytes": 4108,
+          "sha256": "d503dacefee5c26bfcac4bba7adf2ef4863f74aad0829a129a25554770e764ec"
+        },
+        {
+          "member": "PROPOSAL.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/PROPOSAL.json",
+          "bytes": 5696,
+          "sha256": "49ab83f406aa9a110e1a1fb4632e996a9325b1e2620892a7613ebaa186c23313"
+        },
+        {
+          "member": "PROPOSED-TESTS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/PROPOSED-TESTS.json",
+          "bytes": 7641,
+          "sha256": "4b10164c2049299c19ddd37e604981e14ce4e45ea8839a99f25430da25b6e872"
+        },
+        {
+          "member": "RECEIPT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/RECEIPT.json",
+          "bytes": 637,
+          "sha256": "44a67b1b6887a93c655f0b59b75603e8e2e5ca5159e8c382d42fe2729120f685"
+        },
+        {
+          "member": "ROOT-ACTUAL-POLICY-TRANSITION.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/ROOT-ACTUAL-POLICY-TRANSITION.json",
+          "bytes": 1257,
+          "sha256": "c714871a98d74ebd040de7ddb6fd0b5b258c1aa0e32e2a356ae442fb30ec9ce5"
+        },
+        {
+          "member": "ROOT-SOURCE-REVIEW.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/ROOT-SOURCE-REVIEW.json",
+          "bytes": 961,
+          "sha256": "9b8fe606f3ee19ff2f5561df9d586f3035d167dbd6065849da51b3067224bda5"
+        },
+        {
+          "member": "SOURCE-INVENTORY-IMPACT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/SOURCE-INVENTORY-IMPACT.json",
+          "bytes": 2098,
+          "sha256": "4fb8fe5885c15b08978f31645737d0c99bb04b098395ad7e066d516882127c46"
+        },
+        {
+          "member": "SOURCE-MANIFEST.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/SOURCE-MANIFEST.json",
+          "bytes": 1400,
+          "sha256": "f63e0be8a3b90504fa4d30860f1abf6cebdd90b599fa400fe10609deae07c3ca"
+        },
+        {
+          "member": "SOURCE.diff",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/SOURCE.diff",
+          "bytes": 63151,
+          "sha256": "123e292dd134900ab7b806203dbf2c80217e46a6c87ce24534e2898253b5cdfa"
+        },
+        {
+          "member": "before/.github/scripts/native-common-qualify.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/before/.github/scripts/native-common-qualify.py",
+          "bytes": 60360,
+          "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5"
+        },
+        {
+          "member": "before/.github/scripts/test_native_oci_common_qualification.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/before/.github/scripts/test_native_oci_common_qualification.py",
+          "bytes": 123251,
+          "sha256": "004b24b12ebbfecbe4602b66ed3d00dee3f1309a5f6fe8535cb3a43c80b263d9"
+        },
+        {
+          "member": "before/.github/scripts/test_native_oci_workflow.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/before/.github/scripts/test_native_oci_workflow.py",
+          "bytes": 20871,
+          "sha256": "4d02e612c8b0ac19f57ac181acbbdf0b196b349314988411f5d27e8675cac2dc"
+        },
+        {
+          "member": "before/.github/workflows/native-base-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/before/.github/workflows/native-base-image.yml",
+          "bytes": 18397,
+          "sha256": "8f5e440662a5997af7e45d16536df2e27754ef4fb48c529ca33381cb0004ceb9"
+        },
+        {
+          "member": "before/.github/workflows/native-common-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/before/.github/workflows/native-common-image.yml",
+          "bytes": 19834,
+          "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1"
+        },
+        {
+          "member": "before/deploy/native-base/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/before/deploy/native-base/README.md",
+          "bytes": 11186,
+          "sha256": "86d64ef2e4d4fe9ddeb9df3698edff4821d229e938337214a80d0806278605b1"
+        },
+        {
+          "member": "before/deploy/native-common/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/before/deploy/native-common/README.md",
+          "bytes": 4438,
+          "sha256": "254c102d6b778eb58e4b2f171f579e8ce7fe247930532ed5f1f1638548b54a48"
+        },
+        {
+          "member": "prepare.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/prepare.py",
+          "bytes": 14149,
+          "sha256": "2ce4d51b803b37281cfb0133f64fd246ae18be514fe01e48c94281d717cbaf8e"
+        },
+        {
+          "member": "prepare_tests.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/prepare_tests.py",
+          "bytes": 11949,
+          "sha256": "5938a0b4069838a621d5f89b6d62bb42ad6ced1804cc61a6e67f2966a997f47b"
+        },
+        {
+          "member": "producer-native-base-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/producer-native-base-image.yml",
+          "bytes": 18402,
+          "sha256": "0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47"
+        },
+        {
+          "member": "seal_proposal.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/seal_proposal.py",
+          "bytes": 12019,
+          "sha256": "e55aabaeba2e826a177ad4dada9004c2080c71a6e18d1aff5507a5661b7dc78e"
+        },
+        {
+          "member": "source/.github/scripts/native-common-qualify.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/source/.github/scripts/native-common-qualify.py",
+          "bytes": 62244,
+          "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797"
+        },
+        {
+          "member": "source/.github/scripts/test_native_oci_common_qualification.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/source/.github/scripts/test_native_oci_common_qualification.py",
+          "bytes": 129377,
+          "sha256": "8c962c672e22b8d1bc9b4a0eb2fc25b4b16dda90b0766c2e90792be8e2fac72d"
+        },
+        {
+          "member": "source/.github/scripts/test_native_oci_workflow.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/source/.github/scripts/test_native_oci_workflow.py",
+          "bytes": 21411,
+          "sha256": "bfb9ad20287ccc2121fc2306701a045af08ee3ddec1a3f29cd6e746a4f0846a4"
+        },
+        {
+          "member": "source/.github/workflows/native-base-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/source/.github/workflows/native-base-image.yml",
+          "bytes": 15859,
+          "sha256": "fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759"
+        },
+        {
+          "member": "source/.github/workflows/native-common-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/source/.github/workflows/native-common-image.yml",
+          "bytes": 23110,
+          "sha256": "021adb7a8407e88373da608a4a2388b5ad5df8caee4177c63c7e89d159482709"
+        },
+        {
+          "member": "source/deploy/native-base/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/source/deploy/native-base/README.md",
+          "bytes": 10661,
+          "sha256": "33b11e36da8a8f69d3aab75bb9b9226051c928de76c5d62d858add9bd2b6dac5"
+        },
+        {
+          "member": "source/deploy/native-common/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/source/deploy/native-common/README.md",
+          "bytes": 6231,
+          "sha256": "4697a7999dced9703f22bc1f0909efb89556e770d1981b3b828d585851efb333"
+        },
+        {
+          "member": "source/deploy/native-common/check-local.Dockerfile",
+          "source": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/source/deploy/native-common/check-local.Dockerfile",
+          "bytes": 607,
+          "sha256": "30460593bdfcb3f2820841ded935e465868168e2bf2d3fd92e7d85c77b456d9b"
+        }
+      ],
+      "all_raw_roundtrips_equal": true
+    },
+    {
+      "path": "first-host-failure.tar.gz",
+      "bytes": 105986,
+      "sha256": "8a98df9f509cf9b35b9d8f70a281ce8481737e30cfe2820f0d33600477a65bbe",
+      "members": [
+        {
+          "member": "CHECK-SOURCE-AFTER.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/CHECK-SOURCE-AFTER.json",
+          "bytes": 1976,
+          "sha256": "2f689abe80138ef180060c99c244dce2ccc09e94af18330fade11532268bbdfe"
+        },
+        {
+          "member": "CHECK-SOURCE-BEFORE.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/CHECK-SOURCE-BEFORE.json",
+          "bytes": 1976,
+          "sha256": "2f689abe80138ef180060c99c244dce2ccc09e94af18330fade11532268bbdfe"
+        },
+        {
+          "member": "PARENT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/PARENT.json",
+          "bytes": 839,
+          "sha256": "0139cf0847a382fb4f1ab654a296c0ddd4e7874c5af017c6737fe0c5898db248"
+        },
+        {
+          "member": "RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/RESULT.json",
+          "bytes": 1031,
+          "sha256": "30536f26bf73ad6c83e1db7161fb7978ce8166319dd152ac54b83c3c6e4b3dc9"
+        },
+        {
+          "member": "SCOPE.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/SCOPE.json",
+          "bytes": 3932,
+          "sha256": "0162ca08192acf9c59d7a2f7c00d93eaffe12cd6638a51452f843b3d48569979"
+        },
+        {
+          "member": "VIEW-MANIFEST.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/VIEW-MANIFEST.json",
+          "bytes": 99074,
+          "sha256": "98a2aa3c998b7e27c43427632542c53ca4d81b1d1433b7d13052aa9e632d37d1"
+        },
+        {
+          "member": "native-oci-PROCESS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/native-oci-PROCESS.json",
+          "bytes": 432,
+          "sha256": "3cfafccd325a403608491a0cb59ba446b5608b9ddcf5b0b8c01cf4dd5632c146"
+        },
+        {
+          "member": "native-oci-RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/native-oci-RESULT.json",
+          "bytes": 614,
+          "sha256": "e4d7320f8bea1adceaaad010520afc039388f9db1a531fe71a174ea61c844a15"
+        },
+        {
+          "member": "native-oci.stderr",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/native-oci.stderr",
+          "bytes": 26436,
+          "sha256": "94f53ff4c9683e53ac10d348c88187eb77911011b7e69c2b40a7398db2af99ec"
+        },
+        {
+          "member": "native-oci.stdout",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/native-oci.stdout",
+          "bytes": 24668,
+          "sha256": "0a858149e1a83b5b4892e7fb9bbab57aec6ad4bae15bc8aba7be744591a3e6f7"
+        },
+        {
+          "member": "run_checks.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/run_checks.py",
+          "bytes": 7228,
+          "sha256": "0ccecab79bc71b2ea371f2853c54f2eef076e18bcfa6bba3465bc224650e0a1a"
+        },
+        {
+          "member": "source/.github/scripts/native-common-qualify.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/source/.github/scripts/native-common-qualify.py",
+          "bytes": 62244,
+          "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797"
+        },
+        {
+          "member": "source/.github/scripts/test_native_oci_common_qualification.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/source/.github/scripts/test_native_oci_common_qualification.py",
+          "bytes": 129716,
+          "sha256": "6df3223f02cb14c29268f048435defbfc4364b6ba6e7c1580a09af687426dc8d"
+        },
+        {
+          "member": "source/.github/scripts/test_native_oci_workflow.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/source/.github/scripts/test_native_oci_workflow.py",
+          "bytes": 21411,
+          "sha256": "bfb9ad20287ccc2121fc2306701a045af08ee3ddec1a3f29cd6e746a4f0846a4"
+        },
+        {
+          "member": "source/.github/workflows/native-base-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/source/.github/workflows/native-base-image.yml",
+          "bytes": 15859,
+          "sha256": "fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759"
+        },
+        {
+          "member": "source/.github/workflows/native-common-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/source/.github/workflows/native-common-image.yml",
+          "bytes": 23110,
+          "sha256": "021adb7a8407e88373da608a4a2388b5ad5df8caee4177c63c7e89d159482709"
+        },
+        {
+          "member": "source/deploy/native-base/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/source/deploy/native-base/README.md",
+          "bytes": 10661,
+          "sha256": "33b11e36da8a8f69d3aab75bb9b9226051c928de76c5d62d858add9bd2b6dac5"
+        },
+        {
+          "member": "source/deploy/native-common/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/source/deploy/native-common/README.md",
+          "bytes": 6506,
+          "sha256": "2c9e34722551ab2072a31073f85675bb7202ae2b47ab2890e5a31a72ea8016ab"
+        },
+        {
+          "member": "source/deploy/native-common/check-local.Dockerfile",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/source/deploy/native-common/check-local.Dockerfile",
+          "bytes": 607,
+          "sha256": "30460593bdfcb3f2820841ded935e465868168e2bf2d3fd92e7d85c77b456d9b"
+        }
+      ],
+      "all_raw_roundtrips_equal": true
+    },
+    {
+      "path": "final-tested-source-and-checks.tar.gz",
+      "bytes": 326370,
+      "sha256": "b0efda5639f8aee5da2bdbef27f86f40eb3df4584a34587925be6ddc812841dc",
+      "members": [
+        {
+          "member": "CHECK-SOURCE-AFTER.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/CHECK-SOURCE-AFTER.json",
+          "bytes": 1976,
+          "sha256": "fa73d567a0431c0ca4b4be0c30bf3e0293eb0aa3cb422f15b654349e27ed7d19",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "CHECK-SOURCE-BEFORE.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/CHECK-SOURCE-BEFORE.json",
+          "bytes": 1976,
+          "sha256": "fa73d567a0431c0ca4b4be0c30bf3e0293eb0aa3cb422f15b654349e27ed7d19",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "FINAL-CHECKS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/FINAL-CHECKS.json",
+          "bytes": 1999,
+          "sha256": "230bc9eb9d767a884b59dd53e9884e6579f66049e70a7d3a9d4369798bbdf72b",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "MANIFEST.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/MANIFEST.json",
+          "bytes": 104658,
+          "sha256": "b8cb12e8e943df84401ec8f5fdfa9d0b2b2b7ce76f28610dc7df0b7cae3440eb",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "PARENT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/PARENT.json",
+          "bytes": 954,
+          "sha256": "bb840ecd541a9bc3154afa725414eb1be826a5939a71824754daabf79ca3f0e3",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/README.md",
+          "bytes": 3224,
+          "sha256": "ce9b5476b49712af97955dda7f892a12b3e355433e74aa399f3f7c69295a9833",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "RECEIPT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/RECEIPT.json",
+          "bytes": 1063,
+          "sha256": "21c00179d00cf280cc7e7c70b2541ec5f02fd180c9e562c8bd8afd6b636a68b1",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/RESULT.json",
+          "bytes": 3142,
+          "sha256": "12b4c4c95355d1e7834389780e681ec9c649647371acea7069148d64f392ed2d",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "REVIEWED-TO-FINAL.diff",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/REVIEWED-TO-FINAL.diff",
+          "bytes": 10915,
+          "sha256": "ff751fc46607e51acac3776da29f20f8a37a00c5bd1d5b6b9085c16ae0166acb",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "SCOPE.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/SCOPE.json",
+          "bytes": 3935,
+          "sha256": "1b4cb7b46b4b535a44cc9ac60bcad7ba321f0b0f8727fa57bc1f3f86513af9d1",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "SOURCE-MANIFEST.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/SOURCE-MANIFEST.json",
+          "bytes": 1400,
+          "sha256": "4e448c52a05449f1fb2e40de3f793aa2d0252061f952784af39b2aa1d0e60ae6",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "SOURCE.diff",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/SOURCE.diff",
+          "bytes": 65963,
+          "sha256": "7570d2e49a2ac356424646d1e23d8dbffb7443aff7d8596ca31661eac2216722",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "VIEW-MANIFEST.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/VIEW-MANIFEST.json",
+          "bytes": 99074,
+          "sha256": "cce70c6d233f4c9e37aced7f52f2e79fc91c5e0d6ea407fff512cc3fb9f33511",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "actionlint-PROCESS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/actionlint-PROCESS.json",
+          "bytes": 446,
+          "sha256": "b93dabaaf69af22876e2f06d6cc153703cce5352923879f016f1552aa0b1b45c",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "actionlint-RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/actionlint-RESULT.json",
+          "bytes": 626,
+          "sha256": "c950122e27b264c6545eacd3133a8937b2216342a8cc0c4905459be55e1c1fad",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "actionlint.stderr",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/actionlint.stderr",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "actionlint.stdout",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/actionlint.stdout",
+          "bytes": 5612,
+          "sha256": "b97ab1f8d593128400c2c8d6f76e5b3edb92781d3e1a5793006c2ab0d2db0e8d",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before-proposal/.github/scripts/native-common-qualify.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before-proposal/.github/scripts/native-common-qualify.py",
+          "bytes": 62244,
+          "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before-proposal/.github/scripts/test_native_oci_common_qualification.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before-proposal/.github/scripts/test_native_oci_common_qualification.py",
+          "bytes": 129377,
+          "sha256": "8c962c672e22b8d1bc9b4a0eb2fc25b4b16dda90b0766c2e90792be8e2fac72d",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before-proposal/.github/scripts/test_native_oci_workflow.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before-proposal/.github/scripts/test_native_oci_workflow.py",
+          "bytes": 21411,
+          "sha256": "bfb9ad20287ccc2121fc2306701a045af08ee3ddec1a3f29cd6e746a4f0846a4",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before-proposal/.github/workflows/native-base-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before-proposal/.github/workflows/native-base-image.yml",
+          "bytes": 15859,
+          "sha256": "fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before-proposal/.github/workflows/native-common-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before-proposal/.github/workflows/native-common-image.yml",
+          "bytes": 23110,
+          "sha256": "021adb7a8407e88373da608a4a2388b5ad5df8caee4177c63c7e89d159482709",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before-proposal/deploy/native-base/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before-proposal/deploy/native-base/README.md",
+          "bytes": 10661,
+          "sha256": "33b11e36da8a8f69d3aab75bb9b9226051c928de76c5d62d858add9bd2b6dac5",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before-proposal/deploy/native-common/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before-proposal/deploy/native-common/README.md",
+          "bytes": 6231,
+          "sha256": "4697a7999dced9703f22bc1f0909efb89556e770d1981b3b828d585851efb333",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before-proposal/deploy/native-common/check-local.Dockerfile",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before-proposal/deploy/native-common/check-local.Dockerfile",
+          "bytes": 607,
+          "sha256": "30460593bdfcb3f2820841ded935e465868168e2bf2d3fd92e7d85c77b456d9b",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before/.github/scripts/native-common-qualify.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before/.github/scripts/native-common-qualify.py",
+          "bytes": 60360,
+          "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before/.github/scripts/test_native_oci_common_qualification.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before/.github/scripts/test_native_oci_common_qualification.py",
+          "bytes": 123251,
+          "sha256": "004b24b12ebbfecbe4602b66ed3d00dee3f1309a5f6fe8535cb3a43c80b263d9",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before/.github/scripts/test_native_oci_workflow.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before/.github/scripts/test_native_oci_workflow.py",
+          "bytes": 20871,
+          "sha256": "4d02e612c8b0ac19f57ac181acbbdf0b196b349314988411f5d27e8675cac2dc",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before/.github/workflows/native-base-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before/.github/workflows/native-base-image.yml",
+          "bytes": 18397,
+          "sha256": "8f5e440662a5997af7e45d16536df2e27754ef4fb48c529ca33381cb0004ceb9",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before/.github/workflows/native-common-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before/.github/workflows/native-common-image.yml",
+          "bytes": 19834,
+          "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before/deploy/native-base/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before/deploy/native-base/README.md",
+          "bytes": 11186,
+          "sha256": "86d64ef2e4d4fe9ddeb9df3698edff4821d229e938337214a80d0806278605b1",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "before/deploy/native-common/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/before/deploy/native-common/README.md",
+          "bytes": 4438,
+          "sha256": "254c102d6b778eb58e4b2f171f579e8ce7fe247930532ed5f1f1638548b54a48",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-base-PROCESS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-base-PROCESS.json",
+          "bytes": 427,
+          "sha256": "541c9ba761f37be24552236ac206403440abb2ae48b4573e7cc6723a375f74e3",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-base-RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-base-RESULT.json",
+          "bytes": 608,
+          "sha256": "75999d777120209e37d4839aa72e30ba0acec2b8dd3afa770be66106dadeebcc",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-base.stderr",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-base.stderr",
+          "bytes": 113,
+          "sha256": "508edb54f129ccc9dbf1e7782f2629bc5eae90917f773e40a32dbc867c9c2062",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-base.stdout",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-base.stdout",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-common-PROCESS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-common-PROCESS.json",
+          "bytes": 429,
+          "sha256": "61c64642e0f6fdd6420e0c8e78ffaf96de9ecc7616bbce296691adb7bfb808a4",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-common-RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-common-RESULT.json",
+          "bytes": 612,
+          "sha256": "c260bbe69d94c4dbf144f1b2c7799ea7d9b47cf8f573070fedde1d98b3f417dc",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-common.stderr",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-common.stderr",
+          "bytes": 122,
+          "sha256": "b734d40e6e830cce2d63262303dc14baa49746efe027331a4209d6ba3a745309",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-common.stdout",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-common.stdout",
+          "bytes": 633,
+          "sha256": "46abfbef14a402f07c1f551a9e09a8c0b8b8e57375a91aafb8594cd76eb85583",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-oci-PROCESS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-oci-PROCESS.json",
+          "bytes": 435,
+          "sha256": "48a877ffbb75a75bb6993bfd581bd55e13e82915633a4013dc8ba85c07241fd9",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-oci-RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-oci-RESULT.json",
+          "bytes": 615,
+          "sha256": "21838f7336ffae4d80eafd32a190638d64bb37f768e79869516918d63e93459c",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-oci.stderr",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-oci.stderr",
+          "bytes": 248,
+          "sha256": "da184507cd9a1b227a8708762d53d25301b04d2a583cedf5e0da26d58d3ec3cc",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "native-oci.stdout",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/native-oci.stdout",
+          "bytes": 24668,
+          "sha256": "8a0417609a63dfa25abf9312171a9d90b727baba7bab4a6a5b044b015fced622",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/CHECK-SOURCE-AFTER.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/CHECK-SOURCE-AFTER.json",
+          "bytes": 1976,
+          "sha256": "fa73d567a0431c0ca4b4be0c30bf3e0293eb0aa3cb422f15b654349e27ed7d19",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/CHECK-SOURCE-BEFORE.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/CHECK-SOURCE-BEFORE.json",
+          "bytes": 1976,
+          "sha256": "fa73d567a0431c0ca4b4be0c30bf3e0293eb0aa3cb422f15b654349e27ed7d19",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/CONFIGURATION-REVIEW.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/CONFIGURATION-REVIEW.json",
+          "bytes": 727,
+          "sha256": "bdb191e2c09ea14b84d9a4c6f81745233a233baaa2c3dcb93f96373d0da4cb54",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/RESULT.json",
+          "bytes": 3645,
+          "sha256": "3767d8609bf2eb2b70b98595bc72c974f39043be03355ff17d576765a81d96e6",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/SCOPE.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/SCOPE.json",
+          "bytes": 3716,
+          "sha256": "4375ddc493e425e6dd6a3ea69346fe0b5cb219f11946fc0fc2f3583694585a4f",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/VIEW-MANIFEST.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/VIEW-MANIFEST.json",
+          "bytes": 99074,
+          "sha256": "cce70c6d233f4c9e37aced7f52f2e79fc91c5e0d6ea407fff512cc3fb9f33511",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actionlint-configured-PROCESS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actionlint-configured-PROCESS.json",
+          "bytes": 555,
+          "sha256": "e07826e0904900d881e4b8fb230791570823002ed1141604dc593010f0a4d4c9",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actionlint-configured-RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actionlint-configured-RESULT.json",
+          "bytes": 747,
+          "sha256": "470f0a5e305b36915ff56723bec56a7d9f517a0664f8ea49a5f2c7930d096a42",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actionlint-configured.stderr",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actionlint-configured.stderr",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actionlint-configured.stdout",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actionlint-configured.stdout",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actionlint.yaml",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actionlint.yaml",
+          "bytes": 66,
+          "sha256": "66c85ddb58f2c3f98d1a7f8a4a9c80c4c4b8d1405c01ec2dc2a3a573d3e8949b",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actions-guard-PROCESS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actions-guard-PROCESS.json",
+          "bytes": 335,
+          "sha256": "41e51b72abd4dea9daca0e0d607262de61166d5853c8cddf2c7c666f6356a2c2",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actions-guard-RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actions-guard-RESULT.json",
+          "bytes": 518,
+          "sha256": "aea57fa76a2d0696dbbf85ecdcf5baca94098ecdfe0c35792d151807a82aa7f5",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actions-guard.stderr",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actions-guard.stderr",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actions-guard.stdout",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actions-guard.stdout",
+          "bytes": 290,
+          "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actions-selftests-PROCESS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actions-selftests-PROCESS.json",
+          "bytes": 340,
+          "sha256": "ca470619b7ffb492fbe209bb15d6c00b96218573f49893f3983ff646835e2c42",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actions-selftests-RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actions-selftests-RESULT.json",
+          "bytes": 526,
+          "sha256": "528cf0df0911f5b78cc861150df76af7eaba0acf5e91b91c7b8bc003e81063db",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actions-selftests.stderr",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actions-selftests.stderr",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/actions-selftests.stdout",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/actions-selftests.stdout",
+          "bytes": 3566,
+          "sha256": "ecdc9a493c21415259459803fa8831314e2db8064ec55b41bab2466dede33289",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/native-common-with-node-PROCESS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/native-common-with-node-PROCESS.json",
+          "bytes": 429,
+          "sha256": "f540e11f99c22d250b77a3ec62ae19eb28098e9272516fa9d5f10fd177684600",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/native-common-with-node-RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/native-common-with-node-RESULT.json",
+          "bytes": 622,
+          "sha256": "184f3c7af7963c3e8081071c81c590af0daf1324695590d6eccefff2dae345e3",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/native-common-with-node.stderr",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/native-common-with-node.stderr",
+          "bytes": 110,
+          "sha256": "c39db4c78344d9d8a34cf49bb1141157afe35b86db99a9fe7cac2fe25d859cb5",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/native-common-with-node.stdout",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/native-common-with-node.stdout",
+          "bytes": 633,
+          "sha256": "46abfbef14a402f07c1f551a9e09a8c0b8b8e57375a91aafb8594cd76eb85583",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/node-version-PROCESS.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/node-version-PROCESS.json",
+          "bytes": 352,
+          "sha256": "cad5e58086421fbd2c3926725944860c3ae0c1cad42da276929014c7966aabe6",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/node-version-RESULT.json",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/node-version-RESULT.json",
+          "bytes": 535,
+          "sha256": "bc8ce20173010f535024fc0912acb02d00b860d9658b96bf7be01088309bd3ce",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/node-version.stderr",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/node-version.stderr",
+          "bytes": 0,
+          "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/node-version.stdout",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/node-version.stdout",
+          "bytes": 9,
+          "sha256": "a8f8f7ba69d43285857a0ea34017ef8dadd3ba012404bb7dd188fc773cf63ee2",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "remaining/run_remaining.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining/run_remaining.py",
+          "bytes": 7445,
+          "sha256": "2183c606cb515496c44c5c4ccdb5471f56d00893888f30600cd194942fae70cf",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "run_checks.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/run_checks.py",
+          "bytes": 7228,
+          "sha256": "0ccecab79bc71b2ea371f2853c54f2eef076e18bcfa6bba3465bc224650e0a1a",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "seal_final.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/seal_final.py",
+          "bytes": 10227,
+          "sha256": "bb61e31b9e6d9257cff82fcb7301d63257ee4be60d948f1f9e85676cfa09163b",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "source/.github/scripts/native-common-qualify.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/source/.github/scripts/native-common-qualify.py",
+          "bytes": 62244,
+          "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "source/.github/scripts/test_native_oci_common_qualification.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/source/.github/scripts/test_native_oci_common_qualification.py",
+          "bytes": 129847,
+          "sha256": "92b3ce0610dfa32dca543c6d216a0c9123970fcfb08518da362a5968301b3bba",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "source/.github/scripts/test_native_oci_workflow.py",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/source/.github/scripts/test_native_oci_workflow.py",
+          "bytes": 21411,
+          "sha256": "bfb9ad20287ccc2121fc2306701a045af08ee3ddec1a3f29cd6e746a4f0846a4",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "source/.github/workflows/native-base-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/source/.github/workflows/native-base-image.yml",
+          "bytes": 15859,
+          "sha256": "fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "source/.github/workflows/native-common-image.yml",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/source/.github/workflows/native-common-image.yml",
+          "bytes": 23110,
+          "sha256": "021adb7a8407e88373da608a4a2388b5ad5df8caee4177c63c7e89d159482709",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "source/deploy/native-base/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/source/deploy/native-base/README.md",
+          "bytes": 10804,
+          "sha256": "758cd0b0fa516c0ddcfc2d9102e4b08ba5ab77cad7bbaa57094702e9afc50b72",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "source/deploy/native-common/README.md",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/source/deploy/native-common/README.md",
+          "bytes": 6506,
+          "sha256": "2c9e34722551ab2072a31073f85675bb7202ae2b47ab2890e5a31a72ea8016ab",
+          "original_mode": "0o644"
+        },
+        {
+          "member": "source/deploy/native-common/check-local.Dockerfile",
+          "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/source/deploy/native-common/check-local.Dockerfile",
+          "bytes": 607,
+          "sha256": "30460593bdfcb3f2820841ded935e465868168e2bf2d3fd92e7d85c77b456d9b",
+          "original_mode": "0o644"
+        }
+      ],
+      "all_raw_roundtrips_equal": true
+    }
+  ],
+  "exclusions": {
+    "execution_view": {
+      "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/view",
+      "member_count": 561,
+      "bytes": 4844825,
+      "proof": "exact VIEW-MANIFEST.json and complete full MANIFEST.json retained; no copied561-file execution view"
+    },
+    "duplicate_history": [
+      {
+        "path": "history/first-check/CHECK-SOURCE-AFTER.json",
+        "sha256": "2f689abe80138ef180060c99c244dce2ccc09e94af18330fade11532268bbdfe",
+        "bytes": 1976,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/first-check/CHECK-SOURCE-BEFORE.json",
+        "sha256": "2f689abe80138ef180060c99c244dce2ccc09e94af18330fade11532268bbdfe",
+        "bytes": 1976,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/first-check/PARENT.json",
+        "sha256": "0139cf0847a382fb4f1ab654a296c0ddd4e7874c5af017c6737fe0c5898db248",
+        "bytes": 839,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/first-check/RESULT.json",
+        "sha256": "30536f26bf73ad6c83e1db7161fb7978ce8166319dd152ac54b83c3c6e4b3dc9",
+        "bytes": 1031,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/first-check/SCOPE.json",
+        "sha256": "0162ca08192acf9c59d7a2f7c00d93eaffe12cd6638a51452f843b3d48569979",
+        "bytes": 3932,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/first-check/VIEW-MANIFEST.json",
+        "sha256": "98a2aa3c998b7e27c43427632542c53ca4d81b1d1433b7d13052aa9e632d37d1",
+        "bytes": 99074,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/first-check/native-oci-PROCESS.json",
+        "sha256": "3cfafccd325a403608491a0cb59ba446b5608b9ddcf5b0b8c01cf4dd5632c146",
+        "bytes": 432,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/first-check/native-oci-RESULT.json",
+        "sha256": "e4d7320f8bea1adceaaad010520afc039388f9db1a531fe71a174ea61c844a15",
+        "bytes": 614,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/first-check/native-oci.stderr",
+        "sha256": "94f53ff4c9683e53ac10d348c88187eb77911011b7e69c2b40a7398db2af99ec",
+        "bytes": 26436,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/first-check/native-oci.stdout",
+        "sha256": "0a858149e1a83b5b4892e7fb9bbab57aec6ad4bae15bc8aba7be744591a3e6f7",
+        "bytes": 24668,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/first-check/test_native_oci_common_qualification.py",
+        "sha256": "6df3223f02cb14c29268f048435defbfc4364b6ba6e7c1580a09af687426dc8d",
+        "bytes": 129716,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/reviewed-proposal/D3-TRANSITION.json",
+        "sha256": "454bfc52df76327822fc40331644462f319bb008591c087815e2a0d0f4145b57",
+        "bytes": 712,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/reviewed-proposal/IMAGE-POLICY-IMPACT.json",
+        "sha256": "abac1ea5328acf9c55ac4b3768af0814491e510f5f4f1dbc49a0854011b9d956",
+        "bytes": 1200,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/reviewed-proposal/MANIFEST.json",
+        "sha256": "d503dacefee5c26bfcac4bba7adf2ef4863f74aad0829a129a25554770e764ec",
+        "bytes": 4108,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/reviewed-proposal/PROPOSAL.json",
+        "sha256": "49ab83f406aa9a110e1a1fb4632e996a9325b1e2620892a7613ebaa186c23313",
+        "bytes": 5696,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/reviewed-proposal/RECEIPT.json",
+        "sha256": "44a67b1b6887a93c655f0b59b75603e8e2e5ca5159e8c382d42fe2729120f685",
+        "bytes": 637,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/reviewed-proposal/ROOT-SOURCE-REVIEW.json",
+        "sha256": "9b8fe606f3ee19ff2f5561df9d586f3035d167dbd6065849da51b3067224bda5",
+        "bytes": 961,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      },
+      {
+        "path": "history/reviewed-proposal/SOURCE-INVENTORY-IMPACT.json",
+        "sha256": "4fb8fe5885c15b08978f31645737d0c99bb04b098395ad7e066d516882127c46",
+        "bytes": 2098,
+        "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+      }
+    ],
+    "dated_original_bodies": "393 members and original ZIPs stay in private wsoq2zv2;43-file metadata capsule/Root10e28 admission only here",
+    "prior_full_utilities": "all712 original0b7 members already shipped ac3b873a; not copied again"
+  },
+  "final_source_manifest": {
+    "bytes": 1400,
+    "sha256": "4e448c52a05449f1fb2e40de3f793aa2d0252061f952784af39b2aa1d0e60ae6"
+  },
+  "final_receipt": {
+    "bytes": 1063,
+    "sha256": "21c00179d00cf280cc7e7c70b2541ec5f02fd180c9e562c8bd8afd6b636a68b1"
+  },
+  "actual_final_checks": {
+    "bytes": 1999,
+    "sha256": "230bc9eb9d767a884b59dd53e9884e6579f66049e70a7d3a9d4369798bbdf72b"
+  },
+  "Root_applied_receipt": {
+    "bytes": 2774,
+    "sha256": "3192416da0b06fecdffe31c774ec548ca218c91679ce842b8288bcf350d77e66"
+  },
+  "first_failure_preserved": true,
+  "five_dated_metadata_only": true,
+  "old0b7_original712_not_duplicated": true,
+  "PM_append": {
+    "path": "/private/tmp/bex-w8-d3-production-publication-draft-20261102-loapmg9i/PM-APPEND.md",
+    "bytes": 1246,
+    "sha256": "2f340040edd9ee38df1d545d8a60e9719dae311f414243b6a18dcd42ee440f48"
+  },
+  "no_repo_edits_or_tests_by_publication_worker": true,
+  "remaining": "Actual fresh D3 source301 AMD utility baseline/content admission, required AMD families, production adoption and original28 hosted acceptance remain open.",
+  "Root_current_tree_merge_verification": {
+    "path": "current-tree/MERGE-VERIFICATION.json",
+    "bytes": 946,
+    "sha256": "b7eaea02ebcc77fb6ff9230295bf5c73adf1d67948b6a56e4e8b66c2c8a3a2a5"
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "reviewed_parent": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42",
+  "first_check_root": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0",
+  "first_result_sha256": "30536f26bf73ad6c83e1db7161fb7978ce8166319dd152ac54b83c3c6e4b3dc9",
+  "first_log_sha256": "94f53ff4c9683e53ac10d348c88187eb77911011b7e69c2b40a7398db2af99ec",
+  "first_outcome": "147 tests:142pass/4fail/1error; exact new digit-bearing job key unsupported by existing test parser; three-production-checkout control saw new local fourth checkout. No runtime or resource guard failure. Preserved unchanged.",
+  "corrections": [
+    "test parser includes actual job-key digits",
+    "existing closed-checkout control selects exactly plan/qualify/qualify-profile, still verifies identical three complete fixed pattern sets",
+    "native-base README accurately describes existing verified oci-dir Syft source"
+  ],
+  "source_scope": "same8 paths, no repository edit"
+}

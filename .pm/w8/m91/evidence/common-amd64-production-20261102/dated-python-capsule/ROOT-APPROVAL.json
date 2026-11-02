@@ -1,0 +1,12 @@
+{
+  "at": "2026-11-02T08:49:46.906553+00:00",
+  "outcome": "ROOT_REVIEWED_APPROVED_EXACT_FIVE_SERIAL_DATED_DOWNLOAD_EXTRACTION_AND_OFFLINE_AUDIT",
+  "manifest_sha256": "4298a7013f16bfe6c53a6be5adb13229916853c16c5b17e7a87381202228c754",
+  "all_manifest_files_verified": 34,
+  "plan_sha256": "6423eea8eaa2acdbe1dcaba95df1ac1153a9b58aaa9b1edd77cb0ae4839c4e5a",
+  "controller_read_in_full_sha256": "775ae899a6ace60eccd26320f0c295a6c4a01e43c214811f45a3c3905a8bd00f",
+  "downloader_read_in_full_sha256": "0f900e76c5e9a93031c7a5341ebadfa182511e186ea86332db33ab952564109b",
+  "auditor_diff_and_original_AST_roles_reviewed": true,
+  "free": 9508642816,
+  "scope": "Five exact immutable artifact IDs in PLAN only; fresh projected fit each case; prior failure preserved; unchanged V2/original tool and application oracles; no retry on unexpected failure; no current source relabel or repository write."
+}

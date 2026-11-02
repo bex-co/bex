@@ -1,0 +1,26 @@
+{
+  "at": "2026-11-02T09:47:37.624601+00:00",
+  "PASS": true,
+  "current_parent": "e6aa3c1fd89e5a2cc13428c82286db799b329243",
+  "all_eight_applied_source_hashes_equal_passed_private_bytes": true,
+  "peer_changes_since_private_view": [
+    ".github/workflows/deploy.yml",
+    "scripts/gitops-validate.sh"
+  ],
+  "actions_guard_exit": 0,
+  "actions_selftests_exit": 0,
+  "native_suites_repeated": false,
+  "reason": "The eight changed source bytes and native-test inputs remain exact; only peer workflow/policy inputs changed, so current Actions checks were rerun.",
+  "foreign_sum_unchanged": true,
+  "logs": {
+    "actions-guard.log": {
+      "bytes": 290,
+      "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+    },
+    "actions-selftests.log": {
+      "bytes": 3566,
+      "sha256": "ecdc9a493c21415259459803fa8831314e2db8064ec55b41bab2466dede33289"
+    }
+  },
+  "actual_current_source_utility_baseline": "OPEN"
+}

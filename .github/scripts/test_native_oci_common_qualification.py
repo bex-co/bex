@@ -57,7 +57,7 @@ class QualificationControls(unittest.TestCase):
     def initialize_owned(self, directory):
         env = dict(COMMON_IMAGE="ghcr.io/bex-co/bex-cnb-run@" + IMAGE,
                    PRODUCER_SHA="a" * 40, VERIFICATION_SHA="a" * 40, GITHUB_SHA="a" * 40,
-                   TARGET_PLATFORM="linux/arm64", RUNNER_TEMP=str(directory),
+                   TARGET_PLATFORM="linux/amd64", RUNNER_TEMP=str(directory),
                    GITHUB_RUN_ID="123", GITHUB_RUN_ATTEMPT="1",
                    GITHUB_OUTPUT=str(directory / "outputs"), GITHUB_ENV=str(directory / "environment"))
         with patch.dict(os.environ, env), patch.object(qualification, "source_inventory", return_value={"CONTROL_ONLY": "host init fixture"}):
@@ -236,7 +236,7 @@ class QualificationControls(unittest.TestCase):
                 if output.exists():
                     self.assertIn("ref=" + publisher.REPOSITORY + "@" + IMAGE, output.read_text())
         common = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
-        for fragment in ("needs: [plan, publish]", "needs.publish.outputs.ref != ''", "arch: [amd64, arm64]", "max-parallel: 1", "use: false", "cleanup: false", "BEX_NATIVE_TEST_PREPARE_WHEELS:", "BEX_NATIVE_TEST_SYFT:", "if: always() && steps.owned.outputs.root != ''"):
+        for fragment in ("needs: [plan, publish]", "needs.publish.outputs.ref != ''", "arch: [amd64]", "max-parallel: 1", "use: false", "cleanup: false", "BEX_NATIVE_TEST_PREPARE_WHEELS:", "BEX_NATIVE_TEST_SYFT:", "if: always() && steps.owned.outputs.root != ''"):
             self.assertIn(fragment, common)
 
     def test_real_report_shape_binds_distinct_config_and_manifest(self):
@@ -798,8 +798,12 @@ pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':
             self.assertNotIn("continue-on-error", body)
 
     def test_all_three_checkouts_use_the_same_closed_noncone_set(self):
-        workflow = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
-        blocks = re.findall(r'(?ms)^      - uses: actions/checkout@[^\n]+\n(.*?)(?=^      - |\Z)', workflow)
+        jobs = ProfileRoutingControls.jobs()
+        blocks = []
+        for name in ("plan", "qualify", "qualify-profile"):
+            selected = re.findall(r'(?ms)^      - uses: actions/checkout@[^\n]+\n(.*?)(?=^      - |\Z)', jobs[name])
+            self.assertEqual(len(selected), 1, name)
+            blocks.extend(selected)
         self.assertEqual(len(blocks), 3)
         self.assertEqual(blocks, [blocks[0]] * 3)
         self.assertIn("sparse-checkout-cone-mode: false", blocks[0])
@@ -922,7 +926,7 @@ class ProfileRoutingControls(unittest.TestCase):
     @staticmethod
     def jobs():
         workflow = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
-        names = list(re.finditer(r"(?m)^  ([a-z][a-z-]*):\n", workflow.split("jobs:\n", 1)[1]))
+        names = list(re.finditer(r"(?m)^  ([a-z][a-z0-9-]*):\n", workflow.split("jobs:\n", 1)[1]))
         body = workflow.split("jobs:\n", 1)[1]
         return {match[1]: body[match.end():names[index + 1].start() if index + 1 < len(names) else len(body)]
                 for index, match in enumerate(names)}
@@ -1088,9 +1092,9 @@ class ProfileRoutingControls(unittest.TestCase):
             with self.assertRaises(ValueError):
                 qualification.initialize()
 
-    def test_workflow_preserves_original_job_and_requires_both_architectures_before_pilot(self):
+    def test_workflow_preserves_complete_amd64_job_before_pilot(self):
         jobs = self.jobs()
-        self.assertEqual(set(jobs), {"plan", "publish", "qualify", "qualify-profile"})
+        self.assertEqual(set(jobs), {"plan", "publish", "qualify", "qualify-profile", "common-arm64-local"})
         self.assertIn("needs: plan\n", jobs["publish"])
         self.assertIn("runtime: common-bookworm\n", jobs["publish"])
         self.assertIn("needs.plan.outputs.source == 'fresh'", jobs["publish"])
@@ -1125,7 +1129,7 @@ class ProfileRoutingControls(unittest.TestCase):
         self.assertIn("needs.plan.outputs.receipt_sha256 != ''", pilot)
         self.assertIn("timeout-minutes: ${{ fromJSON(needs.plan.outputs.job_minutes) }}", pilot)
         for job in (original, pilot):
-            for unchanged in ("max-parallel: 1", "arch: [amd64, arm64]", "use: false", "cleanup: false",
+            for unchanged in ("max-parallel: 1", "arch: [amd64]", "use: false", "cleanup: false",
                               "contents: read"):
                 self.assertIn(unchanged, job)
             for retained in ("capacity", "cleanup", "manifest"):
@@ -1178,6 +1182,35 @@ sys.exit(int(os.environ['CONTROL_EXIT']))
                     self.assertEqual({key for key, value in actual["flags"].items() if key in {entry[1] for entry in qualification.PROFILES.values()} and value == "1"}, {selected["flag"]})
                     self.assertEqual(actual["integration"], "1")
                     self.assertEqual((temporary / "qualification.log").read_text(), "controlled case stdout\ncontrolled case stderr\n")
+
+
+    def test_d3_transition_pin_binds_the_actual_checked_out_publisher_policy(self):
+        policy = qualification.D3_LEGACY_0941
+        path = HERE.parents[1] / policy["path"]
+        actual = qualification.file_identity(path)
+        self.assertEqual({key: actual[key] for key in ("sha256", "bytes", "mode", "type")}, policy["after"])
+
+    def test_d3_local_arm_smoke_is_unsigned_and_not_a_production_dependency(self):
+        jobs = self.jobs()
+        local = jobs['common-arm64-local']
+        self.assertIn('needs: plan\n', local)
+        self.assertIn('continue-on-error: true', local)
+        self.assertIn("needs.plan.outputs.source == 'fresh'", local)
+        self.assertIn('runs-on: [self-hosted, Linux, ARM64, bex-build]', local)
+        self.assertIn('platforms: linux/arm64', local)
+        self.assertEqual(local.count('provenance: false'), 2)
+        self.assertEqual(local.count('sbom: false'), 2)
+        for forbidden in ('cosign', 'trivy', 'syft', 'QUALIFICATION_SELECTOR', 'nativeCommonBase'):
+            self.assertNotIn(forbidden, local)
+        for name in ('publish', 'qualify', 'qualify-profile'):
+            self.assertNotIn('common-arm64-local', jobs[name])
+        self.assertLess(local.index('check common ARM64 startup'), local.index('expose only the lightly checked'))
+        self.assertIn('if: always()', local)
+        smoke = (HERE.parents[1] / 'deploy/native-common/check-local.Dockerfile').read_text()
+        self.assertIn('RUN --network=none', smoke)
+        self.assertIn('= aarch64', smoke)
+        self.assertIn('VERSION_CODENAME=bookworm', smoke)
+        self.assertNotIn('check-tools.py', smoke)
 
 
 class ReviewedCandidateControls(unittest.TestCase):
@@ -1266,7 +1299,7 @@ class ReviewedCandidateControls(unittest.TestCase):
         custody["/retained/image-inputs.json"] = image_manifest
         self.candidate["approval"] = dict(receipt=self.evidence("review.json", review), plan=plan, inputs=image_manifest,
                                           custody=self.evidence("custody.json", {"files": custody, "support_inputs": support_inputs, "image_inputs": image_custody}))
-        self.candidate["utilities"] = {arch: self.utility(arch, 20 + n) for n, arch in enumerate(("amd64", "arm64"))}
+        self.candidate["utilities"] = {arch: self.utility(arch, 20 + n) for n, arch in enumerate(("amd64",))}
         self.save()
 
     def write(self, relative, value):
@@ -1400,9 +1433,9 @@ class ReviewedCandidateControls(unittest.TestCase):
         with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
 
     def test_missing_arch_required_proof_or_full_report_reject(self):
-        utility = self.candidate["utilities"].pop("arm64"); self.save()
+        utility = self.candidate["utilities"].pop("amd64"); self.save()
         with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
-        self.candidate["utilities"]["arm64"] = utility
+        self.candidate["utilities"]["amd64"] = utility
         descriptor = self.candidate["utilities"]["amd64"]["manifest"]
         self.rewrite_evidence(descriptor, lambda x: x.update(files=[row for row in x["files"] if not row["path"].endswith("/missing-jq/omission-receipt.json")]))
         with self.assertRaises(ValueError): qualification.validate_test_candidate(self.root)
@@ -1593,10 +1626,10 @@ class ReviewedCandidateControls(unittest.TestCase):
 
     def test_partial_or_failed_old_utilities_never_authorize_a_family(self):
         original = self.candidate['utilities']
-        self.candidate['utilities'] = {'amd64': original['amd64']}
+        self.candidate['utilities'] = {'arm64': self.utility('arm64', 30)}
         self.save()
         qualification.validate_image_candidate(self.root)
-        with self.assertRaisesRegex(ValueError, 'both original utility architectures'):
+        with self.assertRaisesRegex(ValueError, 'complete original AMD64 utility artifact'):
             qualification.validate_test_candidate(self.root)
         self.candidate['utilities'] = original
         self.rewrite_evidence(original['amd64']['metadata'], lambda x: x.update(conclusion='failure'))
@@ -1614,7 +1647,7 @@ class ReviewedCandidateControls(unittest.TestCase):
             self.save()
             approved = qualification.validate_image_candidate(self.root)
             env = dict(QUALIFICATION_PROFILE='utilities', QUALIFICATION_CASE='all', QUALIFICATION_SOURCE='reviewed-candidate',
-                       COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM='linux/arm64',
+                       COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM='linux/amd64',
                        CANDIDATE_RECEIPT_SHA256=approved['receipt_sha256'], RUNNER_TEMP=str(self.root), GITHUB_RUN_ID='3', GITHUB_RUN_ATTEMPT='1',
                        GITHUB_OUTPUT=str(self.root / 'outputs'), GITHUB_ENV=str(self.root / 'environment'))
             with patch.object(qualification, '__file__', str(self.root / '.github/scripts/native-common-qualify.py')), patch.dict(os.environ, env):
@@ -1640,7 +1673,7 @@ class ReviewedCandidateControls(unittest.TestCase):
         self.save()
         planned = qualification.validate_image_candidate(self.root)
         env = dict(QUALIFICATION_PROFILE='utilities', QUALIFICATION_CASE='all', QUALIFICATION_SOURCE='reviewed-candidate',
-                   COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM='linux/arm64',
+                   COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM='linux/amd64',
                    CANDIDATE_RECEIPT_SHA256=planned['receipt_sha256'])
         self.write('deploy/native-common/prepare-node14-tools.py', b'changed after planning')
         with patch.object(qualification, '__file__', str(self.root / '.github/scripts/native-common-qualify.py')), \
@@ -1696,7 +1729,7 @@ class ReviewedCandidateControls(unittest.TestCase):
     def test_complete_utility_command_and_resource_bounds_remain_unchanged(self):
         jobs = ProfileRoutingControls().jobs()
         original = jobs['qualify']
-        for literal in ('timeout-minutes: 180', 'max-parallel: 1', 'arch: [amd64, arm64]', 'QUALIFICATION_PROFILE: utilities', 'QUALIFICATION_CASE: all'):
+        for literal in ('timeout-minutes: 180', 'max-parallel: 1', 'arch: [amd64]', 'QUALIFICATION_PROFILE: utilities', 'QUALIFICATION_CASE: all'):
             self.assertIn(literal, original)
         command = ProfileRoutingControls().run_block(original, qualification.UTILITY_GATE)
         self.assertIn("-run '^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$'", command)
@@ -1749,7 +1782,7 @@ class ReviewedCandidateControls(unittest.TestCase):
     def test_init_revalidates_before_creds_outputs_or_resources(self):
         planned = qualification.validate_test_candidate(self.root)
         env = dict(QUALIFICATION_PROFILE="node", QUALIFICATION_CASE="node-14", QUALIFICATION_SOURCE="reviewed-candidate",
-                   COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM="linux/arm64",
+                   COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM="linux/amd64",
                    CANDIDATE_RECEIPT_SHA256=planned["receipt_sha256"])
         # Change an actual file after successful planning. The real validator,
         # not a stubbed failure, must reject before any output/config/resources.
@@ -1786,7 +1819,7 @@ class ReviewedCandidateControls(unittest.TestCase):
                         self.assertFalse(actual_branch(mode, publish, utilities, valid, cancelled=True))
         candidate = qualification.validate_test_candidate(self.root)
         env = dict(QUALIFICATION_PROFILE="node", QUALIFICATION_CASE="node-14", QUALIFICATION_SOURCE="reviewed-candidate",
-                   COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM="linux/arm64",
+                   COMMON_IMAGE=self.ref, PRODUCER_SHA=self.source, VERIFICATION_SHA=self.source, TARGET_PLATFORM="linux/amd64",
                    CANDIDATE_RECEIPT_SHA256=candidate["receipt_sha256"], RUNNER_TEMP=str(self.root), GITHUB_RUN_ID="3", GITHUB_RUN_ATTEMPT="1",
                    GITHUB_OUTPUT=str(self.root / "outputs"), GITHUB_ENV=str(self.root / "environment"))
         with patch.dict(os.environ, env), patch.object(qualification, "validate_test_candidate", return_value=candidate), \
@@ -1800,6 +1833,82 @@ class ReviewedCandidateControls(unittest.TestCase):
         self.assertEqual(actual["utility_jobs"], candidate["utilities"])
         captured = json.loads((Path(outputs["root"]) / "qualification-source.json").read_text())
         self.assertEqual(captured, {"source": "b" * 40, "files": qualification.source_inventory(self.root)})
+
+
+    def d3_transition_fixture(self):
+        path = '.github/workflows/native-base-image.yml'
+        recorded = qualification.image_source_inventory(self.root)
+        self.write(path, b'CONTROL ONLY exact reviewed D3 publisher policy\n')
+        current = qualification.image_source_inventory(self.root)
+        transition = dict(ref=self.ref, producer=self.source, verification=self.source,
+                          approval_inputs_sha256=self.candidate['approval']['inputs']['sha256'],
+                          path=path, before=recorded[path], after=current[path])
+        patched = patch.object(qualification, 'D3_LEGACY_0941', transition)
+        patched.start()
+        self.addCleanup(patched.stop)
+        return path
+
+    def test_d3_closed_policy_transition_allows_image_only_not_stale_family(self):
+        self.d3_transition_fixture()
+        self.assertEqual(qualification.validate_image_candidate(self.root)['ref'], self.ref)
+        with self.assertRaisesRegex(ValueError, 'stale qualification source'):
+            qualification.validate_test_candidate(self.root)
+
+    def test_d3_transition_rejects_unreviewed_policy_bytes_mode_and_other_input(self):
+        path = self.d3_transition_fixture()
+        for relative, value, mode in ((path, b'unreviewed follow-on policy', 0o644),
+                                      (path, None, 0o755),
+                                      ('deploy/native-base/install.sh', b'changed image recipe', 0o644)):
+            with self.subTest(path=relative, mode=mode):
+                actual = self.root / relative
+                before, permissions = actual.read_bytes(), actual.stat().st_mode & 0o777
+                if value is not None:
+                    actual.write_bytes(value)
+                actual.chmod(mode)
+                with self.assertRaisesRegex(ValueError, 'image-critical inputs'):
+                    qualification.validate_image_candidate(self.root)
+                actual.write_bytes(before); actual.chmod(permissions)
+
+    def test_d3_transition_rejects_another_candidate_or_verifier_input_manifest(self):
+        self.d3_transition_fixture()
+        self.candidate['ref'] = 'ghcr.io/bex-co/bex-cnb-run@sha256:' + 'f' * 64
+        self.save()
+        with self.assertRaisesRegex(ValueError, 'image-critical inputs'):
+            qualification.validate_image_candidate(self.root)
+        self.candidate['ref'] = self.ref
+        self.rewrite_evidence(self.candidate['approval']['inputs'], lambda x: x.update(source='f' * 40))
+        with self.assertRaisesRegex(ValueError, 'image-critical inputs'):
+            qualification.validate_image_candidate(self.root)
+
+    def test_d3_migration_keeps_all_historical_signed_roles_and_subject_checks(self):
+        self.d3_transition_fixture()
+        descriptor = self.candidate['approval']['receipt']
+        before, identity = (self.root / descriptor['path']).read_bytes(), dict(descriptor)
+        for mutate in (lambda x: x.update(ref='ghcr.io/bex-co/bex-cnb-run@sha256:' + 'f' * 64),
+                       lambda x: x.update(signed_payloads=[row for row in x['signed_payloads']
+                                                         if (row['kind'], row['architecture']) != ('sbom', 'arm64')]),
+                       lambda x: x.update(signed_payloads=[row for row in x['signed_payloads']
+                                                         if (row['kind'], row['architecture']) != ('vulnerability', 'amd64')])):
+            self.rewrite_evidence(descriptor, mutate)
+            with self.assertRaises(ValueError):
+                qualification.validate_image_candidate(self.root)
+            (self.root / descriptor['path']).write_bytes(before); descriptor.update(identity); self.save()
+
+    def test_d3_amd64_only_baseline_passes_and_arm64_cannot_start_full_job(self):
+        self.assertEqual(set(self.candidate['utilities']), {'amd64'})
+        self.assertEqual(qualification.validate_test_candidate(self.root)['baseline_status'], 'current-complete')
+        env = dict(QUALIFICATION_PROFILE='utilities', QUALIFICATION_CASE='all', QUALIFICATION_SOURCE='fresh',
+                   COMMON_IMAGE=self.ref, PRODUCER_SHA='b' * 40, VERIFICATION_SHA='b' * 40,
+                   TARGET_PLATFORM='linux/arm64')
+        with patch.dict(os.environ, env), patch.object(qualification.tempfile, 'mkdtemp', side_effect=AssertionError('no resources')):
+            with self.assertRaisesRegex(ValueError, 'fully gated immutable common image'):
+                qualification.initialize()
+
+    def test_d3_local_unsigned_arm_reference_is_not_a_production_approval(self):
+        self.candidate['platforms'] = {'arm64': self.candidate['platforms']['arm64']}
+        self.save()
+        with self.assertRaisesRegex(ValueError, 'both actual platforms'):
+            qualification.validate_image_candidate(self.root)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,40 @@
+{
+  "at": "2026-11-02T08:48:02.534652+00:00",
+  "outcome": "SOURCE_PREPARED_PENDING_ROOT_REVIEW_ONLY",
+  "plan": {
+    "bytes": 9615,
+    "sha256": "6423eea8eaa2acdbe1dcaba95df1ac1153a9b58aaa9b1edd77cb0ae4839c4e5a"
+  },
+  "controller": {
+    "bytes": 8198,
+    "sha256": "775ae899a6ace60eccd26320f0c295a6c4a01e43c214811f45a3c3905a8bd00f"
+  },
+  "downloader": {
+    "bytes": 3299,
+    "sha256": "0f900e76c5e9a93031c7a5341ebadfa182511e186ea86332db33ab952564109b"
+  },
+  "auditor": {
+    "bytes": 13405,
+    "sha256": "b86883ea001d0dd98d1c0ec7dc8c97eeeaf5e67f710bcad91493adf956e2c318"
+  },
+  "packaging": {
+    "bytes": 1359,
+    "sha256": "ecaf1f59c1f70221bedcaab8a4204e43d6cf0a8a8bba9524dd5367273a52a4ad"
+  },
+  "host_checks": {
+    "command": "/opt/homebrew/bin/python3.14 -B test_intake.py",
+    "exit": 0,
+    "tests": 9,
+    "stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stderr": {
+      "bytes": 1475,
+      "sha256": "a262b4b9da731d07a80145846be7c4028bfe8f6bd930a2bd17ad85bd3a8bcd09"
+    }
+  },
+  "all_original_app_tool_validator_sources_unchanged": true,
+  "no_downloads_or_target_execution": true,
+  "no_repo_or_candidate_changes": true
+}

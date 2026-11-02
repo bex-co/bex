@@ -1,0 +1,59 @@
+{
+  "at": "2026-11-02T09:11:46.288343+00:00",
+  "outcome": "FIVE_DATED_9BC_PYTHON_CONTENT_PASS_AFTER_EXPLICIT_AUDITOR_ABI_CORRECTION",
+  "summary": {
+    "bytes": 3301,
+    "sha256": "80bc7396cc8f50156af9994bb72bdf87c20847af0cb23b3bf41fe82c8494d2b2"
+  },
+  "full_content_review": {
+    "bytes": 5913,
+    "sha256": "cb4e0fa456df5bc5bcba90050945f9e3f01ce7c9759483f77cc593bf031709ba"
+  },
+  "full_custody": {
+    "bytes": 18813,
+    "sha256": "a2a04eaec009838bc4f82a401dfef2abb9d5a7a6696edabb4fd3f5e230b42a02"
+  },
+  "root_original_execution_approval": {
+    "bytes": 894,
+    "sha256": "50e8625c8c69a1d4f9aed1096477b03adea1c42e3687d38dcd85dd6e1dae80f0"
+  },
+  "initial_packaging_import_failure_preserved": {
+    "bytes": 491,
+    "sha256": "a2e2d5d1f281b173a2b3faee9c937f9d3c78109a40c63e640f54f317066e8509"
+  },
+  "packaging_resolution": {
+    "bytes": 1359,
+    "sha256": "ecaf1f59c1f70221bedcaab8a4204e43d6cf0a8a8bba9524dd5367273a52a4ad"
+  },
+  "first_actual_audit_failure_preserved": {
+    "bytes": 1002,
+    "sha256": "27d4ede331dac607896b28c96f8b30eb118ecd9ee38cd225853c21a053de0ea6"
+  },
+  "auditor_only_ABI_correction": {
+    "bytes": 1557,
+    "sha256": "7d8c340eacd9b311902ff458face3ea8800254de10fbc904f89cdff82cb7a7fe"
+  },
+  "auditor_control_manifest": {
+    "bytes": 1743,
+    "sha256": "5453bcfa1352dd632124eb74f7d348fcfc08ca6ba3a29db90cee8f4ae5b7ba94"
+  },
+  "actual_corrected_audit_process": {
+    "command": "/opt/homebrew/bin/python3.14 -B audit-soname-v2.py",
+    "exit": 0,
+    "stdout": {
+      "bytes": 276,
+      "sha256": "90e3ffd3ea45fe8cdce2f286243ce02a9e562369261a58e3d6d0a75cfead4d53"
+    },
+    "stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "download_calls": 5,
+  "local_body_streams": 5,
+  "download_or_extraction_retries": 0,
+  "all_original_ZIPs_members_raw_MANIFESTs_source_captures_wheels_and_proofs_preserved": true,
+  "all_owned_client_groups_absent": true,
+  "no_active_intake_lock": true,
+  "no_current_source_or_baseline_admission": true
+}

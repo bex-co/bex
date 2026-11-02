@@ -1,0 +1,220 @@
+{
+  "files": [
+    {
+      "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/REPLAY-PLAN.json",
+      "bytes": 180595,
+      "sha256": "c9df07069ca02f1021c38e8fd3ed69da5c54c46c46848ab3dc6b5922ba01c465"
+    },
+    {
+      "path": "/private/tmp/bex-w8-dated-pass-nonimpact-20261102-39f54bee/REPORT.json",
+      "bytes": 30784,
+      "sha256": "73f31aba1651a3ca157405726e778d847b74115b2ebc7f0e4ed0f5c4b3b775f4"
+    },
+    {
+      "path": "/private/tmp/bex-w8-dated-pass-nonimpact-20261102-39f54bee/CHANGED-SOURCE-IMPACT.json",
+      "bytes": 5605,
+      "sha256": "6cf2a9e01d92dd213b4dedc3d062138180e870c7339fba4a8b01522d3e2c5d16"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/common-otp-selector-fixes-20261102/old-source-node22-elixir117/AUDIT.json",
+      "bytes": 9383,
+      "sha256": "acc6ca0f67b9933c4ae8dbc9705914b5a81bdfc8938223cca4dad5e054584d3b"
+    },
+    {
+      "path": "/private/tmp/bex-w8-node26-amd-artifact-intake-20261102-41yvyg4o/AUDIT.json",
+      "bytes": 17566,
+      "sha256": "d90cb38e8838c1c28296ea0d8c75ae05a7574782602cd02bf084fca8ceb98792"
+    },
+    {
+      "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/REVIEW.json",
+      "bytes": 5297,
+      "sha256": "0e8d3523d0f12bca0bdbaf9e1685aaf3fad3f5c8ad71b6b40dd52c40af2cd38c"
+    },
+    {
+      "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/REVIEW.json",
+      "bytes": 5913,
+      "sha256": "cb4e0fa456df5bc5bcba90050945f9e3f01ce7c9759483f77cc593bf031709ba"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/.pm/w8/m91/README.md",
+      "bytes": 69551,
+      "sha256": "074aa5aacc50ca78ccb9540a8eeff740dcb7fa1899e26ce131f184063b9329ff"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/.pm/w8/m91/t007.md",
+      "bytes": 32259,
+      "sha256": "07de647f47e9468e4ba974838b8c101fbbf838f2d643bacdd87dffe944e97bf4"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/.github/scripts/native-common-qualify.py",
+      "bytes": 60360,
+      "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/.github/workflows/native-common-image.yml",
+      "bytes": 19834,
+      "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/.github/workflows/native-base-image.yml",
+      "bytes": 18397,
+      "sha256": "8f5e440662a5997af7e45d16536df2e27754ef4fb48c529ca33381cb0004ceb9"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125068193034.log",
+      "bytes": 63518,
+      "sha256": "9dd14f86558d922b5f01a00eef85aa65ddf8336a08ccf3365d63a38df292b322"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376352475.json",
+      "bytes": 1587,
+      "sha256": "c3daac53adbd72100c8190c3aab0d73f78db21feb91b5b8a8fed82a758ee6989"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376357601.json",
+      "bytes": 12092,
+      "sha256": "92892a4aeb66fd2e049a06c9edc5f5be2a4a0a2535cb236ede422a6a11cf15d6"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125068037719.log",
+      "bytes": 63454,
+      "sha256": "03465cdac9552097a9840f98311ae789118ff9b0e1b29be4032bd3244184ce64"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125069034887.log",
+      "bytes": 63518,
+      "sha256": "2c81a496bce664d5f357384d608553a62e5824eb67f5b14bbc3ca0d64a6c4c90"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125069817206.log",
+      "bytes": 64023,
+      "sha256": "400de12eca143c2c2bdd015aed88934226fa3ba21bf62f8ed54b09b671710553"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376357601.json",
+      "bytes": 1597,
+      "sha256": "da288bab7206b3cee5be9393b366f2e73b5d58de115d08e5532a21194beb361e"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376352475.json",
+      "bytes": 12092,
+      "sha256": "93672ade605c237ff256419a3a3640fd472c4245ee17159e139f87402ea6d964"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125068037657.log",
+      "bytes": 63581,
+      "sha256": "72ea74dd2d0263e17ccdaca276cff1c13957cf450e7227be36637bf79265c61f"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125068739958.log",
+      "bytes": 64136,
+      "sha256": "8e3c742a71141687c0caeaa9f2abe5b8158662b1cc2ac57b3fd0ed21ae5347ff"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125069034906.log",
+      "bytes": 63455,
+      "sha256": "44229d884c6849c39ae51fddda60ef6f58fd3ea0a8bad403c5a633d1cf3125e3"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376347012.json",
+      "bytes": 1571,
+      "sha256": "6046bb84228bcecd8e96e9065334a4ce79b1e3eeab4586f5f202c10b86af7c05"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376347012.json",
+      "bytes": 12092,
+      "sha256": "6bd32bd99f4ced11f77a92e1fb28803e39e032bfe28cd1983f7955e49a3ecf6a"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125069817230.log",
+      "bytes": 64747,
+      "sha256": "c4d8b34aaf65906abd7ea7091c521caad262f4e4dc2fe49cd0462b2c5977839e"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125068739951.log",
+      "bytes": 63826,
+      "sha256": "d96737fc2512a31196d2b3d812c0c4f480475a4892e37e2177f028c9889977d7"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125068192963.log",
+      "bytes": 63457,
+      "sha256": "30f11bcd733c52de9445cca51f9780a153764167fbc855af705f1c686ca88803"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125067056494.log",
+      "bytes": 63517,
+      "sha256": "43282810585ea2f149753fb3f2cfbbfbfcb4843e7520a9f243f342fb34fe958a"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125067056481.log",
+      "bytes": 63583,
+      "sha256": "05a8a6a3708285144ea057a423fe645d19a7d401c4752e520f013e5363280702"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376303994.json",
+      "bytes": 12092,
+      "sha256": "57a2bc54b7b7ff0899ef1146259057b31fc19a17cfa5a464b1a8d0ef11cb4356"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376298047.json",
+      "bytes": 1571,
+      "sha256": "139a2b881fa4846b90998335af1e04ddb2d0125d887f633a38248b81d9e64c34"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376309434.json",
+      "bytes": 12092,
+      "sha256": "9886d60bd4837cedbb3ec235cf744393a3f029cbe1dc6adbed8600eb071331c6"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376309434.json",
+      "bytes": 1571,
+      "sha256": "e015f6cbf4e78cb38e5857ef062ad45c96dd1614de0e92baa429cc499a0a9b61"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376298047.json",
+      "bytes": 12092,
+      "sha256": "2dca4c6883312323f60f427c21ac7254cf673050d0baaf86268756e4e1f82ec9"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376303994.json",
+      "bytes": 1571,
+      "sha256": "369ce54c64497aa38e161e045533d62f6f1dd25b4859a8bd3192b1c88a67a6c9"
+    },
+    {
+      "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41375734819.json",
+      "bytes": 802,
+      "sha256": "69311d7aee2bbb358bc1171fe36170c077ebd06b693ea67ac9666e6ad3ad2be9"
+    },
+    {
+      "path": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/SOURCE-MANIFEST.json",
+      "bytes": 1400,
+      "sha256": "f63e0be8a3b90504fa4d30860f1abf6cebdd90b599fa400fe10609deae07c3ca"
+    },
+    {
+      "path": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/BASE.json",
+      "bytes": 554,
+      "sha256": "7a74adfeca1a4c8e9848086043fdbce0fd4af3325e356bd13727ee3e8f6e02a8"
+    },
+    {
+      "path": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/SOURCE-INVENTORY-IMPACT.json",
+      "bytes": 2098,
+      "sha256": "4fb8fe5885c15b08978f31645737d0c99bb04b098395ad7e066d516882127c46"
+    },
+    {
+      "path": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/D3-TRANSITION.json",
+      "bytes": 712,
+      "sha256": "454bfc52df76327822fc40331644462f319bb008591c087815e2a0d0f4145b57"
+    },
+    {
+      "path": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/PROPOSAL.json",
+      "bytes": 5696,
+      "sha256": "49ab83f406aa9a110e1a1fb4632e996a9325b1e2620892a7613ebaa186c23313"
+    },
+    {
+      "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/ROOT-CONTENT-ADMISSION.json",
+      "bytes": 709,
+      "sha256": "10e28a8032809805a8f1d2fcd5f91b4bcf08385b6d877d0f6a5d8ae4ddfb7d1f"
+    }
+  ],
+  "scope": "Read/hash only exact reviewedplan/source/metadata/logs. No original app imports or target/network execution."
+}

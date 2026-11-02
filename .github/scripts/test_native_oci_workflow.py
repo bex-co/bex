@@ -98,7 +98,7 @@ if predicate.endswith('.spdx.json'):
 else:
  assert option('--type')=='https://aquasecurity.github.io/trivy/attestation/vuln/v1'
  assert obj=={'allFindings':['unfixed-critical-preserved','medium-preserved'],'unfilteredExtra':{'kept':True}}
-sys.exit(21 if mode=='last_attest_fail' and predicate=='native-arm64.trivy.json' else 0)
+sys.exit(21 if mode=='last_attest_fail' and predicate=='native-amd64.trivy.json' else 0)
 '''
 
 
@@ -151,15 +151,15 @@ class PublisherShellControls(unittest.TestCase):
         self.assertEqual(len(self.attests(events)), attest)
         self.assertEqual(len(self.tools(events, "docker")), tags)
 
-    def test_happy_both_architectures_five_proofs_and_two_tags(self):
+    def test_happy_amd64_three_proofs_and_two_tags(self):
         process, root, events = self.run_case("happy")
         self.assertEqual(process.returncode, 0, process.stderr)
-        self.assert_counts(events, (1, 1), (1, 1), 4, 2)
+        self.assert_counts(events, (1, 0), (1, 0), 2, 2)
         calls = self.tools(events, "cosign")
-        self.assertEqual(sum(x["argv"][0] in ("sign", "attest") for x in calls), 5)
-        self.assertEqual([x["argv"][x["argv"].index("--type") + 1] for x in self.attests(events)], ["spdxjson", TRIVY_TYPE] * 2)
+        self.assertEqual(sum(x["argv"][0] in ("sign", "attest") for x in calls), 3)
+        self.assertEqual([x["argv"][x["argv"].index("--type") + 1] for x in self.attests(events)], ["spdxjson", TRIVY_TYPE])
         self.assertEqual([x["argv"][4] for x in self.tools(events, "docker")], [REPOSITORY + ":native-" + MATRIX_NAME + "-" + "c" * 40, REPOSITORY + ":native-" + MATRIX_NAME])
-        for arch in ("amd64", "arm64"):
+        for arch in ("amd64",):
             proof = (root / ("native-" + arch + "-oci-stage.json")).read_text()
             self.assertTrue(json.loads(proof)["complete"])
             self.assertIn(proof, process.stdout)
@@ -174,17 +174,11 @@ class PublisherShellControls(unittest.TestCase):
         self.assertIn("failed with exit 124", process.stderr)
         self.assertIn((root / "native-amd64-oci-stage.json").read_text(), process.stdout)
 
-    def test_stage_arm_failure_preserves_amd_proofs_but_never_publishes(self):
-        process, root, events = self.run_case("stage_arm_fail")
-        self.assertEqual(process.returncode, 23)
-        self.assert_counts(events, (1, 1), (1, 0), 2, 0)
-        self.assertFalse((root / "native-arm64.spdx.json").exists())
-        self.assertTrue(all("native-arm64" not in " ".join(x["argv"]) for x in self.attests(events)))
 
     def test_syft_transient_failure_retries_scan_not_staging(self):
         process, _, events = self.run_case("syft_amd_transient")
         self.assertEqual(process.returncode, 0, process.stderr)
-        self.assert_counts(events, (1, 1), (3, 1), 4, 2)
+        self.assert_counts(events, (1, 0), (3, 0), 2, 2)
         amd_scans = [event for event in self.tools(events, "syft") if event["arch"] == "amd64"]
         self.assertTrue(all(event["cache_clean"] for event in amd_scans))
         self.assertEqual(len({event["layout_sha256"] for event in amd_scans}), 1)
@@ -192,14 +186,6 @@ class PublisherShellControls(unittest.TestCase):
         self.assertEqual([x["argv"] for x in sleeps], [["5"], ["10"]])
         self.assertTrue(all(not x["reports_present"]["amd64"] for x in sleeps))
 
-    def test_syft_arm_exhaustion_removes_partial_and_blocks_arm_proofs(self):
-        process, root, events = self.run_case("syft_arm_fail")
-        self.assertNotEqual(process.returncode, 0)
-        self.assert_counts(events, (1, 1), (1, 3), 2, 0)
-        self.assertFalse((root / "native-arm64.spdx.json").exists())
-        sleeps = self.tools(events, "sleep")
-        self.assertEqual([x["argv"] for x in sleeps], [["5"], ["10"]])
-        self.assertTrue(all(not x["reports_present"]["arm64"] for x in sleeps))
 
     def test_cosign_exhaustion_blocks_downstream_and_preserves_trust_flags(self):
         for mode, sign_calls in (("config_fail", 0), ("sign_fail", 3)):
@@ -214,14 +200,24 @@ class PublisherShellControls(unittest.TestCase):
     def test_last_attestation_failure_never_moves_discovery(self):
         process, _, events = self.run_case("last_attest_fail")
         self.assertNotEqual(process.returncode, 0)
-        self.assert_counts(events, (1, 1), (1, 1), 6, 0)
-        self.assertEqual(sum(x["argv"][-2:] == ["native-arm64.trivy.json", REF] for x in self.attests(events)), 3)
+        self.assert_counts(events, (1, 0), (1, 0), 4, 0)
+        self.assertEqual(sum(x["argv"][-2:] == ["native-amd64.trivy.json", REF] for x in self.attests(events)), 3)
 
     def test_low_disk_exits_before_any_stage_scan_or_sign(self):
         process, _, events = self.run_case("low_disk")
         self.assertNotEqual(process.returncode, 0)
         self.assertEqual([event["tool"] for event in events], ["df"])
         self.assertIn("28 GiB", process.stderr)
+
+
+    def test_arm_failure_stubs_are_not_invoked_or_production_gates(self):
+        for mode in ('stage_arm_fail', 'syft_arm_fail'):
+            with self.subTest(mode=mode):
+                process, root, events = self.run_case(mode)
+                self.assertEqual(process.returncode, 0, process.stderr)
+                self.assert_counts(events, (1, 0), (1, 0), 2, 2)
+                self.assertTrue((root / 'native-arm64.spdx.json').is_symlink())
+                self.assertFalse(any(row.get('arch') == 'arm64' for row in events))
 
 
 class PublisherInputControls(unittest.TestCase):
@@ -274,6 +270,20 @@ class PublisherInputControls(unittest.TestCase):
         process, records = self.select("node-14-bullseye")
         self.assertEqual(process.returncode, 0, process.stderr)
         self.assertEqual(json.loads(records["images"]), {"include": [{"name": "node-14-bullseye", "base": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e"}]})
+
+
+    def test_d3_publisher_targets_only_amd64_and_preserves_complete_amd_gates(self):
+        self.assertEqual(WORKFLOW_TEXT.count('platforms: linux/amd64\n'), 2)
+        self.assertNotIn('platforms: linux/amd64,linux/arm64', WORKFLOW_TEXT)
+        self.assertNotIn('name: scan arm64 candidate', WORKFLOW_TEXT)
+        self.assertIn('name: scan amd64 candidate', WORKFLOW_TEXT)
+        self.assertIn('for arch in amd64; do', signing_shell())
+        self.assertNotIn('steps.recovery.outputs', WORKFLOW_TEXT)
+        self.assertNotIn("path = Path('.github/native-base-recovery.json')", WORKFLOW_TEXT)
+        self.assertIn('Historical recovery authorizations name multiarch indexes', WORKFLOW_TEXT)
+        self.assertIn('runs-on: [self-hosted, Linux, ARM64, bex-build]', WORKFLOW_TEXT)
+        self.assertLess(WORKFLOW_TEXT.index('sign and attest the immutable candidate'),
+                        WORKFLOW_TEXT.index('expose the fully gated immutable image'))
 
 
 class NodeBackportInputControls(unittest.TestCase):

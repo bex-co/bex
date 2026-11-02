@@ -1,0 +1,14 @@
+test_central_projection_counts_actual_members_and_allocated_blocks (__main__.IntakeControls.test_central_projection_counts_actual_members_and_allocated_blocks) ... ok
+test_declared_expansion_refuses_before_any_extraction (__main__.IntakeControls.test_declared_expansion_refuses_before_any_extraction) ... ok
+test_downloader_body_loop_unchanged_except_input_root_and_stronger_floor (__main__.IntakeControls.test_downloader_body_loop_unchanged_except_input_root_and_stronger_floor) ... ok
+test_final_free_drop_after_already_exited_child_refuses (__main__.IntakeControls.test_final_free_drop_after_already_exited_child_refuses) ... ok
+test_five_inputs_exact_total_architecture_and_unique_ids (__main__.IntakeControls.test_five_inputs_exact_total_architecture_and_unique_ids) ... ok
+test_floor_plus_full_projection_and_margin_strict_boundary (__main__.IntakeControls.test_floor_plus_full_projection_and_margin_strict_boundary) ... ok
+test_legacy_original_tool_oracle_accepts_only_system_and_capped_solve (__main__.IntakeControls.test_legacy_original_tool_oracle_accepts_only_system_and_capped_solve) ... ok
+test_low_free_refuses_even_small_metadata_budget (__main__.IntakeControls.test_low_free_refuses_even_small_metadata_budget) ... ok
+test_reap_error_retains_false_group_record_and_refuses (__main__.IntakeControls.test_reap_error_retains_false_group_record_and_refuses) ... ok
+
+----------------------------------------------------------------------
+Ran 9 tests in 0.011s
+
+OK

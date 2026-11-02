@@ -1,0 +1,151 @@
+{
+  "at": "2026-11-02T09:09:18.212098+00:00",
+  "outcome": "FIVE_DATED_9BC_PYTHON_CONTENT_AUDIT_PASS_ONLY",
+  "actual_generator_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+  "baseline_source": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+  "actual_header_files_300_equal_baseline": true,
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "pure_original_validator_sources": [
+    {
+      "path": "lego/operator/internal/build/testdata/native-legacy-python/check.py",
+      "source_sha256": "afbc081f5d59208ef02e1ef077dd860e203a58a10e7577ca47508b1afc30c45b",
+      "function": "validate_identity",
+      "function_AST_sha256": "a2e9b2d24b63fd2da74cd4d87b5035f85bf43edd662a4066dbb2cdc579577be3"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-modern-python/check-tool.py",
+      "source_sha256": "c81bcbe21bb8e1b59c02811a1903f07e1c232f0bf9c6e2a682b72e7221df59ac",
+      "function": "validate_tool",
+      "function_AST_sha256": "562ced60200a4ade4a0f47e0435c3c4dd4193d5205bb8c13bf154e7fac92296f"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-legacy-python/check-tool.py",
+      "source_sha256": "3a2df48cb70504940390dc8f6945a1dd6b8873499597dee361758e2ecc55652d",
+      "function": "validate_tool",
+      "function_AST_sha256": "b4917887b6c58c97ac0ba7b8d82111f3f3ecdd9c6ae3d5493a174bba9d58e94b"
+    }
+  ],
+  "cases": [
+    {
+      "profile": "modern-python",
+      "arch": "arm64",
+      "line": "3.9",
+      "version": "3.9.25",
+      "run_id": 41375428758,
+      "job_id": 125055436874,
+      "artifact_id": 13114556805,
+      "files": 79,
+      "manifest": {
+        "bytes": 17785,
+        "sha256": "5cabbb86e242eab5957d03e98a02cc13d20bab807a49b0c72b50206d565e5753"
+      },
+      "source_manifest": {
+        "bytes": 75099,
+        "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+      },
+      "image_config_id": "sha256:c26a3b1924c3b52ba2a270f32788760ccfeda16b3ec96b45f76ca16cf457f2f9",
+      "wheels": 50,
+      "private_Poetry_python": "3.9.25",
+      "virtualenv": "20.39.1",
+      "build_runtime_auto_project_and_C_SSL_FFI_loader_proofs": "PASS",
+      "cleanup_actual_CI_log_bound": true
+    },
+    {
+      "profile": "modern-python",
+      "arch": "arm64",
+      "line": "3.10",
+      "version": "3.10.22",
+      "run_id": 41375434664,
+      "job_id": 125055277391,
+      "artifact_id": 13114820434,
+      "files": 81,
+      "manifest": {
+        "bytes": 18174,
+        "sha256": "ef11de763d5c6da0dc0f394991bba4b699ff7c2791f908b03eaa990d24cb0583"
+      },
+      "source_manifest": {
+        "bytes": 75099,
+        "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+      },
+      "image_config_id": "sha256:5d3b24bc9c8326935ea8a2cad4ba2a1f1a9edb3865cacefe74d95732200cba2b",
+      "wheels": 50,
+      "private_Poetry_python": "3.10.22",
+      "virtualenv": "20.39.1",
+      "build_runtime_auto_project_and_C_SSL_FFI_loader_proofs": "PASS",
+      "cleanup_actual_CI_log_bound": true
+    },
+    {
+      "profile": "modern-python",
+      "arch": "arm64",
+      "line": "3.11",
+      "version": "3.11.18",
+      "run_id": 41375455883,
+      "job_id": 125055227667,
+      "artifact_id": 13114091214,
+      "files": 77,
+      "manifest": {
+        "bytes": 17318,
+        "sha256": "33f970199cfd256622ce16e0c220ab571be6fa8431d36c6fb2f0dc0bae0628df"
+      },
+      "source_manifest": {
+        "bytes": 75099,
+        "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+      },
+      "image_config_id": "sha256:542873649f8fab288eef8059b13d3f7cf08f65fcfcff62e8e3b6ec92a634f332",
+      "wheels": 48,
+      "private_Poetry_python": "3.11.18",
+      "virtualenv": "20.39.1",
+      "build_runtime_auto_project_and_C_SSL_FFI_loader_proofs": "PASS",
+      "cleanup_actual_CI_log_bound": true
+    },
+    {
+      "profile": "legacy-python",
+      "arch": "amd64",
+      "line": "3.7",
+      "version": "3.7.17",
+      "run_id": 41375700551,
+      "job_id": 125058940548,
+      "artifact_id": 13113752639,
+      "files": 79,
+      "manifest": {
+        "bytes": 17615,
+        "sha256": "5d78438949dd134478d9a15e192f4edda9e94784b6a00a7ba95fe5002fb55b9d"
+      },
+      "source_manifest": {
+        "bytes": 75099,
+        "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+      },
+      "image_config_id": "sha256:769180e4b8fe0084659500a1e385066a0fe57d2017852b126d2c61050eebff75",
+      "wheels": 48,
+      "private_Poetry_python": "3.11.2",
+      "virtualenv": "20.32.0",
+      "build_runtime_auto_project_and_C_SSL_FFI_loader_proofs": "PASS",
+      "cleanup_actual_CI_log_bound": true
+    },
+    {
+      "profile": "legacy-python",
+      "arch": "arm64",
+      "line": "3.7",
+      "version": "3.7.17",
+      "run_id": 41375700551,
+      "job_id": 125058940435,
+      "artifact_id": 13115917920,
+      "files": 77,
+      "manifest": {
+        "bytes": 17319,
+        "sha256": "2137d5e4143364ca4729329a9911dc71b56f01dd2e92b50c72426a18fde8375c"
+      },
+      "source_manifest": {
+        "bytes": 75099,
+        "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+      },
+      "image_config_id": "sha256:a648513535b540e7d24c3513a586e24d73f88b7e7628c04008bc0b3b4ae7e46c",
+      "wheels": 48,
+      "private_Poetry_python": "3.11.2",
+      "virtualenv": "20.32.0",
+      "build_runtime_auto_project_and_C_SSL_FFI_loader_proofs": "PASS",
+      "cleanup_actual_CI_log_bound": true
+    }
+  ],
+  "scope": "Only these five retained actual9bc outputs independentlyread: modern3.9/3.10/3.11 ARM and legacy3.7 AMD/ARM. Pure original validate_identity/validate_tool definitions extractedunchangedfromactualGit; no originalapp/main/observe/native/Go/Docker/network execution. Dated content audit only; no current-source baseline/family/production/hosted admission."
+}

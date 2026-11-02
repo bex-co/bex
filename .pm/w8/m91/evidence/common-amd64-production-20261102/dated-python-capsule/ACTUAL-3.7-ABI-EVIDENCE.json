@@ -1,0 +1,210 @@
+{
+  "source": "Exact unchanged frozen observer check.py derives SONAME from sysconfig LDLIBRARY, loads it by ctypes, calls Py_GetVersion and requires selected3.7.17 in original validate_identity; linked diagnostics preserve cp37m extension/binary dependencies.",
+  "observer_source": {
+    "bytes": 5960,
+    "sha256": "afbc081f5d59208ef02e1ef077dd860e203a58a10e7577ca47508b1afc30c45b"
+  },
+  "rows": [
+    {
+      "case": "legacy-python-3.7-amd64",
+      "phase": "build",
+      "kind": "app",
+      "proof_path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-amd64/extracted/artifact/generated/native-legacy-python-1099622288/3.7.17/qa-output/legacy-build.json",
+      "proof_identity": {
+        "bytes": 6065,
+        "sha256": "875f87ac924c538680bddac58e66a2fbbd3387135996e6040c64c45f64e00e39"
+      },
+      "python": "3.7.17",
+      "headers": "3.7.17",
+      "loaded_libpython_version": "3.7.17",
+      "libpython_soname": "libpython3.7m.so.1.0",
+      "linked_keys": [
+        "/usr/local/bin/python3",
+        "/usr/local/lib/python3.7/lib-dynload/_ssl.cpython-37m-x86_64-linux-gnu.so",
+        "/usr/local/lib/python3.7/lib-dynload/_ctypes.cpython-37m-x86_64-linux-gnu.so"
+      ],
+      "ldd_libpython_lines": [
+        "\tlibpython3.7m.so.1.0 => /usr/local/bin/../lib/libpython3.7m.so.1.0 (0x00007fffff4a7000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x00007fffff0f9000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x00007fffff46e000)"
+      ],
+      "no_unresolved_links": true
+    },
+    {
+      "case": "legacy-python-3.7-amd64",
+      "phase": "build",
+      "kind": "project",
+      "proof_path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-amd64/extracted/artifact/generated/native-legacy-python-1099622288/3.7.17/qa-output/legacy-build.json",
+      "proof_identity": {
+        "bytes": 6065,
+        "sha256": "875f87ac924c538680bddac58e66a2fbbd3387135996e6040c64c45f64e00e39"
+      },
+      "python": "3.7.17",
+      "headers": "3.7.17",
+      "loaded_libpython_version": "3.7.17",
+      "libpython_soname": "libpython3.7m.so.1.0",
+      "linked_keys": [
+        "/root/.cache/pypoetry/virtualenvs/bex-legacy-interpreter-control-bMBqP5dT-py3.7/bin/python",
+        "/usr/local/lib/python3.7/lib-dynload/_ssl.cpython-37m-x86_64-linux-gnu.so",
+        "/usr/local/lib/python3.7/lib-dynload/_ctypes.cpython-37m-x86_64-linux-gnu.so"
+      ],
+      "ldd_libpython_lines": [
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x00007fffff49a000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x00007fffff0f9000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x00007fffff46e000)"
+      ],
+      "no_unresolved_links": true
+    },
+    {
+      "case": "legacy-python-3.7-amd64",
+      "phase": "runtime",
+      "kind": "app",
+      "proof_path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-amd64/extracted/artifact/generated/native-legacy-python-1099622288/3.7.17/qa-output/legacy-runtime.json",
+      "proof_identity": {
+        "bytes": 6067,
+        "sha256": "91c46dce3888f2f58940f0636617b674a0b7f5bc17abf88a1320b47c2a1e76b9"
+      },
+      "python": "3.7.17",
+      "headers": "3.7.17",
+      "loaded_libpython_version": "3.7.17",
+      "libpython_soname": "libpython3.7m.so.1.0",
+      "linked_keys": [
+        "/usr/local/bin/python3",
+        "/usr/local/lib/python3.7/lib-dynload/_ssl.cpython-37m-x86_64-linux-gnu.so",
+        "/usr/local/lib/python3.7/lib-dynload/_ctypes.cpython-37m-x86_64-linux-gnu.so"
+      ],
+      "ldd_libpython_lines": [
+        "\tlibpython3.7m.so.1.0 => /usr/local/bin/../lib/libpython3.7m.so.1.0 (0x00007fffff4a7000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x00007fffff0f9000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x00007fffff46e000)"
+      ],
+      "no_unresolved_links": true
+    },
+    {
+      "case": "legacy-python-3.7-amd64",
+      "phase": "runtime",
+      "kind": "project",
+      "proof_path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-amd64/extracted/artifact/generated/native-legacy-python-1099622288/3.7.17/qa-output/legacy-runtime.json",
+      "proof_identity": {
+        "bytes": 6067,
+        "sha256": "91c46dce3888f2f58940f0636617b674a0b7f5bc17abf88a1320b47c2a1e76b9"
+      },
+      "python": "3.7.17",
+      "headers": "3.7.17",
+      "loaded_libpython_version": "3.7.17",
+      "libpython_soname": "libpython3.7m.so.1.0",
+      "linked_keys": [
+        "/root/.cache/pypoetry/virtualenvs/bex-legacy-interpreter-control-bMBqP5dT-py3.7/bin/python",
+        "/usr/local/lib/python3.7/lib-dynload/_ssl.cpython-37m-x86_64-linux-gnu.so",
+        "/usr/local/lib/python3.7/lib-dynload/_ctypes.cpython-37m-x86_64-linux-gnu.so"
+      ],
+      "ldd_libpython_lines": [
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x00007fffff49a000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x00007fffff0f9000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x00007fffff46e000)"
+      ],
+      "no_unresolved_links": true
+    },
+    {
+      "case": "legacy-python-3.7-arm64",
+      "phase": "build",
+      "kind": "app",
+      "proof_path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-arm64/extracted/artifact/generated/native-legacy-python-2460795828/3.7.17/qa-output/legacy-build.json",
+      "proof_identity": {
+        "bytes": 6342,
+        "sha256": "b4acf6eddee115db54cfdb809404914852b142ef6895dd1a34940a720e05621b"
+      },
+      "python": "3.7.17",
+      "headers": "3.7.17",
+      "loaded_libpython_version": "3.7.17",
+      "libpython_soname": "libpython3.7m.so.1.0",
+      "linked_keys": [
+        "/usr/local/bin/python3",
+        "/usr/local/lib/python3.7/lib-dynload/_ssl.cpython-37m-aarch64-linux-gnu.so",
+        "/usr/local/lib/python3.7/lib-dynload/_ctypes.cpython-37m-aarch64-linux-gnu.so"
+      ],
+      "ldd_libpython_lines": [
+        "\tlibpython3.7m.so.1.0 => /usr/local/bin/../lib/libpython3.7m.so.1.0 (0x0000ffffb61a0000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x0000ffff86690000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x0000ffff8ca00000)"
+      ],
+      "no_unresolved_links": true
+    },
+    {
+      "case": "legacy-python-3.7-arm64",
+      "phase": "build",
+      "kind": "project",
+      "proof_path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-arm64/extracted/artifact/generated/native-legacy-python-2460795828/3.7.17/qa-output/legacy-build.json",
+      "proof_identity": {
+        "bytes": 6342,
+        "sha256": "b4acf6eddee115db54cfdb809404914852b142ef6895dd1a34940a720e05621b"
+      },
+      "python": "3.7.17",
+      "headers": "3.7.17",
+      "loaded_libpython_version": "3.7.17",
+      "libpython_soname": "libpython3.7m.so.1.0",
+      "linked_keys": [
+        "/root/.cache/pypoetry/virtualenvs/bex-legacy-interpreter-control-bMBqP5dT-py3.7/bin/python",
+        "/usr/local/lib/python3.7/lib-dynload/_ssl.cpython-37m-aarch64-linux-gnu.so",
+        "/usr/local/lib/python3.7/lib-dynload/_ctypes.cpython-37m-aarch64-linux-gnu.so"
+      ],
+      "ldd_libpython_lines": [
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x0000ffff8c5b0000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x0000ffff85dc0000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x0000ffffb4900000)"
+      ],
+      "no_unresolved_links": true
+    },
+    {
+      "case": "legacy-python-3.7-arm64",
+      "phase": "runtime",
+      "kind": "app",
+      "proof_path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-arm64/extracted/artifact/generated/native-legacy-python-2460795828/3.7.17/qa-output/legacy-runtime.json",
+      "proof_identity": {
+        "bytes": 6344,
+        "sha256": "59b4a5a4c9ceef57930b6198f2c87e9e2442ac858d7642ff4e67655d9a2d63fa"
+      },
+      "python": "3.7.17",
+      "headers": "3.7.17",
+      "loaded_libpython_version": "3.7.17",
+      "libpython_soname": "libpython3.7m.so.1.0",
+      "linked_keys": [
+        "/usr/local/bin/python3",
+        "/usr/local/lib/python3.7/lib-dynload/_ssl.cpython-37m-aarch64-linux-gnu.so",
+        "/usr/local/lib/python3.7/lib-dynload/_ctypes.cpython-37m-aarch64-linux-gnu.so"
+      ],
+      "ldd_libpython_lines": [
+        "\tlibpython3.7m.so.1.0 => /usr/local/bin/../lib/libpython3.7m.so.1.0 (0x0000ffff80850000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x0000ffffa6c50000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x0000ffff9d0d0000)"
+      ],
+      "no_unresolved_links": true
+    },
+    {
+      "case": "legacy-python-3.7-arm64",
+      "phase": "runtime",
+      "kind": "project",
+      "proof_path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-arm64/extracted/artifact/generated/native-legacy-python-2460795828/3.7.17/qa-output/legacy-runtime.json",
+      "proof_identity": {
+        "bytes": 6344,
+        "sha256": "59b4a5a4c9ceef57930b6198f2c87e9e2442ac858d7642ff4e67655d9a2d63fa"
+      },
+      "python": "3.7.17",
+      "headers": "3.7.17",
+      "loaded_libpython_version": "3.7.17",
+      "libpython_soname": "libpython3.7m.so.1.0",
+      "linked_keys": [
+        "/root/.cache/pypoetry/virtualenvs/bex-legacy-interpreter-control-bMBqP5dT-py3.7/bin/python",
+        "/usr/local/lib/python3.7/lib-dynload/_ssl.cpython-37m-aarch64-linux-gnu.so",
+        "/usr/local/lib/python3.7/lib-dynload/_ctypes.cpython-37m-aarch64-linux-gnu.so"
+      ],
+      "ldd_libpython_lines": [
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x0000ffffb5640000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x0000ffffac430000)",
+        "\tlibpython3.7m.so.1.0 => /usr/local/lib/libpython3.7m.so.1.0 (0x0000ffffa4c00000)"
+      ],
+      "no_unresolved_links": true
+    }
+  ],
+  "source_code_modified": false
+}
