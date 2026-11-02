@@ -1,0 +1,51 @@
+[
+    {
+        "Id": "sha256:9ad0bfd0970d33c76ea367b2c51653c14c97a39a748d8a66da25d01010abf8fa",
+        "RepoTags": [],
+        "RepoDigests": [
+            "moby/buildkit@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
+        ],
+        "Comment": "buildkit.dockerfile.v0",
+        "Created": "2026-05-13T11:15:30.177250657Z",
+        "Config": {
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "BUILDKIT_SETUP_CGROUPV2_ROOT=1"
+            ],
+            "Entrypoint": [
+                "/usr/bin/buildkitd-entrypoint"
+            ],
+            "Volumes": {
+                "/var/lib/buildkit": {}
+            },
+            "WorkingDir": "/"
+        },
+        "Architecture": "arm64",
+        "Os": "linux",
+        "Size": 240970387,
+        "GraphDriver": {
+            "Data": {
+                "LowerDir": "/var/lib/docker/overlay2/81323f431890b428074527a84e7858dc3b1216130a6073a8669b0ac2a8e1d0cc/diff:/var/lib/docker/overlay2/87639e8ca6a22a12ad747d147c980d69424d94cfaa69934211351e30da14068e/diff:/var/lib/docker/overlay2/5c522176516b5b8fa0bff23ffac3d3a734f64e9b64b66db577753eb970e78caa/diff:/var/lib/docker/overlay2/f6820756e8abada704c20f71b133f519220fe921fa57f3686530499220e6a538/diff:/var/lib/docker/overlay2/127f26bdb49b8578e3e48eb851ca6a5871fe215125175b8ceacf846b4e1b5cbf/diff:/var/lib/docker/overlay2/53bf2145092cf7e77d255d6c1c6a398b9c152bef8ba3f70a396458057e75243a/diff",
+                "MergedDir": "/var/lib/docker/overlay2/bdaddfdc7c0f05628cef7352353c249e7bf8eb2f0878dae3886947072c82a1e2/merged",
+                "UpperDir": "/var/lib/docker/overlay2/bdaddfdc7c0f05628cef7352353c249e7bf8eb2f0878dae3886947072c82a1e2/diff",
+                "WorkDir": "/var/lib/docker/overlay2/bdaddfdc7c0f05628cef7352353c249e7bf8eb2f0878dae3886947072c82a1e2/work"
+            },
+            "Name": "overlay2"
+        },
+        "RootFS": {
+            "Type": "layers",
+            "Layers": [
+                "sha256:a8d26d037006414043b277ecb95287692d0960219289d9e27b0bcea0ce233b02",
+                "sha256:61ddd84f90dc8b81c485479f0bf06b78b21899e396b9530b5ee2eeee46c85939",
+                "sha256:7cdc49fa7e24b8facbf8f5494f6018ad29c874426cc01c4b26067fedfde5a56b",
+                "sha256:1ab61ded6bc5f8cfdc7b5e6c780c7b46ba3e895a023786fb3f71c44091eea30c",
+                "sha256:61ae1606b74adba602052f09a9e54ab3133acd3ceb71d8a6490586288763c13b",
+                "sha256:40dd57bd938a78726e984fca7911f472e4d7c42d637133009ab59eae8b49a147",
+                "sha256:601c3a5aa09f0a7f5790285fc2363bbde731bf920376e8544a223ca9402f3114"
+            ]
+        },
+        "Metadata": {
+            "LastTagTime": "0001-01-01T00:00:00Z"
+        }
+    }
+]

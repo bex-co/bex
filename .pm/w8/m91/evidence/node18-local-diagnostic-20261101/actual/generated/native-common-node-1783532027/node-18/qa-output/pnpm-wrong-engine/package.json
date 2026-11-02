@@ -1,0 +1,14 @@
+{
+  "name": "bex-profile-pnpm",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": ">=19"
+  },
+  "scripts": {
+    "preinstall": "node ../../check.js lifecycle pnpm",
+    "postinstall": "node ../../check.js lifecycle pnpm",
+    "probe": "node ../../check.js script pnpm"
+  },
+  "packageManager": "pnpm@10.34.7"
+}

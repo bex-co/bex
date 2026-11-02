@@ -1,0 +1,95 @@
+{
+  "scope": "Actual canonical authored build phase only, networknone; no CMD/runtime/HTTP/predeploy program execution",
+  "proofs": [
+    {
+      "payload": {
+        "phase": "build",
+        "checks": [
+          "genuine PG18 archive exact three rows, PG18client programs and malformed archive",
+          "SQLite readonly CLI JSON and independent Python library exact same-file rows",
+          "libvips headers/pkg-config/C-link/pixels and invalid-image",
+          "Django original plurals + GNU extraction/merge/unique/catalog-format failure",
+          "original owned PDF + Helvetica/color PDF exact independent RGB and render failure",
+          "jq malformed input + rsync exact Unicode/space bytes/exclude/stale/missing-source failure",
+          "TypeScript actual interface/enum compilation + noEmitOnError/no-output failure",
+          "Webpack real two-module runtime production bundle + unresolved-module nonzero statistics",
+          "SWIG runtime typemap/wrapper/C import + invalid interface failure",
+          "ZIP independent exact empty/binary/Unicode/space members+CRC32/stored+deflated methods and missing input failure",
+          "pigz build-only empty/binary/Unicode/error + exact gzip header/CRC32/ISIZE/independent inflation and retained artifacts"
+        ],
+        "pass": true
+      },
+      "exact_raw_log_line_sha256": "8a60874af9df274191b651c9713ef98e75d078011963cf5132a0d597e5978a56"
+    },
+    {
+      "payload": {
+        "phase": "build",
+        "mode": "node",
+        "python": "3.11.2",
+        "original_cases": [
+          {
+            "mid": 91,
+            "original_authored_build": true,
+            "source_and_data_proof": true
+          },
+          {
+            "mid": 93,
+            "original_authored_build": true,
+            "source_and_data_proof": true
+          },
+          {
+            "mid": 98,
+            "original_authored_build": true,
+            "source_and_data_proof": true
+          },
+          {
+            "mid": 99,
+            "original_authored_build": true,
+            "source_and_data_proof": true
+          },
+          {
+            "mid": 101,
+            "original_authored_build": true,
+            "source_and_data_proof": true
+          },
+          {
+            "mid": 103,
+            "original_authored_build": true,
+            "source_and_data_proof": true
+          },
+          {
+            "mid": 107,
+            "original_authored_build": true,
+            "source_and_data_proof": true
+          }
+        ],
+        "pass": true
+      },
+      "exact_raw_log_line_sha256": "fb21be1bd773fbf7ea68dcebdd66daa9845110a9fef17b68bf64a39da25b6b7b"
+    }
+  ],
+  "full_log": {
+    "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/case.stderr",
+    "bytes": 34602,
+    "sha256": "ff06f0ce8bef94ce63852221088870e4f734aafd721a4a3259da7192975c44b6",
+    "mode": "0644"
+  },
+  "build_client": {
+    "label": "case",
+    "argv": [
+      "docker",
+      "start",
+      "--attach",
+      "fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 198.436,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32700,
+    "pending_pgids": [],
+    "stdout": "case.stdout",
+    "stderr": "case.stderr"
+  }
+}

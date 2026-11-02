@@ -1,0 +1,23 @@
+{
+  "schema": "bex.current-source-linux-compile/v1",
+  "source_commit": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "source_manifest_sha256": "497e75f16b11a723fae593ee6847ea772da638679d06ad9f677333ab8ad28d0a",
+  "source_count": 300,
+  "previous_source": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "source_delta": "Exactly check.py and check_test.py Yarn wrapper oracle correction; pathset/modes and all other source bytes unchanged",
+  "compile_result_sha256": "30547ae7159c4fd80335e04f4e1ab014c9fab83b6d1be3cd9b2e062a55c2cf45",
+  "compile_PASS": true,
+  "compile_seconds": 55.54,
+  "binary": {
+    "path": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/bin/build-linux-arm64.test",
+    "bytes": 41726878,
+    "sha256": "8e7f06b11fcfe0edda9c8b9618b1872cdddcd62f0f3142953b68f12aac1ae45f",
+    "format": "ELF64 little-endian AArch64",
+    "PT_INTERP": false,
+    "executed": false
+  },
+  "scope": "COMPILE ONLY. No integration test or Docker resource executed. Parent may execute ONE local diagnostic; amended current-source fullutility CI baseline still pending, old1feba CI remains historical. Common0941 producer/verifier immutable1feba is distinct from local generator6883953.",
+  "plan_root": "/private/tmp/bex-w8-node14-local-pilot-v4-yarn-rebind-20261101-zejnlirm",
+  "shared_source_cache_write_policy": "sandbox deny file-write* /Users/tianpan/go/pkg/mod and repo; deny network*",
+  "own_cache_removed": true
+}

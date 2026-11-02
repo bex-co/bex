@@ -1,0 +1,153 @@
+{
+  "schema": "bex.verified-native-metadata-reuse-independent-review/v1",
+  "at": "2026-11-02T00:22:01.572067+00:00",
+  "outcome": "CLEAN_THREE_FILE_SOURCE_FIX",
+  "source_files": {
+    "lego/operator/internal/build/dockerhub.go": {
+      "bytes": 12874,
+      "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3"
+    },
+    "lego/operator/internal/build/dockerhub_test.go": {
+      "bytes": 11347,
+      "sha256": "a943f9abf486bec635ece79e5fe68174170c302a1ac88b9340b0edd5e717a382"
+    },
+    "lego/operator/internal/build/nativeutility_integration_test.go": {
+      "bytes": 18975,
+      "sha256": "529080e87e50c291a5081de48b83e5a90122676bae900046a978abeb024a761d"
+    }
+  },
+  "author_source_root": "/private/tmp/bex-w8-native-metadata-cache-source-20261101-5s4nl5tt",
+  "binding": "Reviewed exact3source copies/hashes, final complete raw author check/lint receipts and independent before/after count1 test guard.",
+  "checks": {
+    "independent_count1_focused_realhttptest": {
+      "label": "independent-focused",
+      "argv": [
+        "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+        "test",
+        "-count=1",
+        "-run",
+        "^TestImageMetadata(Cache|RetriesOnlyTransientReads)",
+        "./internal/build"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "error": null,
+      "group_absent": true,
+      "elapsed_seconds": 4.064
+    },
+    "independent_test_output": {
+      "bytes": 63,
+      "sha256": "8e27d03e0b124f09252f511c4e12d7360ebad5576a8a51c7932c3763d131bb23"
+    },
+    "author_focused_oldRED_package_race": [
+      {
+        "label": "focused",
+        "argv": [
+          "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+          "test",
+          "-run",
+          "^TestImageMetadata(Cache|RetriesOnlyTransientReads)",
+          "./internal/build"
+        ],
+        "exit_code": 0,
+        "expected_exit": 0,
+        "error": null,
+        "group_absent": true,
+        "elapsed_seconds": 7.731
+      },
+      {
+        "label": "old-requestcount-red",
+        "argv": [
+          "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+          "test",
+          "-overlay",
+          "/private/tmp/bex-w8-native-metadata-cache-source-20261101-5s4nl5tt/overlay-old-resolver.json",
+          "-run",
+          "^TestImageMetadataCacheReusesVerifiedReadsAndIsolatesCallers$",
+          "./internal/build"
+        ],
+        "exit_code": 1,
+        "expected_exit": 1,
+        "error": null,
+        "group_absent": true,
+        "elapsed_seconds": 4.364
+      },
+      {
+        "label": "package",
+        "argv": [
+          "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+          "test",
+          "./internal/build"
+        ],
+        "exit_code": 0,
+        "expected_exit": 0,
+        "error": null,
+        "group_absent": true,
+        "elapsed_seconds": 14.28
+      },
+      {
+        "label": "race",
+        "argv": [
+          "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+          "test",
+          "-race",
+          "-run",
+          "^TestImageMetadataCache",
+          "./internal/build"
+        ],
+        "exit_code": 0,
+        "expected_exit": 0,
+        "error": null,
+        "group_absent": true,
+        "elapsed_seconds": 8.961
+      }
+    ],
+    "author_old_resolver_realhttptest_regression": "Expected exit1: alias repeated verified index/manifest/config reads6 instead of cached3.",
+    "author_scoped_lint": {
+      "argv": [
+        "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+        "run",
+        "./internal/build/...",
+        "--timeout=90s"
+      ],
+      "exit_code": 0,
+      "error": null,
+      "group_absent": true,
+      "elapsed_seconds": 6.674
+    },
+    "test_only_style_corrections": "Equivalent maps.Copy fixture map copy and tagged failure switch; initial lint failure/source guard histories retained."
+  },
+  "assessment": {
+    "cache_scope": "Per DockerHubResolver instance mutex-protected map; no global cache",
+    "key": "Exact registry endpoint + authorized normalized repository + immutable sha256 digest",
+    "entry_bound": "At most64 entries; reset full map before successful insertion",
+    "admission": "Only successfully digest/platform-verified nonemptyENV metadata via unchanged registry.ReadImageRuntimeMetadata",
+    "isolation": "ENV/history cloned on cold success and hit; network reads outside mutex",
+    "cancellation": "Context checked before cache path, before returning hit and before insertion; error/cancel/empty/tampered metadata not reused",
+    "retry_policy": "Original3 transient attempts and definitive refusal unchanged",
+    "cohort": "One genuine resolver per original utility cohort; same underlying Exact pipeline with subtest context",
+    "no_waiver": "No new auth/mirror/pin/trust/oracle/body/timeout/resource bypass"
+  },
+  "preservation": {
+    "tracked300_baseline": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+    "changed_paths": [
+      "lego/operator/internal/build/dockerhub.go",
+      "lego/operator/internal/build/dockerhub_test.go",
+      "lego/operator/internal/build/nativeutility_integration_test.go"
+    ],
+    "all_other_tracked300_bytes_unchanged": true,
+    "physical_untracked_workspace_qualification": false,
+    "old_transient_retry_test_body_byteexact": true,
+    "utility_loop_inverse_resolver_only_change_byteexact": true,
+    "registry_digest_platform_reader_byteexact": true,
+    "production_resolver_pipeline_byteexact": true,
+    "original_fixtures_program_data_commands_oracles_pins_unchanged": true,
+    "no_repo_mutation": true
+  },
+  "limitations": [
+    "Source review only; no actual image/build/family/CI/adoption acceptance.",
+    "Reuse reduces repeated successful resolver reads; newdigest and BuildKit reads still contact upstream and can429. No upstream quota elimination guarantee.",
+    "Only exact tracked300 source comparison; physical ignored/untracked files left untouched and not qualified.",
+    "No source/PM/commit/workflow/resource edits by reviewer. One focused localhttptest suite rerun; fullpackage/race/lint reused from complete bounded author receipts."
+  ]
+}

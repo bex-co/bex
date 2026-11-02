@@ -1,0 +1,6 @@
+{
+  "history": "attempt1 retained; audit-only incorrect fixed contextfilecount44 failed before original artifact/OCI inspection; actual context is42fixtures+3maintained checks=45. Corrected to measured exact45; no original source/result changed.",
+  "tool_bookkeeping": "After first audit launch, functions store(undefined) failed; child audited normally and its exit1/stderr retained. This did not alter target evidence.",
+  "attempt2": "Host installed public Buildx path is a symlink; exact resolved immutable tool binary hash is checked read-only. No symlink or tool body copied. Also calibrated canonical ENTRYPOINT[] OCI field to actual absent/null Entrypoint (empty reset), retaining exact CMD; old harness had not reached it. No original bytes changed.",
+  "attempt3": "Same reviewed V4 semantics as Node14:357 completed observer commands correctly record the still-running case PGID32700 in registry; all their own groups are reaped/absent, case later reaped/absent, and all22 other/final rows empty. Replaced audit-only demand that intermediate registry always be empty with exact active-case identity/order/observer-label binding. No original target changes."
+}

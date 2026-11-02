@@ -1,0 +1,292 @@
+[
+    {
+        "Id": "fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8",
+        "Created": "2026-11-01T23:26:01.093070371Z",
+        "Path": "/bin/sh",
+        "Args": [
+            "/build.sh"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-11-01T23:26:01.332795323Z",
+            "FinishedAt": "2026-11-01T23:29:18.229687694Z"
+        },
+        "Image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+        "ResolvConfPath": "/var/lib/docker/containers/fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8/hostname",
+        "HostsPath": "/var/lib/docker/containers/fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8/hosts",
+        "LogPath": "/var/lib/docker/containers/fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8/fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8-json.log",
+        "Name": "/bex-pd-7cf7c0d919d6-runner",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "json-file",
+                "Config": {
+                    "max-file": "5",
+                    "max-size": "20m"
+                }
+            },
+            "NetworkMode": "bridge",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": null,
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": true,
+            "SecurityOpt": null,
+            "Tmpfs": {
+                "/tmp": "rw,nosuid,nodev,size=64m"
+            },
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 8408530944,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 536870912,
+            "NanoCpus": 2000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 1073741824,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": 128,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "Mounts": [
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32",
+                    "Target": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32"
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211",
+                    "Target": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker",
+                    "Target": "/usr/local/bin/docker",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker-buildx",
+                    "Target": "/usr/libexec/docker/cli-plugins/docker-buildx",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/var/run/docker.sock",
+                    "Target": "/Users/tianpan/.orbstack/run/docker.sock",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-common-predeploy-build-source-20261101-wp_wtewn/build.sh",
+                    "Target": "/build.sh",
+                    "ReadOnly": true
+                }
+            ],
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8",
+                "LowerDir": "/var/lib/docker/overlay2/5057ae80c6a6c547040e22a849061cc2a7ccf2f0810455ea20882627a3083765-init/diff:/var/lib/docker/overlay2/ede07570786a91d70253d93ce4a604932e5a10026ce330efa7166946a3f625a8/diff",
+                "MergedDir": "/var/lib/docker/overlay2/5057ae80c6a6c547040e22a849061cc2a7ccf2f0810455ea20882627a3083765/merged",
+                "UpperDir": "/var/lib/docker/overlay2/5057ae80c6a6c547040e22a849061cc2a7ccf2f0810455ea20882627a3083765/diff",
+                "WorkDir": "/var/lib/docker/overlay2/5057ae80c6a6c547040e22a849061cc2a7ccf2f0810455ea20882627a3083765/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-common-predeploy-build-source-20261101-wp_wtewn/build.sh",
+                "Destination": "/build.sh",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32",
+                "Destination": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211",
+                "Destination": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker",
+                "Destination": "/usr/local/bin/docker",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/var/run/docker.sock",
+                "Destination": "/Users/tianpan/.orbstack/run/docker.sock",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker-buildx",
+                "Destination": "/usr/libexec/docker/cli-plugins/docker-buildx",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "fc07ed536d5b",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "BUILD_RENDER_ENV=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/render-env",
+                "BUILD_DOCKERFILE=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/Dockerfile.executed",
+                "DOCKER_CONFIG=/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/bex-pd-7cf7c0d919d6-docker-config",
+                "DOCKER_HOST=unix:///Users/tianpan/.orbstack/run/docker.sock",
+                "PILOT_OWNER=bex-pd-7cf7c0d919d6",
+                "BUILD_CONTEXT=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/context",
+                "PILOT_EVIDENCE=/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence",
+                "PILOT_NODE=bex-pd-7cf7c0d919d60",
+                "PILOT_BUILDER_CONTAINER=buildx_buildkit_bex-pd-7cf7c0d919d60",
+                "PILOT_BUILDKIT=moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+                "/build.sh"
+            ],
+            "Image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+            "Volumes": null,
+            "WorkingDir": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/context",
+            "Entrypoint": [
+                "/bin/sh"
+            ],
+            "Labels": {
+                "co.bex.native-qualification": "bex-pd-7cf7c0d919d6"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "bridge": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "0dbbd4593099855957c1e246093eab955c3e62d90d79a10b7909e717f289eff6",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        }
+    }
+]

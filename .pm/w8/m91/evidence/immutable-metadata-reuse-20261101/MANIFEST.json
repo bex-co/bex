@@ -1,0 +1,122 @@
+{
+  "CHECKS.json": {
+    "sha256": "01512ae828c5e6d1a1e5a819b5c6fed3fc887204cff804ee3b279b093f94369b",
+    "bytes": 1419
+  },
+  "LINT-PREPARATION-HISTORY.json": {
+    "sha256": "a0765a3788f508df2619483233ff4fc71cb8894f6643cc5007d30076d28c9f45",
+    "bytes": 359
+  },
+  "LINT.json": {
+    "sha256": "079d57236631fc91518f6f6dd74a1f9af3ce9845fad074e6dc6314ab705cf528",
+    "bytes": 234
+  },
+  "OWNED-PATHS.json": {
+    "sha256": "aa7af6724350b6af8a574ef5bb507ed01330adb68f2672c92bc2358b03f661cd",
+    "bytes": 170
+  },
+  "RECEIPT.json": {
+    "sha256": "0ca4802a7c549259f05c65a57b2e31e56d77c46a7f8e85daca250fb7dec44335",
+    "bytes": 4751
+  },
+  "SOURCE-MANIFEST.json": {
+    "sha256": "3b57faf395fe2f75e2b161de3ded74edec3618bb687626df6385926a5f43f58f",
+    "bytes": 557
+  },
+  "before/lego/operator/internal/build/dockerhub.go": {
+    "sha256": "e13cc111374c6e69f78eb6891c2206b86ddd0655461280f40424dbe3a298d90b",
+    "bytes": 11671
+  },
+  "before/lego/operator/internal/build/dockerhub_test.go": {
+    "sha256": "bbe41298a43a774b61d00ace30d861228b2b727681ae8aea30c7fdf4eaa0af18",
+    "bytes": 1810
+  },
+  "before/lego/operator/internal/build/nativeutility_integration_test.go": {
+    "sha256": "c87e6b01bf86aee76affd3c1245f3bdf1660f18ded3d80afd1c9e43f88abc74b",
+    "bytes": 18913
+  },
+  "focused.stderr": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "focused.stdout": {
+    "sha256": "413c60c34ff43a5f2d603186b29d10390950000e7d8eac98456d3808371c183b",
+    "bytes": 63
+  },
+  "full.diff": {
+    "sha256": "5fd2f4eb7276592dba8df19112845c008105238449fe19054d58426eb9f7c5e7",
+    "bytes": 14696
+  },
+  "initial-CHECKS.json": {
+    "sha256": "c51c17295694762e28cbfe735b44e9e1086b8900fb2d5b0bb22870a480787252",
+    "bytes": 1420
+  },
+  "initial-LINT.json": {
+    "sha256": "13eaae8bc74ce60159b028fb88e0eb6e854a0f34555bb56576361d52a505d633",
+    "bytes": 234
+  },
+  "initial-lint.stderr": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "initial-lint.stdout": {
+    "sha256": "b8a11f56fa29dda2b47eded9987b54c8db35009df30c5f21f00417d07ea71aa4",
+    "bytes": 294
+  },
+  "lint.stderr": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "lint.stdout": {
+    "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+    "bytes": 10
+  },
+  "old-requestcount-red.stderr": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "old-requestcount-red.stdout": {
+    "sha256": "db73268300aafd2cbbbba0555896b4055bfbe7f6e7d2c3129829b1bc227053dc",
+    "bytes": 273
+  },
+  "overlay-old-resolver.json": {
+    "sha256": "6d319a2fc14f50db8cb3c75852de851c0ab4e4ee86ead5d84403dedaabb9a8b1",
+    "bytes": 219
+  },
+  "package.stderr": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "package.stdout": {
+    "sha256": "0e4907b681884e0c4fce57508238219d454ee18e2ea5afcd9fdfc9b2e08bab4b",
+    "bytes": 64
+  },
+  "race.stderr": {
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "bytes": 0
+  },
+  "race.stdout": {
+    "sha256": "198b6f02b8dcbe0420326c1ce51b252ac13b7510a71050ead36d067acbe659f9",
+    "bytes": 63
+  },
+  "run_checks.py": {
+    "sha256": "738ded714ffa5c40d9f13511b3fb5ef13f96a0a74f9d0239aebe984bc547d79e",
+    "bytes": 2423
+  },
+  "run_lint.py": {
+    "sha256": "3ddf30412a185ba6dc02f99a4b0e70bed7adbbaa01a20fbaa4bb5ef0625e5f0b",
+    "bytes": 1470
+  },
+  "source/lego/operator/internal/build/dockerhub.go": {
+    "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3",
+    "bytes": 12874
+  },
+  "source/lego/operator/internal/build/dockerhub_test.go": {
+    "sha256": "a943f9abf486bec635ece79e5fe68174170c302a1ac88b9340b0edd5e717a382",
+    "bytes": 11347
+  },
+  "source/lego/operator/internal/build/nativeutility_integration_test.go": {
+    "sha256": "529080e87e50c291a5081de48b83e5a90122676bae900046a978abeb024a761d",
+    "bytes": 18975
+  }
+}

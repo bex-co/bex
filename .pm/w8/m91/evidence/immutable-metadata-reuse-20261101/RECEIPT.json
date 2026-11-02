@@ -1,0 +1,135 @@
+{
+  "schema": "bex.per-resolver-verified-metadata-cache/v1",
+  "status": "SOURCE_READY_ROOT_REVIEW_NO_SHIP",
+  "owned_source": {
+    "lego/operator/internal/build/dockerhub.go": {
+      "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3",
+      "bytes": 12874,
+      "mode": "0o644"
+    },
+    "lego/operator/internal/build/dockerhub_test.go": {
+      "sha256": "a943f9abf486bec635ece79e5fe68174170c302a1ac88b9340b0edd5e717a382",
+      "bytes": 11347,
+      "mode": "0o644"
+    },
+    "lego/operator/internal/build/nativeutility_integration_test.go": {
+      "sha256": "529080e87e50c291a5081de48b83e5a90122676bae900046a978abeb024a761d",
+      "bytes": 18975,
+      "mode": "0o644"
+    }
+  },
+  "behavior": {
+    "cache_scope": "One resolver instance; immutable endpoint/repository/digest only",
+    "capacity": 64,
+    "cache_only": "Existing bounded verified registry read success with nonemptyENV and uncanceled context",
+    "ownership": "Env/history cloned on both miss and hit returns; no caller-owned backing slices retained",
+    "concurrency": "Map lock covers onlylookup/store; no network lock, globalcache, token/authcache orsingleflight",
+    "cohort": "One real resolver shared across original12cases; underlyingExact path and t.Context; no program/case/flag/oracle/network/sourcecapture change"
+  },
+  "preservation": {
+    "exact_tracked_source_paths": 300,
+    "only_changed_existing_paths": [
+      "lego/operator/internal/build/dockerhub.go",
+      "lego/operator/internal/build/dockerhub_test.go",
+      "lego/operator/internal/build/nativeutility_integration_test.go"
+    ],
+    "utility_inverse_two_edits_byte_exact": true,
+    "old_transient_retry_control_byte_exact": true,
+    "registry_digest_platform_reader_unchanged": true,
+    "original_programs_data_validators_unchanged": true,
+    "foreign_worksum_sha256": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6"
+  },
+  "meaningful_checks": [
+    {
+      "label": "focused",
+      "argv": [
+        "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+        "test",
+        "-run",
+        "^TestImageMetadata(Cache|RetriesOnlyTransientReads)",
+        "./internal/build"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "error": null,
+      "group_absent": true,
+      "elapsed_seconds": 7.731
+    },
+    {
+      "label": "old-requestcount-red",
+      "argv": [
+        "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-native-metadata-cache-source-20261101-5s4nl5tt/overlay-old-resolver.json",
+        "-run",
+        "^TestImageMetadataCacheReusesVerifiedReadsAndIsolatesCallers$",
+        "./internal/build"
+      ],
+      "exit_code": 1,
+      "expected_exit": 1,
+      "error": null,
+      "group_absent": true,
+      "elapsed_seconds": 4.364
+    },
+    {
+      "label": "package",
+      "argv": [
+        "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+        "test",
+        "./internal/build"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "error": null,
+      "group_absent": true,
+      "elapsed_seconds": 14.28
+    },
+    {
+      "label": "race",
+      "argv": [
+        "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+        "test",
+        "-race",
+        "-run",
+        "^TestImageMetadataCache",
+        "./internal/build"
+      ],
+      "exit_code": 0,
+      "expected_exit": 0,
+      "error": null,
+      "group_absent": true,
+      "elapsed_seconds": 8.961
+    }
+  ],
+  "old_red_cause": "Realhttptest successful first3reads; repeated immutable alias read makesoldresolver6reads; newcache stays3. Failureisnetworkrequestcount, notcompilation.",
+  "coverage": [
+    "differentdigestmiss",
+    "otherrepositorynotborrowed",
+    "endpoint+instanceisolation",
+    "firstfullindex-manifest-configvalidation",
+    "tamperedconfigrefusalnotcached",
+    "definitive404notcached",
+    "emptyENVnotcached",
+    "canceledreadnotcached+warmcanceledcallerrefused",
+    "unrelatedreadnotblockedbyheldfetch",
+    "64budgetevictsbyfullclear",
+    "concurrentcoldstores+warmreadmutationisolationunder-race"
+  ],
+  "lint": {
+    "argv": [
+      "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+      "run",
+      "./internal/build/...",
+      "--timeout=90s"
+    ],
+    "exit_code": 0,
+    "error": null,
+    "group_absent": true,
+    "elapsed_seconds": 6.674
+  },
+  "diffcheck_exit": 0,
+  "remaining_actual_gate": "No quota-reset claim. Failedactualea937CI remainsfailure; currentfullbotharch utility baseline requires freshrealCI. LocalNode20 DockerHub429 remainsunproved; no retry/auth/mirror/hardcodedsuccess introduced.",
+  "no_new_runtime_or_image_qualification": true,
+  "at": "2026-11-02T00:22:26.951673+00:00"
+}

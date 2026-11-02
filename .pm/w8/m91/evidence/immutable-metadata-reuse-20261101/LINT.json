@@ -1,0 +1,12 @@
+{
+  "argv": [
+    "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+    "run",
+    "./internal/build/...",
+    "--timeout=90s"
+  ],
+  "exit_code": 0,
+  "error": null,
+  "group_absent": true,
+  "elapsed_seconds": 6.674
+}

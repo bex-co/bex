@@ -1,0 +1,19 @@
+{
+  "owner": "bex-nq-42c2be770300dad10229fc0e",
+  "operations": [
+    {
+      "resource": "builder",
+      "identity": "bex-nq-42c2be770300dad10229fc0e",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "bex-nq-42c2be770300dad10229fc0e removed\n"
+    },
+    {
+      "resource": "docker-auth",
+      "identity": "/private/tmp/bex-w8-node14-amd64-local-42c2be770300dad10229fc0e/bex-nq-42c2be770300dad10229fc0e-docker-config",
+      "logout_exit_code": 0,
+      "exit_code": 0,
+      "removed": true
+    }
+  ]
+}

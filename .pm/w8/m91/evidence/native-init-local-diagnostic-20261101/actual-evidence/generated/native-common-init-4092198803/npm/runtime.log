@@ -1,0 +1,51 @@
+
+> bex-common-native-init-qualification@0.0.0 start
+> node server.js
+
+{"run":"bex-init-1-1793576523413483410","event":"listening"}
+{"run":"bex-init-1-1793576523413483410","event":"hold_begin"}
+{"run":"bex-init-1-1793576523413483410","event":"SIGTERM"}
+{"run":"bex-init-1-1793576523413483410","event":"hold_end"}
+{"run":"bex-init-1-1793576523413483410","event":"closed"}
+{
+  "phase": "runtime",
+  "run": "bex-init-1-1793576523413483410",
+  "identity": {
+    "node": "24.22.1",
+    "executable": "/usr/local/bin/node",
+    "env": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/opt/render/project/src/node_modules/.bin:/opt/render/project/node_modules/.bin:/opt/render/node_modules/.bin:/opt/node_modules/.bin:/node_modules/.bin:/usr/local/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    },
+    "baseEnv": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    },
+    "launch": "npm",
+    "init": {
+      "sha256": "329a7736b12aef107861f75dd2012633ee4d29134295904b1d4afc0b258b7dd8",
+      "machine": 183,
+      "executable": true,
+      "pid1": "/native-init",
+      "argv": [
+        "/native-init",
+        "/bin/bash",
+        "-c",
+        "node capture-env.js npm && exec npm start"
+      ]
+    }
+  },
+  "events": [
+    "listening",
+    "hold_begin",
+    "SIGTERM",
+    "hold_end",
+    "closed"
+  ],
+  "holds": 1,
+  "completed": 1,
+  "signals": 1,
+  "pass": true
+}

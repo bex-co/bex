@@ -1,0 +1,7958 @@
+[
+  {
+    "label": "before-runner",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "bex-pd-7cf7c0d919d6-runner"
+    ],
+    "exit_code": 1,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32687,
+    "pending_pgids": [],
+    "stdout": "before-runner.stdout",
+    "stderr": "before-runner.stderr"
+  },
+  {
+    "label": "before-builder",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 1,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32688,
+    "pending_pgids": [],
+    "stdout": "before-builder.stdout",
+    "stderr": "before-builder.stderr"
+  },
+  {
+    "label": "before-volume",
+    "argv": [
+      "docker",
+      "volume",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60_state"
+    ],
+    "exit_code": 1,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32689,
+    "pending_pgids": [],
+    "stdout": "before-volume.stdout",
+    "stderr": "before-volume.stderr"
+  },
+  {
+    "label": "daemon-fit",
+    "argv": [
+      "docker",
+      "info",
+      "--format",
+      "{{json .MemTotal}} {{json .NCPU}}"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.207,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32690,
+    "pending_pgids": [],
+    "stdout": "daemon-fit.stdout",
+    "stderr": "daemon-fit.stderr"
+  },
+  {
+    "label": "cached-runner",
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "--format",
+      "{{.Id}} {{.Os}}/{{.Architecture}}",
+      "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.208,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32695,
+    "pending_pgids": [],
+    "stdout": "cached-runner.stdout",
+    "stderr": "cached-runner.stderr"
+  },
+  {
+    "label": "immutable-cache-before",
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "--format",
+      "{{.Id}}",
+      "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.208,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32698,
+    "pending_pgids": [],
+    "stdout": "immutable-cache-before.stdout",
+    "stderr": "immutable-cache-before.stderr"
+  },
+  {
+    "label": "runner-create",
+    "argv": [
+      "docker",
+      "create",
+      "--name",
+      "bex-pd-7cf7c0d919d6-runner",
+      "--label",
+      "co.bex.native-qualification=bex-pd-7cf7c0d919d6",
+      "--pull=never",
+      "--platform",
+      "linux/arm64",
+      "--read-only",
+      "--network",
+      "bridge",
+      "--memory",
+      "512m",
+      "--cpus",
+      "2",
+      "--pids-limit",
+      "128",
+      "--tmpfs",
+      "/tmp:rw,nosuid,nodev,size=64m",
+      "--workdir",
+      "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/context",
+      "--mount",
+      "type=bind,src=/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32,dst=/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32",
+      "--mount",
+      "type=bind,src=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211,dst=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211,readonly",
+      "--mount",
+      "type=bind,src=/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker,dst=/usr/local/bin/docker,readonly",
+      "--mount",
+      "type=bind,src=/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker-buildx,dst=/usr/libexec/docker/cli-plugins/docker-buildx,readonly",
+      "--mount",
+      "type=bind,src=/var/run/docker.sock,dst=/Users/tianpan/.orbstack/run/docker.sock,readonly",
+      "--mount",
+      "type=bind,src=/private/tmp/bex-w8-common-predeploy-build-source-20261101-wp_wtewn/build.sh,dst=/build.sh,readonly",
+      "--env",
+      "DOCKER_CONFIG=/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/bex-pd-7cf7c0d919d6-docker-config",
+      "--env",
+      "DOCKER_HOST=unix:///Users/tianpan/.orbstack/run/docker.sock",
+      "--env",
+      "PILOT_EVIDENCE=/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence",
+      "--env",
+      "PILOT_OWNER=bex-pd-7cf7c0d919d6",
+      "--env",
+      "PILOT_NODE=bex-pd-7cf7c0d919d60",
+      "--env",
+      "PILOT_BUILDER_CONTAINER=buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "--env",
+      "PILOT_BUILDKIT=moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+      "--env",
+      "BUILD_RENDER_ENV=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/render-env",
+      "--env",
+      "BUILD_DOCKERFILE=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/Dockerfile.executed",
+      "--env",
+      "BUILD_CONTEXT=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/context",
+      "--entrypoint",
+      "/bin/sh",
+      "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+      "/build.sh"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.209,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32699,
+    "pending_pgids": [],
+    "stdout": "runner-create.stdout",
+    "stderr": "runner-create.stderr"
+  },
+  {
+    "label": "builder-observe-7",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 1,
+    "bound": null,
+    "elapsed_seconds": 0.019,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32701,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-7.stdout",
+    "stderr": "builder-observe-7.stderr"
+  },
+  {
+    "label": "builder-observe-8",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32703,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-8.stdout",
+    "stderr": "builder-observe-8.stderr"
+  },
+  {
+    "label": "builder-du-9",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.044,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32704,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-9.stdout",
+    "stderr": "builder-du-9.stderr"
+  },
+  {
+    "label": "builder-observe-10",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32712,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-10.stdout",
+    "stderr": "builder-observe-10.stderr"
+  },
+  {
+    "label": "builder-du-11",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.029,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32713,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-11.stdout",
+    "stderr": "builder-du-11.stderr"
+  },
+  {
+    "label": "builder-observe-12",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32714,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-12.stdout",
+    "stderr": "builder-observe-12.stderr"
+  },
+  {
+    "label": "builder-du-13",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32715,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-13.stdout",
+    "stderr": "builder-du-13.stderr"
+  },
+  {
+    "label": "builder-observe-14",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32718,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-14.stdout",
+    "stderr": "builder-observe-14.stderr"
+  },
+  {
+    "label": "builder-du-15",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32719,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-15.stdout",
+    "stderr": "builder-du-15.stderr"
+  },
+  {
+    "label": "builder-observe-16",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32727,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-16.stdout",
+    "stderr": "builder-observe-16.stderr"
+  },
+  {
+    "label": "builder-du-17",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32728,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-17.stdout",
+    "stderr": "builder-du-17.stderr"
+  },
+  {
+    "label": "builder-observe-18",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32729,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-18.stdout",
+    "stderr": "builder-observe-18.stderr"
+  },
+  {
+    "label": "builder-du-19",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.029,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32730,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-19.stdout",
+    "stderr": "builder-du-19.stderr"
+  },
+  {
+    "label": "builder-observe-20",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32749,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-20.stdout",
+    "stderr": "builder-observe-20.stderr"
+  },
+  {
+    "label": "builder-du-21",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32750,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-21.stdout",
+    "stderr": "builder-du-21.stderr"
+  },
+  {
+    "label": "builder-observe-22",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32752,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-22.stdout",
+    "stderr": "builder-observe-22.stderr"
+  },
+  {
+    "label": "builder-du-23",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32753,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-23.stdout",
+    "stderr": "builder-du-23.stderr"
+  },
+  {
+    "label": "builder-observe-24",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32756,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-24.stdout",
+    "stderr": "builder-observe-24.stderr"
+  },
+  {
+    "label": "builder-du-25",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32757,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-25.stdout",
+    "stderr": "builder-du-25.stderr"
+  },
+  {
+    "label": "builder-observe-26",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32770,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-26.stdout",
+    "stderr": "builder-observe-26.stderr"
+  },
+  {
+    "label": "builder-du-27",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.029,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32771,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-27.stdout",
+    "stderr": "builder-du-27.stderr"
+  },
+  {
+    "label": "builder-observe-28",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.065,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32784,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-28.stdout",
+    "stderr": "builder-observe-28.stderr"
+  },
+  {
+    "label": "builder-du-29",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.029,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32785,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-29.stdout",
+    "stderr": "builder-du-29.stderr"
+  },
+  {
+    "label": "builder-observe-30",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32786,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-30.stdout",
+    "stderr": "builder-observe-30.stderr"
+  },
+  {
+    "label": "builder-du-31",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32787,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-31.stdout",
+    "stderr": "builder-du-31.stderr"
+  },
+  {
+    "label": "builder-observe-32",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32790,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-32.stdout",
+    "stderr": "builder-observe-32.stderr"
+  },
+  {
+    "label": "builder-du-33",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32791,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-33.stdout",
+    "stderr": "builder-du-33.stderr"
+  },
+  {
+    "label": "builder-observe-34",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32795,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-34.stdout",
+    "stderr": "builder-observe-34.stderr"
+  },
+  {
+    "label": "builder-du-35",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32796,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-35.stdout",
+    "stderr": "builder-du-35.stderr"
+  },
+  {
+    "label": "builder-observe-36",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32831,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-36.stdout",
+    "stderr": "builder-observe-36.stderr"
+  },
+  {
+    "label": "builder-du-37",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.044,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32832,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-37.stdout",
+    "stderr": "builder-du-37.stderr"
+  },
+  {
+    "label": "builder-observe-38",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.385,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32833,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-38.stdout",
+    "stderr": "builder-observe-38.stderr"
+  },
+  {
+    "label": "builder-du-39",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.044,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32834,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-39.stdout",
+    "stderr": "builder-du-39.stderr"
+  },
+  {
+    "label": "builder-observe-40",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32837,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-40.stdout",
+    "stderr": "builder-observe-40.stderr"
+  },
+  {
+    "label": "builder-du-41",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.043,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32838,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-41.stdout",
+    "stderr": "builder-du-41.stderr"
+  },
+  {
+    "label": "builder-observe-42",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.026,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32841,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-42.stdout",
+    "stderr": "builder-observe-42.stderr"
+  },
+  {
+    "label": "builder-du-43",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.037,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32842,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-43.stdout",
+    "stderr": "builder-du-43.stderr"
+  },
+  {
+    "label": "builder-observe-44",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32843,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-44.stdout",
+    "stderr": "builder-observe-44.stderr"
+  },
+  {
+    "label": "builder-du-45",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32844,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-45.stdout",
+    "stderr": "builder-du-45.stderr"
+  },
+  {
+    "label": "builder-observe-46",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32861,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-46.stdout",
+    "stderr": "builder-observe-46.stderr"
+  },
+  {
+    "label": "builder-du-47",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32862,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-47.stdout",
+    "stderr": "builder-du-47.stderr"
+  },
+  {
+    "label": "builder-observe-48",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.079,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32866,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-48.stdout",
+    "stderr": "builder-observe-48.stderr"
+  },
+  {
+    "label": "builder-du-49",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.046,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32867,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-49.stdout",
+    "stderr": "builder-du-49.stderr"
+  },
+  {
+    "label": "builder-observe-50",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32868,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-50.stdout",
+    "stderr": "builder-observe-50.stderr"
+  },
+  {
+    "label": "builder-du-51",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.035,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32869,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-51.stdout",
+    "stderr": "builder-du-51.stderr"
+  },
+  {
+    "label": "builder-observe-52",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32875,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-52.stdout",
+    "stderr": "builder-observe-52.stderr"
+  },
+  {
+    "label": "builder-du-53",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32876,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-53.stdout",
+    "stderr": "builder-du-53.stderr"
+  },
+  {
+    "label": "builder-observe-54",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32877,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-54.stdout",
+    "stderr": "builder-observe-54.stderr"
+  },
+  {
+    "label": "builder-du-55",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32878,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-55.stdout",
+    "stderr": "builder-du-55.stderr"
+  },
+  {
+    "label": "builder-observe-56",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32879,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-56.stdout",
+    "stderr": "builder-observe-56.stderr"
+  },
+  {
+    "label": "builder-du-57",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.04,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32885,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-57.stdout",
+    "stderr": "builder-du-57.stderr"
+  },
+  {
+    "label": "builder-observe-58",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.076,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32888,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-58.stdout",
+    "stderr": "builder-observe-58.stderr"
+  },
+  {
+    "label": "builder-du-59",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32889,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-59.stdout",
+    "stderr": "builder-du-59.stderr"
+  },
+  {
+    "label": "builder-observe-60",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32892,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-60.stdout",
+    "stderr": "builder-observe-60.stderr"
+  },
+  {
+    "label": "builder-du-61",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32893,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-61.stdout",
+    "stderr": "builder-du-61.stderr"
+  },
+  {
+    "label": "builder-observe-62",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32897,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-62.stdout",
+    "stderr": "builder-observe-62.stderr"
+  },
+  {
+    "label": "builder-du-63",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32898,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-63.stdout",
+    "stderr": "builder-du-63.stderr"
+  },
+  {
+    "label": "builder-observe-64",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32901,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-64.stdout",
+    "stderr": "builder-observe-64.stderr"
+  },
+  {
+    "label": "builder-du-65",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32902,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-65.stdout",
+    "stderr": "builder-du-65.stderr"
+  },
+  {
+    "label": "builder-observe-66",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32911,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-66.stdout",
+    "stderr": "builder-observe-66.stderr"
+  },
+  {
+    "label": "builder-du-67",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.044,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32912,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-67.stdout",
+    "stderr": "builder-du-67.stderr"
+  },
+  {
+    "label": "builder-observe-68",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.068,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32915,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-68.stdout",
+    "stderr": "builder-observe-68.stderr"
+  },
+  {
+    "label": "builder-du-69",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.046,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32916,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-69.stdout",
+    "stderr": "builder-du-69.stderr"
+  },
+  {
+    "label": "builder-observe-70",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32920,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-70.stdout",
+    "stderr": "builder-observe-70.stderr"
+  },
+  {
+    "label": "builder-du-71",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32921,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-71.stdout",
+    "stderr": "builder-du-71.stderr"
+  },
+  {
+    "label": "builder-observe-72",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32926,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-72.stdout",
+    "stderr": "builder-observe-72.stderr"
+  },
+  {
+    "label": "builder-du-73",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32927,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-73.stdout",
+    "stderr": "builder-du-73.stderr"
+  },
+  {
+    "label": "builder-observe-74",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32949,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-74.stdout",
+    "stderr": "builder-observe-74.stderr"
+  },
+  {
+    "label": "builder-du-75",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.035,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32950,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-75.stdout",
+    "stderr": "builder-du-75.stderr"
+  },
+  {
+    "label": "builder-observe-76",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32954,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-76.stdout",
+    "stderr": "builder-observe-76.stderr"
+  },
+  {
+    "label": "builder-du-77",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32955,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-77.stdout",
+    "stderr": "builder-du-77.stderr"
+  },
+  {
+    "label": "builder-observe-78",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.038,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32956,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-78.stdout",
+    "stderr": "builder-observe-78.stderr"
+  },
+  {
+    "label": "builder-du-79",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32957,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-79.stdout",
+    "stderr": "builder-du-79.stderr"
+  },
+  {
+    "label": "builder-observe-80",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32967,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-80.stdout",
+    "stderr": "builder-observe-80.stderr"
+  },
+  {
+    "label": "builder-du-81",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32968,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-81.stdout",
+    "stderr": "builder-du-81.stderr"
+  },
+  {
+    "label": "builder-observe-82",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32969,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-82.stdout",
+    "stderr": "builder-observe-82.stderr"
+  },
+  {
+    "label": "builder-du-83",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.037,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32970,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-83.stdout",
+    "stderr": "builder-du-83.stderr"
+  },
+  {
+    "label": "builder-observe-84",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32971,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-84.stdout",
+    "stderr": "builder-observe-84.stderr"
+  },
+  {
+    "label": "builder-du-85",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32972,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-85.stdout",
+    "stderr": "builder-du-85.stderr"
+  },
+  {
+    "label": "builder-observe-86",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32973,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-86.stdout",
+    "stderr": "builder-observe-86.stderr"
+  },
+  {
+    "label": "builder-du-87",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.029,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32974,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-87.stdout",
+    "stderr": "builder-du-87.stderr"
+  },
+  {
+    "label": "builder-observe-88",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.084,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32984,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-88.stdout",
+    "stderr": "builder-observe-88.stderr"
+  },
+  {
+    "label": "builder-du-89",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32986,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-89.stdout",
+    "stderr": "builder-du-89.stderr"
+  },
+  {
+    "label": "builder-observe-90",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32990,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-90.stdout",
+    "stderr": "builder-observe-90.stderr"
+  },
+  {
+    "label": "builder-du-91",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32991,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-91.stdout",
+    "stderr": "builder-du-91.stderr"
+  },
+  {
+    "label": "builder-observe-92",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32992,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-92.stdout",
+    "stderr": "builder-observe-92.stderr"
+  },
+  {
+    "label": "builder-du-93",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32993,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-93.stdout",
+    "stderr": "builder-du-93.stderr"
+  },
+  {
+    "label": "builder-observe-94",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32994,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-94.stdout",
+    "stderr": "builder-observe-94.stderr"
+  },
+  {
+    "label": "builder-du-95",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32995,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-95.stdout",
+    "stderr": "builder-du-95.stderr"
+  },
+  {
+    "label": "builder-observe-96",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32996,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-96.stdout",
+    "stderr": "builder-observe-96.stderr"
+  },
+  {
+    "label": "builder-du-97",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.038,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32997,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-97.stdout",
+    "stderr": "builder-du-97.stderr"
+  },
+  {
+    "label": "builder-observe-98",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.076,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33005,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-98.stdout",
+    "stderr": "builder-observe-98.stderr"
+  },
+  {
+    "label": "builder-du-99",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.039,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33006,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-99.stdout",
+    "stderr": "builder-du-99.stderr"
+  },
+  {
+    "label": "builder-observe-100",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33010,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-100.stdout",
+    "stderr": "builder-observe-100.stderr"
+  },
+  {
+    "label": "builder-du-101",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33011,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-101.stdout",
+    "stderr": "builder-du-101.stderr"
+  },
+  {
+    "label": "builder-observe-102",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33012,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-102.stdout",
+    "stderr": "builder-observe-102.stderr"
+  },
+  {
+    "label": "builder-du-103",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.036,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33014,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-103.stdout",
+    "stderr": "builder-du-103.stderr"
+  },
+  {
+    "label": "builder-observe-104",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33017,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-104.stdout",
+    "stderr": "builder-observe-104.stderr"
+  },
+  {
+    "label": "builder-du-105",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.035,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33018,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-105.stdout",
+    "stderr": "builder-du-105.stderr"
+  },
+  {
+    "label": "builder-observe-106",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.029,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33022,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-106.stdout",
+    "stderr": "builder-observe-106.stderr"
+  },
+  {
+    "label": "builder-du-107",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33023,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-107.stdout",
+    "stderr": "builder-du-107.stderr"
+  },
+  {
+    "label": "builder-observe-108",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.062,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33026,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-108.stdout",
+    "stderr": "builder-observe-108.stderr"
+  },
+  {
+    "label": "builder-du-109",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33027,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-109.stdout",
+    "stderr": "builder-du-109.stderr"
+  },
+  {
+    "label": "builder-observe-110",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33036,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-110.stdout",
+    "stderr": "builder-observe-110.stderr"
+  },
+  {
+    "label": "builder-du-111",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.036,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33037,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-111.stdout",
+    "stderr": "builder-du-111.stderr"
+  },
+  {
+    "label": "builder-observe-112",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33048,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-112.stdout",
+    "stderr": "builder-observe-112.stderr"
+  },
+  {
+    "label": "builder-du-113",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33049,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-113.stdout",
+    "stderr": "builder-du-113.stderr"
+  },
+  {
+    "label": "builder-observe-114",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33052,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-114.stdout",
+    "stderr": "builder-observe-114.stderr"
+  },
+  {
+    "label": "builder-du-115",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33053,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-115.stdout",
+    "stderr": "builder-du-115.stderr"
+  },
+  {
+    "label": "builder-observe-116",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.025,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33055,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-116.stdout",
+    "stderr": "builder-observe-116.stderr"
+  },
+  {
+    "label": "builder-du-117",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33056,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-117.stdout",
+    "stderr": "builder-du-117.stderr"
+  },
+  {
+    "label": "builder-observe-118",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.073,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33061,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-118.stdout",
+    "stderr": "builder-observe-118.stderr"
+  },
+  {
+    "label": "builder-du-119",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33062,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-119.stdout",
+    "stderr": "builder-du-119.stderr"
+  },
+  {
+    "label": "builder-observe-120",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33063,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-120.stdout",
+    "stderr": "builder-observe-120.stderr"
+  },
+  {
+    "label": "builder-du-121",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33064,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-121.stdout",
+    "stderr": "builder-du-121.stderr"
+  },
+  {
+    "label": "builder-observe-122",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33066,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-122.stdout",
+    "stderr": "builder-observe-122.stderr"
+  },
+  {
+    "label": "builder-du-123",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33067,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-123.stdout",
+    "stderr": "builder-du-123.stderr"
+  },
+  {
+    "label": "builder-observe-124",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33076,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-124.stdout",
+    "stderr": "builder-observe-124.stderr"
+  },
+  {
+    "label": "builder-du-125",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33077,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-125.stdout",
+    "stderr": "builder-du-125.stderr"
+  },
+  {
+    "label": "builder-observe-126",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33078,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-126.stdout",
+    "stderr": "builder-observe-126.stderr"
+  },
+  {
+    "label": "builder-du-127",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33079,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-127.stdout",
+    "stderr": "builder-du-127.stderr"
+  },
+  {
+    "label": "builder-observe-128",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33080,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-128.stdout",
+    "stderr": "builder-observe-128.stderr"
+  },
+  {
+    "label": "builder-du-129",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33081,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-129.stdout",
+    "stderr": "builder-du-129.stderr"
+  },
+  {
+    "label": "builder-observe-130",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33085,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-130.stdout",
+    "stderr": "builder-observe-130.stderr"
+  },
+  {
+    "label": "builder-du-131",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33086,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-131.stdout",
+    "stderr": "builder-du-131.stderr"
+  },
+  {
+    "label": "builder-observe-132",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33090,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-132.stdout",
+    "stderr": "builder-observe-132.stderr"
+  },
+  {
+    "label": "builder-du-133",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33091,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-133.stdout",
+    "stderr": "builder-du-133.stderr"
+  },
+  {
+    "label": "builder-observe-134",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33095,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-134.stdout",
+    "stderr": "builder-observe-134.stderr"
+  },
+  {
+    "label": "builder-du-135",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33096,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-135.stdout",
+    "stderr": "builder-du-135.stderr"
+  },
+  {
+    "label": "builder-observe-136",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33101,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-136.stdout",
+    "stderr": "builder-observe-136.stderr"
+  },
+  {
+    "label": "builder-du-137",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33102,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-137.stdout",
+    "stderr": "builder-du-137.stderr"
+  },
+  {
+    "label": "builder-observe-138",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33104,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-138.stdout",
+    "stderr": "builder-observe-138.stderr"
+  },
+  {
+    "label": "builder-du-139",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33105,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-139.stdout",
+    "stderr": "builder-du-139.stderr"
+  },
+  {
+    "label": "builder-observe-140",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33106,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-140.stdout",
+    "stderr": "builder-observe-140.stderr"
+  },
+  {
+    "label": "builder-du-141",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33107,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-141.stdout",
+    "stderr": "builder-du-141.stderr"
+  },
+  {
+    "label": "builder-observe-142",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.155,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33111,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-142.stdout",
+    "stderr": "builder-observe-142.stderr"
+  },
+  {
+    "label": "builder-du-143",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.049,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33112,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-143.stdout",
+    "stderr": "builder-du-143.stderr"
+  },
+  {
+    "label": "builder-observe-144",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33113,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-144.stdout",
+    "stderr": "builder-observe-144.stderr"
+  },
+  {
+    "label": "builder-du-145",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.069,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33114,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-145.stdout",
+    "stderr": "builder-du-145.stderr"
+  },
+  {
+    "label": "builder-observe-146",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33126,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-146.stdout",
+    "stderr": "builder-observe-146.stderr"
+  },
+  {
+    "label": "builder-du-147",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33127,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-147.stdout",
+    "stderr": "builder-du-147.stderr"
+  },
+  {
+    "label": "builder-observe-148",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33130,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-148.stdout",
+    "stderr": "builder-observe-148.stderr"
+  },
+  {
+    "label": "builder-du-149",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33131,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-149.stdout",
+    "stderr": "builder-du-149.stderr"
+  },
+  {
+    "label": "builder-observe-150",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.025,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33132,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-150.stdout",
+    "stderr": "builder-observe-150.stderr"
+  },
+  {
+    "label": "builder-du-151",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33133,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-151.stdout",
+    "stderr": "builder-du-151.stderr"
+  },
+  {
+    "label": "builder-observe-152",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.067,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33134,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-152.stdout",
+    "stderr": "builder-observe-152.stderr"
+  },
+  {
+    "label": "builder-du-153",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.04,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33135,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-153.stdout",
+    "stderr": "builder-du-153.stderr"
+  },
+  {
+    "label": "builder-observe-154",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33136,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-154.stdout",
+    "stderr": "builder-observe-154.stderr"
+  },
+  {
+    "label": "builder-du-155",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33137,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-155.stdout",
+    "stderr": "builder-du-155.stderr"
+  },
+  {
+    "label": "builder-observe-156",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33139,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-156.stdout",
+    "stderr": "builder-observe-156.stderr"
+  },
+  {
+    "label": "builder-du-157",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33140,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-157.stdout",
+    "stderr": "builder-du-157.stderr"
+  },
+  {
+    "label": "builder-observe-158",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33168,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-158.stdout",
+    "stderr": "builder-observe-158.stderr"
+  },
+  {
+    "label": "builder-du-159",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33170,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-159.stdout",
+    "stderr": "builder-du-159.stderr"
+  },
+  {
+    "label": "builder-observe-160",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33201,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-160.stdout",
+    "stderr": "builder-observe-160.stderr"
+  },
+  {
+    "label": "builder-du-161",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33202,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-161.stdout",
+    "stderr": "builder-du-161.stderr"
+  },
+  {
+    "label": "builder-observe-162",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33210,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-162.stdout",
+    "stderr": "builder-observe-162.stderr"
+  },
+  {
+    "label": "builder-du-163",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33211,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-163.stdout",
+    "stderr": "builder-du-163.stderr"
+  },
+  {
+    "label": "builder-observe-164",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33230,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-164.stdout",
+    "stderr": "builder-observe-164.stderr"
+  },
+  {
+    "label": "builder-du-165",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33231,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-165.stdout",
+    "stderr": "builder-du-165.stderr"
+  },
+  {
+    "label": "builder-observe-166",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33243,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-166.stdout",
+    "stderr": "builder-observe-166.stderr"
+  },
+  {
+    "label": "builder-du-167",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33244,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-167.stdout",
+    "stderr": "builder-du-167.stderr"
+  },
+  {
+    "label": "builder-observe-168",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33253,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-168.stdout",
+    "stderr": "builder-observe-168.stderr"
+  },
+  {
+    "label": "builder-du-169",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.039,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33254,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-169.stdout",
+    "stderr": "builder-du-169.stderr"
+  },
+  {
+    "label": "builder-observe-170",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.074,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33276,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-170.stdout",
+    "stderr": "builder-observe-170.stderr"
+  },
+  {
+    "label": "builder-du-171",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33277,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-171.stdout",
+    "stderr": "builder-du-171.stderr"
+  },
+  {
+    "label": "builder-observe-172",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.025,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33290,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-172.stdout",
+    "stderr": "builder-observe-172.stderr"
+  },
+  {
+    "label": "builder-du-173",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.1,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33291,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-173.stdout",
+    "stderr": "builder-du-173.stderr"
+  },
+  {
+    "label": "builder-observe-174",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33300,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-174.stdout",
+    "stderr": "builder-observe-174.stderr"
+  },
+  {
+    "label": "builder-du-175",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33301,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-175.stdout",
+    "stderr": "builder-du-175.stderr"
+  },
+  {
+    "label": "builder-observe-176",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33306,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-176.stdout",
+    "stderr": "builder-observe-176.stderr"
+  },
+  {
+    "label": "builder-du-177",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33307,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-177.stdout",
+    "stderr": "builder-du-177.stderr"
+  },
+  {
+    "label": "builder-observe-178",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33311,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-178.stdout",
+    "stderr": "builder-observe-178.stderr"
+  },
+  {
+    "label": "builder-du-179",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.04,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33312,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-179.stdout",
+    "stderr": "builder-du-179.stderr"
+  },
+  {
+    "label": "builder-observe-180",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.198,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33324,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-180.stdout",
+    "stderr": "builder-observe-180.stderr"
+  },
+  {
+    "label": "builder-du-181",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.08,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33327,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-181.stdout",
+    "stderr": "builder-du-181.stderr"
+  },
+  {
+    "label": "builder-observe-182",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33330,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-182.stdout",
+    "stderr": "builder-observe-182.stderr"
+  },
+  {
+    "label": "builder-du-183",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33331,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-183.stdout",
+    "stderr": "builder-du-183.stderr"
+  },
+  {
+    "label": "builder-observe-184",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33339,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-184.stdout",
+    "stderr": "builder-observe-184.stderr"
+  },
+  {
+    "label": "builder-du-185",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33340,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-185.stdout",
+    "stderr": "builder-du-185.stderr"
+  },
+  {
+    "label": "builder-observe-186",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.025,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33341,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-186.stdout",
+    "stderr": "builder-observe-186.stderr"
+  },
+  {
+    "label": "builder-du-187",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33342,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-187.stdout",
+    "stderr": "builder-du-187.stderr"
+  },
+  {
+    "label": "builder-observe-188",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.028,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33343,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-188.stdout",
+    "stderr": "builder-observe-188.stderr"
+  },
+  {
+    "label": "builder-du-189",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.095,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33344,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-189.stdout",
+    "stderr": "builder-du-189.stderr"
+  },
+  {
+    "label": "builder-observe-190",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.075,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33345,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-190.stdout",
+    "stderr": "builder-observe-190.stderr"
+  },
+  {
+    "label": "builder-du-191",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.037,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33346,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-191.stdout",
+    "stderr": "builder-du-191.stderr"
+  },
+  {
+    "label": "builder-observe-192",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.026,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33347,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-192.stdout",
+    "stderr": "builder-observe-192.stderr"
+  },
+  {
+    "label": "builder-du-193",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33348,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-193.stdout",
+    "stderr": "builder-du-193.stderr"
+  },
+  {
+    "label": "builder-observe-194",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33361,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-194.stdout",
+    "stderr": "builder-observe-194.stderr"
+  },
+  {
+    "label": "builder-du-195",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.032,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33362,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-195.stdout",
+    "stderr": "builder-du-195.stderr"
+  },
+  {
+    "label": "builder-observe-196",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.026,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33369,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-196.stdout",
+    "stderr": "builder-observe-196.stderr"
+  },
+  {
+    "label": "builder-du-197",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33370,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-197.stdout",
+    "stderr": "builder-du-197.stderr"
+  },
+  {
+    "label": "builder-observe-198",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33372,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-198.stdout",
+    "stderr": "builder-observe-198.stderr"
+  },
+  {
+    "label": "builder-du-199",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.103,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33373,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-199.stdout",
+    "stderr": "builder-du-199.stderr"
+  },
+  {
+    "label": "builder-observe-200",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.064,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33374,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-200.stdout",
+    "stderr": "builder-observe-200.stderr"
+  },
+  {
+    "label": "builder-du-201",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.037,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33375,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-201.stdout",
+    "stderr": "builder-du-201.stderr"
+  },
+  {
+    "label": "builder-observe-202",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.027,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33376,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-202.stdout",
+    "stderr": "builder-observe-202.stderr"
+  },
+  {
+    "label": "builder-du-203",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.04,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33377,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-203.stdout",
+    "stderr": "builder-du-203.stderr"
+  },
+  {
+    "label": "builder-observe-204",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33379,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-204.stdout",
+    "stderr": "builder-observe-204.stderr"
+  },
+  {
+    "label": "builder-du-205",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.034,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33380,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-205.stdout",
+    "stderr": "builder-du-205.stderr"
+  },
+  {
+    "label": "builder-observe-206",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33382,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-206.stdout",
+    "stderr": "builder-observe-206.stderr"
+  },
+  {
+    "label": "builder-du-207",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.038,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33383,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-207.stdout",
+    "stderr": "builder-du-207.stderr"
+  },
+  {
+    "label": "builder-observe-208",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33389,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-208.stdout",
+    "stderr": "builder-observe-208.stderr"
+  },
+  {
+    "label": "builder-du-209",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.064,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33390,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-209.stdout",
+    "stderr": "builder-du-209.stderr"
+  },
+  {
+    "label": "builder-observe-210",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 1.097,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33391,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-210.stdout",
+    "stderr": "builder-observe-210.stderr"
+  },
+  {
+    "label": "builder-du-211",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.088,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33396,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-211.stdout",
+    "stderr": "builder-du-211.stderr"
+  },
+  {
+    "label": "builder-observe-212",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33397,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-212.stdout",
+    "stderr": "builder-observe-212.stderr"
+  },
+  {
+    "label": "builder-du-213",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.05,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33398,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-213.stdout",
+    "stderr": "builder-du-213.stderr"
+  },
+  {
+    "label": "builder-observe-214",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33399,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-214.stdout",
+    "stderr": "builder-observe-214.stderr"
+  },
+  {
+    "label": "builder-du-215",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.07,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33400,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-215.stdout",
+    "stderr": "builder-du-215.stderr"
+  },
+  {
+    "label": "builder-observe-216",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33401,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-216.stdout",
+    "stderr": "builder-observe-216.stderr"
+  },
+  {
+    "label": "builder-du-217",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.069,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33402,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-217.stdout",
+    "stderr": "builder-du-217.stderr"
+  },
+  {
+    "label": "builder-observe-218",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.026,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33405,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-218.stdout",
+    "stderr": "builder-observe-218.stderr"
+  },
+  {
+    "label": "builder-du-219",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.051,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33406,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-219.stdout",
+    "stderr": "builder-du-219.stderr"
+  },
+  {
+    "label": "builder-observe-220",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33428,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-220.stdout",
+    "stderr": "builder-observe-220.stderr"
+  },
+  {
+    "label": "builder-du-221",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.08,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33429,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-221.stdout",
+    "stderr": "builder-du-221.stderr"
+  },
+  {
+    "label": "builder-observe-222",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.105,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33434,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-222.stdout",
+    "stderr": "builder-observe-222.stderr"
+  },
+  {
+    "label": "builder-du-223",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.219,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33435,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-223.stdout",
+    "stderr": "builder-du-223.stderr"
+  },
+  {
+    "label": "builder-observe-224",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.028,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33437,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-224.stdout",
+    "stderr": "builder-observe-224.stderr"
+  },
+  {
+    "label": "builder-du-225",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.076,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33438,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-225.stdout",
+    "stderr": "builder-du-225.stderr"
+  },
+  {
+    "label": "builder-observe-226",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.029,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33439,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-226.stdout",
+    "stderr": "builder-observe-226.stderr"
+  },
+  {
+    "label": "builder-du-227",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.057,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33440,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-227.stdout",
+    "stderr": "builder-du-227.stderr"
+  },
+  {
+    "label": "builder-observe-228",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33441,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-228.stdout",
+    "stderr": "builder-observe-228.stderr"
+  },
+  {
+    "label": "builder-du-229",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.105,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33442,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-229.stdout",
+    "stderr": "builder-du-229.stderr"
+  },
+  {
+    "label": "builder-observe-230",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33443,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-230.stdout",
+    "stderr": "builder-observe-230.stderr"
+  },
+  {
+    "label": "builder-du-231",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.091,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33444,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-231.stdout",
+    "stderr": "builder-du-231.stderr"
+  },
+  {
+    "label": "builder-observe-232",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33447,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-232.stdout",
+    "stderr": "builder-observe-232.stderr"
+  },
+  {
+    "label": "builder-du-233",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.086,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33448,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-233.stdout",
+    "stderr": "builder-du-233.stderr"
+  },
+  {
+    "label": "builder-observe-234",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.079,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33449,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-234.stdout",
+    "stderr": "builder-observe-234.stderr"
+  },
+  {
+    "label": "builder-du-235",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.078,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33450,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-235.stdout",
+    "stderr": "builder-du-235.stderr"
+  },
+  {
+    "label": "builder-observe-236",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.036,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33458,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-236.stdout",
+    "stderr": "builder-observe-236.stderr"
+  },
+  {
+    "label": "builder-du-237",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.114,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33459,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-237.stdout",
+    "stderr": "builder-du-237.stderr"
+  },
+  {
+    "label": "builder-observe-238",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33463,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-238.stdout",
+    "stderr": "builder-observe-238.stderr"
+  },
+  {
+    "label": "builder-du-239",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.188,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33464,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-239.stdout",
+    "stderr": "builder-du-239.stderr"
+  },
+  {
+    "label": "builder-observe-240",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33467,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-240.stdout",
+    "stderr": "builder-observe-240.stderr"
+  },
+  {
+    "label": "builder-du-241",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.08,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33468,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-241.stdout",
+    "stderr": "builder-du-241.stderr"
+  },
+  {
+    "label": "builder-observe-242",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33469,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-242.stdout",
+    "stderr": "builder-observe-242.stderr"
+  },
+  {
+    "label": "builder-du-243",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.131,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33470,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-243.stdout",
+    "stderr": "builder-du-243.stderr"
+  },
+  {
+    "label": "builder-observe-244",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.068,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33478,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-244.stdout",
+    "stderr": "builder-observe-244.stderr"
+  },
+  {
+    "label": "builder-du-245",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.101,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33479,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-245.stdout",
+    "stderr": "builder-du-245.stderr"
+  },
+  {
+    "label": "builder-observe-246",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33480,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-246.stdout",
+    "stderr": "builder-observe-246.stderr"
+  },
+  {
+    "label": "builder-du-247",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.087,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33481,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-247.stdout",
+    "stderr": "builder-du-247.stderr"
+  },
+  {
+    "label": "builder-observe-248",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33483,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-248.stdout",
+    "stderr": "builder-observe-248.stderr"
+  },
+  {
+    "label": "builder-du-249",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.137,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33484,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-249.stdout",
+    "stderr": "builder-du-249.stderr"
+  },
+  {
+    "label": "builder-observe-250",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33487,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-250.stdout",
+    "stderr": "builder-observe-250.stderr"
+  },
+  {
+    "label": "builder-du-251",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.097,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33488,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-251.stdout",
+    "stderr": "builder-du-251.stderr"
+  },
+  {
+    "label": "builder-observe-252",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.028,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33490,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-252.stdout",
+    "stderr": "builder-observe-252.stderr"
+  },
+  {
+    "label": "builder-du-253",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.122,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33491,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-253.stdout",
+    "stderr": "builder-du-253.stderr"
+  },
+  {
+    "label": "builder-observe-254",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.086,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33492,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-254.stdout",
+    "stderr": "builder-observe-254.stderr"
+  },
+  {
+    "label": "builder-du-255",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.102,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33493,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-255.stdout",
+    "stderr": "builder-du-255.stderr"
+  },
+  {
+    "label": "builder-observe-256",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.04,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33494,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-256.stdout",
+    "stderr": "builder-observe-256.stderr"
+  },
+  {
+    "label": "builder-du-257",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.212,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33495,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-257.stdout",
+    "stderr": "builder-du-257.stderr"
+  },
+  {
+    "label": "builder-observe-258",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.027,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33496,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-258.stdout",
+    "stderr": "builder-observe-258.stderr"
+  },
+  {
+    "label": "builder-du-259",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.108,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33497,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-259.stdout",
+    "stderr": "builder-du-259.stderr"
+  },
+  {
+    "label": "builder-observe-260",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33500,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-260.stdout",
+    "stderr": "builder-observe-260.stderr"
+  },
+  {
+    "label": "builder-du-261",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.087,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33501,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-261.stdout",
+    "stderr": "builder-du-261.stderr"
+  },
+  {
+    "label": "builder-observe-262",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33512,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-262.stdout",
+    "stderr": "builder-observe-262.stderr"
+  },
+  {
+    "label": "builder-du-263",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.087,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33514,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-263.stdout",
+    "stderr": "builder-du-263.stderr"
+  },
+  {
+    "label": "builder-observe-264",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.061,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33524,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-264.stdout",
+    "stderr": "builder-observe-264.stderr"
+  },
+  {
+    "label": "builder-du-265",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.129,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33526,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-265.stdout",
+    "stderr": "builder-du-265.stderr"
+  },
+  {
+    "label": "builder-observe-266",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.026,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33529,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-266.stdout",
+    "stderr": "builder-observe-266.stderr"
+  },
+  {
+    "label": "builder-du-267",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.112,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33530,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-267.stdout",
+    "stderr": "builder-du-267.stderr"
+  },
+  {
+    "label": "builder-observe-268",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33531,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-268.stdout",
+    "stderr": "builder-observe-268.stderr"
+  },
+  {
+    "label": "builder-du-269",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.101,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33532,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-269.stdout",
+    "stderr": "builder-du-269.stderr"
+  },
+  {
+    "label": "builder-observe-270",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33535,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-270.stdout",
+    "stderr": "builder-observe-270.stderr"
+  },
+  {
+    "label": "builder-du-271",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.096,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33536,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-271.stdout",
+    "stderr": "builder-du-271.stderr"
+  },
+  {
+    "label": "builder-observe-272",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33537,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-272.stdout",
+    "stderr": "builder-observe-272.stderr"
+  },
+  {
+    "label": "builder-du-273",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.126,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33538,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-273.stdout",
+    "stderr": "builder-du-273.stderr"
+  },
+  {
+    "label": "builder-observe-274",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.209,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33539,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-274.stdout",
+    "stderr": "builder-observe-274.stderr"
+  },
+  {
+    "label": "builder-du-275",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.119,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33544,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-275.stdout",
+    "stderr": "builder-du-275.stderr"
+  },
+  {
+    "label": "builder-observe-276",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.036,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33549,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-276.stdout",
+    "stderr": "builder-observe-276.stderr"
+  },
+  {
+    "label": "builder-du-277",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.341,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33550,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-277.stdout",
+    "stderr": "builder-du-277.stderr"
+  },
+  {
+    "label": "builder-observe-278",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.025,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33554,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-278.stdout",
+    "stderr": "builder-observe-278.stderr"
+  },
+  {
+    "label": "builder-du-279",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.118,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33555,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-279.stdout",
+    "stderr": "builder-du-279.stderr"
+  },
+  {
+    "label": "builder-observe-280",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.044,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33556,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-280.stdout",
+    "stderr": "builder-observe-280.stderr"
+  },
+  {
+    "label": "builder-du-281",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.166,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33557,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-281.stdout",
+    "stderr": "builder-du-281.stderr"
+  },
+  {
+    "label": "builder-observe-282",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33558,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-282.stdout",
+    "stderr": "builder-observe-282.stderr"
+  },
+  {
+    "label": "builder-du-283",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.113,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33559,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-283.stdout",
+    "stderr": "builder-du-283.stderr"
+  },
+  {
+    "label": "builder-observe-284",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.072,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33560,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-284.stdout",
+    "stderr": "builder-observe-284.stderr"
+  },
+  {
+    "label": "builder-du-285",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.134,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33561,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-285.stdout",
+    "stderr": "builder-du-285.stderr"
+  },
+  {
+    "label": "builder-observe-286",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33562,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-286.stdout",
+    "stderr": "builder-observe-286.stderr"
+  },
+  {
+    "label": "builder-du-287",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.117,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33563,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-287.stdout",
+    "stderr": "builder-du-287.stderr"
+  },
+  {
+    "label": "builder-observe-288",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33570,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-288.stdout",
+    "stderr": "builder-observe-288.stderr"
+  },
+  {
+    "label": "builder-du-289",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.093,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33572,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-289.stdout",
+    "stderr": "builder-du-289.stderr"
+  },
+  {
+    "label": "builder-observe-290",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33579,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-290.stdout",
+    "stderr": "builder-observe-290.stderr"
+  },
+  {
+    "label": "builder-du-291",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.092,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33580,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-291.stdout",
+    "stderr": "builder-du-291.stderr"
+  },
+  {
+    "label": "builder-observe-292",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33591,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-292.stdout",
+    "stderr": "builder-observe-292.stderr"
+  },
+  {
+    "label": "builder-du-293",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.092,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33592,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-293.stdout",
+    "stderr": "builder-du-293.stderr"
+  },
+  {
+    "label": "builder-observe-294",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.071,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33601,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-294.stdout",
+    "stderr": "builder-observe-294.stderr"
+  },
+  {
+    "label": "builder-du-295",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.128,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33603,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-295.stdout",
+    "stderr": "builder-du-295.stderr"
+  },
+  {
+    "label": "builder-observe-296",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.039,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33620,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-296.stdout",
+    "stderr": "builder-observe-296.stderr"
+  },
+  {
+    "label": "builder-du-297",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.127,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33621,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-297.stdout",
+    "stderr": "builder-du-297.stderr"
+  },
+  {
+    "label": "builder-observe-298",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33639,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-298.stdout",
+    "stderr": "builder-observe-298.stderr"
+  },
+  {
+    "label": "builder-du-299",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.136,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33640,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-299.stdout",
+    "stderr": "builder-du-299.stderr"
+  },
+  {
+    "label": "builder-observe-300",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.04,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33641,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-300.stdout",
+    "stderr": "builder-observe-300.stderr"
+  },
+  {
+    "label": "builder-du-301",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.229,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33642,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-301.stdout",
+    "stderr": "builder-du-301.stderr"
+  },
+  {
+    "label": "builder-observe-302",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.026,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33657,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-302.stdout",
+    "stderr": "builder-observe-302.stderr"
+  },
+  {
+    "label": "builder-du-303",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.201,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33658,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-303.stdout",
+    "stderr": "builder-du-303.stderr"
+  },
+  {
+    "label": "builder-observe-304",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.086,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33662,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-304.stdout",
+    "stderr": "builder-observe-304.stderr"
+  },
+  {
+    "label": "builder-du-305",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.173,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33663,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-305.stdout",
+    "stderr": "builder-du-305.stderr"
+  },
+  {
+    "label": "builder-observe-306",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33665,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-306.stdout",
+    "stderr": "builder-observe-306.stderr"
+  },
+  {
+    "label": "builder-du-307",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.135,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33666,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-307.stdout",
+    "stderr": "builder-du-307.stderr"
+  },
+  {
+    "label": "builder-observe-308",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33682,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-308.stdout",
+    "stderr": "builder-observe-308.stderr"
+  },
+  {
+    "label": "builder-du-309",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.197,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33683,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-309.stdout",
+    "stderr": "builder-du-309.stderr"
+  },
+  {
+    "label": "builder-observe-310",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33710,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-310.stdout",
+    "stderr": "builder-observe-310.stderr"
+  },
+  {
+    "label": "builder-du-311",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.202,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33712,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-311.stdout",
+    "stderr": "builder-du-311.stderr"
+  },
+  {
+    "label": "builder-observe-312",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33725,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-312.stdout",
+    "stderr": "builder-observe-312.stderr"
+  },
+  {
+    "label": "builder-du-313",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.161,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33726,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-313.stdout",
+    "stderr": "builder-du-313.stderr"
+  },
+  {
+    "label": "builder-observe-314",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.103,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33735,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-314.stdout",
+    "stderr": "builder-observe-314.stderr"
+  },
+  {
+    "label": "builder-du-315",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.207,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33737,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-315.stdout",
+    "stderr": "builder-du-315.stderr"
+  },
+  {
+    "label": "builder-observe-316",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.069,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33746,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-316.stdout",
+    "stderr": "builder-observe-316.stderr"
+  },
+  {
+    "label": "builder-du-317",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.784,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33747,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-317.stdout",
+    "stderr": "builder-du-317.stderr"
+  },
+  {
+    "label": "builder-observe-318",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33754,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-318.stdout",
+    "stderr": "builder-observe-318.stderr"
+  },
+  {
+    "label": "builder-du-319",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.471,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33755,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-319.stdout",
+    "stderr": "builder-du-319.stderr"
+  },
+  {
+    "label": "builder-observe-320",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.021,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33768,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-320.stdout",
+    "stderr": "builder-observe-320.stderr"
+  },
+  {
+    "label": "builder-du-321",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.438,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33770,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-321.stdout",
+    "stderr": "builder-du-321.stderr"
+  },
+  {
+    "label": "builder-observe-322",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33777,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-322.stdout",
+    "stderr": "builder-observe-322.stderr"
+  },
+  {
+    "label": "builder-du-323",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.461,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33778,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-323.stdout",
+    "stderr": "builder-du-323.stderr"
+  },
+  {
+    "label": "builder-observe-324",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.063,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33789,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-324.stdout",
+    "stderr": "builder-observe-324.stderr"
+  },
+  {
+    "label": "builder-du-325",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.451,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33792,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-325.stdout",
+    "stderr": "builder-du-325.stderr"
+  },
+  {
+    "label": "builder-observe-326",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33793,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-326.stdout",
+    "stderr": "builder-observe-326.stderr"
+  },
+  {
+    "label": "builder-du-327",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.177,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33794,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-327.stdout",
+    "stderr": "builder-du-327.stderr"
+  },
+  {
+    "label": "builder-observe-328",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.03,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33796,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-328.stdout",
+    "stderr": "builder-observe-328.stderr"
+  },
+  {
+    "label": "builder-du-329",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.412,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33798,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-329.stdout",
+    "stderr": "builder-du-329.stderr"
+  },
+  {
+    "label": "builder-observe-330",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.022,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33800,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-330.stdout",
+    "stderr": "builder-observe-330.stderr"
+  },
+  {
+    "label": "builder-du-331",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.21,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33801,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-331.stdout",
+    "stderr": "builder-du-331.stderr"
+  },
+  {
+    "label": "builder-observe-332",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.019,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33817,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-332.stdout",
+    "stderr": "builder-observe-332.stderr"
+  },
+  {
+    "label": "builder-du-333",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.335,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33818,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-333.stdout",
+    "stderr": "builder-du-333.stderr"
+  },
+  {
+    "label": "builder-observe-334",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.05,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33819,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-334.stdout",
+    "stderr": "builder-observe-334.stderr"
+  },
+  {
+    "label": "builder-du-335",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.227,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33820,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-335.stdout",
+    "stderr": "builder-du-335.stderr"
+  },
+  {
+    "label": "builder-observe-336",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.026,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33821,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-336.stdout",
+    "stderr": "builder-observe-336.stderr"
+  },
+  {
+    "label": "builder-du-337",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.205,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33822,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-337.stdout",
+    "stderr": "builder-du-337.stderr"
+  },
+  {
+    "label": "builder-observe-338",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.086,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33824,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-338.stdout",
+    "stderr": "builder-observe-338.stderr"
+  },
+  {
+    "label": "builder-du-339",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.301,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33825,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-339.stdout",
+    "stderr": "builder-du-339.stderr"
+  },
+  {
+    "label": "builder-observe-340",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.033,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33827,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-340.stdout",
+    "stderr": "builder-observe-340.stderr"
+  },
+  {
+    "label": "builder-du-341",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.2,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33828,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-341.stdout",
+    "stderr": "builder-du-341.stderr"
+  },
+  {
+    "label": "builder-observe-342",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.029,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33830,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-342.stdout",
+    "stderr": "builder-observe-342.stderr"
+  },
+  {
+    "label": "builder-du-343",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.282,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33831,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-343.stdout",
+    "stderr": "builder-du-343.stderr"
+  },
+  {
+    "label": "builder-observe-344",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.025,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33832,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-344.stdout",
+    "stderr": "builder-observe-344.stderr"
+  },
+  {
+    "label": "builder-du-345",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.279,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33833,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-345.stdout",
+    "stderr": "builder-du-345.stderr"
+  },
+  {
+    "label": "builder-observe-346",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.042,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33839,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-346.stdout",
+    "stderr": "builder-observe-346.stderr"
+  },
+  {
+    "label": "builder-du-347",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.306,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33840,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-347.stdout",
+    "stderr": "builder-du-347.stderr"
+  },
+  {
+    "label": "builder-observe-348",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.028,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33853,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-348.stdout",
+    "stderr": "builder-observe-348.stderr"
+  },
+  {
+    "label": "builder-du-349",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.225,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33854,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-349.stdout",
+    "stderr": "builder-du-349.stderr"
+  },
+  {
+    "label": "builder-observe-350",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.192,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33861,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-350.stdout",
+    "stderr": "builder-observe-350.stderr"
+  },
+  {
+    "label": "builder-du-351",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.469,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33862,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-351.stdout",
+    "stderr": "builder-du-351.stderr"
+  },
+  {
+    "label": "builder-observe-352",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.036,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33863,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-352.stdout",
+    "stderr": "builder-observe-352.stderr"
+  },
+  {
+    "label": "builder-du-353",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.283,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33864,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-353.stdout",
+    "stderr": "builder-du-353.stderr"
+  },
+  {
+    "label": "builder-observe-354",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.07,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33869,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-354.stdout",
+    "stderr": "builder-observe-354.stderr"
+  },
+  {
+    "label": "builder-du-355",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.502,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33870,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-355.stdout",
+    "stderr": "builder-du-355.stderr"
+  },
+  {
+    "label": "builder-observe-356",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.125,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33873,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-356.stdout",
+    "stderr": "builder-observe-356.stderr"
+  },
+  {
+    "label": "builder-du-357",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.326,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33874,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-357.stdout",
+    "stderr": "builder-du-357.stderr"
+  },
+  {
+    "label": "builder-observe-358",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33879,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-358.stdout",
+    "stderr": "builder-observe-358.stderr"
+  },
+  {
+    "label": "builder-du-359",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.2,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33880,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-359.stdout",
+    "stderr": "builder-du-359.stderr"
+  },
+  {
+    "label": "builder-observe-360",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33884,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-360.stdout",
+    "stderr": "builder-observe-360.stderr"
+  },
+  {
+    "label": "builder-du-361",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.225,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33885,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-361.stdout",
+    "stderr": "builder-du-361.stderr"
+  },
+  {
+    "label": "builder-observe-362",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33888,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-observe-362.stdout",
+    "stderr": "builder-observe-362.stderr"
+  },
+  {
+    "label": "builder-du-363",
+    "argv": [
+      "docker",
+      "exec",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60",
+      "du",
+      "-sk",
+      "/var/lib/buildkit"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.166,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33889,
+    "pending_pgids": [
+      32700
+    ],
+    "stdout": "builder-du-363.stdout",
+    "stderr": "builder-du-363.stderr"
+  },
+  {
+    "label": "case",
+    "argv": [
+      "docker",
+      "start",
+      "--attach",
+      "fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 198.436,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 32700,
+    "pending_pgids": [],
+    "stdout": "case.stdout",
+    "stderr": "case.stderr"
+  },
+  {
+    "label": "runner-finished",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "bex-pd-7cf7c0d919d6-runner"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.047,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33891,
+    "pending_pgids": [],
+    "stdout": "runner-finished.stdout",
+    "stderr": "runner-finished.stderr"
+  },
+  {
+    "label": "runner-cleanup-before",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "bex-pd-7cf7c0d919d6-runner"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.029,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33892,
+    "pending_pgids": [],
+    "stdout": "runner-cleanup-before.stdout",
+    "stderr": "runner-cleanup-before.stderr"
+  },
+  {
+    "label": "runner-remove",
+    "argv": [
+      "docker",
+      "rm",
+      "--force",
+      "fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.061,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33893,
+    "pending_pgids": [],
+    "stdout": "runner-remove.stdout",
+    "stderr": "runner-remove.stderr"
+  },
+  {
+    "label": "runner-cleanup-after",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "bex-pd-7cf7c0d919d6-runner"
+    ],
+    "exit_code": 1,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33898,
+    "pending_pgids": [],
+    "stdout": "runner-cleanup-after.stdout",
+    "stderr": "runner-cleanup-after.stderr"
+  },
+  {
+    "label": "builder-cleanup-before",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.057,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33903,
+    "pending_pgids": [],
+    "stdout": "builder-cleanup-before.stdout",
+    "stderr": "builder-cleanup-before.stderr"
+  },
+  {
+    "label": "builder-remove",
+    "argv": [
+      "docker",
+      "rm",
+      "--force",
+      "b11c1aa45ef306610e77bb40eeb25bcd10df45f5317352cc2dfc66716ba04989"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.776,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33904,
+    "pending_pgids": [],
+    "stdout": "builder-remove.stdout",
+    "stderr": "builder-remove.stderr"
+  },
+  {
+    "label": "builder-cleanup-after",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60"
+    ],
+    "exit_code": 1,
+    "bound": null,
+    "elapsed_seconds": 0.093,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33905,
+    "pending_pgids": [],
+    "stdout": "builder-cleanup-after.stdout",
+    "stderr": "builder-cleanup-after.stderr"
+  },
+  {
+    "label": "volume-cleanup-before",
+    "argv": [
+      "docker",
+      "volume",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60_state"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33906,
+    "pending_pgids": [],
+    "stdout": "volume-cleanup-before.stdout",
+    "stderr": "volume-cleanup-before.stderr"
+  },
+  {
+    "label": "volume-remove",
+    "argv": [
+      "docker",
+      "volume",
+      "rm",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60_state"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 17.292,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33907,
+    "pending_pgids": [],
+    "stdout": "volume-remove.stdout",
+    "stderr": "volume-remove.stderr"
+  },
+  {
+    "label": "volume-cleanup-after",
+    "argv": [
+      "docker",
+      "volume",
+      "inspect",
+      "buildx_buildkit_bex-pd-7cf7c0d919d60_state"
+    ],
+    "exit_code": 1,
+    "bound": null,
+    "elapsed_seconds": 0.118,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33966,
+    "pending_pgids": [],
+    "stdout": "volume-cleanup-after.stdout",
+    "stderr": "volume-cleanup-after.stderr"
+  },
+  {
+    "label": "container-owned-final",
+    "argv": [
+      "docker",
+      "ps",
+      "-aq",
+      "--filter",
+      "label=co.bex.native-qualification=bex-pd-7cf7c0d919d6"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33969,
+    "pending_pgids": [],
+    "stdout": "container-owned-final.stdout",
+    "stderr": "container-owned-final.stderr"
+  },
+  {
+    "label": "container-owned-absence",
+    "argv": [
+      "docker",
+      "ps",
+      "-aq",
+      "--filter",
+      "label=co.bex.native-qualification=bex-pd-7cf7c0d919d6"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.02,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33970,
+    "pending_pgids": [],
+    "stdout": "container-owned-absence.stdout",
+    "stderr": "container-owned-absence.stderr"
+  },
+  {
+    "label": "image-owned-final",
+    "argv": [
+      "docker",
+      "image",
+      "ls",
+      "-q",
+      "--filter",
+      "label=co.bex.native-qualification=bex-pd-7cf7c0d919d6"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33971,
+    "pending_pgids": [],
+    "stdout": "image-owned-final.stdout",
+    "stderr": "image-owned-final.stderr"
+  },
+  {
+    "label": "image-owned-absence",
+    "argv": [
+      "docker",
+      "image",
+      "ls",
+      "-q",
+      "--filter",
+      "label=co.bex.native-qualification=bex-pd-7cf7c0d919d6"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.024,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 33972,
+    "pending_pgids": [],
+    "stdout": "image-owned-absence.stdout",
+    "stderr": "image-owned-absence.stderr"
+  }
+]

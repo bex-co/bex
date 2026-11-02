@@ -1,0 +1,73 @@
+{
+  "schema": "bex.actual-amd64-node14-independent-review/v1",
+  "at": "2026-11-01T23:59:32.661049+00:00",
+  "outcome": "CLEAN_ONE_EMULATED_AMD64_NODE14_DONOR_DIAGNOSTIC",
+  "source": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+  "source_paths": 300,
+  "source_manifest_sha256": "17929596653a4bf08b9f2be4765c3b738241a97c84a2d87a73e7ad81edfa1d1a",
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "actual_target_image_platform": "linux/amd64",
+  "control_plane": {
+    "test_ELF_sha256": "f87d0fc88e4a5ee8b2e7abf63fdcc017832d4eceaac84d4098a7e0b7f0e2055d",
+    "test_ELF_machine": 183,
+    "runner": "linux/arm64",
+    "CLI_and_BuildKit_control": "ARM64"
+  },
+  "target_architecture_evidence": {
+    "actual_addon_ELF_machine": 62,
+    "ELF_machine_name": "EM_X86_64",
+    "successfully_loaded_in_actual_build_and_runtime": true,
+    "raw_process_arch_field_retained": false,
+    "inference": "Actual linux/amd64 image receipt/sourcecustody plus successful original x86_64 native addon load establish AMD64 target execution under existing emulation; no separate process.arch string fabricated."
+  },
+  "existing_pure_oracles_reapplied": {
+    "build_and_offline_runtime": true,
+    "selected_Node": "14.21.3",
+    "headers": "14.21.3",
+    "ABI": 83,
+    "NAPI": "8",
+    "core_crypto_compression_addon": true,
+    "actual_versions": {
+      "npm": "6.14.18",
+      "yarn": "1.22.22",
+      "pnpm": "10.34.7"
+    },
+    "all_managers_pre_post_probe_and_pnpm_exec": true,
+    "canonical_exit1_engine_negatives": 3
+  },
+  "canonical_executed_identical": true,
+  "no_overlay": true,
+  "all63_recorded_command_groups_reaped_absent": true,
+  "exact_owned_resources_and_config_absent": true,
+  "AUDIT": {
+    "bytes": 4908,
+    "sha256": "32c346750a54b7ddf82fdfdca421928fa5ef99556179ba75d0d2a65809a48465"
+  },
+  "EXPORT_RESULT": {
+    "bytes": 940,
+    "sha256": "8fa197cefea7246211ab9cc61c0101ee749c742868cf8612af9412da9f941db5"
+  },
+  "derivation": {
+    "bytes": 1025,
+    "sha256": "b559b1c84601660ce169114bdf3204a1381ec13ce6550d3fe43a2ea5448ef99e"
+  },
+  "reviewed_source_packet": {
+    "path": "/private/tmp/bex-w8-node14-amd64-source-20261101-1z4d3x3k",
+    "MANIFEST": {
+      "bytes": 752,
+      "sha256": "129871dff9918f595650d8bfb0ae4d97cdc84fe9e8e226ef7d81a2e8b4e64d77"
+    },
+    "SOURCE_REVIEW": {
+      "bytes": 837,
+      "sha256": "fcf28fa04a0f8e615ca2f0a40196b51685168d4c3a8dadb101d42e5cc399b562"
+    }
+  },
+  "limits": [
+    "One local emulated AMD64 Node14 case. No nativeAMD64 performance/botharch/fullfamily/currentCI/baseline/adoption/hosted/Kubernetes claim.",
+    "Earlier ARM64 Node14 source688 remains historical; this currentea937 AMD64 case does not relabel it or prove current-source botharch authority.",
+    "No target/resource/network/Docker/Go/Node/cluster/repository execution or mutation repeated.",
+    "Portable capsule includes all original small proof/log/program/command/cleanup bytes except719B own Buildx configstate, retained private with hash; TestELF/tools/source300 tree bodies excluded with exact source manifests/hashes.",
+    "Two source-emitted inputs (.node-version and expected-node terminalLF) match retained source identities and are explicitly marked derived, not copied runtime artifacts."
+  ]
+}

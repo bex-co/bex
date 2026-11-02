@@ -1,0 +1,41 @@
+{
+  "scope": "Independent local retained-byte audit only. No Docker/Go/network/Kubernetes/program/container run. Seven maintained pure validator definition modules were AST-checked (only FunctionDef top level), compiled and applied only to retained actual build stdout; no app/hosted driver imported.",
+  "audit_source": {
+    "bytes": 19776,
+    "sha256": "67ced96fedd6cca15bc2fcff43c451ef80bf1a4b7b1e1ea2c185337e20d13b20",
+    "mode": "0644"
+  },
+  "exit_code_observed": 0,
+  "stdout": {
+    "bytes": 372,
+    "sha256": "dd2e37ceaf01f2fa2eeeea8abf7add5c1f5c6bbf66da8281fa704454d900c881",
+    "mode": "0644"
+  },
+  "stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "mode": "0644"
+  },
+  "history": "Own audit-only fixed-count/tool-path/intermediate-group assumptions failed before completion; exact source/logs preserved in private history and listed in full root manifest. All original actual bytes remain unchanged.",
+  "originals_reverified": {
+    "final_manifest": {
+      "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/FINAL-MANIFEST.json",
+      "bytes": 138245,
+      "sha256": "d7a63acf26db1b756c195dbc2e7b0256d9f2fec53d0a039712c6d2d9871e49e7",
+      "mode": "0644"
+    },
+    "RECEIPT": {
+      "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/RECEIPT.json",
+      "bytes": 5842,
+      "sha256": "839743f9d267d00db74e95d2cc13b90638317ff1d4fd354bdb4784f4b1827469",
+      "mode": "0644"
+    },
+    "failed_wrapper_RESULT": {
+      "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/RESULT.json",
+      "bytes": 720,
+      "sha256": "6198c26313d36050a14d5dad2b8b595b7a5cf81d02a7d64a8e0b0918b3bd0fe1",
+      "mode": "0644"
+    }
+  },
+  "portable_limit": 4194304
+}

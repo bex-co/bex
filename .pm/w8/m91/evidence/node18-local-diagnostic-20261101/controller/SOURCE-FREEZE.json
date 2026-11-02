@@ -1,0 +1,35 @@
+{
+  "status": "PREPARED_PURE_VERIFY_PASS",
+  "source300": "ea937/SOURCE17929596 exact",
+  "ELF": "f87d0fc8...",
+  "identity_mapping": {
+    "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783": "ghcr.io/bex-co/bex-cnb-run@sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1"
+  },
+  "selection": {
+    "profile": "node-donors",
+    "case": "node-18",
+    "flag": "BEX_NATIVE_TEST_NODE_DONORS",
+    "selector": "^TestCommonNodeGeneratedImages$/^node\\-18$",
+    "go_timeout": "90m",
+    "job_minutes": "120",
+    "scope": "single-case pilot measurement only; not full-family acceptance or a capacity guarantee"
+  },
+  "all_lifecycle_and_bounds_unchanged": true,
+  "inverse_only_literal_identity_changes_byte_exact": true,
+  "resources_executed": false,
+  "sequential_condition": "18 first;20 ONLY after18 PASS and exactresource/group cleanup",
+  "primary": {
+    "run_pilot.py": {
+      "sha256": "c97c35c9fce020a5067e4c22824bd2ade42e88390b5d7e28dcd394b7bcd66a3e",
+      "bytes": 22064
+    },
+    "pilot.sh": {
+      "sha256": "e3fe9187d2085bfedfd6cb35981ab46a702a1ccbf6d28b04a484a9a5d5bcfbe0",
+      "bytes": 2010
+    },
+    "PLAN.json": {
+      "sha256": "62ecff88865426f56ce742ed849156c1c6beb3091609587677076599953d210d",
+      "bytes": 4417
+    }
+  }
+}

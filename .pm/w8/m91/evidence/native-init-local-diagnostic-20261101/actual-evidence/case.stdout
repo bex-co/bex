@@ -1,0 +1,12 @@
+=== RUN   TestCommonNativeInitQualification
+    nativequalification_init_test.go:207: retained native-init evidence: /private/tmp/bex-w8-native-init-local-pilot-e9fbe0e5635547089592094b/evidence/generated/native-common-init-4092198803
+=== RUN   TestCommonNativeInitQualification/npm
+=== RUN   TestCommonNativeInitQualification/yarn
+=== RUN   TestCommonNativeInitQualification/pnpm
+=== RUN   TestCommonNativeInitQualification/direct
+--- PASS: TestCommonNativeInitQualification (165.49s)
+    --- PASS: TestCommonNativeInitQualification/npm (11.57s)
+    --- PASS: TestCommonNativeInitQualification/yarn (10.56s)
+    --- PASS: TestCommonNativeInitQualification/pnpm (10.66s)
+    --- PASS: TestCommonNativeInitQualification/direct (10.51s)
+PASS

@@ -1,0 +1,26 @@
+{
+  "bin/go": {
+    "sha256": "d487fddb6939f3e78f7293fcbdeae610ba8ceae966d3faa4b2094a5688559230",
+    "bytes": 15795402,
+    "machine": "AArch64",
+    "PT_INTERP": []
+  },
+  "pkg/tool/linux_arm64/compile": {
+    "sha256": "35ce75b8723ca02313089c8d307a11d2a3b07bfb0a64561bdabc67d6ed516246",
+    "bytes": 26606185,
+    "machine": "AArch64",
+    "PT_INTERP": []
+  },
+  "pkg/tool/linux_arm64/link": {
+    "sha256": "a9c068b577e6cd8074fb24dbdffe8762dcbad11e41b7ba1f2f1af6aa1fd37352",
+    "bytes": 6852749,
+    "machine": "AArch64",
+    "PT_INTERP": []
+  },
+  "pkg/tool/linux_arm64/asm": {
+    "sha256": "b859fbc087b7cca55e1d0c7f5a729044751a2d10fff638cbdc48c37f94988d23",
+    "bytes": 5302759,
+    "machine": "AArch64",
+    "PT_INTERP": []
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "outcome": "CLEAN_BUILD_ONLY_WITH_ORIGINAL_WRAPPER_FAILURE_AND_SEPARATE_CLEANUP_RECONCILIATION",
+  "root": "/private/tmp/bex-w8-predeploy-build-independent-20261101-O5kT5ytZ",
+  "capsule_files": 962,
+  "capsule_bytes": 3455698,
+  "review": {
+    "bytes": 7272,
+    "sha256": "87e2bb82439561c3ff02ce5a8edf2f57b738aab6c2728dd361843f2e59a3444d",
+    "mode": "0644"
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "command": [
+    "pnpm",
+    "install",
+    "--offline",
+    "--lockfile=false",
+    "--engine-strict"
+  ],
+  "cwd": "qa-output/pnpm-wrong-engine",
+  "returncode": 1,
+  "stdout": "\u2009ERR_PNPM_UNSUPPORTED_ENGINE\u2009 Unsupported environment (bad pnpm and/or Node.js version)\n\nYour Node version is incompatible with \"/opt/render/project/src/qa-output/pnpm-wrong-engine\".\n\nExpected version: >=17\nGot: v16.20.2\n\nThis is happening because the package's manifest has an engines.node field specified.\nTo fix this issue, install the required Node version.\n",
+  "stderr": "",
+  "timed_out": false
+}

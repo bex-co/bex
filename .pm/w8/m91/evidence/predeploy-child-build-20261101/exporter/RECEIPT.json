@@ -1,0 +1,94 @@
+{
+  "at": "2026-11-01T23:16:26.345070+00:00",
+  "state": "ACTUAL_OFFLINE_EXPORTERS_PASS_ONLY",
+  "source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "snapshot": {
+    "bytes": 243622,
+    "sha256": "eafa20ded8a18d1719aaec9dbb48a642decaf68f29364f8461e3062e59d68665",
+    "mode": "0644"
+  },
+  "source_files": 848,
+  "source_bytes": 61126727,
+  "data_packet_manifest": {
+    "bytes": 3127,
+    "sha256": "cb621059d0362968dd201a5f7d7f09cd53a3ead9c70f7fba0d510975a3b15a53",
+    "mode": "0644"
+  },
+  "compile_result": {
+    "bytes": 9835,
+    "sha256": "9a6cc0b4a3441927dc9d39198d76e3c68c4f3a2a624c84b9d0a16e3ec90b7ff7",
+    "mode": "0600"
+  },
+  "runtime_result": {
+    "bytes": 1150,
+    "sha256": "36c29647c6775f5cb182c1ba1a83d59c50e9f148d0a97ef7aa079ffa3c284e07",
+    "mode": "0644"
+  },
+  "actual_tests": [
+    "TestScratchCommonPredeployNodeExport",
+    "TestScratchCommonPredeployExport"
+  ],
+  "both_actual_exporter_exit_codes": [
+    0,
+    0
+  ],
+  "compiler_errors": [],
+  "actual_failures": [],
+  "B_output": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6",
+  "A_output": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/controller-export",
+  "outputs_checks": {
+    "bytes": 17390,
+    "sha256": "1b7b1572f7b5c7ba8945c9cd92a402e3bd9efe94e3da3f5f2e4996b9f8f2aa20",
+    "mode": "0644"
+  },
+  "cleanup": {
+    "bytes": 689,
+    "sha256": "b71150888a3b7d975111cc3bdfd0c591e43758833624b01df5c8aca4883e22ac",
+    "mode": "0644"
+  },
+  "next_build": {
+    "bytes": 6267,
+    "sha256": "fb34368fdfd010a03b3eef4c8c936fc3f89b572f7fffaff339a2a44d5b492166",
+    "mode": "0644"
+  },
+  "output_bytes": 295357,
+  "binaries": [
+    {
+      "case": "B",
+      "path": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/bin/B-linux-arm64.test",
+      "bytes": 41797358,
+      "sha256": "9321e062e2beabf1116da8f02e020e8378e35bd877c4d9e0bf7d94cf72632c61",
+      "ELF_magic": "7f454c46",
+      "ELF_class": 2,
+      "ELF_machine": 183,
+      "executed": true
+    },
+    {
+      "case": "A",
+      "path": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/bin/A-linux-arm64.test",
+      "bytes": 94694600,
+      "sha256": "809af5e43ca8d05bdf80357463362d242a91c5b9ad06dc940d1112869bc71063",
+      "ELF_magic": "7f454c46",
+      "ELF_class": 2,
+      "ELF_machine": 183,
+      "executed": true
+    }
+  ],
+  "preserved": {
+    "fixtures42": true,
+    "original_node_programs7": true,
+    "original13_28": true,
+    "egress_attribution": true,
+    "canonical_recipe_equal_executed": true,
+    "source_unchanged": true
+  },
+  "limits": [
+    "Source-only exporters, no original utility/program/observer execution; no runtime/ABI/phase/adoption proof.",
+    "B uses genuine anonymous pinned registry metadata in approved cachedAlpine; no image layers/pull/build/import. Raw remote config metadata was not separately captured by canonical resolver; choices/ENV are its actual export.",
+    "A networknone uses fakeclient and explicitly fake child digest/anchorUID/revision cache; no OCIlabel/realUID/Ready proof.",
+    "No dev8/Kubernetes/Job action or status query. Actual dev8 architecture remains unobserved.",
+    "Old1feba twoarch utility baseline is historical after current source changes pending amended CI.",
+    "No repository/PM/Git changes, no foreign cache/image deletion."
+  ],
+  "manifest_policy": "MANIFEST.json hashes regular evidence/source/binaries/outputs in place; excludes only own warm gocache plus empty compiler/temp directories; no bulk copies."
+}

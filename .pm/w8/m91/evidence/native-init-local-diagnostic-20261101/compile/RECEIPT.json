@@ -1,0 +1,25 @@
+{
+  "schema": "bex.nativeinit-yarn-current-source-compile/v1",
+  "source_commit": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+  "tree": "2872564b81479b5b2fba80896475e7a0989d5918",
+  "source_manifest_sha256": "17929596653a4bf08b9f2be4765c3b738241a97c84a2d87a73e7ad81edfa1d1a",
+  "source_count": 300,
+  "only_delta_from688": "nativequalification_init_test.go exact86a36952... wrapperstatus predicate/comment+table correction",
+  "actual_result_sha256": "6db423d3e376fc7d4691b6fb2d538ce23b34bbfd121814994e490da7f2bf23d4",
+  "compile_PASS": true,
+  "compile_seconds": 55.404,
+  "ELF": {
+    "path": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/bin/build-linux-arm64.test",
+    "sha256": "f87d0fc88e4a5ee8b2e7abf63fdcc017832d4eceaac84d4098a7e0b7f0e2055d",
+    "bytes": 41727286,
+    "class": "ELF64LE",
+    "machine": "AArch64",
+    "PT_INTERP": false,
+    "executed": false
+  },
+  "execution_scope": "go test -c only; no testbinary/Docker/nativeinit/family execution",
+  "bounds": "Proven offline/netdeny/repo+sharedmodule-write-denied;4GiBowncap/1GiB128floor/600s",
+  "own_cache_removed": true,
+  "sdk_reacquired": false,
+  "plan_root": "/private/tmp/bex-w8-native-init-yarn-bound-plan-20261101-yy6kanun"
+}

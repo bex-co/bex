@@ -1,0 +1,88 @@
+{
+  "executed": false,
+  "scope": "One proposed canonical Node-compute CHILD build; Root actual capacity/platform/builder approval still needed, no build in this case",
+  "source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "argv_template": [
+    "docker",
+    "buildx",
+    "build",
+    "--builder",
+    "bex-pd-7cf7c0d919d6",
+    "--platform",
+    "linux/arm64",
+    "--network",
+    "none",
+    "--progress",
+    "plain",
+    "--label",
+    "co.bex.native-qualification=bex-pd-7cf7c0d919d6",
+    "--secret",
+    "id=render-env,src=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/render-env",
+    "--metadata-file",
+    "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/future-build/build-metadata.json",
+    "--file",
+    "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/Dockerfile.executed",
+    "--output",
+    "type=oci,dest=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/future-build/child.oci",
+    "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/context"
+  ],
+  "shell_template": "docker buildx build --builder bex-pd-7cf7c0d919d6 --platform linux/arm64 --network none --progress plain --label co.bex.native-qualification=bex-pd-7cf7c0d919d6 --secret id=render-env,src=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/render-env --metadata-file /private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/future-build/build-metadata.json --file /private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/Dockerfile.executed --output type=oci,dest=/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/future-build/child.oci /private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/context",
+  "recipe": {
+    "bytes": 2963,
+    "sha256": "5e171db5e194d52efa00ff495ca29af50d8792a0fdb8e33d13265d47a5ea003a",
+    "mode": "0600"
+  },
+  "render_env": {
+    "bytes": 18,
+    "sha256": "af4c3dcd0340b894f659849b45df304a6713603a4f29d39319075c3c1364a196",
+    "mode": "0600"
+  },
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "actual_generated_child_digest": null,
+  "actual_dev8_arch": null,
+  "requirements": [
+    "Fresh own builder/platform/storage fit and closure, no foreign prune or global builder selection.",
+    "Canonical platform prerequisite pulls/ADD may use their recorded source network boundaries; authored RUN networknone via --network none.",
+    "Measure actual CHILD platform manifest/config/ENV/source and actual dev8 node architecture; never substitute common foundation index for child.",
+    "A must be exported again with actual owned anchor UID and child identity after creation; current A is source-only placeholder.",
+    "Old1feba fullutility baseline historical after two maintained Node oracle changes; amended CI/current fullbaseline must qualify before actual predeploy phase."
+  ],
+  "future_owner": "bex-pd-7cf7c0d919d6",
+  "proposed_platform": "linux/arm64",
+  "platform_precondition": "This is the host-native proposed single platform, NOT an observed dev8 architecture. Root fresh dev8 preflight must confirm arm64 before this exact argv; otherwise replace platform and rebind inputs before execution.",
+  "builder_strategy": {
+    "reuse": "Existing nativeUtilityDocker.buildArgs explicit builder==owner/platform/label and existing owned bootstrap/cleanup guard; no new driver/framework/global buildx use/prune.",
+    "builder": "bex-pd-7cf7c0d919d6",
+    "required_builder_pin": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+    "pin_source": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/lego/operator/internal/build/toolchain-freshness.json",
+    "pin_source_sha256": "be63de042bcff1899db87f36d4c3a093bb3b31282079e478603b10e7359d94fc",
+    "created_or_pulled_now": false,
+    "startup_bounds": "Reuse existing pinned3x180s pull/cleanup and bounded setup observation; no mutable tag or new mirror.",
+    "finally": "Stop own build client group, retain full raw output/metadata, delete only exact owned builder/containers/new image refs after identity checks. No shared daemon/cache pruning."
+  },
+  "measured_inputs": {
+    "context_files": 46,
+    "context_bytes": 200162,
+    "arm64_common_manifest": "/private/tmp/bex-w8-common499-review-2ff8ba6f1f039942/evidence/native-common-bookworm-1feba939b4697894e800ed0abb4f25a0bf415641/arm64-manifest.json",
+    "arm64_common_manifest_sha256": "ee17ccbc1cfe853209f8fd694091bf58ed54adf38b32339f6515797af440260d",
+    "common_compressed_layers": 20,
+    "common_compressed_layer_bytes": 758542661,
+    "largest_common_compressed_layer": 356962528,
+    "common_config_bytes": 14355,
+    "physical_free_observed_now": 43047161856,
+    "unmeasured": "Additional Node24, ffmpeg, BuildKit, frontend distribution sizes, extracted/solver writable/cache and generated OCI size are not measured by these exporter runs; these estimates are not actual pull/build fit."
+  },
+  "proposed_operating_bounds_not_acceptance": {
+    "single_build_only": true,
+    "maximum_build_seconds": 1800,
+    "maximum_additional_owned_build_bytes": 12884901888,
+    "maximum_oci_bytes": 4294967296,
+    "minimum_physical_remaining_bytes": 3221225472,
+    "entry_additional_margin_bytes": 33554432,
+    "combined_raw_output_cap": 16777216,
+    "observer_seconds": 1,
+    "memory_buildkit_maximum_bytes": 4294967296,
+    "cpu_maximum": 2,
+    "rationale": "758.5MB compressed current common plus46file/196KB context are measured;12GiB total own build/OCI/cache cap is a conservative proposed limit for the additional donor/ffmpeg/extracted/solver state, not a measured upper bound. Refuse/stop on cap; do not silently expand or prune foreign data. Fresh physical fit must exceed floor+whole cap+margin."
+  }
+}

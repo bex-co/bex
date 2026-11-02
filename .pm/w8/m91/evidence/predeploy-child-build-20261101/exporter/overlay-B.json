@@ -1,0 +1,5 @@
+{
+  "Replace": {
+    "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/lego/operator/internal/build/nativeutility_integration_test.go": "/private/tmp/bex-w8-common0941-predeploy-identity-refresh-20261101-dory5qhd/B/nativeutility_integration_test.overlay.go"
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "previous_source": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "changed": [
+    "lego/operator/internal/build/testdata/native-node-qualification/check.py",
+    "lego/operator/internal/build/testdata/native-node-qualification/check_test.py"
+  ],
+  "pathset_unchanged": true,
+  "file_count": 300,
+  "source_bytes": 2372382,
+  "source_authority": "Local diagnostic current source only. Genuine1feba CI baseline remains historical; amended fullutility CI baseline pending."
+}

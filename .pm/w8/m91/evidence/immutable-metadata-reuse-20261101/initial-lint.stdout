@@ -1,0 +1,9 @@
+internal/build/dockerhub_test.go:104:4: mapsloop: Replace m[k]=v loop with maps.Copy (modernize)
+			routes[path] = data
+			^
+internal/build/dockerhub_test.go:179:4: QF1003: could use tagged switch on failure (staticcheck)
+			if failure == "404" {
+			^
+2 issues:
+* modernize: 1
+* staticcheck: 1

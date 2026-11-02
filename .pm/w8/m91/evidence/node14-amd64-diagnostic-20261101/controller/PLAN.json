@@ -1,0 +1,64 @@
+{
+  "schema": "bex.local-common-node14-pilot/v1",
+  "status": "ONE_CURRENT_SOURCE_AMD64_EMULATED_NODE14_LOCAL_DIAGNOSTIC",
+  "owner": "bex-nq-42c2be770300dad10229fc0e",
+  "run_root": "/private/tmp/bex-w8-node14-amd64-local-42c2be770300dad10229fc0e",
+  "source_root": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/source",
+  "source_manifest": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/SOURCE.json",
+  "source_manifest_sha256": "17929596653a4bf08b9f2be4765c3b738241a97c84a2d87a73e7ad81edfa1d1a",
+  "source_sha": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+  "test_binary": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/bin/build-linux-arm64.test",
+  "test_binary_sha256": "f87d0fc88e4a5ee8b2e7abf63fdcc017832d4eceaac84d4098a7e0b7f0e2055d",
+  "tools_root": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools",
+  "tools_sha256": {
+    "docker": "8d1f0003ab751833dc596e6b96dbc321b6af95d67feefef64be14e7369f04b08",
+    "docker-buildx": "45abc802d2ed109a68314371b2dbdcfea21b33e5e8144212709f94294e0d5c32"
+  },
+  "runner_image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+  "common_image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "official_node14": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+  "reviewed_node14_donor": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "buildkit_image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+  "profile": "node-donors",
+  "case": "node-14",
+  "platform": "linux/amd64",
+  "endpoint": "unix:///Users/tianpan/.orbstack/run/docker.sock",
+  "VM_socket_source": "/var/run/docker.sock",
+  "inside_socket_destination": "/Users/tianpan/.orbstack/run/docker.sock",
+  "bounds": {
+    "whole_seconds": 7200,
+    "pull_seconds": 195,
+    "bootstrap_seconds": 300,
+    "go_timeout": "90m",
+    "runner_memory_bytes": 536870912,
+    "runner_cpus": 2,
+    "builder_memory_bytes": 2147483648,
+    "builder_cpus": 2,
+    "host_files_bytes": 536870912,
+    "remaining_host_floor_bytes": 8589934592,
+    "builder_state_polled_bytes": 17179869184,
+    "observe_interval_seconds": 15
+  },
+  "cache_scope": "Fresh exactowner builder/node/statevolume require beforeabsence; shareddaemon input-image cache observed, never purged. No allcache-cold claim. Onecase only; no automatic widening.",
+  "resource_scope": "Operating guards and limits, not source-only minimum-footprint proof/reservation or ABI acceptance gate. A resource hit leaves qualificationUNPROVED. Runtime-generated image/container commands remain canonical existing harness; no shim/limit edits.",
+  "upstream_prerequisite_inputs": {
+    "strict0941_supplier_review": "Root actual completed2ff8 current0941 review; already approved separately, not rerun/reimplemented by this pilot",
+    "Linux_daemon_metadata": "/private/tmp/bex-w8-linux-family-daemon-preflight-20261101-nqo5yogn/RECEIPT.json",
+    "LinuxGo_metadata": "/private/tmp/bex-w8-linux-resolver-probe-actual-20261101-2wzu2tmh/RECEIPT.json",
+    "historical_both_arch_1feba_CI": "/private/tmp/bex-w8-common-1feba-ci-intake-20261101-_97quqc2/RECEIPT.json",
+    "current_source_fullutility_CI": {
+      "run_id": 41363104200,
+      "source": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+      "status": "PENDING_NO_SUCCESS_ASSUMED"
+    }
+  },
+  "no_claims": [
+    "No productionpin/map/adoption/hosted/Kubernetes/staticpublication/native-init/gyp companion/allfamilies/botharch pass",
+    "Only existing Node14 donor generated-image case targetingAMD64 through genuine ARM64 controller/emulation; original13/28 and9positiveNodeprograms unchanged"
+  ],
+  "at": "2026-11-01T23:49:27.461858+00:00",
+  "host_buildx_plugin_dir": "/Applications/OrbStack.app/Contents/MacOS/xbin",
+  "host_buildx_plugin_sha256": "4a728ee98f89005a90198a9be791e8fdaebbcb5e6af9721251efe0113df37759",
+  "source_rebind_note": "Currentea937 exact300/f87 ELF; image0941 producer1feba; historical688fullutilities distinct. Currentea937 fullCI41363104200 pending. No source/program/oracle waiver or runtime downgrade.",
+  "qualification_scope": "Actual AMD64 generated image/build/runtime on ARM64 OrbStack via existing emulation if available. Real ARM64 test ELF/runner/tools/BuildKit control plane remains native; no nativeAMD64 performance/botharchfullfamily/adoption/hosted claim."
+}

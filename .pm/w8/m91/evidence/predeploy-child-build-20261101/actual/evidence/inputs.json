@@ -1,0 +1,10 @@
+{
+  "owner": "bex-pd-7cf7c0d919d6",
+  "docker_config": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/bex-pd-7cf7c0d919d6-docker-config",
+  "scope": "ONE actual local diagnostic Node-compute OCI build; no image import/load, runtime container, cluster Job, CI, qualification or adoption",
+  "common_image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "generator_source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "platform": "linux/arm64",
+  "source_manifest_sha256": "eafa20ded8a18d1719aaec9dbb48a642decaf68f29364f8461e3062e59d68665",
+  "cache_scope": "Fresh exactown builder/node/state; shared daemon immutable input cache observed and preserved. No coldcache or foreignprune claim."
+}

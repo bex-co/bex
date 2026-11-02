@@ -1,0 +1,754 @@
+{
+  "build-artifacts/public/binary.gz": {
+    "bytes": 420,
+    "sha256": "8fd723d303b04be6eb4751498852ad84cda1b14754efec466c3bf238f4ecc21c",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/public/binary.gz",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/public/deflated.zip": {
+    "bytes": 920,
+    "sha256": "042e91b89453580dc03ab38aa1d4b796ff0ee0444a54bbd336aa17ac86e6a635",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/public/deflated.zip",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/public/empty.gz": {
+    "bytes": 20,
+    "sha256": "59869db34853933b239f1e2219cf7d431da006aa919635478511fabbfc8849d2",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/public/empty.gz",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/public/stored.zip": {
+    "bytes": 19058,
+    "sha256": "41ba21e341e0608a849cfdaa97d640796c5b3bb6cae98ca08efb7977e48bd733",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/public/stored.zip",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/public/unicode.gz": {
+    "bytes": 42,
+    "sha256": "cce971373d80f5bc1043a33ab541633921d0be41bfe69355b4c2a3e815aacae2",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/public/unicode.gz",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/build-101.log": {
+    "bytes": 1877,
+    "sha256": "e917f5c3b4ac87d6267daa504cef8ab14f0e080276689f987eb22762f6f644c6",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/build-101.log",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/build-103.log": {
+    "bytes": 3877,
+    "sha256": "77fcb80f8aa7f05b671236c97abcc3855fb9c0d3be8fa083a82a058a503b827d",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/build-103.log",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/build-107.log": {
+    "bytes": 4000,
+    "sha256": "bd7a018c08ddd068e9c43dadcc4d12b6ae4f1a80b30a89d24bbe841138969d8a",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/build-107.log",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/build-91.log": {
+    "bytes": 2472,
+    "sha256": "dc17a45088ceb39c1746cc603e568fc546f30d2c0ae3609c60bd79375933fdda",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/build-91.log",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/build-93.log": {
+    "bytes": 3088,
+    "sha256": "251c3606612f5b37ca3f880b1a9d9c9c5630e425321c5ecc0b076ddd8c763176",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/build-93.log",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/build-98.log": {
+    "bytes": 2341,
+    "sha256": "98ad6c449dce1e93167475dee6961882d390315568c1283f5d6f1d5a9385b101",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/build-98.log",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/build-99.log": {
+    "bytes": 1150,
+    "sha256": "5cd8ed451d044b0cf77aea84069ce5413db326e64d1853926e730b8393938eea",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/build-99.log",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m101/CHANGELOG": {
+    "bytes": 18,
+    "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m101/CHANGELOG",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m101/LICENSE": {
+    "bytes": 1072,
+    "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m101/LICENSE",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m101/dist/bundle.cjs": {
+    "bytes": 2093,
+    "sha256": "8fd8eb19651af333eae6068b96c15a73bb417a6ae59637ecb7928df878199bfc",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m101/dist/bundle.cjs",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m101/qa-webpack-before.cjs": {
+    "bytes": 970,
+    "sha256": "de1c52f4fa6a468b9a98c6c9e22ededc8711365837f86d3bbe07f34753f3502b",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m101/qa-webpack-before.cjs",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m101/qa-webpack-build.json": {
+    "bytes": 1116,
+    "sha256": "db83a0dc3f217ce0c66239419c919eb2f4261264618932b67c7a79883165dd99",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m101/qa-webpack-build.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m101/qa-webpack-domain.mjs": {
+    "bytes": 177,
+    "sha256": "ba64fcd3998ad8703854a89fa1f0f4a20cdbd56251f9364f317cb559f880090e",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m101/qa-webpack-domain.mjs",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m101/qa-webpack-entry.mjs": {
+    "bytes": 2287,
+    "sha256": "a9eec03f32ec5aa97711bb15b3a878667d6b0573ed714f1a934860af643cf427",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m101/qa-webpack-entry.mjs",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m101/qa-webpack-marker.json": {
+    "bytes": 18,
+    "sha256": "e57e7a7b9861b173cebd5440fa14713574a7ecc67c50bdad516431bd27bb5cfc",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m101/qa-webpack-marker.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m101/qa-webpack-reference.json": {
+    "bytes": 780,
+    "sha256": "8c88fb15ef701ff29a18280f0f12ad3d2a038560a75fccce0acc84597a928b5a",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m101/qa-webpack-reference.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m101/qa-webpack-stats.json": {
+    "bytes": 43735,
+    "sha256": "161f215434df4d38740e1870207bb3561a9a184d59940270a325fd98fc9d300f",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m101/qa-webpack-stats.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/CHANGELOG": {
+    "bytes": 18,
+    "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/CHANGELOG",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/LICENSE": {
+    "bytes": 1072,
+    "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/LICENSE",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/build/lib.linux-aarch64-cpython-311/qa_native_ext.cpython-311-aarch64-linux-gnu.so": {
+    "bytes": 78880,
+    "sha256": "05f0dae8d83a088bc091c140be6965c5acde7af1414952ba46464fa11ed05d3b",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/build/lib.linux-aarch64-cpython-311/qa_native_ext.cpython-311-aarch64-linux-gnu.so",
+    "source_mode": "0o755"
+  },
+  "build-artifacts/qa-output/m103/build/temp.linux-aarch64-cpython-311/qa_native_ext.o": {
+    "bytes": 19000,
+    "sha256": "6c5588fb3ac9cb1f04aaef43fa190db27c44bcad0c77964120ce1bfebac637dc",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/build/temp.linux-aarch64-cpython-311/qa_native_ext.o",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qa_local_data-1.0-py3-none-any.whl": {
+    "bytes": 1069,
+    "sha256": "f6d24b7717e0c82bdabfa4ff7f57428c7ae2520645c197f23bfc58aee76c39dc",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qa_local_data-1.0-py3-none-any.whl",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qa_native_ext.c": {
+    "bytes": 656,
+    "sha256": "705beb2c4f82f3f757253fe9eb65ee5c30dff49defebc8303a878c8ee015d3db",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qa_native_ext.c",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qa_native_ext.cpython-311-aarch64-linux-gnu.so": {
+    "bytes": 78880,
+    "sha256": "05f0dae8d83a088bc091c140be6965c5acde7af1414952ba46464fa11ed05d3b",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qa_native_ext.cpython-311-aarch64-linux-gnu.so",
+    "source_mode": "0o755"
+  },
+  "build-artifacts/qa-output/m103/qa_native_helper.egg-info/PKG-INFO": {
+    "bytes": 80,
+    "sha256": "60ee7d698eb85e6fc2b05316483ceebe51f012c01e111cc9714a47503e3edde2",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qa_native_helper.egg-info/PKG-INFO",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qa_native_helper.egg-info/SOURCES.txt": {
+    "bytes": 192,
+    "sha256": "7a8ad4319fe4c423b3ee0993ff9af39b9e83d3faed1f18b988f168bd9a32cacf",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qa_native_helper.egg-info/SOURCES.txt",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qa_native_helper.egg-info/dependency_links.txt": {
+    "bytes": 1,
+    "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qa_native_helper.egg-info/dependency_links.txt",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qa_native_helper.egg-info/top_level.txt": {
+    "bytes": 14,
+    "sha256": "7aa62873af80c4220b24cbd7f61b8785fde7753b044b638555248a3f71bb8cd4",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qa_native_helper.egg-info/top_level.txt",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qapy.py": {
+    "bytes": 2420,
+    "sha256": "fc1c5516745a6c56fec65ca9381c05097623a264b27ce15760ff2d2546380ba9",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qapy.py",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qbuild.json": {
+    "bytes": 933,
+    "sha256": "a502178921df0ce2ebaea93cfb8e7cbb8c87a0f17c7bb4b0bbdb3edc242d659c",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qbuild.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qm.json": {
+    "bytes": 18,
+    "sha256": "692b5ee0e2aa3c7fc5bcbea804b2f41275f55d0e5098016ad7b5c169284fb64e",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qm.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qref.json": {
+    "bytes": 669,
+    "sha256": "d0da4ff9d70a4c4cf409b43883d27e068bb2f154378d2cbca8d09c1ec23e159a",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qref.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qsite/qa_local_data/__init__.py": {
+    "bytes": 48,
+    "sha256": "b63a48ce057becd06dd5cfab31f5d57ec4a0c0ee8d90c34e1a1f55bd38ebe4b5",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qsite/qa_local_data/__init__.py",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qsite/qa_local_data/__pycache__/__init__.cpython-311.pyc": {
+    "bytes": 308,
+    "sha256": "4a8303435444bc9999fc2d02c5d11fb0a8a58a6802febf81b777c01f2b67bcb8",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qsite/qa_local_data/__pycache__/__init__.cpython-311.pyc",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qsite/qa_local_data-1.0.dist-info/INSTALLER": {
+    "bytes": 4,
+    "sha256": "ceebae7b8927a3227e5303cf5e0f1f7b34bb542ad7250ac03fbcde36ec2f1508",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qsite/qa_local_data-1.0.dist-info/INSTALLER",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qsite/qa_local_data-1.0.dist-info/METADATA": {
+    "bytes": 55,
+    "sha256": "ab4c7f156e549cc32589e86ab2dd41745d2d59c61c24627a9956e57d67826b3c",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qsite/qa_local_data-1.0.dist-info/METADATA",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qsite/qa_local_data-1.0.dist-info/RECORD": {
+    "bytes": 638,
+    "sha256": "d5b9a80997bbb842fe26c49cbb344139f1e95d9df74f360d8e2ed230f8537e65",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qsite/qa_local_data-1.0.dist-info/RECORD",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qsite/qa_local_data-1.0.dist-info/REQUESTED": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qsite/qa_local_data-1.0.dist-info/REQUESTED",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qsite/qa_local_data-1.0.dist-info/WHEEL": {
+    "bytes": 88,
+    "sha256": "d09d49961a391b954c77b49c6019c27e3433bdb003cdee21a621531656358031",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qsite/qa_local_data-1.0.dist-info/WHEEL",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qsite/qa_local_data-1.0.dist-info/direct_url.json": {
+    "bytes": 111,
+    "sha256": "b9f3ed0fe62a880c732161321521822181ae46e3246852e6151f6784af82db21",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qsite/qa_local_data-1.0.dist-info/direct_url.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/qsrv.cjs": {
+    "bytes": 673,
+    "sha256": "374d1a1ec42afcfb25ad97a8d396d2e4d6ff52efc23306d521c0fe63a6f66d10",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/qsrv.cjs",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m103/setup.py": {
+    "bytes": 145,
+    "sha256": "c23a397ecbc6a726be47e6c33a8e6c7c570f972f74ccc137ff86609ec678d496",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m103/setup.py",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m107/CHANGELOG": {
+    "bytes": 18,
+    "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m107/CHANGELOG",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m107/LICENSE": {
+    "bytes": 1072,
+    "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m107/LICENSE",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m107/qa434-app.cjs": {
+    "bytes": 3444,
+    "sha256": "cb0b708278d8f40961df34ae6a8fd35c6d302a245ab27414c2c7adeeec247e6d",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m107/qa434-app.cjs",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m107/qa434-built.json": {
+    "bytes": 3641,
+    "sha256": "652f70994d203a698bdbf2c621978338119c07481a5e521dff39eb4c27886681",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m107/qa434-built.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m107/qa434-marker.json": {
+    "bytes": 18,
+    "sha256": "a5099b2cff8195c675d7cecca3e2dbab4e957be98e3755bc00fc58da32cc8a40",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m107/qa434-marker.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m107/qa434-reference.json": {
+    "bytes": 388,
+    "sha256": "fd1f283d93efe477e6e95fe00c0e7b41891846945567893d792b56a7768a5ab8",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m107/qa434-reference.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m91/CHANGELOG": {
+    "bytes": 18,
+    "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m91/CHANGELOG",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m91/LICENSE": {
+    "bytes": 1072,
+    "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m91/LICENSE",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m91/qa402-before.json": {
+    "bytes": 705,
+    "sha256": "fd1e9f61a59618de8f2081898c0b34b0f98bc1c5e8a0dfed8f41ae2379129027",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m91/qa402-before.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m91/qa402-build.json": {
+    "bytes": 1740,
+    "sha256": "f52ae41ddeeab5a881f7b953007ff5b9ca6231cff8a4aab83dcfae35ca7b2c60",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m91/qa402-build.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m91/qa402-marker.json": {
+    "bytes": 19,
+    "sha256": "5d8b17376264fafe5ddfb6767bef03ccd9757b5069b7eebb884a559b4e3fa8b3",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m91/qa402-marker.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m91/qa402-probe.cjs": {
+    "bytes": 2309,
+    "sha256": "bc158b30e4dfbf41a9d94a5d17e35b9f78e6a6fb3fbf61856fd6f63be8907d77",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m91/qa402-probe.cjs",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m91/qa402-reference.json": {
+    "bytes": 729,
+    "sha256": "5baa2e8cef680d416743fa5d4c0b4bc969e5b342f5c8c38e7c797e40124c20de",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m91/qa402-reference.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m91/qa402.dump": {
+    "bytes": 1721,
+    "sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m91/qa402.dump",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m91/qa402.sql": {
+    "bytes": 1003,
+    "sha256": "01bcb2a9be7e0434b86896f4474386fddc22570e72e45add4b971a83aafa67c7",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m91/qa402.sql",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m93/CHANGELOG": {
+    "bytes": 18,
+    "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m93/CHANGELOG",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m93/LICENSE": {
+    "bytes": 1072,
+    "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m93/LICENSE",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m93/qa407-before.json": {
+    "bytes": 902,
+    "sha256": "9c84836fbb72f65c89faea8adff3a19ab60f433daaaac481016926bce1bdae16",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m93/qa407-before.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m93/qa407-build.json": {
+    "bytes": 2159,
+    "sha256": "a4a150220dc944f34ef0c83f2512c5ba2b09e605b1ec7247107bd0628f0c1f88",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m93/qa407-build.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m93/qa407-marker.json": {
+    "bytes": 19,
+    "sha256": "a36f5e8fb374d07c2d5597bd597685a818cccb0ed64cc8112a82f6d2fda6d7b5",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m93/qa407-marker.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m93/qa407-probe.cjs": {
+    "bytes": 2281,
+    "sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m93/qa407-probe.cjs",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m93/qa407-reference.json": {
+    "bytes": 759,
+    "sha256": "5979ab330a943477995d1eb7e9648d1f73d8abdbf8c241b6fd7e999bed05655c",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m93/qa407-reference.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m93/qa407.html": {
+    "bytes": 227,
+    "sha256": "bd4c53e484bc6ff61e67e7dcb195ceb7866f5c4ddaca84af76fcf39de738fd68",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m93/qa407.html",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m93/qa407.md": {
+    "bytes": 124,
+    "sha256": "edba9bdcd88fbcb00cc68a873033b73462c90471213d181ac342bebbd9d38865",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m93/qa407.md",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/CHANGELOG": {
+    "bytes": 18,
+    "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/CHANGELOG",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/LICENSE": {
+    "bytes": 1072,
+    "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/LICENSE",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/dist/assets/a file.txt": {
+    "bytes": 35,
+    "sha256": "9af7df1b10cdcbf2006468c5239562383da3fd987badb877b007df0e5bcab7b5",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/dist/assets/a file.txt",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/dist/assets/\u00e9cho.txt": {
+    "bytes": 38,
+    "sha256": "e3929dae83713f5d1a5a24a2e70064cdfea7b397df2de6c38a05fae8932a66fa",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/dist/assets/\u00e9cho.txt",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/dist/index.html": {
+    "bytes": 57,
+    "sha256": "283dc3e45b0b80980dd2a816697d01bd3d8a2143f0fdad5880bb599f8e0de0e9",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/dist/index.html",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/qa-assets-app.cjs": {
+    "bytes": 4070,
+    "sha256": "b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/qa-assets-app.cjs",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/qa-assets-build.json": {
+    "bytes": 1021,
+    "sha256": "8e35cdff92c4022c66849dc227df46148b6450dcfd4a6ea78914a381812a228b",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/qa-assets-build.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/qa-assets-filtered.json": {
+    "bytes": 85,
+    "sha256": "aa7b1e6d74b7ac8d1ac38b91607485cfea529e9ec0d3eff2bfcf0983d00f369f",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/qa-assets-filtered.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/qa-assets-input.json": {
+    "bytes": 201,
+    "sha256": "62c2dde6c90754cde0058e0057b0e9adc7e45805a8c1e0de4cf3dbd24e2de72c",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/qa-assets-input.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/qa-assets-marker.json": {
+    "bytes": 18,
+    "sha256": "323ff5c70499227a83c2ea7c48f429b775816460b57a87f03c7fb84dd41ff369",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/qa-assets-marker.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/qa-assets-reference.json": {
+    "bytes": 790,
+    "sha256": "6b1717b288125d80f68cad718d15da844dad7021f205c921b8513d421954f3b1",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/qa-assets-reference.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/qa-assets-src/assets/a file.txt": {
+    "bytes": 35,
+    "sha256": "9af7df1b10cdcbf2006468c5239562383da3fd987badb877b007df0e5bcab7b5",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/qa-assets-src/assets/a file.txt",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/qa-assets-src/assets/draft.tmp": {
+    "bytes": 19,
+    "sha256": "0980bc8dbb51c07111cc78968e94f54f7f246bb8f3bd123521dfff2976f96f96",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/qa-assets-src/assets/draft.tmp",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/qa-assets-src/assets/\u00e9cho.txt": {
+    "bytes": 38,
+    "sha256": "e3929dae83713f5d1a5a24a2e70064cdfea7b397df2de6c38a05fae8932a66fa",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/qa-assets-src/assets/\u00e9cho.txt",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m98/qa-assets-src/index.html": {
+    "bytes": 57,
+    "sha256": "283dc3e45b0b80980dd2a816697d01bd3d8a2143f0fdad5880bb599f8e0de0e9",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m98/qa-assets-src/index.html",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m99/CHANGELOG": {
+    "bytes": 18,
+    "sha256": "9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m99/CHANGELOG",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m99/LICENSE": {
+    "bytes": 1072,
+    "sha256": "20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m99/LICENSE",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m99/dist/qa-ts-app.cjs": {
+    "bytes": 2317,
+    "sha256": "af1acfde1f1d6e4c12bea3d17f01516494d0f06053ee372377670b7bf3621242",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m99/dist/qa-ts-app.cjs",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m99/qa-ts-app.cts": {
+    "bytes": 2303,
+    "sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m99/qa-ts-app.cts",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m99/qa-ts-before.cjs": {
+    "bytes": 780,
+    "sha256": "d2ed2b2b0ac0b25988485b04e0137b579261b7a8e5ec08cd0a461e1bc2b90eb1",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m99/qa-ts-before.cjs",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m99/qa-ts-build.json": {
+    "bytes": 715,
+    "sha256": "05271ae52c26d8146f13ff58cca6deb87afa4d57737929ed7e464b86e70f733c",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m99/qa-ts-build.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m99/qa-ts-marker.json": {
+    "bytes": 18,
+    "sha256": "9b5b8c6e1ff1d9c500504f8dfcfc7328a8023adb695f7013c342b4718462ba33",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m99/qa-ts-marker.json",
+    "source_mode": "0o644"
+  },
+  "build-artifacts/qa-output/m99/qa-ts-reference.json": {
+    "bytes": 657,
+    "sha256": "8fe3607920171f99336d38ccae682ff6075bb67108ca21c57ef27e5866933b04",
+    "original_tar": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "original_member": "opt/render/project/src/qa-output/m99/qa-ts-reference.json",
+    "source_mode": "0o644"
+  }
+}

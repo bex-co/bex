@@ -1,0 +1,40 @@
+{
+  "pass": true,
+  "phase": "build",
+  "node": {
+    "mode": "build",
+    "manager": null,
+    "node": "18.20.8",
+    "executable": "/usr/local/bin/node",
+    "path_node": "/usr/local/bin/node",
+    "node_env": "18.20.8",
+    "node_env_expected": "18.20.8",
+    "path": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "modules": 108,
+    "napi": "9",
+    "addon": {
+      "headers": "18.20.8",
+      "module_abi": 108,
+      "answer": "native Gr\u00fc\u00dfe \u03bb \u96ea"
+    },
+    "openssl": "3.0.16",
+    "brotli": "1.1.1",
+    "sha256": "d8f19a3ac2a7ba1f5297590a1d5eebd60f902054e1eda0ff9d236d8b1c6c60a6",
+    "brotli_roundtrip": true,
+    "gzip_roundtrip": true,
+    "aes_roundtrip": true,
+    "bad_tag_rejected": true,
+    "roots": 150,
+    "lifecycle": null,
+    "NODE": null,
+    "npm_node_execpath": null,
+    "npm_execpath": null
+  },
+  "tool_versions": {
+    "npm": "10.8.2",
+    "yarn": "1.22.22",
+    "pnpm": "10.34.7"
+  },
+  "npm_package_sha256": "5af906974b65fc1e48d709687e174a466614b9706f9479bea73c650bc3142fb5",
+  "scope": "common Node generated image, matching-header C import and offline dependency-free tool projects; no native-init/Kubernetes/hosted claim"
+}

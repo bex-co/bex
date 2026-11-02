@@ -1,0 +1,8 @@
+{
+  "node": "14.21.3",
+  "node_donor": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+  "node_env": "14.21.3",
+  "npm_expectation": "actual selected npm package.json version must equal actual npm CLI; no fixed npm6 guess",
+  "pnpm": "10.34.7",
+  "yarn": "1.22.22"
+}

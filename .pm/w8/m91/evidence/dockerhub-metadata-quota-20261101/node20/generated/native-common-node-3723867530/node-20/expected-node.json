@@ -1,0 +1,8 @@
+{
+  "node": "20.20.2",
+  "node_donor": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+  "node_env": "20.20.2",
+  "npm_expectation": "actual selected npm package.json version must equal actual npm CLI; no fixed npm6 guess",
+  "pnpm": "10.34.7",
+  "yarn": "1.22.22"
+}

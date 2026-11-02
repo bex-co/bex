@@ -1,0 +1,39 @@
+#1 [internal] booting buildkit
+#1 pulling image moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f
+#1 pulling image moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f 0.4s done
+#1 creating container buildx_buildkit_bex-nq-e20c26d7c86d48c9962b96c60
+#1 creating container buildx_buildkit_bex-nq-e20c26d7c86d48c9962b96c60 0.4s done
+#1 DONE 0.8s
+Name:          bex-nq-e20c26d7c86d48c9962b96c6
+Driver:        docker-container
+Last Activity: 2026-11-01 23:50:47 +0000 UTC
+
+Nodes:
+Name:                  bex-nq-e20c26d7c86d48c9962b96c60
+Endpoint:              unix:///Users/tianpan/.orbstack/run/docker.sock
+Driver Options:        cpu-period="100000" cpu-quota="200000" image="moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f" memory="2g" restart-policy="no"
+Status:                running
+BuildKit daemon flags: --allow-insecure-entitlement=network.host
+BuildKit version:      v0.30.0
+Platforms:             linux/arm64*, linux/amd64, linux/amd64/v2, linux/riscv64, linux/ppc64le, linux/s390x, linux/386, linux/mips64le, linux/arm/v7, linux/arm/v6
+Labels:
+ org.mobyproject.buildkit.worker.executor:         oci
+ org.mobyproject.buildkit.worker.hostname:         2f8c22c18719
+ org.mobyproject.buildkit.worker.network:          host
+ org.mobyproject.buildkit.worker.oci.process-mode: sandbox
+ org.mobyproject.buildkit.worker.selinux.enabled:  false
+ org.mobyproject.buildkit.worker.snapshotter:      overlayfs
+GC Policy rule#0:
+ All:           false
+ Filters:       type==source.local,type==exec.cachemount,type==source.git.checkout
+ Keep Duration: 48h0m0s
+GC Policy rule#1:
+ All:           false
+ Keep Duration: 1440h0m0s
+ Keep Bytes:    9.313GiB
+GC Policy rule#2:
+ All:        false
+ Keep Bytes: 9.313GiB
+GC Policy rule#3:
+ All:        true
+ Keep Bytes: 9.313GiB

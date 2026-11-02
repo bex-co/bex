@@ -1,0 +1,54 @@
+{
+  "ACTUAL-LAUNCH.json": {
+    "sha256": "fe0c4dd9a2c139fc7089e71a35617f445c85ba1e4c2cf64a5a879d190365e756",
+    "bytes": 467
+  },
+  "ACTUAL-REVIEW.json": {
+    "sha256": "6bb48048bd2b7318f4396b5eb2d479d75b24a63b7682abc4b6a988ef62a61188",
+    "bytes": 5493
+  },
+  "FOOTPRINT.json": {
+    "sha256": "0ee5ccfa112d62e569924501c6f215c3b66a5374404b1e633a4e246ca082bc16",
+    "bytes": 1064
+  },
+  "PLAN.json": {
+    "sha256": "f6b83b40a7c2ebaef747c56c54476fa5bc25bf6896e1d994fde28d4ed6391358",
+    "bytes": 4417
+  },
+  "PLAN.json.diff": {
+    "sha256": "a652fa6b96988fdf608de196d7d6e802147927922329ae7744cb13bb620c2a6b",
+    "bytes": 5166
+  },
+  "RUNTIME-CUSTODY.json": {
+    "sha256": "e9e695072ec52ec77d49bdb66deb6eeabf2866fab32e70cf8e03cdabbdc9a9ab",
+    "bytes": 10694
+  },
+  "SOURCE-FREEZE.json": {
+    "sha256": "a76bc57b066571830521dc979d585b4cd26de0a212b474d2b1578db1174a532d",
+    "bytes": 1313
+  },
+  "capacity-preflight/capacity-before-builder.json": {
+    "sha256": "582dfe80b6b7a8b87286bd8dcf328c9b0c7298f17c1fe76d17d32fae96868b0e",
+    "bytes": 1352
+  },
+  "capacity-preflight/inputs.json": {
+    "sha256": "1e0d938b60cd68c8298f6ece61a152b93bad07ec2c984d53ae25c1c36ac5f647",
+    "bytes": 113
+  },
+  "pilot.sh": {
+    "sha256": "980ad5e13ada27d41b845e2429def77691888418558e3f5a6ee574c44a8d8e55",
+    "bytes": 2010
+  },
+  "pilot.sh.diff": {
+    "sha256": "15acdf97d8aab703beaffdc8b6b9e0f649fa8295b787cd1ced0058f43fa39b71",
+    "bytes": 432
+  },
+  "run_pilot.py": {
+    "sha256": "04dd0881947bddefe5595a17d28cc188ca483af090f0154e94a37584e6627c53",
+    "bytes": 22064
+  },
+  "run_pilot.py.diff": {
+    "sha256": "c7f652c784ee4bbe259e60a85ebf475f78fe3887338e8d48bffa83fb6b55de23",
+    "bytes": 4357
+  }
+}

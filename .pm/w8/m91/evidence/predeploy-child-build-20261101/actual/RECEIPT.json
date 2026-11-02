@@ -1,0 +1,133 @@
+{
+  "at": "2026-11-01T23:32:47.935362+00:00",
+  "state": "BUILD_STEP_SUCCESS_CLEANUP_RECONCILED",
+  "original_controller_PASS": false,
+  "original_controller_exit": 1,
+  "original_controller_result": {
+    "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/RESULT.json",
+    "bytes": 720,
+    "sha256": "6198c26313d36050a14d5dad2b8b595b7a5cf81d02a7d64a8e0b0918b3bd0fe1",
+    "mode": "0644"
+  },
+  "build_step_exit": 0,
+  "actual_OCI_export": true,
+  "local_diagnostic_only": true,
+  "source_sha": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "source_manifest": {
+    "path": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/SOURCE.json",
+    "bytes": 243622,
+    "sha256": "eafa20ded8a18d1719aaec9dbb48a642decaf68f29364f8461e3062e59d68665",
+    "mode": "0644"
+  },
+  "build_plan": {
+    "path": "/private/tmp/bex-w8-common-predeploy-build-source-20261101-wp_wtewn/PLAN.json",
+    "bytes": 3651,
+    "sha256": "d0a137df3bdc5db521382588f2c74d6dda0fe1f082f6b0135ffed6af851b12b3",
+    "mode": "0600"
+  },
+  "controller_source_manifest": {
+    "path": "/private/tmp/bex-w8-common-predeploy-build-source-20261101-wp_wtewn/SOURCE-MANIFEST.json",
+    "bytes": 580,
+    "sha256": "32cc8cd8d534a9576a58d642d4ae9df6ad9d2507aae6572d04766c9c76d273b7",
+    "mode": "0644"
+  },
+  "canonical_recipe_sha256": "5e171db5e194d52efa00ff495ca29af50d8792a0fdb8e33d13265d47a5ea003a",
+  "context_manifest": {
+    "path": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/outputs/bex-w8-common-predeploy-node-export-7cf7c0d919d6/MANIFEST.json",
+    "bytes": 9298,
+    "sha256": "a30f9c9b9316aa38fce0095d99aa787e90fb8d2387c3cfa5264ce6fa72ecd3eb",
+    "mode": "0600"
+  },
+  "actual_build_proofs": {
+    "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/ACTUAL-BUILD-PROOFS.json",
+    "bytes": 3331,
+    "sha256": "ef60cf45c7b2a8c4eb9e09caee08ef3084bf275259982797c587042be61c2902",
+    "mode": "0644"
+  },
+  "cleanup_reconciliation": {
+    "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/CLEANUP-RECONCILIATION.json",
+    "bytes": 3361,
+    "sha256": "7cc14d4a7ab860eb8969ec879fae159b67c107086f1762f3a88aed67db5c77de",
+    "mode": "0644"
+  },
+  "OCI_identity": {
+    "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/OCI-IDENTITY.json",
+    "bytes": 16667,
+    "sha256": "1d25e836638d6b1f49ae803d299a2200c2d1a0bbb001f73750e1d89578a6158a",
+    "mode": "0644"
+  },
+  "OCI_tar": {
+    "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/child.oci",
+    "bytes": 941516800,
+    "sha256": "fb39d8c2495f5d7f7d62ef3cbbd69bdb8caf910bd64a0777f270a6a43f5629bd"
+  },
+  "OCI_layout_index": {
+    "sha256": "cc4caedfe165b3f2a7d58cab6abde24691eb6a04ce06da8656af4b0f1e02a470",
+    "bytes": 364
+  },
+  "platform_manifest": {
+    "digest": "sha256:cd8542c966bfa204dad5bb96857046aec6cf07c4d38e5bcd60e00a87bb618a2e",
+    "bytes": 6939,
+    "platform": {
+      "os": "linux",
+      "architecture": "arm64"
+    }
+  },
+  "config": {
+    "digest": "sha256:85152c4e3f9d5947f048b4558bb347b6bcfdfd7ca3510feca90ead00bb483f2a",
+    "bytes": 13100
+  },
+  "layer_count": 35,
+  "compressed_layer_bytes": 941464782,
+  "actual_labels": {
+    "co.bex.native-qualification": "bex-pd-7cf7c0d919d6",
+    "org.opencontainers.image.revision": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "org.opencontainers.image.source": "https://github.com/bex-co/bex"
+  },
+  "actual_ENV": [
+    "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "NODE_VERSION=24.22.1",
+    "YARN_VERSION=1.22.22",
+    "NODE_ENV=production",
+    "PORT=10000"
+  ],
+  "actual_CMD": [
+    "/bin/bash",
+    "-c",
+    "/usr/bin/python3 utility-check.py runtime && /usr/bin/python3 original-cases.py runtime node"
+  ],
+  "source_label_limit": "The revision OCIlabel is inherited common-producer1feba, not688 generator. External immutable snapshot/context/command proof binds actual688 code. No replacement or source-image revision inference.",
+  "bounds": {
+    "whole_seconds": 2400,
+    "pull_seconds": 195,
+    "bootstrap_seconds": 300,
+    "build_seconds": 1800,
+    "host_files_bytes": 12884901888,
+    "combined_owned_bytes": 12884901888,
+    "oci_bytes": 4294967296,
+    "log_bytes": 16777216,
+    "remaining_host_floor_bytes": 8589934592,
+    "builder_state_polled_bytes": 12884901888,
+    "observe_interval_seconds": 1,
+    "builder_memory_bytes": 4294967296,
+    "builder_cpus": 2,
+    "runner_memory_bytes": 536870912,
+    "runner_cpus": 2
+  },
+  "observed_resources": {
+    "elapsed_seconds": 218.445,
+    "peak_combined_observed_bytes": 9351194075,
+    "minimum_physical_free_bytes": 27235901440,
+    "maximum_oci_observed_bytes": 941516800,
+    "final_log_bytes": 1536922
+  },
+  "limits": [
+    "ONE actual arm64 canonical compute-child diagnostic build, not image publication/adoption/botharch/wholefamily/defaultPython/hosted/native-init/predeploy completion.",
+    "No image load/import, no runtime CMD execution or dev8 Job, no cluster writes/CI action.",
+    "Both actual current utility CI arches still required before Job; current snapshot688 is historical to upcoming init test-only oracle change; exact B recipe/context unchanged as recorded.",
+    "Original CI helper refusal and false controller result remain intact. All exact own resources reconciled; no automatic rebuild.",
+    "Original13/28 programs/data/commands untouched. Seven Node programs executed only their authored build phase.",
+    "No raw layer decompression/extraction; full raw compressedblob SHA/size and OCI descriptors/config checked locally.",
+    "Future actual App/Job requires freshly journaled true owned anchor UID and actual child manifest/config/platform. Fake A cache/UID remains source-only."
+  ]
+}

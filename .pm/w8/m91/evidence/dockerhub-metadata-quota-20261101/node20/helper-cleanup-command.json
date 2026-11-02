@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/source/.github/scripts/native-common-qualify.py",
+    "cleanup",
+    "/private/tmp/bex-w8-node20-local-pilot-e20c26d7c86d48c9962b96c6/evidence"
+  ],
+  "exit_code": 0,
+  "stdout": "BEX_NATIVE_CLEANUP_RESULT {\"owner\": \"bex-nq-e20c26d7c86d48c9962b96c6\", \"operations\": [{\"resource\": \"builder\", \"identity\": \"bex-nq-e20c26d7c86d48c9962b96c6\", \"exit_code\": 0, \"stdout\": \"\", \"stderr\": \"bex-nq-e20c26d7c86d48c9962b96c6 removed\\n\"}, {\"resource\": \"docker-auth\", \"logout_exit_code\": 0, \"exit_code\": 0, \"removed\": true}]}\n",
+  "stderr": ""
+}

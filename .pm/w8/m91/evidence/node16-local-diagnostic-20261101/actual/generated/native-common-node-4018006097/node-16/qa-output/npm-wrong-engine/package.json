@@ -1,0 +1,16 @@
+{
+  "name": "bex-profile-npm",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "16.x"
+  },
+  "scripts": {
+    "preinstall": "node ../../check.js lifecycle npm",
+    "postinstall": "node ../../check.js lifecycle npm",
+    "probe": "node ../../check.js script npm"
+  },
+  "dependencies": {
+    "bex-node-engine-sentinel": "file:./bex-node-engine-sentinel.tgz"
+  }
+}

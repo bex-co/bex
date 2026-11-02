@@ -1,0 +1,15 @@
+{
+  "command": [
+    "npm",
+    "install",
+    "--offline",
+    "--no-audit",
+    "--package-lock=false",
+    "--engine-strict"
+  ],
+  "cwd": "qa-output/npm-wrong-engine",
+  "returncode": 1,
+  "stdout": "",
+  "stderr": "npm ERR! code EBADENGINE\nnpm ERR! engine Unsupported engine\nnpm ERR! engine Not compatible with your version of node/npm: bex-node-engine-sentinel@1.0.0\nnpm ERR! notsup Not compatible with your version of node/npm: bex-node-engine-sentinel@1.0.0\nnpm ERR! notsup Required: {\"node\":\">=17\"}\nnpm ERR! notsup Actual:   {\"npm\":\"8.19.4\",\"node\":\"v16.20.2\"}\n\nnpm ERR! A complete log of this run can be found in:\nnpm ERR!     /root/.npm/_logs/2026-11-01T23_28_50_272Z-debug-0.log\n",
+  "timed_out": false
+}

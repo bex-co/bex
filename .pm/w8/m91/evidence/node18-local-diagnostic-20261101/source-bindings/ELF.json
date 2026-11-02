@@ -1,0 +1,9 @@
+{
+  "path": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/bin/build-linux-arm64.test",
+  "sha256": "f87d0fc88e4a5ee8b2e7abf63fdcc017832d4eceaac84d4098a7e0b7f0e2055d",
+  "bytes": 41727286,
+  "class": "ELF64LE",
+  "machine": "AArch64",
+  "PT_INTERP": false,
+  "executed": false
+}

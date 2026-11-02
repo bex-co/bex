@@ -1,0 +1,105 @@
+{
+  "schema": "bex.linux-go-toolchain-custody/v1",
+  "decision": "ACTUAL_ACQUISITION_AND_VERSION_PASS",
+  "first_failure_preserved": "/private/tmp/bex-w8-linux-go-tools-b02a23a38b5a443999fb",
+  "parent_approved_plan_sha256": "692fd59e6af1b573a3b838a97102875cb530c05421e4a02101de93d54e35512e",
+  "approved_transport_followon": "Root authorized qualified cachedAlpine/LinuxDocker/socket pull; no hostPATH/keychain/trust/config change",
+  "actual_image": {
+    "index": "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
+    "platform": "linux/arm64",
+    "selected_manifest": {
+      "annotations": {
+        "com.docker.official-images.bashbrew.arch": "arm64v8",
+        "org.opencontainers.image.base.digest": "sha256:1aef535ea83d3a3fd23fc115d2902bd9bb8dd4548e6a9370c62b5e25f2e26025",
+        "org.opencontainers.image.base.name": "buildpack-deps:bookworm-scm",
+        "org.opencontainers.image.created": "2026-10-28T03:17:49Z",
+        "org.opencontainers.image.revision": "41d9b4da70324ae7b6461ac2cc401b06719ff57d",
+        "org.opencontainers.image.source": "https://github.com/docker-library/golang.git#41d9b4da70324ae7b6461ac2cc401b06719ff57d:1.27/bookworm",
+        "org.opencontainers.image.url": "https://hub.docker.com/_/golang",
+        "org.opencontainers.image.version": "1.27.3-bookworm"
+      },
+      "digest": "sha256:ae675cdbf1bb782b6de4a56b157c8f91a5c89a594d8fa6475bb71efc4be3cfcb",
+      "mediaType": "application/vnd.oci.image.manifest.v1+json",
+      "platform": {
+        "architecture": "arm64",
+        "os": "linux",
+        "variant": "v8"
+      },
+      "size": 2324
+    },
+    "config_digest": "sha256:dba766c2797d15d2b6e35651bd5acb02764b27611e9b89bba1100a54a0167bf7"
+  },
+  "selected_config_matches_imageId": true,
+  "image_size_bytes": 849206661,
+  "new_pinned_image_cache": "Exact source image left cached for future authorized tools/Go qualification; no image/layer/prune or foreign cache cleanup",
+  "GOROOT": {
+    "path": "/private/tmp/bex-w8-linux-go-tools-cbd379a291424d59a2d4/toolroot/go",
+    "mode": "0o755",
+    "type": "directory",
+    "paths": 17372,
+    "regular_file_bytes": 238670456,
+    "path_types": {
+      "regular": 15657,
+      "directory": 1715,
+      "symlink": 0
+    }
+  },
+  "GOROOT_manifest": "evidence/GOROOT-MANIFEST.json",
+  "GOROOT_manifest_sha256": "75d9eb9155cd3a0940ff983894d061861ca4401988d3a9a52949a312abf1f213",
+  "LinuxGo_VERSION": "go1.27.3\ntime 2026-10-19T22:20:36Z\n",
+  "actual_version_command": "go version go1.27.3 linux/arm64\n",
+  "ELF": {
+    "bin/go": {
+      "sha256": "d487fddb6939f3e78f7293fcbdeae610ba8ceae966d3faa4b2094a5688559230",
+      "bytes": 15795402,
+      "machine": "AArch64",
+      "PT_INTERP": []
+    },
+    "pkg/tool/linux_arm64/compile": {
+      "sha256": "35ce75b8723ca02313089c8d307a11d2a3b07bfb0a64561bdabc67d6ed516246",
+      "bytes": 26606185,
+      "machine": "AArch64",
+      "PT_INTERP": []
+    },
+    "pkg/tool/linux_arm64/link": {
+      "sha256": "a9c068b577e6cd8074fb24dbdffe8762dcbad11e41b7ba1f2f1af6aa1fd37352",
+      "bytes": 6852749,
+      "machine": "AArch64",
+      "PT_INTERP": []
+    },
+    "pkg/tool/linux_arm64/asm": {
+      "sha256": "b859fbc087b7cca55e1d0c7f5a729044751a2d10fff638cbdc48c37f94988d23",
+      "bytes": 5302759,
+      "machine": "AArch64",
+      "PT_INTERP": []
+    }
+  },
+  "limits": {
+    "elapsed_seconds": 36.739,
+    "peak_own_output_bytes": 241978151,
+    "minimum_host_free_bytes": 43412144128
+  },
+  "cleanup": {
+    "all3_owned_names_and_CIDs_proved_absent": true,
+    "source_container_never_started": true,
+    "unknown_outcomes": false,
+    "pending_pgids": [],
+    "handlers_restored": true,
+    "transient_anonymous_token_and_header_absent": true
+  },
+  "future_nativeinit_binding": {
+    "read_only_mount_source": "/private/tmp/bex-w8-linux-go-tools-cbd379a291424d59a2d4/toolroot/go",
+    "read_only_mount_destination": "/usr/local/go",
+    "GOROOT": "/usr/local/go",
+    "PATH_prefix": "/usr/local/go/bin",
+    "GOTOOLCHAIN": "local",
+    "GOWORK": "off",
+    "GOPROXY": "off",
+    "GOSUMDB": "off",
+    "GOTELEMETRY": "off",
+    "GOCACHE": "fresh own writable runtime cache",
+    "compiler": "Real Go1.27.3 linux/arm64, no precompiled-init substitution"
+  },
+  "qualification_limit": "Toolchain acquisition and genuine version only. No go build/native-init/family/CI/prod/adoption acceptance inferred.",
+  "sealed_at": "2026-11-01T23:21:21.375141+00:00"
+}

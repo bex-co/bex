@@ -1,0 +1,142 @@
+{
+  "PASS": true,
+  "failure": null,
+  "signal": null,
+  "stages": [
+    {
+      "label": "B",
+      "argv": [
+        "/usr/bin/sandbox-exec",
+        "-f",
+        "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/compile.sb",
+        "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+        "test",
+        "-c",
+        "-p",
+        "1",
+        "-overlay",
+        "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/overlay-B.json",
+        "-o",
+        "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/bin/B-linux-arm64.test",
+        "./internal/build"
+      ],
+      "cwd": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/lego/operator",
+      "env": {
+        "PATH": "/Users/tianpan/.codex/packages/app-server-daemon/releases/0.166.0-aarch64-apple-darwin/codex-path:/Users/tianpan/.opencode/bin:/Users/tianpan/.kimi-code/bin:/Users/tp-mini/.codeium/windsurf/bin:/Users/tianpan/.nvm/versions/node/v24.16.0/bin:/opt/homebrew/opt/bison/bin:/usr/local/opt/ruby/bin:/Users/tianpan/.nvm/versions/node/v24.16.0/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/Users/tianpan/.codex/tmp/arg0-macos/codex-arg08bXeyN:/Users/tianpan/.codex/packages/app-server-daemon/releases/0.166.0-aarch64-apple-darwin/codex-path:/Users/tianpan/.codex/tmp/arg0-macos/codex-arg0ukJ8lb:/Users/tianpan/.codex/packages/app-server-daemon/releases/0.165.0-aarch64-apple-darwin/codex-path:/Users/tianpan/.codex/tmp/arg0-macos/codex-arg0mvCQlz:/Users/tianpan/.codex/packages/app-server-daemon/releases/0.164.0-aarch64-apple-darwin/codex-path:/Users/tianpan/.codex/tmp/arg0-macos/codex-arg03YZUIf:/Users/tianpan/.codex/packages/app-server-daemon/releases/0.163.0-aarch64-apple-darwin/codex-path:/Users/tianpan/.codex/tmp/arg0/codex-arg0kYijvE:/Users/tianpan/.codex/packages/app-server-daemon/releases/0.162.1-aarch64-apple-darwin/codex-path:/Users/tianpan/.codex/tmp/arg0/codex-arg0MSWW5h:/Users/tianpan/.codex/packages/standalone/releases/0.162.1-aarch64-apple-darwin/codex-path:/Users/tianpan/.opencode/bin:/Users/tianpan/.kimi-code/bin:/Users/tp-mini/.codeium/windsurf/bin:/Users/tianpan/.nvm/versions/node/v24.16.0/bin:/opt/homebrew/opt/bison/bin:/usr/local/opt/ruby/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/tianpan/.sdkman/candidates/java/current/bin:/Users/tianpan/.local/bin:/Users/tianpan/.cargo/bin:/Users/tianpan/.orbstack/bin:/Users/tianpan/.go/bin:/opt/homebrew/opt/go/libexec/bin:/Users/tianpan/Library/Application Support/JetBrains/Toolbox/scripts:/Users/tianpan/.codeium/windsurf/bin:/Users/tianpan/.rvm/bin:/Users/tianpan/.orbstack/bin:/Users/tianpan/.go/bin:/opt/homebrew/opt/go/libexec/bin:/Users/tianpan/Library/Application Support/JetBrains/Toolbox/scripts:/Users/tianpan/.codeium/windsurf/bin:/Users/tianpan/.rvm/bin",
+        "CGO_ENABLED": "0",
+        "GOOS": "linux",
+        "GOARCH": "arm64",
+        "GOWORK": "off",
+        "GOTOOLCHAIN": "local",
+        "GOENV": "off",
+        "GOPROXY": "off",
+        "GOSUMDB": "off",
+        "GOVCS": "off",
+        "GOFLAGS": "-mod=readonly -buildvcs=false",
+        "GOCACHE": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/gocache",
+        "GOTMPDIR": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/gotmp",
+        "TMPDIR": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/tmp",
+        "GOMODCACHE": "/Users/tianpan/go/pkg/mod",
+        "GOMAXPROCS": "2",
+        "GOMEMLIMIT": "512MiB",
+        "GOTELEMETRY": "off",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "at": "2026-11-01T23:10:00.321634+00:00",
+      "initial_free": 39770558464,
+      "minimum_free": 37645316096,
+      "peak_owned_bytes": 1129383951,
+      "bound": null,
+      "pid": 23099,
+      "exit_code": 0,
+      "group_absent": true,
+      "seconds": 58.51531233312562,
+      "stdout": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "binary": {
+        "path": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/bin/B-linux-arm64.test",
+        "bytes": 41797358,
+        "sha256": "9321e062e2beabf1116da8f02e020e8378e35bd877c4d9e0bf7d94cf72632c61",
+        "ELF_magic": "7f454c46",
+        "ELF_class": 2,
+        "ELF_machine": 183,
+        "executed": false
+      }
+    },
+    {
+      "label": "A",
+      "argv": [
+        "/usr/bin/sandbox-exec",
+        "-f",
+        "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/compile.sb",
+        "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+        "test",
+        "-c",
+        "-p",
+        "1",
+        "-overlay",
+        "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/overlay-A.json",
+        "-o",
+        "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/bin/A-linux-arm64.test",
+        "./internal/controller"
+      ],
+      "cwd": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/lego/operator",
+      "env": {
+        "PATH": "/Users/tianpan/.codex/packages/app-server-daemon/releases/0.166.0-aarch64-apple-darwin/codex-path:/Users/tianpan/.opencode/bin:/Users/tianpan/.kimi-code/bin:/Users/tp-mini/.codeium/windsurf/bin:/Users/tianpan/.nvm/versions/node/v24.16.0/bin:/opt/homebrew/opt/bison/bin:/usr/local/opt/ruby/bin:/Users/tianpan/.nvm/versions/node/v24.16.0/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/usr/local/bin:/System/Cryptexes/App/usr/bin:/usr/bin:/bin:/usr/sbin:/sbin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/local/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/bin:/var/run/com.apple.security.cryptexd/codex.system/bootstrap/usr/appleinternal/bin:/pkg/env/global/bin:/Library/Apple/usr/bin:/Users/tianpan/.codex/tmp/arg0-macos/codex-arg08bXeyN:/Users/tianpan/.codex/packages/app-server-daemon/releases/0.166.0-aarch64-apple-darwin/codex-path:/Users/tianpan/.codex/tmp/arg0-macos/codex-arg0ukJ8lb:/Users/tianpan/.codex/packages/app-server-daemon/releases/0.165.0-aarch64-apple-darwin/codex-path:/Users/tianpan/.codex/tmp/arg0-macos/codex-arg0mvCQlz:/Users/tianpan/.codex/packages/app-server-daemon/releases/0.164.0-aarch64-apple-darwin/codex-path:/Users/tianpan/.codex/tmp/arg0-macos/codex-arg03YZUIf:/Users/tianpan/.codex/packages/app-server-daemon/releases/0.163.0-aarch64-apple-darwin/codex-path:/Users/tianpan/.codex/tmp/arg0/codex-arg0kYijvE:/Users/tianpan/.codex/packages/app-server-daemon/releases/0.162.1-aarch64-apple-darwin/codex-path:/Users/tianpan/.codex/tmp/arg0/codex-arg0MSWW5h:/Users/tianpan/.codex/packages/standalone/releases/0.162.1-aarch64-apple-darwin/codex-path:/Users/tianpan/.opencode/bin:/Users/tianpan/.kimi-code/bin:/Users/tp-mini/.codeium/windsurf/bin:/Users/tianpan/.nvm/versions/node/v24.16.0/bin:/opt/homebrew/opt/bison/bin:/usr/local/opt/ruby/bin:/opt/homebrew/bin:/opt/homebrew/sbin:/Users/tianpan/.sdkman/candidates/java/current/bin:/Users/tianpan/.local/bin:/Users/tianpan/.cargo/bin:/Users/tianpan/.orbstack/bin:/Users/tianpan/.go/bin:/opt/homebrew/opt/go/libexec/bin:/Users/tianpan/Library/Application Support/JetBrains/Toolbox/scripts:/Users/tianpan/.codeium/windsurf/bin:/Users/tianpan/.rvm/bin:/Users/tianpan/.orbstack/bin:/Users/tianpan/.go/bin:/opt/homebrew/opt/go/libexec/bin:/Users/tianpan/Library/Application Support/JetBrains/Toolbox/scripts:/Users/tianpan/.codeium/windsurf/bin:/Users/tianpan/.rvm/bin",
+        "CGO_ENABLED": "0",
+        "GOOS": "linux",
+        "GOARCH": "arm64",
+        "GOWORK": "off",
+        "GOTOOLCHAIN": "local",
+        "GOENV": "off",
+        "GOPROXY": "off",
+        "GOSUMDB": "off",
+        "GOVCS": "off",
+        "GOFLAGS": "-mod=readonly -buildvcs=false",
+        "GOCACHE": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/gocache",
+        "GOTMPDIR": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/gotmp",
+        "TMPDIR": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/tmp",
+        "GOMODCACHE": "/Users/tianpan/go/pkg/mod",
+        "GOMAXPROCS": "2",
+        "GOMEMLIMIT": "512MiB",
+        "GOTELEMETRY": "off",
+        "PYTHONDONTWRITEBYTECODE": "1"
+      },
+      "at": "2026-11-01T23:10:58.855740+00:00",
+      "initial_free": 41148526592,
+      "minimum_free": 32583364608,
+      "peak_owned_bytes": 2732467887,
+      "bound": null,
+      "pid": 24438,
+      "exit_code": 0,
+      "group_absent": true,
+      "seconds": 107.98797687492333,
+      "stdout": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "binary": {
+        "path": "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/bin/A-linux-arm64.test",
+        "bytes": 94694600,
+        "sha256": "809af5e43ca8d05bdf80357463362d242a91c5b9ad06dc940d1112869bc71063",
+        "ELF_magic": "7f454c46",
+        "ELF_class": 2,
+        "ELF_machine": 183,
+        "executed": false
+      }
+    }
+  ],
+  "source_changed_paths": [],
+  "handlers_restored": true,
+  "scope": "Offline go test-c only; both binaries not yet executed; sandbox denies network and source/modulecache writes."
+}

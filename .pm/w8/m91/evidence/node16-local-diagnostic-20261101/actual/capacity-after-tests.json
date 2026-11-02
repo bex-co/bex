@@ -1,0 +1,38 @@
+{
+  "at": "2026-11-01T23:29:54.075547+00:00",
+  "owner": "bex-nq-b887cf829b534da6aedc97b0",
+  "stage": "after-tests",
+  "filesystems": [
+    {
+      "name": "evidence",
+      "path": "/private/tmp/bex-w8-node16-local-pilot-b887cf829b534da6aedc97b0/evidence",
+      "device": 16777231,
+      "total_bytes": 994662584320,
+      "free_bytes": 33393696768
+    },
+    {
+      "name": "workspace",
+      "path": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/source/lego/operator/internal/build",
+      "device": 16777231,
+      "total_bytes": 994662584320,
+      "free_bytes": 33393696768
+    },
+    {
+      "name": "temporary",
+      "path": "/private/var/folders/q2/zn9w8byj2zv19rgy4kvwg0gm0000gn/T",
+      "device": 16777231,
+      "total_bytes": 994662584320,
+      "free_bytes": 33393696768
+    }
+  ],
+  "memory": {
+    "host_mem_available_bytes": null,
+    "visible_cgroup_limit_bytes": null,
+    "visible_cgroup_current_bytes": null,
+    "visible_cgroup_remaining_bytes": null,
+    "observed_headroom_hint_bytes": null,
+    "scope": "observational hint only; reclaimable pagecache, ancestor limits and future allocations are not modeled or reserved"
+  },
+  "daemon_filesystem_and_builder_cache": "not observed from the runner filesystem namespace",
+  "scope": "read-only observations; shared device rows are not additive; no threshold, reservation or expanded-family capacity acceptance"
+}

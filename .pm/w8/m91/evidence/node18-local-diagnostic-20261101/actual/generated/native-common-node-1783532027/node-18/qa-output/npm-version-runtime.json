@@ -1,0 +1,11 @@
+{
+  "command": [
+    "npm",
+    "--version"
+  ],
+  "cwd": ".",
+  "returncode": 0,
+  "stdout": "10.8.2\n",
+  "stderr": "",
+  "timed_out": false
+}

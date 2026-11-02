@@ -1,0 +1,32 @@
+{
+  "at": "2026-11-02T00:22:01.572972+00:00",
+  "outcome": "CLEAN_THREE_FILE_SOURCE_FIX",
+  "REVIEW": {
+    "bytes": 6113,
+    "sha256": "f4f88e1398e477f59d1cc567bac119ab3c3d8e9e3a4e6bd128fc1c2a12a4de41"
+  },
+  "source": {
+    "lego/operator/internal/build/dockerhub.go": {
+      "bytes": 12874,
+      "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3"
+    },
+    "lego/operator/internal/build/dockerhub_test.go": {
+      "bytes": 11347,
+      "sha256": "a943f9abf486bec635ece79e5fe68174170c302a1ac88b9340b0edd5e717a382"
+    },
+    "lego/operator/internal/build/nativeutility_integration_test.go": {
+      "bytes": 18975,
+      "sha256": "529080e87e50c291a5081de48b83e5a90122676bae900046a978abeb024a761d"
+    }
+  },
+  "checks": {
+    "bytes": 374,
+    "sha256": "3f3e472546a160b1ecb34951abf5f0109573f626446571155d736b5cae4e7f6b"
+  },
+  "preservation": {
+    "bytes": 692,
+    "sha256": "8151e9d9d2b8bb1a556c13bcc398f6dd9c7696773e9d9ab1585e725487f5c211"
+  },
+  "final_source_before_after_unchanged": true,
+  "quiescent": true
+}

@@ -1,0 +1,19 @@
+{
+  "owner": "bex-nq-42c2be770300dad10229fc0e",
+  "docker_config": "/private/tmp/bex-w8-node14-amd64-local-42c2be770300dad10229fc0e/bex-nq-42c2be770300dad10229fc0e-docker-config",
+  "scope": "genuine local onecase pilot; no CI execution identity",
+  "common_image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "generator_source": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+  "platform": "linux/amd64",
+  "selection": {
+    "profile": "node-donors",
+    "case": "node-14",
+    "flag": "BEX_NATIVE_TEST_NODE_DONORS",
+    "selector": "^TestCommonNodeGeneratedImages$/^node\\-14$",
+    "go_timeout": "90m",
+    "job_minutes": "120",
+    "scope": "single-case pilot measurement only; not full-family acceptance or a capacity guarantee"
+  },
+  "source_manifest_sha256": "17929596653a4bf08b9f2be4765c3b738241a97c84a2d87a73e7ad81edfa1d1a",
+  "cache_scope": "Fresh exactowner builder/node/statevolume require beforeabsence; shareddaemon input-image cache observed, never purged. No allcache-cold claim. Onecase only; no automatic widening."
+}

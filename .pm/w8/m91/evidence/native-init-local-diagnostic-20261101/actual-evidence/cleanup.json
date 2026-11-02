@@ -1,0 +1,19 @@
+{
+  "owner": "bex-nq-e9fbe0e5635547089592094b",
+  "operations": [
+    {
+      "resource": "builder",
+      "identity": "bex-nq-e9fbe0e5635547089592094b",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "bex-nq-e9fbe0e5635547089592094b removed\n"
+    },
+    {
+      "resource": "docker-auth",
+      "identity": "/private/tmp/bex-w8-native-init-local-pilot-e9fbe0e5635547089592094b/bex-nq-e9fbe0e5635547089592094b-docker-config",
+      "logout_exit_code": 0,
+      "exit_code": 0,
+      "removed": true
+    }
+  ]
+}

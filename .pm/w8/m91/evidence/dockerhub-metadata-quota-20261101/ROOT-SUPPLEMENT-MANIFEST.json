@@ -1,0 +1,22 @@
+{
+  "arm64-job.log": {
+    "sha256": "02698423cf70210830a80576bc48f27ed4637840fe18cecdd2ec0d8c17e7a894",
+    "bytes": 67578
+  },
+  "final-jobs.json": {
+    "sha256": "6d83dee2f247dd199b86aa9307f8c304cf260074a1e1247b09a69cb523642b7b",
+    "bytes": 12126
+  },
+  "README.md": {
+    "sha256": "76c245ff8b959adbad57673c8bfbb1b3da2b67bcf06cee16260578e25a44002e",
+    "bytes": 780
+  },
+  "independent-REVIEW.json": {
+    "sha256": "f1edee83d6e9e6b2bace16be809fd52b51840a5b874b8f4e73a0222fc0628333",
+    "bytes": 1237
+  },
+  "independent-MANIFEST.json": {
+    "sha256": "b2f93198db01b19518679cd4c3628e38102658683ada953f0f56c6e4ee1f0ae3",
+    "bytes": 17501
+  }
+}

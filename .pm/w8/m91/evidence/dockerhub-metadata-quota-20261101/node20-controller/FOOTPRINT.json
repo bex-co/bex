@@ -1,0 +1,37 @@
+{
+  "scope": "Short failed pre-build attempt sampledobservations, not a successfulcase footprint or reservation",
+  "retained_runtime_files": 69,
+  "retained_runtime_bytes": 79653,
+  "sampled_du_peak": {
+    "file": "builder-du-7.stdout",
+    "KiB": 5424
+  },
+  "raw_memory_samples": [
+    {
+      "Name": "buildx_buildkit_bex-nq-e20c26d7c86d48c9962b96c60",
+      "MemUsage": "19.93MiB / 2GiB",
+      "CPUPerc": "1.05%",
+      "NetIO": "7.54MB / 122kB"
+    },
+    {
+      "Name": "bex-nq-e20c26d7c86d48c9962b96c6-runner",
+      "MemUsage": "33.79MiB / 512MiB",
+      "CPUPerc": "0.14%",
+      "NetIO": "57.7kB / 14.1kB"
+    }
+  ],
+  "unchanged_operating_bounds": {
+    "whole_seconds": 7200,
+    "pull_seconds": 195,
+    "bootstrap_seconds": 300,
+    "go_timeout": "90m",
+    "runner_memory_bytes": 536870912,
+    "runner_cpus": 2,
+    "builder_memory_bytes": 2147483648,
+    "builder_cpus": 2,
+    "host_files_bytes": 536870912,
+    "remaining_host_floor_bytes": 8589934592,
+    "builder_state_polled_bytes": 17179869184,
+    "observe_interval_seconds": 15
+  }
+}

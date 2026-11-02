@@ -1,0 +1,187 @@
+{
+  "schema": "bex.actual-native-init-four-launch-independent-review/v1",
+  "at": "2026-11-01T23:49:14.026811+00:00",
+  "outcome": "CLEAN_LOCAL_ARM64_NATIVE_INIT_FOUR_LAUNCH_DIAGNOSTIC",
+  "actual_result": {
+    "bytes": 364,
+    "sha256": "df4ac14eabcd3990cc5f30ad0f11acea9b1e026af4aa51b74bfe4b2a4ea98db7",
+    "mode": "0644"
+  },
+  "source": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+  "source_paths": 300,
+  "source_manifest": {
+    "bytes": 102875,
+    "sha256": "17929596653a4bf08b9f2be4765c3b738241a97c84a2d87a73e7ad81edfa1d1a",
+    "mode": "0644"
+  },
+  "all_snapshot_bytes_modes_Git_blob_IDs_verified": true,
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "common_producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "test_ELF": {
+    "bytes": 41727286,
+    "sha256": "f87d0fc88e4a5ee8b2e7abf63fdcc017832d4eceaac84d4098a7e0b7f0e2055d",
+    "mode": "0755",
+    "ELF": "64-bit little-endian AArch64 ET_EXEC",
+    "PT_INTERP": false
+  },
+  "staged_native_init": {
+    "bytes": 1704096,
+    "sha256": "329a7736b12aef107861f75dd2012633ee4d29134295904b1d4afc0b258b7dd8",
+    "mode": "0755",
+    "ELF": "64-bit little-endian AArch64 ET_EXEC",
+    "PT_INTERP": false
+  },
+  "compiled_vs_staged": "successful canonical Go test requires exact compiled/staged identity equality; staged body independently hashed/ELF-checked. Original temporary compiled body not separately retained.",
+  "native_init_oracle_source": {
+    "bytes": 33727,
+    "sha256": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466",
+    "mode": "0644"
+  },
+  "oracle_reapplication": "Read-only source-equivalent identity/address/drain/status checks applied to original retained JSON/logs; no Go or original program execution.",
+  "cases": [
+    {
+      "launch": "npm",
+      "id": "71fc02f1e4a17d620c16264af1d894d0e127ada59555e713ba84e43b549030d9",
+      "status": 143,
+      "full_identity_and_drain_invariants_reapplied": true,
+      "events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "held_body": "held \u96ea \u03bb\ud83d\ude42",
+      "held_HTTP200": "enforced by successful source-bound Go test; raw HTTPstatus/headers not separately retained",
+      "cleanup_absence": true,
+      "receipt": {
+        "bytes": 3615,
+        "sha256": "544892bfb5740cf9990d41d66d873738f72a761575c885d2e93cc1de0602e1d6",
+        "mode": "0600"
+      },
+      "runtime": {
+        "bytes": 1216,
+        "sha256": "bec7a9531183552e75e5ee1e6b990187eb2bf127ae5ab43cf74e53c602badb48",
+        "mode": "0644"
+      }
+    },
+    {
+      "launch": "yarn",
+      "id": "2317dc277431c1b50a3e0155da1e5bed608575140e6aae4b27789b44da7fa937",
+      "status": 1,
+      "full_identity_and_drain_invariants_reapplied": true,
+      "events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "held_body": "held \u96ea \u03bb\ud83d\ude42",
+      "held_HTTP200": "enforced by successful source-bound Go test; raw HTTPstatus/headers not separately retained",
+      "cleanup_absence": true,
+      "receipt": {
+        "bytes": 3834,
+        "sha256": "4ff2bb69975a9b1f0719ae23613b4a0a4475425a0e265463ac8f49a05b1de897",
+        "mode": "0600"
+      },
+      "runtime": {
+        "bytes": 1282,
+        "sha256": "3a9a0b015cd4118bc65bb12b49bf5296cba0ad640aae8eec4757d199b6fd4b31",
+        "mode": "0644"
+      }
+    },
+    {
+      "launch": "pnpm",
+      "id": "cd92c973c810da58629a586119618cd1424e80201c2fa2c3b7ca30522673356e",
+      "status": 143,
+      "full_identity_and_drain_invariants_reapplied": true,
+      "events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "held_body": "held \u96ea \u03bb\ud83d\ude42",
+      "held_HTTP200": "enforced by successful source-bound Go test; raw HTTPstatus/headers not separately retained",
+      "cleanup_absence": true,
+      "receipt": {
+        "bytes": 3430,
+        "sha256": "1f4ad077b658adf85d44253ac55527df5fc287b470186c2435f99c018690a26a",
+        "mode": "0600"
+      },
+      "runtime": {
+        "bytes": 1079,
+        "sha256": "2b7e111015e9fc2e7f5067834c18a9d1bcf4ac2725ed2ac9e8d03b83c894ea11",
+        "mode": "0644"
+      }
+    },
+    {
+      "launch": "direct",
+      "id": "1ba2265fd95179166650592d8ef45b5418d4d3b1e9f9f1eaf5fbd7f0ddaeb69b",
+      "status": 0,
+      "full_identity_and_drain_invariants_reapplied": true,
+      "events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "held_body": "held \u96ea \u03bb\ud83d\ude42",
+      "held_HTTP200": "enforced by successful source-bound Go test; raw HTTPstatus/headers not separately retained",
+      "cleanup_absence": true,
+      "receipt": {
+        "bytes": 3266,
+        "sha256": "97b4a41f787e2763cf8878687b1825bc2bfec365941322e4f2d9cb8f7c65e1f6",
+        "mode": "0600"
+      },
+      "runtime": {
+        "bytes": 994,
+        "sha256": "0c379a6c9b85b9d7367d17acda7962992a3547ccab7bf5ea97b893a4784fd356",
+        "mode": "0644"
+      }
+    }
+  ],
+  "all_51_direct_children_and_groups_recorded_reaped_absent": true,
+  "temporary_active_case_registry": "34 observer commands retained the running case PGID; all own groups and final registry are absent/reaped.",
+  "cleanup": {
+    "four_workload_exact_ID_absences": true,
+    "runner_builder_volume_exact_absences": true,
+    "owner_images_and_containers_absent": true,
+    "config_absent": true
+  },
+  "SDK": {
+    "go_binary": {
+      "bytes": 15795402,
+      "sha256": "d487fddb6939f3e78f7293fcbdeae610ba8ceae966d3faa4b2094a5688559230",
+      "mode": "0755",
+      "ELF": "64-bit little-endian AArch64 ET_EXEC",
+      "PT_INTERP": false
+    },
+    "manifest": {
+      "bytes": 3211035,
+      "sha256": "75d9eb9155cd3a0940ff983894d061861ca4401988d3a9a52949a312abf1f213",
+      "mode": "0644"
+    },
+    "Root_before_after": {
+      "PASS": true,
+      "paths": 17372,
+      "manifest_sha256": "75d9eb9155cd3a0940ff983894d061861ca4401988d3a9a52949a312abf1f213"
+    },
+    "scope": "Reused Root actual17372-path fullSDK BEFORE/AFTER guards; bin/go and manifestfile hashes independently checked, no new compiler execution."
+  },
+  "original_failed_first_run": "Untouched, not relabeled; outside this capsule.",
+  "pending_current_CI": {
+    "run_id": 41363104200,
+    "source": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+    "status_at_launch": "pending; no new CI acceptance inferred by this diagnostic"
+  },
+  "limits": [
+    "ONE local ARM64 four-launch native-init diagnostic; no botharch/fullfamily/hosted/Kubernetes/currentCI/baseline/adoption claim.",
+    "No Docker/Go/network/cluster/resource/repository actions were performed by this audit.",
+    "Held HTTP200 is enforced by the successful exact Go test; original body is retained, raw HTTPheaders/status not separately retained.",
+    "All included actual bytes preserved; native-init/testELF/SDK/tool bodies omitted with exact identities. Root fullSDK guard receipts are retained without claiming a repeated17372-body independent audit."
+  ]
+}

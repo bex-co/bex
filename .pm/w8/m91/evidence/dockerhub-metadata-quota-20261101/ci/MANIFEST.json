@@ -1,0 +1,14 @@
+{
+  "jobs-observed.json": {
+    "sha256": "200a3bd580a7f165f0ed1bc39c874fde8b1c69402bbe0321f70820133a5af8fe",
+    "bytes": 10753
+  },
+  "amd64-job.log": {
+    "sha256": "216ddb65dfd13a2295a1b37d9a21be733930c7d07f527aa41bc795683edd5ab8",
+    "bytes": 60650
+  },
+  "ROOT-CAUSE.json": {
+    "sha256": "2c2d0dac32ac7a77ff7db152cc856a495c40d6a6d9c870c866acd4b7af457897",
+    "bytes": 658
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "schema": "bex.compile-only/v1",
+  "started_at": "2026-11-01T23:38:50.066144+00:00",
+  "argv": [
+    "/usr/bin/sandbox-exec",
+    "-f",
+    "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/compile.sb",
+    "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+    "test",
+    "-c",
+    "-p",
+    "1",
+    "-o",
+    "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/bin/build-linux-arm64.test",
+    "./internal/build"
+  ],
+  "cwd": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/source/lego/operator",
+  "environment_overrides": {
+    "CGO_ENABLED": "0",
+    "GOOS": "linux",
+    "GOARCH": "arm64",
+    "GOWORK": "off",
+    "GOTOOLCHAIN": "local",
+    "GOPROXY": "off",
+    "GOSUMDB": "off",
+    "GOFLAGS": "-mod=readonly",
+    "GOCACHE": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/gocache",
+    "GOTMPDIR": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/gotmp",
+    "TMPDIR": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/tmp",
+    "GOMODCACHE": "/Users/tianpan/go/pkg/mod",
+    "GOMAXPROCS": "2",
+    "GOMEMLIMIT": "512MiB",
+    "GOTELEMETRY": "off",
+    "GOENV": "off"
+  },
+  "filesystem_cap_bytes": 4294967296,
+  "free_floor_bytes": 1207959552,
+  "timeout_seconds": 600,
+  "scope": "go test -c ONLY, no test binary execution; seatbelt denies all network and writes to repository/module source cache",
+  "tests_executed": false
+}
