@@ -1,0 +1,22 @@
+{
+  "scope": "Synthetic source regression only; no actual Free or other gate approval.",
+  "prior": {
+    "refused": true,
+    "reason": "actual Free coverage incomplete/stale",
+    "scope": "Old gate with corrected same workspace name isolates the agent-added aggregate coverage policy."
+  },
+  "current_budget_only": {
+    "state": "PASS",
+    "period": "2026-11",
+    "workspace": "tea-da2isimlm39c739m4ofg",
+    "free_hours_remaining": 750
+  },
+  "coverage_diagnostic_unchanged": {
+    "state": "partial",
+    "through": "2026-11-01T00:00:00Z",
+    "degradedSources": [
+      "direct"
+    ]
+  },
+  "adoption_contract_null": true
+}

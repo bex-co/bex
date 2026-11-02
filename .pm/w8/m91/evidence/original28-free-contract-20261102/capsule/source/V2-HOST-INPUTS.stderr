@@ -1,0 +1,11 @@
+test_completeSHA_truncated_gzip_and_bomb_exceeding_bound_cannot_parse (test_v2_inputs.FullEvidenceControls.test_completeSHA_truncated_gzip_and_bomb_exceeding_bound_cannot_parse) ... ok
+test_legitimate_large_bundle_predicate_and_full_generated_SPDX_are_external_not_run_cache (test_v2_inputs.FullEvidenceControls.test_legitimate_large_bundle_predicate_and_full_generated_SPDX_are_external_not_run_cache) ... ok
+test_oversize_bool_badSHA_or_short_full_stream_never_reaches_decompression (test_v2_inputs.FullEvidenceControls.test_oversize_bool_badSHA_or_short_full_stream_never_reaches_decompression) ... ok
+test_both_m91_native_bodies_contain_the_exact_original_QA_public_file (test_v2_inputs.SecretFileControls.test_both_m91_native_bodies_contain_the_exact_original_QA_public_file) ... ok
+test_missing_extra_wrong_name_or_any_changed_public_content_is_refused (test_v2_inputs.SecretFileControls.test_missing_extra_wrong_name_or_any_changed_public_content_is_refused) ... ok
+test_other26cases_still_reject_any_undeclared_secretfile (test_v2_inputs.SecretFileControls.test_other26cases_still_reject_any_undeclared_secretfile) ... ok
+
+----------------------------------------------------------------------
+Ran 6 tests in 0.743s
+
+OK

@@ -1,0 +1,193 @@
+--- V1/readiness.py
++++ V2/readiness.py
+@@ -7,6 +7,7 @@
+ import core as c
+ import proof_binding as p
+ import retained_v11_predicates as v11
++import evidence
+ 
+ SHA40=re.compile('[a-f0-9]{40}\\Z')
+ REF=re.compile(r'ghcr\.io/[a-z0-9._/-]+@sha256:[a-f0-9]{64}\Z')
+@@ -37,13 +38,36 @@
+         inputs=row.get('inputs',{})
+         c.require(set(inputs)==set(want.get('inputs',{})),'proof original input catalog differs')
+         for name,identity in want.get('inputs',{}).items():
+-            body=read(inputs[name],reader);c.require({'bytes':len(body),'sha256':c.sha(body)}==identity,'original utility/archive input differs')
++            observed_input=evidence.verify_full(inputs[name],reader);c.require(observed_input==identity,'original utility/archive input differs')
+     return {'role':role,'source':source,'ids':sorted(rows)}
+ 
+ def native_command(bundle_path,predicate,index,source):
+     return [p.COSIGN,'verify-blob-attestation','--bundle',bundle_path,'--type',predicate,'--digest',index.split(':')[1],
+             '--digestAlg','sha256','--certificate-identity',NATIVE_IDENTITY,'--certificate-oidc-issuer',p.ISSUER,
+             '--certificate-github-workflow-sha',source,'--use-signed-timestamps','--timeout','5m']
++
++COMMON_SLOT='lego/operator/internal/build/nativebases.go'
++
++def scope_matches(path,scopes):
++    from pathlib import PurePosixPath
++    for scope in scopes:
++        c.require(isinstance(scope,dict),'reviewed critical scope malformed')
++        if set(scope)=={'path'}:
++            target=scope['path'];c.require(isinstance(target,str) and target and not PurePosixPath(target).is_absolute() and '..' not in PurePosixPath(target).parts,'critical exact scope invalid')
++            if path==target:return True
++        else:
++            c.require(set(scope)=={'directory','suffix','exclude_suffixes'} and isinstance(scope['directory'],str)
++                      and scope['directory'] and not PurePosixPath(scope['directory']).is_absolute()
++                      and '..' not in PurePosixPath(scope['directory']).parts and scope['suffix']=='.go'
++                      and scope['exclude_suffixes']==['_test.go'],'reviewed runtime critical directory scope invalid')
++            if path.startswith(scope['directory'].rstrip('/')+'/') and path.endswith('.go') and not path.endswith('_test.go'):return True
++    return False
++
++def common_initializer(ref,syntax):
++    c.require(isinstance(ref,str) and REF.fullmatch(ref),'qualified common initializer REF missing')
++    c.require(syntax in ('inferred','typed'),'exact reviewed Go initializer syntax missing')
++    return ('var nativeCommonBase '+('string ' if syntax=='typed' else '')+'= '+json.dumps(ref)+'\n').encode()
++
+ 
+ def qualification(entry,contract,reader):
+     c.require(isinstance(entry,dict) and isinstance(contract,dict),'qualification contract missing')
+@@ -63,6 +87,12 @@
+     # Actual retained baseline source bytes, not future pinned working tree.
+     baseline=entry.get('qualification_source',{})
+     c.require(set(baseline)==set(contract.get('qualification_source',{})) and baseline,'qualification baseline catalog incomplete')
++    critical_paths=contract.get('adoption_critical_paths');scopes=contract.get('adoption_critical_scope')
++    c.require(isinstance(critical_paths,list) and critical_paths and len(set(critical_paths))==len(critical_paths)
++              and isinstance(scopes,list) and scopes and COMMON_SLOT in critical_paths,
++              'closed qualified adoption-critical snapshot/scope missing')
++    c.require(set(critical_paths)=={path for path in baseline if scope_matches(path,scopes)},
++              'qualified critical source set differs from reviewed closed scope')
+     for path,expected in contract['qualification_source'].items():
+         body=read(baseline[path],reader);c.require({'bytes':len(body),'sha256':c.sha(body)}==expected,'retained qualification factory input differs')
+     index_raw=read(entry.get('index'),reader);index=json.loads(index_raw)
+@@ -122,7 +152,7 @@
+                   'actual retained full report gzip receipt differs')
+         positive=accepted[bd];c.require(positive.get('command')==native_command(row['path'],row['predicate_type'],common.split('@')[1],roles['verifier'])
+                                      and positive.get('bound') is None and positive.get('signal') is None,'strict V11 command differs')
+-        bundle_raw=c.gunzip_bounded(read(entry['retained_reports'][row['full_bundle_gzip']],reader),16*1024*1024)
++        bundle_raw=evidence.gunzip_full(entry['retained_reports'][row['full_bundle_gzip']],reader)
+         c.require('sha256:'+c.sha(bundle_raw)==bd and len(bundle_raw)==row['bundle_bytes'],'full retained signed bundle differs')
+         bundle=json.loads(bundle_raw);material=bundle.get('verificationMaterial',{})
+         c.require(material.get('tlogEntries') and all(x.get('kindVersion')=={'kind':'hashedrekord','version':'0.0.2'} for x in material['tlogEntries'])
+@@ -132,7 +162,7 @@
+         c.require(c.sha(statement_raw)==row['signed_statement_sha256'] and statement['predicateType']==row['predicate_type']
+                   and any(x.get('digest',{}).get('sha256')==common.split('@sha256:')[1] for x in statement.get('subject',[])),
+                   'actual signed source/report subject differs')
+-        predicate=c.gunzip_bounded(read(entry['retained_reports'][row['full_predicate_gzip']],reader),16*1024*1024)
++        predicate=evidence.gunzip_full(entry['retained_reports'][row['full_predicate_gzip']],reader)
+         canonical=json.dumps(statement['predicate'],sort_keys=True,separators=(',',':'),ensure_ascii=False,allow_nan=False).encode()
+         c.require(predicate==canonical and c.sha(predicate)==row['decoded_predicate_sorted_json_sha256']
+                   and len(predicate)==row['decoded_predicate_sorted_json_bytes'],'retained full predicate binding differs')
+@@ -159,7 +189,7 @@
+     output=json.loads(completed_result(generated.get('result'),reader,contract['generated_default_python_command']))
+     c.require(output.get('python')=='3.14.8' and output.get('version_signals')==[] and output.get('base')==common
+               and isinstance(output.get('image'),str) and REF.fullmatch(output['image']), 'actual generated no-signal Python3.14.8 identity missing')
+-    spdx=document(generated.get('spdx'),reader)
++    spdx=evidence.full_document(generated.get('spdx'),reader)
+     c.require(spdx.get('spdxVersion')=='SPDX-2.3' and output['spdx_sha256']==generated['spdx']['sha256']
+               and output['spdx_image']==output['image'],'actual generated exact-image full SPDX missing')
+     root=contract.get('generated_spdx_root',{})
+@@ -172,7 +202,8 @@
+     c.require(packages and all(x.get('versionInfo') in contract.get('fixed_brotli_versions',[]) for x in packages), 'actual generated SPDX Brotli fixed package missing')
+     return {'common_ref':common,'roles':roles,'utilities':utilities,'families':families,'generated_default_python':output['image'],
+             'qualified_baseline_source':roles['generator'],'qualification_source':contract['qualification_source'],
+-            'adoptable_refs':sorted({common,output['image']}|{x['observations']['image'] for x in contract['family_cases']
++            'critical_source':{path:contract['qualification_source'][path] for path in critical_paths},
++            'critical_scope':scopes,'adoptable_refs':sorted({common,output['image']}|{x['observations']['image'] for x in contract['family_cases']
+                 if isinstance(x.get('observations',{}).get('image'),str) and REF.fullmatch(x['observations']['image'])})}
+ 
+ def adoption(contract,entry,qualified,reader,git):
+@@ -180,28 +211,67 @@
+     source=contract.get('source');require_source(source);require_source(contract.get('required_ancestor'))
+     c.require(entry.get('source')==source and entry.get('image')==contract.get('operator_image')
+               and git('ancestor',contract['required_ancestor'],source) is True,'actual adopted signed source differs')
+-    files=contract.get('critical_files',{});c.require(files and contract.get('scope_code') and contract.get('pins'),'actual source/blob/pin/scope contract incomplete')
+-    actual_files={}
++    files=contract.get('critical_files',{});baseline_contract=qualified.get('critical_source',{});scopes=qualified.get('critical_scope')
++    c.require(isinstance(files,dict) and files and contract.get('scope_code') and contract.get('pins')
++              and isinstance(baseline_contract,dict) and baseline_contract and isinstance(scopes,list) and scopes
++              and COMMON_SLOT in baseline_contract and set(files)==set(baseline_contract),
++              'closed critical source set missing or includes additions/deletions')
++    actual_files={};before_files={};changed=set()
+     for path,expected in files.items():
++        baseline,base_mode,base_blob=git('blob',qualified['qualified_baseline_source'],path)
++        c.require({'bytes':len(baseline),'sha256':c.sha(baseline)}==baseline_contract[path]
++                  and baseline_contract[path]==qualified['qualification_source'].get(path),
++                  'actual qualified critical baseline differs from retained identity:'+path)
+         raw,mode,blob=git('blob',source,path)
+         c.require({'bytes':len(raw),'sha256':c.sha(raw),'git_mode':mode,'git_blob':blob}==expected,'adoption critical whole blob differs:'+path)
+-        actual_files[path]=raw
+-    # Qualification baseline and adopted pinned source need not be byte-equal.
+-    # Only exact reviewed immutable image-ref literal edits qualify as pin-only.
+-    deltas=contract.get('pin_only_deltas',[])
+-    c.require(isinstance(deltas,list),'reviewed pin-only delta catalog missing')
++        c.require(base_mode==mode,'unreviewed critical file mode change')
++        actual_files[path]=raw;before_files[path]=baseline
++        if baseline!=raw or base_blob!=blob:changed.add(path)
++    changes=git('changes',qualified['qualified_baseline_source'],source)
++    c.require(isinstance(changes,list) and all(isinstance(row,dict) and set(row)=={'status','path'}
++              and row['status'] in ('A','D','M','T') and isinstance(row['path'],str) for row in changes),
++              'actual source change-set observation missing')
++    scoped=[row for row in changes if scope_matches(row['path'],scopes)]
++    c.require(len({row['path'] for row in scoped})==len(scoped)
++              and all(row['status']=='M' and row['path'] in baseline_contract for row in scoped)
++              and {row['path'] for row in scoped}==changed,
++              'actual critical additions/deletions/unlisted changes differ from closed snapshot')
++    deltas=contract.get('pin_only_deltas')
++    c.require(isinstance(deltas,list) and all(isinstance(row,dict) and isinstance(row.get('path'),str) for row in deltas)
++              and len({row['path'] for row in deltas})==len(deltas)
++              and {row['path'] for row in deltas}==changed,
++              'every changed critical blob requires one exact reviewed pin delta')
++    syntax=contract.get('common_initializer_syntax','inferred')
+     for delta in deltas:
+-        c.require(delta.get('qualification_source')==qualified['qualified_baseline_source'] and delta['path'] in actual_files,'pin delta baseline/path differs')
+-        baseline=read(delta['before'],reader)
+-        c.require({'bytes':len(baseline),'sha256':c.sha(baseline)}==qualified['qualification_source'].get(delta['path']),
+-                  'pin-only before bytes are not the retained qualified baseline')
+-        out=baseline
+-        for edit in delta['edits']:
+-            old,new=edit['before'],edit['after']
+-            c.require(isinstance(old,str) and isinstance(new,str) and REF.fullmatch(old) and REF.fullmatch(new), 'unreviewed runtime edit is not immutable pin-only')
+-            before=json.dumps(old).encode();after=json.dumps(new).encode()
+-            c.require(out.count(before)==1,'pin-only baseline literal not unique');out=out.replace(before,after,1)
+-        c.require(out==actual_files[delta['path']], 'unreviewed runtime function/source change beyond pin-only delta')
++        path=delta['path']
++        c.require(delta.get('qualification_source')==qualified['qualified_baseline_source']
++                  and path in changed and read(delta['before'],reader)==before_files[path],
++                  'pin delta does not bind complete retained qualified baseline')
++        out=before_files[path];edits=delta.get('edits')
++        c.require(isinstance(edits,list) and edits,'changed critical blob has no strict pin transformation')
++        for edit in edits:
++            c.require(isinstance(edit,dict),'pin edit malformed')
++            kind=edit.get('kind','immutable-ref')
++            if kind=='native-common-base-initializer':
++                c.require(path==COMMON_SLOT and set(edit)=={'kind','before','after'},'initial common pin outside exact known declaration')
++                before=b'var nativeCommonBase string\n';after=common_initializer(qualified['common_ref'],syntax)
++                c.require(edit['before']==before.decode() and edit['after']==after.decode(),
++                          'initial common pin is not the exact reviewed declaration mapping')
++            else:
++                c.require(kind=='immutable-ref' and set(edit)<={'kind','before','after'},'unreviewed pin edit grammar')
++                old,new=edit.get('before'),edit.get('after')
++                c.require(isinstance(old,str) and isinstance(new,str) and REF.fullmatch(old) and REF.fullmatch(new)
++                          and new in qualified['adoptable_refs'],'unreviewed runtime edit is not qualified immutable pin-only')
++                before=json.dumps(old).encode();after=json.dumps(new).encode()
++            c.require(out.count(before)==1,'reviewed pin span is not unique')
++            offset=out.index(before)
++            if kind=='native-common-base-initializer':c.require(offset==0 or out[offset-1:offset]==b'\n','known initializer is not an exact full declaration line')
++            out=out.replace(before,after,1)
++        c.require(out==actual_files[path],'unreviewed function/scope/comment/source change beyond exact pin spans')
++    fixed=common_initializer(qualified['common_ref'],syntax)
++    slot=actual_files[COMMON_SLOT]
++    c.require(slot.count(fixed)==1 and b'var nativeCommonBase string\n' not in slot,
++              'actual known common slot is empty or differs from qualified REF')
+     for pin in contract['pins']:
+         c.require(pin['qualified_ref'] in qualified['adoptable_refs'] and pin['path'] in actual_files
+                   and pin['literal'].encode() in actual_files[pin['path']] and pin['literal']==json.dumps(pin['qualified_ref']),
+@@ -215,7 +285,7 @@
+     p.bind_signature(entry,reader)
+     c.require(entry.get('APIApproval') is not None,'separate actual API approval required')
+     p.bind_signature(entry['APIApproval'],reader)
+-    return {'source':source,'image':entry['image'],'critical_files':files,'common_ref':qualified['common_ref']}
++    return {'source':source,'image':entry['image'],'critical_files':files,'common_ref':qualified['common_ref'],'changed_critical_paths':sorted(changed)}
+ 
+ def admit(capsule,contract,now,reader,git):
+     # Deliberately first: null/missing adopted authority refuses before auth and

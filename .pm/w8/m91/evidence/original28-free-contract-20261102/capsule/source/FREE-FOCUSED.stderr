@@ -1,0 +1,8 @@
+test_actual_opaque_method_captures_safe_values_before_10h_refusal_and_pass (test_free_contract.FreeContractControls.test_actual_opaque_method_captures_safe_values_before_10h_refusal_and_pass) ... ok
+test_partial_direct_is_diagnostic_but_exact10h_and_real_fresh_success_proofs_remain_required (test_free_contract.FreeContractControls.test_partial_direct_is_diagnostic_but_exact10h_and_real_fresh_success_proofs_remain_required) ... ok
+test_preauth_capsule_must_include_fresh_reviewed_actual_capture_fields_no_old_Through_fallback (test_free_contract.FreeContractControls.test_preauth_capsule_must_include_fresh_reviewed_actual_capture_fields_no_old_Through_fallback) ... ok
+
+----------------------------------------------------------------------
+Ran 3 tests in 0.003s
+
+OK

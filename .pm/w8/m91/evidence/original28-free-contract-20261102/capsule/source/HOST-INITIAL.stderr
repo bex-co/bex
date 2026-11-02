@@ -1,0 +1,855 @@
+test_absent_or_null_adoption_refuses_before_auth_or_any_proof_reader (test_adapter.AdmissionControls.test_absent_or_null_adoption_refuses_before_auth_or_any_proof_reader) ... ok
+test_bool_ready_or_allWorkspaces_is_never_adoption_authority (test_adapter.AdmissionControls.test_bool_ready_or_allWorkspaces_is_never_adoption_authority) ... ok
+test_source_default_is_null_and_genuine_host_proof_binding_modules_unchanged (test_adapter.AdmissionControls.test_source_default_is_null_and_genuine_host_proof_binding_modules_unchanged) ... ok
+test_utility_family_capture_observations_bind_actual_raw_stdout_not_passlabel (test_adapter.AdmissionControls.test_utility_family_capture_observations_bind_actual_raw_stdout_not_passlabel) ... ok
+test_actual_native_body_rejects_source_commands_env_paid_and_foreign_201 (test_adapter.CatalogJournalControls.test_actual_native_body_rejects_source_commands_env_paid_and_foreign_201) ... ok
+test_all_name_overlays_change_only_unused_display_fields_and_literal_flag (test_adapter.CatalogJournalControls.test_all_name_overlays_change_only_unused_display_fields_and_literal_flag) ... ok
+test_fixed_spec_or_emission_map_mutations_and_unknown_catalog_never_heal (test_adapter.CatalogJournalControls.test_fixed_spec_or_emission_map_mutations_and_unknown_catalog_never_heal) ... ok
+test_once_intent_forward_201_and_cleanup_order_with_no_replay_after_success (test_adapter.CatalogJournalControls.test_once_intent_forward_201_and_cleanup_order_with_no_replay_after_success) ... ERROR
+test_unknown_create_stops_all_remaining_catalog_and_max2active_is_fixed (test_adapter.CatalogJournalControls.test_unknown_create_stops_all_remaining_catalog_and_max2active_is_fixed) ... ok
+test_actual_m94_build_runtime_database_mismatch_is_rejected (test_adapter.OriginalProofControls.test_actual_m94_build_runtime_database_mismatch_is_rejected) ... ok
+test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) ... 
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=91, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=91, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=93, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=93, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=94, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=94, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=95, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=95, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=96, client='bex') ... FAIL
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=96, client='render') ... FAIL
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=97, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=97, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=98, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=98, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=99, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=99, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=100, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=100, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=101, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=101, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=102, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=102, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=103, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=103, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=107, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=107, client='render') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=222, client='bex') ... ERROR
+  test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=222, client='render') ... ERROR
+test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) ... 
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=91, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=93, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=94, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=95, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=97, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=98, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=99, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=100, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=101, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=102, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=103, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=107, mode='build-proof') ... ERROR
+  test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=222, mode='build-proof') ... ERROR
+test_env_readback_is_fourth_mandatory_proof_including_original_emptyenv (test_adapter.OriginalProofControls.test_env_readback_is_fourth_mandatory_proof_including_original_emptyenv) ... ok
+test_original_independent_binary_or_HTML_artifact_corruption_rejected (test_adapter.OriginalProofControls.test_original_independent_binary_or_HTML_artifact_corruption_rejected) ... 
+  test_original_independent_binary_or_HTML_artifact_corruption_rejected (test_adapter.OriginalProofControls.test_original_independent_binary_or_HTML_artifact_corruption_rejected) (mid=96) ... ERROR
+  test_original_independent_binary_or_HTML_artifact_corruption_rejected (test_adapter.OriginalProofControls.test_original_independent_binary_or_HTML_artifact_corruption_rejected) (mid=102) ... ERROR
+test_partial_original_HTTP_capture_cannot_pass_correct_stdout (test_adapter.OriginalProofControls.test_partial_original_HTTP_capture_cannot_pass_correct_stdout) ... ok
+test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) ... 
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=91, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=93, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=94, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=95, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=97, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=98, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=99, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=100, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=101, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=102, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=103, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=107, mode='app-correlation') ... ERROR
+  test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=222, mode='app-correlation') ... ERROR
+
+======================================================================
+ERROR: test_once_intent_forward_201_and_cleanup_order_with_no_replay_after_success (test_adapter.CatalogJournalControls.test_once_intent_forward_201_and_cleanup_order_with_no_replay_after_success)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 95, in test_once_intent_forward_201_and_cleanup_order_with_no_replay_after_success
+    ctx.proof();journal.deleted(row['id'],404,{child:404 for child in row['children']},404)
+    ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=91, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=91, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=93, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=93, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=94, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'r'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=94, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'r'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=95, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=95, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=97, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=97, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=98, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=98, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=99, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=99, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=100, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=100, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=101, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=101, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=102, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=102, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=103, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=103, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=107, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=107, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=222, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=222, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you mean: 'ref'? Or did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=91, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=93, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=94, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=95, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=97, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=98, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=99, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=100, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=101, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=102, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=103, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=107, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) (mid=222, mode='build-proof')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 48, in test_each_original_family_wrong_marker_and_missing_native_build_proof_fail
+    with self.assertRaises((AssertionError,ValueError,KeyError)):ctx.proof()
+                                                                 ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_original_independent_binary_or_HTML_artifact_corruption_rejected (test_adapter.OriginalProofControls.test_original_independent_binary_or_HTML_artifact_corruption_rejected) (mid=96)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 62, in test_original_independent_binary_or_HTML_artifact_corruption_rejected
+    with self.assertRaises((AssertionError,ValueError,KeyError,TypeError)):ctx.proof()
+                                                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 53, in proof
+    requests = fn(x, h, dir, valid, ref)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/http_96.py", line 21, in exercise
+    e['independent_host_GNUTranslations'] = values(gettext.GNUTranslations(io.BytesIO(b)))
+                                                   ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/gettext.py", line 279, in __init__
+    self._parse(fp)
+    ~~~~~~~~~~~^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/gettext.py", line 370, in _parse
+    raise OSError(0, 'Bad magic number', filename)
+OSError: [Errno 0] Bad magic number: ''
+
+======================================================================
+ERROR: test_original_independent_binary_or_HTML_artifact_corruption_rejected (test_adapter.OriginalProofControls.test_original_independent_binary_or_HTML_artifact_corruption_rejected) (mid=102)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 62, in test_original_independent_binary_or_HTML_artifact_corruption_rejected
+    with self.assertRaises((AssertionError,ValueError,KeyError,TypeError)):ctx.proof()
+                                                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 57, in proof
+    requests = fn(x, h, dir, valid, ref, record)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/http_102.py", line 23, in exercise
+    inflated = zlib.decompress(body, wbits=31)
+zlib.error: Error -3 while decompressing data: incorrect header check
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=91, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=93, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=94, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=95, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=97, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=98, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=99, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=100, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=101, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=102, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=103, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=107, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+ERROR: test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) (mid=222, mode='app-correlation')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 54, in test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass
+    with self.assertRaises(AssertionError):ctx.proof()
+                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 69, in proof
+    match = re.search('QA[A-Za-z0-9_]* (\\{.*\\})', line)
+            ^^
+NameError: name 're' is not defined. Did you forget to import 're'?
+
+======================================================================
+FAIL: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=96, client='bex')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 60, in proof
+    assert len(requests) == 3 and all((v.get('pass') for v in requests)), 'independent HTTP/artifact proof failed'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: independent HTTP/artifact proof failed
+
+======================================================================
+FAIL: test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) (mid=96, client='render')
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 37, in test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env
+    proof=ctx.proof();shared=ctx.shared()
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 60, in proof
+    assert len(requests) == 3 and all((v.get('pass') for v in requests)), 'independent HTTP/artifact proof failed'
+           ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: independent HTTP/artifact proof failed
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.529s
+
+FAILED (failures=2, errors=55)

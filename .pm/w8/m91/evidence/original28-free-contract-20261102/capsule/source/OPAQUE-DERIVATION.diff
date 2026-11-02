@@ -1,0 +1,1213 @@
+--- /private/tmp/bex-w8-m83-live-transport-v3-main-source-20261101-9b2_pe4q/transport.py
++++ /private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/opaque.py
+@@ -1,52 +1,26 @@
+-"""Concrete m83 live transport, SOURCE ONLY until Root explicitly runs execute.
+-
+-No login, request, subprocess, filesystem write or thread occurs on import.
+-Only this run's private config/QA jar and actual captured201 service IDs are used.
+-"""
+-import argparse
+-import base64
+-import datetime
+-import gzip
+-import hashlib
+-import http.server
+-import json
+-import os
++"""Explicit general V3MAIN derivation; no m83 specification/readiness/oracle import."""
++import base64,datetime,gzip,hashlib,http.server,json,os,re,secrets,shutil,signal,sys,threading,time
+ from pathlib import Path
+-import re
+-import secrets
+-import shutil
+-import signal
+-import sys
+-import threading
+-import time
+-from urllib.parse import parse_qs, urlencode, urlsplit
+-
+-import controller as c
+-from host import Budget, Runner, Stop, START_FREE, encoded, free_bytes
+-
+-HERE = Path(__file__).resolve().parent
+-REPO = Path('/Users/tianpan/projects/bex7')
+-API = 'https://api.bex.co'
+-HOP = {'connection', 'transfer-encoding', 'content-length', 'keep-alive', 'proxy-authenticate',
+-       'proxy-authorization', 'te', 'trailer', 'upgrade'}
+-
+-
++from urllib.parse import parse_qs,urlencode,urlsplit
++import core as c
++from host import Budget,Runner,Stop,START_FREE,encoded,free_bytes
++HERE=Path(__file__).resolve().parent
++REPO=Path('/Users/tianpan/projects/bex7')
++API='https://api.bex.co'
++HOP={'connection','transfer-encoding','content-length','keep-alive','proxy-authenticate','proxy-authorization','te','trailer','upgrade'}
+ class PrivateConfigError(Stop):
+     """Only static call-site phase and exception class may leave this boundary."""
+     def __init__(self,phase,cause_class):
+         self.phase,self.cause_class=phase,cause_class
+         super().__init__(phase+':'+cause_class)
+ 
+-
+ def safe_error(phase,error):
+     if isinstance(error,PrivateConfigError):
+         return error.phase+':'+error.cause_class
+     return phase+':'+type(error).__name__
+ 
+-
+ def now():
+     return datetime.datetime.now(datetime.timezone.utc)
+-
+ 
+ def digest(path):
+     result = hashlib.sha256()
+@@ -55,13 +29,11 @@
+             result.update(body)
+     return result.hexdigest()
+ 
+-
+ def read_json(path, cap=2*1024*1024):
+     path = Path(path)
+     if path.is_symlink() or not path.is_file() or path.stat().st_size > cap:
+         raise Stop('bounded regular JSON input required')
+     return json.loads(path.read_bytes())
+-
+ 
+ def bounded_file(path,cap):
+     path=Path(path)
+@@ -71,7 +43,6 @@
+     c.require(len(body)<=cap,'bounded capture file grew past cap')
+     return body
+ 
+-
+ def decode_json(body):
+     text = body.decode()
+     if not text.lstrip().startswith(('{', '[')):
+@@ -79,7 +50,6 @@
+         c.require(len(messages) == 1, 'one complete MCP JSON message required')
+         text = messages[0]
+     return json.loads(text)
+-
+ 
+ def parse_headers(raw):
+     blocks = raw.decode('iso-8859-1').replace('\r\n', '\n').strip().split('\n\n')
+@@ -96,7 +66,6 @@
+             headers[name] = headers[name] + ', ' + value.strip() if name in headers else value.strip()
+     return status[1], int(status[2]), headers
+ 
+-
+ def split_included_response(raw):
+     """Curl --include prefix blocks; body bytes are never text-decoded here."""
+     headers=[]
+@@ -107,7 +76,6 @@
+         headers.append(raw[:end+width]);raw=raw[end+width:]
+     c.require(headers and sum(map(len,headers))<=65536,'included HTTP headers missing/oversized')
+     return b''.join(headers),raw
+-
+ 
+ def command_receipt(result, argv, include_output=True, redact=()):
+     out = {key: value for key, value in result.items() if key not in ('stdout', 'stderr')}
+@@ -123,731 +91,332 @@
+             out[key] = value
+     return out
+ 
+-
+-class Transport:
+-    def __init__(self, root, ready_path, source=HERE, budget=None, runner=None):
+-        self.root, self.source = Path(root), Path(source)
+-        self.private = self.root / 'private'
+-        self.ready_path = Path(ready_path)
+-        self.ready_bytes_sha = digest(self.ready_path)
+-        self.ready = read_json(self.ready_path)
+-        self.public = read_json(self.source / 'PUBLIC-SOURCE.json')
+-        self.inputs = read_json(self.source / 'CLIENTS-AND-REUSE.json')
+-        self.budget = budget or Budget(self.root)
+-        self.runner = runner or Runner(self.budget)
+-        self.sequence = 0
+-        self.lock = threading.RLock()
+-        self.tokens = set()
+-        self.errors = []
+-        self.results = {}
+-        self.data = {'scope': 'm83 actual native Free web only', 'workspace': c.WORKSPACE,
+-                     'baseline_ids': None, 'resources': [], 'nonce': secrets.token_hex(6)}
+-        self.journal = None
+-        self.auth_started = False
+-        self.auth_completed = False
+-        self.creation_started = None
+-        self.active_relays = []
+-        self.handlers = {}
+-        self.finishing = False
+-        self.phase = 'initialization'
+-
++class OpaqueTransport:
+     def record(self, name, value, cleanup=False):
+-        try:
+-            self.budget.json('evidence/' + name, value, cleanup)
+-        except BaseException as error:
+-            if not cleanup:
++            try:
++                self.budget.json('evidence/' + name, value, cleanup)
++            except BaseException as error:
++                if not cleanup:
++                    raise
++                self.errors.append('cleanup evidence ' + name + ': ' + type(error).__name__)
++    def persist(self, data):
++            # Critical actual201 identities remain writable in the reserved stop
++            # margin. A failed persistence never prevents exact in-memory cleanup.
++            self.budget.json('evidence/ledger.json', data, cleanup=True)
++    def next_name(self, prefix):
++            with self.lock:
++                self.sequence += 1
++                return prefix + '-%05d' % self.sequence
++    def set_handlers(self):
++            def stop(signum, frame):
++                self.budget.error = 'received signal' + str(signum)
++                if not self.finishing:
++                    raise Stop(self.budget.error)
++            for signum in (signal.SIGTERM, signal.SIGINT):
++                self.handlers[signum] = signal.getsignal(signum)
++                signal.signal(signum, stop)
++    def register_session_handle(self):
++            handle = self.private / 'qa-session-handle.json'
++            if handle.exists():
++                value = read_json(handle, 65536)
++                path = Path(value['logout_jar'])
++                if path.exists():
++                    self.budget.register_jar(path, REPO / '.playwright-mcp')
++                c.require(value.get('state') == str(self.private / 'qa-state.json'), 'own QA state path differs')
++    def auth(self):
++            self.check_ready()
++            self.require_legal_window()
++            self.auth_started = True
++            command = [sys.executable, str(self.private / 'auth.py')]
++            self.budget.permit_external_write('private',2*1024*1024)
++            result = self.runner.capture(command, timeout=1200, limit=262144)
++            self.register_session_handle()
++            self.record('auth-command.json', command_receipt(result, command, include_output=False), cleanup=True)
++            c.completed(result)
++            cfg = self.private / 'credentials/cli.yaml'
++            c.require(cfg.is_file() and not cfg.is_symlink() and cfg.stat().st_mode & 0o777 == 0o600,
++                      'own native credential mode differs')
++            self.credentials()
++            receipt = read_json(self.private / 'auth-receipt.json', 65536)
++            c.require(receipt.get('native_login_exit') == 0, 'own grant login unproved')
++            self.record('auth.json', {key: receipt.get(key) for key in
++                        ('at', 'native_login_exit', 'grant', 'configuration_mode', 'credentials_printed')})
++            self.auth_completed = True
++    def config_document(self,path,phase):
++            try:
++                import yaml  # Existing qualified dependency; no install or raw parser diagnostics.
++                c.require(path.is_file() and not path.is_symlink() and path.stat().st_size<=65536
++                          and path.stat().st_mode & 0o077==0,'not own bounded private config')
++                doc=yaml.safe_load(path.read_text())
++                c.require(isinstance(doc,dict) and isinstance(doc.get('api'),dict),'private config shape differs')
++                api=doc['api']
++                for key,value in api.items():
++                    c.require(isinstance(key,str),'private config field name invalid')
++                    if isinstance(value,str) and any(word in key.lower() for word in ('key','token','secret','password')) and value:
++                        self.tokens.add(value)
++                token=api.get('key') or api.get('token') or api.get('access_token')
++                c.require(isinstance(token,str) and token and '\n' not in token and '\r' not in token,
++                          'own access token unavailable')
++                return doc
++            except BaseException as error:
++                raise PrivateConfigError(phase,type(error).__name__) from None
++    def config_bytes(self,doc,phase):
++            try:
++                import yaml
++                return yaml.safe_dump(doc).encode()
++            except BaseException as error:
++                raise PrivateConfigError(phase,type(error).__name__) from None
++    def credentials(self):
++            doc=self.config_document(self.private/'credentials/cli.yaml','credential-master-read')
++            api=doc['api']
++            return doc,api.get('key') or api.get('token') or api.get('access_token')
++    def environment(self, client, config, host):
++            prefix = 'BEX' if client == 'bex' else 'RENDER'
++            env = {key: value for key, value in os.environ.items() if not key.startswith(('BEX_', 'RENDER_', 'QA_'))}
++            env.update({'PATH': str(self.private/'bin') + os.pathsep + os.environ['PATH'], 'DO_NOT_TRACK': '1',
++                        'BROWSER': '/usr/bin/true', 'BEX_NO_UPDATE_NOTIFIER': '1', prefix+'_HOST': host,
++                        prefix+'_CLI_CONFIG_PATH': str(config), prefix+'_CLI_CONFIG_DIR': str(config.parent),
++                        prefix+'_WORKSPACE': c.WORKSPACE, prefix+'_CLI_DISABLE_ANALYTICS': '1'})
++            return env
++    def native(self, client, args, host, cleanup=False, timeout=45):
++            c.require(client in ('bex','render'),'fixed native role required')
++            doc, _ = self.credentials()
++            directory = self.private / ('config-' + client)
++            directory.mkdir(mode=0o700, exist_ok=True)
++            config = directory / 'cli.yaml'
++            c.require(not config.exists(), 'per-call native config already exists')
++            doc['api']['host'] = host
++            self.budget.write(config.relative_to(self.root), self.config_bytes(doc,'native-'+client+'-config-write'), cleanup)
++            command = [str(self.private / ('release/bex' if client == 'bex' else 'render-pin')), *args]
++            result,fresh=None,None
++            try:
++                result = self.runner.capture(command, timeout=timeout, env=self.environment(client, config, host), cleanup=cleanup)
++                fresh=self.config_document(config,'native-'+client+'-rotated-config-read')
++                self.record('outputs/' + self.next_name('native') + '.json',
++                            command_receipt(result, [client, *args], redact=self.tokens), cleanup)
++                return result
++            except BaseException as error:
++                if result is not None:
++                    # A partial/invalid rotated config may contain an unknown new
++                    # token. Keep only counts/hashes/exit/group proof, never raw
++                    # stdout/stderr or parser text when redaction cannot be proved.
++                    summary=command_receipt(result,[client,*args],include_output=False)
++                    summary['failure']=safe_error('native-'+client,error)
++                    self.record('outputs/'+self.next_name('native-opaque-failure')+'.json',summary,cleanup=True)
+                 raise
+-            self.errors.append('cleanup evidence ' + name + ': ' + type(error).__name__)
+-
+-    def persist(self, data):
+-        # Critical actual201 identities remain writable in the reserved stop
+-        # margin. A failed persistence never prevents exact in-memory cleanup.
+-        self.budget.json('evidence/ledger.json', data, cleanup=True)
+-
+-    def next_name(self, prefix):
+-        with self.lock:
+-            self.sequence += 1
+-            return prefix + '-%05d' % self.sequence
+-
+-    def set_handlers(self):
+-        def stop(signum, frame):
+-            self.budget.error = 'received signal' + str(signum)
+-            if not self.finishing:
+-                raise Stop(self.budget.error)
+-        for signum in (signal.SIGTERM, signal.SIGINT):
+-            self.handlers[signum] = signal.getsignal(signum)
+-            signal.signal(signum, stop)
+-
+-    def setup(self):
+-        for part in ('private', 'source', 'scratch', 'evidence'):
+-            (self.root / part).mkdir(mode=0o700, exist_ok=True)
+-        for name in ('auth.py', 'cleanup-auth.py', 'client_primitives.py'):
+-            body = (self.source / 'reuse-source' / name).read_bytes()
+-            expected = self.inputs['source_only_reuse'][name]['sha256']
+-            c.require(c.sha(body) == expected, 'copied auth primitive bytes changed')
+-            self.budget.write('private/' + name, body)
+-        for name in ('fixture.js', 'stream-observer.js', 'upgrade-observer.js'):
+-            self.budget.write('source/' + name, (self.source / name).read_bytes())
+-        for client, relative in [('bex', 'release/bex'), ('render', 'render-pin')]:
+-            row = self.inputs['clients'][client]
+-            binary = Path(row['resolved_public_binary_path'])
+-            c.require(binary.is_file() and digest(binary) == row['sha256'], 'original public client bytes changed')
+-            path = self.private / relative
+-            path.parent.mkdir(mode=0o700, parents=True, exist_ok=True)
+-            path.symlink_to(binary)
+-        self.record('inputs.json', {'workspace': c.WORKSPACE, 'nonce': self.data['nonce'],
+-                    'source_manifest_sha256': digest(self.source / 'MANIFEST.json'),
+-                    'ready_input_sha256': self.ready_bytes_sha, 'public_source': self.public,
+-                    'clients': self.inputs['clients'], 'no_foreign_auth_reused': True})
+-
+-    def check_ready(self):
+-        c.require(digest(self.ready_path) == self.ready_bytes_sha, 'Ready receipt changed after input freeze')
+-        def ancestor(left, right):
+-            command = ['git', '-C', str(REPO), 'merge-base', '--is-ancestor', left, right]
+-            result = self.runner.capture(command, timeout=10, env=dict(os.environ), limit=65536)
+-            return (type(result.get('exit_code')) is int and result['exit_code']==0
+-                    and result.get('complete') is True and result.get('bound') is None and result.get('signal') is None)
+-        def proof(path):
+-            file = Path(path)
+-            c.require(file.parent != REPO and file.suffix in ('.json','.log') and str(file).startswith('/private/tmp/'),
+-                      'readiness proof must be a private reviewed JSON receipt')
+-            c.require(file.is_file() and not file.is_symlink() and file.stat().st_size <= 2*1024*1024,
+-                      'bounded readiness proof missing')
+-            return file.read_bytes()
+-        result = c.gate_readiness(self.ready, now(), ancestor, proof)
+-        approved=read_json(self.source/'CRITICAL-SOURCE.json')
+-        for path,expected in approved['files'].items():
+-            command=['git','-C',str(REPO),'show',self.ready['source']+':'+path]
+-            actual=self.runner.capture(command,timeout=10,limit=2*1024*1024)
+-            c.completed(actual)
+-            bound={'bytes':len(actual['stdout']),'sha256':c.sha(actual['stdout'])}
+-            claimed=self.ready['critical_source'].get(path,{})
+-            c.require(bound==expected and all(claimed.get(key)==value for key,value in bound.items()),
+-                      'signed Ready source does not match approved exact critical blob:'+path)
+-        result['critical_source']=approved['files']
+-        self.record(self.next_name('ready') + '.json', result)
+-        return result
+-
+-    def register_session_handle(self):
+-        handle = self.private / 'qa-session-handle.json'
+-        if handle.exists():
+-            value = read_json(handle, 65536)
+-            path = Path(value['logout_jar'])
+-            if path.exists():
+-                self.budget.register_jar(path, REPO / '.playwright-mcp')
+-            c.require(value.get('state') == str(self.private / 'qa-state.json'), 'own QA state path differs')
+-
+-    def auth(self):
+-        self.check_ready()
+-        c.require(now() >= c.RESET, 'Free window not open; do not log in yet')
+-        self.auth_started = True
+-        command = [sys.executable, str(self.private / 'auth.py')]
+-        self.budget.permit_external_write('private',2*1024*1024)
+-        result = self.runner.capture(command, timeout=1200, limit=262144)
+-        self.register_session_handle()
+-        self.record('auth-command.json', command_receipt(result, command, include_output=False), cleanup=True)
+-        c.completed(result)
+-        cfg = self.private / 'credentials/cli.yaml'
+-        c.require(cfg.is_file() and not cfg.is_symlink() and cfg.stat().st_mode & 0o777 == 0o600,
+-                  'own native credential mode differs')
+-        self.credentials()
+-        receipt = read_json(self.private / 'auth-receipt.json', 65536)
+-        c.require(receipt.get('native_login_exit') == 0, 'own grant login unproved')
+-        self.record('auth.json', {key: receipt.get(key) for key in
+-                    ('at', 'native_login_exit', 'grant', 'configuration_mode', 'credentials_printed')})
+-        self.auth_completed = True
+-
+-    def config_document(self,path,phase):
+-        try:
+-            import yaml  # Existing qualified dependency; no install or raw parser diagnostics.
+-            c.require(path.is_file() and not path.is_symlink() and path.stat().st_size<=65536
+-                      and path.stat().st_mode & 0o077==0,'not own bounded private config')
+-            doc=yaml.safe_load(path.read_text())
+-            c.require(isinstance(doc,dict) and isinstance(doc.get('api'),dict),'private config shape differs')
+-            api=doc['api']
+-            for key,value in api.items():
+-                c.require(isinstance(key,str),'private config field name invalid')
+-                if isinstance(value,str) and any(word in key.lower() for word in ('key','token','secret','password')) and value:
+-                    self.tokens.add(value)
+-            token=api.get('key') or api.get('token') or api.get('access_token')
+-            c.require(isinstance(token,str) and token and '\n' not in token and '\r' not in token,
+-                      'own access token unavailable')
+-            return doc
+-        except BaseException as error:
+-            raise PrivateConfigError(phase,type(error).__name__) from None
+-
+-    def config_bytes(self,doc,phase):
+-        try:
+-            import yaml
+-            return yaml.safe_dump(doc).encode()
+-        except BaseException as error:
+-            raise PrivateConfigError(phase,type(error).__name__) from None
+-
+-    def credentials(self):
+-        doc=self.config_document(self.private/'credentials/cli.yaml','credential-master-read')
+-        api=doc['api']
+-        return doc,api.get('key') or api.get('token') or api.get('access_token')
+-
+-    def environment(self, client, config, host):
+-        prefix = 'BEX' if client == 'bex' else 'RENDER'
+-        env = {key: value for key, value in os.environ.items() if not key.startswith(('BEX_', 'RENDER_', 'QA_'))}
+-        env.update({'PATH': str(self.private/'bin') + os.pathsep + os.environ['PATH'], 'DO_NOT_TRACK': '1',
+-                    'BROWSER': '/usr/bin/true', 'BEX_NO_UPDATE_NOTIFIER': '1', prefix+'_HOST': host,
+-                    prefix+'_CLI_CONFIG_PATH': str(config), prefix+'_CLI_CONFIG_DIR': str(config.parent),
+-                    prefix+'_WORKSPACE': c.WORKSPACE, prefix+'_CLI_DISABLE_ANALYTICS': '1'})
+-        return env
+-
+-    def native(self, client, args, host, cleanup=False):
+-        c.require(client in ('bex','render'),'fixed native role required')
+-        doc, _ = self.credentials()
+-        directory = self.private / ('config-' + client)
+-        directory.mkdir(mode=0o700, exist_ok=True)
+-        config = directory / 'cli.yaml'
+-        c.require(not config.exists(), 'per-call native config already exists')
+-        doc['api']['host'] = host
+-        self.budget.write(config.relative_to(self.root), self.config_bytes(doc,'native-'+client+'-config-write'), cleanup)
+-        command = [str(self.private / ('release/bex' if client == 'bex' else 'render-pin')), *args]
+-        result,fresh=None,None
+-        try:
+-            result = self.runner.capture(command, timeout=45, env=self.environment(client, config, host), cleanup=cleanup)
+-            fresh=self.config_document(config,'native-'+client+'-rotated-config-read')
+-            self.record('outputs/' + self.next_name('native') + '.json',
+-                        command_receipt(result, [client, *args], redact=self.tokens), cleanup)
++            finally:
++                if fresh is not None:
++                    fresh['api']['host'] = API + '/v1/'
++                    self.budget.write('private/credentials/cli.yaml', self.config_bytes(fresh,'native-'+client+'-rotation-persist'), cleanup=True)
++                    config.unlink()
++    def refresh(self, cleanup=False):
++            doc, token = self.credentials()
++            expiry = int(doc['api'].get('expires_at', 0))
++            if expiry and expiry <= time.time() + 120:
++                # Native client's own rotation/persistence, read-only workspace list.
++                result = self.native('bex', ['workspaces', '-o', 'json'], API+'/v1/', cleanup)
++                c.completed(result)
++                doc, token = self.credentials()
++                c.require(int(doc['api']['expires_at']) > time.time()+120, 'own native refresh unproved')
++            return token
++    def https(self, method, url, headers, body=None, cleanup=False, maximum=c.MAX_METADATA, on_response=None):
++            parsed = urlsplit(url)
++            c.require(parsed.scheme == 'https' and parsed.netloc == 'api.bex.co' and not parsed.fragment,
++                      'not fixed API origin')
++            stem = self.next_name('api')
++            header_path, body_path = self.root/'scratch'/(stem+'.headers'), self.root/'scratch'/(stem+'.body')
++            request_path = self.root/'scratch'/(stem+'.request')
++            private_config = []
++            for key, value in headers.items():
++                c.require('\r' not in value and '\n' not in value and '\n' not in key, 'header newline refused')
++                escaped = (key + ': ' + value).replace('\\', '\\\\').replace('"', '\\"')
++                private_config.append('header = "' + escaped + '"')
++            command = ['curl', '--disable', '--silent', '--show-error', '--connect-timeout', '5', '--max-time', '30',
++                       '--max-filesize', str(maximum), '--proto', '=https', '--config', '-', '--request', method,
++                       '--dump-header', str(header_path), '--output', str(body_path), '--write-out', '%{http_code}\n%{http_version}']
++            if body is not None:
++                c.require(len(body) <= 1024*1024, 'API request body1MiB bound')
++                self.budget.write(request_path.relative_to(self.root), body, cleanup)
++                command += ['--data-binary', '@'+str(request_path)]
++            result = None
++            try:
++                if cleanup:
++                    # Remote DELETE/absence reads still run if the observer or
++                    # disk artifact budget failed. Their finite entities stay in
++                    # bounded memory; failed receipt writes remain a final error.
++                    marker=('\nM83-CURL-END-'+secrets.token_hex(16)+'\n').encode()
++                    memory_command=['curl','--disable','--silent','--show-error','--connect-timeout','5','--max-time','30',
++                        '--max-filesize',str(maximum),'--proto','=https','--config','-','--request',method,
++                        '--include','--output','-','--write-out',marker.decode()+'%{http_code}\n%{http_version}']
++                    c.require(body is None,'cleanup metadata transport has no request body')
++                    result=self.runner.capture([*memory_command,url],timeout=35,input_bytes=('\n'.join(private_config)+'\n').encode(),
++                                               limit=maximum+65536+256,cleanup=True)
++                    entity_and_headers,separator,metadata_bytes=result['stdout'].rpartition(marker)
++                    c.require(separator,'cleanup response metadata incomplete')
++                    raw_headers,raw=split_included_response(entity_and_headers)
++                    metadata=metadata_bytes.decode().splitlines()
++                else:
++                    self.budget.permit_external_write('scratch',maximum+65536)
++                    result = self.runner.capture([*command, url], timeout=35, input_bytes=('\n'.join(private_config)+'\n').encode(), limit=65536)
++                    raw = bounded_file(body_path,maximum)
++                    raw_headers = bounded_file(header_path,65536)
++                    metadata=result['stdout'].decode().splitlines()
++                c.require(len(raw) <= maximum and len(raw_headers) <= 65536, 'API entity/header bound')
++                try:
++                    protocol, status, response_headers = parse_headers(raw_headers)
++                except BaseException:
++                    self.record('outputs/'+stem+'-unparsed.json', {
++                        'method':method,'path':url.removeprefix(API),'raw_bytes':len(raw),'raw_sha256':c.sha(raw),
++                        'raw_headers_sha256':c.sha(raw_headers),
++                        **({'raw_entity_gzip_base64':base64.b64encode(gzip.compress(raw,mtime=0)).decode()} if on_response is not None else {}),
++                        'transport':command_receipt(result,['curl','<fixed API request; auth stdin>'],include_output=False)},cleanup=True)
++                    raise
++                c.require(len(metadata) == 2 and metadata[0] == str(status) and metadata[1] in (protocol, protocol+'.0'), 'curl metadata/status mismatch')
++                entity = c.gunzip_bounded(raw, maximum) if response_headers.get('content-encoding') == 'gzip' else raw
++                # A real complete201 must be bound before any optional evidence
++                # write can hit the stop guard. The callback persists in the8MiB
++                # cleanup margin; its in-memory exact SID remains owned on failure.
++                if on_response is not None and result['complete'] and result['exit_code'] == 0:
++                    on_response(status, entity)
++                event = {'at': now().isoformat(), 'request': {'method': method, 'path': url.removeprefix(API), 'authorization': '[REDACTED]'},
++                         'status': status, 'actual_protocol': protocol, 'raw_bytes': len(raw), 'raw_sha256': c.sha(raw),
++                         'decoded_bytes': len(entity), 'decoded_sha256': c.sha(entity),
++                         'response_headers': {key: value for key, value in response_headers.items() if key in ('date', 'content-type', 'content-encoding', 'x-request-id', 'cf-ray')},
++                         'transport': command_receipt(result, ['curl', '<fixed API request; auth stdin>'], include_output=False)}
++                if on_response is not None:
++                    event['complete_raw_entity_gzip_base64'] = base64.b64encode(gzip.compress(raw,mtime=0)).decode()
++                self.record('outputs/'+stem+'.json', event, cleanup or on_response is not None)
++                return {'status': status, 'headers': response_headers, 'raw': raw, 'body': entity, 'transport': result, 'event': event}
++            except BaseException:
++                if result is not None and on_response is not None:
++                    # Preserve bounded partial/complete native response bytes even
++                    # when protocol parsing, binding or an artifact write failed.
++                    try:
++                        raw=bounded_file(body_path,maximum);raw_headers=bounded_file(header_path,65536)
++                        self.record('outputs/'+stem+'-native-failure.json',{'raw_bytes':len(raw),'raw_sha256':c.sha(raw),
++                            'raw_headers_sha256':c.sha(raw_headers),'raw_entity_gzip_base64':base64.b64encode(gzip.compress(raw,mtime=0)).decode(),
++                            'transport':command_receipt(result,['curl','<fixed native POST; auth stdin>'],include_output=False)},cleanup=True)
++                    except BaseException as error:self.errors.append('native failure retention:'+type(error).__name__)
++                raise
++            finally:
++                for path in (request_path, header_path, body_path):
++                    path.unlink(missing_ok=True)
++    def api(self, method, path, body=None, cleanup=False):
++            c.require(self.allowed_api(method, path, body, cleanup), 'API request outside fixed own scope')
++            token = self.refresh(cleanup)
++            headers = {'Authorization': 'Bearer '+token, 'User-Agent': 'render-cli/2.29.0 (macOS - 26.0.1)',
++                       'X-Bex-Workspace': c.WORKSPACE, 'Accept': 'application/json, text/event-stream',
++                       'MCP-Protocol-Version': '2025-03-26'}
++            if body is not None:
++                headers['Content-Type'] = 'application/json'
++            result = self.https(method, API+path, headers, encoded(body) if body is not None else None, cleanup)
++            c.completed(result['transport'])
++            if method=='GET' and (path.startswith('/v1/services?') or path.startswith('/v1/env-groups?')
++                or path.startswith('/v1/projects?') or path.startswith('/v1/blueprints?') or path.endswith('/limits')):
++                c.require(not any(token.encode() in result['raw'] or token.encode() in result['body'] for token in self.tokens if token),
++                          'credential unexpectedly present in metadata; do not retain raw')
++                self.record('outputs/'+self.next_name('raw-metadata')+'.json',{'observation':result['event'],
++                    'content_encoding':result['headers'].get('content-encoding','identity'),
++                    'raw_entity_gzip_base64':base64.b64encode(gzip.compress(result['raw'],mtime=0)).decode(),
++                    'decoded_entity_gzip_base64':base64.b64encode(gzip.compress(result['body'],mtime=0)).decode()},cleanup)
+             return result
+-        except BaseException as error:
+-            if result is not None:
+-                # A partial/invalid rotated config may contain an unknown new
+-                # token. Keep only counts/hashes/exit/group proof, never raw
+-                # stdout/stderr or parser text when redaction cannot be proved.
+-                summary=command_receipt(result,[client,*args],include_output=False)
+-                summary['failure']=safe_error('native-'+client,error)
+-                self.record('outputs/'+self.next_name('native-opaque-failure')+'.json',summary,cleanup=True)
+-            raise
+-        finally:
+-            if fresh is not None:
+-                fresh['api']['host'] = API + '/v1/'
+-                self.budget.write('private/credentials/cli.yaml', self.config_bytes(fresh,'native-'+client+'-rotation-persist'), cleanup=True)
+-                config.unlink()
+-
+-    def refresh(self, cleanup=False):
+-        doc, token = self.credentials()
+-        expiry = int(doc['api'].get('expires_at', 0))
+-        if expiry and expiry <= time.time() + 120:
+-            # Native client's own rotation/persistence, read-only workspace list.
+-            result = self.native('bex', ['workspaces', '-o', 'json'], API+'/v1/', cleanup)
++    def get_json(self, path, cleanup=False):
++            result = self.api('GET', path, cleanup=cleanup)
++            c.require(result['status'] == 200, 'metadata GET not200:' + path)
++            self.last_metadata_event = result['event']
++            return decode_json(result['body'])
++    def collect(self, cleanup=False):
++            ids, names, cursors = set(), set(), set()
++            cursor = None
++            for _ in range(10):
++                query = {'ownerId': c.WORKSPACE, 'limit': 100}
++                if cursor is not None:query['cursor'] = cursor
++                rows = self.get_json('/v1/services?' + urlencode(query), cleanup)
++                c.require(isinstance(rows, list) and len(rows) <= 100, 'complete bounded services page required')
++                if not rows:break
++                for item in rows:
++                    view = item['service']; sid = view['id']
++                    c.require(c.SERVICE_ID.fullmatch(sid) and view['ownerId'] == c.WORKSPACE and sid not in ids,
++                              'baseline foreign/repeated service identity')
++                    ids.add(sid); names.add(view['name'])
++                cursor = rows[-1]['cursor']
++                c.require(isinstance(cursor, str) and cursor and len(cursor) <= 4096 and cursor not in cursors, 'unstable service cursor')
++                cursors.add(cursor)
++            else:
++                raise Stop('service pagination did not terminate within10pages')
++            limits = self.get_json('/v1/owners/' + c.WORKSPACE + '/limits', cleanup)
++            limits_event = self.last_metadata_event
++            self.record(self.next_name('raw-limits')+'.json', {'observation':limits_event,'raw_decoded_JSON':limits},cleanup)
++            metadata = {}
++            for path, wrapper in [('/v1/env-groups', 'envGroup'), ('/v1/projects', 'project'), ('/v1/blueprints', 'blueprint')]:
++                rows = self.get_json(path+'?'+urlencode({'ownerId': c.WORKSPACE, 'limit':100}), cleanup)
++                c.require(isinstance(rows, list) and len(rows) < 100, 'metadata list completeness unproved')
++                projected = []
++                for item in rows:
++                    view = item.get(wrapper, item)
++                    c.require(isinstance(view.get('id'), str), 'metadata identity missing')
++                    projected.append(view['id'])
++                metadata[path] = sorted(projected)
++            return {'workspace': c.WORKSPACE, 'at': now().isoformat(), 'complete': True,
++                    'ids': sorted(ids), 'names': sorted(names), 'limits': limits,
++                    'limits_observed_at':limits_event['at'],'limits_observation':limits_event,'metadata': metadata}
++    def free_gate(self):
++            owner = self.get_json('/v1/owners/'+c.WORKSPACE)
++            usage = self.get_json('/v1/usage?'+urlencode({'ownerId':c.WORKSPACE}))
++            limits = self.get_json('/v1/owners/'+c.WORKSPACE+'/limits')
++            result = c.gate_free(owner, usage, limits, now())
++            self.record(self.next_name('free-gate')+'.json', {**result, 'owner': {key:owner[key] for key in ('id','name')},
++                        'usage': {key:usage[key] for key in ('workspaceId','period','freeInstanceHours','coverage')}, 'limits':limits})
++            return result
++    def deployments(self, row, cleanup=False):
++            items = self.get_json('/v1/services/'+row['id']+'/deploys?limit=20', cleanup)
++            c.require(isinstance(items, list) and len(items) < 20, 'complete first-deploy list unproved')
++            rows = [item.get('deploy', item) for item in items]
++            self.journal.record_children(row['id'], rows)
++            self.record(self.next_name('deployments')+'.json', {'id':row['id'],'rows':rows}, cleanup)
++            return rows
++    def logout(self):
++            self.register_session_handle()
++            c.require(all(row.get('state') in ('deleted','not-created') for row in self.data['resources']),
++                      'retain own auth for unknown/remaining resource reconciliation')
++            if not self.auth_started:return
++            handle=read_json(self.private/'qa-session-handle.json',65536) if (self.private/'qa-session-handle.json').exists() else None
++            had_native_config=(self.private/'credentials/cli.yaml').exists()
++            fallback_done=False
++            if self.auth_completed and not had_native_config:
++                self.errors.append('own successful OAuth grant config missing before logout; revocation unproved')
++            # If opaque bootstrap was interrupted before returning its logout
++            # handle, the exact own state still permits session revocation. Do not
++            # discover/delete unknown global jars or claim their absence.
++            if (handle is None or not Path(handle['logout_jar']).exists()) and (self.private/'qa-state.json').exists():
++                command=['bash',str(REPO/'scripts/qa-login.sh'),'--logout',str(self.private/'qa-state.json')]
++                fallback=self.runner.capture(command,timeout=90,limit=65536,cleanup=True)
++                self.record('logout-own-state-fallback.json',command_receipt(fallback,command,include_output=False),cleanup=True)
++                c.completed(fallback)
++                fallback_done=True
++                if handle is None:
++                    self.errors.append('opaque bootstrap returned no global jar handle; own session revoked from exact own state, jar-file absence unproved')
++            created=[{'id':row['id'],'state':row['state']} for row in self.data['resources'] if row.get('id') and row.get('HTTP')==201]
++            try:self.budget.json('private/ledger.json',{'workspace':c.WORKSPACE,'resources':created},cleanup=True)
++            except BaseException as error:self.errors.append('opaque logout count projection:'+type(error).__name__)
++            command=[sys.executable,str(self.private/'cleanup-auth.py')]
++            result=self.runner.capture(command,timeout=180,limit=262144,cleanup=True)
++            self.record('logout-command.json',command_receipt(result,command,include_output=False),cleanup=True)
+             c.completed(result)
+-            doc, token = self.credentials()
+-            c.require(int(doc['api']['expires_at']) > time.time()+120, 'own native refresh unproved')
+-        return token
+-
+-    def allowed_api(self, method, path, body, cleanup):
+-        parsed = urlsplit(path); query = parse_qs(parsed.query)
+-        c.require(not parsed.scheme and not parsed.netloc and not parsed.fragment and '%' not in parsed.path,
+-                  'unqualified API path')
+-        fixed = '/v1/owners/' + c.WORKSPACE
+-        if method == 'GET':
+-            if parsed.path in (fixed, fixed+'/limits'):
+-                return not query
+-            if parsed.path == '/v1/usage':
+-                return query == {'ownerId': [c.WORKSPACE]}
+-            if parsed.path in ('/v1/services', '/v1/env-groups', '/v1/projects', '/v1/blueprints'):
+-                return query.get('ownerId') == [c.WORKSPACE] and query.get('limit') == ['100'] and set(query) <= {'ownerId', 'limit', 'cursor'} and all(len(v) == 1 and len(v[0]) <= 4096 for v in query.values())
+-            if parsed.path == '/v1/logs':
+-                sid = query.get('resource', [''])[0]
+-                self.journal.own(sid)
+-                return query.get('type') == ['build'] and query.get('limit') == ['1000'] and set(query) == {'resource', 'type', 'limit', 'startTime', 'endTime', 'direction'} and query['direction'] == ['forward']
+-            for row in self.data['resources']:
+-                if row.get('id'):
+-                    self.journal.own(row['id'])
+-                    base = '/v1/services/' + row['id']
+-                    if parsed.path == base:
+-                        return not query
+-                    if parsed.path == base + '/deploys':
+-                        return query == {'limit': ['20']}
+-                    if parsed.path in {base+'/deploys/'+child for child in row['children']}:
+-                        return not query
+-        if method == 'DELETE' and cleanup and not query:
+-            sid = parsed.path.removeprefix('/v1/services/')
+-            self.journal.own(sid)
+-            return parsed.path == '/v1/services/' + sid
+-        if method == 'POST' and path == '/graphql':
+-            return isinstance(body, dict) and set(body) == {'query'} and body['query'] in {
+-                'query M83 {service(id:'+json.dumps(row['id'])+'){id name repo branch runtime plan buildCommand startCommand autoDeploy}}'
+-                for row in self.data['resources'] if row.get('id')}
+-        if method == 'POST' and path == '/mcp':
+-            params = (body or {}).get('params', {})
+-            sid = params.get('arguments', {}).get('serviceId')
+-            self.journal.own(sid)
+-            return body.get('jsonrpc') == '2.0' and body.get('method') == 'tools/call' and params == {
+-                'name': 'get_service', 'arguments': {'serviceId': sid, 'workspaceId': c.WORKSPACE}}
+-        return False
+-
+-    def https(self, method, url, headers, body=None, cleanup=False, maximum=c.MAX_METADATA, on_response=None):
+-        parsed = urlsplit(url)
+-        c.require(parsed.scheme == 'https' and parsed.netloc == 'api.bex.co' and not parsed.fragment,
+-                  'not fixed API origin')
+-        stem = self.next_name('api')
+-        header_path, body_path = self.root/'scratch'/(stem+'.headers'), self.root/'scratch'/(stem+'.body')
+-        request_path = self.root/'scratch'/(stem+'.request')
+-        private_config = []
+-        for key, value in headers.items():
+-            c.require('\r' not in value and '\n' not in value and '\n' not in key, 'header newline refused')
+-            escaped = (key + ': ' + value).replace('\\', '\\\\').replace('"', '\\"')
+-            private_config.append('header = "' + escaped + '"')
+-        command = ['curl', '--disable', '--silent', '--show-error', '--connect-timeout', '5', '--max-time', '30',
+-                   '--max-filesize', str(maximum), '--proto', '=https', '--config', '-', '--request', method,
+-                   '--dump-header', str(header_path), '--output', str(body_path), '--write-out', '%{http_code}\n%{http_version}']
+-        if body is not None:
+-            c.require(len(body) <= 1024*1024, 'API request body1MiB bound')
+-            self.budget.write(request_path.relative_to(self.root), body, cleanup)
+-            command += ['--data-binary', '@'+str(request_path)]
+-        result = None
+-        try:
+-            if cleanup:
+-                # Remote DELETE/absence reads still run if the observer or
+-                # disk artifact budget failed. Their finite entities stay in
+-                # bounded memory; failed receipt writes remain a final error.
+-                marker=('\nM83-CURL-END-'+secrets.token_hex(16)+'\n').encode()
+-                memory_command=['curl','--disable','--silent','--show-error','--connect-timeout','5','--max-time','30',
+-                    '--max-filesize',str(maximum),'--proto','=https','--config','-','--request',method,
+-                    '--include','--output','-','--write-out',marker.decode()+'%{http_code}\n%{http_version}']
+-                c.require(body is None,'cleanup metadata transport has no request body')
+-                result=self.runner.capture([*memory_command,url],timeout=35,input_bytes=('\n'.join(private_config)+'\n').encode(),
+-                                           limit=maximum+65536+256,cleanup=True)
+-                entity_and_headers,separator,metadata_bytes=result['stdout'].rpartition(marker)
+-                c.require(separator,'cleanup response metadata incomplete')
+-                raw_headers,raw=split_included_response(entity_and_headers)
+-                metadata=metadata_bytes.decode().splitlines()
+-            else:
+-                self.budget.permit_external_write('scratch',maximum+65536)
+-                result = self.runner.capture([*command, url], timeout=35, input_bytes=('\n'.join(private_config)+'\n').encode(), limit=65536)
+-                raw = bounded_file(body_path,maximum)
+-                raw_headers = bounded_file(header_path,65536)
+-                metadata=result['stdout'].decode().splitlines()
+-            c.require(len(raw) <= maximum and len(raw_headers) <= 65536, 'API entity/header bound')
+-            try:
+-                protocol, status, response_headers = parse_headers(raw_headers)
+-            except BaseException:
+-                self.record('outputs/'+stem+'-unparsed.json', {
+-                    'method':method,'path':url.removeprefix(API),'raw_bytes':len(raw),'raw_sha256':c.sha(raw),
+-                    'raw_headers_sha256':c.sha(raw_headers),
+-                    **({'raw_entity_gzip_base64':base64.b64encode(gzip.compress(raw,mtime=0)).decode()} if on_response is not None else {}),
+-                    'transport':command_receipt(result,['curl','<fixed API request; auth stdin>'],include_output=False)},cleanup=True)
+-                raise
+-            c.require(len(metadata) == 2 and metadata[0] == str(status) and metadata[1] in (protocol, protocol+'.0'), 'curl metadata/status mismatch')
+-            entity = c.gunzip_bounded(raw, maximum) if response_headers.get('content-encoding') == 'gzip' else raw
+-            # A real complete201 must be bound before any optional evidence
+-            # write can hit the stop guard. The callback persists in the8MiB
+-            # cleanup margin; its in-memory exact SID remains owned on failure.
+-            if on_response is not None and result['complete'] and result['exit_code'] == 0:
+-                on_response(status, entity)
+-            event = {'at': now().isoformat(), 'request': {'method': method, 'path': url.removeprefix(API), 'authorization': '[REDACTED]'},
+-                     'status': status, 'actual_protocol': protocol, 'raw_bytes': len(raw), 'raw_sha256': c.sha(raw),
+-                     'decoded_bytes': len(entity), 'decoded_sha256': c.sha(entity),
+-                     'response_headers': {key: value for key, value in response_headers.items() if key in ('date', 'content-type', 'content-encoding', 'x-request-id', 'cf-ray')},
+-                     'transport': command_receipt(result, ['curl', '<fixed API request; auth stdin>'], include_output=False)}
+-            if on_response is not None:
+-                event['complete_raw_entity_gzip_base64'] = base64.b64encode(gzip.compress(raw,mtime=0)).decode()
+-            self.record('outputs/'+stem+'.json', event, cleanup or on_response is not None)
+-            return {'status': status, 'headers': response_headers, 'raw': raw, 'body': entity, 'transport': result, 'event': event}
+-        except BaseException:
+-            if result is not None and on_response is not None:
+-                # Preserve bounded partial/complete native response bytes even
+-                # when protocol parsing, binding or an artifact write failed.
+-                try:
+-                    raw=bounded_file(body_path,maximum);raw_headers=bounded_file(header_path,65536)
+-                    self.record('outputs/'+stem+'-native-failure.json',{'raw_bytes':len(raw),'raw_sha256':c.sha(raw),
+-                        'raw_headers_sha256':c.sha(raw_headers),'raw_entity_gzip_base64':base64.b64encode(gzip.compress(raw,mtime=0)).decode(),
+-                        'transport':command_receipt(result,['curl','<fixed native POST; auth stdin>'],include_output=False)},cleanup=True)
+-                except BaseException as error:self.errors.append('native failure retention:'+type(error).__name__)
+-            raise
+-        finally:
+-            for path in (request_path, header_path, body_path):
+-                path.unlink(missing_ok=True)
+-
+-    def api(self, method, path, body=None, cleanup=False):
+-        c.require(self.allowed_api(method, path, body, cleanup), 'API request outside fixed own scope')
+-        token = self.refresh(cleanup)
+-        headers = {'Authorization': 'Bearer '+token, 'User-Agent': 'render-cli/2.29.0 (macOS - 26.0.1)',
+-                   'X-Bex-Workspace': c.WORKSPACE, 'Accept': 'application/json, text/event-stream',
+-                   'MCP-Protocol-Version': '2025-03-26'}
+-        if body is not None:
+-            headers['Content-Type'] = 'application/json'
+-        result = self.https(method, API+path, headers, encoded(body) if body is not None else None, cleanup)
+-        c.completed(result['transport'])
+-        if method=='GET' and (path.startswith('/v1/services?') or path.startswith('/v1/env-groups?')
+-            or path.startswith('/v1/projects?') or path.startswith('/v1/blueprints?') or path.endswith('/limits')):
+-            c.require(not any(token.encode() in result['raw'] or token.encode() in result['body'] for token in self.tokens if token),
+-                      'credential unexpectedly present in metadata; do not retain raw')
+-            self.record('outputs/'+self.next_name('raw-metadata')+'.json',{'observation':result['event'],
+-                'content_encoding':result['headers'].get('content-encoding','identity'),
+-                'raw_entity_gzip_base64':base64.b64encode(gzip.compress(result['raw'],mtime=0)).decode(),
+-                'decoded_entity_gzip_base64':base64.b64encode(gzip.compress(result['body'],mtime=0)).decode()},cleanup)
+-        return result
+-
+-    def get_json(self, path, cleanup=False):
+-        result = self.api('GET', path, cleanup=cleanup)
+-        c.require(result['status'] == 200, 'metadata GET not200:' + path)
+-        self.last_metadata_event = result['event']
+-        return decode_json(result['body'])
+-
+-    def collect(self, cleanup=False):
+-        ids, names, cursors = set(), set(), set()
+-        cursor = None
+-        for _ in range(10):
+-            query = {'ownerId': c.WORKSPACE, 'limit': 100}
+-            if cursor is not None:query['cursor'] = cursor
+-            rows = self.get_json('/v1/services?' + urlencode(query), cleanup)
+-            c.require(isinstance(rows, list) and len(rows) <= 100, 'complete bounded services page required')
+-            if not rows:break
+-            for item in rows:
+-                view = item['service']; sid = view['id']
+-                c.require(c.SERVICE_ID.fullmatch(sid) and view['ownerId'] == c.WORKSPACE and sid not in ids,
+-                          'baseline foreign/repeated service identity')
+-                ids.add(sid); names.add(view['name'])
+-            cursor = rows[-1]['cursor']
+-            c.require(isinstance(cursor, str) and cursor and len(cursor) <= 4096 and cursor not in cursors, 'unstable service cursor')
+-            cursors.add(cursor)
+-        else:
+-            raise Stop('service pagination did not terminate within10pages')
+-        limits = self.get_json('/v1/owners/' + c.WORKSPACE + '/limits', cleanup)
+-        limits_event = self.last_metadata_event
+-        self.record(self.next_name('raw-limits')+'.json', {'observation':limits_event,'raw_decoded_JSON':limits},cleanup)
+-        metadata = {}
+-        for path, wrapper in [('/v1/env-groups', 'envGroup'), ('/v1/projects', 'project'), ('/v1/blueprints', 'blueprint')]:
+-            rows = self.get_json(path+'?'+urlencode({'ownerId': c.WORKSPACE, 'limit':100}), cleanup)
+-            c.require(isinstance(rows, list) and len(rows) < 100, 'metadata list completeness unproved')
+-            projected = []
+-            for item in rows:
+-                view = item.get(wrapper, item)
+-                c.require(isinstance(view.get('id'), str), 'metadata identity missing')
+-                projected.append(view['id'])
+-            metadata[path] = sorted(projected)
+-        return {'workspace': c.WORKSPACE, 'at': now().isoformat(), 'complete': True,
+-                'ids': sorted(ids), 'names': sorted(names), 'limits': limits,
+-                'limits_observed_at':limits_event['at'],'limits_observation':limits_event,'metadata': metadata}
+-
+-    def free_gate(self):
+-        owner = self.get_json('/v1/owners/'+c.WORKSPACE)
+-        usage = self.get_json('/v1/usage?'+urlencode({'ownerId':c.WORKSPACE}))
+-        limits = self.get_json('/v1/owners/'+c.WORKSPACE+'/limits')
+-        result = c.gate_free(owner, usage, limits, now())
+-        self.record(self.next_name('free-gate')+'.json', {**result, 'owner': {key:owner[key] for key in ('id','name')},
+-                    'usage': {key:usage[key] for key in ('workspaceId','period','freeInstanceHours','coverage')}, 'limits':limits})
+-        return result
+-
+-    def public_head(self):
+-        command = ['gh', 'api', 'repos/expressjs/serve-static/commits/master', '--jq', '.sha']
+-        result = self.runner.capture(command, timeout=30, limit=65536)
+-        self.record(self.next_name('public-head')+'.json', command_receipt(result, command))
+-        c.completed(result)
+-        c.require(result['stdout'].decode().strip() == self.public['commit'], 'public master moved; no create/substitution')
+-
+-    def deployments(self, row, cleanup=False):
+-        items = self.get_json('/v1/services/'+row['id']+'/deploys?limit=20', cleanup)
+-        c.require(isinstance(items, list) and len(items) < 20, 'complete first-deploy list unproved')
+-        rows = [item.get('deploy', item) for item in items]
+-        self.journal.record_children(row['id'], rows)
+-        self.record(self.next_name('deployments')+'.json', {'id':row['id'],'rows':rows}, cleanup)
+-        return rows
+-
+-    def first_live(self, spec, row):
+-        deadline = time.monotonic()+900
+-        while time.monotonic() < deadline:
+-            self.budget.check()
+-            rows = self.deployments(row)
+-            c.require(len(rows) <= 1, 'unexpected extra deploy child')
+-            if rows and rows[0]['status'] == 'live':
+-                capture, raw = self.public_capture(spec, '/snapshot')
+-                c.completed(capture)
+-                c.require(capture['status'] == 200, 'first Live snapshot not200')
+-                snapshot = decode_json(raw)
+-                query = {'resource':row['id'],'type':'build','limit':1000,'startTime':row['at'],
+-                         'endTime':now().isoformat(),'direction':'forward'}
+-                logs = self.api('GET','/v1/logs?'+urlencode(query))
+-                c.require(logs['status'] == 200, 'build log read not200')
+-                log_text = logs['body'].decode()
+-                c.require(len(logs['body']) <= 1024*1024, 'own build log1MiB bound')
+-                self.record('outputs/'+spec['client']+'-build-log.json', decode_json(logs['body']))
+-                result = c.validate_first_live(spec, rows, snapshot, log_text)
+-                self.record(spec['client']+'-first-live.json', {'assessment':result,'snapshot':snapshot,'capture':capture})
+-                return snapshot
+-            c.require(not rows or rows[0]['status'] not in ('build_failed','update_failed','pre_deploy_failed','canceled','deactivated'),
+-                      'first deployment failed or deactivated')
+-            time.sleep(min(5,max(0,deadline-time.monotonic())))
+-        raise Stop('first Live900s observation deadline')
+-
+-    def public_capture(self, spec, path, row=None, cleanup=False):
+-        base = row_url = next(value['create_view']['serviceDetails']['url'] for value in self.data['resources'] if value['client'] == spec['client'])
+-        self.journal.own(next(value['id'] for value in self.data['resources'] if value['client'] == spec['client']))
+-        stem = self.next_name('public')
+-        if cleanup:
+-            c.require(row is None and path=='/snapshot','cleanup public request is exact former fixture status only')
+-            marker='\nM83-PUBLIC-END-'+secrets.token_hex(16)+'\n'
+-            command=['curl','--disable','--http1.1','--silent','--show-error','--connect-timeout','5','--max-time','15',
+-                '--max-filesize',str(c.MAX_BODY),'--proto','=https','--header','Accept-Encoding: identity',
+-                '--dump-header','-','--output','/dev/null','--write-out',marker+'%{http_code}\n%{http_version}',
+-                c.public_url(spec,base,path)]
+-            result=self.runner.capture(command,timeout=20,limit=65536,cleanup=True)
+-            header_bytes,separator,metadata_bytes=result['stdout'].rpartition(marker.encode())
+-            c.require(separator,'former URL status observation incomplete')
+-            protocol,status,headers=parse_headers(header_bytes)
+-            values=metadata_bytes.decode().splitlines()
+-            c.require(values==[str(status),protocol],'former URL version/status differs')
+-            capture={key:value for key,value in result.items() if key not in ('stdout','stderr')}
+-            capture.update(status=status,actual_protocol=protocol,headers=headers,headers_raw=header_bytes.decode('iso-8859-1'),
+-                former_URL_status_only=True,request={'URL':command[-1]})
+-            self.record('entities/'+stem+'-former-url.json',capture,cleanup=True)
+-            return capture,b''
+-        if row is not None:
+-            command = c.curl_argv(spec,row,base,self.root/'scratch')
+-            body_path = Path(command[command.index('--output')+1])
+-            header_path = Path(command[command.index('--dump-header')+1])
+-        else:
+-            header_path, body_path = self.root/'scratch'/(stem+'.headers'), self.root/'scratch'/(stem+'.body')
+-            command = ['curl','--disable','--http1.1','--silent','--show-error','--connect-timeout','5','--max-time','15',
+-                       '--max-filesize',str(c.MAX_BODY),'--proto','=https','--header','Accept-Encoding: identity',
+-                       '--dump-header',str(header_path),'--output',str(body_path),'--write-out','%{http_code}\n%{http_version}',
+-                       c.public_url(spec,base,path)]
+-        try:
+-            self.budget.permit_external_write('scratch',c.MAX_BODY+65536,cleanup)
+-            result = self.runner.capture(command, timeout=20, limit=65536, cleanup=cleanup)
+-            raw = b'' if row and row.get('method') == 'HEAD' else bounded_file(body_path,c.MAX_BODY)
+-            raw_headers = bounded_file(header_path,65536)
+-            c.require(len(raw) <= c.MAX_BODY and len(raw_headers) <= 65536, 'public capture bounds')
+-            try:
+-                protocol,status,headers = parse_headers(raw_headers)
+-            except BaseException:
+-                self.record('entities/'+stem+'-unparsed.json',{
+-                    'request':{'URL':command[-1],'row':row},'headers_raw':raw_headers.decode('iso-8859-1'),
+-                    'raw_bytes':len(raw),'raw_sha256':c.sha(raw),
+-                    'raw_entity_gzip_base64':base64.b64encode(gzip.compress(raw,mtime=0)).decode(),
+-                    'transport':command_receipt(result,command)},cleanup=True)
+-                raise
+-            metadata=result['stdout'].decode().splitlines()
+-            c.require(len(metadata)==2 and metadata[0]==str(status) and metadata[1] in (protocol,protocol+'.0'), 'public status/version metadata differs')
+-            capture={key:value for key,value in result.items() if key not in ('stdout','stderr')}
+-            capture.update(status=status,actual_protocol=protocol,headers=headers,headers_raw=raw_headers.decode('iso-8859-1'),
+-                           raw_bytes=len(raw),raw_sha256=c.sha(raw),raw_entity_gzip_base64=base64.b64encode(gzip.compress(raw,mtime=0)).decode(),
+-                           stderr=result['stderr'].decode(errors='replace'),request={'URL':command[-1],'row':row})
+-            self.record('entities/'+stem+'.json',capture,cleanup)
+-            return capture,raw
+-        finally:
+-            header_path.unlink(missing_ok=True)
+-            if str(body_path) != '/dev/null':body_path.unlink(missing_ok=True)
+-
+-    def probes(self,spec,snapshot):
+-        rows,streams,upgrade=[],[],None
+-        deadline=time.monotonic()+300
+-        base=next(row['create_view']['serviceDetails']['url'] for row in self.data['resources'] if row['client']==spec['client'])
+-        for row in c.matrix(spec):
+-            c.require(time.monotonic()<deadline,'public probe300s budget')
+-            capture,_=self.public_capture(spec,row['path'],row)
+-            result=c.assess_http(spec,row,capture,snapshot)
+-            rows.append({'name':row['name'],'protocol':row['protocol'],'assessment':result})
+-            self.record(spec['client']+'-HTTP.json',rows)
+-            c.require(result['state']=='PASS','HTTP check:'+row['name']+':'+result['state'])
+-        for protocol in ('1.1','2'):
+-            for kind,offer in [('sse','identity'),('sse','br, gzip'),('ndjson','gzip')]:
+-                c.require(time.monotonic()<deadline,'stream probe300s budget')
+-                path='/stream' if kind=='sse' else '/ndjson'
+-                command=['node',str(self.root/'source/stream-observer.js'),c.public_url(spec,base,path),spec['marker'],offer,protocol,kind]
+-                observed=self.runner.capture(command,timeout=20,limit=65536)
+-                self.record('outputs/'+self.next_name('stream-command')+'.json',command_receipt(observed,command),cleanup=True)
+-                capture=decode_json(observed['stdout'])
+-                capture.update({key:observed[key] for key in ('exit_code','bound','signal','complete')})
+-                assessment=c.assess_stream(spec,capture,protocol,kind)
+-                streams.append({'kind':kind,'offer':offer,'protocol':protocol,'assessment':assessment,'capture':capture,
+-                                'transport':command_receipt(observed,command,include_output=False)})
+-                self.record(spec['client']+'-streams.json',streams)
+-                c.require(assessment['state']=='PASS','finite stream check:'+assessment['state'])
+-        command=['node',str(self.root/'source/upgrade-observer.js'),c.public_url(spec,base,'/upgrade'),spec['marker']]
+-        observed=self.runner.capture(command,timeout=15,limit=65536)
+-        self.record('outputs/'+self.next_name('upgrade-command')+'.json',command_receipt(observed,command),cleanup=True)
+-        upgrade=decode_json(observed['stdout']);c.completed(observed)
+-        c.require(upgrade.get('complete') is True and upgrade.get('pass') is True,'finite upgrade control unproved/failed')
+-        self.record(spec['client']+'-upgrade.json',{'capture':upgrade,'transport':command_receipt(observed,command,include_output=False)})
+-        c.require(len(rows)==38 and len(streams)==6 and all(row['assessment']['state']=='PASS' for row in rows+streams),'missing required HTTP/stream checks')
+-        return {'HTTP':rows,'streams':streams,'upgrade':upgrade,'required_counts':{'HTTP':38,'streams':6,'upgrade':1}}
+-
+-    def settings(self,spec,row):
+-        sid=row['id'];query='query M83 {service(id:'+json.dumps(sid)+'){id name repo branch runtime plan buildCommand startCommand autoDeploy}}'
+-        checks=[]
+-        for surface,method,path,body in [('REST','GET','/v1/services/'+sid,None),('GraphQL','POST','/graphql',{'query':query}),
+-            ('MCP','POST','/mcp',{'jsonrpc':'2.0','id':83,'method':'tools/call','params':{'name':'get_service','arguments':{'serviceId':sid,'workspaceId':c.WORKSPACE}}})]:
+-            result=self.api(method,path,body);c.require(result['status']==200,'shared metadata read not200');view=decode_json(result['body'])
+-            if surface=='GraphQL':
+-                c.require(not view.get('errors'),'GraphQL errors');view=view['data']['service']
+-            if surface=='MCP':
+-                c.require(not view.get('error') and not view['result'].get('isError'),'MCP errors')
+-                content=view['result'];view=content.get('structuredContent')
+-                if view is None:view=json.loads(next(item['text'] for item in content['content'] if item['type']=='text'))
+-                view=view.get('service',view)
+-            assessment=c.validate_settings(spec,sid,surface,view)
+-            checks.append({'surface':surface,'assessment':assessment,'view':view})
+-            self.record(spec['client']+'-settings.json',checks)
+-        c.require(len(checks)==3,'missing shared metadata surface')
+-        return checks
+-
+-    def cleanup_row(self,row):
+-        if row.get('state') in ('deleted','not-created'):return True
+-        if not row.get('id'):
+-            if not row.get('forwarded_once'):
+-                row['state']='not-created';self.persist(self.data);return True
+-            self.errors.append('unknown forwarded create:'+row['client']);return False
+-        sid=row['id'];self.journal.own(sid)
+-        try:
+-            # Capture any additional actually observed child before parent delete.
+-            self.deployments(row,cleanup=True)
+-        except BaseException as error:self.errors.append('cleanup child list:'+type(error).__name__)
+-        result=self.api('DELETE','/v1/services/'+sid,cleanup=True)
+-        self.record(self.next_name('owned-delete')+'.json',{'id':sid,'status':result['status']},cleanup=True)
+-        deadline=time.monotonic()+180
+-        while time.monotonic()<deadline:
+-            detail=self.api('GET','/v1/services/'+sid,cleanup=True)
+-            children={child:self.api('GET','/v1/services/'+sid+'/deploys/'+child,cleanup=True)['status'] for child in row['children']}
+-            if detail['status']==404 and all(code==404 for code in children.values()):
+-                # The former URL must itself be absent, not merely any error.
+-                spec=c.specification(row['client'],self.data['nonce'],self.public)
+-                public,_=self.public_capture(spec,'/snapshot',cleanup=True)
+-                c.completed(public)
+-                if public['status']==404:
+-                    self.journal.deleted(sid,404,children,404)
+-                    return True
+-            time.sleep(min(1,max(0,deadline-time.monotonic())))
+-        self.errors.append('exact parent/child/former URL absence unproved:'+sid)
+-        return False
+-
+-    def logout(self):
+-        self.register_session_handle()
+-        c.require(all(row.get('state') in ('deleted','not-created') for row in self.data['resources']),
+-                  'retain own auth for unknown/remaining resource reconciliation')
+-        if not self.auth_started:return
+-        handle=read_json(self.private/'qa-session-handle.json',65536) if (self.private/'qa-session-handle.json').exists() else None
+-        had_native_config=(self.private/'credentials/cli.yaml').exists()
+-        fallback_done=False
+-        if self.auth_completed and not had_native_config:
+-            self.errors.append('own successful OAuth grant config missing before logout; revocation unproved')
+-        # If opaque bootstrap was interrupted before returning its logout
+-        # handle, the exact own state still permits session revocation. Do not
+-        # discover/delete unknown global jars or claim their absence.
+-        if (handle is None or not Path(handle['logout_jar']).exists()) and (self.private/'qa-state.json').exists():
+-            command=['bash',str(REPO/'scripts/qa-login.sh'),'--logout',str(self.private/'qa-state.json')]
+-            fallback=self.runner.capture(command,timeout=90,limit=65536,cleanup=True)
+-            self.record('logout-own-state-fallback.json',command_receipt(fallback,command,include_output=False),cleanup=True)
+-            c.completed(fallback)
+-            fallback_done=True
+-            if handle is None:
+-                self.errors.append('opaque bootstrap returned no global jar handle; own session revoked from exact own state, jar-file absence unproved')
+-        created=[{'id':row['id'],'state':row['state']} for row in self.data['resources'] if row.get('id') and row.get('HTTP')==201]
+-        try:self.budget.json('private/ledger.json',{'workspace':c.WORKSPACE,'resources':created},cleanup=True)
+-        except BaseException as error:self.errors.append('opaque logout count projection:'+type(error).__name__)
+-        command=[sys.executable,str(self.private/'cleanup-auth.py')]
+-        result=self.runner.capture(command,timeout=180,limit=262144,cleanup=True)
+-        self.record('logout-command.json',command_receipt(result,command,include_output=False),cleanup=True)
+-        c.completed(result)
+-        receipt=read_json(self.private/'auth-cleanup-receipt.json',65536)
+-        c.require(receipt.get('own_credential_files_removed') is True,'own logout/file removal unproved')
+-        if type(receipt.get('resources_created_by_run')) is int:
+-            c.require(receipt['resources_created_by_run']==len(created),'opaque logout resource-count projection differs')
+-        if had_native_config:c.require(type(receipt.get('native_logout_exit')) is int and receipt['native_logout_exit']==0,
+-                                       'own OAuth logout outcome unproved')
+-        if handle or fallback_done:
+-            c.require(fallback_done or (type(receipt.get('Kratos_logout_exit')) is int and receipt['Kratos_logout_exit']==0),
+-                      'own Kratos logout outcome unproved')
+-        for name in ('credentials/cli.yaml','device-cookies.jar','qa-state.json','device-state.json',
+-                     'config-bex/cli.yaml','config-render/cli.yaml','qa-session-handle.json'):
+-            c.require(not (self.private/name).exists(),'own credential/state remains:'+name)
+-        if handle:c.require(not Path(handle['logout_jar']).exists(),'exact own logout jar remains')
+-        self.record('logout.json',receipt,cleanup=True)
+-
+-    def finish(self,failure):
+-        # All cleanup phases are independent: an observer/evidence/list failure
+-        # cannot skip a later exact DELETE, own logout or final monitor result.
+-        self.finishing=True
+-        try:self.runner.stop_all()
+-        except BaseException as error:self.errors.append(safe_error('initial-local-process-stop',error))
+-        for relay in list(self.active_relays):
+-            try:relay.close()
+-            except BaseException as error:self.errors.append('relay close:'+type(error).__name__)
+-        for row in reversed(self.data['resources']):
+-            try:self.cleanup_row(row)
+-            except BaseException as error:self.errors.append('owned cleanup:'+row['client']+':'+type(error).__name__)
+-        try:self.runner.stop_all()
+-        except BaseException as error:self.errors.append(safe_error('local-process-group-cleanup',error))
+-        if self.data.get('baseline') and all(row.get('state') in ('deleted','not-created') for row in self.data['resources']):
+-            try:
+-                after=self.collect(cleanup=True)
+-                result=c.compare_cleanup(self.data['baseline'],after,self.data['resources'])
+-                for path,ids in self.data['baseline']['metadata'].items():
+-                    c.require(set(ids)<=set(after['metadata'][path]),'baseline project/group/blueprint metadata disappeared')
+-                self.record('baseline-after.json',after,cleanup=True);self.record('cleanup-comparison.json',result,cleanup=True)
+-                self.results['cleanup']=result
+-            except BaseException as error:self.errors.append(safe_error('final-baseline-quota',error))
+-        try:self.logout()
+-        except BaseException as error:self.errors.append(safe_error('own-auth-cleanup',error))
+-        late=None
+-        try:late=self.budget.close()
+-        except BaseException as error:late=safe_error('monitor-close',error)
+-        finally:
+-            for signum,handler in self.handlers.items():signal.signal(signum,handler)
+-        late=self.budget.error or late
+-        if late:self.errors.append('late monitor:reported-error')
+-        if self.budget.thread and self.budget.thread.is_alive():self.errors.append('monitor still alive')
+-        custody={}
+-        try:
+-            for path in sorted((self.root/'evidence').rglob('*')):
+-                c.require(not path.is_symlink(),'evidence custody refuses symlinks')
+-                if path.is_file() and path.name not in ('MANIFEST.json','RESULT.json'):
+-                    custody[str(path.relative_to(self.root/'evidence'))]={'bytes':path.stat().st_size,'sha256':digest(path)}
+-            self.record('MANIFEST.json',{'files':custody,'scope':'safe evidence only; final RESULT is written last and binds this manifest; private auth/session/config tree excluded'},cleanup=True)
+-        except BaseException as error:self.errors.append('final evidence custody:'+type(error).__name__)
+-        report={'at':now().isoformat(),'failure':failure,'cleanup_errors':self.errors,'results':self.results,
+-                'resources':self.data['resources'],'source_only_run':False,
+-                'evidence_manifest_sha256':digest(self.root/'evidence/MANIFEST.json') if (self.root/'evidence/MANIFEST.json').is_file() else None}
+-        report['PASS']=failure is None and not self.errors and set(self.results)=={'bex','render','cleanup'}
+-        self.record('RESULT.json',report,cleanup=True)
+-        # A final receipt write failure is material and must not leave PASS.
+-        if self.errors:report['PASS']=False
+-        return report
+-
+-    def execute(self):
+-        failure=None
+-        try:
+-            self.phase='initialization'
+-            self.set_handlers()
+-            self.budget.json('evidence/owner.json',{'owner':'w8-m83','root':str(self.root),'nonce':self.data['nonce'],'uid':os.getuid()})
+-            self.budget.start();self.phase='setup';self.setup();self.phase='auth';self.auth()
+-            self.phase='baseline-before'
+-            before=self.collect()
+-            c.compare_cleanup(before,before,[])  # Typed complete baseline/quota proof before any create.
+-            self.data.update(baseline=before,baseline_ids=before['ids'])
+-            self.journal=c.Journal(self.data,self.persist);self.persist(self.data)
+-            self.record('baseline-before.json',before)
+-            self.creation_started=time.monotonic()
+-            for client in ('bex','render'):
+-                self.phase='case-'+client+'-admission'
+-                self.budget.check();c.require(time.monotonic()-self.creation_started<2700,'no further create after2700s')
+-                spec=c.specification(client,self.data['nonce'],self.public)
+-                c.require(spec['name'] not in before['names'],'fresh fixture name exists in actual baseline')
+-                ready=self.check_ready();free=self.free_gate();self.public_head()
+-                row=self.journal.intent(spec,ready,free);row['at']=now().isoformat();self.persist(self.data)
+-                self.phase='case-'+client+'-native'
+-                with NativeRelay(self,spec,row) as relay:
+-                    result=self.native(client,spec['args'],relay.host)
+-                c.completed(result);c.require(row.get('HTTP')==201 and row.get('state')=='created','complete actual native201 journey missing')
+-                self.phase='case-'+client+'-first-live';snapshot=self.first_live(spec,row)
+-                self.phase='case-'+client+'-public-probes'
+-                checks=self.probes(spec,snapshot);checks['settings']=self.settings(spec,row)
+-                self.results[client]={'state':'PASS','id':row['id'],'checks':checks}
+-                self.phase='case-'+client+'-cleanup'
+-                c.require(self.cleanup_row(row),'first role exact cleanup unproved; second role forbidden')
+-                interim=self.collect()
+-                c.compare_cleanup(before,interim,self.data['resources'])
+-                self.record(client+'-post-cleanup.json',interim)
+-        except BaseException as error:
+-            failure=safe_error(self.phase,error)
+-        return self.finish(failure)
++            receipt=read_json(self.private/'auth-cleanup-receipt.json',65536)
++            c.require(receipt.get('own_credential_files_removed') is True,'own logout/file removal unproved')
++            if type(receipt.get('resources_created_by_run')) is int:
++                c.require(receipt['resources_created_by_run']==len(created),'opaque logout resource-count projection differs')
++            if had_native_config:c.require(type(receipt.get('native_logout_exit')) is int and receipt['native_logout_exit']==0,
++                                           'own OAuth logout outcome unproved')
++            if handle or fallback_done:
++                c.require(fallback_done or (type(receipt.get('Kratos_logout_exit')) is int and receipt['Kratos_logout_exit']==0),
++                          'own Kratos logout outcome unproved')
++            for name in ('credentials/cli.yaml','device-cookies.jar','qa-state.json','device-state.json',
++                         'config-bex/cli.yaml','config-render/cli.yaml','qa-session-handle.json'):
++                c.require(not (self.private/name).exists(),'own credential/state remains:'+name)
++            if handle:c.require(not Path(handle['logout_jar']).exists(),'exact own logout jar remains')
++            self.record('logout.json',receipt,cleanup=True)
+ 
+ 
+ class NativeRelay:
+@@ -875,7 +444,8 @@
+             if method!='POST' or path!='/v1/services' or self.closed:
+                 return 403,{'content-type':'application/json'},b'{"message":"outside exact native create scope"}'
+             t.budget.check()
+-            body=decode_json(raw);t.journal.forward_once(self.row,body,self.spec)
++            body=decode_json(raw);t.journal.capture_wire(self.row,raw,headers)
++            t.journal.forward_once(self.row,body,self.spec)
+             self.active.clear()
+         try:
+             forwarded={key:value for key,value in headers.items() if key.lower() not in HOP|{'host'}}
+@@ -951,38 +521,3 @@
+         if self in self.transport.active_relays:self.transport.active_relays.remove(self)
+ 
+     def __exit__(self,*args):self.close()
+-
+-
+-def verify_source(expected_sha):
+-    c.require(re.fullmatch('[a-f0-9]{64}',expected_sha) and digest(HERE/'MANIFEST.json')==expected_sha,
+-              'reviewed source manifest SHA differs')
+-    manifest=read_json(HERE/'MANIFEST.json')
+-    for name,proof in manifest.items():
+-        c.require(not Path(name).is_absolute() and '..' not in Path(name).parts,'manifest path outside source')
+-        path=HERE/name
+-        c.require(path.is_file() and not path.is_symlink() and path.stat().st_size==proof['bytes'] and digest(path)==proof['sha256'],
+-                  'frozen transport source bytes differ:'+name)
+-    return manifest
+-
+-
+-def main():
+-    parser=argparse.ArgumentParser(description=__doc__)
+-    parser.add_argument('action',choices=['execute'])
+-    parser.add_argument('--ready',required=True,type=Path)
+-    parser.add_argument('--ready-sha',required=True)
+-    parser.add_argument('--source-manifest-sha',required=True)
+-    args=parser.parse_args()
+-    c.require(not sys.flags.optimize,'opaque original helper assertion guards require ordinary Python')
+-    os.umask(0o077);verify_source(args.source_manifest_sha)
+-    c.require(re.fullmatch('[a-f0-9]{64}',args.ready_sha) and digest(args.ready)==args.ready_sha,'reviewed Ready receipt SHA differs')
+-    c.require(free_bytes('/private/tmp')>=START_FREE,'fresh whole-runtime budget does not fit')
+-    root=Path('/private/tmp')/('bex-w8-m83-live-run-'+secrets.token_hex(8))
+-    root.mkdir(mode=0o700)
+-    c.require(root.parent==Path('/private/tmp') and not root.is_symlink(),'not exact owned runtime root')
+-    transport=Transport(root,args.ready)
+-    report=transport.execute()
+-    print(json.dumps({'root':str(root),'PASS':report['PASS'],'failure':report['failure'],'cleanup_errors':report['cleanup_errors']},ensure_ascii=False))
+-    raise SystemExit(0 if report['PASS'] else 2)
+-
+-
+-if __name__=='__main__':main()

@@ -1,0 +1,43 @@
+{
+  "at": "2026-11-02T01:00:36.887448+00:00",
+  "decision": "SOURCE_FIX_FULL70_HOST_PASS_REQUIRES_ROOT_REVIEW_NO_LIVE_AUTHORITY",
+  "parent": "/private/tmp/bex-w8-original28-free-contract-source-20261101-_wkb6ut8",
+  "parent_manifest_sha256": "da50c8b83ca89015d2d6ff50295d119211451cb660f10925e35e3ef8e46eeb76",
+  "source_manifest": {
+    "bytes": 33713,
+    "sha256": "02ab240f1716836da814674536be47c11b3c9b3e0572b94aee70f4f567abe7e8"
+  },
+  "changed": {
+    "opaque.py": {
+      "before": {
+        "bytes": 35073,
+        "sha256": "4328000cb8c27fe8967cc55c75d59f3bd174f22107f7a90c169e8b73f2bb9dbb"
+      },
+      "after": {
+        "bytes": 35134,
+        "sha256": "eeaab1f3e4c78b55c1a5561693c7bc95df03e9309f8fcc26ebcc9861ef848055"
+      }
+    },
+    "test_free_contract.py": {
+      "before": {
+        "bytes": 6900,
+        "sha256": "c3169a7ac1765ac1fc49648bb6be313a38e0e2cf31da2eadcbfe66226f464c80"
+      },
+      "after": {
+        "bytes": 8383,
+        "sha256": "6d85303463f6d924784e08ab1b089edd2e9178b24174bd655aa703f8c4ec16f2"
+      }
+    }
+  },
+  "preservation": "All238other parent payloads byteexact; all69prior test definitions exact; only actual free_gate successcapture changed plus1realmethod missingcoverage control. All28programs/data/commands/validators/once/max2/cleanup/Ready/adoption untouched.",
+  "behavior": "coverage absent now recordsnull as optionaldiagnostic; workspaceId/period/freeInstanceHours successrecord remainstrict [] lookups and realgate budget>=10/currentmonth/freshsuccessful observations/capacity allunchanged.",
+  "tests": {
+    "full": "70PASS13.069s qualifiedexistingvenv; original69+1missingcoverage case",
+    "old_source": "Exactold free_gate AST overlay+newtest producesKeyError coverage; harness asserts this expectedred",
+    "retained_initials": [
+      "oldnegative firstharness copiedglobals defeating nowmock: stale-observationRefusal; fixed onlyharness",
+      "first70run69oldPASS,newtestexpectedunrelatedbillinginsafecapture:1FAIL; corrected onlynewtest projection, initial logs retained"
+    ]
+  },
+  "actual_values": "ADOPTIONCONTRACTstillnull; Ready/Free/Rootapproval notfilled. NoQAaccess/nativeexec/API/network/Go/Docker/K8/PM/repo changes."
+}

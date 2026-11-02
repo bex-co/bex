@@ -1,0 +1,51 @@
+--- V1/test_adoption.py
++++ V2/test_adoption.py
+@@ -8,9 +8,9 @@
+ class AdoptionControls(unittest.TestCase):
+     def fixture(self):
+         old='ghcr.io/bex-co/native@sha256:'+'a'*64;new='ghcr.io/bex-co/native@sha256:'+'b'*64
+-        source='d'*40;path='lego/operator/internal/build/native.go'
+-        before=('package build\nconst root = '+json.dumps(old)+'\nfunc choose(workspace string) string { return root }\n').encode()
+-        after=before.replace(old.encode(),new.encode());body=b'func choose(workspace string) string { return root }\n'
++        source='d'*40;path=r.COMMON_SLOT
++        before=('package build\nvar nativeCommonBase = '+json.dumps(old)+'\nfunc choose(workspace string) string { return nativeCommonBase }\n').encode()
++        after=before.replace(old.encode(),new.encode());body=b'func choose(workspace string) string { return nativeCommonBase }\n'
+         docs={}
+         def ref(name,raw):
+             key='/private/tmp/CONTROL_ONLY_ADOPTION/'+name+'.json';docs[key]=raw;return {'path':key,'bytes':len(raw),'sha256':c.sha(raw)}
+@@ -20,24 +20,30 @@
+             'pin_only_deltas':[{'qualification_source':'c'*40,'path':path,'before':ref('baseline',before),'edits':[{'before':old,'after':new}]}],
+             'pins':[{'path':path,'qualified_ref':new,'literal':json.dumps(new)}],
+             'scope_code':[{'scope':'all-workspaces','path':path,'first_byte':after.index(body),'last_byte':len(after),'sha256':c.sha(body),'source':ref('scope',body)}]}
+-        qualified={'qualified_baseline_source':'c'*40,'common_ref':new,'qualification_source':{path:{'bytes':len(before),'sha256':c.sha(before)}},'adoptable_refs':[new]}
++        qualified={'qualified_baseline_source':'c'*40,'common_ref':new,'qualification_source':{path:{'bytes':len(before),'sha256':c.sha(before)}},'adoptable_refs':[new],'critical_source':{path:{'bytes':len(before),'sha256':c.sha(before)}},
++            'critical_scope':[{'directory':'lego/operator/internal/build','suffix':'.go','exclude_suffixes':['_test.go']}]}
+         entry={'source':source,'image':contract['operator_image'],'APIApproval':{'source':'a'*40,'image':'ghcr.io/bex-co/bex-operator@sha256:'+'9'*64}}
+         calls=[]
+         def git(action,left,right):
+             calls.append((action,left,right))
+-            return True if action=='ancestor' else (after,'100644','f'*40)
++            if action=='ancestor':return True
++            if action=='changes':return [{'status':'M','path':path}]
++            return (before,'100644','e'*40) if left==qualified['qualified_baseline_source'] else (after,'100644','f'*40)
+         return contract,qualified,entry,docs,git,calls
+     def test_future_pinned_adoption_allows_exact_reviewed_pin_only_delta_without_requalifying_current_Go(self):
+         contract,qualified,entry,docs,git,calls=self.fixture()
+         with patch.object(p,'bind_signature',return_value={'CONTROL_ONLY_signature':True}):
+             result=r.adoption(contract,entry,qualified,docs.__getitem__,git)
+         self.assertEqual(result['source'],contract['source']);self.assertNotEqual(result['source'],qualified['qualified_baseline_source'])
+-        self.assertEqual(calls,[('ancestor',contract['required_ancestor'],contract['source']),('blob',contract['source'],next(iter(contract['critical_files'])))])
++        self.assertEqual(calls,[('ancestor',contract['required_ancestor'],contract['source']),('blob',qualified['qualified_baseline_source'],next(iter(contract['critical_files']))),('blob',contract['source'],next(iter(contract['critical_files']))),('changes',qualified['qualified_baseline_source'],contract['source'])])
+     def test_extra_runtime_function_change_is_not_hidden_as_pin_only_even_if_criticalhash_is_updated(self):
+         contract,qualified,entry,docs,git,calls=self.fixture();path=next(iter(contract['critical_files']))
+-        after,mode,blob=git('blob',contract['source'],path);changed=after.replace(b'return root',b'return "unexpected"')
++        after,mode,blob=git('blob',contract['source'],path);changed=after.replace(b'return nativeCommonBase',b'return "unexpected"')
+         contract['critical_files'][path].update(bytes=len(changed),sha256=c.sha(changed))
+-        def altered(action,left,right):return True if action=='ancestor' else (changed,mode,blob)
++        def altered(action,left,right):
++            if action=='ancestor':return True
++            if action=='changes':return [{'status':'M','path':path}]
++            return git(action,left,right) if left==qualified['qualified_baseline_source'] else (changed,mode,blob)
+         with self.assertRaises(c.Unproved):r.adoption(contract,entry,qualified,docs.__getitem__,altered)
+     def test_delta_before_must_be_retained_qualified_factory_bytes_not_arbitrary_preimage(self):
+         contract,qualified,entry,docs,git,calls=self.fixture();qualified['qualification_source'][next(iter(qualified['qualification_source']))]['sha256']='0'*64

@@ -1,0 +1,12 @@
+--- frozen-parent/opaque.py
++++ optional-coverage/opaque.py
+@@ -383,7 +383,8 @@
+                             {'state':'REFUSED','inputs':inputs_name,'reason':str(error)})
+                 raise
+             self.record(self.next_name('free-gate')+'.json', {**result, 'owner': {key:owner[key] for key in ('id','name')},
+-                        'usage': {key:usage[key] for key in ('workspaceId','period','freeInstanceHours','coverage')}, 'limits':limits})
++                        'usage': {**{key:usage[key] for key in ('workspaceId','period','freeInstanceHours')},
++                                  'coverage':usage.get('coverage')}, 'limits':limits})
+             return result
+     def deployments(self, row, cleanup=False):
+             items = self.get_json('/v1/services/'+row['id']+'/deploys?limit=20', cleanup)

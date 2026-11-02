@@ -1,0 +1,32 @@
+{
+  "review": {
+    "path": "history/v2-review/REVIEW.json",
+    "bytes": 4136,
+    "sha256": "37987fb99faaace462c999c4c272ff8947c7e46669e7018d836574a640b0a02a"
+  },
+  "remaining_finding": "Comment/string substring can masquerade as actual known Go common pin.",
+  "fix": "known_go_slot.py token/offset scanner ignores Go line/block comments and quoted/raw/rune literals, tracks delimiters, requires exactly1 actual top-level known var declaration and only canonical zero/inferred/typed forms. Recognized span/value must equal qualified immutableREF.",
+  "initial_mapping": "Uses actual recognized zero-value declaration offsets; identical zero-value text in documentation remains unchanged and does not create ambiguous edits.",
+  "limits": "No general Go parser/framework, no Go execution/compiler, no new imports or changes to original fixture programs/args/oracles/codecs or fullproof bounds.",
+  "tests": {
+    "focused_total": 17,
+    "seconds": 0.004,
+    "original_relevant": 10,
+    "new_unique": 7,
+    "prior59": "Preserved V2 controls and independent59PASS11.321s; no extra broad rerun perRoot direction.",
+    "counterexamples": [
+      "actualOLD plus qualified linecomment",
+      "blockcomment",
+      "raw/interpreted strings",
+      "rune punctuation+comment",
+      "nestedlocal variable",
+      "missing/duplicate/grouped/noncanonical declaration",
+      "correctglobal with fake docs still accepted",
+      "real first zero initializer with duplicate comment/raw-string text preserves docs"
+    ]
+  },
+  "actual_source_scan": "V3-ACTUAL-SOURCE-SCAN.json: current tracked nativebases.go correctly recognized zero-value; sourcebytes only, no repository writes.",
+  "all207V2payloads_reverified_unchanged": true,
+  "V2functional_payloads_unchanged_except": "readiness.py adoption gate; only new scanner/test modules added.",
+  "actual_authority": "NONE. NullADOPTION still refuses beforeauth; no actual Go/CLI/network/crypto/CI/tenant/production actions. Actual common image-only export remains frozen unchanged."
+}

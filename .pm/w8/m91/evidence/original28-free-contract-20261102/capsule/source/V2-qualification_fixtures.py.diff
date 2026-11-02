@@ -1,0 +1,17 @@
+--- V1/qualification_fixtures.py
++++ V2/qualification_fixtures.py
+@@ -62,11 +62,12 @@
+               'relationships':[{'spdxElementId':'SPDXRef-DOCUMENT','relationshipType':'DESCRIBES','relatedSpdxElement':'SPDXRef-Root'}]}
+         spdx=self.put('generated-SPDX',encoded(sbom));command=['CONTROL_ONLY','generated-python-no-signal']
+         generated={'result':self.result(command,{'python':'3.14.8','version_signals':[],'base':common,'image':image,'spdx_sha256':spdx['sha256'],'spdx_image':image}),'spdx':spdx}
+-        self.contract={'common_ref':common,'roles':roles,'qualifier_tools':tools,'qualification_source':{'lego/operator/internal/build/native.go':{'bytes':len(baseline),'sha256':c.sha(baseline)}},
++        self.contract={'common_ref':common,'roles':roles,'qualifier_tools':tools,'qualification_source':{r.COMMON_SLOT:{'bytes':len(baseline),'sha256':c.sha(baseline)}},
++            'adoption_critical_paths':[r.COMMON_SLOT],'adoption_critical_scope':[{'directory':'lego/operator/internal/build','suffix':'.go','exclude_suffixes':['_test.go']}],
+             'utility_cases':utility_cases,'family_cases':family_cases,'generated_default_python_command':command,
+             'fixed_brotli_versions':['1.0.9-2+deb12u1'],'generated_spdx_root':{'image':image,'SPDXID':root['SPDXID'],'package':root}}
+         self.entry={'common_ref':common,'roles':roles,'v11_receipt':self.put('V11',encoded(receipt)),'v11_crypto':self.put('crypto',encoded(crypto)),
+-            'qualification_source':{'lego/operator/internal/build/native.go':baseline_ref},'index':self.put('index',index),'platform_manifests':manifests,'platform_configs':configs,
++            'qualification_source':{r.COMMON_SLOT:baseline_ref},'index':self.put('index',index),'platform_manifests':manifests,'platform_configs':configs,
+             'retained_reports':reports,'wrong_source_stderr':self.put('wrong-source',b'expected GithubWorkflowSHA '+roles['verifier'].encode()),
+             'wrong_subject_stderr':self.put('wrong-subject',b'provided artifact digest does not match any digest in statement'),
+             'utilities':self.put('utilities',encoded({'rows':utility_rows})),'families':self.put('families',encoded({'rows':family_rows})),

@@ -1,0 +1,254 @@
+{
+  "schema": "bex.w8.original28-followon-plan/v1",
+  "at": "2026-11-01T00:31:36.571608+00:00",
+  "state": "SOURCE_PREPARATION_ONLY_NOT_ADMITTED_NOT_EXECUTED",
+  "original_specs_sha256": "ebcc5c79060d4cc6107f2aa01107586ad8b35b01a8adc70220a32b5129ee8fdb",
+  "original_count": 28,
+  "cases": [
+    {
+      "mid": 91,
+      "sweep": 402,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m91",
+      "runtime": "node",
+      "explicit_unverified_gate": "Original PG15 archive acceptance plus separate actual PG18 archive/runtime boundary checks required; no hosted DB connection/restore claimed."
+    },
+    {
+      "mid": 91,
+      "sweep": 402,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m91",
+      "runtime": "node",
+      "explicit_unverified_gate": "Original PG15 archive acceptance plus separate actual PG18 archive/runtime boundary checks required; no hosted DB connection/restore claimed."
+    },
+    {
+      "mid": 93,
+      "sweep": 407,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m93",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 93,
+      "sweep": 407,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m93",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 94,
+      "sweep": 409,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m94",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 94,
+      "sweep": 409,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m94",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 95,
+      "sweep": 414,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m95",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 95,
+      "sweep": 414,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m95",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 96,
+      "sweep": 416,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m96",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 96,
+      "sweep": 416,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m96",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 97,
+      "sweep": 418,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m97",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 97,
+      "sweep": 418,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m97",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 98,
+      "sweep": 419,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m98",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 98,
+      "sweep": 419,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m98",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 99,
+      "sweep": 420,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m99",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 99,
+      "sweep": 420,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m99",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 100,
+      "sweep": 421,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m100",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 100,
+      "sweep": 421,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m100",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 101,
+      "sweep": 422,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m101",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 101,
+      "sweep": 422,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m101",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 102,
+      "sweep": 423,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m102",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 102,
+      "sweep": 423,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m102",
+      "runtime": "python",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 103,
+      "sweep": 424,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m103",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 103,
+      "sweep": 424,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m103",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 107,
+      "sweep": 434,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m107",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 107,
+      "sweep": 434,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m107",
+      "runtime": "node",
+      "explicit_unverified_gate": null
+    },
+    {
+      "mid": 222,
+      "sweep": 222,
+      "client": "bex",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/note222",
+      "runtime": "python",
+      "explicit_unverified_gate": "Shared default Python image SBOM must independently list fixed libbrotli1. Hosted dpkg/version proof does not replace SBOM."
+    },
+    {
+      "mid": 222,
+      "sweep": 222,
+      "client": "render",
+      "fixture_dir": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/note222",
+      "runtime": "python",
+      "explicit_unverified_gate": "Shared default Python image SBOM must independently list fixed libbrotli1. Hosted dpkg/version proof does not replace SBOM."
+    }
+  ],
+  "unchanged_contract": [
+    "All original28 public programs/data/commands/env/nonces/validators and known explicit version adjustments stay exact; no import/modification of original hosted/naming/spec files and no read of old ledger/auth.",
+    "Only unused display-name UTC date and matching literal --name can refresh, under reviewed naming rule. Fresh own auth/workspace/baseline replaces old sessions.",
+    "Each genuine published/pinned client first create once, exactly one forward/POST; no installation prefix, remote code edit, redeploy, second try or paid fallback. Retain full wire/first artifact/source/build/runtime/native logs/shared readbacks."
+  ],
+  "admission_before_auth_or_create": [
+    "Real reviewed SAME common index passes strict V11, both original utility arches, required all-family/generated/native-init behavior and exact promised versions; NOT yet done.",
+    "Every-workspace production common/runtime pin adoption shipped, then fresh actual signed deployed operator/source/critical blobs/generation/observed Ready/spec-runtime identity prove adoption. No adoption-ready bool shortcut.",
+    "API separately signed/Ready on its OWN approved image/source; no API/operator image-equality requirement.",
+    "Final independent reviewed transport + Root entry approval before sanctioned fresh QA login. Verify genuine original client paths/SHA/contract, no redundant copies.",
+    "Fresh actual workspace inventory/baseline IDs, typed services/postgres/keyValues quotas and legal Free usage/included/coverage/source-carrier freshness. Preserve concurrent foreign changes; no new account/paid/quota circumvention."
+  ],
+  "runner_reuse": [
+    "After m83V2 R3/R4/R5 final independent CLEAN, reuse general bounded process ownership, safe credentials, once-forward journal and typed quotas; do not import legacy hosted runner.",
+    "Retain original proof functions/validators/request bytes with independently reviewed adapter. Fake source journeys cannot substitute actual hosted results.",
+    "Maximum2 exact-owned Free web fixtures simultaneously; recheck legal quota/capacity before every intent. After each client reconcile exact-owned ID/children/URL and quotas before next.",
+    "Unknown create response stops further creations; no request replay or name-inferred delete. Reconcile only exact201-journaled owned IDs. Cleanup finally after observer/transport/runtime failures; missing receipt never PASS; preserve private auth only if needed for unresolved owned cleanup.",
+    "Final baseline IDs preserved, own IDs/children/URLs absent, typed own quota deltas zero with foreign changes reconciled, exact own grant/session logout and credential files absent. Global used need not be zero if baseline/foreign resources exist."
+  ],
+  "next": "Create NEW private adapter source only after m83V2 final review; implement original28 contract over reviewed transport with meaningful failure controls/freeze/diff/independent review. No actual admission created.",
+  "limits": "Read/hash only three original allowlisted source/specs and public fixture subtree. No old ledger/auth/env values read, original import/execute, network/auth/Docker/Go/CI/product/repo mutation."
+}

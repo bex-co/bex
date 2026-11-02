@@ -1,0 +1,47 @@
+--- V1/adapter.py
++++ V2/adapter.py
+@@ -8,7 +8,8 @@
+ from urllib.parse import urlsplit,parse_qs,urlencode
+ import core as c
+ import readiness
+-from catalog import Catalog,Journal,KEYS,validate_post
++import evidence
++from catalog import Catalog,Journal,KEYS,validate_post,expected_secret_files
+ from harness import Context
+ from opaque import OpaqueTransport,NativeRelay,PrivateConfigError,safe_error,now,digest,read_json,command_receipt,API
+ from host import Budget,Runner,Stop,START_FREE,free_bytes
+@@ -51,6 +52,17 @@
+         if action=='ancestor':
+             result=self.runner.capture(['git','-C',str(REPO),'merge-base','--is-ancestor',left,right],timeout=10,limit=65536)
+             c.completed(result);return True
++        if action=='changes':
++            result=self.runner.capture(['git','-C',str(REPO),'diff','--name-status','--no-renames','-z',left,right,'--'],timeout=10,limit=2*1024*1024)
++            c.completed(result);pieces=result['stdout'].split(b'\0')
++            c.require(pieces[-1]==b'' and len(pieces[:-1])%2==0,'complete actual Git source change-set missing')
++            rows=[]
++            for index in range(0,len(pieces)-1,2):
++                status,path=pieces[index].decode(),pieces[index+1].decode()
++                c.require(status in ('A','D','M','T') and path and not Path(path).is_absolute() and '..' not in Path(path).parts,
++                          'actual Git change-set status/path unsupported')
++                rows.append({'status':status,'path':path})
++            return rows
+         c.require(action=='blob','unknown source observation')
+         result=self.runner.capture(['git','-C',str(REPO),'show',left+':'+right],timeout=10,limit=2*1024*1024);c.completed(result)
+         tree=self.runner.capture(['git','-C',str(REPO),'ls-tree',left,'--',right],timeout=10,limit=65536);c.completed(tree)
+@@ -59,7 +71,7 @@
+         return result['stdout'],match[1],match[2]
+     def check_ready(self):
+         c.require(digest(self.capsule_path)==self.capsule_sha and digest(self.contract_path)==self.contract_sha,'reviewed admission bytes changed')
+-        result=readiness.admit(self.capsule,self.contract,now(),self.proof_reader,self.git)
++        result=readiness.admit(self.capsule,self.contract,now(),evidence.Access(self.proof_reader),self.git)
+         self.record(self.next_name('admission')+'.json',result);return result
+     def require_legal_window(self):
+         # Root-supplied retained pre-auth coverage; refresh after own auth and
+@@ -166,6 +178,7 @@
+                 attempted={(r['mid'],r['client']) for r in self.data['resources']}
+                 spec=self.catalog.spec(key,now(),attempted);c.require(spec['name'] not in current['names'],'unused display name already present')
+                 admitted=self.check_ready();free=self.free_gate();row=self.journal.intent(spec,admitted,free,current['ids'])
++                expected_secret_files(spec,verify_original=True)
+                 with self.relay_type(self,spec,row) as relay:result=self.native(spec['client'],spec['create_args'],relay.host,timeout=48)
+                 row['create_result']={'exit':result['exit_code'],'capture':{k:v for k,v in result.items() if k not in ('stdout','stderr')}}
+                 c.completed(result);c.require(row.get('HTTP')==201 and row['state']=='created' and row.get('wire_request'),'actual complete native201 journey missing')

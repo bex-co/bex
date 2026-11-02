@@ -1,0 +1,9 @@
+test_note222_requires_exact_generated_no_signal_3_14_8_full_SPDX_root_and_fixed_brotli (test_qualification.QualificationControls.test_note222_requires_exact_generated_no_signal_3_14_8_full_SPDX_root_and_fixed_brotli) ... ok
+test_original_utilities_and_all_reviewed_family_cases_need_complete_raw_observations (test_qualification.QualificationControls.test_original_utilities_and_all_reviewed_family_cases_need_complete_raw_observations) ... ok
+test_separate_producer_verifier_generator_utility_family_roles_are_recorded (test_qualification.QualificationControls.test_separate_producer_verifier_generator_utility_family_roles_are_recorded) ... ok
+test_wrong_common_manifest_platform_blob_and_incomplete_signed_reports_refuse_even_rehashed (test_qualification.QualificationControls.test_wrong_common_manifest_platform_blob_and_incomplete_signed_reports_refuse_even_rehashed) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.011s
+
+OK

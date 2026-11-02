@@ -1,0 +1,17 @@
+test_actual_opaque_method_succeeds_without_optional_coverage (test_free_contract.FreeContractControls.test_actual_opaque_method_succeeds_without_optional_coverage) ... ERROR
+
+======================================================================
+ERROR: test_actual_opaque_method_succeeds_without_optional_coverage (test_free_contract.FreeContractControls.test_actual_opaque_method_succeeds_without_optional_coverage)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-free-optional-coverage-source-20261102-gqtfa907/source/test_free_contract.py", line 109, in test_actual_opaque_method_succeeds_without_optional_coverage
+    result=o.OpaqueTransport.free_gate(fake)
+  File "/private/tmp/bex-w8-original28-free-contract-source-20261101-_wkb6ut8/opaque.py", line 386, in free_gate
+    'usage': {key:usage[key] for key in ('workspaceId','period','freeInstanceHours','coverage')}, 'limits':limits})
+                  ~~~~~^^^^^
+KeyError: 'coverage'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (errors=1)

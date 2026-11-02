@@ -1,0 +1,180 @@
+{
+  "at": "2026-11-01T01:52:00.439866+00:00",
+  "state": "BLOCKED_SOURCE_FINDINGS_CORRECTION_REQUIRED",
+  "reviewed_source": "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl",
+  "reviewed_manifest_sha256": "a01ef515d0d466b16206d6633edb54e2166af6a04e1404c28dd13349798760ae",
+  "reviewed_payloads": 175,
+  "copied_payload_bytes": 1250191,
+  "copy_method": "Precomputed exact manifest-listed regular file set and bytes, no context-symlink traversal; originals untouched. Review copies have local readable mode, content exact.",
+  "executed": {
+    "host_controls": {
+      "tests": 46,
+      "result": "PASS",
+      "log": {
+        "bytes": 9044,
+        "sha256": "a11bb2bbdadbcfb2d9ab57e9d1aa414dabe7e399e64fba047d32bcce6302f67b"
+      },
+      "interpreter": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python",
+      "bytecode_disabled": true
+    },
+    "initial_attempt": "42PASS +4 ModuleNotFoundError yaml under default python; raw host-controls.log retained, no dependency installed",
+    "AST": {
+      "parsed_own_or_derived_files": 48,
+      "validator_cases": [
+        {
+          "mid": 91,
+          "function_count": 2,
+          "AST_exact": true
+        },
+        {
+          "mid": 93,
+          "function_count": 3,
+          "AST_exact": true
+        },
+        {
+          "mid": 94,
+          "function_count": 3,
+          "AST_exact": true
+        },
+        {
+          "mid": 95,
+          "function_count": 3,
+          "AST_exact": true
+        },
+        {
+          "mid": 96,
+          "function_count": 3,
+          "AST_exact": true
+        },
+        {
+          "mid": 97,
+          "function_count": 3,
+          "AST_exact": true
+        },
+        {
+          "mid": 98,
+          "function_count": 6,
+          "AST_exact": true
+        },
+        {
+          "mid": 99,
+          "function_count": 3,
+          "AST_exact": true
+        },
+        {
+          "mid": 100,
+          "function_count": 3,
+          "AST_exact": true
+        },
+        {
+          "mid": 101,
+          "function_count": 3,
+          "AST_exact": true
+        },
+        {
+          "mid": 102,
+          "function_count": 3,
+          "AST_exact": true
+        },
+        {
+          "mid": 103,
+          "function_count": 5,
+          "AST_exact": true
+        },
+        {
+          "mid": 107,
+          "function_count": 2,
+          "AST_exact": true
+        },
+        {
+          "mid": 222,
+          "function_count": 2,
+          "AST_exact": true
+        }
+      ],
+      "hosted_assertions": [
+        {
+          "function": "proof",
+          "assertions": 7,
+          "AST_exact": true
+        },
+        {
+          "function": "shared",
+          "assertions": 6,
+          "AST_exact": true
+        }
+      ],
+      "scope": "AST read/parse only for frozen original source; no original module/program/shell import/exec. Derived adapter controls separately use synthetic injected I/O."
+    },
+    "independent_probes": {
+      "bytes": 2811,
+      "sha256": "b9ef71e8c32930598cd6667cee8b12915a5b85551627adc8ade95c28f5ed7224"
+    }
+  },
+  "findings": [
+    {
+      "id": "R1",
+      "locations": [
+        "adapter.py:45",
+        "proof_binding.py:44",
+        "readiness.py:125",
+        "readiness.py:135"
+      ],
+      "problem": "Universal2MiB retained descriptor/reader and16MiB gunzip reject real retained V11 reports.",
+      "actual_metadata": {
+        "bundle_bytes": 30082367,
+        "bundle_gzip_bytes": 4453435,
+        "predicate_bytes": 22133719,
+        "source": "Existing retained published-Node26 receipt only; full report bodies not read."
+      },
+      "required_correction": "Distinct typed full-report bounds consistent with actual V11 maximum, SHA/size/gzip validation; preserve small metadata/auth/HTTP caps and avoid copying reports into owned32MiB runtime."
+    },
+    {
+      "id": "R2",
+      "locations": [
+        "catalog.py:76",
+        "test_adapter.py:post"
+      ],
+      "problem": "Fixed original m91 native CLI authors exact QA archive SecretFiles; catalog rejects all SecretFiles while fake native POST omits the actual field.",
+      "schema_sources": [
+        "lego/backend/internal/apps/rest.go:204",
+        "lego/backend/internal/apps/render.go:62",
+        "pinned render-oss/cli pkg/service/create.go:50/:96",
+        "pinned render-oss/cli pkg/service/secretfiles.go:25-42"
+      ],
+      "required_correction": "Only exact m91 frozen QA flag/name/content/dataSHA allowed; extra/wrong files fail, fake post must include actual authored field."
+    },
+    {
+      "id": "R3",
+      "locations": [
+        "readiness.py:191",
+        "readiness.py:201",
+        "readiness.py:206",
+        "lego/operator/internal/build/nativebases.go:36"
+      ],
+      "problem": "Adoption source binding permits omitted changed-file delta coverage and unqualified replacement targets; cannot represent genuine initial zero-value common pin initializer.",
+      "probes": [
+        "Changed non-selector runtime function accepted with empty pin_only_deltas.",
+        "Unqualified edit.after accepted when unrelated qualified literal exists elsewhere.",
+        "Actual var nativeCommonBase string initializer-only change rejected before signature."
+      ],
+      "required_correction": "Require coverage/reconstruction of every changed qualified critical file, all replacement targets qualified, and exact reviewed initial nativeCommonBase declaration grammar.",
+      "scope": "Isolated source-binding probes mock signatures only; no actual crypto/live bypass asserted."
+    }
+  ],
+  "positive_checks": [
+    "Null ADOPTION contract refuses before auth/proof readers.",
+    "Actual old V11 receipt plus pass/adoption booleans refuses missing separate generator provenance.",
+    "Fixed28 commands/106 literal map/original source IDs preserved.",
+    "Original14 validator AST exact;7hosted proof and6shared assertions exact.",
+    "Once catalog, genuine201 ownership, body journal before forward, no replay, typed quota, cleanup finally and late monitor failures covered by host controls.",
+    "All original actual source/program/data and3HTTP/build/applog/REST/GQL/MCP/env oracles retained."
+  ],
+  "limits": [
+    "No original module/program/shell imported or executed.",
+    "No actual client/auth/API/GitHub/CI/network/native app/Docker/Go/crypto/resources.",
+    "No current common qualification/adoption/Ready/Free/live28 authority generated.",
+    "No source/PM/git writes; only own private review files."
+  ],
+  "correction_status": "Author/root notified; new corrected generation must receive separate focused review."
+}

@@ -1,0 +1,57 @@
+--- V1/catalog.py
++++ V2/catalog.py
+@@ -9,6 +9,10 @@
+ 
+ SPEC_SHA='ebcc5c79060d4cc6107f2aa01107586ad8b35b01a8adc70220a32b5129ee8fdb'
+ MAP_SHA='fab100e00ce8214e79f00d995a8ef8d25522bdab2085f5303f8600dd95da165f'
++HERE=Path(__file__).resolve().parent
++PUBLIC_ARCHIVE_PATH='/private/tmp/bex7-native-acceptance-novb586u/fixtures/m91/qa402.dump.b64'
++PUBLIC_B64={'bytes':2297,'sha256':'8697ff567103ca61423fc1a0b4f364d191ffa22086e547c64f89c1f2fa41d0bd'}
++PUBLIC_ARCHIVE={'bytes':1721,'sha256':'5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4'}
+ MIDS=(91,93,94,95,96,97,98,99,100,101,102,103,107,222)
+ KEYS=tuple((mid,client) for mid in MIDS for client in ('bex','render'))
+ 
+@@ -58,6 +62,29 @@
+         return new
+ 
+ 
++def expected_secret_files(spec,verify_original=False):
++    args=spec['create_args']
++    if spec['mid']!=91:
++        c.require('--secret-file' not in args,'undeclared original secret-file flag')
++        return []
++    c.require(spec.get('backup_file_is_QA_only_nonsecret') is True and args.count('--secret-file')==1,
++              'm91requires its single frozen public QA archive flag')
++    c.require(args[args.index('--secret-file')+1]=='qa402.dump.b64:'+PUBLIC_ARCHIVE_PATH
++              and spec['primary_reference']['backup']==PUBLIC_ARCHIVE,'frozen QA archive path/identity differs')
++    source=HERE/'original-inputs/fixtures/m91/qa402.dump.b64'
++    c.require(source.is_file() and not source.is_symlink() and source.stat().st_size==PUBLIC_B64['bytes'],'frozen public QA input missing')
++    body=source.read_bytes();c.require(identity(body)==PUBLIC_B64,'frozen public QA Base64 bytes differ')
++    archive=base64.b64decode(body)
++    c.require(identity(archive)==PUBLIC_ARCHIVE,'frozen public PG15 archive bytes differ')
++    if verify_original:
++        original=Path(PUBLIC_ARCHIVE_PATH)
++        c.require(original.is_file() and not original.is_symlink() and original.stat().st_size==PUBLIC_B64['bytes']
++                  and original.read_bytes()==body,'actual unchanged native flagpath public input differs')
++    # Pinned CLI ResolveSecretFileInputs sends string(os.ReadFile(path)),
++    # including the existing final LF. No path/content substitution is made.
++    return [{'name':'qa402.dump.b64','content':body.decode('ascii')}]
++
++
+ def validate_post(body,spec):
+     c.require(isinstance(body,dict) and body.get('ownerId')==c.WORKSPACE and body.get('name')==spec['name']
+               and body.get('type')=='web_service' and body.get('repo')==spec['primary_reference']['repo']
+@@ -73,9 +100,12 @@
+               and not commands.get('preDeployCommand'),'actual native runtime/commands/Free differs')
+     expected=[{'key':key,'value':value} for key,value in spec['env'].items()]
+     c.require(body.get('envVars',[])==expected,'actual harmless environment differs')
+-    c.require(not any(body.get(k) for k in ('disk','diskId','secretFiles','envGroupIds','registryCredentialId','environmentId','projectId','image'))
++    c.require(not any(body.get(k) for k in ('disk','diskId','envGroupIds','registryCredentialId','environmentId','projectId','image'))
+               and not any(details.get(k) for k in ('disk','diskId','diskSizeGB','autoscaling'))
+               and details.get('numInstances',1) in (0,1),'unapproved dependency/scaling/image request')
++    expected_files=expected_secret_files(spec)
++    c.require((body.get('secretFiles') or [])==expected_files and (body.get('secretFiles') is None or isinstance(body['secretFiles'],list)),
++              'actual native public QA secret-file name/content/cardinality differs')
+     return True
+ 
+ 

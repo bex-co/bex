@@ -1,0 +1,15 @@
+{
+  "scope": "Source capability only; Root supplies actual reviewed externalcapsule/contract after allrealgates. Existing null default still refuses beforeauth.",
+  "qualified_contract_fields": {
+    "adoption_critical_paths": "Nonempty exact baseline criticalpath list, must include nativebases.go and equal retained qualification_source paths selected by reviewed scope.",
+    "adoption_critical_scope": "Nonempty closed list of exact {path} or {directory,suffix:.go,exclude_suffixes:[_test.go]} matching runtimecritical closure. Git changed-path observation detects additions/deletions/unlisted changes inside this scope."
+  },
+  "adoption_contract_fields": {
+    "critical_files": "Exactly same pathset as qualified critical snapshot; full byteSHA/size/Gitmode/blob for adopted source.",
+    "pin_only_deltas": "Required exactcatalog, one entry for EVERYchangedcritical path; emptyonly forzerochange and correctactualknownslot. Each before descriptor must match both retainedbaseline and actualbaseline Gitblob.",
+    "edits": "Existing immutable-ref old\u2192qualifiednew fullliteral or known native-common-base-initializer mapping only.",
+    "common_initializer_syntax": "inferred(default) or typed; exact mapping supplied by common_initializer, all surrounding bytes unchanged."
+  },
+  "external_artifact_bounds": "Full externalreport/JSON/inputarchive256MiB typed descriptors with complete streamSHA/size; metadata2MiB and all output/authcaps unchanged. No fullproof copying into run32MiB cache.",
+  "Root_actual_run": "Parent-owned actual common V11 run began separately; SOURCE/HOSTPASS cannot export/admit it or create productionadoption/Ready/Free/hostedauthority."
+}

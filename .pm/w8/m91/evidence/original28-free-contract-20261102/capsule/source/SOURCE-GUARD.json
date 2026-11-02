@@ -1,0 +1,74 @@
+{
+  "cap": 2097152,
+  "floor_margin": 1207959552,
+  "interval_seconds": 1,
+  "samples": [
+    {
+      "at": 1793496402.680994,
+      "source_bytes": 1110817,
+      "physical_available": 2112245760
+    },
+    {
+      "at": 1793496403.687996,
+      "source_bytes": 1110817,
+      "physical_available": 2111717376
+    },
+    {
+      "at": 1793496404.693037,
+      "source_bytes": 1110817,
+      "physical_available": 2111275008
+    },
+    {
+      "at": 1793496405.6998599,
+      "source_bytes": 1110817,
+      "physical_available": 2110107648
+    },
+    {
+      "at": 1793496406.706482,
+      "source_bytes": 1110817,
+      "physical_available": 2108694528
+    },
+    {
+      "at": 1793496407.713438,
+      "source_bytes": 1110817,
+      "physical_available": 2108182528
+    },
+    {
+      "at": 1793496408.718163,
+      "source_bytes": 1110817,
+      "physical_available": 2109112320
+    },
+    {
+      "at": 1793496409.72563,
+      "source_bytes": 1110817,
+      "physical_available": 2107785216
+    },
+    {
+      "at": 1793496410.732784,
+      "source_bytes": 1110817,
+      "physical_available": 2106957824
+    },
+    {
+      "at": 1793496411.739143,
+      "source_bytes": 1110817,
+      "physical_available": 2116042752
+    },
+    {
+      "at": 1793496412.74619,
+      "source_bytes": 1110817,
+      "physical_available": 2118213632
+    },
+    {
+      "at": 1793496413.752449,
+      "source_bytes": 1110817,
+      "physical_available": 2116980736
+    },
+    {
+      "at": 1793496414.7570539,
+      "source_bytes": 1110817,
+      "physical_available": 2116341760
+    }
+  ],
+  "errors": [],
+  "scope": "Own source tree bytes+physical capacity observer; no foreign cleanup, no kernelquota claim."
+}

@@ -1,0 +1,18 @@
+--- V1/test_adapter.py
++++ V2/test_adapter.py
+@@ -14,10 +14,14 @@
+ 
+ def catalog():return cat.Catalog((HERE/'original-inputs/prepared-fixtures.json').read_bytes(),(HERE/'EMISSION-MAP.json').read_bytes())
+ def post(spec):
+-    return {'ownerId':c.WORKSPACE,'name':spec['name'],'type':'web_service','repo':spec['primary_reference']['repo'],
++    body={'ownerId':c.WORKSPACE,'name':spec['name'],'type':'web_service','repo':spec['primary_reference']['repo'],
+         'branch':spec['primary_reference']['branch'],'autoDeploy':'no','envVars':[{'key':k,'value':v} for k,v in spec['env'].items()],
+         'serviceDetails':{'runtime':spec['runtime'],'plan':'free','region':'frankfurt',
+             'envSpecificDetails':{'buildCommand':spec['commands']['initial']['build'],'startCommand':spec['commands']['initial']['start']}}}
++    files=cat.expected_secret_files(spec)
++    if files:body['secretFiles']=files
++    return body
++
+ def fixture(mid,client='bex'):
+     catalog_=catalog();spec=catalog_.spec((mid,client),NOW,set());events=[]
+     data={'workspace':c.WORKSPACE,'baseline_ids':['srv-baseline'],'resources':[]}

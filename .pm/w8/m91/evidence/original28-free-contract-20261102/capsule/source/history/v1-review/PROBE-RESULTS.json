@@ -1,0 +1,70 @@
+{
+  "scope": "Synthetic/frozen-metadata probes only. Original modules/apps/commands/native/crypto not executed; signatures mocked ONLY for isolated adoption source-binding probes.",
+  "runtime_proof_size": {
+    "actual_retained_receipt_sha256": "2142980b54d84a20a90b0eec523fea6ca88a9ecbc4c03e45a938bc0dfefe5fe2",
+    "actual_bundle_bytes": 30082367,
+    "actual_bundle_gzip_bytes": 4453435,
+    "actual_predicate_bytes": 22133719,
+    "synthetic_stat_sized_to_real_metadata_refusal": "bounded private retained proof required",
+    "synthetic_16MiB_plus1_refusal": "gzip is oversized, incomplete or has unqualified trailing data"
+  },
+  "m91_authored_QA_secretfile": [
+    {
+      "client": "bex",
+      "encoded_input_bytes": 2297,
+      "encoded_input_sha256": "8697ff567103ca61423fc1a0b4f364d191ffa22086e547c64f89c1f2fa41d0bd",
+      "original_has_flag": true,
+      "actual_schema_fields": [
+        "secretFiles",
+        "name",
+        "content"
+      ],
+      "current_refusal": "unapproved dependency/scaling/image request"
+    },
+    {
+      "client": "render",
+      "encoded_input_bytes": 2297,
+      "encoded_input_sha256": "8697ff567103ca61423fc1a0b4f364d191ffa22086e547c64f89c1f2fa41d0bd",
+      "original_has_flag": true,
+      "actual_schema_fields": [
+        "secretFiles",
+        "name",
+        "content"
+      ],
+      "current_refusal": "unapproved dependency/scaling/image request"
+    }
+  ],
+  "omitted_pin_delta_coverage": {
+    "accepted": true,
+    "qualified_and_adopted_runtime_function_differ": true,
+    "reviewed_selector_body_unchanged": true,
+    "pin_only_deltas": [],
+    "scope": "Isolated source binder; actual signatures NOT exercised"
+  },
+  "unqualified_delta_target": {
+    "accepted": true,
+    "after_ref_not_in_qualified_refs": true,
+    "qualified_literal_exists_in_an_unrelated_constant": true,
+    "scope": "Isolated source binder; actual signatures NOT exercised"
+  },
+  "actual_first_common_pin_slot": {
+    "tracked_path": "lego/operator/internal/build/nativebases.go",
+    "actual_before_declaration": "var nativeCommonBase string",
+    "only_candidate_initializer_added": true,
+    "current_refusal": "unreviewed runtime edit is not immutable pin-only",
+    "actual_repo_mutated": false,
+    "signature_called": false
+  },
+  "actual_old_V11_booleans_do_not_upgrade": {
+    "retained_receipt_sha256": "2142980b54d84a20a90b0eec523fea6ca88a9ecbc4c03e45a938bc0dfefe5fe2",
+    "refused": "separate retained generator provenance differs",
+    "extra_booleans": [
+      "currentQualified",
+      "allFamiliesPassed",
+      "adoptionReady",
+      "allWorkspaces"
+    ],
+    "actual_old_receipt_unchanged": true,
+    "scope": "Existing old receipt JSON copied into synthetic reader; missing actual current role proof refuses before report/crypto/live steps."
+  }
+}

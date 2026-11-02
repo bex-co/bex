@@ -1,0 +1,38 @@
+{
+  "read_only_sources": {
+    "/Users/tianpan/projects/bex7/lego/backend/internal/apps/rest.go": {
+      "bytes": 86398,
+      "sha256": "5c50d33e2c4650f1afd8a869fd5aba22589867ed908de603e7c345d22d049cb1"
+    },
+    "/Users/tianpan/projects/bex7/lego/backend/internal/apps/render.go": {
+      "bytes": 40210,
+      "sha256": "e0617ca19bb603cc32d9d01c4f5830867e96ca1f5a0828a52b1a5ea71290af1c"
+    },
+    "/Users/tianpan/go/pkg/mod/github.com/render-oss/cli@v1.1.3-0.20261012175920-af9bdd180e90/pkg/service/create.go": {
+      "bytes": 12126,
+      "sha256": "90b986de050c0bc093c5bb45716519d6f4ad40b29a6e506b59a0ea3df41b4e8a"
+    },
+    "/Users/tianpan/go/pkg/mod/github.com/render-oss/cli@v1.1.3-0.20261012175920-af9bdd180e90/pkg/service/secretfiles.go": {
+      "bytes": 978,
+      "sha256": "d1189e2d9ac6d4a8c11fcf0ca0eceb96de513b47e2c8adf27e4bcd1f539e5c2f"
+    },
+    "/Users/tianpan/go/pkg/mod/github.com/render-oss/cli@v1.1.3-0.20261012175920-af9bdd180e90/pkg/client/envvar/envvar_gen.go": {
+      "bytes": 3083,
+      "sha256": "b4deff1b292291890fe29ff9c7ce7b893eac24a81a7298caf9735d43aa03a2f0"
+    },
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativebases.go": {
+      "bytes": 10006,
+      "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf"
+    }
+  },
+  "REST": "rest.go:204 SecretFiles array of render.go:62 name/content.",
+  "pinned_CLI": "ResolveSecretFileInputs returns Name and exact string(os.ReadFile(path)); create.go includes SecretFiles in native POST. No CLI execution.",
+  "frozen_public_input": {
+    "path": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m91/qa402.dump.b64",
+    "bytes": 2297,
+    "sha256": "8697ff567103ca61423fc1a0b4f364d191ffa22086e547c64f89c1f2fa41d0bd",
+    "decoded_archive_bytes": 1721,
+    "decoded_archive_sha256": "5beaea91d80ee9a3f7f637bd096446102952aa20a916f614fcb73575d1ece4a4"
+  },
+  "initial_slot": "Actual tracked nativebases.go:36 zero-value var nativeCommonBase string; exact known full-line inferred/typed initializer mappings only."
+}

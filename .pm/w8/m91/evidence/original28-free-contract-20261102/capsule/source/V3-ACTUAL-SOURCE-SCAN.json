@@ -1,0 +1,12 @@
+{
+  "path": "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativebases.go",
+  "bytes": 10006,
+  "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf",
+  "actual_known_slot": {
+    "form": "zero",
+    "value": null,
+    "start": 1203,
+    "end": 1231
+  },
+  "scope": "Source-byte token/offset analysis only; no Go parser/compiler/program or repository write."
+}

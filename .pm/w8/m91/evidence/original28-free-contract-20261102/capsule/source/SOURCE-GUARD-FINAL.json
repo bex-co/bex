@@ -1,0 +1,80 @@
+{
+  "cap": 2097152,
+  "floor_margin": 1207959552,
+  "interval_seconds": 1,
+  "samples": [
+    {
+      "at": 1793496606.072405,
+      "source_bytes": 1238278,
+      "physical_available": 1920876544
+    },
+    {
+      "at": 1793496607.0861619,
+      "source_bytes": 1238278,
+      "physical_available": 1917837312
+    },
+    {
+      "at": 1793496608.091788,
+      "source_bytes": 1238278,
+      "physical_available": 1926127616
+    },
+    {
+      "at": 1793496609.1025229,
+      "source_bytes": 1238278,
+      "physical_available": 1924771840
+    },
+    {
+      "at": 1793496610.1129699,
+      "source_bytes": 1238278,
+      "physical_available": 1923973120
+    },
+    {
+      "at": 1793496611.122931,
+      "source_bytes": 1238278,
+      "physical_available": 1923321856
+    },
+    {
+      "at": 1793496612.129552,
+      "source_bytes": 1238278,
+      "physical_available": 1924202496
+    },
+    {
+      "at": 1793496613.140529,
+      "source_bytes": 1238278,
+      "physical_available": 1923305472
+    },
+    {
+      "at": 1793496614.1439629,
+      "source_bytes": 1238278,
+      "physical_available": 1922007040
+    },
+    {
+      "at": 1793496615.153941,
+      "source_bytes": 1238278,
+      "physical_available": 1921126400
+    },
+    {
+      "at": 1793496616.162246,
+      "source_bytes": 1238278,
+      "physical_available": 1921728512
+    },
+    {
+      "at": 1793496617.1742148,
+      "source_bytes": 1238278,
+      "physical_available": 1916751872
+    },
+    {
+      "at": 1793496618.184983,
+      "source_bytes": 1238278,
+      "physical_available": 1915383808
+    },
+    {
+      "at": 1793496619.1959748,
+      "source_bytes": 1238278,
+      "physical_available": 1914613760
+    }
+  ],
+  "errors": [],
+  "source_children": "Explicit unit tests only; real tiny owned groups have Runner cleanup; SIGINT before final termination on guard/deadline.",
+  "no_foreign_cleanup": true
+}

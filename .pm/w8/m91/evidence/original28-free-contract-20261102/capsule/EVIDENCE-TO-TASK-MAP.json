@@ -1,0 +1,421 @@
+{
+  "at": "2026-11-02T01:00:36.886697+00:00",
+  "source_commit": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+  "scope": "Compact evidence-to-task alignment; new source reads/hashes only. No taskdone/PMmutation or actual current runtime acceptance.",
+  "shared": {
+    "source_audit": {
+      "path": ".pm/w8/m91/evidence/native-consumer-audit-20261029.md",
+      "identity": {
+        "bytes": 3260,
+        "sha256": "24383a52456bee03099cf0a79eee841d22c271b380540c470a22776911f5458b"
+      },
+      "scope": "Historical audit explicitly source-only at902630131+pending; not a current actual phase proof."
+    },
+    "simplify_history": [
+      {
+        "path": ".pm/w8/m91/README.md:43",
+        "record": "Three final simplify reviewers cleared shared supplier mechanism after removing unused configuration and non-Python wheel downloads."
+      },
+      {
+        "path": ".pm/w8/m91/README.md:57",
+        "record": "Three simplify reviews cleared generated harness after one-use runner/callback cleanup; historical generated cases rerun then. No repeat simplify execution or current runtime claim here."
+      }
+    ],
+    "current_paths": [
+      "native.go:305 nativeDockerfile emits shared native source-root/env/secret RUN, static early return without workload CMD",
+      "build.go:1219 native preparer+resolver only forBuilderNative beforeBuildKit",
+      "nativeresolve.go:74 choice/verified metadata+primary rewrites+companions, then shared applyNativeSuppliedBase",
+      "nativebases.go:170 common branch and201 primary tree/ENV/ldconfig/Pythonhook before companions/authoredcommands",
+      "app_controller.go:6469/6561 predeploy Job uses same resolved image",
+      "nativebases.go:31/36 production catalog/commonpin remainempty"
+    ],
+    "current_source_hashes": {
+      "deploy/native-base/install.sh": {
+        "bytes": 2516,
+        "sha256": "23ee0d1507d5bcecba7e41c8a5eda10051eaa6ad41ffe164a735c6b0b25dfb2b"
+      },
+      "deploy/native-base/package.json": {
+        "bytes": 162,
+        "sha256": "3a9e094241a1fca4cd3b13ac34c56cdf096ce76828ec16d9aef5cf573b435703"
+      },
+      "deploy/native-base/package-lock.json": {
+        "bytes": 57293,
+        "sha256": "8e94bcf0a4cec803b3c8fae20c72e147568fb7df9aee6ea39084ebc301849ba2"
+      },
+      "deploy/native-base/check-tools.py": {
+        "bytes": 5099,
+        "sha256": "cd4b2cde2a8325f4403966280e8921cf104ae9ed34397bd197cb8185a3665932"
+      },
+      "deploy/native-base/check-primary-python.py": {
+        "bytes": 5485,
+        "sha256": "b2333b1944698ee707ad4026cc176ee3f678de69badd78acdc3c14edf6a1851c"
+      },
+      "deploy/native-base/python-tools.json": {
+        "bytes": 4110,
+        "sha256": "a7af6bfaa41c98deff82c2d8bfef95bba5de16d28a83592542410eb2e6ed6b2e"
+      },
+      "deploy/native-common/Dockerfile": {
+        "bytes": 2886,
+        "sha256": "b2241bca632cd565d0fb22e6abedb6cb1bfaaeaa87e3562701019edfea1cd0e6"
+      },
+      "lego/operator/internal/build/native.go": {
+        "bytes": 25979,
+        "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3"
+      },
+      "lego/operator/internal/build/nativebases.go": {
+        "bytes": 10006,
+        "sha256": "cc74e44d0c0b38cf6cede755c917c7eea1e82a4c0f4a5e71c6f1d45ad32d03cf"
+      },
+      "lego/operator/internal/build/nativecommon.go": {
+        "bytes": 8351,
+        "sha256": "a36780e1c2ff677df49a765c2b82722173936e6df28c1251eb5055ad673357dd"
+      },
+      "lego/operator/internal/build/nativeresolve.go": {
+        "bytes": 20417,
+        "sha256": "48fb455fba8bf07a4e62f95def7912dfc448e2e487f30ccf5690ff241ae78c06"
+      },
+      "lego/operator/internal/build/nativeutility_integration_test.go": {
+        "bytes": 18975,
+        "sha256": "529080e87e50c291a5081de48b83e5a90122676bae900046a978abeb024a761d"
+      },
+      "lego/operator/internal/build/testdata/native-utilities/utility-check.py": {
+        "bytes": 11577,
+        "sha256": "3e895819b0b650ac9f9def487d0f396d5fbf00fc3ae3c2ff7f9df7f5fc9d41fb"
+      },
+      "lego/operator/internal/build/testdata/native-utilities/original-cases.py": {
+        "bytes": 6384,
+        "sha256": "554dea2d7a3d1a4c23d2dc45b43e67517142f7b9ea4ab50e6f5bcd9d33c7a010"
+      },
+      "lego/operator/internal/build/testdata/native-utilities/original-cases.json": {
+        "bytes": 83949,
+        "sha256": "c8387719f59d574e71732faca7c1c06e6e421fec1bf7766f2b3c0d7bf7063ce5"
+      },
+      ".github/scripts/native-common-qualify.py": {
+        "bytes": 60360,
+        "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5"
+      },
+      ".github/workflows/native-common-image.yml": {
+        "bytes": 19834,
+        "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1"
+      }
+    },
+    "actual_historical": {
+      "path": ".pm/w8/m91/evidence/common-current0941-20261101/README.md",
+      "identity": {
+        "bytes": 2294,
+        "sha256": "436e21ce0b39e48596f578222960f5d763e3c442175d069dde59de8bcc0b661c"
+      },
+      "source": "1feba939b4697894e800ed0abb4f25a0bf415641",
+      "image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+      "scope": "Actual V11 artifact review + both complete utility cohorts (13original programs/39HTTP/5omissions/4positives/fullsuppliernegative/default3148SBOM). Historical baseline only after later functional changes."
+    },
+    "current_source_checks": {
+      "path": ".pm/w8/m91/evidence/immutable-metadata-reuse-20261101/README.md",
+      "identity": {
+        "bytes": 1220,
+        "sha256": "913e70a4de4ae2d829a076f90bccc8fcb2f9635d81ac798eba7b9f8b28f7119c"
+      },
+      "source": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+      "scope": "Actual requestcount/clone/error/cancel/bound/concurrency/fullpackage/race/lint source tests; not a new successful current botharch cohort."
+    },
+    "phase_limits": "Current actual native-init four-launch local proof and selectedNode local diagnostics exist separately; no all-family/all-arch or actual same-common Kubernetes predeployJob inference. Predeploy-child-build README explicitly no runtime/KubernetesJob. Static build/output is not compute runtime; pigz needs service OR static, not both."
+  },
+  "ADR060": {
+    "path": "docs/ADR060-build-worker-reliability-and-performance.md",
+    "identity": {
+      "bytes": 124371,
+      "sha256": "464e4e660ad29a6251dfb455a65cde597940f620d0e163a90a54bf2ed9bff5e6"
+    },
+    "status": "Root pending documentation only; chosen exact versions and feature limits now recorded, not yet claimed shipped by this map"
+  },
+  "rows": [
+    {
+      "id": "m93",
+      "requirements": [
+        ".pm/w8/m93/README.md:20",
+        ".pm/w8/m93/t006.md:11"
+      ],
+      "implemented": "check-tools.py:24-26 real conversion and unsupported-format failure; original Pandoc program retained in original13 replays.",
+      "original_case": {
+        "mid": 93,
+        "sweep": 407,
+        "runtime": "node",
+        "row_sha256": "9c4b05b0d93af728395e3ecad576d65167a1f7223b5db3c935846eb039d40eed"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t002": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t003": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t004": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t005": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t006": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    },
+    {
+      "id": "m94",
+      "requirements": [
+        ".pm/w8/m94/README.md:20",
+        ".pm/w8/m94/t006.md:11"
+      ],
+      "implemented": "check-tools.py:28-30 SQL and missing-column negative; utility-check.py:20-28 real CLI/Python same-file independent rows.",
+      "original_case": {
+        "mid": 94,
+        "sweep": 409,
+        "runtime": "python",
+        "row_sha256": "22fb490d77b52d1d7745ec75b57dcfdc231f6416de5dbdadb589ab1af20f5774"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t002": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t003": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t004": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t005": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t006": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    },
+    {
+      "id": "m95",
+      "requirements": [
+        ".pm/w8/m95/README.md:20",
+        ".pm/w8/m95/t006.md:11"
+      ],
+      "implemented": "install.sh normal libvips-dev/tools closure; utility-check.py:29-31 matching header/link/pixel and invalid image; original Python replay retained.",
+      "original_case": {
+        "mid": 95,
+        "sweep": 414,
+        "runtime": "python",
+        "row_sha256": "f4540edaa73729f20629f7fadbea0559c806d8228db17471ce6b3e8a2e0c5da6"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t002": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t003": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t004": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t005": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t006": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    },
+    {
+      "id": "m96",
+      "requirements": [
+        ".pm/w8/m96/README.md:20",
+        ".pm/w8/m96/t006.md:11"
+      ],
+      "implemented": "utility-check.py:32-38 xgettext/merge/uniq/msgfmt and Unicode/plural/format-failure; original Django fixture retained.",
+      "original_case": {
+        "mid": 96,
+        "sweep": 416,
+        "runtime": "python",
+        "row_sha256": "9b89d373565bbc5f1049df762bcaa237f471efd2d0485abafa11087f1f660a95"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t002": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t003": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t004": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t005": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t006": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    },
+    {
+      "id": "m97",
+      "requirements": [
+        ".pm/w8/m97/README.md:20",
+        ".pm/w8/m97/t006.md:11"
+      ],
+      "implemented": "utility-check.py:39-46 Base14 text/color PDF with independent pixels and bad-PDF; normal distro resource/font closure installed.",
+      "original_case": {
+        "mid": 97,
+        "sweep": 418,
+        "runtime": "python",
+        "row_sha256": "71f621159f523dcb80a9058814f0ac1dc52266c21368c387286250c3269dd52e"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t002": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t003": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t004": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t005": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t006": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    },
+    {
+      "id": "m98",
+      "requirements": [
+        ".pm/w8/m98/README.md:21",
+        ".pm/w8/m98/t007.md:11"
+      ],
+      "implemented": "utility-check.py:47-50 real jq/rsync combined behavior/error checks; original negative variants independently omit jq and rsync.",
+      "original_case": {
+        "mid": 98,
+        "sweep": 419,
+        "runtime": "node",
+        "row_sha256": "d70daffbb032a1891bca8b8f25303ad0f4d1c1c65a1277e6241f813bc0aeed16"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t003": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t004": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t005": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t006": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t007": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    },
+    {
+      "id": "m99",
+      "requirements": [
+        ".pm/w8/m99/README.md:20",
+        ".pm/w8/m99/t006.md:11"
+      ],
+      "implemented": "Integrity-locked TypeScript7.0.2 under private Node24; utility-check.py:51-54 strict compile, execute, rejected type error/no output.",
+      "original_case": {
+        "mid": 99,
+        "sweep": 420,
+        "runtime": "node",
+        "row_sha256": "1291b89b3414aa6a34adf8eb3a1015c3b5855123fda2ae77d19eb78a56a1f35d"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t002": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t003": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t004": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t005": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t006": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    },
+    {
+      "id": "m100",
+      "requirements": [
+        ".pm/w8/m100/README.md:20",
+        ".pm/w8/m100/t006.md:11"
+      ],
+      "implemented": "utility-check.py:58-60 real SWIG C wrapper/header compile/import + bad interface; original Python replay retained.",
+      "original_case": {
+        "mid": 100,
+        "sweep": 421,
+        "runtime": "python",
+        "row_sha256": "0916f030bad7a3a0c77c2f2dc2cf5d7b44c3490d7dceb2b70d9c12bf9448913b"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t002": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t003": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t004": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t005": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t006": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    },
+    {
+      "id": "m101",
+      "requirements": [
+        ".pm/w8/m101/README.md:20",
+        ".pm/w8/m101/t006.md:11"
+      ],
+      "implemented": "Locked core5.112.2/CLI7.2.3 with private Node24; utility-check.py:55-57 real two-module bundle/stats/run/missing-module.",
+      "original_case": {
+        "mid": 101,
+        "sweep": 422,
+        "runtime": "node",
+        "row_sha256": "0d8aa0980dd7d4584de1c4821d5de1a21a5956781a4cd3c57244ed6c22786d88"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t002": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t003": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t004": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t005": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t006": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    },
+    {
+      "id": "m102",
+      "requirements": [
+        ".pm/w8/m102/README.md:20",
+        ".pm/w8/m102/t006.md:11"
+      ],
+      "implemented": "utility-check.py:72-79 builds gzip and independently parses bytes at runtime/static; no runtime executable requirement introduced.",
+      "original_case": {
+        "mid": 102,
+        "sweep": 423,
+        "runtime": "python",
+        "row_sha256": "7e55fb25b11bce91f48793a0993b558215eacd949f70ba90aa4b80faf932bc32"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t002": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t003": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t004": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t005": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t006": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    },
+    {
+      "id": "m103",
+      "requirements": [
+        ".pm/w8/m103/README.md:22",
+        ".pm/w8/m103/t008.md:11"
+      ],
+      "implemented": "python-tools.json reviewed per-interpreter wheels; check-primary-python.py metadata/wheel/C-extension/precedence/error checks; utility harness separate metadata/pip/header omissions.",
+      "original_case": {
+        "mid": 103,
+        "sweep": 424,
+        "runtime": "node",
+        "row_sha256": "9c9166345113573d1dfa4b87090449a6c4aee5aa97077c84e7d5b520c879d3a5"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t004": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t005": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t006": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t007": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t008": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    },
+    {
+      "id": "m107",
+      "requirements": [
+        ".pm/w8/m107/README.md:20",
+        ".pm/w8/m107/t006.md:11"
+      ],
+      "implemented": "utility-check.py:61-71 independent ZIP member/CRC/method/size decoding + bad input, build/public archive outputs; normal zip/unzip closure supplied.",
+      "original_case": {
+        "mid": 107,
+        "sweep": 434,
+        "runtime": "node",
+        "row_sha256": "f5bcf11ee9d0f56ed59777052281ed4b71065202446111c7cf4ff0cb1307d9ff"
+      },
+      "task_mapping": {
+        "supplier": "t001 (plus t002rsync onm98 / t002pip+t003headers onm103): source and historical actualsupplier/generator checks present; full adoption acceptance not done",
+        "t002": "Existing consumer audit + current static path alignment above; source is not actual phase/exclusion/cache behavior acceptance",
+        "t003": "ADR060 common utility version/feature section around403 now present in Root pendingdocumentation; authoring contract remains unchanged; original native-client acceptance remains unexecuted",
+        "t004": "Reuse existing3review histories above; no new framework/review run or task completion claimed",
+        "t005": "Maintained and original frozen checks already implemented and historically actual onbotharches; no current-source completebotharch success inferred",
+        "t006": "Open: unchanged original first Bex+Render Free services Live, full exact source/build/runtime/HTTP/native/sharedreadbacks and exact cleanup/baseline/quota after reviewedadoption"
+      },
+      "disposition": "Blocked on m91/t007 actual commonqualification/adoption/originalhosted acceptance after this source-prep/doc/evidence alignment; preserve all open DoDs/tasks, no artificial Done."
+    }
+  ],
+  "note222": {
+    "source": ".pm/w8/222.md:25,42,48,53",
+    "implemented": "Exact3.14.8 + repairedsystemBrotli and genuinehistorical botharch generatedfullSPDX checks.",
+    "remaining": "Currentactualdefault qualification, adopted commonpin and freshhosted no-signal default; decisionalreadychosen.",
+    "disposition": "Blocked on m91/t007; no3.14.10 choice."
+  },
+  "non_gates": [
+    "No new user architecture/version decision",
+    "No need repeat shared tool implementation/harness",
+    "No need finish all historical C publications",
+    "No claim local source prep grants hosted/CI authority"
+  ]
+}

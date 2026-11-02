@@ -1,0 +1,16 @@
+--- originalV3/adapter.py
++++ FreeContractV4/adapter.py
+@@ -74,10 +74,10 @@
+         result=readiness.admit(self.capsule,self.contract,now(),evidence.Access(self.proof_reader),self.git)
+         self.record(self.next_name('admission')+'.json',result);return result
+     def require_legal_window(self):
+-        # Root-supplied retained pre-auth coverage; refresh after own auth and
+-        # before EVERY intent. Source prep cannot fabricate this observation.
++        # Root-reviewed actual pre-auth values AND response captures, bound by
++        # the capsule SHA; refresh after own auth and before EVERY intent.
+         free=self.capsule.get('preauth_free',{})
+-        return c.gate_free(free.get('owner',{}),free.get('usage',{}),free.get('limits',{}),now())
++        return c.gate_free(free.get('owner',{}),free.get('usage',{}),free.get('limits',{}),now(),free.get('observations',{}))
+     def allowed_api(self,method,path,body,cleanup):
+         parsed=urlsplit(path);query=parse_qs(parsed.query)
+         c.require(not parsed.scheme and not parsed.netloc and not parsed.fragment and '%' not in parsed.path,'qualified relative API path required')

@@ -1,0 +1,66 @@
+{
+  "at": "2026-11-01T01:32:21.062690+00:00",
+  "root": "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl",
+  "state": "SOURCE_FAKE_HOST_PASS_PENDING_INDEPENDENT_REVIEW_NOT_LIVE_ADMITTED",
+  "manifest": {
+    "bytes": 25595,
+    "sha256": "a01ef515d0d466b16206d6633edb54e2166af6a04e1404c28dd13349798760ae"
+  },
+  "payloads": 175,
+  "payload_bytes": 1250191,
+  "source_cap_bytes": 2097152,
+  "host_tests": 46,
+  "reported_host_seconds": 13.111,
+  "syntax_AST_source_files": 48,
+  "original_input_hashes_reverified": 84,
+  "regular_original_inputs_copied": 83,
+  "original_pyc": "hash-only, neverimported/copied",
+  "fixed_catalog": 28,
+  "exact_independent_emissions": 106,
+  "emission_map_sha256": "fab100e00ce8214e79f00d995a8ef8d25522bdab2085f5303f8600dd95da165f",
+  "original_validator_AST_exact": 14,
+  "general_host_and_proof_binding_exact": true,
+  "source_guard": "1second actual sourcebytes/physicalfree observer PASS; no foreigncleanup/no kernelquota claim",
+  "functional_scope": "All28 fakefirstLive/source+3HTTP/artifact+nativebuild/applog+REST/GQL/MCP+exactenv andknownSID cleanup; qualification/adoption field-binding mutations; actualPyYAML/thread/process owned controls.",
+  "actual_actions": false,
+  "actual_adoption_contract": null,
+  "actual_gates": "All real common/fullartifact/families/bothutilities/generatedPython3.14.8SPDX+Brotli/everyworkspaceadoption/Ready/Free/hosted28 still unexecuted. Root must supply reviewed actual capsule+adoption/source/pin/delta contract after independent source review and explicit live approval. No source/host PASS creates authority.",
+  "bindings": {
+    "adapter.py": {
+      "bytes": 16806,
+      "sha256": "d2c0f4f80bf0562c6b920b90112b98645b1f6b37d64b3c51e636d7091fcc77f5"
+    },
+    "catalog.py": {
+      "bytes": 9921,
+      "sha256": "f80a3853dd0afe43243bace1d6c99ad37bc36e6472ccbc800f39cc0fb173d5f5"
+    },
+    "harness.py": {
+      "bytes": 6384,
+      "sha256": "4a72dea4132ed565d718f8afe8ef6ad718b28478ea50f096ff323f70d9dd43fc"
+    },
+    "opaque.py": {
+      "bytes": 33828,
+      "sha256": "7347d8f569bcacfb0c6f773d3ec0f6e85d997773eebe7d6243504f3d28108c47"
+    },
+    "readiness.py": {
+      "bytes": 21377,
+      "sha256": "bb56368a8684f5b59000c69053899d00fccd18075667b303f46f856fdff94b5a"
+    },
+    "retained_v11_predicates.py": {
+      "bytes": 10135,
+      "sha256": "b5f3d1d3710d86b9e9c823ba602e3183376aba88557fb0ae05a286800ab4ffe9"
+    },
+    "host.py": {
+      "bytes": 12107,
+      "sha256": "92db2b995dbecb37efc6f5da50c72a234f0adeec43fe3355b069cd04109f7b83"
+    },
+    "proof_binding.py": {
+      "bytes": 12691,
+      "sha256": "5bbe60a1aca6f15d11105f028b635d98337d29f23b1aa6366c66f5bddd0658e2"
+    },
+    "ADOPTION-CONTRACT.json": {
+      "bytes": 5,
+      "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+    }
+  }
+}

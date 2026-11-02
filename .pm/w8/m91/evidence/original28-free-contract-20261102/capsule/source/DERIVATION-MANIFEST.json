@@ -1,0 +1,665 @@
+{
+  "scope": "Copied/derived harness functions ONLY, never original top-level/app/shell. Host execution limited fake injected I/O until independent/live approval.",
+  "functions": [
+    {
+      "input": "original-inputs/fixtures/m91/validators.py",
+      "input_sha256": "bcea54ec9a58a9f8c97676680f6d5cee9876feb16d16cc809cda26056856ace1",
+      "name": "valid_before",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "8bdc9e0dad3152ff48e396abf2070bc73f4c5ec4abe051531184fc299b7912a1",
+      "derived_AST_sha256": "8bdc9e0dad3152ff48e396abf2070bc73f4c5ec4abe051531184fc299b7912a1",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m91/validators.py",
+      "input_sha256": "bcea54ec9a58a9f8c97676680f6d5cee9876feb16d16cc809cda26056856ace1",
+      "name": "valid_after",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "e81a8fd148cc569c107c79b442afac4056abd7c2672a3ed9b3df252bb2eb3754",
+      "derived_AST_sha256": "e81a8fd148cc569c107c79b442afac4056abd7c2672a3ed9b3df252bb2eb3754",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m91/http.py",
+      "input_sha256": "9476c0fb42d65a8a6fd7a32f64307003a5746aefe062b85304be29e8d6763803",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 6,
+      "original_AST_sha256": "f7fd928a9604a39941751a08c135bf2157c7e3907b949e582a7d2fb7a43e525d",
+      "derived_AST_sha256": "6ca8c7d33b169aca900e8d34aafc6c764d679cc9ae132f90b899648c6f0de56c",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m93/validators.py",
+      "input_sha256": "14a6714bfddf409acfc8eee1f75666eeeac7be18b4b2d9674b239417e5fa03d7",
+      "name": "valid_base",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "95443628ab33f27d546bcb12add40a10325e19f82e139e9ef44ebc7d07264201",
+      "derived_AST_sha256": "95443628ab33f27d546bcb12add40a10325e19f82e139e9ef44ebc7d07264201",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m93/validators.py",
+      "input_sha256": "14a6714bfddf409acfc8eee1f75666eeeac7be18b4b2d9674b239417e5fa03d7",
+      "name": "valid_before",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "dd129df7f5fb75b7e7be683874e698ebc76d5083768755451ac7fc279a033b1c",
+      "derived_AST_sha256": "dd129df7f5fb75b7e7be683874e698ebc76d5083768755451ac7fc279a033b1c",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m93/validators.py",
+      "input_sha256": "14a6714bfddf409acfc8eee1f75666eeeac7be18b4b2d9674b239417e5fa03d7",
+      "name": "valid_after",
+      "first_line": 7,
+      "last_line": 8,
+      "original_AST_sha256": "a4e675038e9ddd970d40f3fb437f4b5d2897b5eb90faa8fb8979b926bee4daad",
+      "derived_AST_sha256": "a4e675038e9ddd970d40f3fb437f4b5d2897b5eb90faa8fb8979b926bee4daad",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m93/http.py",
+      "input_sha256": "1c6dd3da3d568ba52fdd9728ce7c0f9f38c6e928060358eb55c5814a9b2cdfc0",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 11,
+      "original_AST_sha256": "c58601cd275a2bb933721071777bfe3d389392fac118d033f5fb9ac07597fe2a",
+      "derived_AST_sha256": "63c7cca43a7073b04d1f01b4bb3ecb3f0c1240a7768c7e394de32540a655b016",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m94/validators.py",
+      "input_sha256": "dc67c77b617c59cb5d66bae199ad315d5c4344f42ba0cb82040216ba8dbb9e8b",
+      "name": "valid_base",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "6a04e8d6681ad25a2a91f1372d4730abc3f218f5c6a13a4e522f9058fb01d548",
+      "derived_AST_sha256": "6a04e8d6681ad25a2a91f1372d4730abc3f218f5c6a13a4e522f9058fb01d548",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m94/validators.py",
+      "input_sha256": "dc67c77b617c59cb5d66bae199ad315d5c4344f42ba0cb82040216ba8dbb9e8b",
+      "name": "valid_before",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "0c207edcff299c5b238f67282f547042e1b53b5aa323f6ab3af66e41dcb5568f",
+      "derived_AST_sha256": "0c207edcff299c5b238f67282f547042e1b53b5aa323f6ab3af66e41dcb5568f",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m94/validators.py",
+      "input_sha256": "dc67c77b617c59cb5d66bae199ad315d5c4344f42ba0cb82040216ba8dbb9e8b",
+      "name": "valid_after",
+      "first_line": 7,
+      "last_line": 8,
+      "original_AST_sha256": "6837de61d4f54cca5f0e145fc24d6a2db13c5d0ec558b7847633d02985772e3a",
+      "derived_AST_sha256": "6837de61d4f54cca5f0e145fc24d6a2db13c5d0ec558b7847633d02985772e3a",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m95/validators.py",
+      "input_sha256": "8a9f007446916ac3f60a16476527517fe22b4c4475fe6cc343d6370e3e8735aa",
+      "name": "valid_base",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "21f82bbd9cb84dd700368ee8886134c017428e96ddeed84870b66784cf914989",
+      "derived_AST_sha256": "21f82bbd9cb84dd700368ee8886134c017428e96ddeed84870b66784cf914989",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m95/validators.py",
+      "input_sha256": "8a9f007446916ac3f60a16476527517fe22b4c4475fe6cc343d6370e3e8735aa",
+      "name": "valid_before",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "49f1c1773c2d90b4fea6373110c7c29addcc1456ac49dc2d51d230c909d9d84f",
+      "derived_AST_sha256": "49f1c1773c2d90b4fea6373110c7c29addcc1456ac49dc2d51d230c909d9d84f",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m95/validators.py",
+      "input_sha256": "8a9f007446916ac3f60a16476527517fe22b4c4475fe6cc343d6370e3e8735aa",
+      "name": "valid_after",
+      "first_line": 7,
+      "last_line": 8,
+      "original_AST_sha256": "76e141a28a4844c43cf65d99757b401800b66225547f16f62f986f889df3d6f9",
+      "derived_AST_sha256": "76e141a28a4844c43cf65d99757b401800b66225547f16f62f986f889df3d6f9",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m95/http.py",
+      "input_sha256": "27d85a80e1e0ac250ee526593ff694918af83e1d378c464e1f68b9825553d878",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 11,
+      "original_AST_sha256": "8a64cfb2ed60078e2e7968b5dfd8c5837e4a4a37e9fb3a7a24c6f05f066d59a8",
+      "derived_AST_sha256": "189bbeb4a3dc6953c2582fdedb3f598381e161449d4883885a2601ffc7b888dd",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m96/validators.py",
+      "input_sha256": "998088b1aa2fa9162ff1ec0ae304072b92e4dd0b6cda0b62605db0ae97a1690b",
+      "name": "valid_base",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "2246f02312cae02ed842a4c4a2a789f859491b6fb148462deface1b0258dfc34",
+      "derived_AST_sha256": "2246f02312cae02ed842a4c4a2a789f859491b6fb148462deface1b0258dfc34",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m96/validators.py",
+      "input_sha256": "998088b1aa2fa9162ff1ec0ae304072b92e4dd0b6cda0b62605db0ae97a1690b",
+      "name": "valid_before",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "1dbf7fccc83aec13d6a5687c8a57846ea13e0eaccb5b49a64b28a9bb6721433e",
+      "derived_AST_sha256": "1dbf7fccc83aec13d6a5687c8a57846ea13e0eaccb5b49a64b28a9bb6721433e",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m96/validators.py",
+      "input_sha256": "998088b1aa2fa9162ff1ec0ae304072b92e4dd0b6cda0b62605db0ae97a1690b",
+      "name": "valid_after",
+      "first_line": 7,
+      "last_line": 8,
+      "original_AST_sha256": "8746efe89303ea95ff7720ed01768dabd5ab8dba06c0b03b5d231a0d5451b252",
+      "derived_AST_sha256": "8746efe89303ea95ff7720ed01768dabd5ab8dba06c0b03b5d231a0d5451b252",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m96/http.py",
+      "input_sha256": "7d361863070b3d7bc794a1dd182b4f95f854770ee15de5893c38caab8207627a",
+      "name": "values",
+      "first_line": 1,
+      "last_line": 1,
+      "original_AST_sha256": "909c15d2f65de47bb3f1924fc083b2e0ffd064181209d4e1afa83e9993d0dc4e",
+      "derived_AST_sha256": "909c15d2f65de47bb3f1924fc083b2e0ffd064181209d4e1afa83e9993d0dc4e",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m96/http.py",
+      "input_sha256": "7d361863070b3d7bc794a1dd182b4f95f854770ee15de5893c38caab8207627a",
+      "name": "exercise",
+      "first_line": 2,
+      "last_line": 12,
+      "original_AST_sha256": "77eca5e824c0503d1a9a73b7fec4ead09b1e048b20b20327c858172c924ad740",
+      "derived_AST_sha256": "bc650481424525422cb0be538d02679c18ae310b7c0db752b872f586a61812c0",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m97/validators.py",
+      "input_sha256": "ef78852f2d8a39da81d40b9da023ab97de2221ee6d30d9a268589bdeca826eb9",
+      "name": "valid_base",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "2b476c0fa1af6b1845d67d72222c778cedefe266df6de6dcfec9d1d644b9e8ae",
+      "derived_AST_sha256": "2b476c0fa1af6b1845d67d72222c778cedefe266df6de6dcfec9d1d644b9e8ae",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m97/validators.py",
+      "input_sha256": "ef78852f2d8a39da81d40b9da023ab97de2221ee6d30d9a268589bdeca826eb9",
+      "name": "valid_before",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "62101dc048a414acac9eb85201d274635cc90ae060eb4bb8a3c22f89e53052b7",
+      "derived_AST_sha256": "62101dc048a414acac9eb85201d274635cc90ae060eb4bb8a3c22f89e53052b7",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m97/validators.py",
+      "input_sha256": "ef78852f2d8a39da81d40b9da023ab97de2221ee6d30d9a268589bdeca826eb9",
+      "name": "valid_after",
+      "first_line": 7,
+      "last_line": 8,
+      "original_AST_sha256": "9f124643896c8b8698ffd72ae2ffacd170dce3a0e226fc88f2e05945d3e8f481",
+      "derived_AST_sha256": "9f124643896c8b8698ffd72ae2ffacd170dce3a0e226fc88f2e05945d3e8f481",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m97/http.py",
+      "input_sha256": "d38910713883276aec60ffc9ad4cf7ef84fb7fe7fbf4b7a4c58d2a74a0cd38c9",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 17,
+      "original_AST_sha256": "20420305019e46358bfd2ffbfd59743ee56a2c89b83088a21447bdabe38325f4",
+      "derived_AST_sha256": "c11aaf2cbd181c2ec8dc935685f3a4a8e0f982e709e18e7c2769a05b6ae9319e",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m98/validators.py",
+      "input_sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+      "name": "expected_manifest",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "c22be81a5efd9acbbcfd82963e0d5c53ab79a77a0565f890464531e3e9340531",
+      "derived_AST_sha256": "c22be81a5efd9acbbcfd82963e0d5c53ab79a77a0565f890464531e3e9340531",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m98/validators.py",
+      "input_sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+      "name": "expected_files",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "a9a62c06cf089eca231888587df79fa28f0554704f5a0184b48cab71131cf4d8",
+      "derived_AST_sha256": "a9a62c06cf089eca231888587df79fa28f0554704f5a0184b48cab71131cf4d8",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m98/validators.py",
+      "input_sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+      "name": "valid_base",
+      "first_line": 7,
+      "last_line": 8,
+      "original_AST_sha256": "300551c9cd47f6ed32ba0067fddfd47ec315bd3b6ac38df2cd0e4e76cf5e4a3e",
+      "derived_AST_sha256": "300551c9cd47f6ed32ba0067fddfd47ec315bd3b6ac38df2cd0e4e76cf5e4a3e",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m98/validators.py",
+      "input_sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+      "name": "valid_before",
+      "first_line": 10,
+      "last_line": 11,
+      "original_AST_sha256": "f2edf26f90f88b88f4424096654ae340d53b855a1edc131136cfacb6d3f2142a",
+      "derived_AST_sha256": "f2edf26f90f88b88f4424096654ae340d53b855a1edc131136cfacb6d3f2142a",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m98/validators.py",
+      "input_sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+      "name": "valid_jq",
+      "first_line": 13,
+      "last_line": 14,
+      "original_AST_sha256": "3a8f6842a8eaddd9232eb6cb7e320137293eaa2270e1627744b2ffb8d4b83cc7",
+      "derived_AST_sha256": "3a8f6842a8eaddd9232eb6cb7e320137293eaa2270e1627744b2ffb8d4b83cc7",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m98/validators.py",
+      "input_sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+      "name": "valid_after",
+      "first_line": 16,
+      "last_line": 17,
+      "original_AST_sha256": "4ead83aba6bc2d2f273e80b2b0c658a06f5ed7092893642bae33a5ba07653cb4",
+      "derived_AST_sha256": "4ead83aba6bc2d2f273e80b2b0c658a06f5ed7092893642bae33a5ba07653cb4",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m98/http.py",
+      "input_sha256": "69d6823694a2ec9d55b925213688c5d0e6b297cb7fb795fab3567d6fca726438",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 10,
+      "original_AST_sha256": "fa743c6d527f8180b5ab2165a5748377ddbcc30b72d6660135ca42d02725e0d1",
+      "derived_AST_sha256": "d5da3802abccc53f826bc98a353bf302494582100571884c9ad4b1e9d94c58d7",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m99/validators.py",
+      "input_sha256": "2dec2aca1c6eb8b1d2a1cca35bbc2c9e47849d65148ec417b8854e022ad04008",
+      "name": "valid_base",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "e1ae919c09e2e4cbcecb90a0910e5232144bebff2005205e4e23544b8025f6f1",
+      "derived_AST_sha256": "e1ae919c09e2e4cbcecb90a0910e5232144bebff2005205e4e23544b8025f6f1",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m99/validators.py",
+      "input_sha256": "2dec2aca1c6eb8b1d2a1cca35bbc2c9e47849d65148ec417b8854e022ad04008",
+      "name": "valid_before",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "0ce51e152f69786034433912690c7935e554440cad4b723fde3b83e73e68c4af",
+      "derived_AST_sha256": "0ce51e152f69786034433912690c7935e554440cad4b723fde3b83e73e68c4af",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m99/validators.py",
+      "input_sha256": "2dec2aca1c6eb8b1d2a1cca35bbc2c9e47849d65148ec417b8854e022ad04008",
+      "name": "valid_after",
+      "first_line": 7,
+      "last_line": 8,
+      "original_AST_sha256": "019ad58aaae271b2f720a73deee5db89f3c27cce49789a97ab657624772dbfcd",
+      "derived_AST_sha256": "019ad58aaae271b2f720a73deee5db89f3c27cce49789a97ab657624772dbfcd",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m99/http.py",
+      "input_sha256": "4631fc56dcf3498a080af4cce09bb50ed127404b0e3d9068963cf1fb8f6a447b",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 7,
+      "original_AST_sha256": "dca5bfb7dbe4ae3ff479b9ee391aaede32ace2e5697124096abb6784ac459a05",
+      "derived_AST_sha256": "e6b7b88f038bc9124582c6c230b4fbeb099a6da0fd03a0f9ef311215550a0a5f",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m100/validators.py",
+      "input_sha256": "986ccddf422b19d220a5e4c2108a2858814d8df4445a7cde4f45ac07482651a0",
+      "name": "valid_base",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "ce5db20db47bbba2712c2676226af4144acb43bb41fe0beffdc2c8208211c6ce",
+      "derived_AST_sha256": "ce5db20db47bbba2712c2676226af4144acb43bb41fe0beffdc2c8208211c6ce",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m100/validators.py",
+      "input_sha256": "986ccddf422b19d220a5e4c2108a2858814d8df4445a7cde4f45ac07482651a0",
+      "name": "valid_before",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "d65ad537b1209d1b7163f894191cf647b6b31e60521fe54a38d835c736b0e9ec",
+      "derived_AST_sha256": "d65ad537b1209d1b7163f894191cf647b6b31e60521fe54a38d835c736b0e9ec",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m100/validators.py",
+      "input_sha256": "986ccddf422b19d220a5e4c2108a2858814d8df4445a7cde4f45ac07482651a0",
+      "name": "valid_after",
+      "first_line": 7,
+      "last_line": 8,
+      "original_AST_sha256": "ca9fad1b727b124ffd73327e73a1fe142a344183b99e9e8a0501f58906f226a2",
+      "derived_AST_sha256": "ca9fad1b727b124ffd73327e73a1fe142a344183b99e9e8a0501f58906f226a2",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m100/http.py",
+      "input_sha256": "81bb386b11c2aad0896d45d1b48597bc03373c8af977d9af4e2cebdcb5d88b69",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 7,
+      "original_AST_sha256": "69519912bd9c6e647f1a9aaf76a5b8e0561f02089929e6077bcbe248c9d9caec",
+      "derived_AST_sha256": "f45ee60968838c93fcee045e6e2a3074b12209e50a1939ec51959f333bfefa50",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m101/validators.py",
+      "input_sha256": "63ae3cae9e37db7f9e60a233b6fe214747af47656ad17dd7a41db317ccea4ed3",
+      "name": "valid_base",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "1e58cf6b68ba6f43d88099a1253c9507609a8376820d931c9c2a4ac0775ce860",
+      "derived_AST_sha256": "1e58cf6b68ba6f43d88099a1253c9507609a8376820d931c9c2a4ac0775ce860",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m101/validators.py",
+      "input_sha256": "63ae3cae9e37db7f9e60a233b6fe214747af47656ad17dd7a41db317ccea4ed3",
+      "name": "valid_before",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "edbfe40ed2bcdfde501fe078ae6f75c6aeb02cae6392bf79665e25c585dd9ce8",
+      "derived_AST_sha256": "edbfe40ed2bcdfde501fe078ae6f75c6aeb02cae6392bf79665e25c585dd9ce8",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m101/validators.py",
+      "input_sha256": "63ae3cae9e37db7f9e60a233b6fe214747af47656ad17dd7a41db317ccea4ed3",
+      "name": "valid_after",
+      "first_line": 7,
+      "last_line": 8,
+      "original_AST_sha256": "53737d76b6b60260433f569b76da0a8b398dd5e5d33691b077435509f49b46b1",
+      "derived_AST_sha256": "53737d76b6b60260433f569b76da0a8b398dd5e5d33691b077435509f49b46b1",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m101/http.py",
+      "input_sha256": "2d0fb551b23822b2301a71db30605ba910d816af13657836d773cb0bdd4c4634",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 7,
+      "original_AST_sha256": "18dde9b6b66c586957503e8dba86bc7f3ac8bc2f99a9d335783d91b9ed0479b2",
+      "derived_AST_sha256": "7e859da73885794f8f84115cd58231e55890e99e39b9899ad14dbf97922834d6",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m102/validators.py",
+      "input_sha256": "899060770d761dbe8255cc51d18ba6bbdde923f5b26dee8057ac9adb3702648e",
+      "name": "valid_base",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "47479fa193c6ed072f459cf798a8b84a2fc69ad25ac5bc9f33522490d34b6216",
+      "derived_AST_sha256": "47479fa193c6ed072f459cf798a8b84a2fc69ad25ac5bc9f33522490d34b6216",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m102/validators.py",
+      "input_sha256": "899060770d761dbe8255cc51d18ba6bbdde923f5b26dee8057ac9adb3702648e",
+      "name": "valid_before",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "ab2a0cfb90315d6f8714a44cccc59e8b94b1936ecdbc6859837880c1649a1471",
+      "derived_AST_sha256": "ab2a0cfb90315d6f8714a44cccc59e8b94b1936ecdbc6859837880c1649a1471",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m102/validators.py",
+      "input_sha256": "899060770d761dbe8255cc51d18ba6bbdde923f5b26dee8057ac9adb3702648e",
+      "name": "valid_after",
+      "first_line": 7,
+      "last_line": 11,
+      "original_AST_sha256": "b8c0ce43780378f1b975670cc1e55a927d870af25bd948922158930de34be70a",
+      "derived_AST_sha256": "b8c0ce43780378f1b975670cc1e55a927d870af25bd948922158930de34be70a",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m102/http.py",
+      "input_sha256": "63b6e563fbf9e9cccbbaa58af87ce73eab5dd8910b64e769ecf0ec54d80504fe",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 11,
+      "original_AST_sha256": "a7d4b990cadd446a65958d82c230d2a6c80849fb53e5150a5986b8aa35c0060a",
+      "derived_AST_sha256": "ab430a6d9e01f0bbd23887b836dd0e5b76c37b2d2b01084baca600a6ff8a21a4",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m103/validators.py",
+      "input_sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208",
+      "name": "valid_base",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "c12067e4065e9bd90f4d18a7fe98897714cf21af9392c9b9019574f79936e80d",
+      "derived_AST_sha256": "c12067e4065e9bd90f4d18a7fe98897714cf21af9392c9b9019574f79936e80d",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m103/validators.py",
+      "input_sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208",
+      "name": "valid_before",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "840a604940faaf156c97e26093d5d229198a7c5191ff59e6db569dc5fc84054e",
+      "derived_AST_sha256": "840a604940faaf156c97e26093d5d229198a7c5191ff59e6db569dc5fc84054e",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m103/validators.py",
+      "input_sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208",
+      "name": "valid_meta",
+      "first_line": 7,
+      "last_line": 8,
+      "original_AST_sha256": "d8457c9e465350a56b6143737a93023d9c57cebd89f92e8d7c05cbd5ef8ed2b1",
+      "derived_AST_sha256": "d8457c9e465350a56b6143737a93023d9c57cebd89f92e8d7c05cbd5ef8ed2b1",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m103/validators.py",
+      "input_sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208",
+      "name": "valid_wheel",
+      "first_line": 10,
+      "last_line": 11,
+      "original_AST_sha256": "3d27e059d0ea4e49b8f8ed50feec3ebd53fbb07074a54f854bec892b3d28bd2e",
+      "derived_AST_sha256": "3d27e059d0ea4e49b8f8ed50feec3ebd53fbb07074a54f854bec892b3d28bd2e",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m103/validators.py",
+      "input_sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208",
+      "name": "valid_after",
+      "first_line": 13,
+      "last_line": 14,
+      "original_AST_sha256": "8ce68852928de578d5889f3c8316fa0b44db3c0290551e3de1c89838aea5c436",
+      "derived_AST_sha256": "8ce68852928de578d5889f3c8316fa0b44db3c0290551e3de1c89838aea5c436",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m103/http.py",
+      "input_sha256": "21649c018aa68b1e9bd027d165a0498dae3e4d8cfbe18228b7246a465c223189",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 7,
+      "original_AST_sha256": "3ed7d1579a06b4f0ecd881959d9e5b574c1fd4a1351e83b2b8017a58a222aaf1",
+      "derived_AST_sha256": "fd18830272e6e47d1cdee1c449b4fc54df2a329bb514202a05aaa5cc5e67c646",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/m107/validators.py",
+      "input_sha256": "e3c01915a1d5fa7b81890bd553be3654d416685ee1295d8ff5b0da272272b634",
+      "name": "valid_before",
+      "first_line": 1,
+      "last_line": 2,
+      "original_AST_sha256": "e7e110406e40d708749d07337c13e618fbf37f95589868133dbb2976ec07576d",
+      "derived_AST_sha256": "e7e110406e40d708749d07337c13e618fbf37f95589868133dbb2976ec07576d",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m107/validators.py",
+      "input_sha256": "e3c01915a1d5fa7b81890bd553be3654d416685ee1295d8ff5b0da272272b634",
+      "name": "valid_after",
+      "first_line": 4,
+      "last_line": 5,
+      "original_AST_sha256": "7580141c5c271bd85e3de40c15bcfc9d709aff83f9a667aec3a8071f4c9e6e95",
+      "derived_AST_sha256": "7580141c5c271bd85e3de40c15bcfc9d709aff83f9a667aec3a8071f4c9e6e95",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m107/http.py",
+      "input_sha256": "0638bee7f2b7e25fd6d2d1d3a67f882fad8d5e3baf305d2034ef0207a19fde65",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 17,
+      "original_AST_sha256": "fcb781779bf25da5b2e3121ce6b71123e0a3f5f0e0864520224f86c4db0da52a",
+      "derived_AST_sha256": "667501496f9f4c1d2199227e43eb29157687ebc930994e1466b8990bb4c48a96",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/fixtures/note222/validators.py",
+      "input_sha256": "3f09ed1817414e8e946d76c127fcd82bad454510c08fbe790ec66faf36dc1375",
+      "name": "valid_base",
+      "first_line": 1,
+      "last_line": 1,
+      "original_AST_sha256": "3dc69ef49937a6e162134ed8732ede6f519e309eef91412a9bf4beaa86ef3a2c",
+      "derived_AST_sha256": "3dc69ef49937a6e162134ed8732ede6f519e309eef91412a9bf4beaa86ef3a2c",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/note222/validators.py",
+      "input_sha256": "3f09ed1817414e8e946d76c127fcd82bad454510c08fbe790ec66faf36dc1375",
+      "name": "valid_after",
+      "first_line": 2,
+      "last_line": 2,
+      "original_AST_sha256": "1bd1dca2c4aa2c21bbbb1def9f4c7c52a288bbf92809a0e92de32ef072b5d0de",
+      "derived_AST_sha256": "1bd1dca2c4aa2c21bbbb1def9f4c7c52a288bbf92809a0e92de32ef072b5d0de",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/note222/http.py",
+      "input_sha256": "e326dad846182454e44ded3941f1b192c6c3a1b380e7dd5360ff86f0a0726ea5",
+      "name": "exercise",
+      "first_line": 1,
+      "last_line": 8,
+      "original_AST_sha256": "d64178dfa32600997101582f7cd5551d2fae6582baddaa050e701e7b45b69894",
+      "derived_AST_sha256": "070de14f54ca549537fdae3203968e5f2e106a764e38f858e59976d3075faed1",
+      "transformation": "Only remove local imports of subprocess/runpy/urllib.request; injected bounded providers replace them. All request literals and functional predicates unchanged."
+    },
+    {
+      "input": "original-inputs/hosted.py",
+      "input_sha256": "5059874eb08550cc171d19fa98b189d3c573e02a50dccafde0cb1ebc0f97e1cd",
+      "name": "decode_json",
+      "first_line": 26,
+      "last_line": 29,
+      "original_AST_sha256": "ccbb945686070ac33d42af380ddd108dd6814c4fdccc3e92678c29f536ff87f7",
+      "derived_AST_sha256": "ccbb945686070ac33d42af380ddd108dd6814c4fdccc3e92678c29f536ff87f7",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/hosted.py",
+      "input_sha256": "5059874eb08550cc171d19fa98b189d3c573e02a50dccafde0cb1ebc0f97e1cd",
+      "name": "objects",
+      "first_line": 100,
+      "last_line": 104,
+      "original_AST_sha256": "3f384f76cb1a7dee4ba6d9853a178211c99a5ab9886afb93b1e5bf72a4e041ef",
+      "derived_AST_sha256": "3f384f76cb1a7dee4ba6d9853a178211c99a5ab9886afb93b1e5bf72a4e041ef",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/hosted.py",
+      "input_sha256": "5059874eb08550cc171d19fa98b189d3c573e02a50dccafde0cb1ebc0f97e1cd",
+      "name": "proof",
+      "first_line": 106,
+      "last_line": 135,
+      "original_AST_sha256": "b898bcd004d443c44150f2311c28d45f8218743707737d6bdb06840372a28213",
+      "derived_AST_sha256": "e8000945a37f4dc5fdb89d2ae3d49dea65235a87f84ce0390b47d9aa2447cfea",
+      "transformation": "Only explicit Context I/O/state calls and safe private function registry replace old globals/exec/fixture-path; all assertions and literals retained."
+    },
+    {
+      "input": "original-inputs/hosted.py",
+      "input_sha256": "5059874eb08550cc171d19fa98b189d3c573e02a50dccafde0cb1ebc0f97e1cd",
+      "name": "shared",
+      "first_line": 137,
+      "last_line": 147,
+      "original_AST_sha256": "76bac3c2d1afea11c513cac69db2ec291a0076d379d89cb4919135cf57edb4a7",
+      "derived_AST_sha256": "a9932db9575d4835a0a573498dfcb3d28f6605979f67e77361cc0680fa106df9",
+      "transformation": "Only explicit Context I/O/state calls and safe private function registry replace old globals/exec/fixture-path; all assertions and literals retained."
+    },
+    {
+      "input": "original-inputs/fixtures/m93/sweep407-html.py",
+      "input_sha256": "43314330690433d298e850a047460b848f286a3824bbb8e2509831e1de8be597",
+      "name": "inspect_html",
+      "first_line": 3,
+      "last_line": 15,
+      "original_AST_sha256": "c6f7592c4f7ef620f76c9453cc04aead4c18940f0a62b6d00f4b7dd4213e600b",
+      "derived_AST_sha256": "c6f7592c4f7ef620f76c9453cc04aead4c18940f0a62b6d00f4b7dd4213e600b",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/fixtures/m95/sweep406-png.py",
+      "input_sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505",
+      "name": "decode_png",
+      "first_line": 2,
+      "last_line": 14,
+      "original_AST_sha256": "f9ffc9dea218892111a0216782f3bb2c46591729a9ec4f01a62da18396f7e1ca",
+      "derived_AST_sha256": "f9ffc9dea218892111a0216782f3bb2c46591729a9ec4f01a62da18396f7e1ca",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/native_naming.py",
+      "input_sha256": "e529c72901160913f4bfe2ab3ced92245027268f1da98d25cd313a569fb24d18",
+      "name": "utc_now",
+      "first_line": 6,
+      "last_line": 9,
+      "original_AST_sha256": "f7fccf068302d1bd7dc9cb932bc41e9b8370a74dfdaf8bb1074285ddbfe0e1c0",
+      "derived_AST_sha256": "f7fccf068302d1bd7dc9cb932bc41e9b8370a74dfdaf8bb1074285ddbfe0e1c0",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    },
+    {
+      "input": "original-inputs/native_naming.py",
+      "input_sha256": "e529c72901160913f4bfe2ab3ced92245027268f1da98d25cd313a569fb24d18",
+      "name": "creation_day",
+      "first_line": 11,
+      "last_line": 15,
+      "original_AST_sha256": "611c214aaf6ff27de23789e037ad1365e8eaf2a431ca6365c378fb472a8c29d2",
+      "derived_AST_sha256": "611c214aaf6ff27de23789e037ad1365e8eaf2a431ca6365c378fb472a8c29d2",
+      "transformation": "Exact function source/AST copy; no top-level import/exec."
+    }
+  ]
+}

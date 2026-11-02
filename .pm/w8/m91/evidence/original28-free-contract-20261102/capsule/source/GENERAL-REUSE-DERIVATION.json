@@ -1,0 +1,45 @@
+{
+  "source": "/private/tmp/bex-w8-m83-live-transport-v3-main-source-20261101-9b2_pe4q/transport.py",
+  "sha256": "64fb7d128b91c511a31ffc8e3f5c941597d936474b68b953551e846e3dc50406",
+  "source_methods": [
+    "record",
+    "persist",
+    "next_name",
+    "set_handlers",
+    "register_session_handle",
+    "auth",
+    "config_document",
+    "config_bytes",
+    "credentials",
+    "environment",
+    "native",
+    "refresh",
+    "https",
+    "api",
+    "get_json",
+    "collect",
+    "free_gate",
+    "deployments",
+    "logout"
+  ],
+  "exact_module_copies": {
+    "host.py": "92db2b995dbecb37efc6f5da50c72a234f0adeec43fe3355b069cd04109f7b83",
+    "proof_binding.py": "5bbe60a1aca6f15d11105f028b635d98337d29f23b1aa6366c66f5bddd0658e2"
+  },
+  "opaque_differences": [
+    "Class named OpaqueTransport and only individually listed general methods retained; no original initializer/setup/execute/finish/check_ready/allowed_api/m83fixtures.",
+    "native explicit timeout keyword preserves original28 create48s and default45s.",
+    "auth delegates current legalwindow predicate to new original28 admission provider rather than m83RESET.",
+    "NativeRelay lifecycle and safeparser/process/auth/cleanup bodies otherwise unchanged; dispatch rawcustody hook explicitly listed below.",
+    "NativeRelay.dispatch adds one journal.capture_wire before forward_once; raw actual request bytes/size/SHA and only nonsecret allowed headers become durable before network. All listener/process/201 lifecycle code remains unchanged."
+  ],
+  "core_predicates": [
+    "require",
+    "sha",
+    "instant",
+    "completed",
+    "gunzip_bounded",
+    "compare_cleanup"
+  ],
+  "source_only": true
+}

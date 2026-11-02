@@ -1,0 +1,12 @@
+test_correct_actual_variable_with_same_fake_text_remains_admissible_source_only (test_v3_slot.AdoptionSlotControls.test_correct_actual_variable_with_same_fake_text_remains_admissible_source_only) ... ok
+test_first_pin_uses_actual_zero_declaration_offset_and_preserves_identical_comment_text (test_v3_slot.AdoptionSlotControls.test_first_pin_uses_actual_zero_declaration_offset_and_preserves_identical_comment_text) ... ok
+test_unchanged_OLD_variable_plus_fakequalified_comment_or_literal_never_admits (test_v3_slot.AdoptionSlotControls.test_unchanged_OLD_variable_plus_fakequalified_comment_or_literal_never_admits) ... ok
+test_comment_quoted_raw_rune_and_nested_occurrences_never_replace_actual_OLD_slot (test_v3_slot.ScannerControls.test_comment_quoted_raw_rune_and_nested_occurrences_never_replace_actual_OLD_slot) ... ok
+test_fake_occurrences_do_not_make_duplicate_actual_declaration (test_v3_slot.ScannerControls.test_fake_occurrences_do_not_make_duplicate_actual_declaration) ... ok
+test_only_fake_missing_grouped_duplicate_or_noncanonical_slot_is_unproved (test_v3_slot.ScannerControls.test_only_fake_missing_grouped_duplicate_or_noncanonical_slot_is_unproved) ... ok
+test_unique_actual_zero_inferred_and_typed_canonical_forms (test_v3_slot.ScannerControls.test_unique_actual_zero_inferred_and_typed_canonical_forms) ... ok
+
+----------------------------------------------------------------------
+Ran 7 tests in 0.002s
+
+OK

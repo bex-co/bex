@@ -1,0 +1,13 @@
+{
+  "source": "/private/tmp/bex-w8-common-v11-adapter-20261031-jyjpyb8z/retained/loopx-w8-verify-native-artifact.py",
+  "source_sha256": "cf5932b2c5598bc9140a4bf9b99ab8c6ae0aa9613e73ec88140f492b086f1bb2",
+  "functions_exact_AST": [
+    "descriptor",
+    "package_arches",
+    "spdx_binding",
+    "trivy_binding",
+    "docker_source_root_aliases"
+  ],
+  "purpose": "Pure actual full SPDX/Trivy child/config/architecture and decompressed-root receipt reconstruction binders, no crypto/network/working-tree validation.",
+  "new_dependency": "A bounded retained-proof Path reader is injected ONLY for docker_source_root_aliases local JSON/byte reads; exact function AST unchanged."
+}

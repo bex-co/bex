@@ -89,7 +89,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m108** — [Preserve ordinary uploads beyond the ingress body-read deadline](done/m108/README.md) (6 tasks;210m) — **SUPERSEDED 2026-10-29（被 w8/207 的 `readTimeout: 6000s` 取代）**
 
-- [ ] **m107** — [Supply ZIP creation in native builds and runtimes](m107/README.md) (6 tasks;190m) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m107** — [Supply ZIP creation in native builds and runtimes](blocked/m107/README.md) (6 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
 - [x] **m106** — [Supply Hugo for the documented static quickstart](done/m106/README.md) (6 tasks;195m) — **DONE 2026-10-18:** Both native clients' fresh Free static sites built Render's Hugo quickstart unchanged; exact cleanup ([evidence](done/m106/evidence/hosted-2026-10-18/README.md)).
 
@@ -97,27 +97,27 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m104** — [Supply pg_partman for ordinary partition migrations](blocked/m104/README.md) (6 tasks;200m) — **BLOCKED（2026-10-29 已决定：ADR092；等 [w8/m92/t008](m92/t008.md) 共享镜像和白名单落地后恢复，不需要用户）**
 
-- [ ] **m103** — [Supply native Python packaging and development tools](m103/README.md) (8 tasks, 335m, 3 major omissions) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m103** — [Supply native Python packaging and development tools](blocked/m103/README.md) (8 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
-- [ ] **m102** — [Supply pigz for native asset builds](m102/README.md) (6 tasks, 190m, major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m102** — [Supply pigz for native asset builds](blocked/m102/README.md) (6 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
-- [ ] **m101** — [Supply Webpack for native production bundles](m101/README.md) (6 tasks, 225m, major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m101** — [Supply Webpack for native production bundles](blocked/m101/README.md) (6 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
-- [ ] **m100** — [Supply SWIG for native C-binding builds](m100/README.md) (6 tasks,200m,major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m100** — [Supply SWIG for native C-binding builds](blocked/m100/README.md) (6 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
-- [ ] **m99** — [Supply TypeScript for native builds and runtime](m99/README.md) (6 tasks,225m,major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m99** — [Supply TypeScript for native builds and runtime](blocked/m99/README.md) (6 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
-- [ ] **m98** — [Supply jq and rsync for native asset builds](m98/README.md) (7 tasks,270m,2 major omissions) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m98** — [Supply jq and rsync for native asset builds](blocked/m98/README.md) (7 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
-- [ ] **m97** — [Supply Ghostscript for native PDF rendering](m97/README.md) (6 tasks,215m,major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m97** — [Supply Ghostscript for native PDF rendering](blocked/m97/README.md) (6 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
-- [ ] **m96** — [Supply GNU gettext for native message compilation](m96/README.md) (6 tasks,195m,major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m96** — [Supply GNU gettext for native message compilation](blocked/m96/README.md) (6 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
-- [ ] **m95** — [Supply libvips in native builds and runtime](m95/README.md) (6 tasks,230m,major) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m95** — [Supply libvips in native builds and runtime](blocked/m95/README.md) (6 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
-- [ ] **m94** — [Supply SQLite CLI in native builds and runtime](m94/README.md) (6 tasks) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m94** — [Supply SQLite CLI in native builds and runtime](blocked/m94/README.md) (6 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
-- [ ] **m93** — [Supply Pandoc in native builds and runtime](m93/README.md) (6 tasks) — **待实施（2026-10-29 复核）：** m91 先建共享原生基础镜像，复用工具供应链并逐项保留原功能/线上验收；不是用户选型门槛。
+- [ ] **m93** — [Supply Pandoc in native builds and runtime](blocked/m93/README.md) (6 tasks) — **BLOCKED (native build worker: complete m91/t007 common qualification and production adoption, then unchanged original both-client hosted acceptance).** Supplier code, functional harness and version/feature documentation are prepared; original DoD remains open.
 
 - [ ] **m92** — [Make PostGIS usable in managed Postgres](blocked/m92/README.md) (8 tasks) — **BLOCKED:** actual PG14 complete ordinary-owner Timescale restore fails; needs qualified upstream raw restore capability preserving ADR092 D3. Source and bounded IMMV-sidecar consumer are implemented; no artifact adoption or hosted completion. The single rolling restart is already approved.
 
@@ -414,7 +414,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [x] **223** — [A rollout refused by workspace memory quota shows its reason](done/223.md) — **DONE 2026-10-29:** already fixed by `885d61317`; newest-ReplicaSet quota regressions pass. Prior live-check limits retained.
 
 - [ ] **224** — [`bex login` names the wrong dashboard](blocked/224.md) — **BLOCKED (user-authorized CLI release, then published login/logout replay):** launcher fix and full CLI suite complete; original overwritten 223 recovered from `7fd6c9c4f`.
-- [ ] **222** — [Keep Python 3.14.10 as the no-signal default, a signed-off divergence for the Brotli fix?](222.md) — **待实施（2026-10-29 复核）：** 复用 m91 的共享镜像，保持 Python 3.14.8 精确默认值并修补 Brotli；不需选择版本偏离。
+- [ ] [222 — Preserve exact Python3.14.8 with repaired Brotli](blocked/222.md) — **BLOCKED (native build worker: m91 common qualification/adoption and original default hosted acceptance); option3 is already chosen.**
 
 - [x] **221** — [Small disks: preserve requested-size billing and enforce actual capacity](done/221.md) — promoted to **m144** 2026-10-29; implementation remains open.
 

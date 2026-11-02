@@ -1,0 +1,62 @@
+{
+  "at": "2026-11-01T02:08:10.337417+00:00",
+  "root": "/private/tmp/bex-w8-original28-adapter-v2-source-20261101-qhegb0ec",
+  "state": "CORRECTED_SOURCE_HOST_PASS_PENDING_INDEPENDENT_REVIEW_NOT_ADMITTED",
+  "manifest": {
+    "bytes": 29926,
+    "sha256": "d5c9f32dbfdf18711f3f7f0f01b348a0fd1dc86d4059f7c7ea04b081c752b950"
+  },
+  "payloads": 207,
+  "payload_bytes": 1425912,
+  "source_cap_bytes": 2097152,
+  "host_unique_tests": 59,
+  "host_seconds": 12.317,
+  "AST_parse_files": 51,
+  "prior175payloads_reverified_unchanged": true,
+  "original14validatorAST_exact": true,
+  "original28inputs_commands_programs_env_flags_oracles_unchanged": true,
+  "exact_general_host_and_proof_binding": true,
+  "default_adoption_contract": null,
+  "fixed_findings": [
+    "R1fullruntimeproofbounds",
+    "R2exactm91publicsecretfile",
+    "R3closedcriticaldelta+initialslot+qualifiedtargets"
+  ],
+  "actual_admission": false,
+  "actual_actions_by_source_preparation": false,
+  "parent_actual_V11": "Separate active parent-owned run, never loaded or treated as approval here. Fullcommon/family/utility/adoption/Ready/Free/hosted gates remain independent.",
+  "bindings": {
+    "adapter.py": {
+      "bytes": 17724,
+      "sha256": "c1269ca258bcdf18b4486a94eb9b1b920561970b5d540062976210b939912878"
+    },
+    "catalog.py": {
+      "bytes": 12055,
+      "sha256": "4a2488bd95c2d6c58987e089aea2af62bb3adc052004bb04db63b4320b92ff1b"
+    },
+    "readiness.py": {
+      "bytes": 26697,
+      "sha256": "fca1324ad7d8522a65983c2e34de9d83bd50ce36b706f6064b4178b5393539b7"
+    },
+    "evidence.py": {
+      "bytes": 4886,
+      "sha256": "1d24d74006918f6e03af4fe992f6068f52a6ba6767406a21ab0e552c81daa861"
+    },
+    "test_v2_inputs.py": {
+      "bytes": 8217,
+      "sha256": "e5c5a6627e53d93488b7bdf564af515c3ba805dd694aa9363ae4eb3913278d6d"
+    },
+    "test_v2_adoption.py": {
+      "bytes": 7841,
+      "sha256": "dc77a8193155fe76a03ea238a3601d2707fb8ae05d091950170d280a715a880b"
+    },
+    "host.py": {
+      "bytes": 12107,
+      "sha256": "92db2b995dbecb37efc6f5da50c72a234f0adeec43fe3355b069cd04109f7b83"
+    },
+    "proof_binding.py": {
+      "bytes": 12691,
+      "sha256": "5bbe60a1aca6f15d11105f028b635d98337d29f23b1aa6366c66f5bddd0658e2"
+    }
+  }
+}

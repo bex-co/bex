@@ -1,0 +1,7 @@
+{
+  "prior_root": "/private/tmp/bex-w8-original28-adapter-v2-source-20261101-qhegb0ec",
+  "prior_manifest_sha256": "d5c9f32dbfdf18711f3f7f0f01b348a0fd1dc86d4059f7c7ea04b081c752b950",
+  "all207payloads_verified": true,
+  "review": "/private/tmp/bex-w8-original28-v2-independent-review-20261101-ftd7jyof",
+  "scope": "Only actual known top-level nativeCommonBase declaration recognition; original inputs/oracles/codecs unchanged."
+}

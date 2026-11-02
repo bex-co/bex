@@ -1,0 +1,74 @@
+{
+  "schema": "bex.original28.free-contract-followon/v1",
+  "at": "2026-11-01T07:59:44.625015+00:00",
+  "scope": "Private source+synthetic only, no live authority. OriginalV3 source/evidence intact.",
+  "baseline": "/private/tmp/bex-w8-original28-adapter-v3-source-20261101-avnm1yg_",
+  "baseline_manifest_sha256": "2a197df04c018ec7cf603f888ed6986238076c442a0ddee5964b958b536d6fd5",
+  "primary_contract_source": {
+    "m83_V5_rationale": {
+      "path": "/private/tmp/bex-w8-m83-live-transport-v5-free-contract-source-20261101-iqm0ez1e/V5-CONTRACT-RATIONALE.json",
+      "bytes": 4209,
+      "sha256": "ac1f458fc64989821bc71358601a7df82bd57519cd654efbdaf5641dcdafae80"
+    },
+    "actual_API_carrier_source": "a9c66371978abe00c8b16fb5463e4fa9be11917c",
+    "source_lines": [
+      "lego/backend/internal/usage/service.go:1647\u20131660 (only Free service instance_seconds)",
+      "lego/backend/internal/freehours/freehours.go:95\u2013123 (actual Free enforcer)",
+      "lego/backend/internal/store/usage.go:568\u2013595 (same hourly+monthly kind/tier/resource filter)",
+      "lego/backend/internal/usage/service.go:1388\u20131420 (direct is egress evidence)",
+      "lego/backend/internal/store/usage.go:309\u2013312,414\u2013450 (allmeter hourly watermark, not response freshness)"
+    ]
+  },
+  "changes": {
+    "core": "Same fixed workspaceID; namebinds actualtian-personal. Aggregate coverage/Through no longer admission. Mandatory observations argument requires owner/usage/limits event status200, canonical complete unbounded/unsignaled process and0..300sec offset-aware timestamp age. Missing captures refuse; no optional fallback. Shapes/finite nonbool budget/typed capacity remain guarded.",
+    "adapter": "Preauth require_legal_window passes capsule.preauth_free.observations, already bound by the Root-approved outercapsule SHA. Root must populate values and matching actual retained captures later; no capture/approval synthesized here.",
+    "opaque": "Each unchanged get_json call saves its authoritative last_metadata_event. Safe ownerid/name, usage4fields, servicescapacity and each existingredacted event/hash are written before coregate. Staticrefusalreason retained+reraised. Oldsuccessrecord/requests/auth/create/cleanup unchanged.",
+    "threshold": "Original28 remaining>=10hours EXACTLY retained; never uses m83>=1hour.",
+    "coverage": "Retained verbatim as diagnostic only; partial/direct can coexist with valid Free allowance. No aggregate health/directfix/CNI claim."
+  },
+  "actual_fields": {
+    "preauth_free": null,
+    "Ready": null,
+    "adoption": null,
+    "Root_execution_approval": null,
+    "actual_network_or_session": null
+  },
+  "preservation": {
+    "all223_originalpayloads_unchanged_at_original": true,
+    "fork220otherbaselinepayloads_exact": true,
+    "protected_original_and_public_file_copies": 85,
+    "all8old_test_modules_byte_exact": true,
+    "all28specs_programs_data_commands_validators_unchanged": true,
+    "all_other_adapter_opaque_method_ASTs_exact": true,
+    "all_other_core_function_ASTs_exact": true,
+    "source_Ready_crypto_qualification_adoption_slot_matcher_and_nullcontract_exact": true,
+    "threshold10_literal_preserved": true
+  },
+  "tests": {
+    "qualified_interpreter": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python -B",
+    "focused_new": {
+      "tests": 3,
+      "seconds": 0.003,
+      "exit": 0
+    },
+    "full_existing_plus_new": {
+      "tests": 69,
+      "seconds": 15.133,
+      "exit": 0,
+      "modules": [
+        "test_adapter",
+        "test_transport",
+        "test_adoption",
+        "test_safe_reuse",
+        "test_qualification",
+        "test_v2_inputs",
+        "test_v2_adoption",
+        "test_v3_slot",
+        "test_free_contract"
+      ],
+      "context": "All manifest-listed originalretained regular fixtures copied one-by-one, no contextsymlinktree, original module imports or original shell/app/native execution. No existingtestcode/context was changed; matchedretainedsource inputs already qualify the existing suite."
+    },
+    "regressions": "Partialdirect diagnostic passes onlyfreshsuccessfulmetadata; >=10boundary accepts10/refuses9.99; malformed/missing/bool/NaN/negative/exhausted/month/id/name/capacity/stale/future/incomplete/missing/non200capture refuses. Both preauth and actualopaque interfaces call real coregate, and safeinputrecords exist on refusal. Oldcoveragepolicyredcase retained."
+  },
+  "required_future": "Root+independent review; actualcommonbaseline/families/predeploy/adoption/Ready, fullstrictretainedproof/Rootcapsule contract and actualfreshFree remain unpopulated and required before actualuse. No actualcandidateapproval or rawREFescape introduced."
+}

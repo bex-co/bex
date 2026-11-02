@@ -1,0 +1,19 @@
+{
+  "unique_tests": 59,
+  "reported_seconds": 12.317,
+  "prior46controls_retained": true,
+  "new13controls": true,
+  "log": "V2-HOST-FINAL.stderr",
+  "interpreter": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python",
+  "bytecode_disabled": true,
+  "syntax_AST_files": 51,
+  "original_validator_AST_exact": 14,
+  "source_guard": "V2-SOURCE-GUARD-FINAL.json",
+  "fullproof_positive": "Synthetic only, no actual fullreport/body/approval; fake externalfiles cleaned.",
+  "partial_runs_retained": [
+    "V2-HOST-INPUTS.stderr",
+    "V2-HOST-ADOPTION-INITIAL.stderr",
+    "V2-HOST-COVERAGE.stderr",
+    "V2-HOST-FULL.stderr"
+  ]
+}

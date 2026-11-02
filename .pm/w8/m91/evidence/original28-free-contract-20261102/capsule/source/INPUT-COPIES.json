@@ -1,0 +1,500 @@
+{
+  "original-inputs/hosted.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/hosted.py",
+    "bytes": 21396,
+    "sha256": "5059874eb08550cc171d19fa98b189d3c573e02a50dccafde0cb1ebc0f97e1cd",
+    "scope": "read/hash only; no import or execution"
+  },
+  "original-inputs/native_naming.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/native_naming.py",
+    "bytes": 2447,
+    "sha256": "e529c72901160913f4bfe2ab3ced92245027268f1da98d25cd313a569fb24d18",
+    "scope": "read/hash only; no import or execution"
+  },
+  "original-inputs/prepared-fixtures.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/prepared-fixtures.json",
+    "bytes": 294069,
+    "sha256": "ebcc5c79060d4cc6107f2aa01107586ad8b35b01a8adc70220a32b5129ee8fdb",
+    "scope": "read/hash only; no import or execution"
+  },
+  "original-inputs/fixtures/m100/authored/qa-swig-app.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m100/authored/qa-swig-app.py",
+    "bytes": 2593,
+    "sha256": "e2de4d6a7fa00588a5446116788d21256ff17be580b5082be66c3dd1259a2097",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m100/authored/qa-swig-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m100/authored/qa-swig-marker.json",
+    "bytes": 21,
+    "sha256": "088ba85602ccb3f4d98aa56c9d939236a9b538ebd6b169f01ec8020c63e9d4f0",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m100/authored/qa-swig-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m100/authored/qa-swig-reference.json",
+    "bytes": 651,
+    "sha256": "31295935f66f601b752762008037fc9a97f17d97045284e3e7cdabadfb10fa8a",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m100/authored/qa_swig.i": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m100/authored/qa_swig.i",
+    "bytes": 142,
+    "sha256": "1384c8b26f56ff58a352327279efe41af9928292f3752716ccd8bfe6fc7c4f2a",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m100/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m100/http.py",
+    "bytes": 1301,
+    "sha256": "81bb386b11c2aad0896d45d1b48597bc03373c8af977d9af4e2cebdcb5d88b69",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m100/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m100/validators.py",
+    "bytes": 784,
+    "sha256": "986ccddf422b19d220a5e4c2108a2858814d8df4445a7cde4f45ac07482651a0",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m101/authored/qa-webpack-before.cjs": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m101/authored/qa-webpack-before.cjs",
+    "bytes": 970,
+    "sha256": "de1c52f4fa6a468b9a98c6c9e22ededc8711365837f86d3bbe07f34753f3502b",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m101/authored/qa-webpack-domain.mjs": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m101/authored/qa-webpack-domain.mjs",
+    "bytes": 177,
+    "sha256": "ba64fcd3998ad8703854a89fa1f0f4a20cdbd56251f9364f317cb559f880090e",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m101/authored/qa-webpack-entry.mjs": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m101/authored/qa-webpack-entry.mjs",
+    "bytes": 2287,
+    "sha256": "a9eec03f32ec5aa97711bb15b3a878667d6b0573ed714f1a934860af643cf427",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m101/authored/qa-webpack-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m101/authored/qa-webpack-marker.json",
+    "bytes": 21,
+    "sha256": "b85e212b55b75b4dbdb09fb90ce5ca87bbb5d549bb3f3d48ab1e7addfb9440ba",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m101/authored/qa-webpack-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m101/authored/qa-webpack-reference.json",
+    "bytes": 780,
+    "sha256": "8c88fb15ef701ff29a18280f0f12ad3d2a038560a75fccce0acc84597a928b5a",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m101/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m101/http.py",
+    "bytes": 1224,
+    "sha256": "2d0fb551b23822b2301a71db30605ba910d816af13657836d773cb0bdd4c4634",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m101/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m101/validators.py",
+    "bytes": 794,
+    "sha256": "63ae3cae9e37db7f9e60a233b6fe214747af47656ad17dd7a41db317ccea4ed3",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m102/authored/qa-pigz-app.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m102/authored/qa-pigz-app.py",
+    "bytes": 2538,
+    "sha256": "25bf894b6c81f4f702ab9f72dd9abf36f32beb11675b0bdbfcf7c4c7ca1be74b",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m102/authored/qa-pigz-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m102/authored/qa-pigz-marker.json",
+    "bytes": 21,
+    "sha256": "17d8359dc62482dbaf2575f68b8ee2489c5ec546c7d82c4b1d49a9ccc32a961c",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m102/authored/qa-pigz-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m102/authored/qa-pigz-reference.json",
+    "bytes": 592,
+    "sha256": "841734a6820198cb2f253be732993d7facac7d70ef83ddfaae34f80afcab8995",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m102/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m102/http.py",
+    "bytes": 1782,
+    "sha256": "63b6e563fbf9e9cccbbaa58af87ce73eab5dd8910b64e769ecf0ec54d80504fe",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m102/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m102/validators.py",
+    "bytes": 846,
+    "sha256": "899060770d761dbe8255cc51d18ba6bbdde923f5b26dee8057ac9adb3702648e",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m103/authored/qa_local_data-1.0-py3-none-any.whl": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m103/authored/qa_local_data-1.0-py3-none-any.whl",
+    "bytes": 1069,
+    "sha256": "f6d24b7717e0c82bdabfa4ff7f57428c7ae2520645c197f23bfc58aee76c39dc",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m103/authored/qa_native_ext.c": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m103/authored/qa_native_ext.c",
+    "bytes": 656,
+    "sha256": "705beb2c4f82f3f757253fe9eb65ee5c30dff49defebc8303a878c8ee015d3db",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m103/authored/qapy.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m103/authored/qapy.py",
+    "bytes": 2420,
+    "sha256": "fc1c5516745a6c56fec65ca9381c05097623a264b27ce15760ff2d2546380ba9",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m103/authored/qm.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m103/authored/qm.json",
+    "bytes": 21,
+    "sha256": "287da51f8b91238094709f23d373f9921f9c8f19f3f1bae7e6fd49235da64e14",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m103/authored/qref.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m103/authored/qref.json",
+    "bytes": 669,
+    "sha256": "d0da4ff9d70a4c4cf409b43883d27e068bb2f154378d2cbca8d09c1ec23e159a",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m103/authored/qsrv.cjs": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m103/authored/qsrv.cjs",
+    "bytes": 673,
+    "sha256": "374d1a1ec42afcfb25ad97a8d396d2e4d6ff52efc23306d521c0fe63a6f66d10",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m103/authored/setup.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m103/authored/setup.py",
+    "bytes": 145,
+    "sha256": "c23a397ecbc6a726be47e6c33a8e6c7c570f972f74ccc137ff86609ec678d496",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m103/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m103/http.py",
+    "bytes": 1346,
+    "sha256": "21649c018aa68b1e9bd027d165a0498dae3e4d8cfbe18228b7246a465c223189",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m103/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m103/validators.py",
+    "bytes": 1007,
+    "sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m107/authored/qa434-app.cjs": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m107/authored/qa434-app.cjs",
+    "bytes": 3444,
+    "sha256": "cb0b708278d8f40961df34ae6a8fd35c6d302a245ab27414c2c7adeeec247e6d",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m107/authored/qa434-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m107/authored/qa434-marker.json",
+    "bytes": 21,
+    "sha256": "426c77651c67841a12281a2f55986305bbfd44133d1583972bdd7af3f11d0b33",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m107/authored/qa434-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m107/authored/qa434-reference.json",
+    "bytes": 388,
+    "sha256": "fd1f283d93efe477e6e95fe00c0e7b41891846945567893d792b56a7768a5ab8",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m107/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m107/http.py",
+    "bytes": 2792,
+    "sha256": "0638bee7f2b7e25fd6d2d1d3a67f882fad8d5e3baf305d2034ef0207a19fde65",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m107/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m107/validators.py",
+    "bytes": 444,
+    "sha256": "e3c01915a1d5fa7b81890bd553be3654d416685ee1295d8ff5b0da272272b634",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m91/authored/qa402-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m91/authored/qa402-marker.json",
+    "bytes": 22,
+    "sha256": "5c608294074e2e95d72cffe1f07fa03388d386b875fda794ac35bd28c1f98dd4",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m91/authored/qa402-probe.cjs": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m91/authored/qa402-probe.cjs",
+    "bytes": 2309,
+    "sha256": "bc158b30e4dfbf41a9d94a5d17e35b9f78e6a6fb3fbf61856fd6f63be8907d77",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m91/authored/qa402-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m91/authored/qa402-reference.json",
+    "bytes": 729,
+    "sha256": "5baa2e8cef680d416743fa5d4c0b4bc969e5b342f5c8c38e7c797e40124c20de",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m91/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m91/http.py",
+    "bytes": 760,
+    "sha256": "9476c0fb42d65a8a6fd7a32f64307003a5746aefe062b85304be29e8d6763803",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m91/qa402.dump.b64": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m91/qa402.dump.b64",
+    "bytes": 2297,
+    "sha256": "8697ff567103ca61423fc1a0b4f364d191ffa22086e547c64f89c1f2fa41d0bd",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m91/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m91/validators.py",
+    "bytes": 868,
+    "sha256": "bcea54ec9a58a9f8c97676680f6d5cee9876feb16d16cc809cda26056856ace1",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m93/authored/qa407-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m93/authored/qa407-marker.json",
+    "bytes": 22,
+    "sha256": "0a681fcaa59b37c8966da9296901c4544530188e46654b99c033bf0c4ef9454c",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m93/authored/qa407-probe.cjs": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m93/authored/qa407-probe.cjs",
+    "bytes": 2281,
+    "sha256": "ce9ef793a506d115ebf0781ce8926bf08e845259d298c143b0f88cd4b2736beb",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m93/authored/qa407-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m93/authored/qa407-reference.json",
+    "bytes": 759,
+    "sha256": "5979ab330a943477995d1eb7e9648d1f73d8abdbf8c241b6fd7e999bed05655c",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m93/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m93/http.py",
+    "bytes": 1490,
+    "sha256": "1c6dd3da3d568ba52fdd9728ce7c0f9f38c6e928060358eb55c5814a9b2cdfc0",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m93/sweep407-html.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m93/sweep407-html.py",
+    "bytes": 918,
+    "sha256": "43314330690433d298e850a047460b848f286a3824bbb8e2509831e1de8be597",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m93/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m93/validators.py",
+    "bytes": 903,
+    "sha256": "14a6714bfddf409acfc8eee1f75666eeeac7be18b4b2d9674b239417e5fa03d7",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m94/authored/qa409-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m94/authored/qa409-marker.json",
+    "bytes": 22,
+    "sha256": "45ce716b0bf67acbb77f23bd1fb0eea3bcaa8c7ed3469916cad227461f72258e",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m94/authored/qa409-probe.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m94/authored/qa409-probe.py",
+    "bytes": 2815,
+    "sha256": "eabeec00df2b0719d24ebab232c8f086dddd68aa59f34039f41b22d87affd168",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m94/authored/qa409-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m94/authored/qa409-reference.json",
+    "bytes": 747,
+    "sha256": "e35f7adb6a4aafc6970325d461e0985a51e6814e6c2c49310bab07f8ab0fd026",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m94/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m94/validators.py",
+    "bytes": 823,
+    "sha256": "dc67c77b617c59cb5d66bae199ad315d5c4344f42ba0cb82040216ba8dbb9e8b",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m95/authored/qa-vips-app.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m95/authored/qa-vips-app.py",
+    "bytes": 2787,
+    "sha256": "85fd7852692b4b10f8f222ae11c9717219ebf76270616bfa01cf90392b265395",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m95/authored/qa-vips-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m95/authored/qa-vips-marker.json",
+    "bytes": 22,
+    "sha256": "631beef78bf41642401e994b919c4b0769b88e81ceedac4149c8f3674bb910e1",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m95/authored/qa-vips-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m95/authored/qa-vips-reference.json",
+    "bytes": 619,
+    "sha256": "249846e6894fdcd97af0cf40c862ae8a6a4e5ea455734c0a917a6d9168d8d2d9",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m95/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m95/http.py",
+    "bytes": 1513,
+    "sha256": "27d85a80e1e0ac250ee526593ff694918af83e1d378c464e1f68b9825553d878",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m95/sweep406-png.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m95/sweep406-png.py",
+    "bytes": 950,
+    "sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m95/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m95/validators.py",
+    "bytes": 729,
+    "sha256": "8a9f007446916ac3f60a16476527517fe22b4c4475fe6cc343d6370e3e8735aa",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m96/authored/locale/fr/LC_MESSAGES/django.po": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m96/authored/locale/fr/LC_MESSAGES/django.po",
+    "bytes": 508,
+    "sha256": "cf68cfd752aa80d6a0334fb0b907e5f186962298860ba3ea0b43de953356000a",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m96/authored/qa-gettext-app.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m96/authored/qa-gettext-app.py",
+    "bytes": 3478,
+    "sha256": "5ec748dd00ea9e3d6d48374e460171b89314cc6d066b5106e38418ec08cedca0",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m96/authored/qa-gettext-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m96/authored/qa-gettext-marker.json",
+    "bytes": 21,
+    "sha256": "5fa73d5541f590f4114c5f0018d241ef8a4ceeb188b103d9fea395363025e4c8",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m96/authored/qa-gettext-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m96/authored/qa-gettext-reference.json",
+    "bytes": 618,
+    "sha256": "807e50740a2cf393a7ddd9656dec06f6a825ee599b8f6bcf72532a17fd7bcdf1",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m96/authored/qa_gettext_settings.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m96/authored/qa_gettext_settings.py",
+    "bytes": 198,
+    "sha256": "0610134fb696f2716b3ffccdb6a3b557ba0e5237b3690ec9a0b8e48ad174ae5f",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m96/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m96/http.py",
+    "bytes": 1769,
+    "sha256": "7d361863070b3d7bc794a1dd182b4f95f854770ee15de5893c38caab8207627a",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m96/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m96/validators.py",
+    "bytes": 951,
+    "sha256": "998088b1aa2fa9162ff1ec0ae304072b92e4dd0b6cda0b62605db0ae97a1690b",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m97/authored/qa-gs-app.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m97/authored/qa-gs-app.py",
+    "bytes": 2644,
+    "sha256": "efc58738ede2bfb24fd34a73d085ad91781966df34865a2175ca9f030cfe5cf5",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m97/authored/qa-gs-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m97/authored/qa-gs-marker.json",
+    "bytes": 21,
+    "sha256": "02a64b0567aa082aa58750d65296c525359527409203b331a6ec7b4f1ee606c8",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m97/authored/qa-gs-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m97/authored/qa-gs-reference.json",
+    "bytes": 1270,
+    "sha256": "683eae6448fb9b0c5763dd24a2994316162a0c5e75ab361cd5c9ba39eb6db256",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m97/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m97/http.py",
+    "bytes": 1901,
+    "sha256": "d38910713883276aec60ffc9ad4cf7ef84fb7fe7fbf4b7a4c58d2a74a0cd38c9",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m97/sweep406-png.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m97/sweep406-png.py",
+    "bytes": 950,
+    "sha256": "7d4f86261baee458fdacc5e5f347def3ddf5b154a6416ef8bfde2a95a554f505",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m97/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m97/validators.py",
+    "bytes": 537,
+    "sha256": "ef78852f2d8a39da81d40b9da023ab97de2221ee6d30d9a268589bdeca826eb9",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m98/authored/qa-assets-app.cjs": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m98/authored/qa-assets-app.cjs",
+    "bytes": 4070,
+    "sha256": "b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m98/authored/qa-assets-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m98/authored/qa-assets-marker.json",
+    "bytes": 21,
+    "sha256": "66beb88647013c4404b6e0f409c4e8bfbac6d971f3d09be40460b95655ea9ca6",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m98/authored/qa-assets-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m98/authored/qa-assets-reference.json",
+    "bytes": 790,
+    "sha256": "6b1717b288125d80f68cad718d15da844dad7021f205c921b8513d421954f3b1",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m98/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m98/http.py",
+    "bytes": 1179,
+    "sha256": "69d6823694a2ec9d55b925213688c5d0e6b297cb7fb795fab3567d6fca726438",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m98/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m98/validators.py",
+    "bytes": 1132,
+    "sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m99/authored/qa-ts-app.cts": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m99/authored/qa-ts-app.cts",
+    "bytes": 2303,
+    "sha256": "1c86c902d725dd09ba9b776ee3a5e238f3f623588df6852afae0317ac065b00f",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m99/authored/qa-ts-before.cjs": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m99/authored/qa-ts-before.cjs",
+    "bytes": 780,
+    "sha256": "d2ed2b2b0ac0b25988485b04e0137b579261b7a8e5ec08cd0a461e1bc2b90eb1",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m99/authored/qa-ts-marker.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m99/authored/qa-ts-marker.json",
+    "bytes": 21,
+    "sha256": "da7bf0828d96f4a35619fdfc8208b9c9bc11bb85ce0d5d553315f226e888b1e4",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m99/authored/qa-ts-reference.json": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m99/authored/qa-ts-reference.json",
+    "bytes": 657,
+    "sha256": "8fe3607920171f99336d38ccae682ff6075bb67108ca21c57ef27e5866933b04",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m99/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m99/http.py",
+    "bytes": 1188,
+    "sha256": "4631fc56dcf3498a080af4cce09bb50ed127404b0e3d9068963cf1fb8f6a447b",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/m99/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/m99/validators.py",
+    "bytes": 708,
+    "sha256": "2dec2aca1c6eb8b1d2a1cca35bbc2c9e47849d65148ec417b8854e022ad04008",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/note222/http.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/note222/http.py",
+    "bytes": 761,
+    "sha256": "e326dad846182454e44ded3941f1b192c6c3a1b380e7dd5360ff86f0a0726ea5",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  },
+  "original-inputs/fixtures/note222/validators.py": {
+    "source": "/private/tmp/bex7-native-acceptance-novb586u/fixtures/note222/validators.py",
+    "bytes": 339,
+    "sha256": "3f09ed1817414e8e946d76c127fcd82bad454510c08fbe790ec66faf36dc1375",
+    "scope": "public original fixture source/data/validator; read/hash only"
+  }
+}
