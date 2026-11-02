@@ -1,0 +1,358 @@
+{
+  "archive": "checkout-host-history.tar.gz",
+  "archive_sha256": "408a894978b3660383d389afb59c29af4498a7a2c6c132b881f8c0a547b30b52",
+  "archive_bytes": 191526,
+  "members": {
+    "first153/CHECK-SOURCE-AFTER.json": {
+      "sha256": "b683e09e111bce525e176098feef7d08336b4b3af12c584b318975e8374d2ade",
+      "bytes": 40437,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/CHECK-SOURCE-AFTER.json"
+    },
+    "first153/CHECK-SOURCE-BEFORE.json": {
+      "sha256": "b683e09e111bce525e176098feef7d08336b4b3af12c584b318975e8374d2ade",
+      "bytes": 40437,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/CHECK-SOURCE-BEFORE.json"
+    },
+    "first153/MERGE.json": {
+      "sha256": "b0f80803ffc96f2107314d5cbf9eb4c1feb72b33c2bdd63b83b1416b218702c6",
+      "bytes": 974,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/MERGE.json"
+    },
+    "first153/PREIMAGE-PATHS.json": {
+      "sha256": "06cf5e44233547f765aea7ee7f3e174fd54dbd87b40f78936c2d6049554ff497",
+      "bytes": 18099,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/PREIMAGE-PATHS.json"
+    },
+    "first153/RESULT.json": {
+      "sha256": "6a39128a743d2376909950d048d7a0b2c07b67521dbab807589bc9f77ca638a2",
+      "bytes": 1816,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/RESULT.json"
+    },
+    "first153/SCOPE.json": {
+      "sha256": "6163397f6675b62953cd273e9da752726cae2ff05fc77f6f5ea7d126394f079c",
+      "bytes": 42939,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/SCOPE.json"
+    },
+    "first153/SOURCE-MANIFEST.json": {
+      "sha256": "4d5763122d7a4908651ab1d0c847b7e8a18d6df9fa60aa9993b4869e398bea55",
+      "bytes": 1505,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/SOURCE-MANIFEST.json"
+    },
+    "first153/SOURCE.diff": {
+      "sha256": "d8b61cb449a73e98344213dc27937ede30e279b48f87cc5014f4959b0d057874",
+      "bytes": 47243,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/SOURCE.diff"
+    },
+    "first153/VIEW-MANIFEST.json": {
+      "sha256": "cf0c1ef16620828bd44b91bdeaf49462577779012417c2f0ec604c5240cbc929",
+      "bytes": 113026,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/VIEW-MANIFEST.json"
+    },
+    "first153/actionlint.yaml": {
+      "sha256": "66c85ddb58f2c3f98d1a7f8a4a9c80c4c4b8d1405c01ec2dc2a3a573d3e8949b",
+      "bytes": 66,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/actionlint.yaml"
+    },
+    "first153/checkout-focused-PROCESS.json": {
+      "sha256": "86bc95f8f0d648033e8e96915aa16cefbb5f97a01f173d730c87c06dc6374dd2",
+      "bytes": 500,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/checkout-focused-PROCESS.json"
+    },
+    "first153/checkout-focused-RESULT.json": {
+      "sha256": "d38e9b7f4e6c3c84eb6155d16d0686893d8aca1ccf6c11874e4340e2ea997390",
+      "bytes": 683,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/checkout-focused-RESULT.json"
+    },
+    "first153/checkout-focused.stderr": {
+      "sha256": "1b7731e29731a22b0708f002fe6c4f5d87f45be282b01aadaef14ee38f971eec",
+      "bytes": 104,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/checkout-focused.stderr"
+    },
+    "first153/checkout-focused.stdout": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/checkout-focused.stdout"
+    },
+    "first153/controller.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/controller.stderr"
+    },
+    "first153/controller.stdout": {
+      "sha256": "e2e9d2ab730e220b66dfce86f8326f4bbb7b7b5bc2a787f67fb2b5bc7b44a70a",
+      "bytes": 2595,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/controller.stdout"
+    },
+    "first153/native-oci-PROCESS.json": {
+      "sha256": "36aac15c1c223db77f13e14dd7343d66cf8885e4a92e40db216dc4368a7c57a0",
+      "bytes": 438,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/native-oci-PROCESS.json"
+    },
+    "first153/native-oci-RESULT.json": {
+      "sha256": "537be6bc5f66d54ef67d8b776ff8bc15d6d289f88f9289fd1a49edb65a8b88a9",
+      "bytes": 614,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/native-oci-RESULT.json"
+    },
+    "first153/native-oci.stderr": {
+      "sha256": "5f8493fa83d018fd42799d57233d8c6a2d3c3c3f4d37721ba2e0619db3b2ffb9",
+      "bytes": 1624,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/native-oci.stderr"
+    },
+    "first153/native-oci.stdout": {
+      "sha256": "9f0a07da4cd81a5b5dd7b8e6080a3ca1e179d666e1b4536798e8f3dde97cc157",
+      "bytes": 24668,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/native-oci.stdout"
+    },
+    "first153/run_checks.py": {
+      "sha256": "c282cafff5a49554ce9e21c65f1a69bcda2ab9c42f25074e419e7318e11a341c",
+      "bytes": 7227,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-20261102-y4lipb0c/run_checks.py"
+    },
+    "repaired-workflow/CHECK-SOURCE-AFTER.json": {
+      "sha256": "bfdccb38bf9e76673e51ffa3f73cdf2ccf0733e93847ceb85dbb270fb849aabd",
+      "bytes": 40437,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/CHECK-SOURCE-AFTER.json"
+    },
+    "repaired-workflow/CHECK-SOURCE-BEFORE.json": {
+      "sha256": "bfdccb38bf9e76673e51ffa3f73cdf2ccf0733e93847ceb85dbb270fb849aabd",
+      "bytes": 40437,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/CHECK-SOURCE-BEFORE.json"
+    },
+    "repaired-workflow/HISTORY.json": {
+      "sha256": "31d892950f97a209f3823b2ab0b03f68deee01cfeadc96b053b0dc00390b13d1",
+      "bytes": 2520,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/HISTORY.json"
+    },
+    "repaired-workflow/INTEGRATION-REPAIR.diff": {
+      "sha256": "a901b364d74ac77c61025439bd573660492838cb5e2895468fe009ace2b5e28a",
+      "bytes": 1130,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/INTEGRATION-REPAIR.diff"
+    },
+    "repaired-workflow/PREIMAGE-PATHS.json": {
+      "sha256": "06cf5e44233547f765aea7ee7f3e174fd54dbd87b40f78936c2d6049554ff497",
+      "bytes": 18099,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/PREIMAGE-PATHS.json"
+    },
+    "repaired-workflow/RESULT.json": {
+      "sha256": "2231ac849ad76be563a7582bba97529da155b4319329f2edc0ab9eb94080bd76",
+      "bytes": 3145,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/RESULT.json"
+    },
+    "repaired-workflow/SCOPE.json": {
+      "sha256": "c3f3f5412b4f37717c946466361ecd78ad421e3f2e39514d68db1a8265e3e2f3",
+      "bytes": 42720,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/SCOPE.json"
+    },
+    "repaired-workflow/SOURCE-MANIFEST.json": {
+      "sha256": "b7d57a3d62fdc6f378ab3298a5c65919b599b90f2a60c1ddd8c5cc750a057072",
+      "bytes": 1505,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/SOURCE-MANIFEST.json"
+    },
+    "repaired-workflow/VIEW-MANIFEST.json": {
+      "sha256": "84038fe747609f8a81288c24ed129a886f0bb577b762bc73988941a2ef79ef37",
+      "bytes": 113026,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/VIEW-MANIFEST.json"
+    },
+    "repaired-workflow/actionlint-configured-PROCESS.json": {
+      "sha256": "2b0218d1ae19d2bb866d0dfe4ec0ccc70fad40b892ed127cecbd6f15487e7367",
+      "bytes": 549,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actionlint-configured-PROCESS.json"
+    },
+    "repaired-workflow/actionlint-configured-RESULT.json": {
+      "sha256": "54da5682b6370722a59e43098b8f8fe578c6d4353db529e522c72c3e13c7cd5d",
+      "bytes": 739,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actionlint-configured-RESULT.json"
+    },
+    "repaired-workflow/actionlint-configured.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actionlint-configured.stderr"
+    },
+    "repaired-workflow/actionlint-configured.stdout": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actionlint-configured.stdout"
+    },
+    "repaired-workflow/actionlint.yaml": {
+      "sha256": "66c85ddb58f2c3f98d1a7f8a4a9c80c4c4b8d1405c01ec2dc2a3a573d3e8949b",
+      "bytes": 66,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actionlint.yaml"
+    },
+    "repaired-workflow/actions-guard-PROCESS.json": {
+      "sha256": "383d8035274cf9fc0a6c8cb2f76b0b6e49a154f0c0cfe022a127c101b00ad21a",
+      "bytes": 337,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actions-guard-PROCESS.json"
+    },
+    "repaired-workflow/actions-guard-RESULT.json": {
+      "sha256": "0406c0ec62d031f97c31d83572c5c6082b21a9c71b0716bb2e8d43f805925d55",
+      "bytes": 518,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actions-guard-RESULT.json"
+    },
+    "repaired-workflow/actions-guard.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actions-guard.stderr"
+    },
+    "repaired-workflow/actions-guard.stdout": {
+      "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3",
+      "bytes": 290,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actions-guard.stdout"
+    },
+    "repaired-workflow/actions-selftests-PROCESS.json": {
+      "sha256": "39735090e9c6b8dc8940020a50d4ca216fa381871a03eff86c2fd9f838a2332e",
+      "bytes": 342,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actions-selftests-PROCESS.json"
+    },
+    "repaired-workflow/actions-selftests-RESULT.json": {
+      "sha256": "e7eb5297c6b7c2d439a6da88e54a2022f5560963f1d3a8188d3288ee39150a95",
+      "bytes": 527,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actions-selftests-RESULT.json"
+    },
+    "repaired-workflow/actions-selftests.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actions-selftests.stderr"
+    },
+    "repaired-workflow/actions-selftests.stdout": {
+      "sha256": "ecdc9a493c21415259459803fa8831314e2db8064ec55b41bab2466dede33289",
+      "bytes": 3566,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/actions-selftests.stdout"
+    },
+    "repaired-workflow/controller.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/controller.stderr"
+    },
+    "repaired-workflow/controller.stdout": {
+      "sha256": "c5ddb5c1985b0c3c50ade129d0dd8e50183a574a9de49249981ee578f5b87c35",
+      "bytes": 4860,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/controller.stdout"
+    },
+    "repaired-workflow/run_checks.py": {
+      "sha256": "742a1b7006476dad97990a9f555f8bc3039c9cc1da5515363b3c0bbd3bce26be",
+      "bytes": 7153,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/run_checks.py"
+    },
+    "repaired-workflow/workflow-guard-repaired-PROCESS.json": {
+      "sha256": "1e52a760b2383fb1647343b00fdcef61636f52d8fb6fcc733a427cdf04c3f207",
+      "bytes": 529,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/workflow-guard-repaired-PROCESS.json"
+    },
+    "repaired-workflow/workflow-guard-repaired-RESULT.json": {
+      "sha256": "5b604b04e241c89d8203ed0277d612c853bcc83922ebdcf7572ae2dea78ae589",
+      "bytes": 721,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/workflow-guard-repaired-RESULT.json"
+    },
+    "repaired-workflow/workflow-guard-repaired.stderr": {
+      "sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5",
+      "bytes": 98,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/workflow-guard-repaired.stderr"
+    },
+    "repaired-workflow/workflow-guard-repaired.stdout": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-20261102-qbedy5u3/workflow-guard-repaired.stdout"
+    }
+  },
+  "normalization": "Only archive-envelope uid/gid/names/mtime normalized. Exact regular member bytes,length,permissions preserved; no links, trees, executable invocation or raw diff outside gzip."
+}

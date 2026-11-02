@@ -1,0 +1,7 @@
+# Actual native-init AMD64 four-launch result
+
+[Run87](https://github.com/bex-co/bex/actions/runs/41439172465) passed on source `30b1f4dce5e25644c996a07fce84bb8338f1953f` using the reviewed common0941 candidate. All four npm/Yarn/pnpm/direct launches kept the exact generated init as guest PID1, completed the held Unicode request after SIGTERM, recorded one drain sequence and removed the owned container. Actual wrapper statuses are143/1/143/0. The target is AMD64 under the retained ARM/Rosetta control.
+
+The [complete original artifact](artifact/MANIFEST.json) is retained once, with all79 members. [SCOPE.json](SCOPE.json) records exact identities and limits; [ROOT-CUSTODY.json](ROOT-CUSTODY.json) records Root's independent byte checks. Original CI metadata, the whole job log, intake and auditor sources, V1 failure and V2 pass remain unchanged. V1 incorrectly demanded whole stopped-container equality; V2 checks the original Go field projection and Docker's raw `HostIp` spelling. Five controls and the full content audit pass. No original Go/JavaScript program, data or oracle changed.
+
+The original HTTP/status/time gates are bound to the actual Go pass; no extra wire/timer trace is claimed. Production adoption, the remaining families and original28 hosted acceptance remain open. A later changed source needs a fresh strict AMD64 utility baseline and an explicit case-specific nonimpact binding before this dated result is reused.

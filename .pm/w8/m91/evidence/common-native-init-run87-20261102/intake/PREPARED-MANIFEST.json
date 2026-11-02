@@ -1,0 +1,35 @@
+{
+  "files": [
+    {
+      "path": "INPUTS.json",
+      "bytes": 253,
+      "sha256": "71fec70d9a263d794e5c5e553c6e6a064e8092db9aca733313c6d71806d3d287"
+    },
+    {
+      "path": "PLAN.json",
+      "bytes": 5524,
+      "sha256": "6302e70bebfd170c43b692d15757bd666703bc6e950506368496d708700e24a1"
+    },
+    {
+      "path": "download.py",
+      "bytes": 2639,
+      "sha256": "0745ecdbde8515ef60340b96a2208a96cf4841a40739b38955c1a757e7ae5f8e"
+    },
+    {
+      "path": "download.py.diff",
+      "bytes": 581,
+      "sha256": "99a4e25e9c869970deaa63c0b1559e80af192e669ddfee2d63a51ca88cecdc4d"
+    },
+    {
+      "path": "download_guard.py",
+      "bytes": 2988,
+      "sha256": "e561c5e1c230021917695c33c96bfdbee969dec4eb41fddbc0a3a2cfd48ec551"
+    },
+    {
+      "path": "extract_guard.py",
+      "bytes": 2770,
+      "sha256": "c7d380d7c4e2bc2fa4dca6253191ffca0a1e8c2bc7ac3d9529e46651403f83d1"
+    }
+  ],
+  "total_bytes": 14755
+}

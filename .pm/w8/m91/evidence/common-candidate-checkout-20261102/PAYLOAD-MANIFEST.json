@@ -1,0 +1,74 @@
+{
+  "DEPENDENCIES.json": {
+    "sha256": "af5b642cab7cb16e70fb68c87676a4acc7ddc572e17dcc59b1d1b939fecaec4f",
+    "bytes": 1061,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "HOST-CHECKS.json": {
+    "sha256": "75f81e1ab877707c5bc468366dbef2b0320a6d5c71a9c869fcf0a2638c0c4a32",
+    "bytes": 4152,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "PUBLICATION-RECEIPT.json": {
+    "sha256": "7874f87e9f5af196688d860f1caa6392d612b74ee94ae02f74b3af8eb6bd2209",
+    "bytes": 1956,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "README.md": {
+    "sha256": "675b328ac8cfd75efdde52ef07f19bbf390c6aaf54db9bdaf2daf2cd105dc33a",
+    "bytes": 4615,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "ROUNDTRIP.json": {
+    "sha256": "518eb9416938bc71e9b852b91c3c3fcc65017816eee83db73b924659dabbd8e4",
+    "bytes": 1197,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "SOURCE-APPLIED-UPDATE.json": {
+    "sha256": "6e8a0c1141be6034395412c8802083bf278c43344298f04a819a555b31f68ede",
+    "bytes": 3168,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "checkout-host-history.members.json": {
+    "sha256": "d9dadc50d4f96aa6cddee60a0576ce934e597d143c1d16ecc073cd7a0209464d",
+    "bytes": 16109,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "checkout-host-history.tar.gz": {
+    "sha256": "408a894978b3660383d389afb59c29af4498a7a2c6c132b881f8c0a547b30b52",
+    "bytes": 191526,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "merged-go-history.members.json": {
+    "sha256": "8b8da93936488b8d0dee80c2f13508d37a7f5ef3d6ce930ebeda9c6bc6df02b0",
+    "bytes": 10123,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "merged-go-history.tar.gz": {
+    "sha256": "1e819b77f79e3ea841cd7ca99cb523900fbaec476cf0de396efa026a5d1cb646",
+    "bytes": 175500,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "merged-source-and-reviews.members.json": {
+    "sha256": "6f6f115749fd45a5f0c92202629d8f8c0147b4af6dccdd9a97e7016b02b7944f",
+    "bytes": 6552,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "merged-source-and-reviews.tar.gz": {
+    "sha256": "344719501dba540286c7a9d13c11e4155c609319f6fb1df62ae87f64b3dbec74",
+    "bytes": 118513,
+    "permissions": 420,
+    "type": "regular"
+  }
+}

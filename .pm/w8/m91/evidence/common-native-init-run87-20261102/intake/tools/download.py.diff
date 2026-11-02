@@ -1,0 +1,11 @@
+--- approved-dc08/download.py
++++ native-init87/download.py
+@@ -4,7 +4,7 @@
+ from urllib.parse import urlsplit
+ 
+ ROOT=Path(__file__).resolve().parent
+-INPUTS={'amd64':(13133128419,83733568,'40cd07dee95105e601d1b4c716cbd8261c93da1df6db9d066b195f89f5423738')}
++INPUTS={'amd64':(13140138422,875486,'9ef790cdb4d8c1391cc175e91956acc9ce8042dab3469924453f1da8339417de')}
+ def main():
+     os.umask(0o077);arch=sys.argv[1];artifact,size,sha=INPUTS[arch];url=json.loads(sys.stdin.read())
+     assert urlsplit(url).scheme=='https' and urlsplit(url).hostname.endswith('.oaiusercontent.com')

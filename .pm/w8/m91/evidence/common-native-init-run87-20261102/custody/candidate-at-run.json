@@ -1,0 +1,83 @@
+{
+  "schema": "bex.native-common-test-candidate/v1",
+  "candidate": {
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+    "base": "buildpack-deps:bookworm@sha256:db73e309a26ddb362c11c0ee35b3d957c3a8fd2ef6a9d6c2cc76438fae2c0988",
+    "producer": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "verification": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "publication": {
+      "run_id": 41341287851,
+      "run_attempt": 1,
+      "job_id": 124954099391,
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/publication/jobs.json",
+        "sha256": "9d796266474e3c224e93fa1407f2f3020cd7cf07e9409a3bcf0f85ce7653b6de",
+        "bytes": 18959
+      }
+    },
+    "platforms": {
+      "amd64": {
+        "manifest_digest": "sha256:bcd147e4f7403693e2ec78ad68598c4a1f2b1bdb828c8267f70c2a5dbbaf7a9e",
+        "config_digest": "sha256:7107d56675797aa659f0cf2af932704dac349bc5140a35ea25e584e3fdc179b4"
+      },
+      "arm64": {
+        "manifest_digest": "sha256:ee17ccbc1cfe853209f8fd694091bf58ed54adf38b32339f6515797af440260d",
+        "config_digest": "sha256:f81cfc5901179b9f34b1f994dbfd122274df39215b7bc54bf498805a48955452"
+      }
+    },
+    "approval": {
+      "receipt": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/actual/receipt.json",
+        "sha256": "aa36b6922c4b3b3e7afe5ceedee21f489de5f00c20a54983b92ba6d00949f263",
+        "bytes": 40223
+      },
+      "custody": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/CUSTODY.json",
+        "sha256": "81021a7a09354cd1315ea266c14e7d97c912502e65fb1417f9aaf5e56235943b",
+        "bytes": 485809
+      },
+      "plan": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/tools/PLAN.json",
+        "sha256": "e86f10b0ed4757620db780c266b3e96ecc5ece8f753ddf4b536fca3fd3c5bc81",
+        "bytes": 7247
+      },
+      "inputs": {
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/IMAGE-INPUTS.json",
+        "sha256": "822f75fe0b44129c5b4fefa9ec0f30fd5f6e325aaf3674f6234f24f540a20797",
+        "bytes": 6894
+      }
+    },
+    "source": {
+      "sha": "dc08ae951f2be48f160b035890ced7335222a768",
+      "manifest": {
+        "path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/utilities/amd64/artifact/qualification-source.json",
+        "bytes": 75337,
+        "sha256": "dd62343607b8f606f7647b791099ed1f56634b73a60c804f5cb59df4d0b228f2"
+      }
+    },
+    "utilities": {
+      "amd64": {
+        "run_id": 41428447253,
+        "run_attempt": 1,
+        "job_id": 125221453132,
+        "artifact_id": 13133128419,
+        "artifact_metadata": {
+          "path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/utility-metadata/amd64-artifact.json",
+          "bytes": 713,
+          "sha256": "91fd28d983585e8176b802f5fc76d865381678d061311c44040877ef1fa4cfd4"
+        },
+        "metadata": {
+          "path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/metadata/jobs-final.json",
+          "bytes": 8785,
+          "sha256": "fbfefcdbc7b8fafd7c7a37aff4805b1abe84925f0960d8c9cdca566973a21311"
+        },
+        "root": ".pm/w8/m91/evidence/common-d3-dc08-20261102/utilities/amd64/artifact",
+        "manifest": {
+          "path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/utilities/amd64/artifact/MANIFEST.json",
+          "bytes": 79263,
+          "sha256": "53953668cbd938de35c4640d73b86d4066298cb7abaea93506dea2e8d8584a23"
+        }
+      }
+    }
+  }
+}

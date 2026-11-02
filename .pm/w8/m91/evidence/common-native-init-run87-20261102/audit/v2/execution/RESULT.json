@@ -1,0 +1,63 @@
+{
+  "complete": true,
+  "at": "2026-11-02T12:39:22.936218+00:00",
+  "scope": "PURE_CONTROLS_AND_READONLY_ACTUAL_ARTIFACT_AUDIT_NO_TARGET_OR_CI_ACTION",
+  "deadline": 60,
+  "log_cap": 4194304,
+  "physical_floor_plus_margin": 8623489024,
+  "minimum_free": 25153368064,
+  "processes": [
+    {
+      "script": "test_audit_native_init_v2.py",
+      "at": "2026-11-02T12:39:22.936440+00:00",
+      "argv": [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/test_audit_native_init_v2.py"
+      ],
+      "pid": 71794,
+      "pgid": 71794,
+      "exit": 0,
+      "group_absent": true
+    },
+    {
+      "script": "audit_native_init_v2.py",
+      "at": "2026-11-02T12:39:23.043989+00:00",
+      "argv": [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit_native_init_v2.py"
+      ],
+      "pid": 71795,
+      "pgid": 71795,
+      "exit": 0,
+      "group_absent": true
+    }
+  ],
+  "errors": [],
+  "cancelled": [],
+  "seconds": 0.21967929182574153,
+  "final_free": 25153769472,
+  "source_posthash": {
+    "audit_native_init_v2.py": "d68e1f3541409aebe62f5eb2b073f2e99c35dd99cc4696757fe752fc69f39fca",
+    "test_audit_native_init_v2.py": "7d1d2a22ae2ac9b9c6d3569d665831657b378657ddfea7eeb3143a8911ab3f7a"
+  },
+  "outputs": {
+    "audit_native_init_v2.py.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "test_audit_native_init_v2.py.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "test_audit_native_init_v2.py.stderr": {
+      "bytes": 103,
+      "sha256": "baf49b59538192f3e136ca0404cac516ecb8dd2fe5ba1416604056f3080fa49c"
+    },
+    "audit_native_init_v2.py.stdout": {
+      "bytes": 3886,
+      "sha256": "0ac3e82a0285e0857cf86de61a364a702e3ff30d089dfbff99a3c7d5069cc7d5"
+    }
+  }
+}

@@ -1,0 +1,15 @@
+{
+  "outcome": "ROOT_EXACT133_COPY_APPLIED",
+  "copyplan_sha256": "91ff02978fbd699b8ba4ce98b5587e0d2c8630d9ed4acc3492518bbac94a0db1",
+  "all133_public_payload_regular_SHA_size_and_source_permissions_checked": true,
+  "complete79_original_member_bijection_verified": true,
+  "all4_reusedtools_fullbyte_equal_existingpublic": true,
+  "Root_actualcontentadmission": "dcedad6893680ff4570429965f5522e60b5f92b1266aaec0dfc196ebc6929446",
+  "original_extracted_modes_recorded_separately": "Git normalizes regularfiles to644/755, no claim extractedtransportmodeprovesguestexecution",
+  "executed_source": "30b1f4dce5e25644c996a07fce84bb8338f1953f",
+  "original_zip_private_unchanged": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/amd64/original.zip",
+    "bytes": 875486,
+    "sha256": "9ef790cdb4d8c1391cc175e91956acc9ce8042dab3469924453f1da8339417de"
+  }
+}

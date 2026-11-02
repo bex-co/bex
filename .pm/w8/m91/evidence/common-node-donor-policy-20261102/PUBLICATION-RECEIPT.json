@@ -1,0 +1,49 @@
+{
+  "status": "PRIVATE PUBLICATION CANDIDATE; no repository writes/application/commit/dispatch/runtime",
+  "created_at": "2026-11-02T12:31:19.815201+00:00",
+  "target": ".pm/w8/m91/evidence/common-node-donor-policy-20261102",
+  "actual_standalone_V3_source_manifest_sha256": "f64946b8de476abf2e826ee78c449205fa6fa08bb772e32811cad96b191790f9",
+  "actual_standalone_V3_execution_review_sha256": "7f0a3dff84c22bd47f12f20e1367481553f4d7ea46936da143151d339a69d73f",
+  "root_source_admission_sha256": "0b147d8e9de5a6dc89a012293e6da48a8fc0877f2e7871fcf97e0574b752470f",
+  "root_dated_primary_admission_sha256": "823a2fdca291bdc58d583c18d8405dce9b4ea2b90219762e9f9ce3275ea87d54",
+  "archives": {
+    "source-history": {
+      "archive_sha256": "277bf3fe498fa178fc1d6339bed23c4c9b1f11b5eb5b2542a3b7bb1a0cad1a19",
+      "archive_bytes": 577673,
+      "regular_members": 128,
+      "original_member_bytes": 2547132,
+      "all_members_SHA_size_permissions_bijection_verified": true
+    },
+    "check-history": {
+      "archive_sha256": "0be7b038601ad3076ed481fda44c95e39fc9001850b1b0b8cb59ae7ee6c3a4e7",
+      "archive_bytes": 80970,
+      "regular_members": 53,
+      "original_member_bytes": 389744,
+      "all_members_SHA_size_permissions_bijection_verified": true
+    },
+    "dated-primary-and-design": {
+      "archive_sha256": "ff6657c56ecffbd7d903a04e61a02df3ddf046ab7985669382813f547b4090d2",
+      "archive_bytes": 141536,
+      "regular_members": 28,
+      "original_member_bytes": 594216,
+      "all_members_SHA_size_permissions_bijection_verified": true
+    }
+  },
+  "roundtrip_sha256": "d98ce4006af6155178ee1a1b7436393bc253c1c19f480cf055dc4349ce128ff3",
+  "reused_public_reaper": {
+    "path": ".pm/w8/m91/evidence/node14-local-diagnostic-20261101/controller/run_pilot.py",
+    "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03",
+    "bytes": 22064,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "omissions": [
+    "Full 301 source bodies (hash inventories retained)",
+    "Original complete224-member runtime body (actual audit/admission and selected small recipe/custody retained)",
+    "SDK/ELF binaries, ZIP/image/layer archives",
+    "No auth/config/kubeconfig/env/credential material read or copied"
+  ],
+  "all_original_bytes_preserved_in_archives": true,
+  "combined_checkout_followon_tested": false,
+  "actual_new_companion_or_new_baseline_or_adoption_claim": false
+}

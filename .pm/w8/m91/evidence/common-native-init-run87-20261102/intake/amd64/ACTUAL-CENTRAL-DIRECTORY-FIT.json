@@ -1,0 +1,11 @@
+{
+  "at": "2026-11-02T12:24:55.662184+00:00",
+  "actual_ZIP_bytes": 875486,
+  "actual_ZIP_sha256": "9ef790cdb4d8c1391cc175e91956acc9ce8042dab3469924453f1da8339417de",
+  "central_directory_members": 79,
+  "declared_uncompressed_bytes": 2047632,
+  "conservative_allocated_bytes": 2600960,
+  "observed_free": 25216892928,
+  "required_floor_margin_allocated": 8626089984,
+  "no_extraction_or_member_normalization_yet": true
+}

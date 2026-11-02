@@ -1,0 +1,13 @@
+{
+  "standalone_Go_source_history_and_proofs_reused_without_copy": {
+    "target": ".pm/w8/m91/evidence/common-node-donor-policy-20261102",
+    "copy_plan": "/private/tmp/bex-w8-node-donor-policy-publication-20261102-40q7k948/PUBLICATION-COPY-PLAN.json",
+    "copy_plan_sha256": "761cfff3bd296b4e5a37d88938582d53e8fcf7ef9ef604020b0cabf5b74d21b4"
+  },
+  "standalone_V3_source_manifest_sha256": "f64946b8de476abf2e826ee78c449205fa6fa08bb772e32811cad96b191790f9",
+  "standalone_V3_execution_review_sha256": "7f0a3dff84c22bd47f12f20e1367481553f4d7ea46936da143151d339a69d73f",
+  "final_merged_source_manifest_sha256": "2013fe499041a7f54c1cfb7ec8bae895833b5473f20b101e20c5cb648a5356bf",
+  "applied_base": "30b1f4dce5e25644c996a07fce84bb8338f1953f",
+  "later_root_reported_CI_guard_commit": "16c1a49d (scripts/image-pin-validate.sh/test; outside qualification301; this packet preserves actual executed base/source roles)",
+  "scope": "No source aliases, current-source CI claim or baseline waiver. Absolute old private paths are lossless historical receipt fields."
+}

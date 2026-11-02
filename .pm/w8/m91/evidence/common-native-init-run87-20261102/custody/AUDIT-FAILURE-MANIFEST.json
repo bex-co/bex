@@ -1,0 +1,40 @@
+{
+  "files": [
+    {
+      "path": "audit-execution/RESULT.json",
+      "bytes": 2028,
+      "sha256": "fb39bbde4ddf8998857c8534d82b851f882fd46575688aaadd64fbe5a5ed6820"
+    },
+    {
+      "path": "audit-execution/audit_native_init.py.stderr",
+      "bytes": 1436,
+      "sha256": "c045fa8016de866167692c49f9f981c4f174191f4cbb2400dfa643b208070f74"
+    },
+    {
+      "path": "audit-execution/audit_native_init.py.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "audit-execution/run.py",
+      "bytes": 3737,
+      "sha256": "85292d9f49b0367c518ae177848a1d752143a16d9bdba38231a99fa376959e33"
+    },
+    {
+      "path": "audit-execution/test_audit_native_init.py.stderr",
+      "bytes": 101,
+      "sha256": "edb4e2159c923ea45a32656078835cdf531c3d7b414c670dd786978875cb0678"
+    },
+    {
+      "path": "audit-execution/test_audit_native_init.py.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "AUDIT-FAILURE-DIAGNOSIS.json",
+      "bytes": 2767,
+      "sha256": "d9a7323a9925e496a20c6ca950830bdca91e09621b9f3cb4d506fc09f1d56f0a"
+    }
+  ],
+  "original_intake_and_source_manifest_unchanged": true
+}

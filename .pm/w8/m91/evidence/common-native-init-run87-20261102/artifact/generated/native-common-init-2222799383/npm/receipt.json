@@ -1,0 +1,157 @@
+{
+  "command_override": null,
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "container": {
+    "ID": "61b28ca1df923a62c5c4a343f513c211d9cf0c1652b73887d7b3ba2e3c68fffd",
+    "Image": "sha256:6ba61d236f08896cdbbd5cbe0156623df9f650dc0347d29780e2482a810e4320",
+    "Network": "bridge",
+    "Running": false,
+    "ExitCode": 143,
+    "Labels": {
+      "co.bex.native-qualification": "bex-nq-351bb60e3f2c47adbe24d82e",
+      "org.opencontainers.image.revision": "1feba939b4697894e800ed0abb4f25a0bf415641",
+      "org.opencontainers.image.source": "https://github.com/bex-co/bex"
+    },
+    "Ports": {
+      "10000/tcp": [
+        {
+          "HostIP": "127.0.0.1",
+          "HostPort": "32768"
+        }
+      ]
+    }
+  },
+  "launch": "npm",
+  "network_scope": "bridge with127.0.0.1-only ephemeral publication; build remains network=none",
+  "owner": "bex-nq-351bb60e3f2c47adbe24d82e",
+  "pass": true,
+  "platform": "linux/amd64",
+  "pre_stop": {
+    "Phase": "",
+    "Run": "bex-init-1959-1793620664844627629",
+    "Identity": {
+      "Node": "24.22.1",
+      "Executable": "/usr/local/bin/node",
+      "Env": {
+        "NODE_VERSION": "24.22.1",
+        "PATH": "/opt/render/project/src/node_modules/.bin:/opt/render/project/node_modules/.bin:/opt/render/node_modules/.bin:/opt/node_modules/.bin:/node_modules/.bin:/usr/local/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "YARN_VERSION": "1.22.22"
+      },
+      "BaseEnv": {
+        "NODE_VERSION": "24.22.1",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "YARN_VERSION": "1.22.22"
+      },
+      "Launch": "npm",
+      "Init": {
+        "SHA256": "6adc4e08abc09bb47eb0a0463e68403af13aa66eacbad029304ed8c28639fd47",
+        "Machine": 62,
+        "Executable": true,
+        "PID1": "/run/rosetta/rosetta",
+        "Argv": [
+          "/native-init",
+          "/bin/bash",
+          "-c",
+          "node capture-env.js npm \u0026\u0026 exec npm start"
+        ],
+        "PID1Machine": 183,
+        "Device": "0:81",
+        "Inode": "13683964",
+        "Mappings": [
+          {
+            "Path": "/native-init",
+            "Permissions": "r-xp",
+            "Device": "0:81",
+            "Inode": "13683964"
+          },
+          {
+            "Path": "/native-init",
+            "Permissions": "r--p",
+            "Device": "0:81",
+            "Inode": "13683964"
+          },
+          {
+            "Path": "/native-init",
+            "Permissions": "rw-p",
+            "Device": "0:81",
+            "Inode": "13683964"
+          }
+        ]
+      }
+    },
+    "Events": [
+      "listening",
+      "hold_begin"
+    ],
+    "Holds": 0,
+    "Completed": 0,
+    "Signals": 0,
+    "Pass": false
+  },
+  "proof": {
+    "Phase": "runtime",
+    "Run": "bex-init-1959-1793620664844627629",
+    "Identity": {
+      "Node": "24.22.1",
+      "Executable": "/usr/local/bin/node",
+      "Env": {
+        "NODE_VERSION": "24.22.1",
+        "PATH": "/opt/render/project/src/node_modules/.bin:/opt/render/project/node_modules/.bin:/opt/render/node_modules/.bin:/opt/node_modules/.bin:/node_modules/.bin:/usr/local/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "YARN_VERSION": "1.22.22"
+      },
+      "BaseEnv": {
+        "NODE_VERSION": "24.22.1",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "YARN_VERSION": "1.22.22"
+      },
+      "Launch": "npm",
+      "Init": {
+        "SHA256": "6adc4e08abc09bb47eb0a0463e68403af13aa66eacbad029304ed8c28639fd47",
+        "Machine": 62,
+        "Executable": true,
+        "PID1": "/run/rosetta/rosetta",
+        "Argv": [
+          "/native-init",
+          "/bin/bash",
+          "-c",
+          "node capture-env.js npm \u0026\u0026 exec npm start"
+        ],
+        "PID1Machine": 183,
+        "Device": "0:81",
+        "Inode": "13683964",
+        "Mappings": [
+          {
+            "Path": "/native-init",
+            "Permissions": "r-xp",
+            "Device": "0:81",
+            "Inode": "13683964"
+          },
+          {
+            "Path": "/native-init",
+            "Permissions": "r--p",
+            "Device": "0:81",
+            "Inode": "13683964"
+          },
+          {
+            "Path": "/native-init",
+            "Permissions": "rw-p",
+            "Device": "0:81",
+            "Inode": "13683964"
+          }
+        ]
+      }
+    },
+    "Events": [
+      "listening",
+      "hold_begin",
+      "SIGTERM",
+      "hold_end",
+      "closed"
+    ],
+    "Holds": 1,
+    "Completed": 1,
+    "Signals": 1,
+    "Pass": true
+  },
+  "response": "held 雪 λ🙂"
+}

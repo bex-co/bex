@@ -1,0 +1,56 @@
+{
+  "status": "V2_SOURCE_PREPARATION_ONLY_ROOT_REVIEW_BEFORE_RERUN",
+  "at": "2026-11-02T12:34:42.583042+00:00",
+  "V1_fullaudit_failure": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit-execution/RESULT.json",
+    "bytes": 2028,
+    "sha256": "fb39bbde4ddf8998857c8534d82b851f882fd46575688aaadd64fbe5a5ed6820"
+  },
+  "V1_exact_traceback": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit-execution/audit_native_init.py.stderr",
+    "bytes": 1436,
+    "sha256": "c045fa8016de866167692c49f9f981c4f174191f4cbb2400dfa643b208070f74"
+  },
+  "original_failure_diagnosis": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/AUDIT-FAILURE-DIAGNOSIS.json",
+    "bytes": 2767,
+    "sha256": "d9a7323a9925e496a20c6ca950830bdca91e09621b9f3cb4d506fc09f1d56f0a"
+  },
+  "V1_sources_preserved": [
+    {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit_native_init.py",
+      "bytes": 14156,
+      "sha256": "3712fa928ddb9182e3326c755dc23d837d5621e5add92655e92ad24e2794535e"
+    },
+    {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/test_audit_native_init.py",
+      "bytes": 3041,
+      "sha256": "779751cafb0a1796600d6dba8463bdc95f5fc010c421cc092ebaf798db356859"
+    }
+  ],
+  "V2_sources": [
+    {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit_native_init_v2.py",
+      "bytes": 14996,
+      "sha256": "d68e1f3541409aebe62f5eb2b073f2e99c35dd99cc4696757fe752fc69f39fca"
+    },
+    {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/test_audit_native_init_v2.py",
+      "bytes": 5152,
+      "sha256": "7d1d2a22ae2ac9b9c6d3569d665831657b378657ddfea7eeb3143a8911ab3f7a"
+    }
+  ],
+  "changes": [
+    "Replace added whole-dict stopped equality with EXACT original ID/Image/Running/ExitCode/Network + co.bex.native-qualification owner-label projection. Raw/Go full Ports remain untouched and are explicitly retained in summary.",
+    "Check exact raw Docker running HostIp key; Go receipt HostIP carrier remains unchanged. Full one-localhost-port predicate preserved, parsed port follows original Atoi signed ASCII decimal/range semantics.",
+    "Keep original3 controls byte-identical method AST; add2 paired methods for actual retained carrier positives and wrongCID/image/owner/network/running/status/HostIp/port/extra-port/key-case negatives. No source data/Go/JS/oracle changes."
+  ],
+  "AST_static_checks": "Existing original proof/identity/exit/Go-carrier function ASTs exactV1; only audit carrier accesses plus2smallhelpers added; Python parse only.",
+  "future_commands_after_Root_review": [
+    "/opt/homebrew/bin/python3.14 -B test_audit_native_init_v2.py",
+    "/opt/homebrew/bin/python3.14 -B audit_native_init_v2.py"
+  ],
+  "bounds": "Same sequential60s/fullstdout+stderr/4MiBsmalllogs/8GiB+32MiBphysicalfloor/ownprocessgroups/sourceposthash guards. No targets/network/CI/runtime/repo.",
+  "executed": false,
+  "intake_ZIP_original79_members_and_frozen101manifest_unchanged": true
+}

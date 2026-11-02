@@ -1,0 +1,92 @@
+{
+  "status": "PRIVATE_PREPARED_NOT_EXECUTED_ROOT_REVIEW_BEFORE_ONE_BODY_STREAM",
+  "at": "2026-11-02T12:19:32.473506+00:00",
+  "artifact": {
+    "id": 13140138422,
+    "node_id": "MDg6QXJ0aWZhY3QxMzE0MDEzODQyMg==",
+    "name": "common-pilot-native-init-all-launches-reviewed-candidate-cc39f78a8b9f128babb362e0078007380a1b44b7799394d93b06e5fc52ab7036-amd64-1",
+    "size_in_bytes": 875486,
+    "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13140138422",
+    "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13140138422/zip",
+    "expired": false,
+    "digest": "sha256:9ef790cdb4d8c1391cc175e91956acc9ce8042dab3469924453f1da8339417de",
+    "created_at": "2026-11-02T12:15:24Z",
+    "updated_at": "2026-11-02T12:15:24Z",
+    "expires_at": "2026-12-02T12:15:22Z",
+    "workflow_run": {
+      "id": 41439172465,
+      "repository_id": 793852040,
+      "head_repository_id": 793852040,
+      "head_branch": "main",
+      "head_sha": "30b1f4dce5e25644c996a07fce84bb8338f1953f"
+    }
+  },
+  "actual_run_source": "30b1f4dce5e25644c996a07fce84bb8338f1953f",
+  "actual_job": 125260213820,
+  "candidate_sha256": "cc39f78a8b9f128babb362e0078007380a1b44b7799394d93b06e5fc52ab7036",
+  "common_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "terminal_snapshot": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/TERMINAL-SNAPSHOT.json",
+    "bytes": 8187,
+    "sha256": "83816d14757da138d6cff27e8ef1064bfd70579617115fddfab44d00b0facdcc"
+  },
+  "actual_whole_log": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/job-125260213820.log",
+    "bytes": 63836,
+    "sha256": "95320bc5175ac1fe95fc99192fbda126b6e562eba59bad653942c742c12ced55"
+  },
+  "existing_oracle_plan": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/NATIVE-INIT-INTAKE-PLAN.json",
+    "bytes": 7022,
+    "sha256": "6680bf46fac9a5fa2b85f5ccfc704e44f431ae2e87d91165c6038c4d4aa2ef5d"
+  },
+  "approved_tool_reuse": {
+    "download_guard_byte_exact": {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/download_guard.py",
+      "bytes": 2988,
+      "sha256": "e561c5e1c230021917695c33c96bfdbee969dec4eb41fddbc0a3a2cfd48ec551"
+    },
+    "extract_guard_byte_exact": {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/extract_guard.py",
+      "bytes": 2770,
+      "sha256": "c7d380d7c4e2bc2fa4dca6253191ffca0a1e8c2bc7ac3d9529e46651403f83d1"
+    },
+    "download_only_INPUTS_tuple_changed": {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/download.py",
+      "bytes": 2639,
+      "sha256": "0745ecdbde8515ef60340b96a2208a96cf4841a40739b38955c1a757e7ae5f8e"
+    },
+    "downloader_diff": {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/download.py.diff",
+      "bytes": 581,
+      "sha256": "99a4e25e9c869970deaa63c0b1559e80af192e669ddfee2d63a51ca88cecdc4d"
+    },
+    "V2extractor": {
+      "path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/extract_utility_zip.py",
+      "bytes": 14716,
+      "sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4"
+    }
+  },
+  "capacity": {
+    "observed_free_now": 25227112448,
+    "entry_before_download_requires": 8624364510,
+    "physical_floor": 8589934592,
+    "margin": 33554432,
+    "ZIP_bytes": 875486,
+    "extraction_uncompressed_bytes": "UNKNOWN until exact original ZIP central directory is read, then fresh declared/allocated projection required",
+    "ZIP_hardcap": 268435456,
+    "extraction_hardcap": 536870912,
+    "members_hardcap": 10000,
+    "stream_workers": 1
+  },
+  "future_commands_only": [
+    "App github_download_workflow_artifact(repo_full_name=bex-co/bex,artifact_id=13140138422,file_name=native-init-run87-amd64-original.zip) ONCE; capture response envelope shape/isError before using URI. Require structuredContent.file_uri object matching exact name/MIME/HTTPS public file host; signed download_url RAM/stdin only, no print/file. Stop on error/unknown shape, no automatic repeat.",
+    "/opt/homebrew/bin/python3.14 -B download_guard.py amd64 (TTY signed URL stdin; full original ZIP size/SHA exactly expected, TLS verified; no new source/oracle)",
+    "After fresh actual central-directory fit: /opt/homebrew/bin/python3.14 -B extract_guard.py amd64 (unchanged V2 allmember/MANIFEST/CRC/SHA/path/type/collision predicates).",
+    "Full read-only artifact audit under exact Go/JS source-bound predicates recorded in NATIVE-INIT-INTAKE-PLAN: source301/current30b1, inputs/selection/0941/producer1feba, staged ELF/runtime/config/PID1 mapping, allfour receipts/rawruntime/launchENV/hold+SIGTERM/events/counts/status+eachowncleanup; full original tree/MANIFEST retained. Exact actual format accepted only after body inspection, no inferred member count or automatic schema normalization."
+  ],
+  "all_body_and_crypto_and_CI_actions_so_far": 0,
+  "original_failure_preserved": true,
+  "source_preparation_static_only": "All downloader AST nodes except constant INPUTS exactly equal prior reviewed downloader; guard/extractor source byte exact; no source imports or tests executed.",
+  "future_root_admission": "Actual job PASS and all4testPASS are metadata/log evidence only. No content/adoption/allfamily/hosted assertion until original bytes reviewed."
+}

@@ -1,0 +1,1348 @@
+{
+  "all_members_regular": true,
+  "archive": "source-readiness.tar.gz",
+  "members": {
+    "baseline81/ACTUAL-SOURCE-FACTS.json": {
+      "bytes": 4976,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620584172825873,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/ACTUAL-SOURCE-FACTS.json",
+      "sha256": "3969d9dae265dc5c054ea011e152721eeb12c575bc05555703844e685b2428b2",
+      "uid": 501
+    },
+    "baseline81/ANCESTOR-PERMISSIONS.json": {
+      "bytes": 1652,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621363291643242,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/ANCESTOR-PERMISSIONS.json",
+      "sha256": "87fddce1f5cdf08564a2e39bcfeec6983c5c4a28083d2a24db36c86646ae65f8",
+      "uid": 501
+    },
+    "baseline81/D1-SCOPE-AUTHORITY.json": {
+      "bytes": 824,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620584175267880,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/D1-SCOPE-AUTHORITY.json",
+      "sha256": "af6203a394372b567889040524c9d638aa5bf756032b56a43d2602bc8b11868f",
+      "uid": 501
+    },
+    "baseline81/EXECUTION-PLAN.json": {
+      "bytes": 6518,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621888004861328,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/EXECUTION-PLAN.json",
+      "sha256": "460135d45975187538420e03e84475438c18753c02fd3c08bc21b6d83cd763e4",
+      "uid": 501
+    },
+    "baseline81/FIRST-FAILURE-HISTORY.json": {
+      "bytes": 4953,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620869914618246,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/FIRST-FAILURE-HISTORY.json",
+      "sha256": "dac767adf117d17c3418c05fe9af8083a6012adbaea25347905ed0d35aa308c2",
+      "uid": 501
+    },
+    "baseline81/FOURTH-FAILURE-HISTORY.json": {
+      "bytes": 6005,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621888008448452,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/FOURTH-FAILURE-HISTORY.json",
+      "sha256": "b967ade0056a9352019e9c9474df51c3ee11ed4bd3f39f5c3c2867d55ec4cd0f",
+      "uid": 501
+    },
+    "baseline81/MANIFEST.json": {
+      "bytes": 19385,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621888019180451,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/MANIFEST.json",
+      "sha256": "241c71dd8e73479ebe040498deacb7f5a99e2da6cbd21d521dd84a7bc90fd291",
+      "uid": 501
+    },
+    "baseline81/MIXED-FAMILY-SOURCE-ASSESSMENT.json": {
+      "bytes": 4044,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621888009506494,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/MIXED-FAMILY-SOURCE-ASSESSMENT.json",
+      "sha256": "8af6a5424776c76dd13a6e225afc15e5501e1459c3e4ac6028a78ab7e3e2879e",
+      "uid": 501
+    },
+    "baseline81/PREPARATION-RECEIPT.json": {
+      "bytes": 1120,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620584176500258,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/PREPARATION-RECEIPT.json",
+      "sha256": "8b03b860bc4465dac2e677d98a42e0c5ec35ec85098ea4344954e0bef0a08863",
+      "uid": 501
+    },
+    "baseline81/README.md": {
+      "bytes": 7119,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621888008649744,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/README.md",
+      "sha256": "b6e252a8d411a076ac3a76436808e9c6d973f974cde68147ecc87b9cbc8cdc70",
+      "uid": 501
+    },
+    "baseline81/ROOT-SOURCE-PREP-ADMISSION.json": {
+      "bytes": 289,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623652477127086,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/ROOT-SOURCE-PREP-ADMISSION.json",
+      "sha256": "1ca35cbe17fced679617ef7cb2656c4cb2afeb99a1618ac7258c8640dfc55e3c",
+      "uid": 501
+    },
+    "baseline81/SECOND-FAILURE-HISTORY.json": {
+      "bytes": 4880,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621108390160765,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/SECOND-FAILURE-HISTORY.json",
+      "sha256": "cad4c33b332cc9dd08ef1002facba6dc10d9dbf48d53c367536693ba21463f3b",
+      "uid": 501
+    },
+    "baseline81/SOURCE-MANIFEST.json": {
+      "bytes": 3840,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621888004707161,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/SOURCE-MANIFEST.json",
+      "sha256": "07b3159176e0128edf67bf018168e7119fb2f197d12c6bc70db73866211419df",
+      "uid": 501
+    },
+    "baseline81/SOURCE.diff": {
+      "bytes": 31483,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620584171951037,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/SOURCE.diff",
+      "sha256": "abfb05b7c4bab48b2ec86815f19f9d1cd8765c4cccaed858fe3dab8b317e41f5",
+      "uid": 501
+    },
+    "baseline81/THIRD-FAILURE-HISTORY.json": {
+      "bytes": 4884,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621363291565283,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/THIRD-FAILURE-HISTORY.json",
+      "sha256": "12d252e009bcaf57813b1f414d06f996476234873a1bef931b6836ac9c61fc62",
+      "uid": 501
+    },
+    "baseline81/V1-TO-V2.diff": {
+      "bytes": 4924,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620584171600037,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/V1-TO-V2.diff",
+      "sha256": "2d519c13ba2bb32d5257e8d7770fc39840042cd858079e7eb13242d2aeaf673c",
+      "uid": 501
+    },
+    "baseline81/V2-TO-V3.diff": {
+      "bytes": 7973,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620869917287378,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/V2-TO-V3.diff",
+      "sha256": "02e7448c8a3db0a1c296afc9d5b4ea2ca665c9223ae6a4144570e8386d9562b5",
+      "uid": 501
+    },
+    "baseline81/V3-PREPARATION.json": {
+      "bytes": 8214,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620869917601545,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/V3-PREPARATION.json",
+      "sha256": "d08032946dd3096ed5968d72f75ad3524c9530b68a3d9fd7ae56f83df94a6169",
+      "uid": 501
+    },
+    "baseline81/V3-TO-V4.diff": {
+      "bytes": 9236,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621086153529958,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/V3-TO-V4.diff",
+      "sha256": "6c75b1b34bb1efa8a70de01ddaddbb673335f42bcbbef341eb0556e16c860088",
+      "uid": 501
+    },
+    "baseline81/V4-PREPARATION.json": {
+      "bytes": 9676,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621108390499932,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/V4-PREPARATION.json",
+      "sha256": "a756c5fc63b66bec57daf2022f4dcaa596a96f52f541d684d386df473fbd1085",
+      "uid": 501
+    },
+    "baseline81/V4-TO-V5.diff": {
+      "bytes": 8118,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621363294277991,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/V4-TO-V5.diff",
+      "sha256": "9a25c5d0a0b06aa87c033323c73a5f500f9c14f3901186b4546d47828ef4f4f5",
+      "uid": 501
+    },
+    "baseline81/V5-PREPARATION.json": {
+      "bytes": 8824,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621363295084616,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/V5-PREPARATION.json",
+      "sha256": "cd09d2017212a072fe65b203fde5d6cd72b704d3ea769af50a681ec3392f3f61",
+      "uid": 501
+    },
+    "baseline81/V5-TO-V6.diff": {
+      "bytes": 9224,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621888014940076,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/V5-TO-V6.diff",
+      "sha256": "2a42199dcc8b8f8ebac6a21fef62f7a902964939e28bbd7c69b028139090eee3",
+      "uid": 501
+    },
+    "baseline81/V6-PREPARATION.json": {
+      "bytes": 9658,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621888015961451,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/V6-PREPARATION.json",
+      "sha256": "c0b70250cadd3d9e1493aea6e960b5074f857f26eeef8304afe75f84ccede223",
+      "uid": 501
+    },
+    "baseline81/before/readiness.py": {
+      "bytes": 31363,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793618561380650972,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/before/readiness.py",
+      "sha256": "f2026b27c94a3d5bc49fc7b1abf2ca2066bc756651b1cf672ae2a109a97fc310",
+      "uid": 501
+    },
+    "baseline81/before/test_d3_readiness.py": {
+      "bytes": 10807,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619046292570148,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/before/test_d3_readiness.py",
+      "sha256": "61f9ca1cafe6eea084bab53e01e66be6fdc87f12bc5467a877c4a5d6c7cfd9d0",
+      "uid": 501
+    },
+    "baseline81/controller.py": {
+      "bytes": 16000,
+      "gid": 0,
+      "mode": "0o755",
+      "mtime_ns": 1793621888004284161,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/controller.py",
+      "sha256": "90fcd0658f8ba42b094aa522d20b0a96342d964a87bd55bb06bc1b7cc91b6aec",
+      "uid": 501
+    },
+    "baseline81/execution/ACTUAL-RECEIPT.json": {
+      "bytes": 3473,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793622109686054805,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/ACTUAL-RECEIPT.json",
+      "sha256": "a4a017a0939f07a701a471696dacce0ea97c1b1d151e9cc8a4e36835d8b99b9f",
+      "uid": 501
+    },
+    "baseline81/execution/CALLS.json": {
+      "bytes": 3437,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793622032812626554,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/CALLS.json",
+      "sha256": "a60281fe0e2e0f90ba1469505b3016675024813e30b725f1d31d341367f67952",
+      "uid": 501
+    },
+    "baseline81/execution/CASE-RESULTS.json": {
+      "bytes": 885,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793622032812764471,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/CASE-RESULTS.json",
+      "sha256": "85d180c2d3536d71c5eb910e0c135343c4d1696a7942cf70884da158df0694cd",
+      "uid": 501
+    },
+    "baseline81/execution/EXECUTION-MANIFEST.json": {
+      "bytes": 5366,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793622109688775930,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/EXECUTION-MANIFEST.json",
+      "sha256": "c1cbeef91fbebd40e5816d17585548128626590ab28fb68d84b657cfeaf57bec",
+      "uid": 501
+    },
+    "baseline81/execution/PREFLIGHT.json": {
+      "bytes": 221,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793622020629804796,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/PREFLIGHT.json",
+      "sha256": "d5d5e905115ff97089b26840349bd2ec40b18f2a253f64374183568306eaf7b7",
+      "uid": 501
+    },
+    "baseline81/execution/RESULT.json": {
+      "bytes": 8554,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793622032860357547,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/RESULT.json",
+      "sha256": "9a7fa553f9f3dfbfbcd061592989dd0a1426a170b83b4faaba0cae95fb3bf128",
+      "uid": 501
+    },
+    "baseline81/execution/donor-mutant.readiness.py": {
+      "bytes": 31520,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622032692527197,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/donor-mutant.readiness.py",
+      "sha256": "7132085da019b692b878cb390093cec793305725a559e83a77cc0c34bb596a8b",
+      "uid": 501
+    },
+    "baseline81/execution/donor-mutant.stderr": {
+      "bytes": 4265,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622032773260310,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/donor-mutant.stderr",
+      "sha256": "8ef50a3899f52fb0847f2ee1f464d595596b7362130a085ba89404e14304b781",
+      "uid": 501
+    },
+    "baseline81/execution/full.stderr": {
+      "bytes": 16043,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622032223653016,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/full.stderr",
+      "sha256": "1b4332d23744cfb34b3dff8fe23388915eaf70af89d34f3477e871195b7fbf16",
+      "uid": 501
+    },
+    "baseline81/execution/full.summary.json": {
+      "bytes": 178,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622032223762932,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/full.summary.json",
+      "sha256": "a9de6739cc431514487c78eac02e415ddf4439392b2c0452538d695b9f0d1085",
+      "uid": 501
+    },
+    "baseline81/execution/groups.jsonl": {
+      "bytes": 896,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793622025753552337,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/groups.jsonl",
+      "sha256": "f2f1b986d9abbe19489ff5986775fd21204de8e754e3617af82969e81fcbcb96",
+      "uid": 501
+    },
+    "baseline81/execution/old-d3.stderr": {
+      "bytes": 1647,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622032458881481,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/old-d3.stderr",
+      "sha256": "9d0e4cf52bc041e569b1dce9521d348a00e0a6eb64cf4ec54a9cc635b3bdde26",
+      "uid": 501
+    },
+    "baseline81/execution/role-mutant.readiness.py": {
+      "bytes": 31561,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622032572759631,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/role-mutant.readiness.py",
+      "sha256": "b55465e9fc09cc5a35c0a708b07586a1f67e58ec8f93c9a6141dcdd1c964de28",
+      "uid": 501
+    },
+    "baseline81/execution/role-mutant.stderr": {
+      "bytes": 1328,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622032652214995,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/execution/role-mutant.stderr",
+      "sha256": "4607815d60952698b80dec6e4f38f10439dd17f3e86adc31f72fd0f9aa4a43e6",
+      "uid": 501
+    },
+    "baseline81/history/V2-FROZEN-MANIFEST.json": {
+      "bytes": 7635,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620584180750769,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/V2-FROZEN-MANIFEST.json",
+      "sha256": "003993d99122591c8668f6b31dc8b125f154dfe7fdd59c6b0a90364911dbd0eb",
+      "uid": 501
+    },
+    "baseline81/history/V3-FROZEN-MANIFEST.json": {
+      "bytes": 10195,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620869919194091,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/V3-FROZEN-MANIFEST.json",
+      "sha256": "29e5eb2d7130abae40373487b68ac7f3fd9302ecc9cac5cc16e307c8f347c12d",
+      "uid": 501
+    },
+    "baseline81/history/V4-FROZEN-MANIFEST.json": {
+      "bytes": 12945,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621108398081077,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/V4-FROZEN-MANIFEST.json",
+      "sha256": "b6db9e82418420a3c396a97d8114fbdebe7b14494a318731b6f557fd2850a96c",
+      "uid": 501
+    },
+    "baseline81/history/V5-FROZEN-MANIFEST.json": {
+      "bytes": 16005,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621363297686616,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/V5-FROZEN-MANIFEST.json",
+      "sha256": "86341f2cbc72d99059e7e58d010927c293a2f77c65805c577dc97d714704032a",
+      "uid": 501
+    },
+    "baseline81/history/first-execution/CALLS.json": {
+      "bytes": 866,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793620688221571145,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/first-execution/CALLS.json",
+      "sha256": "3802aec259c5463313552df0b7317caa6d0788844d1477a9982c965b976ebcfb",
+      "uid": 501
+    },
+    "baseline81/history/first-execution/PREFLIGHT.json": {
+      "bytes": 220,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793620688069054694,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/first-execution/PREFLIGHT.json",
+      "sha256": "84917aa0610acda16a232b4eb71dac86acdbc64f0a4dee8cc22c2e400a037381",
+      "uid": 501
+    },
+    "baseline81/history/first-execution/RESULT.json": {
+      "bytes": 2041,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793620688247953216,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/first-execution/RESULT.json",
+      "sha256": "c85d7bd9be1a5ed5d88514e7620f010e770b76632da489273849c57f32b791b7",
+      "uid": 501
+    },
+    "baseline81/history/first-execution/full.stderr": {
+      "bytes": 98,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620688118756702,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/first-execution/full.stderr",
+      "sha256": "c81f4c3dd7c434c5f2627e10bb71ca3e459f04d942b7d0b2cc342e1e2c962818",
+      "uid": 501
+    },
+    "baseline81/history/first-execution/groups.jsonl": {
+      "bytes": 0,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793620688067714274,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/first-execution/groups.jsonl",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uid": 501
+    },
+    "baseline81/history/fourth-execution/CALLS.json": {
+      "bytes": 854,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793621597767007175,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/fourth-execution/CALLS.json",
+      "sha256": "9a309e158f3355dceeb87a7cc04ddc07185154f6393289a922602c65b6817ea1",
+      "uid": 501
+    },
+    "baseline81/history/fourth-execution/PREFLIGHT.json": {
+      "bytes": 221,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793621594633472217,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/fourth-execution/PREFLIGHT.json",
+      "sha256": "1c81ebb779d34eae6887245a347903d90b8a49aa186df365da98b6a847618841",
+      "uid": 501
+    },
+    "baseline81/history/fourth-execution/RESULT.json": {
+      "bytes": 3390,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793621597795989213,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/fourth-execution/RESULT.json",
+      "sha256": "9d9e90639a6cda8976e6fecd02db6166d63cc873f370c238f0372fe50766612a",
+      "uid": 501
+    },
+    "baseline81/history/fourth-execution/full.stderr": {
+      "bytes": 20145,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621597686840104,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/fourth-execution/full.stderr",
+      "sha256": "9c123ce8074833fcdf23c475b8a321e2a6e005ef1affa9931c74011cdcd6094c",
+      "uid": 501
+    },
+    "baseline81/history/fourth-execution/full.summary.json": {
+      "bytes": 179,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621597686984895,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/fourth-execution/full.summary.json",
+      "sha256": "b0cd2891a267b48ec71651ecf6a9eeb710e9c4af6710a2e24e4db8f098e8b492",
+      "uid": 501
+    },
+    "baseline81/history/fourth-execution/groups.jsonl": {
+      "bytes": 896,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793621596834074520,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/fourth-execution/groups.jsonl",
+      "sha256": "6721e95a51f0223f0a4365f5b0afff8d0698435775720fdd34139d95ef416f97",
+      "uid": 501
+    },
+    "baseline81/history/second-execution/CALLS.json": {
+      "bytes": 849,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793620956116181484,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/second-execution/CALLS.json",
+      "sha256": "34b7ca4e5b0ec39f7642f06bbf3099a01ddea8fa3b60c922a5458cff6e038c70",
+      "uid": 501
+    },
+    "baseline81/history/second-execution/PREFLIGHT.json": {
+      "bytes": 220,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793620955956918390,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/second-execution/PREFLIGHT.json",
+      "sha256": "641d8299b86b46b3c6a86e7df8950d260a5b51f1c817577eb5d0ba1223815c38",
+      "uid": 501
+    },
+    "baseline81/history/second-execution/RESULT.json": {
+      "bytes": 2025,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793620956139917464,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/second-execution/RESULT.json",
+      "sha256": "1644e96b327126f07e035294e83aa729eebc60b4c310c34133fa81d1887077e2",
+      "uid": 501
+    },
+    "baseline81/history/second-execution/full.stderr": {
+      "bytes": 168,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620956010564117,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/second-execution/full.stderr",
+      "sha256": "63f91e2bce451981b98b97b41f3bd31a4c882c786c44bfb3713cf95836c6feac",
+      "uid": 501
+    },
+    "baseline81/history/third-execution/CALLS.json": {
+      "bytes": 849,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793621197659231605,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/third-execution/CALLS.json",
+      "sha256": "df4137c83b00a128218bef9a28e9fab2fa089342896d3ba2403c95d7a08ccff0",
+      "uid": 501
+    },
+    "baseline81/history/third-execution/PREFLIGHT.json": {
+      "bytes": 220,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793621197494544225,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/third-execution/PREFLIGHT.json",
+      "sha256": "3760417f74bd3051c72e1b4c94e20923c563239be67daaeb6a886b829fee2f0d",
+      "uid": 501
+    },
+    "baseline81/history/third-execution/RESULT.json": {
+      "bytes": 2025,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793621197688148358,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/third-execution/RESULT.json",
+      "sha256": "cae96b560789bbe702e7b2cae5b137df44f7f6e376f68566ec96e7c080d98421",
+      "uid": 501
+    },
+    "baseline81/history/third-execution/full.stderr": {
+      "bytes": 923,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621197605660835,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/history/third-execution/full.stderr",
+      "sha256": "66e995fb15ed751bc603dcfbf042a2ea13b81ff137abf67d0cfb5925fa731108",
+      "uid": 501
+    },
+    "baseline81/run_host_controls.py": {
+      "bytes": 3938,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620584163154806,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/run_host_controls.py",
+      "sha256": "17049fa6677e8101e5f5bb3a2160b877eb622c35675cbc4c6ecb195b6c4c25da",
+      "uid": 501
+    },
+    "baseline81/sandbox.sb": {
+      "bytes": 2063,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621888004494536,
+      "original": "/private/tmp/bex-w8-original28-d3-public-v6-20261102-yucwkg7t/sandbox.sb",
+      "sha256": "d16317f23fd23c80d1935b29b98656bc7f9cbccb1aff3861e5900662e36da041",
+      "uid": 501
+    },
+    "failure01/EXECUTION-PLAN.json": {
+      "bytes": 6526,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620584175489547,
+      "original": "/private/tmp/bex-w8-original28-d3-controller-review-20261102-_y0v59o_/EXECUTION-PLAN.json",
+      "sha256": "23cd61529b3e2e6e44ce3dbfc64de8dec63e27e2b341cc948497c7bc7bdaae36",
+      "uid": 501
+    },
+    "failure01/INTERPRETER.json": {
+      "bytes": 581,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619195984754193,
+      "original": "/private/tmp/bex-w8-original28-d3-controller-review-20261102-_y0v59o_/INTERPRETER.json",
+      "sha256": "625e1c1a7499c72c514289f3910ddf25309b945ece7ad95ab01f1c557ef04cb1",
+      "uid": 501
+    },
+    "failure01/README.md": {
+      "bytes": 2732,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620584175672881,
+      "original": "/private/tmp/bex-w8-original28-d3-controller-review-20261102-_y0v59o_/README.md",
+      "sha256": "9a76f101c4058f3dd8d632947e1de86de99090e339c222c4c3d49cc1c7a29e96",
+      "uid": 501
+    },
+    "failure01/SOURCE-MANIFEST.json": {
+      "bytes": 3920,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620584171380202,
+      "original": "/private/tmp/bex-w8-original28-d3-controller-review-20261102-_y0v59o_/SOURCE-MANIFEST.json",
+      "sha256": "4aa29a660832e30ac37692bb811fb3081f3594abf53ebb46ed642822fcbecd82",
+      "uid": 501
+    },
+    "failure01/controller.py": {
+      "bytes": 15802,
+      "gid": 0,
+      "mode": "0o755",
+      "mtime_ns": 1793620315681039933,
+      "original": "/private/tmp/bex-w8-original28-d3-controller-review-20261102-_y0v59o_/controller.py",
+      "sha256": "e133c2353608ae3b2a7bb5127e6bcfbd653fcacc8fbcc62d03710f3af0fedada",
+      "uid": 501
+    },
+    "failure01/sandbox.sb": {
+      "bytes": 1178,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620397859949632,
+      "original": "/private/tmp/bex-w8-original28-d3-controller-review-20261102-_y0v59o_/sandbox.sb",
+      "sha256": "90c086ee6e0581b802d124bd75a6a0384dd83ab60f11bdd4a7b14f540f0030e7",
+      "uid": 501
+    },
+    "failure02/EXECUTION-PLAN.json": {
+      "bytes": 6520,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620869906050223,
+      "original": "/private/tmp/bex-w8-original28-d3-seatbelt-v3-20261102-0fl81c3f/EXECUTION-PLAN.json",
+      "sha256": "fb17043e4b08c415f876a4c98fb8e5094b1b25f72ac431d75aff764a4ef2e217",
+      "uid": 501
+    },
+    "failure02/README.md": {
+      "bytes": 3885,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620869914740954,
+      "original": "/private/tmp/bex-w8-original28-d3-seatbelt-v3-20261102-0fl81c3f/README.md",
+      "sha256": "84a3f0f14b39f52b807f22a108463ebe185f13d2dadf04eb1d54bd674cef51cb",
+      "uid": 501
+    },
+    "failure02/SOURCE-MANIFEST.json": {
+      "bytes": 3860,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620869905844680,
+      "original": "/private/tmp/bex-w8-original28-d3-seatbelt-v3-20261102-0fl81c3f/SOURCE-MANIFEST.json",
+      "sha256": "2fd44bc11fec40f0734c0a8f5649181d46a67811f86df3cbbda5248415ac615c",
+      "uid": 501
+    },
+    "failure02/sandbox.sb": {
+      "bytes": 1250,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620869905645471,
+      "original": "/private/tmp/bex-w8-original28-d3-seatbelt-v3-20261102-0fl81c3f/sandbox.sb",
+      "sha256": "5e8306b06ec27c360f2296c10799ff62b254742ab266677c842b7daecbd8f3d6",
+      "uid": 501
+    },
+    "failure03/EXECUTION-PLAN.json": {
+      "bytes": 6520,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621086149160905,
+      "original": "/private/tmp/bex-w8-original28-d3-launcher-v4-20261102-4tkxlu51/EXECUTION-PLAN.json",
+      "sha256": "746935e41b2589c78b0a3a47ba7ad8ea628d345af5844bf72ee31fcb6611c8d0",
+      "uid": 501
+    },
+    "failure03/README.md": {
+      "bytes": 4807,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621086151319369,
+      "original": "/private/tmp/bex-w8-original28-d3-launcher-v4-20261102-4tkxlu51/README.md",
+      "sha256": "258ff2ecee0bb65e370a43eaeeaf0a86b61b9c137f9892e2fa8b631651f217be",
+      "uid": 501
+    },
+    "failure03/SOURCE-MANIFEST.json": {
+      "bytes": 3860,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621086148987404,
+      "original": "/private/tmp/bex-w8-original28-d3-launcher-v4-20261102-4tkxlu51/SOURCE-MANIFEST.json",
+      "sha256": "7dccd652e8890052adb05c1f649dad87c813441420dd8bddeae49a1d200a89c3",
+      "uid": 501
+    },
+    "failure03/controller.py": {
+      "bytes": 15895,
+      "gid": 0,
+      "mode": "0o755",
+      "mtime_ns": 1793621086148846821,
+      "original": "/private/tmp/bex-w8-original28-d3-launcher-v4-20261102-4tkxlu51/controller.py",
+      "sha256": "389b4ebdbc633763bf6cc19a1540a364e95b87fd64276d8dfae6c19adccf0333",
+      "uid": 501
+    },
+    "failure03/sandbox.sb": {
+      "bytes": 1410,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621086148924529,
+      "original": "/private/tmp/bex-w8-original28-d3-launcher-v4-20261102-4tkxlu51/sandbox.sb",
+      "sha256": "2ea0d86c80fd819ef7f51af4f8a8927a19fde480001b07fa88ad9fa5ad0a673a",
+      "uid": 501
+    },
+    "failure04/EXECUTION-PLAN.json": {
+      "bytes": 6521,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621363289031242,
+      "original": "/private/tmp/bex-w8-original28-d3-ancestors-v5-20261102-wxyng01i/EXECUTION-PLAN.json",
+      "sha256": "da7b368e74b842b0076c1d7006a32ffdf5246a4e7a875b941a6ce679ae610fde",
+      "uid": 501
+    },
+    "failure04/README.md": {
+      "bytes": 5878,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621363291845450,
+      "original": "/private/tmp/bex-w8-original28-d3-ancestors-v5-20261102-wxyng01i/README.md",
+      "sha256": "875dfb7d57b55e602f61c08fe7877e258f0c12d23b4cfcf9cac298f400d2c617",
+      "uid": 501
+    },
+    "failure04/SOURCE-MANIFEST.json": {
+      "bytes": 3870,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621363288936909,
+      "original": "/private/tmp/bex-w8-original28-d3-ancestors-v5-20261102-wxyng01i/SOURCE-MANIFEST.json",
+      "sha256": "ea15beb5a33dde377e90476f87344f5b738d4c503fc4dda814008b52bb1b1bf2",
+      "uid": 501
+    },
+    "failure04/sandbox.sb": {
+      "bytes": 1659,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621363288846284,
+      "original": "/private/tmp/bex-w8-original28-d3-ancestors-v5-20261102-wxyng01i/sandbox.sb",
+      "sha256": "d58a9f619dfe106b661a4ef6d69fe516457c17623396bc83812711833cebe983",
+      "uid": 501
+    },
+    "family87/APPLE-SDK-REFERENCES.json": {
+      "bytes": 912,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620315689403163,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/APPLE-SDK-REFERENCES.json",
+      "sha256": "5b73d6df6121daa118071d4f199633acb562973005b935d0491ea62941a29a19",
+      "uid": 501
+    },
+    "family87/AUTHORITY-REFERENCES.json": {
+      "bytes": 3074,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793618972171809135,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/AUTHORITY-REFERENCES.json",
+      "sha256": "10d6f889db4fcf407f9ecc7b9fee87a96d2fab8d8d216da40d029b33f13bf6dc",
+      "uid": 501
+    },
+    "family87/CONTROLLER-DELTA.diff": {
+      "bytes": 2624,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622895285204544,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/CONTROLLER-DELTA.diff",
+      "sha256": "db82eb4cd3b79430f76ef54ed97930579f1431dda8eef5762c44710d354b5a8b",
+      "uid": 501
+    },
+    "family87/EXECUTION-PLAN.json": {
+      "bytes": 6964,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622895285369462,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/EXECUTION-PLAN.json",
+      "sha256": "c55205eb8194066fc5f0f0538f3f1001e9d9e86e24c7cde8b52cea2e59b8f595",
+      "uid": 501
+    },
+    "family87/HOST-CONTROLS-PLAN.json": {
+      "bytes": 1260,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622895285654589,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/HOST-CONTROLS-PLAN.json",
+      "sha256": "6379a6bc047d8319410b7122e76d94a5042bc063b60069e5af257eedda0e15a1",
+      "uid": 501
+    },
+    "family87/INTERPRETER.json": {
+      "bytes": 876,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621086148730987,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/INTERPRETER.json",
+      "sha256": "d6b5a5dc64197ea3ea3d18af191d430b0eb41c2f7dde558c1fa5893e2ac33c84",
+      "uid": 501
+    },
+    "family87/MANIFEST.json": {
+      "bytes": 9009,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622895288144819,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/MANIFEST.json",
+      "sha256": "45d0138d5b58b47376c9821e19a0c5684b8e7312fe7f780ca8a4c75abf5fccc5",
+      "uid": 501
+    },
+    "family87/PARENT-SOURCE-MANIFEST.json": {
+      "bytes": 71661,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793618972167215233,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/PARENT-SOURCE-MANIFEST.json",
+      "sha256": "132a060ab8760d1010826426d5be82d9d292af80e05454d57f0e8151616cdbc4",
+      "uid": 501
+    },
+    "family87/PREPARATION-RECEIPT.json": {
+      "bytes": 1672,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622895285899592,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/PREPARATION-RECEIPT.json",
+      "sha256": "119b7496cdfebefda05917cc1dc6a6ea4ebfbcbf104bb037044f7534fc882b4c",
+      "uid": 501
+    },
+    "family87/PRESERVED-PROPOSAL.json": {
+      "bytes": 378,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619856034280639,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/PRESERVED-PROPOSAL.json",
+      "sha256": "a9392d322a76db55c6021f48953267bc5687bf0c654ef329f14f0d122b370676",
+      "uid": 501
+    },
+    "family87/PRESERVED-V6-PASS.json": {
+      "bytes": 1194,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622603145318571,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/PRESERVED-V6-PASS.json",
+      "sha256": "42633dcdcf6cb5197e722ebe8417de3771c82368c2b0ec6ef315c5a63f0aa0a8",
+      "uid": 501
+    },
+    "family87/PUBLIC-FIXTURE.json": {
+      "bytes": 205,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793621888004012495,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/PUBLIC-FIXTURE.json",
+      "sha256": "69fb814e171bcd9907fe1e4f3a36358614f865cbeb7ac2b1946365c27a817edf",
+      "uid": 501
+    },
+    "family87/README.md": {
+      "bytes": 1835,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622895285592047,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/README.md",
+      "sha256": "5015a3d7dd4e8d51f21a31774e4862d25cdd27fe6e5b61dd68ab69b6fc92274f",
+      "uid": 501
+    },
+    "family87/ROOT-EXECUTION-APPROVAL.json": {
+      "bytes": 458,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623652477044586,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/ROOT-EXECUTION-APPROVAL.json",
+      "sha256": "6f0766178ce188d9d0c23e300bccc824143828c73fd87e7efc69cd9ae5a57a69",
+      "uid": 501
+    },
+    "family87/ROOT-SOURCE-PREP-ADMISSION.json": {
+      "bytes": 363,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623806384854458,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/ROOT-SOURCE-PREP-ADMISSION.json",
+      "sha256": "025544085a035a36d276758914b9724eaed67a368b8d0b2b70a583ee028c4672",
+      "uid": 501
+    },
+    "family87/SCHEMA-EXAMPLE.json": {
+      "bytes": 7400,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622895285473296,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/SCHEMA-EXAMPLE.json",
+      "sha256": "e7f9998401436e910b4c258ec76d9836d0ac378168f26678c7e04a0ef5cbf214",
+      "uid": 501
+    },
+    "family87/SCHEMA.md": {
+      "bytes": 3073,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622895285535672,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/SCHEMA.md",
+      "sha256": "c35b8b8ce311168d0d4c999247e53c6176f38d7a0a804718aeb19a66fc6447ee",
+      "uid": 501
+    },
+    "family87/SOURCE-MANIFEST.json": {
+      "bytes": 4236,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622895284227077,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/SOURCE-MANIFEST.json",
+      "sha256": "0741e6cc7db2e7fa753428af73d763fdc1598a51d8d995db301d779d1d07508f",
+      "uid": 501
+    },
+    "family87/SOURCE.diff": {
+      "bytes": 50436,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622895284323120,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/SOURCE.diff",
+      "sha256": "1f0bcb049b56903d5e32d44bfc3f82a3ea764aa957a7e029ecf4bfed3e28db7a",
+      "uid": 501
+    },
+    "family87/TINY-PYTHON-CONTROLS.json": {
+      "bytes": 599,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619996018980001,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/TINY-PYTHON-CONTROLS.json",
+      "sha256": "bc23f25f477bf023833f7d0ccb3fca00b4641094c62bc95fc5633d947d2dc889",
+      "uid": 501
+    },
+    "family87/V6-SOURCE-DELTA.diff": {
+      "bytes": 20283,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622895284401620,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/V6-SOURCE-DELTA.diff",
+      "sha256": "2a48f840a7b7c3c9de5826e477b4a91d88fb3ae170f7737a8dd76875e53ae619",
+      "uid": 501
+    },
+    "family87/before/known_go_slot.py": {
+      "bytes": 6088,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619088469877032,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/before/known_go_slot.py",
+      "sha256": "5e260fa9fbae4f7c277f775d9d93538b03be5186ba9c5e1a5c8e7402682b6959",
+      "uid": 501
+    },
+    "family87/before/qualification_fixtures.py": {
+      "bytes": 9352,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793618561380938973,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/before/qualification_fixtures.py",
+      "sha256": "f787347c9c2a08be21b9722768ceb4ad88fdee11d03b62680ab5a357158f718b",
+      "uid": 501
+    },
+    "family87/before/readiness.py": {
+      "bytes": 31568,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620315680486514,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/before/readiness.py",
+      "sha256": "109bee0a04af916aa3ab9f4e2fd2f05eb169ae7dce96fd84d92275910ca8f43f",
+      "uid": 501
+    },
+    "family87/before/test_d3_readiness.py": {
+      "bytes": 10788,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793620397859838506,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/before/test_d3_readiness.py",
+      "sha256": "7838f3e8838414ec449a79431c7510d98e0e270f3f18062a64211d85c610848a",
+      "uid": 501
+    },
+    "family87/before/test_qualification.py": {
+      "bytes": 4919,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793618561381263767,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/before/test_qualification.py",
+      "sha256": "c9708d91460104bda85d8e55efd6eee4e54e90ebcb73d1d1f1eb8a5af46c5a6f",
+      "uid": 501
+    },
+    "family87/controller.py": {
+      "bytes": 16000,
+      "gid": 0,
+      "mode": "0o755",
+      "mtime_ns": 1793622603144214061,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/controller.py",
+      "sha256": "66df61c612a31031d6063576c1303b46d597f5aed24c6ebb9504c3585d7c9090",
+      "uid": 501
+    },
+    "family87/execution/ACTUAL-RECEIPT.json": {
+      "bytes": 4250,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793623730448051603,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/ACTUAL-RECEIPT.json",
+      "sha256": "3864ac80ee5258eec95f6ba22c0d7528e66364004312cc70a7f5e5bbf93922ad",
+      "uid": 501
+    },
+    "family87/execution/CALLS.json": {
+      "bytes": 3557,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793623699568642318,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/CALLS.json",
+      "sha256": "dd98804e00774c56c11ad9d80e38c8b0346700f87ed39d050ef8abfbdbac5e28",
+      "uid": 501
+    },
+    "family87/execution/CASE-RESULTS.json": {
+      "bytes": 885,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793623699568792028,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/CASE-RESULTS.json",
+      "sha256": "80382adffccd2d298f6ee8c9185319428b9add4db3f00c7320e920cbe58928fd",
+      "uid": 501
+    },
+    "family87/execution/EXECUTION-MANIFEST.json": {
+      "bytes": 5576,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793623730451007337,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/EXECUTION-MANIFEST.json",
+      "sha256": "2a8fe86b735751b99a38bbcf8a59cfab2cd706c85b11d18d27e30321a724a6d8",
+      "uid": 501
+    },
+    "family87/execution/PREFLIGHT.json": {
+      "bytes": 221,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793623687423048598,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/PREFLIGHT.json",
+      "sha256": "4ad41d4826085164e1aef30a144d8829763a6311b81643733f00081e6c31597d",
+      "uid": 501
+    },
+    "family87/execution/RESULT.json": {
+      "bytes": 8673,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793623699613159074,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/RESULT.json",
+      "sha256": "8936623538af8b8a8b54491f2b8158cc34b60b1ad2ddb16a634f9765a38bff2a",
+      "uid": 501
+    },
+    "family87/execution/donor-mutant.readiness.py": {
+      "bytes": 37846,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699448506126,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/donor-mutant.readiness.py",
+      "sha256": "2966a809a3ef2276a196eb786ef5eabf44ba9811cfcfefcd5d5f3e3ddb37f08d",
+      "uid": 501
+    },
+    "family87/execution/donor-mutant.stderr": {
+      "bytes": 4305,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699530025405,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/donor-mutant.stderr",
+      "sha256": "f894fd4d1a8694b9af554adebdec20f806e54f6c8cd7620f18e9b503a9264b9a",
+      "uid": 501
+    },
+    "family87/execution/donor-mutant.stdout": {
+      "bytes": 0,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699451352609,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/donor-mutant.stdout",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "uid": 501
+    },
+    "family87/execution/donor-mutant.summary.json": {
+      "bytes": 185,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699530158073,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/donor-mutant.summary.json",
+      "sha256": "cb05fbde7b5007a3ca660681f13051b91e0d0cd9c7a8892bbe480fcf8a7dff8c",
+      "uid": 501
+    },
+    "family87/execution/full.stderr": {
+      "bytes": 17349,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699098917223,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/full.stderr",
+      "sha256": "2d173419fda02590efdd870990aa7313286a7450b975a2d831e93f10543f2398",
+      "uid": 501
+    },
+    "family87/execution/full.summary.json": {
+      "bytes": 178,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699099091558,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/full.summary.json",
+      "sha256": "68731cf08a6b1b5d1ea033f71f3b7faf9b32b90273f5475335854bdca0213f91",
+      "uid": 501
+    },
+    "family87/execution/groups.jsonl": {
+      "bytes": 896,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793623692586963572,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/groups.jsonl",
+      "sha256": "257415702df37ca36e05daadeea416042eaf6b0cd70b8af7d1fb5a649b575676",
+      "uid": 501
+    },
+    "family87/execution/old-d3.readiness.py": {
+      "bytes": 27248,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699223251369,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/old-d3.readiness.py",
+      "sha256": "0a23e008382a75626e295a1dd1273752e05660a0bd5fb824c2f12ba0adf9da46",
+      "uid": 501
+    },
+    "family87/execution/old-d3.stderr": {
+      "bytes": 1677,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699315901910,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/old-d3.stderr",
+      "sha256": "6967a805494e326a0b11deb77778e99c1c80d0bdf372a24aa45f0196125a92b9",
+      "uid": 501
+    },
+    "family87/execution/old-d3.summary.json": {
+      "bytes": 179,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699316012953,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/old-d3.summary.json",
+      "sha256": "0294981ecc75fa7c7d1a3b2e49235b7e02f6cb7eefce22f40d37524ad0068d3d",
+      "uid": 501
+    },
+    "family87/execution/role-mutant.readiness.py": {
+      "bytes": 37887,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699332963139,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/role-mutant.readiness.py",
+      "sha256": "da3f551d3f184e7e15d2b97808170f9c7c26ada8bca8a85f65b9efaed75962c3",
+      "uid": 501
+    },
+    "family87/execution/role-mutant.stderr": {
+      "bytes": 1338,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699414839880,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/role-mutant.stderr",
+      "sha256": "1313eeba96c27a46698cf462085d4821eb1ec0d54ce459f1f42b27d55b85264f",
+      "uid": 501
+    },
+    "family87/execution/role-mutant.summary.json": {
+      "bytes": 184,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793623699414958673,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/execution/role-mutant.summary.json",
+      "sha256": "51c9b9918b394286b4d126ca824adcbcf8a32acaab191c88933cbcc893b43496",
+      "uid": 501
+    },
+    "family87/process_identity.py": {
+      "bytes": 3111,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619890052955796,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/process_identity.py",
+      "sha256": "722e5a0cddf267c3d792d867d3cb83dd9cb2a10e8dcd1c4cfeea866179234d61",
+      "uid": 501
+    },
+    "family87/run_host_controls.py": {
+      "bytes": 3938,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622603144305103,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/run_host_controls.py",
+      "sha256": "8ec7b785aa38a0b09fa8ae377215576692f06bbc73f38f77932e1b401d1e119e",
+      "uid": 501
+    },
+    "family87/run_python_control.py": {
+      "bytes": 1485,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619996024553016,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/run_python_control.py",
+      "sha256": "46180acd36710d77bc27b75bf395bddeb9efabe2e1ac335412c5b3f02b86da59",
+      "uid": 501
+    },
+    "family87/sandbox.sb": {
+      "bytes": 2083,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622603144367396,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/sandbox.sb",
+      "sha256": "c173f797c42ae44500ba530b834f667efcbbf283c2e76fd36e12e94e300cc270",
+      "uid": 501
+    },
+    "family87/source/qualification_fixtures.py": {
+      "bytes": 13459,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622718740746309,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/source/qualification_fixtures.py",
+      "sha256": "ff3d337e2bc311a5c0ea8f8b81754ec5f21c59e41004263cbf50b09d37241c5a",
+      "uid": 501
+    },
+    "family87/source/readiness.py": {
+      "bytes": 37894,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622697125175064,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/source/readiness.py",
+      "sha256": "f84df69d580fed1a11a14ee61d04f79965bd3c3bcdd2cf12804901306f3ac6c6",
+      "uid": 501
+    },
+    "family87/source/test_family_sources.py": {
+      "bytes": 7357,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793622779991607704,
+      "original": "/private/tmp/bex-w8-original28-family-source-proposal-20261102-b6lvphzs/source/test_family_sources.py",
+      "sha256": "2f0f9f12341657854c17adf6843c013901997596d7638b8b0603d7a4f429a1c3",
+      "uid": 501
+    },
+    "original-proposal/ACTUAL-SOURCE-FACTS.json": {
+      "bytes": 4203,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793618972172018719,
+      "original": "/private/tmp/bex-w8-original28-d3-readiness-proposal-20261102-_9e248jy/ACTUAL-SOURCE-FACTS.json",
+      "sha256": "bfe3abcd5731867be28c17e395c4e3cdd6192084e0528715b98911fe153f46ff",
+      "uid": 501
+    },
+    "original-proposal/HOST-CONTROLS-PLAN.json": {
+      "bytes": 7032,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619195985319279,
+      "original": "/private/tmp/bex-w8-original28-d3-readiness-proposal-20261102-_9e248jy/HOST-CONTROLS-PLAN.json",
+      "sha256": "51753a8948607ae5f2bc2df4a31faf7daa0adcbf92708cea1b7ecf9fb75a7ee6",
+      "uid": 501
+    },
+    "original-proposal/MANIFEST.json": {
+      "bytes": 5047,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619195990328100,
+      "original": "/private/tmp/bex-w8-original28-d3-readiness-proposal-20261102-_9e248jy/MANIFEST.json",
+      "sha256": "8897d65e21f58d649e2b50fba9ad08b2acce1783b27fba42743b7d4115273bd2",
+      "uid": 501
+    },
+    "original-proposal/PARENT.json": {
+      "bytes": 372,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793618463961386280,
+      "original": "/private/tmp/bex-w8-original28-d3-readiness-proposal-20261102-_9e248jy/PARENT.json",
+      "sha256": "d35dfb133e1b6543728b606e47e20443fe847f737166d2a701f026d4756eb24d",
+      "uid": 501
+    },
+    "original-proposal/PREPARATION-RECEIPT.json": {
+      "bytes": 1834,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619195988922300,
+      "original": "/private/tmp/bex-w8-original28-d3-readiness-proposal-20261102-_9e248jy/PREPARATION-RECEIPT.json",
+      "sha256": "847d729dea507cb3176236420e528f066adaa5a1b3699978f696414d61652079",
+      "uid": 501
+    },
+    "original-proposal/README.md": {
+      "bytes": 2570,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619195985396321,
+      "original": "/private/tmp/bex-w8-original28-d3-readiness-proposal-20261102-_9e248jy/README.md",
+      "sha256": "5e7aa6569a62e06264f0bcb15304381f88cc34f7112c23dc8a3e46087e4b6303",
+      "uid": 501
+    },
+    "original-proposal/SOURCE-MANIFEST.json": {
+      "bytes": 2557,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619195988188588,
+      "original": "/private/tmp/bex-w8-original28-d3-readiness-proposal-20261102-_9e248jy/SOURCE-MANIFEST.json",
+      "sha256": "4f27cfd79b10211bdcc3beb26ba0500993dc164cc0294556063ab41ef1f7d2a2",
+      "uid": 501
+    },
+    "original-proposal/SOURCE.diff": {
+      "bytes": 31155,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793619195988386839,
+      "original": "/private/tmp/bex-w8-original28-d3-readiness-proposal-20261102-_9e248jy/SOURCE.diff",
+      "sha256": "1d18e5c7d58fb69a49e7f6f63b9177252589218c8a579b5e8434c32aa3028e86",
+      "uid": 501
+    },
+    "original-proposal/before/known_go_slot.py": {
+      "bytes": 4506,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793618463960260149,
+      "original": "/private/tmp/bex-w8-original28-d3-readiness-proposal-20261102-_9e248jy/before/known_go_slot.py",
+      "sha256": "e92acd281f56d36902058922dfc3ba396f26acb29ef0134ff08e80204c0a6caa",
+      "uid": 501
+    },
+    "original-proposal/before/qualification_fixtures.py": {
+      "bytes": 9340,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793618463960651317,
+      "original": "/private/tmp/bex-w8-original28-d3-readiness-proposal-20261102-_9e248jy/before/qualification_fixtures.py",
+      "sha256": "67b55fb5e1cd5137ccaa212a53e15e4b0cdad57808fad5009ed346ce2b901df7",
+      "uid": 501
+    },
+    "original-proposal/before/test_qualification.py": {
+      "bytes": 4896,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793618463961134029,
+      "original": "/private/tmp/bex-w8-original28-d3-readiness-proposal-20261102-_9e248jy/before/test_qualification.py",
+      "sha256": "0046ed584ee753c01e6502e2d729d35494b85ceece8068b4b512b06f36d47998",
+      "uid": 501
+    }
+  },
+  "permissions": "Canonical tar member mode/UID/GID preserve every alias permission identity. Original per-alias mtime_ns remains in ALIASES.json.gz."
+}

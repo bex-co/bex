@@ -1,0 +1,13 @@
+{
+  "outcome": "ROOT_APPROVE_EXACT7_SOURCEPREP_COPY",
+  "all7payloadSHA_size_regular_mode_checked": true,
+  "all149archive_regular_members_SHA_size_mode_UID_GID_original_checked": true,
+  "all382logical_originalaliases_fullchecked": true,
+  "all241omittedparentGitblobs_mode_SHA_size_treebijection_independently_checked": true,
+  "unique_archive_body_bytes": 1093507,
+  "README_INDEXfullread": true,
+  "no_actualcontract_runtime_hostedclaim": true,
+  "source_copyplan_sha256": "797b5f225d9920e839f8822597e06c705f8a5919bd4c1469335d7421b1fc6428",
+  "all_payloads_copied_exactly": 7,
+  "README_formatter_exception": "Only authored README may be formatted; all frozen archives/rawrecords/membermaps remain byte-exact."
+}

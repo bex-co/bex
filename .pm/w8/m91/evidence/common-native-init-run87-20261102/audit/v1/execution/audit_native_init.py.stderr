@@ -1,0 +1,16 @@
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit_native_init.py", line 191, in <module>
+    print(json.dumps(audit(), indent=2, ensure_ascii=False))
+                     ~~~~~^^
+  File "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit_native_init.py", line 150, in audit
+    need(re.fullmatch(r"[a-f0-9]{64}", cid) is not None and receipt["container"] == state
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         and all(s["ID"] == cid and s["Image"] == image and s["Labels"]["co.bex.native-qualification"] == inputs["owner"]
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+                 and s["Network"] == "bridge" for s in (state, running))
+                 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+         and running["Running"] is True and state["Running"] is False and accepted_exit(launch, state["ExitCode"]), "exact owned container/status:" + launch)
+         ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit_native_init.py", line 21, in need
+    raise AssertionError(reason)
+AssertionError: exact owned container/status:npm

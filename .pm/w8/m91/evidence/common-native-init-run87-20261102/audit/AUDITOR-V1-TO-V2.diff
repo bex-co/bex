@@ -1,0 +1,106 @@
+--- audit_native_init.py
++++ audit_native_init_v2.py
+@@ -80,6 +80,24 @@
+ 
+ def accepted_exit(launch, status):
+     return type(status) is int and (status == 0 or (launch != "direct" and status == 143) or (launch == "yarn" and status == 1))
++
++
++
++def stopped_projection(state):
++    """Exactly the fields checked by the original Go stopped-container gate."""
++    return {**{key: state[key] for key in ("ID", "Image", "Running", "ExitCode", "Network")},
++            "owner": state["Labels"]["co.bex.native-qualification"]}
++
++
++def running_port(state):
++    """Docker's raw carrier spells HostIp; no artifact key normalization."""
++    ports = state["Ports"]
++    need(set(ports) == {"10000/tcp"} and len(ports["10000/tcp"]) == 1, "original one-port transport")
++    row = ports["10000/tcp"][0]
++    need(row.get("HostIp") == "127.0.0.1" and isinstance(row.get("HostPort"), str)
++         and re.fullmatch(r"[+-]?[0-9]+", row["HostPort"]) is not None
++         and 1 <= int(row["HostPort"]) <= 65535, "original localhost-only transport")
++    return int(row["HostPort"])
+ 
+ 
+ def audit():
+@@ -147,14 +165,11 @@
+              and intent["platform"] == "linux/amd64" and intent["owner"] == inputs["owner"]
+              and intent["network"] == "bridge" and intent["publication"] == "127.0.0.1::10000", "original once-create intent")
+         state, running = load(directory / "stopped.log"), load(directory / "running.log")
+-        need(re.fullmatch(r"[a-f0-9]{64}", cid) is not None and receipt["container"] == state
++        need(re.fullmatch(r"[a-f0-9]{64}", cid) is not None and stopped_projection(receipt["container"]) == stopped_projection(state)
+              and all(s["ID"] == cid and s["Image"] == image and s["Labels"]["co.bex.native-qualification"] == inputs["owner"]
+                      and s["Network"] == "bridge" for s in (state, running))
+              and running["Running"] is True and state["Running"] is False and accepted_exit(launch, state["ExitCode"]), "exact owned container/status:" + launch)
+-        ports = running["Ports"]
+-        need(set(ports) == {"10000/tcp"} and len(ports["10000/tcp"]) == 1
+-             and ports["10000/tcp"][0]["HostIP"] == "127.0.0.1"
+-             and 1 <= int(ports["10000/tcp"][0]["HostPort"]) <= 65535, "original localhost-only transport")
++        port = running_port(running)
+         need(receipt["common"] == COMMON and receipt["platform"] == "linux/amd64" and receipt["owner"] == inputs["owner"]
+              and receipt["launch"] == launch and receipt["pass"] is True and receipt["response"] == "held 雪 λ🙂"
+              and receipt["command_override"] == (None if launch == "npm" else ["/bin/bash", "-c", command(launch)]), "original launch/response:" + launch)
+@@ -176,7 +191,9 @@
+              and "no such object: " + cid in cleanup["inspection"].lower(), "exact original CID cleanup")
+         need("--- PASS: TestCommonNativeInitQualification/" + launch in (ROOT / "job-125260213820.log").read_text(), "actual original Go subtest pass")
+         summaries.append({"launch": launch, "node": expected["node"], "status": state["ExitCode"], "PID1": receipt["proof"]["Identity"]["Init"]["PID1"],
+-                          "guest_ELF_machine": 62, "drain_events": receipt["proof"]["Events"], "own_CID_absent": True})
++                          "guest_ELF_machine": 62, "drain_events": receipt["proof"]["Events"], "own_CID_absent": True,
++                          "localhost_port": port, "port_carriers_retained_unmodified": {"raw_running": running["Ports"],
++                              "raw_stopped": state["Ports"], "Go_receipt": receipt["container"]["Ports"]}})
+     cleanup = load(ARTIFACT / "cleanup.json")
+     need(cleanup["owner"] == inputs["owner"] and all(o.get("exit_code") == 0 for o in cleanup["operations"])
+          and any(o["resource"] == "builder" and o["identity"] == inputs["owner"] and o["exit_code"] == 0 for o in cleanup["operations"])
+--- test_audit_native_init.py
++++ test_audit_native_init_v2.py
+@@ -5,7 +5,7 @@
+ import unittest
+ 
+ ROOT = Path(__file__).resolve().parent
+-spec = importlib.util.spec_from_file_location("native_init_readonly_audit", ROOT / "audit_native_init.py")
++spec = importlib.util.spec_from_file_location("native_init_readonly_audit", ROOT / "audit_native_init_v2.py")
+ audit = importlib.util.module_from_spec(spec)
+ spec.loader.exec_module(audit)
+ 
+@@ -53,5 +53,39 @@
+         with self.assertRaises(AssertionError):audit.validate_proof(self.expected, proof, 'direct', True)
+ 
+ 
++    def test_original_stopped_projection_accepts_actual_carrier_and_rejects_identity_changes(self):
++        directory = self.generated / "npm"
++        recorded = audit.load(directory / "receipt.json")["container"]
++        raw = audit.load(directory / "stopped.log")
++        self.assertNotEqual(recorded["Ports"], raw["Ports"])
++        self.assertEqual(audit.stopped_projection(recorded), audit.stopped_projection(raw))
++        for field, value in (("ID", "0" * 64), ("Image", "sha256:" + "0" * 64),
++                             ("Running", True), ("ExitCode", 137), ("Network", "none")):
++            changed = copy.deepcopy(raw)
++            changed[field] = value
++            with self.subTest(field=field):
++                self.assertNotEqual(audit.stopped_projection(recorded), audit.stopped_projection(changed))
++        changed = copy.deepcopy(raw)
++        changed["Labels"]["co.bex.native-qualification"] = "other-owner"
++        self.assertNotEqual(audit.stopped_projection(recorded), audit.stopped_projection(changed))
++
++    def test_original_running_raw_HostIp_and_port_negatives(self):
++        raw = audit.load(self.generated / "npm/running.log")
++        row = raw["Ports"]["10000/tcp"][0]
++        self.assertIn("HostIp", row)
++        self.assertEqual(audit.running_port(raw), int(row["HostPort"]))
++        for field, value in (("HostIp", "0.0.0.0"), ("HostIp", "::1"), ("HostPort", "0"),
++                             ("HostPort", "65536"), ("HostPort", "not-a-port"), ("HostPort", True)):
++            changed = copy.deepcopy(raw)
++            changed["Ports"]["10000/tcp"][0][field] = value
++            with self.subTest(field=field, value=value), self.assertRaises(AssertionError):
++                audit.running_port(changed)
++        for ports in ({}, {"10000/tcp": [row, row]}, {"10000/tcp": [row], "20000/tcp": [row]},
++                      {"10000/tcp": [{"HostIP": "127.0.0.1", "HostPort": row["HostPort"]}]}):
++            changed = copy.deepcopy(raw)
++            changed["Ports"] = ports
++            with self.subTest(ports=ports), self.assertRaises(AssertionError):audit.running_port(changed)
++
++
+ if __name__ == '__main__':
+     unittest.main()

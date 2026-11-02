@@ -11,6 +11,7 @@ import re
 import signal
 import shutil
 import subprocess
+import sys
 import tempfile
 import time
 import urllib.parse
@@ -49,7 +50,8 @@ PROFILES = {
               "node-exact14212", "ruby-node-exact14212"), 90, 120),
     "node-donors": ("TestCommonNodeGeneratedImages", "BEX_NATIVE_TEST_NODE_DONORS",
                     ("node-14", "node-16", "node-18", "node-20",
-                     "node-exact14213", "ruby-node-exact14213"), 90, 120),
+                     "node-exact14213", "ruby-node-exact14213",
+                     "node-exact14212", "ruby-node-exact14212"), 90, 120),
     "modern-python": ("TestNativeModernPythonGeneratedImages", "BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE",
                       ("3.9", "3.10", "3.11", "3.12", "3.14"), 110, 140),
     "legacy-python": ("TestNativeLegacyPythonGeneratedImages", "BEX_NATIVE_LEGACY_PYTHON_INTEGRATION",
@@ -201,6 +203,85 @@ def unique_object(pairs):
 def json_file(path):
     require(path.stat().st_size <= 4 * 1024 * 1024, "receipt metadata exceeds bound")
     return json.loads(path.read_text(), object_pairs_hook=unique_object)
+
+
+def checkout_packet(path):
+    """One literal packet, never an input-supplied Git pattern or shell word."""
+    require(isinstance(path, str) and not re.search(r"[\x00-\x1f\x7f]", path), "invalid checkout evidence path")
+    parts = path.split("/")
+    require(len(parts) >= 5 and parts[:4] == [".pm", "w8", "m91", "evidence"]
+            and all(part not in ("", ".", "..") for part in parts), "checkout evidence must be inside a packet")
+    # Gitignore-style non-cone rules: escape literal metacharacters rather than
+    # imposing a new packet naming convention on otherwise valid evidence.
+    packet = "".join("\\" + char if char in "\\!*?[]# " else char for char in parts[4])
+    return "/.pm/w8/m91/evidence/" + packet + "/**"
+
+
+def checkout_descriptor(descriptor):
+    require(isinstance(descriptor, dict) and set(descriptor) == {"path", "sha256", "bytes"}
+            and isinstance(descriptor["sha256"], str) and re.fullmatch(r"[a-f0-9]{64}", descriptor["sha256"])
+            and type(descriptor["bytes"]) is int and descriptor["bytes"] >= 0, "bad checkout evidence descriptor")
+    return checkout_packet(descriptor["path"])
+
+
+def checkout_evidence_packets(record, custody):
+    """Materialization scope only; existing full validators still decide reuse."""
+    require(isinstance(record, dict) and set(record) == {"schema", "candidate"}
+            and record["schema"] == CANDIDATE_SCHEMA and isinstance(record["candidate"], dict),
+            "missing checkout candidate")
+    candidate = record["candidate"]
+    descriptors = list(candidate["approval"].values()) + [candidate["publication"]["metadata"]]
+    if candidate["source"] is not None:
+        descriptors.append(candidate["source"]["manifest"])
+    packets = {checkout_descriptor(row) for row in descriptors}
+    require(candidate["utilities"] is None or isinstance(candidate["utilities"], dict), "invalid checkout utilities")
+    for utility in (candidate["utilities"] or {}).values():
+        packets.add(checkout_packet(utility["root"]))
+        packets.update(checkout_descriptor(utility[key]) for key in ("metadata", "artifact_metadata", "manifest"))
+    require(isinstance(custody, dict) and isinstance(custody.get("files"), dict), "missing checkout full custody")
+    packets.update(checkout_descriptor(row) for row in custody["files"].values())
+    return sorted(packets)
+
+
+def checkout_evidence(mode):
+    require(mode in ("fresh", "reviewed-candidate"), "unknown checkout source")
+    if mode == "fresh":
+        return  # No prior approval or family baseline is needed to publish fresh.
+    root = Path(__file__).resolve().parents[2]
+    record = json_file(regular_path(root, CANDIDATE_PATH))
+    checkout_evidence_packets(record, {"files": {}})  # Validate every direct path before a Git read.
+    descriptor = record["candidate"]["approval"]["custody"]
+    checkout_descriptor(descriptor)
+    require(descriptor["bytes"] <= 4 * 1024 * 1024, "checkout custody metadata exceeds bound")
+    source = os.environ.get("GITHUB_SHA", "")
+    require(re.fullmatch(r"[a-f0-9]{40}", source), "invalid checkout source SHA")
+    specification = source + ":" + descriptor["path"]
+
+    def git_object(operation, limit, expected_sha256=None):
+        # Retain lossless client diagnostics before evidence is hydrated.
+        result, stdout, stderr = pull_buildkit(
+            ["timeout", "--kill-after=5s", "30s", "git", "-C", str(root), "cat-file", operation, specification],
+            dict(os.environ))
+        complete = (result["exit_code"] == 0 and result["bound"] is None and result["cancel_signal"] is None
+                    and result["direct_child_reaped"] and result["process_group_absent"]
+                    and len(stdout) <= limit and len(stderr) <= 1024 * 1024)
+        if operation == "-s":
+            complete = complete and stdout.strip() == str(descriptor["bytes"]).encode()
+        if expected_sha256 is not None:
+            complete = complete and len(stdout) == descriptor["bytes"] and hashlib.sha256(stdout).hexdigest() == expected_sha256
+        if not complete:
+            print("BEX_CANDIDATE_GIT_READ_FAILURE " + json.dumps({
+                "source": source, "path": descriptor["path"], "operation": operation, "result": result,
+                "stdout_base64": base64.b64encode(stdout).decode("ascii"),
+                "stderr_base64": base64.b64encode(stderr).decode("ascii"),
+            }), file=sys.stderr, flush=True)
+            raise ValueError("bounded checkout custody read failed")
+        return stdout
+
+    git_object("-s", 64)
+    raw = git_object("blob", descriptor["bytes"], descriptor["sha256"])
+    custody = json.loads(raw, object_pairs_hook=unique_object)
+    print("\n".join(checkout_evidence_packets(record, custody)))
 
 
 def regular_path(root, relative):
@@ -996,6 +1077,7 @@ def main():
     commands.add_parser("init")
     commands.add_parser("plan")
     commands.add_parser("profile-env")
+    commands.add_parser("checkout-evidence").add_argument("source", choices=("fresh", "reviewed-candidate"))
     for name in ("bootstrap", "cleanup", "manifest"):
         commands.add_parser(name).add_argument("root", type=Path)
     observation = commands.add_parser("capacity")
@@ -1009,6 +1091,8 @@ def main():
         plan()
     elif args.command == "profile-env":
         profile_environment()
+    elif args.command == "checkout-evidence":
+        checkout_evidence(args.source)
     elif args.command == "init":
         initialize()
     elif args.command == "bootstrap":

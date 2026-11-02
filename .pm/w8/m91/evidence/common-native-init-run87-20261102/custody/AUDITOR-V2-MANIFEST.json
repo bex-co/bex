@@ -1,0 +1,26 @@
+{
+  "files": [
+    {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit_native_init_v2.py",
+      "bytes": 14996,
+      "sha256": "d68e1f3541409aebe62f5eb2b073f2e99c35dd99cc4696757fe752fc69f39fca"
+    },
+    {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/test_audit_native_init_v2.py",
+      "bytes": 5152,
+      "sha256": "7d1d2a22ae2ac9b9c6d3569d665831657b378657ddfea7eeb3143a8911ab3f7a"
+    },
+    {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/AUDITOR-V1-TO-V2.diff",
+      "bytes": 6701,
+      "sha256": "3850baaf65f2c28c851dc9a6c79c70a4c710ac0dc7241eeeb30b6e331ef39221"
+    },
+    {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/AUDITOR-V2-PLAN.json",
+      "bytes": 3116,
+      "sha256": "cdb0abc92211df66828fb342018976983f1cb3c6f9fcc047adeb69f01e990cd7"
+    }
+  ],
+  "total_bytes": 29965,
+  "original_V1_source_and_outputs_retained": true
+}

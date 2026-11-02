@@ -1,0 +1,153 @@
+{
+  "scope": "ACTUAL_ORIGINAL_NATIVE_INIT_AMD_TARGET_CONTENT_ONLY_NO_HOSTED_OR_ADOPTION_CLAIM",
+  "pass": true,
+  "source": "30b1f4dce5e25644c996a07fce84bb8338f1953f",
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "original_files": 79,
+  "source_files": 301,
+  "image_config": "sha256:6ba61d236f08896cdbbd5cbe0156623df9f650dc0347d29780e2482a810e4320",
+  "staged_init_sha256": "6adc4e08abc09bb47eb0a0463e68403af13aa66eacbad029304ed8c28639fd47",
+  "launches": [
+    {
+      "launch": "npm",
+      "node": "24.22.1",
+      "status": 143,
+      "PID1": "/run/rosetta/rosetta",
+      "guest_ELF_machine": 62,
+      "drain_events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "own_CID_absent": true,
+      "localhost_port": 32768,
+      "port_carriers_retained_unmodified": {
+        "raw_running": {
+          "10000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "32768"
+            }
+          ]
+        },
+        "raw_stopped": {},
+        "Go_receipt": {
+          "10000/tcp": [
+            {
+              "HostIP": "127.0.0.1",
+              "HostPort": "32768"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "launch": "yarn",
+      "node": "24.22.1",
+      "status": 1,
+      "PID1": "/run/rosetta/rosetta",
+      "guest_ELF_machine": 62,
+      "drain_events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "own_CID_absent": true,
+      "localhost_port": 32769,
+      "port_carriers_retained_unmodified": {
+        "raw_running": {
+          "10000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "32769"
+            }
+          ]
+        },
+        "raw_stopped": {},
+        "Go_receipt": {
+          "10000/tcp": [
+            {
+              "HostIP": "127.0.0.1",
+              "HostPort": "32769"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "launch": "pnpm",
+      "node": "24.22.1",
+      "status": 143,
+      "PID1": "/run/rosetta/rosetta",
+      "guest_ELF_machine": 62,
+      "drain_events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "own_CID_absent": true,
+      "localhost_port": 32770,
+      "port_carriers_retained_unmodified": {
+        "raw_running": {
+          "10000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "32770"
+            }
+          ]
+        },
+        "raw_stopped": {},
+        "Go_receipt": {
+          "10000/tcp": [
+            {
+              "HostIP": "127.0.0.1",
+              "HostPort": "32770"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "launch": "direct",
+      "node": "24.22.1",
+      "status": 0,
+      "PID1": "/run/rosetta/rosetta",
+      "guest_ELF_machine": 62,
+      "drain_events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "own_CID_absent": true,
+      "localhost_port": 32771,
+      "port_carriers_retained_unmodified": {
+        "raw_running": {
+          "10000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "32771"
+            }
+          ]
+        },
+        "raw_stopped": {},
+        "Go_receipt": {
+          "10000/tcp": [
+            {
+              "HostIP": "127.0.0.1",
+              "HostPort": "32771"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "limits": "AMD guest target executed on ARM CI runner with retained Rosetta mapping. HTTP200/4s/20s/2m predicates are source-bound original Go gates; separate raw HTTP headers/timer trace not retained. Original artifact transport does not establish local extracted executable mode."
+}

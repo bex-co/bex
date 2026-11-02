@@ -1,0 +1,116 @@
+{
+  "status": "SOURCE_ONLY_INTAKE_PREPARATION_NOT_BODY_DOWNLOAD_OR_ADMISSION",
+  "at": "2026-11-02T11:48:09.948830+00:00",
+  "actual_run": 41439172465,
+  "source": "30b1f4dce5e25644c996a07fce84bb8338f1953f",
+  "attempt": 1,
+  "event": "workflow_dispatch",
+  "branch": "main",
+  "selector": {
+    "profile": "native-init",
+    "case": "all-launches",
+    "flag": "BEX_NATIVE_TEST_INIT_PROFILE",
+    "test": "^TestCommonNativeInitQualification$",
+    "go_timeout": "60m",
+    "job_timeout": "90m",
+    "architecture": "amd64"
+  },
+  "common_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "candidate_sha256": "cc39f78a8b9f128babb362e0078007380a1b44b7799394d93b06e5fc52ab7036",
+  "actual_job_id": null,
+  "artifact": null,
+  "metadata_only_until_Root_review": true,
+  "expected_artifact_name_from_exact_workflow": "common-pilot-native-init-all-launches-reviewed-candidate-cc39f78a8b9f128babb362e0078007380a1b44b7799394d93b06e5fc52ab7036-amd64-1",
+  "source_anchors": [
+    {
+      "path": "/Users/tianpan/projects/bex7/.github/workflows/native-common-image.yml",
+      "bytes": 23110,
+      "sha256": "021adb7a8407e88373da608a4a2388b5ad5df8caee4177c63c7e89d159482709"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/.github/scripts/native-common-qualify.py",
+      "bytes": 62244,
+      "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/.github/native-common-test-candidate.json",
+      "bytes": 3475,
+      "sha256": "cc39f78a8b9f128babb362e0078007380a1b44b7799394d93b06e5fc52ab7036"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativequalification_init_test.go",
+      "bytes": 38306,
+      "sha256": "5540c1665b514cb2bf92c9ad47c8d48a6c174edadd486dad24115e0cb764ca86"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/lego/operator/internal/build/testdata/native-common-init/identity.js",
+      "bytes": 5842,
+      "sha256": "b112a923a58f6a390f212e66f64eccbb004567448ef1f654081f167d6162cbd9"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/lego/operator/internal/build/testdata/native-common-init/server.js",
+      "bytes": 1550,
+      "sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/lego/operator/internal/build/testdata/native-common-init/capture-env.js",
+      "bytes": 367,
+      "sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/lego/operator/internal/build/testdata/native-common-init/build.js",
+      "bytes": 315,
+      "sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/lego/operator/internal/build/testdata/native-common-init/package.json",
+      "bytes": 144,
+      "sha256": "8099071f5ddc90124887614b03cea3082b7057fd84fbad432583a1a5836a0d41"
+    },
+    {
+      "path": "/Users/tianpan/projects/bex7/lego/operator/internal/build/testdata/native-common-init/.node-version",
+      "bytes": 3,
+      "sha256": "68ca3fba3b7e864770cb61aeb306d4bd4354b68ab4dd38450860c5d823e42a53"
+    }
+  ],
+  "historical_failure": {
+    "path": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/common-family-causal-fixes-20261102/native-init/old-amd64/FINDING.json",
+    "bytes": 1735,
+    "sha256": "d2120786a337160f4d384dd3b6ecc8f4c104d6d25e292259bd01c0f13a2249f4"
+  },
+  "historical_disposition": "Old9bc AMD npm readiness failed before drain because literal /proc/1/exe check rejected the real AMD guest mapping under ARM Rosetta; original failure/cleanup stays preserved, never borrowed as current result. Current genuine guest ELF+device/inode RX map predicate must pass.",
+  "future_intake_steps": [
+    "Terminal actual job/run metadata + whole decoded App joblog ONCE; exact raw artifact listing and ID/size/SHA. No body from green status alone.",
+    "Root reviews concrete metadata/size/budget before ONE connector + verified TLS stream; preserve every failed envelope and exact download count. No signed URL on disk/output.",
+    "Fresh 8GiB physical floor+32MiB margin with exact ZIP+central-directory uncompressed-size projection; one artifact only. Unchanged reviewed V2 extractor preserves original members/MANIFEST/CRC/size/SHA/bijection/path/type/collision guards, no wrapper normalization.",
+    "Read-only full original artifact audit: original MANIFEST + every member, exact run/source301/0941 producer/verifier/candidate+selector+AMD bindings; canonical source/init staged ELF SHA/config/platform/entrypoint; all four launch receipts and full logs. No source/oracle/product changes.",
+    "Retain all actual error/partial data, builder/resource cleanup outcomes and exact source disposition. Root admission/publication follows complete full-byte review; no automatic family/all35/hosted claim."
+  ],
+  "unchanged_required_predicates": {
+    "four_launches": [
+      "npm",
+      "yarn",
+      "pnpm",
+      "direct"
+    ],
+    "source_and_command": "Actual selected Node24 exact patch + /usr/local/bin/node; base ENV equals donor ENV; direct child PATH exact, package-manager child PATH augmentation remains actual. exact native-init argv and /native-init bytes/ELF match expected/staged executable.",
+    "PID1": "Native /native-init OR genuine AMD guest RX mapping bound to executable device/inode and ARM emulator ELF; never path-only bypass.",
+    "drain": "Each launch has ready/listening, held4s request started before one SIGTERM; exact200 response held 雪 λ🙂 completes; events exactly listening,hold_begin,SIGTERM,hold_end,closed; holds/completed/signals all1; runtime phase/pass true.",
+    "deadlines": "Existing30s ready/precondition polling,30s held HTTP,20s stop,2m each drain context; canonical build30m, Go60m andjob90m unchanged.",
+    "wrapper_status": "Stopped exact owned container image/platform/bridge/label; exit0 or wrapper143, Yarn Classic exit1 accepted only after complete independent drain proof; direct status143 remains refusal.",
+    "ownership": "Actual returned64hex CID registered before start; exact127.0.0.1 ephemeral one10000/tcp bridge port; label owner exact; full create intent/stdout/stderr; cleanup exact CID absence. No guessed CID or recreation.",
+    "whole_job_cleanup": "Builder/own images/containers/auth files/PG cleanup and manifests/upload statuses retain actual successes/failures; logs/receipts must not substitute for any missing four-launch proof."
+  },
+  "extractor": {
+    "path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/extract_utility_zip.py",
+    "bytes": 14716,
+    "sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4"
+  },
+  "no_actions": {
+    "downloads": 0,
+    "dispatch_rerun_cancel": 0,
+    "runtime_or_cluster_actions": 0,
+    "repo_writes": 0
+  }
+}

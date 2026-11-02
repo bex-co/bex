@@ -1,0 +1,33 @@
+{
+  "status": "ACTUAL archive-only stream roundtrip",
+  "archives": {
+    "merged-source-and-reviews": {
+      "sha256": "344719501dba540286c7a9d13c11e4155c609319f6fb1df62ae87f64b3dbec74",
+      "archive_bytes": 118513,
+      "regular_members": 18,
+      "original_member_bytes": 463827,
+      "SHA_size_mode_bijection_stream_roundtrip": true
+    },
+    "checkout-host-history": {
+      "sha256": "408a894978b3660383d389afb59c29af4498a7a2c6c132b881f8c0a547b30b52",
+      "archive_bytes": 191526,
+      "regular_members": 50,
+      "original_member_bytes": 628309,
+      "SHA_size_mode_bijection_stream_roundtrip": true
+    },
+    "merged-go-history": {
+      "sha256": "1e819b77f79e3ea841cd7ca99cb523900fbaec476cf0de396efa026a5d1cb646",
+      "archive_bytes": 175500,
+      "regular_members": 30,
+      "original_member_bytes": 543229,
+      "SHA_size_mode_bijection_stream_roundtrip": true
+    }
+  },
+  "omissions": [
+    "All640-file views and TMP/cache directories",
+    "All standalone GoV3 proof archives, reused by public reference",
+    "Actual image/runtime/SDK/ELF/ZIP bodies",
+    "Private auth/credential configs, kubeconfigs and env files"
+  ],
+  "no_original_bytes_rewritten": true
+}

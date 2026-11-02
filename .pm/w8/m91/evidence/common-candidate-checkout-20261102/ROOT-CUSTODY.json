@@ -1,0 +1,11 @@
+{
+  "outcome": "ROOT_APPROVE_EXACT13_PAYLOAD_COPY",
+  "all_preparation_and13payload_regular_size_SHA_mode_checked": true,
+  "all98_archive_members_independently_fullchecked_against_originals": true,
+  "member_bytes": 1635365,
+  "README_HOSTCHECKS_SOURCEAPPLIED_fullread": true,
+  "scope": "Finalsource2013 applied8 plus actualsplitPython/workflow/Goresults; no newCI/runtime/productionclaim",
+  "source_copyplan_sha256": "1984e881d4e9a00c2681e1f56e68f9fa57b889203cf016259ab8d188c5986f9b",
+  "all_payloads_copied_exactly": 13,
+  "README_formatter_exception": "Only authored README may be formatted; all frozen archives/rawrecords/membermaps remain byte-exact."
+}

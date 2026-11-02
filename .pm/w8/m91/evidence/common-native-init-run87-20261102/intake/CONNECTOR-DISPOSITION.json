@@ -1,0 +1,21 @@
+{
+  "artifact_id": 13140138422,
+  "connector_invocations": 1,
+  "verified_TLS_body_streams": 1,
+  "CallToolResult_isError": false,
+  "structuredContent_file_uri_type": "OBJECT",
+  "required_fields": [
+    "download_url",
+    "file_id",
+    "mime_type",
+    "file_name"
+  ],
+  "expected_name": "native-init-run87-amd64-original.zip",
+  "mime_type": "application/zip",
+  "HTTPS_oaiusercontent_host_validated": true,
+  "duplicate_nested_fields_equal": true,
+  "URL_used_only_RAM_stdin": true,
+  "raw_response_URL_RAM_store_cleared": true,
+  "signed_URL_printed_or_written": false,
+  "download_guard_exit0_stopnull_groupabsent": true
+}

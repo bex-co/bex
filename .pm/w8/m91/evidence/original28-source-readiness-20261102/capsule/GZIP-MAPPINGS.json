@@ -1,0 +1,23 @@
+{
+  "all_unique_archive_members_roundtrip_SHA_size_permission_verified": 149,
+  "archive": {
+    "compressed": {
+      "bytes": 267449,
+      "mode": "0o644",
+      "path": "/private/tmp/bex-w8-source-readiness-publication-20261102-hpdeq4cf/payload/capsule/source-readiness.tar.gz",
+      "sha256": "68d981fd5568f7393711afe21866c0638b0418ee12abf602517e690bdf0461ed"
+    },
+    "decoded_tar_bytes": 1361920,
+    "decoded_tar_sha256": "7a06a94d0567533bbf51774c17508a7e36d2a7d54d1b0f254253485aa7911e0b"
+  },
+  "logical_map": {
+    "compressed": {
+      "bytes": 17359,
+      "mode": "0o644",
+      "path": "/private/tmp/bex-w8-source-readiness-publication-20261102-hpdeq4cf/payload/capsule/ALIASES.json.gz",
+      "sha256": "a8c6bb2d59da95f3b6614e0130782d1cb6efd249088ef4a795236e4f2311681b"
+    },
+    "decoded_json_bytes": 163537,
+    "decoded_json_sha256": "774002cc39c1c8659ff472aaf2e27d0699642f2c07a519e6fb9f3e6bf8c25f76"
+  }
+}

@@ -18,7 +18,9 @@ package build
 
 import (
 	"context"
+	"crypto/sha256"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -53,8 +55,8 @@ func TestCommonNodeQualificationDonorMode(t *testing.T) {
 	}
 	artifacts, err := commonNodeQualificationArtifacts("1")
 	must(t, err)
-	if len(artifacts) != 4 || len(commonNodeDonorQualificationCases()) != 6 {
-		t.Fatal("four published runtime donors and six separate qualification cells are required")
+	if len(artifacts) != 5 || len(commonNodeDonorQualificationCases()) != 8 {
+		t.Fatal("five published runtime donors and eight separate qualification cells are required")
 	}
 	for source, artifact := range artifacts {
 		must(t, validateNativeBase(source))
@@ -79,6 +81,12 @@ func TestCommonNodeQualificationDonorCells(t *testing.T) {
 			o.BuildCommand, o.StartCommand = "/usr/bin/python3 check.py build", "/usr/bin/python3 check.py runtime"
 			bundle, path, source := writeResolveFixture(t, o, nil, commonNodeQualificationFiles(t, tc))
 			fake := commonNodeQualificationFake()
+			if tc.request == "14.21.2" {
+				// This control binds the real approved upstream key; the ENV is
+				// synthetic metadata only, never a new supplier execution claim.
+				fake.digests["node:14.21.2-bullseye"] = "sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12"
+				fake.envByImage["node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12"] = fake.envByImage["node:14.21.2-bullseye@"+exactDigest]
+			}
 			choices, err := ResolveNativeBuildExact(context.Background(), fake, time.Time{}, tc.runtime, bundle, path, source)
 			must(t, err)
 			expected, node, err := commonNodeQualificationExpectations(tc, choices)
@@ -86,6 +94,9 @@ func TestCommonNodeQualificationDonorCells(t *testing.T) {
 			artifact, found := nativeRuntimeArtifacts[node.Image]
 			if !found || node.primaryImage != artifact {
 				t.Fatal("selected official identity did not choose its exact reviewed donor")
+			}
+			if tc.request == "14.21.2" && artifact != "ghcr.io/bex-co/bex-cnb-run@sha256:332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7" {
+				t.Fatal("exact14.21.2 did not select its strictly reviewed supplier subject")
 			}
 			for _, asked := range fake.asked {
 				if strings.HasPrefix(asked, "node source ") {
@@ -337,5 +348,46 @@ func TestNativeSourcePrerequisiteNetworkRegression(t *testing.T) {
 				t.Fatal("original authored commands changed")
 			}
 		})
+	}
+}
+
+// The dated AMD primary was independently admitted as e6/e4e evidence. Replay
+// its exact verified metadata inputs without a registry read; this is a recipe
+// equivalence control, never a new image execution or current-source CI claim.
+func TestCommonNodeDonorMatchesDatedPrimaryRecipe(t *testing.T) {
+	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
+	nativeCommonBase = "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0"
+	nativeSuppliedBases = nil
+	var err error
+	nativeRuntimeArtifacts, err = commonNodeQualificationArtifacts("1")
+	must(t, err)
+	const selected = "node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12"
+	fake := commonNodeQualificationFake()
+	fake.digests["node:14.21.2-bullseye"] = "sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12"
+	fake.envByImage[selected] = fakeExactMetadata{env: []string{
+		"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+		"NODE_VERSION=14.21.2", "YARN_VERSION=1.22.19",
+	}}
+	o := nativeOptions()
+	o.Runtime, o.BuildEnv, o.RuntimeEnvSecret = nativeNodeRuntime, nil, ""
+	o.BuildCommand, o.StartCommand = "/usr/bin/python3 check.py build", "/usr/bin/python3 check.py runtime"
+	bundle, path, source := writeResolveFixture(t, o, nil, commonNodeQualificationFiles(t, commonNodeCase{"node-exact14212", "14.21.2", nativeNodeRuntime}))
+	choices, err := ResolveNativeBuildExact(t.Context(), fake, time.Time{}, nativeNodeRuntime, bundle, path, source)
+	must(t, err)
+	_, node, err := commonNodeQualificationExpectations(commonNodeCase{"node-exact14212", "14.21.2", nativeNodeRuntime}, choices)
+	must(t, err)
+	canonical, err := os.ReadFile(path)
+	must(t, err)
+	executed, overlay, err := commonNodeQualificationRecipe(string(canonical), node)
+	must(t, err)
+	const admitted = "6dddfdf0cb7dcde88eae806ac54fdd3ed125ea0cfbbe1cfa0cd2be5a43fc11f6"
+	if overlay || executed != string(canonical) || fmt.Sprintf("%x", sha256.Sum256(canonical)) != admitted {
+		t.Fatal("donor branch changed the admitted primary canonical recipe or acquired an overlay")
+	}
+	for _, asked := range fake.asked {
+		if strings.HasPrefix(asked, "node source ") {
+			t.Fatal("dated donor replay acquired a compiler input")
+		}
 	}
 }
