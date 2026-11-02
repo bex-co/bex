@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "run_audit_v3.py",
+      "bytes": 7480,
+      "sha256": "feb8e6a3a1e94c846ff2e2ccc3a5c7bf1417b2fb471dbed70c3191a0dcb29d0d"
+    },
+    {
+      "path": "V2-to-V3.diff",
+      "bytes": 3048,
+      "sha256": "76c726757d36fc0831a1e2be227dfc2a21a18787ec9927c4498604dd6d131c0c"
+    },
+    {
+      "path": "V1-IDENTITY-LIMIT.json",
+      "bytes": 440,
+      "sha256": "2c2f24bb38ff491a7b5ad0c758e1a63a78a0b5b3a25b84aa95da172005fe6adf"
+    },
+    {
+      "path": "V3-PLAN.json",
+      "bytes": 830,
+      "sha256": "0b2c6bee45d9c661ced22f4eb1c27cf96c45be446fde8ec14e7dfe484ad17bd6"
+    }
+  ]
+}

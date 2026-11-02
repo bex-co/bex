@@ -1,0 +1,10 @@
+{
+  "original_functions_byte_AST_unchanged": 8,
+  "original_check_calls": 85,
+  "unchanged_original_check_AST": 83,
+  "two_count_predicates_only": "355 to exactproducer-derived rows;356 to rows+MANIFEST",
+  "new_helper": "max3 consecutive1-based attempts/exactrawpaths/fullmanifestbytesSHA/exactbootstraprawset; baseline355+2 per retained retry",
+  "no_original_oracles_programs_data_or_reports_changed": true,
+  "actual_full_audit_executions": 0,
+  "pure_controls_executed": false
+}

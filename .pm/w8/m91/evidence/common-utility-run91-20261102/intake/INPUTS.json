@@ -1,0 +1,13 @@
+{
+  "status": "BOUND_ACTUAL_TERMINAL_TUPLE_AWAIT_ROOT_BODY_APPROVAL",
+  "run": 41456212207,
+  "source": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+  "job_id": 125315558311,
+  "inputs": {
+    "amd64": [
+      13150542707,
+      83739065,
+      "687c178a0da3998c612979eb90c49aee1125a9161a127da19fde8f767389ff3a"
+    ]
+  }
+}

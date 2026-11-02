@@ -1,0 +1,115 @@
+{
+  "schema": "bex.publication-reference-map/v1",
+  "refs": [
+    {
+      "role": "download_guard",
+      "source": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/intake/download_guard.py",
+      "public_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "public_path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/capsule/tools/download_guard.py",
+      "bytes": 2988,
+      "sha256": "e561c5e1c230021917695c33c96bfdbee969dec4eb41fddbc0a3a2cfd48ec551",
+      "git_blob": "360095e6e988f3d22412150fa7b7311c66011bb1",
+      "source_mode": "0o644",
+      "copy_new_body": false
+    },
+    {
+      "role": "extract_guard",
+      "source": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/intake/extract_guard.py",
+      "public_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "public_path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/capsule/tools/extract_guard.py",
+      "bytes": 2770,
+      "sha256": "c7d380d7c4e2bc2fa4dca6253191ffca0a1e8c2bc7ac3d9529e46651403f83d1",
+      "git_blob": "244b8ddc7bed90a19f1abe4c36b7286afaf0a681",
+      "source_mode": "0o644",
+      "copy_new_body": false
+    },
+    {
+      "role": "bind_audit",
+      "source": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/bind_audit.py",
+      "public_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "public_path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/capsule/tools/bind_audit.py",
+      "bytes": 1371,
+      "sha256": "794ca9d431227472df6fb746b3840b78cfce91a9c01919515da17085c2fb65ab",
+      "git_blob": "8a16c2085f8605f3c470d695d7681b7882df58d3",
+      "source_mode": "0o644",
+      "copy_new_body": false
+    },
+    {
+      "role": "V2_extractor",
+      "source": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/extract_utility_zip.py",
+      "public_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "public_path": ".pm/w8/m91/evidence/common-current-e6-20261102/intake/extract_utility_zip.py",
+      "bytes": 14716,
+      "sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4",
+      "git_blob": "eb87c8a57514fd1a551dffa8c866280d32bc4852",
+      "source_mode": "0o600",
+      "copy_new_body": false
+    },
+    {
+      "role": "V4_group_reaper",
+      "source": "/private/tmp/bex-w8-common-predeploy-controller-v3-source-20261102-cu0jri4k/retained-v4.py",
+      "public_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "public_path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/capsule/tools/retained-v4.py",
+      "bytes": 22064,
+      "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03",
+      "git_blob": "abff096eb28b97bcff7f490619baf8d56e3d3653",
+      "source_mode": "0o600",
+      "copy_new_body": false
+    },
+    {
+      "role": "unchanged existing0941 approval receipt",
+      "public_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "path": ".pm/w8/m91/evidence/common-current0941-20261101/actual/receipt.json",
+      "sha256": "aa36b6922c4b3b3e7afe5ceedee21f489de5f00c20a54983b92ba6d00949f263",
+      "bytes": 40223,
+      "copy_new_body": false
+    },
+    {
+      "role": "unchanged existing0941 approval custody",
+      "public_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "path": ".pm/w8/m91/evidence/common-current0941-20261101/CUSTODY.json",
+      "sha256": "81021a7a09354cd1315ea266c14e7d97c912502e65fb1417f9aaf5e56235943b",
+      "bytes": 485809,
+      "copy_new_body": false
+    },
+    {
+      "role": "unchanged existing0941 approval plan",
+      "public_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "path": ".pm/w8/m91/evidence/common-current0941-20261101/tools/PLAN.json",
+      "sha256": "e86f10b0ed4757620db780c266b3e96ecc5ece8f753ddf4b536fca3fd3c5bc81",
+      "bytes": 7247,
+      "copy_new_body": false
+    },
+    {
+      "role": "unchanged existing0941 approval inputs",
+      "public_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "path": ".pm/w8/m91/evidence/common-current0941-20261101/IMAGE-INPUTS.json",
+      "sha256": "822f75fe0b44129c5b4fefa9ec0f30fd5f6e325aaf3674f6234f24f540a20797",
+      "bytes": 6894,
+      "copy_new_body": false
+    },
+    {
+      "role": "prepared EXPECTED-CAPTURED-SOURCE exact bytes",
+      "source": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/EXPECTED-CAPTURED-SOURCE.json",
+      "reuse_new_original_member": ".pm/w8/m91/evidence/common-utility-run91-20261102/utilities/amd64/artifact/qualification-source.json",
+      "bytes": 75337,
+      "sha256": "4a04605cb9963242964f7ddbb248665ac4f3eb477fe26bddee35d1236b9054c6",
+      "git_blob": "dfb3614410b05dba48b2d08dd60864226da66af6",
+      "source_mode": "0o644",
+      "copy_new_body": false
+    },
+    {
+      "role": "count-adapter before-audit.py exact original source alias",
+      "source": "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/before-audit.py",
+      "reuse_new_member": ".pm/w8/m91/evidence/common-utility-run91-20261102/tools/audit-before.py",
+      "bytes": 30700,
+      "sha256": "640573914435f685bec3f786ac1cb9df40a5ef49a3cbe70d05c17bf345e4c12e",
+      "git_blob": "ad71dd5475348978bee3fbe493f5ca8f4447a2dc",
+      "source_mode": "0o644",
+      "copy_new_body": false
+    }
+  ],
+  "all_referenced_tools_verified_regular_fullsha": true,
+  "approval_unchanged": true,
+  "no_capture_or_approval_relabel": true
+}

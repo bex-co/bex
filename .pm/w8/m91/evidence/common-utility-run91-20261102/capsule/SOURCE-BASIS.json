@@ -1,0 +1,17 @@
+{
+  "scope": "IMMUTABLE_GIT_SOURCE_PROJECTION_ONLY_NO_CI_OR_ARTIFACT_ACCEPTANCE",
+  "at": "2026-11-02T13:51:29.414195+00:00",
+  "source": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+  "source_files": 301,
+  "source_bytes": 2464578,
+  "helper_sha256": "ce5fb6d2fe6a4a3f203823a48f24785a93685c027f920c6f648d4fdb13f5d163",
+  "prior_failed_source": "b067de3c83437c0066cbee428ab50c49f40f5125",
+  "changed_qualification_paths_from_prior": [
+    ".github/workflows/native-common-image.yml"
+  ],
+  "only_six_budget_values_changed": "3hydrationstep5to12min;3Gitsparseadd180to600s;kill10/plan15/metadata30unchanged",
+  "all33_imagecritical_files_equal_prior_and_admitted_dc08": true,
+  "physical_workingtree_or_ignored_paths_read": false,
+  "actualcodeexecuted_or_imported": false,
+  "Git_blob_id_and_regular_mode_and_fullSHA_verified": true
+}

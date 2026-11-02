@@ -1,0 +1,16 @@
+{
+  "outcome": "PASS_D3_FRESH_AMD64_UTILITY_CONTENT_ONLY_PENDING_ROOT_APPROVAL",
+  "root": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5",
+  "review": {
+    "bytes": 14365,
+    "sha256": "73ab6a2203bc0edfc4111f9e99ba33e885fe0d36613182c8e03aa3fd4bea049c"
+  },
+  "arches": [
+    {
+      "architecture": "amd64",
+      "files": 358,
+      "packages": 1212
+    }
+  ],
+  "local_source_extras": null
+}

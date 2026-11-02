@@ -1,0 +1,39 @@
+{
+  "files": [
+    {
+      "path": "PLAN.json",
+      "bytes": 1257,
+      "sha256": "40f1d15237221d4446827e4f8ebbcde3bf425b9f0a57b7e92ac5d4c4c6c71ddd"
+    },
+    {
+      "path": "WRAPPER.diff",
+      "bytes": 2585,
+      "sha256": "af2943d191c007684616a2c2075ee5614630d17d62e60e33f690f7b92ab08bea"
+    },
+    {
+      "path": "prior-OUTER-TOOL-STDERR-transcription.txt",
+      "bytes": 754,
+      "sha256": "d454e9c4006b0420f7c5a6305e79a90e1f458cd0b7d008b03e1a0fc3ac643a8a"
+    },
+    {
+      "path": "prior-POSTFAILURE-RECONCILIATION.json",
+      "bytes": 1290,
+      "sha256": "2bf44b21eee51aab4c67d2806fbcd1ea769475e2746929be0c4e64ed75ce462f"
+    },
+    {
+      "path": "prior-controls.stderr",
+      "bytes": 825,
+      "sha256": "bf22fa805a9a36cdd67d1a8d192bf2cd27b7103eb16413904612de6a7adb39a4"
+    },
+    {
+      "path": "prior-controls.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "run_audit.py",
+      "bytes": 6365,
+      "sha256": "0e32fa7b59c815cdc9f34fad2e7a4ebc8fb127e5b9925d94f7557a52da3601d2"
+    }
+  ]
+}

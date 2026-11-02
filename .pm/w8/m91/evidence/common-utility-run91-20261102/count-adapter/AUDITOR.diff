@@ -1,0 +1,52 @@
+--- frozen-run91/audit.py
++++ audit-bootstrap-accounting-v2.py
+@@ -43,6 +43,30 @@
+ def check(condition, reason):
+     if not condition:
+         raise AssertionError(reason)
++
++def bootstrap_manifest_rows(retained, bootstrap):
++    # Exact 7ad producer: 355 one-attempt rows, plus two raw files per retry.
++    attempts = bootstrap.get('attempts')
++    check(type(attempts) is list and 1 <= len(attempts) <= 3
++          and bootstrap.get('maximum_attempts') == 3, 'bootstrap attempt count differs')
++    expected = set()
++    for number, attempt in enumerate(attempts, 1):
++        check(type(attempt.get('number')) is int and attempt['number'] == number,
++              'bootstrap attempt numbering differs')
++        for stream in ('stdout', 'stderr'):
++            name = 'bootstrap-' + str(number) + '.' + stream + '.log'
++            descriptor = attempt.get(stream)
++            check(type(descriptor) is dict and descriptor.get('path') == name,
++                  'bootstrap raw path differs')
++            check(name in retained and type(descriptor.get('bytes')) is int
++                  and descriptor['bytes'] >= 0
++                  and descriptor['bytes'] == retained[name]['bytes']
++                  and descriptor.get('sha256') == retained[name]['sha256'],
++                  'bootstrap raw manifest custody differs')
++            expected.add(name)
++    check({name for name in retained if name.startswith('bootstrap-')} == expected,
++          'unexpected or missing bootstrap raw member')
++    return 355 + len(expected) - 2
+ 
+ def one(root, suffix):
+     rows = list(root.rglob(suffix))
+@@ -121,7 +145,8 @@
+     check(identity(manifest_path)['sha256'] == EXPECTED_MANIFEST[arch] == extraction['manifest_sha256'], 'manifest custody:' + arch)
+     rows = load(manifest_path)['files']
+     retained = {row['path']: row for row in rows}
+-    check(len(retained) == len(rows) == 355, 'manifest path duplicates/count')
++    expected_rows = bootstrap_manifest_rows(retained, load(artifact / 'bootstrap.json'))
++    check(len(retained) == len(rows) == expected_rows, 'manifest path duplicates/count')
+     actual = set()
+     actual_dirs = set()
+     for path in artifact.rglob('*'):
+@@ -137,7 +162,7 @@
+     check(actual == set(retained) | {'MANIFEST.json'}, 'manifest/actual file bijection differs')
+     parents = {str(p) for name in retained for p in Path(name).parents if str(p) != '.'}
+     check(actual_dirs == parents, 'unexpected directory')
+-    check(extraction['complete'] is True and extraction['completed_members'] == 356, 'extractor incomplete')
++    check(extraction['complete'] is True and extraction['completed_members'] == expected_rows + 1, 'extractor incomplete')
+     check(sum((artifact / n).stat().st_size for n in actual) == extraction['actual_file_bytes'] == extraction['declared_bytes'], 'extraction size differs')
+     archive = next(x for x in artifacts if x['name'] == 'common-generated-' + SOURCE + '-' + arch + '-1')
+     check(archive['size_in_bytes'] == extraction['zip_bytes'] and archive['digest'] == 'sha256:' + extraction['zip_sha256'], 'GitHub ZIP identity differs')

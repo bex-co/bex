@@ -1,0 +1,10 @@
+{
+  "path": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/intake/amd64/original.zip",
+  "bytes": 83739065,
+  "sha256": "687c178a0da3998c612979eb90c49aee1125a9161a127da19fde8f767389ff3a",
+  "retained_private": true,
+  "original_ZIP_Git_copy": false,
+  "archive_source_run": 41456212207,
+  "connector_calls": 1,
+  "local_streams": 1
+}

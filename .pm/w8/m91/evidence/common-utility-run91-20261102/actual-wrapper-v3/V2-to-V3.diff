@@ -1,0 +1,47 @@
+--- frozen-v2-0e32/run_audit.py
++++ run_audit_v3.py
+@@ -56,11 +56,18 @@
+         previous[sig]=signal.getsignal(sig);signal.signal(sig,flag)
+     for label,path in commands:
+         if cancel["signal"]: raise RuntimeError("cancelled")
+-        p=None;out=err=b"";stop=None;gone=False;started=time.monotonic()
++        p=None;out=err=b"";stop=None;gone=False;registration=None;started=time.monotonic()
+         argv=["/opt/homebrew/bin/python3.14","-B","-c",BOOT,str(path)]
+         try:
+             p=subprocess.Popen(argv,env={"PATH":"/opt/homebrew/bin:/usr/bin:/bin","PYTHONDONTWRITEBYTECODE":"1"},
+                  stdin=subprocess.DEVNULL,stdout=subprocess.PIPE,stderr=subprocess.PIPE,start_new_session=True)
++            # Persist exact child/group target before observing output or cleanup.
++            try: actual_pgid=os.getpgid(p.pid)
++            except ProcessLookupError: actual_pgid=None
++            registration={"pid":p.pid,"process_group_target":p.pid,"observed_pgid":actual_pgid,
++                          "start_new_session":True,"argv":argv,"script":str(path),"script_sha256":sha(path)}
++            with (HERE/(label+".process.json")).open("x") as f:
++                f.write(json.dumps(registration,indent=2)+"\n");f.flush();os.fsync(f.fileno())
+             while True:
+                 try:
+                     out,err=p.communicate(timeout=.25);break
+@@ -82,12 +89,22 @@
+             if time.monotonic()-began>60: stop=stop or "whole60s"
+             if minimum<(8<<30)+(32<<20): stop=stop or "physical8GiB32MiB"
+             if len(out)+len(err)>4<<20: stop=stop or "output4MiB"
+-            (HERE/(label+".stdout")).write_bytes(out);(HERE/(label+".stderr")).write_bytes(err)
+-            step={"name":label,"argv_script":str(path),"exit":p.returncode if p else None,"stop":stop,
++            step={"name":label,"argv_script":str(path),"registration":registration,
++                  "pid":p.pid if p else None,"process_group_target":p.pid if p else None,
++                  "exit":p.returncode if p else None,"stop":stop,
+                   "group_absent":gone,"seconds":round(time.monotonic()-started,3),
+                   "stdout_bytes":len(out),"stderr_bytes":len(err),
+                   "stdout_sha256":hashlib.sha256(out).hexdigest(),"stderr_sha256":hashlib.sha256(err).hexdigest()}
+             record["steps"].append(step);record["groups_absent"] &= gone
++            try:
++                (HERE/(label+".stdout")).write_bytes(out);(HERE/(label+".stderr")).write_bytes(err)
++            except BaseException as error:
++                step["output_write_error"]=type(error).__name__
++                raise
++            finally:
++                # This survives a later posthash/final-receipt observer exception.
++                with (HERE/(label+".step.json")).open("x") as f:
++                    f.write(json.dumps(step,indent=2)+"\n");f.flush();os.fsync(f.fileno())
+         if not p or p.returncode!=0 or stop or not gone:
+             raise RuntimeError(label+" failed")
+     record["complete"]=True

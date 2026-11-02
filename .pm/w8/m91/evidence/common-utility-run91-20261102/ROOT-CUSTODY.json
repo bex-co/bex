@@ -1,0 +1,13 @@
+{
+  "at": "2026-11-02T15:18:22.009988+00:00",
+  "status": "ROOT_VERIFIED_432_PAYLOAD_PUBLICATION_ALL358_ORIGINALS_ONCE",
+  "copyplan_sha256": "eafb1985ffefb1ffd6a6a515b140d9ed61335ee5d301bc4e97d3c00220e9a091",
+  "all_regular_rawbytes_size_SHA_gitblob_source_mode_verified": 432,
+  "original_member_bijection": 358,
+  "immutable_public_Git_reuse_locators_verified": 310,
+  "authored_locator_index_correction_only": [
+    ".pm/w8/m91/evidence/common-utility-run91-20261102/REUSE-REFERENCES.json"
+  ],
+  "actual_source": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+  "authority": "DATED utility91 content only; no candidate/currentbaseline/production change"
+}

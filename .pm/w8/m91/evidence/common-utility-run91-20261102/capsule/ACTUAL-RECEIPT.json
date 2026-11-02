@@ -1,0 +1,92 @@
+{
+  "schema": "bex.dated-run91-utility-intake/v1",
+  "outcome": "PASS_DATED_7ad_AMD_CONTENT_ONLY_PENDING_ROOT_ADMISSION",
+  "at": "2026-11-02T14:57:27.127810+00:00",
+  "run": 41456212207,
+  "job": 125315558311,
+  "source": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+  "artifact_id": 13150542707,
+  "artifactZIP": {
+    "path": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/intake/amd64/original.zip",
+    "bytes": 83739065,
+    "sha256": "687c178a0da3998c612979eb90c49aee1125a9161a127da19fde8f767389ff3a"
+  },
+  "original_members": 358,
+  "original_manifest": {
+    "path": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/intake/amd64/extracted/artifact/MANIFEST.json",
+    "bytes": 79917,
+    "sha256": "7d0e1876ba495f40338069318e9bad04dba102f0b0bbeb12588bc61bf48a4ecd"
+  },
+  "original_member_bytes": 140675562,
+  "captured_source301": {
+    "path": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/intake/amd64/extracted/artifact/qualification-source.json",
+    "bytes": 75337,
+    "sha256": "4a04605cb9963242964f7ddbb248665ac4f3eb477fe26bddee35d1236b9054c6"
+  },
+  "image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "connector_invocations": 1,
+  "verified_TLS_local_streams": 1,
+  "signed_URL_retained": false,
+  "download": {
+    "path": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/intake/amd64/download.json",
+    "bytes": 526,
+    "sha256": "b0bb4a9aabb22b4ffba8bc679d9a994079aa0d06b5364c5e1ae1ea1ea753288d"
+  },
+  "extraction": {
+    "path": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/intake/amd64/extracted/extraction.json",
+    "bytes": 465,
+    "sha256": "a70ad1c2bd5eee8fece5bdd0a6f0fa63862d98f118e4c0a2c5cf4e05fa5ef412"
+  },
+  "bootstrap_attempts": [
+    {
+      "number": 1,
+      "exit": 124,
+      "seconds": 180.005396
+    },
+    {
+      "number": 2,
+      "exit": 0,
+      "seconds": 85.611303
+    }
+  ],
+  "accounting_only_change": "357rows+originalMANIFEST=358 from exact two-attempt sourceoutput; full 5controls/83otheroriginalcheckAST/functions retained",
+  "audit_review": {
+    "path": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/REVIEW.json",
+    "bytes": 14365,
+    "sha256": "73ab6a2203bc0edfc4111f9e99ba33e885fe0d36613182c8e03aa3fd4bea049c"
+  },
+  "audit_execution": {
+    "path": "/private/tmp/bex-w8-run91-audit-wrapper-v2-20261102-119ufxtw/RESULT.json",
+    "bytes": 8902,
+    "sha256": "e86ca7712ff32f63092733ae701e1bd85e87e4fdcd93d0156be63fdfb8a99f84"
+  },
+  "source_posthash": {
+    "path": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/POSTHASH.json",
+    "bytes": 1379,
+    "sha256": "5c6d2123d9839e4b784895d5f825bb939fee500006f11d4b94af0d0caf445f97"
+  },
+  "full_content": {
+    "positive_images": 4,
+    "authored_original_programs": 13,
+    "HTTP_results": 39,
+    "omissions": 5,
+    "supplier_removed_negative": true,
+    "exact_default_python": "3.14.8",
+    "full_raw_and_gz_Syft_SPDX_retained": true,
+    "actual_declared_and_CI_cleanup_pass": true
+  },
+  "failure_history": {
+    "prior_wrapper": "/private/tmp/bex-w8-run91-audit-execution-proposal-20261102-fzuabo6k",
+    "first_wrapper_loader_error_then_receipt_AttributeError_preserved": true,
+    "old_exact_PID_PGID_unretained_limitation": true,
+    "actual_corrected_wrapper_PIDs_PGIDs_all_retained_and_fresh_absent": true
+  },
+  "limits": [
+    "DATED exact7ad only; later two CI source repairs change301 and need fresh qualification; no candidate/current-complete/baseline/adoption write",
+    "No target/Go/Docker/Kubernetes/auth/network execution during audit; only capturedread-only Git sourcecommands",
+    "Existing0941 original supplierapproval unchanged; no new imageorzeroCVE claim",
+    "Original source/program/data/oracles and all358 members preserved; no recompression/transformation",
+    "Original rawwire/timer bodies not synthesized; full originalaudit limits inREVIEW remain"
+  ]
+}

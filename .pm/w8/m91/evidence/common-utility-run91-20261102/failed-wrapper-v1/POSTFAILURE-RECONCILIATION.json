@@ -1,0 +1,39 @@
+{
+  "at": "2026-11-02T14:51:32.205500+00:00",
+  "scope": "POSTFAILURE read-only reconciliation; originalwrapper/source/results unchanged",
+  "outcome": "WRAPPER_FAILURE_BEFORE_CONTROLS_BIND_OR_AUDIT",
+  "two_errors": [
+    "unittest interprets retained sys.argv[1]=scriptpath as testselector;1loaderERROR/0actualmethods",
+    "outerfinally sha(strkey) AttributeError prevents RESULT write"
+  ],
+  "no_actual_audit_or_bind": true,
+  "matching_own_processes": [],
+  "post_state": {
+    "ACTUAL-EXTRACTION-BOUND.json": {
+      "exists": false,
+      "sha256": null
+    },
+    "REVIEW.json": {
+      "exists": false,
+      "sha256": null
+    },
+    "SOURCE-CUSTODY.json": {
+      "exists": false,
+      "sha256": null
+    },
+    "audit.py": {
+      "exists": true,
+      "sha256": "640573914435f685bec3f786ac1cb9df40a5ef49a3cbe70d05c17bf345e4c12e"
+    },
+    "audit-bootstrap-accounting-v2.py": {
+      "exists": true,
+      "sha256": "c7e70707760ccd39bc4121436194ddc61fca28f8de9895f6b486b8ecf23a51e0"
+    }
+  },
+  "controls_stderr": {
+    "bytes": 825,
+    "sha256": "bf22fa805a9a36cdd67d1a8d192bf2cd27b7103eb16413904612de6a7adb39a4"
+  },
+  "newtarget_created_beforefailure": "exactc7e707 countsource copy, old64057391 audit untouched",
+  "no_new_downloads_or_runtime_or_repo_changes": true
+}

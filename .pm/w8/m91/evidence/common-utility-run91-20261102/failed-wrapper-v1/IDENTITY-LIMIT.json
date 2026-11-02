@@ -1,0 +1,6 @@
+{
+  "oldwrapper": "0944a99ed60043e15ef0e3bcf5b692c1799ad2dd71fdee9b7fc94c8454b560c3",
+  "old_identity_limit": "No PID/PGID durable record survived firstwrapper; exact old group reaping/absence is UNPROVED. Separate ps projection proved only no process matching own unique argv at observationtime. Never upgrade it to exactPGproof.",
+  "old_controls": "0actualmethods;1unittestloadererror; no bind/fullaudit",
+  "old_raws_unchanged": true
+}

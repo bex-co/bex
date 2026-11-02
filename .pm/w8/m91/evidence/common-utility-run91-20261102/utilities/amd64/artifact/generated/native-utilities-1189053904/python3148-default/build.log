@@ -1,0 +1,322 @@
+#0 building with "bex-nq-860e1bf6d42440f8a15d7ff8" instance using docker-container driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 4.64kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.5s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74
+#5 DONE 0.0s
+
+#6 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#6 DONE 0.0s
+
+#7 [internal] load metadata for ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+#7 DONE 0.5s
+
+#8 [internal] load .dockerignore
+#8 transferring context: 2B done
+#8 DONE 0.0s
+
+#9 [internal] load build context
+#9 DONE 0.0s
+
+#10 [internal] preparing inline document
+#10 DONE 0.0s
+
+#11 [stage-0 16/26] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#11 DONE 0.0s
+
+#12 [stage-0  1/26] FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+#12 resolve ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0 0.0s done
+#12 CACHED
+
+#13 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#13 resolve docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea 0.0s done
+#13 DONE 0.0s
+
+#14 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#14 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 0.0s done
+#14 DONE 0.0s
+
+#15 FROM docker.io/library/python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74
+#15 resolve docker.io/library/python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74 0.0s done
+#15 DONE 0.0s
+
+#9 [internal] load build context
+#9 transferring context: 32.64MB 0.0s done
+#9 DONE 0.1s
+
+#10 [internal] preparing inline document
+#10 CACHED
+
+#16 [stage-0  2/26] COPY .bex-test-wheels/ /opt/bex-test-wheels/
+#16 DONE 0.1s
+
+#17 [stage-0  3/26] COPY --link --from=python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74 /usr/lib/os-release /opt/bex-primary-os-release
+#17 merging done
+#17 DONE 0.0s
+
+#18 [stage-0  4/26] RUN . /opt/bex-primary-os-release && [ -n "$VERSION_CODENAME" ] && primary_os="$VERSION_CODENAME" && . /etc/os-release && [ -n "$VERSION_CODENAME" ] && { [ "$primary_os" = "$VERSION_CODENAME" ] || { echo 'exact native primary and supplied base have different Debian distributions' >&2; exit 1; }; } && rm -f /opt/bex-primary-os-release && rm -rf /usr/local && mkdir -p /usr/local
+#18 DONE 0.1s
+
+#19 [stage-0  5/26] COPY --link --from=python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74 /usr/local/ /usr/local/
+#19 DONE 0.0s
+
+#19 [stage-0  5/26] COPY --link --from=python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74 /usr/local/ /usr/local/
+#19 merging 0.1s done
+#19 DONE 0.1s
+
+#20 [stage-0  6/26] RUN --network=none /sbin/ldconfig
+#20 DONE 0.1s
+
+#21 [stage-0  7/26] RUN --network=none [ "$(/usr/local/bin/python3 -I -c 'import sys; print(sys.version.split()[0])')" = 3.14.8 ]
+#21 DONE 0.1s
+
+#22 [stage-0  8/26] RUN --network=none /usr/bin/bex-native-python-tools
+#22 1.524 Processing ./opt/bex/python-tools/wheels/setuptools-80.9.0-py3-none-any.whl
+#22 1.547 Processing ./opt/bex/python-tools/wheels/wheel-0.48.0-py3-none-any.whl
+#22 1.549 Processing ./opt/bex/python-tools/wheels/packaging-25.0-py3-none-any.whl
+#22 1.618 Installing collected packages: wheel, setuptools, packaging
+#22 1.706 
+#22 1.708 Successfully installed packaging-25.0 setuptools-80.9.0 wheel-0.48.0
+#22 1.708 WARNING: Running pip as the 'root' user can result in broken permissions and conflicting behaviour with the system package manager, possibly rendering your system unusable. It is recommended to use a virtual environment instead: https://pip.pypa.io/warnings/venv. Use the --root-user-action option if you know what you are doing and want to suppress this warning.
+#22 2.142 <string>:1: UserWarning: pkg_resources is deprecated as an API. See https://setuptools.pypa.io/en/latest/pkg_resources.html. The pkg_resources package is slated for removal as early as 2025-11-30. Refrain from using this package or pin to Setuptools<81.
+#22 2.185 native primary Python packaging ready: setuptools-80.9.0, wheel-0.48.0, packaging-25.0
+#22 DONE 2.3s
+
+#23 [stage-0  9/26] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/lib/os-release /opt/bex-primary-os-release
+#23 merging 0.2s done
+#23 DONE 0.2s
+
+#24 [stage-0 10/26] RUN . /opt/bex-primary-os-release && [ -n "$VERSION_CODENAME" ] && primary_os="$VERSION_CODENAME" && . /etc/os-release && [ -n "$VERSION_CODENAME" ] && { [ "$primary_os" = "$VERSION_CODENAME" ] || { echo 'exact native primary and supplied base have different Debian distributions' >&2; exit 1; }; } && rm -f /opt/bex-primary-os-release
+#24 DONE 0.1s
+
+#25 [stage-0 11/26] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/local/bin/node /usr/local/bin/node
+#25 DONE 0.0s
+
+#26 [stage-0 12/26] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/local/lib/node_modules /usr/local/lib/node_modules
+#26 merging 0.4s done
+#26 DONE 0.4s
+
+#27 [stage-0 13/26] RUN ln -sf ../lib/node_modules/npm/bin/npm-cli.js /usr/local/bin/npm && ln -sf ../lib/node_modules/npm/bin/npx-cli.js /usr/local/bin/npx
+#27 DONE 0.1s
+
+#28 [stage-0 14/26] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /opt/yarn-v1.22.22 /opt/yarn-v1.22.22
+#28 merging 0.4s done
+#28 DONE 0.4s
+
+#29 [stage-0 15/26] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg
+#29 DONE 0.1s
+
+#30 [stage-0 16/26] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#30 DONE 0.0s
+
+#30 [stage-0 16/26] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#30 merging 0.4s done
+#30 DONE 0.4s
+
+#31 [stage-0 17/26] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx
+#31 DONE 0.3s
+
+#32 [stage-0 18/26] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/local/include/node /usr/local/include/node
+#32 merging 0.8s done
+#32 DONE 0.8s
+
+#33 [stage-0 19/26] RUN --network=none [ "$(/usr/local/bin/node -p 'process.versions.node')" = 24.22.1 ]
+#33 DONE 0.4s
+
+#34 [stage-0 20/26] RUN /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+#34 2.825 Looking in links: /opt/bex-test-wheels
+#34 2.836 Processing ./opt/bex-test-wheels/poetry-2.1.3-py3-none-any.whl
+#34 2.846 Processing ./opt/bex-test-wheels/build-1.6.1-py3-none-any.whl (from poetry==2.1.3)
+#34 2.849 Processing ./opt/bex-test-wheels/cachecontrol-0.14.4-py3-none-any.whl (from cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==2.1.3)
+#34 2.852 Processing ./opt/bex-test-wheels/cleo-2.1.0-py3-none-any.whl (from poetry==2.1.3)
+#34 2.855 Processing ./opt/bex-test-wheels/dulwich-0.22.8-py3-none-any.whl (from poetry==2.1.3)
+#34 2.858 Processing ./opt/bex-test-wheels/fastjsonschema-2.22.3-py3-none-any.whl (from poetry==2.1.3)
+#34 2.860 Processing ./opt/bex-test-wheels/findpython-0.6.3-py3-none-any.whl (from poetry==2.1.3)
+#34 2.862 Processing ./opt/bex-test-wheels/installer-0.7.0-py3-none-any.whl (from poetry==2.1.3)
+#34 2.865 Processing ./opt/bex-test-wheels/keyring-25.7.0-py3-none-any.whl (from poetry==2.1.3)
+#34 2.870 Processing ./opt/bex-test-wheels/packaging-26.3-py3-none-any.whl (from poetry==2.1.3)
+#34 2.872 Processing ./opt/bex-test-wheels/pbs_installer-2025.12.17-py3-none-any.whl (from pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#34 2.874 Processing ./opt/bex-test-wheels/pkginfo-1.13.3-py3-none-any.whl (from poetry==2.1.3)
+#34 2.877 Processing ./opt/bex-test-wheels/platformdirs-4.14.3-py3-none-any.whl (from poetry==2.1.3)
+#34 2.879 Processing ./opt/bex-test-wheels/poetry_core-2.1.3-py3-none-any.whl (from poetry==2.1.3)
+#34 2.883 Processing ./opt/bex-test-wheels/pyproject_hooks-1.3.3-py3-none-any.whl (from poetry==2.1.3)
+#34 2.885 Processing ./opt/bex-test-wheels/requests-2.34.2-py3-none-any.whl (from poetry==2.1.3)
+#34 2.887 Processing ./opt/bex-test-wheels/requests_toolbelt-1.0.0-py2.py3-none-any.whl (from poetry==2.1.3)
+#34 2.889 Processing ./opt/bex-test-wheels/shellingham-1.5.4-py2.py3-none-any.whl (from poetry==2.1.3)
+#34 2.891 Processing ./opt/bex-test-wheels/tomlkit-0.15.2-py3-none-any.whl (from poetry==2.1.3)
+#34 2.893 Processing ./opt/bex-test-wheels/trove_classifiers-2026.9.21.13-py3-none-any.whl (from poetry==2.1.3)
+#34 2.895 Processing ./opt/bex-test-wheels/virtualenv-20.39.1-py3-none-any.whl (from poetry==2.1.3)
+#34 2.910 Processing ./opt/bex-test-wheels/msgpack-1.2.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (from cachecontrol<0.15.0,>=0.14.0->cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==2.1.3)
+#34 2.915 Processing ./opt/bex-test-wheels/filelock-3.32.7-py3-none-any.whl (from cachecontrol[filecache]<0.15.0,>=0.14.0->poetry==2.1.3)
+#34 2.917 Processing ./opt/bex-test-wheels/crashtest-0.4.1-py3-none-any.whl (from cleo<3.0.0,>=2.1.0->poetry==2.1.3)
+#34 2.919 Processing ./opt/bex-test-wheels/rapidfuzz-3.14.6-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl (from cleo<3.0.0,>=2.1.0->poetry==2.1.3)
+#34 2.927 Processing ./opt/bex-test-wheels/urllib3-2.8.0-py3-none-any.whl (from dulwich<0.23.0,>=0.22.6->poetry==2.1.3)
+#34 2.931 Processing ./opt/bex-test-wheels/secretstorage-3.5.0-py3-none-any.whl (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#34 2.933 Processing ./opt/bex-test-wheels/jeepney-0.9.0-py3-none-any.whl (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#34 2.936 Processing ./opt/bex-test-wheels/jaraco.classes-3.4.0-py3-none-any.whl (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#34 2.938 Processing ./opt/bex-test-wheels/jaraco_functools-4.6.0-py3-none-any.whl (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#34 2.941 Processing ./opt/bex-test-wheels/jaraco_context-6.1.2-py3-none-any.whl (from keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#34 2.945 Processing ./opt/bex-test-wheels/httpx-0.28.1-py3-none-any.whl (from pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#34 2.949 Processing ./opt/bex-test-wheels/zstandard-0.25.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (from pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#34 2.963 Processing ./opt/bex-test-wheels/anyio-4.16.0-py3-none-any.whl (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#34 2.965 Processing ./opt/bex-test-wheels/certifi-2026.10.23-py3-none-any.whl (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#34 2.967 Processing ./opt/bex-test-wheels/httpcore-1.0.9-py3-none-any.whl (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#34 2.970 Processing ./opt/bex-test-wheels/idna-3.20-py3-none-any.whl (from httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#34 2.973 Processing ./opt/bex-test-wheels/h11-0.16.0-py3-none-any.whl (from httpcore==1.*->httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#34 2.976 Processing ./opt/bex-test-wheels/charset_normalizer-3.5.2-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl (from requests<3.0,>=2.26->poetry==2.1.3)
+#34 2.985 Processing ./opt/bex-test-wheels/distlib-0.4.4-py2.py3-none-any.whl (from virtualenv<21.0.0,>=20.26.6->poetry==2.1.3)
+#34 2.990 Processing ./opt/bex-test-wheels/cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl (from SecretStorage>=3.2->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#34 3.002 Processing ./opt/bex-test-wheels/cffi-2.1.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl (from cryptography>=2.0->SecretStorage>=3.2->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#34 3.005 Processing ./opt/bex-test-wheels/pycparser-3.12-py3-none-any.whl (from cffi>=2.0.0->cryptography>=2.0->SecretStorage>=3.2->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#34 3.008 Processing ./opt/bex-test-wheels/typing_extensions-4.16.0-py3-none-any.whl (from anyio->httpx<1,>=0.27.0->pbs-installer[download,install]<2026.0.0,>=2025.1.6->poetry==2.1.3)
+#34 3.011 Processing ./opt/bex-test-wheels/more_itertools-11.2.1-py3-none-any.whl (from jaraco.classes->keyring<26.0.0,>=25.1.0->poetry==2.1.3)
+#34 3.075 Installing collected packages: trove-classifiers, distlib, zstandard, urllib3, typing_extensions, tomlkit, shellingham, rapidfuzz, pyproject-hooks, pycparser, poetry-core, platformdirs, pkginfo, pbs-installer, packaging, msgpack, more-itertools, jeepney, jaraco.context, installer, idna, h11, filelock, fastjsonschema, crashtest, charset_normalizer, certifi, virtualenv, requests, jaraco.functools, jaraco.classes, httpcore, findpython, dulwich, cleo, cffi, build, anyio, requests-toolbelt, httpx, cryptography, cachecontrol, SecretStorage, keyring, poetry
+#34 5.311 
+#34 5.315 Successfully installed SecretStorage-3.5.0 anyio-4.16.0 build-1.6.1 cachecontrol-0.14.4 certifi-2026.10.23 cffi-2.1.1 charset_normalizer-3.5.2 cleo-2.1.0 crashtest-0.4.1 cryptography-50.0.2 distlib-0.4.4 dulwich-0.22.8 fastjsonschema-2.22.3 filelock-3.32.7 findpython-0.6.3 h11-0.16.0 httpcore-1.0.9 httpx-0.28.1 idna-3.20 installer-0.7.0 jaraco.classes-3.4.0 jaraco.context-6.1.2 jaraco.functools-4.6.0 jeepney-0.9.0 keyring-25.7.0 more-itertools-11.2.1 msgpack-1.2.4 packaging-26.3 pbs-installer-2025.12.17 pkginfo-1.13.3 platformdirs-4.14.3 poetry-2.1.3 poetry-core-2.1.3 pycparser-3.12 pyproject-hooks-1.3.3 rapidfuzz-3.14.6 requests-2.34.2 requests-toolbelt-1.0.0 shellingham-1.5.4 tomlkit-0.15.2 trove-classifiers-2026.9.21.13 typing_extensions-4.16.0 urllib3-2.8.0 virtualenv-20.39.1 zstandard-0.25.0
+#34 DONE 5.5s
+
+#35 [stage-0 21/26] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /
+#35 merging
+#35 merging 1.1s done
+#35 DONE 1.2s
+
+#36 [stage-0 22/26] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe
+#36 DONE 0.1s
+
+#37 [stage-0 23/26] WORKDIR /opt/render/project/src
+#37 DONE 0.0s
+
+#38 [stage-0 24/26] COPY . .
+#38 DONE 0.1s
+
+#39 [stage-0 25/26] COPY <<BEX_LOAD_ENV /opt/bex/load-env
+#39 DONE 0.0s
+
+#40 [stage-0 26/26] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n/usr/local/bin/python3 check-runtime.py build 3.14.8"]
+#40 5.707 native primary Python 3.14.8 metadata, pkg_resources/distutils, wheel and C-extension checks passed without network
+#40 7.122 system and bundled Brotli checks passed
+#40 7.136 {"phase": "build", "python": "3.14.8", "python_env": "3.14.8", "executable": "/usr/local/bin/python3", "loaded_library": "libpython3.14.so", "ldd": "\tlibpython3.14.so.1.0 => /usr/local/bin/../lib/libpython3.14.so.1.0 (0x00007fffff1eb000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007ffffeffc000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007ffffef1c000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007ffffffcb000)\n", "packaging_and_c_extension_executed": true, "pass": true}
+#40 DONE 7.6s
+
+#41 exporting to docker image format
+#41 exporting layers
+#41 exporting layers 2.3s done
+#41 exporting manifest sha256:f55188aeae80820d6a646f565df49cc986e4b4f96aefef76f03081130e293b1b done
+#41 exporting config sha256:24a5713ef5946b23e11c0907db53f201a6578116add4b8a508c94e309258b6c7 done
+#41 sending tarball
+#41 ...
+
+#42 importing to docker
+#42 loading layer 5a09977ebe2d 491.52kB / 48.52MB
+#42 loading layer 5a09977ebe2d 48.52MB / 48.52MB 2.0s
+#42 loading layer 8ce3aa3b3f60 262.14kB / 23.87MB
+#42 loading layer 2250b32e1d79 557.06kB / 64.43MB
+#42 loading layer 2250b32e1d79 63.50MB / 64.43MB 2.1s
+#42 loading layer 1c381b6b4719 557.06kB / 211.82MB
+#42 loading layer 1c381b6b4719 68.52MB / 211.82MB 2.0s
+#42 loading layer 1c381b6b4719 169.35MB / 211.82MB 4.2s
+#42 loading layer b993e1283331 557.06kB / 62.63MB
+#42 loading layer b993e1283331 62.39MB / 62.63MB 2.1s
+#42 loading layer 27f4659cce58 1.05kB / 1.05kB
+#42 loading layer 0d3c31a31e8c 263B / 263B
+#42 loading layer 426620e4e47b 3.24kB / 3.24kB
+#42 loading layer 8caf8f815800 359B / 359B
+#42 loading layer 62c0efa987cd 1.43kB / 1.43kB
+#42 loading layer 41173248c2c8 1.40kB / 1.40kB
+#42 loading layer d528df39cd0c 408B / 408B
+#42 loading layer 2e1351906c66 263B / 263B
+#42 loading layer 615efac0e38d 557.06kB / 352.37MB
+#42 loading layer 615efac0e38d 61.28MB / 352.37MB 2.0s
+#42 loading layer 615efac0e38d 158.76MB / 352.37MB 4.1s
+#42 loading layer 615efac0e38d 261.26MB / 352.37MB 6.1s
+#42 loading layer 615efac0e38d 302.48MB / 352.37MB 8.1s
+#42 loading layer 615efac0e38d 345.93MB / 352.37MB 10.1s
+#42 loading layer 2e674c0decbf 1.40kB / 1.40kB
+#42 loading layer 56a0b37a8876 1.29kB / 1.29kB
+#42 loading layer 5dcf7af7efa0 913B / 913B
+#42 loading layer aa3b66db2dbd 1.50kB / 1.50kB
+#42 loading layer 03eb99da5cd1 2.59kB / 2.59kB
+#42 loading layer 5f70bf18a086 32B / 32B
+#42 loading layer 42b2686d6acd 327.68kB / 31.68MB
+#42 loading layer a01b8e802232 302B / 302B
+#42 loading layer a17497824273 301B / 301B
+#42 loading layer 41a9cb146101 327.68kB / 29.94MB
+#42 loading layer 57340d93df67 21.75kB / 21.75kB
+#42 loading layer 891bb89d0550 15.24kB / 15.24kB
+#42 loading layer 83d5453afb71 65.54kB / 5.45MB
+#42 loading layer 2b1e5921f292 144B / 144B
+#42 loading layer 12e493329bc9 491.52kB / 46.10MB
+#42 loading layer 0d4d7dad91d6 32.77kB / 3.22MB
+#42 loading layer 65bfe25a76ed 200B / 200B
+#42 loading layer 580d1a993ced 32.77kB / 1.25MB
+#42 loading layer a21ac5095ddf 191B / 191B
+#42 loading layer 7a029c60da04 65.54kB / 4.89MB
+#42 loading layer 4ef7b65509cf 65.54kB / 5.01MB
+#42 loading layer 974b4d9ad054 131.07kB / 10.48MB
+#42 loading layer 1d4723960717 360.45kB / 33.04MB
+#42 loading layer 6d63be4d62a8 557.06kB / 113.82MB
+#42 loading layer 6d63be4d62a8 111.97MB / 113.82MB 2.0s
+#42 loading layer d828ff3ac8ed 182B / 182B
+#42 loading layer dc7eee1a5d26 151B / 151B
+#42 loading layer 326bce540373 327.68kB / 31.76MB
+#42 loading layer 0881eed49069 464B / 464B
+#42 loading layer 5a09977ebe2d 48.52MB / 48.52MB 32.9s done
+#42 loading layer 8ce3aa3b3f60 23.87MB / 23.87MB 30.6s done
+#42 loading layer 2250b32e1d79 64.43MB / 64.43MB 29.9s done
+#42 loading layer 1c381b6b4719 211.82MB / 211.82MB 27.6s done
+#42 loading layer b993e1283331 62.63MB / 62.63MB 21.8s done
+#42 loading layer 27f4659cce58 1.05kB / 1.05kB 19.7s done
+#42 loading layer 0d3c31a31e8c 263B / 263B 19.7s done
+#42 loading layer 426620e4e47b 3.24kB / 3.24kB 19.7s done
+#42 loading layer 8caf8f815800 359B / 359B 19.7s done
+#42 loading layer 62c0efa987cd 1.43kB / 1.43kB 19.7s done
+#42 loading layer 41173248c2c8 1.40kB / 1.40kB 19.7s done
+#42 loading layer d528df39cd0c 408B / 408B 19.7s done
+#42 loading layer 2e1351906c66 263B / 263B 19.7s done
+#42 loading layer 615efac0e38d 352.37MB / 352.37MB 19.6s done
+#42 loading layer 2e674c0decbf 1.40kB / 1.40kB 8.8s done
+#42 loading layer 56a0b37a8876 1.29kB / 1.29kB 8.8s done
+#42 loading layer 5dcf7af7efa0 913B / 913B 8.8s done
+#42 loading layer aa3b66db2dbd 1.50kB / 1.50kB 8.8s done
+#42 loading layer 03eb99da5cd1 2.59kB / 2.59kB 8.8s done
+#42 loading layer 5f70bf18a086 32B / 32B 8.8s done
+#42 loading layer 42b2686d6acd 31.68MB / 31.68MB 8.8s done
+#42 loading layer a01b8e802232 302B / 302B 8.6s done
+#42 loading layer a17497824273 301B / 301B 8.6s done
+#42 loading layer 41a9cb146101 29.94MB / 29.94MB 8.6s done
+#42 loading layer 57340d93df67 21.75kB / 21.75kB 7.8s done
+#42 loading layer 891bb89d0550 15.24kB / 15.24kB 7.7s done
+#42 loading layer 83d5453afb71 5.45MB / 5.45MB 7.7s done
+#42 loading layer 2b1e5921f292 144B / 144B 7.4s done
+#42 loading layer 12e493329bc9 46.10MB / 46.10MB 7.4s done
+#42 loading layer 0d4d7dad91d6 3.22MB / 3.22MB 6.5s done
+#42 loading layer 65bfe25a76ed 200B / 200B 5.4s done
+#42 loading layer 580d1a993ced 1.25MB / 1.25MB 5.4s done
+#42 loading layer a21ac5095ddf 191B / 191B 5.4s done
+#42 loading layer 7a029c60da04 4.89MB / 4.89MB 5.3s done
+#42 loading layer 4ef7b65509cf 5.01MB / 5.01MB 5.3s done
+#42 loading layer 974b4d9ad054 10.48MB / 10.48MB 4.9s done
+#42 loading layer 1d4723960717 33.04MB / 33.04MB 3.9s done
+#42 loading layer 6d63be4d62a8 113.82MB / 113.82MB 2.4s done
+#42 loading layer d828ff3ac8ed 182B / 182B 0.4s done
+#42 loading layer dc7eee1a5d26 151B / 151B 0.4s done
+#42 loading layer 326bce540373 31.76MB / 31.76MB 0.3s done
+#42 loading layer 0881eed49069 464B / 464B 0.1s done
+#42 loading layer 90819f74b367 201.15kB / 201.15kB 0.1s done
+#42 DONE 32.9s
+
+#41 exporting to docker image format
+#41 sending tarball 37.0s done
+#41 DONE 39.3s

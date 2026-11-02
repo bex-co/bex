@@ -1,0 +1,10 @@
+test_actual_old_red_new_pass (__main__.Accounting.test_actual_old_red_new_pass) ... ok
+test_missing_extra_or_relocated_bootstrap_file (__main__.Accounting.test_missing_extra_or_relocated_bootstrap_file) ... ok
+test_no_compensated_payload_drop_duplicate_or_false_completion (__main__.Accounting.test_no_compensated_payload_drop_duplicate_or_false_completion) ... ok
+test_one_and_three_exact_source_shapes (__main__.Accounting.test_one_and_three_exact_source_shapes) ... ok
+test_receipt_number_path_size_hash_or_bound_mutations (__main__.Accounting.test_receipt_number_path_size_hash_or_bound_mutations) ... ok
+
+----------------------------------------------------------------------
+Ran 5 tests in 0.023s
+
+OK

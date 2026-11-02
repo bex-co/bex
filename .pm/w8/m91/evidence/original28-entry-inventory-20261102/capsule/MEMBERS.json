@@ -1,0 +1,367 @@
+{
+  "all_regular_no_links": true,
+  "archive": "source96.tar.gz",
+  "preservation": "All member rawbytes/mode/UID/GID and original canonical mtime are preserved.",
+  "regular_members": {
+    "ACTUAL-RECEIPT-DATE-BINDINGS.json": {
+      "bytes": 5782,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627589044639169,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/ACTUAL-RECEIPT-DATE-BINDINGS.json",
+      "sha256": "d557b5ed6190ea680a1ab2135d3b3b14da43a02df0923688be31c01064e46d26",
+      "uid": 501
+    },
+    "CONTROLLER-DELTA.diff": {
+      "bytes": 3610,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627589045429808,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/CONTROLLER-DELTA.diff",
+      "sha256": "5cffb37cc99f45e9dbafe5c7e2d00e8dc714aab11bf5aa18c878318f989ab46d",
+      "uid": 501
+    },
+    "EXECUTION-PLAN.json": {
+      "bytes": 7693,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627589045588778,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/EXECUTION-PLAN.json",
+      "sha256": "395b31acd18a0887b75761eae4f9b41e59f7d83e9534ea19c651a4471945f50c",
+      "uid": 501
+    },
+    "EXECUTION-VIEW-PLAN.json": {
+      "bytes": 76811,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627932683801154,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/EXECUTION-VIEW-PLAN.json",
+      "sha256": "c55350b0ca56e73f1404687caccc2e5fa5d19191702faa6ed242ed1d96b3ba19",
+      "uid": 501
+    },
+    "EXPECTED-RUNNER-MANIFEST.json": {
+      "bytes": 35112,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627932683385405,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/EXPECTED-RUNNER-MANIFEST.json",
+      "sha256": "6d0fbfecd3d496e1551b36d0d2bce44150e6a16262ec3fc974b0cb7c56ab4693",
+      "uid": 501
+    },
+    "HOST-CONTROLS-PLAN.json": {
+      "bytes": 1401,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627932684099612,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/HOST-CONTROLS-PLAN.json",
+      "sha256": "ba91447b4aed5d6b3f0ed0d80c930c02bae1eb6ca8ca2ada0d42ee3804cc0115",
+      "uid": 501
+    },
+    "MANIFEST.json": {
+      "bytes": 11070,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627932689319934,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/MANIFEST.json",
+      "sha256": "ecf4c8ff09940d683d8aa26c86d15bd078586ebfa28caae3e2d8e380aa8be181",
+      "uid": 501
+    },
+    "PASSED87-SOURCE-DELTA.diff": {
+      "bytes": 23677,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627932682516407,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/PASSED87-SOURCE-DELTA.diff",
+      "sha256": "c67991a9ff0cfe550c744e89223786b5412ebbf061be7dd9dcd8e531d52f20e5",
+      "uid": 501
+    },
+    "PREPARATION-RECEIPT.json": {
+      "bytes": 2303,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627932684570319,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/PREPARATION-RECEIPT.json",
+      "sha256": "bf94def5c010ca0c8a7621af8aab699d8a0cc30b1a5f9ec14ec2d35e6c6beae1",
+      "uid": 501
+    },
+    "PRESERVED87.json": {
+      "bytes": 960,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793626301282256369,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/PRESERVED87.json",
+      "sha256": "16e79a1993adc395eac297e1206c5290016c928ddd09f5efb2e514aef059002f",
+      "uid": 501
+    },
+    "README.md": {
+      "bytes": 3005,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627589045719745,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/README.md",
+      "sha256": "3291db111f225a64e7d879a5a9adae47f8b350882ecc21e5f27fa435f918e934",
+      "uid": 501
+    },
+    "ROOT-EXECUTION-APPROVAL.json": {
+      "bytes": 1236,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793628490984038341,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/ROOT-EXECUTION-APPROVAL.json",
+      "sha256": "35d03f300473569d0a17ba34c553648e1fde7fbbf14994a23d08771b30525ef9",
+      "uid": 501
+    },
+    "ROOT-SOURCE-PREP-ADMISSION.json": {
+      "bytes": 747,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793628718439775232,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/ROOT-SOURCE-PREP-ADMISSION.json",
+      "sha256": "042ef7c50a33973ac579fde00474f2b33100f9c32579a5cbd2a5c310b8788f8f",
+      "uid": 501
+    },
+    "SCHEMA.md": {
+      "bytes": 3279,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627932675349713,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/SCHEMA.md",
+      "sha256": "430dc9ef71051d035411282eac2612aae7d0111e1bc54bde641b6ab36a9b0b26",
+      "uid": 501
+    },
+    "SOURCE-MANIFEST.json": {
+      "bytes": 5596,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627932682410574,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/SOURCE-MANIFEST.json",
+      "sha256": "d7392ade2d08da34f8114fdad09aa4575305a62934cb4280aedfccf39246b3fa",
+      "uid": 501
+    },
+    "SOURCE.diff": {
+      "bytes": 71647,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627932682692948,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/SOURCE.diff",
+      "sha256": "b7830b3161d0fb1857fb187b49d574f24b6064ceb763588613dad3902ed6b71b",
+      "uid": 501
+    },
+    "controller.py": {
+      "bytes": 16271,
+      "gid": 0,
+      "mode": "0o755",
+      "mtime_ns": 1793627054313547998,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/controller.py",
+      "sha256": "5a397d50c29636f95b9568a582c74b24496e4d4aabd448ae7332edb9b3bcb3dc",
+      "uid": 501
+    },
+    "execution/ACTUAL-RECEIPT.json": {
+      "bytes": 3935,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793628640580909204,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/ACTUAL-RECEIPT.json",
+      "sha256": "ec9538565451145502812257a8421eee92514ba300daf295937744c4ebc31ca9",
+      "uid": 501
+    },
+    "execution/CALLS.json": {
+      "bytes": 3581,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793628529551895805,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/CALLS.json",
+      "sha256": "b522215f4270a8d1cef0ae2f550e540b939c62c608da95bcb1a03bd3deb4f482",
+      "uid": 501
+    },
+    "execution/CASE-RESULTS.json": {
+      "bytes": 885,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793628529552035471,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/CASE-RESULTS.json",
+      "sha256": "576ed56b62b718a1d54afe4c8f56694303fef5bd86d38f6d375b6b37eecfa8e8",
+      "uid": 501
+    },
+    "execution/EXECUTION-MANIFEST.json": {
+      "bytes": 5618,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793628640588880646,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/EXECUTION-MANIFEST.json",
+      "sha256": "03f8ffe71386c7b35f5f6f78db7a78e7050e3b1b6df27ca400f34467d1c7b616",
+      "uid": 501
+    },
+    "execution/PREFLIGHT.json": {
+      "bytes": 221,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793628517568925345,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/PREFLIGHT.json",
+      "sha256": "1c0463f8dedc61d973e61f3733b39a3af675e4ff64ce76d25164e4611fec0921",
+      "uid": 501
+    },
+    "execution/RESULT.json": {
+      "bytes": 8697,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793628529598593167,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/RESULT.json",
+      "sha256": "cd2c6d374c5e66c43ec9164709e9eea95091424081f961210b9cc01330ff5667",
+      "uid": 501
+    },
+    "execution/donor-mutant.readiness.py": {
+      "bytes": 38789,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793628529434490504,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/donor-mutant.readiness.py",
+      "sha256": "616daba2820b3319aecd018647eb2c99f2b11349c20bcc400682f05371abe101",
+      "uid": 501
+    },
+    "execution/donor-mutant.stderr": {
+      "bytes": 4313,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793628529516307378,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/donor-mutant.stderr",
+      "sha256": "cdf1b6ee9ad7b76e9a632923192a1b439002cb00d13c5ae47717fd79bebc2d07",
+      "uid": 501
+    },
+    "execution/full.stderr": {
+      "bytes": 19222,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793628529133143914,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/full.stderr",
+      "sha256": "8a2be3cd7899af8c4457759734da8278e44b20c1fab9e795d31fbd322ebe3c6c",
+      "uid": 501
+    },
+    "execution/full.summary.json": {
+      "bytes": 178,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793628529133286955,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/full.summary.json",
+      "sha256": "e42f7537aeaf9160410f15cdd1b71bcb49d17c1b9c4e26d5851c5eed02001613",
+      "uid": 501
+    },
+    "execution/groups.jsonl": {
+      "bytes": 896,
+      "gid": 0,
+      "mode": "0o600",
+      "mtime_ns": 1793628522739686154,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/groups.jsonl",
+      "sha256": "803df3e7f300ba869f1021da25c6936bbd51928fad6d662c81a36c6efc03c301",
+      "uid": 501
+    },
+    "execution/old-d3.stderr": {
+      "bytes": 1683,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793628529301831526,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/old-d3.stderr",
+      "sha256": "b42354adad939ebe57327bc969e8e672aff16c8f3dbf1ed1df877971bb35ca99",
+      "uid": 501
+    },
+    "execution/role-mutant.readiness.py": {
+      "bytes": 38830,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793628529314848333,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/role-mutant.readiness.py",
+      "sha256": "abe4199d197e392ea3c616391e33b5b59f17e4e9b3c408d43e05d61969b9df20",
+      "uid": 501
+    },
+    "execution/role-mutant.stderr": {
+      "bytes": 1340,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793628529395134918,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/role-mutant.stderr",
+      "sha256": "619f4a1049727ace814f6bc69e7964944719eefd1881ff7a2221faf529f9b506",
+      "uid": 501
+    },
+    "execution_view_builder.py": {
+      "bytes": 4811,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793626758967453090,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution_view_builder.py",
+      "sha256": "49028d70bacd5b6fe0de501dd467e56d01ccb54504fa31f30bab2b0d189167ac",
+      "uid": 501
+    },
+    "run_host_controls.py": {
+      "bytes": 3938,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627054314000121,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/run_host_controls.py",
+      "sha256": "313a589a19f80b17112732d4fbbb3f0b1dcc08da80485ab4397bc4f9903820f8",
+      "uid": 501
+    },
+    "sandbox.sb": {
+      "bytes": 2087,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793626301281277332,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/sandbox.sb",
+      "sha256": "6fe503c558de235a7215a8c1ebc49be1e9c9f441fac98cdeb662b940c0dea081",
+      "uid": 501
+    },
+    "source/freshness_append.py": {
+      "bytes": 5095,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793626546867970712,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/source/freshness_append.py",
+      "sha256": "d7b07324502a2b3a5ef05f17bf0a27df3a54022e00654a4a6f6734ee78c917d9",
+      "uid": 501
+    },
+    "source/qualification_fixtures.py": {
+      "bytes": 16670,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627666959869159,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/source/qualification_fixtures.py",
+      "sha256": "7a03af4311044d1be6eabd4a7c117daff90b2923bebef9ee307156d7d7953f66",
+      "uid": 501
+    },
+    "source/readiness.py": {
+      "bytes": 38837,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793626546867778171,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/source/readiness.py",
+      "sha256": "bb1f0182d8ab33345ea4d61df5ea72d4c9fc837a5975f548945ea9b44dabeb61",
+      "uid": 501
+    },
+    "source/test_d3_readiness.py": {
+      "bytes": 10907,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793626546868492959,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/source/test_d3_readiness.py",
+      "sha256": "289a78f3dfae3df12076b144436198dd2b63e11f7a55de73970ed074e9e8e755",
+      "uid": 501
+    },
+    "source/test_execution_view.py": {
+      "bytes": 5017,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793627799958202722,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/source/test_execution_view.py",
+      "sha256": "c0e430b415b6128b646505934df457b610531b8aa80ef3ca72fa178838ce3756",
+      "uid": 501
+    },
+    "source/test_inventory_append.py": {
+      "bytes": 5257,
+      "gid": 0,
+      "mode": "0o644",
+      "mtime_ns": 1793626662774604642,
+      "path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/source/test_inventory_append.py",
+      "sha256": "24b5a64443410f94a9adde6f46afb1be2306aabec9e0369ca75f11d4a812f530",
+      "uid": 501
+    }
+  }
+}

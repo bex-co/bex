@@ -1,0 +1,14 @@
+{
+  "exit": 0,
+  "stop": null,
+  "group_absent": true,
+  "seconds": 57.494,
+  "minimum_free": 23787454464,
+  "arch": "amd64",
+  "artifact_id": 13150542707,
+  "signed_URL_retained": false,
+  "stdout_bytes": 133,
+  "stderr_bytes": 0,
+  "stdout_sha256": "cf95810873a3ea04464ba1929ddaa622c1d8ee0a6abe9290812d49e5831c2df5",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,12 @@
+{
+  "at": "2026-11-02T15:16:05.958741+00:00",
+  "status": "ROOT_VERIFIED_CI_REPAIR_PUBLICATION_RAW_BYTES",
+  "copyplan_sha256": "33ab84f60e513c7e1eb3ac3a05b1d5ffa7a0a03805f316c8532ce7f605a1ee84",
+  "payloads": 7,
+  "new_regular_archive_members": 51,
+  "archive_original_aliases": 55,
+  "immutable_source_body_aliases": 6,
+  "all_original_bytes_modes_and_member_UID_GID_verified": true,
+  "runtime_claim": false,
+  "initial_read_only_schema_assumption": "61 total logical locations =55 archive aliases+6 Git source aliases; corrected before any copy."
+}

@@ -1,0 +1,35 @@
+{
+  "files": [
+    {
+      "path": "AUDITOR.diff",
+      "bytes": 3119,
+      "sha256": "fe5404e5f14fe5f55e7cf8f042a4d4196693430b437395a37f413bfbfe9f5719"
+    },
+    {
+      "path": "PLAN.json",
+      "bytes": 1792,
+      "sha256": "f53dbe79954a54f18b7386dd181b12e1c7851d0cd1bf4cee994752119c6f5418"
+    },
+    {
+      "path": "STATIC-SCOPE.json",
+      "bytes": 484,
+      "sha256": "1ef51d1513fadb98382c5a20844a5ee15deb2accc83e0201d7620ba428050a4e"
+    },
+    {
+      "path": "audit-bootstrap-accounting-v2.py",
+      "bytes": 32160,
+      "sha256": "c7e70707760ccd39bc4121436194ddc61fca28f8de9895f6b486b8ecf23a51e0"
+    },
+    {
+      "path": "before-audit.py",
+      "bytes": 30700,
+      "sha256": "640573914435f685bec3f786ac1cb9df40a5ef49a3cbe70d05c17bf345e4c12e"
+    },
+    {
+      "path": "test_accounting.py",
+      "bytes": 5708,
+      "sha256": "cd045b4689390a57fd91520d3f7a6e33d1d81ce2bd103c067d32895cbb581683"
+    }
+  ],
+  "total_bytes": 73963
+}

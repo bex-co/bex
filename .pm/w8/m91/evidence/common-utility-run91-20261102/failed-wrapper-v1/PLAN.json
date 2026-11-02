@@ -1,0 +1,49 @@
+{
+  "status": "INERT_AWAIT_ROOT_EXACT_INVOCATION_APPROVAL",
+  "guard": {
+    "path": "/private/tmp/bex-w8-run91-audit-execution-proposal-20261102-fzuabo6k/run_audit.py",
+    "sha256": "0944a99ed60043e15ef0e3bcf5b692c1799ad2dd71fdee9b7fc94c8454b560c3",
+    "proposed_not_previously_retained": true
+  },
+  "bounds": {
+    "whole_seconds": 60,
+    "each_output_pair_max_bytes": 4194304,
+    "physical_floor_plus_margin": 8623489024,
+    "reaper_sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03",
+    "offline": "childPython audit hook rejects socket events and all childprocesses except4 exact read-only Git argv shapes"
+  },
+  "exact_steps": [
+    {
+      "label": "controls",
+      "script": "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting.py"
+    },
+    {
+      "label": "bind",
+      "script": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/bind_audit.py"
+    },
+    {
+      "label": "audit",
+      "script": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/audit-bootstrap-accounting-v2.py"
+    }
+  ],
+  "only_pre_step_file_copy": "copy newc7e707 source to fresh bymj/audit-bootstrap-accounting-v2.py; never overwrite oldaudit",
+  "metadata_names_already_present": [
+    "run-final.json",
+    "jobs-final.json",
+    "artifacts-final.json",
+    "job-amd64.log",
+    "BINDING.json",
+    "intake/INPUTS.json"
+  ],
+  "no_metadata_moves_or_normalization": true,
+  "bind_outputs_once": "ACTUAL-EXTRACTION-BOUND.json freshactual originalMANIFEST/ZIP/extraction; refuse overwrite",
+  "auditor_outputs": [
+    "SOURCE-CUSTODY.json",
+    "REVIEW.json"
+  ],
+  "no_repo_or_original_member_writes": true,
+  "date_limit": "Exact7ad/run91 content only; later2CI fixes change301 and require next sourcebaseline; no candidate/currentcomplete update",
+  "before_control_steps": "sixfrozen accountingpayload SHA/size checked; exactaudit/bind/reaper; 8GiB+32MiB freshfit; outputsabsent",
+  "future_command": "/opt/homebrew/bin/python3.14 -B /private/tmp/bex-w8-run91-audit-execution-proposal-20261102-fzuabo6k/run_audit.py",
+  "executed": false
+}

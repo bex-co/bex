@@ -1,0 +1,16 @@
+{
+  "at": "2026-11-02T14:41:56.309660+00:00",
+  "members": 358,
+  "declared_bytes": 140675562,
+  "conservative_allocated_bytes": 143052800,
+  "observed_free": 23781744640,
+  "required_free": 8766541824,
+  "capacity_fits": true,
+  "bootstrap_member_names": [
+    "bootstrap-1.stdout.log",
+    "bootstrap-1.stderr.log",
+    "bootstrap-2.stderr.log",
+    "bootstrap-2.stdout.log"
+  ],
+  "no_audit_execution": true
+}

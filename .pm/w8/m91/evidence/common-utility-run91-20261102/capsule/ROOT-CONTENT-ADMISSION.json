@@ -1,0 +1,20 @@
+{
+  "at": "2026-11-02T14:58:32.216720+00:00",
+  "status": "ROOT_ADMITTED_DATED_7ad_RUN91_AMD64_COMPLETE_UTILITY_CONTENT",
+  "actual_receipt_sha256": "d921572b6bbee9984227ae7aec07831c9ff1be4c6792e6da8605f872f0a1390a",
+  "review_sha256": "73ab6a2203bc0edfc4111f9e99ba33e885fe0d36613182c8e03aa3fd4bea049c",
+  "actual_source": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+  "run": 41456212207,
+  "job": 125315558311,
+  "artifact": 13150542707,
+  "original_members": 358,
+  "all_manifest_payloads_independently_rehashed": 357,
+  "all_intake_manifest_files_independently_checked": 403,
+  "full_source301_capture_match": true,
+  "full_content_review_and_guard_receipt_read": true,
+  "same_four_positive_13_original_39_HTTP_five_omission_supplier_default_SBOM_cleanup_oracles": true,
+  "bootstrap_retry_accounting_only": true,
+  "failed_first_wrapper_and_old_PID_identity_limit_retained": true,
+  "current_baseline_authority": false,
+  "reason": "Two reviewed CI test repairs alter the tracked301 source; new full AMD utility baseline is required before candidate/family reuse. No production/candidate/contract mutation authorized by this admission."
+}

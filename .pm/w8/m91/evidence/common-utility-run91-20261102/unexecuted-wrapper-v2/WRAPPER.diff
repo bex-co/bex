@@ -1,0 +1,40 @@
+--- frozen0944/run_audit.py
++++ wrapper-v2/run_audit.py
+@@ -6,12 +6,12 @@
+ S = Path("/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja")
+ HERE = Path(__file__).resolve().parent
+ REAP = Path("/private/tmp/bex-w8-common-predeploy-controller-v3-source-20261102-cu0jri4k/retained-v4.py")
+-def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
++def sha(p): return hashlib.sha256(Path(p).read_bytes()).hexdigest()
+ assert sha(REAP) == "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03"
+ assert sha(S/"audit-bootstrap-accounting-v2.py") == "c7e70707760ccd39bc4121436194ddc61fca28f8de9895f6b486b8ecf23a51e0"
+ assert sha(R/"bind_audit.py") == "794ca9d431227472df6fb746b3840b78cfce91a9c01919515da17085c2fb65ab"
+ assert shutil.disk_usage(R).free > (8<<30)+(32<<20)
+-for n in ("ACTUAL-EXTRACTION-BOUND.json", "REVIEW.json", "SOURCE-CUSTODY.json", "audit-bootstrap-accounting-v2.py"):
++for n in ("ACTUAL-EXTRACTION-BOUND.json", "REVIEW.json", "SOURCE-CUSTODY.json"):
+     assert not (R/n).exists() and not (R/n).is_symlink()
+ m = json.loads((S/"MANIFEST.json").read_bytes())
+ for row in m["files"]:
+@@ -19,9 +19,9 @@
+     assert p.is_file() and not p.is_symlink() and p.stat().st_size==row["bytes"] and sha(p)==row["sha256"]
+ spec=importlib.util.spec_from_file_location("exact_reviewed_reaper",REAP)
+ v=importlib.util.module_from_spec(spec);spec.loader.exec_module(v)
+-# Fresh own filename only: frozen 64057391 auditor and all original artifacts remain.
++# The first wrapper left only this exact owned source copy; never overwrite it.
+ target=R/"audit-bootstrap-accounting-v2.py"
+-with target.open("xb") as f: f.write((S/target.name).read_bytes())
++assert target.is_file() and not target.is_symlink() and sha(target)==sha(S/target.name)
+ protected=[S/x["path"] for x in m["files"]]+[REAP,R/"audit.py",R/"bind_audit.py",target,
+  R/"BINDING.json",R/"jobs-final.json",R/"artifacts-final.json",R/"job-amd64.log"]
+ before={str(p):sha(p) for p in protected}
+@@ -43,7 +43,9 @@
+             or (len(tail)==2 and tail[0]=="show" and tail[1].startswith(SOURCE+":")))
+         if not ok: raise RuntimeError("offline audit: non-read-only-Git child denied")
+ sys.addaudithook(guard)
+-runpy.run_path(sys.argv[1],run_name="__main__")
++script=sys.argv[1]
++sys.argv=[script]
++runpy.run_path(script,run_name="__main__")
+ """
+ commands=[("controls",S/"test_accounting.py"),("bind",R/"bind_audit.py"),("audit",target)]
+ record={"complete":False,"steps":[],"stop":None,"groups_absent":True,"scope":"DATED7ad utility content only; no current baseline/adoption authority"}
