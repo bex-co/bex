@@ -207,8 +207,20 @@ func servesSavedImage(app *appv1alpha1.App, served string) bool {
 	if served == app.Spec.Image {
 		return true
 	}
-	network := app.Status.ServingNetwork
-	return app.Spec.HasImagePorts() && network != nil && network.Image == served && network.Source == app.Spec.Image
+	if !app.Spec.HasImagePorts() {
+		return false
+	}
+	// The candidate network counts too: a first release is recorded as the
+	// active revision once its pods are Ready (w4/405), a few seconds before
+	// the serving network is promoted, and the served digest was already
+	// resolved from exactly the saved tag. Without it a new service reported
+	// "saved changes aren't live yet" for that window (w4/456).
+	for _, network := range []*appv1alpha1.ImageNetworkStatus{app.Status.ServingNetwork, app.Status.ImageNetwork} {
+		if network != nil && network.Image == served && network.Source == app.Spec.Image {
+			return true
+		}
+	}
+	return false
 }
 
 // undeployedChangesReason names why the serving release differs from the

@@ -93,6 +93,10 @@ type patchServiceRequest struct {
 	// can change it the same way (w4/m121). serviceDetails.port wins when both
 	// are sent.
 	Port *int32 `json:"port"`
+	// IdleTTLSeconds mirrors where the REST read returns it (the service's top
+	// level) so a read-modify-write round trip works (w4/455).
+	// serviceDetails.idleTTLSeconds wins when both are sent.
+	IdleTTLSeconds *int32 `json:"idleTTLSeconds"`
 	// Image is present when the official CLI updates an image-backed service.
 	Image  *imageRef `json:"image"`
 	Branch *string   `json:"branch"`
@@ -939,10 +943,14 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 		renderSubdomainPolicy: req.RenderSubdomainPolicy,
 		displayName:           req.DisplayName,
 		port:                  req.Port,
+		idleTTL:               req.IdleTTLSeconds,
 	}
 	var nestedRegistryCredentialID json.RawMessage
 	if req.ServiceDetails != nil {
-		f.plan, f.idleTTL = req.ServiceDetails.Plan, req.ServiceDetails.IdleTTLSeconds
+		f.plan = req.ServiceDetails.Plan
+		if req.ServiceDetails.IdleTTLSeconds != nil {
+			f.idleTTL = req.ServiceDetails.IdleTTLSeconds
+		}
 		f.maxShutdownDelay = req.ServiceDetails.MaxShutdownDelaySeconds
 		if req.ServiceDetails.HealthCheckPath != nil {
 			f.healthCheckPath = req.ServiceDetails.HealthCheckPath
