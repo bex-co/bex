@@ -53,14 +53,20 @@ func pinErlangVersion(ctx context.Context, exact ExactImageResolver, choice Nati
 	}
 	request := choice.erlang
 	prefix := elixir + "-erlang-" + otpName(request)
-	if strings.Count(request, ".") == 3 {
-		// A four-part request names one release. Do not page through its RCs,
-		// longer numeric neighbors, or Alpine/Ubuntu builds to find Debian.
-		prefix += "-debian-"
+	// Separate the base release's Debian builds from its numeric descendants.
+	// Both can match a partial request; RCs and the base release's other OS
+	// families cannot, and need not consume Hub's paginated search budget.
+	prefixes := []string{prefix + "-debian-"}
+	if strings.Count(request, ".") < 3 {
+		prefixes = append(prefixes, prefix+".")
 	}
-	tags, err := exact.ListTags(ctx, hexpmElixirRepo, prefix)
-	if err != nil {
-		return NativeChoice{}, fmt.Errorf("look up Elixir %s on Erlang/OTP %s: %w", elixir, request, err)
+	var tags []string
+	for _, search := range prefixes {
+		matching, err := exact.ListTags(ctx, hexpmElixirRepo, search)
+		if err != nil {
+			return NativeChoice{}, fmt.Errorf("look up Elixir %s on Erlang/OTP %s: %w", elixir, request, err)
+		}
+		tags = append(tags, matching...)
 	}
 	// The newest hexpm build of each OTP release the request names.
 	type build struct{ date, tag string }

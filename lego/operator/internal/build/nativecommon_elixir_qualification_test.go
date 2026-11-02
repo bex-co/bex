@@ -65,8 +65,8 @@ func commonElixirExpectations(choices []NativeChoice, tc commonElixirCase) ([]by
 		}
 		env[key] = value
 	}
-	if tc.otp != "" && env["OTP_VERSION"] != tc.otp {
-		return nil, fmt.Errorf("exact OTP fixture resolved %s instead of %s", env["OTP_VERSION"], tc.otp)
+	if tc.otp != "" && (!otpRelease.MatchString(env["OTP_VERSION"]) || !otpMatches(env["OTP_VERSION"], tc.otp)) {
+		return nil, fmt.Errorf("resolved OTP %s does not satisfy fixture request %s", env["OTP_VERSION"], tc.otp)
 	}
 	node, err := commonImageVariable(choices[1].imageEnv, "NODE_VERSION")
 	if err != nil {
@@ -255,5 +255,52 @@ func TestCommonElixirOutputOracle(t *testing.T) {
 	command := exec.CommandContext(ctx, "python3", "testdata/native-elixir-qualification/check_test.py", "-v")
 	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("Elixir fixture output-oracle controls: %v\n%s", err, output)
+	}
+}
+
+func TestCommonElixirRequestedOTPMatchesResolvedMetadata(t *testing.T) {
+	for _, tc := range []struct {
+		request, resolved string
+		accept            bool
+	}{
+		{"28.0", "28.0.4", true},
+		{"28.0.0", "28.0.0.1", true},
+		{"28.0.2", "28.0.2.1", true},
+		{"28.0.2.1", "28.0.2.1", true},
+		{"28.0.0.0", "28.0", true},
+		{"28.0", "28.1", false},
+		{"28.0.2", "28.0.3", false},
+		{"28.0.2.1", "28.0.2.2", false},
+		{"28.0.0.0", "28.0.0.1", false},
+		{"28.0", "27.0.4", false},
+		{"28.0", "28.0-rc.1", false},
+		{"28.0", "28.0.invalid", false},
+	} {
+		t.Run(tc.request+"/"+tc.resolved, func(t *testing.T) {
+			fixture := commonElixirCase{name: "resolved-metadata", version: "1.18.4", elixir: "1.18.4", otp: tc.request}
+			choices := []NativeChoice{
+				{Line: fixture.version, imageEnv: []string{"OTP_VERSION=" + tc.resolved, "REBAR_VERSION=2.6.4", "REBAR3_VERSION=3.27.0"}},
+				{imageEnv: []string{"NODE_VERSION=24.22.1"}},
+			}
+			raw, err := commonElixirExpectations(choices, fixture)
+			if !tc.accept {
+				if err == nil || raw != nil {
+					t.Fatalf("wrong resolved OTP accepted: request=%s resolved=%s", tc.request, tc.resolved)
+				}
+				return
+			}
+			must(t, err)
+			var expected struct {
+				OTP string            `json:"otp"`
+				Env map[string]string `json:"env"`
+			}
+			must(t, json.Unmarshal(raw, &expected))
+			if expected.OTP != tc.resolved || expected.Env["OTP_VERSION"] != tc.resolved {
+				t.Fatal("runtime/header/NIF expectation lost the exact selected metadata version")
+			}
+			if commonElixirEnvironment(fixture)["ERLANG_VERSION"] != tc.request {
+				t.Fatal("fixture rewrote the authored OTP request to satisfy its expectation")
+			}
+		})
 	}
 }
