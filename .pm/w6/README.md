@@ -37,7 +37,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 - [x] **m151** — [`render-v1` runtime pods run in a pod user namespace (`hostUsers: false`)](done/m151/README.md) (7 tasks) ← promoted from w6/086 (2026-10-21) — **done 2026-10-21**, live in every workspace
 - [x] **m152** — [A disk owner sees when nightly snapshots are not running](done/m152/README.md) (6 tasks) ← promoted from 094 (w6/089 finding, 2026-10-22)
-- [ ] **m155** — [Image builds run on their own runner pool, so production deploys never wait behind them](m155/README.md) (8 tasks) ← user decision D4 2026-11-01, after w6/099 waited 11h17m to deploy behind native image builds
+- [x] **m155** — [Image builds run on their own runner pool, so production deploys never wait behind them](done/m155/README.md) (8 tasks) ← user decision D4 2026-11-01 — **done 2026-11-02**: `bex-build` pool live (block-eden-mono `aa911b0693`, bex `87f9e7b6a`); a deploy job started in 3 s while the common native build ran on bex-build
 - [x] **m153** — [Production cluster access survives a control-plane roll](done/m153/README.md) (9 tasks) ← 2026-10-24 diagnosis (w5/174 roll broke every kubeconfig fetch) — **done 2026-10-29**: stable CP host key via the KCP bootstrap (`192c2c442`), wildcard pin; a full roll fetched with no pin edit (runs 40844324975, 40848838767)
 - [x] **m154** — [A failed nightly disk backup says why](done/m154/README.md) (7 tasks) ← 2026-10-24 diagnosis of w6/089 (three nights of silent dskbak- failures)
 - [x] **m150** — [`render-v1` runs `io_uring` and unprivileged-userns workloads, as on Render (seccomp slice)](done/m150/README.md) (8 tasks) ← promoted from w6/085 (2026-10-20), ADR008 § Render parity first — **done 2026-10-21**, live in production
@@ -195,6 +195,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **100** — [Argo CD comparisons time out on git (60 s) intermittently, so deploy pins stall and the proxy gate fails](100.md) — filed 2026-11-02 from m155 t005.
 - [x] **097** — [`bex ea objects` returns 404 in every region](done/097.md) — done 2026-10-29: not offered (signed ADR018 divergence, user decision); API says so live (`e8d1df424`), CLI refusal ships with the next bex-cli release.
 - [x] **098** — [A control-plane roll stalls on a Hetzner capacity error until someone deletes the Machine](done/098.md) — done 2026-10-29: CAPH already self-remediates a server-less CP Machine once the MHC marks it unhealthy; CP `nodeStartupTimeout` 15m → 8m bounds the stall (live recurrence not observed yet).
 - [x] **096** — [SSH gateway exec at ~43 KB/s and drops a quiet session](done/096.md) — done 2026-10-29: gateway tail truncation fixed live (`e934c2842`); 10-min quiet exec stays up; throughput ~833 KB/s ≈ the API path. Residual large-output loss below the gateway → 099.

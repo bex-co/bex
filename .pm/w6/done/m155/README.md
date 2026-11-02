@@ -1,6 +1,6 @@
 # w6 · m155 — Image builds run on their own runner pool, so production deploys never wait behind them
 
-**Worker:** worker6 **Goal:** a production deploy starts within minutes of a green main even while hours-long platform image builds run. **Status:** todo (t001–t004 done; t005 live proof next)
+**Worker:** worker6 **Goal:** a production deploy starts within minutes of a green main even while hours-long platform image builds run. **Status:** done (2026-11-02)
 
 ## Tasks (in order)
 
@@ -10,10 +10,10 @@
 | t002 | [Teach the workflow validator the `bex-build` trust class](done/t002.md) — **DONE** | 45m | — |
 | t003 | [Move the image-build jobs onto `bex-build`](done/t003.md) — **DONE** | 30m | w6/m155/t002 |
 | t004 | [Record the third pool in ADR019/ADR083 and the runner README](done/t004.md) — **DONE** | 20m | w6/m155/t003 |
-| t005 | [Prove a deploy no longer waits behind a native build](t005.md) | 30m | w6/m155/t001, w6/m155/t003 |
-| t006 | [Simplify](t006.md) | 15m | w6/m155/t005 |
-| t007 | [Test coverage](t007.md) | 20m | w6/m155/t006 |
-| t008 | [Closeout](t008.md) | 10m | w6/m155/t007 |
+| t005 | [Prove a deploy no longer waits behind a native build](done/t005.md) — **DONE** | 30m | w6/m155/t001, w6/m155/t003 |
+| t006 | [Simplify](done/t006.md) — **DONE** | 15m | w6/m155/t005 |
+| t007 | [Test coverage](done/t007.md) — **DONE** | 20m | w6/m155/t006 |
+| t008 | [Closeout](done/t008.md) — **DONE** | 10m | w6/m155/t007 |
 
 ## Definition of done
 
@@ -37,3 +37,10 @@
 - **t002:** `scripts/github-actions-validate.sh` checks 5–6 accept `bex-build`. A `bex-build` job may hold only GITHUB_TOKEN (case-insensitive), no other secret or the whole `secrets` object, no `environment:`, no `write-all`, must carry a job-level `if: github.ref == 'refs/heads/main'` (optionally `&& …`), and rejects pull_request. A caller must not pass `secrets:` into a reusable workflow that has a `bex-build` job. Separately, the whole-object `toJSON(secrets)` now counts as credentialed for every pool, closing an older gap. 16 red/green cases cover these rules.
 - **t003:** `native-base-image`, `cnb-run-image`, `pg-operand-image` (matrix + build, build job gained an explicit main gate), `hcloud-csi-image`, `kubelet-artifact` and `log-shipper-image` now run on `bex-build`. `deploy.yml` build/deploy and all credentialed jobs stay on `bex-production`. The 139 `.github/scripts` workflow tests pass.
 - **t004:** ADR019 §Decision 5, ADR083 and `docs/runbooks/runner-pool-relabel.md` describe three pools.
+
+## t005 result and closeout — 2026-11-02 (DoD met)
+
+- **Builds landed on the new pool:** `87f9e7b6a` triggered `native-common-image` run 41410452916. Its `publish / build (common-bookworm)` ran on `bex-build` runner `0470aa849d3b` from 08:28:21 to 08:53:04 UTC. Both `bex-build` runners were busy at 08:05.
+- **Deploy did not wait (DoD 4):** during that build, deploy run 41401407222's `deploy` job was created at 08:45:36 and started at 08:45:39 (**3 s**) on `bex-production` runner `45e29ad2967e`. Deploy run 41414289517's `build` job was created at 09:24:06 and started at 09:24:08 (2 s) on `45e29ad2967e`. Before the move, the same run's 41401407222 `build` job had queued 16 min (07:40:10 → 07:56:31) while older native runs held the production pool.
+- **Unrelated red found during the proof:** run 41401407222's deploy job failed its `wait for PROXY-compatible datastore proxies` gate. `bex-pg-sni-proxy` was still on `@f9ca5cd…`, want `@e1b8dff…`, because Argo CD could not compare: `ComparisonError … DeadlineExceeded`, with controller logs showing `git_ms: 60002` on several apps while others compared in <1 s. The repo-server's 556 `GenerateManifest` calls in 2 h were all OK (max 13.9 s). This is intermittent git-over-SSH latency to github.com, not a repo defect. Filed as w6/100.
+- **t006/t007:** the review's bypasses were fixed before ship (whole-object `secrets`, lookalike/ORed/commented main gates, caller `secrets:`) and covered by the 16 validator cases. `runner-config.test.sh` covers the three pools.
