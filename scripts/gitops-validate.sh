@@ -281,7 +281,7 @@ if [ "$onbex_issuer_shape" != 'https://acme-v02.api.letsencrypt.org/directory|1|
 fi
 if grep -qiF -- '--providers.kubernetescrd.defaulttlsresourcesnamespace=' \
   deploy/gitops/base/values/traefik.values.yaml; then
-  echo "FAIL: pinned Traefik v3.7.5 does not support defaultTLSResourcesNamespace" >&2
+  echo "FAIL: defaultTLSResourcesNamespace moves TLSStore lookup out of the trusted traefik namespace; it needs its own review (w8/m145)" >&2
   fail=1
 fi
 prod_tls_app="$(yq -N '

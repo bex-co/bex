@@ -158,7 +158,7 @@ func TestTraefikRouterNamesPinNormalizedCollisionHashes(t *testing.T) {
 		"default-web-foo-bar-ef6c149f61f9c8903f31@kubernetes",
 	}
 	if len(names) != len(want) || names[0] != want[0] || names[1] != want[1] {
-		t.Fatalf("collision names: got %v, want pinned Traefik v3.7.5 names %v", names, want)
+		t.Fatalf("collision names: got %v, want pinned Traefik names %v", names, want)
 	}
 }
 
