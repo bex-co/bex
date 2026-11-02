@@ -481,13 +481,13 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 - [x] **359** — [A blank service name over REST is refused as "already in use" while GraphQL and the dashboard clear it](done/359.md) — **DONE 2026-10-19 (loopx w4):** live at `108cdb3ac`: a blank REST name answers 200 with the creation name; a taken name still 409.
 
-- [ ] **358** — [A Blueprint `ipAllowList` can restart and empty a Persistence Off Key Value without the confirmation](358.md) (45m) — **TODO（2026-11-01 解除阻塞：plan 阶段拒绝并给出有名字的错误）**. Filed by w4/m233.
+- [x] **358** — [A Blueprint `ipAllowList` can restart and empty a Persistence Off Key Value without the confirmation](done/358.md) (45m) — **DONE 2026-11-02**.
 
 - [x] **357** — [The Docker Command editor's toasts say "Start Command"](done/357.md) — **DONE 2026-10-19 (loopx w4):** live at `108cdb3ac`: an image service's save toasts "Docker Command updated.".
 
 - [x] **356** — [Postgres Recover copies a protected environment's data out of its environment and allow-lists](done/356.md) — **DONE 2026-10-19 (loopx w4):** a recovery joins the source's environment (or project) and copies its allow-list and external access, as Render does.
 
-- [ ] **355** — [`aclBearing` treats the default allow-all as admin-managed and deny-all as not](355.md) (45m) — **TODO（2026-11-01 解除阻塞：ACL-bearing = 受保护 或 真有限制的白名单；移入受保护仅限管理员）**. Filed by w4/m232.
+- [x] **355** — [`aclBearing` treats the default allow-all as admin-managed and deny-all as not](done/355.md) (45m) — **DONE 2026-11-02**.
 
 - [x] **354** — [Coverage record: environment-group values reach the process and leave it on unlink or delete](done/354.md) ← live `/qa-find-bugs w4` pass 17af14, 2026-10-19 UTC; a record, not work to do. Create+link, Save only (no deploy, pending notice on Deploys and Environment), Save and deploy (`envUpdated` deploy), unlink and delete-while-linked each matched what the running process served.
 

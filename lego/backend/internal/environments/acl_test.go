@@ -776,3 +776,25 @@ func requirePlanCode(t *testing.T, err error, code, feature string) {
 		t.Fatalf("want params.feature %s requiredPlan pro, got %v", feature, coded.Params)
 	}
 }
+
+// w4/355: the seeded allow-all default restricts nothing, an explicitly emptied
+// list is deny-all and does, and a narrowing list does.
+func TestACLBearingIgnoresTheAllowAllDefaultAndCountsDenyAll(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		env  store.Environment
+		want bool
+	}{
+		{"seeded default", store.Environment{IPAllowList: core.DefaultEnvironmentAllowList()}, false},
+		{"render-style allow all", store.Environment{IPAllowList: []core.IPAllowListEntry{{CIDRBlock: "0.0.0.0/0"}}}, false},
+		{"explicit deny-all", store.Environment{IPAllowList: []core.IPAllowListEntry{}}, true},
+		{"narrowing list", store.Environment{IPAllowList: []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}}}, true},
+		{"narrowing plus allow all", store.Environment{IPAllowList: []core.IPAllowListEntry{{CIDRBlock: "10.0.0.0/8"}, {CIDRBlock: "0.0.0.0/0"}}}, false},
+		{"protected", store.Environment{ProtectedStatus: ProtectedStatusProtected, IPAllowList: core.DefaultEnvironmentAllowList()}, true},
+		{"isolated", store.Environment{NetworkIsolationEnabled: true, IPAllowList: core.DefaultEnvironmentAllowList()}, true},
+	} {
+		if got := aclBearing(tc.env); got != tc.want {
+			t.Errorf("%s: aclBearing = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}
