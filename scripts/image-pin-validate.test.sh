@@ -171,6 +171,38 @@ FROM_LITERAL="ghcr.io/example/app:v1.2.3@$DIGEST" perl -pi \
   -e 'BEGIN { $f = $ENV{FROM_LITERAL} } s/\Q$f\E/controller:latest/' "$tree/svc/deployment.yaml"
 expect_red "exemptions do not leak into other trees" "$tree" "controller:latest"
 
+# The local common check resolves its one reviewed build argument by digest.
+# Exercise canonical path matching in a disposable Git tree, then prove neither
+# another placeholder nor the same placeholder in another file inherits it.
+canonical="$tmp/canonical-common"
+mkdir -p "$canonical/scripts" "$canonical/deploy/native-common"
+cp "$guard" "$canonical/scripts/image-pin-validate.sh"
+# shellcheck disable=SC2016 # the Docker build argument must remain literal
+printf 'ARG COMMON_IMAGE\nFROM ${COMMON_IMAGE}\n' >"$canonical/deploy/native-common/check-local.Dockerfile"
+git -C "$canonical" init -q
+git -C "$canonical" add scripts/image-pin-validate.sh deploy/native-common/check-local.Dockerfile
+out="$(env -u IMAGE_PIN_TREE bash "$canonical/scripts/image-pin-validate.sh" --list 2>&1)" || {
+  echo "FAIL [canonical common placeholder]: $out" >&2
+  failures=$((failures + 1))
+}
+for variant in wrong-placeholder wrong-path; do
+  if [ "$variant" = wrong-placeholder ]; then
+    # shellcheck disable=SC2016 # the Docker build argument must remain literal
+    printf 'ARG BASE_IMAGE\nFROM ${BASE_IMAGE}\n' >"$canonical/deploy/native-common/check-local.Dockerfile"
+  else
+    # shellcheck disable=SC2016 # the Docker build argument must remain literal
+    printf 'ARG COMMON_IMAGE\nFROM ${COMMON_IMAGE}\n' >"$canonical/deploy/native-common/check-local.Dockerfile"
+    cp "$canonical/deploy/native-common/check-local.Dockerfile" "$canonical/deploy/native-common/other.Dockerfile"
+    git -C "$canonical" add deploy/native-common/other.Dockerfile
+  fi
+  rc=0
+  out="$(env -u IMAGE_PIN_TREE bash "$canonical/scripts/image-pin-validate.sh" 2>&1)" || rc=$?
+  if [ "$rc" -eq 0 ] || [[ "$out" != *'FAIL: image references must be digest-pinned'* ]]; then
+    echo "FAIL [common exemption $variant]: $out" >&2
+    failures=$((failures + 1))
+  fi
+done
+
 # A scan that matches nothing is a broken scan, not a clean tree.
 mkdir -p "$tmp/empty"
 expect_red "empty scan fails rather than passing" "$tmp/empty" "no image references found"
