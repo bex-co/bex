@@ -52,7 +52,7 @@ func commonNativeRuntimeChoice(ctx context.Context, exact ExactImageResolver, ru
 	}
 	choice.runtimeCheck = "RUN --network=none [ \"$(" + command + ")\" = " + version + " ]\n"
 	if runtime == nativeNodeRuntime && commonNodeBackport(version) {
-		if choice.primaryImage == "" {
+		if choice.primaryImage == "" && len(nativeRuntimeArtifacts) == 0 {
 			checksum, err := exact.NodeSourceDigest(ctx, version)
 			if err != nil {
 				return NativeChoice{}, fmt.Errorf("read exact Node source identity: %w", err)
@@ -66,7 +66,12 @@ func commonNativeRuntimeChoice(ctx context.Context, exact ExactImageResolver, ru
 				return NativeChoice{}, err
 			}
 		}
-		choice.runtimeCheck += "RUN --network=none /usr/local/bin/node /usr/share/bex-security/node-check.js\n"
+		// A populated map is the bounded production backport catalog. Other
+		// exact patches keep their selected official runtime; do not compile or
+		// claim a fixed bundled decoder for a runtime outside that verdict.
+		if choice.primaryImage != "" {
+			choice.runtimeCheck += "RUN --network=none /usr/local/bin/node /usr/share/bex-security/node-check.js\n"
+		}
 	}
 	if runtime == nativeNodeRuntime && nativeLegacyPnpmLine(version) {
 		// Legacy npm/node-gyp needs a compatible default Python independently

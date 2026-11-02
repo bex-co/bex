@@ -775,12 +775,12 @@ pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':
             if not line.startswith("            "):break
             patterns.append(line[12:])
         raw = ("\n".join(patterns) + "\n").encode()
-        self.assertEqual(qualification.hashlib.sha256(raw).hexdigest(), "574ae1c282c7e7c7cfd0908ea303b4f49ae124e080f489e5cde87f22379e79aa")
-        self.assertEqual(len(patterns), 47)
+        self.assertEqual(qualification.hashlib.sha256(raw).hexdigest(), "52c70ba4a04060a8e884eccff7148810b82741447f01e826a9b68b9bdc0c689f")
+        self.assertEqual(len(patterns), 21)
         self.assertEqual(patterns[0], "!/**")
-        self.assertEqual(sum(p.endswith('/**') and not p.startswith('!') for p in patterns), 14)
+        self.assertEqual(sum(p.endswith('/**') and not p.startswith('!') for p in patterns), 13)
         self.assertIn('/lego/operator/internal/build/**', patterns)
-        self.assertIn('/.pm/w8/m91/evidence/**', patterns)
+        self.assertFalse(any(p.startswith('/.pm/') for p in patterns))
 
     def test_both_bootstrap_stanzas_use_only_successful_output_before_owned_builder(self):
         jobs = ProfileRoutingControls.jobs()
@@ -808,7 +808,7 @@ pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':
         self.assertEqual(blocks, [blocks[0]] * 3)
         self.assertIn("sparse-checkout-cone-mode: false", blocks[0])
         self.assertIn("persist-credentials: false", blocks[0])
-        for literal in ("/.github/", "/.pm/w8/m91/evidence/", "/lego/operator/internal/build/", "/lego/operator/cmd/native-init/", "/lego/types/v1alpha1/", "/lego/operator/go.mod", "/lego/types/go.sum", "/scripts/lib/toolchain-freshness.py"):
+        for literal in ("/.github/**", "/lego/operator/internal/build/**", "/lego/operator/cmd/native-init/**", "/lego/types/v1alpha1/**", "/lego/operator/go.mod", "/lego/types/go.sum", "/scripts/lib/toolchain-freshness.py"):
             self.assertIn("            " + literal + "\n", blocks[0])
         self.assertNotIn("fetch-depth:", blocks[0])
         self.assertNotIn("${{", blocks[0])
@@ -942,7 +942,7 @@ class ProfileRoutingControls(unittest.TestCase):
         return "\n".join(lines) + "\n"
 
     def test_all_routes_are_exact_single_cases_and_bounds_are_fixed(self):
-        expected = {"node-addon": (4, 120, 150), "node": (8, 90, 120), "node-donors": (6, 90, 120), "modern-python": (5, 110, 140),
+        expected = {"node-addon": (4, 120, 150), "node": (8, 90, 120), "node-donors": (8, 90, 120), "modern-python": (5, 110, 140),
                     "legacy-python": (2, 110, 140), "ruby": (8, 75, 105),
                     "go-rust": (2, 75, 105), "elixir": (5, 90, 120), "native-init": (1, 60, 90)}
         self.assertEqual(set(qualification.PROFILES), set(expected))
@@ -1015,13 +1015,14 @@ class ProfileRoutingControls(unittest.TestCase):
             self.assertEqual(set(cases), set(actual), profile)
             self.assertEqual(len(cases), len(actual), profile)
 
-    def test_donor_route_cannot_substitute_an_unpublished_exact_patch(self):
-        self.assertEqual(qualification.profile_selection("node", "node-exact14212")["flag"],
-                         "BEX_NATIVE_TEST_NODE_PROFILE")
-        for case in ("node-exact14213", "ruby-node-exact14213"):
+    def test_donor_route_keeps_source_fallback_separate_and_rejects_unpublished_patch(self):
+        for case in ("node-exact14212", "ruby-node-exact14212"):
+            self.assertEqual(qualification.profile_selection("node", case)["flag"],
+                             "BEX_NATIVE_TEST_NODE_PROFILE")
+        for case in ("node-exact14213", "ruby-node-exact14213", "node-exact14212", "ruby-node-exact14212"):
             self.assertEqual(qualification.profile_selection("node-donors", case)["flag"],
                              "BEX_NATIVE_TEST_NODE_DONORS")
-        for case in ("node-exact14212", "ruby-node-exact14212", "node-22", "all"):
+        for case in ("node-exact14211", "ruby-node-exact14211", "node-22", "all"):
             with self.subTest(case=case), self.assertRaises(ValueError):
                 qualification.profile_selection("node-donors", case)
 
@@ -1103,7 +1104,12 @@ class ProfileRoutingControls(unittest.TestCase):
         self.assertNotIn("packages:", plan)
         self.assertNotIn("uses: docker/", plan)
         self.assertEqual(re.findall(r"(?m)^        run: (.+)$", plan),
-                         ["python3 .github/scripts/native-common-qualify.py plan"])
+                         ["|", "python3 .github/scripts/native-common-qualify.py plan"])
+        hydration = self.run_block(plan, "materialize only complete candidate evidence packets")
+        self.assertIn('native-common-qualify.py checkout-evidence "$CHECKOUT_SOURCE"', hydration)
+        self.assertIn('git sparse-checkout add --no-cone --stdin', hydration)
+        for runtime_command in ("docker ", "kubectl ", "cosign "):
+            self.assertNotIn(runtime_command, hydration)
         self.assertIn("REQUESTED_PROFILE: ${{ inputs.profile || 'utilities' }}", plan)
         self.assertIn("REQUESTED_CASE: ${{ inputs.case || 'pilot' }}", plan)
         self.assertIn("native-common-qualify.py plan", plan)
@@ -1909,6 +1915,147 @@ class ReviewedCandidateControls(unittest.TestCase):
         self.save()
         with self.assertRaisesRegex(ValueError, 'both actual platforms'):
             qualification.validate_image_candidate(self.root)
+
+
+class CandidateCheckoutControls(unittest.TestCase):
+    """Real Git pattern interpretation; metadata fixtures are never approvals."""
+    def record(self):
+        def descriptor(packet, name):
+            return {"path": ".pm/w8/m91/evidence/" + packet + "/" + name,
+                    "sha256": "a" * 64, "bytes": 1}
+        approval = {name: descriptor("approval-current", name + ".json")
+                    for name in ("receipt", "custody", "plan", "inputs")}
+        utility = {name: descriptor("utility-next", name + ".json")
+                   for name in ("metadata", "artifact_metadata", "manifest")}
+        utility["root"] = ".pm/w8/m91/evidence/utility-next/artifact"
+        candidate = {"approval": approval, "publication": {"metadata": descriptor("approval-current", "jobs.json")},
+                     "source": {"manifest": descriptor("utility-next", "source.json")}, "utilities": {"amd64": utility}}
+        custody = {"files": {"/retained/body": descriptor("third-packet", "full-body.gz")}}
+        return {"schema": qualification.CANDIDATE_SCHEMA, "candidate": candidate}, custody
+
+    def test_complete_packets_are_dynamic_and_include_crosspacket_custody(self):
+        record, custody = self.record()
+        self.assertEqual(qualification.checkout_evidence_packets(record, custody),
+                         ["/.pm/w8/m91/evidence/approval-current/**",
+                          "/.pm/w8/m91/evidence/third-packet/**", "/.pm/w8/m91/evidence/utility-next/**"])
+        record["candidate"]["source"] = None
+        record["candidate"]["utilities"] = None
+        self.assertEqual(qualification.checkout_evidence_packets(record, custody),
+                         ["/.pm/w8/m91/evidence/approval-current/**", "/.pm/w8/m91/evidence/third-packet/**"])
+
+    def test_fresh_has_no_candidate_dependency_or_git_read(self):
+        with patch.object(qualification, "regular_path", side_effect=AssertionError("no candidate")), \
+             patch.object(qualification, "pull_buildkit", side_effect=AssertionError("no Git")), \
+             contextlib.redirect_stdout(io.StringIO()) as output:
+            qualification.checkout_evidence("fresh")
+        self.assertEqual(output.getvalue(), "")
+
+    def test_invalid_direct_paths_refuse_before_any_git_client(self):
+        for path in ("/absolute/packet/file", ".pm/w8/m91/evidence/../foreign/file",
+                     ".pm/w8/m91/evidence//file", ".pm/w8/m91/evidence/p\n/other",
+                     ".pm/w8/m91/evidenceX/packet/file"):
+            with self.subTest(path=path):
+                record, _ = self.record()
+                record["candidate"]["publication"]["metadata"]["path"] = path
+                with patch.object(qualification, "regular_path"), patch.object(qualification, "json_file", return_value=record), \
+                     patch.object(qualification, "pull_buildkit") as client:
+                    with self.assertRaises(ValueError):
+                        qualification.checkout_evidence("reviewed-candidate")
+                    client.assert_not_called()
+
+    def test_git_metadata_requires_exact_size_hash_completion_and_reap(self):
+        record, custody = self.record()
+        raw = json.dumps(custody).encode()
+        descriptor = record["candidate"]["approval"]["custody"]
+        descriptor.update(bytes=len(raw), sha256=qualification.hashlib.sha256(raw).hexdigest())
+        clean = {"exit_code": 0, "bound": None, "cancel_signal": None,
+                 "direct_child_reaped": True, "process_group_absent": True}
+        cases = [(clean, raw, True), (dict(clean, exit_code=1), raw, False),
+                 (dict(clean, bound="cancelled", cancel_signal=15), raw, False),
+                 (dict(clean, process_group_absent=False), raw, False), (clean, raw[:-1], False),
+                 (clean, b"X" + raw[1:], False)]
+        for result, body, accepted in cases:
+            with self.subTest(result=result, body_bytes=len(body)), \
+                 patch.object(qualification, "regular_path"), patch.object(qualification, "json_file", return_value=record), \
+                 patch.dict(os.environ, GITHUB_SHA="b" * 40), \
+                 patch.object(qualification, "pull_buildkit", side_effect=[(clean, str(len(raw)).encode(), b""), (result, body, b"" if accepted else b"CONTROL_ONLY git stderr \xff")]) as client, \
+                 contextlib.redirect_stderr(io.StringIO()) as diagnostic, \
+                 contextlib.redirect_stdout(io.StringIO()) as output:
+                if accepted:
+                    qualification.checkout_evidence("reviewed-candidate")
+                    self.assertEqual(output.getvalue().splitlines(), qualification.checkout_evidence_packets(record, custody))
+                else:
+                    with self.assertRaises(ValueError):
+                        qualification.checkout_evidence("reviewed-candidate")
+                    self.assertEqual(output.getvalue(), "")
+                    prefix = "BEX_CANDIDATE_GIT_READ_FAILURE "
+                    self.assertTrue(diagnostic.getvalue().startswith(prefix))
+                    retained = json.loads(diagnostic.getvalue()[len(prefix):])
+                    self.assertEqual(qualification.base64.b64decode(retained["stdout_base64"]), body)
+                    self.assertEqual(qualification.base64.b64decode(retained["stderr_base64"]), b"CONTROL_ONLY git stderr \xff")
+                if accepted:
+                    self.assertEqual(diagnostic.getvalue(), "")
+                self.assertEqual(client.call_count, 2)
+                for call, operation in zip(client.call_args_list, ("-s", "blob")):
+                    argv = call.args[0]
+                    self.assertEqual(argv[:4], ["timeout", "--kill-after=5s", "30s", "git"])
+                    self.assertEqual(argv[-3:], ["cat-file", operation, "b" * 40 + ":" + descriptor["path"]])
+
+    def test_real_git_noncone_rules_keep_native_sources_and_whole_literal_packets(self):
+        workflow = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
+        text = workflow.split("          sparse-checkout: |\n", 1)[1]
+        base = []
+        for line in text.splitlines():
+            if not line.startswith("            "):break
+            base.append(line[12:])
+        record, custody = self.record()
+        # A literal glob-looking directory must not select its neighbors.
+        custody["files"]["/retained/literal"] = {"path": ".pm/w8/m91/evidence/literal[one] space/proof.gz",
+                                                   "bytes": 1, "sha256": "a" * 64}
+        patterns = base + qualification.checkout_evidence_packets(record, custody)
+        required = set(qualification.source_inventory(publisher.ROOT)) | {qualification.CANDIDATE_PATH}
+        packets = {".pm/w8/m91/evidence/approval-current/old/retained-body.gz",
+                   ".pm/w8/m91/evidence/utility-next/artifact/nested/raw-report.json",
+                   ".pm/w8/m91/evidence/utility-next/artifact/nested/report.gz",
+                   ".pm/w8/m91/evidence/third-packet/full-body.gz",
+                   ".pm/w8/m91/evidence/literal[one] space/proof.gz"}
+        excluded = {".pm/w8/m91/evidence/unrelated/archive.json", ".pm/w8/m91/README.md",
+                    ".pm/w8/m91/evidence/literalo space/proof.gz", "lego/backend/foreign.go"}
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory) / "repo"
+            subprocess.run(["git", "init", "-q", str(root)], check=True, capture_output=True, timeout=10)
+            rules = Path(directory) / "rules"
+            rules.write_text("\n".join(patterns) + "\n")
+            names = sorted(required | packets | excluded)
+            process = subprocess.run(["git", "-C", str(root), "sparse-checkout", "check-rules", "--no-cone", "--rules-file", str(rules), "-z"],
+                                     input="\0".join(names).encode() + b"\0", capture_output=True, timeout=10, check=True)
+            self.assertEqual(set(process.stdout.decode().rstrip("\0").split("\0")), required | packets)
+            # Source names and packet descendants are the only inputs. All
+            # bodies are one-byte placeholders, never copies of real evidence.
+            for name in names:
+                path = root / name
+                path.parent.mkdir(parents=True, exist_ok=True)
+                path.write_bytes(b"x")
+            subprocess.run(["git", "--literal-pathspecs", "-C", str(root), "add", "--force", "--", *names], check=True, capture_output=True, timeout=10)
+            subprocess.run(["git", "-C", str(root), "-c", "user.name=Qualification Control", "-c", "user.email=control@example.invalid",
+                            "commit", "-q", "-m", "one-byte sparse materialization control"],
+                           check=True, capture_output=True, timeout=10)
+            subprocess.run(["git", "-C", str(root), "sparse-checkout", "set", "--no-cone", "--stdin"],
+                           input=("\n".join(patterns) + "\n").encode(), check=True, capture_output=True, timeout=10)
+            actual = {str(path.relative_to(root)) for path in root.rglob("*")
+                      if path.is_file() and path.relative_to(root).parts[0] != ".git"}
+            self.assertEqual(actual, required | packets)
+            self.assertTrue(all((root / name).read_bytes() == b"x" for name in actual))
+
+    def test_all_three_hydration_steps_precede_strict_validation_or_init(self):
+        jobs = ProfileRoutingControls.jobs()
+        for name, target in (("plan", "id: selection"), ("qualify", "id: owned"), ("qualify-profile", "id: owned")):
+            job = jobs[name]
+            self.assertLess(job.index("native-common-qualify.py checkout-evidence"), job.index(target))
+            self.assertIn('git sparse-checkout add --no-cone --stdin < "$patterns"', job)
+            self.assertIn('trap \'rm -f -- "$patterns"\' EXIT', job)
+            self.assertNotIn("/.pm/w8/m91/evidence/**", job)
+        self.assertNotIn("checkout-evidence", jobs["common-arm64-local"])
 
 
 if __name__ == "__main__":

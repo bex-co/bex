@@ -240,9 +240,11 @@ func TestCommonRuntimeArtifactsNeverChangeExactIdentity(t *testing.T) {
 			recipe := string(raw)
 			donor := tree
 			if exact {
-				donor = "bex-node-bookworm"
-				if !strings.Contains(recipe, "COPY --link --from="+primary+" /usr/local/ /usr/local/\n") {
-					t.Fatal("exact source was not retained in its same-version repair stage")
+				donor = primary
+				if choices[0].primaryStage != "" || choices[0].primaryImage != "" ||
+					strings.Contains(recipe, "build-node") || strings.Contains(recipe, "/usr/share/bex-node-brotli") ||
+					strings.Contains(recipe, "/usr/share/bex-security/node-check.js") {
+					t.Fatal("an uncovered exact patch acquired a compiler or a false backport claim")
 				}
 			}
 			if choices[0].Image != primary || !strings.Contains(recipe, "COPY --link --from="+donor+" /usr/local/ /usr/local/\n") || strings.Contains(recipe, "\nFROM "+tree+"\n") {
@@ -391,5 +393,111 @@ func TestCommonNodeBuilderRefusesSystemPythonSubstitution(t *testing.T) {
 	nativeToolchains[nativePythonRuntime] = changed
 	if _, err := commonNodeBuildStage("node:14-bullseye@"+exactDigest, "14.21.3", strings.Repeat("b", 64)); err == nil {
 		t.Fatal("incompatible build Python silently replaced reviewed3.9")
+	}
+}
+
+// A populated artifact map is a bounded production backport catalog. An empty
+// map deliberately exercises the existing same-patch source qualification.
+func TestCommonNodeRuntimeArtifactPolicy(t *testing.T) {
+	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
+	nativeCommonBase, nativeSuppliedBases = commonFixtureImage, nil
+	reviewed, err := commonNodeQualificationArtifacts("1")
+	must(t, err)
+	type policyCase struct {
+		name, request, line, version, image string
+		exact, missing, source              bool
+	}
+	var cases []policyCase
+	for _, requested := range []string{"14", "16", "18", "20"} {
+		line, found := nativeToolchains[nativeNodeRuntime].find(requested)
+		if !found {
+			t.Fatalf("reviewed Node line %s missing", requested)
+		}
+		cases = append(cases, policyCase{name: "donor-" + requested, request: requested, line: requested, version: line.version, image: line.image})
+	}
+	line14, _ := nativeToolchains[nativeNodeRuntime].find("14")
+	cases = append(cases,
+		policyCase{name: "exact-donor", request: "14.21.2", line: "14.21.2", version: "14.21.2", image: "node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12", exact: true},
+		policyCase{name: "uncovered-exact", request: "14.21.1", line: "14.21.1", version: "14.21.1", image: "node:14.21.1-bullseye@" + exactDigest, exact: true},
+		policyCase{name: "missing-exact-tag", request: "14.21.1", line: "14", version: line14.version, image: line14.image, missing: true},
+		policyCase{name: "source-qualification", request: "14", line: "14", version: line14.version, image: line14.image, source: true})
+	for _, runtime := range []string{nativeNodeRuntime, nativeRubyRuntime} {
+		for _, tc := range cases {
+			t.Run(runtime+"-"+tc.name, func(t *testing.T) {
+				nativeRuntimeArtifacts = reviewed
+				if tc.source {
+					nativeRuntimeArtifacts = nil
+				}
+				fake := commonNodeQualificationFake()
+				if tc.exact {
+					tag, digest, _ := strings.Cut(tc.image, "@")
+					fake.digests[tag] = digest
+					fake.envByImage[tc.image] = fakeExactMetadata{env: []string{"NODE_VERSION=" + tc.version, "PATH=/usr/local/bin:/usr/bin"}}
+				}
+				o := nativeOptions()
+				o.Runtime = runtime
+				bundle, path, source := writeResolveFixture(t, o, nil, commonNodeQualificationFiles(t, commonNodeCase{tc.name, tc.request, runtime}))
+				choices, err := ResolveNativeBuildExact(t.Context(), fake, time.Time{}, runtime, bundle, path, source)
+				must(t, err)
+				index := 0
+				if runtime == nativeRubyRuntime {
+					index = 1
+				}
+				if len(choices) != index+1 {
+					t.Fatalf("selected runtime/companion count changed: %+v", choices)
+				}
+				node := choices[index]
+				version, err := commonImageVariable(node.imageEnv, "NODE_VERSION")
+				must(t, err)
+				if [3]string{node.Image, node.Line, version} != [3]string{tc.image, tc.line, tc.version} {
+					t.Fatalf("selected official identity/version changed: %+v", node)
+				}
+				if tc.missing && !strings.Contains(node.Narration(), "No official image node:14.21.1-bullseye") {
+					t.Fatal("missing exact tag lost its existing fallback explanation")
+				}
+				raw, err := os.ReadFile(path)
+				must(t, err)
+				recipe := string(raw)
+				wantTree, fixed := reviewed[tc.image]
+				if tc.source {
+					wantTree, fixed = "bex-node-bookworm", true
+				}
+				if node.primaryImage != wantTree || strings.Contains(node.primaryStage, "/usr/libexec/bex-native/build-node --common-bookworm ") != tc.source {
+					t.Fatalf("runtime tree/source qualification changed: %+v", node)
+				}
+				sourceReads := 0
+				for _, asked := range fake.asked {
+					if strings.HasPrefix(asked, "node source ") {
+						sourceReads++
+					}
+				}
+				if sourceReads != map[bool]int{true: 1, false: 0}[tc.source] ||
+					strings.Contains(recipe, "/usr/libexec/bex-native/build-node --common-bookworm ") != tc.source {
+					t.Fatal("uncovered exact patch requested a compiler, or source qualification lost its compiler")
+				}
+				const probe = "RUN --network=none /usr/local/bin/node /usr/share/bex-security/node-check.js\n"
+				if strings.Contains(node.runtimeCheck, probe) != fixed ||
+					strings.Contains(recipe, "/usr/share/bex-node-brotli") != fixed {
+					t.Fatal("fixed decoder probe/provenance did not match the selected reviewed or rebuilt tree")
+				}
+				if wantTree == "" {
+					wantTree = tc.image
+				}
+				if !strings.Contains(recipe, "\nFROM "+commonFixtureImage+"\n") ||
+					!strings.Contains(node.runtimeCheck, " = "+tc.version+" ]\n") {
+					t.Fatal("common base or exact installed version check changed")
+				}
+				if runtime == nativeRubyRuntime {
+					if !strings.Contains(recipe, "COPY --link --from="+wantTree+" /usr/local/include/node /usr/local/include/node\n") ||
+						strings.Contains(recipe, "ENV NODE_VERSION=") {
+						t.Fatal("companion changed header identity or imported donor ENV")
+					}
+				} else if !strings.Contains(recipe, "COPY --link --from="+wantTree+" /usr/local/ /usr/local/\n") ||
+					!strings.Contains(recipe, "ENV NODE_VERSION=\""+tc.version+"\"\n") {
+					t.Fatal("primary changed its selected runtime tree or exact ENV")
+				}
+			})
+		}
 	}
 }

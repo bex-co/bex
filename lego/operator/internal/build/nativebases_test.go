@@ -21,6 +21,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -486,5 +487,106 @@ func TestSuppliedBasePreservesPlatformBackportProvenance(t *testing.T) {
 				}
 			})
 		}
+	}
+}
+
+// Common adoption is atomic for the bounded reviewed Node catalog. Neighboring
+// exact requests retain their official images and are outside that verdict.
+func nativeCommonAdoptionDataError(common string, artifacts map[string]string) error {
+	if common == "" {
+		if len(artifacts) != 0 {
+			return fmt.Errorf("runtime artifact catalog cannot precede common adoption")
+		}
+		return nil
+	}
+	if err := validateNativeBase(common); err != nil {
+		return err
+	}
+	ref, _, _ := strings.Cut(common, "@")
+	packageName, _, _ := strings.Cut(ref, ":")
+	if packageName != "ghcr.io/bex-co/bex-cnb-run" {
+		return fmt.Errorf("common foundation is outside the reviewed public package")
+	}
+	reviewed, err := commonNodeQualificationArtifacts("1")
+	if err != nil {
+		return err
+	}
+	for _, requested := range []string{"14", "16", "18", "20"} {
+		line, found := nativeToolchains[nativeNodeRuntime].find(requested)
+		if !found || reviewed[line.image] == "" {
+			return fmt.Errorf("reviewed Node line %s lacks an approved runtime artifact", requested)
+		}
+	}
+	const exact14212 = "node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12"
+	const donor14212 = "ghcr.io/bex-co/bex-cnb-run@sha256:332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7"
+	if len(reviewed) != 5 || reviewed[exact14212] != donor14212 || len(artifacts) != len(reviewed) {
+		return fmt.Errorf("common adoption requires all four reviewed lines and exact14.21.2")
+	}
+	for source, donor := range reviewed {
+		if artifacts[source] != donor {
+			return fmt.Errorf("common adoption lacks the exact approved runtime artifact for %s", source)
+		}
+	}
+	return nil
+}
+
+func TestNativeCommonAdoptionDataIsAtomic(t *testing.T) {
+	must(t, nativeCommonAdoptionDataError(nativeCommonBase, nativeRuntimeArtifacts))
+}
+
+func TestNativeCommonAdoptionDataRejectsPartialCatalog(t *testing.T) {
+	reviewed, err := commonNodeQualificationArtifacts("1")
+	must(t, err)
+	for _, tc := range []struct {
+		name, common string
+		artifacts    map[string]string
+		valid        bool
+	}{
+		{"not-adopted", "", nil, true},
+		{"complete", commonFixtureImage, reviewed, true},
+		{"catalog-before-common", "", reviewed, false},
+		{"common-without-catalog", commonFixtureImage, nil, false},
+		{"mutable-common", "ghcr.io/bex-co/bex-cnb-run:latest", reviewed, false},
+		{"other-package", "example.invalid/common@" + otherDigest, reviewed, false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := nativeCommonAdoptionDataError(tc.common, tc.artifacts); (err == nil) != tc.valid {
+				t.Fatalf("atomic common/catalog validation: %v", err)
+			}
+		})
+	}
+	for source := range reviewed {
+		t.Run("missing-"+source, func(t *testing.T) {
+			changed := maps.Clone(reviewed)
+			delete(changed, source)
+			if nativeCommonAdoptionDataError(commonFixtureImage, changed) == nil {
+				t.Fatal("common adoption silently omitted a covered catalog identity")
+			}
+		})
+		t.Run("wrong-donor-"+source, func(t *testing.T) {
+			changed := maps.Clone(reviewed)
+			changed[source] = "ghcr.io/bex-co/bex-cnb-run@" + otherDigest
+			if nativeCommonAdoptionDataError(commonFixtureImage, changed) == nil {
+				t.Fatal("common adoption substituted an unapproved runtime artifact")
+			}
+		})
+	}
+	changed := maps.Clone(reviewed)
+	changed["node:14.21.1-bullseye@"+exactDigest] = "ghcr.io/bex-co/bex-cnb-run@" + otherDigest
+	if nativeCommonAdoptionDataError(commonFixtureImage, changed) == nil {
+		t.Fatal("common adoption added an unreviewed neighboring patch")
+	}
+	original := nativeToolchains[nativeNodeRuntime]
+	t.Cleanup(func() { nativeToolchains[nativeNodeRuntime] = original })
+	updated := original
+	updated.lines = slices.Clone(original.lines)
+	for i := range updated.lines {
+		if updated.lines[i].line == "14" {
+			updated.lines[i].image = "node:14-bullseye@" + exactDigest
+		}
+	}
+	nativeToolchains[nativeNodeRuntime] = updated
+	if nativeCommonAdoptionDataError(commonFixtureImage, reviewed) == nil {
+		t.Fatal("updated production catalog silently reused stale artifact source identities")
 	}
 }
