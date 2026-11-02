@@ -15,6 +15,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **m146** — [`deploy_ended` and `build_ended` carry Render's `reason` object](m146/README.md) (7 tasks;225m) ← promoted from w8/229 2026-11-02 — **IN PROGRESS**
+
 - [ ] **m145** — [The gzip-only web-service edge stops answering zstd](m145/README.md) (5 tasks;150m) ← promoted from w8/228 2026-11-02: Traefik v3.7.5's gzip handler negotiates zstd itself; v3.7.9+ disables it — **IN PROGRESS**
 
 - [ ] **m144** — [Enforce persistent disk capacity below the provider floor](blocked/m144/README.md) (7 tasks; t001/t002/t005 done) — **BLOCKED (platform/QA execution owner: fresh bounded live fixture window with ready observer/exact ownership and independent cleanup evidence; original paid case ended, full growth/restore/billing/surface DoDs remain)**
@@ -408,7 +410,6 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - [ ] **227** — [Lift the three signed-off edge-compression differences once Traefik can](blocked/227.md) — **BLOCKED (upstream Traefik: a release whose Brotli writer skips 206 bodies, or `compress` options for no-transform/ETag, or a Flusher-preserving Yaegi writer; an upstream issue/PR needs user authorization)**
-- [ ] **229** — [`deploy_ended` and `build_ended` events have no Render `reason` object, so a crashed deploy never reports `failure.nonZeroExit`](229.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-02: only bex text extras, no structured reason; minor, ~60m.
 
 - [x] **226** — [Native Node 14/16 builds carry a pnpm that refuses to run on them](done/226.md) (>1h, minor) ← w8/m91 t007 source review 2026-10-31: pnpm 10.34.7's JS entrypoint exits 1 below Node 18.12; proposal retained in m91 evidence — **DONE 2026-10-31** (pnpm standalone on Node 14/16, primary + companion; real builds pass on both architectures)
 

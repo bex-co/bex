@@ -418,6 +418,19 @@ export type BlueprintVariableCost = {
   reason: Maybe<Scalars['String']['output']>;
 };
 
+export type BuildDeployEndReason = {
+  __typename: 'BuildDeployEndReason';
+  buildFailed: Maybe<BuildDeployEndReasonId>;
+  failure: Maybe<FailureReason>;
+  newBuild: Maybe<BuildDeployEndReasonId>;
+  newDeploy: Maybe<BuildDeployEndReasonId>;
+};
+
+export type BuildDeployEndReasonId = {
+  __typename: 'BuildDeployEndReasonId';
+  id: Maybe<Scalars['String']['output']>;
+};
+
 export type BuildFilter = {
   __typename: 'BuildFilter';
   ignoredPaths: Maybe<Array<Maybe<Scalars['String']['output']>>>;
@@ -891,6 +904,15 @@ export type EventUser = {
   __typename: 'EventUser';
   email: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+};
+
+export type FailureReason = {
+  __typename: 'FailureReason';
+  earlyExit: Maybe<Scalars['Boolean']['output']>;
+  evicted: Maybe<Scalars['Boolean']['output']>;
+  nonZeroExit: Maybe<Scalars['Int']['output']>;
+  oomKilled: Maybe<OomKilled>;
+  timedOutSeconds: Maybe<Scalars['Int']['output']>;
 };
 
 export type FreeInstanceHours = {
@@ -2621,6 +2643,11 @@ export type NotificationWebPushSubscription = {
   updatedAt: Maybe<Scalars['String']['output']>;
 };
 
+export type OomKilled = {
+  __typename: 'OomKilled';
+  memoryLimit: Maybe<Scalars['String']['output']>;
+};
+
 export type OutboundIPs = {
   __typename: 'OutboundIPs';
   dedicatedIpId: Maybe<Scalars['String']['output']>;
@@ -3889,6 +3916,7 @@ export type ServiceEventDetails = {
   preDeployStatus: Maybe<Scalars['String']['output']>;
   projectFrom: Maybe<Scalars['String']['output']>;
   projectTo: Maybe<Scalars['String']['output']>;
+  reason: Maybe<BuildDeployEndReason>;
   reasonCode: Maybe<Scalars['String']['output']>;
   resumedByUser: Maybe<EventUser>;
   stallReason: Maybe<Scalars['String']['output']>;

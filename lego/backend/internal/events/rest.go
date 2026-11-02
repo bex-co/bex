@@ -123,9 +123,10 @@ type renderDetails struct {
 	Previous *autoscalingState `json:"previous,omitempty"`
 	Current  *autoscalingState `json:"current,omitempty"`
 	// cron_job_run_ended: Render's run id, and its reason object on a run that
-	// failed for an observed cause (w4/m114).
-	CronJobRunID string         `json:"cronJobRunId,omitempty"`
-	Reason       *cronRunReason `json:"reason,omitempty"`
+	// failed for an observed cause (w4/m114). deploy_ended and build_ended
+	// always carry Render's buildDeployEndReason here (w8/m146).
+	CronJobRunID string `json:"cronJobRunId,omitempty"`
+	Reason       any    `json:"reason,omitempty"`
 	// postgres_cluster_leader_changed: Render's leaderId, the new primary.
 	LeaderID string `json:"leaderId,omitempty"`
 }
@@ -269,7 +270,13 @@ func toRenderEvent(e Event) renderEvent {
 		d.CronJobRunID = e.Details.CronJobRunID
 	case TypeCronJobRunEnded:
 		d.CronJobRunID = e.Details.CronJobRunID
-		d.Reason = toCronRunReason(e.Details)
+		if reason := toCronRunReason(e.Details); reason != nil {
+			d.Reason = reason
+		}
+	case TypeDeployEnded, TypeBuildEnded:
+		if e.Details.EndReason != nil {
+			d.Reason = e.Details.EndReason
+		}
 	case TypePostgresClusterLeaderChanged:
 		d.LeaderID = e.Details.LeaderID
 	}
