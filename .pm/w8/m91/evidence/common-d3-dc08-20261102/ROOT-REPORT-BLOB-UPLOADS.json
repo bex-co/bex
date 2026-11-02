@@ -1,0 +1,126 @@
+{
+  "at": "2026-11-02 11:36:39 UTC",
+  "reports": [
+    {
+      "kind": "syft",
+      "format": "raw",
+      "path": "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/intake/amd64/extracted/artifact/generated/native-utilities-394672629/python3148-default/generated.syft.json",
+      "bytes": 31943767,
+      "sha256": "f0400b36fbc4264a7643d90bb291953a9c3f225827b9038bb716411e67ad331f",
+      "git_sha": "7499b7232fb2bfe4849113dee971c1004c699e34",
+      "upload_result": {
+        "sha": "7499b7232fb2bfe4849113dee971c1004c699e34",
+        "via": "create_tree.inline-utf8",
+        "tree": "8483181003c6263dadd3da4d1c20a78e773367c6"
+      }
+    },
+    {
+      "kind": "syft",
+      "format": "gzip",
+      "path": "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/intake/amd64/extracted/artifact/generated/native-utilities-394672629/python3148-default/generated.syft.json.gz",
+      "bytes": 5341977,
+      "sha256": "a264cb0448b13478d1f90dbce240ca6fd32fad1f43b732dd2141d61de0b0dfa5",
+      "git_sha": "5ee79a32f71162642a8e521d607eb111c1e41052",
+      "upload_result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Action completed."
+          }
+        ],
+        "structuredContent": {
+          "sha": "5ee79a32f71162642a8e521d607eb111c1e41052"
+        },
+        "isError": false
+      }
+    },
+    {
+      "kind": "spdx",
+      "format": "raw",
+      "path": "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/intake/amd64/extracted/artifact/generated/native-utilities-394672629/python3148-default/generated.spdx.json",
+      "bytes": 32041429,
+      "sha256": "3595798d2f7d1958939ad9762bcdc3bdeb275555ae7e7eec7e89651033d99f15",
+      "git_sha": "447a12d964593055146e7823887d647e07d88ee4",
+      "upload_result": {
+        "sha": "447a12d964593055146e7823887d647e07d88ee4",
+        "via": "create_tree.inline-utf8",
+        "tree": "5d26fb5fa725a1bbd90cece9d2b12d63fd8b4816"
+      }
+    },
+    {
+      "kind": "spdx",
+      "format": "gzip",
+      "path": "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/intake/amd64/extracted/artifact/generated/native-utilities-394672629/python3148-default/generated.spdx.json.gz",
+      "bytes": 4417162,
+      "sha256": "ebe8c11232a678198c1709c87b35f983e636fedbb1e5ee0165993e455933bc42",
+      "git_sha": "81e2a17bd82e8ae8b9f88dd33043dcb08dff69d2",
+      "upload_result": {
+        "content": [
+          {
+            "type": "text",
+            "text": "Parameters failed connector schema validation: repository_full_name [required]: Missing required property; repository_full_name [required]: Missing required property"
+          }
+        ],
+        "structuredContent": {
+          "error": "Parameters failed connector schema validation: repository_full_name [required]: Missing required property; repository_full_name [required]: Missing required property",
+          "error_code": "INVALID_ARGUMENT",
+          "error_data": {
+            "reason": "INVALID_PARAMETERS",
+            "clamp_errors": [
+              {
+                "path": [
+                  "repository_full_name"
+                ],
+                "message": "Missing required property",
+                "keyword": "required"
+              },
+              {
+                "path": [
+                  "repository_full_name"
+                ],
+                "message": "Missing required property",
+                "keyword": "required"
+              }
+            ],
+            "clamp_rewrites": []
+          }
+        },
+        "isError": true
+      }
+    }
+  ],
+  "failed_attempts": [
+    {
+      "kind": "spdx",
+      "format": "gzip",
+      "via": "create_blob",
+      "outcome": "argument schema rejected repo_full_name; corrected repository_full_name succeeded",
+      "object_creation_first": false
+    },
+    {
+      "kind": "syft",
+      "format": "raw",
+      "via": "create_blob.base64",
+      "outcome": "HTTP500 retryable transport server error"
+    },
+    {
+      "kind": "syft",
+      "format": "raw",
+      "via": "create_blob.base64",
+      "outcome": "HTTPrequest transport failed"
+    },
+    {
+      "kind": "syft",
+      "format": "raw",
+      "via": "create_blob.utf-8",
+      "outcome": "HTTP500 retryable transport server error"
+    },
+    {
+      "kind": "syft",
+      "format": "raw",
+      "via": "fetch_blob",
+      "outcome": "rawobject404 before tree API recovery"
+    }
+  ],
+  "recovery": "Both raw full reports stored with create_tree inlineutf8; immutable returned treeSHA equals local exactGitmktree expected originalrawblob SHA. Both gzip create_blob outputs exactly expectedGitSHA. No ref moved."
+}

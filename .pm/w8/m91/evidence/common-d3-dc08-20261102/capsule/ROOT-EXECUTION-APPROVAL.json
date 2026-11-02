@@ -1,0 +1,19 @@
+{
+  "at": "2026-11-02T10:44:06.055678+00:00",
+  "outcome": "ROOT_APPROVES_EXACT_D3_DC08_AMD_SINGLE_ARTIFACT_INTAKE_AND_OFFLINE_AUDIT",
+  "source": "dc08ae951f2be48f160b035890ced7335222a768",
+  "run": 41428447253,
+  "job": 125221453132,
+  "artifact_id": 13133128419,
+  "artifact_bytes": 83733568,
+  "artifact_SHA256": "sha256:40cd07dee95105e601d1b4c716cbd8261c93da1df6db9d066b195f89f5423738",
+  "all_bound_source_payload_hashes_verified": 23,
+  "bound_manifest_sha256": "c9782ce6e0b676f491304691af6f31b3256dc17d1a66d89698017a4139ed3022",
+  "plan_read_full": true,
+  "full_auditor_diff_and_original_input_source_binding_read": true,
+  "unchanged_guards_and_V2_extractor": true,
+  "fresh_free": 9734365184,
+  "physical_floor": 8589934592,
+  "margin": 33554432,
+  "scope": "One connector reference and verified TLS ZIP stream; exact immutable identity; actual central-directory full fit then unchanged V2 extraction; offline full content audit. Preserve partial/failures, no retry or predicate weakening, no target/runtime/registry/cluster/candidate/repository mutation."
+}

@@ -1,0 +1,18 @@
+{
+  "at": "2026-11-02T11:38:19.546309+00:00",
+  "outcome": "ROOT_APPLIED_EXACT_ADMITTED_D3_DC08_AMD_CANDIDATE_AND_EVIDENCE",
+  "copied_files": 417,
+  "copied_bytes": 141145343,
+  "all_copied_size_SHA_verified": true,
+  "original_members": 356,
+  "candidate_sha256": "cc39f78a8b9f128babb362e0078007380a1b44b7799394d93b06e5fc52ab7036",
+  "validation_receipt_sha256": "9cb491ed2a4d8045fbc0de92c0d5dc28bb40a682fca7c9c2da25e3e717918001",
+  "copy_plan_sha256": "7b53f6bfa77c60f6664ba8247c5f5e9ec9cf0badfa4742e72d63f23fc64f81cc",
+  "additional_authored_files": [
+    "README.md",
+    "ROOT-CUSTODY.json",
+    "ROOT-REPORT-BLOB-UPLOADS.json",
+    "COPY-PLAN.json"
+  ],
+  "production_pins_changed": false
+}

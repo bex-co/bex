@@ -1,0 +1,61 @@
+{
+  "base_publication_files": {
+    "bytes": 272501,
+    "sha256": "6d3434ab62b9e5aecd91d56bb58d8220b4ea146ae66f9baf82766c0f62014e8c"
+  },
+  "original406_publication_files_unchanged": true,
+  "validation_files": [
+    {
+      "destination": ".pm/w8/m91/evidence/common-d3-dc08-20261102/validation/stage_view.py",
+      "bytes": 3976,
+      "sha256": "7a57bfe1f01b85d520bba7a0ef49506719569b3f21ae344ed5b90748bd067f5b"
+    },
+    {
+      "destination": ".pm/w8/m91/evidence/common-d3-dc08-20261102/validation/validate_view.py",
+      "bytes": 2115,
+      "sha256": "6f8b674e7e0ee200bbf722897afec3bb52939eb1c091f5ec43d6cafacf2787ff"
+    },
+    {
+      "destination": ".pm/w8/m91/evidence/common-d3-dc08-20261102/validation/run_reviewed.py",
+      "bytes": 4635,
+      "sha256": "a5335dbee2a0f21faa36217fbc3a48919b67648e7fb4f2ec126b55306512773e"
+    },
+    {
+      "destination": ".pm/w8/m91/evidence/common-d3-dc08-20261102/validation/STAGE-RESULT.json",
+      "bytes": 489,
+      "sha256": "09f81142a43724b6f64cd3e49c457e7dea2d86c734360189c52dcf275f15c53d"
+    },
+    {
+      "destination": ".pm/w8/m91/evidence/common-d3-dc08-20261102/validation/RESULT.json",
+      "bytes": 1999,
+      "sha256": "9f45c693fe57b3a09bb94851cd0acf866a8dac272b1f7c932f40c4c5ed659724"
+    },
+    {
+      "destination": ".pm/w8/m91/evidence/common-d3-dc08-20261102/validation/VALIDATION-RECEIPT.json",
+      "bytes": 3035,
+      "sha256": "9cb491ed2a4d8045fbc0de92c0d5dc28bb40a682fca7c9c2da25e3e717918001"
+    },
+    {
+      "destination": ".pm/w8/m91/evidence/common-d3-dc08-20261102/validation/stage_view.py.stdout",
+      "bytes": 467,
+      "sha256": "17c0d1a1dec79ecceb59e3ba7713f74797781ad1efc0392b719ea204902b5328"
+    },
+    {
+      "destination": ".pm/w8/m91/evidence/common-d3-dc08-20261102/validation/stage_view.py.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "destination": ".pm/w8/m91/evidence/common-d3-dc08-20261102/validation/validate_view.py.stdout",
+      "bytes": 587,
+      "sha256": "bd60ded7c249b8a2901b9c93a97d30bf41b2a82ba2c3b532db843b0109d3a37d"
+    },
+    {
+      "destination": ".pm/w8/m91/evidence/common-d3-dc08-20261102/validation/validate_view.py.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "total_validation_bytes": 17303,
+  "excludes_own_hash": true
+}

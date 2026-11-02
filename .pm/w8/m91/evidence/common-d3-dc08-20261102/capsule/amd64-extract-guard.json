@@ -1,0 +1,17 @@
+{
+  "argv": [
+    "/opt/homebrew/bin/python3.14",
+    "-B",
+    "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/extract_utility_zip.py",
+    "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/intake/amd64/original.zip",
+    "83733568",
+    "40cd07dee95105e601d1b4c716cbd8261c93da1df6db9d066b195f89f5423738",
+    "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/intake/amd64/extracted"
+  ],
+  "exit": 0,
+  "stop": null,
+  "groups_absent": true,
+  "seconds": 0.785,
+  "minimum_free": 9374040064,
+  "tool_sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4"
+}

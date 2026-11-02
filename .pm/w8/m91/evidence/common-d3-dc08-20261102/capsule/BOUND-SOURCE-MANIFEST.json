@@ -1,0 +1,121 @@
+{
+  "files": [
+    {
+      "path": "ARTIFACT-BINDING-PLAN.json",
+      "bytes": 3156,
+      "sha256": "bc95614f479d3d588f3bd00a4851cccb0873199acd11aa17c3d9cee31facb888"
+    },
+    {
+      "path": "CHECKS.json",
+      "bytes": 745,
+      "sha256": "1f12a4270d3259e7d3a095c85a8579010b4d9a6cc621f580233344901c126b67"
+    },
+    {
+      "path": "DOWNLOAD-DATA-BINDING.diff",
+      "bytes": 526,
+      "sha256": "39879035a81868d937b1d94f9865b9266e5254bd5a97079819c18b0bffa15814"
+    },
+    {
+      "path": "EXPECTED-CAPTURED-SOURCE.json",
+      "bytes": 75337,
+      "sha256": "dd62343607b8f606f7647b791099ed1f56634b73a60c804f5cb59df4d0b228f2"
+    },
+    {
+      "path": "MANIFEST-PREPARATION.json",
+      "bytes": 5111,
+      "sha256": "773416ea829e03201b8c8752d79f3065e82782ba002c555713b231fe071c385e"
+    },
+    {
+      "path": "PLAN.json",
+      "bytes": 4154,
+      "sha256": "af40f7c863b000e4a015cf7a082ca29ce0488cbfc0ee699e673839b6b6ac3064"
+    },
+    {
+      "path": "RECEIPT.json",
+      "bytes": 1346,
+      "sha256": "f978890b12f663e26513c65c8560fb7fc3efd3d53b7c72c11d6d168d6efcaa46"
+    },
+    {
+      "path": "SOURCE-BASIS-FINAL.json",
+      "bytes": 511,
+      "sha256": "fbe1cbe88bd54a10d00513b2ab3c401539b06685e82c60294aff827d63d9ce35"
+    },
+    {
+      "path": "artifacts-final.json",
+      "bytes": 745,
+      "sha256": "bb85a8b18dc4d9a177c80690a8f1f542a917b984a47671695e67f4df4d5ff32f"
+    },
+    {
+      "path": "audit.py",
+      "bytes": 30281,
+      "sha256": "db7dccc53b1fa0e0c4e8e4358c76e5218c837d6fd2c2dc616faf9d0b4a508c7d"
+    },
+    {
+      "path": "audit.py.diff",
+      "bytes": 8144,
+      "sha256": "576c085402fc7d5a9219fea9295d2850463396f4ee8245f0fdb5ba1fda1453fd"
+    },
+    {
+      "path": "before/download.py",
+      "bytes": 2634,
+      "sha256": "23c009c8af1a194fb4ab3dd9b79dcfca517c0885e6e00ad0f1a2b691f4d7fc40"
+    },
+    {
+      "path": "before/download_guard.py",
+      "bytes": 2988,
+      "sha256": "e561c5e1c230021917695c33c96bfdbee969dec4eb41fddbc0a3a2cfd48ec551"
+    },
+    {
+      "path": "before/extract_guard.py",
+      "bytes": 2770,
+      "sha256": "c7d380d7c4e2bc2fa4dca6253191ffca0a1e8c2bc7ac3d9529e46651403f83d1"
+    },
+    {
+      "path": "bind_audit.py",
+      "bytes": 1371,
+      "sha256": "794ca9d431227472df6fb746b3840b78cfce91a9c01919515da17085c2fb65ab"
+    },
+    {
+      "path": "compare-wrapper.json",
+      "bytes": 1175,
+      "sha256": "6e042831ec119ed15ff89a744f1e599922df73716a09c22775ce233384327a27"
+    },
+    {
+      "path": "intake/INPUTS.json",
+      "bytes": 255,
+      "sha256": "0f9c182875bf4f9eeae95764a18141639645e05eed491229439eda81f147a704"
+    },
+    {
+      "path": "intake/download.py",
+      "bytes": 2641,
+      "sha256": "a2e2ea58db04b80f1dd5c08f7f06c803d161309d82a884b89b79aec7aeeb8621"
+    },
+    {
+      "path": "intake/download_guard.py",
+      "bytes": 2988,
+      "sha256": "e561c5e1c230021917695c33c96bfdbee969dec4eb41fddbc0a3a2cfd48ec551"
+    },
+    {
+      "path": "intake/extract_guard.py",
+      "bytes": 2770,
+      "sha256": "c7d380d7c4e2bc2fa4dca6253191ffca0a1e8c2bc7ac3d9529e46651403f83d1"
+    },
+    {
+      "path": "job-amd64.log",
+      "bytes": 63029,
+      "sha256": "07e053e5e583c2c68a6916c8bd1b5ce69a1bfcf9353a6aa533b36280938bfa75"
+    },
+    {
+      "path": "jobs-final.json",
+      "bytes": 8785,
+      "sha256": "fbfefcdbc7b8fafd7c7a37aff4805b1abe84925f0960d8c9cdca566973a21311"
+    },
+    {
+      "path": "run-final.json",
+      "bytes": 11693,
+      "sha256": "7d44520da45707800cc960074613dfabd4906dc115267793630fb7e722628331"
+    }
+  ],
+  "files_count": 23,
+  "total_bytes": 233155
+}

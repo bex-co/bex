@@ -1,0 +1,88 @@
+--- approved0b7/audit.py
++++ D3AMD-only/audit.py
+@@ -16,15 +16,15 @@
+ import zlib
+ 
+ ROOT = Path('/Users/tianpan/projects/bex7')
+-INPUT = Path('/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake')
+-CI = Path('/private/tmp/bex-w8-current0b7-0941-monitor-20261102-_bu8v18k')
++INPUT = Path(__file__).resolve().parent / 'intake'
++CI = Path(__file__).resolve().parent
+ OUT = Path(__file__).resolve().parent
+-SOURCE = '0b7fa17e5761a3111e3c9933b141f1a832e6eeec'
++SOURCE = 'dc08ae951f2be48f160b035890ced7335222a768'
+ PRODUCER = '1feba939b4697894e800ed0abb4f25a0bf415641'
+-RUN_ID = 41407186362
++RUN_ID = 41428447253
+ REF = 'ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0'
+ EXPECTED_MANIFEST = json.loads((OUT / 'ACTUAL-EXTRACTION-BOUND.json').read_bytes())['manifest_sha256']
+-JOB = {'amd64': 125153305618, 'arm64': 125153305520}
++JOB = {'amd64': 125221453132}
+ 
+ def sha(body):
+     return hashlib.sha256(body).hexdigest()
+@@ -82,7 +82,7 @@
+ for package in helper.SOURCE_PACKAGES:
+     prefix = 'lego/' + package + '/'
+     names.update(name for name in tree if name.startswith(prefix) and '/' not in name[len(prefix):] and name.endswith('.go'))
+-check(len(names) == 300, 'producer tracked qualification closure changed')
++check(len(names) == 301, 'producer tracked qualification closure changed')
+ # Bounded Git object reads; never export a working tree or follow local context links.
+ objects = subprocess.check_output(['git', 'cat-file', '--batch'], input=''.join(tree[n]['blob']+'\n' for n in sorted(names)).encode(), cwd=ROOT)
+ check(len(objects) < 16*1024*1024, 'source object read bound')
+@@ -106,11 +106,11 @@
+ extras = None  # No physical-working-tree/source_inventory call: local HEAD is older.
+ specs = json.loads(git_body(SOURCE, 'lego/operator/internal/build/testdata/native-utilities/original-cases.json'))
+ check(len(specs) == 13 and len({x['mid'] for x in specs}) == 13, 'original13 spec set differs')
+-jobs = {x['id']: x for x in load(CI / 'jobs-04-completed.json')['jobs']}
++jobs = {x['id']: x for x in load(CI / 'jobs-final.json')['jobs']}
+ artifacts = load(CI / 'artifacts-final.json')['artifacts']
+ results = []
+ 
+-for arch in ('amd64', 'arm64'):
++for arch in ('amd64',):
+     artifact = INPUT / arch / 'extracted/artifact'
+     extraction = load(INPUT / arch / 'extracted/extraction.json')
+     manifest_path = artifact / 'MANIFEST.json'
+@@ -143,7 +143,7 @@
+     gate = next(x for x in job['steps'] if x['name'] == 'actual generated offline builds, original replays and exact-default SPDX')
+     check(gate['status'] == 'completed' and gate['conclusion'] == 'success', 'actual full utility gate incomplete')
+     inputs, captured, cleanup = (load(artifact / name) for name in ('inputs.json', 'qualification-source.json', 'cleanup.json'))
+-    check(captured == {'source': SOURCE, 'files': current}, 'captured/current exact300 source differs')
++    check(captured == {'source': SOURCE, 'files': current}, 'captured/current exact301 source differs')
+     check(inputs['common_image'] == REF and inputs['producer'] == inputs['verification'] == PRODUCER and inputs['generator_source'] == SOURCE, 'input image/source differs')
+     check(inputs['platform'] == 'linux/' + arch and inputs['run_id'] == str(RUN_ID) and inputs['run_attempt'] == '1', 'input platform/run differs')
+     check(inputs['selection'] == helper.profile_selection('utilities', 'all'), 'utility selector changed')
+@@ -345,24 +345,24 @@
+         check(identity(artifact / name) == {key: retained[name][key] for key in ('bytes', 'sha256')}, 'critical member hash differs:' + name)
+     results.append({'architecture': arch, 'job_id': JOB[arch], 'manifest': identity(manifest_path), 'files': len(actual),
+                     'original_extraction': extraction, 'critical_member_hashes_checked': len(critical),
+-                    'captured_source': identity(artifact / 'qualification-source.json'), 'captured_source_paths': 300,
++                    'captured_source': identity(artifact / 'qualification-source.json'), 'captured_source_paths': 301,
+                     'resolved_choices_metadata':choices_proofs, 'positive_cases': positives, 'original_authored_cases': 13, 'original_runtime_HTTP_results': 39,
+                     'omissions': 5, 'supplier_removal': True, 'static_gzip_ZIP_payload_CRC_checks': True,
+                     'actual_default_SBOM': observed_binding, 'full_Syft_and_SPDX_gzip_roundtrips_checked': True,
+                     'actual_cleanup_declared_success_and_CI_gate_success': True, 'all_reviewed_content_checks': 'PASS'})
+ 
+-check((INPUT / 'amd64/extracted/artifact/qualification-source.json').read_bytes() == (INPUT / 'arm64/extracted/artifact/qualification-source.json').read_bytes(), 'actual two architecture source captures differ in raw bytes')
+-
+-report = {'schema': 'bex.current0b7-actual-utility-content-review/v1', 'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+-          'outcome': 'PASS_CURRENT0b7_UTILITY_CONTENT_ONLY_PENDING_ROOT_APPROVAL', 'candidate_ref': REF, 'source': SOURCE,
+-          'comparison_HEAD_at_audit': head, 'generator_source_checked_from_Git': SOURCE, 'unchanged_approved_image_producer_verification': PRODUCER, 'source_delta_against_comparison_HEAD':source_delta, 'physical_working_tree_compared':False, 'current_tracked_qualification_source_paths': 300, 'current_physical_source_extra_paths': extras,
++# D3 production baseline is AMD64-only; per-arch exact captured-source check above remains mandatory.
++
++report = {'schema': 'bex.D3-dc08-amd64-actual-utility-content-review/v1', 'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
++          'outcome': 'PASS_D3_DC08_AMD64_UTILITY_CONTENT_ONLY_PENDING_ROOT_APPROVAL', 'candidate_ref': REF, 'source': SOURCE,
++          'comparison_HEAD_at_audit': head, 'generator_source_checked_from_Git': SOURCE, 'unchanged_approved_image_producer_verification': PRODUCER, 'source_delta_against_comparison_HEAD':source_delta, 'physical_working_tree_compared':False, 'current_tracked_qualification_source_paths': 301, 'current_physical_source_extra_paths': extras,
+           'helper_source': identity(helper_path), 'architectures': results,
+-          'limits': ['No image/candidate/baseline/production write.0941approvalwasalreadyRoot-reviewedandisunchanged; thisisdetailedcurrent0b7utilitycontentreview; Rootapprovalisstillrequiredforbaselineadoption.',
++          'limits': ['No image/candidate/baseline/production write.0941approvalwasalreadyRoot-reviewedandisunchanged; thisisdetailedD3dc08AMD64utilitycontentreview; Rootapprovalisstillrequiredforbaselineadoption.',
+                      'No target/program/original-validator/Go/network/Docker/Kubernetes/auth or repository execution/mutation.',
+                      'Original ZIP extraction CRC/all-memberSHA evidence was reused; no artifactZIP decompression repeated. Static fixture ZIP/gzip and complete SBOM gzip roundtrips were independently checked.',
+                      'Some authored HTTP records retain decoded/asserted outcomes rather than every rawbody (notably m94); no byte-level replay of unretained bodies claimed.',
+                      'Packaging/Cextension is explicitly build-only in default proof; runtime verifies exact interpreter/ENV/loader/Brotli. No predeploy/Kubernetes/native-init/allfamily/hosted28 claim.',
+-                     'Producer Git300 capture is exact. Stale local working tree was not compared or used as current source; no ignored local files read, removed, or waived. No baseline validator invoked.']}
++                     'Producer Git301 capture is exact. Stale local working tree was not compared or used as current source; no ignored local files read, removed, or waived. No baseline validator invoked.']}
+ (OUT / 'REVIEW.json').write_text(json.dumps(report, indent=2) + '\n')
+ print(json.dumps({'outcome': report['outcome'], 'root': str(OUT), 'review': identity(OUT / 'REVIEW.json'),
+                   'arches': [{'architecture': row['architecture'], 'files': row['files'], 'packages': row['actual_default_SBOM']['packages']} for row in results],

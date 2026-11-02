@@ -1,0 +1,17 @@
+{
+  "command": "/opt/homebrew/bin/python3.14 -B test_preparation.py",
+  "exit": 0,
+  "tests": 6,
+  "seconds": 0.027,
+  "stdout": {
+    "path": "/private/tmp/bex-w8-d3-dc08-utility-preparation-20261102-fp7iudm8/host-checks.stdout",
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "stderr": {
+    "path": "/private/tmp/bex-w8-d3-dc08-utility-preparation-20261102-fp7iudm8/host-checks.stderr",
+    "bytes": 982,
+    "sha256": "9e8827d9204b16d814e17fa9994b7635462341de997e583c6db56a2aaa1f2192"
+  },
+  "scope": "Originalcheck()ASTs preserved after explicit301sourcecount andsingleD3cross-archconditionremoval; safeactualsyntheticZIPcentralprojection tests, no target/sourceprogramexecution."
+}

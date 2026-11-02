@@ -1,0 +1,23 @@
+{
+  "attempt": 2,
+  "top_keys": [
+    "content",
+    "structuredContent",
+    "isError"
+  ],
+  "isError": false,
+  "structuredContent_type": "object",
+  "content": [
+    {
+      "type": "text",
+      "keys": [
+        "type",
+        "text"
+      ],
+      "text": "Action completed."
+    }
+  ],
+  "file_reference_count": 0,
+  "reference_sources": [],
+  "local_download_started": false
+}

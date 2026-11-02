@@ -1,0 +1,13 @@
+{
+  "at": "2026-11-02T10:44:58.863412+00:00",
+  "actual_source": "dc08ae951f2be48f160b035890ced7335222a768",
+  "run": 41428447253,
+  "job": 125221453132,
+  "artifact_id": 13133128419,
+  "ZIP_bytes": 83733568,
+  "ZIP_sha256": "40cd07dee95105e601d1b4c716cbd8261c93da1df6db9d066b195f89f5423738",
+  "free": 9723711488,
+  "download_entry_required": 8707222592,
+  "all23boundsourcefiles_unchanged": true,
+  "direct_actual_Git_source_present": true
+}
