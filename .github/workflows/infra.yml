@@ -59,7 +59,7 @@ jobs:
 
       - name: install Terraform (checksum-pinned, rootless)
         working-directory: .
-        run: bash scripts/terraform-install.sh "$TERRAFORM_VERSION" "$TERRAFORM_LINUX_ARM64_SHA256"
+        run: bash scripts/hashicorp-install.sh terraform "$TERRAFORM_VERSION" "$TERRAFORM_LINUX_ARM64_SHA256"
 
       - name: fmt
         run: terraform fmt -check -recursive
@@ -93,7 +93,7 @@ jobs:
 
       - name: install Terraform (checksum-pinned, rootless)
         working-directory: .
-        run: bash scripts/terraform-install.sh "$TERRAFORM_VERSION" "$TERRAFORM_LINUX_ARM64_SHA256"
+        run: bash scripts/hashicorp-install.sh terraform "$TERRAFORM_VERSION" "$TERRAFORM_LINUX_ARM64_SHA256"
 
       - name: fmt
         run: terraform fmt -check -recursive
