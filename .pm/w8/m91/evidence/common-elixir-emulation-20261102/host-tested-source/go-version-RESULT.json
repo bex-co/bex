@@ -1,0 +1,13 @@
+{
+  "label": "go-version",
+  "argv": [
+    "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+    "version"
+  ],
+  "exit": 0,
+  "bound": null,
+  "seconds": 0.373912958195433,
+  "group_absent": true,
+  "stdout_sha256": "36849436282e424cf1142184057f25a7bd6845d03b16fedbb1071bc6722524c4",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,6 @@
+{system,"Erlang/OTP 28 [erts-16.4.0.7] [source] [64-bit] [smp:14:2] [ds:14:2:10] [async-threads:1] [jit:ns]\n"}
+{args,[{root,["/usr/local/lib/erlang"]},{bindir,["/usr/local/lib/erlang/erts-16.4.0.7/bin"]},{progname,["erl"]},{home,["/root"]},{noshell,[]},{noshell,[]},{noinput,[]},{nouser,[]}]}
+{locale,[{"LANG",false},{"LC_ALL",false},{"LC_CTYPE",false}]}
+{tty_load,ok}
+{isatty,false,false,false}
+{user_drv_result,{error,undef}}

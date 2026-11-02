@@ -218,11 +218,14 @@ func nativeUtilityWithoutRunNetwork(recipe string) string {
 	return strings.ReplaceAll(strings.ReplaceAll(recipe, "\nRUN --network=default ", "\nRUN "), "\nRUN --network=none ", "\nRUN ")
 }
 
-func (d nativeUtilityDocker) runImage(t *testing.T, tc nativeUtilityCase, tag, evidence string, prerequisites bool) {
+func (d nativeUtilityDocker) runImage(t *testing.T, tc nativeUtilityCase, tag, evidence string, prerequisites bool, runtimeEnv ...string) {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Minute)
 	defer cancel()
 	createArgs := []string{"create", "--network", "none", "--label", d.label()}
+	for _, entry := range runtimeEnv {
+		createArgs = append(createArgs, "--env", entry)
+	}
 	if tc.static {
 		createArgs = append(createArgs, "--entrypoint", "/bin/true")
 	}
@@ -263,7 +266,7 @@ func (d nativeUtilityDocker) runImage(t *testing.T, tc nativeUtilityCase, tag, e
 	if tc.name == "python3148-default" && os.Getenv("BEX_NATIVE_TEST_SYFT") != "" {
 		nativeUtilityGeneratedSBOM(t, ctx, states[0].Image, actualPlatform, evidence)
 	}
-	receipt, err := json.MarshalIndent(map[string]any{"case": tc.name, "container_id": container, "image_config_id": states[0].Image, "image_platform": actualPlatform, "owner": d.owner, "builder": d.builder, "common_base": nativeCommonBase, "test_prerequisite_overlay": prerequisites, "network": "none", "runtime_command_executed": !tc.static, "static_artifacts_extracted": tc.static, "scope": "local generated image; recorded test-only wheel overlay and optional generated exact-default SPDX; no hosted, Kubernetes pre-deploy or publication claim"}, "", "  ")
+	receipt, err := json.MarshalIndent(map[string]any{"case": tc.name, "container_id": container, "image_config_id": states[0].Image, "image_platform": actualPlatform, "owner": d.owner, "builder": d.builder, "common_base": nativeCommonBase, "test_prerequisite_overlay": prerequisites, "runtime_environment": runtimeEnv, "network": "none", "runtime_command_executed": !tc.static, "static_artifacts_extracted": tc.static, "scope": "local generated image; recorded qualification overlays and optional generated exact-default SPDX; no hosted, Kubernetes pre-deploy or publication claim"}, "", "  ")
 	must(t, err)
 	must(t, os.WriteFile(filepath.Join(evidence, "receipt.json"), receipt, 0o600))
 	t.Logf("%s passed actual generated network-off commands; image %s", tc.name, states[0].Image)

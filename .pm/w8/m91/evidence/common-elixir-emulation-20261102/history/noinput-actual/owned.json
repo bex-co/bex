@@ -1,0 +1,17 @@
+{
+  "bex-otp-probe-c238818cb42cb7ae3e69-pull": {
+    "image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+    "cid": "13be1ef36a94b1423495cf74151e2a649359db86bc866d907ae9310e8ae8beb6",
+    "absence_proved": true
+  },
+  "bex-otp-probe-c238818cb42cb7ae3e69-old": {
+    "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "cid": "e1fd3a4dba00d9536aef170ed1a4c6e6c036ed37db825390690a7e0f5ff45a1f",
+    "absence_proved": true
+  },
+  "bex-otp-probe-c238818cb42cb7ae3e69-new": {
+    "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "cid": "e81ec19fab3365d1301292a3118c3d9c0cf2d1d4a6d843fb27f55d090d5a6282",
+    "absence_proved": true
+  }
+}

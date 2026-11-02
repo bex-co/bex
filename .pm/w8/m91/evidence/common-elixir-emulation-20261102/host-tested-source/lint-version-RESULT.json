@@ -1,0 +1,13 @@
+{
+  "label": "lint-version",
+  "argv": [
+    "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+    "version"
+  ],
+  "exit": 0,
+  "bound": null,
+  "seconds": 0.6486423329915851,
+  "group_absent": true,
+  "stdout_sha256": "be4b4ec451481410702351739d2d424cc995d5a7a31bad3023003b4b44e09833",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,41 @@
+{
+  "schema": "bex.elixir-qualification-emulation-host-receipt/v1",
+  "status": "SOURCE_AND_HOST_CHECKS_PASS",
+  "at": "2026-11-02T05:46:22.602368+00:00",
+  "source": [
+    {
+      "path": "lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+      "before_bytes": 13006,
+      "before_sha256": "2cc5059eb78d2d4cb387b9626665bfdc335f7890de89f220e397475bb24f6da6",
+      "after_bytes": 19445,
+      "after_sha256": "458b09d301b5839afea9355e112d4373179914f6a17006154468dfe3d2407016",
+      "intended_git_mode": "100644"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_qualification_test.go",
+      "before_bytes": 24740,
+      "before_sha256": "3ae7091e11aa6267926e45a8b111a8ca703ffdce8381223d27cf2b2c4c56ce17",
+      "after_bytes": 24885,
+      "after_sha256": "c617371b381d0f7831bd2038bdd5c7532ba656aa799985d54a81e3e1fcab2006",
+      "intended_git_mode": "100644"
+    }
+  ],
+  "focused_test_seconds": 0.74,
+  "full_build_package_test_seconds": 24.703,
+  "scoped_pinned_lint": "0issues",
+  "Go_version": "go version go1.26.4 darwin/arm64",
+  "lint_version": "golangci-lint has version v2.15.0-custom-gcl-SjCB8hSnJBRAw95oKMCvNM0WKlY5ax9keJfboQHiRFs built with go1.27.2 from ? on 2026-10-31 11:56:57.782427 +0000 UTC",
+  "all_commands_exit0_no_bounds_group_absent": true,
+  "source_unchanged": true,
+  "foreignsum_unchanged": true,
+  "physical_inventory_entries": 303,
+  "tracked_current_equivalent": 300,
+  "ignored_pycs_retained_unchanged": 3,
+  "minimum_free_bytes": 16315183104,
+  "peak_owned_TMP_bytes": 44336082,
+  "own_TMP_and_lintcache_removed": true,
+  "shared_Go_cache_retained": true,
+  "CPU_memory_policy": "GOMAXPROCS2/GOMEMLIMIT512MiB andgo-p1/lint-concurrency2; operating controls, no hard OS RSS quota claimed.",
+  "source_quality": "No further worthwhile cleanup; generic receipt wording now covers qualification overlays.",
+  "no_actual_Docker_common_context_Elixir_CI_or_adoption_claim": true
+}

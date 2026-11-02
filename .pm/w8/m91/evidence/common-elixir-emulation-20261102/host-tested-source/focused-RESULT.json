@@ -1,0 +1,19 @@
+{
+  "label": "focused",
+  "argv": [
+    "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+    "test",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build",
+    "-run",
+    "^(TestCommonElixir|TestNativeUtilityPrerequisiteRecipe|TestNativeUtilityBuildUses|TestNativeUtilityWheelPreparation)"
+  ],
+  "exit": 0,
+  "bound": null,
+  "seconds": 14.687905999831855,
+  "group_absent": true,
+  "stdout_sha256": "c7edbd2297d12f27753d011cb20d3b814bd29d3c3f4b38bfb9db402bccb05799",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

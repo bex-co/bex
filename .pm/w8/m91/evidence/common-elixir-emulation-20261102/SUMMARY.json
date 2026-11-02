@@ -1,0 +1,79 @@
+{
+  "at": "2026-11-02T06:05:30.125986+00:00",
+  "result": "TEST_ONLY_QUALIFICATION_EMULATOR_FIX_APPLIED_HOST_GATES_PASS_GENUINE_DONOR_CAUSAL_CONTROL_PASS",
+  "applied_paths": [
+    {
+      "path": "lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+      "before_bytes": 13006,
+      "before_sha256": "2cc5059eb78d2d4cb387b9626665bfdc335f7890de89f220e397475bb24f6da6",
+      "after_bytes": 19445,
+      "after_sha256": "458b09d301b5839afea9355e112d4373179914f6a17006154468dfe3d2407016",
+      "intended_git_mode": "100644"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_qualification_test.go",
+      "before_bytes": 24740,
+      "before_sha256": "3ae7091e11aa6267926e45a8b111a8ca703ffdce8381223d27cf2b2c4c56ce17",
+      "after_bytes": 24885,
+      "after_sha256": "c617371b381d0f7831bd2038bdd5c7532ba656aa799985d54a81e3e1fcab2006",
+      "intended_git_mode": "100644"
+    }
+  ],
+  "host_checks": {
+    "focused_package_reported_seconds": 0.74,
+    "full_build_package_reported_seconds": 24.703,
+    "full_build_process_wall_seconds": 29.52368608303368,
+    "pinned_scoped_lint": "0 issues",
+    "all_actual_commands_exit0_no_bounds_groups_absent": true,
+    "source_foreignsum_unchanged": true,
+    "physical303_and_ignored3_unchanged": true,
+    "no_repeat_after_exact_application": true
+  },
+  "actual_provider_control": {
+    "ref": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "config": "sha256:bda2c827aeb4745319e01a69d27dede43b90430a8650f0ec455a520734e3ef59",
+    "baseline_exit": 1,
+    "single_mapping_exit": 0,
+    "single_mapping_stdout": "28.5.0.8\n",
+    "sole_program_delta": "+JMsingle true",
+    "daemon_target_scope": "ARM daemon to AMD64 target emulation; not native-architecture or common-context acceptance",
+    "baseline_full_dump": [
+      {
+        "path": "diagnostic-baseline/erl_crash.dump",
+        "bytes": 1676916,
+        "sha256": "b597a1a780bbffc0596e63c2c854e42781fd8f1b6480bc7feb7dca236de056b2",
+        "ends_with_dump_end_marker": true,
+        "declared_maximum_bytes": 8388608,
+        "capture": "Actual dump bytes ASIS; a capped or incomplete dump is not full-state proof."
+      }
+    ],
+    "owned_containers_absent": 4,
+    "credential_scope_absent": true,
+    "pending_pgids": [],
+    "cleanup_errors": []
+  },
+  "qualification_source_behavior": {
+    "activate_only": "Observed Docker daemon linux/arm64 and target linux/amd64; Go host architecture does not activate it",
+    "build": "Explicit test-only ARG ERL_FLAGS and --build-arg at trusted canonical stage boundaries; authored/heredoc bytes preserved",
+    "runtime": "Explicit optional ERL_FLAGS=+JMsingle true on this activated qualifier only; other callers keep default argv",
+    "OCI_ENV": "Qualifier requires final OCI Config.Env contain no ERL_FLAGS entry; actual common built-image leakage check has not yet executed",
+    "unchanged": [
+      "production generator",
+      "helper",
+      "factory",
+      "original fixture programs/data/commands",
+      "33 image-critical inputs"
+    ]
+  },
+  "history": "Earlier noinput and locale runs still fail; diagnostic driver exit0 is observation only and includes user_drv {error,undef}. Original plan/source-only statuses remain verbatim; actual results are separate authoritative execution records.",
+  "still_open": [
+    "fresh complete current-source utility CI on both architectures",
+    "affected actual families/full Elixir generated/runtime qualification",
+    "whole phase acceptance",
+    "production adoption",
+    "original28 hosted acceptance"
+  ],
+  "common_prefix_probe": "Not run; useful additional diagnostic evidence, not a new acceptance gate.",
+  "m91_status": "in progress",
+  "t007_status": "in-progress"
+}

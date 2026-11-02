@@ -1,0 +1,257 @@
+[
+    {
+        "Id": "13be1ef36a94b1423495cf74151e2a649359db86bc866d907ae9310e8ae8beb6",
+        "Created": "2026-11-02T04:57:42.637982723Z",
+        "Path": "/docker",
+        "Args": [
+            "--host",
+            "unix:///var/run/docker.sock",
+            "--config",
+            "/docker-config",
+            "pull",
+            "--quiet",
+            "--platform",
+            "linux/amd64",
+            "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f"
+        ],
+        "State": {
+            "Status": "exited",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "2026-11-02T04:57:43.082889704Z",
+            "FinishedAt": "2026-11-02T04:57:56.522449224Z"
+        },
+        "Image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+        "ResolvConfPath": "/var/lib/docker/containers/13be1ef36a94b1423495cf74151e2a649359db86bc866d907ae9310e8ae8beb6/resolv.conf",
+        "HostnamePath": "/var/lib/docker/containers/13be1ef36a94b1423495cf74151e2a649359db86bc866d907ae9310e8ae8beb6/hostname",
+        "HostsPath": "/var/lib/docker/containers/13be1ef36a94b1423495cf74151e2a649359db86bc866d907ae9310e8ae8beb6/hosts",
+        "LogPath": "",
+        "Name": "/bex-otp-probe-c238818cb42cb7ae3e69-pull",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "none",
+                "Config": {}
+            },
+            "NetworkMode": "bridge",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": [
+                "ALL"
+            ],
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": true,
+            "SecurityOpt": [
+                "no-new-privileges"
+            ],
+            "Tmpfs": {
+                "/tmp": "rw,nosuid,nodev,size=8388608"
+            },
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 8408530944,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 134217728,
+            "NanoCpus": 1000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 268435456,
+            "MemorySwappiness": null,
+            "OomKillDisable": null,
+            "PidsLimit": 64,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "Mounts": [
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker",
+                    "Target": "/docker",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-otp-input-probe-live-c238818cb42cb7ae3e69/docker-config",
+                    "Target": "/docker-config",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/var/run/docker.sock",
+                    "Target": "/var/run/docker.sock"
+                }
+            ],
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "13be1ef36a94b1423495cf74151e2a649359db86bc866d907ae9310e8ae8beb6",
+                "LowerDir": "/var/lib/docker/overlay2/b5db1d9becc133be4a9921db026c90064303096caab72a82db5688946f687071-init/diff:/var/lib/docker/overlay2/ede07570786a91d70253d93ce4a604932e5a10026ce330efa7166946a3f625a8/diff",
+                "MergedDir": "/var/lib/docker/overlay2/b5db1d9becc133be4a9921db026c90064303096caab72a82db5688946f687071/merged",
+                "UpperDir": "/var/lib/docker/overlay2/b5db1d9becc133be4a9921db026c90064303096caab72a82db5688946f687071/diff",
+                "WorkDir": "/var/lib/docker/overlay2/b5db1d9becc133be4a9921db026c90064303096caab72a82db5688946f687071/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker",
+                "Destination": "/docker",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-otp-input-probe-live-c238818cb42cb7ae3e69/docker-config",
+                "Destination": "/docker-config",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/var/run/docker.sock",
+                "Destination": "/var/run/docker.sock",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "13be1ef36a94",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+                "--host",
+                "unix:///var/run/docker.sock",
+                "--config",
+                "/docker-config",
+                "pull",
+                "--quiet",
+                "--platform",
+                "linux/amd64",
+                "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f"
+            ],
+            "Image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+            "Volumes": null,
+            "WorkingDir": "/",
+            "Entrypoint": [
+                "/docker"
+            ],
+            "Labels": {
+                "bex.otp-input-probe.owner": "bex-otp-probe-c238818cb42cb7ae3e69"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "bridge": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "0dbbd4593099855957c1e246093eab955c3e62d90d79a10b7909e717f289eff6",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        }
+    }
+]

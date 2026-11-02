@@ -1,0 +1,14 @@
+{
+  "pid": 40431,
+  "pgid": 40431,
+  "argv": [
+    "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+    "test",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build",
+    "-run",
+    "^(TestCommonElixir|TestNativeUtilityPrerequisiteRecipe|TestNativeUtilityBuildUses|TestNativeUtilityWheelPreparation)"
+  ]
+}

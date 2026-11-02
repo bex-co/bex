@@ -1,0 +1,32 @@
+{
+  "at": "2026-11-02T06:22:43.613184+00:00",
+  "Root_payload_files_verified": 272,
+  "Root_original_custody_mappings_verified": 270,
+  "Root_lossless_roundtrips": 6,
+  "exact_applied_tested_substitutions": [
+    {
+      "path": "lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+      "before_bytes": 13006,
+      "before_sha256": "2cc5059eb78d2d4cb387b9626665bfdc335f7890de89f220e397475bb24f6da6",
+      "after_bytes": 19445,
+      "after_sha256": "458b09d301b5839afea9355e112d4373179914f6a17006154468dfe3d2407016",
+      "intended_git_mode": "100644"
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_qualification_test.go",
+      "before_bytes": 24740,
+      "before_sha256": "3ae7091e11aa6267926e45a8b111a8ca703ffdce8381223d27cf2b2c4c56ce17",
+      "after_bytes": 24885,
+      "after_sha256": "c617371b381d0f7831bd2038bdd5c7532ba656aa799985d54a81e3e1fcab2006",
+      "intended_git_mode": "100644"
+    }
+  ],
+  "source_verification": "All303before-file SHA/size/mode inputs reverified; exact2appliedbytes equal passedprivateoverlay; fullbuildpkg24.703s/pinnedlint0; gofmt/diffcheckPASS; no duplicate suite onidenticalbytes",
+  "acceptance": "Only qualification source/donor diagnostic; currentfullCI/family/wholephase/adoption/28hostedOPEN",
+  "main_red": "ExternalDockerHubanonymousquota before backendtests; userrulepermitsverifiedoperator-onlyship; no retry/authchange",
+  "authored_MD_sha256": {
+    ".pm/w8/m91/README.md": "8c619bfdc4e8752f535a6152ebde490ff82f6300a55ba3cdfbff9b9497843dc5",
+    ".pm/w8/m91/t007.md": "754f30a795e1b1d61ec8370e06ed9eb38286a0910e4949666982456287a229ce",
+    ".pm/w8/m91/evidence/common-elixir-emulation-20261102/README.md": "232493d96d0d004dd7022def3e8bf8c2e9900e8527ba6db01619463ccf3cedd3"
+  }
+}

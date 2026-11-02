@@ -1,0 +1,56 @@
+{
+  "bex-otp-jit-22896ca49a7dd5cca416-pull": {
+    "exit_code": 0,
+    "stdout": "docker.io/hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f\n",
+    "stderr": "",
+    "container_state": {
+      "Status": "exited",
+      "Running": false,
+      "Paused": false,
+      "Restarting": false,
+      "OOMKilled": false,
+      "Dead": false,
+      "Pid": 0,
+      "ExitCode": 0,
+      "Error": "",
+      "StartedAt": "2026-11-02T05:21:54.884396792Z",
+      "FinishedAt": "2026-11-02T05:22:12.734576321Z"
+    }
+  },
+  "bex-otp-jit-22896ca49a7dd5cca416-baseline": {
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "Kernel pid terminated (application_controller) (\"{application_start_failure,kernel,{{shutdown,{failed_to_start_child,user,nouser}},{kernel,start,[normal,[]]}}}\")\r\n\r\nCrash dump is being written to: /owned-diagnostic/erl_crash.dump...done\r\n",
+    "container_state": {
+      "Status": "exited",
+      "Running": false,
+      "Paused": false,
+      "Restarting": false,
+      "OOMKilled": false,
+      "Dead": false,
+      "Pid": 0,
+      "ExitCode": 1,
+      "Error": "",
+      "StartedAt": "2026-11-02T05:22:26.534120023Z",
+      "FinishedAt": "2026-11-02T05:22:39.257869233Z"
+    }
+  },
+  "bex-otp-jit-22896ca49a7dd5cca416-jit-single": {
+    "exit_code": 0,
+    "stdout": "28.5.0.8\n",
+    "stderr": "",
+    "container_state": {
+      "Status": "exited",
+      "Running": false,
+      "Paused": false,
+      "Restarting": false,
+      "OOMKilled": false,
+      "Dead": false,
+      "Pid": 0,
+      "ExitCode": 0,
+      "Error": "",
+      "StartedAt": "2026-11-02T05:22:42.6210994Z",
+      "FinishedAt": "2026-11-02T05:22:44.746139439Z"
+    }
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "pid": 40810,
+  "pgid": 40810,
+  "argv": [
+    "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+    "test",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build"
+  ]
+}

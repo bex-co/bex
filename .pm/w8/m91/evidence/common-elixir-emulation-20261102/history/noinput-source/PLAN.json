@@ -1,0 +1,52 @@
+{
+  "schema": "bex.otp-batch-input-probe/v1",
+  "owner": "bex-otp-probe-c238818cb42cb7ae3e69",
+  "label": "bex.otp-input-probe.owner",
+  "run_root": "/private/tmp/bex-w8-otp-input-probe-live-c238818cb42cb7ae3e69",
+  "host_docker": "/usr/local/bin/docker",
+  "linux_docker": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker",
+  "endpoint": "unix:///Users/tianpan/.orbstack/run/docker.sock",
+  "pull_helper_image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+  "donor_image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+  "expected_config": "sha256:bda2c827aeb4745319e01a69d27dede43b90430a8650f0ec455a520734e3ef59",
+  "expected_version": "28.5.0.8",
+  "version_probe": "set -eu\nversion=28.5.0.8\nactual=$(erl -noshell -eval '{ok,B}=file:read_file(filename:join([code:root_dir(),\"releases\",erlang:system_info(otp_release),\"OTP_VERSION\"])), io:put_chars(string:trim(binary_to_list(B))), halt(0).')\n[ \"$actual\" = \"$version\" ]\nprintf '%s\\n' \"$actual\"\n",
+  "source_inputs": {
+    "/private/tmp/bex-w8-node14-local-pilot-v3-source-20261101-buxfh6_j/run_pilot.py": "8a567d1d855ab98dadb69c2b25ceefc69cb6347c4438eadc9aa7033b7c1d6319",
+    "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker": "8d1f0003ab751833dc596e6b96dbc321b6af95d67feefef64be14e7369f04b08",
+    "/usr/local/bin/docker": "4a728ee98f89005a90198a9be791e8fdaebbcb5e6af9721251efe0113df37759",
+    "/private/tmp/bex-w8-otp-nouser-diagnosis-20261102-ueb24de3/probe-image-metadata/SIZING.json": "f973a69eaa4a5ef9042ba23888e5a0787d55cf971d7982b0a3832d38f1526cf8",
+    "/private/tmp/bex-w8-otp-nouser-diagnosis-20261102-ueb24de3/probe-image-metadata/index.json": "22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "/private/tmp/bex-w8-otp-nouser-diagnosis-20261102-ueb24de3/probe-image-metadata/amd64-manifest.json": "a3228b0ab096c9327ede59310497da6444f6f19663948a3c2ce455c55e3158e3",
+    "/private/tmp/bex-w8-otp-nouser-diagnosis-20261102-ueb24de3/probe-image-metadata/amd64-config.json": "bda2c827aeb4745319e01a69d27dede43b90430a8650f0ec455a520734e3ef59"
+  },
+  "metadata": {
+    "sizing": "/private/tmp/bex-w8-otp-nouser-diagnosis-20261102-ueb24de3/probe-image-metadata/SIZING.json",
+    "platform": "linux/amd64",
+    "index": "sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "manifest": "sha256:a3228b0ab096c9327ede59310497da6444f6f19663948a3c2ce455c55e3158e3",
+    "compressed_config_layers_bytes": 100799330,
+    "largest_compressed_layer_bytes": 48524552
+  },
+  "bounds": {
+    "pull_seconds": 600,
+    "runtime_seconds_each": 30,
+    "runtime_cpu": 2,
+    "runtime_memory_bytes": 536870912,
+    "runtime_pids": 256,
+    "runtime_tmpfs_bytes": 134217728,
+    "host_stop_bytes": 6291456,
+    "host_output_cap_bytes": 8388608,
+    "physical_free_floor_bytes": 8589934592,
+    "pulled_image_postcheck_bytes": 1073741824,
+    "whole_seconds": 900
+  },
+  "scope": "One genuine selected provider AMD64 runtime under existing ARM-host emulation; no common0941-context or production fix claim. No native performance claim.",
+  "execution_authority": "SOURCE_ONLY_PENDING_ROOT_REVIEW",
+  "pull_policy": "Exactly one LinuxDocker pull command in one cached-Alpine helper with empty own config. No retry/mirror/auth. Newly pulled exact image retained for later context probe; no image/layer prune. Metadata compressed size is exact; local unpacked space is unknown before pull and postchecked <=1GiB, not a reservation. Global8GiB floor observed during clients.",
+  "variants": {
+    "old": "Unset inherited ERL_* overrides and LANG; same source-derived shell command substitution, no TTY.",
+    "new": "Identical program/env except command-scoped ERL_FLAGS=-noinput; provider image ENV is not rewritten. LANG unset in both to match the failing common stage."
+  },
+  "interpretation": "provider_old_nouser_new_pass requires canonical oldexit1+nouser and newexit0+exactversion, complete raw captures/no bounds/groups absent/cleanup. This flag is never common-context fix proof. Any nonreproduction remains recorded; no invented oldRED."
+}

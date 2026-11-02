@@ -1,0 +1,134 @@
+{
+  "probe_complete": true,
+  "fix_established": false,
+  "common_context_fix_proven": false,
+  "failure": null,
+  "cleanup_errors": [],
+  "pending_pgids": [],
+  "source_unchanged": true,
+  "stop": null,
+  "cancel": null,
+  "config_absent": true,
+  "containers": {
+    "bex-otp-diag-f26ad234159c4c6bb607-pull": {
+      "image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+      "cid": "32f924e01a79d21723babe2a76b0a8f806950959d89dc5e9db7ba179777dbd9a",
+      "absence_proved": true
+    },
+    "bex-otp-diag-f26ad234159c4c6bb607-hold": {
+      "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+      "cid": "57d9ca199148be30d448b25d28b2a9af997932e8bcb71ff6ffa88f07e7b209c0",
+      "absence_proved": true
+    },
+    "bex-otp-diag-f26ad234159c4c6bb607-baseline-dump": {
+      "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+      "cid": "bbc1f63ef6cb126d8acde241d8ce286e15ab1fcaf427b6470685e7c839178605",
+      "absence_proved": true
+    },
+    "bex-otp-diag-f26ad234159c4c6bb607-locale": {
+      "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+      "cid": "a0f602491cd07bb4526cdfa6139c457f81801cad5c12fba88e7c129331f18e54",
+      "absence_proved": true
+    },
+    "bex-otp-diag-f26ad234159c4c6bb607-driver": {
+      "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+      "cid": "dccd24a65e4b8ef5d5d4e9d09f3bf473b02b2da14127f4be421167864645ed65",
+      "absence_proved": true
+    }
+  },
+  "observations": {
+    "bex-otp-diag-f26ad234159c4c6bb607-pull": {
+      "exit_code": 0,
+      "stdout": "docker.io/hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f\n",
+      "stderr": "",
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-11-02T05:13:00.593065158Z",
+        "FinishedAt": "2026-11-02T05:13:13.62237575Z"
+      }
+    },
+    "bex-otp-diag-f26ad234159c4c6bb607-baseline-dump": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Kernel pid terminated (application_controller) (\"{application_start_failure,kernel,{{shutdown,{failed_to_start_child,user,nouser}},{kernel,start,[normal,[]]}}}\")\r\n\r\nCrash dump is being written to: /owned-diagnostic/erl_crash.dump...done\r\n",
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 1,
+        "Error": "",
+        "StartedAt": "2026-11-02T05:13:17.904683682Z",
+        "FinishedAt": "2026-11-02T05:13:30.286918349Z"
+      }
+    },
+    "bex-otp-diag-f26ad234159c4c6bb607-locale": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Kernel pid terminated (application_controller) (\"{application_start_failure,kernel,{{shutdown,{failed_to_start_child,user,nouser}},{kernel,start,[normal,[]]}}}\")\r\n\r\nCrash dump is being written to: /owned-diagnostic/erl_crash.dump...done\r\n",
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 1,
+        "Error": "",
+        "StartedAt": "2026-11-02T05:13:32.946690673Z",
+        "FinishedAt": "2026-11-02T05:13:45.777449786Z"
+      }
+    },
+    "bex-otp-diag-f26ad234159c4c6bb607-driver": {
+      "exit_code": 0,
+      "stdout": "{system,\"Erlang/OTP 28 [erts-16.4.0.7] [source] [64-bit] [smp:14:2] [ds:14:2:10] [async-threads:1] [jit:ns]\\n\"}\r\n{args,[{root,[\"/usr/local/lib/erlang\"]},{bindir,[\"/usr/local/lib/erlang/erts-16.4.0.7/bin\"]},{progname,[\"erl\"]},{home,[\"/root\"]},{noshell,[]},{noshell,[]},{noinput,[]},{nouser,[]}]}\r\n{locale,[{\"LANG\",false},{\"LC_ALL\",false},{\"LC_CTYPE\",false}]}\r\n{tty_load,ok}\r\n{isatty,false,false,false}\r\n{user_drv_result,{error,undef}}\r\n",
+      "stderr": "",
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-11-02T05:13:48.498376904Z",
+        "FinishedAt": "2026-11-02T05:13:49.980266324Z"
+      }
+    }
+  },
+  "dumps": [
+    {
+      "path": "diagnostic-baseline-dump/erl_crash.dump",
+      "bytes": 1676917,
+      "sha256": "0dbbb4271b1e74e469841cf01690f86c05e2c1767823155c03694c25c0d1e8f9",
+      "ends_with_dump_end_marker": true,
+      "declared_maximum_bytes": 8388608,
+      "capture": "Actual dump bytes ASIS; a capped or incomplete dump is not full-state proof."
+    },
+    {
+      "path": "diagnostic-locale/erl_crash.dump",
+      "bytes": 1676983,
+      "sha256": "5aa18ee6004120e77e771f484c14553f90a76df1eab3decc3a6778ec95701124",
+      "ends_with_dump_end_marker": true,
+      "declared_maximum_bytes": 8388608,
+      "capture": "Actual dump bytes ASIS; a capped or incomplete dump is not full-state proof."
+    }
+  ],
+  "peak_host_file_bytes": 3546837,
+  "minimum_physical_free_bytes": 18533519360,
+  "scope": "Cached selected provider AMD64 runtime under ARM-host emulation; diagnostic results only, not production/native-architecture acceptance."
+}

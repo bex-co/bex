@@ -1,0 +1,25 @@
+{
+  "status": "EXACT_UNDEFINED_MFA_PROVED_WORKAROUND_NOT_YET_EXECUTED",
+  "at": "2026-11-02T05:20:21.397981+00:00",
+  "actual_root": "/private/tmp/bex-w8-otp-user-diagnostic-v2-live-f26ad234159c4c6bb607/evidence",
+  "actual_payload_files_rehashed": 87,
+  "actual_result_sha256": "a5f022af1223d5c4cb60890580aa2dda8c0384af9753e037b56b7171dfa02fb0",
+  "decoded_stack": [
+    "erlang:nif_error([undef])",
+    "prim_tty:tty_create/1 prim_tty.erl:1490",
+    "prim_tty:init/1 prim_tty.erl:251",
+    "user_drv:init/1 user_drv.erl:186"
+  ],
+  "source_match": "Retained exact tagged Erlang wrappers call tty_create before locale/input init. Tagged C NIF table registers tty_create/1 unconditionally alongside isatty/1. A successful load/isatty alone therefore does not prove local tty_create dispatch is correct.",
+  "upstream_match": "Official erlang/otp issue9877 has the identical missing-NIF-stub stack on ARM-Mac AMD-container translation. Maintainer attributes it to VM translation and suggests +JMsingle true. This supports a targeted emulator/JIT mapping hypothesis; it is not an actual result of the proposed local control.",
+  "refuted_hypotheses": [
+    "noinput alone",
+    "LANG=C.UTF-8 alone"
+  ],
+  "not_claimed": [
+    "A missing ordinary Erlang function/module",
+    "A proven provider packaging defect",
+    "A validated product patch or accepted common-runtime case"
+  ],
+  "next_probe": "PLAN.json two variants on same immutable provider/config/version; exactly one VM mapping flag differs. Existing pull/hold/lifecycle/dump caps retained; no execution during preparation."
+}

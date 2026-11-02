@@ -1,0 +1,8 @@
+{
+  "status": "SOURCE_READY_UNEXECUTED",
+  "prior_histories_untouched": true,
+  "no_product_patch": true,
+  "no_fix_established": true,
+  "actual_result_rehashed": 87,
+  "scope": "Precise dump-derived NIF failure and primary-source-backed JIT mapping control only"
+}

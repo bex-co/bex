@@ -1,0 +1,6 @@
+{
+  "Replace": {
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativecommon_elixir_qualification_test.go": "/private/tmp/bex-w8-elixir-emulation-v2-source-20261102-x0yu0s8s/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativeutility_qualification_test.go": "/private/tmp/bex-w8-elixir-emulation-v2-source-20261102-x0yu0s8s/source/lego/operator/internal/build/nativeutility_qualification_test.go"
+  }
+}

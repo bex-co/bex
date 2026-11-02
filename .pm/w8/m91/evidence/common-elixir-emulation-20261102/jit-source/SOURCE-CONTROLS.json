@@ -1,0 +1,10 @@
+{
+  "status": "PASS",
+  "controller_inverse": "Only two hold-purpose prose constants changed; restoring wording gives exact prior executed bodybytes",
+  "lifecycle_logic_unchanged": true,
+  "baseline_program_byteexact": true,
+  "new_program_inverse_only_JMsingle_true": true,
+  "bounds_unchanged": true,
+  "environment_unchanged": true,
+  "runtime_executed": false
+}

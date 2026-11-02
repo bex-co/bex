@@ -1,0 +1,22 @@
+{
+  "bex-otp-jit-22896ca49a7dd5cca416-pull": {
+    "image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+    "cid": "af96d2b5d30aefe7bbe6e26d4e3f03e4e52e98757c98fdb6f5ad4c48947f4bee",
+    "absence_proved": true
+  },
+  "bex-otp-jit-22896ca49a7dd5cca416-hold": {
+    "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "cid": "45c0fb5ab646320cdea92b2f4a7c590dcc16b7fb675c1b3eacad121ebbcb5126",
+    "absence_proved": true
+  },
+  "bex-otp-jit-22896ca49a7dd5cca416-baseline": {
+    "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "cid": "b2deb5a46311327e34f0b8e9fb2292bc2977f3211cdaa26d24bacb5dc210d5fa",
+    "absence_proved": true
+  },
+  "bex-otp-jit-22896ca49a7dd5cca416-jit-single": {
+    "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "cid": "f9737e227a1f831e20fedaa893bb688db34b2889bfa8cfe513cd12d9e8cb35ca",
+    "absence_proved": true
+  }
+}

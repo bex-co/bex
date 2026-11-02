@@ -1,0 +1,201 @@
+{
+  "files": [
+    {
+      "path": "GIT-EQUIVALENCE.json",
+      "bytes": 690,
+      "sha256": "c8a828b1fc5e42b994749d525abfadc8ba8b6705fb065fe9b1daa31b065a053c"
+    },
+    {
+      "path": "PREPARATION-HISTORY.json",
+      "bytes": 262,
+      "sha256": "7fb744da2524fa983509a13893d7e4bb63f7f64483e53536e58e4f502270d138"
+    },
+    {
+      "path": "PRIOR-CUSTODY.json",
+      "bytes": 276,
+      "sha256": "a5e6976a7380aa9114e0f0343fc8c0f78671459d4a972668a21093aa722f0373"
+    },
+    {
+      "path": "PROPOSAL.json",
+      "bytes": 3103,
+      "sha256": "365feb9025d63137389728ae5f3920bdae25a1641d4789e224d584f4cec92839"
+    },
+    {
+      "path": "RECEIPT.json",
+      "bytes": 1953,
+      "sha256": "511cb62d73ad79de445fa4177d2b27838b1c4329f106f0e836481f005554d20a"
+    },
+    {
+      "path": "RESULT.json",
+      "bytes": 3233,
+      "sha256": "50b3c23a839fb70ebd71e9485cca8cf6fd553de9181d84f2dc5e5e692ce37fb1"
+    },
+    {
+      "path": "SCOPE.json",
+      "bytes": 83772,
+      "sha256": "631c7a6ec48788949377483d55d957303a0558197fabf25616687a328e2b1602"
+    },
+    {
+      "path": "SOURCE-AFTER.json",
+      "bytes": 77072,
+      "sha256": "d587fb70fe5a33af7bbd65934e5fece6b69a69660dac3878e86b63b4d5e1d524"
+    },
+    {
+      "path": "SOURCE-BEFORE.json",
+      "bytes": 77072,
+      "sha256": "d587fb70fe5a33af7bbd65934e5fece6b69a69660dac3878e86b63b4d5e1d524"
+    },
+    {
+      "path": "SOURCE-MANIFEST.json",
+      "bytes": 715,
+      "sha256": "b50f8399da65e3c580b8732725c3cf3f7dcf8f0c8c356d88d38fe8938335b39a"
+    },
+    {
+      "path": "SOURCE.diff",
+      "bytes": 10848,
+      "sha256": "2b58641682062957e3e576919c4995af195024d16618beb931b851b94ef9b098"
+    },
+    {
+      "path": "before/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+      "bytes": 13006,
+      "sha256": "2cc5059eb78d2d4cb387b9626665bfdc335f7890de89f220e397475bb24f6da6"
+    },
+    {
+      "path": "before/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 24740,
+      "sha256": "3ae7091e11aa6267926e45a8b111a8ca703ffdce8381223d27cf2b2c4c56ce17"
+    },
+    {
+      "path": "focused-PROCESS.json",
+      "bytes": 312,
+      "sha256": "a3dc01ee81670308ac6064c2de1b1caeef1d76b175547b8ba3423f492967670a"
+    },
+    {
+      "path": "focused-RESULT.json",
+      "bytes": 562,
+      "sha256": "5d41e6e3f07bda2a16d0cda53e7893e6459cd26268fd1f59bd36b9b1d9c43954"
+    },
+    {
+      "path": "focused.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "focused.stdout",
+      "bytes": 63,
+      "sha256": "c7edbd2297d12f27753d011cb20d3b814bd29d3c3f4b38bfb9db402bccb05799"
+    },
+    {
+      "path": "full-buildpkg-PROCESS.json",
+      "bytes": 176,
+      "sha256": "887a4a1ef7ecebee5a73d6b4c7f80dde41a54b2e60b789102e7aaf1d6d9f743b"
+    },
+    {
+      "path": "full-buildpkg-RESULT.json",
+      "bytes": 431,
+      "sha256": "4da5ffccfa5425021a0d59afbd14cafc8509b8e68fcbf83ab25094f1a9859fdb"
+    },
+    {
+      "path": "full-buildpkg.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "full-buildpkg.stdout",
+      "bytes": 64,
+      "sha256": "419486c5f41dc209352f58f833d2df83c55c28296abe547924b47cdff1a34dad"
+    },
+    {
+      "path": "go-version-PROCESS.json",
+      "bytes": 120,
+      "sha256": "8276be128cf0556ad5dbaaaf09aa5b781fd2347054f07a47186963ff042ca859"
+    },
+    {
+      "path": "go-version-RESULT.json",
+      "bytes": 372,
+      "sha256": "4dcb18662d5626f599a80400fe7699ef31a4bb0cf8f098d4c457f59e695f4b1f"
+    },
+    {
+      "path": "go-version.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "go-version.stdout",
+      "bytes": 33,
+      "sha256": "36849436282e424cf1142184057f25a7bd6845d03b16fedbb1071bc6722524c4"
+    },
+    {
+      "path": "lint-version-PROCESS.json",
+      "bytes": 135,
+      "sha256": "c32a8c653980040b5c30b74034227533d93c0d1a60ad214bcfee5267682f5e48"
+    },
+    {
+      "path": "lint-version-RESULT.json",
+      "bytes": 390,
+      "sha256": "3f3c3a0ad123f73862ecc2bbe8445d47265a7d0d127a091f30ef65aef6e12c30"
+    },
+    {
+      "path": "lint-version.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "lint-version.stdout",
+      "bytes": 156,
+      "sha256": "be4b4ec451481410702351739d2d424cc995d5a7a31bad3023003b4b44e09833"
+    },
+    {
+      "path": "overlay.json",
+      "bytes": 516,
+      "sha256": "7ed8923a69bba67601ca23646dbdde39ee404d9731c58861cb7554005d1e9367"
+    },
+    {
+      "path": "run_checks.py",
+      "bytes": 7409,
+      "sha256": "ec55402a28bb4cc322452ef2e63dc32f401d5671ca7637c93bbe2ba9bcc107ee"
+    },
+    {
+      "path": "runner.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "runner.stdout",
+      "bytes": 4660,
+      "sha256": "cf4c489cdcdeb8b41340163fcfb6ef8732cbf12c34897c3b217111e01d2932d4"
+    },
+    {
+      "path": "scoped-lint-PROCESS.json",
+      "bytes": 185,
+      "sha256": "b5e88bc261020d744e575ba5acd1d94998662d5326c7f0f6f5d1c06aec04fd37"
+    },
+    {
+      "path": "scoped-lint-RESULT.json",
+      "bytes": 438,
+      "sha256": "66bd5f11470ad2be6acdea536954a294647e0ade71f40b152955fe8542af88e4"
+    },
+    {
+      "path": "scoped-lint.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "scoped-lint.stdout",
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+      "bytes": 19445,
+      "sha256": "458b09d301b5839afea9355e112d4373179914f6a17006154468dfe3d2407016"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 24885,
+      "sha256": "c617371b381d0f7831bd2038bdd5c7532ba656aa799985d54a81e3e1fcab2006"
+    }
+  ],
+  "payload_files": 39,
+  "payload_bytes": 357104
+}

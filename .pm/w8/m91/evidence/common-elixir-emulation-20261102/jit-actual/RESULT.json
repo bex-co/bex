@@ -1,0 +1,103 @@
+{
+  "probe_complete": true,
+  "fix_established": false,
+  "common_context_fix_proven": false,
+  "failure": null,
+  "cleanup_errors": [],
+  "pending_pgids": [],
+  "source_unchanged": true,
+  "stop": null,
+  "cancel": null,
+  "config_absent": true,
+  "containers": {
+    "bex-otp-jit-22896ca49a7dd5cca416-pull": {
+      "image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+      "cid": "af96d2b5d30aefe7bbe6e26d4e3f03e4e52e98757c98fdb6f5ad4c48947f4bee",
+      "absence_proved": true
+    },
+    "bex-otp-jit-22896ca49a7dd5cca416-hold": {
+      "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+      "cid": "45c0fb5ab646320cdea92b2f4a7c590dcc16b7fb675c1b3eacad121ebbcb5126",
+      "absence_proved": true
+    },
+    "bex-otp-jit-22896ca49a7dd5cca416-baseline": {
+      "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+      "cid": "b2deb5a46311327e34f0b8e9fb2292bc2977f3211cdaa26d24bacb5dc210d5fa",
+      "absence_proved": true
+    },
+    "bex-otp-jit-22896ca49a7dd5cca416-jit-single": {
+      "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+      "cid": "f9737e227a1f831e20fedaa893bb688db34b2889bfa8cfe513cd12d9e8cb35ca",
+      "absence_proved": true
+    }
+  },
+  "observations": {
+    "bex-otp-jit-22896ca49a7dd5cca416-pull": {
+      "exit_code": 0,
+      "stdout": "docker.io/hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f\n",
+      "stderr": "",
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-11-02T05:21:54.884396792Z",
+        "FinishedAt": "2026-11-02T05:22:12.734576321Z"
+      }
+    },
+    "bex-otp-jit-22896ca49a7dd5cca416-baseline": {
+      "exit_code": 1,
+      "stdout": "",
+      "stderr": "Kernel pid terminated (application_controller) (\"{application_start_failure,kernel,{{shutdown,{failed_to_start_child,user,nouser}},{kernel,start,[normal,[]]}}}\")\r\n\r\nCrash dump is being written to: /owned-diagnostic/erl_crash.dump...done\r\n",
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 1,
+        "Error": "",
+        "StartedAt": "2026-11-02T05:22:26.534120023Z",
+        "FinishedAt": "2026-11-02T05:22:39.257869233Z"
+      }
+    },
+    "bex-otp-jit-22896ca49a7dd5cca416-jit-single": {
+      "exit_code": 0,
+      "stdout": "28.5.0.8\n",
+      "stderr": "",
+      "container_state": {
+        "Status": "exited",
+        "Running": false,
+        "Paused": false,
+        "Restarting": false,
+        "OOMKilled": false,
+        "Dead": false,
+        "Pid": 0,
+        "ExitCode": 0,
+        "Error": "",
+        "StartedAt": "2026-11-02T05:22:42.6210994Z",
+        "FinishedAt": "2026-11-02T05:22:44.746139439Z"
+      }
+    }
+  },
+  "dumps": [
+    {
+      "path": "diagnostic-baseline/erl_crash.dump",
+      "bytes": 1676916,
+      "sha256": "b597a1a780bbffc0596e63c2c854e42781fd8f1b6480bc7feb7dca236de056b2",
+      "ends_with_dump_end_marker": true,
+      "declared_maximum_bytes": 8388608,
+      "capture": "Actual dump bytes ASIS; a capped or incomplete dump is not full-state proof."
+    }
+  ],
+  "peak_host_file_bytes": 1828529,
+  "minimum_physical_free_bytes": 17003335680,
+  "scope": "Cached selected provider AMD64 runtime under ARM-host emulation; diagnostic results only, not production/native-architecture acceptance."
+}

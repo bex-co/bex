@@ -1,0 +1,18 @@
+[
+  {
+    "path": "lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+    "before_bytes": 13006,
+    "before_sha256": "2cc5059eb78d2d4cb387b9626665bfdc335f7890de89f220e397475bb24f6da6",
+    "after_bytes": 19445,
+    "after_sha256": "458b09d301b5839afea9355e112d4373179914f6a17006154468dfe3d2407016",
+    "intended_git_mode": "100644"
+  },
+  {
+    "path": "lego/operator/internal/build/nativeutility_qualification_test.go",
+    "before_bytes": 24740,
+    "before_sha256": "3ae7091e11aa6267926e45a8b111a8ca703ffdce8381223d27cf2b2c4c56ce17",
+    "after_bytes": 24885,
+    "after_sha256": "c617371b381d0f7831bd2038bdd5c7532ba656aa799985d54a81e3e1fcab2006",
+    "intended_git_mode": "100644"
+  }
+]
