@@ -1,0 +1,257 @@
+[
+    {
+        "Id": "af96d2b5d30aefe7bbe6e26d4e3f03e4e52e98757c98fdb6f5ad4c48947f4bee",
+        "Created": "2026-11-02T05:21:50.173154374Z",
+        "Path": "/docker",
+        "Args": [
+            "--host",
+            "unix:///var/run/docker.sock",
+            "--config",
+            "/docker-config",
+            "pull",
+            "--quiet",
+            "--platform",
+            "linux/amd64",
+            "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f"
+        ],
+        "State": {
+            "Status": "created",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "0001-01-01T00:00:00Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+        "ResolvConfPath": "",
+        "HostnamePath": "",
+        "HostsPath": "",
+        "LogPath": "",
+        "Name": "/bex-otp-jit-22896ca49a7dd5cca416-pull",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "none",
+                "Config": {}
+            },
+            "NetworkMode": "bridge",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": [
+                "ALL"
+            ],
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": true,
+            "SecurityOpt": [
+                "no-new-privileges"
+            ],
+            "Tmpfs": {
+                "/tmp": "rw,nosuid,nodev,size=8388608"
+            },
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 8408530944,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 134217728,
+            "NanoCpus": 1000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 268435456,
+            "MemorySwappiness": null,
+            "OomKillDisable": false,
+            "PidsLimit": 64,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "Mounts": [
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker",
+                    "Target": "/docker",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/private/tmp/bex-w8-otp-jit-single-live-22896ca49a7dd5cca416/docker-config",
+                    "Target": "/docker-config",
+                    "ReadOnly": true
+                },
+                {
+                    "Type": "bind",
+                    "Source": "/var/run/docker.sock",
+                    "Target": "/var/run/docker.sock"
+                }
+            ],
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "af96d2b5d30aefe7bbe6e26d4e3f03e4e52e98757c98fdb6f5ad4c48947f4bee",
+                "LowerDir": "/var/lib/docker/overlay2/3e14e9830828ed7ec6045025a43822c808080144bf02234e0576e12494b9b206-init/diff:/var/lib/docker/overlay2/ede07570786a91d70253d93ce4a604932e5a10026ce330efa7166946a3f625a8/diff",
+                "MergedDir": "/var/lib/docker/overlay2/3e14e9830828ed7ec6045025a43822c808080144bf02234e0576e12494b9b206/merged",
+                "UpperDir": "/var/lib/docker/overlay2/3e14e9830828ed7ec6045025a43822c808080144bf02234e0576e12494b9b206/diff",
+                "WorkDir": "/var/lib/docker/overlay2/3e14e9830828ed7ec6045025a43822c808080144bf02234e0576e12494b9b206/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker",
+                "Destination": "/docker",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/private/tmp/bex-w8-otp-jit-single-live-22896ca49a7dd5cca416/docker-config",
+                "Destination": "/docker-config",
+                "Mode": "",
+                "RW": false,
+                "Propagation": "rprivate"
+            },
+            {
+                "Type": "bind",
+                "Source": "/var/run/docker.sock",
+                "Destination": "/var/run/docker.sock",
+                "Mode": "",
+                "RW": true,
+                "Propagation": "rprivate"
+            }
+        ],
+        "Config": {
+            "Hostname": "af96d2b5d30a",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+            ],
+            "Cmd": [
+                "--host",
+                "unix:///var/run/docker.sock",
+                "--config",
+                "/docker-config",
+                "pull",
+                "--quiet",
+                "--platform",
+                "linux/amd64",
+                "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f"
+            ],
+            "Image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+            "Volumes": null,
+            "WorkingDir": "/",
+            "Entrypoint": [
+                "/docker"
+            ],
+            "Labels": {
+                "bex.otp-input-probe.owner": "bex-otp-jit-22896ca49a7dd5cca416"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "bridge": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        }
+    }
+]

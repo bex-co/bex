@@ -1,0 +1,218 @@
+[
+    {
+        "Id": "e1fd3a4dba00d9536aef170ed1a4c6e6c036ed37db825390690a7e0f5ff45a1f",
+        "Created": "2026-11-02T04:57:57.564402544Z",
+        "Path": "/usr/bin/env",
+        "Args": [
+            "-u",
+            "LANG",
+            "-u",
+            "ERL_AFLAGS",
+            "-u",
+            "ERL_FLAGS",
+            "-u",
+            "ERL_ZFLAGS",
+            "/bin/sh",
+            "-ec",
+            "set -eu\nversion=28.5.0.8\nactual=$(erl -noshell -eval '{ok,B}=file:read_file(filename:join([code:root_dir(),\"releases\",erlang:system_info(otp_release),\"OTP_VERSION\"])), io:put_chars(string:trim(binary_to_list(B))), halt(0).')\n[ \"$actual\" = \"$version\" ]\nprintf '%s\\n' \"$actual\"\n"
+        ],
+        "State": {
+            "Status": "created",
+            "Running": false,
+            "Paused": false,
+            "Restarting": false,
+            "OOMKilled": false,
+            "Dead": false,
+            "Pid": 0,
+            "ExitCode": 0,
+            "Error": "",
+            "StartedAt": "0001-01-01T00:00:00Z",
+            "FinishedAt": "0001-01-01T00:00:00Z"
+        },
+        "Image": "sha256:bda2c827aeb4745319e01a69d27dede43b90430a8650f0ec455a520734e3ef59",
+        "ResolvConfPath": "",
+        "HostnamePath": "",
+        "HostsPath": "",
+        "LogPath": "",
+        "Name": "/bex-otp-probe-c238818cb42cb7ae3e69-old",
+        "RestartCount": 0,
+        "Driver": "overlay2",
+        "Platform": "linux",
+        "MountLabel": "",
+        "ProcessLabel": "",
+        "AppArmorProfile": "",
+        "ExecIDs": null,
+        "HostConfig": {
+            "Binds": null,
+            "ContainerIDFile": "",
+            "LogConfig": {
+                "Type": "none",
+                "Config": {}
+            },
+            "NetworkMode": "none",
+            "PortBindings": {},
+            "RestartPolicy": {
+                "Name": "no",
+                "MaximumRetryCount": 0
+            },
+            "AutoRemove": false,
+            "VolumeDriver": "",
+            "VolumesFrom": null,
+            "ConsoleSize": [
+                0,
+                0
+            ],
+            "CapAdd": null,
+            "CapDrop": [
+                "ALL"
+            ],
+            "CgroupnsMode": "private",
+            "Dns": null,
+            "DnsOptions": [],
+            "DnsSearch": [],
+            "ExtraHosts": null,
+            "GroupAdd": null,
+            "IpcMode": "private",
+            "Cgroup": "",
+            "Links": null,
+            "OomScoreAdj": 0,
+            "PidMode": "",
+            "Privileged": false,
+            "PublishAllPorts": false,
+            "ReadonlyRootfs": true,
+            "SecurityOpt": [
+                "no-new-privileges"
+            ],
+            "Tmpfs": {
+                "/tmp": "rw,nosuid,nodev,size=134217728"
+            },
+            "UTSMode": "",
+            "UsernsMode": "",
+            "ShmSize": 8408530944,
+            "Runtime": "runc",
+            "Isolation": "",
+            "CpuShares": 0,
+            "Memory": 536870912,
+            "NanoCpus": 2000000000,
+            "CgroupParent": "",
+            "BlkioWeight": 0,
+            "BlkioWeightDevice": [],
+            "BlkioDeviceReadBps": [],
+            "BlkioDeviceWriteBps": [],
+            "BlkioDeviceReadIOps": [],
+            "BlkioDeviceWriteIOps": [],
+            "CpuPeriod": 0,
+            "CpuQuota": 0,
+            "CpuRealtimePeriod": 0,
+            "CpuRealtimeRuntime": 0,
+            "CpusetCpus": "",
+            "CpusetMems": "",
+            "Devices": [],
+            "DeviceCgroupRules": null,
+            "DeviceRequests": null,
+            "MemoryReservation": 0,
+            "MemorySwap": 1073741824,
+            "MemorySwappiness": null,
+            "OomKillDisable": false,
+            "PidsLimit": 256,
+            "Ulimits": null,
+            "CpuCount": 0,
+            "CpuPercent": 0,
+            "IOMaximumIOps": 0,
+            "IOMaximumBandwidth": 0,
+            "MaskedPaths": [
+                "/proc/acpi",
+                "/proc/asound",
+                "/proc/interrupts",
+                "/proc/kcore",
+                "/proc/keys",
+                "/proc/latency_stats",
+                "/proc/sched_debug",
+                "/proc/scsi",
+                "/proc/timer_list",
+                "/proc/timer_stats",
+                "/sys/devices/virtual/powercap",
+                "/sys/firmware"
+            ],
+            "ReadonlyPaths": [
+                "/proc/bus",
+                "/proc/fs",
+                "/proc/irq",
+                "/proc/sys",
+                "/proc/sysrq-trigger"
+            ]
+        },
+        "GraphDriver": {
+            "Data": {
+                "ID": "e1fd3a4dba00d9536aef170ed1a4c6e6c036ed37db825390690a7e0f5ff45a1f",
+                "LowerDir": "/var/lib/docker/overlay2/6259d5044f2e710c278a9a11d3b88b408482d14ab7ac544fa1f2c563373f49b2-init/diff:/var/lib/docker/overlay2/5b6d3d22efe69d21258ddcea8bd00da8228f9f70cd5f3aec92db9681b33c990d/diff:/var/lib/docker/overlay2/5d1ff0ec47d26ccdda95fec397c3c594569d0baf696f6db5ca84401058c49d3e/diff:/var/lib/docker/overlay2/6f45ce3f1181d76bf4857f147b69356586c5137b69e4c623244c2eb4eb7f2e23/diff",
+                "MergedDir": "/var/lib/docker/overlay2/6259d5044f2e710c278a9a11d3b88b408482d14ab7ac544fa1f2c563373f49b2/merged",
+                "UpperDir": "/var/lib/docker/overlay2/6259d5044f2e710c278a9a11d3b88b408482d14ab7ac544fa1f2c563373f49b2/diff",
+                "WorkDir": "/var/lib/docker/overlay2/6259d5044f2e710c278a9a11d3b88b408482d14ab7ac544fa1f2c563373f49b2/work"
+            },
+            "Name": "overlay2"
+        },
+        "Mounts": [],
+        "Config": {
+            "Hostname": "e1fd3a4dba00",
+            "Domainname": "",
+            "User": "",
+            "AttachStdin": false,
+            "AttachStdout": true,
+            "AttachStderr": true,
+            "Tty": false,
+            "OpenStdin": false,
+            "StdinOnce": false,
+            "Env": [
+                "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+                "LANG=C.UTF-8"
+            ],
+            "Cmd": [
+                "-u",
+                "LANG",
+                "-u",
+                "ERL_AFLAGS",
+                "-u",
+                "ERL_FLAGS",
+                "-u",
+                "ERL_ZFLAGS",
+                "/bin/sh",
+                "-ec",
+                "set -eu\nversion=28.5.0.8\nactual=$(erl -noshell -eval '{ok,B}=file:read_file(filename:join([code:root_dir(),\"releases\",erlang:system_info(otp_release),\"OTP_VERSION\"])), io:put_chars(string:trim(binary_to_list(B))), halt(0).')\n[ \"$actual\" = \"$version\" ]\nprintf '%s\\n' \"$actual\"\n"
+            ],
+            "Image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+            "Volumes": null,
+            "WorkingDir": "/tmp",
+            "Entrypoint": [
+                "/usr/bin/env"
+            ],
+            "Labels": {
+                "bex.otp-input-probe.owner": "bex-otp-probe-c238818cb42cb7ae3e69"
+            }
+        },
+        "NetworkSettings": {
+            "SandboxID": "",
+            "SandboxKey": "",
+            "Ports": {},
+            "Networks": {
+                "none": {
+                    "IPAMConfig": null,
+                    "Links": null,
+                    "Aliases": null,
+                    "DriverOpts": null,
+                    "GwPriority": 0,
+                    "NetworkID": "",
+                    "EndpointID": "",
+                    "Gateway": "",
+                    "IPAddress": "",
+                    "MacAddress": "",
+                    "IPPrefixLen": 0,
+                    "IPv6Gateway": "",
+                    "GlobalIPv6Address": "",
+                    "GlobalIPv6PrefixLen": 0,
+                    "DNSNames": null
+                }
+            }
+        }
+    }
+]

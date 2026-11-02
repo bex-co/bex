@@ -1,0 +1,16 @@
+{
+  "label": "scoped-lint",
+  "argv": [
+    "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+    "run",
+    "--concurrency",
+    "2",
+    "./internal/build"
+  ],
+  "exit": 0,
+  "bound": null,
+  "seconds": 34.49153070896864,
+  "group_absent": true,
+  "stdout_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

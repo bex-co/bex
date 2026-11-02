@@ -1,0 +1,3 @@
+Kernel pid terminated (application_controller) ("{application_start_failure,kernel,{{shutdown,{failed_to_start_child,user,nouser}},{kernel,start,[normal,[]]}}}")
+
+Crash dump is being written to: erl_crash.dump...done

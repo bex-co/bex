@@ -1,0 +1,66 @@
+{
+  "files": [
+    {
+      "path": "ANALYSIS.json",
+      "bytes": 1586,
+      "sha256": "29fe919ed442e14a3ecb2e6e146dda25b8ed6bdcfc96716aaf4f957c2d999a19"
+    },
+    {
+      "path": "DUMP-STACKS.json",
+      "bytes": 6221,
+      "sha256": "7418f2396b408fbb103b249142c4e4f0efcf928f7587bc83d2370dd7f60c257d"
+    },
+    {
+      "path": "EXECUTE.txt",
+      "bytes": 120,
+      "sha256": "f827c20f9883555ae3dbb917cc89da99a54794c5510b5c13b8f7756e99e2f09f"
+    },
+    {
+      "path": "PLAN.json",
+      "bytes": 7366,
+      "sha256": "ca42fb187f86be334ea23cded88a4bf0461d384429ed1a04f88cc19657cf58bb"
+    },
+    {
+      "path": "RECEIPT.json",
+      "bytes": 267,
+      "sha256": "adf004742fa6a0263417d1df4ea8858b29580e94ed53794c7295c4400ebe181e"
+    },
+    {
+      "path": "SOURCE-CONTROLS.json",
+      "bytes": 367,
+      "sha256": "62c04ba31a57ea92b54d2be7f07603903185756f2f2bbbf29a46d3175ed8d5b6"
+    },
+    {
+      "path": "program.diff",
+      "bytes": 569,
+      "sha256": "92fa536f55e8058da19cfb60128f042db50814d3edf9171b735c839b11e9c53f"
+    },
+    {
+      "path": "run_probe.py",
+      "bytes": 16119,
+      "sha256": "1fca5c0720f4b2b84324a89243f59c473139d44b1db61b1105fb208fcdb82e0a"
+    },
+    {
+      "path": "source.diff",
+      "bytes": 2482,
+      "sha256": "92ae77d34ba25bc3e36acb22f9e2061c2e94358356f2b3e63713d9c6f08b8c2c"
+    },
+    {
+      "path": "upstream/issue9877-comments.json",
+      "bytes": 1866,
+      "sha256": "c8b2e16bd975b6f5219ae99ea4e6e35f041384053c6693602a5a20789266d328"
+    },
+    {
+      "path": "upstream/issue9877.json",
+      "bytes": 9442,
+      "sha256": "a38643a73a83731620bc2998d13a9ec002b7518f5d039b590f2fc0d3f94da336"
+    },
+    {
+      "path": "upstream/prim_tty_nif-OTP-28.5.0.8.c",
+      "bytes": 38537,
+      "sha256": "2fb455c5d9a60cb446d2d9c600ce4255d18bb6e9d13eb6f814ab43ff4c794cc8"
+    }
+  ],
+  "payload_files": 12,
+  "payload_bytes": 84942
+}

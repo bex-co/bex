@@ -1,0 +1,99 @@
+{
+  "PASS": true,
+  "results": [
+    {
+      "label": "go-version",
+      "argv": [
+        "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+        "version"
+      ],
+      "exit": 0,
+      "bound": null,
+      "seconds": 0.373912958195433,
+      "group_absent": true,
+      "stdout_sha256": "36849436282e424cf1142184057f25a7bd6845d03b16fedbb1071bc6722524c4",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "lint-version",
+      "argv": [
+        "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+        "version"
+      ],
+      "exit": 0,
+      "bound": null,
+      "seconds": 0.6486423329915851,
+      "group_absent": true,
+      "stdout_sha256": "be4b4ec451481410702351739d2d424cc995d5a7a31bad3023003b4b44e09833",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "focused",
+      "argv": [
+        "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+        "test",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build",
+        "-run",
+        "^(TestCommonElixir|TestNativeUtilityPrerequisiteRecipe|TestNativeUtilityBuildUses|TestNativeUtilityWheelPreparation)"
+      ],
+      "exit": 0,
+      "bound": null,
+      "seconds": 14.687905999831855,
+      "group_absent": true,
+      "stdout_sha256": "c7edbd2297d12f27753d011cb20d3b814bd29d3c3f4b38bfb9db402bccb05799",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "full-buildpkg",
+      "argv": [
+        "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+        "test",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build"
+      ],
+      "exit": 0,
+      "bound": null,
+      "seconds": 29.52368608303368,
+      "group_absent": true,
+      "stdout_sha256": "419486c5f41dc209352f58f833d2df83c55c28296abe547924b47cdff1a34dad",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "scoped-lint",
+      "argv": [
+        "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+        "run",
+        "--concurrency",
+        "2",
+        "./internal/build"
+      ],
+      "exit": 0,
+      "bound": null,
+      "seconds": 34.49153070896864,
+      "group_absent": true,
+      "stdout_sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "failure": null,
+  "source_unchanged": true,
+  "physical_source_entries": 303,
+  "ignored_pycs_retained": [
+    "lego/operator/internal/build/testdata/native-elixir-qualification/__pycache__/check.cpython-314.pyc",
+    "lego/operator/internal/build/testdata/native-node-qualification/__pycache__/check.cpython-314.pyc",
+    "lego/operator/internal/build/testdata/native-utilities/__pycache__/original-cases.cpython-314.pyc"
+  ],
+  "foreign_sum_unchanged": true,
+  "minimum_free_bytes": 16315183104,
+  "peak_owned_TMP_bytes": 44336082,
+  "shared_cache_retained": true,
+  "own_TMP_removed": true,
+  "pending_pgids": [],
+  "cancelled": [],
+  "actual_image_CI_or_adoption_claim": false
+}

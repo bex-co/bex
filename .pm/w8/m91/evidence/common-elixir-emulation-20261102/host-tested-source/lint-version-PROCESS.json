@@ -1,0 +1,8 @@
+{
+  "pid": 40406,
+  "pgid": 40406,
+  "argv": [
+    "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+    "version"
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "pid": 42812,
+  "pgid": 42812,
+  "argv": [
+    "/Users/tianpan/projects/bex7/lego/operator/bin/golangci-lint",
+    "run",
+    "--concurrency",
+    "2",
+    "./internal/build"
+  ]
+}

@@ -1,0 +1,76 @@
+{
+  "schema": "bex.otp-user-startup-diagnostic/v2",
+  "owner": "bex-otp-diag-f26ad234159c4c6bb607",
+  "label": "bex.otp-input-probe.owner",
+  "run_root": "/private/tmp/bex-w8-otp-user-diagnostic-v2-live-f26ad234159c4c6bb607",
+  "host_docker": "/usr/local/bin/docker",
+  "endpoint": "unix:///Users/tianpan/.orbstack/run/docker.sock",
+  "donor_image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+  "expected_config": "sha256:bda2c827aeb4745319e01a69d27dede43b90430a8650f0ec455a520734e3ef59",
+  "expected_version": "28.5.0.8",
+  "version_probe": "set -eu\nversion=28.5.0.8\nactual=$(erl -noshell -eval '{ok,B}=file:read_file(filename:join([code:root_dir(),\"releases\",erlang:system_info(otp_release),\"OTP_VERSION\"])), io:put_chars(string:trim(binary_to_list(B))), halt(0).')\n[ \"$actual\" = \"$version\" ]\nprintf '%s\\n' \"$actual\"\n",
+  "source_inputs": {
+    "/private/tmp/bex-w8-otp-input-probe-source-20261102-qbn7ln_f/run_probe.py": "edc0f742ddf74354f426171230743ae0766076d5886f0a19452150847e591484",
+    "/private/tmp/bex-w8-otp-input-probe-source-20261102-qbn7ln_f/PLAN.json": "86b185d8761dbc34686ef6da5750943d11e992a22fba2cb054590359960ad859",
+    "/private/tmp/bex-w8-node14-local-pilot-v3-source-20261101-buxfh6_j/run_pilot.py": "8a567d1d855ab98dadb69c2b25ceefc69cb6347c4438eadc9aa7033b7c1d6319",
+    "/usr/local/bin/docker": "4a728ee98f89005a90198a9be791e8fdaebbcb5e6af9721251efe0113df37759",
+    "/private/tmp/bex-w8-otp-nouser-diagnosis-20261102-ueb24de3/probe-image-metadata/SIZING.json": "f973a69eaa4a5ef9042ba23888e5a0787d55cf971d7982b0a3832d38f1526cf8",
+    "/private/tmp/bex-w8-otp-nouser-diagnosis-20261102-ueb24de3/probe-image-metadata/index.json": "22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "/private/tmp/bex-w8-otp-nouser-diagnosis-20261102-ueb24de3/probe-image-metadata/amd64-manifest.json": "a3228b0ab096c9327ede59310497da6444f6f19663948a3c2ce455c55e3158e3",
+    "/private/tmp/bex-w8-otp-nouser-diagnosis-20261102-ueb24de3/probe-image-metadata/amd64-config.json": "bda2c827aeb4745319e01a69d27dede43b90430a8650f0ec455a520734e3ef59",
+    "/private/tmp/bex-w8-otp-user-diagnostic-source-20261102-7hggohmr/PLAN.json": "69364378578f89b2ab960b3c242cfe3ef22a78366b82ca724502a029ce4f4758",
+    "/private/tmp/bex-w8-otp-user-diagnostic-source-20261102-7hggohmr/run_probe.py": "38b764bb824db5e6e59041ab3d142cf57419574698797bb2098b382924d315b9",
+    "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker": "8d1f0003ab751833dc596e6b96dbc321b6af95d67feefef64be14e7369f04b08"
+  },
+  "metadata": {
+    "sizing": "/private/tmp/bex-w8-otp-nouser-diagnosis-20261102-ueb24de3/probe-image-metadata/SIZING.json",
+    "platform": "linux/amd64",
+    "index": "sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "manifest": "sha256:a3228b0ab096c9327ede59310497da6444f6f19663948a3c2ce455c55e3158e3",
+    "compressed_config_layers_bytes": 100799330,
+    "largest_compressed_layer_bytes": 48524552
+  },
+  "bounds": {
+    "runtime_seconds_each": 30,
+    "runtime_cpu": 2,
+    "runtime_memory_bytes": 536870912,
+    "runtime_pids": 256,
+    "runtime_tmpfs_bytes": 134217728,
+    "host_stop_bytes": 29360128,
+    "host_output_cap_bytes": 33554432,
+    "physical_free_floor_bytes": 8589934592,
+    "pulled_image_postcheck_bytes": 1073741824,
+    "whole_seconds": 900,
+    "pull_seconds": 600
+  },
+  "scope": "One exact immutable provider pull followed by the same three offline AMD64 diagnostic commands under ARM-host emulation; not a common0941-context fix or production acceptance.",
+  "execution_authority": "SOURCE_ONLY_PENDING_ROOT_REVIEW",
+  "variants": [
+    {
+      "name": "baseline-dump",
+      "environment": [],
+      "program": "set -eu\nversion=28.5.0.8\nactual=$(erl -noshell -eval '{ok,B}=file:read_file(filename:join([code:root_dir(),\"releases\",erlang:system_info(otp_release),\"OTP_VERSION\"])), io:put_chars(string:trim(binary_to_list(B))), halt(0).')\n[ \"$actual\" = \"$version\" ]\nprintf '%s\\n' \"$actual\"\n",
+      "purpose": "Reproduce exact old version command while retaining its bounded crash dump."
+    },
+    {
+      "name": "locale",
+      "environment": [
+        "LANG=C.UTF-8"
+      ],
+      "program": "set -eu\nversion=28.5.0.8\nactual=$(erl -noshell -eval '{ok,B}=file:read_file(filename:join([code:root_dir(),\"releases\",erlang:system_info(otp_release),\"OTP_VERSION\"])), io:put_chars(string:trim(binary_to_list(B))), halt(0).')\n[ \"$actual\" = \"$version\" ]\nprintf '%s\\n' \"$actual\"\n",
+      "purpose": "Change only the batch locale to the provider default; no cure assumed."
+    },
+    {
+      "name": "driver",
+      "environment": [],
+      "program": "set -eu\nexec erl -noshell -noinput -nouser -eval 'erlang:display({system,erlang:system_info(system_version)}), erlang:display({args,init:get_arguments()}), erlang:display({locale,[{K,os:getenv(K)} || K <- [\"LANG\",\"LC_ALL\",\"LC_CTYPE\"]]}), erlang:display({tty_load,catch prim_tty:load()}), erlang:display({isatty,catch prim_tty:isatty(stdin),catch prim_tty:isatty(stdout),catch prim_tty:isatty(stderr)}), erlang:display({user_drv_result,catch user_drv:start(#{initial_shell => noshell,input => disabled})}), halt(0).'\n",
+      "purpose": "Skip user_sup automatic user startup, then display the actual user_drv:start return/caught reason via erlang:display. Diagnostic bypass only; never a product fix or accepted runtime."
+    }
+  ],
+  "interpretation": "Prior image vanished before inspect; actor/cause unknown, GC unproved. Reacquisition is input repair only. All diagnostic bodies/dumpcaps/interpretations unchanged; no fix flag. Forced external removal is not prevented by this hold; any new input/command failure remains fatal without retry.",
+  "artifact_policy": "At most3 exactowned bind output dirs; ERL_CRASH_DUMP_BYTES8MiB/SECONDS5. Actual bytes never clipped by host. Host32MiB operating cap/28MiB stop and8GiB physical floor, not reservations. Existing tmpfs128MiB is separate. Dumpmode644 changed only for host readability after exit; raw contents remain ASIS.",
+  "linux_docker": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools/docker",
+  "pull_helper_image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+  "pull_policy": "Exactly one LinuxDocker pull command in one cached-Alpine helper with empty own config. No retry/mirror/auth. Newly pulled exact image retained for later context probe; no image/layer prune. Metadata compressed size is exact; local unpacked space is unknown before pull and postchecked <=1GiB, not a reservation. Global8GiB floor observed during clients.",
+  "hold_policy": "After successful one-pull/actualconfig check, claim/create a labeled networknone/readOnly provider hold container and prove statecreated/PID0. Never start it. Keep its CID/image reference through all three unchanged diagnostics; exact existing finally cleanup removes it. Max2 containers at once (hold+one diagnostic); pull helper is already removed. No unrelated cache/image cleanup."
+}

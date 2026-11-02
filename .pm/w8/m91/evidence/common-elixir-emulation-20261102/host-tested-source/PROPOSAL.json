@@ -1,0 +1,30 @@
+{
+  "schema": "bex.elixir-qualification-emulation-proposal/v1",
+  "status": "SOURCE_AND_HOST_CHECKS_COMPLETE_PENDING_ROOT_APPLY",
+  "source_preimage": "9039e5037880116572d1bf50be364af96acae59a",
+  "changed_paths": [
+    "lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+    "lego/operator/internal/build/nativeutility_qualification_test.go"
+  ],
+  "production_code_changed": false,
+  "image_critical33_paths_changed": false,
+  "original_programs_commands_and_oracles_changed": false,
+  "activation": "Only exact actual daemon linux/arm64 + target linux/amd64. Host GoELF architecture is not used. Raw Docker daemon observation retained; nativeAMD/nativeARM/unknown strings do not activate.",
+  "build_scope": "Insert ARG ERL_FLAGS after only the exact trusted canonical primary/final FROM-prefix boundaries. Pass --build-arg ERL_FLAGS=+JMsingle true. All authored/heredoc bytes stay unchanged; executed recipe is explicitly a recorded qualification overlay, not canonical-byte-identical.",
+  "runtime_scope": "Existing network-none runImage gains optional explicit runtimeEnv; only this activated Elixir caller supplies ERL_FLAGS=+JMsingle true. Default nil preserves all other callers argv. Runtime override is recorded; final OCI image must contain no ERL_FLAGS entry.",
+  "customer_behavior": "No production generator/helper/factory, package, fixture, runtime default, stored ENV or host configuration is changed.",
+  "proof_roles": "ARG is available during RUN and absent from final image ENV per official Docker reference. Actual built-image inspect enforces no flag leakage. Runtime container ENV intentionally has the test VM flag and differs from imageENV.",
+  "new_controls": [
+    "TestCommonElixirSingleMappingRequiresActualEmulation:8 positive/negative host-target combinations",
+    "TestCommonElixirEmulationRecipePreservesAuthoredBytes:empty/nonempty stages, quoted data with FROM/ARG/ENV decoys and unknownprefix refusal",
+    "TestCommonElixirEmulationComposesWithSourcePrerequisite:ARGs at both stages, original checksum-bound online RUN and untouched authored suffix"
+  ],
+  "validation": "Focused GoPASS0.740s/full internal-buildPASS24.703s/pinned scopedlint0issues; all actualcommands complete exit0/no bounds/groupsgone/sourceandforeignsumunchanged. No Docker/context/family/CI/adoption execution.",
+  "common_context": "A small diagnostic common0941+exact donor COPY prefix with ARG passthrough and no-OCIENV check is useful before the full case; it must be labelled synthetic contextprobe, not full build-otp/features. Existing full Elixir qualification remains the acceptance path; no new optional approval gate is introduced.",
+  "references": [
+    "https://github.com/erlang/otp/issues/9877#issuecomment-2909301261",
+    "https://docs.docker.com/reference/dockerfile/#arg"
+  ],
+  "source_roles": "Current common0941 approval remains separate; executing sourcefull300 changes2 test files and needs fresh source-bound CI receipts. No prior CI result relabeled.",
+  "source_preimage_current_equivalent_head": "b0caca89dcf66e5dea64b31564a34fa9ebe4c3cf"
+}

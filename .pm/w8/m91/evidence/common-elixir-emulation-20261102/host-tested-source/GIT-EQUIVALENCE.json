@@ -1,0 +1,13 @@
+{
+  "current_head": "b0caca89dcf66e5dea64b31564a34fa9ebe4c3cf",
+  "functional_tracked_files": 300,
+  "current_git_blob_mode_equals_tested_physical_source": true,
+  "physical_inventory": 303,
+  "ignored_pycs": [
+    "lego/operator/internal/build/testdata/native-elixir-qualification/__pycache__/check.cpython-314.pyc",
+    "lego/operator/internal/build/testdata/native-node-qualification/__pycache__/check.cpython-314.pyc",
+    "lego/operator/internal/build/testdata/native-utilities/__pycache__/original-cases.cpython-314.pyc"
+  ],
+  "ignored_pycs_unchanged_before_after": true,
+  "source_overlay": "Two explicit private testfile substitutions; no clean physical300 qualification claim."
+}

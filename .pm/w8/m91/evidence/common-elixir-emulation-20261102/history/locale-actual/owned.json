@@ -1,0 +1,27 @@
+{
+  "bex-otp-diag-f26ad234159c4c6bb607-pull": {
+    "image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+    "cid": "32f924e01a79d21723babe2a76b0a8f806950959d89dc5e9db7ba179777dbd9a",
+    "absence_proved": true
+  },
+  "bex-otp-diag-f26ad234159c4c6bb607-hold": {
+    "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "cid": "57d9ca199148be30d448b25d28b2a9af997932e8bcb71ff6ffa88f07e7b209c0",
+    "absence_proved": true
+  },
+  "bex-otp-diag-f26ad234159c4c6bb607-baseline-dump": {
+    "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "cid": "bbc1f63ef6cb126d8acde241d8ce286e15ab1fcaf427b6470685e7c839178605",
+    "absence_proved": true
+  },
+  "bex-otp-diag-f26ad234159c4c6bb607-locale": {
+    "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "cid": "a0f602491cd07bb4526cdfa6139c457f81801cad5c12fba88e7c129331f18e54",
+    "absence_proved": true
+  },
+  "bex-otp-diag-f26ad234159c4c6bb607-driver": {
+    "image": "hexpm/erlang:28.5.0.8-debian-bookworm-20261027@sha256:22266441aa8fcdc57078255ba0d73fd82ae069964b40041d5f59fbf62ef23d8f",
+    "cid": "dccd24a65e4b8ef5d5d4e9d09f3bf473b02b2da14127f4be421167864645ed65",
+    "absence_proved": true
+  }
+}
