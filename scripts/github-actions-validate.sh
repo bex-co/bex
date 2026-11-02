@@ -496,7 +496,6 @@ azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d
 docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a
 docker/login-action@dbcb813823bdd20940b903addbd779551569679f
 docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
-hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789
 oras-project/setup-oras@1d808f7d7f6995cc68b7bf507bfe5c5446e1dc9d
 sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6'
 
@@ -519,9 +518,16 @@ if ! grep -Fq 'SHELLCHECK_VERSION=0.10.0' .github/workflows/scripts.yml \
   exit 1
 fi
 if grep -Fq 'hashicorp/setup-terraform@' .github/workflows/infra.yml \
-  || [ "$(grep -cF 'bash scripts/terraform-install.sh "$TERRAFORM_VERSION" "$TERRAFORM_LINUX_ARM64_SHA256"' .github/workflows/infra.yml)" -ne 2 ] \
+  || [ "$(grep -cF 'bash scripts/hashicorp-install.sh terraform "$TERRAFORM_VERSION" "$TERRAFORM_LINUX_ARM64_SHA256"' .github/workflows/infra.yml)" -ne 2 ] \
   || ! grep -Fq 'TERRAFORM_LINUX_ARM64_SHA256: 0ca5d6977c7c46bfa4bbe030030b911e897cf0cb72bff5525fb76c10f1c3409a' .github/workflows/infra.yml; then
   echo "FAIL: infra must install checksum-pinned Terraform without setup-terraform's host unzip dependency" >&2
+  exit 1
+fi
+if grep -Fq 'hashicorp/setup-packer@' .github/workflows/snapshot.yml \
+  || ! grep -Fq 'bash scripts/hashicorp-install.sh packer "$PACKER_VERSION" "$PACKER_LINUX_ARM64_SHA256"' .github/workflows/snapshot.yml \
+  || ! grep -Fq 'PACKER_VERSION: 1.11.2' .github/workflows/snapshot.yml \
+  || ! grep -Fq 'PACKER_LINUX_ARM64_SHA256: dd296d743dd4593304307583cff5290bba9b868fc2b0b605b64566f8141ca728' .github/workflows/snapshot.yml; then
+  echo "FAIL: snapshot must install checksum-pinned Packer without setup-packer's host unzip dependency" >&2
   exit 1
 fi
 

@@ -37,6 +37,8 @@ jobs:
     environment: production-snapshot
     env:
       HCLOUD_TOKEN: ${{ secrets.HCLOUD_TOKEN }}
+      PACKER_VERSION: 1.11.2
+      PACKER_LINUX_ARM64_SHA256: dd296d743dd4593304307583cff5290bba9b868fc2b0b605b64566f8141ca728
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
@@ -57,10 +59,8 @@ jobs:
           echo "KUBERNETES_VERSION=${KUBERNETES_VERSION}" >>"$GITHUB_ENV"
           echo "IMAGE_NAME=${IMAGE_NAME}" >>"$GITHUB_ENV"
 
-      - name: install packer
-        uses: hashicorp/setup-packer@ce93c3c08a6c2ff2275bf4b54ff0d9a75f6c9789 # v3.4.0
-        with:
-          version: "1.11.2"
+      - name: install Packer (checksum-pinned, rootless)
+        run: bash scripts/hashicorp-install.sh packer "$PACKER_VERSION" "$PACKER_LINUX_ARM64_SHA256"
 
       # NOT `packer init` (w1/m66 F12): init resolves a version constraint over
       # the network and — since Packer 1.14 dropped .packer.lock.hcl — records no
