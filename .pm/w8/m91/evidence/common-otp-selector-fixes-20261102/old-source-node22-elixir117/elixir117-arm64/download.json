@@ -1,0 +1,13 @@
+{
+  "artifact_id": 13116816426,
+  "arch": "elixir117-arm64",
+  "expected_bytes": 36693,
+  "expected_sha256": "86f22ae19cb071d6e4078adba1a1d3cac04c7ece4c739b65be6d26ef39c15470",
+  "complete": true,
+  "scope": "approved connector file reference; one verified-TLS stream; signed URL never retained",
+  "started_at": "2026-11-02T04:44:13.321347+00:00",
+  "observed_bytes": 36693,
+  "observed_sha256": "86f22ae19cb071d6e4078adba1a1d3cac04c7ece4c739b65be6d26ef39c15470",
+  "minimum_free": 18879696896,
+  "seconds": 0.48425945779308677
+}

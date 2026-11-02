@@ -1,0 +1,34 @@
+{
+  "actual_generator_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+  "scope": "Oldsourceactualoutputs only, not new9039sourceacceptance; no image/runtimeexecution.",
+  "items": [
+    {
+      "key": "node22-arm64",
+      "run": 41375390166,
+      "job": 125055427809,
+      "artifact": 13114327069,
+      "zip_bytes": 84395,
+      "zip_sha256": "c36203064e9ca4db2029e0c81c32aaa2c8dd1d6777f4e44d2d4593618a333974"
+    },
+    {
+      "key": "elixir117-amd64",
+      "run": 41375779779,
+      "job": 125060083567,
+      "artifact": 13114805534,
+      "zip_bytes": 37786,
+      "zip_sha256": "68ec5baa7e548352dfe0e12cbc88cadb4b62cd0337582f73b1da70eacb5a8bfb"
+    },
+    {
+      "key": "elixir117-arm64",
+      "run": 41375779779,
+      "job": 125060083616,
+      "artifact": 13116816426,
+      "zip_bytes": 36693,
+      "zip_sha256": "86f22ae19cb071d6e4078adba1a1d3cac04c7ece4c739b65be6d26ef39c15470"
+    }
+  ],
+  "node22_AMD_independent": "/private/tmp/bex-w8-node22-26-amd-independent-20261102-vt29xqvb",
+  "downloader_source": "/private/tmp/bex-w8-e6-utility-intake-20261102-c40h5x0g/download.py",
+  "downloader_delta": "OnlyINPUTSdata tuple changed; download/checks unchanged.",
+  "extractor_sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4"
+}

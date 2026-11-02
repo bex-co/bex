@@ -224,3 +224,122 @@ func TestDockerHubResolverListsTagsByPrefix(t *testing.T) {
 		t.Error("an unreviewed repository was listed")
 	}
 }
+
+func TestExactErlangTagPartitionAvoidsUnusablePages(t *testing.T) {
+	const broad = "1.18.4-erlang-28.0"
+	const base = broad + "-debian-"
+	const descendants = broad + "."
+	const selected = "1.18.4-erlang-28.0.2-debian-bookworm-20260824"
+	for _, failed := range []string{"", base, descendants} {
+		name := "complete partition"
+		if failed != "" {
+			name = "listing failure " + failed
+		}
+		t.Run(name, func(t *testing.T) {
+			queries := make(chan string, 32)
+			heads := make(chan string, 4)
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				switch r.URL.Path {
+				case "/v2/repositories/hexpm/elixir/tags":
+					search := r.URL.Query().Get("name")
+					queries <- search
+					if search == failed && failed != "" {
+						w.WriteHeader(http.StatusServiceUnavailable)
+						return
+					}
+					page, _ := strconv.Atoi(r.URL.Query().Get("page"))
+					if r.URL.Query().Get("page_size") != "100" {
+						t.Error("tag search changed its existing page bound")
+					}
+					var names []string
+					var next *string
+					switch search {
+					case broad:
+						// Reproduce the old walk through unusable RC/OS pages.
+						if page == 11 {
+							w.WriteHeader(http.StatusForbidden)
+							return
+						}
+						names = []string{broad + "-rc." + strconv.Itoa(page) + "-alpine-3.22"}
+						n := "next"
+						next = &n
+					case base:
+						names = []string{base + "bookworm-20260610", base + "bookworm-20260824"}
+					case descendants:
+						names = []string{broad + ".1-debian-bookworm-20260610", broad + ".2-debian-bookworm-20260610", selected, broad + ".2-alpine-3.22"}
+					default:
+						t.Errorf("unexpected tag query %q", search)
+						w.WriteHeader(http.StatusBadRequest)
+						return
+					}
+					results := make([]map[string]string, 0, len(names))
+					for _, tag := range names {
+						results = append(results, map[string]string{"name": tag})
+					}
+					must(t, json.NewEncoder(w).Encode(map[string]any{"next": next, "results": results}))
+				case "/token":
+					must(t, json.NewEncoder(w).Encode(map[string]string{"token": "public-test-token"}))
+				case "/v2/library/erlang/manifests/28.0.2.0":
+					heads <- r.URL.Path
+					w.Header().Set("Docker-Content-Digest", exactDigest)
+				case "/v2/hexpm/elixir/manifests/" + selected:
+					heads <- r.URL.Path
+					w.Header().Set("Docker-Content-Digest", otherDigest)
+				default:
+					t.Errorf("unexpected metadata request %s", r.URL.Path)
+					w.WriteHeader(http.StatusNotFound)
+				}
+			}))
+			t.Cleanup(server.Close)
+			resolver := &DockerHubResolver{Client: server.Client(), AuthURL: server.URL + "/token", RegistryURL: server.URL, HubURL: server.URL}
+			choice, err := pinErlangVersion(t.Context(), resolver, NativeChoice{Line: "1.18", erlang: "28.0"})
+			if failed != "" {
+				if err == nil || !strings.Contains(err.Error(), "tag listing answered 503") || choice.Image != "" || len(heads) != 0 {
+					t.Fatalf("failed required partition did not remain a lookup failure: choice=%+v err=%v", choice, err)
+				}
+				return
+			}
+			must(t, err)
+			if choice.otp != "28.0.2" || choice.Image != "erlang:28.0.2.0@"+exactDigest || choice.elixirImage != hexpmElixirRepo+":"+selected+"@"+otherDigest {
+				t.Fatalf("partition changed newest shared OTP/build selection: %+v", choice)
+			}
+			if len(queries) != 2 || <-queries != base || <-queries != descendants || len(heads) != 2 {
+				t.Fatal("lookup scanned unrelated pages or bypassed selected image digest lookups")
+			}
+		})
+	}
+}
+
+func TestExactErlangTagPartitionPreservesMaintenanceSelection(t *testing.T) {
+	catalog := []string{
+		"1.18.4-erlang-28.0-debian-bookworm-20260610",
+		"1.18.4-erlang-28.0-debian-bookworm-20260824",
+		"1.18.4-erlang-28.0.0.1-debian-bookworm-20260824",
+		"1.18.4-erlang-28.0.2-debian-bookworm-20260824",
+		"1.18.4-erlang-28.0.2.1-debian-bookworm-20260610",
+		"1.18.4-erlang-28.0.2.1-debian-bookworm-20260824",
+		"1.18.4-erlang-28.0.2.2-debian-bookworm-20260824", // no official image
+		"1.18.4-erlang-28.0-rc.1-alpine-3.22",
+		"1.18.4-erlang-28.0-alpine-3.22",
+		"1.18.4-erlang-28.0-ubuntu-noble-20260824",
+		"1.18.4-erlang-28.01-debian-bookworm-20260824",
+		"1.18.4-erlang-28.0.2.1-debian-bookworm-20261031-slim",
+		"11.18.4-erlang-28.0.2.1-debian-bookworm-20261031",
+	}
+	for request, want := range map[string]string{"28.0": "28.0.2.1", "28.0.0": "28.0.0.1", "28.0.2": "28.0.2.1", "28.0.0.0": "28.0"} {
+		t.Run(request, func(t *testing.T) {
+			fake := &fakeExact{digests: map[string]string{}}
+			for _, tag := range catalog {
+				fake.digests[hexpmElixirRepo+":"+tag] = otherDigest
+			}
+			for _, release := range []string{"28.0", "28.0.0.1", "28.0.2", "28.0.2.1"} {
+				fake.digests[erlangRepo+":"+otpTag(release)] = exactDigest
+			}
+			choice, err := pinErlangVersion(t.Context(), fake, NativeChoice{Exact: "1.18.4", erlang: request})
+			must(t, err)
+			if choice.otp != want || choice.Image != erlangRepo+":"+otpTag(want)+"@"+exactDigest || !strings.Contains(choice.elixirImage, "-debian-bookworm-20260824@") {
+				t.Fatalf("changed matching release/newest date/shared-image intersection for %s: %+v", request, choice)
+			}
+		})
+	}
+}

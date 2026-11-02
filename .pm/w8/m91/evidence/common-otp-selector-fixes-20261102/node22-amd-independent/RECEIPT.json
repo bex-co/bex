@@ -1,0 +1,50 @@
+{
+  "assessment": "CLEAN",
+  "at": "2026-11-02T02:54:51.626092+00:00",
+  "both_arch_acceptance": false,
+  "intakes": [
+    {
+      "artifact_members": 63,
+      "bytes_total": 480453,
+      "case": "node-22",
+      "manifest": {
+        "bytes": 17830,
+        "mode": "0644",
+        "sha256": "f409a641496be805465c195e5c1f518d4c629be0399ae014674c3363d67ef2a4"
+      },
+      "receipt": {
+        "bytes": 1848,
+        "mode": "0644",
+        "sha256": "e6acc5680d6d232c712e5db729fc6492b6396fdcf4c10ec1f223799c6cd6814a"
+      },
+      "root": "/private/tmp/bex-w8-node22-amd-artifact-intake-20261102-5_n1wriw"
+    },
+    {
+      "artifact_members": 63,
+      "bytes_total": 462358,
+      "case": "node-26",
+      "manifest": {
+        "bytes": 17605,
+        "mode": "0644",
+        "sha256": "46ddeda05a13a74f05fa390b919459547f8df717a29e6766c5236c38b1893be5"
+      },
+      "receipt": {
+        "bytes": 1848,
+        "mode": "0644",
+        "sha256": "79a2bad6a902771cbebd17da0aea1d9b2107a1c0408f9743a6e7866865c82d12"
+      },
+      "root": "/private/tmp/bex-w8-node26-amd-artifact-intake-20261102-41yvyg4o"
+    }
+  ],
+  "portable_copy_plan": {
+    "bytes": 1470,
+    "mode": "0644",
+    "sha256": "b97d71964a3358b6f4830cf10b490bc1626e820917c8ba99add3a9154b94533d"
+  },
+  "review": {
+    "bytes": 39577,
+    "mode": "0644",
+    "sha256": "c90f45e29123a19dbc41d4114e0fade85e0fd48edc94040b552b6c5b7f03b4f4"
+  },
+  "scope": "Only two actual completed AMD workload cases under observed ARM64 CI control; all full retained artifact members/logs/metadata/receipts private. No test or resource rerun, product/repo edit, dispatch, adoption or hosted claim."
+}

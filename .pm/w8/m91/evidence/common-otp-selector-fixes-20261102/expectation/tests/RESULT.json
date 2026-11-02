@@ -1,0 +1,59 @@
+{
+  "results": [
+    {
+      "expected_exit": 1,
+      "label": "old-red",
+      "command": [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-elixir-resolved-otp-expectation-tests-20261102-p67ovw7j/old-red-overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build",
+        "-run",
+        "^TestCommonElixirRequestedOTPMatchesResolvedMetadata$"
+      ],
+      "exit": 1,
+      "bound": null,
+      "seconds": 11.310156292049214,
+      "group_absent": true,
+      "log_sha256": "e2984d9a492252d73548328d6d3bef710370cb4e55653921eb54042f9da42fe8"
+    },
+    {
+      "expected_exit": 0,
+      "label": "new-focused",
+      "command": [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-elixir-resolved-otp-expectation-tests-20261102-p67ovw7j/new-overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build",
+        "-run",
+        "^TestCommonElixir.*$"
+      ],
+      "exit": 0,
+      "bound": null,
+      "seconds": 17.160537749994546,
+      "group_absent": true,
+      "log_sha256": "2b2855930ad372bcba2676ebc8e6ccee846298a14c699a38150764edadb4a6a3"
+    }
+  ],
+  "source_unchanged": true,
+  "source_after": {
+    "/private/tmp/bex-w8-elixir-resolved-otp-expectation-source-20261102-k4s0cvhg/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go": "2cc5059eb78d2d4cb387b9626665bfdc335f7890de89f220e397475bb24f6da6",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativecommon_elixir_qualification_test.go": "3698ceec0656a26e7b8803d6c7b147974b06c6e3dbff30134cf3560d59d6e89f",
+    "/Users/tianpan/projects/bex7/lego/go.work.sum": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6"
+  },
+  "minimum_free": 17519251456,
+  "peak_owned_tmp": 44169997,
+  "shared_build_cache_retained": true,
+  "tmp_removed": true,
+  "pending_pgids": [],
+  "cancelled_signals": [],
+  "scope": "No networkdownloads/modulewrites/Docker/DB/source or production changes. Root-authorized Go-managed shared build-cache writes only; focused HTTP unit + expected-oldRED via exact private two-file Gooverlay. No sharedcache deletion."
+}

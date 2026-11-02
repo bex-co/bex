@@ -1,0 +1,21 @@
+{
+  "expected_exit": 1,
+  "label": "old-red",
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "/private/tmp/bex-w8-elixir-resolved-otp-expectation-tests-20261102-p67ovw7j/old-red-overlay.json",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build",
+    "-run",
+    "^TestCommonElixirRequestedOTPMatchesResolvedMetadata$"
+  ],
+  "exit": 1,
+  "bound": null,
+  "seconds": 11.310156292049214,
+  "group_absent": true,
+  "log_sha256": "e2984d9a492252d73548328d6d3bef710370cb4e55653921eb54042f9da42fe8"
+}

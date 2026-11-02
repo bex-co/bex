@@ -1,0 +1,11 @@
+{
+  "command": [
+    "ldd",
+    "/usr/local/bin/node"
+  ],
+  "cwd": ".",
+  "returncode": 0,
+  "stdout": "\tlibdl.so.2 => /lib/x86_64-linux-gnu/libdl.so.2 (0x00007fffff7b6000)\n\tlibstdc++.so.6 => /lib/x86_64-linux-gnu/libstdc++.so.6 (0x00007fffff59c000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007fffff4bc000)\n\tlibgcc_s.so.1 => /lib/x86_64-linux-gnu/libgcc_s.so.1 (0x00007fffff49c000)\n\tlibpthread.so.0 => /lib/x86_64-linux-gnu/libpthread.so.0 (0x00007fffff497000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fffff2b5000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007ffffffcb000)\n",
+  "stderr": "",
+  "timed_out": false
+}

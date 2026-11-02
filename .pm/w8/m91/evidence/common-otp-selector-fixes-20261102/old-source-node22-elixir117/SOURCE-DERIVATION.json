@@ -1,0 +1,107 @@
+{
+  "actual_generator": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+  "current_compared_commit": "9039e5037880116572d1bf50be364af96acae59a",
+  "case_fixture13_files_all_byte_equal": {
+    "lego/operator/internal/build/testdata/native-node-qualification/addon.c": {
+      "source_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+      "current9039_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+      "unchanged": true,
+      "bytes": 1231
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/check.js": {
+      "source_sha256": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+      "current9039_sha256": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+      "unchanged": true,
+      "bytes": 3401
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/check.py": {
+      "source_sha256": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+      "current9039_sha256": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+      "unchanged": true,
+      "bytes": 13293
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/package.json": {
+      "source_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+      "current9039_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+      "unchanged": true,
+      "bytes": 74
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/mix.exs": {
+      "source_sha256": "3e9ed1eb4453cecdbf95a7eb24e546de94d4e964e26209f793dd716ec398301b",
+      "current9039_sha256": "3e9ed1eb4453cecdbf95a7eb24e546de94d4e964e26209f793dd716ec398301b",
+      "unchanged": true,
+      "bytes": 208
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/check.py": {
+      "source_sha256": "9b9e55057896df16a097e856d040aeadad24f79ea3bd46cc19d5550e387c73a2",
+      "current9039_sha256": "9b9e55057896df16a097e856d040aeadad24f79ea3bd46cc19d5550e387c73a2",
+      "unchanged": true,
+      "bytes": 4364
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/check_test.py": {
+      "source_sha256": "164a424e20de98fd31aa3d5501659c8ce4b25db6dd00f203387509ea2974bae7",
+      "current9039_sha256": "164a424e20de98fd31aa3d5501659c8ce4b25db6dd00f203387509ea2974bae7",
+      "unchanged": true,
+      "bytes": 811
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/bex_nif.c": {
+      "source_sha256": "78bfbcf99fcbfd1d3a84602ca119cbe54906c681c8a2c962ffef8ffb7007f540",
+      "current9039_sha256": "78bfbcf99fcbfd1d3a84602ca119cbe54906c681c8a2c962ffef8ffb7007f540",
+      "unchanged": true,
+      "bytes": 1419
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/rebar.config": {
+      "source_sha256": "861d36de5b4c4015c259c575d8539aaf7665f8825ff88b7ee411e3d4be4ec8c3",
+      "current9039_sha256": "861d36de5b4c4015c259c575d8539aaf7665f8825ff88b7ee411e3d4be4ec8c3",
+      "unchanged": true,
+      "bytes": 58
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/lib/bex_mix.ex": {
+      "source_sha256": "8333e47d2f1d3fbfc70afa4c6e8446c0d1992be8356f871c1601199c8a8046c6",
+      "current9039_sha256": "8333e47d2f1d3fbfc70afa4c6e8446c0d1992be8356f871c1601199c8a8046c6",
+      "unchanged": true,
+      "bytes": 61
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_probe.app.src": {
+      "source_sha256": "d3f855ee9a2d871fac850903fea872c8c5b6f240790631e773fda42f873c17a1",
+      "current9039_sha256": "d3f855ee9a2d871fac850903fea872c8c5b6f240790631e773fda42f873c17a1",
+      "unchanged": true,
+      "bytes": 220
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_nif.erl": {
+      "source_sha256": "1ad19323149c92831fc080716fe427e556db2aedfaf70c12fa66937da5eb2189",
+      "current9039_sha256": "1ad19323149c92831fc080716fe427e556db2aedfaf70c12fa66937da5eb2189",
+      "unchanged": true,
+      "bytes": 215
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_probe.erl": {
+      "source_sha256": "706ac74db50bcf06a0c8129e3fbf370b53bfdc273195c051df41c7e37c2389ff",
+      "current9039_sha256": "706ac74db50bcf06a0c8129e3fbf370b53bfdc273195c051df41c7e37c2389ff",
+      "unchanged": true,
+      "bytes": 377
+    }
+  },
+  "source300": "Allthreeoriginalqualification-source.filesmaps match historicale6 actualcompleteutility baseline; headersremain9bc. Current9039fullclosure notsubstituted oraccepted.",
+  "pure_Node_predicates": "Unchanged6functionASTdefs only; PAYLOAD/ENGINE_SENTINEL constants exactlysource. No imports/main/command/project/node/app executables run.",
+  "pure_Elixir_predicate": "Unchangedcheck_result only; independentPythonUTF8/SHA comparesactualErlang+Elixir/NIF outputs. Noidentity/run/main invoked.",
+  "Node_audit_parent": {
+    "path": "/private/tmp/bex-w8-node14-amd64-actual-independent-20261101-HFobIIkl/audit.py",
+    "sha256": "3e327c544722034c8419f1b74483e3eeb751d097fae54d8ad76ba03acb79ff33",
+    "reuse": "Sameversions\u2192ELF outputchecks adaptedonlycurrentcase/version/ABI/engine range/CImetadata; no localrunner proof fabricated."
+  },
+  "AMDpair_source": {
+    "root": "/private/tmp/bex-w8-node22-26-amd-independent-20261102-vt29xqvb",
+    "review": {
+      "bytes": 39577,
+      "sha256": "c90f45e29123a19dbc41d4114e0fade85e0fd48edc94040b552b6c5b7f03b4f4",
+      "mode": "0o644"
+    }
+  },
+  "downloader_source": {
+    "path": "/private/tmp/bex-w8-e6-utility-intake-20261102-c40h5x0g/download.py",
+    "sha256": "3a72aedc6b673265e491c2bd0e07640e5088dc19b36d7eb62aeac0d3e4e09282",
+    "delta": "Only3INPUTS tuples changed; normalverifiedTLS/180s/byte+SHA/space guards unchanged; no signedURLretained."
+  },
+  "extractor_sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4",
+  "scope": "Privateintake/pure retainedoutputaudit only. No source/repo/PMwrites/CI dispatch/native/app/image/layer/Docker/Kube/auth/resource execution."
+}

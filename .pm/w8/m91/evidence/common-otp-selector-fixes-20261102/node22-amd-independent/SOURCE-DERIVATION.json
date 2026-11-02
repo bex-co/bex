@@ -1,0 +1,23 @@
+{
+  "check_py": {
+    "path": "/private/tmp/bex-w8-current-predeploy-e6a-exports-20261102-sjzkvys_/source/lego/operator/internal/build/testdata/native-node-qualification/check.py",
+    "pure_functions_only": true,
+    "sha256": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748"
+  },
+  "downloader_parent": {
+    "change": "INPUTS actualid/size/SHA only; all remaining source exact",
+    "path": "/private/tmp/bex-w8-e6-utility-intake-20261102-c40h5x0g/download.py",
+    "sha256": "3a72aedc6b673265e491c2bd0e07640e5088dc19b36d7eb62aeac0d3e4e09282"
+  },
+  "extractor": {
+    "decompressed_sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4",
+    "path": ".pm/w8/m91/evidence/utility-artifact-intake-source-20261101/v2-source/extract_utility_zip.py.gz",
+    "unchanged": true
+  },
+  "new_framework_or_product_code": false,
+  "pure_oracle_parent": {
+    "path": "/private/tmp/bex-w8-node14-amd64-actual-independent-20261101-HFobIIkl/audit.py",
+    "reuse": "Exact versions={} through addon ELF block, only observed version/ABI/engine-range/projectline/npm data rebound",
+    "sha256": "3e327c544722034c8419f1b74483e3eeb751d097fae54d8ad76ba03acb79ff33"
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stdout": "0 issues.\n",
+  "actual_exec_session": 76579,
+  "cwd": "lego/operator",
+  "command": "GOWORK=off GOFLAGS=-mod=readonly GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOTELEMETRY=off GOMAXPROCS=2 GOMEMLIMIT=512MiB ./bin/golangci-lint run --concurrency 2 ./internal/build",
+  "source_manifest_sha256": "2ab65c68b8b79b25e5c4bc0844395a1fb9a80e5b01378d5ad387f8c5b4906cfc",
+  "initial_lint": "staticcheck QF1003 on test if/else; converted only to tagged switch, preserved original source/log scope"
+}

@@ -1,0 +1,14 @@
+{
+  "complete": true,
+  "zip_bytes": 84283,
+  "zip_sha256": "deb10ec46df42b918e9d41bbee27688a95c0158482b941e810aa6ee8e5481c15",
+  "completed_members": 63,
+  "member": null,
+  "observed_member_bytes": 646,
+  "declared_bytes": 284860,
+  "manifest_sha256": "5399ccdd3fd292647a0bb2112c54ddb48f5c951b1be2cdec048f0478146591b5",
+  "observed_output_bytes": 284860,
+  "actual_file_bytes": 284860,
+  "minimum_free": 23306731520,
+  "peak_allocated": 479232
+}

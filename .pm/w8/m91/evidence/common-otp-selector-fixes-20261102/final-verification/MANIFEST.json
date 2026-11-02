@@ -1,0 +1,73 @@
+{
+  "scope": "Root actual exact-source local verification only; no CI/runtime/adoption acceptance",
+  "files": {
+    "APPLIED.json": {
+      "bytes": 1351,
+      "sha256": "a4e7d062dc4981f429bc28fd4b44792269f026df342c30227a8808609f9d6410"
+    },
+    "FINAL-GO-COMMAND.json": {
+      "bytes": 931,
+      "sha256": "df6fab8a14c102fc7492314ecf5f2d41dafff258e503db9945c428855282825d"
+    },
+    "FINAL-GO-RESULT.json": {
+      "bytes": 317,
+      "sha256": "3d7d8a7f9d788ba2986eaa3b65afa42720525e9a191fd88b395eac7cd06f1409"
+    },
+    "FINAL-LINT-RESULT.json": {
+      "bytes": 518,
+      "sha256": "81a833fa76a5d8c01bd9c6a1e1b0c27b8341c6b70edf6b037e10380a6169762c"
+    },
+    "FINAL-SOURCE.diff.gz": {
+      "bytes": 3298,
+      "sha256": "a4d72aa9dd4fcad5a367ede8d1992f5ce67c5d82d8afca4e794f8a39baccab6c"
+    },
+    "FINAL-SOURCE.json": {
+      "bytes": 1251,
+      "sha256": "2ab65c68b8b79b25e5c4bc0844395a1fb9a80e5b01378d5ad387f8c5b4906cfc"
+    },
+    "GO-COMMAND.json": {
+      "bytes": 925,
+      "sha256": "52a27b80dd818c236ea6980faa26b2d6921781bafc2102fac562631282f99b92"
+    },
+    "GO-RESULT.json": {
+      "bytes": 318,
+      "sha256": "765cf93f2b2ce2aab09c6af45be8d8612811e5c0f48611f841c4b2d5594a54ef"
+    },
+    "INTENDED-SOURCE.json": {
+      "bytes": 1251,
+      "sha256": "e45a12b30362e9c6a7df94f79e069759da684dd562a7c696ebbe3e6efabffaca"
+    },
+    "Root-lint-refinement.diff.gz": {
+      "bytes": 481,
+      "sha256": "609bef6a9c62ffcb3b3d2681818153751072a02aabcf2af9fd3c6d1fa1edcba6"
+    },
+    "SOURCE.diff.gz": {
+      "bytes": 3300,
+      "sha256": "3a3b931e6582ee301044ac834d28d888b7bb5cd8ee6fd104134a1a5ce7e620b9"
+    },
+    "go-final.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "go-final.stdout": {
+      "bytes": 64,
+      "sha256": "5f146942cbf188ca45b465ec01e9bf719080d2a5b3c040f06e7d057b6d39e659"
+    },
+    "go.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "go.stdout": {
+      "bytes": 64,
+      "sha256": "c2d7a107eff7d4a2940f034c3956097200da21fb1685c6a3f9bde357afc2e83f"
+    },
+    "run_combined.py": {
+      "bytes": 3623,
+      "sha256": "d349df946ffcd6fc160fa26943125f61283acf0a2b74f1ecde0bf049f5bce250"
+    },
+    "run_final.py": {
+      "bytes": 3650,
+      "sha256": "2c2ab05f7223ac7cefd401312c798960055a93900a60cfb2b710e90b493de0e5"
+    }
+  }
+}

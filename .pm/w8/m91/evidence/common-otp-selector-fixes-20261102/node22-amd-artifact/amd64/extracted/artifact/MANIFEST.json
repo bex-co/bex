@@ -1,0 +1,315 @@
+{
+  "files": [
+    {
+      "path": "bootstrap-1.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bootstrap-1.stdout.log",
+      "bytes": 104,
+      "sha256": "cb4d3b0e70f2d4e52c28206c6c799c01616f7ac12aad9490b930290737cdc621"
+    },
+    {
+      "path": "bootstrap.json",
+      "bytes": 1514,
+      "sha256": "2606a540c9d7985e06d93442f0d3f35c5448bf706d5f8bf1d0d4651d317cbc3c"
+    },
+    {
+      "path": "capacity-after-tests.json",
+      "bytes": 1317,
+      "sha256": "e5daa04376b6af4053d8281a58e807696d1a08b46fc2bc0497b49097c513b1e3"
+    },
+    {
+      "path": "capacity-before-builder.json",
+      "bytes": 1320,
+      "sha256": "5d84ea300882948c41d5aac659924a0f9720667246bc6c315f0805cc834a6177"
+    },
+    {
+      "path": "cleanup.json",
+      "bytes": 494,
+      "sha256": "8f052402b6edf60182fa9f1f854a67516cb01d6a7cece5fe2242e8e3143290be"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/Dockerfile",
+      "bytes": 2847,
+      "sha256": "bf941c9c28b69c7ce54f1d6d4cc217b6c83250fc037023aa4e7fc7ff1ee58cd0"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/Dockerfile.canonical",
+      "bytes": 2847,
+      "sha256": "bf941c9c28b69c7ce54f1d6d4cc217b6c83250fc037023aa4e7fc7ff1ee58cd0"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/build.log",
+      "bytes": 83802,
+      "sha256": "9703bdd523c60f2524648eadb52ff5ca2697d26c1dc9b2935b12e2ed44b60cfb"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/expected-node.json",
+      "bytes": 310,
+      "sha256": "c77c8149e32426970fa736b75979603ca472e418f60f5071d59c2e9da89309b5"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/bex_node.node",
+      "bytes": 15784,
+      "sha256": "54a84338edb00eb832fa57a1aece3bc3b512d275880076be00705d24f91ddcdd"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/build-tool-versions.json",
+      "bytes": 64,
+      "sha256": "331ebe075c2db78ea2950726c556ad7788c9c29d132c5fa9237bbcbfcfcc2371"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/compile-addon.json",
+      "bytes": 337,
+      "sha256": "3c57a4676547b163b4bb5e04168ae78c832f89a3248428c4db8835e8deab38f0"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/ldd-build.json",
+      "bytes": 645,
+      "sha256": "ee690fd444b60043aed3b652791cb3f3c6839ffb6db577693c5c8d7b5fa72305"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/ldd-runtime.json",
+      "bytes": 645,
+      "sha256": "ee690fd444b60043aed3b652791cb3f3c6839ffb6db577693c5c8d7b5fa72305"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/node-build.json",
+      "bytes": 1202,
+      "sha256": "d598ba2be0978eeccfeec30c5ac7caefce4c452f602d95e80508de4409b8390c"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/node-runtime.json",
+      "bytes": 1206,
+      "sha256": "4221cd8e50f588174fd56bbb48f3201d11a73717155171389c9c8f93de2aa48a"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/npm-engine-input.json",
+      "bytes": 327,
+      "sha256": "840b39f5facd1b9e84a43d0d1af1cf0b73a0a8ca2cf18d0c0098b4b6122a00b8"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/npm-engine-proof.json",
+      "bytes": 132,
+      "sha256": "3dc8a496b60ea39bf17731213020fed8308d5ce0706aa5a44c1bf7000df614eb"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/npm-install.json",
+      "bytes": 2801,
+      "sha256": "6b7fe8d11b806d3b87819d8e7d1f20a74c122de4c1e192ceb0acd3e7f165295a"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/npm-project/package.json",
+      "bytes": 289,
+      "sha256": "56e584a0ba7b58ea05181e916daa7ba339fd35d1053b06c381c5a91de65bbebf"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/npm-run-build.json",
+      "bytes": 1417,
+      "sha256": "d9c28d0710138543d08e77ea4ab19595f50d60c8077b71c2c4c903f58485a1a3"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/npm-run-runtime.json",
+      "bytes": 1417,
+      "sha256": "d9c28d0710138543d08e77ea4ab19595f50d60c8077b71c2c4c903f58485a1a3"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/npm-version-build.json",
+      "bytes": 145,
+      "sha256": "b4bd2e37f1f4faad16244b95399e75b19e5a68b2a2929eb63aaa0a0892ebad4f"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/npm-version-runtime.json",
+      "bytes": 145,
+      "sha256": "b4bd2e37f1f4faad16244b95399e75b19e5a68b2a2929eb63aaa0a0892ebad4f"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/npm-wrong-engine/bex-node-engine-sentinel.tgz",
+      "bytes": 173,
+      "sha256": "fe1f2582fbafde284d432f66bb0c9ae63f4f2470d7506b336a675e1edde24562"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/npm-wrong-engine/package.json",
+      "bytes": 384,
+      "sha256": "5f56526892dee9132a82efa233af7233d73824774d22116569b46fc5edd1e3c4"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/npm-wrong-engine.json",
+      "bytes": 728,
+      "sha256": "c7436f1a6197f23730c3badba76a5d3e744424a8fb5491dc051f44bbc09f9e45"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-engine-input.json",
+      "bytes": 385,
+      "sha256": "e9eca5187502f7c925dec17a19972fda10e8807c36fa6c1bc7790252b1c4d6ec"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-engine-proof.json",
+      "bytes": 211,
+      "sha256": "ac254c1eb547318676c23032f67f0cbc194884f34769cebf2e5a2295790e03fc"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-exec-build.json",
+      "bytes": 979,
+      "sha256": "f08a14e03a69fd6f9c1e7d32d0c1e47ed4d9efc6a4ccf6fe895959884bb93f76"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-exec-runtime.json",
+      "bytes": 979,
+      "sha256": "f08a14e03a69fd6f9c1e7d32d0c1e47ed4d9efc6a4ccf6fe895959884bb93f76"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-install.json",
+      "bytes": 2449,
+      "sha256": "51a7c26f792a0d0afedeafc0417ec27a6b66618e3d0bb237fcdbc8002e7c196d"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-project/node_modules/.pnpm-workspace-state-v1.json",
+      "bytes": 667,
+      "sha256": "2fa519e6676b0b7e42fab4d0fca248d5a2cef970be1ea189867f737aa742de3f"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-project/package.json",
+      "bytes": 329,
+      "sha256": "d27a7171f675bbee0e9c1049abb7c6f8f5868c3a16b51381280ed18232f0a0e8"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-run-build.json",
+      "bytes": 1235,
+      "sha256": "d6a444472336a3f7ddf04392f9d3a3405519ce52fee786b56a6c9042a208145e"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-run-runtime.json",
+      "bytes": 1235,
+      "sha256": "d6a444472336a3f7ddf04392f9d3a3405519ce52fee786b56a6c9042a208145e"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-version-build.json",
+      "bytes": 147,
+      "sha256": "61a3b1d70823b78e496eafb40ed3171eeb5736d8cba0e4acd1fe2568d10ec4d9"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-version-runtime.json",
+      "bytes": 147,
+      "sha256": "61a3b1d70823b78e496eafb40ed3171eeb5736d8cba0e4acd1fe2568d10ec4d9"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-wrong-engine/package.json",
+      "bytes": 329,
+      "sha256": "43e1bf5bbb77c716ce744b0a2554ae6517e46a9443c009f05c6fce6dcf48ca8f"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-wrong-engine/pnpm-workspace.yaml",
+      "bytes": 18,
+      "sha256": "226909e7726c235c6b854540949bc8144625420ccdd6298fca1f7885d8bfe524"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/pnpm-wrong-engine.json",
+      "bytes": 609,
+      "sha256": "15e650e3bbd3fcb10f1257b4678d25717c4d0b1fbc5dcdc56d89f526f10fcc48"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/tools-build.json",
+      "bytes": 13509,
+      "sha256": "b482b6c2b51ff357362b5c0d80ab251e7e7608e95f947aa3be3f466edcee2554"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/tools-runtime.json",
+      "bytes": 13509,
+      "sha256": "b482b6c2b51ff357362b5c0d80ab251e7e7608e95f947aa3be3f466edcee2554"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-engine-input.json",
+      "bytes": 327,
+      "sha256": "840b39f5facd1b9e84a43d0d1af1cf0b73a0a8ca2cf18d0c0098b4b6122a00b8"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-engine-proof.json",
+      "bytes": 158,
+      "sha256": "dab0fc607d217e9d9af4ff0a1c9dff810ef94ee326d494c50a11efb6e90a808c"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-install.json",
+      "bytes": 2782,
+      "sha256": "fa9dfd31f6fa15b53322efff22174e1d32937ef132882815e674d096be60e8d9"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-project/node_modules/.yarn-integrity",
+      "bytes": 184,
+      "sha256": "829ce1fcc8574e2ede52d6df9ef9b27c5d9b669774b0813b1cb7c479bfbd6c82"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-project/package.json",
+      "bytes": 293,
+      "sha256": "bd18711136891f1e49ab9e22d98846548671774ad2eaf62d82543881191bd60c"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-run-build.json",
+      "bytes": 1494,
+      "sha256": "64cc1f5264c834b118cf330f26ecf4aa095c6b8a650fd4bae33009f02f3e5b6d"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-run-runtime.json",
+      "bytes": 1493,
+      "sha256": "afaa0f147b44b8fc9376e914ad0bdfb784dc659694b2d55b97a2e11ea3cd162c"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-version-build.json",
+      "bytes": 147,
+      "sha256": "d7218fe88ff660cf5278c75e9d6ce909bd36da1af594088b85fc2380c8567394"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-version-runtime.json",
+      "bytes": 147,
+      "sha256": "d7218fe88ff660cf5278c75e9d6ce909bd36da1af594088b85fc2380c8567394"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-wrong-engine/bex-node-engine-sentinel.tgz",
+      "bytes": 173,
+      "sha256": "fe1f2582fbafde284d432f66bb0c9ae63f4f2470d7506b336a675e1edde24562"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-wrong-engine/package.json",
+      "bytes": 388,
+      "sha256": "dbcbd04a0577aaa655e4bcb4c8da0c4860622a4cb0cba0b0da1244ab23852049"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/qa-output/yarn-wrong-engine.json",
+      "bytes": 1788,
+      "sha256": "8721581c20de0895c84acff7deab9437f0acd533c86694e0ba2087ce19cbd27d"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/receipt.json",
+      "bytes": 754,
+      "sha256": "cf0ab97b7ff9df2fba7d7f9e6c5827829823ad070a539f946865e3111a29a063"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/runtime.log",
+      "bytes": 21930,
+      "sha256": "09fdefe1bcd390ec79c44944f855997e518c170a24eae12e3994906c3d9c5444"
+    },
+    {
+      "path": "generated/native-common-node-3184167380/node-22/source-custody.json",
+      "bytes": 1850,
+      "sha256": "c3aaaf93637f9cb8f75e498903137fd10d36989f578d47289ad555cc3b61bdf8"
+    },
+    {
+      "path": "inputs.json",
+      "bytes": 3267,
+      "sha256": "819ecfe1fb71960be79120d8cb806af6e786a9711280c3fbb058b21029f00f45"
+    },
+    {
+      "path": "qualification-source.json",
+      "bytes": 75099,
+      "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+    },
+    {
+      "path": "qualification.log",
+      "bytes": 646,
+      "sha256": "218f361d5f596c4441c6a9e1afa510c1d44844f25ca32a75accc4397d6a8b6e0"
+    }
+  ],
+  "scope": "actual retained evidence, including failures; not an acceptance assertion"
+}

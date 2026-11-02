@@ -1,0 +1,25 @@
+{
+  "at": "2026-11-02T05:35:05.950399+00:00",
+  "Root_frozen_files_verified": 339,
+  "Root_final_verification_files": 18,
+  "source_files": 3,
+  "final_source_manifest_sha256": "2ab65c68b8b79b25e5c4bc0844395a1fb9a80e5b01378d5ad387f8c5b4906cfc",
+  "Go_package_seconds": 27.088,
+  "Go_wrapper_seconds": 40.87400604202412,
+  "lint_issues": 0,
+  "authored_MD_after_formatter": {
+    ".pm/w8/m91/README.md": "1d1bf606bf4ffb8ccf1dfb0106d044aeaa1525c0e5a1d86d91aac2745de89793",
+    ".pm/w8/m91/t007.md": "9db2c7bb1b9a1e2e922ff407758993a23c09bbf33d3314d46506dfd5fc45dbf1",
+    ".pm/w8/m91/evidence/common-otp-selector-fixes-20261102/README.md": "91f9cece5105dba13d24651029195e697587bc57833bda44579cb027214a8fb7"
+  },
+  "acceptance_scope": "Local source verification only. Current utility/family/wholephase/adoption/hosted remainOPEN.",
+  "main_deploy_diagnosis_before_ship": {
+    "run": 41389689256,
+    "source": "9039e5037880116572d1bf50be364af96acae59a",
+    "job": 125098120162,
+    "cause": "five pinned postgres17 pulls fail anonymous DockerHub quota429 before backend code/tests; no dependency containers created",
+    "later_main": "91ff7059c946fcc5eab4747eb47fec5381267d42",
+    "later_change": "unrelated W4 changes; no dependency/workflow/pin changes; newdeployqueued",
+    "shipping_rule": "external quota gate does not hold tested source ship; no additional rerun or credentials/auth change"
+  }
+}

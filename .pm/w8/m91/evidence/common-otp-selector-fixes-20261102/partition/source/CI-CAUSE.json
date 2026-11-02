@@ -1,0 +1,71 @@
+{
+  "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+  "cases": [
+    {
+      "job": {
+        "profile": "elixir",
+        "case": "elixir-exact-otp280",
+        "run_id": 41375800234,
+        "url": "https://github.com/bex-co/bex/actions/runs/41375800234",
+        "id": 125061319746,
+        "name": "qualify-profile (arm64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T04:20:01Z",
+        "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+        "steps_failed": [
+          "measure the selected family case without claiming full-family acceptance"
+        ],
+        "active": []
+      },
+      "classes": [
+        "REGISTRY_METADATA_OR_TAG_DEADLINE"
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/logs/job-125061319746.log",
+        "bytes": 64103,
+        "sha256": "3b4c3991e5ba6f053733dd4c8fa07de6fb549119e9b20425e551ef94122d8ad7"
+      },
+      "diagnostics": [
+        {
+          "line": 754,
+          "text": "2026-11-02T04:19:41.6651724Z     nativecommon_elixir_qualification_test.go:157: look up Elixir 1.18.4 on Erlang/OTP 28.0: Get \"https://hub.docker.com/v2/repositories/hexpm/elixir/tags?name=1.18.4-erlang-28.0&page=1&page_size=100\": context deadline exceeded (Client.Timeout exceeded while awaiting headers)"
+        }
+      ]
+    },
+    {
+      "job": {
+        "profile": "elixir",
+        "case": "elixir-exact-otp280",
+        "run_id": 41375800234,
+        "url": "https://github.com/bex-co/bex/actions/runs/41375800234",
+        "id": 125061319749,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:27:40Z",
+        "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+        "steps_failed": [
+          "measure the selected family case without claiming full-family acceptance"
+        ],
+        "active": []
+      },
+      "classes": [
+        "EXACT_TAG_LIST_HTTP403"
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/logs/job-125061319749.log",
+        "bytes": 63860,
+        "sha256": "932a89f3d5464f200f0124e0b02f9a82a5224a67ece7b8e1f9283ae600cfc6e0"
+      },
+      "diagnostics": [
+        {
+          "line": 751,
+          "text": "2026-11-02T03:27:21.9623758Z     nativecommon_elixir_qualification_test.go:157: look up Elixir 1.18.4 on Erlang/OTP 28.0: tag listing answered 403 for https://hub.docker.com/v2/repositories/hexpm/elixir/tags?name=1.18.4-erlang-28.0&page=11&page_size=100"
+        }
+      ]
+    }
+  ],
+  "403_cause_not_inferred": "No rawHTTP403body orheaders retainedinCIlog; onlyactualstatus/URL proved. Noauthentication/ratepolicyclaim.",
+  "source_path": "nativeerlang.go pinErlangVersion -> DockerHubResolver.ListTags -> tagPage; sourceHubnamequery filtersstartsWithonlyafterpaging; sourceotpMatches preservesnewest matchingmaintenance."
+}

@@ -1,0 +1,14 @@
+{
+  "builder": "bex-nq-c387f7e0987245eab78d7dd4",
+  "case": "elixir-1.17",
+  "common_base": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "container_id": "82f8ec6b0787838976f6d67378827d49035296e9291383f26545f115972e516c",
+  "image_config_id": "sha256:b072aaa6b5fd4212532fe0f402c7114277a8693a5d9febedc8a72f25a1562e9f",
+  "image_platform": "linux/amd64",
+  "network": "none",
+  "owner": "bex-nq-c387f7e0987245eab78d7dd4",
+  "runtime_command_executed": true,
+  "scope": "local generated image; recorded test-only wheel overlay and optional generated exact-default SPDX; no hosted, Kubernetes pre-deploy or publication claim",
+  "static_artifacts_extracted": false,
+  "test_prerequisite_overlay": false
+}

@@ -1,0 +1,13 @@
+{
+  "PASS": true,
+  "exit": 0,
+  "bound": null,
+  "group_absent": true,
+  "elapsed_seconds": 40.87400604202412,
+  "minimum_free_bytes": 15701929984,
+  "peak_own_TMP_bytes": 44473043,
+  "own_TMP_absent": true,
+  "source_unchanged": true,
+  "foreign_sum_unchanged": true,
+  "actual_image_CI_or_adoption_claim": false
+}

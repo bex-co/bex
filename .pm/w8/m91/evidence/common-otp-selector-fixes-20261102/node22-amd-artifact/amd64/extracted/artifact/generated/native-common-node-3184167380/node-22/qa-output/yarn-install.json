@@ -1,0 +1,14 @@
+{
+  "command": [
+    "yarn",
+    "install",
+    "--offline",
+    "--non-interactive",
+    "--no-lockfile"
+  ],
+  "cwd": "qa-output/yarn-project",
+  "returncode": 0,
+  "stdout": "yarn install v1.22.22\n$ node ../../check.js lifecycle yarn\nBEX_NODE_PROOF={\"mode\":\"lifecycle\",\"manager\":\"yarn\",\"node\":\"22.23.4\",\"executable\":\"/usr/local/bin/node\",\"path_node\":\"/usr/local/bin/node\",\"node_env\":\"22.23.4\",\"node_env_expected\":\"22.23.4\",\"path\":\"/tmp/yarn--1793586310089-0.9710828558161311:/opt/render/project/src/qa-output/yarn-project/node_modules/.bin:/usr/local/share/.config/yarn/link/node_modules/.bin:/usr/local/libexec/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/bin/node_modules/npm/bin/node-gyp-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"modules\":127,\"napi\":\"10\",\"addon\":{\"headers\":\"22.23.4\",\"module_abi\":127,\"answer\":\"native Gr\u00fc\u00dfe \u03bb \u96ea\"},\"openssl\":\"3.5.9\",\"brotli\":\"1.1.0\",\"sha256\":\"d8f19a3ac2a7ba1f5297590a1d5eebd60f902054e1eda0ff9d236d8b1c6c60a6\",\"brotli_roundtrip\":true,\"gzip_roundtrip\":true,\"aes_roundtrip\":true,\"bad_tag_rejected\":true,\"roots\":116,\"lifecycle\":\"preinstall\",\"NODE\":\"/usr/local/bin/node\",\"npm_node_execpath\":\"/usr/local/bin/node\",\"npm_execpath\":\"/opt/yarn-v1.22.22/bin/yarn.js\"}\n[1/5] Validating package.json...\n[2/5] Resolving packages...\n[3/5] Fetching packages...\n[4/5] Linking dependencies...\n[5/5] Building fresh packages...\n$ node ../../check.js lifecycle yarn\nBEX_NODE_PROOF={\"mode\":\"lifecycle\",\"manager\":\"yarn\",\"node\":\"22.23.4\",\"executable\":\"/usr/local/bin/node\",\"path_node\":\"/usr/local/bin/node\",\"node_env\":\"22.23.4\",\"node_env_expected\":\"22.23.4\",\"path\":\"/tmp/yarn--1793586310089-0.9710828558161311:/opt/render/project/src/qa-output/yarn-project/node_modules/.bin:/usr/local/share/.config/yarn/link/node_modules/.bin:/usr/local/libexec/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/bin/node_modules/npm/bin/node-gyp-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"modules\":127,\"napi\":\"10\",\"addon\":{\"headers\":\"22.23.4\",\"module_abi\":127,\"answer\":\"native Gr\u00fc\u00dfe \u03bb \u96ea\"},\"openssl\":\"3.5.9\",\"brotli\":\"1.1.0\",\"sha256\":\"d8f19a3ac2a7ba1f5297590a1d5eebd60f902054e1eda0ff9d236d8b1c6c60a6\",\"brotli_roundtrip\":true,\"gzip_roundtrip\":true,\"aes_roundtrip\":true,\"bad_tag_rejected\":true,\"roots\":116,\"lifecycle\":\"postinstall\",\"NODE\":\"/usr/local/bin/node\",\"npm_node_execpath\":\"/usr/local/bin/node\",\"npm_execpath\":\"/opt/yarn-v1.22.22/bin/yarn.js\"}\nDone in 1.33s.\n",
+  "stderr": "",
+  "timed_out": false
+}

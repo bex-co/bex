@@ -1,0 +1,51 @@
+{
+  "at": "2026-11-02T05:08:30.217233+00:00",
+  "version": "go version go1.26.4 darwin/arm64",
+  "source_before": {
+    "/private/tmp/bex-w8-exact-otp-tag-partition-source-20261102-oqaap9a5/source/lego/operator/internal/build/nativeerlang.go": "e9f5ad92d3d9a19212812696b34e2ab04b7a2e785ea4a00eaf86d2648df67e26",
+    "/private/tmp/bex-w8-exact-otp-tag-partition-source-20261102-oqaap9a5/source/lego/operator/internal/build/nativeerlang_test.go": "d53422d5e5f796201e8f95feae67dcfcb49a836c0b8419c47b5c72a02da867aa",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativeerlang.go": "d6e7b4d637016630648c078c1141519127f33c62c55917cb920c67152ea1f640",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativeerlang_test.go": "088c987b65331fab65d96b66299183a80b8dedb5b9ce6f2504042e912ddf3eb7",
+    "/Users/tianpan/projects/bex7/lego/go.work.sum": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6"
+  },
+  "commands": [
+    [
+      "old-red",
+      [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-exact-otp-tag-partition-tests-20261102-hp0xme4l/old-red-overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build",
+        "-run",
+        "^TestExactErlangTagPartitionAvoidsUnusablePages$"
+      ],
+      300
+    ],
+    [
+      "new-focused",
+      [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-exact-otp-tag-partition-tests-20261102-hp0xme4l/new-overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build",
+        "-run",
+        "^(TestExactErlang.*|TestDockerHubResolverListsTagsByPrefix)$"
+      ],
+      300
+    ]
+  ],
+  "start_free": 16071876608,
+  "physical_free_floor": 8589934592,
+  "margin": 134217728,
+  "owned_tmp_cap": 536870912,
+  "cache": "Root-authorized standard shared content-addressed Go build cache; ordinary Go-managed reads/writes only. No direct edit/delete/prune/cachecleanup. Module/source reads unchanged; offline/modreadonly.",
+  "scope": "Focused localhost HTTP unit controls with old-code regression replay; no external network, Docker, runtimeimage or full-buildpackage claim."
+}

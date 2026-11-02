@@ -1,0 +1,54 @@
+{
+  "ZIP": {
+    "bytes": 84283,
+    "mode": "0600",
+    "sha256": "deb10ec46df42b918e9d41bbee27688a95c0158482b941e810aa6ee8e5481c15"
+  },
+  "all_original_bytes_preserved": true,
+  "artifact_id": 13112186492,
+  "assessment": "COMPLETE_INTAKE_AND_AMD_CASE_AUDIT_CLEAN",
+  "audit": {
+    "bytes": 17563,
+    "mode": "0644",
+    "sha256": "523ba85bc1f6dff155895469f8eb352fb76fb77366056a5dc9b2462581f6dac2"
+  },
+  "bootstrap_group_reaped_absent": true,
+  "case": "node-22",
+  "download": {
+    "bytes": 520,
+    "mode": "0600",
+    "sha256": "f4a4fdbaca5e450f55c23413d1fe071c0032d1a6f6fb6b32d1004e1dd8984d1e"
+  },
+  "extraction": {
+    "bytes": 448,
+    "mode": "0600",
+    "sha256": "ad94782fc76423550d57dc6a4e31ed0f9c7ee952dfde4b4eb2d3a02b2d7841ad"
+  },
+  "helper": "Existing downloader INPUTS-only data rebind; exact reviewed V2extractor365b18ed\u2026",
+  "job_id": 125055427731,
+  "job_log": {
+    "bytes": 63420,
+    "mode": "0644",
+    "sha256": "aea37e5d787922c4055576c23466a3758c5e4cd26b705f997f91c76814d674c9"
+  },
+  "job_log_method": "Complete connector-decoded content encoded as UTF8, unchanged; not claiming original server ZIP transport bytes.",
+  "jobs": {
+    "bytes": 8730,
+    "mode": "0644",
+    "sha256": "a39f29f858522769303b5825f892ca39199da39463f1f1aaee1456461a548d2a"
+  },
+  "metadata": {
+    "bytes": 897,
+    "mode": "0644",
+    "sha256": "8a09faf45240a61e6a1f30190f5bb5f23cd6d09f0d949283422dd93def868933"
+  },
+  "original_manifest": {
+    "bytes": 12807,
+    "mode": "0600",
+    "sha256": "5399ccdd3fd292647a0bb2112c54ddb48f5c951b1be2cdec048f0478146591b5"
+  },
+  "original_members": 63,
+  "run_id": 41375390166,
+  "scope": "Actual completed AMD64 case only. ARM job/family/adoption/hosted acceptance not inferred. Existing pure oracles re-applied only; no Go/Docker/runtime rerun.",
+  "signed_transfer_URL_retained": false
+}

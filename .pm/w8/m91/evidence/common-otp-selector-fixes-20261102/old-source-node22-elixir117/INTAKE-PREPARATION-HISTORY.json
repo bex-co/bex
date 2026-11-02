@@ -1,0 +1,10 @@
+{
+  "at": "2026-11-02T04:44:41.769636+00:00",
+  "initial_invocation_error": "Three initial CLI calls supplied relative input/outputpaths; unchangedextractor refused private-path atline98beforeanyextraction/outputdir. No artifact/source failure. Corrected below by absoluteprivate paths; no extractor guard changed.",
+  "initial_tool_results": [
+    "02b748",
+    "ece394",
+    "6a62fa"
+  ],
+  "artifact_or_extractor_modified": false
+}

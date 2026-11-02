@@ -1,0 +1,5 @@
+{
+  "scope": "Separateone-existing-test-file correction; ERLANG_VERSION28.0 and authoredcommands unchanged; allfixtureprograms/data unchanged.",
+  "behavior": "Use existing otpRelease+otpMatches for numericrequestcompatibility, exactfour-part numericrelease includingzero-padding equivalence. Expectedotp/envremain exactverifiedselectedmetadata string, so existingruntimeOTP_VERSIONfile/header/NIF matches remain exact.",
+  "controls": "Two/three/four-part andzero-padded success, wrongmajor/minor/patch/maintenance andmalformedmetadata refuse. Realold-codecontrols shouldfail partialrequestsuccesses; noactualruntimeclaim."
+}

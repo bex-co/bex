@@ -1,0 +1,97 @@
+{
+  "at": "2026-11-02T05:14:45.607608+00:00",
+  "state": "PRIVATE_TWO_FILE_QUERY_PARTITION_SOURCE_READY",
+  "source_files": {
+    "lego/operator/internal/build/nativeerlang.go": {
+      "before": {
+        "bytes": 6268,
+        "sha256": "d6e7b4d637016630648c078c1141519127f33c62c55917cb920c67152ea1f640",
+        "mode": "0o644"
+      },
+      "after": {
+        "bytes": 6508,
+        "sha256": "e9f5ad92d3d9a19212812696b34e2ab04b7a2e785ea4a00eaf86d2648df67e26",
+        "mode": "0o644"
+      },
+      "stored_diff": {
+        "bytes": 656,
+        "sha256": "cfc9997f4defe007f97eda3ac66c8fd24af325629a26db5d18c911ff17b05f8b",
+        "mode": "0o644"
+      },
+      "raw_diff_bytes": 1343,
+      "raw_diff_sha256": "6afe923d2404932c97bfe8319b7f036b249308274e35cf149a677e81b071e4ce"
+    },
+    "lego/operator/internal/build/nativeerlang_test.go": {
+      "before": {
+        "bytes": 10266,
+        "sha256": "088c987b65331fab65d96b66299183a80b8dedb5b9ce6f2504042e912ddf3eb7",
+        "mode": "0o644"
+      },
+      "after": {
+        "bytes": 15399,
+        "sha256": "d53422d5e5f796201e8f95feae67dcfcb49a836c0b8419c47b5c72a02da867aa",
+        "mode": "0o644"
+      },
+      "stored_diff": {
+        "bytes": 1898,
+        "sha256": "b050c0bd1f6765dd0ac57b517f8f458649d610a2def7ecedacfb9a6f81842f59",
+        "mode": "0o644"
+      },
+      "raw_diff_bytes": 5442,
+      "raw_diff_sha256": "597f726594bcfcdfe7a5f58bbaf5c963e03f80aef05debe9d4c06ae765100b21"
+    }
+  },
+  "preservation": "Entireproductionfile exactoutside onlylistprefix/acquisition block; tag regex, otpMatches, otpParts, newest numeric/date/tie/sharedofficialimage selection+digestlookups unchanged. Entireoldtestfile prefix exact. Fourpartqueryexactunchanged; original13/28/programs/commands untouched.",
+  "bounds": "No retries/page_size100/maxTagPages30/clienttimeout10s changes. Atmosttwo disjointrequiredqueries forpartialrequests. Per-querypagesremainbounded; existing relevant403/timeout/missingcounterpart stillrefuse.",
+  "tests": {
+    "root": "/private/tmp/bex-w8-exact-otp-tag-partition-tests-20261102-hp0xme4l",
+    "result": {
+      "bytes": 2490,
+      "sha256": "7263392db310a4b5b20028c52479afcd7ee1149b28cb60362504124579194898",
+      "mode": "0o644"
+    },
+    "manifest": {
+      "bytes": 1935,
+      "sha256": "a1a3e7041328c616f173a84696806a92801cd49fbbfc681067458997cb026094",
+      "mode": "0o644"
+    },
+    "old_RED": "Actualunchangedoldcode walks10irrelevantpages thenHTTP403page11 inlocalhostfixture; newcontrolfailsoldsource0.631s.",
+    "new_PASS": "NewHTTPcontrols + all existing exact-Erlang/tagprefix semantic tests PASS0.593s; two/three/fourcomponent, RC/OS/numericneighbor/newestmaintenance/date/missingofficialcounterpart andrequiredpartition503 controls retained.",
+    "no_new_external_network_in_Go_controls": true
+  },
+  "actual_read": {
+    "root": "/private/tmp/bex-w8-exact-otp-tag-partition-actual-read-20261102-oz6mtvgr",
+    "manifest": {
+      "bytes": 3881,
+      "sha256": "d63e4eb3eec21dfc89678f23fde6ade28292742e14e0cbae12d37977828e96d2",
+      "mode": "0o644"
+    },
+    "result": {
+      "bytes": 35262,
+      "sha256": "acae2d315a1b5529c47ea30ee1a1e52d458b53c4a4d815ff1acebd3ac459ab78",
+      "mode": "0o644"
+    },
+    "complete": true,
+    "HTTP200_requests": 7,
+    "seconds": 13.839676667004824,
+    "bytes": 780558,
+    "returned_tags": 658,
+    "prefix_pages": {
+      "1.18.4-erlang-28.0-debian-": 1,
+      "1.18.4-erlang-28.0.": 6
+    },
+    "transport": "RealdefaultTLSverified /usr/bin/curl; exactpublicURLs/pages/statuses/rawbodies/argv retained. Samequeryvalues; not a Go process or finalselectedimage/digest/runtimeproof.",
+    "retries": 0,
+    "source_reader_10s_network_deadline_not_widened": true
+  },
+  "downstream_fixture_note": "ActualcatalogcontainsDebian28.0..28.0.4. Productpartialrequest28.0 semantics remainunchanged; Rootseparatelyauthorizesextra fixtureexpectation calibrationto bindresolvedverifiedOTP metadata, withoutchangingERLANG_VERSIONrequest. No finalofficialimageavailabilitylookup bythisactualcurlread.",
+  "primary_docs": [
+    {
+      "url": "https://docs.docker.com/reference/api/hub/latest/operations/ListRepositoryTags/",
+      "scope": "Official paginatedHubtags/page/page_size/next response reference. No newregex/filter operator introduced; existingnamequeryvalues onlypartitioned."
+    }
+  ],
+  "repository_source_unchanged": true,
+  "foreignsum_unchanged": true,
+  "scope": "Source/localhostHTTPcontrols andone actualreadonlypublicmetadata read only. No repoapply/commit/dispatch/auth/container/image/runtime/family/adoption acceptance."
+}

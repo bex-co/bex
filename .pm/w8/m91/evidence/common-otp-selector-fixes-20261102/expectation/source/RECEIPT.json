@@ -1,0 +1,44 @@
+{
+  "at": "2026-11-02T05:17:16.531407+00:00",
+  "state": "PRIVATE_SEPARATE_EXTRA_FIXTURE_CORRECTION_READY",
+  "only_repository_path": "lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+  "source_manifest": {
+    "bytes": 546,
+    "sha256": "6c3490273a67cd2cca5845c25c71c59dccace577465cc885a7adf2c5de1c921c",
+    "mode": "0o644"
+  },
+  "preservation": "Replace onlyrequest-vs-metadata guard/error andappendonetabletest. Reversingguardrestoresentireoldfileprefixbyteexact; everyotheroldfunction/oldtest unchanged. commonElixirEnvironment unchanged, so authoredERLANG_VERSION28.0 stays28.0. Runtimefixturecheck.py, exactOTP_VERSIONfile/headerroot/CNIF/crypto/rebar/Mix/actualresult assertions unchanged. Original13/28 programs/data/commands untouched.",
+  "version_contract": "ExistingotpRelease validatesmetadata; existingotpMatches requiresnumericrequestedprefix for2/3components andcompletefour-part numericrelease equality (sameproductzero-padding equivalence). Emittedexpected.otp andexpected.env.OTP_VERSION remainexactresolvedverifiedmetadata string, not requeststring oranotherpreferredversion.",
+  "tests": {
+    "root": "/private/tmp/bex-w8-elixir-resolved-otp-expectation-tests-20261102-p67ovw7j",
+    "manifest": {
+      "bytes": 1934,
+      "sha256": "db9e46cb7117dc78f867743626da5fce494baaeb5aa9eac3a8abda974e32f9dd",
+      "mode": "0o644"
+    },
+    "result": {
+      "bytes": 2177,
+      "sha256": "43315a9972fa579c527364f1ea1ee0dc12bb3d48b941548d843d8686ff4297f3",
+      "mode": "0o644"
+    },
+    "old_RED": "Four actualoldpredicate failures:2/3part maintenance acceptance and4partzero-padding; rawlogretained0.575s.",
+    "new_PASS": "All existing TestCommonElixir.* plus12newtable rows PASS8.527s. Valid2/3/4part/zero-padding, wrongmajor/minor/patch/maintenance/malformedmetadata refusals, exactemittedmetadata andunchangedauthoredrequest."
+  },
+  "fixture_identities": {
+    "bytes": 1316,
+    "sha256": "e38788336c269f856744ae72ce2e4205f27784d51b2493cf5f4ffc6fbce6f851",
+    "mode": "0o644"
+  },
+  "raw_diff": {
+    "bytes": 2484,
+    "sha256": "4e391479ea2de0897df87fc5e8375349687baaeca7e67de6519b65240454a962",
+    "stored": {
+      "bytes": 1029,
+      "sha256": "67388a7738e65674216887f115aaecd99459742669cbef65fa7bd04adedb1ff0",
+      "mode": "0o644"
+    },
+    "encoding": "gzipmtime0"
+  },
+  "separate_partition_patch": "/private/tmp/bex-w8-exact-otp-tag-partition-source-20261102-oqaap9a5 unchanged/frozen; neitherpatch depends on a fabricatedactualruntimepass.",
+  "scope": "Extraqualificationexpectation only. No productsemantics/version substitution/repositoryapply/commit/dispatch/container/native/runtime/adoption acceptance. Rootreview/combinedactualchecks/futureCIstillrequired."
+}

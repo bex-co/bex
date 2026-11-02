@@ -1,0 +1,21 @@
+{
+  "expected_exit": 1,
+  "label": "old-red",
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "/private/tmp/bex-w8-exact-otp-tag-partition-tests-20261102-hp0xme4l/old-red-overlay.json",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build",
+    "-run",
+    "^TestExactErlangTagPartitionAvoidsUnusablePages$"
+  ],
+  "exit": 1,
+  "bound": null,
+  "seconds": 7.680601957952604,
+  "group_absent": true,
+  "log_sha256": "61dbff4957037d0a2feda35d604b644d5b70694b0222d7b2d0b376ff3a9393bf"
+}

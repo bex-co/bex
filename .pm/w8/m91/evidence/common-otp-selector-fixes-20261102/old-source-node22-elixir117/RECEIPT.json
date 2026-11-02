@@ -1,0 +1,54 @@
+{
+  "at": "2026-11-02T04:49:23.486416+00:00",
+  "assessment": "CLEAN_ACTUAL_OLD_SOURCE_NODE22_ARM_AND_ELIXIR117_BOTH_ARCH",
+  "audit": {
+    "bytes": 9383,
+    "sha256": "acc6ca0f67b9933c4ae8dbc9705914b5a81bdfc8938223cca4dad5e054584d3b",
+    "mode": "0o644"
+  },
+  "source_derivation": {
+    "bytes": 6089,
+    "sha256": "b12c1f59e2422a053984f75bac04e8dfefaddfb70ff4a5ec491eb0598443c9f4",
+    "mode": "0o644"
+  },
+  "portable_copy_plan": {
+    "bytes": 58989,
+    "sha256": "3249849527a399747b1f54b5e4120a493b5d822130146ad82bab9de5a0fbe394",
+    "mode": "0o644"
+  },
+  "raw_artifacts": [
+    {
+      "source": "/private/tmp/bex-w8-node22arm-elixir117-intake-20261102-fuflg1or/elixir117-amd64/original.zip",
+      "path": "elixir117-amd64/original.zip",
+      "bytes": 37786,
+      "sha256": "68ec5baa7e548352dfe0e12cbc88cadb4b62cd0337582f73b1da70eacb5a8bfb",
+      "mode": "0o600",
+      "reason": "FullZIPkeptprivate; actualid/metadata/SHA/download+extractionreceipts retained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-node22arm-elixir117-intake-20261102-fuflg1or/elixir117-arm64/original.zip",
+      "path": "elixir117-arm64/original.zip",
+      "bytes": 36693,
+      "sha256": "86f22ae19cb071d6e4078adba1a1d3cac04c7ece4c739b65be6d26ef39c15470",
+      "mode": "0o600",
+      "reason": "FullZIPkeptprivate; actualid/metadata/SHA/download+extractionreceipts retained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-node22arm-elixir117-intake-20261102-fuflg1or/node22-arm64/original.zip",
+      "path": "node22-arm64/original.zip",
+      "bytes": 84395,
+      "sha256": "c36203064e9ca4db2029e0c81c32aaa2c8dd1d6777f4e44d2d4593618a333974",
+      "mode": "0o600",
+      "reason": "FullZIPkeptprivate; actualid/metadata/SHA/download+extractionreceipts retained."
+    }
+  ],
+  "original_members": 101,
+  "totalZIPbytes": 158874,
+  "metadata_fetched_once": 2,
+  "success_joblogs_fetched_once": 3,
+  "signed_transfer_URLs_retained": false,
+  "initial_extractor_invocation_error": "Relativepatharguments refusedprivate-path beforeanywrite; historicalerrorrecordretained, exactsameextractor thenpassed withabsoluteprivatepaths. Not artifactfailure.",
+  "all_extractions_complete": true,
+  "current9039acceptance": false,
+  "repository_or_PM_mutations": false
+}

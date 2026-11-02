@@ -1,0 +1,7 @@
+{
+  "manager": "yarn",
+  "package": "bex-node-engine-sentinel",
+  "range": ">=23",
+  "diagnostic": "The engine \"node\" is incompatible",
+  "returncode": 1
+}
