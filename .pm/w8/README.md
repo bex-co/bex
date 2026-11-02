@@ -406,6 +406,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 ## Inbox
 
 - [ ] **227** — [Lift the three signed-off edge-compression differences once Traefik can](blocked/227.md) — **BLOCKED (upstream Traefik: a release whose Brotli writer skips 206 bodies, or `compress` options for no-transform/ETag, or a Flusher-preserving Yaegi writer; an upstream issue/PR needs user authorization)**
+- [ ] **228** — [Browsers get zstd, not gzip, from the gzip-only web-service edge compression](228.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-01: `gzip, …, zstd` offers get `Content-Encoding: zstd` despite `encodings: [gzip]`; minor, ~45m.
+- [ ] **229** — [`deploy_ended` and `build_ended` events have no Render `reason` object, so a crashed deploy never reports `failure.nonZeroExit`](229.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-02: only bex text extras, no structured reason; minor, ~60m.
 
 - [x] **226** — [Native Node 14/16 builds carry a pnpm that refuses to run on them](done/226.md) (>1h, minor) ← w8/m91 t007 source review 2026-10-31: pnpm 10.34.7's JS entrypoint exits 1 below Node 18.12; proposal retained in m91 evidence — **DONE 2026-10-31** (pnpm standalone on Node 14/16, primary + companion; real builds pass on both architectures)
 
