@@ -1,0 +1,22 @@
+{
+  "argv": [
+    "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+    "test",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build"
+  ],
+  "cwd": "/Users/tianpan/projects/bex7/lego/operator",
+  "source": {
+    "lego/operator/internal/build/nativeerlang.go": "e9f5ad92d3d9a19212812696b34e2ab04b7a2e785ea4a00eaf86d2648df67e26",
+    "lego/operator/internal/build/nativeerlang_test.go": "9ff72df59814648f2e6960bfffe8e8310fd905ff1b3baf29b364b8e745dc6f89",
+    "lego/operator/internal/build/nativecommon_elixir_qualification_test.go": "2cc5059eb78d2d4cb387b9626665bfdc335f7890de89f220e397475bb24f6da6"
+  },
+  "shared_cache_scope": "ordinary Go-managed content-addressed reads/writes; never pruned/deleted",
+  "private_TMP": "/private/tmp/bex-w8-otp-selector-combined-20261102-233279og/go-final-tmp",
+  "physical_floor_bytes": 8589934592,
+  "own_TMP_cap": 536870912,
+  "seconds": 600,
+  "expensive_integration_flags_removed": true
+}

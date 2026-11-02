@@ -1,0 +1,7 @@
+{
+  "manager": "npm",
+  "package": "bex-node-engine-sentinel",
+  "range": ">=23",
+  "diagnostic": "EBADENGINE",
+  "returncode": 1
+}

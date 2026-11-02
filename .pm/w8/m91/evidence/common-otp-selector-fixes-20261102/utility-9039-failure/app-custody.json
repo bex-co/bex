@@ -1,0 +1,63 @@
+{
+  "at": "2026-11-02T05:19:00.540624+00:00",
+  "rows": [
+    {
+      "name": "run",
+      "file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-run.json",
+      "bytes": 11655,
+      "sha256": "5ce8d346f585fca3551a9ea2af16ff6cf6700daaa9a8a2135670d4c240e1351f",
+      "wrapper_file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-run.tool-result.json",
+      "wrapper_sha256": "c87d380d2ed886ddfd0358512a4db1a5d695dd266cc9e2ae2fe48eaa453abc13",
+      "representation": "Actual GitHub App metadata; artifact bodies not requested",
+      "mode": "0o600",
+      "app_fetch_attempts": 1
+    },
+    {
+      "name": "jobs",
+      "file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-jobs.json",
+      "bytes": 12126,
+      "sha256": "3f128beae91f4f5a4e2399e64eb78146cbec995376942784f5cc30e8c64c430d",
+      "wrapper_file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-jobs.tool-result.json",
+      "wrapper_sha256": "15c74b82f680afe7dfc0d34adb45814eb87e2d9a414a53f8e1c3e1bba07c85f4",
+      "representation": "Actual GitHub App metadata; artifact bodies not requested",
+      "mode": "0o600",
+      "app_fetch_attempts": 1
+    },
+    {
+      "name": "artifacts",
+      "file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-artifacts.json",
+      "bytes": 1347,
+      "sha256": "2ad9473ba169bf4cbc177fa55ad5eda77e56c65a0759c15ffb3fe5e331a5ca0a",
+      "wrapper_file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-artifacts.tool-result.json",
+      "wrapper_sha256": "ce9aec69f10a002a90cfd0c5f7b7e2d039f5ad85f155b1e56064a286934fc6a7",
+      "representation": "Actual GitHub App metadata; artifact bodies not requested",
+      "mode": "0o600",
+      "app_fetch_attempts": 1
+    },
+    {
+      "name": "job-125101301486",
+      "file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-job-125101301486.log",
+      "bytes": 66045,
+      "sha256": "c53a3405099eb56e7163ea1a1802c8c7f8868c1dc4cafd7bf189346f8ce1ab71",
+      "wrapper_file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-job-125101301486.tool-result.json",
+      "wrapper_sha256": "05d409c81e7e6cbfdddc34210726440da1bf23e96e898f26d1922d2a4607a22f",
+      "representation": "Complete decoded job log, verbatim UTF-8 with BOM/line endings retained as returned by connected GitHub App; raw HTTP transport bytes are not exposed",
+      "mode": "0o600",
+      "app_fetch_attempts": 1
+    },
+    {
+      "name": "job-125101301532",
+      "file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-job-125101301532.log",
+      "bytes": 65531,
+      "sha256": "abea93d3f7bb12baf42a80135a18f7b466d36df3fb0a2bf52a871ae781b24663",
+      "wrapper_file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-job-125101301532.tool-result.json",
+      "wrapper_sha256": "1bf0abbf462445e0b94ab25f0c3530a5f4d12c436367531bf8377eed57ef0dcd",
+      "representation": "Complete decoded job log, verbatim UTF-8 with BOM/line endings retained as returned by connected GitHub App; raw HTTP transport bytes are not exposed",
+      "mode": "0o600",
+      "app_fetch_attempts": 1
+    }
+  ],
+  "prior_failed_CLI_attempts_preserved": true,
+  "trusted_transport_change_authorized_by_root": true,
+  "no_retry_or_artifact_body": true
+}

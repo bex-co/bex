@@ -1,0 +1,40 @@
+{
+  "lego/operator/internal/build/nativeerlang.go": {
+    "before": {
+      "bytes": 6268,
+      "sha256": "d6e7b4d637016630648c078c1141519127f33c62c55917cb920c67152ea1f640",
+      "mode": "0o644"
+    },
+    "after": {
+      "bytes": 6508,
+      "sha256": "e9f5ad92d3d9a19212812696b34e2ab04b7a2e785ea4a00eaf86d2648df67e26",
+      "mode": "0o644"
+    },
+    "stored_diff": {
+      "bytes": 656,
+      "sha256": "cfc9997f4defe007f97eda3ac66c8fd24af325629a26db5d18c911ff17b05f8b",
+      "mode": "0o644"
+    },
+    "raw_diff_bytes": 1343,
+    "raw_diff_sha256": "6afe923d2404932c97bfe8319b7f036b249308274e35cf149a677e81b071e4ce"
+  },
+  "lego/operator/internal/build/nativeerlang_test.go": {
+    "before": {
+      "bytes": 10266,
+      "sha256": "088c987b65331fab65d96b66299183a80b8dedb5b9ce6f2504042e912ddf3eb7",
+      "mode": "0o644"
+    },
+    "after": {
+      "bytes": 15399,
+      "sha256": "d53422d5e5f796201e8f95feae67dcfcb49a836c0b8419c47b5c72a02da867aa",
+      "mode": "0o644"
+    },
+    "stored_diff": {
+      "bytes": 1898,
+      "sha256": "b050c0bd1f6765dd0ac57b517f8f458649d610a2def7ecedacfb9a6f81842f59",
+      "mode": "0o644"
+    },
+    "raw_diff_bytes": 5442,
+    "raw_diff_sha256": "597f726594bcfcdfe7a5f58bbaf5c963e03f80aef05debe9d4c06ae765100b21"
+  }
+}

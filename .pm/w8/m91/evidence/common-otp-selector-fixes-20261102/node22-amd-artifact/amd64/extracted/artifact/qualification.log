@@ -1,0 +1,8 @@
+=== RUN   TestCommonNodeGeneratedImages
+    nativecommon_node_qualification_test.go:206: retained Node profile evidence: /home/docker/actions-runner/_work/_temp/bex-native-qualification-q9dhvz8e/generated/native-common-node-3184167380
+=== RUN   TestCommonNodeGeneratedImages/node-22
+    nativecommon_node_qualification_test.go:212: node-22 passed actual generated network-off commands; image sha256:5ab0929f76bb6bd256ebe28f85e399a27d3ea34dc84e97b52548879245cd92b7
+--- PASS: TestCommonNodeGeneratedImages (478.21s)
+    --- PASS: TestCommonNodeGeneratedImages/node-22 (478.20s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	478.215s

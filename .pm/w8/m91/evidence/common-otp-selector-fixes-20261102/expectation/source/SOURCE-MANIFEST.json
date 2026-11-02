@@ -1,0 +1,19 @@
+{
+  "lego/operator/internal/build/nativecommon_elixir_qualification_test.go": {
+    "before": {
+      "bytes": 11272,
+      "sha256": "3698ceec0656a26e7b8803d6c7b147974b06c6e3dbff30134cf3560d59d6e89f",
+      "mode": "0o644"
+    },
+    "after": {
+      "bytes": 13006,
+      "sha256": "2cc5059eb78d2d4cb387b9626665bfdc335f7890de89f220e397475bb24f6da6",
+      "mode": "0o644"
+    },
+    "old_red_control": {
+      "bytes": 12938,
+      "sha256": "c7b30630efae8ed38d835f507db064c6db59ff9e5cfdb8895b8e7fb10a1ebd48",
+      "mode": "0o644"
+    }
+  }
+}

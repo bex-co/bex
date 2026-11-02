@@ -1,0 +1,39 @@
+{
+  "excludes": [
+    "MANIFEST.json"
+  ],
+  "files": [
+    {
+      "bytes": 35792,
+      "mode": "0644",
+      "path": "INPUT-CUSTODY.json",
+      "sha256": "5e4ff66cb7ec6b5c21e1db0cd160e41381aa92ebafc097bc852a57755640c4a3"
+    },
+    {
+      "bytes": 1470,
+      "mode": "0644",
+      "path": "PORTABLE-COPY-PLAN.json",
+      "sha256": "b97d71964a3358b6f4830cf10b490bc1626e820917c8ba99add3a9154b94533d"
+    },
+    {
+      "bytes": 1656,
+      "mode": "0644",
+      "path": "RECEIPT.json",
+      "sha256": "bfea167926ec3fc49a8f74d29b811f3d468f8668b980b5fbe14a1464ccafd1f8"
+    },
+    {
+      "bytes": 39577,
+      "mode": "0644",
+      "path": "REVIEW.json",
+      "sha256": "c90f45e29123a19dbc41d4114e0fade85e0fd48edc94040b552b6c5b7f03b4f4"
+    },
+    {
+      "bytes": 1195,
+      "mode": "0644",
+      "path": "SOURCE-DERIVATION.json",
+      "sha256": "6012c92bffeb99458fca975fe9dbedf40c06426a36f369b46eedcd90de3d66ba"
+    }
+  ],
+  "payload_bytes": 79690,
+  "payload_files": 5
+}

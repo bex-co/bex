@@ -1,0 +1,14 @@
+{
+  "name": "run",
+  "endpoint": "repos/bex-co/bex/actions/runs/41389762980",
+  "started_at": "2026-11-02T05:15:33.805056+00:00",
+  "finished_at": "2026-11-02T05:15:34.635619+00:00",
+  "exit_code": 1,
+  "error": null,
+  "file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/run.json",
+  "bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/run.stderr",
+  "stderr_bytes": 129,
+  "attempts": 1
+}

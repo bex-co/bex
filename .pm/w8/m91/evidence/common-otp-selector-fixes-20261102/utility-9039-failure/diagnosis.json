@@ -1,0 +1,422 @@
+{
+  "at": "2026-11-02T05:22:15.796675+00:00",
+  "run": {
+    "id": 41389762980,
+    "head_sha": "9039e5037880116572d1bf50be364af96acae59a",
+    "event": "workflow_dispatch",
+    "run_attempt": 1,
+    "status": "completed",
+    "conclusion": "failure",
+    "created_at": "2026-11-02T04:40:22Z",
+    "updated_at": "2026-11-02T04:59:15Z",
+    "html_url": "https://github.com/bex-co/bex/actions/runs/41389762980"
+  },
+  "jobs": [
+    {
+      "architecture": "amd64",
+      "job_id": 125101301486,
+      "url": "https://github.com/bex-co/bex/actions/runs/41389762980/job/125101301486",
+      "runner": "239d6e52dba9",
+      "started_at": "2026-11-02T04:51:27Z",
+      "completed_at": "2026-11-02T04:55:41Z",
+      "step9": {
+        "name": "actual generated offline builds, original replays and exact-default SPDX",
+        "started_at": "2026-11-02T04:54:15Z",
+        "completed_at": "2026-11-02T04:55:35Z",
+        "seconds": 80.0,
+        "conclusion": "failure"
+      },
+      "first_actual_cause": {
+        "line": 738,
+        "text": "2026-11-02T04:54:24.5582167Z         #5 ERROR: failed to copy: httpReadSeeker: failed open: unexpected status from GET request to https://registry-1.docker.io/v2/mwader/static-ffmpeg/manifests/sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822: 429 Too Many Requests",
+        "classification": "Docker Hub anonymous manifest pull rate limit HTTP429 during BuildKit metadata resolution, before the expected pg_restore tool invocation; the harness correctly rejected this different failure at line133",
+        "repository": "mwader/static-ffmpeg"
+      },
+      "remaining_cases": {
+        "count": 9,
+        "classification": "primary image metadata resolution HTTP429 before generated builds/tool assertions",
+        "selected_lines": [
+          {
+            "line": 757,
+            "text": "2026-11-02T04:54:32.8255072Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 759,
+            "text": "2026-11-02T04:54:40.5812522Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 761,
+            "text": "2026-11-02T04:54:48.3074066Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 763,
+            "text": "2026-11-02T04:54:56.2805833Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 765,
+            "text": "2026-11-02T04:55:04.1053376Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 767,
+            "text": "2026-11-02T04:55:11.8109715Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 769,
+            "text": "2026-11-02T04:55:19.7007820Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 771,
+            "text": "2026-11-02T04:55:27.4619354Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 773,
+            "text": "2026-11-02T04:55:35.3659070Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          }
+        ]
+      },
+      "unit_http_oracles": "PASS",
+      "actual_cleanup": {
+        "line": 813,
+        "timestamp": "2026-11-02T04:55:36.0778838Z",
+        "result": {
+          "owner": "bex-nq-7fb9c74c14914d1299699969",
+          "operations": [
+            {
+              "resource": "builder",
+              "identity": "bex-nq-7fb9c74c14914d1299699969",
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": "bex-nq-7fb9c74c14914d1299699969 removed\n"
+            },
+            {
+              "resource": "docker-auth",
+              "logout_exit_code": 0,
+              "exit_code": 0,
+              "removed": true
+            }
+          ]
+        }
+      },
+      "cleanup_source_interpretation": "Pinned cleanup removes exact builder first, then lists owner-labeled container/images. No listing errors or resource rows and cleanup step success means those label listings were empty. Auth logout/removal exit0. This is actual CI cleanup evidence, not an independent later host inventory.",
+      "post_steps": [
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:55:35Z",
+          "completed_at": "2026-11-02T04:55:35Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:55:35Z",
+          "completed_at": "2026-11-02T04:55:36Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:55:36Z",
+          "completed_at": "2026-11-02T04:55:36Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:55:36Z",
+          "completed_at": "2026-11-02T04:55:37Z"
+        },
+        {
+          "number": 24,
+          "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:55:37Z",
+          "completed_at": "2026-11-02T04:55:38Z"
+        },
+        {
+          "number": 25,
+          "name": "Post Run actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+          "conclusion": "skipped",
+          "started_at": "2026-11-02T04:55:38Z",
+          "completed_at": "2026-11-02T04:55:38Z"
+        },
+        {
+          "number": 26,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:55:38Z",
+          "completed_at": "2026-11-02T04:55:38Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:55:38Z",
+          "completed_at": "2026-11-02T04:55:38Z"
+        }
+      ],
+      "raw_log": {
+        "path": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-job-125101301486.log",
+        "bytes": 66045,
+        "sha256": "c53a3405099eb56e7163ea1a1802c8c7f8868c1dc4cafd7bf189346f8ce1ab71",
+        "representation": "Complete verbatim decoded App job log encoded as UTF-8; raw HTTP transport bytes/headers not exposed"
+      },
+      "lossless_gzip": {
+        "path": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-job-125101301486.log.gz",
+        "bytes": 15447,
+        "sha256": "14cdb801fef5d051c3878b3e318e319d3d7c6fd012f5912b490181b7852767fe",
+        "roundtrip_verified": true
+      }
+    },
+    {
+      "architecture": "arm64",
+      "job_id": 125101301532,
+      "url": "https://github.com/bex-co/bex/actions/runs/41389762980/job/125101301532",
+      "runner": "29a1c6052e23",
+      "started_at": "2026-11-02T04:55:43Z",
+      "completed_at": "2026-11-02T04:59:15Z",
+      "step9": {
+        "name": "actual generated offline builds, original replays and exact-default SPDX",
+        "started_at": "2026-11-02T04:57:46Z",
+        "completed_at": "2026-11-02T04:59:08Z",
+        "seconds": 82.0,
+        "conclusion": "failure"
+      },
+      "first_actual_cause": {
+        "line": 733,
+        "text": "2026-11-02T04:57:56.6245509Z         #4 ERROR: failed to copy: httpReadSeeker: failed open: unexpected status from GET request to https://registry-1.docker.io/v2/library/node/manifests/sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea: 429 Too Many Requests",
+        "classification": "Docker Hub anonymous manifest pull rate limit HTTP429 during BuildKit metadata resolution, before the expected pg_restore tool invocation; the harness correctly rejected this different failure at line133",
+        "repository": "library/node"
+      },
+      "remaining_cases": {
+        "count": 9,
+        "classification": "primary image metadata resolution HTTP429 before generated builds/tool assertions",
+        "selected_lines": [
+          {
+            "line": 752,
+            "text": "2026-11-02T04:58:04.6225194Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 754,
+            "text": "2026-11-02T04:58:12.3025442Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 756,
+            "text": "2026-11-02T04:58:20.0742394Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 758,
+            "text": "2026-11-02T04:58:28.0055961Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 760,
+            "text": "2026-11-02T04:58:35.7118665Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 762,
+            "text": "2026-11-02T04:58:43.6939671Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 764,
+            "text": "2026-11-02T04:58:51.9339351Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 766,
+            "text": "2026-11-02T04:58:59.8888780Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          },
+          {
+            "line": 768,
+            "text": "2026-11-02T04:59:08.0913708Z     nativeutility_integration_test.go:99: read selected native primary environment: image metadata request returned status 429"
+          }
+        ]
+      },
+      "unit_http_oracles": "PASS",
+      "actual_cleanup": {
+        "line": 808,
+        "timestamp": "2026-11-02T04:59:08.7823641Z",
+        "result": {
+          "owner": "bex-nq-0a2fe437d47c4f849db9d848",
+          "operations": [
+            {
+              "resource": "builder",
+              "identity": "bex-nq-0a2fe437d47c4f849db9d848",
+              "exit_code": 0,
+              "stdout": "",
+              "stderr": "bex-nq-0a2fe437d47c4f849db9d848 removed\n"
+            },
+            {
+              "resource": "docker-auth",
+              "logout_exit_code": 0,
+              "exit_code": 0,
+              "removed": true
+            }
+          ]
+        }
+      },
+      "cleanup_source_interpretation": "Pinned cleanup removes exact builder first, then lists owner-labeled container/images. No listing errors or resource rows and cleanup step success means those label listings were empty. Auth logout/removal exit0. This is actual CI cleanup evidence, not an independent later host inventory.",
+      "post_steps": [
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:59:08Z",
+          "completed_at": "2026-11-02T04:59:08Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:59:08Z",
+          "completed_at": "2026-11-02T04:59:08Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:59:08Z",
+          "completed_at": "2026-11-02T04:59:08Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:59:08Z",
+          "completed_at": "2026-11-02T04:59:10Z"
+        },
+        {
+          "number": 24,
+          "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:59:10Z",
+          "completed_at": "2026-11-02T04:59:10Z"
+        },
+        {
+          "number": 25,
+          "name": "Post Run actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+          "conclusion": "skipped",
+          "started_at": "2026-11-02T04:59:10Z",
+          "completed_at": "2026-11-02T04:59:10Z"
+        },
+        {
+          "number": 26,
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:59:10Z",
+          "completed_at": "2026-11-02T04:59:11Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T04:59:11Z",
+          "completed_at": "2026-11-02T04:59:11Z"
+        }
+      ],
+      "raw_log": {
+        "path": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-job-125101301532.log",
+        "bytes": 65531,
+        "sha256": "abea93d3f7bb12baf42a80135a18f7b466d36df3fb0a2bf52a871ae781b24663",
+        "representation": "Complete verbatim decoded App job log encoded as UTF-8; raw HTTP transport bytes/headers not exposed"
+      },
+      "lossless_gzip": {
+        "path": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/app-job-125101301532.log.gz",
+        "bytes": 15286,
+        "sha256": "1757e2540b3644f73b3914cbffd8137eeaddfbe85370daa458251957627eb4d0",
+        "roundtrip_verified": true
+      }
+    }
+  ],
+  "other_jobs": [
+    {
+      "id": 125098345140,
+      "name": "plan",
+      "status": "completed",
+      "conclusion": "success",
+      "started_at": "2026-11-02T04:49:26Z",
+      "completed_at": "2026-11-02T04:51:16Z"
+    },
+    {
+      "id": 125101303083,
+      "name": "publish",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-02T04:51:17Z",
+      "completed_at": "2026-11-02T04:51:16Z"
+    },
+    {
+      "id": 125103421687,
+      "name": "qualify-profile",
+      "status": "completed",
+      "conclusion": "skipped",
+      "started_at": "2026-11-02T04:59:15Z",
+      "completed_at": "2026-11-02T04:59:15Z"
+    }
+  ],
+  "actual_artifact_metadata_first_page": [
+    {
+      "id": 13117707119,
+      "name": "common-generated-9039e5037880116572d1bf50be364af96acae59a-arm64-1",
+      "size_in_bytes": 26621,
+      "digest": "sha256:433dcb9a25e94f908f1700925a9624896c051e153495f58e75967f8019d9dacc",
+      "expired": false,
+      "created_at": "2026-11-02T04:59:10Z",
+      "updated_at": "2026-11-02T04:59:10Z",
+      "expires_at": "2026-12-02T04:59:08Z",
+      "workflow_run": {
+        "id": 41389762980,
+        "repository_id": 793852040,
+        "head_repository_id": 793852040,
+        "head_branch": "main",
+        "head_sha": "9039e5037880116572d1bf50be364af96acae59a"
+      }
+    },
+    {
+      "id": 13117033222,
+      "name": "common-generated-9039e5037880116572d1bf50be364af96acae59a-amd64-1",
+      "size_in_bytes": 26787,
+      "digest": "sha256:88117cc8e63998c4375990139e32ae689fe36a5a6482919518f7e6876af40ba1",
+      "expired": false,
+      "created_at": "2026-11-02T04:55:37Z",
+      "updated_at": "2026-11-02T04:55:37Z",
+      "expires_at": "2026-12-02T04:55:36Z",
+      "workflow_run": {
+        "id": 41389762980,
+        "repository_id": 793852040,
+        "head_repository_id": 793852040,
+        "head_branch": "main",
+        "head_sha": "9039e5037880116572d1bf50be364af96acae59a"
+      }
+    }
+  ],
+  "source_files": [
+    {
+      "source": "9039e5037880116572d1bf50be364af96acae59a",
+      "path": ".github/workflows/native-common-image.yml",
+      "bytes": 19834,
+      "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+      "git_blob": "0bd2e7efaa1b459cbf41a926fc594e956049dc3a"
+    },
+    {
+      "source": "9039e5037880116572d1bf50be364af96acae59a",
+      "path": ".github/scripts/native-common-qualify.py",
+      "bytes": 60360,
+      "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+      "git_blob": "b9684b81db8ab60d1d5aa867e8ebb8b1a46c85e8"
+    },
+    {
+      "source": "9039e5037880116572d1bf50be364af96acae59a",
+      "path": "lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 18975,
+      "sha256": "529080e87e50c291a5081de48b83e5a90122676bae900046a978abeb024a761d",
+      "git_blob": "31631593082c1864363a4ae72b8e5e31810a0136"
+    }
+  ],
+  "transport_custody": "Original CLI attempts each returned0 bytes with macOS x509OSStatus-26276; all preserved. Root explicitly authorized different supported GitHub App transport; each metadata/log wrapper was invoked once and saved completely. No trust override, CLI retry, artifact body download or extra request.",
+  "limits": [
+    "No utility acceptance or product regression inferred: generated tool/runtime behaviors did not execute after the external429 failures; harness error assertions did execute and correctly failed.",
+    "No OOM, disk-full or timeout failure is reported in the complete job logs; numerical capacity JSON was not downloaded and no numerical runner-capacity claim is made.",
+    "Artifact metadata hashes are GitHub-reported only; ZIP bodies were not downloaded/verified.",
+    "No retries, dispatches, repo/source edits, Docker commands or local resource changes."
+  ]
+}

@@ -1,0 +1,52 @@
+{
+  "CI-CAUSE.json": {
+    "bytes": 2991,
+    "sha256": "b2ce2b1b63a04b08f9a9e607b532c7b3531dee198eea971d25d3dc25310385dd",
+    "mode": "0o644"
+  },
+  "PROPOSAL.json": {
+    "bytes": 1042,
+    "sha256": "e32026cd8d0a23fec6cb3d5cc6a6edc6d61a0fe396f0a50d891f0a43ef23f92e",
+    "mode": "0o644"
+  },
+  "RECEIPT.json": {
+    "bytes": 4608,
+    "sha256": "461b2ec0240ad3cffa30bbd2146f2b793f58106a44a2aea69e41fb14b2a0553a",
+    "mode": "0o644"
+  },
+  "SOURCE-MANIFEST.json": {
+    "bytes": 1267,
+    "sha256": "efd539a3471b77c70971393db1505e7dc0489528c5e641d24bde0111890d1b5e",
+    "mode": "0o644"
+  },
+  "before/lego/operator/internal/build/nativeerlang.go": {
+    "bytes": 6268,
+    "sha256": "d6e7b4d637016630648c078c1141519127f33c62c55917cb920c67152ea1f640",
+    "mode": "0o644"
+  },
+  "before/lego/operator/internal/build/nativeerlang_test.go": {
+    "bytes": 10266,
+    "sha256": "088c987b65331fab65d96b66299183a80b8dedb5b9ce6f2504042e912ddf3eb7",
+    "mode": "0o644"
+  },
+  "nativeerlang.go.diff.gz": {
+    "bytes": 656,
+    "sha256": "cfc9997f4defe007f97eda3ac66c8fd24af325629a26db5d18c911ff17b05f8b",
+    "mode": "0o644"
+  },
+  "nativeerlang_test.go.diff.gz": {
+    "bytes": 1898,
+    "sha256": "b050c0bd1f6765dd0ac57b517f8f458649d610a2def7ecedacfb9a6f81842f59",
+    "mode": "0o644"
+  },
+  "source/lego/operator/internal/build/nativeerlang.go": {
+    "bytes": 6508,
+    "sha256": "e9f5ad92d3d9a19212812696b34e2ab04b7a2e785ea4a00eaf86d2648df67e26",
+    "mode": "0o644"
+  },
+  "source/lego/operator/internal/build/nativeerlang_test.go": {
+    "bytes": 15399,
+    "sha256": "d53422d5e5f796201e8f95feae67dcfcb49a836c0b8419c47b5c72a02da867aa",
+    "mode": "0o644"
+  }
+}

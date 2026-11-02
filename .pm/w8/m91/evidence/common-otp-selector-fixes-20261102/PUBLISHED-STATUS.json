@@ -1,0 +1,27 @@
+{
+  "at": "2026-11-02T05:33:16.879702+00:00",
+  "state": "PM_PACKET_PUBLISHED_SOURCE_APPLIED_ACCEPTANCE_OPEN",
+  "readme_sha256": "91f9cece5105dba13d24651029195e697587bc57833bda44579cb027214a8fb7",
+  "PM_updates": [
+    {
+      "path": ".pm/w8/m91/README.md",
+      "before_sha256": "f430581874f35db6f60cb6d4f81e77ed7d8af60372eeba9e0752b4f0a27821e4",
+      "after_sha256": "586790815d99939cf5659f96493eb5c9e23d2242d9de296bc408ca32e151d085",
+      "append_only": true,
+      "status_unchanged": true
+    },
+    {
+      "path": ".pm/w8/m91/t007.md",
+      "before_sha256": "1ac74211c3d803b29c353919f8cf170b0b8c6278b2ff0c15c06425ca1fc66dc1",
+      "after_sha256": "d6dad4c7a2edcb5b07138ad66d17e4f96d4ecf84526a7bcdd9133517964c4835",
+      "append_only": true,
+      "status_unchanged": true
+    }
+  ],
+  "Root_final_verification_owned_separately": true,
+  "no_source_stage_commit_formatter_dispatch_live_actions": true,
+  "authored_markdown_hash_scope": "Pre-Rootformatter; Rootownsformatting/shipping. Frozenpayloadbyteidentities unchanged.",
+  "Root_final_verification_manifest_sha256": "b589c442f888139996ac8963c6505fe7f72e47fec75db89edbdcd9449abea55a",
+  "Root_final_Go_package_seconds": 27.088,
+  "Root_final_scoped_lint_issues": 0
+}

@@ -1,0 +1,95 @@
+{
+  "files": [
+    {
+      "path": "bootstrap-1.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bootstrap-1.stdout.log",
+      "bytes": 104,
+      "sha256": "cb4d3b0e70f2d4e52c28206c6c799c01616f7ac12aad9490b930290737cdc621"
+    },
+    {
+      "path": "bootstrap.json",
+      "bytes": 1514,
+      "sha256": "f205cc2d1af87fc09561329bb547d3681015f367396bdd2c8273246e846b31eb"
+    },
+    {
+      "path": "capacity-after-tests.json",
+      "bytes": 1317,
+      "sha256": "49c834abcad5487e2f7677a5277f7578d8f1126c7562527613cd2ce8baa228d1"
+    },
+    {
+      "path": "capacity-before-builder.json",
+      "bytes": 1320,
+      "sha256": "549a5c52a9bdc59554f41ccfcffd620cce27e0ee9763408550de42ce68fcb24a"
+    },
+    {
+      "path": "cleanup.json",
+      "bytes": 494,
+      "sha256": "3613c62e6b3ee023d5a47a6596a23eec7bc5a90991f4ba1301a8457b8c10aa3f"
+    },
+    {
+      "path": "generated/native-elixir-660641056/elixir-1.17/Dockerfile",
+      "bytes": 4003,
+      "sha256": "88757579b3a656f1e316447758a31a74aababc8c9c2a6b11e86428217bf20e4e"
+    },
+    {
+      "path": "generated/native-elixir-660641056/elixir-1.17/Dockerfile.canonical",
+      "bytes": 4003,
+      "sha256": "88757579b3a656f1e316447758a31a74aababc8c9c2a6b11e86428217bf20e4e"
+    },
+    {
+      "path": "generated/native-elixir-660641056/elixir-1.17/build.log",
+      "bytes": 57603,
+      "sha256": "6bef34b2348f7c1440b14d5823ad2b46895e99a64bd5d623500c33d65b61abf8"
+    },
+    {
+      "path": "generated/native-elixir-660641056/elixir-1.17/expected.json",
+      "bytes": 232,
+      "sha256": "612f0b6deccc7db0c4a4819e5f8c5cc99d47229a9c8be2194ea24e9c9adbf649"
+    },
+    {
+      "path": "generated/native-elixir-660641056/elixir-1.17/qa-output/build.json",
+      "bytes": 808,
+      "sha256": "724f1259a51537193f8fe86d1d11c3749a4b8794542ac96621fbc4343ad77e1d"
+    },
+    {
+      "path": "generated/native-elixir-660641056/elixir-1.17/qa-output/commands.jsonl",
+      "bytes": 3200,
+      "sha256": "01e8ce4ee0e5cdc977e41cc85416c64e3a87cd7df5d561e6f2851f4fb4b1bb86"
+    },
+    {
+      "path": "generated/native-elixir-660641056/elixir-1.17/qa-output/runtime.json",
+      "bytes": 810,
+      "sha256": "b1365a34910a93ebe247675ed641c2b2c96cebcecc021cf7cee90509abe77583"
+    },
+    {
+      "path": "generated/native-elixir-660641056/elixir-1.17/receipt.json",
+      "bytes": 758,
+      "sha256": "7981db72bbeb2774fb4e87a1a34b0f146d7c73ce51fffc27188939b475cd7403"
+    },
+    {
+      "path": "generated/native-elixir-660641056/elixir-1.17/runtime.log",
+      "bytes": 810,
+      "sha256": "b1365a34910a93ebe247675ed641c2b2c96cebcecc021cf7cee90509abe77583"
+    },
+    {
+      "path": "inputs.json",
+      "bytes": 3287,
+      "sha256": "abc3026a9d9bfb04a479e8851a56b7560c6388c1005af23521129423039302d5"
+    },
+    {
+      "path": "qualification-source.json",
+      "bytes": 75099,
+      "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+    },
+    {
+      "path": "qualification.log",
+      "bytes": 696,
+      "sha256": "b7a7d4a2c7de1a49cde8e3840ec60f5231dca009d7f50c8a1c487c6cd6766956"
+    }
+  ],
+  "scope": "actual retained evidence, including failures; not an acceptance assertion"
+}

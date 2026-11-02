@@ -1,0 +1,218 @@
+{
+  "at": "2026-11-02T05:22:15.796675+00:00",
+  "scope": "Complete read-only CI diagnosis intake, zero-body CLI failures plus authorized connected-App raw/wrapper metadata/logs, exact source and derived diagnosis/gzip",
+  "file_count": 35,
+  "bytes": 505632,
+  "files": [
+    {
+      "path": "app-artifacts.json",
+      "bytes": 1347,
+      "sha256": "2ad9473ba169bf4cbc177fa55ad5eda77e56c65a0759c15ffb3fe5e331a5ca0a",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-artifacts.tool-result.json",
+      "bytes": 1440,
+      "sha256": "ce9aec69f10a002a90cfd0c5f7b7e2d039f5ad85f155b1e56064a286934fc6a7",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-custody.json",
+      "bytes": 3302,
+      "sha256": "a76944f0981019808e9624c1516fd611523c5d50359300f0305d624ca600dc1b",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-job-125101301486.log",
+      "bytes": 66045,
+      "sha256": "c53a3405099eb56e7163ea1a1802c8c7f8868c1dc4cafd7bf189346f8ce1ab71",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-job-125101301486.log.gz",
+      "bytes": 15447,
+      "sha256": "14cdb801fef5d051c3878b3e318e319d3d7c6fd012f5912b490181b7852767fe",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-job-125101301486.tool-result.json",
+      "bytes": 67551,
+      "sha256": "05d409c81e7e6cbfdddc34210726440da1bf23e96e898f26d1922d2a4607a22f",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-job-125101301532.log",
+      "bytes": 65531,
+      "sha256": "abea93d3f7bb12baf42a80135a18f7b466d36df3fb0a2bf52a871ae781b24663",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-job-125101301532.log.gz",
+      "bytes": 15286,
+      "sha256": "1757e2540b3644f73b3914cbffd8137eeaddfbe85370daa458251957627eb4d0",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-job-125101301532.tool-result.json",
+      "bytes": 67032,
+      "sha256": "1bf0abbf462445e0b94ab25f0c3530a5f4d12c436367531bf8377eed57ef0dcd",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-jobs.json",
+      "bytes": 12126,
+      "sha256": "3f128beae91f4f5a4e2399e64eb78146cbec995376942784f5cc30e8c64c430d",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-jobs.tool-result.json",
+      "bytes": 27353,
+      "sha256": "15c74b82f680afe7dfc0d34adb45814eb87e2d9a414a53f8e1c3e1bba07c85f4",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-run.json",
+      "bytes": 11655,
+      "sha256": "5ce8d346f585fca3551a9ea2af16ff6cf6700daaa9a8a2135670d4c240e1351f",
+      "mode": "0o600"
+    },
+    {
+      "path": "app-run.tool-result.json",
+      "bytes": 25386,
+      "sha256": "c87d380d2ed886ddfd0358512a4db1a5d695dd266cc9e2ae2fe48eaa453abc13",
+      "mode": "0o600"
+    },
+    {
+      "path": "artifacts-fetch-receipt.json",
+      "bytes": 561,
+      "sha256": "0f9a9cd7b8449a49e9589a4d30cbf6bc5f404839ad9d8c499c369cc17561fa1f",
+      "mode": "0o600"
+    },
+    {
+      "path": "artifacts.json",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    {
+      "path": "artifacts.stderr",
+      "bytes": 152,
+      "sha256": "2f800bd06c33914d28927533c21b5131a9c75212174faeb82896358ee334fd99",
+      "mode": "0o600"
+    },
+    {
+      "path": "diagnosis.json",
+      "bytes": 18603,
+      "sha256": "a5d989e7f05924aa88f703e4ff41fcd2f2fa514e81b7930956c8786a9ce9b985",
+      "mode": "0o600"
+    },
+    {
+      "path": "fetch-intent.json",
+      "bytes": 1009,
+      "sha256": "d84a8787349a3e8c5e60efe4a7de9c7891aeab18b81645d591c0466eb9f577e4",
+      "mode": "0o600"
+    },
+    {
+      "path": "fetch-receipt.json",
+      "bytes": 3208,
+      "sha256": "dc16719606e4339480758f01ebe3faeea202c63892e8439d5ab81ce0e8983ec4",
+      "mode": "0o600"
+    },
+    {
+      "path": "job-125101301486-fetch-receipt.json",
+      "bytes": 564,
+      "sha256": "ecc7b39975f873edc798fc1d0840577aeb0e8e8e259ac98d5392ad2a04a2b557",
+      "mode": "0o600"
+    },
+    {
+      "path": "job-125101301486.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    {
+      "path": "job-125101301486.stderr",
+      "bytes": 135,
+      "sha256": "3b65facb69c4362e9115004cc4e5bfe9673c4bcbbd5c744e6debcc22d5a62359",
+      "mode": "0o600"
+    },
+    {
+      "path": "job-125101301532-fetch-receipt.json",
+      "bytes": 564,
+      "sha256": "7350159a180ee91171744f81fbaa338b7f8ca8c25266cd767d474e97330d1ce6",
+      "mode": "0o600"
+    },
+    {
+      "path": "job-125101301532.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    {
+      "path": "job-125101301532.stderr",
+      "bytes": 135,
+      "sha256": "a2a32d0547e127510c75ded112df652dd228263ac30d78bd0422162c6f772bb8",
+      "mode": "0o600"
+    },
+    {
+      "path": "jobs-fetch-receipt.json",
+      "bytes": 541,
+      "sha256": "0529cea250762b072f70955f01fed423c02027bca36e989e88d1630bde58b27d",
+      "mode": "0o600"
+    },
+    {
+      "path": "jobs.json",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    {
+      "path": "jobs.stderr",
+      "bytes": 147,
+      "sha256": "fbf30b289a91f0381d168f96f9d2f1e8c6219d3d79ae758af759afb0fe491c83",
+      "mode": "0o600"
+    },
+    {
+      "path": "run-fetch-receipt.json",
+      "bytes": 520,
+      "sha256": "ff2f6e2974901b29c50565718cbc6275cd601e68f1e0024a78c78ed9d8b0b18b",
+      "mode": "0o600"
+    },
+    {
+      "path": "run.json",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600"
+    },
+    {
+      "path": "run.stderr",
+      "bytes": 129,
+      "sha256": "0db4629428656617177d3444774ba9ddab725e226a93bbd9f578aea37de34973",
+      "mode": "0o600"
+    },
+    {
+      "path": "source/.github/scripts/native-common-qualify.py",
+      "bytes": 60360,
+      "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+      "mode": "0o644"
+    },
+    {
+      "path": "source/.github/workflows/native-common-image.yml",
+      "bytes": 19834,
+      "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+      "mode": "0o644"
+    },
+    {
+      "path": "source/lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 18975,
+      "sha256": "529080e87e50c291a5081de48b83e5a90122676bae900046a978abeb024a761d",
+      "mode": "0o600"
+    },
+    {
+      "path": "source-custody.json",
+      "bytes": 694,
+      "sha256": "9ecd8fb2c2f482ca1ac136daaa5fce4aef08b19695efca7ca54f2dcdfa3d8547",
+      "mode": "0o644"
+    }
+  ]
+}

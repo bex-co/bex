@@ -1,0 +1,12 @@
+{
+  "elixir": "1.17.3",
+  "env": {
+    "ELIXIR_VERSION": "v1.17.3",
+    "MIX_ENV": "prod",
+    "OTP_VERSION": "27.3.4.19",
+    "REBAR3_VERSION": "3.27.0",
+    "REBAR_VERSION": "2.6.4"
+  },
+  "node": "24.22.1",
+  "otp": "27.3.4.19"
+}

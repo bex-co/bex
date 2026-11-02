@@ -1,0 +1,42 @@
+{
+  "PROPOSAL.json": {
+    "bytes": 627,
+    "sha256": "eef3a029f8b4cbdee2620af0a26e326b098f0976e29b1112e38d633632cf822d",
+    "mode": "0o644"
+  },
+  "RECEIPT.json": {
+    "bytes": 2739,
+    "sha256": "ef3d1bc19db4d102518ee0f3bbb87993bd002abffc68e829db1b8a7d3b2114ef",
+    "mode": "0o644"
+  },
+  "SOURCE-MANIFEST.json": {
+    "bytes": 546,
+    "sha256": "6c3490273a67cd2cca5845c25c71c59dccace577465cc885a7adf2c5de1c921c",
+    "mode": "0o644"
+  },
+  "UNCHANGED-FIXTURE-IDENTITIES.json": {
+    "bytes": 1316,
+    "sha256": "e38788336c269f856744ae72ce2e4205f27784d51b2493cf5f4ffc6fbce6f851",
+    "mode": "0o644"
+  },
+  "before/lego/operator/internal/build/nativecommon_elixir_qualification_test.go": {
+    "bytes": 11272,
+    "sha256": "3698ceec0656a26e7b8803d6c7b147974b06c6e3dbff30134cf3560d59d6e89f",
+    "mode": "0o644"
+  },
+  "expectation.diff.gz": {
+    "bytes": 1029,
+    "sha256": "67388a7738e65674216887f115aaecd99459742669cbef65fa7bd04adedb1ff0",
+    "mode": "0o644"
+  },
+  "old-red.go": {
+    "bytes": 12938,
+    "sha256": "c7b30630efae8ed38d835f507db064c6db59ff9e5cfdb8895b8e7fb10a1ebd48",
+    "mode": "0o644"
+  },
+  "source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go": {
+    "bytes": 13006,
+    "sha256": "2cc5059eb78d2d4cb387b9626665bfdc335f7890de89f220e397475bb24f6da6",
+    "mode": "0o644"
+  }
+}

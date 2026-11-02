@@ -1,0 +1,15 @@
+{
+  "command": [
+    "npm",
+    "install",
+    "--offline",
+    "--no-audit",
+    "--package-lock=false",
+    "--engine-strict"
+  ],
+  "cwd": "qa-output/npm-project",
+  "returncode": 0,
+  "stdout": "\n> bex-profile-npm@1.0.0 preinstall\n> node ../../check.js lifecycle npm\n\nBEX_NODE_PROOF={\"mode\":\"lifecycle\",\"manager\":\"npm\",\"node\":\"22.23.4\",\"executable\":\"/usr/local/bin/node\",\"path_node\":\"/usr/local/bin/node\",\"node_env\":\"22.23.4\",\"node_env_expected\":\"22.23.4\",\"path\":\"/opt/render/project/src/qa-output/npm-project/node_modules/.bin:/opt/render/project/src/qa-output/node_modules/.bin:/opt/render/project/src/node_modules/.bin:/opt/render/project/node_modules/.bin:/opt/render/node_modules/.bin:/opt/node_modules/.bin:/node_modules/.bin:/usr/local/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"modules\":127,\"napi\":\"10\",\"addon\":{\"headers\":\"22.23.4\",\"module_abi\":127,\"answer\":\"native Gr\u00fc\u00dfe \u03bb \u96ea\"},\"openssl\":\"3.5.9\",\"brotli\":\"1.1.0\",\"sha256\":\"d8f19a3ac2a7ba1f5297590a1d5eebd60f902054e1eda0ff9d236d8b1c6c60a6\",\"brotli_roundtrip\":true,\"gzip_roundtrip\":true,\"aes_roundtrip\":true,\"bad_tag_rejected\":true,\"roots\":116,\"lifecycle\":\"preinstall\",\"NODE\":\"/usr/local/bin/node\",\"npm_node_execpath\":\"/usr/local/bin/node\",\"npm_execpath\":\"/usr/local/lib/node_modules/npm/bin/npm-cli.js\"}\n\n> bex-profile-npm@1.0.0 postinstall\n> node ../../check.js lifecycle npm\n\nBEX_NODE_PROOF={\"mode\":\"lifecycle\",\"manager\":\"npm\",\"node\":\"22.23.4\",\"executable\":\"/usr/local/bin/node\",\"path_node\":\"/usr/local/bin/node\",\"node_env\":\"22.23.4\",\"node_env_expected\":\"22.23.4\",\"path\":\"/opt/render/project/src/qa-output/npm-project/node_modules/.bin:/opt/render/project/src/qa-output/node_modules/.bin:/opt/render/project/src/node_modules/.bin:/opt/render/project/node_modules/.bin:/opt/render/node_modules/.bin:/opt/node_modules/.bin:/node_modules/.bin:/usr/local/lib/node_modules/npm/node_modules/@npmcli/run-script/lib/node-gyp-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"modules\":127,\"napi\":\"10\",\"addon\":{\"headers\":\"22.23.4\",\"module_abi\":127,\"answer\":\"native Gr\u00fc\u00dfe \u03bb \u96ea\"},\"openssl\":\"3.5.9\",\"brotli\":\"1.1.0\",\"sha256\":\"d8f19a3ac2a7ba1f5297590a1d5eebd60f902054e1eda0ff9d236d8b1c6c60a6\",\"brotli_roundtrip\":true,\"gzip_roundtrip\":true,\"aes_roundtrip\":true,\"bad_tag_rejected\":true,\"roots\":116,\"lifecycle\":\"postinstall\",\"NODE\":\"/usr/local/bin/node\",\"npm_node_execpath\":\"/usr/local/bin/node\",\"npm_execpath\":\"/usr/local/lib/node_modules/npm/bin/npm-cli.js\"}\n\nup to date in 2s\n",
+  "stderr": "",
+  "timed_out": false
+}

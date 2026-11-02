@@ -1,0 +1,33 @@
+{
+  "builder": "bex-nq-3f436d13db6a4782a7a0fc3d",
+  "canonical_sha256": "bf941c9c28b69c7ce54f1d6d4cc217b6c83250fc037023aa4e7fc7ff1ee58cd0",
+  "choices": [
+    {
+      "Label": "Node",
+      "Line": "22",
+      "Image": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd",
+      "Source": ".node-version",
+      "Exact": ""
+    }
+  ],
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "empty_runtime_artifact_map": true,
+  "executed_sha256": "bf941c9c28b69c7ce54f1d6d4cc217b6c83250fc037023aa4e7fc7ff1ee58cd0",
+  "fixture_sha256": {
+    ".node-version": "f14b4987904bcb5814e4459a057ed4d20f58a633152288a761214dcd28780b56",
+    "addon.c": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+    "check.js": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+    "check.py": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+    "expected-node.json": "3c4a2116b276f9dfae4d983d42c301ed74bf25c3fd7b280d7311ac6c43c0df7c",
+    "package.json": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60"
+  },
+  "legacy_pnpm": "Node14/16 run the pnpm10.34.7 standalone (w8/226); strict tool/lifecycle assertions remain enabled",
+  "node_runtime_artifact": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd",
+  "node_source": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd",
+  "owner": "bex-nq-3f436d13db6a4782a7a0fc3d",
+  "platform": "linux/amd64",
+  "runtime_artifact_map": null,
+  "runtime_artifact_mode": "same-version-source-fallback",
+  "scope": "additional Node family generated-image gate; no original13/28, native-init, Kubernetes, hosted or common publication claim",
+  "test_only_network_overlay": false
+}

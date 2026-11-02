@@ -1,0 +1,49 @@
+{
+  "at": "2026-11-02T05:15:54.170859+00:00",
+  "version": "go version go1.26.4 darwin/arm64",
+  "source_before": {
+    "/private/tmp/bex-w8-elixir-resolved-otp-expectation-source-20261102-k4s0cvhg/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go": "2cc5059eb78d2d4cb387b9626665bfdc335f7890de89f220e397475bb24f6da6",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativecommon_elixir_qualification_test.go": "3698ceec0656a26e7b8803d6c7b147974b06c6e3dbff30134cf3560d59d6e89f",
+    "/Users/tianpan/projects/bex7/lego/go.work.sum": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6"
+  },
+  "commands": [
+    [
+      "old-red",
+      [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-elixir-resolved-otp-expectation-tests-20261102-p67ovw7j/old-red-overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build",
+        "-run",
+        "^TestCommonElixirRequestedOTPMatchesResolvedMetadata$"
+      ],
+      300
+    ],
+    [
+      "new-focused",
+      [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-elixir-resolved-otp-expectation-tests-20261102-p67ovw7j/new-overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build",
+        "-run",
+        "^TestCommonElixir.*$"
+      ],
+      300
+    ]
+  ],
+  "start_free": 18551070720,
+  "physical_free_floor": 8589934592,
+  "margin": 134217728,
+  "owned_tmp_cap": 536870912,
+  "cache": "Root-authorized standard shared content-addressed Go build cache; ordinary Go-managed reads/writes only. No direct edit/delete/prune/cachecleanup. Module/source reads unchanged; offline/modreadonly.",
+  "scope": "Focused localhost HTTP unit controls with old-code regression replay; no external network, Docker, runtimeimage or full-buildpackage claim."
+}

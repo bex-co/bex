@@ -1,0 +1,16 @@
+{
+  "pid": 77923,
+  "pgid": 77923,
+  "args": [
+    "go",
+    "test",
+    "-overlay",
+    "/private/tmp/bex-w8-elixir-resolved-otp-expectation-tests-20261102-p67ovw7j/new-overlay.json",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build",
+    "-run",
+    "^TestCommonElixir.*$"
+  ]
+}

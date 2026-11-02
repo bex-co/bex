@@ -1,0 +1,191 @@
+{
+  "at": "2026-11-02T04:47:46.873310+00:00",
+  "assessment": "CLEAN_ACTUAL_OLD_SOURCE_NODE22_ARM_AND_ELIXIR117_BOTH_ARCH",
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+  "current_source9039_accepted": false,
+  "items": [
+    {
+      "key": "node22-arm64",
+      "run": 41375390166,
+      "job": 125055427809,
+      "artifact": 13114327069,
+      "arch": "arm64",
+      "actual_generator_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "functional300_equal_e6": true,
+      "original_members": 63,
+      "canonical_equals_executed_sha256": "bf941c9c28b69c7ce54f1d6d4cc217b6c83250fc037023aa4e7fc7ff1ee58cd0",
+      "image_config_id": "sha256:1c2412b142d52e236445394f47af9e2aebac7643e5f1585b07d40f6b5860b4df",
+      "network": "none",
+      "cleanup": "ActualCIhelperACK0/builderremoved/logout0/configremoved pluswholejobSUCCESS; no newdaemoninspection.",
+      "Node": "22.23.4",
+      "phases": [
+        {
+          "phase": "build",
+          "versions": {
+            "npm": "10.9.9",
+            "yarn": "1.22.22",
+            "pnpm": "10.34.7"
+          },
+          "ABI": 127,
+          "identity_addon_crypto_Brotli_lifecycle": true,
+          "Yarn_cli": "/opt/yarn-v1.22.22/bin/yarn"
+        },
+        {
+          "phase": "runtime",
+          "versions": {
+            "npm": "10.9.9",
+            "yarn": "1.22.22",
+            "pnpm": "10.34.7"
+          },
+          "ABI": 127,
+          "identity_addon_crypto_Brotli_lifecycle": true,
+          "Yarn_cli": "/opt/yarn-v1.22.22/bin/yarn"
+        }
+      ],
+      "addon_ELF_machine": 183,
+      "all3_engine_negatives": true,
+      "selected_upstream": "node:22-bookworm@sha256:18a6d90fd60542269850c80ca03b29b1d9b14d6b221ac7ee8e35b0d33ef904bd"
+    },
+    {
+      "key": "elixir117-amd64",
+      "run": 41375779779,
+      "job": 125060083567,
+      "artifact": 13114805534,
+      "arch": "amd64",
+      "actual_generator_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "functional300_equal_e6": true,
+      "original_members": 19,
+      "canonical_equals_executed_sha256": "88757579b3a656f1e316447758a31a74aababc8c9c2a6b11e86428217bf20e4e",
+      "image_config_id": "sha256:b072aaa6b5fd4212532fe0f402c7114277a8693a5d9febedc8a72f25a1562e9f",
+      "network": "none",
+      "cleanup": "ActualCIhelperACK0/builderremoved/logout0/configremoved pluswholejobSUCCESS; no newdaemoninspection.",
+      "Elixir": "1.17.3",
+      "OTP": "27.3.4.19",
+      "Node": "24.22.1",
+      "rebar": "2.6.4",
+      "rebar3": "3.27.0",
+      "actual_commands": 19,
+      "matching_OTP_headers_C_NIF_OpenSSL_FFI_rebar_Mix_Erlang_and_Elixir_results": true,
+      "ELF_scope": "Runtimeimageplatform independentlyrecorded; NIFcompiled/loadedbybothlanguages in actualsuccess. NIF/OTPbinaryELFbytes not exported, so no standalonebinaryELF claim. NoHTTPserveroracles inthisfixture."
+    },
+    {
+      "key": "elixir117-arm64",
+      "run": 41375779779,
+      "job": 125060083616,
+      "artifact": 13116816426,
+      "arch": "arm64",
+      "actual_generator_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "functional300_equal_e6": true,
+      "original_members": 19,
+      "canonical_equals_executed_sha256": "88757579b3a656f1e316447758a31a74aababc8c9c2a6b11e86428217bf20e4e",
+      "image_config_id": "sha256:c4db084496cf36a860c8d3a534abddd4a9dbd2e702fa0bf4ebc30fb3d699aa08",
+      "network": "none",
+      "cleanup": "ActualCIhelperACK0/builderremoved/logout0/configremoved pluswholejobSUCCESS; no newdaemoninspection.",
+      "Elixir": "1.17.3",
+      "OTP": "27.3.4.19",
+      "Node": "24.22.1",
+      "rebar": "2.6.4",
+      "rebar3": "3.27.0",
+      "actual_commands": 19,
+      "matching_OTP_headers_C_NIF_OpenSSL_FFI_rebar_Mix_Erlang_and_Elixir_results": true,
+      "ELF_scope": "Runtimeimageplatform independentlyrecorded; NIFcompiled/loadedbybothlanguages in actualsuccess. NIF/OTPbinaryELFbytes not exported, so no standalonebinaryELF claim. NoHTTPserveroracles inthisfixture."
+    }
+  ],
+  "Node22_paired_AMD_independent": {
+    "path": "/private/tmp/bex-w8-node22-26-amd-independent-20261102-vt29xqvb",
+    "review": {
+      "bytes": 39577,
+      "sha256": "c90f45e29123a19dbc41d4114e0fade85e0fd48edc94040b552b6c5b7f03b4f4"
+    },
+    "job": 125055427731,
+    "artifact": 13112186492,
+    "scope": "ExistingindependentAMDactualaudit reused, notrefetched/reexecuted; pair oldsource9bc only."
+  },
+  "case_fixture_sources_9039_unchanged": {
+    "lego/operator/internal/build/testdata/native-node-qualification/addon.c": {
+      "source_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+      "current9039_sha256": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+      "unchanged": true,
+      "bytes": 1231
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/check.js": {
+      "source_sha256": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+      "current9039_sha256": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+      "unchanged": true,
+      "bytes": 3401
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/check.py": {
+      "source_sha256": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+      "current9039_sha256": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+      "unchanged": true,
+      "bytes": 13293
+    },
+    "lego/operator/internal/build/testdata/native-node-qualification/package.json": {
+      "source_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+      "current9039_sha256": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60",
+      "unchanged": true,
+      "bytes": 74
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/mix.exs": {
+      "source_sha256": "3e9ed1eb4453cecdbf95a7eb24e546de94d4e964e26209f793dd716ec398301b",
+      "current9039_sha256": "3e9ed1eb4453cecdbf95a7eb24e546de94d4e964e26209f793dd716ec398301b",
+      "unchanged": true,
+      "bytes": 208
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/check.py": {
+      "source_sha256": "9b9e55057896df16a097e856d040aeadad24f79ea3bd46cc19d5550e387c73a2",
+      "current9039_sha256": "9b9e55057896df16a097e856d040aeadad24f79ea3bd46cc19d5550e387c73a2",
+      "unchanged": true,
+      "bytes": 4364
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/check_test.py": {
+      "source_sha256": "164a424e20de98fd31aa3d5501659c8ce4b25db6dd00f203387509ea2974bae7",
+      "current9039_sha256": "164a424e20de98fd31aa3d5501659c8ce4b25db6dd00f203387509ea2974bae7",
+      "unchanged": true,
+      "bytes": 811
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/bex_nif.c": {
+      "source_sha256": "78bfbcf99fcbfd1d3a84602ca119cbe54906c681c8a2c962ffef8ffb7007f540",
+      "current9039_sha256": "78bfbcf99fcbfd1d3a84602ca119cbe54906c681c8a2c962ffef8ffb7007f540",
+      "unchanged": true,
+      "bytes": 1419
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/rebar.config": {
+      "source_sha256": "861d36de5b4c4015c259c575d8539aaf7665f8825ff88b7ee411e3d4be4ec8c3",
+      "current9039_sha256": "861d36de5b4c4015c259c575d8539aaf7665f8825ff88b7ee411e3d4be4ec8c3",
+      "unchanged": true,
+      "bytes": 58
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/lib/bex_mix.ex": {
+      "source_sha256": "8333e47d2f1d3fbfc70afa4c6e8446c0d1992be8356f871c1601199c8a8046c6",
+      "current9039_sha256": "8333e47d2f1d3fbfc70afa4c6e8446c0d1992be8356f871c1601199c8a8046c6",
+      "unchanged": true,
+      "bytes": 61
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_probe.app.src": {
+      "source_sha256": "d3f855ee9a2d871fac850903fea872c8c5b6f240790631e773fda42f873c17a1",
+      "current9039_sha256": "d3f855ee9a2d871fac850903fea872c8c5b6f240790631e773fda42f873c17a1",
+      "unchanged": true,
+      "bytes": 220
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_nif.erl": {
+      "source_sha256": "1ad19323149c92831fc080716fe427e556db2aedfaf70c12fa66937da5eb2189",
+      "current9039_sha256": "1ad19323149c92831fc080716fe427e556db2aedfaf70c12fa66937da5eb2189",
+      "unchanged": true,
+      "bytes": 215
+    },
+    "lego/operator/internal/build/testdata/native-elixir-qualification/src/bex_probe.erl": {
+      "source_sha256": "706ac74db50bcf06a0c8129e3fbf370b53bfdc273195c051df41c7e37c2389ff",
+      "current9039_sha256": "706ac74db50bcf06a0c8129e3fbf370b53bfdc273195c051df41c7e37c2389ff",
+      "unchanged": true,
+      "bytes": 377
+    }
+  },
+  "limits": [
+    "Oldsource9bc only; all300capturedfiles equal historicale6baseline; revised9039fullbaseline currentlypending separateCI. No newsourceauthority/adoption/hosted/fullfamily conclusion.",
+    "Retainedactualmetadata/proof/CRC/SHA/ELF audit only; noGo/native/app/Node/Elixir/image/Docker/networkruntimecommand reexecuted.",
+    "ActualsourceretainedENV/PATH/version/cwd assertions bind emittedproofsuccess; not an independentfreshenvdump.",
+    "CIownerbuilderremove/configlogout+removedACKs and wholejobsuccess retained; no newdaemoninspection or inferredlocalprocessgroupreceipt."
+  ]
+}

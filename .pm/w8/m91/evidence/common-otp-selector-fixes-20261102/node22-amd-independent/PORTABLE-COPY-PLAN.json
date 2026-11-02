@@ -1,0 +1,20 @@
+{
+  "members": [
+    {
+      "case": "node-22",
+      "public_prefix_proposal": ".pm/w8/m91/evidence/common-node-amd22-26-20261102/node-22",
+      "retain": "All63original artifactmembers ASIS including originalMANIFEST, plus exact artifact/jobs metadata, full connector-decoded job.log, download/extraction receipts, audit. ZIP private with actualAPI SHA/size custody. Existing4fixtureprogram source bytes can be included from bound e6 Git/snapshot by hash; never fabricate absent artifactmembers.",
+      "source_root": "/private/tmp/bex-w8-node22-amd-artifact-intake-20261102-5_n1wriw/amd64/extracted/artifact"
+    },
+    {
+      "case": "node-26",
+      "public_prefix_proposal": ".pm/w8/m91/evidence/common-node-amd22-26-20261102/node-26",
+      "retain": "All63original artifactmembers ASIS including originalMANIFEST, plus exact artifact/jobs metadata, full connector-decoded job.log, download/extraction receipts, audit. ZIP private with actualAPI SHA/size custody. Existing4fixtureprogram source bytes can be included from bound e6 Git/snapshot by hash; never fabricate absent artifactmembers.",
+      "source_root": "/private/tmp/bex-w8-node26-amd-artifact-intake-20261102-41yvyg4o/amd64/extracted/artifact"
+    }
+  ],
+  "only_AMD_cases": true,
+  "source300_and_binary_bodies": "Source300 hash inventory retained; no SDK/testELF/container/layer body copied. No auth/config body exported.",
+  "state": "PLAN_ONLY_NO_REPO_WRITE",
+  "unchanged_originals": true
+}

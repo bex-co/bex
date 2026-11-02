@@ -1,0 +1,19 @@
+{"command": ["elixir", "-e", "IO.puts(System.version())"], "exit": 0, "stdout": "1.17.3\n", "stderr": ""}
+{"command": ["erl", "-noshell", "-eval", "io:format(\"~s\",[code:root_dir()]),halt()."], "exit": 0, "stdout": "/usr/local/lib/erlang", "stderr": ""}
+{"command": ["node", "-p", "process.versions.node"], "exit": 0, "stdout": "24.22.1\n", "stderr": ""}
+{"command": ["rebar", "--version"], "exit": 0, "stdout": "rebar 2.6.4 27 20261028_041415 No VCS info available.\n", "stderr": ""}
+{"command": ["rebar3", "--version"], "exit": 0, "stdout": "rebar 3.27.0 on Erlang/OTP 27 Erts 15.2.7.14\n", "stderr": ""}
+{"command": ["pkg-config", "--cflags", "--libs", "libffi", "openssl"], "exit": 0, "stdout": "-lffi -lssl -lcrypto \n", "stderr": ""}
+{"command": ["cc", "-shared", "-fPIC", "-Wall", "-Wextra", "-Werror", "-I/usr/local/lib/erlang/usr/include", "bex_nif.c", "-o", "priv/bex_nif.so", "-lffi", "-lssl", "-lcrypto"], "exit": 0, "stdout": "", "stderr": ""}
+{"command": ["rebar", "compile"], "exit": 0, "stdout": "==> src (compile)\nCompiled src/bex_nif.erl\nCompiled src/bex_probe.erl\n", "stderr": ""}
+{"command": ["rebar3", "as", "prod", "compile"], "exit": 0, "stdout": "===> No entry for profile prod in config.\n===> Verifying dependencies...\n===> Analyzing applications...\n===> Compiling bex_probe\n", "stderr": ""}
+{"command": ["elixir", "-pa", "_build/prod/lib/bex_probe/ebin", "-S", "mix", "compile", "--warnings-as-errors"], "exit": 0, "stdout": "Compiling 1 file (.ex)\nGenerated bex_mix app\n", "stderr": ""}
+{"command": ["erl", "-noshell", "-pa", "_build/prod/lib/bex_probe/ebin", "-eval", "io:format(\"~s\",[bex_probe:check()]),halt()."], "exit": 0, "stdout": "YmV4IGNhZsOpIM67IOmbqg==|42|6AA7BD153CF2F2594F2BCA4D5F5A27F8F3DC86C64E1A876B3131DDFEEE36C4AF", "stderr": ""}
+{"command": ["elixir", "-pa", "_build/prod/lib/bex_probe/ebin", "-pa", "_build/prod/lib/bex_mix/ebin", "-e", "IO.puts(BexMix.answer())"], "exit": 0, "stdout": "YmV4IGNhZsOpIM67IOmbqg==|42|6AA7BD153CF2F2594F2BCA4D5F5A27F8F3DC86C64E1A876B3131DDFEEE36C4AF\n", "stderr": ""}
+{"command": ["elixir", "-e", "IO.puts(System.version())"], "exit": 0, "stdout": "1.17.3\n", "stderr": ""}
+{"command": ["erl", "-noshell", "-eval", "io:format(\"~s\",[code:root_dir()]),halt()."], "exit": 0, "stdout": "/usr/local/lib/erlang", "stderr": ""}
+{"command": ["node", "-p", "process.versions.node"], "exit": 0, "stdout": "24.22.1\n", "stderr": ""}
+{"command": ["rebar", "--version"], "exit": 0, "stdout": "rebar 2.6.4 27 20261028_041415 No VCS info available.\n", "stderr": ""}
+{"command": ["rebar3", "--version"], "exit": 0, "stdout": "rebar 3.27.0 on Erlang/OTP 27 Erts 15.2.7.14\n", "stderr": ""}
+{"command": ["erl", "-noshell", "-pa", "_build/prod/lib/bex_probe/ebin", "-eval", "io:format(\"~s\",[bex_probe:check()]),halt()."], "exit": 0, "stdout": "YmV4IGNhZsOpIM67IOmbqg==|42|6AA7BD153CF2F2594F2BCA4D5F5A27F8F3DC86C64E1A876B3131DDFEEE36C4AF", "stderr": ""}
+{"command": ["elixir", "-pa", "_build/prod/lib/bex_probe/ebin", "-pa", "_build/prod/lib/bex_mix/ebin", "-e", "IO.puts(BexMix.answer())"], "exit": 0, "stdout": "YmV4IGNhZsOpIM67IOmbqg==|42|6AA7BD153CF2F2594F2BCA4D5F5A27F8F3DC86C64E1A876B3131DDFEEE36C4AF\n", "stderr": ""}

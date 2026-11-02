@@ -1,0 +1,14 @@
+{
+  "name": "artifacts",
+  "endpoint": "repos/bex-co/bex/actions/runs/41389762980/artifacts?per_page=100",
+  "started_at": "2026-11-02T05:15:33.821389+00:00",
+  "finished_at": "2026-11-02T05:15:34.607258+00:00",
+  "exit_code": 1,
+  "error": null,
+  "file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/artifacts.json",
+  "bytes": 0,
+  "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_file": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/artifacts.stderr",
+  "stderr_bytes": 152,
+  "attempts": 1
+}

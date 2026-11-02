@@ -1,0 +1,24 @@
+{
+  "pass": true,
+  "phase": "build",
+  "expected": {
+    "elixir": "1.17.3",
+    "env": {
+      "ELIXIR_VERSION": "v1.17.3",
+      "MIX_ENV": "prod",
+      "OTP_VERSION": "27.3.4.19",
+      "REBAR3_VERSION": "3.27.0",
+      "REBAR_VERSION": "2.6.4"
+    },
+    "node": "24.22.1",
+    "otp": "27.3.4.19"
+  },
+  "rebar_versions": {
+    "rebar": "rebar 2.6.4 27 20261028_041419 No VCS info available.",
+    "rebar3": "rebar 3.27.0 on Erlang/OTP 27 Erts 15.2.7.14"
+  },
+  "erlang_result": "YmV4IGNhZsOpIM67IOmbqg==|42|6AA7BD153CF2F2594F2BCA4D5F5A27F8F3DC86C64E1A876B3131DDFEEE36C4AF",
+  "elixir_result": "YmV4IGNhZsOpIM67IOmbqg==|42|6AA7BD153CF2F2594F2BCA4D5F5A27F8F3DC86C64E1A876B3131DDFEEE36C4AF",
+  "otp_root": "/usr/local/lib/erlang",
+  "scope": "network-off generated-image fixture; no hosted acceptance"
+}

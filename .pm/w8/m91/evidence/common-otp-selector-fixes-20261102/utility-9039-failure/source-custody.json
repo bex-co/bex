@@ -1,0 +1,20 @@
+{
+  "at": "2026-11-02T05:17:09.392397+00:00",
+  "exact_source": "9039e5037880116572d1bf50be364af96acae59a",
+  "files": [
+    {
+      "source": "9039e5037880116572d1bf50be364af96acae59a",
+      "path": ".github/workflows/native-common-image.yml",
+      "bytes": 19834,
+      "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1"
+    },
+    {
+      "source": "9039e5037880116572d1bf50be364af96acae59a",
+      "path": ".github/scripts/native-common-qualify.py",
+      "bytes": 60360,
+      "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5"
+    }
+  ],
+  "actual_run_source_not_yet_fetched": true,
+  "job_cleanup_not_inferred_from_workflow": true
+}

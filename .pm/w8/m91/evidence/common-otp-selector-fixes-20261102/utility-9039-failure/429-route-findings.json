@@ -1,0 +1,213 @@
+{
+  "at": "2026-11-02T05:31:00.845854+00:00",
+  "mode": "ONE_BOUNDED_READ_ONLY_REPOSITORY_INVESTIGATION",
+  "repository_HEAD": "9039e5037880116572d1bf50be364af96acae59a",
+  "failed_run_source": "9039e5037880116572d1bf50be364af96acae59a",
+  "failed_run": 41389762980,
+  "result": "NO_ALREADY_SANCTIONED_SUFFICIENT_BYTE_EXACT_UPSTREAM_MIRROR_ROUTE_FOUND",
+  "required_upstream_refs": [
+    "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+    "mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822"
+  ],
+  "routes": [
+    {
+      "name": "native OCI stager",
+      "source": ".github/scripts/native-oci-stage.py",
+      "lines": [
+        17,
+        19,
+        79,
+        90,
+        142,
+        144
+      ],
+      "actual_contract": "Only ghcr.io/bex-co/bex-cnb-run@sha256 and anonymous fixed GHCR pull scope. Stages the already-published supplier graph with full immutable SHA/size checks.",
+      "sufficient_for_required_upstream_refs": false,
+      "reason": "Official Docker Hub refs are outside the enforced reference/network scope. No upstream-to-GHCR mirror mapping is supplied."
+    },
+    {
+      "name": "native OCI mirror",
+      "source": ".github/scripts/native-oci-mirror.py",
+      "lines": [
+        132,
+        251,
+        253
+      ],
+      "actual_contract": "Rechecks the staged supplier graph, serves its fixed repository prefix on owned loopback and injects only a per-command GHCR mirror into unchanged-reference Trivy.",
+      "sufficient_for_required_upstream_refs": false,
+      "reason": "Not a Docker Hub/BuildKit resolver or upstream cache. Broadening its scope or adding a new service would be new implementation outside the authorized route."
+    },
+    {
+      "name": "native publisher inline registry cache",
+      "source": ".github/workflows/native-base-image.yml",
+      "lines": [
+        158,
+        159,
+        232,
+        324
+      ],
+      "actual_contract": "Imports the named native supplier cache, publishes the derivative supplier and stages that immutable result for scans/SBOM.",
+      "sufficient_for_required_upstream_refs": false,
+      "reason": "No recorded public byte-exact original Node/FFmpeg index/config mirror ref; derivative supplier identity cannot substitute for required official identity/ancestry."
+    },
+    {
+      "name": "verified immutable runtime metadata reuse",
+      "source": "lego/operator/internal/build/dockerhub.go",
+      "lines": [
+        158,
+        161,
+        162,
+        224,
+        227,
+        235,
+        241,
+        259,
+        263
+      ],
+      "actual_contract": "Production defaults still use Docker Hub; bounded per-instance cache stores only successfully SHA/config-verified immutable metadata, keyed by registry/repo/digest.",
+      "sufficient_for_required_upstream_refs": false,
+      "reason": "A cold first read still requires Hub and this cache does not provide image manifests/blobs to BuildKit. No persistent artifact-backed upstream import route exists in the inspected workflow."
+    },
+    {
+      "name": "qualification builder bootstrap",
+      "source": ".github/scripts/native-common-qualify.py",
+      "lines": [
+        673,
+        689,
+        694,
+        696
+      ],
+      "actual_contract": "Bounded pre-pull of the committed production moby/buildkit image into the initialized owned Docker configuration.",
+      "sufficient_for_required_upstream_refs": false,
+      "reason": "Does not stage/mirror Node or FFmpeg input graphs."
+    },
+    {
+      "name": "prior full e6 utility provenance",
+      "source": ".pm/w8/m91/evidence/common-current-e6-20261102/content-audit/REVIEW.json",
+      "actual_contract": "Historical both-arch generated utility and official metadata evidence against the reviewed common supplier0941; source-bound evidence remains preserved.",
+      "sufficient_for_required_upstream_refs": false,
+      "reason": "Contains verified historical selections/reports, not a recorded public immutable mirror pointer or current CI BuildKit input graph route."
+    }
+  ],
+  "external_gate": {
+    "latest_actual_observation": "Both architectures of run41389762980 received Docker Hub429 during immutable source-image resolution; nine later cases per architecture failed primary metadata429.",
+    "required_release": "The existing CI runner egress must obtain successful verified reads of required official immutable metadata/config/graphs under the permitted anonymous/GITHUB_TOKEN-only credential budget before a complete current-source baseline can execute.",
+    "reset_time_or_current_availability": "Unestablished. No new Hub probe, reset-time inference or retry was performed.",
+    "do_not_substitute": "All official digest/config/platform/ancestry checks and the actual generated positive/omission/runtime assertions remain required."
+  },
+  "source_inputs": [
+    {
+      "path": ".github/scripts/native-oci-stage.py",
+      "bytes": 18041,
+      "sha256": "891d6581c29c8d3d39be80b60882c0e05f974e167c5f1784713b69d3fa159d59",
+      "current_HEAD_git_blob": "92107591aecc0452dba27da232ea91b03c83a9b3",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": ".github/scripts/native-oci-mirror.py",
+      "bytes": 15940,
+      "sha256": "78b070104bfe1c532b6dcca099dd0d0046250dda32ec425ab27f305ef353ac06",
+      "current_HEAD_git_blob": "dca1bf5bf3b1723d4cd497041ba71a34cbc183b5",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "bytes": 18402,
+      "sha256": "0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47",
+      "current_HEAD_git_blob": "65b6a7e33e43322b9b8240447337753a0fd5b6bb",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "bytes": 19834,
+      "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+      "current_HEAD_git_blob": "0bd2e7efaa1b459cbf41a926fc594e956049dc3a",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": ".github/scripts/native-common-qualify.py",
+      "bytes": 60360,
+      "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+      "current_HEAD_git_blob": "b9684b81db8ab60d1d5aa867e8ebb8b1a46c85e8",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": "lego/operator/internal/build/dockerhub.go",
+      "bytes": 13020,
+      "sha256": "522e2cbb4d0efecde76638f11311d002a903099041b5f1dc293092f36ecdae04",
+      "current_HEAD_git_blob": "a1df303d1572d2508b62efd31adc7b11dc1a9115",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": "lego/operator/internal/build/native.go",
+      "bytes": 25979,
+      "sha256": "9ca4584da9af225da406b323fb0b9ade68bda4692f46664d4c7d4bd66e6d32b3",
+      "current_HEAD_git_blob": "d7c65df48f2d3f5382861ef0d55b3c589392dfeb",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeffmpeg.go",
+      "bytes": 2098,
+      "sha256": "5e2a25677c4cbd6f70d63206d80a8761b2a101ec03e1c7dba52af4289e77c72b",
+      "current_HEAD_git_blob": "bb9854b150a3f5d12fa19104e7a47ac8a2999000",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": "lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 18975,
+      "sha256": "529080e87e50c291a5081de48b83e5a90122676bae900046a978abeb024a761d",
+      "current_HEAD_git_blob": "31631593082c1864363a4ae72b8e5e31810a0136",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": "scripts/lib/toolchain-freshness.py",
+      "bytes": 19339,
+      "sha256": "4031b8338c1c1bf7771c93cb46917cb6404379b2dabe58cd4d8f61d05bf70490",
+      "current_HEAD_git_blob": "3aa3be3acf35cbfb6435abd62e3e35c62c4a0875",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": "deploy/native-common/upstream.json",
+      "bytes": 511,
+      "sha256": "fc2828c54271282b6159fd75193062a95fb630849ddbb84443544c894260ca98",
+      "current_HEAD_git_blob": "f9412f48dc7241cddef855f32a0f7bd5d1d95fe4",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/dockerhub-metadata-quota-20261101/README.md",
+      "bytes": 780,
+      "sha256": "76c245ff8b959adbad57673c8bfbb1b3da2b67bcf06cee16260578e25a44002e",
+      "current_HEAD_git_blob": "e4382914b80a420a182c31ab0799829169fa1fc8",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/dockerhub-metadata-quota-20261101/SUMMARY.json",
+      "bytes": 2916,
+      "sha256": "da57758348881c277865931530e6999dbf211b77313be2240233de1c835481d0",
+      "current_HEAD_git_blob": "5e1bbe244d05b0406616fd04bf22af984e23f635",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-e6-20261102/README.md",
+      "bytes": 1397,
+      "sha256": "70693db9340f3fcc21fadd51fb59e3d7141b3c5f43c61f3e542608aba161e017",
+      "current_HEAD_git_blob": "7f52af76c832cc734de076d1ceeb8eb0114e24ae",
+      "matches_failed_9039_source": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-e6-20261102/content-audit/REVIEW.json",
+      "bytes": 26608,
+      "sha256": "4c996f1524e5d89030c42f1a580b2a22ee3fd6a446f96f99b6b711ad027574ee",
+      "current_HEAD_git_blob": "cdc2979aa2eaac8d9452acdedf05afdcbb97c74c",
+      "matches_failed_9039_source": true
+    }
+  ],
+  "network_requests": 0,
+  "new_credentials_auth_or_services": 0,
+  "mirror_publications": 0,
+  "Docker_or_local_resource_actions": 0,
+  "repository_edits": 0,
+  "credential_or_env_file_reads": 0,
+  "prior_actual_failure_custody": "/private/tmp/bex-w8-utility-9039-failure-intake-wlzd7mpl/MANIFEST.json",
+  "prior_manifest_sha256": "0bb4a997fd3fc2cc38354edde910ae752060d138fe797681e4b999f9c1f0ea3b"
+}

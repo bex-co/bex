@@ -1,0 +1,8 @@
+=== RUN   TestCommonElixirOfflineQualification
+    nativecommon_elixir_qualification_test.go:149: retained Elixir/OTP qualification evidence: /home/docker/actions-runner/_work/_temp/bex-native-qualification-vggu8ad_/generated/native-elixir-660641056
+=== RUN   TestCommonElixirOfflineQualification/elixir-1.17
+    nativecommon_elixir_qualification_test.go:182: elixir-1.17 passed actual generated network-off commands; image sha256:b072aaa6b5fd4212532fe0f402c7114277a8693a5d9febedc8a72f25a1562e9f
+--- PASS: TestCommonElixirOfflineQualification (588.09s)
+    --- PASS: TestCommonElixirOfflineQualification/elixir-1.17 (588.09s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	588.104s
