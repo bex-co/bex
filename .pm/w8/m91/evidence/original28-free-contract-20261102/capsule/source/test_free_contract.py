@@ -1,0 +1,116 @@
+"""Synthetic local Free controls only; no approval, credentials or API activity."""
+import copy, datetime, json, tempfile, types, unittest
+from pathlib import Path
+from unittest.mock import patch
+import adapter as a
+import core as c
+import opaque as o
+
+NOW=datetime.datetime(2026,11,1,7,27,tzinfo=datetime.timezone.utc)
+def inputs():
+    owner={'id':c.WORKSPACE,'name':'tian-personal','email':'CONTROL_ONLY_EMAIL_NOT_RETAINED'}
+    usage={'workspaceId':c.WORKSPACE,'period':'2026-11','freeInstanceHours':{'used':0,'included':750},
+           'coverage':{'state':'partial','through':'2026-11-01T00:00:00Z','degradedSources':['direct']},
+           'billing':'CONTROL_ONLY_BILLING_NOT_RETAINED'}
+    limits={'services':{'used':2,'terminating':0,'limit':25},'postgres':{'used':0}}
+    observations={}
+    for role,value in zip(('owner','usage','limits'),(owner,usage,limits)):
+        raw=json.dumps(value).encode()
+        observations[role]={'at':(NOW-datetime.timedelta(seconds=1)).isoformat(),'status':200,
+            'raw_bytes':len(raw),'raw_sha256':c.sha(raw),'decoded_bytes':len(raw),'decoded_sha256':c.sha(raw),
+            'transport':{'exit_code':0,'complete':True,'bound':None,'signal':None}}
+    return owner,usage,limits,observations
+
+class FreeContractControls(unittest.TestCase):
+    def test_partial_direct_is_diagnostic_but_exact10h_and_real_fresh_success_proofs_remain_required(self):
+        owner,usage,limits,observations=inputs()
+        self.assertEqual(c.WORKSPACE,'tea-da2isimlm39c739m4ofg')
+        self.assertEqual(c.gate_free(owner,usage,limits,NOW,observations)['free_hours_remaining'],750)
+        exact=copy.deepcopy(usage);exact['freeInstanceHours']['used']=740
+        self.assertEqual(c.gate_free(owner,exact,limits,NOW,observations)['free_hours_remaining'],10)
+        for change in ('less10','missing-hours','malformed-hours','bool-used','nan-used','bool-included','nan-included',
+                       'negative-used','exhausted','month','workspace','old-name','capacity','stale','future',
+                       'incomplete','bool-exit','missing-capture','not200'):
+            own,use,lim,obs=copy.deepcopy((owner,usage,limits,observations))
+            if change=='less10':use['freeInstanceHours']['used']=740.01
+            if change=='missing-hours':use.pop('freeInstanceHours')
+            if change=='malformed-hours':use['freeInstanceHours']=None
+            if change=='bool-used':use['freeInstanceHours']['used']=False
+            if change=='nan-used':use['freeInstanceHours']['used']=float('nan')
+            if change=='bool-included':use['freeInstanceHours']['included']=True
+            if change=='nan-included':use['freeInstanceHours']['included']=float('nan')
+            if change=='negative-used':use['freeInstanceHours']['used']=-1
+            if change=='exhausted':use['freeInstanceHours']['used']=750
+            if change=='month':use['period']='2026-10'
+            if change=='workspace':own['id']='tea-foreign'
+            if change=='old-name':own['name']='bex-canary'
+            if change=='capacity':lim['services']['terminating']=1
+            if change=='stale':obs['usage']['at']=(NOW-datetime.timedelta(seconds=301)).isoformat()
+            if change=='future':obs['owner']['at']=(NOW+datetime.timedelta(seconds=1)).isoformat()
+            if change=='incomplete':obs['usage']['transport'].update(complete=False,bound='timeout')
+            if change=='bool-exit':obs['usage']['transport']['exit_code']=False
+            if change=='missing-capture':obs.pop('limits')
+            if change=='not200':obs['limits']['status']=503
+            with self.subTest(change=change),self.assertRaises(c.Unproved):c.gate_free(own,use,lim,NOW,obs)
+
+    def test_preauth_capsule_must_include_fresh_reviewed_actual_capture_fields_no_old_Through_fallback(self):
+        owner,usage,limits,observations=inputs()
+        block={'owner':owner,'usage':usage,'limits':limits,'observations':observations}
+        fake=types.SimpleNamespace(capsule={'preauth_free':block})
+        with patch.object(a,'now',return_value=NOW):
+            self.assertEqual(a.Adapter.require_legal_window(fake)['state'],'PASS')
+            for change in ('missing','stale'):
+                altered=copy.deepcopy(block)
+                if change=='missing':altered.pop('observations')
+                else:altered['observations']['owner']['at']=(NOW-datetime.timedelta(seconds=301)).isoformat()
+                fake.capsule={'preauth_free':altered}
+                with self.subTest(change=change),self.assertRaises(c.Unproved):a.Adapter.require_legal_window(fake)
+
+    def test_actual_opaque_method_captures_safe_values_before_10h_refusal_and_pass(self):
+        for remaining in (9,10):
+            with self.subTest(remaining=remaining),tempfile.TemporaryDirectory(prefix='original28-free-control-') as directory:
+                root=Path(directory);owner,usage,limits,observations=inputs();usage['freeInstanceHours']['used']=750-remaining
+                paths=['/v1/owners/'+c.WORKSPACE,'/v1/usage?ownerId='+c.WORKSPACE,'/v1/owners/'+c.WORKSPACE+'/limits']
+                values=dict(zip(paths,(owner,usage,limits)));roles=dict(zip(paths,('owner','usage','limits')));requests=[];counter=[0]
+                fake=types.SimpleNamespace()
+                def get_json(path):
+                    requests.append(path);fake.last_metadata_event=observations[roles[path]]
+                    return copy.deepcopy(values[path])
+                def name(prefix):counter[0]+=1;return prefix+'-%05d'%counter[0]
+                def record(name,value):
+                    (root/name).write_text(json.dumps(value,indent=2)+'\n')
+                fake.get_json=get_json;fake.next_name=name;fake.record=record
+                with patch.object(o,'now',return_value=NOW):
+                    if remaining==9:
+                        with self.assertRaisesRegex(c.Unproved,'original28minimum10'):o.OpaqueTransport.free_gate(fake)
+                    else:self.assertEqual(o.OpaqueTransport.free_gate(fake)['free_hours_remaining'],10)
+                self.assertEqual(requests,paths)
+                retained=list(root.glob('free-gate-inputs-*.json'));self.assertEqual(len(retained),1)
+                doc=json.loads(retained[0].read_text())
+                self.assertEqual(doc['owner'],{'id':c.WORKSPACE,'name':'tian-personal'})
+                self.assertEqual(doc['usage']['coverage'],usage['coverage']);self.assertEqual(doc['observations'],observations)
+                self.assertEqual(doc['limits'],{'services':limits['services']});self.assertIn('diagnostic only',doc['coverage_scope'])
+                self.assertNotIn('CONTROL_ONLY_EMAIL',retained[0].read_text());self.assertNotIn('CONTROL_ONLY_BILLING',retained[0].read_text())
+                self.assertEqual(len(list(root.glob('free-gate-refusal-*.json'))),int(remaining==9))
+
+    def test_actual_opaque_method_succeeds_without_optional_coverage(self):
+        owner,usage,limits,observations=inputs();usage.pop('coverage')
+        raw=json.dumps(usage).encode()
+        observations['usage'].update(raw_bytes=len(raw),raw_sha256=c.sha(raw),decoded_bytes=len(raw),decoded_sha256=c.sha(raw))
+        paths=['/v1/owners/'+c.WORKSPACE,'/v1/usage?ownerId='+c.WORKSPACE,'/v1/owners/'+c.WORKSPACE+'/limits']
+        values=dict(zip(paths,(owner,usage,limits)));roles=dict(zip(paths,('owner','usage','limits')))
+        records=[];requests=[];fake=types.SimpleNamespace()
+        def get_json(path):
+            requests.append(path);fake.last_metadata_event=observations[roles[path]]
+            return copy.deepcopy(values[path])
+        fake.get_json=get_json;fake.next_name=lambda prefix:prefix+'-control'
+        fake.record=lambda name,value:records.append((name,copy.deepcopy(value)))
+        with patch.object(o,'now',return_value=NOW):
+            result=o.OpaqueTransport.free_gate(fake)
+        self.assertEqual(result['state'],'PASS');self.assertEqual(result['free_hours_remaining'],750)
+        self.assertEqual(requests,paths)
+        self.assertEqual([name for name,_ in records],['free-gate-inputs-control.json','free-gate-control.json'])
+        self.assertEqual(records[1][1]['usage'],{**{key:usage[key] for key in ('workspaceId','period','freeInstanceHours')},'coverage':None})
+        self.assertEqual(records[0][1]['observations'],observations)
+
+if __name__=='__main__':unittest.main()

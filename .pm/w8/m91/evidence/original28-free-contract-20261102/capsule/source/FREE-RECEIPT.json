@@ -1,0 +1,50 @@
+{
+  "at": "2026-11-01T07:59:44.625876+00:00",
+  "outcome": "PRIVATE_SOURCE_HOST_CONTROLS_PASS_REQUIRES_REVIEW_NO_EXECUTION",
+  "source_files": {
+    "adapter.py": {
+      "before": {
+        "bytes": 17724,
+        "sha256": "c1269ca258bcdf18b4486a94eb9b1b920561970b5d540062976210b939912878"
+      },
+      "after": {
+        "bytes": 17749,
+        "sha256": "399dfe03022d95d1161a3d04243444fa2b148a0f98c5f1c18d1d94c017cc48c2"
+      }
+    },
+    "core.py": {
+      "before": {
+        "bytes": 4722,
+        "sha256": "49b24a6de15cfed202ecd8d92b7bab16f0cd4f61fac2e1dc61b2c137a065e328"
+      },
+      "after": {
+        "bytes": 5251,
+        "sha256": "aed473dc11c651f5146658c52898a1c4aeed951350897b4708e8f70bb6a6c143"
+      }
+    },
+    "opaque.py": {
+      "before": {
+        "bytes": 33828,
+        "sha256": "7347d8f569bcacfb0c6f773d3ec0f6e85d997773eebe7d6243504f3d28108c47"
+      },
+      "after": {
+        "bytes": 35073,
+        "sha256": "4328000cb8c27fe8967cc55c75d59f3bd174f22107f7a90c169e8b73f2bb9dbb"
+      }
+    }
+  },
+  "new_test": {
+    "bytes": 6900,
+    "sha256": "c3169a7ac1765ac1fc49648bb6be313a38e0e2cf31da2eadcbfe66226f464c80"
+  },
+  "contract": {
+    "bytes": 4712,
+    "sha256": "1f6f6a75cc64d2e5b9d014f6dbbbf44ab4b37c80ca5203eaadbe0bb52e791c82"
+  },
+  "null_actual_adoption_preserved": {
+    "bytes": 5,
+    "sha256": "38e0b9de817f645c4bec37c0d4a3e58baecccb040f5718dc069a72c7385a0bed"
+  },
+  "actual_values_filled": false,
+  "product_repo_Go_network_auth_Docker_Kube_or_live_actions": false
+}

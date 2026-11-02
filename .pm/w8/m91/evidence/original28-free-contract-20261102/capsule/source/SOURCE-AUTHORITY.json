@@ -1,0 +1,31 @@
+{
+  "architecture": {
+    "path": "/private/tmp/bex-w8-original28-adapter-architecture-v2-20261101-52p2rvv8/ARCHITECTURE.json",
+    "bytes": 18758,
+    "sha256": "1eb37f953c2038c1db59c3137b72b476e05d88ad18f9625ac7f38fbcd2feb667"
+  },
+  "Root_source_body_approval": "Parent task after architecture review; source+fakehostcontrols only <=2MiB.",
+  "original_plan_final_manifest_sha256": "9460ee6b3f2c0e0f0bd0ce44734ef8e87ef4ced32ddaa5d568d88b19b17a08aa",
+  "independent_plan_review_sha256": "8a4aac996ee08319b5a5578402dc456a9695d99424a2c316d68aa7a0a0bd1c21",
+  "emission_map": {
+    "path": "/private/tmp/bex-w8-original28-emitted-map-20261101-k8jq563m/EMISSION-MAP.json",
+    "bytes": 258937,
+    "sha256": "fab100e00ce8214e79f00d995a8ef8d25522bdab2085f5303f8600dd95da165f"
+  },
+  "emission_review": {
+    "path": "/private/tmp/bex-w8-original28-emitted-map-20261101-k8jq563m/REVIEW.json",
+    "bytes": 4219,
+    "sha256": "26077ad0990a7e6e97d0d448d1532c1a758c3f95b9500edd9ab80bb350ca4051"
+  },
+  "general_reuse_manifest": {
+    "path": "/private/tmp/bex-w8-m83-live-transport-v3-main-source-20261101-9b2_pe4q/MANIFEST.json",
+    "bytes": 15814,
+    "sha256": "c21baaee32695b92f765d62484daffad446738b83a308aab0312b00f61d69f26"
+  },
+  "V3MAIN_independent_review_sha256": "81685d13341d4c0cf3a5b53e6c0b4905e9680f7ff0163d4f0f7b9ba09e786fcf",
+  "retained_original_and_old_freezes": "All original and V1/V2/V3/V3MAIN/private architecture histories unchanged.",
+  "actual_actions": false,
+  "actual_gates": "Common full artifact/family/bothutility/generateddefault3.14.8SPDX/Brotli/every-workspaceadoption/actualsignedReady/Free all unexecuted. ADOPTION-CONTRACT is null and refused beforeauth.",
+  "qualification_vs_adoption": "Retained actual producer/verifier/generator/utility/family role evidence source hashes are distinct from future adopted operator source. No candidate validator/current-tree equality. Exact reviewed pin-only delta binds retained baselinebytes to signed adopted criticalsource.",
+  "remaining_entry_work": "Root supplies reviewed actual evidence+full family/utility expected catalogs, Root-reviewed adoption criticalfile/pin/scope-code and allowedpin-onlydelta contract, exact capsule/contract/sourceSHAs and liveauthorization after independent source review. Source prep never supplies actualauthority or weakens evidence from absentinputs."
+}

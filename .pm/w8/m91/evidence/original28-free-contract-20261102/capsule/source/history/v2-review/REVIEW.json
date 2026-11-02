@@ -1,0 +1,59 @@
+{
+  "at": "2026-11-01T02:14:21.583629+00:00",
+  "state": "ONE_REMAINING_SOURCE_BINDING_FINDING_NOT_CLEAN",
+  "source": "/private/tmp/bex-w8-original28-adapter-v2-source-20261101-qhegb0ec",
+  "source_manifest_sha256": "d5c9f32dbfdf18711f3f7f0f01b348a0fd1dc86d4059f7c7ea04b081c752b950",
+  "source_payload_count": 207,
+  "source_payload_bytes": 1425912,
+  "all_manifest_payloads_verified_before_and_after_host_controls": true,
+  "source_copy": "Only exact manifest-listed regular bytes copied after precomputation/ancestor checks; no symlink/context traversal. Old V1freeze unchanged and rehashed.",
+  "executed": {
+    "host_controls": 59,
+    "result": "PASS11.321s",
+    "log": {
+      "bytes": 11619,
+      "sha256": "5548e764f66ba1f06920352578f62e7adb6054e1efb3c3913a25eeb931f6daaa"
+    },
+    "interpreter": "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python",
+    "bytecode_disabled": true,
+    "AST": {
+      "bytes": 3944,
+      "sha256": "25419e8da0d3912a4306b79f96b7fdd47cbea17401fb98f7525889eb6fe5d933"
+    },
+    "functional_AST_files": 51,
+    "original_validator_AST_exact": 14,
+    "independent_probes": {
+      "bytes": 1919,
+      "sha256": "46a391a7f23dc2eee9f23d3eea4d1da0b134be00be196b05297450ef7314179c"
+    }
+  },
+  "resolved": [
+    "R1 large typed externalV11 stream SHA/size+bounded decode;>16MiB synthetic decode and author>2MiBcompressed controls pass, metadata/auth/HTTP caps unchanged; no fullproof diskcache copy.",
+    "R2 both m91 native request shapes require only exact publicQA2297B+LF file/name/content/archive; missing/wrong/extra/LF controls refuse; original commands/flags unchanged.",
+    "R3 omitted runtime deltas now refuse before signature; every changed criticalpath bound to actual baseline/adoptedGit; mode/add/delete/unlisted negatives hold.",
+    "R3 unqualified replacement target refuses despite unrelated qualified literal.",
+    "R3 genuine tracked nativeCommonBase zero-value first initializer passes both exact inferred/typed forms in isolated binder."
+  ],
+  "remaining_finding": {
+    "id": "R3-slot",
+    "file": "readiness.py:273",
+    "problem": "Final actual-known-slot guard uses substring count, allowing a comment containing the qualified declaration to stand in for the actual variable.",
+    "counterexample": "Unchanged qualified/adopted critical blob has actual var nativeCommonBase=OLD plus // var nativeCommonBase=QUALIFIED, unchanged all-workspace selector returns nativeCommonBase, pin_only_deltas=[]; full critical hash/scope and observed no-change set match. Binder ACCEPTS and invokes both mocked signature binders.",
+    "minimal_required_behavior": "Bind the exact actual unique known declaration as a declaration/full line and require its qualified target; a comment or unrelated literal cannot satisfy the actual slot. Preserve valid initializers and genuine unchanged correctly pinned slot.",
+    "probe": "probes.py / PROBE-RESULTS.json key comment_is_not_actual_common_slot",
+    "impact_scope": "Isolated source binder; no actual signature verification/adoption/Ready bypass performed or claimed."
+  },
+  "positive_authority_controls": [
+    "Default null adoption refuses before proof reader/auth.",
+    "Actual retained oldNode26V11 receipt plus summary booleans refuses missing separate generator provenance.",
+    "All fixed28 original programs/data/args/env/map/validators/oracles unchanged; exact V1 general process/auth/cleanup helper bytes retained.",
+    "No source review creates live common/family/utility/generatedimage/adoption/Ready/Free/hosted authority."
+  ],
+  "limits": [
+    "No actual original module/program/shell/client/auth/API/network/GH/CI/Cosign/crypto/Go/Docker/resources.",
+    "Parent actual commonV11PASS remains independent; no actual current capsule loaded or exported.",
+    "No repository/PM/git/source changes. Own bounded hostfake processes/tempfiles only.",
+    "AST preparation count/path mistakes documented in INDEPENDENT-AST; no source syntax errors."
+  ],
+  "notifications": "Root and author notified exact remaining source finding before freeze. Corrected next generation requires focused recheck."
+}

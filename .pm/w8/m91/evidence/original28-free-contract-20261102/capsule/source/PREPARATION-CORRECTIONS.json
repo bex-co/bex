@@ -1,0 +1,24 @@
+{
+  "raw_logs_preserved": [
+    "HOST-INITIAL.stderr",
+    "HOST-SECOND.stderr",
+    "HOST-THIRD.stderr",
+    "HOST-FOURTH.stderr",
+    "HOST-FIFTH.stderr",
+    "HOST-SAFE.stderr",
+    "HOST-QUALIFICATION.stderr",
+    "HOST-V11.stderr",
+    "HOST-FINAL.stderr",
+    "HOST-FINAL-WIRE.stderr"
+  ],
+  "corrections": [
+    "Missing re global in dependency-bound originalproof namespace corrected; no original predicate changed.",
+    "Synthetic French GNU MO plural fixture corrected so0and1use singular; independent original gettext parser retained.",
+    "Negative corrupt-MO/gzip controls now expect actual OSError/zlib.error refusal classes; originalartifact predicates unchanged.",
+    "Fake root canonicalized to /private path so inherited symlink-parent protection is exercised correctly; guard unchanged.",
+    "Real adapter harness nested transport byte captures summarized by size/SHA for JSON durability, while full original response string and HTTP/raw transport evidence remain; prevents ledger serialization failure.",
+    "Existing canonical pure V11 full SPDX/Trivy/decompressed-root binders added by exactfunctionAST copy to bind actual report architecture/identity rather than selfclaimed rowlabels. No verifier/network/crypto invocation.",
+    "Added durable full original native request byte custody before first forward (gzip lossless bytes+SHA+length, only nonsecret allowed headers, auth redacted); existing exact201/lifecycle behavior preserved. New regression verifies full byte restoration and cleanup aftertimeout."
+  ],
+  "not_claimed": "Synthetic signed-looking bundle/report data is NOT real signatures, actual common qualification/adoption or live application proof."
+}

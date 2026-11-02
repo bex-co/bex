@@ -1,0 +1,17 @@
+{
+  "source": "/private/tmp/bex-w8-m83-live-transport-v3-main-source-20261101-9b2_pe4q/test_transport.py",
+  "sha256": "645d956c429bee01807b6d7036261046d33ef799c86524b5631226ef5677ac2b",
+  "exact_copied_class": "HostControls",
+  "tests": 6,
+  "limits": "Only tiny owned Python groups and fake floor/thread/file controls; no app/native/shell/network.",
+  "parser_listener": {
+    "source": "/private/tmp/bex-w8-m83-live-transport-v3-main-source-20261101-9b2_pe4q/test_transport_v2.py",
+    "sha256": "23893366ad86bff1315d2087c645e378f14b0c44acf2df13e94a9a880dc4d8b2",
+    "copied_classes": [
+      "ParserRegressionControls",
+      "ListenerRegressionControls"
+    ],
+    "tests": 7,
+    "dependency_adapter": "Only namespaced aliases to new fake adapter/completed result and opaque general Transport; no original module imported."
+  }
+}

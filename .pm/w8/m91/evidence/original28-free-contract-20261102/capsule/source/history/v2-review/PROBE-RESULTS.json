@@ -1,0 +1,63 @@
+{
+  "scope": "Synthetic source/metadata controls; signatures mocked only for isolated adoption source binder. No original module/app/command execution.",
+  "prior_omitted_runtime_delta": {
+    "accepted": false,
+    "reason": "every changed critical blob requires one exact reviewed pin delta",
+    "signature_calls": 0
+  },
+  "prior_unqualified_target_with_unrelated_qualified_literal": {
+    "accepted": false,
+    "reason": "unreviewed runtime edit is not qualified immutable pin-only",
+    "signature_calls": 0
+  },
+  "actual_initial_slot_inferred": {
+    "accepted": true,
+    "changed": [
+      "lego/operator/internal/build/nativebases.go"
+    ],
+    "signature_calls": 2
+  },
+  "actual_initial_slot_typed": {
+    "accepted": true,
+    "changed": [
+      "lego/operator/internal/build/nativebases.go"
+    ],
+    "signature_calls": 2
+  },
+  "comment_is_not_actual_common_slot": {
+    "accepted": true,
+    "changed": [],
+    "signature_calls": 2
+  },
+  "changed_mode": {
+    "accepted": false,
+    "reason": "unreviewed critical file mode change",
+    "signature_calls": 0
+  },
+  "m91_exact_public_archive": [
+    {
+      "client": "bex",
+      "exact_file_accepted": true,
+      "removedLF_rejected": true,
+      "source_args_unchanged": true
+    },
+    {
+      "client": "render",
+      "exact_file_accepted": true,
+      "removedLF_rejected": true,
+      "source_args_unchanged": true
+    }
+  ],
+  "full_external_report": {
+    "decoded_bytes": 16777236,
+    "exact_decoded": true,
+    "junk_and_secondmember_rejected": true,
+    "external_tmp_removed_on_exit": true
+  },
+  "null_adoption_refuses_before_reader": "actual reviewed adoption contract absent before auth",
+  "actual_old_V11_booleans_do_not_upgrade": {
+    "old_receipt_sha256": "2142980b54d84a20a90b0eec523fea6ca88a9ecbc4c03e45a938bc0dfefe5fe2",
+    "reason": "separate retained generator provenance differs",
+    "original_unchanged": true
+  }
+}

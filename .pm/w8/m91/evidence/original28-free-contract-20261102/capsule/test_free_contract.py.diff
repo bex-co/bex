@@ -1,0 +1,27 @@
+--- frozen-parent/test_free_contract.py
++++ optional-coverage/test_free_contract.py
+@@ -93,4 +93,24 @@
+                 self.assertNotIn('CONTROL_ONLY_EMAIL',retained[0].read_text());self.assertNotIn('CONTROL_ONLY_BILLING',retained[0].read_text())
+                 self.assertEqual(len(list(root.glob('free-gate-refusal-*.json'))),int(remaining==9))
+ 
++    def test_actual_opaque_method_succeeds_without_optional_coverage(self):
++        owner,usage,limits,observations=inputs();usage.pop('coverage')
++        raw=json.dumps(usage).encode()
++        observations['usage'].update(raw_bytes=len(raw),raw_sha256=c.sha(raw),decoded_bytes=len(raw),decoded_sha256=c.sha(raw))
++        paths=['/v1/owners/'+c.WORKSPACE,'/v1/usage?ownerId='+c.WORKSPACE,'/v1/owners/'+c.WORKSPACE+'/limits']
++        values=dict(zip(paths,(owner,usage,limits)));roles=dict(zip(paths,('owner','usage','limits')))
++        records=[];requests=[];fake=types.SimpleNamespace()
++        def get_json(path):
++            requests.append(path);fake.last_metadata_event=observations[roles[path]]
++            return copy.deepcopy(values[path])
++        fake.get_json=get_json;fake.next_name=lambda prefix:prefix+'-control'
++        fake.record=lambda name,value:records.append((name,copy.deepcopy(value)))
++        with patch.object(o,'now',return_value=NOW):
++            result=o.OpaqueTransport.free_gate(fake)
++        self.assertEqual(result['state'],'PASS');self.assertEqual(result['free_hours_remaining'],750)
++        self.assertEqual(requests,paths)
++        self.assertEqual([name for name,_ in records],['free-gate-inputs-control.json','free-gate-control.json'])
++        self.assertEqual(records[1][1]['usage'],{**{key:usage[key] for key in ('workspaceId','period','freeInstanceHours')},'coverage':None})
++        self.assertEqual(records[0][1]['observations'],observations)
++
+ if __name__=='__main__':unittest.main()

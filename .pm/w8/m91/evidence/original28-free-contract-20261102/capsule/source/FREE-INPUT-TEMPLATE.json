@@ -1,0 +1,21 @@
+{
+  "state": "INVALID_NULL_TEMPLATE_NOT_AN_ACTUAL_CAPSULE",
+  "preauth_free": {
+    "owner": null,
+    "usage": null,
+    "limits": null,
+    "observations": {
+      "owner": null,
+      "usage": null,
+      "limits": null
+    }
+  },
+  "event_required_fields": {
+    "at": null,
+    "status": null,
+    "transport": null
+  },
+  "actual_adoption_contract": null,
+  "actual_Ready": null,
+  "actual_Root_authorization": null
+}

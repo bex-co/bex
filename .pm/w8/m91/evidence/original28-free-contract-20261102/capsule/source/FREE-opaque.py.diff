@@ -1,0 +1,30 @@
+--- originalV3/opaque.py
++++ FreeContractV4/opaque.py
+@@ -362,9 +362,26 @@
+                     'limits_observed_at':limits_event['at'],'limits_observation':limits_event,'metadata': metadata}
+     def free_gate(self):
+             owner = self.get_json('/v1/owners/'+c.WORKSPACE)
++            owner_event = self.last_metadata_event
+             usage = self.get_json('/v1/usage?'+urlencode({'ownerId':c.WORKSPACE}))
++            usage_event = self.last_metadata_event
+             limits = self.get_json('/v1/owners/'+c.WORKSPACE+'/limits')
+-            result = c.gate_free(owner, usage, limits, now())
++            limits_event = self.last_metadata_event
++            observations = {'owner':owner_event,'usage':usage_event,'limits':limits_event}
++            inputs_name = self.next_name('free-gate-inputs')+'.json'
++            self.record(inputs_name, {'at':now().isoformat(),
++                        'owner':{key:owner.get(key) for key in ('id','name')} if isinstance(owner,dict) else None,
++                        'usage':{key:usage.get(key) for key in ('workspaceId','period','freeInstanceHours','coverage')} if isinstance(usage,dict) else None,
++                        'limits':{'services':limits.get('services')} if isinstance(limits,dict) else None,
++                        'coverage_scope':'diagnostic only; no aggregate-health or Free allowance claim',
++                        'observations':observations})
++            try:
++                result = c.gate_free(owner, usage, limits, now(), observations)
++            except c.Unproved as error:
++                # The frozen Free predicates emit static reasons only.
++                self.record(self.next_name('free-gate-refusal')+'.json',
++                            {'state':'REFUSED','inputs':inputs_name,'reason':str(error)})
++                raise
+             self.record(self.next_name('free-gate')+'.json', {**result, 'owner': {key:owner[key] for key in ('id','name')},
+                         'usage': {key:usage[key] for key in ('workspaceId','period','freeInstanceHours','coverage')}, 'limits':limits})
+             return result

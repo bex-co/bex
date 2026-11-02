@@ -1,0 +1,42 @@
+--- originalV3/core.py
++++ FreeContractV4/core.py
+@@ -1,7 +1,7 @@
+ """Small exact general predicates reused from reviewed V3MAIN, no m83 fixture gate."""
+ import datetime,hashlib,zlib,json,re
+ WORKSPACE='tea-da2isimlm39c739m4ofg'
+-WORKSPACE_NAME='bex-canary'
++WORKSPACE_NAME='tian-personal'
+ MAX_METADATA=2*1024*1024
+ MAX_BODY=1024*1024
+ SERVICE_ID=re.compile(r'srv-[a-z0-9]+\Z')
+@@ -59,17 +59,25 @@
+     return {'state': 'PASS', 'baseline_preserved': True, 'own_resources_absent': True,
+             'own_used_count_delta': 0, 'concurrent_additions': additions}
+ 
+-def gate_free(owner,usage,limits,now):
++def gate_free(owner,usage,limits,now,observations):
++    require(all(isinstance(value,dict) for value in (owner,usage,limits,observations)), 'actual Free metadata/captures missing')
+     require(owner.get('id')==WORKSPACE and owner.get('name')==WORKSPACE_NAME,'actual selected workspace differs')
+     require(usage.get('workspaceId')==WORKSPACE and usage.get('period')==now.strftime('%Y-%m'),'actual current Free period missing')
+-    coverage=usage.get('coverage',{})
+-    require(coverage.get('state')=='complete' and coverage.get('degradedSources')==[]
+-            and 0<=(now-instant(coverage['through'])).total_seconds()<=300,'actual Free coverage incomplete/stale')
+-    hours=usage.get('freeInstanceHours',{});used,included=hours.get('used'),hours.get('included')
++    for role in ('owner','usage','limits'):
++        event=observations.get(role,{})
++        require(isinstance(event,dict),'actual Free response observation missing')
++        completed(event.get('transport',{}))
++        require(event.get('status')==200 and 0<=(now-instant(event['at'])).total_seconds()<=300,
++                'actual Free response observation stale, future or not200')
++    # Coverage/Through aggregate all meters, including egress: diagnostic only.
++    hours=usage.get('freeInstanceHours',{})
++    require(isinstance(hours,dict),'actual Free instance-hours object missing')
++    used,included=hours.get('used'),hours.get('included')
+     import math
+     require(type(used) in (int,float) and type(included) in (int,float) and math.isfinite(used) and math.isfinite(included)
+             and used>=0 and included>0 and included-used>=10,'original28minimum10verifiedFreehours unavailable')
+     row=limits.get('services',{})
++    require(isinstance(row,dict),'actual service capacity object missing')
+     require(all(type(row.get(k)) is int and row[k]>=0 for k in ('used','terminating','limit'))
+             and row['terminating']==0 and (row['limit']==0 or row['used']<row['limit']),'actual typed Free service capacity unavailable')
+     return {'state':'PASS','period':usage['period'],'workspace':WORKSPACE,'free_hours_remaining':included-used}

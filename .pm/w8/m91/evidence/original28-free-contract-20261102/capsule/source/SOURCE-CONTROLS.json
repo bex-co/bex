@@ -1,0 +1,137 @@
+{
+  "syntax_AST_parse_files": [
+    "adapter.py",
+    "catalog.py",
+    "core.py",
+    "derive.py",
+    "derived/hosted_proofs.py",
+    "derived/html.py",
+    "derived/http_100.py",
+    "derived/http_101.py",
+    "derived/http_102.py",
+    "derived/http_103.py",
+    "derived/http_107.py",
+    "derived/http_222.py",
+    "derived/http_91.py",
+    "derived/http_93.py",
+    "derived/http_95.py",
+    "derived/http_96.py",
+    "derived/http_97.py",
+    "derived/http_98.py",
+    "derived/http_99.py",
+    "derived/naming.py",
+    "derived/png.py",
+    "derived/validators_100.py",
+    "derived/validators_101.py",
+    "derived/validators_102.py",
+    "derived/validators_103.py",
+    "derived/validators_107.py",
+    "derived/validators_222.py",
+    "derived/validators_91.py",
+    "derived/validators_93.py",
+    "derived/validators_94.py",
+    "derived/validators_95.py",
+    "derived/validators_96.py",
+    "derived/validators_97.py",
+    "derived/validators_98.py",
+    "derived/validators_99.py",
+    "fake_cases.py",
+    "harness.py",
+    "host.py",
+    "opaque.py",
+    "proof_binding.py",
+    "qualification_fixtures.py",
+    "readiness.py",
+    "retained_v11_predicates.py",
+    "test_adapter.py",
+    "test_adoption.py",
+    "test_qualification.py",
+    "test_safe_reuse.py",
+    "test_transport.py"
+  ],
+  "exact_validator_AST": [
+    {
+      "file": "derived/validators_100.py",
+      "source": "original-inputs/fixtures/m100/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_101.py",
+      "source": "original-inputs/fixtures/m101/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_102.py",
+      "source": "original-inputs/fixtures/m102/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_103.py",
+      "source": "original-inputs/fixtures/m103/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_107.py",
+      "source": "original-inputs/fixtures/m107/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_222.py",
+      "source": "original-inputs/fixtures/note222/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_91.py",
+      "source": "original-inputs/fixtures/m91/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_93.py",
+      "source": "original-inputs/fixtures/m93/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_94.py",
+      "source": "original-inputs/fixtures/m94/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_95.py",
+      "source": "original-inputs/fixtures/m95/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_96.py",
+      "source": "original-inputs/fixtures/m96/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_97.py",
+      "source": "original-inputs/fixtures/m97/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_98.py",
+      "source": "original-inputs/fixtures/m98/validators.py",
+      "AST_exact": true
+    },
+    {
+      "file": "derived/validators_99.py",
+      "source": "original-inputs/fixtures/m99/validators.py",
+      "AST_exact": true
+    }
+  ],
+  "all84original_inputs_reverified": true,
+  "copied83regular_original_inputs": true,
+  "compiled_original_pyc": "hash-only, never copied/imported",
+  "exact_general_modules": [
+    "host.py",
+    "proof_binding.py"
+  ],
+  "original_top_level_app_shell_native_crypto_network_executed": false,
+  "full_final_host_log": "HOST-FINAL-WIRE.stderr",
+  "host_unique_tests": 46,
+  "reported_seconds": 13.111,
+  "source_guard_errors": [],
+  "final_source_guard": "SOURCE-GUARD-FINAL.json"
+}

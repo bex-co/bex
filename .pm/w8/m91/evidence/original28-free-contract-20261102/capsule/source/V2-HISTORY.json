@@ -1,0 +1,6 @@
+{
+  "prior_root": "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl",
+  "prior_manifest_sha256": "a01ef515d0d466b16206d6633edb54e2166af6a04e1404c28dd13349798760ae",
+  "all_prior_payloads_verified": 175,
+  "scope": "R1 complete external V11 evidence bounds; R2 exact frozen m91 public QA secretfile; wait independentfinalbatch beforefreeze. All old bytes retained unchanged."
+}

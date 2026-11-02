@@ -1,0 +1,29 @@
+test_actual_opaque_method_succeeds_without_optional_coverage (test_free_contract.FreeContractControls.test_actual_opaque_method_succeeds_without_optional_coverage) ... ERROR
+
+======================================================================
+ERROR: test_actual_opaque_method_succeeds_without_optional_coverage (test_free_contract.FreeContractControls.test_actual_opaque_method_succeeds_without_optional_coverage)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-free-optional-coverage-source-20261102-gqtfa907/source/test_free_contract.py", line 109, in test_actual_opaque_method_succeeds_without_optional_coverage
+    result=o.OpaqueTransport.free_gate(fake)
+  File "/private/tmp/bex-w8-original28-free-contract-source-20261101-_wkb6ut8/opaque.py", line 379, in free_gate
+    result = c.gate_free(owner, usage, limits, now(), observations)
+  File "/private/tmp/bex-w8-original28-free-optional-coverage-source-20261102-gqtfa907/source/core.py", line 70, in gate_free
+    require(event.get('status')==200 and 0<=(now-instant(event['at'])).total_seconds()<=300,
+    ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+            'actual Free response observation stale, future or not200')
+            ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/bex-w8-original28-free-optional-coverage-source-20261102-gqtfa907/source/core.py", line 12, in require
+    raise Unproved(reason)
+core.Unproved: actual Free response observation stale, future or not200
+
+----------------------------------------------------------------------
+Ran 1 test in 0.001s
+
+FAILED (errors=1)
+Traceback (most recent call last):
+  File "<string>", line 1, in <module>
+    exec(compile(open('/private/tmp/bex-w8-original28-free-optional-coverage-source-20261102-gqtfa907/old-negative.py').read(),'<old-negative>','exec'))
+    ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "<old-negative>", line 14, in <module>
+AssertionError

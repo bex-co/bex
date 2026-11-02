@@ -1,0 +1,59 @@
+test_absent_or_null_adoption_refuses_before_auth_or_any_proof_reader (test_adapter.AdmissionControls.test_absent_or_null_adoption_refuses_before_auth_or_any_proof_reader) ... ok
+test_bool_ready_or_allWorkspaces_is_never_adoption_authority (test_adapter.AdmissionControls.test_bool_ready_or_allWorkspaces_is_never_adoption_authority) ... ok
+test_source_default_is_null_and_genuine_host_proof_binding_modules_unchanged (test_adapter.AdmissionControls.test_source_default_is_null_and_genuine_host_proof_binding_modules_unchanged) ... ok
+test_utility_family_capture_observations_bind_actual_raw_stdout_not_passlabel (test_adapter.AdmissionControls.test_utility_family_capture_observations_bind_actual_raw_stdout_not_passlabel) ... ok
+test_actual_native_body_rejects_source_commands_env_paid_and_foreign_201 (test_adapter.CatalogJournalControls.test_actual_native_body_rejects_source_commands_env_paid_and_foreign_201) ... ok
+test_all_name_overlays_change_only_unused_display_fields_and_literal_flag (test_adapter.CatalogJournalControls.test_all_name_overlays_change_only_unused_display_fields_and_literal_flag) ... ok
+test_fixed_spec_or_emission_map_mutations_and_unknown_catalog_never_heal (test_adapter.CatalogJournalControls.test_fixed_spec_or_emission_map_mutations_and_unknown_catalog_never_heal) ... ok
+test_once_intent_forward_201_and_cleanup_order_with_no_replay_after_success (test_adapter.CatalogJournalControls.test_once_intent_forward_201_and_cleanup_order_with_no_replay_after_success) ... ok
+test_unknown_create_stops_all_remaining_catalog_and_max2active_is_fixed (test_adapter.CatalogJournalControls.test_unknown_create_stops_all_remaining_catalog_and_max2active_is_fixed) ... ok
+test_actual_m94_build_runtime_database_mismatch_is_rejected (test_adapter.OriginalProofControls.test_actual_m94_build_runtime_database_mismatch_is_rejected) ... ok
+test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env (test_adapter.OriginalProofControls.test_all28_original_threeHTTP_build_app_logs_shared_and_exact_env) ... ok
+test_each_original_family_wrong_marker_and_missing_native_build_proof_fail (test_adapter.OriginalProofControls.test_each_original_family_wrong_marker_and_missing_native_build_proof_fail) ... ok
+test_env_readback_is_fourth_mandatory_proof_including_original_emptyenv (test_adapter.OriginalProofControls.test_env_readback_is_fourth_mandatory_proof_including_original_emptyenv) ... ok
+test_original_independent_binary_or_HTML_artifact_corruption_rejected (test_adapter.OriginalProofControls.test_original_independent_binary_or_HTML_artifact_corruption_rejected) ... 
+  test_original_independent_binary_or_HTML_artifact_corruption_rejected (test_adapter.OriginalProofControls.test_original_independent_binary_or_HTML_artifact_corruption_rejected) (mid=96) ... ERROR
+  test_original_independent_binary_or_HTML_artifact_corruption_rejected (test_adapter.OriginalProofControls.test_original_independent_binary_or_HTML_artifact_corruption_rejected) (mid=102) ... ERROR
+test_partial_original_HTTP_capture_cannot_pass_correct_stdout (test_adapter.OriginalProofControls.test_partial_original_HTTP_capture_cannot_pass_correct_stdout) ... ok
+test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass (test_adapter.OriginalProofControls.test_wrong_firstLive_source_and_missing_app_request_log_are_not_pass) ... ok
+
+======================================================================
+ERROR: test_original_independent_binary_or_HTML_artifact_corruption_rejected (test_adapter.OriginalProofControls.test_original_independent_binary_or_HTML_artifact_corruption_rejected) (mid=96)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 62, in test_original_independent_binary_or_HTML_artifact_corruption_rejected
+    with self.assertRaises((AssertionError,ValueError,KeyError,TypeError)):ctx.proof()
+                                                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 53, in proof
+    requests = fn(x, h, dir, valid, ref)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/http_96.py", line 21, in exercise
+    e['independent_host_GNUTranslations'] = values(gettext.GNUTranslations(io.BytesIO(b)))
+                                                   ~~~~~~~~~~~~~~~~~~~~~~~^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/gettext.py", line 279, in __init__
+    self._parse(fp)
+    ~~~~~~~~~~~^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/gettext.py", line 370, in _parse
+    raise OSError(0, 'Bad magic number', filename)
+OSError: [Errno 0] Bad magic number: ''
+
+======================================================================
+ERROR: test_original_independent_binary_or_HTML_artifact_corruption_rejected (test_adapter.OriginalProofControls.test_original_independent_binary_or_HTML_artifact_corruption_rejected) (mid=102)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/test_adapter.py", line 62, in test_original_independent_binary_or_HTML_artifact_corruption_rejected
+    with self.assertRaises((AssertionError,ValueError,KeyError,TypeError)):ctx.proof()
+                                                                           ~~~~~~~~~^^
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/harness.py", line 89, in proof
+    result=self.methods['proof'](self.row)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/hosted_proofs.py", line 57, in proof
+    requests = fn(x, h, dir, valid, ref, record)
+  File "/private/tmp/bex-w8-original28-adapter-source-20261101-4h92ewcl/derived/http_102.py", line 23, in exercise
+    inflated = zlib.decompress(body, wbits=31)
+zlib.error: Error -3 while decompressing data: incorrect header check
+
+----------------------------------------------------------------------
+Ran 16 tests in 0.506s
+
+FAILED (errors=2)

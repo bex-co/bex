@@ -1,0 +1,33 @@
+{
+  "review": {
+    "path": "/private/tmp/bex-w8-original28-independent-review-20261101-1d73k1de/REVIEW.json",
+    "bytes": 6637,
+    "sha256": "ba581a52dc4266d78ee0190a90b81c75aa93d9f619785e21971cbedf2988f999"
+  },
+  "complete_batch": [
+    "R1",
+    "R2",
+    "R3"
+  ],
+  "R1": {
+    "preparation_cap": 2097152,
+    "full_external_V11_MAX_ATTESTATIONS": 268435456,
+    "loader": "evidence.py streams complete typed SHA/size qualification, then bounded second-pass gzip/raw decode/hash beforeJSONparse. Full bundle/predicate/SPDX and declared original archive inputs use explicit full-artifact path. Existing external files are never copied into run32MiB cache.",
+    "preserved_small_caps": "proof_binding2MiB metadata, configs/credentials, ownHTTP/output caps unchanged. host.py/proof_binding.py exact.",
+    "controls": "Synthetic V11-shaped >2MiB gzip and >16MiB predicate, full raw generated SPDX; oversize/bool/wrongSHA/short stream rejects beforedecode; truncated gzip and bounded bomb rejects. External fakefiles hardcap64MiB, removed by ownfixturecleanup. No actual Rootcapsule read."
+  },
+  "R2": {
+    "input": "Only exact frozen m91 one qa402.dump.b64 public2297B content includingLF, decoded PG15archive1721B/SHA; both nativeclients.",
+    "behavior": "Fake native POST now includes real name/content JSON shape. Exact original --secret-file flagpath is preserved and public original bytes rechecked beforecreate. Missing/extra/name/content/LF/field changes refuse; allother26 refuse undeclaredfiles.",
+    "no_substitution": true
+  },
+  "R3": {
+    "qualified_snapshot": "Retained qualification contract now names closed adoption_critical_paths and adoption_critical_scope; every retained scoped baseline path is present. No candidate/current-working-tree validation is run.",
+    "actual_source": "Read-only Git blob at actual qualified generator SHA must match retained identity; compare actual adopted blobs/modes and read-only no-rename changed-path set. Additions/deletions/unlisted critical changes refuse. Delta paths must exactly equal ALL changed critical blobs.",
+    "strict_edits": "Every immutable edit.after must be among actual qualified refs. Initial common slot only known nativebases.go exact var nativeCommonBase string full-line transition to exactqualifiedcommonREF inferred/typed declaration; no arbitrary regex or code/comment edit.",
+    "empty_delta": "Only zerochangedcriticalblobs AND actual known slot alreadycorrect qualifiedREF; empty/omitted catalog never excuseschangedcode.",
+    "controls": "Both exactinitializerforms positive; nochange/emptydelta correctslot positive; omitted/empty/secondfile/add/delete/unqualifiedtarget/extra function/comment/wrongvar/path/target negatives."
+  },
+  "unchanged": "All175 V1 payloads verified unchanged at oldfreeze; original programs/data/createargs/flagpaths/commands/env/markers/sourceIDs,14validator AST, original3HTTP/build/app-log/shared/env oracles and general process/auth/cleanup unchanged. DefaultADOPTION-CONTRACT null.",
+  "actual_authority": "NONE. Parent-owned actualV11 run is separate and is not loaded/exported/admitted by this preparation. No tenant/native/auth/network/GH/CI/crypto/Docker/Go/repo or PM action by this child."
+}

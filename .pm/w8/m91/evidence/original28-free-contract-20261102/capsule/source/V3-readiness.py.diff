@@ -1,0 +1,45 @@
+--- V2/readiness.py
++++ V3/readiness.py
+@@ -8,6 +8,7 @@
+ import proof_binding as p
+ import retained_v11_predicates as v11
+ import evidence
++import known_go_slot
+ 
+ SHA40=re.compile('[a-f0-9]{40}\\Z')
+ REF=re.compile(r'ghcr\.io/[a-z0-9._/-]+@sha256:[a-f0-9]{64}\Z')
+@@ -255,6 +256,9 @@
+             if kind=='native-common-base-initializer':
+                 c.require(path==COMMON_SLOT and set(edit)=={'kind','before','after'},'initial common pin outside exact known declaration')
+                 before=b'var nativeCommonBase string\n';after=common_initializer(qualified['common_ref'],syntax)
++                actual_before=known_go_slot.declaration(out)
++                c.require(actual_before['form']=='zero' and out[actual_before['start']:actual_before['end']]==before,
++                          'initial common pin does not address the actual top-level zero-value slot')
+                 c.require(edit['before']==before.decode() and edit['after']==after.decode(),
+                           'initial common pin is not the exact reviewed declaration mapping')
+             else:
+@@ -263,14 +267,19 @@
+                 c.require(isinstance(old,str) and isinstance(new,str) and REF.fullmatch(old) and REF.fullmatch(new)
+                           and new in qualified['adoptable_refs'],'unreviewed runtime edit is not qualified immutable pin-only')
+                 before=json.dumps(old).encode();after=json.dumps(new).encode()
+-            c.require(out.count(before)==1,'reviewed pin span is not unique')
+-            offset=out.index(before)
+-            if kind=='native-common-base-initializer':c.require(offset==0 or out[offset-1:offset]==b'\n','known initializer is not an exact full declaration line')
+-            out=out.replace(before,after,1)
++            if kind=='native-common-base-initializer':
++                # Replace only the recognized actual declaration span. Identical
++                # text inside comments/literals is neither a slot nor an edit.
++                out=out[:actual_before['start']]+after+out[actual_before['end']:]
++            else:
++                c.require(out.count(before)==1,'reviewed pin span is not unique')
++                out=out.replace(before,after,1)
+         c.require(out==actual_files[path],'unreviewed function/scope/comment/source change beyond exact pin spans')
+     fixed=common_initializer(qualified['common_ref'],syntax)
+     slot=actual_files[COMMON_SLOT]
+-    c.require(slot.count(fixed)==1 and b'var nativeCommonBase string\n' not in slot,
++    actual_slot=known_go_slot.declaration(slot)
++    c.require(actual_slot['value']==qualified['common_ref'] and actual_slot['form']==syntax
++              and slot[actual_slot['start']:actual_slot['end']]==fixed,
+               'actual known common slot is empty or differs from qualified REF')
+     for pin in contract['pins']:
+         c.require(pin['qualified_ref'] in qualified['adoptable_refs'] and pin['path'] in actual_files
