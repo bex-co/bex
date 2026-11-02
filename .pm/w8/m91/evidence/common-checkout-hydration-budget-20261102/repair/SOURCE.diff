@@ -1,0 +1,56 @@
+--- .github/workflows/native-common-image.yml
++++ .github/workflows/native-common-image.yml
+@@ -83,7 +83,7 @@
+             /lego/.dockerignore
+             /scripts/lib/toolchain-freshness.py
+       - name: materialize only complete candidate evidence packets
+-        timeout-minutes: 5
++        timeout-minutes: 12
+         env:
+           CHECKOUT_SOURCE: ${{ inputs.source || 'fresh' }}
+         run: |
+@@ -93,7 +93,7 @@
+           trap 'rm -f -- "$patterns"' EXIT
+           python3 .github/scripts/native-common-qualify.py checkout-evidence "$CHECKOUT_SOURCE" > "$patterns"
+           if test -s "$patterns"; then
+-            timeout --kill-after=10s 180s git sparse-checkout add --no-cone --stdin < "$patterns"
++            timeout --kill-after=10s 600s git sparse-checkout add --no-cone --stdin < "$patterns"
+           fi
+       - id: selection
+         name: validate the fixed profile and case before publication resources
+@@ -165,7 +165,7 @@
+             /lego/.dockerignore
+             /scripts/lib/toolchain-freshness.py
+       - name: materialize only complete candidate evidence packets
+-        timeout-minutes: 5
++        timeout-minutes: 12
+         env:
+           CHECKOUT_SOURCE: ${{ needs.plan.outputs.source }}
+         run: |
+@@ -175,7 +175,7 @@
+           trap 'rm -f -- "$patterns"' EXIT
+           python3 .github/scripts/native-common-qualify.py checkout-evidence "$CHECKOUT_SOURCE" > "$patterns"
+           if test -s "$patterns"; then
+-            timeout --kill-after=10s 180s git sparse-checkout add --no-cone --stdin < "$patterns"
++            timeout --kill-after=10s 600s git sparse-checkout add --no-cone --stdin < "$patterns"
+           fi
+       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+         with:
+@@ -310,7 +310,7 @@
+             /lego/.dockerignore
+             /scripts/lib/toolchain-freshness.py
+       - name: materialize only complete candidate evidence packets
+-        timeout-minutes: 5
++        timeout-minutes: 12
+         env:
+           CHECKOUT_SOURCE: ${{ needs.plan.outputs.source }}
+         run: |
+@@ -320,7 +320,7 @@
+           trap 'rm -f -- "$patterns"' EXIT
+           python3 .github/scripts/native-common-qualify.py checkout-evidence "$CHECKOUT_SOURCE" > "$patterns"
+           if test -s "$patterns"; then
+-            timeout --kill-after=10s 180s git sparse-checkout add --no-cone --stdin < "$patterns"
++            timeout --kill-after=10s 600s git sparse-checkout add --no-cone --stdin < "$patterns"
+           fi
+       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+         with:

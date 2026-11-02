@@ -1,0 +1,204 @@
+{
+  "files": {
+    "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/run-final.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/failure/ci/run-final.json",
+      "bytes": 12143,
+      "sha256": "b81b32c2621fefd5ead32ac5e83a138734fb96adfee6101949788100b227b067"
+    },
+    "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/jobs-final.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/failure/ci/jobs-final.json",
+      "bytes": 5625,
+      "sha256": "0f5031fd421c9730d39b23c9b89234965f4ef7e4fc8e63d10728741efa9099c3"
+    },
+    "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/artifacts-final.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/failure/ci/artifacts-final.json",
+      "bytes": 32,
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c"
+    },
+    "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/job-plan-125292377874.log": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/failure/ci/job-plan-125292377874.log",
+      "bytes": 22328,
+      "sha256": "487f1fa1043d8a475282d9ca956915f8edd7973f3c2cbfef83ad6ae18320156d"
+    },
+    "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/TERMINAL-FAILURE.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/failure/TERMINAL-FAILURE.json",
+      "bytes": 3604,
+      "sha256": "0e52e7aae0ff34d15632c47a32a97ea13affaf7b37c323a0bb610d6d6b3fee7f"
+    },
+    "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/SOURCE-BASIS.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/failure/SOURCE-BASIS.json",
+      "bytes": 1138,
+      "sha256": "e2c94dcc41e20af5dad3c3bfe938297bbae949095b136b8bdf280abe6794cf50"
+    },
+    "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/FAILED-ATTEMPT-MANIFEST.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/failure/FAILED-ATTEMPT-MANIFEST.json",
+      "bytes": 7114,
+      "sha256": "50b387ad408ea32b0763c9b3463b36928d39e2cb533362396bdabed5c2f09c0f"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/PLAN.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/PLAN.json",
+      "bytes": 995,
+      "sha256": "37227d9bb279fa50cfc377f49f12d76ab584bce1350dc56735b92bf4a0d85d34"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/RESULT.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/RESULT.json",
+      "bytes": 3286,
+      "sha256": "730169c133b3d24807716e8e0a805aea5bc0de05b6b570d33deb59deb0dba90e"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/SCOPE.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/SCOPE.json",
+      "bytes": 41939,
+      "sha256": "2d33f2258196c5ddc084e172d9417fb4b05a40137ef45278c62db745ad0187b3"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/SOURCE-MANIFEST.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/SOURCE-MANIFEST.json",
+      "bytes": 179,
+      "sha256": "0d0bbcbe957f056c001bd4e43754a4baf3bf58ed6580d22193790d604752f5f6"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/SOURCE.diff": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/SOURCE.diff",
+      "bytes": 2619,
+      "sha256": "1f201058b96d8d2f5f501b25a9ee0668207ebad7a36f14339d254c398e7027df"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/CHECK-SOURCE-BEFORE.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/CHECK-SOURCE-BEFORE.json",
+      "bytes": 39524,
+      "sha256": "019ee031a6969f2ec50a2f5fbe4da3cbcfd734fd00aada1920f1fc4d7ed67afa"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/CHECK-SOURCE-AFTER.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/CHECK-SOURCE-AFTER.json",
+      "bytes": 39524,
+      "sha256": "019ee031a6969f2ec50a2f5fbe4da3cbcfd734fd00aada1920f1fc4d7ed67afa"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/VIEW-MANIFEST.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/VIEW-MANIFEST.json",
+      "bytes": 113026,
+      "sha256": "9ad27254b438fd6cfa3cf8c42269cf200b819b412ac4864e9ea174d8fdd40e36"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/PREIMAGE-PATHS.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/PREIMAGE-PATHS.json",
+      "bytes": 18099,
+      "sha256": "06cf5e44233547f765aea7ee7f3e174fd54dbd87b40f78936c2d6049554ff497"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/run_checks.py": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/run_checks.py",
+      "bytes": 7189,
+      "sha256": "214def1d52cadb1c49af14fcc04c0f342534c21632507a44f180db6d53327502"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/controller.stdout": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/controller.stdout",
+      "bytes": 5013,
+      "sha256": "3daa00774a2f8e051674edf12942571cd50ef4a3f7ec8204ab8ac6f27d29eb37"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/controller.stderr": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/controller.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/actionlint.yaml": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/actionlint.yaml",
+      "bytes": 66,
+      "sha256": "66c85ddb58f2c3f98d1a7f8a4a9c80c4c4b8d1405c01ec2dc2a3a573d3e8949b"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/checkout-controls-PROCESS.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/checkout-controls-PROCESS.json",
+      "bytes": 506,
+      "sha256": "24994f4629091c93b7d685a6f01d5f12d993103e834266f6965fa55eb7374196"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/checkout-controls-RESULT.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/checkout-controls-RESULT.json",
+      "bytes": 684,
+      "sha256": "8df1d03c7097a31f8553930913004b133213897ae551ed023ba1e00e88f43581"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/checkout-controls.stdout": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/checkout-controls.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/checkout-controls.stderr": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/checkout-controls.stderr",
+      "bytes": 104,
+      "sha256": "eb9d5a9d95ac5dbac1d9ccdedf9b53bf67255e4843960e04be1702ff5de010ed"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/workflow-guard-PROCESS.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/workflow-guard-PROCESS.json",
+      "bytes": 536,
+      "sha256": "3285687fdbdfcbdb18f2d0a022f642203489a6624d59b7a51dadfe99d26a84c2"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/workflow-guard-RESULT.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/workflow-guard-RESULT.json",
+      "bytes": 712,
+      "sha256": "c6248382f8106a868f72855397d3149f8bf168fa5019a5ed6f42823fe0516f96"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/workflow-guard.stdout": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/workflow-guard.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/workflow-guard.stderr": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/workflow-guard.stderr",
+      "bytes": 98,
+      "sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/actionlint-configured-PROCESS.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/actionlint-configured-PROCESS.json",
+      "bytes": 516,
+      "sha256": "eae03a2f5b0455a8aa5aafa680393ec708be30d6466bcbe1b8ec05441c207737"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/actionlint-configured-RESULT.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/actionlint-configured-RESULT.json",
+      "bytes": 699,
+      "sha256": "f101f9f0b75c5d420b6c4a56bd95b7aeb5a5cfcf53d6689834dce03a80cdb875"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/actionlint-configured.stdout": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/actionlint-configured.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/actionlint-configured.stderr": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/actionlint-configured.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/actions-guard-PROCESS.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/actions-guard-PROCESS.json",
+      "bytes": 344,
+      "sha256": "510ee145ce500372d50f43d47dd52cf8da1fe7755335dfbd86d7882db08b2952"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/actions-guard-RESULT.json": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/actions-guard-RESULT.json",
+      "bytes": 518,
+      "sha256": "40a140d8b4349be1c44ac1515c790e7d60b6128ebd6da91e76ee35c436fa0351"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/actions-guard.stdout": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/actions-guard.stdout",
+      "bytes": 290,
+      "sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/actions-guard.stderr": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/actions-guard.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/before/native-common-image.yml": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/before/.github/workflows/native-common-image.yml",
+      "bytes": 22377,
+      "sha256": "b13e0f028728f6f2dbe1270befaebe6b6114764e5edc43dcf22821bbc2dc6d9c"
+    },
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/source/.github/workflows/native-common-image.yml": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/repair/source/.github/workflows/native-common-image.yml",
+      "bytes": 22380,
+      "sha256": "e5fb4b08d3e400158341788b704c8c653527216c0441b391d2b7f84142fbbc5c"
+    },
+    "new_publication_summary": {
+      "path": ".pm/w8/m91/evidence/common-checkout-hydration-budget-20261102/SUMMARY.json",
+      "bytes": 2390,
+      "sha256": "4e54cc411193557990177a941ab7e8f7094f85dc8419bf074ce67ca52114fd71"
+    }
+  },
+  "all_copied_regular_bytes_verified": true,
+  "failure_and_repair_raw_bodies_unchanged": true,
+  "no640view_bodies_no_oldartifact_bodies": true,
+  "repair_Git_commit_not_claimed": true,
+  "excludes_own_hash": true
+}

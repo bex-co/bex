@@ -1,0 +1,16 @@
+{
+  "label": "actions-guard",
+  "argv": [
+    "/usr/bin/sandbox-exec",
+    "-p",
+    "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+    "/bin/bash",
+    "scripts/github-actions-validate.sh"
+  ],
+  "exit": 0,
+  "bound": null,
+  "seconds": 1.7333610421046615,
+  "group_absent": true,
+  "stdout_sha256": "89e003c21c25c57fa3b70d0fea533e46d130a5a5dfa7dcb95f1d4efbe9c755b3",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

@@ -1,0 +1,12 @@
+{
+  "pid": 15796,
+  "pgid": 15796,
+  "argv": [
+    "/usr/bin/sandbox-exec",
+    "-p",
+    "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+    "/bin/bash",
+    "scripts/github-actions-validate.sh"
+  ],
+  "cwd": "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/view"
+}

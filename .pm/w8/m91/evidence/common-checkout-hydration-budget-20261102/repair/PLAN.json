@@ -1,0 +1,18 @@
+{
+  "scope": "Oneworkflowbudgetfix only; nohelper/Go/testprogram/selector/runtime/auth/proofchange",
+  "actualfailure": {
+    "run": 41449940993,
+    "job": 125292377874,
+    "source": "b067de3c83437c0066cbee428ab50c49f40f5125",
+    "exit": 124,
+    "initialcheckoutseconds": 8,
+    "hydrationGitdeadline": 180,
+    "utilityexecution": false
+  },
+  "rationale": "ActualcompletepacketGitoperationexceededintroduced180s; earlierfullcheckout493/523s.600sboundedGitwithkill10 fits12minstep evenwith2x30smetadatareads/reapergrace; planningjob15minunchanged. ActualIO/transportcauseunknown.",
+  "exact3steps": "Git600s;step12min",
+  "hostchecks": "Existing6checkoutcontrols+oneworkflowguard+configuredactionlint+Actionsguard; noGo/full153/unrelatedselftests repeated",
+  "source_manifest_sha256": "0d0bbcbe957f056c001bd4e43754a4baf3bf58ed6580d22193790d604752f5f6",
+  "source_301_count": 301,
+  "root_review": "Fullsixlinebudgetdiff and exactunchangedotherbytes reviewed beforeoneboundedhostattempt"
+}

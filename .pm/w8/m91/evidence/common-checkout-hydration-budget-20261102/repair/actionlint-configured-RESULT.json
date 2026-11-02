@@ -1,0 +1,20 @@
+{
+  "label": "actionlint-configured",
+  "argv": [
+    "/usr/bin/sandbox-exec",
+    "-p",
+    "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+    "/opt/homebrew/bin/actionlint",
+    "-shellcheck=",
+    "-pyflakes=",
+    "-config-file",
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/actionlint.yaml",
+    ".github/workflows/native-common-image.yml"
+  ],
+  "exit": 0,
+  "bound": null,
+  "seconds": 0.15841066697612405,
+  "group_absent": true,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

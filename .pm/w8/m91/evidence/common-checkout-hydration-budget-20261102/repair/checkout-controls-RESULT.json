@@ -1,0 +1,25 @@
+{
+  "label": "checkout-controls",
+  "argv": [
+    "/usr/bin/sandbox-exec",
+    "-p",
+    "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+    "/opt/homebrew/bin/python3.14",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    ".github/scripts",
+    "-p",
+    "test_native_oci_common_qualification.py",
+    "-k",
+    "CandidateCheckoutControls"
+  ],
+  "exit": 0,
+  "bound": null,
+  "seconds": 0.6261792909353971,
+  "group_absent": true,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "eb9d5a9d95ac5dbac1d9ccdedf9b53bf67255e4843960e04be1702ff5de010ed"
+}

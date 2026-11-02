@@ -1,0 +1,21 @@
+{
+  "pid": 15774,
+  "pgid": 15774,
+  "argv": [
+    "/usr/bin/sandbox-exec",
+    "-p",
+    "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+    "/opt/homebrew/bin/python3.14",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    ".github/scripts",
+    "-p",
+    "test_native_oci_common_qualification.py",
+    "-k",
+    "CandidateCheckoutControls"
+  ],
+  "cwd": "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/view"
+}

@@ -1,0 +1,23 @@
+{
+  "scope": "IMMUTABLE_GIT_SOURCE_PROJECTION_ONLY_NO_CI_OR_ARTIFACT_ACCEPTANCE",
+  "at": "2026-11-02T13:08:29.674167+00:00",
+  "source": "b067de3c83437c0066cbee428ab50c49f40f5125",
+  "source_files": 301,
+  "source_bytes": 2464575,
+  "helper_sha256": "ce5fb6d2fe6a4a3f203823a48f24785a93685c027f920c6f648d4fdb13f5d163",
+  "all33_imagecritical_files_equal_admitted_dc08_source": true,
+  "old_source": "dc08ae951f2be48f160b035890ced7335222a768",
+  "changed_qualification_paths_from_dc08": [
+    ".github/scripts/native-common-qualify.py",
+    ".github/scripts/test_native_oci_common_qualification.py",
+    ".github/workflows/native-common-image.yml",
+    "lego/operator/internal/build/nativebases_test.go",
+    "lego/operator/internal/build/nativecommon.go",
+    "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "lego/operator/internal/build/nativecommon_test.go"
+  ],
+  "physical_workingtree_or_ignored_paths_read": false,
+  "actualcodeexecuted_or_imported": false,
+  "Git_blob_id_and_regular_mode_and_fullSHA_verified": true
+}
