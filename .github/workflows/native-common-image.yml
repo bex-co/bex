@@ -199,7 +199,8 @@ jobs:
         env:
           QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
         run: python3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - id: buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
         timeout-minutes: 5
         with:
           name: ${{ steps.owned.outputs.owner }}
@@ -239,6 +240,7 @@ jobs:
         timeout-minutes: 5
         env:
           QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+          QUALIFICATION_BUILDX_SETUP_OUTCOME: ${{ steps.buildx.outcome }}
         run: python3 .github/scripts/native-common-qualify.py cleanup "$QUALIFICATION_ROOT"
       - name: hash retained successes and failures
         if: always() && steps.owned.outputs.root != ''
@@ -347,7 +349,8 @@ jobs:
         env:
           QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
         run: python3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - id: buildx
+        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
         timeout-minutes: 5
         with:
           name: ${{ steps.owned.outputs.owner }}
@@ -382,6 +385,7 @@ jobs:
         timeout-minutes: 5
         env:
           QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
+          QUALIFICATION_BUILDX_SETUP_OUTCOME: ${{ steps.buildx.outcome }}
         run: python3 .github/scripts/native-common-qualify.py cleanup "$QUALIFICATION_ROOT"
       - name: hash retained successes and failures
         if: always() && steps.owned.outputs.root != ''

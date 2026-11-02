@@ -8,6 +8,7 @@ import json
 import os
 from pathlib import Path
 import re
+import selectors
 import signal
 import shutil
 import subprocess
@@ -21,6 +22,7 @@ import uuid
 LABEL = "co.bex.native-qualification"
 OWNER = re.compile(r"bex-nq-[a-f0-9]{24}")
 IMAGE = re.compile(r"sha256:[a-f0-9]{64}")
+BOOTSTRAP_OUTPUT_LIMIT = 4 * 1024 * 1024
 
 
 def dump(path, value):
@@ -692,9 +694,55 @@ def owned_docker_config(root, inputs):
     return expected
 
 
-def pull_buildkit(command, environment, cancellation=None):
+def bounded_pull_output(process, deadline, cancellation, limit):
+    """Preserve every captured byte, with at most limit+1 bytes in both streams."""
+    buffers = {"stdout": bytearray(), "stderr": bytearray()}
+    total, bound, complete = 0, None, False
+    try:
+        with selectors.DefaultSelector() as ready:
+            for label in ("stdout", "stderr"):
+                stream = getattr(process, label)
+                os.set_blocking(stream.fileno(), False)
+                ready.register(stream, selectors.EVENT_READ, label)
+            while ready.get_map() or process.poll() is None:
+                if cancellation["signal"] is not None:
+                    bound = "cancelled"
+                    break
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    bound = "python-timeout"
+                    break
+                if not ready.get_map():
+                    time.sleep(min(.05, remaining))
+                    continue
+                for key, _ in ready.select(min(1, remaining)):
+                    try:
+                        body = os.read(key.fd, min(64 * 1024, limit + 1 - total))
+                    except BlockingIOError:
+                        continue
+                    if not body:
+                        ready.unregister(key.fileobj)
+                        continue
+                    buffers[key.data].extend(body)
+                    total += len(body)
+                    if total > limit:
+                        bound = "output-byte-limit"
+                        break
+                if bound is not None:
+                    break
+            complete = bound is None and not ready.get_map()
+    except BaseException as error:
+        # Keep the already captured prefix even on a read/selector error.
+        bound = "output-read-" + type(error).__name__
+    return bytes(buffers["stdout"]), bytes(buffers["stderr"]), bound, complete
+
+
+def pull_buildkit(command, environment, cancellation=None, output_limit=None):
     """Bound this pre-pull; signals only flag cancellation until its group is gone."""
     cancellation = cancellation if cancellation is not None else {"signal": None}
+    if output_limit is not None and (type(output_limit) is not int or output_limit <= 0):
+        raise ValueError("positive internal pull output limit required")
+    capture_complete = False
     previous = {}
     process = None
     bound = None
@@ -714,19 +762,31 @@ def pull_buildkit(command, environment, cancellation=None):
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                        env=environment, start_new_session=True)
             deadline = time.monotonic() + 195
-            while cancellation["signal"] is None:
-                remaining = deadline - time.monotonic()
-                if remaining <= 0:
-                    bound = "python-timeout"
-                    break
-                try:
-                    stdout, stderr = process.communicate(timeout=min(1, remaining))
-                    break
-                except subprocess.TimeoutExpired as error:
-                    stdout, stderr = error.output or stdout, error.stderr or stderr
+            if output_limit is not None:
+                stdout, stderr, bound, capture_complete = bounded_pull_output(
+                    process, deadline, cancellation, output_limit)
+            else:
+                while cancellation["signal"] is None:
+                    remaining = deadline - time.monotonic()
+                    if remaining <= 0:
+                        bound = "python-timeout"
+                        break
+                    try:
+                        stdout, stderr = process.communicate(timeout=min(1, remaining))
+                        break
+                    except subprocess.TimeoutExpired as error:
+                        stdout, stderr = error.output or stdout, error.stderr or stderr
     finally:
         try:
             if process is not None:
+                if output_limit is not None:
+                    # A stopped capture does not drain unbounded unread bytes.
+                    # All bytes already read remain in stdout/stderr and receipts.
+                    for stream in (process.stdout, process.stderr):
+                        try:
+                            stream.close()
+                        except OSError as error:
+                            bound = bound or "output-close-" + type(error).__name__
                 try:
                     os.killpg(process.pid, 0)
                     alive = True
@@ -742,7 +802,7 @@ def pull_buildkit(command, environment, cancellation=None):
                         pass
                     except PermissionError:
                         bound = "process-group-permission"
-                if bound is not None or process.returncode is None:
+                if output_limit is None and (bound is not None or process.returncode is None):
                     try:
                         stdout, stderr = process.communicate(timeout=5)
                     except subprocess.TimeoutExpired as error:
@@ -779,9 +839,13 @@ def pull_buildkit(command, environment, cancellation=None):
                 raise RuntimeError("BuildKit pull signal-handler restoration failed")
     if cancellation["signal"] is not None:
         bound = "cancelled"
-    return {"exit_code": process.returncode if process is not None else None, "bound": bound,
-            "cancel_signal": cancellation["signal"],
-            "direct_child_reaped": reaped, "process_group_absent": group_absent}, stdout, stderr
+    result = {"exit_code": process.returncode if process is not None else None, "bound": bound,
+              "cancel_signal": cancellation["signal"],
+              "direct_child_reaped": reaped, "process_group_absent": group_absent}
+    if output_limit is not None:
+        result.update(output_limit_bytes=output_limit, captured_output_bytes=len(stdout) + len(stderr),
+                      output_capture_complete=capture_complete)
+    return result, stdout, stderr
 
 
 def bootstrap(root):
@@ -807,14 +871,19 @@ def bootstrap(root):
     if not isinstance(image, str) or not re.fullmatch(r"moby/buildkit:v[0-9]+\.[0-9]+\.[0-9]+@sha256:[a-f0-9]{64}", image):
         raise ValueError("production BuildKit pin must be an immutable moby image")
     output_path = Path(os.environ["GITHUB_OUTPUT"])
-    command = ["timeout", "--kill-after=10s", "180s", "docker", "pull", "--quiet", image]
+    command = ["timeout", "--kill-after=10s", "180s", "docker", "pull", image]
     receipt = {"owner": owner, "image": image,
                "policy_path": "lego/operator/internal/build/toolchain-freshness.json",
                "policy_sha256": hashlib.sha256(policy_bytes).hexdigest(),
                "command": command, "maximum_attempts": 3, "retry_delay_seconds": 15,
-               "python_timeout_seconds": 195, "output_drain_seconds": 5,
+               "python_timeout_seconds": 195, "output_drain_seconds": 0,
+               "output_drain_policy": "EOF read under195s; stop closes pipes without an unbounded drain",
                "direct_child_wait_seconds": 1, "group_absence_wait_seconds": 5,
                "attempts": [], "image_output_emitted": False,
+               "combined_output_limit_bytes": BOOTSTRAP_OUTPUT_LIMIT,
+               "output_limit_scope": "all bootstrap attempts combined; at most limit+1 captured bytes",
+               "incomplete_capture_means": "all captured bytes retained; unread bytes after stop are not captured",
+               "captured_output_bytes": 0, "output_budget_exhausted": False,
                "scope": "bounded setup input only; no generated-runtime or acceptance claim"}
     receipt_path = root / "bootstrap.json"
     if receipt_path.exists() or receipt_path.is_symlink():
@@ -836,9 +905,13 @@ def bootstrap(root):
         for number in range(1, 4):
             if cancellation["signal"] is not None:
                 break
+            remaining_output = BOOTSTRAP_OUTPUT_LIMIT - receipt["captured_output_bytes"]
+            if remaining_output <= 0:
+                raise RuntimeError("BuildKit pull output budget exhausted; no retry or image output")
             started = datetime.datetime.now(datetime.timezone.utc).isoformat()
             try:
-                result, stdout, stderr = pull_buildkit(command, environment, cancellation)
+                result, stdout, stderr = pull_buildkit(
+                    command, environment, cancellation, output_limit=remaining_output)
                 attempt = {"number": number, "started_at": started,
                            "finished_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                            **result, "timeout_exit": result["exit_code"] in (124, 137)}
@@ -846,15 +919,18 @@ def bootstrap(root):
                 attempt = {"number": number, "started_at": started,
                            "finished_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                            "exit_code": None, "launch_error": type(error).__name__, "timeout_exit": False}
-                stdout, stderr = b"", type(error).__name__.encode()
+                # No subprocess stream exists on launch failure; keep its class above.
+                stdout, stderr = b"", b""
             for label, raw in (("stdout", stdout), ("stderr", stderr)):
                 path = root / ("bootstrap-" + str(number) + "." + label + ".log")
                 path.write_bytes(raw)
                 attempt[label] = {"path": path.name, "bytes": len(raw), "sha256": sha(path)}
             attempt["cancel_signal"] = cancellation["signal"]
             receipt["attempts"].append(attempt)
+            receipt["captured_output_bytes"] += len(stdout) + len(stderr)
+            receipt["output_budget_exhausted"] = receipt["captured_output_bytes"] >= BOOTSTRAP_OUTPUT_LIMIT
             dump(receipt_path, receipt)
-            # Keep the exact quiet-command diagnostics if artifact upload fails.
+            # Keep every captured bounded-command byte if artifact upload fails.
             # Never emit the environment or the isolated Docker config contents.
             print("BEX_BUILDKIT_PULL_ATTEMPT " + json.dumps({
                 "owner": owner, "image": image, "command": command,
@@ -864,6 +940,8 @@ def bootstrap(root):
             }), flush=True)
             if cancellation["signal"] is not None:
                 break
+            if (attempt.get("bound") or "").startswith("output-"):
+                raise RuntimeError("bounded BuildKit pull output capture stopped; no retry or image output")
             if (type(attempt["exit_code"]) is int and attempt["exit_code"] == 0
                     and attempt.get("bound") is None and attempt.get("direct_child_reaped") is True
                     and attempt.get("process_group_absent") is True):
@@ -871,6 +949,8 @@ def bootstrap(root):
                 break
             if attempt.get("process_group_absent") is False or attempt.get("direct_child_reaped") is False:
                 raise RuntimeError("bounded BuildKit pull cleanup incomplete; exact result retained")
+            if receipt["output_budget_exhausted"]:
+                raise RuntimeError("BuildKit pull output budget exhausted; no retry or image output")
             if number < 3:
                 # Preserve the15s delay while observing cancellation within1s.
                 for _ in range(15):
@@ -930,9 +1010,39 @@ def cleanup(root):
     try:
         # Stop this job's builder before enumerating its output images, so an
         # interrupted client cannot load another image after our final listing.
-        result = run(["buildx", "rm", owner], 60)
-        results.append({"resource": "builder", "identity": owner, "exit_code": result.returncode,
-                        "stdout": result.stdout, "stderr": result.stderr})
+        probes = []
+        # The fixed workflow has not invoked setup-buildx in this one branch.
+        # Reuse the reviewed docker-container driver's exact node/state names;
+        # an error or an unobserved resource is never an absence proof.
+        if os.environ.get("QUALIFICATION_BUILDX_SETUP_OUTCOME") == "skipped":
+            container = "buildx_buildkit_" + owner + "0"
+            for kind, name, missing in (
+                    ("container", container, (
+                        "Error response from daemon: No such container: " + container,
+                        "Error: No such container: " + container,
+                        "Error: No such object: " + container)),
+                    ("volume", container + "_state", (
+                        "Error response from daemon: get " + container + "_state: no such volume",
+                        "Error response from daemon: No such volume: " + container + "_state"))):
+                command = [kind, "inspect", "--format", "{{json .Name}}", name]
+                result = run(command, 10)
+                absent = (type(result.returncode) is int and result.returncode == 1
+                          and isinstance(result.stdout, str) and result.stdout.strip() in ("", "[]")
+                          and isinstance(result.stderr, str) and result.stderr.strip() in missing)
+                probes.append({"resource": kind, "identity": name, "command": ["docker", *command],
+                               "exit_code": result.returncode, "stdout": result.stdout,
+                               "stderr": result.stderr, "absence_proved": absent})
+        if len(probes) == 2 and all(row["absence_proved"] for row in probes):
+            results.append({"resource": "builder", "identity": owner, "exit_code": 0,
+                            "stdout": "", "stderr": "", "removal": "not-invoked",
+                            "state": "daemon-confirmed-absent-before-setup", "state_probes": probes})
+        else:
+            result = run(["buildx", "rm", owner], 60)
+            removal = {"resource": "builder", "identity": owner, "exit_code": result.returncode,
+                       "stdout": result.stdout, "stderr": result.stderr}
+            if probes:
+                removal["state_probes"] = probes
+            results.append(removal)
         for resource, listing, removal in (
                 ("container", ["ps", "-aq"], ["rm", "-f"]),
                 ("image", ["image", "ls", "-q"], ["image", "rm", "-f"])):
