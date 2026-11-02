@@ -1495,6 +1495,29 @@ type ImageDigestStatus struct {
 	Digest string `json:"digest"`
 }
 
+// RolloutFailureStatus is the structured cause of a failed rollout (w8/m146),
+// recorded when the operator settles it: the app container's last exit, read
+// from a current-revision pod, and the rollout budget when the deadline ended
+// it.
+type RolloutFailureStatus struct {
+	// Generation is the release generation whose rollout failed.
+	Generation int64 `json:"generation"`
+
+	// ExitCode is the app container's last non-zero exit code, if it exited.
+	// +optional
+	ExitCode *int32 `json:"exitCode,omitempty"`
+
+	// OOMKilled is true when the kernel killed the container for exceeding
+	// its memory limit.
+	// +optional
+	OOMKilled bool `json:"oomKilled,omitempty"`
+
+	// TimedOutSeconds is the rollout budget the release ran out of; zero when
+	// the rollout failed before its deadline (a startup crash).
+	// +optional
+	TimedOutSeconds int32 `json:"timedOutSeconds,omitempty"`
+}
+
 const (
 	AutoscalingTransitionStarted = "Started"
 	AutoscalingTransitionEnded   = "Ended"
@@ -1680,6 +1703,13 @@ type AppStatus struct {
 	// (static sites; cron jobs whose image is a tag).
 	// +optional
 	ImageDigest *ImageDigestStatus `json:"imageDigest,omitempty"`
+
+	// RolloutFailure is the structured cause of a release whose rollout failed
+	// (w8/m146): how its app container last exited, or the deadline it ran
+	// out of. bex-api reports it as Render's deploy_ended reason.failure.
+	// Attributed to the release generation, like ImageDigest.
+	// +optional
+	RolloutFailure *RolloutFailureStatus `json:"rolloutFailure,omitempty"`
 
 	// ProtectedImageTag is the live-<generation> tag the operator last pushed
 	// for the serving release's image in the in-cluster registry, which

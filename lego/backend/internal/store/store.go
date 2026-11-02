@@ -672,7 +672,7 @@ type Store interface {
 	// cancelReason (w4/089) is stored with the same transition when non-empty —
 	// pass it only alongside DeployCanceled from the reconciler's supersede or
 	// suspend close; deploys.Cancel / CloseDeploy leave it empty.
-	TransitionDeploy(ctx context.Context, id, status string, ran RanImage, failureReason, failureCode, cancelReason string, startedAt *time.Time) (bool, error)
+	TransitionDeploy(ctx context.Context, id, status string, ran RanImage, failureReason, failureCode, cancelReason string, startedAt *time.Time, end ...DeployEnd) (bool, error)
 	// DeployIDByGeneration returns the deploy id for appID at generation, or
 	// "" when none exists (w4/089 supersede naming). Newest wins if somehow
 	// multiple rows share a generation.
@@ -2337,6 +2337,22 @@ func supersededByReason(id string) string {
 	return "Superseded by " + id
 }
 
+// SupersedingDeployID is the newer deploy a cancel_reason names (w8/m146):
+// the id supersededByReason or restartCanceledReason wrote, or "" for any
+// other reason, a user cancel or a supersede whose deploy was unresolved.
+func SupersedingDeployID(cancelReason string) string {
+	rest, ok := strings.CutPrefix(cancelReason, "Superseded by ")
+	if !ok {
+		if rest, ok = strings.CutPrefix(cancelReason, "Canceled by restart "); ok {
+			rest, _, ok = strings.Cut(rest, ",")
+		}
+	}
+	if !ok || !strings.HasPrefix(rest, "dep-") || strings.ContainsAny(rest, " ,") {
+		return ""
+	}
+	return rest
+}
+
 // restartCanceledReason is the cancel_reason of a deploy a Restart ended, in
 // flight or pending. A Restart re-releases what is running, so it never carries
 // what the ended deploy was applying — saved changes, or a rollback's target;
@@ -2569,7 +2585,21 @@ type RanImage struct {
 	Commit string
 }
 
-func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran RanImage, failureReason, failureCode, cancelReason string, startedAt *time.Time) (bool, error) {
+// DeployEnd is the structured cause a failing close records (w8/m146), from
+// the operator's status.rolloutFailure for the row's release: the app
+// container's last non-zero exit, an OOM kill, and the rollout budget a
+// deadline close ran out of. The zero value records nothing.
+type DeployEnd struct {
+	ExitCode        *int32
+	OOMKilled       bool
+	TimedOutSeconds int32
+}
+
+func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran RanImage, failureReason, failureCode, cancelReason string, startedAt *time.Time, end ...DeployEnd) (bool, error) {
+	var ended DeployEnd
+	if len(end) > 0 {
+		ended = end[0]
+	}
 	transitioned := false
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		var appID, current string
@@ -2614,6 +2644,10 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 			     detected_http_port = CASE WHEN $2 = $11 AND $17 > 0 THEN $17 ELSE detected_http_port END,
 			     commit = CASE WHEN $2 = $11 AND commit = '' THEN $18::text ELSE commit END,
 			     failure_reason = COALESCE(NULLIF($6, ''), failure_reason),
+			     -- w8/m146: the structured cause of a failed rollout.
+			     end_exit_code = COALESCE($19, end_exit_code),
+			     end_oom_killed = end_oom_killed OR $20,
+			     end_timed_out_seconds = GREATEST(end_timed_out_seconds, $21),
 			     cancel_reason = COALESCE(NULLIF($8, ''), cancel_reason),
 			     -- A terminal row's story is failure_reason/cancel_reason; the
 			     -- in-flight stall observation is over, so clear it (w4/m112).
@@ -2632,7 +2666,8 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 			 WHERE id = $1`,
 			id, status, ran.Ref, stampNow, terminal, failureReason, DeployQueued, cancelReason, startedAt,
-			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled, DeployPreDeployFailed, PreDeployFailed, ran.SHA, ran.DetectedHTTPPort, ran.Commit); err != nil {
+			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled, DeployPreDeployFailed, PreDeployFailed, ran.SHA, ran.DetectedHTTPPort, ran.Commit,
+			ended.ExitCode, ended.OOMKilled, ended.TimedOutSeconds); err != nil {
 			return err
 		}
 		if status == DeployLive {

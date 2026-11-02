@@ -603,6 +603,88 @@ type Trigger struct {
 	DeployHook bool
 }
 
+// EndReason is Render's buildDeployEndReason on deploy_ended and build_ended
+// (w8/m146): at most one member, and an empty object when the deploy or build
+// ended for no recorded cause (a success, a user cancel).
+type EndReason struct {
+	BuildFailed *EndReasonID   `json:"buildFailed,omitempty"`
+	Failure     *FailureReason `json:"failure,omitempty"`
+	NewBuild    *EndReasonID   `json:"newBuild,omitempty"`
+	NewDeploy   *EndReasonID   `json:"newDeploy,omitempty"`
+}
+
+// EndReasonID is Render's buildDeployEndReasonID.
+type EndReasonID struct {
+	ID string `json:"id"`
+}
+
+// FailureReason is Render's failureReason, filled only from structured
+// operator facts (status.rolloutFailure), never from failureReason text.
+// Evicted is required in Render's schema.
+type FailureReason struct {
+	EarlyExit       *bool          `json:"earlyExit,omitempty"`
+	Evicted         bool           `json:"evicted"`
+	NonZeroExit     *int32         `json:"nonZeroExit,omitempty"`
+	OOMKilled       *OOMKilledInfo `json:"oomKilled,omitempty"`
+	TimedOutSeconds *int64         `json:"timedOutSeconds,omitempty"`
+}
+
+// OOMKilledInfo is Render's oomKilled object. bex does not record the limit
+// a container was killed at, so memoryLimit is present (Render requires it)
+// but empty, as on cron runs.
+type OOMKilledInfo struct {
+	MemoryLimit string `json:"memoryLimit"`
+}
+
+// deployEndReason maps an ended deploy row onto Render's reason (w8/m146):
+// a build failure names its build (bex's build is the deploy's own), a
+// supersede names the newer deploy, and an update_failed rollout reports the
+// operator's structured cause. A crash before the deadline is an early exit.
+func deployEndReason(r store.ServiceEventRow) *EndReason {
+	switch {
+	case r.Status == store.DeployBuildFailed:
+		return &EndReason{BuildFailed: &EndReasonID{ID: r.DeployID}}
+	case r.Status == store.DeployCanceled:
+		if id := store.SupersedingDeployID(r.CancelReason); id != "" {
+			return &EndReason{NewDeploy: &EndReasonID{ID: id}}
+		}
+	case r.Status == store.DeployUpdateFailed:
+		if f := failureFromEnd(r.End); f != nil {
+			return &EndReason{Failure: f}
+		}
+	}
+	return &EndReason{}
+}
+
+// buildEndReason is build_ended's reason: a build a newer deploy superseded
+// names that deploy's build, which in bex is the deploy itself.
+func buildEndReason(r store.ServiceEventRow) *EndReason {
+	if r.FactStatus == store.EventStatusCanceled {
+		if id := store.SupersedingDeployID(r.CancelReason); id != "" {
+			return &EndReason{NewBuild: &EndReasonID{ID: id}}
+		}
+	}
+	return &EndReason{}
+}
+
+func failureFromEnd(end store.DeployEnd) *FailureReason {
+	if end.ExitCode == nil && !end.OOMKilled && end.TimedOutSeconds == 0 {
+		return nil
+	}
+	f := &FailureReason{NonZeroExit: end.ExitCode}
+	if end.OOMKilled {
+		f.OOMKilled = &OOMKilledInfo{}
+	}
+	if end.TimedOutSeconds > 0 {
+		seconds := int64(end.TimedOutSeconds)
+		f.TimedOutSeconds = &seconds
+	} else {
+		early := true
+		f.EarlyExit = &early
+	}
+	return f
+}
+
 // Details is the per-type payload, a closed struct rather than a free-form map:
 // nothing can be attached to an event that this type does not already name, which
 // is the same structural reason a value cannot reach one. Fields are populated
@@ -635,6 +717,9 @@ type Details struct {
 	// replaced the deploy. Empty for user cancels. Distinct from FailureReason
 	// so clients can render it without error treatment.
 	CancelReason string
+	// EndReason is Render's buildDeployEndReason (w8/m146): always set on
+	// deploy_ended and build_ended (Render requires the field), nil elsewhere.
+	EndReason *EndReason
 	// StallReason is why an OPEN deploy is not progressing (w4/m112) — the
 	// operator's live diagnosis of the current revision's pods, carried on the
 	// deploy_started row while the deploy is in flight. An observation, not a
@@ -1055,6 +1140,7 @@ func view(r store.ServiceEventRow, service string) Event {
 				ev.Details.CancelReason = r.CancelReason
 				ev.Details.ReasonCode = r.ReasonCode
 			}
+			ev.Details.EndReason = deployEndReason(r)
 		}
 	case store.EventSourceAudit:
 		ev.Type = eventTypes[r.Verb]
@@ -1136,6 +1222,9 @@ func view(r store.ServiceEventRow, service string) Event {
 		}
 		ev.Details.ExitCode = r.FactExitCode
 		ev.Details.LeaderID = r.LeaderID
+		if ev.Type == TypeBuildEnded {
+			ev.Details.EndReason = buildEndReason(r)
+		}
 	}
 	return ev
 }
