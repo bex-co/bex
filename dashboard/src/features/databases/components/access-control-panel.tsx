@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useId } from "react";
 import { Loader2, Plus, Trash2, Eye } from "lucide-react";
 import {
   Card,
@@ -107,6 +107,7 @@ function AllowListSection({ access }: { access: Access }) {
 
 function UsersSection({ access }: { access: Access }) {
   const { t } = useTranslations();
+  const reservedId = useId();
   const [name, setName] = useState("");
   const [revealed, setRevealed] = useState<{
     name: string;
@@ -188,6 +189,7 @@ function UsersSection({ access }: { access: Access }) {
           placeholder="reporting"
           aria-label={t("databases.accessUserName")}
           aria-invalid={reserved}
+          aria-describedby={reserved ? reservedId : undefined}
           className="max-w-xs"
         />
         <Button
@@ -205,7 +207,7 @@ function UsersSection({ access }: { access: Access }) {
         </Button>
       </div>
       {reserved ? (
-        <p className="text-sm text-destructive">
+        <p id={reservedId} role="alert" className="text-sm text-destructive">
           {t("databases.fieldPhysicalNameReserved", { name: name.trim() })}
         </p>
       ) : null}

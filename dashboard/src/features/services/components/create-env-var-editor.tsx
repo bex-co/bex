@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Plus, Trash2, Sparkles } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
@@ -18,6 +19,8 @@ export function CreateEnvVarEditor({
   onChange: (rows: EnvVarEntry[]) => void;
 }) {
   const { t } = useTranslations();
+
+  const baseId = useId();
 
   function addRow() {
     onChange([...rows, { key: "", value: "" }]);
@@ -59,6 +62,9 @@ export function CreateEnvVarEditor({
                     placeholder={t("services.createFieldEnvVarsKeyPlaceholder")}
                     aria-label={t("services.createFieldEnvVarsKey")}
                     aria-invalid={keyInvalid}
+                    aria-describedby={
+                      keyInvalid ? `${baseId}-${i}-error` : undefined
+                    }
                     className="font-mono text-sm"
                   />
                   <AutoTextarea
@@ -90,7 +96,11 @@ export function CreateEnvVarEditor({
                   </Button>
                 </div>
                 {keyInvalid && (
-                  <p className="text-xs text-destructive">
+                  <p
+                    id={`${baseId}-${i}-error`}
+                    role="alert"
+                    className="text-xs text-destructive"
+                  >
                     {t("services.createFieldEnvVarsKeyError")}
                   </p>
                 )}

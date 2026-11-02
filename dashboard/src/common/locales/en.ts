@@ -39,6 +39,11 @@ const enCommon: Record<string, TranslationEntry> = {
     message: "Displays the mobile sidebar.",
     description: "Screen-reader description of the mobile navigation drawer.",
   },
+  "common.skipToMainContent": {
+    message: "Skip to main content",
+    description:
+      "Label of the first-tab skip link that moves keyboard focus past the sidebar and header to the page content.",
+  },
   "common.sidebarToggle": {
     message: "Toggle Sidebar",
     description:

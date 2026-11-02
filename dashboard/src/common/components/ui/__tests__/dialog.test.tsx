@@ -1,5 +1,11 @@
 import { afterEach, describe, it, expect } from "vitest";
-import { act, render, screen } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { useState } from "react";
 import i18n from "@/i18n/init";
@@ -162,5 +168,57 @@ describe("Dialog", () => {
       expect(screen.getByRole("dialog")).toBeInTheDocument();
       expect(screen.queryByRole("button", { name: "关闭" })).toBeNull();
     });
+  });
+});
+
+// w4/459: a controlled Dialog with no Trigger returns focus to its opener.
+describe("Dialog focus return", () => {
+  function Harness({ withTrigger = false }: { withTrigger?: boolean }) {
+    const [open, setOpen] = useState(false);
+    const [mounted, setMounted] = useState(true);
+    return (
+      <>
+        {mounted && <button onClick={() => setOpen(true)}>opener</button>}
+        <button onClick={() => setMounted(false)}>remove opener</button>
+        <Dialog open={open} onOpenChange={setOpen}>
+          {withTrigger && <span />}
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>Title</DialogTitle>
+              <DialogDescription>Body</DialogDescription>
+            </DialogHeader>
+          </DialogContent>
+        </Dialog>
+      </>
+    );
+  }
+
+  it("returns focus to the opener on Escape and on the close button", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    const opener = screen.getByRole("button", { name: "opener" });
+    for (const close of ["escape", "button"]) {
+      opener.focus();
+      await user.keyboard("{Enter}");
+      expect(screen.getByRole("dialog")).toBeInTheDocument();
+      if (close === "escape") await user.keyboard("{Escape}");
+      else await user.click(screen.getByRole("button", { name: /close/i }));
+      expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+      await waitFor(() => expect(opener, close).toHaveFocus());
+    }
+  });
+
+  it("does not force focus onto an opener that was removed", async () => {
+    const user = userEvent.setup();
+    render(<Harness />);
+    screen.getByRole("button", { name: "opener" }).focus();
+    await user.keyboard("{Enter}");
+    // Remove the opener while the dialog is open (programmatic, like a
+    // create that navigates away), then close.
+    fireEvent.click(screen.getByText("remove opener"));
+    await user.keyboard("{Escape}");
+    expect(screen.queryByRole("dialog")).not.toBeInTheDocument();
+    await new Promise((resolve) => setTimeout(resolve, 20));
+    expect(document.body).toHaveFocus();
   });
 });

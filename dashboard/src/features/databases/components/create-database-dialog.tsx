@@ -230,9 +230,14 @@ export function CreateDatabaseDialog({
               placeholder={t("databases.fieldNamePlaceholder")}
               autoComplete="off"
               aria-invalid={showNameError}
+              aria-describedby={showNameError ? "db-name-error" : undefined}
             />
             {showNameError ? (
-              <p className="text-sm text-destructive">
+              <p
+                id="db-name-error"
+                role="alert"
+                className="text-sm text-destructive"
+              >
                 {t("databases.fieldNameError")}
               </p>
             ) : null}
@@ -259,9 +264,16 @@ export function CreateDatabaseDialog({
                   placeholder={t("databases.fieldDatabaseNamePlaceholder")}
                   autoComplete="off"
                   aria-invalid={!databaseNameValid}
+                  aria-describedby={
+                    !databaseNameValid ? "db-database-name-error" : undefined
+                  }
                 />
                 {!databaseNameValid ? (
-                  <p className="text-sm text-destructive">
+                  <p
+                    id="db-database-name-error"
+                    role="alert"
+                    className="text-sm text-destructive"
+                  >
                     {databaseNameReserved
                       ? t("databases.fieldPhysicalNameReserved", {
                           name: databaseName,
@@ -281,9 +293,16 @@ export function CreateDatabaseDialog({
                   placeholder={t("databases.fieldDatabaseUserPlaceholder")}
                   autoComplete="off"
                   aria-invalid={!databaseUserValid}
+                  aria-describedby={
+                    !databaseUserValid ? "db-database-user-error" : undefined
+                  }
                 />
                 {!databaseUserValid ? (
-                  <p className="text-sm text-destructive">
+                  <p
+                    id="db-database-user-error"
+                    role="alert"
+                    className="text-sm text-destructive"
+                  >
                     {databaseUserReserved
                       ? t("databases.fieldPhysicalNameReserved", {
                           name: databaseUser,
@@ -380,7 +399,11 @@ export function CreateDatabaseDialog({
                 </p>
               ) : null}
               {showDiskError ? (
-                <p id="db-disk-error" className="text-sm text-destructive">
+                <p
+                  id="db-disk-error"
+                  role="alert"
+                  className="text-sm text-destructive"
+                >
                   {t("databases.fieldDiskError", {
                     min: diskFloor,
                     max: diskCeiling,
