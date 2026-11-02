@@ -147,3 +147,57 @@ func TestFailedCloseRecordsNoImageDigest(t *testing.T) {
 		t.Fatalf("second deploy = %q sha %q, want a failed close with no digest", second.Status, second.ImageSHA)
 	}
 }
+
+// w4/458: a source-built deploy whose trigger-time commit lookup recorded
+// nothing takes the commit its image was built from when it goes live, and a
+// commit already recorded is never replaced.
+func TestLiveCloseBackfillsAMissingCommitFromTheBuiltImage(t *testing.T) {
+	const built = "7730772a1b2c3d4e5f60718293a4b5c6d7e8f901"
+	for _, tc := range []struct {
+		name     string
+		recorded string
+		repo     string
+		image    string // ImageRevision.Image
+		want     string
+	}{
+		{"lookup failed", "", "https://github.com/acme/web", "reg/acme/web:1", built},
+		{"recorded commit kept", "aaaaaaa1", "https://github.com/acme/web", "reg/acme/web:1", "aaaaaaa1"},
+		{"label cached for another image", "", "https://github.com/acme/web", "reg/acme/web:0", ""},
+		{"image-backed service stays commitless", "", "", "reg/acme/web:1", ""},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			rec, st, cl := newTestReconciler(t)
+			ten, _ := st.CreateTenant(ctx, "acme", "free")
+			row, _ := st.CreateApp(ctx, App{TenantID: ten.ID, Name: "web", Image: "docker.io/acme/web:latest", Repo: tc.repo, Port: 80, Replicas: 1, Tier: "free"})
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatal(err)
+			}
+			history, _ := st.ListDeploys(ctx, row.ID, DeployFilter{})
+			open := history[0]
+			if tc.recorded != "" {
+				if m, ok := any(st).(*memStore); ok {
+					m.mu.Lock()
+					d := m.deploys[open.ID]
+					d.Commit = tc.recorded
+					m.deploys[open.ID] = d
+					m.mu.Unlock()
+				}
+			}
+			app := getApp(t, cl)
+			app.Status.Phase, app.Status.ReleaseGeneration, app.Status.ActiveRevision = appv1alpha1.PhaseRunning, open.Generation, fmt.Sprintf("rev-%d", open.Generation)
+			app.Status.Image, app.Status.Conditions = "reg/acme/web:1", nil
+			app.Status.ImageRevision = &appv1alpha1.ImageRevisionStatus{Image: tc.image, Commit: built}
+			if err := cl.Status().Update(ctx, app); err != nil {
+				t.Fatal(err)
+			}
+			if err := rec.ReconcileOnce(ctx); err != nil {
+				t.Fatal(err)
+			}
+			got, _ := st.GetDeploy(ctx, row.ID, open.ID)
+			if got.Status != DeployLive || got.Commit != tc.want {
+				t.Fatalf("deploy = %q commit %q, want live with commit %q", got.Status, got.Commit, tc.want)
+			}
+		})
+	}
+}
