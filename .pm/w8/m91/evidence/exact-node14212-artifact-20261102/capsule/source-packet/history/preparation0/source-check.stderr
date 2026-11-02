@@ -1,0 +1,19 @@
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/exact_linux_review.py", line 169, in <module>
+    if __name__=='__main__':main()
+                            ~~~~^^
+  File "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/exact_linux_review.py", line 150, in main
+    lc.require(args.plan.stat().st_size<=256<<10,'fixed plan bound');plan=json.loads(args.plan.read_bytes());validate_plan(plan,resources=True)
+                                                                                                             ~~~~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/exact_linux_review.py", line 45, in validate_plan
+    candidate_inputs(plan)
+    ~~~~~~~~~~~~~~~~^^^^^^
+  File "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/exact_linux_review.py", line 38, in candidate_inputs
+    projection=rest_projection(plan)
+  File "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/exact_linux_review.py", line 35, in rest_projection
+    lc.require(len(chosen)==1 and json.loads(read_ref(plan['ci_inputs']['job']))==chosen[0],'actual publisher job member differs')
+    ~~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/linux_cosign.py", line 25, in require
+    if not ok:raise Refusal(reason)
+              ^^^^^^^^^^^^^^^^^^^^^
+linux_cosign.Refusal: actual publisher job member differs

@@ -1,0 +1,5 @@
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-e6-utility-intake-20261102-c40h5x0g/audit.py", line 143, in <module>
+    check(job['head_sha'] == SOURCE and job['run_attempt'] == 1 and job['conclusion'] == 'success', 'actual successful job differs')
+          ~~~^^^^^^^^^^^^
+KeyError: 'head_sha'

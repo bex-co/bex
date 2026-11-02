@@ -1,0 +1,5 @@
+{
+  "initial_sourcecheck": "Failed before resources because exact jobmember record is a {method,job} wrapper, not rawjob. Original wrapperbytes/method remain retained; corrected extraction explicitly validates fullcollection membership and retains truthful projection.",
+  "initial8controls": "7PASS+1 missing PLAN-PENDING supportfixture. Copied exact original pendingfixture; no test/oracle changes.",
+  "history": "Original failed logs/source retained under history/preparation0."
+}

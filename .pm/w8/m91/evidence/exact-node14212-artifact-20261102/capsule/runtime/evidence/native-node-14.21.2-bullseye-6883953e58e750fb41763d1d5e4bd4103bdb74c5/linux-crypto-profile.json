@@ -1,0 +1,8 @@
+{
+  "binary_sha256": "ade83b7aac62e131cacfe96d958948b2150cc9efec46a570a2649b8e27dedad2",
+  "cached_image_id": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+  "maximum_live_containers": 1,
+  "per_container_memory_bytes": 536870912,
+  "raw_process_commands": "actual Docker argv, no projected native invocation",
+  "strict_bundle_flags_report_blob_methods": "unchanged retained V11"
+}

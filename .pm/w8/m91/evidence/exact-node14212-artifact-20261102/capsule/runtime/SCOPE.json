@@ -1,0 +1,51 @@
+{
+  "candidate_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7",
+  "capacity_semantics": "Operating entry/observation limits, no kernel reservation or future-allocation guarantee; no prior supplier acceptance.",
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python",
+    "-B",
+    "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/exact_linux_review.py",
+    "review",
+    "--plan",
+    "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/PLAN.json",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--output-root",
+    "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence",
+    "--cache-root",
+    "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/cache",
+    "--lifecycle-root",
+    "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd",
+    "--docker-config",
+    "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/anonymous-docker-config",
+    "--owner",
+    "bc0691bfa23bce98"
+  ],
+  "container_name": "bex-w8-common499-cosign-bc0691bfa23bce98",
+  "crypto_memory_bytes": 536870912,
+  "generator": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "layer_workers": 1,
+  "maximum_live_crypto_containers": 1,
+  "owned_cap_bytes": 671088640,
+  "owner": "bc0691bfa23bce98",
+  "parent_pid": 3810,
+  "plan_sha256": "8e5cef559d8b2775864b3393178e0f2bea1d266a86fec23c36b4a15cba89948a",
+  "producer": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "remaining_floor_bytes": 1207959552,
+  "sizing_inputs": {
+    "bundles": {
+      "bytes": 2031,
+      "path": "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/bundle-sizing/bundles.json",
+      "sha256": "eb6d0a51479433b481d41c6f20666f1826a067171b82d02e35c9d0f89b3fa81c"
+    },
+    "layers": {
+      "bytes": 4468,
+      "path": "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/layers.json",
+      "sha256": "27e7483e02558930fc8b0b154601df8cce16b16e8ba32c7350216dc6fad27a7a"
+    }
+  },
+  "source_manifest_sha256": "9c56a377788ad6c914c25a4956f2fb95cd0a74832607c16864e25381f8ada243",
+  "start_free_bytes": 35372077056,
+  "stop_owned_bytes": 637534208,
+  "verification": "6883953e58e750fb41763d1d5e4bd4103bdb74c5"
+}

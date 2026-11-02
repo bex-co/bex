@@ -1,0 +1,61 @@
+{
+  "cancelled_signal": null,
+  "candidate_approved": true,
+  "container_cleanup": {
+    "absence_proved": true,
+    "after": {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-w8-common499-cosign-bc0691bfa23bce98"
+      ],
+      "complete": true,
+      "exit": 1,
+      "stderr": "Error response from daemon: No such container: bex-w8-common499-cosign-bc0691bfa23bce98\n",
+      "stdout": "[]\n"
+    },
+    "before": {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-w8-common499-cosign-bc0691bfa23bce98"
+      ],
+      "complete": true,
+      "exit": 1,
+      "stderr": "Error response from daemon: No such container: bex-w8-common499-cosign-bc0691bfa23bce98\n",
+      "stdout": "[]\n"
+    },
+    "container_id": null,
+    "errors": [],
+    "name": "bex-w8-common499-cosign-bc0691bfa23bce98",
+    "owner": "bc0691bfa23bce98",
+    "remove": null
+  },
+  "errors": [],
+  "exit": 0,
+  "final_observation": {
+    "free": 35047120896,
+    "global_drop": 324956160,
+    "log": 10767,
+    "owned": 329123944,
+    "seconds": 163.72186487494037
+  },
+  "generator": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "minimum_free": 34912030720,
+  "peak_owned_bytes": 329123944,
+  "process_cleanup": {
+    "exit": 0,
+    "group_absent": true,
+    "pgid": 3850,
+    "pid": 3850,
+    "reaped": true
+  },
+  "producer": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "receipt": "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/receipt.json",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7",
+  "scope": "Exact14.21.2 complete supplier review only if all inherited cryptographic/report/blob and source/CI plus owned execution gates pass. No production/generated/phase/hosted authority.",
+  "stop": null,
+  "verification": "6883953e58e750fb41763d1d5e4bd4103bdb74c5"
+}

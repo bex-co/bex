@@ -1,0 +1,88 @@
+--- current/.github/native-common-test-candidate.json
++++ proposal/.github/native-common-test-candidate.json
+@@ -48,56 +48,56 @@
+       }
+     },
+     "source": {
+-      "sha": "1feba939b4697894e800ed0abb4f25a0bf415641",
++      "sha": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+       "manifest": {
+-        "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact/qualification-source.json",
+-        "sha256": "367614dfe0806cbd99efa4145150960c0b2453bccba764d54e7a7fb9557f2a4d",
+-        "bytes": 75098
++        "path": ".pm/w8/m91/evidence/common-current-e6-20261102/utilities/amd64/artifact/qualification-source.json",
++        "sha256": "93ddad03ea33d488421cdba43cf982b5c2cccef25adf9eb574722325dfc22f43",
++        "bytes": 75099
+       }
+     },
+     "utilities": {
+       "amd64": {
+-        "run_id": 41341287851,
++        "run_id": 41368533416,
+         "run_attempt": 1,
+-        "job_id": 124958175523,
+-        "artifact_id": 13098498438,
++        "job_id": 125034380829,
++        "artifact_id": 13109047013,
+         "artifact_metadata": {
+-          "path": ".pm/w8/m91/evidence/common-current0941-20261101/utility-metadata/amd64-artifact.json",
+-          "sha256": "e493ab10fbc44c171621dfc7853c860fb41bd6167f3ceffb417f02e9a38fc2d7",
+-          "bytes": 747
++          "path": ".pm/w8/m91/evidence/common-current-e6-20261102/utility-metadata/amd64-artifact.json",
++          "sha256": "9e4139c649893683d3535af1896bed6aec9fcdd7c46dc1ac21b6b806d2fb6147",
++          "bytes": 796
+         },
+         "metadata": {
+-          "path": ".pm/w8/m91/evidence/common-current0941-20261101/publication/jobs.json",
+-          "sha256": "9d796266474e3c224e93fa1407f2f3020cd7cf07e9409a3bcf0f85ce7653b6de",
+-          "bytes": 18959
++          "path": ".pm/w8/m91/evidence/common-current-e6-20261102/metadata/jobs-final.json",
++          "sha256": "6abca15294e0ef2a67a040c3dec52cfae605a83163699d7c11664872a3175f99",
++          "bytes": 12126
+         },
+-        "root": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact",
++        "root": ".pm/w8/m91/evidence/common-current-e6-20261102/utilities/amd64/artifact",
+         "manifest": {
+-          "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/amd64/artifact/MANIFEST.json",
+-          "sha256": "5d238f9dca9333496a556ea261b50d5b492fbbc7fcf145d12c210261ae9d6939",
++          "path": ".pm/w8/m91/evidence/common-current-e6-20261102/utilities/amd64/artifact/MANIFEST.json",
++          "sha256": "f10b127f80d59db282ab2c56083b8ba57abd95eea9d830f099830961667245ae",
+           "bytes": 79609
+         }
+       },
+       "arm64": {
+-        "run_id": 41341287851,
++        "run_id": 41368533416,
+         "run_attempt": 1,
+-        "job_id": 124958175538,
+-        "artifact_id": 13098737409,
++        "job_id": 125034380823,
++        "artifact_id": 13109435888,
+         "artifact_metadata": {
+-          "path": ".pm/w8/m91/evidence/common-current0941-20261101/utility-metadata/arm64-artifact.json",
+-          "sha256": "525e9725e5b181d0f948bb7b94e5b0f1987f03c7789340710d50faf987f7af49",
+-          "bytes": 747
++          "path": ".pm/w8/m91/evidence/common-current-e6-20261102/utility-metadata/arm64-artifact.json",
++          "sha256": "822375bdc768053fb484fa1595baf8ada5005c7caafeb6022d7906fae659ce1f",
++          "bytes": 796
+         },
+         "metadata": {
+-          "path": ".pm/w8/m91/evidence/common-current0941-20261101/publication/jobs.json",
+-          "sha256": "9d796266474e3c224e93fa1407f2f3020cd7cf07e9409a3bcf0f85ce7653b6de",
+-          "bytes": 18959
++          "path": ".pm/w8/m91/evidence/common-current-e6-20261102/metadata/jobs-final.json",
++          "sha256": "6abca15294e0ef2a67a040c3dec52cfae605a83163699d7c11664872a3175f99",
++          "bytes": 12126
+         },
+-        "root": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/arm64/artifact",
++        "root": ".pm/w8/m91/evidence/common-current-e6-20261102/utilities/arm64/artifact",
+         "manifest": {
+-          "path": ".pm/w8/m91/evidence/common-current0941-20261101/utilities/arm64/artifact/MANIFEST.json",
+-          "sha256": "135fc4faab166112ce13dac1f7adab0cba95c8e63633a915a307fa8fed05f61c",
+-          "bytes": 79299
++          "path": ".pm/w8/m91/evidence/common-current-e6-20261102/utilities/arm64/artifact/MANIFEST.json",
++          "sha256": "9e990109530936ab2deda2ab556628fbfb88bbaa75b40c3b34b5519c99015e86",
++          "bytes": 79645
+         }
+       }
+     }

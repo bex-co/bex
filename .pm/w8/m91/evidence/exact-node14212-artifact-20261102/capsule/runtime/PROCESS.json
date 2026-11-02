@@ -1,0 +1,24 @@
+{
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python",
+    "-B",
+    "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/exact_linux_review.py",
+    "review",
+    "--plan",
+    "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/PLAN.json",
+    "--repo-root",
+    "/Users/tianpan/projects/bex7",
+    "--output-root",
+    "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence",
+    "--cache-root",
+    "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/cache",
+    "--lifecycle-root",
+    "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd",
+    "--docker-config",
+    "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/anonymous-docker-config",
+    "--owner",
+    "bc0691bfa23bce98"
+  ],
+  "pgid": 3850,
+  "pid": 3850
+}

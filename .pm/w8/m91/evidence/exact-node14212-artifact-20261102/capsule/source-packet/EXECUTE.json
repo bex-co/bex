@@ -1,0 +1,27 @@
+{
+  "command": [
+    "/private/tmp/bex7-native-acceptance-novb586u/venv/bin/python",
+    "-B",
+    "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/run_review.py",
+    "run",
+    "--root",
+    "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd",
+    "--plan",
+    "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/PLAN.json",
+    "--plan-sha",
+    "8e5cef559d8b2775864b3393178e0f2bea1d266a86fec23c36b4a15cba89948a",
+    "--source-manifest-sha",
+    "9c56a377788ad6c914c25a4956f2fb95cd0a74832607c16864e25381f8ada243"
+  ],
+  "not_executed": true,
+  "requires_Root_concrete_source_plan_review_before_actual": true,
+  "runtime_root_proposal": "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd",
+  "initial_resource_requirement": {
+    "outer_floor_plus_fullcap_bytes": 1879048192,
+    "retained_V11_stronger_layer_free_reserve": 2147483648,
+    "layer_workers": 1,
+    "crypto_containers": 1,
+    "crypto_memory_bytes": 536870912
+  },
+  "remaining_scope": "ONE published exactNode14.21.2 supplier; no adoption/repo/PM action"
+}

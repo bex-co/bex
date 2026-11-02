@@ -1,0 +1,28 @@
+{
+  "scope": "Pure local unchanged-helper validation. No CI invocation, signature rerun, API/auth/Docker/Go/production or repository mutation. GITHUB_SHA is an explicit validator control input, not a fabricated actual-CI process receipt.",
+  "source": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+  "source_paths": 300,
+  "private_view": "/private/tmp/bex-w8-e6-utility-intake-20261102-c40h5x0g/baseline-proposal/clean-validation-z76nig2_",
+  "result": "IMAGE_AND_FULL_CURRENT_BASELINE_PASS",
+  "tracked_source_bytes": 2383417,
+  "local_validator_GITHUB_SHA": "1e6edd53064bc678247aa6680fff0f1f010d0a63",
+  "source_inventory_equal": true,
+  "image_input_count": 33,
+  "retained_private_evidence_links": 1774,
+  "retained_private_evidence_copies": 0,
+  "validation": {
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+    "producer": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "verification": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "generator_source": "1e6edd53064bc678247aa6680fff0f1f010d0a63",
+    "baseline_status": "current-complete",
+    "utility_source": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+    "architectures": [
+      "amd64",
+      "arm64"
+    ]
+  },
+  "helper_sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+  "candidate_sha256": "ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426",
+  "owned_validation_view_removed": true
+}

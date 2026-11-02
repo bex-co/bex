@@ -1,0 +1,65 @@
+{
+  "at": "2026-11-02T01:19:27.363719+00:00",
+  "scope": "PRIVATE reviewedimage CURRENTutilitybaseline update proposal only; no repoapply/productionadoption/hostedauthorization",
+  "source_baseline": {
+    "sha": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+    "manifest": {
+      "path": ".pm/w8/m91/evidence/common-current-e6-20261102/utilities/amd64/artifact/qualification-source.json",
+      "sha256": "93ddad03ea33d488421cdba43cf982b5c2cccef25adf9eb574722325dfc22f43",
+      "bytes": 75099
+    }
+  },
+  "utilities": {
+    "amd64": {
+      "run_id": 41368533416,
+      "run_attempt": 1,
+      "job_id": 125034380829,
+      "artifact_id": 13109047013,
+      "artifact_metadata": {
+        "path": ".pm/w8/m91/evidence/common-current-e6-20261102/utility-metadata/amd64-artifact.json",
+        "sha256": "9e4139c649893683d3535af1896bed6aec9fcdd7c46dc1ac21b6b806d2fb6147",
+        "bytes": 796
+      },
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-current-e6-20261102/metadata/jobs-final.json",
+        "sha256": "6abca15294e0ef2a67a040c3dec52cfae605a83163699d7c11664872a3175f99",
+        "bytes": 12126
+      },
+      "root": ".pm/w8/m91/evidence/common-current-e6-20261102/utilities/amd64/artifact",
+      "manifest": {
+        "path": ".pm/w8/m91/evidence/common-current-e6-20261102/utilities/amd64/artifact/MANIFEST.json",
+        "sha256": "f10b127f80d59db282ab2c56083b8ba57abd95eea9d830f099830961667245ae",
+        "bytes": 79609
+      }
+    },
+    "arm64": {
+      "run_id": 41368533416,
+      "run_attempt": 1,
+      "job_id": 125034380823,
+      "artifact_id": 13109435888,
+      "artifact_metadata": {
+        "path": ".pm/w8/m91/evidence/common-current-e6-20261102/utility-metadata/arm64-artifact.json",
+        "sha256": "822375bdc768053fb484fa1595baf8ada5005c7caafeb6022d7906fae659ce1f",
+        "bytes": 796
+      },
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-current-e6-20261102/metadata/jobs-final.json",
+        "sha256": "6abca15294e0ef2a67a040c3dec52cfae605a83163699d7c11664872a3175f99",
+        "bytes": 12126
+      },
+      "root": ".pm/w8/m91/evidence/common-current-e6-20261102/utilities/arm64/artifact",
+      "manifest": {
+        "path": ".pm/w8/m91/evidence/common-current-e6-20261102/utilities/arm64/artifact/MANIFEST.json",
+        "sha256": "9e990109530936ab2deda2ab556628fbfb88bbaa75b40c3b34b5519c99015e86",
+        "bytes": 79645
+      }
+    }
+  },
+  "actual_image_ref_unchanged": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "actual_image_producer_verifier_unchanged": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "image_approval_fields_unchanged": true,
+  "preserves": "Every712originalartifactmember,fullrawgzipSPDX+Syft,wheels,programs/data/oracles/commands/300source; old1feba/688/ea937 histories remainhistorical andunchanged.",
+  "current_source_equivalence": "Both actuale6 captured300files byte/mode/setmatch currentfunctionalGit source (PM/deploypin-only descendants allowedbyexistingexactsourcecomparison); no sourceSHArelabel.",
+  "private_ZIPs": "Both fullZIPs remainprivate with actualRESTdigest/download/extractionreceipts. Publicproposal copies alloriginalmembers, not duplicateZIPbodies.",
+  "required_next": "Rootreview then copylisted evidence/candidate; existinghelperclean-contextvalidation recorded separately. This is testcandidatebaseline authority only, not an adopted productionpin or allfamily/predeploy/original28PASS."
+}

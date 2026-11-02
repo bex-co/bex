@@ -1,0 +1,103 @@
+{
+  "at": "2026-11-02T01:07:34.498159+00:00",
+  "state": "PREPARED_POPULATED_EXACT14212_LINUX_V11_SOURCE_ONLY",
+  "name": "node-14.21.2-bullseye",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7",
+  "source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "run": 41360577241,
+  "job": 125010454454,
+  "official_base": "node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12",
+  "PLAN": {
+    "bytes": 9046,
+    "sha256": "8e5cef559d8b2775864b3393178e0f2bea1d266a86fec23c36b4a15cba89948a"
+  },
+  "source_manifest": {
+    "bytes": 849,
+    "sha256": "9c56a377788ad6c914c25a4956f2fb95cd0a74832607c16864e25381f8ada243"
+  },
+  "source_components": {
+    "exact_linux_review.py": {
+      "bytes": 15017,
+      "sha256": "503dc06841582a1aee2ca8da3c62fb82f25edf64564fd434a591870270cac17e"
+    },
+    "linux_cosign.py": {
+      "bytes": 13213,
+      "sha256": "edf0c3235c1b7ade5d178f364b99b255edad5a0c75c1e01c80c59a5396e1b5be"
+    },
+    "run_review.py": {
+      "bytes": 10212,
+      "sha256": "5585dc89bcf108f46f8c18a3d6cc05868dab541477ca93168f358cdefd535eda"
+    },
+    "exact-node-v11-adapter.py": {
+      "bytes": 10722,
+      "sha256": "eb7a32be7a8f02fd9c629b29190225818020772b5f4920f210998bee8897475f"
+    },
+    "retained/loopx-w8-native-review-v11.py": {
+      "bytes": 43608,
+      "sha256": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85"
+    },
+    "retained/loopx-w8-verify-native-artifact-ranged.py": {
+      "bytes": 40720,
+      "sha256": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+    }
+  },
+  "actual_sizing": {
+    "config_layer_descriptors": 39,
+    "compressed_config_and_layer_bytes": 1240078073,
+    "largest_descriptor_bytes": 196895515,
+    "bundle_descriptors": 5,
+    "full_bundle_payload_bytes": 252033295,
+    "largest_bundle_payload_bytes": 91938835,
+    "referrer_index_sha256": "88cadf39529408371f8e39ea8ffc40c997e9b632ba938847a4e2d9a28e0f91eb",
+    "raw_bundle_metadata_docs": 6,
+    "no_bundle_report_or_layer_body_reads": true,
+    "known_bundle_plus_largest_layer_bytes": 448928810,
+    "not_peak_or_reservation_claim": true
+  },
+  "reuse": {
+    "linux_cosign_byteexact": true,
+    "strict_inner_command_and_verify_command_AST_exact": true,
+    "retained_exact_adapter_and_driver_ranged_byteexact": true,
+    "unchanged_V11_methods_inherited_by_identity": 18,
+    "existing_exact_metadata_tightening_retains_original_super_gate": true,
+    "common499_row_or_factory_rules_used": false,
+    "outer_lifecycle_bounds_original_except_literal_candidate_source_name_path_rebind": true
+  },
+  "checks": {
+    "original8_exact_hostcontrols": "PASS2.660s",
+    "source30_actualCI_and_sizing": "PASS",
+    "inert_strict_method_AST_and_outer_manifest_bounds": "PASS",
+    "new_verifier_framework": false
+  },
+  "resources": {
+    "owned_file_cap": 671088640,
+    "stop_owned": 637534208,
+    "remaining_floor": 1207959552,
+    "outer_interval_seconds": 1,
+    "whole_seconds": 5400,
+    "parent_log_bytes": 8388608,
+    "layer_file_budget_unchanged": 2147483648,
+    "retained_driver_layer_free_reserve_unchanged": 2147483648,
+    "crypto_container_bytes": 536870912,
+    "max_live_crypto_containers": 1,
+    "layer_workers": 1
+  },
+  "actual_actions": {
+    "approved_metadata_only_bundle_descriptor_sizing": true,
+    "Docker_containers_crypto_bundlepayload_layers": false,
+    "repo_PM_or_pin_writes": false
+  },
+  "candidate_approved": false,
+  "execution": {
+    "bytes": 1082,
+    "sha256": "d736dda3d63e1a9bad46adf98f1f1c2c0533708f0ba2e8c7ff71177c43b95c6f"
+  },
+  "limits": [
+    "ActualfullV11 remains unexecuted until Rootreads this concretepacket/plan and authorizes once.",
+    "All retained cryptographic/RekorV2/TSA/wrongsource/subject/fullreports/fullblob/ancestry/source/CI gates remain intact; no zero-findings/adoption claim.",
+    "ActualRoot4.195s layer metadata sizing and this six-document bundle descriptor sizing are metadata only.",
+    "Original Linux transport retains legacy common499 container-name prefix byteexact; actual source/ref/name/process argv remain explicit in fresh scope/receipts.",
+    "Same outercap policy with original stronger2GiB V11 layer free reserve; capacity bounds are observations/stops, not reservations or peak-size guarantees.",
+    "Initial own sourcecheck jobwrapper mismatch and missing pendingplan fixture errors retained under history/preparation0; no original input/source/test modified."
+  ]
+}

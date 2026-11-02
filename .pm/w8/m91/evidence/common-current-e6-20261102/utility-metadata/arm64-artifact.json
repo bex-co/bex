@@ -1,0 +1,20 @@
+{
+  "id": 13109435888,
+  "node_id": "MDg6QXJ0aWZhY3QxMzEwOTQzNTg4OA==",
+  "name": "common-generated-e6a2386101a78d679f729b7ec0d251373c0aa678-arm64-1",
+  "size_in_bytes": 79101406,
+  "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13109435888",
+  "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13109435888/zip",
+  "expired": false,
+  "digest": "sha256:3035f99c32a63c941386a74d9485493f3c3aa2a13c64e5069cba6d2802486ba6",
+  "created_at": "2026-11-02T01:12:55Z",
+  "updated_at": "2026-11-02T01:12:55Z",
+  "expires_at": "2026-12-02T01:12:49Z",
+  "workflow_run": {
+    "id": 41368533416,
+    "repository_id": 793852040,
+    "head_repository_id": 793852040,
+    "head_branch": "main",
+    "head_sha": "e6a2386101a78d679f729b7ec0d251373c0aa678"
+  }
+}

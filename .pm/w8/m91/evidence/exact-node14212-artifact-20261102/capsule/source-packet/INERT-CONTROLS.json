@@ -1,0 +1,30 @@
+{
+  "PASS": true,
+  "strict_inner_and_verify_AST_equal": true,
+  "original_V11_inherited_unchanged_methods": [
+    "refreshed_headers",
+    "small_get",
+    "progress",
+    "public",
+    "fetch_bundle",
+    "fetch_bundles",
+    "crypto_bundles",
+    "signed_statements",
+    "install_compressed_receipt",
+    "prepare_layer_files",
+    "layer",
+    "layer_tasks",
+    "derive_docker_roots_if_needed",
+    "open_blob",
+    "record_blob_failure",
+    "pull_blobs",
+    "finish",
+    "run"
+  ],
+  "inherited_count": 18,
+  "factory_restores_driver_load": true,
+  "actual_SOURCE30_CI_and_full_sizing_validation": true,
+  "outer_source_manifest": "9c56a377788ad6c914c25a4956f2fb95cd0a74832607c16864e25381f8ada243",
+  "outer_budgets_unchanged": true,
+  "actual_Docker_crypto_body_or_resource_calls": false
+}

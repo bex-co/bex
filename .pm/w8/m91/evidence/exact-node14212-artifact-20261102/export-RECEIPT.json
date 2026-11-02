@@ -1,0 +1,52 @@
+{
+  "assembler": {
+    "bytes": 22282,
+    "mode": "0644",
+    "sha256": "28d452492bb9c2aa85f970df5f99c0c86edd4d8a40630ec8aa378aaa491ba030"
+  },
+  "assessment": "CLEAN",
+  "capsule": {
+    "bytes": 78856388,
+    "files": 300,
+    "manifest": {
+      "bytes": 84748,
+      "mode": "0644",
+      "sha256": "2ad1d961f4578b61e4b895f7383ec8df128688c3584b6fb96abf9e6b59307cfc"
+    },
+    "path": "/private/tmp/bex-w8-exact14212-actual-export-20261102-0y3xbemt/capsule",
+    "raw_custody": {
+      "bytes": 228828,
+      "mode": "0644",
+      "sha256": "b3812e5e847d4178ebc86858d521743d0952eda15095917db589b0c030e05c09"
+    },
+    "review": {
+      "bytes": 6841,
+      "mode": "0644",
+      "sha256": "47bc191ccb525273939392783a13bb0731df10a10bf592843d3cf779d4d371df"
+    }
+  },
+  "created_at": "2026-11-02T01:30:33.014881+00:00",
+  "history": "Initial assembler manifest-value shape assertion failed before report compression; raw/source originals unaffected. Exact failed stderr and partial own output preserved under history/attempt0. Corrected lookup accepted dict bytes/SHA fields; no verifier/artifact changes.",
+  "operating_export_bound": {
+    "no_kernel_reservation_claim": true,
+    "own_cap_bytes": 134217728,
+    "physical_floor_bytes": 1207959552
+  },
+  "private_original": {
+    "bytes": 329125915,
+    "files": 218,
+    "full_bytes_remain_private": true,
+    "path": "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd",
+    "unchanged": true
+  },
+  "schema": "bex.exact14212.actual-portable-custody-receipt/v1",
+  "scope": "Actual published exact Node14.21.2 supplier only. Generated common qualification, catalog adoption and original hosted acceptance remain pending. No production pin or resource changed. Full vulnerability findings retained.",
+  "size_preference": "30MiB was a preference, not a gate. Complete measured capsule is75.2MiB and every individual file is under18.5MB.",
+  "source_packet": {
+    "all_original_bytes_in_capsule": true,
+    "manifest_sha256": "908f6fe6e35a3673ee08672708f70096e25fd79230d76f52537af86a9f7778f4",
+    "path": "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd",
+    "payload_files": 47
+  },
+  "storage": "Ordinary gzip9 with MTIME0 for large raw signed JSON and complete decoded predicate JSON, each SHA/size verified after decompression. All small proof files copied byteexact. Ten original generated-gzip packaging representations are not included as duplicate bodies; their original SHAs and complete-content mappings are explicit. Anonymous Docker config body excluded/hash-only. No header reconstruction or new codec."
+}

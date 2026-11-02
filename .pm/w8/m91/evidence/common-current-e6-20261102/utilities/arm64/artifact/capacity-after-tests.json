@@ -1,0 +1,38 @@
+{
+  "at": "2026-11-02T01:12:34.531855+00:00",
+  "owner": "bex-nq-49c0717627a84e61a338b5cb",
+  "stage": "after-tests",
+  "filesystems": [
+    {
+      "name": "evidence",
+      "path": "/home/docker/actions-runner/_work/_temp/bex-native-qualification-jv9bhd3h",
+      "device": 65,
+      "total_bytes": 977896124416,
+      "free_bytes": 116331745280
+    },
+    {
+      "name": "workspace",
+      "path": "/home/docker/actions-runner/_work/bex/bex",
+      "device": 65,
+      "total_bytes": 977896124416,
+      "free_bytes": 116331745280
+    },
+    {
+      "name": "temporary",
+      "path": "/tmp",
+      "device": 65,
+      "total_bytes": 977896124416,
+      "free_bytes": 116331745280
+    }
+  ],
+  "memory": {
+    "host_mem_available_bytes": 30832164864,
+    "visible_cgroup_limit_bytes": 8589934592,
+    "visible_cgroup_current_bytes": 2635657216,
+    "visible_cgroup_remaining_bytes": 5954277376,
+    "observed_headroom_hint_bytes": 5954277376,
+    "scope": "observational hint only; reclaimable pagecache, ancestor limits and future allocations are not modeled or reserved"
+  },
+  "daemon_filesystem_and_builder_cache": "not observed from the runner filesystem namespace",
+  "scope": "read-only observations; shared device rows are not additive; no threshold, reservation or expanded-family capacity acceptance"
+}

@@ -1,0 +1,44 @@
+--- frozen-currentAMD/audit.py
++++ currentBoth/audit-both.py
+@@ -18,14 +18,12 @@
+ ROOT = Path('/Users/tianpan/projects/bex7')
+ INPUT = Path('/private/tmp/bex-w8-e6-utility-intake-20261102-c40h5x0g')
+ CI = INPUT / 'metadata'
+-OUT = Path(__file__).resolve().parent
++OUT = Path(__file__).resolve().parent / 'both-content'
+ SOURCE = 'e6a2386101a78d679f729b7ec0d251373c0aa678'
+ PRODUCER = '1feba939b4697894e800ed0abb4f25a0bf415641'
+ REF = 'ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0'
+-EXPECTED_MANIFEST = {
+-    'amd64': 'f10b127f80d59db282ab2c56083b8ba57abd95eea9d830f099830961667245ae',
+-}
+-JOB = {'amd64': 125034380829}
++EXPECTED_MANIFEST = {'amd64': 'f10b127f80d59db282ab2c56083b8ba57abd95eea9d830f099830961667245ae', 'arm64': '9e990109530936ab2deda2ab556628fbfb88bbaa75b40c3b34b5519c99015e86'}
++JOB = {'amd64': 125034380829, 'arm64': 125034380823}
+ 
+ def sha(body):
+     return hashlib.sha256(body).hexdigest()
+@@ -107,11 +105,11 @@
+ extras = None  # No physical-working-tree/source_inventory call: sourcee6 is immutable while Root changes native-init.
+ specs = json.loads(git_body(SOURCE, 'lego/operator/internal/build/testdata/native-utilities/original-cases.json'))
+ check(len(specs) == 13 and len({x['mid'] for x in specs}) == 13, 'original13 spec set differs')
+-jobs = {x['id']: x for x in load(CI / 'jobs-complete-rest-amd64-checkpoint.json')['jobs']}
+-artifacts = load(CI / 'artifacts-complete-rest-amd64-checkpoint.json')['artifacts']
++jobs = {x['id']: x for x in load(CI / 'jobs-final.json')['jobs']}
++artifacts = load(CI / 'artifacts-final.json')['artifacts']
+ results = []
+ 
+-for arch in ('amd64',):
++for arch in ('amd64', 'arm64'):
+     artifact = INPUT / arch / 'extracted/artifact'
+     extraction = load(INPUT / arch / 'extracted/extraction.json')
+     manifest_path = artifact / 'MANIFEST.json'
+@@ -345,7 +343,7 @@
+                     'actual_cleanup_declared_success_and_CI_gate_success': True, 'all_reviewed_content_checks': 'PASS'})
+ 
+ report = {'schema': 'bex.e6-actual-utility-content-review/v1', 'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+-          'outcome': 'PASS_CURRENT_E6_AMD64_UTILITY_CONTENT_ONLY', 'candidate_ref': REF, 'source': SOURCE,
++          'outcome': 'PASS_CURRENT_E6_BOTH_ARCH_UTILITY_CONTENT_ONLY', 'candidate_ref': REF, 'source': SOURCE,
+           'comparison_origin_main': head, 'qualification_source_checked_from_Git': SOURCE, 'common_producer_verifier': PRODUCER, 'source_delta_against_origin':source_delta, 'physical_working_tree_compared':False, 'current_tracked_qualification_source_paths': 300, 'current_physical_source_extra_paths': extras,
+           'helper_source': identity(helper_path), 'architectures': results,
+           'limits': ['No image admission or baseline file written; existing actual0941 image approval is separate and was not repeated. No adoption authority.',
