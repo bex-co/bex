@@ -15,9 +15,9 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m146** — [`deploy_ended` and `build_ended` carry Render's `reason` object](m146/README.md) (7 tasks;225m) ← promoted from w8/229 2026-11-02 — **IN PROGRESS**
+- [x] **m146** — [`deploy_ended` and `build_ended` carry Render's `reason` object](done/m146/README.md) (7 tasks;225m) ← promoted from w8/229 2026-11-02 — **DONE 2026-11-02** (crash / build-failed / superseded reasons verified live on every surface)
 
-- [ ] **m145** — [The gzip-only web-service edge stops answering zstd](m145/README.md) (5 tasks;150m) ← promoted from w8/228 2026-11-02: Traefik v3.7.5's gzip handler negotiates zstd itself; v3.7.9+ disables it — **IN PROGRESS**
+- [x] **m145** — [The gzip-only web-service edge stops answering zstd](done/m145/README.md) (5 tasks;150m) ← promoted from w8/228 2026-11-02: Traefik v3.7.5's gzip handler negotiates zstd itself; v3.7.9+ disables it — **DONE 2026-11-02** (Traefik v3.7.17; browsers get gzip, verified live)
 
 - [ ] **m144** — [Enforce persistent disk capacity below the provider floor](blocked/m144/README.md) (7 tasks; t001/t002/t005 done) — **BLOCKED (platform/QA execution owner: fresh bounded live fixture window with ready observer/exact ownership and independent cleanup evidence; original paid case ended, full growth/restore/billing/surface DoDs remain)**
 
