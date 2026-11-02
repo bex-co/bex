@@ -133,7 +133,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **m88** — [Preserve graceful shutdown through native npm startup](done/m88/README.md) (8 tasks) — **DONE 2026-10-17:** original both-client npm restart replay passes; both old40s POSTs200,44 short reads200, native signal/drain logs and exact cleanup in sweep411.
 
-- [ ] **m87** — [Make psql Ctrl+C stop external PostgreSQL queries](m87/README.md) (8 tasks,435m) — **READY（2026-11-01 用户决定：保持透传，旧 libpq 取消记为差异；下一步：记录 ADR018/ADR009、补提示并用 PG17+ 客户端验证后关闭）**
+- [x] **m87** — [Make psql Ctrl+C stop external PostgreSQL queries](done/m87/README.md) (8 tasks) — **DONE 2026-11-02** (user decision 2026-11-01: TLS passthrough kept; legacy psql cancel is a signed-off ADR018 difference, documented in ADR009/bex-cli.md; libpq 17+ TLS cancel and pg_cancel_backend verified live; t002–t007 superseded)
 
 - [x] **m86** — [Install automatic npm dependencies for static builds](done/m86/README.md) (6 tasks) — **DONE 2026-10-16:** sweep379 accepts both original native first default deployments plus an explicit-skip/manual control; exact source/dependency/page hashes, nine shared readbacks and complete three-parent/child cleanup pass.
 

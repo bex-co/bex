@@ -1,19 +1,19 @@
 # w8 · m87 — Make psql Ctrl+C stop external PostgreSQL queries
 
-**Worker:** worker8 **Goal:** Ordinary external psql cancellation stops the actual query promptly and preserves its session. **Status:** todo（2026-11-01 解除阻塞；原记录：t001 done ([design](design.md)); t002–t008 need the user to accept TLS termination at the shared PostgreSQL ingress
+**Worker:** worker8 **Goal:** Ordinary external psql cancellation stops the actual query promptly and preserves its session. **Status:** done — 2026-11-02 closed per the user decision of 2026-11-01: TLS passthrough kept, legacy psql Ctrl+C cancel recorded as a signed-off ADR018 difference, libpq 17+ TLS cancel verified live ([evidence](evidence/tls-cancel-20261102/README.md)); t002–t007 superseded, not implemented
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | [Specify the shared-endpoint cancellation mediation design](done/t001.md) | 45m | — — **DONE 2026-10-16** |
-| t002 | [Implement startup cancellation identity and exact backend dispatch](t002.md) | 90m | t001 |
-| t003 | [Carry cancellation ownership across proxy instances and lifetimes](t003.md) | 60m | t002 |
-| t004 | [Preserve certificate projection and every PostgreSQL endpoint alias](t004.md) | 60m | t003 |
-| t005 | [Verify Render parity and connection-info consumers](t005.md) | 45m | t004 |
-| t006 | [Simplify the changed PostgreSQL mediation path](t006.md) | 15m | t005 |
-| t007 | [Test real cancellation across protocol and connection neighbors](t007.md) | 60m | t005 |
-| t008 | [Verify fresh native Ctrl+C behavior and close the milestone](t008.md) | 60m | t006, t007 |
+| t002 | [Implement startup cancellation identity and exact backend dispatch](done/t002.md) — **CLOSED (superseded)** | 90m | t001 |
+| t003 | [Carry cancellation ownership across proxy instances and lifetimes](done/t003.md) — **CLOSED (superseded)** | 60m | t002 |
+| t004 | [Preserve certificate projection and every PostgreSQL endpoint alias](done/t004.md) — **CLOSED (superseded)** | 60m | t003 |
+| t005 | [Verify Render parity and connection-info consumers](done/t005.md) — **CLOSED (superseded)** | 45m | t004 |
+| t006 | [Simplify the changed PostgreSQL mediation path](done/t006.md) — **CLOSED (superseded)** | 15m | t005 |
+| t007 | [Test real cancellation across protocol and connection neighbors](done/t007.md) — **CLOSED (superseded)** | 60m | t005 |
+| t008 | [Verify fresh native Ctrl+C behavior and close the milestone](done/t008.md) — **DONE** | 60m | t006, t007 |
 
 **Total:**8 tasks/435m. [Researched finding](finding.md) · [full native evidence](evidence/cli-sweep365/README.md).
 

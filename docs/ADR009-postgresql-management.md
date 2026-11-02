@@ -66,6 +66,10 @@ Render's Postgres hosts present Let's Encrypt certificates (`oregon-postgres.ren
 - **Let's Encrypt budget.** Let's Encrypt allows 50 new certificates per week per registered domain (`bex.co`), shared with every other `*.bex.co` certificate; renewals are exempt. Each public database is one certificate whatever its SAN count. Any change to its name set (pooler on or off, a replica added or removed, public access off and on) orders a new one, and an identical name set is further capped at 5 per week. That bounds bex at about 50 new public databases or name-set changes per week. A `*.db.bex.co` wildcard would lift the bound, but it needs a Cloudflare DNS-01 token (Zone:DNS:Edit on `bex.co`); file it as a follow-up if the budget binds.
 - **Known limit, same as Render.** A client machine with a stale `~/.postgresql/root.crt` still verifies against that file.
 
+### TLS passthrough and query cancellation (w8/m87, user decision 2026-11-01)
+
+The SNI proxy routes each external connection by its TLS server name and relays the encrypted stream unchanged: it holds no tenant database private key and never sees SQL. PostgreSQL's legacy cancel request (`PQcancel`, what psql sends on Ctrl+C) is a separate plaintext connection carrying only the backend PID and secret key, with no server name, so the proxy cannot route it, and the running statement continues. The alternative — terminate TLS at the shared proxy with every database's serving key to observe `BackendKeyData` and route cancels ([design](../.pm/w8/done/m87/design.md) history in w8/m87) — was declined by the user: the passthrough trust boundary is kept. libpq 17+'s TLS cancel (`PQcancelCreate`) carries SNI and works; so does `pg_cancel_backend()` from a second session. ADR018 records the difference; `docs/bex-cli.md` tells psql users.
+
 ### Postgres SNI proxy — deployment (w1/m29)
 
 The proxy binary (`/pg-sni-proxy`) lives in the same image as the operator. A `DaemonSet` (`bex-pg-sni-proxy`) runs on platform nodes with `hostPort: 5432`, watching `Database` CRs cluster-wide to maintain its routing table. It needs a `ClusterRole` to `list/watch` databases.
