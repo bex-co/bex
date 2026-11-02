@@ -97,8 +97,11 @@ scan_filters=(--include='*.md' --include='*.go' --include='*.sh'
   # exist; scanning it would report its own fixtures as dangling references.
   --exclude=adr-registry-validate.test.sh)
 
-refs="$(grep -rhoE "${scan_filters[@]}" 'ADR[0-9]{3}-[A-Za-z0-9-]+\.md' "$SCAN_ROOT" 2>/dev/null |
-  LC_ALL=C sort -u || true)"
+# Another repository's ADRs live under its own docs/adrs/ (bex-desktop's
+# ADR002, cited as a cross-repo contract); this repo's are directly in docs/,
+# so an `adrs/`-prefixed name is never a reference to this registry.
+refs="$(grep -rhoE "${scan_filters[@]}" '(adrs/)?ADR[0-9]{3}-[A-Za-z0-9-]+\.md' "$SCAN_ROOT" 2>/dev/null |
+  grep -v '^adrs/' | LC_ALL=C sort -u || true)"
 
 for ref in $refs; do
   if [ ! -f "$ADR_DIR/$ref" ]; then

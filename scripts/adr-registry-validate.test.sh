@@ -81,6 +81,12 @@ fixture "$dangling"
 printf 'see [ADR404](ADR404-missing.md)\n' >>"$dangling/docs/ADR001-first.md"
 assert "dangling reference is red" 1 "$dangling" "dangling ADR reference: ADR404-missing.md"
 
+# --- green: another repository's ADR (its docs/adrs/) is not this registry's ---
+crossrepo="$tmp/crossrepo"
+fixture "$crossrepo"
+printf 'contract: https://github.com/bex-co/bex-desktop/blob/main/docs/adrs/ADR002-cli-command.md\n' >>"$crossrepo/docs/ADR001-first.md"
+assert "cross-repo docs/adrs reference is green" 0 "$crossrepo"
+
 # --- each red case must fail for its OWN reason ---------------------------
 # The needle assertions prove each message is specific; this additionally pins
 # that the duplicate fixture emits exactly one FAIL class, so a bug in one
