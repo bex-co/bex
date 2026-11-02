@@ -1,0 +1,47 @@
+{
+  "container": {
+    "id": "07715ac2962a3e29dbb38f7139be383a5fef583953367d0032a285d5c5353546",
+    "image_id": "sha256:0c922d46158ce6e7d062337afbef4367aa80e2601de34522171ad8de06fd5b87",
+    "state": {
+      "Running": false,
+      "Status": "created"
+    },
+    "volume_mounts": [
+      {
+        "Destination": "/var/lib/registry",
+        "Name": "89f49f253aa10d41ad6901a98814b8e9d58d092c304268d234debebc4cb772a5",
+        "RW": true,
+        "Type": "volume"
+      }
+    ]
+  },
+  "exact_removal_and_absence_proven": true,
+  "exclusive_container_references": [
+    "07715ac2962a3e29dbb38f7139be383a5fef583953367d0032a285d5c5353546"
+  ],
+  "kind": "separate-registry-guard-cleanup-projection",
+  "private_before_raw_custody": [
+    {
+      "bytes": 7634,
+      "path": "/private/tmp/bex-w8-registry-guard-final-cleanup-20261102-lab2ojj6/container-before.stdout",
+      "sha256": "76d6213a1b64907d72946c2bc238f1727b17ed8bdac9892c512d8881c124f28c"
+    },
+    {
+      "bytes": 424,
+      "path": "/private/tmp/bex-w8-registry-guard-final-cleanup-20261102-lab2ojj6/volume-before.stdout",
+      "sha256": "de1d4474f4e3f55c92f24dbfaaf661f4759677b133b98e21f2c0707304a7cbf6"
+    }
+  ],
+  "projection_excludes": [
+    "Config.Env",
+    "Config.Cmd",
+    "Config.Entrypoint",
+    "HostConfig",
+    "private config contents"
+  ],
+  "volume": {
+    "driver": "local",
+    "name": "89f49f253aa10d41ad6901a98814b8e9d58d092c304268d234debebc4cb772a5",
+    "scope": "local"
+  }
+}

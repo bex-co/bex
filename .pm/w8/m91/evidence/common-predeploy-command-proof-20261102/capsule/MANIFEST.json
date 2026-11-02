@@ -1,0 +1,73 @@
+{
+  "all_lossless_roundtrips_equal": true,
+  "excludes_private_Secret_bodies": true,
+  "files": {
+    "CHECKS.json.gz": {
+      "bytes": 11620,
+      "sha256": "47ba257aadaad5edbee73fda45eb4b67b2cc8f527c59b4be93846e7fa464d2ae"
+    },
+    "COPY-PLAN.json": {
+      "bytes": 222500,
+      "sha256": "205f55708e71b9af9a88a5460aa4c794df0edfb0d51a65382b475e3fb7228d11"
+    },
+    "GUARD-AUDIT.json": {
+      "bytes": 933,
+      "sha256": "2d7efef782f503ffeb9bc0675f6c51994b5be34c0c6903d4ebf41b6c195ff279"
+    },
+    "GUARD-BEFORE-PROJECTION.json": {
+      "bytes": 1466,
+      "sha256": "3959c197b3f53db22b0ef34acbc513ab59e791866a11cda8ddd5bac0767855bd"
+    },
+    "JSON-SHAPE-AUDIT.json.gz": {
+      "bytes": 1435,
+      "sha256": "46e797f585a68fe3c032c4e4d37859fc73b8c1068781b9dbecc77fca83d0c4aa"
+    },
+    "OCI-AUDIT.json": {
+      "bytes": 7816,
+      "sha256": "9c17a4b1f368bd52d25fd13fddfa7631a8afd58c1c7a82fc0a232b79a3eb149b"
+    },
+    "PRIOR-8D-CORRECTION.json": {
+      "bytes": 3147,
+      "sha256": "6002a3e988692698a0233f60859c92229e942a7befb879a6b4e18ac83f8fd6f9"
+    },
+    "README.md": {
+      "bytes": 3736,
+      "sha256": "77ab577bf9ac52dab75faada234f901168da1221e98320273286f3eeb9834c3b"
+    },
+    "REVIEW.json": {
+      "bytes": 4087,
+      "sha256": "e2cf7d5e99d4813c7ffd44a162c9d5b4c0ada901db002bf3f7822ff2f09b9f81"
+    },
+    "ROOT-ADMISSION.json": {
+      "bytes": 2174,
+      "sha256": "9694cc8454c3ec34c5807fe963e9720b3cf1fc967cb9036777c361838157ea90"
+    },
+    "Secret-delete-metadata.json": {
+      "bytes": 2082,
+      "sha256": "7e4d8d9bcb3e3425f5d5087d8e9c74254d231a4449c6dadd3139ba703fcb1687"
+    },
+    "phase-canonical-exports.tar.gz": {
+      "bytes": 12050,
+      "sha256": "a279e9914b4d6de8918ae93d54cfe13d775a32a8fb82bd5177ccabbada08f739"
+    },
+    "phase-evidence.tar.gz": {
+      "bytes": 297888,
+      "sha256": "71e5533474f2f465b1e72f2915a88f38c6bb79e8d5f7f25b68ed4b6a1c874462"
+    },
+    "phase-source-and-bindings.tar.gz": {
+      "bytes": 148786,
+      "sha256": "d10eef92eab29aa6d4de3792d1b7e262094b0acaddb7b772ac8536d72df78699"
+    },
+    "prior-8d-identity-history.tar.gz": {
+      "bytes": 113842,
+      "sha256": "20dada1b8ee27b89d9e4ac6ee4b15b595653f4a3dd575d0f23835d21b7560220"
+    },
+    "separate-registry-guard-cleanup.tar.gz": {
+      "bytes": 802,
+      "sha256": "57d94d43bff28c05a19f3eb740ec532f050117de8c2fec0b8d2d122f3ab025f0"
+    }
+  },
+  "frozen_controller_unchanged": true,
+  "original_phase_unchanged": true,
+  "read_only_runtime_audit": true
+}

@@ -1,0 +1,23 @@
+{
+  "calls": {
+    "bytes": 1506,
+    "path": "/private/tmp/bex-w8-registry-guard-final-cleanup-20261102-lab2ojj6/CALLS.json",
+    "sha256": "9f4a721d74d8e32aba65863c8f9eaffe96097fff757cebd5e3b6384323f68cca"
+  },
+  "receipt": {
+    "bytes": 335,
+    "path": "/private/tmp/bex-w8-registry-guard-final-cleanup-20261102-lab2ojj6/RESULT.json",
+    "sha256": "7c8ab1007f0bebfa95b0d9682602e07651c161ab3209f5e4006fe14da1a0c0a9"
+  },
+  "result": {
+    "PASS": true,
+    "all_client_groups_absent": true,
+    "calls": 6,
+    "container_id": "07715ac2962a3e29dbb38f7139be383a5fef583953367d0032a285d5c5353546",
+    "credential_scope_absent": true,
+    "failure": null,
+    "only_exact_owned_resources_removed": true,
+    "volume": "89f49f253aa10d41ad6901a98814b8e9d58d092c304268d234debebc4cb772a5"
+  },
+  "scope": "Separate final retained registry guard 07715a and implicit volume 89f49f cleanup; not part of phase 4-container/2-volume set."
+}

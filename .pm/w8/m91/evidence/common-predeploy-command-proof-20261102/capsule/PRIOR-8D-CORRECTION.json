@@ -1,0 +1,79 @@
+{
+  "BUILT": "sha256:998171c7be381b38e083a749ad8026352025c5f0077b1d1e59c6bec7c0bd7c9b",
+  "PASS": true,
+  "RECOVERED": "",
+  "actual_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:998171c7be381b38e083a749ad8026352025c5f0077b1d1e59c6bec7c0bd7c9b",
+  "conclusion": "success",
+  "exact_log_excerpts": [
+    {
+      "line": 1932,
+      "text": "2026-11-02T06:08:47.8375255Z   RECOVERED: "
+    },
+    {
+      "line": 1934,
+      "text": "2026-11-02T06:08:47.8375584Z   BUILT: sha256:998171c7be381b38e083a749ad8026352025c5f0077b1d1e59c6bec7c0bd7c9b"
+    },
+    {
+      "line": 697,
+      "role": "amd64",
+      "text": "2026-11-02T06:19:43.8471334Z   BEX_NATIVE_TEST_COMMON_IMAGE: ghcr.io/bex-co/bex-cnb-run@sha256:998171c7be381b38e083a749ad8026352025c5f0077b1d1e59c6bec7c0bd7c9b"
+    },
+    {
+      "line": 697,
+      "role": "arm64",
+      "text": "2026-11-02T06:31:23.9432184Z   BEX_NATIVE_TEST_COMMON_IMAGE: ghcr.io/bex-co/bex-cnb-run@sha256:998171c7be381b38e083a749ad8026352025c5f0077b1d1e59c6bec7c0bd7c9b"
+    }
+  ],
+  "is_reviewed_0941": false,
+  "new_dispatch_is_not_qualified_by_this_offline_audit": true,
+  "new_explicit_0941_dispatch": 41403110558,
+  "observed_phase_pod_UID_sets": {
+    "1": [
+      "185d65ef-5bc5-47d5-9db8-96bf455eb1c7"
+    ],
+    "2": [
+      "4284cdaf-05e8-474a-8085-841a7cc824ae"
+    ]
+  },
+  "original_log_custody": {
+    "amd64-125126218825.log": {
+      "bytes": 62821,
+      "path": "/private/tmp/bex-w8-prior8d-common-image-audit-20261102-xyc9rvl6/amd64-125126218825.log",
+      "sha256": "87c5de42af7737f955cca0edce3931fbba62f522edc2ee2b80ac70bbd8fc13cd"
+    },
+    "arm64-125126218669.log": {
+      "bytes": 62821,
+      "path": "/private/tmp/bex-w8-prior8d-common-image-audit-20261102-xyc9rvl6/arm64-125126218669.log",
+      "sha256": "e224ca425d3c27869d39807033b016c8dc75e79cca02544909eb450d68c78629"
+    },
+    "plan-125120648637.log": {
+      "bytes": 23219,
+      "path": "/private/tmp/bex-w8-prior8d-common-image-audit-20261102-xyc9rvl6/plan-125120648637.log",
+      "sha256": "6f6935750c5f73ab7853f1c2663f87da8455234ceebe716e8aa94249a8fde7ae"
+    },
+    "publisher-125122539514.log": {
+      "bytes": 425779,
+      "path": "/private/tmp/bex-w8-prior8d-common-image-audit-20261102-xyc9rvl6/publisher-125122539514.log",
+      "sha256": "f87aab31cc0937b99a8d9198a8abdbc6ecaf7f89aff34c767bb2960c77354d6b"
+    }
+  },
+  "original_manifest": {
+    "bytes": 1925,
+    "path": "/private/tmp/bex-w8-prior8d-common-image-audit-20261102-xyc9rvl6/MANIFEST.json",
+    "sha256": "750984c13ae015f7139e3c2605ca9c7c69d432e31dca7f8b9140fe365dcfa16a"
+  },
+  "original_report": {
+    "bytes": 4673,
+    "path": "/private/tmp/bex-w8-prior8d-common-image-audit-20261102-xyc9rvl6/REPORT.json",
+    "sha256": "cb9eac50f82c135f7bed545d066da47583777c5bd15f81fb15489604f7390ba0"
+  },
+  "predates_emulator_fix": true,
+  "publisher_job": 125122539514,
+  "run": 41397092125,
+  "scope": "Offline correction of prior8d narrative only; separate actual successful image, no artifact approval/current functional-byte acceptance",
+  "source": "8d725c9b995a5bd7313f3bc4164ba37b8722b2d2",
+  "utility_jobs": [
+    125126218825,
+    125126218669
+  ]
+}

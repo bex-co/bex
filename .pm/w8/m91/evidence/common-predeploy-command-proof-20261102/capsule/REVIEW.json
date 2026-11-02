@@ -1,0 +1,81 @@
+{
+  "PASS": true,
+  "actual_built_source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "checks": 1422,
+  "cleanup": {
+    "minimum_free_bytes": 10275778560,
+    "namespace_baseline_preserved": true,
+    "phase_containers": 4,
+    "phase_groups_absent": true,
+    "phase_object_UIDs": 8,
+    "phase_private_absent": true,
+    "phase_volumes": 2,
+    "separate_guard_and_volume_absent": true,
+    "separate_guard_receipt": "/private/tmp/bex-w8-registry-guard-final-cleanup-20261102-lab2ojj6/RESULT.json"
+  },
+  "elapsed_seconds": 35.747,
+  "equivalent_source": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+  "limitations": [
+    "Three m91 HTTP responses retain decoded build/runtime and reported body hashes, but not original body bytes. Eighteen other HTTP responses have independently verified full retained body bytes.",
+    "No deadline/terminal failure proof for wrong-auth negative.",
+    "Empty PATH diagnostic proves only its isolated child observation; utilities were not run with empty PATH.",
+    "Cache probe used an older transport repository name, same immutable manifest/config; actual completed positive Pod proves exact new transport before negative. Only 1/36 compressed objects present; unpacked content was available, not a complete compressed cache.",
+    "Inherited OCI revision 1feba is not source688 identity. External build receipt binds actual688 source.",
+    "Version diagnostics outside final mandatory commands remain observational, not new support claims.",
+    "No current family/wholephase/production/adoption/28 hosted closure."
+  ],
+  "method": "Independent offline source, JSON, raw log, base64/hash, canonical admission, UID protocol and OCI member audit; no subprocess/network/container/cluster actions",
+  "negative": {
+    "job_uid": "e7f29e65-7f32-43e4-a5cb-949577f0613c",
+    "never_started": true,
+    "pod_uid": "4284cdaf-05e8-474a-8085-841a7cc824ae",
+    "reason": "ImagePullBackOff",
+    "same_exact_image_and_node": true,
+    "terminal_job_or_deadline_proven": false
+  },
+  "original_files_unchanged": true,
+  "phase_result": {
+    "bytes": 2240,
+    "path": "/private/tmp/bex-w8-common-predeploy-command-proof-phase-515b2f6a5b92/evidence/RESULT.json",
+    "sha256": "79ee92999fcc59b2cb2b92b9682c187102430f8317904db0a98ef029e0657a2d"
+  },
+  "positive": {
+    "HTTP_cases": 7,
+    "HTTP_exact_body_bytes_retained": 18,
+    "HTTP_responses": 21,
+    "HTTP_structured_decoded_only": 3,
+    "activeDeadlineSeconds": 600,
+    "exit_code": 0,
+    "job_uid": "57ed566f-a635-4fd8-a005-691c3a6c7179",
+    "one_execution": true,
+    "pod_uid": "185d65ef-5bc5-47d5-9db8-96bf455eb1c7",
+    "resources": {
+      "cpu": "500m",
+      "ephemeral-storage": "2Gi",
+      "memory": "512Mi"
+    }
+  },
+  "prior_8d_correction": {
+    "actual_new_image": "998171c7be381b38e083a749ad8026352025c5f0077b1d1e59c6bec7c0bd7c9b",
+    "evidence_pointer": "/private/tmp/bex-w8-prior8d-common-image-audit-20261102-xyc9rvl6",
+    "is_0941": false,
+    "latest0941_explicit_dispatch": 41403110558,
+    "latest0941_not_qualified_by_this_audit": true,
+    "predates_emulator_fix": true,
+    "recovered": "",
+    "run": 41397092125,
+    "source": "8d",
+    "status": "success"
+  },
+  "publication_findings": [
+    {
+      "finding": "Four Secret DELETE stdout responses include Secret bodies. Original controller plan memory-only raw Secret claim does not hold for DELETE. Runtime UID cleanup remains proven.",
+      "severity": "must exclude private raw bodies",
+      "treatment": "Never publish these bodies or any containing aggregate. Publish only explicit allowlisted kind/apiVersion/metadata UID projection with process exit/group absence."
+    }
+  ],
+  "reviewed_at": "2026-11-02T07:12:06.471019+00:00",
+  "scope": "One actual canonical same-common Node arm64 dev-8 predeploy execution, e6-equivalent deterministic outputs of actual 688 child. Bounded same-image wrong-auth AlwaysPull denial only.",
+  "source_unchanged": true,
+  "transport": "localhost:43829/qa-common-predeploy-2022d596e037@sha256:cd8542c966bfa204dad5bb96857046aec6cf07c4d38e5bcd60e00a87bb618a2e"
+}
