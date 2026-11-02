@@ -52,7 +52,7 @@ ports:
     # (infra/terraform/main.tf), so the allow-list middleware and the request log
     # see the real client, not 10.10.0.7. Trust ONLY the load balancer's private
     # address: anything wider lets that peer assert a client address. A trusted
-    # peer with no header is still served (Traefik v3.7.5), which keeps the LB's
+    # peer with no header is still served (go-proxyproto v0.12.0, Traefik v3.7.5–v3.7.17), which keeps the LB's
     # plain-TCP health checks green. Pinned by scripts/edge-proxyprotocol-validate.sh.
     proxyProtocol:
       trustedIPs:
