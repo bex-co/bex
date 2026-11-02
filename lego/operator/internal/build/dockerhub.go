@@ -25,8 +25,10 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/operator/internal/registry"
@@ -93,7 +95,20 @@ type DockerHubResolver struct {
 	RegistryURL string // registry base; defaults to Docker Hub's
 	HubURL      string // Hub API base, for tag listings; defaults to Docker Hub's
 	NodeDistURL string // official Node source metadata; tests may use a local server
+
+	metadataMu    sync.Mutex
+	metadataCache map[dockerHubMetadataKey]dockerHubMetadata
 }
+
+type dockerHubMetadataKey struct {
+	registry, repo, digest string
+}
+
+type dockerHubMetadata struct {
+	env, history []string
+}
+
+const maxImageMetadataCacheEntries = 64
 
 func (d *DockerHubResolver) NodeSourceDigest(ctx context.Context, version string) (string, error) {
 	if !fullVersion.MatchString(version) {
@@ -201,11 +216,27 @@ func (d *DockerHubResolver) ImageMetadata(ctx context.Context, image string) (en
 	if !pinned || !tagged || !exactRepos[repo] || !digestPattern.MatchString(digest) {
 		return nil, nil, fmt.Errorf("%s is not a pinned reviewed runtime image", image)
 	}
+	if err := ctx.Err(); err != nil {
+		return nil, nil, err
+	}
+	// Only this resolver's verified immutable metadata is reused. The endpoint
+	// is part of the key so a custom registry cannot borrow another's result.
+	endpoint := d.RegistryURL
+	key := dockerHubMetadataKey{endpoint, repoPath(repo), digest}
+	d.metadataMu.Lock()
+	cached, found := d.metadataCache[key]
+	d.metadataMu.Unlock()
+	if found {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		return slices.Clone(cached.env), slices.Clone(cached.history), nil
+	}
 	// A failed request, rate limit or 5xx from Docker Hub is retried twice
 	// with a short pause: one slow read must not fail the build that needs
 	// it. A registry refusal (404, 401) fails at once.
 	for attempt := 1; ; attempt++ {
-		env, history, err = registry.ReadImageRuntimeMetadata(ctx, d.Client, d.RegistryURL, repoPath(repo), digest, "")
+		env, history, err = registry.ReadImageRuntimeMetadata(ctx, d.Client, endpoint, repoPath(repo), digest, "")
 		var transient *registry.TransientError
 		if err == nil || attempt == imageMetadataAttempts || !errors.As(err, &transient) || ctx.Err() != nil {
 			break
@@ -218,6 +249,18 @@ func (d *DockerHubResolver) ImageMetadata(ctx context.Context, image string) (en
 	}
 	if err == nil && len(env) == 0 {
 		return nil, nil, fmt.Errorf("pinned runtime image %s has no environment", image)
+	}
+	if err == nil {
+		if err := ctx.Err(); err != nil {
+			return nil, nil, err
+		}
+		d.metadataMu.Lock()
+		if d.metadataCache == nil || len(d.metadataCache) >= maxImageMetadataCacheEntries {
+			d.metadataCache = make(map[dockerHubMetadataKey]dockerHubMetadata)
+		}
+		d.metadataCache[key] = dockerHubMetadata{env, history}
+		d.metadataMu.Unlock()
+		return slices.Clone(env), slices.Clone(history), nil
 	}
 	return env, history, err
 }
