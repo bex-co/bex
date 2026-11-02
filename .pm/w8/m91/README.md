@@ -364,3 +364,7 @@ Actual pre-deploy positive execution passed, but a parser defect blocked whole p
 The genuine immutable OTP28.5.0.8 donor control preserves baseline exit1 plus its full crash dump and `+JMsingle true` exit0 with the exact version. Its four owned containers, credential scope and process groups are cleaned. Earlier noinput and locale failures remain separate failed histories. The applied qualifier selects this explicit build-ARG/runtime-env override only for observed ARM-daemon to AMD-target emulation, preserves authored bytes and refuses OCI image ENV leakage; actual common-prefix/full-family execution is not claimed.
 
 Fresh complete current-source utility CI, affected families, whole phase acceptance, production adoption and original28 hosted acceptance remain open. The unrun common-prefix probe is useful additional evidence, not a new gate. m91 and t007 stay in progress; no original DoD or history is removed.
+
+## Current-source utility baseline green on both architectures — 2026-11-02 (loopx session)
+
+Common run 41397092125 at `8d725c9b9` passes publish (reused reviewed image) and both `qualify (amd64)` and `qualify (arm64)` utility jobs. `8d725c9b9` fixed the red matrix step from `b0caca89d`: the Elixir route control scraped the new `resolved-metadata` unit-test fixture as a route; it now reads only `commonElixirCases()`. Artifact intake/review of this run, the family replays, phase acceptance, adoption and the original 28 hosted cases remain open; no task is closed here.
