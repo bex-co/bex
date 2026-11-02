@@ -1,0 +1,11 @@
+{
+  "PASS": true,
+  "candidate_manifest_sha256": "5c616f2e44d32fb32b9b7d3e70d664cb0ce7f33a23e43dcec185e790c2c765c8",
+  "copy_plan_sha256": "205f55708e71b9af9a88a5460aa4c794df0edfb0d51a65382b475e3fb7228d11",
+  "sealed_payload_files_verified": 16,
+  "archive_members_original_bytes_and_roundtrip_verified": 568,
+  "structurally_valid_JSON_archive_members_scanned": 148,
+  "raw_Secret_bodies_excluded": true,
+  "original_inputs_unchanged": true,
+  "public_destination": ".pm/w8/m91/evidence/common-predeploy-command-proof-20261102"
+}

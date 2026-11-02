@@ -1,0 +1,30 @@
+{
+  "PASS": true,
+  "scope": "One actual canonical same-common Node arm64 dev-8 predeploy execution, e6-equivalent deterministic outputs of actual 688 child. Bounded same-image wrong-auth AlwaysPull denial only.",
+  "independent_review_sha256": "e2cf7d5e99d4813c7ffd44a162c9d5b4c0ada901db002bf3f7822ff2f09b9f81",
+  "actual_result_sha256": "79ee92999fcc59b2cb2b92b9682c187102430f8317904db0a98ef029e0657a2d",
+  "guard_cleanup_sha256": "7c8ab1007f0bebfa95b0d9682602e07651c161ab3209f5e4006fe14da1a0c0a9",
+  "scope_limits_preserved": [
+    "Three m91 HTTP responses retain decoded build/runtime and reported body hashes, but not original body bytes. Eighteen other HTTP responses have independently verified full retained body bytes.",
+    "No deadline/terminal failure proof for wrong-auth negative.",
+    "Empty PATH diagnostic proves only its isolated child observation; utilities were not run with empty PATH.",
+    "Cache probe used an older transport repository name, same immutable manifest/config; actual completed positive Pod proves exact new transport before negative. Only 1/36 compressed objects present; unpacked content was available, not a complete compressed cache.",
+    "Inherited OCI revision 1feba is not source688 identity. External build receipt binds actual688 source.",
+    "Version diagnostics outside final mandatory commands remain observational, not new support claims.",
+    "No current family/wholephase/production/adoption/28 hosted closure."
+  ],
+  "positive_case_count": 7,
+  "positive_HTTP_count": 21,
+  "exact_response_bytes_retained": 18,
+  "decoded_only_m91_responses": 3,
+  "negative_scope": {
+    "job_uid": "e7f29e65-7f32-43e4-a5cb-949577f0613c",
+    "never_started": true,
+    "pod_uid": "4284cdaf-05e8-474a-8085-841a7cc824ae",
+    "reason": "ImagePullBackOff",
+    "same_exact_image_and_node": true,
+    "terminal_job_or_deadline_proven": false
+  },
+  "publishing_condition": "All raw Secret response bodies and any containing aggregate excluded; explicit metadata-only receipt allowed. Root validates portable copy plan and all original/raw gzip custody before publication.",
+  "no_production_pin_or_current_family_acceptance": true
+}
