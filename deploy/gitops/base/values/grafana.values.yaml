@@ -6228,7 +6228,7 @@ dashboards:
              "targets": [
                 {
                  "refId": "A",
-                 "expr": "count(kube_node_info unless on (node) kube_node_spec_taint{effect=~\"NoSchedule|NoExecute\", key!~\"node\\\\.kubernetes\\\\.io/.*\"})",
+                 "expr": "count(kube_node_info unless on (node) kube_node_spec_taint{effect=~\"NoSchedule|NoExecute\", key!~\"node\\\\.kubernetes\\\\.io/.*|bex\\\\.co/serving-pool\"})",
                  "legendFormat": "expected (nodes with no pool taint)"
                 },
                 {

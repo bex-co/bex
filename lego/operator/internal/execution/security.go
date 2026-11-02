@@ -61,6 +61,15 @@ const (
 	BuildPoolTaintKey   = "bex.co/build-only"
 	BuildPoolTaintValue = "true"
 
+	// ServingPoolKey is both the node label and the NoSchedule taint key of
+	// the dedicated serving pools (bex-tenant-xl, bex-tenant-xxl; w2/m250)
+	// for the compute tiers a standard bex-tenant-0 node cannot hold. The
+	// value is the pool name the tier names in lego/types/tiers (servingPool).
+	// Those nodes still carry bex.co/pool=tenant; the taint keeps every other
+	// workload — smaller tiers, builds, datastores — off them, so a pool node
+	// exists (and is billed) only while such a service runs.
+	ServingPoolKey = "bex.co/serving-pool"
+
 	// LabelProtectedFromTenantMount marks an operator-projected Secret that a
 	// tenant workload must never mount (codex F1) — e.g. the shared S3 backup
 	// credential the Database/KeyValue reconcilers copy into a datastore's own
@@ -111,6 +120,50 @@ func HardenPod(spec *corev1.PodSpec) {
 	if spec.SecurityContext.SeccompProfile == nil {
 		spec.SecurityContext.SeccompProfile = &corev1.SeccompProfile{Type: corev1.SeccompProfileTypeRuntimeDefault}
 	}
+}
+
+// PlaceOnServingPool sets a tenant pod's serving-pool placement from its
+// tier's pool (tiers.Compute.ServingPool): for a named pool, a toleration of
+// exactly that pool's taint and a REQUIRED node affinity to its label, so the
+// pod lands only there — never on a standard node it cannot fit, nor on the
+// other pool. An empty pool clears both, so the projection is idempotent and a
+// tier change back down leaves the pod with today's placement. It owns the
+// whole Tolerations/Affinity of the pods it is applied to (serving, cron and
+// pre-deploy pods carry no other), and never widens beyond the
+// `bex.co/pool=tenant` set the pool's nodes also belong to.
+func PlaceOnServingPool(spec *corev1.PodSpec, pool string) {
+	spec.Tolerations, spec.Affinity = nil, nil
+	if pool == "" {
+		return
+	}
+	TolerateServingPool(spec, pool)
+	spec.Affinity = &corev1.Affinity{NodeAffinity: &corev1.NodeAffinity{
+		RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+			NodeSelectorTerms: []corev1.NodeSelectorTerm{{
+				MatchExpressions: []corev1.NodeSelectorRequirement{{
+					Key:      ServingPoolKey,
+					Operator: corev1.NodeSelectorOpIn,
+					Values:   []string{pool},
+				}},
+			}},
+		},
+	}}
+}
+
+// TolerateServingPool lets a pod that must sit beside an App's own pod — the
+// disk snapshot Job mounting its ReadWriteOnce volume — schedule onto that
+// App's dedicated serving pool, without requiring it: the App may be parked
+// with its volume free to attach anywhere. An empty pool adds nothing.
+func TolerateServingPool(spec *corev1.PodSpec, pool string) {
+	if pool == "" {
+		return
+	}
+	spec.Tolerations = append(spec.Tolerations, corev1.Toleration{
+		Key:      ServingPoolKey,
+		Operator: corev1.TolerationOpEqual,
+		Value:    pool,
+		Effect:   corev1.TaintEffectNoSchedule,
+	})
 }
 
 // TolerateBuildPool lets a build pod schedule onto the tainted dedicated

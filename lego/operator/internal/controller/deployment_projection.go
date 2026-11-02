@@ -664,6 +664,9 @@ func projectDeployment(dep *appsv1.Deployment, app *appv1alpha1.App, p deploymen
 	// have chosen. Writing it moves the stored pod template, so every tenant
 	// pod rolls once when this ships — see the milestone's t002.
 	dep.Spec.Template.Spec.EnableServiceLinks = new(false)
+	// A tier no standard serving node can hold runs on its dedicated pool
+	// (w2/m250); every other tier keeps no toleration/affinity at all.
+	execution.PlaceOnServingPool(&dep.Spec.Template.Spec, servingPoolForTier(app.Spec.Tier))
 	// Last, always: above is what bex chooses, this is what Kubernetes would have
 	// chosen for the rest. See server_defaults.go.
 	applyPodSpecServerDefaults(&dep.Spec.Template.Spec)

@@ -104,6 +104,25 @@ spec:
       expression: "{'render-v1': 'profiles/bex-render-v1.json'}"
     - name: containerPolicy
       expression: variables.podMetadata.?labels['app.bex.co/container-policy'].orValue('')
+    # An App's own runtime workload (Deployment, CronJob, manual run,
+    # co-located pre-deploy Job): controlled by that App, whose name the pod
+    # template carries. Strict-policy templates stay byte-identical and carry
+    # no app-uid label, so a present one must match while an absent one is
+    # accepted — the stricter widened-policy binding is imageCompatibilityWorkload.
+    - name: appOwnedWorkload
+      expression: >-
+        request.resource.resource in ['deployments', 'cronjobs', 'jobs'] &&
+        variables.target.metadata.?ownerReferences.orValue([]).exists(o,
+          o.apiVersion == 'app.bex.co/v1alpha1' && o.kind == 'App' &&
+          o.?controller.orValue(false) && o.uid != '' &&
+          o.name == variables.podMetadata.?labels['app.bex.co/app'].orValue('') &&
+          variables.podMetadata.?labels['app.bex.co/app-uid'].orValue(o.uid) == o.uid)
+    # The dedicated serving pools (w2/m250): bex.co/serving-pool values the
+    # compute tier catalog names (lego/types/tiers/tiers.yaml servingPool).
+    # Mirrors tiers.Compute.ServingPools(); serving_pool_test.go pins the
+    # two together.
+    - name: servingPools
+      expression: "['xl', 'xxl']"
     # The operator projects the persisted App policy onto its pod template.
     # Ownership/UID consistency prevents a marker alone from granting this
     # profile to datastore/platform/backup workloads. CEL cannot read App.spec:
@@ -177,6 +196,29 @@ spec:
           (has(t.key) && t.key != '' && !t.key.startsWith('node-role.kubernetes.io/control-plane') && t.key != 'node-role.kubernetes.io/master')))
       reason: Forbidden
       message: operator-authored workloads may not carry wildcard or control-plane tolerations
+    # Pool grammar (ADR060 D8, w2/m250): each tenant pool taint admits exactly
+    # the workloads that pool exists for. A dedicated serving pool's taint is
+    # tolerated only by an App's own workloads (its Deployment, cron and
+    # one-off runs, pre-deploy Job — sized by a tier that names the pool — and
+    # the disk snapshot Jobs that must sit beside its volume), with the exact
+    # Equal/NoSchedule shape and a pool the tier catalog names; the build-only
+    # taint only by a build Job. A datastore, publish or any other operator
+    # workload carrying either would pin a node the autoscaler exists to
+    # release.
+    - expression: >-
+        request.operation == 'DELETE' ||
+        !has(variables.pod.tolerations) ||
+        variables.pod.tolerations.all(t,
+          (t.?key.orValue('') != 'bex.co/serving-pool' ||
+           (variables.appOwnedWorkload &&
+            t.?operator.orValue('Equal') == 'Equal' &&
+            t.?effect.orValue('') == 'NoSchedule' &&
+            t.?value.orValue('') in variables.servingPools)) &&
+          (t.?key.orValue('') != 'bex.co/build-only' ||
+           (request.resource.resource == 'jobs' &&
+            variables.podMetadata.?labels['app.bex.co/component'].orValue('') == 'build')))
+      reason: Forbidden
+      message: only an App's own workloads may tolerate a dedicated serving pool (exact Equal/NoSchedule toleration of a cataloged pool), and only build Jobs the build-only pool
     - expression: >-
         request.operation == 'DELETE' ||
         (variables.pod.containers.all(c,
