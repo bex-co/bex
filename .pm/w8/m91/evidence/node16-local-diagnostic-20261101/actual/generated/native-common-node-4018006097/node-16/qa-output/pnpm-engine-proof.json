@@ -1,0 +1,8 @@
+{
+  "manager": "pnpm",
+  "project_cwd": "/opt/render/project/src/qa-output/pnpm-wrong-engine",
+  "selected_node": "16.20.2",
+  "range": ">=17",
+  "diagnostic": "ERR_PNPM_UNSUPPORTED_ENGINE",
+  "returncode": 1
+}

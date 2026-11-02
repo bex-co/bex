@@ -1,0 +1,21 @@
+{
+  "PASS": true,
+  "inverse_known_platform_and_scope_edits_exact": true,
+  "runner_ELF_tools_BuildKit_native_arm64": true,
+  "requested_generated_image_and_runtime_target": "linux/amd64",
+  "selection": {
+    "profile": "node-donors",
+    "case": "node-14",
+    "flag": "BEX_NATIVE_TEST_NODE_DONORS",
+    "selector": "^TestCommonNodeGeneratedImages$/^node\\-14$",
+    "go_timeout": "90m",
+    "job_minutes": "120",
+    "scope": "single-case pilot measurement only; not full-family acceptance or a capacity guarantee"
+  },
+  "primary_sha256": {
+    "run_pilot.py": "c2e75459d819aeec1a466873a8387f4fae0e0474926442dbe2387cd8e2a537f7",
+    "pilot.sh": "b6b69b58493b52ab9be705458ddeeeb6f30aa46ed39cd20540156ee93c37e61f",
+    "PLAN.json": "5d5e876f703729e7550225b6e9b41e410098c8d7b400d26b7b5613f08dadfb96"
+  },
+  "new_runroot_absent": true
+}

@@ -1,0 +1,14 @@
+{
+  "command": [
+    "pnpm",
+    "exec",
+    "node",
+    "/opt/render/project/src/check.js",
+    "exec"
+  ],
+  "cwd": "qa-output/pnpm-project",
+  "returncode": 0,
+  "stdout": "BEX_NODE_PROOF={\"mode\":\"exec\",\"manager\":null,\"node\":\"16.20.2\",\"executable\":\"/usr/local/bin/node\",\"path_node\":\"/usr/local/bin/node\",\"node_env\":\"16.20.2\",\"node_env_expected\":\"16.20.2\",\"path\":\"./node_modules/.bin:/opt/bex/pnpm/node-gyp-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"modules\":93,\"napi\":\"8\",\"addon\":{\"headers\":\"16.20.2\",\"module_abi\":93,\"answer\":\"native Gr\u00fc\u00dfe \u03bb \u96ea\"},\"openssl\":\"1.1.1v+quic\",\"brotli\":\"1.0.10\",\"sha256\":\"d8f19a3ac2a7ba1f5297590a1d5eebd60f902054e1eda0ff9d236d8b1c6c60a6\",\"brotli_roundtrip\":true,\"gzip_roundtrip\":true,\"aes_roundtrip\":true,\"bad_tag_rejected\":true,\"roots\":143,\"lifecycle\":null,\"NODE\":\"/usr/local/bin/node\",\"npm_node_execpath\":null,\"npm_execpath\":null}\n",
+  "stderr": "",
+  "timed_out": false
+}

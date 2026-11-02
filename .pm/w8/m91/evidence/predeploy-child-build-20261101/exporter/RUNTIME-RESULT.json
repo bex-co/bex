@@ -1,0 +1,36 @@
+{
+  "PASS": true,
+  "failure": null,
+  "cases": [
+    {
+      "case": "B",
+      "at": "2026-11-01T23:14:13.330223+00:00",
+      "name": "bex-nq-5aced7f5f8c70781a6d21ec7-b",
+      "cid": "04623739dc27531dcab33c3b11b35d454f3702efc29b6bc4b028a38f549b08f2",
+      "PASS": true,
+      "failure": null,
+      "cleanup_errors": [],
+      "unknown_create": false
+    },
+    {
+      "case": "A",
+      "at": "2026-11-01T23:14:17.236996+00:00",
+      "name": "bex-nq-5aced7f5f8c70781a6d21ec7-a",
+      "cid": "b8791c0844b4509374148c76acb2ad524ce082be4b21024569f12340d2c51207",
+      "PASS": true,
+      "failure": null,
+      "cleanup_errors": [],
+      "unknown_create": false
+    }
+  ],
+  "signal": null,
+  "source_changed_paths": [],
+  "peak_owned_bytes": 1720750493,
+  "minimum_host_free_bytes": 44133928960,
+  "remaining_floor": 1207959552,
+  "output_cap": 268435456,
+  "all_owned_cap": 4294967296,
+  "seconds": 5.868,
+  "handlers_restored": true,
+  "scope": "Actual two source exporter binaries only; A fakeclient/source-only placeholder image/UID, B anonymous registry metadata only; no image build/import/cluster/phase/qualification/adoption proof"
+}

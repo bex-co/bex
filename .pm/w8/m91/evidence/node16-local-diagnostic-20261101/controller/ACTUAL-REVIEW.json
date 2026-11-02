@@ -1,0 +1,903 @@
+{
+  "decision": "ONE_NODE16_ARM64_LOCAL_DIAGNOSTIC_PASS",
+  "source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "session": 7319,
+  "elapsed_seconds": 226.097,
+  "expected": {
+    "node": "16.20.2",
+    "node_donor": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+    "node_env": "16.20.2",
+    "npm_expectation": "actual selected npm package.json version must equal actual npm CLI; no fixed npm6 guess",
+    "pnpm": "10.34.7",
+    "yarn": "1.22.22"
+  },
+  "config": "sha256:b3baf380f3fb6040c41f52752e7c4f29a6513b76dc1cbeda772fbdcff6ec7fbe",
+  "source_custody": {
+    "builder": "bex-nq-b887cf829b534da6aedc97b0",
+    "canonical_sha256": "2029f6fc628d5c0856b53d714fc9cac9c9cf94a5e8e833f8338378364ba37cd6",
+    "choices": [
+      {
+        "Label": "Node",
+        "Line": "16",
+        "Image": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+        "Source": ".node-version",
+        "Exact": ""
+      }
+    ],
+    "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+    "empty_runtime_artifact_map": false,
+    "executed_sha256": "2029f6fc628d5c0856b53d714fc9cac9c9cf94a5e8e833f8338378364ba37cd6",
+    "fixture_sha256": {
+      ".node-version": "e6c21e8d260fe71882debdb339d2402a2ca7648529bc2303f48649bce0380017",
+      "addon.c": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+      "check.js": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+      "check.py": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+      "expected-node.json": "c9e4900f519379e33555a0181ef74298dc935a1f1a86eacb208d5ca96957cff2",
+      "package.json": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60"
+    },
+    "legacy_pnpm": "Node14/16 run the pnpm10.34.7 standalone (w8/226); strict tool/lifecycle assertions remain enabled",
+    "node_runtime_artifact": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+    "node_source": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+    "owner": "bex-nq-b887cf829b534da6aedc97b0",
+    "platform": "linux/arm64",
+    "runtime_artifact_map": {
+      "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783": "ghcr.io/bex-co/bex-cnb-run@sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+      "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d"
+    },
+    "runtime_artifact_mode": "published-runtime-donors",
+    "scope": "additional Node family generated-image gate; no original13/28, native-init, Kubernetes, hosted or common publication claim",
+    "test_only_network_overlay": false
+  },
+  "decoded_commands": [
+    {
+      "phase": "build",
+      "command_result": "compile-addon",
+      "command": [
+        "cc",
+        "-shared",
+        "-fPIC",
+        "-I/usr/local/include/node",
+        "-DNODE_GYP_MODULE_NAME=bex_node_qualification",
+        "/opt/render/project/src/addon.c",
+        "-o",
+        "/opt/render/project/src/qa-output/bex_node.node"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "node-build",
+      "command": [
+        "node",
+        "/opt/render/project/src/check.js",
+        "build"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "ldd-build",
+      "command": [
+        "ldd",
+        "/usr/local/bin/node"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "tools-build",
+      "command": [
+        "node",
+        "/opt/render/project/src/check.js",
+        "tools"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "npm-version-build",
+      "command": [
+        "npm",
+        "--version"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "yarn-version-build",
+      "command": [
+        "yarn",
+        "--version"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "npm-install",
+      "command": [
+        "npm",
+        "install",
+        "--offline",
+        "--no-audit",
+        "--package-lock=false",
+        "--engine-strict"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "npm-wrong-engine",
+      "command": [
+        "npm",
+        "install",
+        "--offline",
+        "--no-audit",
+        "--package-lock=false",
+        "--engine-strict"
+      ],
+      "returncode": 1,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "npm-run-build",
+      "command": [
+        "npm",
+        "run",
+        "probe"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "yarn-install",
+      "command": [
+        "yarn",
+        "install",
+        "--offline",
+        "--non-interactive",
+        "--no-lockfile"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "yarn-wrong-engine",
+      "command": [
+        "yarn",
+        "install",
+        "--offline",
+        "--non-interactive",
+        "--no-lockfile"
+      ],
+      "returncode": 1,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "yarn-run-build",
+      "command": [
+        "yarn",
+        "run",
+        "probe"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "pnpm-version-build",
+      "command": [
+        "pnpm",
+        "--version"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "pnpm-install",
+      "command": [
+        "pnpm",
+        "install",
+        "--offline",
+        "--lockfile=false",
+        "--engine-strict"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "pnpm-wrong-engine",
+      "command": [
+        "pnpm",
+        "install",
+        "--offline",
+        "--lockfile=false",
+        "--engine-strict"
+      ],
+      "returncode": 1,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "pnpm-run-build",
+      "command": [
+        "pnpm",
+        "run",
+        "probe"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "build",
+      "command_result": "pnpm-exec-build",
+      "command": [
+        "pnpm",
+        "exec",
+        "node",
+        "/opt/render/project/src/check.js",
+        "exec"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "runtime",
+      "command_result": "node-runtime",
+      "command": [
+        "node",
+        "/opt/render/project/src/check.js",
+        "runtime"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "runtime",
+      "command_result": "ldd-runtime",
+      "command": [
+        "ldd",
+        "/usr/local/bin/node"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "runtime",
+      "command_result": "tools-runtime",
+      "command": [
+        "node",
+        "/opt/render/project/src/check.js",
+        "tools"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "runtime",
+      "command_result": "npm-version-runtime",
+      "command": [
+        "npm",
+        "--version"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "runtime",
+      "command_result": "yarn-version-runtime",
+      "command": [
+        "yarn",
+        "--version"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "runtime",
+      "command_result": "npm-run-runtime",
+      "command": [
+        "npm",
+        "run",
+        "probe"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "runtime",
+      "command_result": "yarn-run-runtime",
+      "command": [
+        "yarn",
+        "run",
+        "probe"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "runtime",
+      "command_result": "pnpm-version-runtime",
+      "command": [
+        "pnpm",
+        "--version"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "runtime",
+      "command_result": "pnpm-run-runtime",
+      "command": [
+        "pnpm",
+        "run",
+        "probe"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    },
+    {
+      "phase": "runtime",
+      "command_result": "pnpm-exec-runtime",
+      "command": [
+        "pnpm",
+        "exec",
+        "node",
+        "/opt/render/project/src/check.js",
+        "exec"
+      ],
+      "returncode": 0,
+      "timed_out": false
+    }
+  ],
+  "decoded_identity_crypto_lifecycle_proofs": [
+    {
+      "phase": "build",
+      "command_result": "node-build",
+      "mode": "build",
+      "manager": null,
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": null,
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "build",
+      "command_result": "tools-build",
+      "mode": "tools",
+      "manager": null,
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": null,
+      "yarn_cli": "/opt/yarn-v1.22.22/bin/yarn",
+      "npm_package_version": "8.19.4",
+      "yarn_package_version": "1.22.22",
+      "pnpm_package": {
+        "name": "pnpm",
+        "standalone": "/opt/bex/pnpm/bin/pnpm"
+      }
+    },
+    {
+      "phase": "build",
+      "command_result": "npm-install",
+      "mode": "lifecycle",
+      "manager": "npm",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "preinstall",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "build",
+      "command_result": "npm-install",
+      "mode": "lifecycle",
+      "manager": "npm",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "postinstall",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "build",
+      "command_result": "npm-run-build",
+      "mode": "script",
+      "manager": "npm",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "probe",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "build",
+      "command_result": "yarn-install",
+      "mode": "lifecycle",
+      "manager": "yarn",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "preinstall",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "build",
+      "command_result": "yarn-install",
+      "mode": "lifecycle",
+      "manager": "yarn",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "postinstall",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "build",
+      "command_result": "yarn-wrong-engine",
+      "mode": "lifecycle",
+      "manager": "yarn",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "preinstall",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "build",
+      "command_result": "yarn-run-build",
+      "mode": "script",
+      "manager": "yarn",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "probe",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "build",
+      "command_result": "pnpm-install",
+      "mode": "lifecycle",
+      "manager": "pnpm",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "preinstall",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "build",
+      "command_result": "pnpm-install",
+      "mode": "lifecycle",
+      "manager": "pnpm",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "postinstall",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "build",
+      "command_result": "pnpm-run-build",
+      "mode": "script",
+      "manager": "pnpm",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "probe",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "build",
+      "command_result": "pnpm-exec-build",
+      "mode": "exec",
+      "manager": null,
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": null,
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "runtime",
+      "command_result": "node-runtime",
+      "mode": "runtime",
+      "manager": null,
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": null,
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "runtime",
+      "command_result": "tools-runtime",
+      "mode": "tools",
+      "manager": null,
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": null,
+      "yarn_cli": "/opt/yarn-v1.22.22/bin/yarn",
+      "npm_package_version": "8.19.4",
+      "yarn_package_version": "1.22.22",
+      "pnpm_package": {
+        "name": "pnpm",
+        "standalone": "/opt/bex/pnpm/bin/pnpm"
+      }
+    },
+    {
+      "phase": "runtime",
+      "command_result": "npm-run-runtime",
+      "mode": "script",
+      "manager": "npm",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "probe",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "runtime",
+      "command_result": "yarn-run-runtime",
+      "mode": "script",
+      "manager": "yarn",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "probe",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "runtime",
+      "command_result": "pnpm-run-runtime",
+      "mode": "script",
+      "manager": "pnpm",
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": "probe",
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    },
+    {
+      "phase": "runtime",
+      "command_result": "pnpm-exec-runtime",
+      "mode": "exec",
+      "manager": null,
+      "node": "16.20.2",
+      "node_env": "16.20.2",
+      "executable": "/usr/local/bin/node",
+      "path_node": "/usr/local/bin/node",
+      "modules": 93,
+      "addon": {
+        "headers": "16.20.2",
+        "module_abi": 93,
+        "answer": "native Grüße λ 雪"
+      },
+      "openssl": "1.1.1v+quic",
+      "brotli": "1.0.10",
+      "brotli_roundtrip": true,
+      "gzip_roundtrip": true,
+      "aes_roundtrip": true,
+      "bad_tag_rejected": true,
+      "lifecycle": null,
+      "yarn_cli": null,
+      "npm_package_version": null,
+      "yarn_package_version": null,
+      "pnpm_package": null
+    }
+  ],
+  "canonical_runtime_artifact_manifest": {
+    "path": "/private/tmp/bex-w8-node16-local-pilot-b887cf829b534da6aedc97b0/evidence/manifest.json",
+    "sha256": "301be9c8918d8b79cdbe63e58ef55e4d6d8e1f8bf18a5bb9c29af6d52e9163dd",
+    "verified_files": 194
+  },
+  "cleanup": {
+    "helper_exit0": true,
+    "runner_builder_volume_raw_absence": "Retained exact raw command stdout/stderr in evidence",
+    "owner_labelled_containers_images_empty": true,
+    "own_config_removed": true,
+    "pending_pgids": []
+  },
+  "no_new_authority": "Historical1febaCI remains historical; amended688CI pending actualsuccess; no botharch/fullfamily/adoption/hosted/Kubernetes claim",
+  "recorded_at": "2026-11-01T23:31:59.583053+00:00"
+}

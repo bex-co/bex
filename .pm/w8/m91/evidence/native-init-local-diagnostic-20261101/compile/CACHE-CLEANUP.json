@@ -1,0 +1,23 @@
+[
+  {
+    "path": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/gocache",
+    "files_before": 4550,
+    "bytes_before": 512620314,
+    "scope": "Own newly-created crosscompile cache/temp only after directchild/group cleanup; no shared/module/toolroot/repo changes",
+    "removed": true
+  },
+  {
+    "path": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/gotmp",
+    "files_before": 0,
+    "bytes_before": 0,
+    "scope": "Own newly-created crosscompile cache/temp only after directchild/group cleanup; no shared/module/toolroot/repo changes",
+    "removed": true
+  },
+  {
+    "path": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/tmp",
+    "files_before": 0,
+    "bytes_before": 0,
+    "scope": "Own newly-created crosscompile cache/temp only after directchild/group cleanup; no shared/module/toolroot/repo changes",
+    "removed": true
+  }
+]

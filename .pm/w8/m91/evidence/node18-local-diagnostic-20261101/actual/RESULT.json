@@ -1,0 +1,11 @@
+{
+  "PASS": true,
+  "scope": "ONE current donorNode18 ARM64 local generated case only; no adoption/botharch/fullfamily/hosted/K8s claim",
+  "failure": null,
+  "cleanup_or_artifact_errors": [],
+  "owner": "bex-nq-33f4dbbf9ad545fc81992e01",
+  "case_pass": true,
+  "cancel_signal": null,
+  "pending_pgids": [],
+  "elapsed_seconds": 276.437
+}

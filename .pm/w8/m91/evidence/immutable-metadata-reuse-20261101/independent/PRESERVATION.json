@@ -1,0 +1,16 @@
+{
+  "tracked300_baseline": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+  "changed_paths": [
+    "lego/operator/internal/build/dockerhub.go",
+    "lego/operator/internal/build/dockerhub_test.go",
+    "lego/operator/internal/build/nativeutility_integration_test.go"
+  ],
+  "all_other_tracked300_bytes_unchanged": true,
+  "physical_untracked_workspace_qualification": false,
+  "old_transient_retry_test_body_byteexact": true,
+  "utility_loop_inverse_resolver_only_change_byteexact": true,
+  "registry_digest_platform_reader_byteexact": true,
+  "production_resolver_pipeline_byteexact": true,
+  "original_fixtures_program_data_commands_oracles_pins_unchanged": true,
+  "no_repo_mutation": true
+}

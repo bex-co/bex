@@ -1,0 +1,200 @@
+{
+  "schema": "bex.predeploy-child-build-independent-review/v1",
+  "at": "2026-11-01T23:44:08.612851+00:00",
+  "outcome": "CLEAN_BUILD_ONLY_WITH_ORIGINAL_WRAPPER_FAILURE_AND_SEPARATE_CLEANUP_RECONCILIATION",
+  "original_result": {
+    "bytes": 720,
+    "sha256": "6198c26313d36050a14d5dad2b8b595b7a5cf81d02a7d64a8e0b0918b3bd0fe1",
+    "mode": "0644"
+  },
+  "original_controller_PASS": false,
+  "original_controller_exit": 1,
+  "build_step_exit": 0,
+  "original_cleanup_error": "strict CI helper refuses local bex-pd owner; actual fallback cleanup is separate and retained",
+  "cleanup_reconciled": true,
+  "all_379_command_groups_recorded_reaped_absent": true,
+  "source_snapshot": {
+    "commit": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+    "paths": 848,
+    "manifest": {
+      "bytes": 243622,
+      "sha256": "eafa20ded8a18d1719aaec9dbb48a642decaf68f29364f8461e3062e59d68665",
+      "mode": "0644"
+    },
+    "all_snapshot_bytes_modes_Git_blob_IDs_verified": true,
+    "comparison_current_HEAD": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+    "changed_paths": [
+      "lego/operator/internal/build/nativequalification_init_test.go"
+    ],
+    "B_inputs_unchanged": true
+  },
+  "canonical_recipe": {
+    "bytes": 2963,
+    "sha256": "5e171db5e194d52efa00ff495ca29af50d8792a0fdb8e33d13265d47a5ea003a",
+    "mode": "0600"
+  },
+  "fixtures42_unchanged": true,
+  "actual_build_checks": 11,
+  "seven_original_pure_oracle_reapplications": [
+    {
+      "mid": 91,
+      "pure_original_valid_after": true,
+      "authored_source_and_data": true,
+      "validator_sha256": "bcea54ec9a58a9f8c97676680f6d5cee9876feb16d16cc809cda26056856ace1",
+      "actual_stdout": {
+        "bytes": 2472,
+        "sha256": "dc17a45088ceb39c1746cc603e568fc546f30d2c0ae3609c60bd79375933fdda",
+        "mode": "0600"
+      }
+    },
+    {
+      "mid": 93,
+      "pure_original_valid_after": true,
+      "authored_source_and_data": true,
+      "validator_sha256": "14a6714bfddf409acfc8eee1f75666eeeac7be18b4b2d9674b239417e5fa03d7",
+      "actual_stdout": {
+        "bytes": 3088,
+        "sha256": "251c3606612f5b37ca3f880b1a9d9c9c5630e425321c5ecc0b076ddd8c763176",
+        "mode": "0600"
+      }
+    },
+    {
+      "mid": 98,
+      "pure_original_valid_after": true,
+      "authored_source_and_data": true,
+      "validator_sha256": "a8abc8d50988275aa2c2936cc895bc7a7b0358ed7f06edf30a788bfaa0118a08",
+      "actual_stdout": {
+        "bytes": 2341,
+        "sha256": "98ad6c449dce1e93167475dee6961882d390315568c1283f5d6f1d5a9385b101",
+        "mode": "0600"
+      }
+    },
+    {
+      "mid": 99,
+      "pure_original_valid_after": true,
+      "authored_source_and_data": true,
+      "validator_sha256": "2dec2aca1c6eb8b1d2a1cca35bbc2c9e47849d65148ec417b8854e022ad04008",
+      "actual_stdout": {
+        "bytes": 1150,
+        "sha256": "5cd8ed451d044b0cf77aea84069ce5413db326e64d1853926e730b8393938eea",
+        "mode": "0600"
+      }
+    },
+    {
+      "mid": 101,
+      "pure_original_valid_after": true,
+      "authored_source_and_data": true,
+      "validator_sha256": "63ae3cae9e37db7f9e60a233b6fe214747af47656ad17dd7a41db317ccea4ed3",
+      "actual_stdout": {
+        "bytes": 1877,
+        "sha256": "e917f5c3b4ac87d6267daa504cef8ab14f0e080276689f987eb22762f6f644c6",
+        "mode": "0600"
+      }
+    },
+    {
+      "mid": 103,
+      "pure_original_valid_after": true,
+      "authored_source_and_data": true,
+      "validator_sha256": "6679f39358f9ecdba3aba7747ccea4b028372bcee427fa77db142c1fe454b208",
+      "actual_stdout": {
+        "bytes": 3877,
+        "sha256": "77fcb80f8aa7f05b671236c97abcc3855fb9c0d3be8fa083a82a058a503b827d",
+        "mode": "0600"
+      }
+    },
+    {
+      "mid": 107,
+      "pure_original_valid_after": true,
+      "authored_source_and_data": true,
+      "validator_sha256": "e3c01915a1d5fa7b81890bd553be3654d416685ee1295d8ff5b0da272272b634",
+      "actual_stdout": {
+        "bytes": 4000,
+        "sha256": "bd7a018c08ddd068e9c43dadcc4d12b6ae4f1a80b30a89d24bbe841138969d8a",
+        "mode": "0600"
+      }
+    }
+  ],
+  "static_gzip_ZIP_empty_binary_Unicode_CRC_checks": true,
+  "OCI": {
+    "tar": {
+      "bytes": 941516800,
+      "sha256": "fb39d8c2495f5d7f7d62ef3cbbd69bdb8caf910bd64a0777f270a6a43f5629bd",
+      "mode": "0644"
+    },
+    "index": {
+      "bytes": 364,
+      "sha256": "cc4caedfe165b3f2a7d58cab6abde24691eb6a04ce06da8656af4b0f1e02a470",
+      "mode": "0644"
+    },
+    "platform_manifest": {
+      "digest": "sha256:cd8542c966bfa204dad5bb96857046aec6cf07c4d38e5bcd60e00a87bb618a2e",
+      "bytes": 6939,
+      "platform": {
+        "os": "linux",
+        "architecture": "arm64"
+      }
+    },
+    "config": {
+      "digest": "sha256:85152c4e3f9d5947f048b4558bb347b6bcfdfd7ca3510feca90ead00bb483f2a",
+      "bytes": 13100
+    },
+    "layers": 35,
+    "compressed_layer_bytes": 941464782,
+    "all_compressed_blobs_freshly_SHA256_checked": true,
+    "labels": {
+      "co.bex.native-qualification": "bex-pd-7cf7c0d919d6",
+      "org.opencontainers.image.revision": "1feba939b4697894e800ed0abb4f25a0bf415641",
+      "org.opencontainers.image.source": "https://github.com/bex-co/bex"
+    },
+    "ENV": [
+      "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "NODE_VERSION=24.22.1",
+      "YARN_VERSION=1.22.22",
+      "NODE_ENV=production",
+      "PORT=10000"
+    ],
+    "CMD": [
+      "/bin/bash",
+      "-c",
+      "/usr/bin/python3 utility-check.py runtime && /usr/bin/python3 original-cases.py runtime node"
+    ],
+    "revision_is_inherited_common_producer": "1feba939b4697894e800ed0abb4f25a0bf415641"
+  },
+  "selected_owned_final_layer_artifacts": {
+    "regular_files": 94,
+    "bytes": 318395,
+    "compressed_layer_sha256": "fc77a4dcf656349f9ddf1ebb870e0239b9aa4ba2e7e37f339d969d57f3720727",
+    "declared_full_layer_uncompressed_bytes": 2951188,
+    "full_layer_members": 691
+  },
+  "bounds": {
+    "whole_seconds": 2400,
+    "pull_seconds": 195,
+    "bootstrap_seconds": 300,
+    "build_seconds": 1800,
+    "host_files_bytes": 12884901888,
+    "combined_owned_bytes": 12884901888,
+    "oci_bytes": 4294967296,
+    "log_bytes": 16777216,
+    "remaining_host_floor_bytes": 8589934592,
+    "builder_state_polled_bytes": 12884901888,
+    "observe_interval_seconds": 1,
+    "builder_memory_bytes": 4294967296,
+    "builder_cpus": 2,
+    "runner_memory_bytes": 536870912,
+    "runner_cpus": 2
+  },
+  "actual_observed_resources": {
+    "elapsed_seconds": 218.445,
+    "peak_combined_observed_bytes": 9351194075,
+    "minimum_physical_free_bytes": 27235901440,
+    "maximum_oci_observed_bytes": 941516800,
+    "final_log_bytes": 1536922
+  },
+  "limitations": [
+    "ONE local ARM64 canonical child build; no runtime CMD, HTTP, predeploy phase, Kubernetes Job, publication, adoption, botharch or wholefamily proof.",
+    "Actual generation source688 differs from the inherited1feba OCI revision; source/context/command custody binds688 independently.",
+    "Original wrapper FAILED remains immutable; reconciled cleanup does not turn the wrapper result into PASS.",
+    "Raw OCI/toolbinaries/fullsource/cache excluded from capsule with exact identities retained. Local OCI compressed bytes and selected original owned final-layer build artifacts were read only; no load/import/execution/network."
+  ]
+}

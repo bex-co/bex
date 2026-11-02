@@ -1,0 +1,11 @@
+{
+  "PASS": true,
+  "scope": "ONE current-source native-init ARM64 local four-launch diagnostic; no newCI/baseline/adoption/botharch/fullfamily/hosted/K8s claim",
+  "failure": null,
+  "cleanup_or_artifact_errors": [],
+  "owner": "bex-nq-e9fbe0e5635547089592094b",
+  "case_pass": true,
+  "cancel_signal": null,
+  "pending_pgids": [],
+  "elapsed_seconds": 174.244
+}

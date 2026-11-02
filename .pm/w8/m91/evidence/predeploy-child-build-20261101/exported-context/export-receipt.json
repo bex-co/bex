@@ -1,0 +1,17 @@
+{
+  "build_command": "/usr/bin/python3 utility-check.py build \u0026\u0026 /usr/bin/python3 original-cases.py build node",
+  "canonical_recipe_sha256": "5e171db5e194d52efa00ff495ca29af50d8792a0fdb8e33d13265d47a5ea003a",
+  "case": "node-compute",
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "created_at": "0001-01-01T00:00:00Z",
+  "executed_recipe_sha256": "5e171db5e194d52efa00ff495ca29af50d8792a0fdb8e33d13265d47a5ea003a",
+  "omission_probe": "",
+  "render_env_sha256": "af4c3dcd0340b894f659849b45df304a6713603a4f29d39319075c3c1364a196",
+  "runtime": "node",
+  "scope": "canonical recipe/resolver/context export only; no image, version runtime, Pod, utility, primary Python3.13, hosted, or production claim",
+  "selection_environment": {
+    "NODE_VERSION": "24"
+  },
+  "start_command": "/usr/bin/python3 utility-check.py runtime \u0026\u0026 /usr/bin/python3 original-cases.py runtime node",
+  "test_prerequisite_overlay": false
+}

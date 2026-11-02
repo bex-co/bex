@@ -1,0 +1,18 @@
+[
+  {
+    "label": "independent-focused",
+    "argv": [
+      "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+      "test",
+      "-count=1",
+      "-run",
+      "^TestImageMetadata(Cache|RetriesOnlyTransientReads)",
+      "./internal/build"
+    ],
+    "exit_code": 0,
+    "expected_exit": 0,
+    "error": null,
+    "group_absent": true,
+    "elapsed_seconds": 4.064
+  }
+]

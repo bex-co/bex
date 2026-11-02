@@ -1,0 +1,5 @@
+[
+  "lego/operator/internal/build/dockerhub.go",
+  "lego/operator/internal/build/dockerhub_test.go",
+  "lego/operator/internal/build/nativeutility_integration_test.go"
+]

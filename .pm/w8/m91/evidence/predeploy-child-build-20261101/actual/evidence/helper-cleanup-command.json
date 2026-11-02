@@ -1,0 +1,11 @@
+{
+  "argv": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/.github/scripts/native-common-qualify.py",
+    "cleanup",
+    "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence"
+  ],
+  "exit_code": 1,
+  "stdout": "",
+  "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/.github/scripts/native-common-qualify.py\", line 994, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/.github/scripts/native-common-qualify.py\", line 984, in main\n    cleanup(args.root)\n    ~~~~~~~^^^^^^^^^^^\n  File \"/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/.github/scripts/native-common-qualify.py\", line 794, in cleanup\n    raise ValueError(\"refusing cleanup without an exact qualification owner\")\nValueError: refusing cleanup without an exact qualification owner\n"
+}

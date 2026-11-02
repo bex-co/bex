@@ -1,0 +1,7 @@
+{
+  "path": "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+  "sha256": "fd8876aadf9d8774884fd83c7df759883f107d2f8668796f37ef3622f9cd301a",
+  "host": "darwin/arm64",
+  "crosscompile_target": "linux/arm64",
+  "no_testbinary_executed": true
+}

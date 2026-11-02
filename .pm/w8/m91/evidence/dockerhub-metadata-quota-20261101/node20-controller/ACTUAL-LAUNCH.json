@@ -1,0 +1,10 @@
+{
+  "pid": 46264,
+  "at": "2026-11-01T23:50:43.542408+00:00",
+  "primary": {
+    "run_pilot.py": "04dd0881947bddefe5595a17d28cc188ca483af090f0154e94a37584e6627c53",
+    "pilot.sh": "980ad5e13ada27d41b845e2429def77691888418558e3f5a6ee574c44a8d8e55",
+    "PLAN.json": "f6b83b40a7c2ebaef747c56c54476fa5bc25bf6896e1d994fde28d4ed6391358"
+  },
+  "scope": "ONE existing Node20 donorARM64 localdiagnostic; Node18 PASS+completecleanup independentlychecked beforethislaunch"
+}

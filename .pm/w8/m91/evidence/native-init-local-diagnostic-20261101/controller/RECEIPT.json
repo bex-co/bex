@@ -1,0 +1,29 @@
+{
+  "schema": "bex.nativeinit-yarn-data-plan-rebind/v1",
+  "status": "DATA_ONLY_PREPARED_NO_EXECUTION_BY_AUTHOR",
+  "approved_parent": "/private/tmp/bex-w8-native-init-bound-plan-20261101-7b6hkwxs",
+  "controller_shell_byte_exact": true,
+  "bounds_commands_programs_unchanged": true,
+  "source": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+  "source300_pure_verify": "PASS exact types/modes/bytes/pathset",
+  "GoSDK17372_fullverify": "PASS same Go1.27.3/acquired75d9manifest/ca945receipt; no reacquisition",
+  "test_ELF": {
+    "path": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/bin/build-linux-arm64.test",
+    "sha256": "f87d0fc88e4a5ee8b2e7abf63fdcc017832d4eceaac84d4098a7e0b7f0e2055d",
+    "bytes": 41727286,
+    "class": "ELF64LE",
+    "machine": "AArch64",
+    "PT_INTERP": false,
+    "executed": false
+  },
+  "compile_receipt": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/RECEIPT.json",
+  "fresh_sameimage_CI": "Rootdispatch pending;1feba/688 baselines historical for ea937",
+  "primary": {
+    "run_pilot.py": "1e8e6440ca0edf79f25ead5e4e3fbb444ed08d7d882e0e919a670c89a1ea9d05",
+    "pilot.sh": "f16bca991b0086f63f34f853cb6e566f27dec95530ad8b13787c580840bbc537",
+    "PLAN.json": "dea0078b4244aab992357c0eb3c16082533db9e3d4ec305ae18de5c2d8cd6bb6"
+  },
+  "run_root": "/private/tmp/bex-w8-native-init-local-pilot-e9fbe0e5635547089592094b",
+  "run_root_absent_at_pure_verify": true,
+  "at": "2026-11-01T23:41:18.374029+00:00"
+}

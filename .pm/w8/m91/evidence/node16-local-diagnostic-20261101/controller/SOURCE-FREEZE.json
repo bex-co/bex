@@ -1,0 +1,23 @@
+{
+  "status": "PREPARED_PURE_VERIFY_PASS_NO_RESOURCES_YET",
+  "parent": "/private/tmp/bex-w8-node14-local-pilot-v4-yarn-rebind-20261101-zejnlirm",
+  "source300": "6883953/SOURCE497e75 exact",
+  "same_ELF": "8e7f06b1...",
+  "selection": {
+    "profile": "node-donors",
+    "case": "node-16",
+    "flag": "BEX_NATIVE_TEST_NODE_DONORS",
+    "selector": "^TestCommonNodeGeneratedImages$/^node\\-16$",
+    "go_timeout": "90m",
+    "job_minutes": "120",
+    "scope": "single-case pilot measurement only; not full-family acceptance or a capacity guarantee"
+  },
+  "canonical_map": {
+    "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113"
+  },
+  "controller_inverse_identity_replacements_exact": true,
+  "shell_inverse_case_replacement_exact": true,
+  "all_bounds_and_lifecycle_unchanged": true,
+  "classification": "ONE local diagnostic only; amended completeCI pending; historical1feba remainshistorical",
+  "resource_condition": "Invoke capacity observation before launching; wait Rootnativeinit completion if concurrent VM headroom unclear"
+}

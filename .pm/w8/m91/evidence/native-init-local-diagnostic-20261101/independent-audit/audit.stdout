@@ -1,0 +1,11 @@
+{
+  "outcome": "CLEAN_LOCAL_ARM64_NATIVE_INIT_FOUR_LAUNCH_DIAGNOSTIC",
+  "root": "/private/tmp/bex-w8-native-init-actual-independent-20261101-TRPEDCkS",
+  "review": {
+    "bytes": 7193,
+    "sha256": "b7e7b4ff6b86acac5413b04705b75dbebbdc3483309f36af0da8cd918578fe26",
+    "mode": "0644"
+  },
+  "capsule_files": 230,
+  "capsule_bytes": 623304
+}

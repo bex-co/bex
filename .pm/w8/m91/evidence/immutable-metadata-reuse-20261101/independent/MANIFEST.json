@@ -1,0 +1,363 @@
+{
+  "files": [
+    {
+      "path": "CHECKS.json",
+      "bytes": 374,
+      "sha256": "3f3e472546a160b1ecb34951abf5f0109573f626446571155d736b5cae4e7f6b",
+      "mode": "0644"
+    },
+    {
+      "path": "PRESERVATION.json",
+      "bytes": 692,
+      "sha256": "8151e9d9d2b8bb1a556c13bcc398f6dd9c7696773e9d9ab1585e725487f5c211",
+      "mode": "0644"
+    },
+    {
+      "path": "RECEIPT.json",
+      "bytes": 1053,
+      "sha256": "b5eb0bf58010f847cb7e9f8cd5690afacb00ad3febc3c199b37d2dbbefcce657",
+      "mode": "0644"
+    },
+    {
+      "path": "REVIEW.json",
+      "bytes": 6113,
+      "sha256": "f4f88e1398e477f59d1cc567bac119ab3c3d8e9e3a4e6bd128fc1c2a12a4de41",
+      "mode": "0644"
+    },
+    {
+      "path": "SOURCE-AFTER.json",
+      "bytes": 494,
+      "sha256": "c081479af46daf1d06b9dacf440463b36ed53c97f91d0a270a8e5377fe7dbf7a",
+      "mode": "0644"
+    },
+    {
+      "path": "SOURCE-BEFORE.json",
+      "bytes": 494,
+      "sha256": "c081479af46daf1d06b9dacf440463b36ed53c97f91d0a270a8e5377fe7dbf7a",
+      "mode": "0644"
+    },
+    {
+      "path": "SOURCE-GUARD-REFRESH.json",
+      "bytes": 524,
+      "sha256": "9c6ec36f7f88738308960373ab5660c8d5a1d986933c3c45482d09f903e1aa28",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/CHECKS.json",
+      "bytes": 1419,
+      "sha256": "01512ae828c5e6d1a1e5a819b5c6fed3fc887204cff804ee3b279b093f94369b",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/LINT.json",
+      "bytes": 234,
+      "sha256": "079d57236631fc91518f6f6dd74a1f9af3ce9845fad074e6dc6314ab705cf528",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/focused.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/focused.stdout",
+      "bytes": 63,
+      "sha256": "413c60c34ff43a5f2d603186b29d10390950000e7d8eac98456d3808371c183b",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/initial-LINT.json",
+      "bytes": 234,
+      "sha256": "13eaae8bc74ce60159b028fb88e0eb6e854a0f34555bb56576361d52a505d633",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/initial-lint.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/initial-lint.stdout",
+      "bytes": 294,
+      "sha256": "b8a11f56fa29dda2b47eded9987b54c8db35009df30c5f21f00417d07ea71aa4",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/lint.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/lint.stdout",
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/old-requestcount-red.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/old-requestcount-red.stdout",
+      "bytes": 273,
+      "sha256": "db73268300aafd2cbbbba0555896b4055bfbe7f6e7d2c3129829b1bc227053dc",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/package.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/package.stdout",
+      "bytes": 64,
+      "sha256": "0e4907b681884e0c4fce57508238219d454ee18e2ea5afcd9fdfc9b2e08bab4b",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/race.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "author-checks/race.stdout",
+      "bytes": 63,
+      "sha256": "198b6f02b8dcbe0420326c1ce51b252ac13b7510a71050ead36d067acbe659f9",
+      "mode": "0644"
+    },
+    {
+      "path": "dockerhub.go.diff",
+      "bytes": 2893,
+      "sha256": "905b8d3f111e415ff6d5d55b12839fbd317d985ebf85f9a71923ae94ece88f01",
+      "mode": "0644"
+    },
+    {
+      "path": "dockerhub_test.go.diff",
+      "bytes": 10064,
+      "sha256": "91b3a6a7a537fe43a8c106359ad18dd482ad606b39c6f0b946ecd70a451c3e54",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/CHECKS.json",
+      "bytes": 374,
+      "sha256": "06e145d9aee1c54979c3d84764e5f92541ae4fe6f990a809a25bef923a673973",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/PRESERVATION.json",
+      "bytes": 699,
+      "sha256": "b7a247971c2504a543cb40d1410e585df761f7a7ef5c85e5008d8abe0c18670b",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/SOURCE-AFTER.json",
+      "bytes": 494,
+      "sha256": "2f7f253eddd326f072ed0961839507eb3ad32bd98d59e98f6b921e91b48887e5",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/SOURCE-BEFORE.json",
+      "bytes": 494,
+      "sha256": "2f7f253eddd326f072ed0961839507eb3ad32bd98d59e98f6b921e91b48887e5",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/author-checks/CHECKS.json",
+      "bytes": 1420,
+      "sha256": "c51c17295694762e28cbfe735b44e9e1086b8900fb2d5b0bb22870a480787252",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/author-checks/focused.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/author-checks/focused.stdout",
+      "bytes": 63,
+      "sha256": "0519cccaec1e0e30b6ca7d14b129a926eb321e9f69686b3bf28d5d37b9675a65",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/author-checks/old-requestcount-red.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/author-checks/old-requestcount-red.stdout",
+      "bytes": 273,
+      "sha256": "fe8e858a43fd77924f81b8654e12d8972876feb9728ae2426213cfce79d84d8f",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/author-checks/package.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/author-checks/package.stdout",
+      "bytes": 64,
+      "sha256": "9fa1581680c1e30a65a3e14fb16c64a57c8431e0d295d14a064ae63704819cbe",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/author-checks/race.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/author-checks/race.stdout",
+      "bytes": 63,
+      "sha256": "fd053a4998e190fd5e772b041421b9f616b732c6d5e2f937de9e3274151036df",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/independent-focused.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/independent-focused.stdout",
+      "bytes": 63,
+      "sha256": "e37a6cea97f09c77662205bed0495273ccbaaddc7789b1022b0e71b37be41f85",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/runner.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/runner.stdout",
+      "bytes": 294,
+      "sha256": "05684601b3c2428c4a06f2bfc0d1c5489f36f22d63d517bbcca48f7a05cb6453",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/source/after/lego/operator/internal/build/dockerhub.go",
+      "bytes": 12874,
+      "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/source/after/lego/operator/internal/build/dockerhub_test.go",
+      "bytes": 11380,
+      "sha256": "13b673038bf6d2a6e57d37dc2ededcdbb6441956cd3a22589a6af6f348603eb3",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/source/after/lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 18975,
+      "sha256": "529080e87e50c291a5081de48b83e5a90122676bae900046a978abeb024a761d",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/source/before/lego/operator/internal/build/dockerhub.go",
+      "bytes": 11671,
+      "sha256": "e13cc111374c6e69f78eb6891c2206b86ddd0655461280f40424dbe3a298d90b",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/source/before/lego/operator/internal/build/dockerhub_test.go",
+      "bytes": 1810,
+      "sha256": "bbe41298a43a774b61d00ace30d861228b2b727681ae8aea30c7fdf4eaa0af18",
+      "mode": "0644"
+    },
+    {
+      "path": "history/pre-lint-style-fix/source/before/lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 18913,
+      "sha256": "c87e6b01bf86aee76affd3c1245f3bdf1660f18ded3d80afd1c9e43f88abc74b",
+      "mode": "0644"
+    },
+    {
+      "path": "independent-focused.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "independent-focused.stdout",
+      "bytes": 63,
+      "sha256": "8e27d03e0b124f09252f511c4e12d7360ebad5576a8a51c7932c3763d131bb23",
+      "mode": "0644"
+    },
+    {
+      "path": "independent_checks.py",
+      "bytes": 2155,
+      "sha256": "c53cf9b6e7954c6ad422bda4a0dc66176b4d4559be170ed4ac3722eac3901801",
+      "mode": "0644"
+    },
+    {
+      "path": "nativeutility_integration_test.go.diff",
+      "bytes": 869,
+      "sha256": "18cfc2761d8268e2b78c90c41fc3c888ecc0a38dc72faf485e3436c9d4967ae5",
+      "mode": "0644"
+    },
+    {
+      "path": "runner.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    {
+      "path": "runner.stdout",
+      "bytes": 294,
+      "sha256": "2f8f7a8d5dee2c9846e1eb1347656a578ea1cc66d533ed19b751d76f863164b6",
+      "mode": "0644"
+    },
+    {
+      "path": "source/after/lego/operator/internal/build/dockerhub.go",
+      "bytes": 12874,
+      "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3",
+      "mode": "0644"
+    },
+    {
+      "path": "source/after/lego/operator/internal/build/dockerhub_test.go",
+      "bytes": 11347,
+      "sha256": "a943f9abf486bec635ece79e5fe68174170c302a1ac88b9340b0edd5e717a382",
+      "mode": "0644"
+    },
+    {
+      "path": "source/after/lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 18975,
+      "sha256": "529080e87e50c291a5081de48b83e5a90122676bae900046a978abeb024a761d",
+      "mode": "0644"
+    },
+    {
+      "path": "source/before/lego/operator/internal/build/dockerhub.go",
+      "bytes": 11671,
+      "sha256": "e13cc111374c6e69f78eb6891c2206b86ddd0655461280f40424dbe3a298d90b",
+      "mode": "0644"
+    },
+    {
+      "path": "source/before/lego/operator/internal/build/dockerhub_test.go",
+      "bytes": 1810,
+      "sha256": "bbe41298a43a774b61d00ace30d861228b2b727681ae8aea30c7fdf4eaa0af18",
+      "mode": "0644"
+    },
+    {
+      "path": "source/before/lego/operator/internal/build/nativeutility_integration_test.go",
+      "bytes": 18913,
+      "sha256": "c87e6b01bf86aee76affd3c1245f3bdf1660f18ded3d80afd1c9e43f88abc74b",
+      "mode": "0644"
+    }
+  ],
+  "payload_files": 59,
+  "payload_bytes": 184250,
+  "excludes": [
+    "this manifest itself"
+  ]
+}

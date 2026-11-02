@@ -1,0 +1,17 @@
+{
+  "command": [
+    "cc",
+    "-shared",
+    "-fPIC",
+    "-I/usr/local/include/node",
+    "-DNODE_GYP_MODULE_NAME=bex_node_qualification",
+    "/opt/render/project/src/addon.c",
+    "-o",
+    "/opt/render/project/src/qa-output/bex_node.node"
+  ],
+  "cwd": ".",
+  "returncode": 0,
+  "stdout": "",
+  "stderr": "",
+  "timed_out": false
+}

@@ -1,0 +1,11 @@
+[
+    {
+        "CreatedAt": "2026-11-01T15:26:02-08:00",
+        "Driver": "local",
+        "Labels": null,
+        "Mountpoint": "/var/lib/docker/volumes/buildx_buildkit_bex-pd-7cf7c0d919d60_state/_data",
+        "Name": "buildx_buildkit_bex-pd-7cf7c0d919d60_state",
+        "Options": null,
+        "Scope": "local"
+    }
+]

@@ -1,0 +1,15 @@
+{
+  "package": {
+    "name": "bex-node-engine-sentinel",
+    "version": "1.0.0",
+    "engines": {
+      "node": ">=19"
+    }
+  },
+  "tarball": "bex-node-engine-sentinel.tgz",
+  "bytes": 173,
+  "sha256": "ecff06fb59637ba126601a840deeb3dbf4258b2fce7ab2f08f670caf808d9f80",
+  "archive_members": [
+    "package/package.json"
+  ]
+}

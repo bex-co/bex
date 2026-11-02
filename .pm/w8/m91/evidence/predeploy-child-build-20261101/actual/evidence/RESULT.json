@@ -1,0 +1,21 @@
+{
+  "PASS": false,
+  "build_exit0": true,
+  "failure": null,
+  "cleanup_errors": [
+    "existing cleanup helper nonzero"
+  ],
+  "cancel_signal": null,
+  "pending_pgids": [],
+  "elapsed_seconds": 218.445,
+  "owner": "bex-pd-7cf7c0d919d6",
+  "runner_cid": "fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8",
+  "peak_combined_observed_bytes": 9351194075,
+  "minimum_physical_free_bytes": 27235901440,
+  "maximum_oci_observed_bytes": 941516800,
+  "final_log_bytes": 1536922,
+  "source_unchanged": true,
+  "handlers_restored": true,
+  "config_absent": true,
+  "scope": "ONE actual local diagnostic Node-compute OCI build; no image import/load, runtime container, cluster Job, CI, qualification or adoption"
+}

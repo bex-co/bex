@@ -1,0 +1,28 @@
+{
+  "at": "2026-11-02T00:13:28.478989+00:00",
+  "outcome": "CLEAN_CUSTODIED_FAILURE_EVIDENCE_NOT_QUALIFICATION_PASS",
+  "capsule": {
+    "state": "OBSERVED_EXTERNAL_DOCKERHUB429_CURRENT_QUALIFICATION_NOT_ACCEPTED",
+    "capsule": "/private/tmp/bex-w8-metadata429-failure-capsule-20261102-Kt6f1Fip/capsule",
+    "files": 85,
+    "bytes": 341995,
+    "MANIFEST": {
+      "bytes": 11987,
+      "sha256": "1e1ce8bc2377bd20c98bb6123a8f770e252fc1eb18afa1737a17239ce11dcf09"
+    },
+    "CUSTODY": {
+      "bytes": 23602,
+      "sha256": "02954ebe538de61077d0a9085b9c1b5ad5bcec784de934f6c54c960a647901b0"
+    },
+    "no_resources_or_network": true
+  },
+  "assembly_source": {
+    "bytes": 8485,
+    "sha256": "e178cae8c14a7e7cbbda7ab1818fe87f013111d649d4483dad3a05609fc0d3fd"
+  },
+  "assembly_exit_code": 0,
+  "fullCIlog": "byte-exact60650B; currentea937 AMDjob125018239039 failed after node-computePASS,8metadata429 refusals; cleanup/hash/upload steps completed success",
+  "localNode20": "Original false result preserved; failed pinnedDockerHub metadata before authoredRUN/runtime, no observed Node20 version execution.21groups/resources/config cleanup verified.",
+  "originals_unchanged": true,
+  "no_new_resource_or_network_actions": true
+}

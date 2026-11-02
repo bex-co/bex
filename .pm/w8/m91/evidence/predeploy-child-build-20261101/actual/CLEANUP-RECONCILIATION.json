@@ -1,0 +1,62 @@
+{
+  "state": "EXACT_OWNED_CLEANUP_RECONCILED_WITH_ORIGINAL_HELPER_ERROR_RETAINED",
+  "owner": "bex-pd-7cf7c0d919d6",
+  "runner": {
+    "name": "/bex-pd-7cf7c0d919d6-runner",
+    "id": "fc07ed536d5b3bafa9c473de79f7704074afd53d7ad33cc3e53cee535172f5a8",
+    "label": "bex-pd-7cf7c0d919d6",
+    "removed_exit": 0,
+    "canonical_absence": {
+      "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/runner-cleanup-after.stderr",
+      "bytes": 74,
+      "sha256": "cfca387c7181b69538dffb55f3186a4a6caa39f3975e910514b6a7aa31e6b1d4",
+      "mode": "0644"
+    }
+  },
+  "builder": {
+    "name": "/buildx_buildkit_bex-pd-7cf7c0d919d60",
+    "id": "b11c1aa45ef306610e77bb40eeb25bcd10df45f5317352cc2dfc66716ba04989",
+    "requested_image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+    "removed_exit": 0,
+    "canonical_absence": {
+      "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/builder-cleanup-after.stderr",
+      "bytes": 84,
+      "sha256": "2c583ff05b2305012e33259f91ea36b1f4687026bb28c894abe9fa30df6518ad",
+      "mode": "0644"
+    }
+  },
+  "state_volume": {
+    "name": "buildx_buildkit_bex-pd-7cf7c0d919d60_state",
+    "removed_exit": 0,
+    "canonical_absence": {
+      "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/volume-cleanup-after.stderr",
+      "bytes": 91,
+      "sha256": "9485bee8800cead6d99250b2239218c86c9601a776529b480ae0041441fb6850",
+      "mode": "0644"
+    }
+  },
+  "own_image_label_absent": true,
+  "own_container_label_absent": true,
+  "own_config_absent": true,
+  "all_client_groups_reaped": true,
+  "original_helper_error": {
+    "argv": [
+      "/opt/homebrew/opt/python@3.14/bin/python3.14",
+      "/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/.github/scripts/native-common-qualify.py",
+      "cleanup",
+      "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence"
+    ],
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/.github/scripts/native-common-qualify.py\", line 994, in <module>\n    main()\n    ~~~~^^\n  File \"/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/.github/scripts/native-common-qualify.py\", line 984, in main\n    cleanup(args.root)\n    ~~~~~~~^^^^^^^^^^^\n  File \"/private/tmp/bex-w8-common-predeploy-exporters-actual-20261101-d9g07211/source/.github/scripts/native-common-qualify.py\", line 794, in cleanup\n    raise ValueError(\"refusing cleanup without an exact qualification owner\")\nValueError: refusing cleanup without an exact qualification owner\n"
+  },
+  "original_controller_result": {
+    "path": "/private/tmp/bex-w8-common-predeploy-build-20261101-4bff55bed15b1d32/evidence/RESULT.json",
+    "bytes": 720,
+    "sha256": "6198c26313d36050a14d5dad2b8b595b7a5cf81d02a7d64a8e0b0918b3bd0fe1",
+    "mode": "0644"
+  },
+  "no_foreign_prune_or_default_context_change": true,
+  "shared_immutable_input_cache_preserved": true,
+  "future_owner_rule": "Future local plans must start with the existing strict helper-compatible bex-nq +24hex owner; this approved local owner and original errors are never rewritten."
+}

@@ -1,0 +1,11 @@
+{
+  "command": [
+    "pnpm",
+    "--version"
+  ],
+  "cwd": ".",
+  "returncode": 0,
+  "stdout": "10.34.7\n",
+  "stderr": "",
+  "timed_out": false
+}

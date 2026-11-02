@@ -1,0 +1,28 @@
+{
+  "Name": "bex-nq-e9fbe0e5635547089592094b",
+  "Driver": "docker-container",
+  "Nodes": [
+    {
+      "Name": "bex-nq-e9fbe0e5635547089592094b0",
+      "Endpoint": "unix:///Users/tianpan/.orbstack/run/docker.sock",
+      "Platforms": [
+        {
+          "architecture": "arm64",
+          "os": "linux"
+        }
+      ],
+      "DriverOpts": {
+        "cpu-period": "100000",
+        "cpu-quota": "200000",
+        "image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+        "memory": "2g",
+        "restart-policy": "no"
+      },
+      "Flags": [
+        "--allow-insecure-entitlement=network.host"
+      ],
+      "Files": null
+    }
+  ],
+  "Dynamic": false
+}

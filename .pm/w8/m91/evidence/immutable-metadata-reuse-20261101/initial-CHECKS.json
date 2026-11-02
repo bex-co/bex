@@ -1,0 +1,63 @@
+[
+  {
+    "label": "focused",
+    "argv": [
+      "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+      "test",
+      "-run",
+      "^TestImageMetadata(Cache|RetriesOnlyTransientReads)",
+      "./internal/build"
+    ],
+    "exit_code": 0,
+    "expected_exit": 0,
+    "error": null,
+    "group_absent": true,
+    "elapsed_seconds": 9.531
+  },
+  {
+    "label": "old-requestcount-red",
+    "argv": [
+      "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+      "test",
+      "-overlay",
+      "/private/tmp/bex-w8-native-metadata-cache-source-20261101-5s4nl5tt/overlay-old-resolver.json",
+      "-run",
+      "^TestImageMetadataCacheReusesVerifiedReadsAndIsolatesCallers$",
+      "./internal/build"
+    ],
+    "exit_code": 1,
+    "expected_exit": 1,
+    "error": null,
+    "group_absent": true,
+    "elapsed_seconds": 6.107
+  },
+  {
+    "label": "package",
+    "argv": [
+      "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+      "test",
+      "./internal/build"
+    ],
+    "exit_code": 0,
+    "expected_exit": 0,
+    "error": null,
+    "group_absent": true,
+    "elapsed_seconds": 23.91
+  },
+  {
+    "label": "race",
+    "argv": [
+      "/opt/homebrew/Cellar/go/1.26.4/libexec/bin/go",
+      "test",
+      "-race",
+      "-run",
+      "^TestImageMetadataCache",
+      "./internal/build"
+    ],
+    "exit_code": 0,
+    "expected_exit": 0,
+    "error": null,
+    "group_absent": true,
+    "elapsed_seconds": 62.383
+  }
+]

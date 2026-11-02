@@ -1,0 +1,8 @@
+{
+  "node": "18.20.8",
+  "node_donor": "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783",
+  "node_env": "18.20.8",
+  "npm_expectation": "actual selected npm package.json version must equal actual npm CLI; no fixed npm6 guess",
+  "pnpm": "10.34.7",
+  "yarn": "1.22.22"
+}

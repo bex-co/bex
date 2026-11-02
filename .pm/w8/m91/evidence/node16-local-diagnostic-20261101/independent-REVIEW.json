@@ -1,0 +1,64 @@
+{
+  "schema": "bex.actual-node-donor-independent-review/v1",
+  "at": "2026-11-01T23:55:06.127844+00:00",
+  "outcome": "CLEAN_ONE_LOCAL_ARM64_NODE16_DONOR_DIAGNOSTIC",
+  "source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "source_is_historical_688": true,
+  "case": "node-16",
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "official_upstream": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+  "published_donor": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+  "expected_Node": "16.20.2",
+  "actual_ABI": 93,
+  "build_and_offline_runtime": true,
+  "core_crypto_addon_headers_tools_reapplied": true,
+  "npm_yarn_pnpm_lifecycles_and_pnpm_exec": true,
+  "all_three_specific_engine_refusals_exit1": true,
+  "canonical_executed_identical": true,
+  "no_network_overlay": true,
+  "raw_cleanup_resources_groups_config": true,
+  "original_evidence_files": 194,
+  "commands": 60,
+  "AUDIT": {
+    "bytes": 4855,
+    "sha256": "9fd5d03847a47295051e1d6deb6543f7bbae1f3a4dd25cbb6670e8a44b5ae5e6"
+  },
+  "EXPORT_RESULT": {
+    "bytes": 934,
+    "sha256": "713cee0339c6d0c69293362ff6fe792a0ab0a23b046e58e28bbe2479345b5c3d"
+  },
+  "reviewed_controller_packet": {
+    "path": "/private/tmp/bex-w8-node16-local-pilot-source-20261101-2ax6edlc",
+    "manifest_sha256": "05f22279db45a759d850fe396e0b5bef0cc0b472e46dce7553bcd9be4786b3e2",
+    "literal_source_derivation": {
+      "bytes": 688,
+      "sha256": "1d4c75d7bac13fab51bec9b9a8295458566d41379ce77c844179363bb0309cbf"
+    }
+  },
+  "reused_method": {
+    "basis": "/private/tmp/bex-w8-node14-actual-independent-20261101-oUandnZp",
+    "derivation": {
+      "bytes": 2035,
+      "sha256": "6ec74dbf6c21e2d68530519755c5fe4861e1e54fe0b1dcf03d067a7262ac32c2"
+    },
+    "actual_audit_source": {
+      "bytes": 12759,
+      "sha256": "9b08575e797d687ae27158cf30bb95b0648359a9364fbd6865b72bb1c27d4b14"
+    },
+    "actual_export_source": {
+      "bytes": 8118,
+      "sha256": "4b786bbbffd054997112ab95c34c3baaa8e6afda408ca41442d02452c1dc4289"
+    },
+    "audit_exit_code": 0,
+    "export_exit_code": 0
+  },
+  "limits": [
+    "ONE local ARM64 donor diagnostic only. No performance, botharch/fullfamily/hosted/Kubernetes/currentCI/baseline/adoption acceptance inferred.",
+    "No Docker/Go/Node/network/cluster/resource/repository execution or mutation; existing pure original check.py functions reapplied only to retained outputs.",
+    "Historical688 Node16 source remains distinct from currentea937 Node18 source and pending amendedCI.",
+    "Each capsule keeps all actual small proof/log/program/command/cleanup bytes ASIS except exact719B own Buildx configstate body, which remains private with hash; source300/TestELF/toolbodies excluded with hashes.",
+    "Two source-emitted inputs (.node-version and expected-node finalLF) explicitly marked derived, match original retained source identities, and are not relabeled captured runtime files.",
+    "Own reuse/preparation mistakes are preserved in history and did not alter original source/evidence or weaken any oracle/resource bound."
+  ]
+}

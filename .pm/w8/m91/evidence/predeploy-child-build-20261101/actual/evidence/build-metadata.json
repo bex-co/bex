@@ -1,0 +1,27 @@
+{
+  "buildx.build.provenance": {
+    "buildType": "",
+    "invocation": {
+      "configSource": {},
+      "parameters": {},
+      "environment": {
+        "platform": ""
+      }
+    }
+  },
+  "buildx.build.ref": "bex-pd-7cf7c0d919d6/bex-pd-7cf7c0d919d60/nhmob0csjqc0mcbx3smn67hut",
+  "containerimage.config.digest": "sha256:85152c4e3f9d5947f048b4558bb347b6bcfdfd7ca3510feca90ead00bb483f2a",
+  "containerimage.descriptor": {
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "digest": "sha256:cd8542c966bfa204dad5bb96857046aec6cf07c4d38e5bcd60e00a87bb618a2e",
+    "size": 6939,
+    "annotations": {
+      "org.opencontainers.image.created": "2026-11-01T23:29:06Z"
+    },
+    "platform": {
+      "architecture": "arm64",
+      "os": "linux"
+    }
+  },
+  "containerimage.digest": "sha256:cd8542c966bfa204dad5bb96857046aec6cf07c4d38e5bcd60e00a87bb618a2e"
+}

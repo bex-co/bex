@@ -1,0 +1,64 @@
+{
+  "schema": "bex.actual-upstream-quota-failure/v1",
+  "at": "2026-11-02T00:13:01.059638+00:00",
+  "state": "OBSERVED_EXTERNAL_DOCKERHUB429_CURRENT_QUALIFICATION_NOT_ACCEPTED",
+  "source": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+  "common_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "CI": {
+    "run": 41363104200,
+    "amd64_job": 125018239039,
+    "actual_job_conclusion": "failure",
+    "actual_completed_cases": [
+      "supplier-removed",
+      "node-compute"
+    ],
+    "remaining_metadata429_refusals": 8,
+    "source_selection_environment_read_failures": true,
+    "full_job_log": {
+      "bytes": 60650,
+      "sha256": "216ddb65dfd13a2295a1b37d9a21be733930c7d07f527aa41bc795683edd5ab8"
+    },
+    "cleanup_and_hash_and_artifact_upload_steps": "completed success",
+    "own_cleanup_packet_exit0": true,
+    "ARM_at_retained_metadata_observation": "in_progress; no later conclusion inferred",
+    "no_current_botharch_utility_baseline_accepted": true
+  },
+  "local_Node20": {
+    "actual_result": {
+      "PASS": false,
+      "scope": "ONE current donorNode20 ARM64 local generated case only; no adoption/botharch/fullfamily/hosted/K8s claim",
+      "failure": "AssertionError:",
+      "cleanup_or_artifact_errors": [],
+      "owner": "bex-nq-e20c26d7c86d48c9962b96c6",
+      "case_pass": false,
+      "cancel_signal": null,
+      "pending_pgids": [],
+      "elapsed_seconds": 31.14
+    },
+    "build_log": {
+      "bytes": 4744,
+      "sha256": "0a5d56412bee3ce1897db7cf855eddebd1b73b2cb7cd44fbec1bc1c1edf88dc7"
+    },
+    "setup_failure": "Pinned DockerHub Node24 Yarn supplier and FFmpeg manifests return HTTP429 during BuildKit metadata resolution",
+    "expected_Node20_version": "20.20.2 is metadata-only; actual Node20 version/build/runtime execution not observed",
+    "authored_RUN_reached": false,
+    "runtime_reached": false,
+    "successful_generated_image": null,
+    "compatibility_result": "UNPROVED",
+    "cleanup": {
+      "helper_exit0": true,
+      "all21_command_groups_reaped_absent": true,
+      "exact_runner_builder_volume_absent": true,
+      "owned_labelled_images_containers_absent": true,
+      "own_Docker_config_removed": true
+    },
+    "retry_or_fallback": false
+  },
+  "limits": [
+    "Original CI job failure, original local RESULTfalse and Root raw ROOT-CAUSE bytes preserved unchanged. Only this new summary normalizes interpretation.",
+    "Actual429 setup/network quota failures do not establish a Node20 runtime compatibility or product regression.",
+    "No artifactbinary intake, network/Docker/Go/resource/auth/mirror/retry/CI/repository actions by this assembler.",
+    "No currentCI/fullfamily/botharch/hosted/adoption approval. Entire original small evidence retained except explicitly excluded own configstate body."
+  ]
+}

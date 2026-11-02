@@ -1,0 +1,59 @@
+--- approved7b6/PLAN.json
++++ ea937Diagnostic/PLAN.json
+@@ -1,14 +1,14 @@
+ {
+   "schema": "bex.local-common-native-init-pilot/v1",
+-  "status": "BOUND_GENUINE_LINUX_GO_LOCAL_DIAGNOSTIC_ONLY_PENDING_AMENDED_FULLUTILITY_CI",
+-  "owner": "bex-nq-aee1f0f347f04cfe8d6032cc",
+-  "run_root": "/private/tmp/bex-w8-native-init-local-pilot-aee1f0f347f04cfe8d6032cc",
+-  "source_root": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/source",
+-  "source_manifest": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/SOURCE.json",
+-  "source_manifest_sha256": "497e75f16b11a723fae593ee6847ea772da638679d06ad9f677333ab8ad28d0a",
+-  "source_sha": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+-  "test_binary": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/bin/build-linux-arm64.test",
+-  "test_binary_sha256": "8e7f06b11fcfe0edda9c8b9618b1872cdddcd62f0f3142953b68f12aac1ae45f",
++  "status": "CURRENT_SHIPPED_EA937_GENUINE_LINUX_GO_LOCAL_DIAGNOSTIC_PENDING_AMENDED_FULLUTILITY_CI",
++  "owner": "bex-nq-e9fbe0e5635547089592094b",
++  "run_root": "/private/tmp/bex-w8-native-init-local-pilot-e9fbe0e5635547089592094b",
++  "source_root": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/source",
++  "source_manifest": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/SOURCE.json",
++  "source_manifest_sha256": "17929596653a4bf08b9f2be4765c3b738241a97c84a2d87a73e7ad81edfa1d1a",
++  "source_sha": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
++  "test_binary": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/bin/build-linux-arm64.test",
++  "test_binary_sha256": "f87d0fc88e4a5ee8b2e7abf63fdcc017832d4eceaac84d4098a7e0b7f0e2055d",
+   "tools_root": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools",
+   "tools_sha256": {
+     "docker": "8d1f0003ab751833dc596e6b96dbc321b6af95d67feefef64be14e7369f04b08",
+@@ -44,22 +44,27 @@
+     "Linux_daemon_metadata": "/private/tmp/bex-w8-linux-family-daemon-preflight-20261101-nqo5yogn/RECEIPT.json",
+     "LinuxGo_metadata": "/private/tmp/bex-w8-linux-resolver-probe-actual-20261101-2wzu2tmh/RECEIPT.json",
+     "actual_prior_common_and_utility_baseline_source": "1feba939b4697894e800ed0abb4f25a0bf415641; historical actual image/utility evidence, not current688CI",
+-    "fresh_diagnostic_compile": "/private/tmp/bex-w8-linux-family-yarn-compile-20261101-ivbtmxc6/RECEIPT.json",
++    "fresh_diagnostic_compile": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/RECEIPT.json",
+     "historical_both_arch_1feba_CI": "/private/tmp/bex-w8-common-1feba-ci-intake-20261101-_97quqc2/RECEIPT.json",
+-    "current_source_fullutility_CI": {
++    "historical_fullutility_688_CI": {
+       "run_id": 41360449607,
+       "source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+-      "status": "PENDING_ACTUAL_SUCCESS_NOT_OBSERVED_BY_AUTHOR"
++      "status": "ROOT_REPORTS_COMPLETE_BOTHARCH_INTAKE_HISTORICAL_FOR_EA937"
++    },
++    "current_source_fullutility_CI": {
++      "run_id": null,
++      "source": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
++      "status": "ROOT_DISPATCHING_FRESH_SAME0941_UTILITIES_PENDING_ACTUAL_SUCCESS"
+     }
+   },
+   "no_claims": [
+     "One local native-init four-launch npm/yarn/pnpm/direct diagnostic on ARM64 only; no newCI/current-baseline/family/adoption/production/hosted/Kubernetes acceptance.",
+     "Existing original13/28 and native-init source/programs/commands/oracles are unchanged."
+   ],
+-  "at": "2026-11-01T23:22:38.459465+00:00",
++  "at": "2026-11-01T23:40:29.814096+00:00",
+   "host_buildx_plugin_dir": "/Applications/OrbStack.app/Contents/MacOS/xbin",
+   "host_buildx_plugin_sha256": "4a728ee98f89005a90198a9be791e8fdaebbcb5e6af9721251efe0113df37759",
+-  "source_rebind_note": "Actual common0941 and completed both-architecture utility baseline remain producer/verifier1feba. This is a LOCAL DIAGNOSTIC at shipped6883953 with the two Yarn oracle source amendments and actual fresh testELF; it does not relabel oldCI baseline current or authorize family/adoption.",
++  "source_rebind_note": "Actual common0941 supplier producer/verifier remains1feba. Both original1feba and amended688 complete utilityCI evidence are historical for current shipped ea937. This ONE local native-init diagnostic uses ea937 source300 with only the reviewed Yarn stopped-wrapper predicate/table correction versus688; no current CI/baseline/adoption conclusion.",
+   "linux_go_root": "/private/tmp/bex-w8-linux-go-tools-cbd379a291424d59a2d4/toolroot/go",
+   "linux_go_binary_sha256": "d487fddb6939f3e78f7293fcbdeae610ba8ceae966d3faa4b2094a5688559230",
+   "module_cache": "/Users/tianpan/go/pkg/mod",

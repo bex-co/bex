@@ -1,0 +1,87 @@
+{
+  "schema": "bex.local-common-native-init-pilot/v1",
+  "status": "CURRENT_SHIPPED_EA937_GENUINE_LINUX_GO_LOCAL_DIAGNOSTIC_PENDING_AMENDED_FULLUTILITY_CI",
+  "owner": "bex-nq-e9fbe0e5635547089592094b",
+  "run_root": "/private/tmp/bex-w8-native-init-local-pilot-e9fbe0e5635547089592094b",
+  "source_root": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/source",
+  "source_manifest": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/SOURCE.json",
+  "source_manifest_sha256": "17929596653a4bf08b9f2be4765c3b738241a97c84a2d87a73e7ad81edfa1d1a",
+  "source_sha": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+  "test_binary": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/bin/build-linux-arm64.test",
+  "test_binary_sha256": "f87d0fc88e4a5ee8b2e7abf63fdcc017832d4eceaac84d4098a7e0b7f0e2055d",
+  "tools_root": "/private/tmp/bex-w8-linux-family-tools-normal-20261101-tdydd9s8/work/tools",
+  "tools_sha256": {
+    "docker": "8d1f0003ab751833dc596e6b96dbc321b6af95d67feefef64be14e7369f04b08",
+    "docker-buildx": "45abc802d2ed109a68314371b2dbdcfea21b33e5e8144212709f94294e0d5c32"
+  },
+  "runner_image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+  "common_image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "buildkit_image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+  "profile": "native-init",
+  "case": "all-launches",
+  "platform": "linux/arm64",
+  "endpoint": "unix:///Users/tianpan/.orbstack/run/docker.sock",
+  "VM_socket_source": "/var/run/docker.sock",
+  "inside_socket_destination": "/Users/tianpan/.orbstack/run/docker.sock",
+  "bounds": {
+    "whole_seconds": 5400,
+    "pull_seconds": 195,
+    "bootstrap_seconds": 300,
+    "go_timeout": "60m",
+    "runner_memory_bytes": 536870912,
+    "runner_cpus": 2,
+    "builder_memory_bytes": 2147483648,
+    "builder_cpus": 2,
+    "host_files_bytes": 536870912,
+    "remaining_host_floor_bytes": 8589934592,
+    "builder_state_polled_bytes": 17179869184,
+    "observe_interval_seconds": 15
+  },
+  "cache_scope": "Fresh exactowner builder/node/statevolume require beforeabsence; shareddaemon input-image cache observed, never purged. No allcache-cold claim. Onecase only; no automatic widening.",
+  "resource_scope": "Operating guards and limits, not source-only minimum-footprint proof/reservation or ABI acceptance gate. A resource hit leaves qualificationUNPROVED. Runtime-generated image/container commands remain canonical existing harness; no shim/limit edits.",
+  "upstream_prerequisite_inputs": {
+    "strict0941_supplier_review": "Root actual completed2ff8 current0941 review; already approved separately, not rerun/reimplemented by this pilot",
+    "Linux_daemon_metadata": "/private/tmp/bex-w8-linux-family-daemon-preflight-20261101-nqo5yogn/RECEIPT.json",
+    "LinuxGo_metadata": "/private/tmp/bex-w8-linux-resolver-probe-actual-20261101-2wzu2tmh/RECEIPT.json",
+    "actual_prior_common_and_utility_baseline_source": "1feba939b4697894e800ed0abb4f25a0bf415641; historical actual image/utility evidence, not current688CI",
+    "fresh_diagnostic_compile": "/private/tmp/bex-w8-linux-nativeinit-yarn-compile-20261101-8ir29bky/RECEIPT.json",
+    "historical_both_arch_1feba_CI": "/private/tmp/bex-w8-common-1feba-ci-intake-20261101-_97quqc2/RECEIPT.json",
+    "historical_fullutility_688_CI": {
+      "run_id": 41360449607,
+      "source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+      "status": "ROOT_REPORTS_COMPLETE_BOTHARCH_INTAKE_HISTORICAL_FOR_EA937"
+    },
+    "current_source_fullutility_CI": {
+      "run_id": null,
+      "source": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+      "status": "ROOT_DISPATCHING_FRESH_SAME0941_UTILITIES_PENDING_ACTUAL_SUCCESS"
+    }
+  },
+  "no_claims": [
+    "One local native-init four-launch npm/yarn/pnpm/direct diagnostic on ARM64 only; no newCI/current-baseline/family/adoption/production/hosted/Kubernetes acceptance.",
+    "Existing original13/28 and native-init source/programs/commands/oracles are unchanged."
+  ],
+  "at": "2026-11-01T23:40:29.814096+00:00",
+  "host_buildx_plugin_dir": "/Applications/OrbStack.app/Contents/MacOS/xbin",
+  "host_buildx_plugin_sha256": "4a728ee98f89005a90198a9be791e8fdaebbcb5e6af9721251efe0113df37759",
+  "source_rebind_note": "Actual common0941 supplier producer/verifier remains1feba. Both original1feba and amended688 complete utilityCI evidence are historical for current shipped ea937. This ONE local native-init diagnostic uses ea937 source300 with only the reviewed Yarn stopped-wrapper predicate/table correction versus688; no current CI/baseline/adoption conclusion.",
+  "linux_go_root": "/private/tmp/bex-w8-linux-go-tools-cbd379a291424d59a2d4/toolroot/go",
+  "linux_go_binary_sha256": "d487fddb6939f3e78f7293fcbdeae610ba8ceae966d3faa4b2094a5688559230",
+  "module_cache": "/Users/tianpan/go/pkg/mod",
+  "runner_network": "host",
+  "required_input": "Actual genuine pinned LinuxGo1.27.3 acquired from committed golang1.27-bookworm@d9b6 index linux/arm64 child/config; real cached-Alpine go version passed. This compiler satisfies module>=Go1.26 for canonical compileNativeInitForArch go build,5m; it is not a claim of production-compiler byte identity. No precompiled-init/shim/skip.",
+  "compiler_scope": "LinuxGo root and existing module sources mount read-only; GOPROXY/GOSUMDB off, GOTOOLCHAIN local; fresh own GOCACHE/GOTMPDIR/TMPDIR stay under same512MiB host-file guard. No cold-cache fit or future memory reservation claim.",
+  "network_scope": "Only trusted test runner uses daemon-host network namespace so original http.Client reaches published127.0.0.1. Four generated workload containers remain canonical bridge/127-only ephemeral port/512MiB/1CPU/128pids; authored build remains networknone.",
+  "linux_go_custody": {
+    "version": "go1.27.3 linux/arm64",
+    "manifest": "/private/tmp/bex-w8-linux-go-tools-cbd379a291424d59a2d4/evidence/GOROOT-MANIFEST.json",
+    "manifest_sha256": "75d9eb9155cd3a0940ff983894d061861ca4401988d3a9a52949a312abf1f213",
+    "paths": 17372,
+    "receipt": "/private/tmp/bex-w8-linux-go-tools-cbd379a291424d59a2d4/RECEIPT.json",
+    "receipt_sha256": "ca9453bb7cfb03451c9507868042afe7eff141e9d66eae166ea66b44e23529b9",
+    "image": "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
+    "selected_manifest": "sha256:ae675cdbf1bb782b6de4a56b157c8f91a5c89a594d8fa6475bb71efc4be3cfcb",
+    "config": "sha256:dba766c2797d15d2b6e35651bd5acb02764b27611e9b89bba1100a54a0167bf7",
+    "scope": "Compiler acquisition/version only; canonical native-init build/drain not yet executed. Root before/after fullGOROOT manifest guard remains available."
+  }
+}

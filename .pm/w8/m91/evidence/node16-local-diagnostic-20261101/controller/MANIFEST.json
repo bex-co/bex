@@ -1,0 +1,70 @@
+{
+  "ACTUAL-LAUNCH.json": {
+    "sha256": "292e2eff53f6b5391e3066ac434f0781ff12966b43c8d6a18395761120b497ea",
+    "bytes": 792
+  },
+  "ACTUAL-REVIEW.json": {
+    "sha256": "880f5a371ce2e5ba9235440e6051e37d7b9bd2795c98e6b71522b6965ba0a020",
+    "bytes": 24896
+  },
+  "LIVE-CAPACITY-METADATA.json": {
+    "sha256": "e66f6b4487a389a704cafcfbde8f5553018c15f1337580d24a514fe0c2b9082f",
+    "bytes": 1028
+  },
+  "PLAN.json": {
+    "sha256": "2a12781fdfa92d70ac6defada3c5216dfe83dbd1e402cc50df6e52a307f57c12",
+    "bytes": 4341
+  },
+  "PLAN.json.diff": {
+    "sha256": "9400850eb8fb2e410f90935dd738c11fa18006a6ddd33b2a34e2c60f72870a95",
+    "bytes": 3253
+  },
+  "REVIEW-PREPARATION-ERROR.json": {
+    "sha256": "0fbd8987b3f61af1464fce1031aa78df1887d28d89daccd14e92ae8f10700aca",
+    "bytes": 247
+  },
+  "RUNTIME-CUSTODY.json": {
+    "sha256": "86d8252b55ca8b0b83080dbcad9b8175607f8969faf777d122a690e19b4f8463",
+    "bytes": 32474
+  },
+  "SOURCE-FREEZE.json": {
+    "sha256": "466fdc5fc0c20350142dac6825649d833b58aef10443f1fef3d569564a4aa1f7",
+    "bytes": 1181
+  },
+  "capacity-preflight/PREPARATION-ERROR.json": {
+    "sha256": "a5f940e59f3e88ba92be5fa47ba516221560350760b19a06502d1f24ccb7547f",
+    "bytes": 269
+  },
+  "capacity-preflight/capacity-before-builder.json": {
+    "sha256": "cf2557828b5b27d74274cdc421a762e9b5302e1a1e42a035a4ae34aa0f49fd9c",
+    "bytes": 1352
+  },
+  "capacity-preflight/docker-config/config.json": {
+    "sha256": "ca3d163bab055381827226140568f3bef7eaac187cebd76878e0b63e9e442356",
+    "bytes": 3
+  },
+  "capacity-preflight/inputs.json": {
+    "sha256": "3ad4718c7fde1e1709f7f47afe94b1565dfe453c8fcc10bc64664437bca42423",
+    "bytes": 112
+  },
+  "pilot.sh": {
+    "sha256": "2d31c5d0be6eb65b91ad9c5a4dbc4834ac1d9036f57f4c0691e38e8531ddb542",
+    "bytes": 2010
+  },
+  "pilot.sh.diff": {
+    "sha256": "51cd81f2cbff8aa8413548a800cd69c9ad8525bcce933c452337d1ced98826b0",
+    "bytes": 432
+  },
+  "review_actual.py": {
+    "sha256": "014fea1c2b4944af8bc2d4813a83f3097932a19f9005271b11cf1ff670fa1660",
+    "bytes": 4715
+  },
+  "run_pilot.py": {
+    "sha256": "3791a135ee51be0c1b62438dc683ca21ca0f4dd105feaffbb4ff5d326bd7c283",
+    "bytes": 22064
+  },
+  "run_pilot.py.diff": {
+    "sha256": "ed3d54cebbfcd3ef6dea00b0b0444484b2a47a3f887baccf83e62c9d55134715",
+    "bytes": 4357
+  }
+}

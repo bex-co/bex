@@ -1,0 +1,5 @@
+{
+  "initial_launcher": "Python syntax error else1, before any process launched; corrected to else 1 in saved run_lint.py",
+  "initial_executed_lint": "exit1 two teststyle issues, raw initial-lint.stdout/stderr and initial-LINT.json preserved",
+  "correction": "maps.Copy and tagged failure switch only; finalall4checks+lint rerun against finalexactsource"
+}

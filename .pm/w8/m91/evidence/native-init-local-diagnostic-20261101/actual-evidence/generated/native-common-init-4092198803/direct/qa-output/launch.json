@@ -1,0 +1,13 @@
+{
+  "run": "bex-init-1-1793576523413483410",
+  "launch": "direct",
+  "primary": {
+    "node": "24.22.1",
+    "executable": "/usr/local/bin/node",
+    "env": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    }
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "builder": "bex-nq-42c2be770300dad10229fc0e",
+  "canonical_sha256": "f8882058e2825458bb8feb317ea2efd8a3ca7dc2191b2d6b6908fc77bf558e29",
+  "choices": [
+    {
+      "Label": "Node",
+      "Line": "14",
+      "Image": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+      "Source": ".node-version",
+      "Exact": ""
+    }
+  ],
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "empty_runtime_artifact_map": false,
+  "executed_sha256": "f8882058e2825458bb8feb317ea2efd8a3ca7dc2191b2d6b6908fc77bf558e29",
+  "fixture_sha256": {
+    ".node-version": "9a92adbc0cee38ef658c71ce1b1bf8c65668f166bfb213644c895ccb1ad07a25",
+    "addon.c": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+    "check.js": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+    "check.py": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+    "expected-node.json": "e4fdc9b4bd00bd0be417856548f04f145e7e7613c3891d4f6920b3ea783e5a74",
+    "package.json": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60"
+  },
+  "legacy_pnpm": "Node14/16 run the pnpm10.34.7 standalone (w8/226); strict tool/lifecycle assertions remain enabled",
+  "node_runtime_artifact": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+  "node_source": "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e",
+  "owner": "bex-nq-42c2be770300dad10229fc0e",
+  "platform": "linux/amd64",
+  "runtime_artifact_map": {
+    "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+    "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+    "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783": "ghcr.io/bex-co/bex-cnb-run@sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+    "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d"
+  },
+  "runtime_artifact_mode": "published-runtime-donors",
+  "scope": "additional Node family generated-image gate; no original13/28, native-init, Kubernetes, hosted or common publication claim",
+  "test_only_network_overlay": false
+}

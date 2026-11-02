@@ -1,0 +1,13 @@
+{
+  "name": "bex-profile-yarn",
+  "version": "1.0.0",
+  "private": true,
+  "engines": {
+    "node": "16.x"
+  },
+  "scripts": {
+    "preinstall": "node ../../check.js lifecycle yarn",
+    "postinstall": "node ../../check.js lifecycle yarn",
+    "probe": "node ../../check.js script yarn"
+  }
+}

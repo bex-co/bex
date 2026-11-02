@@ -1,0 +1,9 @@
+{
+  "negative_kind": "project-engine-strict",
+  "project_cwd": "/opt/render/project/src/qa-output/pnpm-wrong-engine",
+  "selected_node": "16.20.2",
+  "range": ">=17",
+  "project_manifest_sha256": "bdf4072a34e5ba13abcc23aeceb4b757fb9d21dcdbae6461b4c9d0b1f6efe1b8",
+  "workspace_sha256": "226909e7726c235c6b854540949bc8144625420ccdd6298fca1f7885d8bfe524",
+  "dependency_tarball": null
+}

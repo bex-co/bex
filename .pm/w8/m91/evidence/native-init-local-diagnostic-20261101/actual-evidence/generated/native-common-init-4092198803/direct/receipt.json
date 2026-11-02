@@ -1,0 +1,115 @@
+{
+  "command_override": [
+    "/bin/bash",
+    "-c",
+    "node capture-env.js direct \u0026\u0026 exec node server.js"
+  ],
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "container": {
+    "ID": "1ba2265fd95179166650592d8ef45b5418d4d3b1e9f9f1eaf5fbd7f0ddaeb69b",
+    "Image": "sha256:de5e32289e9c0eed3675cd17c34d3ce5296b4f1221438d6f296bf85cd6287f1b",
+    "Network": "bridge",
+    "Running": false,
+    "ExitCode": 0,
+    "Labels": {
+      "co.bex.native-qualification": "bex-nq-e9fbe0e5635547089592094b",
+      "org.opencontainers.image.revision": "1feba939b4697894e800ed0abb4f25a0bf415641",
+      "org.opencontainers.image.source": "https://github.com/bex-co/bex"
+    },
+    "Ports": {
+      "10000/tcp": [
+        {
+          "HostIP": "127.0.0.1",
+          "HostPort": "32798"
+        }
+      ]
+    }
+  },
+  "launch": "direct",
+  "network_scope": "bridge with127.0.0.1-only ephemeral publication; build remains network=none",
+  "owner": "bex-nq-e9fbe0e5635547089592094b",
+  "pass": true,
+  "platform": "linux/arm64",
+  "pre_stop": {
+    "Phase": "",
+    "Run": "bex-init-1-1793576523413483410",
+    "Identity": {
+      "Node": "24.22.1",
+      "Executable": "/usr/local/bin/node",
+      "Env": {
+        "NODE_VERSION": "24.22.1",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "YARN_VERSION": "1.22.22"
+      },
+      "BaseEnv": {
+        "NODE_VERSION": "24.22.1",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "YARN_VERSION": "1.22.22"
+      },
+      "Launch": "direct",
+      "Init": {
+        "SHA256": "329a7736b12aef107861f75dd2012633ee4d29134295904b1d4afc0b258b7dd8",
+        "Machine": 183,
+        "Executable": true,
+        "PID1": "/native-init",
+        "Argv": [
+          "/native-init",
+          "/bin/bash",
+          "-c",
+          "node capture-env.js direct \u0026\u0026 exec node server.js"
+        ]
+      }
+    },
+    "Events": [
+      "listening",
+      "hold_begin"
+    ],
+    "Holds": 0,
+    "Completed": 0,
+    "Signals": 0,
+    "Pass": false
+  },
+  "proof": {
+    "Phase": "runtime",
+    "Run": "bex-init-1-1793576523413483410",
+    "Identity": {
+      "Node": "24.22.1",
+      "Executable": "/usr/local/bin/node",
+      "Env": {
+        "NODE_VERSION": "24.22.1",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "YARN_VERSION": "1.22.22"
+      },
+      "BaseEnv": {
+        "NODE_VERSION": "24.22.1",
+        "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+        "YARN_VERSION": "1.22.22"
+      },
+      "Launch": "direct",
+      "Init": {
+        "SHA256": "329a7736b12aef107861f75dd2012633ee4d29134295904b1d4afc0b258b7dd8",
+        "Machine": 183,
+        "Executable": true,
+        "PID1": "/native-init",
+        "Argv": [
+          "/native-init",
+          "/bin/bash",
+          "-c",
+          "node capture-env.js direct \u0026\u0026 exec node server.js"
+        ]
+      }
+    },
+    "Events": [
+      "listening",
+      "hold_begin",
+      "SIGTERM",
+      "hold_end",
+      "closed"
+    ],
+    "Holds": 1,
+    "Completed": 1,
+    "Signals": 1,
+    "Pass": true
+  },
+  "response": "held 雪 λ🙂"
+}

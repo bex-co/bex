@@ -1,0 +1,12 @@
+{
+  "command": [
+    "yarn",
+    "run",
+    "probe"
+  ],
+  "cwd": "qa-output/yarn-project",
+  "returncode": 0,
+  "stdout": "yarn run v1.22.22\n$ node ../../check.js script yarn\nBEX_NODE_PROOF={\"mode\":\"script\",\"manager\":\"yarn\",\"node\":\"18.20.8\",\"executable\":\"/usr/local/bin/node\",\"path_node\":\"/usr/local/bin/node\",\"node_env\":\"18.20.8\",\"node_env_expected\":\"18.20.8\",\"path\":\"/tmp/yarn--1793576930892-0.5976349762715696:/opt/render/project/src/qa-output/yarn-project/node_modules/.bin:/usr/local/share/.config/yarn/link/node_modules/.bin:/usr/local/libexec/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/lib/node_modules/npm/bin/node-gyp-bin:/usr/local/bin/node_modules/npm/bin/node-gyp-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\",\"modules\":108,\"napi\":\"9\",\"addon\":{\"headers\":\"18.20.8\",\"module_abi\":108,\"answer\":\"native Gr\u00fc\u00dfe \u03bb \u96ea\"},\"openssl\":\"3.0.16\",\"brotli\":\"1.1.1\",\"sha256\":\"d8f19a3ac2a7ba1f5297590a1d5eebd60f902054e1eda0ff9d236d8b1c6c60a6\",\"brotli_roundtrip\":true,\"gzip_roundtrip\":true,\"aes_roundtrip\":true,\"bad_tag_rejected\":true,\"roots\":150,\"lifecycle\":\"probe\",\"NODE\":\"/usr/local/bin/node\",\"npm_node_execpath\":\"/usr/local/bin/node\",\"npm_execpath\":\"/opt/yarn-v1.22.22/bin/yarn.js\"}\nDone in 0.06s.\n",
+  "stderr": "warning You don't appear to have an internet connection. Try the --offline flag to use the cache for registry queries.\n",
+  "timed_out": false
+}

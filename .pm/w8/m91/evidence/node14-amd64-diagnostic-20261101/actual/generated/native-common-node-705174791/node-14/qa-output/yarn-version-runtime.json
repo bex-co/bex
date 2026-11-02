@@ -1,0 +1,11 @@
+{
+  "command": [
+    "yarn",
+    "--version"
+  ],
+  "cwd": ".",
+  "returncode": 0,
+  "stdout": "1.22.22\n",
+  "stderr": "",
+  "timed_out": false
+}

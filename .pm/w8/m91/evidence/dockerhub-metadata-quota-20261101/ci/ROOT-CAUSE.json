@@ -1,0 +1,11 @@
+{
+  "observed_at": "2026-11-02T00:11:03.714505+00:00",
+  "run": 41363104200,
+  "source": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+  "amd64_job": 125018239039,
+  "actual_first_case": "node-compute PASS",
+  "remaining_failures": "DockerHub selected runtime environment metadata HTTP429; no success inferred",
+  "local_independent_failure": "Node20 BuildKit pinned Node24 Yarn and FFmpeg suppliers HTTP429 before authored RUN",
+  "local_Node20_root": "/private/tmp/bex-w8-node20-local-pilot-e20c26d7c86d48c9962b96c6/evidence",
+  "scope": "Actual upstream quota failures; no accepted current baseline, no new credential/auth/mirror fallback, no retry yet."
+}

@@ -1,0 +1,12 @@
+{
+  "basis": "/private/tmp/bex-w8-node14-actual-independent-20261101-oUandnZp",
+  "scope": "Same pure Node14 actual audit/export; only exactrun/source/ELF/primaryprofilehash/AMDtarget+addon-machine data and metadata filename/scope adjustments. ARM64 testELF, runner platform, daemonpreflight, CLI and BuildKit control remain unchanged. Portablecap2MiB.",
+  "controller_inverse_known_edits_exact": true,
+  "shell_inverse_single_builder_platform_edit_exact": true,
+  "primary_hashes": {
+    "PLAN.json": "5d5e876f703729e7550225b6e9b41e410098c8d7b400d26b7b5613f08dadfb96",
+    "run_pilot.py": "c2e75459d819aeec1a466873a8387f4fae0e0474926442dbe2387cd8e2a537f7",
+    "pilot.sh": "b6b69b58493b52ab9be705458ddeeeb6f30aa46ed39cd20540156ee93c37e61f"
+  },
+  "architecture_evidence": "Actual generated image receipt/sourcecustodylinuxamd64 plus successful original build+runtime addon load, addon ELFEM_X86_64=62. Unchanged fixture does not emit process.arch as a separate field; no fabricated string. ARMcontroltest ELF remains183."
+}

@@ -1,0 +1,95 @@
+{
+  "decision": "ACTUAL_NODE20_FAIL_EXTERNAL_DOCKERHUB429_COMPATIBILITY_UNPROVED",
+  "session": 95180,
+  "PID": 46264,
+  "runtime_root": "/private/tmp/bex-w8-node20-local-pilot-e20c26d7c86d48c9962b96c6",
+  "source": "ea9375c1c81e5a58efe354b164bbaf6934a044fa",
+  "same_common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "expected_metadata_only": {
+    "node": "20.20.2",
+    "node_donor": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+    "node_env": "20.20.2",
+    "npm_expectation": "actual selected npm package.json version must equal actual npm CLI; no fixed npm6 guess",
+    "pnpm": "10.34.7",
+    "yarn": "1.22.22"
+  },
+  "result": {
+    "PASS": false,
+    "scope": "ONE current donorNode20 ARM64 local generated case only; no adoption/botharch/fullfamily/hosted/K8s claim",
+    "failure": "AssertionError:",
+    "cleanup_or_artifact_errors": [],
+    "owner": "bex-nq-e20c26d7c86d48c9962b96c6",
+    "case_pass": false,
+    "cancel_signal": null,
+    "pending_pgids": [],
+    "elapsed_seconds": 31.14
+  },
+  "failure_evidence": {
+    "build_log": "/private/tmp/bex-w8-node20-local-pilot-e20c26d7c86d48c9962b96c6/evidence/generated/native-common-node-3723867530/node-20/build.log",
+    "sha256": "0a5d56412bee3ce1897db7cf855eddebd1b73b2cb7cd44fbec1bc1c1edf88dc7",
+    "case_stdout_sha256": "0972d57887f7c8678b5c6efaf85d3faa9d8fcb2f675ddded2c2ed1455d6ed155",
+    "exact_status": "429 Too Many Requests: unauthenticated pull rate limit",
+    "failed_pinned_suppliers": [
+      "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+      "mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822"
+    ],
+    "GHCR_common_and_donor_metadata": "Succeeded before mandatoryDockerHubmetadatafailures",
+    "authored_RUN_executed": false,
+    "runtime_executed": false,
+    "successful_generated_image_config": null,
+    "compatibility_or_product_bug_inferred": false
+  },
+  "source_custody": {
+    "builder": "bex-nq-e20c26d7c86d48c9962b96c6",
+    "canonical_sha256": "db389e3d2b64016905d72052093b76a6461952ae724e85fe05c0c1303e883967",
+    "choices": [
+      {
+        "Label": "Node",
+        "Line": "20",
+        "Image": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+        "Source": ".node-version",
+        "Exact": ""
+      }
+    ],
+    "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+    "empty_runtime_artifact_map": false,
+    "executed_sha256": "db389e3d2b64016905d72052093b76a6461952ae724e85fe05c0c1303e883967",
+    "fixture_sha256": {
+      ".node-version": "5378796307535df3ec8d8b15a2e2dc5641419c3d3060cfe32238c0fa973f7aa3",
+      "addon.c": "3ffbffd209ca20fe0dc1888ab8aa2aca37fd0d13f43601b9a1aa44fc560a11c6",
+      "check.js": "18eec5c8fef209d288932b098a2915be29b91536fd9455b4a73f38c99b6a86a4",
+      "check.py": "c7e16114b0141ad7f98c13d9425d16f2957e21ffe4c47b254bb27f551f5fa748",
+      "expected-node.json": "2f74fb59b65e4edc7dbc3062e4e80af5d28615b91ecefa22501f3fce53e41fb6",
+      "package.json": "21217cc6afc6d208cf60442d9a994d296318c73187dc61361fabacccc616af60"
+    },
+    "legacy_pnpm": "Node14/16 run the pnpm10.34.7 standalone (w8/226); strict tool/lifecycle assertions remain enabled",
+    "node_runtime_artifact": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d",
+    "node_source": "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5",
+    "owner": "bex-nq-e20c26d7c86d48c9962b96c6",
+    "platform": "linux/arm64",
+    "runtime_artifact_map": {
+      "node:14-bullseye@sha256:c0bff0d29a742f40650d5f0305dd581351c10954e6cb6676fc96f47590b9666e": "ghcr.io/bex-co/bex-cnb-run@sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc",
+      "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+      "node:18-bookworm@sha256:c6ae79e38498325db67193d391e6ec1d224d96c693a8a4d943498556716d3783": "ghcr.io/bex-co/bex-cnb-run@sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1",
+      "node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5": "ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d"
+    },
+    "runtime_artifact_mode": "published-runtime-donors",
+    "scope": "additional Node family generated-image gate; no original13/28, native-init, Kubernetes, hosted or common publication claim",
+    "test_only_network_overlay": false
+  },
+  "cleanup": {
+    "helper_exit0": true,
+    "all_completed_commands_reaped_and_groups_absent": true,
+    "final_case_result_pendingPGIDs": [],
+    "runner_builder_volume_exact_absence": "Raw canonical inspection records retained",
+    "owner_labelled_containers_images_empty": true,
+    "own_config_removed": true
+  },
+  "original_canonical_manifest": {
+    "sha256": "eca8b9beb344f6fbc6e94f682b7212c3b61bfe1978e739f2a3705ec6f88c7ac0",
+    "verified_rows": 68
+  },
+  "retry_or_fallback": false,
+  "scope": "ONE local ARM64 failure; no source/oracle/limits/mirrors/auth/CI/product change. No currentCI/fullfamily/adoption/hosted/K8s inference.",
+  "at": "2026-11-01T23:55:47.812198+00:00"
+}

@@ -1,0 +1,22 @@
+{
+  "PLAN.json": {
+    "bytes": 3651,
+    "sha256": "d0a137df3bdc5db521382588f2c74d6dda0fe1f082f6b0135ffed6af851b12b3",
+    "mode": "0600"
+  },
+  "retained-v4.py": {
+    "bytes": 22064,
+    "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03",
+    "mode": "0600"
+  },
+  "run_build.py": {
+    "bytes": 10207,
+    "sha256": "3a03e00ea4e96caa15189da99f7c40f8c728c0a0e13bdf0b9ed1e1ac7838fb6c",
+    "mode": "0644"
+  },
+  "build.sh": {
+    "bytes": 2271,
+    "sha256": "30b230ddc6a487e1c24c16a6cd6bc7de864af12498d10946815e9df4c27ffab5",
+    "mode": "0644"
+  }
+}

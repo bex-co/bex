@@ -1,0 +1,5 @@
+--- FAIL: TestImageMetadataCacheReusesVerifiedReadsAndIsolatesCallers (0.01s)
+    dockerhub_test.go:135: immutable hit changed or read the registry again: 6 [NODE_VERSION=24.16.0] [RUN fixture-first]
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/build	0.714s
+FAIL

@@ -1,0 +1,25 @@
+{
+  "index": "golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9",
+  "platform": "linux/arm64",
+  "selected_manifest": {
+    "annotations": {
+      "com.docker.official-images.bashbrew.arch": "arm64v8",
+      "org.opencontainers.image.base.digest": "sha256:1aef535ea83d3a3fd23fc115d2902bd9bb8dd4548e6a9370c62b5e25f2e26025",
+      "org.opencontainers.image.base.name": "buildpack-deps:bookworm-scm",
+      "org.opencontainers.image.created": "2026-10-28T03:17:49Z",
+      "org.opencontainers.image.revision": "41d9b4da70324ae7b6461ac2cc401b06719ff57d",
+      "org.opencontainers.image.source": "https://github.com/docker-library/golang.git#41d9b4da70324ae7b6461ac2cc401b06719ff57d:1.27/bookworm",
+      "org.opencontainers.image.url": "https://hub.docker.com/_/golang",
+      "org.opencontainers.image.version": "1.27.3-bookworm"
+    },
+    "digest": "sha256:ae675cdbf1bb782b6de4a56b157c8f91a5c89a594d8fa6475bb71efc4be3cfcb",
+    "mediaType": "application/vnd.oci.image.manifest.v1+json",
+    "platform": {
+      "architecture": "arm64",
+      "os": "linux",
+      "variant": "v8"
+    },
+    "size": 2324
+  },
+  "config_digest": "sha256:dba766c2797d15d2b6e35651bd5acb02764b27611e9b89bba1100a54a0167bf7"
+}

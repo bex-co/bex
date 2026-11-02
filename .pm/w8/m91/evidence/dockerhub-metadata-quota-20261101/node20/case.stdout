@@ -1,0 +1,65 @@
+=== RUN   TestCommonNodeGeneratedImages
+    nativecommon_node_qualification_test.go:206: retained Node profile evidence: /private/tmp/bex-w8-node20-local-pilot-e20c26d7c86d48c9962b96c6/evidence/generated/native-common-node-3723867530
+=== RUN   TestCommonNodeGeneratedImages/node-20
+    nativecommon_node_qualification_test.go:212: actual common Node offline build: exit status 1
+        #0 building with "bex-nq-e20c26d7c86d48c9962b96c6" instance using docker-container driver
+        
+        #1 [internal] load build definition from Dockerfile
+        #1 transferring dockerfile: 3.19kB done
+        #1 DONE 0.1s
+        
+        #2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+        #2 DONE 2.4s
+        
+        #3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+        #3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e 0.0s done
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 0B / 11.24MB 0.2s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 1.05MB / 11.24MB 2.6s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 2.10MB / 11.24MB 4.5s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 3.15MB / 11.24MB 6.3s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 4.19MB / 11.24MB 7.8s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 5.24MB / 11.24MB 9.2s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 6.29MB / 11.24MB 10.2s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 7.34MB / 11.24MB 11.4s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 8.39MB / 11.24MB 12.9s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 9.44MB / 11.24MB 14.0s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 10.49MB / 11.24MB 14.7s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 11.24MB / 11.24MB 15.3s done
+        #3 extracting sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 0.1s done
+        #3 DONE 15.4s
+        
+        #4 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #4 ...
+        
+        #5 [internal] load metadata for ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #5 DONE 2.8s
+        
+        #6 [internal] load metadata for ghcr.io/bex-co/bex-cnb-run@sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d
+        #6 DONE 3.1s
+        
+        #7 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #7 ERROR: failed to copy: httpReadSeeker: failed open: unexpected status from GET request to https://registry-1.docker.io/v2/library/node/manifests/sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea: 429 Too Many Requests
+        toomanyrequests: You have reached your unauthenticated pull rate limit. https://www.docker.com/increase-rate-limit
+        
+        #4 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #4 ERROR: failed to copy: httpReadSeeker: failed open: unexpected status from GET request to https://registry-1.docker.io/v2/mwader/static-ffmpeg/manifests/sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822: 429 Too Many Requests
+        toomanyrequests: You have reached your unauthenticated pull rate limit. https://www.docker.com/increase-rate-limit
+        ------
+         > [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822:
+        ------
+        ------
+         > [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea:
+        ------
+        Dockerfile:13
+        --------------------
+          11 |     RUN --network=none [ "$(/usr/local/bin/node -p 'process.versions.node')" = 20.20.2 ]
+          12 |     RUN --network=none /usr/local/bin/node /usr/share/bex-security/node-check.js
+          13 | >>> COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /opt/yarn-v1.22.22 /opt/yarn-v1.22.22
+          14 |     RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg
+          15 |     ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+        --------------------
+        ERROR: failed to solve: node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea: failed to copy: httpReadSeeker: failed open: unexpected status from GET request to https://registry-1.docker.io/v2/library/node/manifests/sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea: 429 Too Many Requests
+        toomanyrequests: You have reached your unauthenticated pull rate limit. https://www.docker.com/increase-rate-limit
+--- FAIL: TestCommonNodeGeneratedImages (25.63s)
+    --- FAIL: TestCommonNodeGeneratedImages/node-20 (25.63s)
+FAIL

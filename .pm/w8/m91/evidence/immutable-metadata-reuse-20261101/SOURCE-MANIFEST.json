@@ -1,0 +1,17 @@
+{
+  "lego/operator/internal/build/dockerhub.go": {
+    "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3",
+    "bytes": 12874,
+    "mode": "0o644"
+  },
+  "lego/operator/internal/build/dockerhub_test.go": {
+    "sha256": "a943f9abf486bec635ece79e5fe68174170c302a1ac88b9340b0edd5e717a382",
+    "bytes": 11347,
+    "mode": "0o644"
+  },
+  "lego/operator/internal/build/nativeutility_integration_test.go": {
+    "sha256": "529080e87e50c291a5081de48b83e5a90122676bae900046a978abeb024a761d",
+    "bytes": 18975,
+    "mode": "0o644"
+  }
+}

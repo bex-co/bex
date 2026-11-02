@@ -1,0 +1,26 @@
+{
+  "PLAN.json": {
+    "sha256": "5d5e876f703729e7550225b6e9b41e410098c8d7b400d26b7b5613f08dadfb96",
+    "bytes": 4537
+  },
+  "SOURCE-REVIEW.json": {
+    "sha256": "fcf28fa04a0f8e615ca2f0a40196b51685168d4c3a8dadb101d42e5cc399b562",
+    "bytes": 837
+  },
+  "controller.diff": {
+    "sha256": "bb35f61b1c9629bccf32403dbc74380933b2c5e8ef9476e75716ec5519bb7f6b",
+    "bytes": 5174
+  },
+  "pilot.diff": {
+    "sha256": "7ac49271b16e6f925e6800efa2a0a222aec25df5e741beb1a4512bf42a484e9f",
+    "bytes": 697
+  },
+  "pilot.sh": {
+    "sha256": "b6b69b58493b52ab9be705458ddeeeb6f30aa46ed39cd20540156ee93c37e61f",
+    "bytes": 2010
+  },
+  "run_pilot.py": {
+    "sha256": "c2e75459d819aeec1a466873a8387f4fae0e0474926442dbe2387cd8e2a537f7",
+    "bytes": 22106
+  }
+}

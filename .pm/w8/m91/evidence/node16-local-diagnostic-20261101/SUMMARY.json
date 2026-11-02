@@ -1,0 +1,102 @@
+{
+  "state": "PASS_ONE_LOCAL_ARM64_NODE16_DONOR_DIAGNOSTIC",
+  "actual_elapsed_seconds": 226.097,
+  "local_source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "source_manifest_sha256": "497e75f16b11a723fae593ee6847ea772da638679d06ad9f677333ab8ad28d0a",
+  "compiled_test_ELF_sha256": "8e7f06b11fcfe0edda9c8b9618b1872cdddcd62f0f3142953b68f12aac1ae45f",
+  "common_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "actual_common_publisher_verifier_and_existing_utility_baseline_source": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "current_changed_source_CI_baseline": "No CI/current-baseline acceptance inferred; exact historical source snapshot retained",
+  "official_Node16": "node:16-bookworm@sha256:73e677f85fbc56d22c817b4e5d7f72086c5343c0859f3bf8aaadab22aab29ce6",
+  "published_runtime_donor": "ghcr.io/bex-co/bex-cnb-run@sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113",
+  "canonical_and_executed_same": true,
+  "network_overlay": false,
+  "phases": [
+    {
+      "phase": "build",
+      "Node": "16.20.2",
+      "ABI": 93,
+      "NAPI": "8",
+      "versions": {
+        "npm": "8.19.4",
+        "yarn": "1.22.22",
+        "pnpm": "10.34.7"
+      },
+      "Yarn_CLI": "/opt/yarn-v1.22.22/bin/yarn",
+      "pnpm_package": {
+        "name": "pnpm",
+        "standalone": "/opt/bex/pnpm/bin/pnpm"
+      },
+      "npm_package_sha256": "651083caf339f70a14bd5bbec276f24667439487e7d29d4dbfd6b9962d228e25",
+      "identity_addon_core_tools_lifecycle_exec": true
+    },
+    {
+      "phase": "runtime",
+      "Node": "16.20.2",
+      "ABI": 93,
+      "NAPI": "8",
+      "versions": {
+        "npm": "8.19.4",
+        "yarn": "1.22.22",
+        "pnpm": "10.34.7"
+      },
+      "Yarn_CLI": "/opt/yarn-v1.22.22/bin/yarn",
+      "pnpm_package": {
+        "name": "pnpm",
+        "standalone": "/opt/bex/pnpm/bin/pnpm"
+      },
+      "npm_package_sha256": "651083caf339f70a14bd5bbec276f24667439487e7d29d4dbfd6b9962d228e25",
+      "identity_addon_core_tools_lifecycle_exec": true
+    }
+  ],
+  "coverage": {
+    "build_and_offline_runtime": true,
+    "selectedNode16_20_2_ABI93_headers_addon": true,
+    "npm_yarn_pnpm_preinstall_postinstall_probe_and_pnpm_exec": true,
+    "specific_engine_negatives": 3,
+    "actual_groups_reaped_absent": 60
+  },
+  "cleanup": {
+    "runner_builder_volume_and_labelled_images_absent": true,
+    "own_Docker_config_absent": true,
+    "scope": "only exact owned names/IDs/labels; no shared/default builder/cache cleanup"
+  },
+  "observed_capacity": {
+    "before-builder": {
+      "at": "2026-11-01T23:26:08.108372+00:00",
+      "minimum_observed_free_bytes": 42487414784
+    },
+    "after-tests": {
+      "at": "2026-11-01T23:29:54.075547+00:00",
+      "minimum_observed_free_bytes": 33393696768
+    }
+  },
+  "observed_limits": {
+    "runner_memory_bytes": 536870912,
+    "runner_cpus": 2,
+    "builder_memory_bytes": 2147483648,
+    "builder_cpus": 2,
+    "host_file_operating_cap": 536870912,
+    "builder_state_polled_cap": 17179869184,
+    "global_free_operating_floor": 8589934592,
+    "no_reservation_or_cold_cache_claim": true
+  },
+  "omitted": [
+    {
+      "path": "own-builder-state.json",
+      "bytes": 719,
+      "sha256": "04700a1e93a86e721c8597214c7bb1b14ec461f012e65073947ba7130d7443d1",
+      "reason": "copied own Buildx config state; kept private. Raw builder command/inspection/cleanup evidence remains included."
+    }
+  ],
+  "binary_and_source_role": "TestELF/tools not copied; exact hashes/compiledsource300 manifest and original selected program bytes retained. Runtime addon binary retained unchanged as own test output.",
+  "scope_limits": [
+    "No tests, Node/native programs, command/resource/network/Go/Docker execution repeated. Existing pure validator functions re-applied only to retained actual outputs.",
+    "Some runtime recipe/command facts bind actual retained receipt to exact source/ELF; no new daemon inspection or full runtime image export.",
+    "Compiler/test ELF and source300 bodies remain private; portable capsule contains exact hashes/manifests and selected original fixture/program bodies.",
+    "No other Node cohort, AMD64, allfamily, native-init, predeploy, hosted28, production/adoption or actualCI acceptance is inferred.",
+    "All actual proof/log/command/cleanup files copied byteexact except explicitly excluded own Buildx config state. Runtime/auth/config credentials never read or copied.",
+    "Only two source-emitted input bodies are reconstructed from unchanged Go literals and match retained source-custody hashes; they are marked derived and not presented as copied runtime artifacts."
+  ],
+  "recommended_target": ".pm/w8/m91/evidence/node16-local-diagnostic-20261101"
+}

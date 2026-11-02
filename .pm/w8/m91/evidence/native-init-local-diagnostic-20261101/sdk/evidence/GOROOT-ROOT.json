@@ -1,0 +1,12 @@
+{
+  "path": "/private/tmp/bex-w8-linux-go-tools-cbd379a291424d59a2d4/toolroot/go",
+  "mode": "0o755",
+  "type": "directory",
+  "paths": 17372,
+  "regular_file_bytes": 238670456,
+  "path_types": {
+    "regular": 15657,
+    "directory": 1715,
+    "symlink": 0
+  }
+}
