@@ -779,6 +779,21 @@ jobs:
             kubectl -n argocd patch deployment "$d" --type strategic -p "$SCHED"
           done
           kubectl -n argocd patch statefulset argocd-application-controller --type strategic -p "$SCHED"
+          # w6/100: every main commit invalidates the manifest cache of ~30
+          # git-sourced apps at once, and comparisons queued on the single
+          # repo-server hit the stock 60 s timeout (git_ms 60002), leaving apps
+          # Unknown and deploy gates failing for hours. Two repo-servers and a
+          # 180 s timeout absorb that burst. The params ConfigMap is read at
+          # start, so restart only when its value changes.
+          before="$(kubectl -n argocd get configmap argocd-cmd-params-cm \
+            -o jsonpath='{.data.controller\.repo\.server\.timeout\.seconds}')"
+          kubectl -n argocd patch configmap argocd-cmd-params-cm --type merge \
+            -p '{"data":{"controller.repo.server.timeout.seconds":"180","server.repo.server.timeout.seconds":"180"}}'
+          kubectl -n argocd scale deployment argocd-repo-server --replicas=2
+          if [ "$before" != 180 ]; then
+            kubectl -n argocd rollout restart statefulset/argocd-application-controller deployment/argocd-server
+            kubectl -n argocd rollout status statefulset/argocd-application-controller --timeout=300s
+          fi
           kubectl -n argocd rollout status deploy/argocd-repo-server --timeout=300s
           kubectl -n argocd rollout status deploy/argocd-server --timeout=300s
 
