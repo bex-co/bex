@@ -1,3 +1,4 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { InstanceTypePicker } from "@/features/services/components/instance-type-picker";
 import { useCachedServiceType } from "@/features/services/hooks/use-cached-service-type";
@@ -6,6 +7,7 @@ import { useServer } from "@/features/services/hooks/use-server";
 import { ServicePlanSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/plan")({
+  head: serviceTabHead("services.navPlan", "/services/$serviceId"),
   component: ServicePlanPage,
   pendingComponent: ServicePlanPending,
 });

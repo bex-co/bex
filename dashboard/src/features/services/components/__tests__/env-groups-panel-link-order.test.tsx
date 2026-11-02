@@ -197,7 +197,9 @@ const loserTitle = (winner: string) =>
   `Overridden by ${winner}, which is linked later`;
 
 function linkedSection() {
-  return screen.getByRole("heading", { name: /Linked/ }).closest("section")!;
+  return screen
+    .getByRole("heading", { name: /Linked/, level: 3 })
+    .closest("section")!;
 }
 
 beforeEach(() => {

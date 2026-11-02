@@ -1,9 +1,11 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { ServiceEnvPage } from "./services.$serviceId.env";
 import { ServiceEnvironmentSkeleton } from "@/common/components/route-skeletons";
 
 /** Static-site Environment tab — the shared page under the /static base (w5/m57). */
 export const Route = createFileRoute("/static/$serviceId/env")({
+  head: serviceTabHead("services.navEnvironment", "/static/$serviceId"),
   component: RouteComponent,
   pendingComponent: ServiceEnvironmentSkeleton,
 });

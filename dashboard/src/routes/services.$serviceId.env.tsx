@@ -1,3 +1,4 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { Plus } from "lucide-react";
@@ -9,6 +10,7 @@ import { ServiceEnvironmentSkeleton } from "@/common/components/route-skeletons"
 import { useServer } from "@/features/services/hooks/use-server";
 
 export const Route = createFileRoute("/services/$serviceId/env")({
+  head: serviceTabHead("services.navEnvironment", "/services/$serviceId"),
   component: RouteComponent,
   pendingComponent: ServiceEnvironmentSkeleton,
 });

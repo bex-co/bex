@@ -1,3 +1,4 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
 
 import { DiskSection } from "@/features/services/components/disk-section";
@@ -6,6 +7,7 @@ import { useServer } from "@/features/services/hooks/use-server";
 import { ServiceDiskSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/disk")({
+  head: serviceTabHead("services.navDisk", "/services/$serviceId"),
   component: RouteComponent,
   pendingComponent: ServiceDiskSkeleton,
 });

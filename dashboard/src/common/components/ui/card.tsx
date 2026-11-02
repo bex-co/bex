@@ -30,10 +30,14 @@ function CardHeader({ className, ...props }: React.ComponentProps<"div">) {
 
 function CardTitle({
   className,
-  as: Tag = "div",
+  as: Tag = "h2",
   ...props
 }: React.ComponentProps<"div"> & {
-  /** Heading level for a card that titles its page or section (w4/410). */
+  /**
+   * Heading element. A card titles a section, so it is an h2 by default
+   * (w4/m249); pass "h1" for a page-titling card, "h3" for a card nested in a
+   * section, and "div" where the title is a label rather than a heading.
+   */
   as?: "div" | "h1" | "h2" | "h3";
 }) {
   return (

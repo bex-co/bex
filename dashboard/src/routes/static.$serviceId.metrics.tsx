@@ -1,3 +1,4 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { ServiceMetricsPage } from "./services.$serviceId.metrics";
 import {
@@ -10,6 +11,7 @@ import { ServiceMetricsSkeleton } from "@/common/components/route-skeletons";
 
 /** Static-site Metrics tab — the shared page under the /static base (w5/m57). */
 export const Route = createFileRoute("/static/$serviceId/metrics")({
+  head: serviceTabHead("services.navMetrics", "/static/$serviceId"),
   component: RouteComponent,
   pendingComponent: StaticMetricsPending,
   // Same URL-persisted range as services.$serviceId.metrics (w6/065).
