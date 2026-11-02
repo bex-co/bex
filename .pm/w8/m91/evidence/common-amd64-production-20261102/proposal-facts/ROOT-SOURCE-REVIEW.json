@@ -1,0 +1,14 @@
+{
+  "at": "2026-11-02T09:29:36.973805+00:00",
+  "review": "Root read primary workflow/helper/light-check differences, all changed host test controls and architecture/policy/source impact reports",
+  "manifest_sha256": "d503dacefee5c26bfcac4bba7adf2ef4863f74aad0829a129a25554770e764ec",
+  "all_manifest_payloads_checked": 28,
+  "source_paths": 8,
+  "host_tests_authorized": true,
+  "scope": "Private bounded existing host Python/workflow tests only; existing loopback test fixtures permitted, no external network/Go/Docker/registry/cluster or repository writes. Preserve original frozen proposal and failures; final diff still requires review before apply.",
+  "requested_refinements": [
+    "Bind actual current publisher policy bytes to the closed transition constant in a meaningful host control",
+    "Correct stale README claim about common utility checks and add readable number spacing"
+  ],
+  "current_main": "ac3b873ac3cfb7a847af60dbba86471245bac3ef"
+}

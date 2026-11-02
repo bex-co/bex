@@ -1,0 +1,9 @@
+test_actual_both37_arch_build_runtime_app_project_old_red_new_pass (__main__.ABIControls.test_actual_both37_arch_build_runtime_app_project_old_red_new_pass) ... ok
+test_existing_modern_predicate_unchanged_on_all_retained_phase_kind_rows (__main__.ABIControls.test_existing_modern_predicate_unchanged_on_all_retained_phase_kind_rows) ... ok
+test_missing_unresolved_link_and_wrong_ssl_still_refused (__main__.ABIControls.test_missing_unresolved_link_and_wrong_ssl_still_refused) ... ok
+test_wrong_version_missing_or_injected37_abi_refused (__main__.ABIControls.test_wrong_version_missing_or_injected37_abi_refused) ... ok
+
+----------------------------------------------------------------------
+Ran 4 tests in 0.004s
+
+OK

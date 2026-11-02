@@ -1,0 +1,8 @@
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/audit.py", line 70, in <module>
+    data=proof[kind];need(data['openssl'].startswith('OpenSSL ') and data['libpython_soname'].startswith('libpython'+line+'.so') and len(data['linked'])==3 and all('not found' not in text for text in data['linked'].values()),'actual SSL/FFI/SONAME/link closure')
+                     ~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/audit.py", line 13, in need
+    if not ok:raise AssertionError(why)
+              ^^^^^^^^^^^^^^^^^^^^^^^^^
+AssertionError: actual SSL/FFI/SONAME/link closure

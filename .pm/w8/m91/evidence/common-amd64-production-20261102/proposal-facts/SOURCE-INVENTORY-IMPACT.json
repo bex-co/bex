@@ -1,0 +1,65 @@
+{
+  "scope": "static actual tracked file bytes only; proposed code not executed",
+  "before_paths": 300,
+  "after_paths": 301,
+  "added": [
+    "deploy/native-common/check-local.Dockerfile"
+  ],
+  "removed": [],
+  "changed": [
+    {
+      "path": ".github/scripts/native-common-qualify.py",
+      "before": {
+        "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+        "bytes": 60360
+      },
+      "after": {
+        "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797",
+        "bytes": 62244
+      }
+    },
+    {
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "before": {
+        "sha256": "004b24b12ebbfecbe4602b66ed3d00dee3f1309a5f6fe8535cb3a43c80b263d9",
+        "bytes": 123251
+      },
+      "after": {
+        "sha256": "8c962c672e22b8d1bc9b4a0eb2fc25b4b16dda90b0766c2e90792be8e2fac72d",
+        "bytes": 129377
+      }
+    },
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "before": {
+        "sha256": "8f5e440662a5997af7e45d16536df2e27754ef4fb48c529ca33381cb0004ceb9",
+        "bytes": 18397
+      },
+      "after": {
+        "sha256": "fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759",
+        "bytes": 15859
+      }
+    },
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "before": {
+        "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+        "bytes": 19834
+      },
+      "after": {
+        "sha256": "021adb7a8407e88373da608a4a2388b5ad5df8caee4177c63c7e89d159482709",
+        "bytes": 23110
+      }
+    },
+    {
+      "path": "deploy/native-common/check-local.Dockerfile",
+      "before": null,
+      "after": {
+        "sha256": "30460593bdfcb3f2820841ded935e465868168e2bf2d3fd92e7d85c77b456d9b",
+        "bytes": 607
+      }
+    }
+  ],
+  "ignored_pycs": "not read, copied, removed, normalized or waived; existing physical inventory remains conservative",
+  "baseline": "existing0b7 source equality cannot satisfy the proposed full source; one fresh complete AMD64 SAME0941 baseline required"
+}

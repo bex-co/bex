@@ -1,0 +1,94 @@
+{
+  "outcome": "FIVE_DATED_9BC_PYTHON_CONTENT_PASS_AFTER_EXPLICIT_AUDITOR_ABI_CORRECTION",
+  "actual_generator_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+  "image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "baseline_source": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+  "source_currentness": "Dated9bc only; no current source header relabeling/baseline/candidate/family/adoption write. Root source-nonimpact decision remains separate.",
+  "cases": [
+    {
+      "profile": "modern-python",
+      "case": "3.9",
+      "architecture": "arm64",
+      "version": "3.9.25",
+      "run_id": 41375428758,
+      "job_id": 125055436874,
+      "artifact_id": 13114556805,
+      "original_members": 79,
+      "actual_tool_python": "3.9.25",
+      "Poetry": "2.1.3",
+      "virtualenv": "20.39.1",
+      "original_manifest_sha256": "5cabbb86e242eab5957d03e98a02cc13d20bab807a49b0c72b50206d565e5753"
+    },
+    {
+      "profile": "modern-python",
+      "case": "3.10",
+      "architecture": "arm64",
+      "version": "3.10.22",
+      "run_id": 41375434664,
+      "job_id": 125055277391,
+      "artifact_id": 13114820434,
+      "original_members": 81,
+      "actual_tool_python": "3.10.22",
+      "Poetry": "2.1.3",
+      "virtualenv": "20.39.1",
+      "original_manifest_sha256": "ef11de763d5c6da0dc0f394991bba4b699ff7c2791f908b03eaa990d24cb0583"
+    },
+    {
+      "profile": "modern-python",
+      "case": "3.11",
+      "architecture": "arm64",
+      "version": "3.11.18",
+      "run_id": 41375455883,
+      "job_id": 125055227667,
+      "artifact_id": 13114091214,
+      "original_members": 77,
+      "actual_tool_python": "3.11.18",
+      "Poetry": "2.1.3",
+      "virtualenv": "20.39.1",
+      "original_manifest_sha256": "33f970199cfd256622ce16e0c220ab571be6fa8431d36c6fb2f0dc0bae0628df"
+    },
+    {
+      "profile": "legacy-python",
+      "case": "3.7",
+      "architecture": "amd64",
+      "version": "3.7.17",
+      "run_id": 41375700551,
+      "job_id": 125058940548,
+      "artifact_id": 13113752639,
+      "original_members": 79,
+      "actual_tool_python": "3.11.2",
+      "Poetry": "2.1.3",
+      "virtualenv": "20.32.0",
+      "original_manifest_sha256": "5d78438949dd134478d9a15e192f4edda9e94784b6a00a7ba95fe5002fb55b9d"
+    },
+    {
+      "profile": "legacy-python",
+      "case": "3.7",
+      "architecture": "arm64",
+      "version": "3.7.17",
+      "run_id": 41375700551,
+      "job_id": 125058940435,
+      "artifact_id": 13115917920,
+      "original_members": 77,
+      "actual_tool_python": "3.11.2",
+      "Poetry": "2.1.3",
+      "virtualenv": "20.32.0",
+      "original_manifest_sha256": "2137d5e4143364ca4729329a9911dc71b56f01dd2e92b50c72426a18fde8375c"
+    }
+  ],
+  "prior_first_audit_exit1_retained": {
+    "bytes": 1002,
+    "sha256": "27d4ede331dac607896b28c96f8b30eb118ecd9ee38cd225853c21a053de0ea6"
+  },
+  "correction_source": {
+    "bytes": 13434,
+    "sha256": "52667c50ace913e0a3d76bcb5007101dbe80b1d1ac0bb391ef7ea3623541bfad"
+  },
+  "corrected_offline_audit_exit": 0,
+  "minimum_free": 9244868608,
+  "current_free": 9181753344,
+  "total_ZIP_bytes": 113387032,
+  "total_original_members": 393,
+  "no_new_target_runtime_Docker_Go_CI_or_product_execution": true,
+  "no_repo_or_candidate_mutation": true
+}

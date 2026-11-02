@@ -1,0 +1,107 @@
+{
+  "commands": [
+    [
+      "native-oci",
+      [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        ".github/scripts",
+        "-p",
+        "test_native_oci_*.py"
+      ],
+      180
+    ],
+    [
+      "native-base",
+      [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "deploy/native-base",
+        "-p",
+        "*_test.py"
+      ],
+      120
+    ],
+    [
+      "native-common",
+      [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "deploy/native-common",
+        "-p",
+        "*_test.py"
+      ],
+      120
+    ],
+    [
+      "actionlint",
+      [
+        "/opt/homebrew/bin/actionlint",
+        "-shellcheck=",
+        "-pyflakes=",
+        ".github/workflows/native-base-image.yml",
+        ".github/workflows/native-common-image.yml"
+      ],
+      60
+    ],
+    [
+      "actions-guard",
+      [
+        "/bin/bash",
+        "scripts/github-actions-validate.sh"
+      ],
+      60
+    ],
+    [
+      "actions-selftests",
+      [
+        "/bin/bash",
+        "scripts/github-actions-validate.test.sh"
+      ],
+      120
+    ]
+  ],
+  "cwd": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0/view",
+  "network": "Sandbox denies non-loopback outbound connections; existing loopback HTTP fixture allowed. No Go/Docker/registry/cluster/integration execution.",
+  "sandbox_policy": "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+  "physical_floor_plus_margin": 8724152320,
+  "owned_TMP_cap": 134217728,
+  "whole_seconds": 600,
+  "source": {
+    "foreign_go_work_sum": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6",
+    "repository_preimages": {
+      ".github/workflows/native-base-image.yml": "8f5e440662a5997af7e45d16536df2e27754ef4fb48c529ca33381cb0004ceb9",
+      ".github/workflows/native-common-image.yml": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+      ".github/scripts/native-common-qualify.py": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+      ".github/scripts/test_native_oci_common_qualification.py": "004b24b12ebbfecbe4602b66ed3d00dee3f1309a5f6fe8535cb3a43c80b263d9",
+      ".github/scripts/test_native_oci_workflow.py": "4d02e612c8b0ac19f57ac181acbbdf0b196b349314988411f5d27e8675cac2dc",
+      "deploy/native-common/README.md": "254c102d6b778eb58e4b2f171f579e8ce7fe247930532ed5f1f1638548b54a48",
+      "deploy/native-base/README.md": "86d64ef2e4d4fe9ddeb9df3698edff4821d229e938337214a80d0806278605b1"
+    },
+    "private_source": {
+      ".github/scripts/native-common-qualify.py": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797",
+      ".github/scripts/test_native_oci_common_qualification.py": "6df3223f02cb14c29268f048435defbfc4364b6ba6e7c1580a09af687426dc8d",
+      ".github/scripts/test_native_oci_workflow.py": "bfb9ad20287ccc2121fc2306701a045af08ee3ddec1a3f29cd6e746a4f0846a4",
+      ".github/workflows/native-base-image.yml": "fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759",
+      ".github/workflows/native-common-image.yml": "021adb7a8407e88373da608a4a2388b5ad5df8caee4177c63c7e89d159482709",
+      "deploy/native-base/README.md": "33b11e36da8a8f69d3aab75bb9b9226051c928de76c5d62d858add9bd2b6dac5",
+      "deploy/native-common/README.md": "2c9e34722551ab2072a31073f85675bb7202ae2b47ab2890e5a31a72ea8016ab",
+      "deploy/native-common/check-local.Dockerfile": "30460593bdfcb3f2820841ded935e465868168e2bf2d3fd92e7d85c77b456d9b"
+    },
+    "view_manifest": "98a2aa3c998b7e27c43427632542c53ca4d81b1d1433b7d13052aa9e632d37d1"
+  },
+  "shared_caches": "none created/cloned/deleted; existing tools read only",
+  "resources": "operating disk/deadline bounds, no host capacity reservation"
+}

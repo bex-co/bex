@@ -1,0 +1,24 @@
+{
+  "at": "2026-11-02T09:56:45.532526+00:00",
+  "parent": "2e49230575f9d1d35f5834452d4fc8a3306d8a3a",
+  "all_77_portable_manifest_payloads_verified_before_copy": true,
+  "all_132_archive_members_size_sha_and_original_bytes_verified": true,
+  "all_eight_applied_source_files_equal_passed_final_manifest": true,
+  "passed_final_manifest_sha256": "4e448c52a05449f1fb2e40de3f793aa2d0252061f952784af39b2aa1d0e60ae6",
+  "Root_current_Actions_checks": "Both passed on e6; latest2e changes no Actions workflow/guard bytes, so those current results remain applicable.",
+  "latest_peer_additions": "AppStatus.RolloutFailure and its deepcopy only; source hashes will be captured by the required new301 baseline, no old runtime result relabeled.",
+  "private_source_view_remaining_peer_differences": [
+    ".github/workflows/deploy.yml",
+    "scripts/gitops-validate.sh",
+    "lego/types/v1alpha1/app_types.go",
+    "lego/types/v1alpha1/zz_generated.deepcopy.go"
+  ],
+  "README_prepared_sha256": "ee9b9f78e9da282cd5592b2122f986ca347324f0edbd6f1b8b4f738fa5e4b35d",
+  "README_exception": "Root fixed three spacing errors in the authored README and will format it; all frozen files are unchanged.",
+  "fresh_current_full_AMD_utility_baseline": "OPEN",
+  "required_AMD_families_adoption_hosted28": "OPEN",
+  "foreign_sum_unchanged": true,
+  "all_76_frozen_portable_files_unchanged_after_format": true,
+  "published_README_sha256": "cc040fac31fd6a99a3e7476031536e96fb59097338b248cfa6953bf03aa748b4",
+  "global_and_authored_markdown_format_exit": 0
+}

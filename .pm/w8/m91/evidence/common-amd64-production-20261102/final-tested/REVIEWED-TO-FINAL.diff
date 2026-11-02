@@ -1,0 +1,73 @@
+--- reviewed/.github/scripts/test_native_oci_common_qualification.py
++++ final/.github/scripts/test_native_oci_common_qualification.py
+@@ -798,8 +798,12 @@
+             self.assertNotIn("continue-on-error", body)
+ 
+     def test_all_three_checkouts_use_the_same_closed_noncone_set(self):
+-        workflow = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
+-        blocks = re.findall(r'(?ms)^      - uses: actions/checkout@[^\n]+\n(.*?)(?=^      - |\Z)', workflow)
++        jobs = ProfileRoutingControls.jobs()
++        blocks = []
++        for name in ("plan", "qualify", "qualify-profile"):
++            selected = re.findall(r'(?ms)^      - uses: actions/checkout@[^\n]+\n(.*?)(?=^      - |\Z)', jobs[name])
++            self.assertEqual(len(selected), 1, name)
++            blocks.extend(selected)
+         self.assertEqual(len(blocks), 3)
+         self.assertEqual(blocks, [blocks[0]] * 3)
+         self.assertIn("sparse-checkout-cone-mode: false", blocks[0])
+@@ -922,7 +926,7 @@
+     @staticmethod
+     def jobs():
+         workflow = (publisher.ROOT / ".github/workflows/native-common-image.yml").read_text()
+-        names = list(re.finditer(r"(?m)^  ([a-z][a-z-]*):\n", workflow.split("jobs:\n", 1)[1]))
++        names = list(re.finditer(r"(?m)^  ([a-z][a-z0-9-]*):\n", workflow.split("jobs:\n", 1)[1]))
+         body = workflow.split("jobs:\n", 1)[1]
+         return {match[1]: body[match.end():names[index + 1].start() if index + 1 < len(names) else len(body)]
+                 for index, match in enumerate(names)}
+@@ -1179,6 +1183,12 @@
+                     self.assertEqual(actual["integration"], "1")
+                     self.assertEqual((temporary / "qualification.log").read_text(), "controlled case stdout\ncontrolled case stderr\n")
+ 
++
++    def test_d3_transition_pin_binds_the_actual_checked_out_publisher_policy(self):
++        policy = qualification.D3_LEGACY_0941
++        path = HERE.parents[1] / policy["path"]
++        actual = qualification.file_identity(path)
++        self.assertEqual({key: actual[key] for key in ("sha256", "bytes", "mode", "type")}, policy["after"])
+ 
+     def test_d3_local_arm_smoke_is_unsigned_and_not_a_production_dependency(self):
+         jobs = self.jobs()
+--- reviewed/deploy/native-base/README.md
++++ final/deploy/native-base/README.md
+@@ -45,7 +45,7 @@
+ 
+ The publisher pins cosign 3.1.4 and creates its Rekor v2/Fulcio/TSA signing configuration from Sigstore's TUF defaults. Modern Rekor records the signed DSSE content's digest while the complete signed SBOM/report stays in its OCI bundle, avoiding legacy full-envelope request limits for these large utility images. Verification requires cosign 3.1 or newer and still checks transparency, workflow identity and the complete predicates. Configuration creation and each signing call get three attempts, a five-minute timeout with ten-second forced-termination grace, and 5/10-second backoff. Exhausted retries stop publication before discovery tags move. See the [Rekor v2 large-SBOM protocol change](https://github.com/sigstore/rekor-tiles/releases/tag/v2.3.0).
+ 
+-Syft reads `registry:$REF` for AMD64. Automatic source selection can use a Docker-save image with a synthetic manifest digest; the registry source keeps the signed SPDX root tied to the reviewed platform manifest. Reviewers check that identity and each signed scan's config digest alongside the common index subject.
++Syft reads `oci-dir:$layout` for AMD64 after the existing OCI stager verifies complete original registry metadata and blob SHA/size identities. `--source-name` and `--source-version` retain the original repository/index identity; the signed SPDX root remains tied to the reviewed AMD64 platform manifest. Automatic Docker-save source selection is not used. Reviewers check that identity and each signed scan's config digest alongside the common index subject.
+ 
+ D3 publication builds the explicitly requested production artifact afresh. Existing `.github/native-base-recovery.json` authorizations retain their historical multiarch subjects and are not consumed by the AMD64-only publisher: signing those index subjects would also sign their ARM64 members. A later recovery route requires an explicitly reviewed AMD64 subject and truthful producer/verifier identities; no old subject is projected or relabeled here. Common production publication was already fresh-only.
+ 
+--- reviewed/deploy/native-common/README.md
++++ final/deploy/native-common/README.md
+@@ -17,7 +17,7 @@
+ 
+ The opt-in canonical `TestNativeUtilityGeneratedImages` gate accepts `BEX_NATIVE_TEST_COMMON_IMAGE=<actual immutable candidate>` with `BEX_BUILDKIT_INTEGRATION=1`. It reuses one common candidate for Node 24, explicit Python 3.13 and no-signal Python 3.14.8 for a service created after the Python creation-date cutoff, alongside the existing missing-supplier negative and static-site case. `BEX_NATIVE_TEST_WHEELHOUSE` must name a separately prepared flat directory of compatible Python 3.13/3.14 Poetry and original Python fixture wheels, at most 128MiB. The Python cases add only an explicitly recorded test-prerequisite COPY/pip configuration layer; the production common image gains no fixture dependencies. Original programs/data/commands remain unchanged. `BEX_NATIVE_TEST_OUTPUT` retains both untouched canonical and executed recipes, exact prerequisite hashes, command logs, actual platform/config identity and output proofs. Run production qualification on linux/amd64 with compatible wheels and its actual target platform. The common-only ARM64 smoke is a local-development check and establishes no per-runtime ARM64 qualification.
+ 
+-The generator copies each selected runtime tree, including a reviewed default, restores its exact environment, refreshes the loader cache offline, installs matching Python tools offline and then adds companions. No tenant apt step is allowed. The separate default probe uses the existing primary packaging/C-extension and Brotli programs, plus genuine loader-by-SONAME/version/environment checks. Original fixture programs stay unchanged. These real image checks have not yet been executed for the common foundation. A common-image SBOM cannot substitute for the generated exact Python 3.14.8 image's SBOM or hosted acceptance.
++The generator copies each selected runtime tree, including a reviewed default, restores its exact environment, refreshes the loader cache offline, installs matching Python tools offline and then adds companions. No tenant apt step is allowed. The separate default probe uses the existing primary packaging/C-extension and Brotli programs, plus genuine loader-by-SONAME/version/environment checks. Original fixture programs stay unchanged. The complete original utilities have passed actual dated runs, including both 0b7 architectures on the reviewed 0941 image. Those records retain their executed sources and do not become D3-source acceptance. D3 requires a fresh complete AMD64 utility baseline after this source change; affected runtime families and hosted acceptance remain open. A common-image SBOM cannot substitute for the generated exact Python 3.14.8 image's SBOM or hosted acceptance.
+ 
+ Bookworm runtime donors cover the first slice. Legacy Python/Ruby closures also need their distinct compatibility libraries or same-release Bookworm builds; copying an old `/usr/local` tree alone is insufficient. Trixie Elixir images require independently selected exact Bookworm OTP artifacts plus the selected Elixir tree and rebar tools. A missing prebuilt compatible donor must use a reviewed same-version build, without downgrading the selected runtime or adding a new unsupported-version result. These paths require real closure/extension/companion proofs before a common pin is populated. All 28 frozen programs, data and commands remain unchanged.
+ 
+@@ -25,8 +25,8 @@
+ 
+ ## D3 historical candidate migration
+ 
+-The already reviewed0941 index retains its actual1feba producer/verifier, both platform identities, five signed image/report roles and full custody. The helper permits only the pinned original publisher-workflow bytes to the exact reviewed D3 workflow bytes for this subject; every other32 image input remains exact. No old receipt or source is rewritten. The runner-pool-only change is included in that exact reviewed diff.
++The already reviewed 0941 index retains its actual 1feba producer/verifier, both platform identities, five signed image/report roles and full custody. The helper permits only the pinned original publisher-workflow bytes to the exact reviewed D3 workflow bytes for this subject; every other 32 image input remains exact. No old receipt or source is rewritten. The runner-pool-only change is included in that exact reviewed diff.
+ 
+-Changing the qualification helper/workflow/tests or smoke source changes the full captured source. Family reuse still requires exact equality, so run one complete new AMD64 utility baseline on the same0941 subject before new family admission. Old0b7 results remain dated evidence; no ARM64 full baseline is required by D3. New AMD64-only image approvals need an actually reviewed D3-capable V11 adapter/pin; the retained historical adapter is not relabeled or claimed to verify a new proof shape. Production pins stay empty until separate adoption review.
++Changing the qualification helper/workflow/tests or smoke source changes the full captured source. Family reuse still requires exact equality, so run one complete new AMD64 utility baseline on the same 0941 subject before new family admission. Old 0b7 results remain dated evidence; no ARM64 full baseline is required by D3. New AMD64-only image approvals need an actually reviewed D3-capable V11 adapter/pin; the retained historical adapter is not relabeled or claimed to verify a new proof shape. Production pins stay empty until separate adoption review.
+ 
+-The local-only discovery tag is `native-common-bookworm-arm64-local`. Its candidate tag may exist before the smoke finishes; the discovery tag moves only on smoke success. Its immutable reference is recorded as local-only, never substituted into the production output or checked-in approved candidate. A failed/cancelled smoke is unproved and does not fail the AMD64 production jobs. Historical0941 ARM64 full proof already exceeds this smoke scope for its unchanged image bytes; no repeated ARM64 family work is implied.
++The local-only discovery tag is `native-common-bookworm-arm64-local`. Its candidate tag may exist before the smoke finishes; the discovery tag moves only on smoke success. Its immutable reference is recorded as local-only, never substituted into the production output or checked-in approved candidate. A failed/cancelled smoke is unproved and does not fail the AMD64 production jobs. Historical 0941 ARM64 full proof already exceeds this smoke scope for its unchanged image bytes; no repeated ARM64 family work is implied.

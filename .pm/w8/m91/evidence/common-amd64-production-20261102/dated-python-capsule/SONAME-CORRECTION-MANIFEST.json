@@ -1,0 +1,59 @@
+{
+  "files": [
+    {
+      "path": "audit.py",
+      "bytes": 13405,
+      "sha256": "b86883ea001d0dd98d1c0ec7dc8c97eeeaf5e67f710bcad91493adf956e2c318"
+    },
+    {
+      "path": "audit-soname-v2.py",
+      "bytes": 13434,
+      "sha256": "52667c50ace913e0a3d76bcb5007101dbe80b1d1ac0bb391ef7ea3623541bfad"
+    },
+    {
+      "path": "AUDIT-SONAME-CORRECTION.diff",
+      "bytes": 2450,
+      "sha256": "a505f4c7b953ea18d23493c1495332621c40231dac013d814841fb41f147dc37"
+    },
+    {
+      "path": "FIRST-AUDIT-FAILURE.json",
+      "bytes": 1002,
+      "sha256": "27d4ede331dac607896b28c96f8b30eb118ecd9ee38cd225853c21a053de0ea6"
+    },
+    {
+      "path": "actual-audit.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "actual-audit.stderr",
+      "bytes": 904,
+      "sha256": "b1e4db59b3321eff60094bbea5e1ff60148f842ff55d4ee5a34c998550b97148"
+    },
+    {
+      "path": "ACTUAL-3.7-ABI-EVIDENCE.json",
+      "bytes": 10389,
+      "sha256": "ebed01e6bdbe87c2569748ead99fb111412ae2c4bfb3d6f64fb6234d00e349a1"
+    },
+    {
+      "path": "test_soname_correction.py",
+      "bytes": 2832,
+      "sha256": "be46ac1e92e613160f1cb9631f704421dd4787583975ab7f99755666b343f7a3"
+    },
+    {
+      "path": "soname-controls.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "soname-controls.stderr",
+      "bytes": 718,
+      "sha256": "765377a2f4b55a03fa6f580e55310f7d3b65f27d4f040e63dc141077beaa2d09"
+    },
+    {
+      "path": "SONAME-CORRECTION-RECEIPT.json",
+      "bytes": 1557,
+      "sha256": "7d8c340eacd9b311902ff458face3ea8800254de10fbc904f89cdff82cb7a7fe"
+    }
+  ]
+}

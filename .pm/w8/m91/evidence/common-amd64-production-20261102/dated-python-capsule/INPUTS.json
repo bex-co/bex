@@ -1,0 +1,112 @@
+[
+  {
+    "profile": "modern-python",
+    "case": "3.9",
+    "architecture": "arm64",
+    "run_id": 41375428758,
+    "job_id": 125055436874,
+    "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+    "whole_job_status": "completed/success from retained completeREST snapshot",
+    "artifact_id": 13114556805,
+    "name": "common-pilot-modern-python-3.9-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-arm64-1",
+    "ZIP_bytes": 22058258,
+    "ZIP_sha256": "sha256:11958cbb2b9d7a0010da842299b96ce1b93cd718a2c10fcc6acb963c506c2826",
+    "expired": false,
+    "raw_metadata": {
+      "path": "/private/tmp/bex-w8-dated-pass-nonimpact-20261102-39f54bee/artifacts-41375428758.json",
+      "bytes": 1573,
+      "sha256": "d3974681ec44fff498bae448a88947024fb9527de51a9225895e153ad7c00bc8"
+    },
+    "full_artifact_content_audit": "MISSING; no download/extraction/bodyvalidation performedhere",
+    "key": "modern-python-3.9-arm64",
+    "version": "3.9.25"
+  },
+  {
+    "profile": "modern-python",
+    "case": "3.10",
+    "architecture": "arm64",
+    "run_id": 41375434664,
+    "job_id": 125055277391,
+    "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+    "whole_job_status": "completed/success from retained completeREST snapshot",
+    "artifact_id": 13114820434,
+    "name": "common-pilot-modern-python-3.10-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-arm64-1",
+    "ZIP_bytes": 22150555,
+    "ZIP_sha256": "sha256:42f047f546daa0e39d85bd192a395a7c0ee5018c9c9a24a8d4900e64e2b4c9c7",
+    "expired": false,
+    "raw_metadata": {
+      "path": "/private/tmp/bex-w8-dated-pass-nonimpact-20261102-39f54bee/artifacts-41375434664.json",
+      "bytes": 1575,
+      "sha256": "c353b3c33f3e7be94463a4d999ac1e070cdc8e65fb8cede927da5e7b72f8744b"
+    },
+    "full_artifact_content_audit": "MISSING; no download/extraction/bodyvalidation performedhere",
+    "key": "modern-python-3.10-arm64",
+    "version": "3.10.22"
+  },
+  {
+    "profile": "modern-python",
+    "case": "3.11",
+    "architecture": "arm64",
+    "run_id": 41375455883,
+    "job_id": 125055227667,
+    "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+    "whole_job_status": "completed/success from retained completeREST snapshot",
+    "artifact_id": 13114091214,
+    "name": "common-pilot-modern-python-3.11-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-arm64-1",
+    "ZIP_bytes": 22140349,
+    "ZIP_sha256": "sha256:0d687f06e9563e3acf68d49c6e7f183ce93e8189f156126a3558582b436a94b8",
+    "expired": false,
+    "raw_metadata": {
+      "path": "/private/tmp/bex-w8-dated-pass-nonimpact-20261102-39f54bee/artifacts-41375455883.json",
+      "bytes": 1575,
+      "sha256": "415b41d8c1fd5c6fbc67803a8f83ed30e5ae044e3af34bd75962eb2e0200d84c"
+    },
+    "full_artifact_content_audit": "MISSING; no download/extraction/bodyvalidation performedhere",
+    "key": "modern-python-3.11-arm64",
+    "version": "3.11.18"
+  },
+  {
+    "profile": "legacy-python",
+    "case": "3.7",
+    "architecture": "amd64",
+    "run_id": 41375700551,
+    "job_id": 125058940548,
+    "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+    "whole_job_status": "completed/success from retained completeREST snapshot",
+    "artifact_id": 13113752639,
+    "name": "common-pilot-legacy-python-3.7-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+    "ZIP_bytes": 24681293,
+    "ZIP_sha256": "sha256:34f641491e662e7c9dc39dc0dc8de1160d3e3b7d3be510ceb0b30ab2fc8167a5",
+    "expired": false,
+    "raw_metadata": {
+      "path": "/private/tmp/bex-w8-dated-pass-nonimpact-20261102-39f54bee/artifacts-41375700551.json",
+      "bytes": 1573,
+      "sha256": "ee7ba662d759ff560771a3b85e640da15320d2594a1bdb113a71e5bc5deabac5"
+    },
+    "full_artifact_content_audit": "MISSING; no download/extraction/bodyvalidation performedhere",
+    "key": "legacy-python-3.7-amd64",
+    "version": "3.7.17"
+  },
+  {
+    "profile": "legacy-python",
+    "case": "3.7",
+    "architecture": "arm64",
+    "run_id": 41375700551,
+    "job_id": 125058940435,
+    "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+    "whole_job_status": "completed/success from retained completeREST snapshot",
+    "artifact_id": 13115917920,
+    "name": "common-pilot-legacy-python-3.7-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-arm64-1",
+    "ZIP_bytes": 22356577,
+    "ZIP_sha256": "sha256:a9e63d6e3267fb4936f6dcd3e71af22f962787b937148c6e21c44ab5424909e8",
+    "expired": false,
+    "raw_metadata": {
+      "path": "/private/tmp/bex-w8-dated-pass-nonimpact-20261102-39f54bee/artifacts-41375700551.json",
+      "bytes": 1573,
+      "sha256": "ee7ba662d759ff560771a3b85e640da15320d2594a1bdb113a71e5bc5deabac5"
+    },
+    "full_artifact_content_audit": "MISSING; no download/extraction/bodyvalidation performedhere",
+    "key": "legacy-python-3.7-arm64",
+    "version": "3.7.17"
+  }
+]

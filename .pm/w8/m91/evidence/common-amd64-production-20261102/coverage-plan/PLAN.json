@@ -1,0 +1,2095 @@
+{
+  "at": "2026-11-02T09:25:18.917197+00:00",
+  "status": "DATA_ONLY_NO_DISPATCH_OR_ADOPTION_AUTHORITY",
+  "D3_contract": "User2026-11-01:production qualification linux/amd64 only. One commonBookworm arm64 development variant gets lightweight startup/core-tools check only; no new ARM runtime-family qualification/scans/signing and no ARM result blocks production. Already-running historical dualarch runs remain untouched.",
+  "observed_HEAD": "ac3b873ac3cfb7a847af60dbba86471245bac3ef",
+  "same_candidate": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "helper_source": {
+    "path": "/Users/tianpan/projects/bex7/.github/scripts/native-common-qualify.py",
+    "bytes": 60360,
+    "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5"
+  },
+  "closure_delta_from0b7_to_observed_HEAD": "M\t.github/workflows/native-base-image.yml\n",
+  "counts": {
+    "original_reviewed_selectors": 35,
+    "supplemental_donor_selectors": 6,
+    "original_required_new_AMD_replays": 27,
+    "fully_audited_dated_AMD_nonimpact_eligible": 8,
+    "supplemental_failed_AMD_routes_if_retained": 5,
+    "supplemental_existing_AMD_PASS_body_still_unproved": 1,
+    "required_original_AMD_runtime_jobs_not_paired": 27,
+    "all_donor_routes_nextwork_if_retained": "5AMD runtime replays+1existing-successbody audit; sixthruntime replay only if body/equivalence unproved",
+    "max_runtime_replays_if_all41routes_required_and_no_donor_body_admission": 33,
+    "runtime_replays_if_all41routes_retained_and_exact14213body_admitted": 32,
+    "new_ARM_family_jobs": 0,
+    "historic82paired_cells_are_not_current_required_jobs": true
+  },
+  "new_AMD_baseline": {
+    "status": "NOT_YET_SATISFIED_FOR_D3_FINAL_SOURCE",
+    "preconditions": [
+      "Ship/review the D3 helper+workflow migration first: full utility and family jobs AMD64-only, strict AMD64 init; no paired runtime family matrix. Historical0941 full V11 five-role/both-platform proof retained unchanged.",
+      "Common-review proposal may bridge only exact reviewed old\u2192new native-base workflow hash for0941 with all other32 publisher-critical inputs equal; not an arbitrary equivalence or image/ref fallback.",
+      "Run one normal reviewed-candidate/utilities/pilot workflow at the final shipped source and SAME approved0941; full original positives/omissions/suppliernegative/original13/default3.14.8/fullSBOM/cleanup/upload remain mandatory.",
+      "Intake/audit the complete actual successful AMD64 original artifact and exact final captured-source closure before Root updates test-candidate source/utilities. Full source equality for new family init remains strict.",
+      "Current0b7 run41407186362 passed both full artifacts and712 original members, but publisher runner label changed a recorded image input afterward; it cannot silently admit current/D3 source. Keep that success dated.",
+      "Only after this real current-source AMD baseline may required new family selectors run. No fresh publication is required merely to reuse the approved0941 image."
+    ],
+    "proposed_baseline_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=utilities -f case=pilot",
+    "private_patch_owner": "common_review; implementation not frozen/applied at author coordination time",
+    "baseline_source": null,
+    "baseline_run": null,
+    "baseline_job": null,
+    "current0b7_artifact_review": {
+      "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/ACTUAL-RECEIPT.json",
+      "bytes": 3840,
+      "sha256": "f82219fbb177f63491e14445dd8df7576e7f89ac7d91b2778c4cf14f37efc6ac"
+    },
+    "frozen_proposal": {
+      "root": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42",
+      "source_manifest": {
+        "path": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/SOURCE-MANIFEST.json",
+        "bytes": 1400,
+        "sha256": "f63e0be8a3b90504fa4d30860f1abf6cebdd90b599fa400fe10609deae07c3ca"
+      },
+      "base_commit": "a5f65eec3f2feac90ae44beed39ac57b88e26145",
+      "status": "Frozen private proposal; Root review/tests/apply/ship pending. This plan does not claim its code tested or deployed.",
+      "projected_source_paths": 301,
+      "added_source_input": "deploy/native-common/check-local.Dockerfile",
+      "all41_profile_case_flags_and_timeouts_literal_unchanged": true
+    },
+    "projected_source_paths": 301,
+    "actual_final_scope_authority": "Exact final shipped helper inventory, not a fabricated301 capture; both existing300 captures remain dated."
+  },
+  "original35": [
+    {
+      "group": "original35",
+      "profile": "native-init",
+      "case": "all-launches",
+      "selection": {
+        "profile": "native-init",
+        "case": "all-launches",
+        "flag": "BEX_NATIVE_TEST_INIT_PROFILE",
+        "selector": "^TestCommonNativeInitQualification$",
+        "go_timeout": "60m",
+        "job_minutes": 90,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Direct fixed AMD mapped-PID1 identity/proof predicate; rerun all four launches/drain/status/cleanup. Old ARM success is historical only.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375346506,
+      "historical_AMD": {
+        "job_id": 125054905589,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:15:49Z",
+        "failure": {
+          "classes": [
+            "NATIVE_INIT_AMD64_PID1_ROSETTA_ORACLE"
+          ],
+          "finding": {
+            "path": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/common-family-causal-fixes-20261102/native-init/old-amd64/FINDING.json",
+            "bytes": 1735,
+            "sha256": "d2120786a337160f4d384dd3b6ecc8f4c104d6d25e292259bd01c0f13a2249f4"
+          },
+          "reason": "Actual /proc/1/exe wrapper; old identity throws before Ready. CI argv/maps were not retained; local observation is separately limited."
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=native-init -f case=all-launches",
+      "exact_recorded_failure_classes": [
+        "NATIVE_INIT_AMD64_PID1_ROSETTA_ORACLE"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "node",
+      "case": "node-22",
+      "selection": {
+        "profile": "node",
+        "case": "node-22",
+        "flag": "BEX_NATIVE_TEST_NODE_PROFILE",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-22$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "CARRY_DATED_FULL_AUDIT_NONIMPACT_ELIGIBLE",
+      "reason": "Full retained AMD artifact content audit plus case-specific nonimpact from9bc\u21920b7; modern Node22/26 no-overlay early return, or unchanged Python canonical/observer/tool/wheel paths. Exact old executing source stays9bc; no current source header relabel.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375390166,
+      "historical_AMD": {
+        "job_id": 125055427731,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-02T02:26:32Z",
+        "failure": null
+      },
+      "full_audit": {
+        "path": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/common-otp-selector-fixes-20261102/old-source-node22-elixir117/AUDIT.json",
+        "bytes": 9383,
+        "sha256": "acc6ca0f67b9933c4ae8dbc9705914b5a81bdfc8938223cca4dad5e054584d3b"
+      },
+      "proposed_command_only": null,
+      "exact_recorded_failure_classes": []
+    },
+    {
+      "group": "original35",
+      "profile": "node",
+      "case": "node-26",
+      "selection": {
+        "profile": "node",
+        "case": "node-26",
+        "flag": "BEX_NATIVE_TEST_NODE_PROFILE",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-26$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "CARRY_DATED_FULL_AUDIT_NONIMPACT_ELIGIBLE",
+      "reason": "Full retained AMD artifact content audit plus case-specific nonimpact from9bc\u21920b7; modern Node22/26 no-overlay early return, or unchanged Python canonical/observer/tool/wheel paths. Exact old executing source stays9bc; no current source header relabel.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375422833,
+      "historical_AMD": {
+        "job_id": 125055681153,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-02T02:33:29Z",
+        "failure": null
+      },
+      "full_audit": {
+        "path": "/private/tmp/bex-w8-node26-amd-artifact-intake-20261102-41yvyg4o/AUDIT.json",
+        "bytes": 17566,
+        "sha256": "d90cb38e8838c1c28296ea0d8c75ae05a7574782602cd02bf084fca8ceb98792"
+      },
+      "proposed_command_only": null,
+      "exact_recorded_failure_classes": []
+    },
+    {
+      "group": "original35",
+      "profile": "modern-python",
+      "case": "3.9",
+      "selection": {
+        "profile": "modern-python",
+        "case": "3.9",
+        "flag": "BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE",
+        "selector": "^TestNativeModernPythonGeneratedImages$/^3\\.9$",
+        "go_timeout": "110m",
+        "job_minutes": 140,
+        "platform": "linux/amd64"
+      },
+      "action": "CARRY_DATED_FULL_AUDIT_NONIMPACT_ELIGIBLE",
+      "reason": "Full retained AMD artifact content audit plus case-specific nonimpact from9bc\u21920b7; modern Node22/26 no-overlay early return, or unchanged Python canonical/observer/tool/wheel paths. Exact old executing source stays9bc; no current source header relabel.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375428758,
+      "historical_AMD": {
+        "job_id": 125055436976,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-02T02:28:33Z",
+        "failure": null
+      },
+      "full_audit": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/REVIEW.json",
+        "bytes": 5297,
+        "sha256": "0e8d3523d0f12bca0bdbaf9e1685aaf3fad3f5c8ad71b6b40dd52c40af2cd38c"
+      },
+      "proposed_command_only": null,
+      "exact_recorded_failure_classes": []
+    },
+    {
+      "group": "original35",
+      "profile": "modern-python",
+      "case": "3.10",
+      "selection": {
+        "profile": "modern-python",
+        "case": "3.10",
+        "flag": "BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE",
+        "selector": "^TestNativeModernPythonGeneratedImages$/^3\\.10$",
+        "go_timeout": "110m",
+        "job_minutes": 140,
+        "platform": "linux/amd64"
+      },
+      "action": "CARRY_DATED_FULL_AUDIT_NONIMPACT_ELIGIBLE",
+      "reason": "Full retained AMD artifact content audit plus case-specific nonimpact from9bc\u21920b7; modern Node22/26 no-overlay early return, or unchanged Python canonical/observer/tool/wheel paths. Exact old executing source stays9bc; no current source header relabel.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375434664,
+      "historical_AMD": {
+        "job_id": 125055277369,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-02T02:20:07Z",
+        "failure": null
+      },
+      "full_audit": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/REVIEW.json",
+        "bytes": 5297,
+        "sha256": "0e8d3523d0f12bca0bdbaf9e1685aaf3fad3f5c8ad71b6b40dd52c40af2cd38c"
+      },
+      "proposed_command_only": null,
+      "exact_recorded_failure_classes": []
+    },
+    {
+      "group": "original35",
+      "profile": "modern-python",
+      "case": "3.11",
+      "selection": {
+        "profile": "modern-python",
+        "case": "3.11",
+        "flag": "BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE",
+        "selector": "^TestNativeModernPythonGeneratedImages$/^3\\.11$",
+        "go_timeout": "110m",
+        "job_minutes": 140,
+        "platform": "linux/amd64"
+      },
+      "action": "CARRY_DATED_FULL_AUDIT_NONIMPACT_ELIGIBLE",
+      "reason": "Full retained AMD artifact content audit plus case-specific nonimpact from9bc\u21920b7; modern Node22/26 no-overlay early return, or unchanged Python canonical/observer/tool/wheel paths. Exact old executing source stays9bc; no current source header relabel.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375455883,
+      "historical_AMD": {
+        "job_id": 125055227638,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-02T02:21:02Z",
+        "failure": null
+      },
+      "full_audit": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/REVIEW.json",
+        "bytes": 5297,
+        "sha256": "0e8d3523d0f12bca0bdbaf9e1685aaf3fad3f5c8ad71b6b40dd52c40af2cd38c"
+      },
+      "proposed_command_only": null,
+      "exact_recorded_failure_classes": []
+    },
+    {
+      "group": "original35",
+      "profile": "modern-python",
+      "case": "3.12",
+      "selection": {
+        "profile": "modern-python",
+        "case": "3.12",
+        "flag": "BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE",
+        "selector": "^TestNativeModernPythonGeneratedImages$/^3\\.12$",
+        "go_timeout": "110m",
+        "job_minutes": 140,
+        "platform": "linux/amd64"
+      },
+      "action": "CARRY_DATED_FULL_AUDIT_NONIMPACT_ELIGIBLE",
+      "reason": "Full retained AMD artifact content audit plus case-specific nonimpact from9bc\u21920b7; modern Node22/26 no-overlay early return, or unchanged Python canonical/observer/tool/wheel paths. Exact old executing source stays9bc; no current source header relabel.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375461070,
+      "historical_AMD": {
+        "job_id": 125055633459,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-02T02:30:53Z",
+        "failure": null
+      },
+      "full_audit": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/REVIEW.json",
+        "bytes": 5297,
+        "sha256": "0e8d3523d0f12bca0bdbaf9e1685aaf3fad3f5c8ad71b6b40dd52c40af2cd38c"
+      },
+      "proposed_command_only": null,
+      "exact_recorded_failure_classes": []
+    },
+    {
+      "group": "original35",
+      "profile": "modern-python",
+      "case": "3.14",
+      "selection": {
+        "profile": "modern-python",
+        "case": "3.14",
+        "flag": "BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE",
+        "selector": "^TestNativeModernPythonGeneratedImages$/^3\\.14$",
+        "go_timeout": "110m",
+        "job_minutes": 140,
+        "platform": "linux/amd64"
+      },
+      "action": "CARRY_DATED_FULL_AUDIT_NONIMPACT_ELIGIBLE",
+      "reason": "Full retained AMD artifact content audit plus case-specific nonimpact from9bc\u21920b7; modern Node22/26 no-overlay early return, or unchanged Python canonical/observer/tool/wheel paths. Exact old executing source stays9bc; no current source header relabel.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375466839,
+      "historical_AMD": {
+        "job_id": 125055560331,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-02T02:28:39Z",
+        "failure": null
+      },
+      "full_audit": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/REVIEW.json",
+        "bytes": 5297,
+        "sha256": "0e8d3523d0f12bca0bdbaf9e1685aaf3fad3f5c8ad71b6b40dd52c40af2cd38c"
+      },
+      "proposed_command_only": null,
+      "exact_recorded_failure_classes": []
+    },
+    {
+      "group": "original35",
+      "profile": "go-rust",
+      "case": "go",
+      "selection": {
+        "profile": "go-rust",
+        "case": "go",
+        "flag": "BEX_NATIVE_TEST_GORUST_PROFILE",
+        "selector": "^TestNativeGoRustGeneratedImages$/^go$",
+        "go_timeout": "75m",
+        "job_minutes": 105,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Old AMD exact official golang/rust metadata admission refused before build; reviewed admission repair needs actual consumers.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375472665,
+      "historical_AMD": {
+        "job_id": 125055631670,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:26:35Z",
+        "failure": {
+          "classes": [
+            "SUPPORTED_GO_RUST_METADATA_REPOSITORY_GUARD"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/go-125055631670.log",
+            "bytes": 63374,
+            "sha256": "99f39c3ad8b60b89cbe802cff0e1c1b25d9b1cf2002e0b11e60ba7518a817e53"
+          },
+          "reason": "Selected pinned official canonical Go/Rust source rejected by ImageMetadata exactRepos guard before build; source map omits both repos.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=go-rust -f case=go",
+      "exact_recorded_failure_classes": [
+        "SUPPORTED_GO_RUST_METADATA_REPOSITORY_GUARD"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "go-rust",
+      "case": "rust",
+      "selection": {
+        "profile": "go-rust",
+        "case": "rust",
+        "flag": "BEX_NATIVE_TEST_GORUST_PROFILE",
+        "selector": "^TestNativeGoRustGeneratedImages$/^rust$",
+        "go_timeout": "75m",
+        "job_minutes": 105,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Old AMD exact official golang/rust metadata admission refused before build; reviewed admission repair needs actual consumers.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375488574,
+      "historical_AMD": {
+        "job_id": 125055846561,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:36:18Z",
+        "failure": {
+          "classes": [
+            "SUPPORTED_GO_RUST_METADATA_REPOSITORY_GUARD"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/rust-125055846561.log",
+            "bytes": 63416,
+            "sha256": "a3e0aee192fab6a8fdaa1312bfd4a9bf1eac48f6f5d8c7156ee043842034fad3"
+          },
+          "reason": "Selected pinned official canonical Go/Rust source rejected by ImageMetadata exactRepos guard before build; source map omits both repos.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=go-rust -f case=rust",
+      "exact_recorded_failure_classes": [
+        "SUPPORTED_GO_RUST_METADATA_REPOSITORY_GUARD"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "ruby",
+      "case": "ruby34",
+      "selection": {
+        "profile": "ruby",
+        "case": "ruby34",
+        "flag": "BEX_NATIVE_TEST_RUBY_PROFILE",
+        "selector": "^TestCommonRubyGeneratedImages$/^ruby34$",
+        "go_timeout": "75m",
+        "job_minutes": 105,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Seven AMD fixture zlib byte-equality failures and Ruby4.0 metadata429; actual corrected complete runtime/Bundler/OpenSSL/zlib/addon results remain required.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375495533,
+      "historical_AMD": {
+        "job_id": 125055996963,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:44:00Z",
+        "failure": {
+          "classes": [
+            "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby34-125055996963.log",
+            "bytes": 129428,
+            "sha256": "f0d890cd6a19a032e65260a1c479773d5f912286b545b4472111ec3f24159c39"
+          },
+          "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=ruby -f case=ruby34",
+      "exact_recorded_failure_classes": [
+        "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "ruby",
+      "case": "ruby40",
+      "selection": {
+        "profile": "ruby",
+        "case": "ruby40",
+        "flag": "BEX_NATIVE_TEST_RUBY_PROFILE",
+        "selector": "^TestCommonRubyGeneratedImages$/^ruby40$",
+        "go_timeout": "75m",
+        "job_minutes": 105,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Seven AMD fixture zlib byte-equality failures and Ruby4.0 metadata429; actual corrected complete runtime/Bundler/OpenSSL/zlib/addon results remain required.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375501385,
+      "historical_AMD": {
+        "job_id": 125056758950,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:50:04Z",
+        "failure": {
+          "classes": [
+            "REGISTRY_METADATA_HTTP429"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby40-125056758950.log",
+            "bytes": 64422,
+            "sha256": "45d9aa4f50131a0ca3fa72a62fa623d9a2440e6eda983378aa6c56d363cbc4a9"
+          },
+          "reason": "Selected primary ENV metadata returned actualHTTP429 before build; no generatedRuby4.0 runtime result.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=ruby -f case=ruby40",
+      "exact_recorded_failure_classes": [
+        "REGISTRY_METADATA_HTTP429"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "ruby",
+      "case": "ruby344-creation-default",
+      "selection": {
+        "profile": "ruby",
+        "case": "ruby344-creation-default",
+        "flag": "BEX_NATIVE_TEST_RUBY_PROFILE",
+        "selector": "^TestCommonRubyGeneratedImages$/^ruby344\\-creation\\-default$",
+        "go_timeout": "75m",
+        "job_minutes": 105,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Seven AMD fixture zlib byte-equality failures and Ruby4.0 metadata429; actual corrected complete runtime/Bundler/OpenSSL/zlib/addon results remain required.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375507144,
+      "historical_AMD": {
+        "job_id": 125056317602,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:40:09Z",
+        "failure": {
+          "classes": [
+            "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby344-creation-default-125056317602.log",
+            "bytes": 128935,
+            "sha256": "55b624efa71cb58d6e4d8afb3fd179c78f436210f2ba8f98e85dffecdd3e5d21"
+          },
+          "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=ruby -f case=ruby344-creation-default",
+      "exact_recorded_failure_classes": [
+        "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "ruby",
+      "case": "ruby30",
+      "selection": {
+        "profile": "ruby",
+        "case": "ruby30",
+        "flag": "BEX_NATIVE_TEST_RUBY_PROFILE",
+        "selector": "^TestCommonRubyGeneratedImages$/^ruby30$",
+        "go_timeout": "75m",
+        "job_minutes": 105,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Seven AMD fixture zlib byte-equality failures and Ruby4.0 metadata429; actual corrected complete runtime/Bundler/OpenSSL/zlib/addon results remain required.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375519527,
+      "historical_AMD": {
+        "job_id": 125056527087,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:42:47Z",
+        "failure": {
+          "classes": [
+            "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby30-125056527087.log",
+            "bytes": 153831,
+            "sha256": "0d8ed0c0cd13c35b8b583c459ebb458f27a7e143e01805b5aa08c34a8e0b2731"
+          },
+          "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=ruby -f case=ruby30",
+      "exact_recorded_failure_classes": [
+        "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "ruby",
+      "case": "ruby31",
+      "selection": {
+        "profile": "ruby",
+        "case": "ruby31",
+        "flag": "BEX_NATIVE_TEST_RUBY_PROFILE",
+        "selector": "^TestCommonRubyGeneratedImages$/^ruby31$",
+        "go_timeout": "75m",
+        "job_minutes": 105,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Seven AMD fixture zlib byte-equality failures and Ruby4.0 metadata429; actual corrected complete runtime/Bundler/OpenSSL/zlib/addon results remain required.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375525481,
+      "historical_AMD": {
+        "job_id": 125056391774,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:50:11Z",
+        "failure": {
+          "classes": [
+            "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby31-125056391774.log",
+            "bytes": 139242,
+            "sha256": "f01bf7e4e8a2c99fb61278c087ce6860138baa873197f28702e9bb9a78df5a70"
+          },
+          "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=ruby -f case=ruby31",
+      "exact_recorded_failure_classes": [
+        "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "ruby",
+      "case": "ruby32",
+      "selection": {
+        "profile": "ruby",
+        "case": "ruby32",
+        "flag": "BEX_NATIVE_TEST_RUBY_PROFILE",
+        "selector": "^TestCommonRubyGeneratedImages$/^ruby32$",
+        "go_timeout": "75m",
+        "job_minutes": 105,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Seven AMD fixture zlib byte-equality failures and Ruby4.0 metadata429; actual corrected complete runtime/Bundler/OpenSSL/zlib/addon results remain required.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375530745,
+      "historical_AMD": {
+        "job_id": 125056666478,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:47:59Z",
+        "failure": {
+          "classes": [
+            "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby32-125056666478.log",
+            "bytes": 140273,
+            "sha256": "e22099a61735d11676a00abc82b418860207cbf1ce402d7585e24d393c19f2ee"
+          },
+          "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=ruby -f case=ruby32",
+      "exact_recorded_failure_classes": [
+        "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "ruby",
+      "case": "ruby33",
+      "selection": {
+        "profile": "ruby",
+        "case": "ruby33",
+        "flag": "BEX_NATIVE_TEST_RUBY_PROFILE",
+        "selector": "^TestCommonRubyGeneratedImages$/^ruby33$",
+        "go_timeout": "75m",
+        "job_minutes": 105,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Seven AMD fixture zlib byte-equality failures and Ruby4.0 metadata429; actual corrected complete runtime/Bundler/OpenSSL/zlib/addon results remain required.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375536053,
+      "historical_AMD": {
+        "job_id": 125056673239,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:48:58Z",
+        "failure": {
+          "classes": [
+            "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby33-125056673239.log",
+            "bytes": 135380,
+            "sha256": "7a5095cbc764e6f9d20bd3b3d5612b800391bda572039e65aeedd5758fa4cfc0"
+          },
+          "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=ruby -f case=ruby33",
+      "exact_recorded_failure_classes": [
+        "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "ruby",
+      "case": "node-static-ruby34",
+      "selection": {
+        "profile": "ruby",
+        "case": "node-static-ruby34",
+        "flag": "BEX_NATIVE_TEST_RUBY_PROFILE",
+        "selector": "^TestCommonRubyGeneratedImages$/^node\\-static\\-ruby34$",
+        "go_timeout": "75m",
+        "job_minutes": 105,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Seven AMD fixture zlib byte-equality failures and Ruby4.0 metadata429; actual corrected complete runtime/Bundler/OpenSSL/zlib/addon results remain required.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375551913,
+      "historical_AMD": {
+        "job_id": 125056614477,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:50:30Z",
+        "failure": {
+          "classes": [
+            "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-static-ruby34-125056614477.log",
+            "bytes": 143242,
+            "sha256": "a3c33b48cac3976059309de79bc8a9ad1d8ee37cdf76503d7b672e6a92a35947"
+          },
+          "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=ruby -f case=node-static-ruby34",
+      "exact_recorded_failure_classes": [
+        "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "node",
+      "case": "node-20",
+      "selection": {
+        "profile": "node",
+        "case": "node-20",
+        "flag": "BEX_NATIVE_TEST_NODE_PROFILE",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-20$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Old failed source-fallback/exact routes; prerequisite RUN network harness corrected. Exact14.21.2 primary/Rubycompanion cannot be substituted by14.21.3 or supplier V11 alone.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375556805,
+      "historical_AMD": {
+        "job_id": 125057044576,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T02:49:57Z",
+        "failure": {
+          "classes": [
+            "REGISTRY_METADATA_CONTEXT_DEADLINE"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-20-125057044576.log",
+            "bytes": 63484,
+            "sha256": "f13a65fec0102159a7b809f34281d41bef85d5fafc322d05164c8c676b0113da"
+          },
+          "reason": "Selected primary ENV immutable manifest GET exceeded callercontext in~21s before build.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node -f case=node-20",
+      "exact_recorded_failure_classes": [
+        "REGISTRY_METADATA_CONTEXT_DEADLINE"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "node",
+      "case": "node-18",
+      "selection": {
+        "profile": "node",
+        "case": "node-18",
+        "flag": "BEX_NATIVE_TEST_NODE_PROFILE",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-18$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Old failed source-fallback/exact routes; prerequisite RUN network harness corrected. Exact14.21.2 primary/Rubycompanion cannot be substituted by14.21.3 or supplier V11 alone.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375561914,
+      "historical_AMD": {
+        "job_id": 125057701493,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:12:19Z",
+        "failure": {
+          "classes": [
+            "NODE_SOURCE_PREREQUISITE_DNS_CURL6"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-18-125057701493.log",
+            "bytes": 170892,
+            "sha256": "56120e147d02bd18f9886002e1fc64f19b2062bd25ddb7e6f5f04adca9aa5e74"
+          },
+          "reason": "Trusted single source-prerequisite RUN did receive networkdefault. curlstillcannotresolve nodejs.org; exits6 afterbuilt-in retries beforeNodecompile. Underlyingrunner/builderDNSmechanism unproved; notHTTP429/missingoverlay.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node -f case=node-18",
+      "exact_recorded_failure_classes": [
+        "NODE_SOURCE_PREREQUISITE_DNS_CURL6"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "node",
+      "case": "node-16",
+      "selection": {
+        "profile": "node",
+        "case": "node-16",
+        "flag": "BEX_NATIVE_TEST_NODE_PROFILE",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-16$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Old failed source-fallback/exact routes; prerequisite RUN network harness corrected. Exact14.21.2 primary/Rubycompanion cannot be substituted by14.21.3 or supplier V11 alone.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375567050,
+      "historical_AMD": {
+        "job_id": 125057695217,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:12:16Z",
+        "failure": {
+          "classes": [
+            "NODE_SOURCE_PREREQUISITE_DNS_CURL6"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-16-125057695217.log",
+            "bytes": 180014,
+            "sha256": "8a543799b196c9765fb31a1dc1bbd8030ddba42bc59570d20c768229699a010a"
+          },
+          "reason": "Trusted single source-prerequisite RUN did receive networkdefault. curlstillcannotresolve nodejs.org; exits6 afterbuilt-in retries beforeNodecompile. Underlyingrunner/builderDNSmechanism unproved; notHTTP429/missingoverlay.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node -f case=node-16",
+      "exact_recorded_failure_classes": [
+        "NODE_SOURCE_PREREQUISITE_DNS_CURL6"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "node",
+      "case": "node-14",
+      "selection": {
+        "profile": "node",
+        "case": "node-14",
+        "flag": "BEX_NATIVE_TEST_NODE_PROFILE",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-14$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Old failed source-fallback/exact routes; prerequisite RUN network harness corrected. Exact14.21.2 primary/Rubycompanion cannot be substituted by14.21.3 or supplier V11 alone.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375576977,
+      "historical_AMD": {
+        "job_id": 125057542764,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:12:47Z",
+        "failure": {
+          "classes": [
+            "NODE_SOURCE_PREREQUISITE_DNS_CURL6"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-14-125057542764.log",
+            "bytes": 175679,
+            "sha256": "ca2db6a5ffe8af0ffceb9ea8548a25c9930b4b00b6276a0b02a5dbaa5146ddce"
+          },
+          "reason": "Trusted single source-prerequisite RUN did receive networkdefault. curlstillcannotresolve nodejs.org; exits6 afterbuilt-in retries beforeNodecompile. Underlyingrunner/builderDNSmechanism unproved; notHTTP429/missingoverlay.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node -f case=node-14",
+      "exact_recorded_failure_classes": [
+        "NODE_SOURCE_PREREQUISITE_DNS_CURL6"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "node",
+      "case": "node-exact14212",
+      "selection": {
+        "profile": "node",
+        "case": "node-exact14212",
+        "flag": "BEX_NATIVE_TEST_NODE_PROFILE",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-exact14212$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Old failed source-fallback/exact routes; prerequisite RUN network harness corrected. Exact14.21.2 primary/Rubycompanion cannot be substituted by14.21.3 or supplier V11 alone.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375689572,
+      "historical_AMD": {
+        "job_id": 125057832997,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:16:01Z",
+        "failure": {
+          "classes": [
+            "NODE_SOURCE_PREREQUISITE_DNS_CURL6",
+            "ARTIFACT_CREATE_ECONNRESET"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/logs/job-125057832997.log",
+            "bytes": 163159,
+            "sha256": "d1fed49e43b9872fb7cb59c9dac5ebeefd32b49cf2e359ad0c00a8f61bf6bfda"
+          },
+          "diagnostics": [
+            {
+              "line": 1630,
+              "text": "2026-11-02T03:13:51.7066692Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+            },
+            {
+              "line": 1633,
+              "text": "2026-11-02T03:13:51.7067800Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+            },
+            {
+              "line": 1636,
+              "text": "2026-11-02T03:13:51.7068770Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+            },
+            {
+              "line": 1639,
+              "text": "2026-11-02T03:13:51.7069835Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+            },
+            {
+              "line": 1646,
+              "text": "2026-11-02T03:13:51.7074733Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+            },
+            {
+              "line": 1648,
+              "text": "2026-11-02T03:13:51.7075514Z         curl: (6) Could not resolve host: nodejs.org"
+            },
+            {
+              "line": 1650,
+              "text": "2026-11-02T03:13:51.7076207Z         curl: (6) Could not resolve host: nodejs.org"
+            },
+            {
+              "line": 1652,
+              "text": "2026-11-02T03:13:51.7076889Z         curl: (6) Could not resolve host: nodejs.org"
+            },
+            {
+              "line": 1771,
+              "text": "2026-11-02T03:15:23.1704582Z ##[error]Failed to CreateArtifact: Unable to make request: ECONNRESET"
+            }
+          ],
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/TRIAGE.json",
+            "bytes": 83045,
+            "sha256": "3cb69c0f203ea570638d4a831ade6fb26dfc3738f4d0cdd9a5ccfbc5f0ff67ad"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node -f case=node-exact14212",
+      "exact_recorded_failure_classes": [
+        "NODE_SOURCE_PREREQUISITE_DNS_CURL6",
+        "ARTIFACT_CREATE_ECONNRESET"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "node",
+      "case": "ruby-node-exact14212",
+      "selection": {
+        "profile": "node",
+        "case": "ruby-node-exact14212",
+        "flag": "BEX_NATIVE_TEST_NODE_PROFILE",
+        "selector": "^TestCommonNodeGeneratedImages$/^ruby\\-node\\-exact14212$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Old failed source-fallback/exact routes; prerequisite RUN network harness corrected. Exact14.21.2 primary/Rubycompanion cannot be substituted by14.21.3 or supplier V11 alone.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375695085,
+      "historical_AMD": {
+        "job_id": 125058109221,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:12:47Z",
+        "failure": {
+          "classes": [
+            "NODE_SOURCE_PREREQUISITE_DNS_CURL6"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby-node-exact14212-125058109221.log",
+            "bytes": 195898,
+            "sha256": "9e17ef4e2c04e72a779b4e1359ded7055dcb118d4742621df784680aa7fc5600"
+          },
+          "reason": "Trusted single source-prerequisite RUN did receive networkdefault. curlstillcannotresolve nodejs.org; exits6 afterbuilt-in retries beforeNodecompile. Underlyingrunner/builderDNSmechanism unproved; notHTTP429/missingoverlay.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node -f case=ruby-node-exact14212",
+      "exact_recorded_failure_classes": [
+        "NODE_SOURCE_PREREQUISITE_DNS_CURL6"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "legacy-python",
+      "case": "3.7",
+      "selection": {
+        "profile": "legacy-python",
+        "case": "3.7",
+        "flag": "BEX_NATIVE_LEGACY_PYTHON_INTEGRATION",
+        "selector": "^TestNativeLegacyPythonGeneratedImages$/^3\\.7$",
+        "go_timeout": "110m",
+        "job_minutes": 140,
+        "platform": "linux/amd64"
+      },
+      "action": "CARRY_DATED_FULL_AUDIT_NONIMPACT_ELIGIBLE",
+      "reason": "Full retained AMD artifact content audit plus case-specific nonimpact from9bc\u21920b7; modern Node22/26 no-overlay early return, or unchanged Python canonical/observer/tool/wheel paths. Exact old executing source stays9bc; no current source header relabel.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375700551,
+      "historical_AMD": {
+        "job_id": 125058940548,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-02T03:21:09Z",
+        "failure": null
+      },
+      "full_audit": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/REVIEW.json",
+        "bytes": 5913,
+        "sha256": "cb4e0fa456df5bc5bcba90050945f9e3f01ce7c9759483f77cc593bf031709ba"
+      },
+      "proposed_command_only": null,
+      "Root_dated_content_admission": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/ROOT-CONTENT-ADMISSION.json",
+        "bytes": 709,
+        "sha256": "10e28a8032809805a8f1d2fcd5f91b4bcf08385b6d877d0f6a5d8ae4ddfb7d1f"
+      },
+      "exact_recorded_failure_classes": []
+    },
+    {
+      "group": "original35",
+      "profile": "legacy-python",
+      "case": "3.8",
+      "selection": {
+        "profile": "legacy-python",
+        "case": "3.8",
+        "flag": "BEX_NATIVE_LEGACY_PYTHON_INTEGRATION",
+        "selector": "^TestNativeLegacyPythonGeneratedImages$/^3\\.8$",
+        "go_timeout": "110m",
+        "job_minutes": 140,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "Python3.8 AMD Go case passed but whole-job upload FinalizeArtifact ECONNRESET left no complete original artifact; runtime pass alone cannot close custody.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375734819,
+      "historical_AMD": {
+        "job_id": 125058904545,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:15:32Z",
+        "failure": {
+          "classes": [
+            "ARTIFACT_FINALIZATION_ECONNRESET_AFTER_TEST_PASS"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/python38-125058904545.log",
+            "bytes": 64372,
+            "sha256": "2228510b9f2033d017fcafd9a67c5deaf4015712359c418befcd7e54bf302e47"
+          },
+          "reason": "Actualnetwork-off generatedprofilePASS439.4s; cleanup/manifeststepssuccess. Uploadall24,680,107B/SHAprinted thenFinalizeArtifactECONNRESET. Freshartifactmetadata listempty.",
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+            "bytes": 95855,
+            "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=legacy-python -f case=3.8",
+      "exact_recorded_failure_classes": [
+        "ARTIFACT_FINALIZATION_ECONNRESET_AFTER_TEST_PASS"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "elixir",
+      "case": "elixir-1.18",
+      "selection": {
+        "profile": "elixir",
+        "case": "elixir-1.18",
+        "flag": "BEX_NATIVE_ELIXIR_INTEGRATION",
+        "selector": "^TestCommonElixirOfflineQualification$/^elixir\\-1\\.18$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "OTP1.18/1.19/1.20 old AMD nouser/startup or metadata errors, exactOTP partial-tag path repaired. Elixir1.17 AMD old pass is affected by new emulation ARG/runtime ERL_FLAGS qualification inputs, so rerun even though body was audited.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375740029,
+      "historical_AMD": {
+        "job_id": 125059235961,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:28:24Z",
+        "failure": {
+          "classes": [
+            "OTP_USER_STARTUP_NOUSER"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/logs/job-125059235961.log",
+            "bytes": 156104,
+            "sha256": "3bd38f61ac5102a3a503d5153dcf7cd003924ffae83a6b4f1b8e69d61329d78e"
+          },
+          "diagnostics": [
+            {
+              "line": 1593,
+              "text": "2026-11-02T03:28:11.5581566Z         #19 11.34 Kernel pid terminated (application_controller) (\"{application_start_failure,kernel,{{shutdown,{failed_to_start_child,user,nouser}},{kernel,start,[normal,[]]}}}\")"
+            },
+            {
+              "line": 1599,
+              "text": "2026-11-02T03:28:11.5592115Z         11.34 Kernel pid terminated (application_controller) (\"{application_start_failure,kernel,{{shutdown,{failed_to_start_child,user,nouser}},{kernel,start,[normal,[]]}}}\")"
+            }
+          ],
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/TRIAGE.json",
+            "bytes": 83045,
+            "sha256": "3cb69c0f203ea570638d4a831ade6fb26dfc3738f4d0cdd9a5ccfbc5f0ff67ad"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=elixir -f case=elixir-1.18",
+      "exact_recorded_failure_classes": [
+        "OTP_USER_STARTUP_NOUSER"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "elixir",
+      "case": "elixir-1.17",
+      "selection": {
+        "profile": "elixir",
+        "case": "elixir-1.17",
+        "flag": "BEX_NATIVE_ELIXIR_INTEGRATION",
+        "selector": "^TestCommonElixirOfflineQualification$/^elixir\\-1\\.17$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "OTP1.18/1.19/1.20 old AMD nouser/startup or metadata errors, exactOTP partial-tag path repaired. Elixir1.17 AMD old pass is affected by new emulation ARG/runtime ERL_FLAGS qualification inputs, so rerun even though body was audited.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375779779,
+      "historical_AMD": {
+        "job_id": 125060083567,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "success",
+        "completed_at": "2026-11-02T03:29:34Z",
+        "failure": null
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=elixir -f case=elixir-1.17",
+      "exact_recorded_failure_classes": []
+    },
+    {
+      "group": "original35",
+      "profile": "elixir",
+      "case": "elixir-1.19",
+      "selection": {
+        "profile": "elixir",
+        "case": "elixir-1.19",
+        "flag": "BEX_NATIVE_ELIXIR_INTEGRATION",
+        "selector": "^TestCommonElixirOfflineQualification$/^elixir\\-1\\.19$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "OTP1.18/1.19/1.20 old AMD nouser/startup or metadata errors, exactOTP partial-tag path repaired. Elixir1.17 AMD old pass is affected by new emulation ARG/runtime ERL_FLAGS qualification inputs, so rerun even though body was audited.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375786429,
+      "historical_AMD": {
+        "job_id": 125060201435,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:27:46Z",
+        "failure": {
+          "classes": [
+            "OTP_USER_STARTUP_NOUSER"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/logs/job-125060201435.log",
+            "bytes": 157321,
+            "sha256": "5de2539315933b3b73811e14ef6e3437a9f749d61f075e1d982969612c44e4a5"
+          },
+          "diagnostics": [
+            {
+              "line": 1607,
+              "text": "2026-11-02T03:27:24.7247114Z         #19 11.26 Kernel pid terminated (application_controller) (\"{application_start_failure,kernel,{{shutdown,{failed_to_start_child,user,nouser}},{kernel,start,[normal,[]]}}}\")"
+            },
+            {
+              "line": 1613,
+              "text": "2026-11-02T03:27:24.7251803Z         11.26 Kernel pid terminated (application_controller) (\"{application_start_failure,kernel,{{shutdown,{failed_to_start_child,user,nouser}},{kernel,start,[normal,[]]}}}\")"
+            }
+          ],
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/TRIAGE.json",
+            "bytes": 83045,
+            "sha256": "3cb69c0f203ea570638d4a831ade6fb26dfc3738f4d0cdd9a5ccfbc5f0ff67ad"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=elixir -f case=elixir-1.19",
+      "exact_recorded_failure_classes": [
+        "OTP_USER_STARTUP_NOUSER"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "elixir",
+      "case": "elixir-1.20",
+      "selection": {
+        "profile": "elixir",
+        "case": "elixir-1.20",
+        "flag": "BEX_NATIVE_ELIXIR_INTEGRATION",
+        "selector": "^TestCommonElixirOfflineQualification$/^elixir\\-1\\.20$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "OTP1.18/1.19/1.20 old AMD nouser/startup or metadata errors, exactOTP partial-tag path repaired. Elixir1.17 AMD old pass is affected by new emulation ARG/runtime ERL_FLAGS qualification inputs, so rerun even though body was audited.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375793680,
+      "historical_AMD": {
+        "job_id": 125061103943,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:30:53Z",
+        "failure": {
+          "classes": [
+            "OTP_USER_STARTUP_NOUSER"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/logs/job-125061103943.log",
+            "bytes": 116171,
+            "sha256": "c1c5c9ecae69943f257ebfc1e61cd84447821cc3bc55d01a541eb5c9d6e42830"
+          },
+          "diagnostics": [
+            {
+              "line": 1193,
+              "text": "2026-11-02T03:30:43.1496055Z         #19 11.23 Kernel pid terminated (application_controller) (\"{application_start_failure,kernel,{{shutdown,{failed_to_start_child,user,nouser}},{kernel,start,[normal,[]]}}}\")"
+            },
+            {
+              "line": 1199,
+              "text": "2026-11-02T03:30:43.1500867Z         11.23 Kernel pid terminated (application_controller) (\"{application_start_failure,kernel,{{shutdown,{failed_to_start_child,user,nouser}},{kernel,start,[normal,[]]}}}\")"
+            }
+          ],
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/TRIAGE.json",
+            "bytes": 83045,
+            "sha256": "3cb69c0f203ea570638d4a831ade6fb26dfc3738f4d0cdd9a5ccfbc5f0ff67ad"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=elixir -f case=elixir-1.20",
+      "exact_recorded_failure_classes": [
+        "OTP_USER_STARTUP_NOUSER"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "elixir",
+      "case": "elixir-exact-otp280",
+      "selection": {
+        "profile": "elixir",
+        "case": "elixir-exact-otp280",
+        "flag": "BEX_NATIVE_ELIXIR_INTEGRATION",
+        "selector": "^TestCommonElixirOfflineQualification$/^elixir\\-exact\\-otp280$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "OTP1.18/1.19/1.20 old AMD nouser/startup or metadata errors, exactOTP partial-tag path repaired. Elixir1.17 AMD old pass is affected by new emulation ARG/runtime ERL_FLAGS qualification inputs, so rerun even though body was audited.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375800234,
+      "historical_AMD": {
+        "job_id": 125061319749,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:27:40Z",
+        "failure": {
+          "classes": [
+            "EXACT_TAG_LIST_HTTP403"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/logs/job-125061319749.log",
+            "bytes": 63860,
+            "sha256": "932a89f3d5464f200f0124e0b02f9a82a5224a67ece7b8e1f9283ae600cfc6e0"
+          },
+          "diagnostics": [
+            {
+              "line": 751,
+              "text": "2026-11-02T03:27:21.9623758Z     nativecommon_elixir_qualification_test.go:157: look up Elixir 1.18.4 on Erlang/OTP 28.0: tag listing answered 403 for https://hub.docker.com/v2/repositories/hexpm/elixir/tags?name=1.18.4-erlang-28.0&page=11&page_size=100"
+            }
+          ],
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/TRIAGE.json",
+            "bytes": 83045,
+            "sha256": "3cb69c0f203ea570638d4a831ade6fb26dfc3738f4d0cdd9a5ccfbc5f0ff67ad"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=elixir -f case=elixir-exact-otp280",
+      "exact_recorded_failure_classes": [
+        "EXACT_TAG_LIST_HTTP403"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "node-addon",
+      "case": "common-node14-primary",
+      "selection": {
+        "profile": "node-addon",
+        "case": "common-node14-primary",
+        "flag": "BEX_NATIVE_TEST_NODE_ADDON_PROFILE",
+        "selector": "^TestLegacyNodeOfflineAddons$/^common\\-node14\\-primary$",
+        "go_timeout": "120m",
+        "job_minutes": 150,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "All four AMD routes failed before completed addon proof. Network prerequisite fixes and0b7 Python-only auxiliary wheel recipe need actual final unchanged Node16/gyp/lifecycle/precedence oracles; old ARM30m wheel compiler failure is not a gyp verdict.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375818643,
+      "historical_AMD": {
+        "job_id": 125062175979,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:38:15Z",
+        "failure": {
+          "classes": [
+            "REGISTRY_METADATA_HTTP429"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/logs/job-125062175979.log",
+            "bytes": 64878,
+            "sha256": "fdc39d0b3866e357061e3af0580dd55ed3c92b8421ae193b6e3fffeec63b7621"
+          },
+          "diagnostics": [
+            {
+              "line": 753,
+              "text": "2026-11-02T03:38:03.0616445Z     nativecommon_nodeaddon_qualification_test.go:147: read selected native primary environment: image metadata request returned status 429"
+            }
+          ],
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/TRIAGE.json",
+            "bytes": 83045,
+            "sha256": "3cb69c0f203ea570638d4a831ade6fb26dfc3738f4d0cdd9a5ccfbc5f0ff67ad"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node-addon -f case=common-node14-primary",
+      "exact_recorded_failure_classes": [
+        "REGISTRY_METADATA_HTTP429"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "node-addon",
+      "case": "common-node16-primary",
+      "selection": {
+        "profile": "node-addon",
+        "case": "common-node16-primary",
+        "flag": "BEX_NATIVE_TEST_NODE_ADDON_PROFILE",
+        "selector": "^TestLegacyNodeOfflineAddons$/^common\\-node16\\-primary$",
+        "go_timeout": "120m",
+        "job_minutes": 150,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "All four AMD routes failed before completed addon proof. Network prerequisite fixes and0b7 Python-only auxiliary wheel recipe need actual final unchanged Node16/gyp/lifecycle/precedence oracles; old ARM30m wheel compiler failure is not a gyp verdict.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375823911,
+      "historical_AMD": {
+        "job_id": 125062548280,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:38:19Z",
+        "failure": {
+          "classes": [
+            "REGISTRY_METADATA_HTTP429"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/logs/job-125062548280.log",
+            "bytes": 63768,
+            "sha256": "2ae766eee96376a868584714c2b581c70812445578feb673db3d9e974bcaba60"
+          },
+          "diagnostics": [
+            {
+              "line": 751,
+              "text": "2026-11-02T03:38:06.8610807Z     nativecommon_nodeaddon_qualification_test.go:147: read selected native primary environment: image metadata request returned status 429"
+            }
+          ],
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/TRIAGE.json",
+            "bytes": 83045,
+            "sha256": "3cb69c0f203ea570638d4a831ade6fb26dfc3738f4d0cdd9a5ccfbc5f0ff67ad"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node-addon -f case=common-node16-primary",
+      "exact_recorded_failure_classes": [
+        "REGISTRY_METADATA_HTTP429"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "node-addon",
+      "case": "common-python313-node16",
+      "selection": {
+        "profile": "node-addon",
+        "case": "common-python313-node16",
+        "flag": "BEX_NATIVE_TEST_NODE_ADDON_PROFILE",
+        "selector": "^TestLegacyNodeOfflineAddons$/^common\\-python313\\-node16$",
+        "go_timeout": "120m",
+        "job_minutes": 150,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "All four AMD routes failed before completed addon proof. Network prerequisite fixes and0b7 Python-only auxiliary wheel recipe need actual final unchanged Node16/gyp/lifecycle/precedence oracles; old ARM30m wheel compiler failure is not a gyp verdict.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375829158,
+      "historical_AMD": {
+        "job_id": 125062409265,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:37:42Z",
+        "failure": {
+          "classes": [
+            "BUILDKIT_BUSYBOX_METADATA_HTTP429"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/logs/job-125062409265.log",
+            "bytes": 72215,
+            "sha256": "2ed2548f4ac61d35fb0211c46befcd364398e485bcd069fbf5a2c0876872dd86"
+          },
+          "diagnostics": [
+            {
+              "line": 810,
+              "text": "2026-11-02T03:37:17.3152272Z         #10 ERROR: failed to copy: httpReadSeeker: failed open: unexpected status from GET request to https://registry-1.docker.io/v2/library/busybox/manifests/sha256:66a6306db78bf2dbf3487f293aa8d6990d8e506fdffab9cc43fe422becf886e4: 429 Too Many Requests"
+            },
+            {
+              "line": 826,
+              "text": "2026-11-02T03:37:17.3169917Z         ERROR: failed to build: failed to solve: busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e: failed to copy: httpReadSeeker: failed open: unexpected status from GET request to https://registry-1.docker.io/v2/library/busybox/manifests/sha256:66a6306db78bf2dbf3487f293aa8d6990d8e506fdffab9cc43fe422becf886e4: 429 Too Many Requests"
+            }
+          ],
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/TRIAGE.json",
+            "bytes": 83045,
+            "sha256": "3cb69c0f203ea570638d4a831ade6fb26dfc3738f4d0cdd9a5ccfbc5f0ff67ad"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node-addon -f case=common-python313-node16",
+      "exact_recorded_failure_classes": [
+        "BUILDKIT_BUSYBOX_METADATA_HTTP429"
+      ]
+    },
+    {
+      "group": "original35",
+      "profile": "node-addon",
+      "case": "historical-python313-node16",
+      "selection": {
+        "profile": "node-addon",
+        "case": "historical-python313-node16",
+        "flag": "BEX_NATIVE_TEST_NODE_ADDON_PROFILE",
+        "selector": "^TestLegacyNodeOfflineAddons$/^historical\\-python313\\-node16$",
+        "go_timeout": "120m",
+        "job_minutes": 150,
+        "platform": "linux/amd64"
+      },
+      "action": "REPLAY_REQUIRED",
+      "reason": "All four AMD routes failed before completed addon proof. Network prerequisite fixes and0b7 Python-only auxiliary wheel recipe need actual final unchanged Node16/gyp/lifecycle/precedence oracles; old ARM30m wheel compiler failure is not a gyp verdict.",
+      "historical_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "historical_run": 41375834550,
+      "historical_AMD": {
+        "job_id": 125063570332,
+        "architecture": "amd64",
+        "status": "completed",
+        "conclusion": "failure",
+        "completed_at": "2026-11-02T03:45:19Z",
+        "failure": {
+          "classes": [
+            "BUILDKIT_BUSYBOX_METADATA_HTTP429"
+          ],
+          "full_log": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/logs/job-125063570332.log",
+            "bytes": 70053,
+            "sha256": "ad900ad6cb7a2a342089e877690239129f19f1aebaa6ac747cf846c5a42ef67f"
+          },
+          "diagnostics": [
+            {
+              "line": 779,
+              "text": "2026-11-02T03:45:11.3145412Z         #5 ERROR: failed to copy: httpReadSeeker: failed open: unexpected status from GET request to https://registry-1.docker.io/v2/library/busybox/manifests/sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e: 429 Too Many Requests"
+            },
+            {
+              "line": 807,
+              "text": "2026-11-02T03:45:11.3158672Z         ERROR: failed to build: failed to solve: busybox:1.37.0@sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e: failed to copy: httpReadSeeker: failed open: unexpected status from GET request to https://registry-1.docker.io/v2/library/busybox/manifests/sha256:bdf57e528e45e4433820e045b29b4597825a1c9e38353532d90a01445013f82e: 429 Too Many Requests"
+            }
+          ],
+          "classification_source": {
+            "path": "/private/tmp/bex-w8-original35-jobs-refresh-20261102-xb4y_v00/TRIAGE.json",
+            "bytes": 83045,
+            "sha256": "3cb69c0f203ea570638d4a831ade6fb26dfc3738f4d0cdd9a5ccfbc5f0ff67ad"
+          }
+        }
+      },
+      "full_audit": null,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node-addon -f case=historical-python313-node16",
+      "exact_recorded_failure_classes": [
+        "BUILDKIT_BUSYBOX_METADATA_HTTP429"
+      ]
+    }
+  ],
+  "supplemental6": [
+    {
+      "group": "supplemental6",
+      "profile": "node-donors",
+      "case": "node-14",
+      "selection": {
+        "profile": "node-donors",
+        "case": "node-14",
+        "flag": "BEX_NATIVE_TEST_NODE_DONORS",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-14$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "SUPPLEMENTAL_ROUTE_REPLAY_REQUIRED_IF_RETAINING_DONOR_ROUTE",
+      "reason": "Actual AMD initial registry metadataHTTP429 before runtime; no compatibility or donor qualification result. This additional donor route cannot substitute for original source fallback/exact14.21.2/addon cases.",
+      "historical_source": "77307722e157e148ef04b1f77b675a72e0bd9d35",
+      "historical_run": 41376298047,
+      "historical_AMD_job": {
+        "id": 125067056481,
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-11-02T03:43:58Z",
+        "completed_at": "2026-11-02T03:49:08Z"
+      },
+      "retained_jobs": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376298047.json",
+        "bytes": 12092,
+        "sha256": "2dca4c6883312323f60f427c21ac7254cf673050d0baaf86268756e4e1f82ec9"
+      },
+      "retained_artifacts": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376298047.json",
+        "bytes": 1571,
+        "sha256": "139a2b881fa4846b90998335af1e04ddb2d0125d887f633a38248b81d9e64c34"
+      },
+      "retained_log": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125067056481.log",
+        "bytes": 63583,
+        "sha256": "05a8a6a3708285144ea057a423fe645d19a7d401c4752e520f013e5363280702"
+      },
+      "diagnostics": [
+        {
+          "line": 753,
+          "text": "2026-11-02T03:49:00.2519685Z     nativecommon_node_qualification_test.go:212: read selected native primary environment: image metadata request returned status 429"
+        }
+      ],
+      "artifact_metadata": {
+        "id": 13114858314,
+        "node_id": "MDg6QXJ0aWZhY3QxMzExNDg1ODMxNA==",
+        "name": "common-pilot-node-donors-node-14-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+        "size_in_bytes": 21416,
+        "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13114858314",
+        "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13114858314/zip",
+        "expired": false,
+        "digest": "sha256:94cf4a8b4165efddd7856f483c4fbc382eee8980d560d28790d205fa3b3575e9",
+        "created_at": "2026-11-02T03:49:02Z",
+        "updated_at": "2026-11-02T03:49:02Z",
+        "expires_at": "2026-12-02T03:49:00Z",
+        "workflow_run": {
+          "id": 41376298047,
+          "repository_id": 793852040,
+          "head_repository_id": 793852040,
+          "head_branch": "main",
+          "head_sha": "77307722e157e148ef04b1f77b675a72e0bd9d35"
+        }
+      },
+      "artifact_body_audited": false,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node-donors -f case=node-14"
+    },
+    {
+      "group": "supplemental6",
+      "profile": "node-donors",
+      "case": "node-16",
+      "selection": {
+        "profile": "node-donors",
+        "case": "node-16",
+        "flag": "BEX_NATIVE_TEST_NODE_DONORS",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-16$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "SUPPLEMENTAL_ROUTE_REPLAY_REQUIRED_IF_RETAINING_DONOR_ROUTE",
+      "reason": "Actual AMD initial registry metadataHTTP429 before runtime; no compatibility or donor qualification result. This additional donor route cannot substitute for original source fallback/exact14.21.2/addon cases.",
+      "historical_source": "77307722e157e148ef04b1f77b675a72e0bd9d35",
+      "historical_run": 41376303994,
+      "historical_AMD_job": {
+        "id": 125068037657,
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-11-02T03:50:05Z",
+        "completed_at": "2026-11-02T03:56:48Z"
+      },
+      "retained_jobs": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376303994.json",
+        "bytes": 12092,
+        "sha256": "57a2bc54b7b7ff0899ef1146259057b31fc19a17cfa5a464b1a8d0ef11cb4356"
+      },
+      "retained_artifacts": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376303994.json",
+        "bytes": 1571,
+        "sha256": "369ce54c64497aa38e161e045533d62f6f1dd25b4859a8bd3192b1c88a67a6c9"
+      },
+      "retained_log": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125068037657.log",
+        "bytes": 63581,
+        "sha256": "72ea74dd2d0263e17ccdaca276cff1c13957cf450e7227be36637bf79265c61f"
+      },
+      "diagnostics": [
+        {
+          "line": 753,
+          "text": "2026-11-02T03:56:29.0871050Z     nativecommon_node_qualification_test.go:212: read selected native primary environment: image metadata request returned status 429"
+        }
+      ],
+      "artifact_metadata": {
+        "id": 13115530667,
+        "node_id": "MDg6QXJ0aWZhY3QxMzExNTUzMDY2Nw==",
+        "name": "common-pilot-node-donors-node-16-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+        "size_in_bytes": 21411,
+        "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13115530667",
+        "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13115530667/zip",
+        "expired": false,
+        "digest": "sha256:3cd3864b592c5874ba6c76e5d29de71a7bdbd7b00ffc35a68ef829923761513d",
+        "created_at": "2026-11-02T03:56:34Z",
+        "updated_at": "2026-11-02T03:56:34Z",
+        "expires_at": "2026-12-02T03:56:30Z",
+        "workflow_run": {
+          "id": 41376303994,
+          "repository_id": 793852040,
+          "head_repository_id": 793852040,
+          "head_branch": "main",
+          "head_sha": "77307722e157e148ef04b1f77b675a72e0bd9d35"
+        }
+      },
+      "artifact_body_audited": false,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node-donors -f case=node-16"
+    },
+    {
+      "group": "supplemental6",
+      "profile": "node-donors",
+      "case": "node-18",
+      "selection": {
+        "profile": "node-donors",
+        "case": "node-18",
+        "flag": "BEX_NATIVE_TEST_NODE_DONORS",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-18$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "SUPPLEMENTAL_ROUTE_REPLAY_REQUIRED_IF_RETAINING_DONOR_ROUTE",
+      "reason": "Actual AMD initial registry metadataHTTP429 before runtime; no compatibility or donor qualification result. This additional donor route cannot substitute for original source fallback/exact14.21.2/addon cases.",
+      "historical_source": "77307722e157e148ef04b1f77b675a72e0bd9d35",
+      "historical_run": 41376309434,
+      "historical_AMD_job": {
+        "id": 125068192963,
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-11-02T03:51:09Z",
+        "completed_at": "2026-11-02T03:56:52Z"
+      },
+      "retained_jobs": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376309434.json",
+        "bytes": 12092,
+        "sha256": "9886d60bd4837cedbb3ec235cf744393a3f029cbe1dc6adbed8600eb071331c6"
+      },
+      "retained_artifacts": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376309434.json",
+        "bytes": 1571,
+        "sha256": "e015f6cbf4e78cb38e5857ef062ad45c96dd1614de0e92baa429cc499a0a9b61"
+      },
+      "retained_log": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125068192963.log",
+        "bytes": 63457,
+        "sha256": "30f11bcd733c52de9445cca51f9780a153764167fbc855af705f1c686ca88803"
+      },
+      "diagnostics": [
+        {
+          "line": 751,
+          "text": "2026-11-02T03:56:32.5957093Z     nativecommon_node_qualification_test.go:212: read selected native primary environment: image metadata request returned status 429"
+        }
+      ],
+      "artifact_metadata": {
+        "id": 13115361593,
+        "node_id": "MDg6QXJ0aWZhY3QxMzExNTM2MTU5Mw==",
+        "name": "common-pilot-node-donors-node-18-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+        "size_in_bytes": 21415,
+        "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13115361593",
+        "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13115361593/zip",
+        "expired": false,
+        "digest": "sha256:9dd40008a560ebf6dc2b6fa18930b005bee2cdd0c0b06fa46928349537a114d6",
+        "created_at": "2026-11-02T03:56:42Z",
+        "updated_at": "2026-11-02T03:56:42Z",
+        "expires_at": "2026-12-02T03:56:33Z",
+        "workflow_run": {
+          "id": 41376309434,
+          "repository_id": 793852040,
+          "head_repository_id": 793852040,
+          "head_branch": "main",
+          "head_sha": "77307722e157e148ef04b1f77b675a72e0bd9d35"
+        }
+      },
+      "artifact_body_audited": false,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node-donors -f case=node-18"
+    },
+    {
+      "group": "supplemental6",
+      "profile": "node-donors",
+      "case": "node-20",
+      "selection": {
+        "profile": "node-donors",
+        "case": "node-20",
+        "flag": "BEX_NATIVE_TEST_NODE_DONORS",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-20$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "SUPPLEMENTAL_ROUTE_REPLAY_REQUIRED_IF_RETAINING_DONOR_ROUTE",
+      "reason": "Actual AMD initial registry metadataHTTP429 before runtime; no compatibility or donor qualification result. This additional donor route cannot substitute for original source fallback/exact14.21.2/addon cases.",
+      "historical_source": "77307722e157e148ef04b1f77b675a72e0bd9d35",
+      "historical_run": 41376347012,
+      "historical_AMD_job": {
+        "id": 125069034887,
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-11-02T03:52:58Z",
+        "completed_at": "2026-11-02T03:57:49Z"
+      },
+      "retained_jobs": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376347012.json",
+        "bytes": 12092,
+        "sha256": "6bd32bd99f4ced11f77a92e1fb28803e39e032bfe28cd1983f7955e49a3ecf6a"
+      },
+      "retained_artifacts": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376347012.json",
+        "bytes": 1571,
+        "sha256": "6046bb84228bcecd8e96e9065334a4ce79b1e3eeab4586f5f202c10b86af7c05"
+      },
+      "retained_log": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125069034887.log",
+        "bytes": 63518,
+        "sha256": "2c81a496bce664d5f357384d608553a62e5824eb67f5b14bbc3ca0d64a6c4c90"
+      },
+      "diagnostics": [
+        {
+          "line": 752,
+          "text": "2026-11-02T03:57:40.8342645Z     nativecommon_node_qualification_test.go:212: read selected native primary environment: image metadata request returned status 429"
+        }
+      ],
+      "artifact_metadata": {
+        "id": 13114803592,
+        "node_id": "MDg6QXJ0aWZhY3QxMzExNDgwMzU5Mg==",
+        "name": "common-pilot-node-donors-node-20-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+        "size_in_bytes": 21409,
+        "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13114803592",
+        "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13114803592/zip",
+        "expired": false,
+        "digest": "sha256:2bc21d0548d8b21e3b73e6902b7ae479ef99ab1ab4782abaa10ee8a06182a977",
+        "created_at": "2026-11-02T03:57:45Z",
+        "updated_at": "2026-11-02T03:57:45Z",
+        "expires_at": "2026-12-02T03:57:42Z",
+        "workflow_run": {
+          "id": 41376347012,
+          "repository_id": 793852040,
+          "head_repository_id": 793852040,
+          "head_branch": "main",
+          "head_sha": "77307722e157e148ef04b1f77b675a72e0bd9d35"
+        }
+      },
+      "artifact_body_audited": false,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node-donors -f case=node-20"
+    },
+    {
+      "group": "supplemental6",
+      "profile": "node-donors",
+      "case": "node-exact14213",
+      "selection": {
+        "profile": "node-donors",
+        "case": "node-exact14213",
+        "flag": "BEX_NATIVE_TEST_NODE_DONORS",
+        "selector": "^TestCommonNodeGeneratedImages$/^node\\-exact14213$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "BODY_AUDIT_REQUIRED_THEN_NONIMPACT_OR_REPLAY_IF_UNPROVED",
+      "reason": "Whole AMD job404.75s PASS only; artifact13116130059/86424B exactmetadata retained, body has not been read. No acceptance or source equality inferred. Audit existing body before spending another runtime replay.",
+      "historical_source": "77307722e157e148ef04b1f77b675a72e0bd9d35",
+      "historical_run": 41376352475,
+      "historical_AMD_job": {
+        "id": 125069817230,
+        "status": "completed",
+        "conclusion": "success",
+        "started_at": "2026-11-02T03:52:59Z",
+        "completed_at": "2026-11-02T04:10:19Z"
+      },
+      "retained_jobs": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376352475.json",
+        "bytes": 12092,
+        "sha256": "93672ade605c237ff256419a3a3640fd472c4245ee17159e139f87402ea6d964"
+      },
+      "retained_artifacts": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376352475.json",
+        "bytes": 1587,
+        "sha256": "c3daac53adbd72100c8190c3aab0d73f78db21feb91b5b8a8fed82a758ee6989"
+      },
+      "retained_log": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125069817230.log",
+        "bytes": 64747,
+        "sha256": "c4d8b34aaf65906abd7ea7091c521caad262f4e4dc2fe49cd0462b2c5977839e"
+      },
+      "diagnostics": [
+        {
+          "line": 755,
+          "text": "2026-11-02T04:09:56.4552344Z     --- PASS: TestCommonNodeGeneratedImages/node-exact14213 (404.75s)"
+        }
+      ],
+      "artifact_metadata": {
+        "id": 13116130059,
+        "node_id": "MDg6QXJ0aWZhY3QxMzExNjEzMDA1OQ==",
+        "name": "common-pilot-node-donors-node-exact14213-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+        "size_in_bytes": 86424,
+        "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13116130059",
+        "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13116130059/zip",
+        "expired": false,
+        "digest": "sha256:143ebbd8cc32f1281faafb229f881ddba8e9e0e9cd323cd97020be637e08454d",
+        "created_at": "2026-11-02T04:10:12Z",
+        "updated_at": "2026-11-02T04:10:12Z",
+        "expires_at": "2026-12-02T04:10:06Z",
+        "workflow_run": {
+          "id": 41376352475,
+          "repository_id": 793852040,
+          "head_repository_id": 793852040,
+          "head_branch": "main",
+          "head_sha": "77307722e157e148ef04b1f77b675a72e0bd9d35"
+        }
+      },
+      "artifact_body_audited": false,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node-donors -f case=node-exact14213"
+    },
+    {
+      "group": "supplemental6",
+      "profile": "node-donors",
+      "case": "ruby-node-exact14213",
+      "selection": {
+        "profile": "node-donors",
+        "case": "ruby-node-exact14213",
+        "flag": "BEX_NATIVE_TEST_NODE_DONORS",
+        "selector": "^TestCommonNodeGeneratedImages$/^ruby\\-node\\-exact14213$",
+        "go_timeout": "90m",
+        "job_minutes": 120,
+        "platform": "linux/amd64"
+      },
+      "action": "SUPPLEMENTAL_ROUTE_REPLAY_REQUIRED_IF_RETAINING_DONOR_ROUTE",
+      "reason": "Actual AMD initial registry metadataHTTP429 before runtime; no compatibility or donor qualification result. This additional donor route cannot substitute for original source fallback/exact14.21.2/addon cases.",
+      "historical_source": "77307722e157e148ef04b1f77b675a72e0bd9d35",
+      "historical_run": 41376357601,
+      "historical_AMD_job": {
+        "id": 125068739951,
+        "status": "completed",
+        "conclusion": "failure",
+        "started_at": "2026-11-02T03:52:35Z",
+        "completed_at": "2026-11-02T03:58:26Z"
+      },
+      "retained_jobs": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/jobs-41376357601.json",
+        "bytes": 12092,
+        "sha256": "92892a4aeb66fd2e049a06c9edc5f5be2a4a0a2535cb236ede422a6a11cf15d6"
+      },
+      "retained_artifacts": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/artifacts-41376357601.json",
+        "bytes": 1597,
+        "sha256": "da288bab7206b3cee5be9393b366f2e73b5d58de115d08e5532a21194beb361e"
+      },
+      "retained_log": {
+        "path": "/private/tmp/bex-w8-minimal-family-dispatch-20261102-18cf5983/job-125068739951.log",
+        "bytes": 63826,
+        "sha256": "d96737fc2512a31196d2b3d812c0c4f480475a4892e37e2177f028c9889977d7"
+      },
+      "diagnostics": [
+        {
+          "line": 752,
+          "text": "2026-11-02T03:58:18.3384720Z     nativecommon_node_qualification_test.go:212: read selected native primary environment: image metadata request returned status 429"
+        }
+      ],
+      "artifact_metadata": {
+        "id": 13115191629,
+        "node_id": "MDg6QXJ0aWZhY3QxMzExNTE5MTYyOQ==",
+        "name": "common-pilot-node-donors-ruby-node-exact14213-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+        "size_in_bytes": 21436,
+        "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13115191629",
+        "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13115191629/zip",
+        "expired": false,
+        "digest": "sha256:619140ab9c24674edafa7172b79e11d885b89e5ac34c7f9f931d1142720f69bd",
+        "created_at": "2026-11-02T03:58:21Z",
+        "updated_at": "2026-11-02T03:58:21Z",
+        "expires_at": "2026-12-02T03:58:19Z",
+        "workflow_run": {
+          "id": 41376357601,
+          "repository_id": 793852040,
+          "head_repository_id": 793852040,
+          "head_branch": "main",
+          "head_sha": "77307722e157e148ef04b1f77b675a72e0bd9d35"
+        }
+      },
+      "artifact_body_audited": false,
+      "proposed_command_only": "gh workflow run native-common-image.yml --ref main -f source=reviewed-candidate -f profile=node-donors -f case=ruby-node-exact14213"
+    }
+  ],
+  "dated_nonimpact_extension": "Existing39f/xm6 Node22/26 modern early-return and all-Python branch analysis covers Node26 and modern3.12/3.14 AMD too. Their absence from the prior both-arch shortcut does not force AMD replay now. New five-case full audit closes missing3.7AMD body gap; extraARM proofs remain historical/nonblocking.",
+  "supplemental_scope": "Preserve six separate donor-route cells and their actual outcomes. Do not silently substitute donor cases for original fallback/exact14.21.2. Prior plan says originalDoDs alone do not automatically add all6; if these routes remain intended for adoption, five failed routes need own AMD proof and exact14213 stays unproved until full body+nonimpact audit. No paired or82-job inflation.",
+  "scheduling": "After real final-sourceAMD baseline: one measured case first, then source-affected native-init/go-rust/Ruby/source-Node/Elixir/addon routes serial/bounded per existing controls. Stop and preserve any actual new failure; do not automaticallyfanout41 or add modernPython replays solely due historicalARMfailure. Existing timeouts/flags/oracles unchanged.",
+  "unchanged_original_DoDs": [
+    "original13 tool programs/data/commands",
+    "original28 hosted programs/data/commands/validators",
+    "same commonBookworm foundation/exactruntime andcompanionversions",
+    "strict imageapproval+actualcurrentAMDsourcebaseline",
+    "predeploy/environment/cache/root/nativeinit boundaries andoriginalhostedacceptance remain separate actual gates; no completion inferred"
+  ],
+  "network_or_runtime_actions": false,
+  "repository_mutation": false,
+  "D3_private_proposal": {
+    "root": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42",
+    "source_manifest": {
+      "path": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42/SOURCE-MANIFEST.json",
+      "bytes": 1400,
+      "sha256": "f63e0be8a3b90504fa4d30860f1abf6cebdd90b599fa400fe10609deae07c3ca"
+    },
+    "base_commit": "a5f65eec3f2feac90ae44beed39ac57b88e26145",
+    "status": "Frozen private proposal; Root review/tests/apply/ship pending. This plan does not claim its code tested or deployed.",
+    "projected_source_paths": 301,
+    "added_source_input": "deploy/native-common/check-local.Dockerfile",
+    "all41_profile_case_flags_and_timeouts_literal_unchanged": true
+  },
+  "five_dated_Root_content_admission": {
+    "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/ROOT-CONTENT-ADMISSION.json",
+    "bytes": 709,
+    "sha256": "10e28a8032809805a8f1d2fcd5f91b4bcf08385b6d877d0f6a5d8ae4ddfb7d1f"
+  },
+  "architecture_interpretation": "D3 selects workload linux/amd64, not a new native-AMD-host or performance gate. Preserve actual ARM control/emulation context in old AMD receipts. Only affected Elixir emulation inputs force replay; no ARM family outputs block production."
+}

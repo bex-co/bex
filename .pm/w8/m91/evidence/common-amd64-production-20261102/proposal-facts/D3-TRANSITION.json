@@ -1,0 +1,19 @@
+{
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "verification": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "approval_inputs_sha256": "822f75fe0b44129c5b4fefa9ec0f30fd5f6e325aaf3674f6234f24f540a20797",
+  "path": ".github/workflows/native-base-image.yml",
+  "before": {
+    "sha256": "0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47",
+    "bytes": 18402,
+    "mode": "100644",
+    "type": "regular"
+  },
+  "after": {
+    "sha256": "fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759",
+    "bytes": 15859,
+    "mode": "100644",
+    "type": "regular"
+  }
+}

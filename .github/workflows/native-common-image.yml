@@ -24,7 +24,7 @@ on:
         default: fresh
         options: [fresh, reviewed-candidate]
       profile:
-        description: Single-case measurement after both original utility cohorts
+        description: Single AMD64 case after the complete original AMD64 utility cohort
         type: choice
         default: utilities
         options: [utilities, node-addon, node, node-donors, modern-python, legacy-python, ruby, go-rust, elixir, native-init]
@@ -145,7 +145,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        arch: [amd64, arm64]
+        arch: [amd64]
     env:
       GOWORK: "off"
       GOMAXPROCS: "2"
@@ -303,7 +303,7 @@ jobs:
       fail-fast: false
       max-parallel: 1
       matrix:
-        arch: [amd64, arm64]
+        arch: [amd64]
     env:
       GOWORK: "off"
       GOMAXPROCS: "2"
@@ -437,3 +437,74 @@ jobs:
           # Go's separate temporary fixture tree. Preserve the full manifest.
           include-hidden-files: true
           retention-days: 30
+
+  common-arm64-local:
+    # D3: one local-development variant, never a runtime-family/production gate.
+    needs: plan
+    if: github.ref == 'refs/heads/main' && needs.plan.outputs.source == 'fresh'
+    continue-on-error: true
+    runs-on: [self-hosted, Linux, ARM64, bex-build]
+    permissions:
+      contents: read
+      packages: write
+    timeout-minutes: 180
+    concurrency:
+      group: native-common-arm64-local
+      cancel-in-progress: false
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - name: log in to GHCR with bounded transport retries
+        env:
+          GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          for attempt in 1 2 3; do
+            if printf '%s' "$GHCR_TOKEN" | timeout 60s docker login ghcr.io --username "$GITHUB_ACTOR" --password-stdin; then
+              exit 0
+            fi
+            [ "$attempt" -lt 3 ] || exit 1
+            sleep "$((attempt * 5))"
+          done
+      - id: build
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: deploy
+          file: deploy/native-common/Dockerfile
+          platforms: linux/arm64
+          push: true
+          provenance: false
+          sbom: false
+          cache-from: type=registry,ref=ghcr.io/bex-co/bex-cnb-run:native-common-bookworm-arm64-local
+          cache-to: type=inline
+          labels: |
+            org.opencontainers.image.source=https://github.com/${{ github.repository }}
+            org.opencontainers.image.revision=${{ github.sha }}
+            co.bex.native-scope=local-arm64-unqualified-for-production
+          tags: ghcr.io/bex-co/bex-cnb-run:native-common-bookworm-arm64-local-candidate-${{ github.sha }}
+      - name: check common ARM64 startup and core tools only
+        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        with:
+          context: deploy/native-common
+          file: deploy/native-common/check-local.Dockerfile
+          platforms: linux/arm64
+          push: false
+          no-cache: true
+          provenance: false
+          sbom: false
+          build-args: COMMON_IMAGE=ghcr.io/bex-co/bex-cnb-run@${{ steps.build.outputs.digest }}
+      - name: expose only the lightly checked local ARM64 variant
+        env:
+          LOCAL_DIGEST: ${{ steps.build.outputs.digest }}
+        run: |
+          [[ "$LOCAL_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]
+          ref="ghcr.io/bex-co/bex-cnb-run@$LOCAL_DIGEST"
+          docker buildx imagetools create --tag ghcr.io/bex-co/bex-cnb-run:native-common-bookworm-arm64-local "$ref"
+          echo "D3 LOCAL ARM64 ONLY: $ref; startup/core tools checked; no full scan, SBOM, signature, runtime-family or production approval" >> "$GITHUB_STEP_SUMMARY"
+      - name: record local ARM64 failure without changing production admission
+        if: failure()
+        run: echo 'D3 local ARM64 variant failed or is unproved; no local discovery update or production approval claimed' >> "$GITHUB_STEP_SUMMARY"
+      - name: remove GHCR credentials
+        if: always()
+        run: docker logout ghcr.io

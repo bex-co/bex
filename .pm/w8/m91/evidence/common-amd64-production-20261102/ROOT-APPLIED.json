@@ -1,0 +1,58 @@
+{
+  "at": "2026-11-02T09:44:27.130497+00:00",
+  "outcome": "APPLIED_EXACT_EIGHT_PASSED_PRIVATE_SOURCE_FILES",
+  "parent": "e6aa3c1fd89e5a2cc13428c82286db799b329243",
+  "all_final_manifest_payloads_verified": 660,
+  "source_manifest_sha256": "4e448c52a05449f1fb2e40de3f793aa2d0252061f952784af39b2aa1d0e60ae6",
+  "final_checks_sha256": "230bc9eb9d767a884b59dd53e9884e6579f66049e70a7d3a9d4369798bbdf72b",
+  "all_eight_preimages_equal_reviewed_base": true,
+  "exact_source_changes": [
+    {
+      "path": ".github/scripts/native-common-qualify.py",
+      "before_sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+      "after_sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797"
+    },
+    {
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "before_sha256": "004b24b12ebbfecbe4602b66ed3d00dee3f1309a5f6fe8535cb3a43c80b263d9",
+      "after_sha256": "92b3ce0610dfa32dca543c6d216a0c9123970fcfb08518da362a5968301b3bba"
+    },
+    {
+      "path": ".github/scripts/test_native_oci_workflow.py",
+      "before_sha256": "4d02e612c8b0ac19f57ac181acbbdf0b196b349314988411f5d27e8675cac2dc",
+      "after_sha256": "bfb9ad20287ccc2121fc2306701a045af08ee3ddec1a3f29cd6e746a4f0846a4"
+    },
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "before_sha256": "8f5e440662a5997af7e45d16536df2e27754ef4fb48c529ca33381cb0004ceb9",
+      "after_sha256": "fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759"
+    },
+    {
+      "path": ".github/workflows/native-common-image.yml",
+      "before_sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+      "after_sha256": "021adb7a8407e88373da608a4a2388b5ad5df8caee4177c63c7e89d159482709"
+    },
+    {
+      "path": "deploy/native-base/README.md",
+      "before_sha256": "86d64ef2e4d4fe9ddeb9df3698edff4821d229e938337214a80d0806278605b1",
+      "after_sha256": "758cd0b0fa516c0ddcfc2d9102e4b08ba5ab77cad7bbaa57094702e9afc50b72"
+    },
+    {
+      "path": "deploy/native-common/README.md",
+      "before_sha256": "254c102d6b778eb58e4b2f171f579e8ce7fe247930532ed5f1f1638548b54a48",
+      "after_sha256": "2c9e34722551ab2072a31073f85675bb7202ae2b47ab2890e5a31a72ea8016ab"
+    },
+    {
+      "path": "deploy/native-common/check-local.Dockerfile",
+      "before_sha256": null,
+      "after_sha256": "30460593bdfcb3f2820841ded935e465868168e2bf2d3fd92e7d85c77b456d9b"
+    }
+  ],
+  "tested_view_other_current_changes": [
+    ".github/workflows/deploy.yml",
+    "scripts/gitops-validate.sh"
+  ],
+  "merge_verification_needed": "Rerun Actions guard/selftests against current deploy workflow if it changed; no unchanged native suite repeat.",
+  "foreign_sum_unchanged": true,
+  "current_source_full_utility_baseline": "OPEN"
+}

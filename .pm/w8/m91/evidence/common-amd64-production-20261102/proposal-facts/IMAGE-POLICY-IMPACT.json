@@ -1,0 +1,34 @@
+{
+  "actual_source": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "image_inputs": 33,
+  "unchanged_other_inputs": 32,
+  "current_main_changes_from_actual_review": [
+    {
+      "path": ".github/workflows/native-base-image.yml",
+      "recorded": {
+        "sha256": "0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47",
+        "bytes": 18402,
+        "mode": "100644",
+        "type": "regular"
+      },
+      "current": {
+        "sha256": "8f5e440662a5997af7e45d16536df2e27754ef4fb48c529ca33381cb0004ceb9",
+        "bytes": 18397,
+        "mode": "100644",
+        "type": "regular"
+      }
+    }
+  ],
+  "producer_read": {
+    "argv": [
+      "git",
+      "show",
+      "1feba939b4697894e800ed0abb4f25a0bf415641:.github/workflows/native-base-image.yml"
+    ],
+    "exit_code": 0,
+    "stdout_sha256": "0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47",
+    "stdout_bytes": 18402,
+    "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "transition": "one exact old/new full workflow hash for existing0941 only; no general ignore, normalization, arbitrary policy match, producer rewrite, report projection or weakened crypto"
+}

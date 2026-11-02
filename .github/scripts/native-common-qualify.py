@@ -36,7 +36,7 @@ def sha(path):
 
 
 # These are existing Go subtests, not an arbitrary regex/timeout surface. Each
-# manual run measures one case on both architectures after the full original
+# manual run measures one AMD64 case after the full original AMD64
 # cohort. Bounds come from existing command contexts, not measured capacity.
 PROFILES = {
     # 30m wheel export +45m build +30m runtime contexts, with15m overhead.
@@ -123,7 +123,7 @@ SOURCE_FILES = (
     "deploy/native-base/testdata/archive.sql", "deploy/native-base/testdata/rows.txt",
     "deploy/native-common/check-runtime.py", "deploy/native-base/check-primary-python.py",
     "deploy/native-base/check-brotli.py", "deploy/native-base/check.Dockerfile", "deploy/native-base/check-tools.py",
-    ".github/workflows/native-base-image.yml",
+    ".github/workflows/native-base-image.yml", "deploy/native-common/check-local.Dockerfile",
     ".github/workflows/native-common-image.yml", ".github/scripts/native-common-qualify.py",
     ".github/scripts/test_native_oci_common_qualification.py", ".github/scripts/native-oci-stage.py",
     ".github/scripts/native-oci-mirror.py", "deploy/native-common/matrix.py", "deploy/native-common/upstream.json",
@@ -143,12 +143,45 @@ IMAGE_POLICY_FILES = (
 IMAGE_INPUT_PATHS = {"deploy/" + path for path in FACTORY_PATHS} | set(IMAGE_POLICY_FILES)
 
 
-PUBLICATION_GATES = {
+LEGACY_PUBLICATION_GATES = {
     "verify real native tool transformations without network on both architectures",
     "scan amd64 candidate", "scan arm64 candidate", "sign and attest the immutable candidate",
     "expose the fully gated immutable image",
     "Run docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a",
 }
+# Historical0941 still must prove every original publication/signature role.
+# D3 changes future production architecture scope, never its executed provenance.
+PUBLICATION_GATES = LEGACY_PUBLICATION_GATES
+
+# One reviewed compatibility transition, not an arbitrary source-policy waiver.
+# Only the exact original0941 proof may cross this exact workflow-byte change;
+# the other32 image inputs, all retained proof bodies and source identities stay exact.
+D3_LEGACY_0941 = {'ref': 'ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0',
+ 'producer': '1feba939b4697894e800ed0abb4f25a0bf415641',
+ 'verification': '1feba939b4697894e800ed0abb4f25a0bf415641',
+ 'approval_inputs_sha256': '822f75fe0b44129c5b4fefa9ec0f30fd5f6e325aaf3674f6234f24f540a20797',
+ 'path': '.github/workflows/native-base-image.yml',
+ 'before': {'sha256': '0571fa44f87342e1c90a57140d25a3022c871c3110643667e3bf1e392cd90e47',
+            'bytes': 18402,
+            'mode': '100644',
+            'type': 'regular'},
+ 'after': {'sha256': 'fafb81ca5bf80cd0d4193660c0bed68da3b704f64da481c10dc6b1f071b70759',
+           'bytes': 15859,
+           'mode': '100644',
+           'type': 'regular'}}
+
+
+def image_inputs_compatible(candidate, recorded, current):
+    if recorded == current:
+        return True
+    transition = D3_LEGACY_0941
+    path = transition["path"]
+    return (set(recorded) == set(current) == IMAGE_INPUT_PATHS
+            and all(candidate[key] == transition[key] for key in ("ref", "producer", "verification"))
+            and candidate["approval"]["inputs"]["sha256"] == transition["approval_inputs_sha256"]
+            and recorded[path] == transition["before"] and current[path] == transition["after"]
+            and all(recorded[name] == current[name] for name in IMAGE_INPUT_PATHS - {path}))
+
 UTILITY_GATE = "actual generated offline builds, original replays and exact-default SPDX"
 
 
@@ -268,7 +301,7 @@ def validate_image_candidate(root=None):
     review, custody, fixed = (evidence_json(root, approval[key]) for key in ("receipt", "custody", "plan"))
     image_inputs = evidence_json(root, approval["inputs"])
     require(set(image_inputs) == {"source", "files"} and image_inputs["source"] == c["verification"]
-            and image_inputs["files"] == image_source_inventory(root), "stale or wrong verifier-source image-critical inputs")
+            and image_inputs_compatible(c, image_inputs["files"], image_source_inventory(root)), "stale or wrong verifier-source image-critical inputs")
     require(review.get("ref") == fixed.get("ref") == c["ref"] and review.get("official_base") == fixed.get("base") == c["base"]
             and review.get("producer_workflow_sha") == fixed.get("producer_sha") == c["producer"]
             and review.get("verification_workflow_sha") == fixed.get("verification_sha") == c["verification"], "V11 subject/source/base differs")
@@ -338,9 +371,9 @@ def validate_image_candidate(root=None):
     require(str(pub["run_id"]) == ci.get("run_id") and pub["job_id"] == ci.get("job_id")
             and fixed.get("run_id") == pub["run_id"] and fixed.get("job_id") == pub["job_id"]
             and ci.get("job_name", "").startswith("publish / build (common-bookworm, ")
-            and ci.get("job_conclusion") == "success" and PUBLICATION_GATES - {next(x for x in PUBLICATION_GATES if x.startswith("Run "))} <= set(ci.get("verified_steps", [])),
+            and ci.get("job_conclusion") == "success" and LEGACY_PUBLICATION_GATES - {next(x for x in LEGACY_PUBLICATION_GATES if x.startswith("Run "))} <= set(ci.get("verified_steps", [])),
             "V11 actual publication provenance differs")
-    publication_job = completed_job(root, pub["metadata"], pub, c["verification"], ci["job_name"], PUBLICATION_GATES)
+    publication_job = completed_job(root, pub["metadata"], pub, c["verification"], ci["job_name"], LEGACY_PUBLICATION_GATES)
     recovery = [step for step in publication_job["steps"] if step["name"] == "select a reviewed recovery artifact when its recipe is unchanged"]
     require(ci.get("recovery_selection_conclusion") in (None, "skipped")
             and all(step.get("conclusion") == "skipped" for step in recovery), "common recovery is unsupported")
@@ -349,14 +382,14 @@ def validate_image_candidate(root=None):
 
 
 def validate_test_candidate(root=None):
-    """Family reuse additionally needs both complete current utility artifacts."""
+    """D3 family reuse needs the complete current AMD64 utility artifact."""
     root = Path(root) if root is not None else Path(__file__).resolve().parents[2]
     c = validate_image_candidate(root)
     baseline = c["source"]
     require(isinstance(baseline, dict) and set(baseline) == {"sha", "manifest"} and re.fullmatch(r"[a-f0-9]{40}", baseline["sha"]), "family reuse requires a complete utility baseline source")
     expected = evidence_json(root, baseline["manifest"])
     require(set(expected) == {"source", "files"} and expected["source"] == baseline["sha"] and expected["files"] == source_inventory(root), "stale qualification source set/bytes/modes")
-    require(isinstance(c["utilities"], dict) and set(c["utilities"]) == {"amd64", "arm64"}, "both original utility architectures required")
+    require(isinstance(c["utilities"], dict) and set(c["utilities"]) == {"amd64"}, "complete original AMD64 utility artifact required")
     for arch, utility in c["utilities"].items():
         require(set(utility) == {"run_id", "run_attempt", "job_id", "artifact_id", "artifact_metadata", "metadata", "root", "manifest"}
                 and type(utility["artifact_id"]) is int and utility["artifact_id"] > 0, "bad utility artifact identity")
@@ -479,7 +512,7 @@ def initialize():
     if (not re.fullmatch(r"ghcr.io/bex-co/bex-cnb-run@sha256:[a-f0-9]{64}", ref)
             or not all(re.fullmatch(r"[a-f0-9]{40}", x) for x in (producer, verification))
             or (reuse is None and verification != os.environ["GITHUB_SHA"]) or producer != verification
-            or platform not in ("linux/amd64", "linux/arm64")):
+            or platform != "linux/amd64"):
         raise ValueError("qualification requires this source's fully gated immutable common image")
     captured_source = {"source": os.environ["GITHUB_SHA"],
                        "files": source_inventory(Path(__file__).resolve().parents[2])}

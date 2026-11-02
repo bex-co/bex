@@ -1,0 +1,120 @@
+{
+  "execution_view": {
+    "source": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/view",
+    "member_count": 561,
+    "bytes": 4844825,
+    "proof": "exact VIEW-MANIFEST.json and complete full MANIFEST.json retained; no copied561-file execution view"
+  },
+  "duplicate_history": [
+    {
+      "path": "history/first-check/CHECK-SOURCE-AFTER.json",
+      "sha256": "2f689abe80138ef180060c99c244dce2ccc09e94af18330fade11532268bbdfe",
+      "bytes": 1976,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/first-check/CHECK-SOURCE-BEFORE.json",
+      "sha256": "2f689abe80138ef180060c99c244dce2ccc09e94af18330fade11532268bbdfe",
+      "bytes": 1976,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/first-check/PARENT.json",
+      "sha256": "0139cf0847a382fb4f1ab654a296c0ddd4e7874c5af017c6737fe0c5898db248",
+      "bytes": 839,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/first-check/RESULT.json",
+      "sha256": "30536f26bf73ad6c83e1db7161fb7978ce8166319dd152ac54b83c3c6e4b3dc9",
+      "bytes": 1031,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/first-check/SCOPE.json",
+      "sha256": "0162ca08192acf9c59d7a2f7c00d93eaffe12cd6638a51452f843b3d48569979",
+      "bytes": 3932,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/first-check/VIEW-MANIFEST.json",
+      "sha256": "98a2aa3c998b7e27c43427632542c53ca4d81b1d1433b7d13052aa9e632d37d1",
+      "bytes": 99074,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/first-check/native-oci-PROCESS.json",
+      "sha256": "3cfafccd325a403608491a0cb59ba446b5608b9ddcf5b0b8c01cf4dd5632c146",
+      "bytes": 432,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/first-check/native-oci-RESULT.json",
+      "sha256": "e4d7320f8bea1adceaaad010520afc039388f9db1a531fe71a174ea61c844a15",
+      "bytes": 614,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/first-check/native-oci.stderr",
+      "sha256": "94f53ff4c9683e53ac10d348c88187eb77911011b7e69c2b40a7398db2af99ec",
+      "bytes": 26436,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/first-check/native-oci.stdout",
+      "sha256": "0a858149e1a83b5b4892e7fb9bbab57aec6ad4bae15bc8aba7be744591a3e6f7",
+      "bytes": 24668,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/first-check/test_native_oci_common_qualification.py",
+      "sha256": "6df3223f02cb14c29268f048435defbfc4364b6ba6e7c1580a09af687426dc8d",
+      "bytes": 129716,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/reviewed-proposal/D3-TRANSITION.json",
+      "sha256": "454bfc52df76327822fc40331644462f319bb008591c087815e2a0d0f4145b57",
+      "bytes": 712,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/reviewed-proposal/IMAGE-POLICY-IMPACT.json",
+      "sha256": "abac1ea5328acf9c55ac4b3768af0814491e510f5f4f1dbc49a0854011b9d956",
+      "bytes": 1200,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/reviewed-proposal/MANIFEST.json",
+      "sha256": "d503dacefee5c26bfcac4bba7adf2ef4863f74aad0829a129a25554770e764ec",
+      "bytes": 4108,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/reviewed-proposal/PROPOSAL.json",
+      "sha256": "49ab83f406aa9a110e1a1fb4632e996a9325b1e2620892a7613ebaa186c23313",
+      "bytes": 5696,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/reviewed-proposal/RECEIPT.json",
+      "sha256": "44a67b1b6887a93c655f0b59b75603e8e2e5ca5159e8c382d42fe2729120f685",
+      "bytes": 637,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/reviewed-proposal/ROOT-SOURCE-REVIEW.json",
+      "sha256": "9b8fe606f3ee19ff2f5561df9d586f3035d167dbd6065849da51b3067224bda5",
+      "bytes": 961,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    },
+    {
+      "path": "history/reviewed-proposal/SOURCE-INVENTORY-IMPACT.json",
+      "sha256": "4fb8fe5885c15b08978f31645737d0c99bb04b098395ad7e066d516882127c46",
+      "bytes": 2098,
+      "reason": "exact bytes already preserved in original proposal/first-failure archive or metadata"
+    }
+  ],
+  "dated_original_bodies": "393 members and original ZIPs stay in private wsoq2zv2;43-file metadata capsule/Root10e28 admission only here",
+  "prior_full_utilities": "all712 original0b7 members already shipped ac3b873a; not copied again"
+}

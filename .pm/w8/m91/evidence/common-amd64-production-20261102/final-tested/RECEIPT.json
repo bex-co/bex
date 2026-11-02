@@ -1,0 +1,30 @@
+{
+  "at": "2026-11-02T09:42:01.362332+00:00",
+  "source_status": "PRIVATE tested source; unapplied",
+  "source_files": 8,
+  "source_manifest": {
+    "sha256": "4e448c52a05449f1fb2e40de3f793aa2d0252061f952784af39b2aa1d0e60ae6",
+    "bytes": 1400,
+    "mode": "0o644"
+  },
+  "source_diff": {
+    "sha256": "7570d2e49a2ac356424646d1e23d8dbffb7443aff7d8596ca31661eac2216722",
+    "bytes": 65963,
+    "mode": "0o644"
+  },
+  "reviewed_to_final_diff": {
+    "sha256": "ff751fc46607e51acac3776da29f20f8a37a00c5bd1d5b6b9085c16ae0166acb",
+    "bytes": 10915,
+    "mode": "0o644"
+  },
+  "checks": {
+    "sha256": "230bc9eb9d767a884b59dd53e9884e6579f66049e70a7d3a9d4369798bbdf72b",
+    "bytes": 1999,
+    "mode": "0o644"
+  },
+  "original_reviewed_proposal": "/private/tmp/bex-w8-d3-amd64-source-proposal-20261102-1nvbay42",
+  "first_failed_run": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0",
+  "remaining_validation": "/private/tmp/bex-w8-d3-amd64-final-v2-20261102-11zaq_q3/remaining",
+  "repository_mutations": false,
+  "actual_new_baseline_or_adoption": false
+}

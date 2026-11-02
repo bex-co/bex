@@ -1,0 +1,13 @@
+{
+  "at": "2026-11-02T09:30:27.630029+00:00",
+  "outcome": "ROOT_ACCEPTS_FIVE_DATED_9BC_CONTENT_REVIEWS_ONLY",
+  "original_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+  "all_payload_hashes_sizes_regular_verified": 558,
+  "full_review_sha256": "cb4e0fa456df5bc5bcba90050945f9e3f01ce7c9759483f77cc593bf031709ba",
+  "original_artifact_members": 393,
+  "original_ZIP_bytes": 113387032,
+  "initial_failure_preserved": true,
+  "original_unchanged_oracles_and_37m_ABI_correction_reviewed": true,
+  "D3_scope": "Only legacy3.7AMD adds missing production coverage; fourARM records remain dated extra evidence. No requirement for future ARM runtime replays.",
+  "current_source_or_baseline_admission": false
+}

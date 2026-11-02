@@ -1,0 +1,9 @@
+{
+  "command": "/opt/homebrew/bin/python3.14 -B test_intake.py",
+  "exit": 1,
+  "failure": "ModuleNotFoundError: No module named packaging",
+  "disposition": "No install/network. Reuse existing pip-vendored packaging Version implementation, keep original validator AST exactly unchanged.",
+  "dependency_source": "/opt/homebrew/lib/python3.14/site-packages/pip/_vendor/packaging/version.py",
+  "bytes": 23284,
+  "sha256": "45544aabcfc60f905c6a4e84d64186f0aeec88d6585bd9ff5caf0cd992e5d07f"
+}

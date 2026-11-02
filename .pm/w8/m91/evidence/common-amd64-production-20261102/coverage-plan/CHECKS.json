@@ -1,0 +1,14 @@
+{
+  "at": "2026-11-02T09:32:31.467449+00:00",
+  "status": "STATIC_DATA_CONSISTENCY_PASS_ONLY",
+  "assertions": [
+    "exact original35+supplemental6 bijection/no duplicate selectors",
+    "27originalrequired=26failed+1changedoldsuccess",
+    "8datedAMDpasses all have full retained content audit pointers",
+    "all41 targetlinux/amd64 and unchanged profile/case flags/timeouts match frozen D3 literal PROFILES",
+    "one supplementalwholePASS remains body-unproved/excluded fromdatedacceptance",
+    "new final-sourceAMDsame0941 baseline required; source300\u2192301 explicit; null baseline run/job retained"
+  ],
+  "programs_imported_or_executed": false,
+  "network_Docker_Kube_Go_CI_or_repo_actions": false
+}

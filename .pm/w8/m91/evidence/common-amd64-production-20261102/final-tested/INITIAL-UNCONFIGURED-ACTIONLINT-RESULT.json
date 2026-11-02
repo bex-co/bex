@@ -1,0 +1,103 @@
+{
+  "PASS": false,
+  "results": [
+    {
+      "label": "native-oci",
+      "argv": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        ".github/scripts",
+        "-p",
+        "test_native_oci_*.py"
+      ],
+      "exit": 0,
+      "bound": null,
+      "seconds": 43.663251207908615,
+      "group_absent": true,
+      "stdout_sha256": "8a0417609a63dfa25abf9312171a9d90b727baba7bab4a6a5b044b015fced622",
+      "stderr_sha256": "da184507cd9a1b227a8708762d53d25301b04d2a583cedf5e0da26d58d3ec3cc"
+    },
+    {
+      "label": "native-base",
+      "argv": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "deploy/native-base",
+        "-p",
+        "*_test.py"
+      ],
+      "exit": 0,
+      "bound": null,
+      "seconds": 3.1614678339101374,
+      "group_absent": true,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "508edb54f129ccc9dbf1e7782f2629bc5eae90917f773e40a32dbc867c9c2062"
+    },
+    {
+      "label": "native-common",
+      "argv": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "-m",
+        "unittest",
+        "discover",
+        "-s",
+        "deploy/native-common",
+        "-p",
+        "*_test.py"
+      ],
+      "exit": 0,
+      "bound": null,
+      "seconds": 0.4719183330889791,
+      "group_absent": true,
+      "stdout_sha256": "46abfbef14a402f07c1f551a9e09a8c0b8b8e57375a91aafb8594cd76eb85583",
+      "stderr_sha256": "b734d40e6e830cce2d63262303dc14baa49746efe027331a4209d6ba3a745309"
+    },
+    {
+      "label": "actionlint",
+      "argv": [
+        "/usr/bin/sandbox-exec",
+        "-p",
+        "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+        "/opt/homebrew/bin/actionlint",
+        "-shellcheck=",
+        "-pyflakes=",
+        ".github/workflows/native-base-image.yml",
+        ".github/workflows/native-common-image.yml"
+      ],
+      "exit": 1,
+      "bound": null,
+      "seconds": 0.1555728749372065,
+      "group_absent": true,
+      "stdout_sha256": "b97ab1f8d593128400c2c8d6f76e5b3edb92781d3e1a5793006c2ab0d2db0e8d",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "failure": null,
+  "source_unchanged": true,
+  "view_unchanged": true,
+  "minimum_free_bytes": 10821058560,
+  "peak_TMP_bytes": 90427,
+  "own_TMP_gone": true,
+  "pending_pgids": [],
+  "signals": [],
+  "elapsed_seconds": 47.63220337498933,
+  "actual_runtime_or_adoption_claim": false
+}

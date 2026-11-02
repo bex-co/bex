@@ -1,0 +1,40 @@
+{
+  "files": [
+    {
+      "path": "CHECKS.json",
+      "bytes": 712,
+      "sha256": "b03481eb6fe9c9eb9c86fb7ef8d7a2de596dcdd82b5e1183acdabb760690f7f3"
+    },
+    {
+      "path": "DATED-AMD64-NONIMPACT.tsv",
+      "bytes": 3305,
+      "sha256": "7b1667c22a8af6bbc0dfe987f1377ce2f2802482ba9d4dd676e073b4b27bf42e"
+    },
+    {
+      "path": "INPUT-CUSTODY.json",
+      "bytes": 9461,
+      "sha256": "9ffa0f2c4b9fa967b4b67babcb3797ae6e0acde69882c00ef6f1ea15239743a0"
+    },
+    {
+      "path": "PLAN.json",
+      "bytes": 98752,
+      "sha256": "925c6d949d4a3a46cb4929358f228e116371559aeb2538b49945760d143f0605"
+    },
+    {
+      "path": "REQUIRED-ORIGINAL-AMD64.tsv",
+      "bytes": 8414,
+      "sha256": "1f95cb229cdc1be20030192618a726ba5d030e6cea68ec873c0bf858f41101cc"
+    },
+    {
+      "path": "SUMMARY.json",
+      "bytes": 3318,
+      "sha256": "50759728df823bb1adca87978059387961bcd7a0dc2df9b0fe1248e91f439db2"
+    },
+    {
+      "path": "SUPPLEMENTAL-AMD64.tsv",
+      "bytes": 2313,
+      "sha256": "8d825707a413a3afff63809cdd2d33ec2a309659c1bd8890720a6b40d7eabdd0"
+    }
+  ],
+  "total_bytes": 126275
+}

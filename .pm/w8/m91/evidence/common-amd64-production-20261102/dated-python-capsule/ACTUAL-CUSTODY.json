@@ -1,0 +1,477 @@
+{
+  "rows": [
+    {
+      "key": "modern-python-3.9-arm64",
+      "profile": "modern-python",
+      "case": "3.9",
+      "version": "3.9.25",
+      "architecture": "arm64",
+      "run_id": 41375428758,
+      "job_id": 125055436874,
+      "artifact_id": 13114556805,
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "original_ZIP": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.9-arm64/original.zip",
+        "bytes": 22058258,
+        "sha256": "11958cbb2b9d7a0010da842299b96ce1b93cd718a2c10fcc6acb963c506c2826"
+      },
+      "original_manifest": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.9-arm64/extracted/artifact/MANIFEST.json",
+        "bytes": 17785,
+        "sha256": "5cabbb86e242eab5957d03e98a02cc13d20bab807a49b0c72b50206d565e5753"
+      },
+      "original_members": 79,
+      "extracted_original_bytes": 22490643,
+      "all_original_extraction_SHA_size_CRC_manifest_bijection": true,
+      "actual_full_CI_log": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.9-arm64/job.log",
+        "bytes": 63596,
+        "sha256": "b8c96ce896e1f74af4262f888b797daeba836998102d8bc7646fcce6859743e0"
+      },
+      "source_capture": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.9-arm64/extracted/artifact/qualification-source.json",
+        "bytes": 75099,
+        "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+      },
+      "captured_source_rows": 300,
+      "guards": {
+        "download": {
+          "exit": 0,
+          "stop": null,
+          "group_absent": true,
+          "minimum_free": 9446342656,
+          "seconds": 2.2906954172067344,
+          "stdout_bytes": 155,
+          "stderr_bytes": 0
+        },
+        "extract": {
+          "exit": 0,
+          "stop": null,
+          "group_absent": true,
+          "minimum_free": 9416585216,
+          "seconds": 0.2550848328974098,
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      },
+      "original_full_extraction_receipt": {
+        "complete": true,
+        "zip_bytes": 22058258,
+        "zip_sha256": "11958cbb2b9d7a0010da842299b96ce1b93cd718a2c10fcc6acb963c506c2826",
+        "completed_members": 79,
+        "member": null,
+        "observed_member_bytes": 669,
+        "declared_bytes": 22490643,
+        "manifest_sha256": "5cabbb86e242eab5957d03e98a02cc13d20bab807a49b0c72b50206d565e5753",
+        "observed_output_bytes": 22490643,
+        "actual_file_bytes": 22490643,
+        "minimum_free": 9417076736,
+        "peak_allocated": 22667264
+      },
+      "actual_content_result": {
+        "profile": "modern-python",
+        "arch": "arm64",
+        "line": "3.9",
+        "version": "3.9.25",
+        "run_id": 41375428758,
+        "job_id": 125055436874,
+        "artifact_id": 13114556805,
+        "files": 79,
+        "manifest": {
+          "bytes": 17785,
+          "sha256": "5cabbb86e242eab5957d03e98a02cc13d20bab807a49b0c72b50206d565e5753"
+        },
+        "source_manifest": {
+          "bytes": 75099,
+          "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+        },
+        "image_config_id": "sha256:c26a3b1924c3b52ba2a270f32788760ccfeda16b3ec96b45f76ca16cf457f2f9",
+        "wheels": 50,
+        "private_Poetry_python": "3.9.25",
+        "virtualenv": "20.39.1",
+        "build_runtime_auto_project_and_C_SSL_FFI_loader_proofs": "PASS",
+        "cleanup_actual_CI_log_bound": true
+      }
+    },
+    {
+      "key": "modern-python-3.10-arm64",
+      "profile": "modern-python",
+      "case": "3.10",
+      "version": "3.10.22",
+      "architecture": "arm64",
+      "run_id": 41375434664,
+      "job_id": 125055277391,
+      "artifact_id": 13114820434,
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "original_ZIP": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.10-arm64/original.zip",
+        "bytes": 22150555,
+        "sha256": "42f047f546daa0e39d85bd192a395a7c0ee5018c9c9a24a8d4900e64e2b4c9c7"
+      },
+      "original_manifest": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.10-arm64/extracted/artifact/MANIFEST.json",
+        "bytes": 18174,
+        "sha256": "ef11de763d5c6da0dc0f394991bba4b699ff7c2791f908b03eaa990d24cb0583"
+      },
+      "original_members": 81,
+      "extracted_original_bytes": 22595212,
+      "all_original_extraction_SHA_size_CRC_manifest_bijection": true,
+      "actual_full_CI_log": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.10-arm64/job.log",
+        "bytes": 64665,
+        "sha256": "d5c6cf13a522c2f2a38f59bd3be2c7d1b17364cb19796f152a44b923dc0f7827"
+      },
+      "source_capture": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.10-arm64/extracted/artifact/qualification-source.json",
+        "bytes": 75099,
+        "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+      },
+      "captured_source_rows": 300,
+      "guards": {
+        "download": {
+          "exit": 0,
+          "stop": null,
+          "group_absent": true,
+          "minimum_free": 9403609088,
+          "seconds": 2.036177499918267,
+          "stdout_bytes": 156,
+          "stderr_bytes": 0
+        },
+        "extract": {
+          "exit": 0,
+          "stop": null,
+          "group_absent": true,
+          "minimum_free": 9380626432,
+          "seconds": 0.25929570803418756,
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      },
+      "original_full_extraction_receipt": {
+        "complete": true,
+        "zip_bytes": 22150555,
+        "zip_sha256": "42f047f546daa0e39d85bd192a395a7c0ee5018c9c9a24a8d4900e64e2b4c9c7",
+        "completed_members": 81,
+        "member": null,
+        "observed_member_bytes": 672,
+        "declared_bytes": 22595212,
+        "manifest_sha256": "ef11de763d5c6da0dc0f394991bba4b699ff7c2791f908b03eaa990d24cb0583",
+        "observed_output_bytes": 22595212,
+        "actual_file_bytes": 22595212,
+        "minimum_free": 9380745216,
+        "peak_allocated": 22769664
+      },
+      "actual_content_result": {
+        "profile": "modern-python",
+        "arch": "arm64",
+        "line": "3.10",
+        "version": "3.10.22",
+        "run_id": 41375434664,
+        "job_id": 125055277391,
+        "artifact_id": 13114820434,
+        "files": 81,
+        "manifest": {
+          "bytes": 18174,
+          "sha256": "ef11de763d5c6da0dc0f394991bba4b699ff7c2791f908b03eaa990d24cb0583"
+        },
+        "source_manifest": {
+          "bytes": 75099,
+          "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+        },
+        "image_config_id": "sha256:5d3b24bc9c8326935ea8a2cad4ba2a1f1a9edb3865cacefe74d95732200cba2b",
+        "wheels": 50,
+        "private_Poetry_python": "3.10.22",
+        "virtualenv": "20.39.1",
+        "build_runtime_auto_project_and_C_SSL_FFI_loader_proofs": "PASS",
+        "cleanup_actual_CI_log_bound": true
+      }
+    },
+    {
+      "key": "modern-python-3.11-arm64",
+      "profile": "modern-python",
+      "case": "3.11",
+      "version": "3.11.18",
+      "architecture": "arm64",
+      "run_id": 41375455883,
+      "job_id": 125055227667,
+      "artifact_id": 13114091214,
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "original_ZIP": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.11-arm64/original.zip",
+        "bytes": 22140349,
+        "sha256": "0d687f06e9563e3acf68d49c6e7f183ce93e8189f156126a3558582b436a94b8"
+      },
+      "original_manifest": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.11-arm64/extracted/artifact/MANIFEST.json",
+        "bytes": 17318,
+        "sha256": "33f970199cfd256622ce16e0c220ab571be6fa8431d36c6fb2f0dc0bae0628df"
+      },
+      "original_members": 77,
+      "extracted_original_bytes": 22578559,
+      "all_original_extraction_SHA_size_CRC_manifest_bijection": true,
+      "actual_full_CI_log": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.11-arm64/job.log",
+        "bytes": 63679,
+        "sha256": "dda6ea76b06740104a63c1890731db669542a253b93d4b3d28488b87b5b7e29f"
+      },
+      "source_capture": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/modern-python-3.11-arm64/extracted/artifact/qualification-source.json",
+        "bytes": 75099,
+        "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+      },
+      "captured_source_rows": 300,
+      "guards": {
+        "download": {
+          "exit": 0,
+          "stop": null,
+          "group_absent": true,
+          "minimum_free": 9358049280,
+          "seconds": 1.2907081248704344,
+          "stdout_bytes": 156,
+          "stderr_bytes": 0
+        },
+        "extract": {
+          "exit": 0,
+          "stop": null,
+          "group_absent": true,
+          "minimum_free": 9334697984,
+          "seconds": 0.2650018751155585,
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      },
+      "original_full_extraction_receipt": {
+        "complete": true,
+        "zip_bytes": 22140349,
+        "zip_sha256": "0d687f06e9563e3acf68d49c6e7f183ce93e8189f156126a3558582b436a94b8",
+        "completed_members": 77,
+        "member": null,
+        "observed_member_bytes": 671,
+        "declared_bytes": 22578559,
+        "manifest_sha256": "33f970199cfd256622ce16e0c220ab571be6fa8431d36c6fb2f0dc0bae0628df",
+        "observed_output_bytes": 22578559,
+        "actual_file_bytes": 22578559,
+        "minimum_free": 9334718464,
+        "peak_allocated": 22745088
+      },
+      "actual_content_result": {
+        "profile": "modern-python",
+        "arch": "arm64",
+        "line": "3.11",
+        "version": "3.11.18",
+        "run_id": 41375455883,
+        "job_id": 125055227667,
+        "artifact_id": 13114091214,
+        "files": 77,
+        "manifest": {
+          "bytes": 17318,
+          "sha256": "33f970199cfd256622ce16e0c220ab571be6fa8431d36c6fb2f0dc0bae0628df"
+        },
+        "source_manifest": {
+          "bytes": 75099,
+          "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+        },
+        "image_config_id": "sha256:542873649f8fab288eef8059b13d3f7cf08f65fcfcff62e8e3b6ec92a634f332",
+        "wheels": 48,
+        "private_Poetry_python": "3.11.18",
+        "virtualenv": "20.39.1",
+        "build_runtime_auto_project_and_C_SSL_FFI_loader_proofs": "PASS",
+        "cleanup_actual_CI_log_bound": true
+      }
+    },
+    {
+      "key": "legacy-python-3.7-amd64",
+      "profile": "legacy-python",
+      "case": "3.7",
+      "version": "3.7.17",
+      "architecture": "amd64",
+      "run_id": 41375700551,
+      "job_id": 125058940548,
+      "artifact_id": 13113752639,
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "original_ZIP": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-amd64/original.zip",
+        "bytes": 24681293,
+        "sha256": "34f641491e662e7c9dc39dc0dc8de1160d3e3b7d3be510ceb0b30ab2fc8167a5"
+      },
+      "original_manifest": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-amd64/extracted/artifact/MANIFEST.json",
+        "bytes": 17615,
+        "sha256": "5d78438949dd134478d9a15e192f4edda9e94784b6a00a7ba95fe5002fb55b9d"
+      },
+      "original_members": 79,
+      "extracted_original_bytes": 25121131,
+      "all_original_extraction_SHA_size_CRC_manifest_bijection": true,
+      "actual_full_CI_log": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-amd64/job.log",
+        "bytes": 64860,
+        "sha256": "9a7b64a8e0c99c8e2e30ea76789b1e83ed1384d19d500a520dbfe7e925e66049"
+      },
+      "source_capture": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-amd64/extracted/artifact/qualification-source.json",
+        "bytes": 75099,
+        "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+      },
+      "captured_source_rows": 300,
+      "guards": {
+        "download": {
+          "exit": 0,
+          "stop": null,
+          "group_absent": true,
+          "minimum_free": 9279283200,
+          "seconds": 2.8366866670548916,
+          "stdout_bytes": 155,
+          "stderr_bytes": 0
+        },
+        "extract": {
+          "exit": 0,
+          "stop": null,
+          "group_absent": true,
+          "minimum_free": 9253851136,
+          "seconds": 0.26200166600756347,
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      },
+      "original_full_extraction_receipt": {
+        "complete": true,
+        "zip_bytes": 24681293,
+        "zip_sha256": "34f641491e662e7c9dc39dc0dc8de1160d3e3b7d3be510ceb0b30ab2fc8167a5",
+        "completed_members": 79,
+        "member": null,
+        "observed_member_bytes": 662,
+        "declared_bytes": 25121131,
+        "manifest_sha256": "5d78438949dd134478d9a15e192f4edda9e94784b6a00a7ba95fe5002fb55b9d",
+        "observed_output_bytes": 25121131,
+        "actual_file_bytes": 25121131,
+        "minimum_free": 9253875712,
+        "peak_allocated": 25292800
+      },
+      "actual_content_result": {
+        "profile": "legacy-python",
+        "arch": "amd64",
+        "line": "3.7",
+        "version": "3.7.17",
+        "run_id": 41375700551,
+        "job_id": 125058940548,
+        "artifact_id": 13113752639,
+        "files": 79,
+        "manifest": {
+          "bytes": 17615,
+          "sha256": "5d78438949dd134478d9a15e192f4edda9e94784b6a00a7ba95fe5002fb55b9d"
+        },
+        "source_manifest": {
+          "bytes": 75099,
+          "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+        },
+        "image_config_id": "sha256:769180e4b8fe0084659500a1e385066a0fe57d2017852b126d2c61050eebff75",
+        "wheels": 48,
+        "private_Poetry_python": "3.11.2",
+        "virtualenv": "20.32.0",
+        "build_runtime_auto_project_and_C_SSL_FFI_loader_proofs": "PASS",
+        "cleanup_actual_CI_log_bound": true
+      }
+    },
+    {
+      "key": "legacy-python-3.7-arm64",
+      "profile": "legacy-python",
+      "case": "3.7",
+      "version": "3.7.17",
+      "architecture": "arm64",
+      "run_id": 41375700551,
+      "job_id": 125058940435,
+      "artifact_id": 13115917920,
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "original_ZIP": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-arm64/original.zip",
+        "bytes": 22356577,
+        "sha256": "a9e63d6e3267fb4936f6dcd3e71af22f962787b937148c6e21c44ab5424909e8"
+      },
+      "original_manifest": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-arm64/extracted/artifact/MANIFEST.json",
+        "bytes": 17319,
+        "sha256": "2137d5e4143364ca4729329a9911dc71b56f01dd2e92b50c72426a18fde8375c"
+      },
+      "original_members": 77,
+      "extracted_original_bytes": 22796117,
+      "all_original_extraction_SHA_size_CRC_manifest_bijection": true,
+      "actual_full_CI_log": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-arm64/job.log",
+        "bytes": 63715,
+        "sha256": "740df82c99165c04e26cc157a5411647d64d5abcec603b3f8c8136626314af7e"
+      },
+      "source_capture": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-arm64/extracted/artifact/qualification-source.json",
+        "bytes": 75099,
+        "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+      },
+      "captured_source_rows": 300,
+      "guards": {
+        "download": {
+          "exit": 0,
+          "stop": null,
+          "group_absent": true,
+          "minimum_free": 9267970048,
+          "seconds": 5.417405291926116,
+          "stdout_bytes": 155,
+          "stderr_bytes": 0
+        },
+        "extract": {
+          "exit": 0,
+          "stop": null,
+          "group_absent": true,
+          "minimum_free": 9244868608,
+          "seconds": 0.26435129111632705,
+          "stdout_bytes": 0,
+          "stderr_bytes": 0
+        }
+      },
+      "original_full_extraction_receipt": {
+        "complete": true,
+        "zip_bytes": 22356577,
+        "zip_sha256": "a9e63d6e3267fb4936f6dcd3e71af22f962787b937148c6e21c44ab5424909e8",
+        "completed_members": 77,
+        "member": null,
+        "observed_member_bytes": 662,
+        "declared_bytes": 22796117,
+        "manifest_sha256": "2137d5e4143364ca4729329a9911dc71b56f01dd2e92b50c72426a18fde8375c",
+        "observed_output_bytes": 22796117,
+        "actual_file_bytes": 22796117,
+        "minimum_free": 9244868608,
+        "peak_allocated": 22958080
+      },
+      "actual_content_result": {
+        "profile": "legacy-python",
+        "arch": "arm64",
+        "line": "3.7",
+        "version": "3.7.17",
+        "run_id": 41375700551,
+        "job_id": 125058940435,
+        "artifact_id": 13115917920,
+        "files": 77,
+        "manifest": {
+          "bytes": 17319,
+          "sha256": "2137d5e4143364ca4729329a9911dc71b56f01dd2e92b50c72426a18fde8375c"
+        },
+        "source_manifest": {
+          "bytes": 75099,
+          "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+        },
+        "image_config_id": "sha256:a648513535b540e7d24c3513a586e24d73f88b7e7628c04008bc0b3b4ae7e46c",
+        "wheels": 48,
+        "private_Poetry_python": "3.11.2",
+        "virtualenv": "20.32.0",
+        "build_runtime_auto_project_and_C_SSL_FFI_loader_proofs": "PASS",
+        "cleanup_actual_CI_log_bound": true
+      }
+    }
+  ],
+  "total_original_ZIP_bytes": 113387032,
+  "total_original_members": 393,
+  "total_original_extracted_bytes": 115581662,
+  "one_connector_file_reference_and_one_local_TLS_stream_per_exact_ID": true,
+  "full_decoded_CI_log_strings_retained_once_per_job": "GitHub App exposes UTF8 decoded log text; original HTTP compression/headers unavailable, no stronger rawHTTP-byte claim.",
+  "original_preparation_all34_files_unchanged": true,
+  "minimum_observed_free": 9244868608,
+  "physical_floor": 8589934592
+}

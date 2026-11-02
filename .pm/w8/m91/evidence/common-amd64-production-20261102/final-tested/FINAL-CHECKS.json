@@ -1,0 +1,40 @@
+{
+  "PASS": true,
+  "interpretation": "composite of actual exact-source runs, not one manufactured all-green invocation",
+  "unique_Python_tests_passed": 172,
+  "native_oci": {
+    "tests": 147,
+    "actual_test_seconds": 43.181,
+    "wrapper_seconds": 43.663251207908615
+  },
+  "native_base": {
+    "tests": 14,
+    "actual_test_seconds": 2.834,
+    "wrapper_seconds": 3.1614678339101374
+  },
+  "native_common": {
+    "tests": 11,
+    "actual_test_seconds": 0.13,
+    "wrapper_seconds": 0.4711618749424815,
+    "initial_common_pass10_skip1": "node was absent from sanitized PATH; re-ran existing11 with actual retained hostNode24.16.0, all11PASS",
+    "actual_output": "...........\n----------------------------------------------------------------------\nRan 11 tests in 0.130s\n\nOK\n"
+  },
+  "actionlint": "PASS with explicit exact3 approved runner labels; shellcheck/pyflakes external hooks disabled, full Actions policy/selftests alsoPASS",
+  "actions_guard_exit": 0,
+  "actions_selftests_exit": 0,
+  "first_native_attempt": {
+    "status": "147 tests:4fail+1error, caused only by existing structural test parser not recognizing new digit job name and checkouts counted globally; preserved whole raw failure",
+    "path": "/private/tmp/bex-w8-d3-amd64-final-20261102-5xr1k_l0",
+    "raw_sha256": "94f53ff4c9683e53ac10d348c88187eb77911011b7e69c2b40a7398db2af99ec"
+  },
+  "standalone_actionlint_attempt": "Failed runner-label-only due no config; rawstdout retained unchanged; no production source change to heal it",
+  "source_manifest_sha256": "4e448c52a05449f1fb2e40de3f793aa2d0252061f952784af39b2aa1d0e60ae6",
+  "minimum_free_bytes": 10821058560,
+  "peak_owned_TMP_bytes": 90427,
+  "pending_pgids": [],
+  "all_own_TMP_removed": true,
+  "private_source_unchanged_during_checks": true,
+  "repo_preimages_and_foreign_sum_unchanged_during_checks": true,
+  "network": "nonloopback outbound denied by inherited sandbox; existing loopback fixture HTTP only",
+  "no_runtime_or_live_authority": true
+}

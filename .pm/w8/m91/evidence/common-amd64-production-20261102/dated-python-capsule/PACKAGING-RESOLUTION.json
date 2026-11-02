@@ -1,0 +1,20 @@
+{
+  "prior_failure_preserved": {
+    "path": "HOST-FIRST-FAILURE.json",
+    "bytes": 491,
+    "sha256": "a2e2d5d1f281b173a2b3faee9c937f9d3c78109a40c63e640f54f317066e8509"
+  },
+  "final_resolution": "Private exact source from retained verified packaging26.3 wheel, no install/network. Only process-local sys.path prepend; every support source/license byte rehashed before importing unchanged Version. Original validate_tool/validate_identity ASTs remain unchanged.",
+  "original_verified_wheel": {
+    "wheel_path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.9/amd64/extracted/artifact/generated/native-modern-python-3774205438/3.9.25/prepared-wheels/wheels/packaging-26.3-py3-none-any.whl",
+    "wheel_bytes": 129956,
+    "wheel_sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+  },
+  "retained_original_wheel_manifest": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.9/amd64/extracted/artifact/MANIFEST.json",
+  "support_source": {
+    "bytes": 1681,
+    "sha256": "e933bc06d8b5f613f14ed163a7b7c883cc626596d51669dbc07fdce03a365e05"
+  },
+  "pip_vendor_interim_proposal": "Used only for initial nine resource host controls; not final audit dependency. Preserved in prior failure disposition; not substituted for the retained actual wheel in final source.",
+  "oracles_unchanged": true
+}
