@@ -1,0 +1,54 @@
+{
+  "RESOURCE-AMENDMENT.json": {
+    "bytes": 422,
+    "sha256": "cbed49eb74a4b880e671e8318c5c6a9510555481c211e9b214beb60a5cf49940"
+  },
+  "RESULT.json": {
+    "bytes": 2468,
+    "sha256": "b43569a213ed2c10db6b15a059389930f383b534148122071cff67fbad64856e"
+  },
+  "SCOPE.json": {
+    "bytes": 2246,
+    "sha256": "43fbe41d1e42cb1b7eeac757a8e55e33cb7fbcb230942869e758e6e9042cd6d1"
+  },
+  "focused-PROCESS.json": {
+    "bytes": 366,
+    "sha256": "f23b22f4467558c03f4f792761c109ba019f23341a601b4cc3c83f436af73d81"
+  },
+  "focused-RESULT.json": {
+    "bytes": 530,
+    "sha256": "6977c9798b42cf76f89f05c335610959287e20d85872eefca63a3b3f109d2b59"
+  },
+  "focused.log": {
+    "bytes": 63,
+    "sha256": "ea370cf839243fb02647cf3e7dceadc5b44256142a2d96092090800021bb064e"
+  },
+  "full-buildpkg-PROCESS.json": {
+    "bytes": 244,
+    "sha256": "40c44ca4363ea02aafb322479ceeb8ce5e436077450df46fe857a570a84f45aa"
+  },
+  "full-buildpkg-RESULT.json": {
+    "bytes": 415,
+    "sha256": "4db897d28469d30eb453ed3ec1c6763b746cb5d99809605e5c9773caeeccfdf6"
+  },
+  "full-buildpkg.log": {
+    "bytes": 64,
+    "sha256": "b03d6a4ca911c867a3a6156b699ed5c7134e9d25016d0b578ee168e21cf6d0a2"
+  },
+  "overlay.json": {
+    "bytes": 514,
+    "sha256": "8c4738d64a100ea5aa16666b76c2ca2f76148fd73d2dc1a81c93499967e440ff"
+  },
+  "run.py": {
+    "bytes": 5955,
+    "sha256": "9c6f7675b225b1b031b2f352fc5f4511940b18fb4a68fba5c6addd86821bce44"
+  },
+  "runner.stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "runner.stdout": {
+    "bytes": 2468,
+    "sha256": "b43569a213ed2c10db6b15a059389930f383b534148122071cff67fbad64856e"
+  }
+}

@@ -1,0 +1,118 @@
+{
+  "actual_source_fetch_or_family_approval": false,
+  "assessment": "CLEAN",
+  "at": "2026-11-02T04:12:03.461198+00:00",
+  "before_source_matches_actual_failed9bc_Git_and_current_repo": true,
+  "checks": [
+    "Caller retains exact selectedNode/OTP source version, immutable references andfull64hex checksum validation before annotation",
+    "Annotator tracks complete quotedgeneratedCOPYheredocs and preserves allpayloadlines, changes actualRUN flags only; unterminated/ambiguous/preopenednetwork flags refuse",
+    "Exactlyonecaller-validatedsourceRUN becomesdefault; every otheractualRUN explicitnone before CLIdefault is opened",
+    "Donor/modern/nonprerequisite branches useordinaryglobalnone; Node/addon/Elixir chooseglobaldefault onlyifsourceprerequisite true",
+    "Imagebuildsretain--load true/owner/builder/platform; existingwheelexportloadfalse retained",
+    "OfflinePoetry prefix alternative changesmatchingonly; unchanged bootstrap command/wheelprep ordering preserved",
+    "Inverse normalizer occurs onlyinunitcomparisons; explicit full-string expectedheredoc/controlcovers payload preservation; no executedrecipe constructedby normalizer",
+    "Existing19focusedGoPASS andactualoldRED source-regression hashes/groupcleanup verified, no rerun byreviewer"
+  ],
+  "frozen_payloads_verified": 37,
+  "limits": [
+    "This is the existingclosedcanonicalDockerfile shape, not a generaluserDockerfileparser.",
+    "No newDocker/BuildKit/network/Go/test/resource/repoactions byreviewer.",
+    "Actualpostfix sourcefetch/DNS/build/runtime/botharchitectures remainpending; priorcurl6failuresunchanged."
+  ],
+  "patch": {
+    "bytes": 18326,
+    "mode": "0644",
+    "sha256": "45d490cc4a4ca80ea5f74c6dc6af3be1c11aa748e9f66969e34b4e84493c729c"
+  },
+  "scope": "Five test files only; production generator, original13/28 fixture/program/commands and original35 selectors remain unchanged.",
+  "source_manifest": {
+    "bytes": 2694,
+    "mode": "0644",
+    "sha256": "0bf1b5267a55efbc98c0e6cc8e30498dc7a535272ef56399c374d86d8b7c7b85"
+  },
+  "source_paths": {
+    "lego/operator/internal/build/nativecommon_elixir_qualification_test.go": {
+      "bytes": 11272,
+      "mode": "0644",
+      "sha256": "3698ceec0656a26e7b8803d6c7b147974b06c6e3dbff30134cf3560d59d6e89f"
+    },
+    "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "bytes": 15963,
+      "mode": "0644",
+      "sha256": "e077bcd5d600918d4c0bea36c4f214f7bd6e162cf6ff26340f67fa2ef2a4a895"
+    },
+    "lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "bytes": 12829,
+      "mode": "0644",
+      "sha256": "d18d87e77ef609a8ecbb936aaf84273ff3431bd0035afcff72d5903d64e0ba2a"
+    },
+    "lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go": {
+      "bytes": 12614,
+      "mode": "0644",
+      "sha256": "9141c281cfcb6b4f2f836df049673748ec53516ce45c30bdcab879e54c6758f6"
+    },
+    "lego/operator/internal/build/nativeutility_qualification_test.go": {
+      "bytes": 24741,
+      "mode": "0644",
+      "sha256": "6331504e87626f0ede4878d25e103f725b88c7d97b21ad647e978c46f52c02b2"
+    }
+  },
+  "source_root": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups",
+  "tests": {
+    "new19": {
+      "exit": 0,
+      "passed_top_level": [
+        "TestCommonElixirQualificationCanonicalRecipes",
+        "TestCommonElixirOutputOracle",
+        "TestCommonElixirKeepsExactOTPAndFullRuntimeFeatures",
+        "TestCommonNodeQualificationDonorMode",
+        "TestCommonNodeQualificationDonorCells",
+        "TestCommonNodeQualificationDonorRequiresExactArtifact",
+        "TestCommonNodeQualificationCanonicalCells",
+        "TestCommonNodeQualificationRejectsChangedPrerequisite",
+        "TestCommonNodeQualificationRejectsExactFallback",
+        "TestCommonNodeQualificationGenericOptInSkipsExtraProfile",
+        "TestCommonNodeQualificationDonorOptInRequiresIntegration",
+        "TestCommonNodeQualificationOutputControls",
+        "TestNativeSourcePrerequisiteNetworkRegression",
+        "TestLegacyNodeAddonCanonicalRoutes",
+        "TestNativeUtilityWheelPreparationPreservesExactRuntimePrefix",
+        "TestNativeUtilityBuildUsesExplicitBuilderPlatformAndOwner",
+        "TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes",
+        "TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs",
+        "TestNativeUtilityWheelPreparationKeepsOfflineBootstrap"
+      ],
+      "record": {
+        "bytes": 1211,
+        "mode": "0600",
+        "sha256": "fbe59f7bba80032681448b37973554f406081a006b518099bf7e16f398dc48c9"
+      }
+    },
+    "normalizer_callsites": [
+      {
+        "line": 217,
+        "path": "lego/operator/internal/build/nativeutility_qualification_test.go",
+        "text": "func nativeUtilityWithoutRunNetwork(recipe string) string {"
+      },
+      {
+        "line": 200,
+        "path": "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+        "text": "if nativeUtilityWithoutRunNetwork(executed) != nativeUtilityWithoutRunNetwork(string(canonical)) {"
+      },
+      {
+        "line": 239,
+        "path": "lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+        "text": "if nativeUtilityWithoutRunNetwork(executed) != nativeUtilityWithoutRunNetwork(string(recipe)) {"
+      }
+    ],
+    "old_RED": {
+      "exit": 1,
+      "record": {
+        "bytes": 966,
+        "mode": "0600",
+        "sha256": "f70d4473550d8e852303e28297f4906628b5a3f212eaf14e519eed198e6f3960"
+      },
+      "scope": "Source-regression refusal whennonselectedRUNwouldinheritopenCLIdefault; not anactualnewnetworkprobe"
+    }
+  }
+}

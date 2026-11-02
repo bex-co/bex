@@ -1,0 +1,9 @@
+=== RUN   TestCommonNativeInitQualification
+    nativequalification_init_test.go:207: retained native-init evidence: /home/docker/actions-runner/_work/_temp/bex-native-qualification-ipdtlbal/generated/native-common-init-236768202
+=== RUN   TestCommonNativeInitQualification/npm
+    nativequalification_init_test.go:401: fixture precondition /ready unavailable before deadline: Get "http://127.0.0.1:32768/ready": dial tcp 127.0.0.1:32768: connect: connection refused 
+--- FAIL: TestCommonNativeInitQualification (197.11s)
+    --- FAIL: TestCommonNativeInitQualification/npm (30.44s)
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/build	197.117s
+FAIL

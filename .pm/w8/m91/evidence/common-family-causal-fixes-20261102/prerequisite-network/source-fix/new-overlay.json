@@ -1,0 +1,9 @@
+{
+  "Replace": {
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativeutility_qualification_test.go": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativeutility_qualification_test.go",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativecommon_node_qualification_test.go": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativecommon_elixir_qualification_test.go": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go"
+  }
+}

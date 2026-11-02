@@ -1,0 +1,16 @@
+{
+  "pid": 1438,
+  "pgid": 1438,
+  "args": [
+    "go",
+    "test",
+    "-overlay",
+    "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/overlay.json",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build",
+    "-run",
+    "^(TestNativeInitQualificationMappedPID1Controls|TestNativeInitQualificationDrainAndTransportControls)$"
+  ]
+}

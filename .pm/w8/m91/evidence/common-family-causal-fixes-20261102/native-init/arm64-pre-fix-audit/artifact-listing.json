@@ -1,0 +1,42 @@
+{
+  "artifacts": [
+    {
+      "id": 13112713664,
+      "name": "common-pilot-native-init-all-launches-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-arm64-1",
+      "size_in_bytes": 793651,
+      "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13112713664",
+      "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13112713664/zip",
+      "expired": false,
+      "created_at": "2026-11-02T03:10:26Z",
+      "expires_at": "2026-12-02T03:10:23Z",
+      "updated_at": "2026-11-02T03:10:26Z",
+      "digest": "sha256:46dbabfc0269b19c7ac20a11bdb9793113429303111c19b242a84abd84a5dc6f",
+      "workflow_run": {
+        "id": 41375346506,
+        "repository_id": 793852040,
+        "head_repository_id": 793852040,
+        "head_branch": "main",
+        "head_sha": "9bc6a5d10b3f479926180698d60a0cfdf238db9b"
+      }
+    },
+    {
+      "id": 13111776356,
+      "name": "common-pilot-native-init-all-launches-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+      "size_in_bytes": 829076,
+      "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13111776356",
+      "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13111776356/zip",
+      "expired": false,
+      "created_at": "2026-11-02T02:15:38Z",
+      "expires_at": "2026-12-02T02:15:32Z",
+      "updated_at": "2026-11-02T02:15:38Z",
+      "digest": "sha256:16d866c1fb27937279979b8cd6af0190f6ddf16dea0d70ed7d6226c724673b12",
+      "workflow_run": {
+        "id": 41375346506,
+        "repository_id": 793852040,
+        "head_repository_id": 793852040,
+        "head_branch": "main",
+        "head_sha": "9bc6a5d10b3f479926180698d60a0cfdf238db9b"
+      }
+    }
+  ]
+}

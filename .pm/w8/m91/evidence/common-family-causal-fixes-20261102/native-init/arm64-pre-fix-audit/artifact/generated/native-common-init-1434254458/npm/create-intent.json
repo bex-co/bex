@@ -1,0 +1,9 @@
+{
+  "image": "sha256:0150cee4abb175e5d92d5ce2730645c11509d6574905edebd04ff308647e512b",
+  "name": "bex-init-1406-1793588518862785917-npm",
+  "network": "bridge",
+  "owner": "bex-nq-18b325e97b6f4cbb99455c59",
+  "platform": "linux/arm64",
+  "publication": "127.0.0.1::10000",
+  "state": "before one create; ambiguous failure must be reconciled, never retried"
+}

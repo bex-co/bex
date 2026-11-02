@@ -1,0 +1,29 @@
+{
+  "at": "2026-11-02T02:31:03.830898+00:00",
+  "outcome": "ACTUAL_NATIVE_INIT_AMD_PRECONDITION_REFUSAL_NOT_PRODUCT_DRAIN_VERDICT",
+  "run": 41375346506,
+  "job": 125054905589,
+  "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "selection": {
+    "profile": "native-init",
+    "case": "all-launches",
+    "flag": "BEX_NATIVE_TEST_INIT_PROFILE",
+    "selector": "^TestCommonNativeInitQualification$",
+    "go_timeout": "60m",
+    "job_minutes": "90",
+    "scope": "single-case pilot measurement only; not full-family acceptance or a capacity guarantee"
+  },
+  "actual_cause": "npm child Node24.22.1 throws atidentity.js44 because /proc/1/exe is/run/rosetta/rosetta, expected/native-init; /ready ECONNREFUSED followsabortedserver. NoHTTPtransportfixindicated.",
+  "target_ELF": {
+    "path": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/init/native-init",
+    "sha256": "159a39e14b60d9dcea04c2ec9c55f33b9da42d1580807407edfd02bde7b7e16f",
+    "bytes": 1753250,
+    "machine": 62,
+    "staged_expected_match": true
+  },
+  "captured_source_300_matches_current_e6_baseline": true,
+  "unproved": "ActualPID1argv and/proc/1/maps/map_files notretained; initializercomputedargv but pathassertprecedesproofreturn. Cannotinfercorrectargv/guestmap/drain/Yarn/pnpm/direct.",
+  "cleanup": "npm exactcontainerabsenceproved; jobbuilderremove0/authlogout0/removedtrue andartifactuploadsuccess. Rawreceipts retained.",
+  "other_first8": "All8plansSUCCESS; otherqualifiersactiveorqueuedatonebounded02:17:55snapshot, no othercompletedfailureobserved."
+}

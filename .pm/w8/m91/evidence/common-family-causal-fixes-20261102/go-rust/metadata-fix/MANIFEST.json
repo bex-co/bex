@@ -1,0 +1,69 @@
+{
+  "excludes": [
+    "MANIFEST.json"
+  ],
+  "files": [
+    {
+      "bytes": 2758,
+      "mode": "0644",
+      "path": "CI-CAUSE.json",
+      "sha256": "e7eb76c2a6d53745028656d4c2c61424cc3971c5b6632fb91406976e5e6d08f9"
+    },
+    {
+      "bytes": 3095,
+      "mode": "0644",
+      "path": "RECEIPT.json",
+      "sha256": "7e26b2ba150875bba94d4eb2a9653105fa853f3300ed65aa32fd171fcad46fe6"
+    },
+    {
+      "bytes": 714,
+      "mode": "0644",
+      "path": "SOURCE-MANIFEST.json",
+      "sha256": "5277bc06246657e1f7fc6af9bb6b6637568a5ebbca02eca4ea100aa6b40136c0"
+    },
+    {
+      "bytes": 218,
+      "mode": "0644",
+      "path": "SOURCE-PRESERVATION.json",
+      "sha256": "c313725ce37735e89af21ae6c4880e45af6724df8c81bcbfc7b5ce5ba0c30343"
+    },
+    {
+      "bytes": 12874,
+      "mode": "0644",
+      "path": "before/lego/operator/internal/build/dockerhub.go",
+      "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3"
+    },
+    {
+      "bytes": 11347,
+      "mode": "0644",
+      "path": "before/lego/operator/internal/build/dockerhub_test.go",
+      "sha256": "a943f9abf486bec635ece79e5fe68174170c302a1ac88b9340b0edd5e717a382"
+    },
+    {
+      "bytes": 716,
+      "mode": "0644",
+      "path": "dockerhub.go.diff",
+      "sha256": "944b405d6eb8ba393c26011726e189fcf77b21a8e064fe2b2d6d867a089e1d4e"
+    },
+    {
+      "bytes": 3003,
+      "mode": "0644",
+      "path": "dockerhub_test.go.diff",
+      "sha256": "f95ba3db4fe5de8e8d1bf2855b95ec6522d761d870da2542b2c4bbea2f579259"
+    },
+    {
+      "bytes": 13020,
+      "mode": "0644",
+      "path": "source/lego/operator/internal/build/dockerhub.go",
+      "sha256": "522e2cbb4d0efecde76638f11311d002a903099041b5f1dc293092f36ecdae04"
+    },
+    {
+      "bytes": 14124,
+      "mode": "0644",
+      "path": "source/lego/operator/internal/build/dockerhub_test.go",
+      "sha256": "a9e52e7ec61cccc6b6e1217eb92cf12d6cd0634c9396c7fd838e6c50582b8844"
+    }
+  ],
+  "payload_bytes": 61869,
+  "payload_files": 10
+}

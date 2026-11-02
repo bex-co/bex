@@ -1,0 +1,18 @@
+{
+  "label": "full-buildpkg",
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/overlay.json",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build"
+  ],
+  "exit": 0,
+  "bound": null,
+  "seconds": 25.939025207888335,
+  "group_absent": true,
+  "log_sha256": "b03d6a4ca911c867a3a6156b699ed5c7134e9d25016d0b578ee168e21cf6d0a2"
+}

@@ -1,0 +1,3 @@
+sha256:2235b5362cd307b0ff8d0fb05cd09e83569a349a13fbdab462768010bc485e3f
+linux/amd64
+["/native-init"]

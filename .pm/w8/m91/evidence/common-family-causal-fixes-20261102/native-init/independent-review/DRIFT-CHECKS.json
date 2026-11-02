@@ -1,0 +1,13 @@
+{
+  "PASS": true,
+  "manifest_payloads_verified": 11,
+  "manifest_sha256": "2dd1a7a7da2607427980174da404cf00a8d093bcf35fb27d1bde3217353b58ac",
+  "Go_inverse_two_new_helpers_mapping_type_identity_fields_and_single_PID1_condition": true,
+  "all_other_old_Go_bytes_exact_including_drain_signal_status_cleanup": true,
+  "JS_primary_ENV_and_preidentity_logic_and_arch_pid_return_checks_exact": true,
+  "both_before_files_match_current_repo": true,
+  "actual_local_raw_hash_exact": true,
+  "actual_CI_partial_raw_hash_exact": true,
+  "synthetic_complete_emulation_not_actual_CI": true,
+  "reviewer_check_adjustment": "Initial inverse retained only the added test separator blankLF; removing that separator restores whole oldGo bytes exactly. No source correction."
+}

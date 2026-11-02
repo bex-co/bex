@@ -1,0 +1,7 @@
+{
+  "absence_proved": true,
+  "container_id": "83dd1b5abb74beb3763da30df66b0ccb47f2e60a6a407a6fd98a2270c0c9c60b",
+  "inspection": "\nerror: no such object: 83dd1b5abb74beb3763da30df66b0ccb47f2e60a6a407a6fd98a2270c0c9c60b\n",
+  "owner": "bex-nq-18b325e97b6f4cbb99455c59",
+  "scope": "exact own returned ID only"
+}

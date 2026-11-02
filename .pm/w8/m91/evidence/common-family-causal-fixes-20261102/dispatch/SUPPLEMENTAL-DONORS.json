@@ -1,0 +1,43 @@
+{
+  "at": "2026-11-02T02:11:34.989249+00:00",
+  "source": "77307722e157e148ef04b1f77b675a72e0bd9d35",
+  "source_scope": "Only five automatic deployment image-pin files changed from9bc6a5d10; functional300 and imagecritical33 unchanged by actualGitdiff",
+  "profile": "node-donors",
+  "source_input": "reviewed-candidate",
+  "mechanism": "Root normal existing GitHub Run workflow UI; actualselectedvalues+resultsummary/source checked",
+  "runs": [
+    {
+      "case": "node-14",
+      "run_id": 41376298047,
+      "url": "https://github.com/bex-co/bex/actions/runs/41376298047"
+    },
+    {
+      "case": "node-16",
+      "run_id": 41376303994,
+      "url": "https://github.com/bex-co/bex/actions/runs/41376303994"
+    },
+    {
+      "case": "node-18",
+      "run_id": 41376309434,
+      "url": "https://github.com/bex-co/bex/actions/runs/41376309434"
+    },
+    {
+      "case": "node-20",
+      "run_id": 41376347012,
+      "url": "https://github.com/bex-co/bex/actions/runs/41376347012"
+    },
+    {
+      "case": "node-exact14213",
+      "run_id": 41376352475,
+      "url": "https://github.com/bex-co/bex/actions/runs/41376352475"
+    },
+    {
+      "case": "ruby-node-exact14213",
+      "run_id": 41376357601,
+      "url": "https://github.com/bex-co/bex/actions/runs/41376357601"
+    }
+  ],
+  "supplemental_not_substitutes_for_original35": true,
+  "exact14212_donor_not_covered": true,
+  "completed_or_accepted": false
+}

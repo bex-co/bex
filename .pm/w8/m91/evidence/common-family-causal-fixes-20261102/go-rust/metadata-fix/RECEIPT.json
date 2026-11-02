@@ -1,0 +1,62 @@
+{
+  "actual_CI_cause": {
+    "bytes": 2758,
+    "mode": "0644",
+    "sha256": "e7eb76c2a6d53745028656d4c2c61424cc3971c5b6632fb91406976e5e6d08f9"
+  },
+  "at": "2026-11-02T03:46:46.862949+00:00",
+  "no_new_CI_fetches": true,
+  "preservation": "Removing localmetadataRepo boolean/comment and restoring original guard restores entire dockerhub.go byteexact. exactRepos/ResolveTag/ListTags and all other production functions unchanged. Entire old test file prefix byteexact; only3new tests appended. No originalprogram/data/runtimepin/catalog/factory edits.",
+  "production_change": "ImageMetadata alone accepts existing exactRepos plus official golang/rust names. It still requires an explicit repository/tag separator and canonical sha256 pin; digest-verified Linuxamd64 index/manifest/config reads and cache behavior unchanged.",
+  "resource_limits": "Existing bounded300s/unitcommand,512MiB ownTMP with128MiBstopmargin,8GiBphysicalfloor+128margin, reviewedownPGcleanup. No cacheclone; ordinary standard sharedGoCache writes retained.",
+  "schema": "bex.go-rust-metadata-private-source-fix/v1",
+  "scope": "Fixes actual common Go/Rust metadata-selection blocker. No actual Go/Rust generated-image, botharch/CI/fullfamily/commonadoption acceptance inferred; production catalog stays empty. Root review/apply/combinedfullpkg+freshactualgates remain.",
+  "source_files": {
+    "lego/operator/internal/build/dockerhub.go": {
+      "before": {
+        "bytes": 12874,
+        "mode": "0644",
+        "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3"
+      },
+      "source": {
+        "bytes": 13020,
+        "mode": "0644",
+        "sha256": "522e2cbb4d0efecde76638f11311d002a903099041b5f1dc293092f36ecdae04"
+      }
+    },
+    "lego/operator/internal/build/dockerhub_test.go": {
+      "before": {
+        "bytes": 11347,
+        "mode": "0644",
+        "sha256": "a943f9abf486bec635ece79e5fe68174170c302a1ac88b9340b0edd5e717a382"
+      },
+      "source": {
+        "bytes": 14124,
+        "mode": "0644",
+        "sha256": "a9e52e7ec61cccc6b6e1217eb92cf12d6cd0634c9396c7fd838e6c50582b8844"
+      }
+    }
+  },
+  "source_manifest": {
+    "bytes": 714,
+    "mode": "0644",
+    "sha256": "5277bc06246657e1f7fc6af9bb6b6637568a5ebbca02eca4ea100aa6b40136c0"
+  },
+  "state": "PRIVATE_SOURCE_WITH_ACTUAL_FOCUSED_REGRESSION_PASS",
+  "tests": {
+    "fixed": "All TestImageMetadata.* and TestDockerHubResolver PASS; positiveeach traverses3verifiedHTTPobjects,9invalidpins/repositories refuse beforeHTTP, GoRustexactTag/List refuse beforeHTTP",
+    "gofmt": "clean",
+    "manifest": {
+      "bytes": 2677,
+      "mode": "0644",
+      "sha256": "b3d46380a52f5723d5142bdb666fdd43bda5e022fc7135eab586801e9c27770b"
+    },
+    "old_red": "Bothrepo subtests reproduce original pinned-reviewed-runtime refusal, actualGoexit1 expected; fullrawlog retained",
+    "receipt": {
+      "bytes": 2668,
+      "mode": "0644",
+      "sha256": "116be6cf1bd3cd148da8f61450559b4c8b12abf4db55c5c98ef46aada325cd7e"
+    },
+    "test_root": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m"
+  }
+}

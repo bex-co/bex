@@ -197,8 +197,7 @@ func TestCommonNodeQualificationCanonicalCells(t *testing.T) {
 			if overlay != needsSource || strings.Count(executed, "RUN --network=default ") != map[bool]int{true: 1, false: 0}[needsSource] {
 				t.Fatal("source fallback network boundary changed")
 			}
-			reversed := strings.Replace(executed, "\nRUN --network=default /sbin/ldconfig", "\nRUN /sbin/ldconfig", 1)
-			if reversed != string(canonical) {
+			if nativeUtilityWithoutRunNetwork(executed) != nativeUtilityWithoutRunNetwork(string(canonical)) {
 				t.Fatal("test overlay changed canonical payload, authored command or runtime")
 			}
 			for _, required := range []string{"\nFROM " + commonFixtureImage + "\n", o.BuildCommand, o.StartCommand, nativePnpmFor(nodeVersion)} {
@@ -297,5 +296,46 @@ func TestCommonNodeQualificationOutputControls(t *testing.T) {
 	output, err := command.CombinedOutput()
 	if err != nil {
 		t.Fatalf("Node output-oracle controls (no Node/image execution): %v\n%s", err, output)
+	}
+}
+
+// Regression uses existing APIs so the same test compiles against the failing source.
+func TestNativeSourcePrerequisiteNetworkRegression(t *testing.T) {
+	original := nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeRuntimeArtifacts = original })
+	nativeRuntimeArtifacts = nil
+	node := NativeChoice{imageEnv: []string{"NODE_VERSION=14.21.3"}}
+	stage, err := commonNodeBuildStage("node:14-bullseye@"+exactDigest, "14.21.3", strings.Repeat("b", 64))
+	must(t, err)
+	node.primaryStage = stage
+	primary := NativeChoice{Image: "erlang:28.0@" + exactDigest, commonOTP: "28.0"}
+	otp := "RUN --mount=type=bind,from=" + primary.Image + ",source=/usr/local/lib/erlang,target=/opt/bex-otp-reference,readonly /usr/libexec/bex-native/build-otp 28.0 " + strings.Repeat("a", 64) + "\n"
+	primary.primaryStage = otp
+	for _, name := range []string{"Node", "OTP"} {
+		t.Run(name, func(t *testing.T) {
+			prefix := stage
+			if name == "OTP" {
+				prefix = "FROM platform-source\n" + otp
+			}
+			canonical := prefix + "FROM " + commonFixtureImage + "\nRUN preserve-tool-setup\nCOPY . .\nRUN --mount=type=secret,id=render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\noriginal-authored-build\"]\nCMD [\"original-runtime\"]\n"
+			var executed string
+			if name == "Node" {
+				executed, _, err = commonNodeQualificationRecipe(canonical, node)
+			} else {
+				executed, _, err = commonElixirQualificationRecipe(canonical, primary)
+			}
+			must(t, err)
+			if strings.Count(executed, "RUN --network=default ") != 1 {
+				t.Fatal("exact platform source prerequisite must be the only online RUN")
+			}
+			for line := range strings.SplitSeq(executed, "\n") {
+				if strings.HasPrefix(line, "RUN ") && !strings.HasPrefix(line, "RUN --network=none ") && !strings.HasPrefix(line, "RUN --network=default ") {
+					t.Fatalf("non-prerequisite command inherits the open build network: %s", line)
+				}
+			}
+			if !strings.Contains(executed, "original-authored-build") || !strings.Contains(executed, "CMD [\"original-runtime\"]") {
+				t.Fatal("original authored commands changed")
+			}
+		})
 	}
 }

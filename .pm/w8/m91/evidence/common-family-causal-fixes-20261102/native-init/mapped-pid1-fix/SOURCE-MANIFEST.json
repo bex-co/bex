@@ -1,0 +1,22 @@
+{
+  "lego/operator/internal/build/nativequalification_init_test.go": {
+    "before": {
+      "bytes": 33727,
+      "sha256": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466"
+    },
+    "after": {
+      "bytes": 38306,
+      "sha256": "5540c1665b514cb2bf92c9ad47c8d48a6c174edadd486dad24115e0cb764ca86"
+    }
+  },
+  "lego/operator/internal/build/testdata/native-common-init/identity.js": {
+    "before": {
+      "bytes": 2232,
+      "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+    },
+    "after": {
+      "bytes": 5842,
+      "sha256": "b112a923a58f6a390f212e66f64eccbb004567448ef1f654081f167d6162cbd9"
+    }
+  }
+}

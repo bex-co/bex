@@ -1,0 +1,131 @@
+=== RUN   TestCommonElixirOfflineQualification
+    nativecommon_elixir_qualification_test.go:139: set BEX_BUILDKIT_INTEGRATION=1 and BEX_NATIVE_ELIXIR_INTEGRATION=1 for actual common Elixir/OTP qualification
+--- SKIP: TestCommonElixirOfflineQualification (0.00s)
+=== RUN   TestCommonElixirQualificationCanonicalRecipes
+=== RUN   TestCommonElixirQualificationCanonicalRecipes/elixir-1.17
+=== RUN   TestCommonElixirQualificationCanonicalRecipes/elixir-1.18
+=== RUN   TestCommonElixirQualificationCanonicalRecipes/elixir-1.19
+=== RUN   TestCommonElixirQualificationCanonicalRecipes/elixir-1.20
+=== RUN   TestCommonElixirQualificationCanonicalRecipes/elixir-exact-otp280
+--- PASS: TestCommonElixirQualificationCanonicalRecipes (0.01s)
+    --- PASS: TestCommonElixirQualificationCanonicalRecipes/elixir-1.17 (0.00s)
+    --- PASS: TestCommonElixirQualificationCanonicalRecipes/elixir-1.18 (0.00s)
+    --- PASS: TestCommonElixirQualificationCanonicalRecipes/elixir-1.19 (0.00s)
+    --- PASS: TestCommonElixirQualificationCanonicalRecipes/elixir-1.20 (0.00s)
+    --- PASS: TestCommonElixirQualificationCanonicalRecipes/elixir-exact-otp280 (0.00s)
+=== RUN   TestCommonElixirOutputOracle
+--- PASS: TestCommonElixirOutputOracle (0.06s)
+=== RUN   TestCommonElixirKeepsExactOTPAndFullRuntimeFeatures
+=== RUN   TestCommonElixirKeepsExactOTPAndFullRuntimeFeatures/1.18.4/28.5.0.8/donor
+=== RUN   TestCommonElixirKeepsExactOTPAndFullRuntimeFeatures/1.20.4/29.1.2/donor
+=== RUN   TestCommonElixirKeepsExactOTPAndFullRuntimeFeatures/1.18.4/28.5.0.8/source
+--- PASS: TestCommonElixirKeepsExactOTPAndFullRuntimeFeatures (0.00s)
+    --- PASS: TestCommonElixirKeepsExactOTPAndFullRuntimeFeatures/1.18.4/28.5.0.8/donor (0.00s)
+    --- PASS: TestCommonElixirKeepsExactOTPAndFullRuntimeFeatures/1.20.4/29.1.2/donor (0.00s)
+    --- PASS: TestCommonElixirKeepsExactOTPAndFullRuntimeFeatures/1.18.4/28.5.0.8/source (0.00s)
+=== RUN   TestCommonNodeQualificationDonorMode
+--- PASS: TestCommonNodeQualificationDonorMode (0.00s)
+=== RUN   TestCommonNodeQualificationDonorCells
+=== RUN   TestCommonNodeQualificationDonorCells/node-14
+=== RUN   TestCommonNodeQualificationDonorCells/node-16
+=== RUN   TestCommonNodeQualificationDonorCells/node-18
+=== RUN   TestCommonNodeQualificationDonorCells/node-20
+=== RUN   TestCommonNodeQualificationDonorCells/node-exact14213
+=== RUN   TestCommonNodeQualificationDonorCells/ruby-node-exact14213
+--- PASS: TestCommonNodeQualificationDonorCells (0.01s)
+    --- PASS: TestCommonNodeQualificationDonorCells/node-14 (0.00s)
+    --- PASS: TestCommonNodeQualificationDonorCells/node-16 (0.00s)
+    --- PASS: TestCommonNodeQualificationDonorCells/node-18 (0.00s)
+    --- PASS: TestCommonNodeQualificationDonorCells/node-20 (0.00s)
+    --- PASS: TestCommonNodeQualificationDonorCells/node-exact14213 (0.00s)
+    --- PASS: TestCommonNodeQualificationDonorCells/ruby-node-exact14213 (0.00s)
+=== RUN   TestCommonNodeQualificationDonorRequiresExactArtifact
+=== RUN   TestCommonNodeQualificationDonorRequiresExactArtifact/node-missing
+=== RUN   TestCommonNodeQualificationDonorRequiresExactArtifact/node-exact
+=== RUN   TestCommonNodeQualificationDonorRequiresExactArtifact/ruby-missing
+=== RUN   TestCommonNodeQualificationDonorRequiresExactArtifact/ruby-exact
+--- PASS: TestCommonNodeQualificationDonorRequiresExactArtifact (0.01s)
+    --- PASS: TestCommonNodeQualificationDonorRequiresExactArtifact/node-missing (0.00s)
+    --- PASS: TestCommonNodeQualificationDonorRequiresExactArtifact/node-exact (0.00s)
+    --- PASS: TestCommonNodeQualificationDonorRequiresExactArtifact/ruby-missing (0.00s)
+    --- PASS: TestCommonNodeQualificationDonorRequiresExactArtifact/ruby-exact (0.00s)
+=== RUN   TestCommonNodeQualificationCanonicalCells
+=== RUN   TestCommonNodeQualificationCanonicalCells/node-14
+=== RUN   TestCommonNodeQualificationCanonicalCells/node-16
+=== RUN   TestCommonNodeQualificationCanonicalCells/node-18
+=== RUN   TestCommonNodeQualificationCanonicalCells/node-20
+=== RUN   TestCommonNodeQualificationCanonicalCells/node-22
+=== RUN   TestCommonNodeQualificationCanonicalCells/node-26
+=== RUN   TestCommonNodeQualificationCanonicalCells/node-exact14212
+=== RUN   TestCommonNodeQualificationCanonicalCells/ruby-node-exact14212
+--- PASS: TestCommonNodeQualificationCanonicalCells (0.01s)
+    --- PASS: TestCommonNodeQualificationCanonicalCells/node-14 (0.00s)
+    --- PASS: TestCommonNodeQualificationCanonicalCells/node-16 (0.00s)
+    --- PASS: TestCommonNodeQualificationCanonicalCells/node-18 (0.00s)
+    --- PASS: TestCommonNodeQualificationCanonicalCells/node-20 (0.00s)
+    --- PASS: TestCommonNodeQualificationCanonicalCells/node-22 (0.00s)
+    --- PASS: TestCommonNodeQualificationCanonicalCells/node-26 (0.00s)
+    --- PASS: TestCommonNodeQualificationCanonicalCells/node-exact14212 (0.00s)
+    --- PASS: TestCommonNodeQualificationCanonicalCells/ruby-node-exact14212 (0.00s)
+=== RUN   TestCommonNodeQualificationRejectsChangedPrerequisite
+=== RUN   TestCommonNodeQualificationRejectsChangedPrerequisite/missing
+=== RUN   TestCommonNodeQualificationRejectsChangedPrerequisite/duplicate
+=== RUN   TestCommonNodeQualificationRejectsChangedPrerequisite/wrong-patch
+=== RUN   TestCommonNodeQualificationRejectsChangedPrerequisite/missing-source-boundary
+--- PASS: TestCommonNodeQualificationRejectsChangedPrerequisite (0.00s)
+    --- PASS: TestCommonNodeQualificationRejectsChangedPrerequisite/missing (0.00s)
+    --- PASS: TestCommonNodeQualificationRejectsChangedPrerequisite/duplicate (0.00s)
+    --- PASS: TestCommonNodeQualificationRejectsChangedPrerequisite/wrong-patch (0.00s)
+    --- PASS: TestCommonNodeQualificationRejectsChangedPrerequisite/missing-source-boundary (0.00s)
+=== RUN   TestCommonNodeQualificationRejectsExactFallback
+--- PASS: TestCommonNodeQualificationRejectsExactFallback (0.00s)
+=== RUN   TestCommonNodeQualificationGenericOptInSkipsExtraProfile
+--- PASS: TestCommonNodeQualificationGenericOptInSkipsExtraProfile (0.01s)
+=== RUN   TestCommonNodeQualificationDonorOptInRequiresIntegration
+--- PASS: TestCommonNodeQualificationDonorOptInRequiresIntegration (0.01s)
+=== RUN   TestCommonNodeQualificationOutputControls
+--- PASS: TestCommonNodeQualificationOutputControls (0.08s)
+=== RUN   TestNativeSourcePrerequisiteNetworkRegression
+=== RUN   TestNativeSourcePrerequisiteNetworkRegression/Node
+=== RUN   TestNativeSourcePrerequisiteNetworkRegression/OTP
+--- PASS: TestNativeSourcePrerequisiteNetworkRegression (0.00s)
+    --- PASS: TestNativeSourcePrerequisiteNetworkRegression/Node (0.00s)
+    --- PASS: TestNativeSourcePrerequisiteNetworkRegression/OTP (0.00s)
+=== RUN   TestLegacyNodeAddonCanonicalRoutes
+=== RUN   TestLegacyNodeAddonCanonicalRoutes/common-node14-primary
+=== RUN   TestLegacyNodeAddonCanonicalRoutes/common-node16-primary
+=== RUN   TestLegacyNodeAddonCanonicalRoutes/common-python313-node16
+=== RUN   TestLegacyNodeAddonCanonicalRoutes/historical-python313-node16
+--- PASS: TestLegacyNodeAddonCanonicalRoutes (0.01s)
+    --- PASS: TestLegacyNodeAddonCanonicalRoutes/common-node14-primary (0.00s)
+    --- PASS: TestLegacyNodeAddonCanonicalRoutes/common-node16-primary (0.00s)
+    --- PASS: TestLegacyNodeAddonCanonicalRoutes/common-python313-node16 (0.00s)
+    --- PASS: TestLegacyNodeAddonCanonicalRoutes/historical-python313-node16 (0.00s)
+=== RUN   TestNativeUtilityWheelPreparationPreservesExactRuntimePrefix
+--- PASS: TestNativeUtilityWheelPreparationPreservesExactRuntimePrefix (0.00s)
+=== RUN   TestNativeUtilityBuildUsesExplicitBuilderPlatformAndOwner
+--- PASS: TestNativeUtilityBuildUsesExplicitBuilderPlatformAndOwner (0.00s)
+=== RUN   TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes
+=== RUN   TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes/explicit313
+=== RUN   TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes/default3148
+--- PASS: TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes (0.00s)
+    --- PASS: TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes/explicit313 (0.00s)
+    --- PASS: TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes/default3148 (0.00s)
+=== RUN   TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs
+=== RUN   TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/missing
+=== RUN   TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/duplicate
+=== RUN   TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/other-open-RUN
+=== RUN   TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/hidden-open-flag
+=== RUN   TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/duplicate-network
+=== RUN   TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/unterminated-data
+--- PASS: TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs (0.00s)
+    --- PASS: TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/missing (0.00s)
+    --- PASS: TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/duplicate (0.00s)
+    --- PASS: TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/other-open-RUN (0.00s)
+    --- PASS: TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/hidden-open-flag (0.00s)
+    --- PASS: TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/duplicate-network (0.00s)
+    --- PASS: TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs/unterminated-data (0.00s)
+=== RUN   TestNativeUtilityWheelPreparationKeepsOfflineBootstrap
+--- PASS: TestNativeUtilityWheelPreparationKeepsOfflineBootstrap (0.00s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	0.709s

@@ -1,0 +1,70 @@
+{
+  "format": {
+    "argv": [
+      "/opt/homebrew/bin/gofmt",
+      "-l",
+      "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+      "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+      "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+      "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go"
+    ],
+    "exit": 0,
+    "stdout": {
+      "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/format.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    "stderr": {
+      "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/format.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    }
+  },
+  "apply-check": {
+    "argv": [
+      "git",
+      "apply",
+      "--check",
+      "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source.patch"
+    ],
+    "exit": 0,
+    "stdout": {
+      "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/apply-check.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    "stderr": {
+      "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/apply-check.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    }
+  },
+  "whitespace": {
+    "argv": [
+      "git",
+      "diff",
+      "--no-index",
+      "--check",
+      "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/before",
+      "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source"
+    ],
+    "exit": 1,
+    "stdout": {
+      "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/whitespace.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    },
+    "stderr": {
+      "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/whitespace.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0644"
+    }
+  }
+}

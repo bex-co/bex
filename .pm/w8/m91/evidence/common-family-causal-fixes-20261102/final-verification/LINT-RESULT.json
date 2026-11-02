@@ -1,0 +1,8 @@
+{
+  "exit": 0,
+  "stdout": "0 issues.\n",
+  "command": "GOWORK=off GOFLAGS=-mod=readonly GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOTELEMETRY=off GOMAXPROCS=2 GOMEMLIMIT=512MiB ./bin/golangci-lint run --concurrency 2 ./internal/build",
+  "cwd": "lego/operator",
+  "provenance": "Root actual exec session67632 completion; initialunrelatedglobaloldlinterGo1.25refusedtarget1.26beforeanalysis, thenrepo-pinnedbinaryranPASS",
+  "scope": "local scoped lint, not CI/runtime acceptance"
+}

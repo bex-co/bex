@@ -1,0 +1,100 @@
+{
+  "at": "2026-11-02T04:01:15.416965+00:00",
+  "state": "PRIVATE_SOURCE_READY_FOR_ROOT_REVIEW_NOT_APPLIED",
+  "source_manifest": {
+    "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/SOURCE-MANIFEST.json",
+    "bytes": 2694,
+    "sha256": "0bf1b5267a55efbc98c0e6cc8e30498dc7a535272ef56399c374d86d8b7c7b85",
+    "mode": "0644"
+  },
+  "patch": {
+    "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source.patch",
+    "bytes": 18326,
+    "sha256": "45d490cc4a4ca80ea5f74c6dc6af3be1c11aa748e9f66969e34b4e84493c729c",
+    "mode": "0644"
+  },
+  "paths": [
+    "lego/operator/internal/build/nativeutility_qualification_test.go",
+    "lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+    "lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go"
+  ],
+  "scope": "Only5existing test files; reuse prerequisiteBuildArgs with load bool. One exact checksum-bound Node/OTP source RUN default, all other canonical RUN none; all generated COPY heredoc/command payloads preserved. Ordinary builds/runtime offline; old modern wheel recipe behavior preserved; already-offline Poetry marker accepted for addon wheel prep.",
+  "old_RED": {
+    "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/old-red.process.json",
+    "bytes": 966,
+    "sha256": "f70d4473550d8e852303e28297f4906628b5a3f212eaf14e519eed198e6f3960",
+    "mode": "0600"
+  },
+  "old_RED_assertions": [
+    "Node other RUN inherited open build default",
+    "OTP other RUN inherited open build default"
+  ],
+  "new_PASS": {
+    "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/new-focused-final.process.json",
+    "bytes": 1211,
+    "sha256": "fbe59f7bba80032681448b37973554f406081a006b518099bf7e16f398dc48c9",
+    "mode": "0600"
+  },
+  "passed_top_level_tests": [
+    "TestCommonElixirQualificationCanonicalRecipes",
+    "TestCommonElixirOutputOracle",
+    "TestCommonElixirKeepsExactOTPAndFullRuntimeFeatures",
+    "TestCommonNodeQualificationDonorMode",
+    "TestCommonNodeQualificationDonorCells",
+    "TestCommonNodeQualificationDonorRequiresExactArtifact",
+    "TestCommonNodeQualificationCanonicalCells",
+    "TestCommonNodeQualificationRejectsChangedPrerequisite",
+    "TestCommonNodeQualificationRejectsExactFallback",
+    "TestCommonNodeQualificationGenericOptInSkipsExtraProfile",
+    "TestCommonNodeQualificationDonorOptInRequiresIntegration",
+    "TestCommonNodeQualificationOutputControls",
+    "TestNativeSourcePrerequisiteNetworkRegression",
+    "TestLegacyNodeAddonCanonicalRoutes",
+    "TestNativeUtilityWheelPreparationPreservesExactRuntimePrefix",
+    "TestNativeUtilityBuildUsesExplicitBuilderPlatformAndOwner",
+    "TestNativeUtilityWheelPreparationAcceptsActualResolvedPythonRecipes",
+    "TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs",
+    "TestNativeUtilityWheelPreparationKeepsOfflineBootstrap"
+  ],
+  "new_controlled_negative_cases": [
+    "missing/duplicate trusted RUN",
+    "preexisting default/host network flag (incl after mount)",
+    "duplicate network flags",
+    "unterminated generated heredoc"
+  ],
+  "raw_first_candidate_failure": {
+    "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/new-focused.process.json",
+    "reason": "Only new synthetic wheel test lacked preceding donor stage, so actual multi-stage marker absent; corrected fixture without changing implementation; initial logs retained."
+  },
+  "actual_source_proof": {
+    "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/ACTUAL-SOURCE-PROOF.json",
+    "bytes": 7012,
+    "sha256": "e5585fa6b29065b5651065a3d1f518d8d723568ec6696b4360491ada6ae0c4c9",
+    "mode": "0644"
+  },
+  "source_checks": {
+    "path": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/SOURCE-CHECKS.json",
+    "bytes": 2876,
+    "sha256": "b05ee4b8de15299648a3d40423e1023b31fcc3564f60681bd96b824c39a5a57b",
+    "mode": "0644"
+  },
+  "resources": {
+    "Go_workers": 2,
+    "memory_limit": "512MiB",
+    "physical_floor_bytes": 8589934592,
+    "normal_shared_cache": true,
+    "COW_or_full_context_copy": false,
+    "compile_groups_absent": true,
+    "owned_compile_tmp_absent": true
+  },
+  "not_executed": [
+    "Docker/image build",
+    "network source fetch",
+    "CI dispatch/rerun/cancel",
+    "repoapply/stage/commit/PM changes"
+  ],
+  "actual_family_or_baseline_approval": false,
+  "repo_owned_paths_unchanged": true
+}

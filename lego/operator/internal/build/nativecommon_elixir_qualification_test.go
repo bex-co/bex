@@ -115,10 +115,20 @@ func commonElixirQualificationRecipe(recipe string, primary NativeChoice) (strin
 	// an authored project command. Only that canonical builder RUN may use
 	// network access; the actual fixture build/runtime retain network=none.
 	line := "RUN --mount=type=bind,from=" + primary.Image + ",source=/usr/local/lib/erlang,target=/opt/bex-otp-reference,readonly /usr/libexec/bex-native/build-otp " + primary.commonOTP + " "
-	if strings.Count(recipe, "\n"+line) != 1 {
+	var selected string
+	for candidate := range strings.SplitSeq(primary.primaryStage, "\n") {
+		if checksum, found := strings.CutPrefix(candidate, line); found {
+			if !digestPattern.MatchString("sha256:" + checksum) {
+				return "", false, fmt.Errorf("OTP source builder checksum changed")
+			}
+			selected = candidate
+		}
+	}
+	if selected == "" || strings.Count(primary.primaryStage, line) != 1 || strings.Count(recipe, "\n"+selected+"\n") != 1 || strings.Count(recipe, " /usr/libexec/bex-native/build-otp ") != 1 {
 		return "", false, fmt.Errorf("OTP prerequisite must have one canonical source-builder command")
 	}
-	return strings.Replace(recipe, "\n"+line, "\nRUN --network=default "+strings.TrimPrefix(line, "RUN "), 1), true, nil
+	executed, err := nativeUtilityPrerequisiteRecipe(recipe, selected)
+	return executed, true, err
 }
 
 // Separate from the frozen original 13 tool replays and 28 hosted cases.
@@ -173,7 +183,12 @@ func TestCommonElixirOfflineQualification(t *testing.T) {
 			t.Cleanup(func() { nativeUtilityCleanup("image", "rm", "-f", tag) })
 			ctx, cancel := context.WithTimeout(t.Context(), 45*time.Minute)
 			defer cancel()
-			command := exec.CommandContext(ctx, "docker", docker.buildArgs([]string{"--secret", "id=render-env,src=" + bundle, "-t", tag}, source, true)...)
+			extra := []string{"--secret", "id=render-env,src=" + bundle, "-t", tag}
+			args := docker.buildArgs(extra, source, true)
+			if prerequisites {
+				args = docker.prerequisiteBuildArgs(extra, source, true)
+			}
+			command := exec.CommandContext(ctx, "docker", args...)
 			log, buildErr := command.CombinedOutput()
 			must(t, os.WriteFile(filepath.Join(evidence, "build.log"), log, 0o600))
 			if buildErr != nil {
@@ -221,7 +236,7 @@ func TestCommonElixirQualificationCanonicalRecipes(t *testing.T) {
 				t.Fatal("OTP source preparation changed another network boundary")
 			}
 			if overlay {
-				if strings.Replace(executed, "RUN --network=default --mount=type=bind", "RUN --mount=type=bind", 1) != string(recipe) {
+				if nativeUtilityWithoutRunNetwork(executed) != nativeUtilityWithoutRunNetwork(string(recipe)) {
 					t.Fatal("OTP test overlay changed the canonical selected payload or authored commands")
 				}
 				for _, bad := range []string{strings.ReplaceAll(string(recipe), " /usr/libexec/bex-native/build-otp ", " unrelated "), string(recipe) + string(recipe)} {

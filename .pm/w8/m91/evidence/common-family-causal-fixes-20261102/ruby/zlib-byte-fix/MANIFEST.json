@@ -1,0 +1,77 @@
+{
+  "RECEIPT.json": {
+    "bytes": 6217,
+    "sha256": "5d16b050562e0b8f20fc5113d7ef8381d72046a60e0606e14fbd8a30a82cc5e7",
+    "mode": "0o644"
+  },
+  "before/lego/operator/internal/build/testdata/native-ruby-qualification/check.rb": {
+    "bytes": 3871,
+    "sha256": "36bf12ce0ed5fca238776e88250a2e78e373c2f8d4b3800a4a8ac528642d6082",
+    "mode": "0o644"
+  },
+  "corrupted-decoded-bytes-refused.rb": {
+    "bytes": 624,
+    "sha256": "3159bbc0f28daa762c6bbd50488877d5ceb0a10f2cc6bac578d64bfbfac85958",
+    "mode": "0o644"
+  },
+  "corrupted-decoded-bytes-refused.stderr": {
+    "bytes": 138,
+    "sha256": "9339328b93e0effb4265ddb0224bedb3c006de6b6cbbc36717e37536a85cab7a",
+    "mode": "0o644"
+  },
+  "corrupted-decoded-bytes-refused.stdout": {
+    "bytes": 350,
+    "sha256": "29bca24c64f264cd35db8ce26968f20bcd19b3aead5673681d5ad4b136be5de1",
+    "mode": "0o644"
+  },
+  "fixed-green.rb": {
+    "bytes": 615,
+    "sha256": "c6a480995b19fc6b21a745d58bbab4a2f752b95acfc994706b2a958fe37e8bf7",
+    "mode": "0o644"
+  },
+  "fixed-green.stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "mode": "0o644"
+  },
+  "fixed-green.stdout": {
+    "bytes": 355,
+    "sha256": "562b717e53631acf7dfe6ce66a0c7d10e2e53d15d504bf92132fabbfe7d8ba40",
+    "mode": "0o644"
+  },
+  "old-red.rb": {
+    "bytes": 611,
+    "sha256": "e0d301098f902dc1fe666d16d4eb0768008d66f20bfd570d2d4eb8a182c35e57",
+    "mode": "0o644"
+  },
+  "old-red.stderr": {
+    "bytes": 114,
+    "sha256": "6a851ce99bee703420c6f027f0b106134dc7c215c6732fcb33f131abc0806e9b",
+    "mode": "0o644"
+  },
+  "old-red.stdout": {
+    "bytes": 350,
+    "sha256": "29bca24c64f264cd35db8ce26968f20bcd19b3aead5673681d5ad4b136be5de1",
+    "mode": "0o644"
+  },
+  "patch.diff": {
+    "bytes": 846,
+    "sha256": "8ff17e21b412a0ccc59f849d9c928dab4fe13d763e58708b03115496e80394ff",
+    "mode": "0o644"
+  },
+  "source/lego/operator/internal/build/testdata/native-ruby-qualification/check.rb": {
+    "bytes": 3875,
+    "sha256": "aeab0b2a5899f06731a584ccc4de53219179a1ef1e42afd32e5dcf9cdd0d9264",
+    "mode": "0o644"
+  },
+  "syntax.stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+    "mode": "0o644"
+  },
+  "syntax.stdout": {
+    "bytes": 10,
+    "sha256": "bbafef10c22b9323fa5589564990f57fbf57f9a632381d5e765dc5a3b25b4a1b",
+    "mode": "0o644"
+  }
+}

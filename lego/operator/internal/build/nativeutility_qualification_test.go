@@ -138,13 +138,13 @@ func (d nativeUtilityDocker) buildArgs(extra []string, source string, load bool)
 	return append(append(args, extra...), source)
 }
 
-// prerequisiteBuildArgs is buildArgs for the one export that fetches test
-// prerequisites. A build-level --network none also binds every
+// prerequisiteBuildArgs is buildArgs for a recorded build/export that fetches
+// test prerequisites. A build-level --network none also binds every
 // RUN --network=default, so the wheel download could never resolve a host;
 // this build's default network is the daemon's, and every RUN that must stay
 // offline names --network=none itself.
-func (d nativeUtilityDocker) prerequisiteBuildArgs(extra []string, source string) []string {
-	args := d.buildArgs(extra, source, false)
+func (d nativeUtilityDocker) prerequisiteBuildArgs(extra []string, source string, load bool) []string {
+	args := d.buildArgs(extra, source, load)
 	for i := range args[:len(args)-1] {
 		if args[i] == "--network" && args[i+1] == "none" {
 			args[i+1] = "default"
@@ -152,6 +152,70 @@ func (d nativeUtilityDocker) prerequisiteBuildArgs(extra []string, source string
 		}
 	}
 	return args
+}
+
+// nativeUtilityPrerequisiteRecipe opens only the caller-validated, checksum-
+// bound platform RUN. All other RUN instructions become explicitly offline
+// before the CLI default is opened. Generated COPY heredocs are data, including
+// the env loader handled by runNativeBuildShell, and remain byte-for-byte.
+func nativeUtilityPrerequisiteRecipe(canonical, selected string) (string, error) {
+	if !strings.HasPrefix(selected, "RUN ") || strings.Contains(selected, "\n") {
+		return "", fmt.Errorf("prerequisite must be one complete canonical RUN")
+	}
+	lines := strings.Split(canonical, "\n")
+	heredoc, found := "", 0
+	for i, line := range lines {
+		if heredoc != "" {
+			if line == heredoc {
+				heredoc = ""
+			}
+			continue
+		}
+		if strings.HasPrefix(line, "COPY ") && strings.Contains(line, "<<") {
+			_, tail, quoted := strings.Cut(line, "<<'")
+			end, _, closed := strings.Cut(tail, "'")
+			if !quoted || !closed || !regexp.MustCompile(`^[A-Z][A-Z0-9_]*$`).MatchString(end) {
+				return "", fmt.Errorf("unexpected canonical COPY heredoc")
+			}
+			heredoc = end
+			continue
+		}
+		command, run := strings.CutPrefix(line, "RUN ")
+		if !run {
+			continue
+		}
+		hasNetwork := false
+		for flags := command; strings.HasPrefix(flags, "--"); {
+			flag, tail, hasCommand := strings.Cut(flags, " ")
+			if !hasCommand {
+				return "", fmt.Errorf("canonical RUN has no command")
+			}
+			if strings.HasPrefix(flag, "--network=") {
+				if hasNetwork || flag != "--network=none" {
+					return "", fmt.Errorf("unexpected canonical RUN network flag")
+				}
+				hasNetwork = true
+			}
+			flags = tail
+		}
+		if line == selected {
+			if hasNetwork {
+				return "", fmt.Errorf("prerequisite already has a network flag")
+			}
+			lines[i] = "RUN --network=default " + command
+			found++
+		} else if !hasNetwork {
+			lines[i] = "RUN --network=none " + command
+		}
+	}
+	if heredoc != "" || found != 1 {
+		return "", fmt.Errorf("prerequisite requires one RUN and complete canonical heredocs")
+	}
+	return strings.Join(lines, "\n"), nil
+}
+
+func nativeUtilityWithoutRunNetwork(recipe string) string {
+	return strings.ReplaceAll(strings.ReplaceAll(recipe, "\nRUN --network=default ", "\nRUN "), "\nRUN --network=none ", "\nRUN ")
 }
 
 func (d nativeUtilityDocker) runImage(t *testing.T, tc nativeUtilityCase, tag, evidence string, prerequisites bool) {
@@ -217,8 +281,12 @@ func nativeUtilityWheelRecipe(recipe, common string) (string, error) {
 	// Only this recorded prerequisite stage has network access. The actual
 	// canonical authored build and runtime commands remain network-off.
 	poetry := "\nRUN /usr/local/bin/python -m venv /opt/bex/poetry && "
-	if strings.Count(prefix, poetry) != 1 {
+	offlinePoetry := strings.Replace(poetry, "\nRUN ", "\nRUN --network=none ", 1)
+	if strings.Count(prefix, poetry)+strings.Count(prefix, offlinePoetry) != 1 {
 		return "", fmt.Errorf("wheel preparation requires the canonical modern Python Poetry bootstrap")
+	}
+	if strings.Contains(prefix, offlinePoetry) {
+		poetry = offlinePoetry
 	}
 	prepare := "\nRUN --network=default /usr/local/bin/python3 -m pip wheel --disable-pip-version-check --wheel-dir /opt/bex-test-wheels pyvips==3.2.0 Django==5.2.18 poetry==2.1.3\n" +
 		"ENV PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/bex-test-wheels\n"
@@ -246,7 +314,7 @@ func nativeUtilityExportWheels(t *testing.T, d nativeUtilityDocker, prepared, bu
 	wheels := filepath.Join(evidence, "prepared-wheels")
 	ctx, cancel := context.WithTimeout(t.Context(), 30*time.Minute)
 	defer cancel()
-	args := d.prerequisiteBuildArgs([]string{"--file", recipePath, "--secret", "id=render-env,src=" + bundle, "--output", "type=local,dest=" + wheels}, source)
+	args := d.prerequisiteBuildArgs([]string{"--file", recipePath, "--secret", "id=render-env,src=" + bundle, "--output", "type=local,dest=" + wheels}, source, false)
 	command := exec.CommandContext(ctx, "docker", args...)
 	log, err := command.CombinedOutput()
 	must(t, os.WriteFile(filepath.Join(evidence, "prerequisites.log"), log, 0o600))
@@ -297,11 +365,18 @@ func TestNativeUtilityBuildUsesExplicitBuilderPlatformAndOwner(t *testing.T) {
 	if !slices.Equal(args[:7], []string{"buildx", "build", "--builder", d.builder, "--platform", d.platform, "--load"}) || !slices.Contains(args, d.label()) {
 		t.Fatalf("build escaped explicit builder/platform/owner: %v", args)
 	}
-	prerequisites := d.prerequisiteBuildArgs([]string{"--output", "type=local,dest=wheels"}, "source")
+	prerequisites := d.prerequisiteBuildArgs([]string{"--output", "type=local,dest=wheels"}, "source", false)
 	if slices.Contains(prerequisites, "--load") {
 		t.Fatal("prerequisite export loaded an unnecessary image")
 	}
-	// Only the prerequisite export may reach the network; image builds stay offline.
+	loadedPrerequisite := d.prerequisiteBuildArgs([]string{"-t", "unique-owned-image"}, "source", true)
+	if !slices.Equal(loadedPrerequisite[:7], args[:7]) {
+		t.Fatalf("prerequisite image lost its explicit --load/builder/platform: %v", loadedPrerequisite)
+	}
+	if i := slices.Index(loadedPrerequisite, "--network"); i < 0 || loadedPrerequisite[i+1] != "default" {
+		t.Fatalf("prerequisite image cannot fetch its checksum-bound platform source: %v", loadedPrerequisite)
+	}
+	// Only recorded prerequisite builds may reach the network; ordinary image builds stay offline.
 	if i := slices.Index(prerequisites, "--network"); i < 0 || prerequisites[i+1] != "default" {
 		t.Fatalf("prerequisite export cannot fetch its wheels: %v", prerequisites)
 	}
@@ -404,5 +479,53 @@ func TestNativeUtilityExactDefaultSelectionKeepsLookupEvidence(t *testing.T) {
 				}
 			}
 		})
+	}
+}
+
+func TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs(t *testing.T) {
+	selected := "RUN --mount=type=bind,from=trusted,source=/reference,target=/reference,readonly /usr/libexec/build-source 28.0 " + strings.Repeat("a", 64)
+	canonical := "FROM trusted\nRUN prepare-platform\n" + selected + "\n" +
+		"COPY <<'BEX_LOAD_ENV' /opt/bex/load-env\nRUN --network=host literal-heredoc-data\nBEX_LOAD_ENV\n" +
+		"COPY --chmod=755 <<'BEX_PNPM' /usr/local/bin/pnpm\nRUN literal-pnpm-data\nBEX_PNPM\n" +
+		"RUN --network=none already-offline\n" +
+		"RUN --mount=type=secret,id=render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nkeep --network=host literal\"]\n" +
+		"CMD [\"unchanged --network=default runtime\"]\n"
+	expected := "FROM trusted\nRUN --network=none prepare-platform\nRUN --network=default " + strings.TrimPrefix(selected, "RUN ") + "\n" +
+		"COPY <<'BEX_LOAD_ENV' /opt/bex/load-env\nRUN --network=host literal-heredoc-data\nBEX_LOAD_ENV\n" +
+		"COPY --chmod=755 <<'BEX_PNPM' /usr/local/bin/pnpm\nRUN literal-pnpm-data\nBEX_PNPM\n" +
+		"RUN --network=none already-offline\n" +
+		"RUN --network=none --mount=type=secret,id=render-env [\"/bin/bash\",\"-c\",\". /opt/bex/load-env\\nkeep --network=host literal\"]\n" +
+		"CMD [\"unchanged --network=default runtime\"]\n"
+	actual, err := nativeUtilityPrerequisiteRecipe(canonical, selected)
+	must(t, err)
+	if actual != expected {
+		t.Fatalf("network flags changed canonical commands or heredoc data:\n%s", actual)
+	}
+	for name, invalid := range map[string]string{
+		"missing":           strings.ReplaceAll(canonical, selected, "RUN different-source"),
+		"duplicate":         canonical + selected + "\n",
+		"other-open-RUN":    canonical + "RUN --network=default fetch-unreviewed\n",
+		"hidden-open-flag":  canonical + "RUN --mount=type=secret,id=x --network=host fetch-unreviewed\n",
+		"duplicate-network": canonical + "RUN --network=none --network=host fetch-unreviewed\n",
+		"unterminated-data": canonical + "COPY <<'BEX_DATA' /x\nRUN ignored\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if _, err := nativeUtilityPrerequisiteRecipe(invalid, selected); err == nil {
+				t.Fatal("changed or ambiguous prerequisite accepted")
+			}
+		})
+	}
+}
+
+func TestNativeUtilityWheelPreparationKeepsOfflineBootstrap(t *testing.T) {
+	const common = "ghcr.io/bex-co/bex-cnb-run@" + otherDigest
+	canonical := "FROM trusted-runtime AS source\nFROM " + common + "\nRUN --network=none /usr/local/bin/python -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install poetry==2.1.3\nCOPY . .\nRUN --network=none original-build\n"
+	prepared, err := nativeUtilityWheelRecipe(canonical, common)
+	must(t, err)
+	if !strings.Contains(prepared, "RUN --network=none /usr/local/bin/python -m venv") || strings.Contains(prepared, "original-build") {
+		t.Fatal("already-offline bootstrap lost its flag or authored source reached wheel export")
+	}
+	if strings.Count(prepared, "RUN --network=default ") != 1 {
+		t.Fatal("wheel acquisition network boundary changed")
 	}
 }

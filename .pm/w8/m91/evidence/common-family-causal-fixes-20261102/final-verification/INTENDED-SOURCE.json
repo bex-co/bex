@@ -1,0 +1,82 @@
+[
+  {
+    "slice": "pid1",
+    "relative": "lego/operator/internal/build/nativequalification_init_test.go",
+    "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/nativequalification_init_test.go",
+    "before": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466",
+    "after": "5540c1665b514cb2bf92c9ad47c8d48a6c174edadd486dad24115e0cb764ca86",
+    "bytes": 38306
+  },
+  {
+    "slice": "pid1",
+    "relative": "lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/testdata/native-common-init/identity.js",
+    "before": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438",
+    "after": "b112a923a58f6a390f212e66f64eccbb004567448ef1f654081f167d6162cbd9",
+    "bytes": 5842
+  },
+  {
+    "slice": "ruby",
+    "relative": "lego/operator/internal/build/testdata/native-ruby-qualification/check.rb",
+    "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/source/lego/operator/internal/build/testdata/native-ruby-qualification/check.rb",
+    "before": "36bf12ce0ed5fca238776e88250a2e78e373c2f8d4b3800a4a8ac528642d6082",
+    "after": "aeab0b2a5899f06731a584ccc4de53219179a1ef1e42afd32e5dcf9cdd0d9264",
+    "bytes": 3875
+  },
+  {
+    "slice": "metadata",
+    "relative": "lego/operator/internal/build/dockerhub.go",
+    "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/source/lego/operator/internal/build/dockerhub.go",
+    "before": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3",
+    "after": "522e2cbb4d0efecde76638f11311d002a903099041b5f1dc293092f36ecdae04",
+    "bytes": 13020
+  },
+  {
+    "slice": "metadata",
+    "relative": "lego/operator/internal/build/dockerhub_test.go",
+    "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/source/lego/operator/internal/build/dockerhub_test.go",
+    "before": "a943f9abf486bec635ece79e5fe68174170c302a1ac88b9340b0edd5e717a382",
+    "after": "a9e52e7ec61cccc6b6e1217eb92cf12d6cd0634c9396c7fd838e6c50582b8844",
+    "bytes": 14124
+  },
+  {
+    "slice": "network",
+    "relative": "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+    "before": "40d4b9607b0b831635890945c942eb124773bef48d3c8c2a3ec981f1337789bd",
+    "after": "e077bcd5d600918d4c0bea36c4f214f7bd6e162cf6ff26340f67fa2ef2a4a895",
+    "bytes": 15963
+  },
+  {
+    "slice": "network",
+    "relative": "lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+    "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+    "before": "d59edc33fe3b91ddf83bd9b7e0b862c3216bcceb40dc885ddb73e3220cbd2e6a",
+    "after": "9141c281cfcb6b4f2f836df049673748ec53516ce45c30bdcab879e54c6758f6",
+    "bytes": 12614
+  },
+  {
+    "slice": "network",
+    "relative": "lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+    "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+    "before": "019e2bb64eab75d9c92e0d48e7d1d18ce20df556df0cbde0270d34c6f8642702",
+    "after": "3698ceec0656a26e7b8803d6c7b147974b06c6e3dbff30134cf3560d59d6e89f",
+    "bytes": 11272
+  },
+  {
+    "slice": "network",
+    "relative": "lego/operator/internal/build/nativeutility_qualification_test.go",
+    "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativeutility_qualification_test.go",
+    "before": "8de6b083d4d7afcd7e51736818063431d9b6f90a640291b26b123cde05ffbd74",
+    "after": "6331504e87626f0ede4878d25e103f725b88c7d97b21ad647e978c46f52c02b2",
+    "bytes": 24741
+  },
+  {
+    "slice": "network",
+    "relative": "lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "before": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4",
+    "after": "d18d87e77ef609a8ecbb936aaf84273ff3431bd0035afcff72d5903d64e0ba2a",
+    "bytes": 12829
+  }
+]

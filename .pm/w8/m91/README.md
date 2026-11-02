@@ -42,13 +42,11 @@ The publishing factory and offline utility gates are implemented for all 27 curr
 
 Three final simplify reviewers cleared the mechanism after removing an unused config field and avoiding wheel downloads on non-Python bases. The production supplier catalog remains empty until actual published digests, signatures, SBOMs and anonymous pulls are reviewed. No source-only task or milestone is closed here; publication, adoption and the original fresh two-client hosted DoD remain active worker work. See `deploy/native-base/README.md` and the implementation review in design.md.
 
-
 ## Generated-image and loader checkpoint — 2026-10-29
 
 The [current-generator bundle](evidence/current-generator-20261029/README.json) records thirteen original program/data cases and ten extended behavior/error checks, thirty-nine offline runtime HTTP/artifact proofs and the same checks through a command executed on the generated image, plus independent static gzip/ZIP decoding. The command test is not a Kubernetes pre-deploy Job; its Python cases use the system companion, not the original primary-Python hosted fixtures. The supplier-removed generated baseline fails on the actual PostgreSQL dependency. Original hosted DoDs stay open.
 
 The [exact Python default proof](evidence/exact-python-default-20261029/README.md) found and fixed a stale loader cache after exact primary replacement. Python 3.14.8, eighty shared objects, actual `dlopen`, packaging/C-extension behavior, patched Brotli and the genuine compressed SPDX SBOM pass locally on arm64. Both empty and populated catalogs now run meaningful resolver/neighbor checks, including upstream-retaining backports. The production catalog is still empty; published artifacts, adoption and actual hosted lifecycle checks remain active work.
-
 
 ## Maintained generated-image checkpoint — 2026-10-30
 
@@ -58,13 +56,11 @@ The opt-in `TestNativeUtilityGeneratedImages` and bounded testdata live outside 
 
 This is local execution evidence. Published amd64/arm64 suppliers, actual production adoption, original fresh two-client hosted acceptance, Kubernetes pre-deploy/static publication and owned hosted cleanup remain open. The production supplier catalog is still empty.
 
-
 ## Actual local pre-deploy and amd64 default checkpoint — 2026-10-30
 
 The [dev-8 Job proof](evidence/dev8-predeploy-20261030/README.md) executes the canonical controller-generated PodTemplate with the retained immutable Node image: thirteen original programs, thirty-nine loopback HTTP proofs, ten utility groups and env/file/credential checks pass. An omitted-pull-secret revision remains unstarted with authentication denial even after caching the image. Exact owned objects, Pods and the isolated registry proxy are removed; baseline UIDs are unchanged. It uses companion Python 3.11 and a metadata owner wrapper, so it does not establish primary-Python, native-init or full controller/backend release behavior.
 
 The [genuine amd64 exact-default proof](evidence/exact-python-default-amd64-20261030/README.md) independently verifies Python 3.14.8, all eighty shared libraries, actual loading/C-extension behavior and patched Brotli in full genuine Syft/SPDX archives. It uses the reviewed Python primary with the unchanged factory recipe, rather than the earlier bounded generic supplier. Published-supplier replay, actual production adoption and original fresh hosted acceptance remain open; no task is closed by these local checkpoints.
-
 
 ## Publication recovery checkpoint — 2026-10-30
 
@@ -78,21 +74,17 @@ The [full operator suite with a complete synthetic catalog](evidence/complete-ca
 
 The [actual native-init coexistence proof](evidence/native-init-coexistence-20261030/README.md) ran `/native-init` as PID 1 with thirteen original programs, thirty-nine HTTP proofs and ten utility groups. PATH/literal/empty environment checks, child exit 37 and forwarded SIGTERM/exit 23 pass; all four new owned containers and the generated image are gone. The canonical generator/resolver, `StageNativeInit` and BuildJob named-context metadata are retained, while actual execution used Docker BuildKit, not a production buildctl container or Kubernetes build Job lifecycle. This is local arm64 Node with companion Python 3.11; it adds no primary-Python 3.13, amd64, publication, adoption or hosted claim. Those acceptance gates remain open.
 
-
 ## Fresh acceptance identities and baseline checkpoint — 2026-10-30
 
 The [preparation refresh](evidence/acceptance-preparation-refresh-20261030/README.md) changes only unused display names/date arguments and adds UTC/prior-intent guards, preserving all twenty-eight original program/data/command identities. A removed foreign QA fixture has a documented cleanup and independent exact 404; historical IDs remain protected, and baseline reclassification requires fresh evidence before any own create. Pure guard checks pass. No native hosted request or acceptance is claimed; actual adoption and the fresh own-authenticated baseline remain required.
-
 
 ## Python 3.7 recovery eligibility checkpoint — 2026-10-30
 
 [Python 3.7 publication evidence](evidence/publication-python37-recovery-20261030/README.md) shows an actual successful build, both runtime architectures and both scans, followed by a first-SPDX Rekor POST failure with no underlying status exposed. Exact anonymous metadata and unchanged recipe/base checks pass. A data-only authorization permits only that immutable artifact through the existing full-gate recovery path; no new dispatch or approval is claimed. The same phase also failed in Node 14 recovery, so report-size/API behavior is being investigated before repeating it. Actual publication, full catalog adoption and hosted acceptance remain open.
 
-
 ## Full-report signing recovery checkpoint — 2026-10-30
 
 [Repeated first-SPDX failure and protocol evidence](evidence/publication-rekor-v2-20261030/README.md) includes a genuine 25 MB exact-candidate report and a verified Cosign 3.1.4 local experiment producing a 415-byte v2 log request from an unchanged 23 MB predicate. The narrow workflow fix pins 3.1.4 and explicitly selects its official TUF v2 signing configuration while preserving full SPDX/Trivy reports and every identity/runtime/scan/transparency gate. Independent review, workflow validation and actionlint pass. These local protocol checks do not approve public signatures; actual CI replay, per-candidate review, full catalog adoption and original hosted acceptance remain open.
-
 
 ## First published supplier review — 2026-10-30
 
@@ -100,18 +92,15 @@ The [published Node 14 review](evidence/published-node14-20261030/README.md) ver
 
 Critical scan findings, including the custom Brotli backport flags, remain recorded; this is no security waiver or zero-CVE claim. Only this supplier evidence is approved. The production catalog is unchanged, and other supplier reviews, complete adoption and the original generated/hosted acceptance remain open. No task is closed by this checkpoint.
 
-
 ## Three published supplier reviews — 2026-10-30
 
 The same strict review now passes for [Node 16 Bookworm](evidence/published-node16-20261030/README.md) and [Python 3.7 Bullseye](evidence/published-python37-20261030/README.md), alongside the earlier Node 14 supplier. Each has five complete signed bundles, independent amd64/arm64 report and image-byte bindings, current successful runtime/scan gates, exact producer/recovery inputs and actual wrong-source/wrong-subject rejection controls. The generic native-only review driver and compact full-predicate replay records are retained; complete report bodies remain outside Git in verified gzip/public immutable OCI objects.
 
 All critical findings remain visible, including the Bullseye custom-backport flags. These are supplier identity/runtime/report reviews, not security waivers. The full 27-line catalog, production adoption, exact generated-image replay and original hosted DoDs remain open; no task or milestone is closed.
 
-
 ## Verified recovery retirement — 2026-10-30
 
 [Fresh source-specific discovery reads](evidence/recovery-retirement-20261030/README.md) match the approved Node16/Python3.7 index bytes; their temporary recovery authorizations are retired. Other recovery records remain unchanged. This cleanup adds no supplier adoption or hosted acceptance claim; all original tasks remain open.
-
 
 ## Four published supplier reviews — 2026-10-30
 
@@ -149,26 +138,21 @@ Seven of 27 suppliers remain verified; the production catalog is empty. Twenty r
 
 [The reviewed private V10 tool and exact-source diagnosis](evidence/native-review-tuf-isolation-20261030/README.md) isolate strict Cosign TUF caches and retain whitelisted byte-failure counters. Two rejected Ruby 3.1 V8 attempts remain explicit: one unclassified size/SHA rejection and one incomplete report pair after TUF persistence failure. Four concurrency, six focused and43 strict controls pass; a new complete validation is assigned, with no artifact approval yet. Seven suppliers remain approved, and all original hosted DoDs remain open.
 
-
 ## Complete-layer scanner recovery — 2026-10-30
 
 [Actual Elixir failures, pinned scanner source and reviewed staging controls](evidence/publication-trivy-staging-20261030/README.md) support a coverage-preserving publication fix: complete remote layers are staged and verified before tar analysis, databases finish outside each full-scan budget, and owned temporary storage is measured and bounded. Both immutable recovery candidates repeat all current runtime, complete scan, SBOM and signing gates. Local controls and repository checks pass; actual runner capacity and successful corrected publication remain unproved. Seven suppliers remain approved; no task or original hosted DoD is closed.
-
 
 ## Bounded ranged body review — 2026-10-30
 
 [Rejected short-body evidence and reviewed V11 controls](evidence/native-review-ranged-streams-20261030/README.md) retain all earlier Ruby3.1 failures and add bounded contiguous range resumption while preserving the canonical whole-SHA/size/cache and strict trust gates. Eleven new range controls plus existing concurrency/isolation/strict guards and three source reviews pass. One new complete validation is assigned; no supplier approval or original hosted DoD is claimed. Seven suppliers remain approved.
 
-
 ## Corrected Elixir publication targets — 2026-10-30
 
 [The exact scheduling receipts](evidence/corrected-elixir-publication-queue-20261030/README.md) confirm guarded retirement of only this session's duplicate full push request and one corrected publication each for Elixir1.18/1.19 on846a560. Actual runtime job identities are queued; old failures remain retained. No running compile was cancelled and no supplier is newly approved. All original hosted acceptance remains pending.
 
-
 ## Eighth supplier independently verified — 2026-10-30
 
 [Fresh-build Ruby3.1](evidence/published-ruby31-20261030/README.md) passed a new complete V11 validation: all33 blobs/1.354GB, five strict signed bundles, independent architecture reports and actual negative controls. Twenty-one genuine prior complete reads retain custody and fresh HEAD checks; twelve new reads include both previously rejected blobs from zero. Root rechecked the full frozen chain and raw/gzip custody. Earlier failures remain rejected and the derived-gzip loss remains explicit. All13,690 findings/228critical per architecture are retained. Eight of27 suppliers are approved; the production catalog and original hosted acceptance remain pending.
-
 
 ## Elixir1.17 publication recovery — 2026-10-30
 
@@ -182,20 +166,17 @@ Each old request retires only after its correct replacement native job exists an
 
 **Queue-handoff completion — 2026-10-30 21:32Z:** all ten replacement requests now have actual83c native jobs. Each old99f request received one cancellation only after a fresh queued/runner0/zero-step check; all ten old runs/jobs are independently confirmed completed/cancelled with no started work. The w1 record retains raw bindings, terminal receipts, earlier indexing/pending/HTTP502 observations and an independent raw-API audit. All modern obligations and all started work remain preserved. This adds no supplier approval, catalog adoption or hosted/task closure.
 
-
 ## Concurrent Go1.27 utility repair — 2026-10-30 23:14Z
 
 The preserved old99f Go1.27 build completed, but the ARM64 real offline tool gate failed because `unzip` was absent; AMD64 verification was canceled. Concurrent w1 shipped `8af93065a`, adding only explicit `unzip` to the shared `--no-install-recommends` package list, with all other non-PM files identical to the reviewed83c profile. The real archive gate remains unchanged. The old Go index is not eligible recovery or supplier approval.
 
 The fix's own automatic full push request41142599053 was canceled once before any native build started and is confirmed terminal. One Go-only normal rebuild is bound to8af/main/attempt1, run41142870861/job124361678277; build/runtime/scan/sign success is still pending. Existing modern requests and three legacy requests are preserved. The [w1 board](../../w1/README.md) links immutable failure, source, scheduling and exact historical-recipe compatibility evidence. Existing successfully gated images retain their exact old producer/verifier identity; this CI repair adds no supplier approval, production catalog adoption or hosted/task closure.
 
-
 ## Concurrent Elixir1.20 normal rebuild — 2026-10-30 23:33Z
 
 Preserved old99f Elixir1.20 passed its build, both runtime gates and full scans, then failed during ARM64 registry Syft layer download with HTTP2 PROTOCOL_ERROR. Log order supports three completed signing/attestation commands; it is not a complete independent five-proof acceptance. The existing workflow fixes this transport path, but the explicit-unzip installer change makes the old index ineligible for same-recipe recovery.
 
 Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed the PM-only9cb update against8af, checked all recent and known nonterminal requests, and submitted exactly one normal build. Actual native binding is9cb/main/attempt1, run41144656779/job124367871533, queued at first observation. No old-index authorization, cancellation, supplier approval or hosted/task closure is claimed. The [w1 board](../../w1/README.md) links frozen logs, dedupe, literal source predicate and actual run/jobs; independent Elixir supplier review remains w8/m91's work.
-
 
 ## 用户决定（2026-10-29，`/unblock w8` 主题 1）——单一 Bookworm 公共底优先
 
@@ -204,11 +185,9 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 - **冲突处理：** 明确用户决定覆盖较早 worker 按 parity 推断的选项 C。已开始的按语言线发布可收尾并保留真实证据，最终采用单一 Bookworm 公共底；无需把同一决定再交回用户。
 - **剩余工作：** [t007](t007.md) 实现并验证共同底与精确运行时安装，复用已有包、工具、修补和发布证明。停止自动扩大 C 发布，不取消已开始的工作；共同底采用和原28个程序/数据/命令的真实验收仍由 worker 完成。
 
-
 ## Bounded dependency-transfer repair — 2026-10-31
 
 [Actual Python3.11/Python3.13 download failures and repair](evidence/native-fetch-transport-20261031/README.md) retain the terminal job identities and private raw-log hashes. Wheel transfer retries are bounded to three fresh attempts and keep checksum/metadata checks final; PGDG's pinned key fetch now retries TLS transport failures within explicit time limits. Native matrix/transfer and OCI staging regressions pass. The old Rust installer failure remains recorded separately. This is recovery of already-started publication work; no new supplier approval, common-base design choice, adoption or hosted/task closure is claimed.
-
 
 ## Ninth supplier and JavaDB deadline repair — 2026-10-31
 
@@ -216,21 +195,17 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 
 [Node26's actual JavaDB transfer](evidence/java-db-budget-20261031/README.md) reached86.08% before the21-minute deadline/10-second kill grace. Only the separate JavaDB-prefetch outer budget grows to30minutes; all complete image-scan gates stay unchanged. This fixes an existing publication budget; replacement execution remains unproved.
 
-
 ## Tenth published supplier — 2026-10-31
 
 [Root-approved Ruby3.4](evidence/published-ruby34-20261031/README.md) binds source83c run41129277963/job124323020658, five strict signed proofs, two actual negative controls, both full report pairs and33 fresh complete anonymous blobs/1,192,208,302B. Root independently checked196 frozen payloads,22 Git recipe files/modes, all five signed-subject/canonical-predicate roundtrips and seven TUF roots. Both images report Ruby3.4.12; original generated/default and hosted cases remain separate. Published approvals are10/27, with catalog adoption and the common-base implementation still open. All findings remain retained.
-
 
 ## Eleventh published supplier — 2026-10-31
 
 [Root-approved Python3.12](evidence/published-python312-20261031/README.md) binds source83c run41129082245/job124318545123. Five strict signed proofs, two actual negative controls, both full report pairs and all35 descriptors/1,188,703,761B are covered. Root independently checked194 frozen payloads,22 Git recipe files/modes and all five signed-subject/canonical-predicate roundtrips. Of the blob bytes,500,339,368B were26 new complete reads;688,364,393B were nine genuine prior Python3.14 reads, each matched against its approved receipt/journal and an actual fresh anonymous HEAD. No unselected cached entry counts. Published approvals are11/27; generated/default, hosted, common-base design and catalog adoption remain open.
 
-
 ## Twelfth published supplier — 2026-10-31
 
 [Root-approved Node22](evidence/published-node22-20261031/README.md) binds source83c run41128855169/job124317237455. Five strict signed proofs, two actual negative controls, seven fresh TUF roots and both complete report pairs pass. Root checked all194 frozen payloads,22 Git recipe files/modes and all five signed-subject/canonical-predicate roundtrips. All35 descriptors/1,228,736,252B are covered:26 new complete reads/540,371,859B and nine genuine prior Python3.14 reads/688,364,393B, each matched to the approved receipt/journal and an actual fresh anonymous HEAD. Both images contain Node22.23.4. Published approvals are12/27; original generated/default and hosted acceptance, common-base implementation and catalog adoption remain open. All findings remain retained.
-
 
 ## Thirteenth published supplier — 2026-10-31
 
@@ -239,7 +214,6 @@ Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed th
 ## Three fixed publication requests bound — 2026-10-31
 
 [The complete plan and actual dispatch custody](evidence/targeted-native-rebuilds-20261031/README.md) records exactly one singleton normal build each for Python3.11, Python3.13 and Node26. Root independently checked all71 plan and133 execution files, direct HTTP200 returned run identities and all30 native Git inputs against the fixed2cc profile. The actual runs are41190561558/41190693730/41190806242, with successful matrices and queued build jobs at the frozen observation. No CI completion, new supplier approval or hosted acceptance is inferred from dispatch. Earlier actual failures and the stopped preflight remain retained.
-
 
 ## Common Bookworm first source slice — 2026-10-31
 
@@ -305,16 +279,13 @@ The common generated-image harness now prepares separate jq/rsync and Python met
 
 [The reviewed five-file transport/trigger repair](evidence/native-mirror-transport-source-20261031/README.md) stages fully SHA/size-verified public bytes before Trivy reads the original index through an owned loopback registry, preserving raw reference/config/platform/report identities and every scan/signing/V11 gate. Fifty-eight controls and independent review pass after recorded cleanup/startup corrections; a real pinned Trivy0.70.0 tiny synthetic CLI smoke preserves all identities with exact owned cleanup and unchanged foreign cache. This smoke retains its unsupported-OS limitation and is not a production full-image qualification. Initial27, corrected29, final39 and smoke50 payloads are hash-bound. Actual qualified common publication, generated/family/default/companion and original28 hosted/adoption checks remain open; no pins or original programs changed.
 
-
 ## Further family qualification source — 2026-10-31
 
 [Separate opt-in family profiles](evidence/common-family-qualification-source-20261031/README.md) prepare legacy Python3.7/3.8, all six Ruby lines plus exact3.4.4/default and a static companion, all four Elixir lines plus exactOTP28.0, and Go/Rust native/compiler/tree checks. Source/unit/oracle checks, final full build-package suite and scoped lint pass; independent review corrected the local Mix application relationship and retained both freezes. No actual expanded image, wheel/Poetry/NIF/native compiler, both-architecture, native-init/Kubernetes or hosted qualification is inferred. The original13/28 programs and first cohort are unchanged; t007 remains in progress and all production pins remain empty.
 
-
 ## Modern Python and native-init qualification source — 2026-10-31
 
 [The 17-file source slice](evidence/modern-python-init-source-20261031/README.md) adds the five remaining modern Python table versions, requested-architecture native-init/drain preparation and read-only capacity observations. Source/unit checks, full build package, scoped lint and independent reviews pass after correcting PATH assumptions and two cleanup-order defects; all histories remain. Two genuine direct Linux cross-compiles verify ELF targets only, with owned cache cleanup. Actual profile/image/wheel/project/daemon/drain/hosted execution remains unrun; Node qualification source and the known pnpm14/16 issue remain separate pending work. No original13/28, first-cohort selector, runtime, production pin or task-completion change is claimed.
-
 
 ## Remaining Node qualification source — 2026-10-31
 
@@ -324,11 +295,9 @@ The common generated-image harness now prepares separate jq/rsync and Python met
 
 Run 41222919592 (source `874bec431`) published the common Bookworm candidate through every build/runtime/scan/sign gate. Both qualification jobs failed on Docker Hub transport, not code: amd64 `node-compute` passed its generated network-off commands, then `read selected native primary environment … context deadline exceeded` and CloudFront blob timeouts failed the remaining cases (arm64 likewise, plus a buildkit image pull TLS timeout). `1a2e65a30` makes `DockerHubResolver.ImageMetadata` retry `registry.TransientError` reads (3 attempts, 2 s/4 s), which the production resolve path shares; `dockerhub.go` is outside the workflow's `native*.go` trigger, so the next common run must be dispatched or ride a native change. Separately, `de52dd6ca` (w8/226) resolves the pnpm 14/16 startup failure with pnpm's standalone build and updates the Node qualification harness to expect it. No supplier approval, adoption or task closure is claimed here.
 
-
 ## Actual common artifact review — 2026-11-01
 
 [The complete common artifact review](evidence/common-artifact-review-20261101/README.md) verifies the published immutable Bookworm image on both architectures. All five signed payloads, strict source/subject negatives and41 fresh complete config/layer reads totaling1,522,239,095 bytes pass; an independent in-place audit agrees. The full signed scans retain all6,887 findings per architecture. The portable record authorizes this image for testing with no utility baseline yet. Complete generated-image utilities, every supported runtime/companion, production adoption and the original28 hosted cases remain open.
-
 
 ## Current image and complete utilities — 2026-11-01
 
@@ -336,20 +305,17 @@ Run 41222919592 (source `874bec431`) published the common Bookworm candidate thr
 
 The reviewed test-candidate record now has an actual complete300-file qualification-source baseline and both utility cohorts. The unchanged helper accepts it in a clean isolated source context; null baseline still refuses. Runtime-family/companion, native-init/pre-deploy, production adoption and the original28 hosted acceptance remain open. The exact14.21.2 prebuilt donor remains an actual execution dependency; no additional product decision is introduced. t007 stays in progress.
 
-
 ## Actual Node Yarn wrapper correction — 2026-11-01
 
 [The actual failed donor Node14 case and exact correction](evidence/node-yarn-wrapper-oracle-20261101/README.md) establish an oracle path defect: canonical Yarn resolves to its reviewed shell wrapper, while the check demanded the JavaScript file. Exact wrapper equality and a regression pass all10 host controls and the full Go build-package suite; original programs, positive projects and other assertions remain unchanged. The failed result is retained, and all owned resources are proven absent after cleanup.
 
 The amended qualification source needs a fresh full same-image utility CI cohort on both architectures before strict family reuse. The retained source1feba result remains historical; image0941 approval and empty production pins are unchanged. Full actual family, phase, adoption and original hosted acceptance remain open; t007 stays in progress.
 
-
 ## Actual Node14 donor pass and native-init correction — 2026-11-01
 
 [The real ARM64 Node14 donor case](evidence/node14-local-diagnostic-20261101/README.md) now passes exact Node/header/ABI/addon identity, npm/Yarn/pnpm lifecycle/engine controls and network-disabled runtime. Independent replay and complete owned-resource/process/config cleanup pass. It is one source6883953 local case, not full-family, both-architecture or hosted acceptance.
 
 [The native-init run and narrow Yarn exit correction](evidence/native-init-yarn-exit-oracle-20261101/README.md) preserve the separate failed attempt: npm passes; Yarn drains its held response correctly but its normal SIGTERM exit1 was refused. Upstream1.22.22 source confirms that status. The corrected Yarn-only predicate leaves all exact drain/HTTP/identity/cleanup checks intact; old-predicate regression fails and the corrected full Go build-package suite passes. No four-launch success is claimed; the remaining launches and current-source CI baseline require fresh execution. Both original source-bound histories remain retained and t007 stays in progress.
-
 
 ## Actual donor, native-init and child-build progress — 2026-11-01
 
@@ -359,7 +325,6 @@ Local [Node16](evidence/node16-local-diagnostic-20261101/README.md), [Node18](ev
 
 The current-source utility refresh later fails AMD64 on Docker Hub429 after its first positive case, matching the separate local Node20 supplier throttle. No failed result is accepted. [The verified immutable-metadata reuse fix](evidence/immutable-metadata-reuse-20261101/README.md) passes real request-count regression, full package, race, lint and independent checks. [Both actual quota failures](evidence/dockerhub-metadata-quota-20261101/README.md) remain unaccepted; new-source baseline, remaining families, actual Job, production adoption and original hosted DoDs remain open. t007 stays in progress.
 
-
 ## Source alignment and dependent queue — 2026-11-01
 
 [The original28 Free-contract follow-on](evidence/original28-free-contract-20261102/README.md) retains the selected workspace, canonical instance-hours allowance, fresh successful observations and all once/cleanup/adoption gates. The optional-coverage capture regression is corrected; all70 host controls pass and the old-method failure remains. Actual approval/Ready/Free fields remain null.
@@ -368,12 +333,18 @@ ADR060 now records all selected shared utility versions and exercised feature/AB
 
 Current-source run41368533416 completes the full AMD64 utility cohort in646.18 seconds with cleanup/hash/upload successful. ARM64 is running. The exact Node14.21.2 publication41360577241 completes all gates and exposes332869e644; its actual metadata/size check passes, while full strict artifact review remains pending. This milestone stays active for these checks and the remaining family/phase/adoption/original-hosted work.
 
-
 ## Current complete utility baseline accepted — 2026-11-01
 
 [Both actuale6a2386utility cohorts and full artifact intake](evidence/common-current-e6-20261102/README.md) pass on the same reviewed0941image. All712original members, executing300-file source and full default-Python reports are retained. The test-candidate record changes only source/current utility evidence; the original image approval remains unchanged. Existing-helper image/full-baseline validation passes. Family/companion/exact/legacy profiles, actual phase execution, production adoption and original28hosted acceptance remain open.
 
-
 ## Exact14.21.2 supplier qualified — 2026-11-01
 
 [The actual exact Node14.21.2 publication and V11 artifact review](evidence/exact-node14212-artifact-20261102/README.md) pass. All39fresh full blob reads, five complete signed payload/report roles, strict rejection controls, source/ancestry bindings and owned cleanup are retained losslessly; full findings are preserved. The same-version artifact gate is clear. Common generated exact-version/companion qualification and production adoption remain separate open work.
+
+## Actual family failures and applied causal fixes — 2026-11-02
+
+[The causal packet](evidence/common-family-causal-fixes-20261102/README.md) preserves the original 35 dispatches, six separate supplemental donor dispatches, complete raw job metadata, actual failed logs, local PID1 observations, source corrections, host controls, and independent reviews. The old-source ARM64 native-init artifact independently passes all four launches with exact drain/HTTP/identity/cleanup proofs; the AMD64 identity failure remains a failure and does not establish a transport defect. Seven Ruby zlib failures are byte-equality fixture errors; Go/Rust metadata admission and source-prerequisite DNS harness defects have narrow reviewed repairs. No failed result is upgraded to acceptance.
+
+All ten source changes are applied. The exact final Go build package passes in 19.675 seconds and pinned scoped lint reports zero issues after Root's `hasNetwork` boolean refinement; the earlier combined package run and three simplify perspectives are retained separately. Full source/patch custody distinguishes actual CI, local observation, synthetic host controls, and the earlier observer-only failures. Original programs/data/commands and all original milestone DoDs remain intact.
+
+The changed functional source still needs a fresh complete same-image utility CI baseline on both architectures and affected actual family replays. Actual Kubernetes phase replay, production adoption, and original 28 hosted acceptance remain open. This is implementation and diagnostic progress only: m91 and t007 stay in progress.

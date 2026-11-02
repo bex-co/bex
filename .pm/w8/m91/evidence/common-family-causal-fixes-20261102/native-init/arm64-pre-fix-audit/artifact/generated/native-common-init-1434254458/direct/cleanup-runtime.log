@@ -1,0 +1,47 @@
+{"run":"bex-init-1406-1793588518862785917","event":"listening"}
+{"run":"bex-init-1406-1793588518862785917","event":"hold_begin"}
+{"run":"bex-init-1406-1793588518862785917","event":"SIGTERM"}
+{"run":"bex-init-1406-1793588518862785917","event":"hold_end"}
+{"run":"bex-init-1406-1793588518862785917","event":"closed"}
+{
+  "phase": "runtime",
+  "run": "bex-init-1406-1793588518862785917",
+  "identity": {
+    "node": "24.22.1",
+    "executable": "/usr/local/bin/node",
+    "env": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    },
+    "baseEnv": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    },
+    "launch": "direct",
+    "init": {
+      "sha256": "a98891512176fb22df4bd64032b55ffcc00722a7754f9eb3903bf58b20e6f7f7",
+      "machine": 183,
+      "executable": true,
+      "pid1": "/native-init",
+      "argv": [
+        "/native-init",
+        "/bin/bash",
+        "-c",
+        "node capture-env.js direct && exec node server.js"
+      ]
+    }
+  },
+  "events": [
+    "listening",
+    "hold_begin",
+    "SIGTERM",
+    "hold_end",
+    "closed"
+  ],
+  "holds": 1,
+  "completed": 1,
+  "signals": 1,
+  "pass": true
+}

@@ -1,0 +1,14 @@
+{
+  "complete": true,
+  "failure": null,
+  "errors": [],
+  "owner": "bex-init-observe-a80669f36fd547e6",
+  "cid": "78bf3624664ef61d392070d88231f5364eb8027eaee21c9d39394f24946b241b",
+  "unknown_create": false,
+  "pending_pgids": [],
+  "exact_container_absence_proved": true,
+  "own_config_absent": true,
+  "cancel_signal": null,
+  "elapsed_seconds": 1.4026295419316739,
+  "scope": "Raw mixed-rootfs observation only; complete does not approve an emulator predicate or qualify native-init"
+}

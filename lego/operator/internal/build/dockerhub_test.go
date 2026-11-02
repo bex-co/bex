@@ -309,3 +309,65 @@ func TestImageMetadataCacheConcurrentReadsHaveIndependentResults(t *testing.T) {
 		t.Fatalf("warm concurrent reads fetched metadata again: %d", reads.Load())
 	}
 }
+
+func TestImageMetadataOfficialGoAndRust(t *testing.T) {
+	for _, repo := range []string{"golang", "rust"} {
+		t.Run(repo, func(t *testing.T) {
+			wantEnv := []string{"METADATA_FIXTURE=" + repo}
+			fixture := metadataCacheImage(t, repo, wantEnv)
+			fixture.image = strings.Replace(fixture.image, "node:", repo+":", 1)
+			routes := make(map[string][]byte, len(fixture.routes))
+			for path, data := range fixture.routes {
+				routes[strings.Replace(path, "/library/node/", "/library/"+repo+"/", 1)] = data
+			}
+			fixture.routes = routes
+			server, reads := metadataCacheServer(t, fixture)
+			resolver := &DockerHubResolver{Client: server.Client(), RegistryURL: server.URL}
+			env, history, err := resolver.ImageMetadata(t.Context(), fixture.image)
+			must(t, err)
+			if reads.Load() != 3 || !slices.Equal(env, wantEnv) || !slices.Equal(history, []string{"RUN fixture-" + repo}) {
+				t.Fatalf("official %s metadata did not traverse the verified index/manifest/config: reads=%d env=%v history=%v", repo, reads.Load(), env, history)
+			}
+		})
+	}
+}
+
+func TestImageMetadataReviewedPinGuards(t *testing.T) {
+	server, reads := metadataCacheServer(t)
+	resolver := &DockerHubResolver{Client: server.Client(), RegistryURL: server.URL}
+	digest := "sha256:" + strings.Repeat("a", 64)
+	for _, image := range []string{
+		"busybox:fixture@" + digest,
+		"unreviewed/golang:fixture@" + digest,
+		"library/rust:fixture@" + digest,
+		"golang:fixture",
+		"rust@" + digest,
+		"golang:fixture@sha256:short",
+		"rust:fixture@sha512:" + strings.Repeat("a", 64),
+		"golang:fixture@sha256:" + strings.Repeat("A", 64),
+		"rust:fixture@" + digest + "@extra",
+	} {
+		if env, history, err := resolver.ImageMetadata(t.Context(), image); err == nil || env != nil || history != nil {
+			t.Errorf("unreviewed repository or malformed pin accepted: %q env=%v history=%v err=%v", image, env, history, err)
+		}
+	}
+	if reads.Load() != 0 {
+		t.Fatalf("invalid pin reached the registry: %d reads", reads.Load())
+	}
+}
+
+func TestImageMetadataGoRustDoesNotExpandExactAPIs(t *testing.T) {
+	server, reads := metadataCacheServer(t)
+	resolver := &DockerHubResolver{Client: server.Client(), AuthURL: server.URL + "/token", RegistryURL: server.URL, HubURL: server.URL}
+	for _, repo := range []string{"golang", "rust"} {
+		if digest, ok, err := resolver.ResolveTag(t.Context(), repo, "1.27.3"); err == nil || ok || digest != "" {
+			t.Errorf("metadata repository expanded exact tag lookup: %s %q %v %v", repo, digest, ok, err)
+		}
+		if tags, err := resolver.ListTags(t.Context(), repo, "1"); err == nil || tags != nil {
+			t.Errorf("metadata repository expanded exact tag listing: %s %v %v", repo, tags, err)
+		}
+	}
+	if reads.Load() != 0 {
+		t.Fatalf("Go/Rust exact-version API reached the network: %d reads", reads.Load())
+	}
+}

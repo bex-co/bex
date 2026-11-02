@@ -1,0 +1,8 @@
+--- FAIL: TestImageMetadataOfficialGoAndRust (0.00s)
+    --- FAIL: TestImageMetadataOfficialGoAndRust/golang (0.00s)
+        dockerhub_test.go:327: golang:fixture@sha256:15b4d10b9a12f1e2da1548f7be2dbf4f96343f941797bf3a636a0b4706a7c81f is not a pinned reviewed runtime image
+    --- FAIL: TestImageMetadataOfficialGoAndRust/rust (0.00s)
+        dockerhub_test.go:327: rust:fixture@sha256:dd6074d860d5d791ce8bac7dfff416afe91d618cc598102412037f44fd342592 is not a pinned reviewed runtime image
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/build	0.556s
+FAIL

@@ -1,0 +1,30 @@
+[
+  {
+    "git_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+    "path": "lego/operator/internal/build/dockerhub.go",
+    "retained": "source-dockerhub.go",
+    "bytes": 12874,
+    "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3"
+  },
+  {
+    "git_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+    "path": "lego/operator/internal/build/nativecommon_gorust_test.go",
+    "retained": "source-nativecommon_gorust_test.go",
+    "bytes": 12042,
+    "sha256": "08a76cc2a45656e323f99d792c6c13cae8ede4f2a99ab03b03dbdcbf143496ce"
+  },
+  {
+    "git_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+    "path": "lego/operator/internal/build/testdata/native-ruby-qualification/check.rb",
+    "retained": "source-check.rb",
+    "bytes": 3871,
+    "sha256": "36bf12ce0ed5fca238776e88250a2e78e373c2f8d4b3800a4a8ac528642d6082"
+  },
+  {
+    "git_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+    "path": "lego/operator/internal/build/nativecommon_node_qualification_test.go",
+    "retained": "source-nativecommon_node_qualification_test.go",
+    "bytes": 12787,
+    "sha256": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4"
+  }
+]

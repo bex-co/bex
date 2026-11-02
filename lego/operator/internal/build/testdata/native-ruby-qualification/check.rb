@@ -48,7 +48,7 @@ raise 'OpenSSL digest failed' unless OpenSSL::Digest.hexdigest('SHA256', text) =
 strlen = Fiddle::Function.new(Fiddle.dlopen(nil)['strlen'], [Fiddle::TYPE_VOIDP], Fiddle::TYPE_SIZE_T)
 raise 'Fiddle/libffi call failed' unless strlen.call(text) == text.bytesize
 raise 'YAML failed' unless YAML.safe_load("value: #{text.to_json}\n") == { 'value' => text }
-raise 'zlib failed' unless Zlib::Inflate.inflate(Zlib::Deflate.deflate(text)) == text
+raise 'zlib failed' unless Zlib::Inflate.inflate(Zlib::Deflate.deflate(text)).b == text.b
 raise 'date failed' unless Date.iso8601('2026-10-31').day == 31
 raise 'StringIO failed' unless StringIO.new(text).read == text
 raise 'socket stdlib failed' unless Addrinfo.ip('127.0.0.1').ip_address == '127.0.0.1'

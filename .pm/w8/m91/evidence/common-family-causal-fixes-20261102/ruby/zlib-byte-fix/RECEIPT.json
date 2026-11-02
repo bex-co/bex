@@ -1,0 +1,144 @@
+{
+  "at": "2026-11-02T03:38:11.515531+00:00",
+  "outcome": "ONE_LINE_PRIVATE_RUBY_FIXTURE_CORRECTION_HOST_CONTROLS_PASS",
+  "path": "lego/operator/internal/build/testdata/native-ruby-qualification/check.rb",
+  "before_sha256": "36bf12ce0ed5fca238776e88250a2e78e373c2f8d4b3800a4a8ac528642d6082",
+  "after_sha256": "aeab0b2a5899f06731a584ccc4de53219179a1ef1e42afd32e5dcf9cdd0d9264",
+  "one_line_only_inverse_exact": true,
+  "text_assignment_unchanged": "text = \"Ruby \u96ea ' $ \\\\\\\"\"",
+  "repo_source_unchanged": true,
+  "ruby_path": "/opt/homebrew/opt/ruby/bin/ruby",
+  "ruby_realpath": "/opt/homebrew/Cellar/ruby/4.0.5/bin/ruby",
+  "ruby_binary_sha256": "d3243c75fd19a63037fadc45eb68bf1216322a62c6fc79ee33a30018672460c5",
+  "controls": [
+    {
+      "label": "old-red",
+      "argv": [
+        "/opt/homebrew/opt/ruby/bin/ruby",
+        "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/old-red.rb"
+      ],
+      "started_at": "2026-11-02T03:38:11.124036+00:00",
+      "exit": 1,
+      "stdout_sha256": "29bca24c64f264cd35db8ce26968f20bcd19b3aead5673681d5ad4b136be5de1",
+      "stderr_sha256": "6a851ce99bee703420c6f027f0b106134dc7c215c6732fcb33f131abc0806e9b"
+    },
+    {
+      "label": "fixed-green",
+      "argv": [
+        "/opt/homebrew/opt/ruby/bin/ruby",
+        "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/fixed-green.rb"
+      ],
+      "started_at": "2026-11-02T03:38:11.377226+00:00",
+      "exit": 0,
+      "stdout_sha256": "562b717e53631acf7dfe6ce66a0c7d10e2e53d15d504bf92132fabbfe7d8ba40",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "label": "corrupted-decoded-bytes-refused",
+      "argv": [
+        "/opt/homebrew/opt/ruby/bin/ruby",
+        "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/corrupted-decoded-bytes-refused.rb"
+      ],
+      "started_at": "2026-11-02T03:38:11.429800+00:00",
+      "exit": 1,
+      "stdout_sha256": "29bca24c64f264cd35db8ce26968f20bcd19b3aead5673681d5ad4b136be5de1",
+      "stderr_sha256": "9339328b93e0effb4265ddb0224bedb3c006de6b6cbbc36717e37536a85cab7a"
+    },
+    {
+      "label": "syntax",
+      "argv": [
+        "/opt/homebrew/opt/ruby/bin/ruby",
+        "-c",
+        "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/source/lego/operator/internal/build/testdata/native-ruby-qualification/check.rb"
+      ],
+      "started_at": "2026-11-02T03:38:11.492150+00:00",
+      "exit": 0,
+      "stdout_sha256": "bbafef10c22b9323fa5589564990f57fbf57f9a632381d5e765dc5a3b25b4a1b",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "actual_seven_failed_CI_logs": [
+    {
+      "case": "ruby34",
+      "run_id": 41375495533,
+      "job_id": 125055996963,
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby34-125055996963.log",
+        "bytes": 129428,
+        "sha256": "f0d890cd6a19a032e65260a1c479773d5f912286b545b4472111ec3f24159c39"
+      },
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+    },
+    {
+      "case": "ruby344-creation-default",
+      "run_id": 41375507144,
+      "job_id": 125056317602,
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby344-creation-default-125056317602.log",
+        "bytes": 128935,
+        "sha256": "55b624efa71cb58d6e4d8afb3fd179c78f436210f2ba8f98e85dffecdd3e5d21"
+      },
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+    },
+    {
+      "case": "ruby30",
+      "run_id": 41375519527,
+      "job_id": 125056527087,
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby30-125056527087.log",
+        "bytes": 153831,
+        "sha256": "0d8ed0c0cd13c35b8b583c459ebb458f27a7e143e01805b5aa08c34a8e0b2731"
+      },
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+    },
+    {
+      "case": "ruby31",
+      "run_id": 41375525481,
+      "job_id": 125056391774,
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby31-125056391774.log",
+        "bytes": 139242,
+        "sha256": "f01bf7e4e8a2c99fb61278c087ce6860138baa873197f28702e9bb9a78df5a70"
+      },
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+    },
+    {
+      "case": "ruby32",
+      "run_id": 41375530745,
+      "job_id": 125056666478,
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby32-125056666478.log",
+        "bytes": 140273,
+        "sha256": "e22099a61735d11676a00abc82b418860207cbf1ce402d7585e24d393c19f2ee"
+      },
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+    },
+    {
+      "case": "ruby33",
+      "run_id": 41375536053,
+      "job_id": 125056673239,
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby33-125056673239.log",
+        "bytes": 135380,
+        "sha256": "7a5095cbc764e6f9d20bd3b3d5612b800391bda572039e65aeedd5758fa4cfc0"
+      },
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+    },
+    {
+      "case": "node-static-ruby34",
+      "run_id": 41375551913,
+      "job_id": 125056614477,
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-static-ruby34-125056614477.log",
+        "bytes": 143242,
+        "sha256": "a3c33b48cac3976059309de79bc8a9ad1d8ee37cdf76503d7b672e6a92a35947"
+      },
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON"
+    }
+  ],
+  "triage": {
+    "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+    "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb"
+  },
+  "scope": "Exact original text/Deflate/Inflate under genuine hostRuby4.0.5 stdlib only. Corruption control supplies a valid compressed stream with an additional NUL decoded byte and exact new predicate refuses. No fullfixture/native extension/generatedimage/ARM proof; all8 actualRuby cases still need fresh botharch qualifications after updated sourcebaseline. No repoapply/runtimeproduct/source orresources changes."
+}

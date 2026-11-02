@@ -1,0 +1,46 @@
+{
+  "RECEIPT.json": {
+    "bytes": 3674,
+    "sha256": "49b011a6a3a7e600dbf32c40e69edf57d7465c82278deaca5b4605126b5960ef"
+  },
+  "SOURCE-MANIFEST.json": {
+    "bytes": 664,
+    "sha256": "5edd70222f5d22bb0014268d4d83596ef8e2261e78c7d59608be67377a159830"
+  },
+  "before/lego/operator/internal/build/nativequalification_init_test.go": {
+    "bytes": 33727,
+    "sha256": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466"
+  },
+  "before/lego/operator/internal/build/testdata/native-common-init/identity.js": {
+    "bytes": 2232,
+    "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+  },
+  "host-controls.cjs": {
+    "bytes": 4343,
+    "sha256": "858376793a1a0720f868e04ba663801a532dc574f2148cd47322295fafb43703"
+  },
+  "host-controls.stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "host-controls.stdout": {
+    "bytes": 227,
+    "sha256": "9df62acb1df806bd331104bb91959dba79333607d640128f8a2e0b68e01a51a4"
+  },
+  "identity.js.diff": {
+    "bytes": 6187,
+    "sha256": "9e8ca3ddf2b2f5c1c52bcfd2ab885b7dc7bd3b3cc808df8a216c3fdecf3b73bf"
+  },
+  "nativequalification_init_test.go.diff": {
+    "bytes": 6401,
+    "sha256": "3c5a3f106e703709d64b24bba5c96854fb092cf19ca5a03210331118e77270fe"
+  },
+  "source/lego/operator/internal/build/nativequalification_init_test.go": {
+    "bytes": 38306,
+    "sha256": "5540c1665b514cb2bf92c9ad47c8d48a6c174edadd486dad24115e0cb764ca86"
+  },
+  "source/lego/operator/internal/build/testdata/native-common-init/identity.js": {
+    "bytes": 5842,
+    "sha256": "b112a923a58f6a390f212e66f64eccbb004567448ef1f654081f167d6162cbd9"
+  }
+}

@@ -1,0 +1,92 @@
+BEX_NATIVE_INIT_PID1_OBSERVATION_V1
+child-pid=11
+target-stat
+37 186068 1753250 755
+target-sha256
+159a39e14b60d9dcea04c2ec9c55f33b9da42d1580807407edfd02bde7b7e16f  /native-init
+target-elf-header
+ 7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
+ 02 00 3e 00 01 00 00 00 c0 39 48 00 00 00 00 00
+ 40 00 00 00 00 00 00 00 90 01 00 00 00 00 00 00
+ 00 00 00 00 40 00 38 00 06 00 40 00 10 00 0f 00
+pid1-exe-link
+/native-init
+pid1-exe-stat
+37 186068 1753250 755
+pid1-exe-sha256
+159a39e14b60d9dcea04c2ec9c55f33b9da42d1580807407edfd02bde7b7e16f  /proc/1/exe
+pid1-exe-elf-header
+ 7f 45 4c 46 02 01 01 00 00 00 00 00 00 00 00 00
+ 02 00 3e 00 01 00 00 00 c0 39 48 00 00 00 00 00
+ 40 00 00 00 00 00 00 00 90 01 00 00 00 00 00 00
+ 00 00 00 00 40 00 38 00 06 00 40 00 10 00 0f 00
+pid1-cmdline-base64
+L25hdGl2ZS1pbml0AC9iaW4vc2gAL29ic2VydmUuc2gA
+pid1-maps-BEGIN
+00400000-004b6000 r-xp 00000000 00:25 186068                             /native-init
+004b6000-005a1000 r--p 000b6000 00:25 186068                             /native-init
+005a1000-005ac000 rw-p 001a1000 00:25 186068                             /native-init
+005ac000-005e2000 rw-p 00000000 00:00 0 
+372954000000-372956800000 ---p 00000000 00:00 0 
+372956800000-372956c00000 rw-p 00000000 00:00 0 
+372956c00000-372958000000 ---p 00000000 00:00 0 
+7fffb8b8d000-7fffb8d8d000 rw-p 00000000 00:00 0 
+7fffb8d8d000-7fffb8e8d000 rw-p 00000000 00:00 0 
+7fffb8e8d000-7fffb8e9f000 rw-p 00000000 00:00 0 
+7fffb8e9f000-7fffbae9f000 rw-p 00000000 00:00 0 
+7fffbae9f000-7fffd1cf1000 ---p 00000000 00:00 0 
+7fffd1cf1000-7fffd1cf2000 rw-p 00000000 00:00 0 
+7fffd1cf2000-7ffff1cf1000 ---p 00000000 00:00 0 
+7ffff1cf1000-7ffff1cf2000 rw-p 00000000 00:00 0 
+7ffff1cf2000-7ffffdc69000 ---p 00000000 00:00 0 
+7ffffdc69000-7ffffdc6a000 rw-p 00000000 00:00 0 
+7ffffdc6a000-7fffff458000 ---p 00000000 00:00 0 
+7fffff458000-7fffff459000 rw-p 00000000 00:00 0 
+7fffff459000-7fffff756000 ---p 00000000 00:00 0 
+7fffff756000-7fffff757000 rw-p 00000000 00:00 0 
+7fffff757000-7fffff79f000 ---p 00000000 00:00 0 
+7fffff79f000-7fffff7ff000 rw-p 00000000 00:00 0 
+7fffff7ff000-7fffff800000 ---p 00000000 00:00 0 
+7fffff800000-800000000000 rw-p 00000000 00:00 0 
+800000000000-800000026000 r--p 00000000 00:24 2                          /mnt/rv/[rosetta]
+800000026000-800000098000 r-xp 00026000 00:24 2                          /mnt/rv/[rosetta]
+8000000a0000-8000001a6000 rw-p 000a0000 00:24 2                          /mnt/rv/[rosetta]
+effff7d74000-effff7d79000 rw-p 00000000 00:00 0 
+effff7d79000-effff7d7a000 ---p 00000000 00:00 0 
+effff7d7a000-effff7d7e000 rw-p 00000000 00:00 0 
+effff7d7e000-effff7d7f000 ---p 00000000 00:00 0 
+effff7d7f000-effff7d89000 rw-p 00000000 00:00 0 
+effff7d89000-effff7d8a000 ---p 00000000 00:00 0 
+effff7d8a000-effff7d8e000 rw-p 00000000 00:00 0 
+effff7d8e000-effff7d8f000 ---p 00000000 00:00 0 
+effff7d8f000-effff7da1000 rw-p 00000000 00:00 0 
+effff7da1000-effff7da2000 ---p 00000000 00:00 0 
+effff7da2000-effff7da6000 rw-p 00000000 00:00 0 
+effff7da6000-effff7da7000 ---p 00000000 00:00 0 
+effff7da7000-effff7db1000 rw-p 00000000 00:00 0 
+effff7db1000-effff7db2000 ---p 00000000 00:00 0 
+effff7db2000-effff7db6000 rw-p 00000000 00:00 0 
+effff7db6000-effff7db7000 ---p 00000000 00:00 0 
+effff7db7000-effff7dc0000 rw-p 00000000 00:00 0 
+effff7dc0000-effff7dc1000 ---p 00000000 00:00 0 
+effff7dc1000-effff7dc5000 rw-p 00000000 00:00 0 
+effff7dc5000-effff7dc6000 ---p 00000000 00:00 0 
+effff7dc6000-effff7de7000 rw-p 00000000 00:00 0 
+effff7de7000-effff7de8000 ---p 00000000 00:00 0 
+effff7de8000-effff7dec000 rw-p 00000000 00:00 0 
+effff7dec000-effff7ded000 ---p 00000000 00:00 0 
+effff7ded000-effff7ff8000 rw-p 00000000 00:00 0 
+effff7ff8000-efffffff8000 rwxp 00000000 00:00 0 
+efffffff8000-f0002053a000 rw-p 00000000 00:00 0 
+ffff95ae5000-ffff95ae9000 r--p 00000000 00:00 0                          [vvar]
+ffff95ae9000-ffff95aeb000 r-xp 00000000 00:00 0                          [vdso]
+fffff213e000-fffff215f000 rw-p 00000000 00:00 0                          [stack]
+pid1-maps-END
+pid1-map-files-BEGIN
+map-entry /proc/1/map_files/400000-4b6000 /native-init
+map-stat-unproved
+map-entry /proc/1/map_files/4b6000-5a1000 /native-init
+map-stat-unproved
+map-entry /proc/1/map_files/5a1000-5ac000 /native-init
+map-stat-unproved
+pid1-map-files-END

@@ -1,0 +1,38 @@
+{
+  "run.py": {
+    "bytes": 5992,
+    "sha256": "d6f27950d78f9c73427854c23318c7fe4a5b5f2c8244b91389655c5fad5c92be"
+  },
+  "SCOPE.json": {
+    "bytes": 2417,
+    "sha256": "7a3762ee5886b3013c044dc7d2ba1073603246b793d0ca65e0b0bf8583135d29"
+  },
+  "RESULT.json": {
+    "bytes": 1826,
+    "sha256": "7c8cff8bd918ebe784e49feffb2996473e11175c91418c1fd63aa7bf880aff6e"
+  },
+  "runner.stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "runner.stdout": {
+    "bytes": 1826,
+    "sha256": "7c8cff8bd918ebe784e49feffb2996473e11175c91418c1fd63aa7bf880aff6e"
+  },
+  "cow-seed-PROCESS.json": {
+    "bytes": 206,
+    "sha256": "f98e2b7b1a7a8fffe2c9fb51a5241c835554485da400b885ab1592941df77f70"
+  },
+  "cow-seed-RESULT.json": {
+    "bytes": 500,
+    "sha256": "40f443e3a5f1a27eb90ffb82b9c030a99891b9f0d6adebe794274cda08925a37"
+  },
+  "cow-seed.log": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  },
+  "overlay.json": {
+    "bytes": 514,
+    "sha256": "8c4738d64a100ea5aa16666b76c2ca2f76148fd73d2dc1a81c93499967e440ff"
+  }
+}

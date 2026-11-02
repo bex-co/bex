@@ -1,0 +1,6 @@
+{
+  "Replace": {
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/dockerhub.go": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/before/lego/operator/internal/build/dockerhub.go",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/dockerhub_test.go": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/source/lego/operator/internal/build/dockerhub_test.go"
+  }
+}

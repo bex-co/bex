@@ -1,0 +1,21 @@
+{
+  "at": "2026-11-02T03:49:34.452252+00:00",
+  "outcome": "CLEAN_SOURCE_REVIEW",
+  "source_root": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa",
+  "source_manifest_sha256": "5277bc06246657e1f7fc6af9bb6b6637568a5ebbca02eca4ea100aa6b40136c0",
+  "full_manifest_sha256": "857be93f1c15e61b3356df6831ad8db6a142503124a733ca6ab1a42dc279d426",
+  "all_frozen_payloads_verified": 10,
+  "source_sha256": "522e2cbb4d0efecde76638f11311d002a903099041b5f1dc293092f36ecdae04",
+  "test_sha256": "a9e52e7ec61cccc6b6e1217eb92cf12d6cd0634c9396c7fd838e6c50582b8844",
+  "scope": "Read-only source/fullmanifest/inverse review. No additional tests/network/resources/Go/repo edits.",
+  "findings": [],
+  "preservation": {
+    "production_inverse_exact": true,
+    "old_test_prefix_exact": true,
+    "exactRepos_and_tag_APIs_unchanged": true,
+    "verified_reader_retry_cache_path_unchanged": true
+  },
+  "test_review": "Three appended tests use repo-bound actual httptest index/manifest/config with cryptographic descriptors; each positive requires exactly3reads. Nine invalid repository/pin forms refuse beforeHTTP, exacttag/list APIs stillrefuseGo/Rust. Reviewed actual authoroldREDbothrepo controls and new0.486sPASS; not independentlyreexecuted.",
+  "limits": "Supports metadata for existing pinned official Go/Rust lines only; no generatedimage/runtime/botharchitecture/family/adoption conclusion.",
+  "preparation_history": "Initial private verification snippet assumed manifest.files was a map; actual schema is list. It exited AttributeError before creating review files or altering source; corrected parser verifies all exact rows/modes."
+}

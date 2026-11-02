@@ -1,0 +1,39 @@
+{
+  "results": [
+    {
+      "label": "cow-seed",
+      "command": [
+        "cp",
+        "-cR",
+        "/Users/tianpan/Library/Caches/go-build",
+        "/private/tmp/bex-w8-native-init-mapped-pid1-go-final-20261102-eucdvm8r/go-cache"
+      ],
+      "exit": -15,
+      "bound": {
+        "free": 11886018560,
+        "global_drop": 1152139264,
+        "owned_tmp": 0,
+        "seconds": 73.80023470893502,
+        "signals": []
+      },
+      "seconds": 73.91551841702312,
+      "group_absent": true,
+      "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "source_unchanged": true,
+  "source_after": {
+    "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/nativequalification_init_test.go": "5540c1665b514cb2bf92c9ad47c8d48a6c174edadd486dad24115e0cb764ca86",
+    "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/testdata/native-common-init/identity.js": "b112a923a58f6a390f212e66f64eccbb004567448ef1f654081f167d6162cbd9",
+    "/Users/tianpan/projects/bex7/lego/go.work.sum": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativequalification_init_test.go": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/testdata/native-common-init/identity.js": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+  },
+  "minimum_free": 11602382848,
+  "peak_owned_tmp": 0,
+  "cache_removed": true,
+  "tmp_removed": true,
+  "pending_pgids": [],
+  "cancelled_signals": [],
+  "scope": "No networkdownloads/modulewrites/Docker/DB/source or production changes; fullbuildpackageunit+focusedGooverlay."
+}

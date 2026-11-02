@@ -1,0 +1,27 @@
+{
+  "at": "2026-11-02T04:35:59.969016+00:00",
+  "state": "PM_PACKET_PUBLISHED_SOURCE_APPLIED_ACCEPTANCE_OPEN",
+  "readme_sha256": "92a5c6fbc0075e31711f8140f69c37cb425a4148d419c8b3260a054c94d34661",
+  "PM_append_only_updates": [
+    {
+      "path": ".pm/w8/m91/README.md",
+      "before_sha256": "e9e6bd92407bbaf1192b3ffc5479e2d8e4dfeaaed419c63f1be996ddcfdd83b7",
+      "after_sha256": "f0e6846a40f3c894768f47ec3e3f82e229044903d76329f14b58949347d1d4bc",
+      "append_only": true,
+      "status_unchanged": true
+    },
+    {
+      "path": ".pm/w8/m91/t007.md",
+      "before_sha256": "134f1eaf9ea9ec31f4134ed5f8fdb1e18c9f92e93cec2f274efd7e8608a3149a",
+      "after_sha256": "ac36b760c40ad837912e1e9a71a090fa0afdc204c2147045bb62f8a3cb1c9f87",
+      "append_only": true,
+      "status_unchanged": true
+    }
+  ],
+  "Root_final_source_manifest_sha256": "3642fd18f3b2409679bd3cb2c842ace4e990716c72825d12636157c7bd951628",
+  "Root_final_Go_package_seconds": 19.675,
+  "Root_pinned_scoped_lint_issues": 0,
+  "Root_final_verification_owned_separately": true,
+  "no_source_edits_stage_commit_dispatch_live_actions": true,
+  "global_formatter_not_run": "ExplicitRootinstruction; Rootowns finalMarkdownformatting/shipping. Copiedfrozenpayloadidentities retained; authoredMarkdownhashes are pre-Rootformatter."
+}

@@ -1,0 +1,67 @@
+{
+  "at": "2026-11-02T03:12:29.667190+00:00",
+  "scope": "Private2test-source-onlyfix; no product/repoapply/Docker/CI/native/app execution. Go tests pending separatebounded overlay.",
+  "source_files": {
+    "lego/operator/internal/build/nativequalification_init_test.go": {
+      "before": {
+        "bytes": 33727,
+        "sha256": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466"
+      },
+      "after": {
+        "bytes": 38306,
+        "sha256": "5540c1665b514cb2bf92c9ad47c8d48a6c174edadd486dad24115e0cb764ca86"
+      }
+    },
+    "lego/operator/internal/build/testdata/native-common-init/identity.js": {
+      "before": {
+        "bytes": 2232,
+        "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+      },
+      "after": {
+        "bytes": 5842,
+        "sha256": "b112a923a58f6a390f212e66f64eccbb004567448ef1f654081f167d6162cbd9"
+      }
+    }
+  },
+  "actual_local_observation": {
+    "path": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/attach.stdout",
+    "bytes": 4282,
+    "sha256": "2bb47bb0481e5723ef9912ca19d5d89b9fbe23fe6b2784c26a911f1d14dc5d33",
+    "classification": "OrbStack localraw/native-init +ELF62/nativeargvsh; RX00:25/inode186068 exacttarget. map_filesstatEPERM remainsunproved. Not actualCIwrapper-shape orappdrainqualification."
+  },
+  "actual_CI_failure": {
+    "path": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/npm/cleanup-runtime.log",
+    "bytes": 1015,
+    "sha256": "986afe04408968c965d65f4ef8b23d4e41fabe34fdae0e88fd22c922f583ddfb",
+    "classification": "Actual/run/rosetta/rosetta path observed; actualinterpreterELF/argv/mapsnotretained, so incompletecase MUSTrefuse untilnewCIretainsrealdata."
+  },
+  "minimal_delta": "RawPID1path retained; nonnativepath needsAMDtarget62/ARMexe183/exactRXmappingnative-init inode/dev boundtoSHA+ELF-checkedtarget+unchangedexactargv. No nameallowlist. Sameimageplatform/Entrypoint/selectedNodeprocessarch andsameallfourlaunches/holdHTTP/5events/oneSIGTERM/status/cleanup remain.",
+  "diagnostic_custody": "Boundedexeheader+SHA/rawargvbase64/fullmaps+targetmapfacts written+stdoutloggedBEFOREPID1validation; existingalwayscleanupcapturesstdoutonpre-readyfailure. Parsedmappings/targetfacts inHTTPproofremainbounded; no Env/authdetails added.",
+  "Go_preservation": {
+    "all_old_functions_except_Validate_byte_exact": true,
+    "Validate_only_rawpath_clause_replaced": true,
+    "new_helpers": [
+      "TestNativeInitQualificationMappedPID1Controls",
+      "nativeInitQualificationPID1"
+    ]
+  },
+  "controls": {
+    "Node24Syntax": "PASS",
+    "host_predicates": {
+      "scope": "pure predicate controls only",
+      "actualLocalNativeShape": "PASS",
+      "actualPartialCIShape": "REFUSED",
+      "syntheticCompleteEmulation": "PASS_OLD_STRICT_GUARD_RED",
+      "negativeControls": 15,
+      "actualCIEmulationOrDrainQualified": false
+    },
+    "Go": "Authoredunitcontrols andgofmt only; notexecuted yet.",
+    "scope": "Actualnativeprobecontrol+actualCIpartialnegative; syntheticcompleteemulationoldstrictguardRED/newPASS explicitlyNOTactualCIpass;15wrongSHA/ELF/inode/dev/maps/argv/target/type refusals."
+  },
+  "primary_device_encoding_source": {
+    "path": "/Users/tianpan/go/pkg/mod/golang.org/x/sys@v0.48.0/unix/dev_linux.go",
+    "bytes": 1579,
+    "sha256": "eec381cf025f58965728544dae5df9394d6bebc7e68572e429814c87ee6dd284"
+  },
+  "required_future": "Root+independentreview; boundedGooverlaychecks; actualsame-imagebothutilitysourcebaseline andnative-initretry. Preserveold35othersource/equivalenceactualevidence; no cancels/relabels."
+}
