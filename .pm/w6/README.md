@@ -195,7 +195,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **100** — [Argo CD comparisons time out on git (60 s) intermittently, so deploy pins stall and the proxy gate fails](100.md) — filed 2026-11-02 from m155 t005.
+- [ ] **100** — **BLOCKED (user decision: move bulky `.pm` evidence out of the deploy repo (A), point Argo at a slim generated branch (B), or keep raising timeouts (C); interim 180 s timeout + 2 repo-servers shipped `7bc6a62aa`, deploys flowing again)** — [Argo CD comparisons time out on git](blocked/100.md) — root cause: `.pm` is 93% of the tracked bytes Argo checks out.
 - [x] **097** — [`bex ea objects` returns 404 in every region](done/097.md) — done 2026-10-29: not offered (signed ADR018 divergence, user decision); API says so live (`e8d1df424`), CLI refusal ships with the next bex-cli release.
 - [x] **098** — [A control-plane roll stalls on a Hetzner capacity error until someone deletes the Machine](done/098.md) — done 2026-10-29: CAPH already self-remediates a server-less CP Machine once the MHC marks it unhealthy; CP `nodeStartupTimeout` 15m → 8m bounds the stall (live recurrence not observed yet).
 - [x] **096** — [SSH gateway exec at ~43 KB/s and drops a quiet session](done/096.md) — done 2026-10-29: gateway tail truncation fixed live (`e934c2842`); 10-min quiet exec stays up; throughput ~833 KB/s ≈ the API path. Residual large-output loss below the gateway → 099.
