@@ -1,0 +1,77 @@
+{
+  "at": "2026-11-02T08:26:20.808112+00:00",
+  "outcome": "BOTH_CURRENT0b7_ACTUAL_ARTIFACTS_CONTENT_PASS_PENDING_ROOT_REVIEW",
+  "run": 41407186362,
+  "source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "review": {
+    "bytes": 26695,
+    "sha256": "08d1bc5907162f0bfd2e5a4a45e4a1951399948a556984a1b2087c9361c620ed"
+  },
+  "summary": {
+    "bytes": 1430,
+    "sha256": "cc3a6e9225f91e863a1d39ae8b04ca6c3633f02b0d4bf2cd085dc11be0653063"
+  },
+  "all_approved_source_files_unchanged": true,
+  "one_connector_file_reference_and_one_default_verified_TLS_stream_per_ARCH": true,
+  "signed_URLs_never_retained": true,
+  "archives": [
+    {
+      "architecture": "amd64",
+      "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/amd64/original.zip",
+      "bytes": 83734516,
+      "sha256": "ca8d0886361bb21a8b21d5743ca227fc0520b7ed7cde8d9ddb01ab25db7a6918",
+      "unchanged_original_members": 356,
+      "original_manifest": {
+        "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/amd64/extracted/artifact/MANIFEST.json",
+        "bytes": 79263,
+        "sha256": "a6b75fb44348a7b64a792427e38ce5e59a352400a4e4cd0fda301680b7b2ce9c"
+      }
+    },
+    {
+      "architecture": "arm64",
+      "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/arm64/original.zip",
+      "bytes": 79101762,
+      "sha256": "90fdc530426317471c797d7a6b44673954168f18076855158f1e72888989b831",
+      "unchanged_original_members": 356,
+      "original_manifest": {
+        "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/arm64/extracted/artifact/MANIFEST.json",
+        "bytes": 79645,
+        "sha256": "7b45e3533989603f99812eded4b460c6b676df1286baaad3e861e5ff15e92153"
+      }
+    }
+  ],
+  "extractor_tool": {
+    "path": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/extract_utility_zip.py",
+    "sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4"
+  },
+  "host_audit_process": {
+    "command": "/opt/homebrew/bin/python3.14 -B audit.py",
+    "exit": 0,
+    "stdout": {
+      "bytes": 502,
+      "sha256": "ff5adfa71e10ea7c59559051fdd240e39f6e6476dae9ef0d2d0db73256e9c59a"
+    },
+    "stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "raw_gzip_custody": {
+    "bytes": 3624,
+    "sha256": "da20490bb5e98844f9fcede3f099ed9546d011abaa9ec34bbc256339da8dee16"
+  },
+  "whole_CI_metadata_and_logs_summary": {
+    "path": "/private/tmp/bex-w8-current0b7-0941-monitor-20261102-_bu8v18k/FINAL-CI-SUMMARY.json",
+    "bytes": 13723,
+    "sha256": "7d20262b6b6e1e971e4a77c52f95ef9a4d85cca01e1475642f148c3ae897968e"
+  },
+  "current_free": 10292768768,
+  "limits": [
+    "No image/candidate/baseline/production write.0941approvalwasalreadyRoot-reviewedandisunchanged; thisisdetailedcurrent0b7utilitycontentreview; Rootapprovalisstillrequiredforbaselineadoption.",
+    "No target/program/original-validator/Go/network/Docker/Kubernetes/auth or repository execution/mutation.",
+    "Original ZIP extraction CRC/all-memberSHA evidence was reused; no artifactZIP decompression repeated. Static fixture ZIP/gzip and complete SBOM gzip roundtrips were independently checked.",
+    "Some authored HTTP records retain decoded/asserted outcomes rather than every rawbody (notably m94); no byte-level replay of unretained bodies claimed.",
+    "Packaging/Cextension is explicitly build-only in default proof; runtime verifies exact interpreter/ENV/loader/Brotli. No predeploy/Kubernetes/native-init/allfamily/hosted28 claim.",
+    "Producer Git300 capture is exact. Stale local working tree was not compared or used as current source; no ignored local files read, removed, or waived. No baseline validator invoked."
+  ]
+}

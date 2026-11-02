@@ -1,0 +1,29 @@
+{
+  "at": "2026-11-02T08:23:17.409116+00:00",
+  "AMD": {
+    "ZIP_bytes": 83734516,
+    "ZIP_sha256": "ca8d0886361bb21a8b21d5743ca227fc0520b7ed7cde8d9ddb01ab25db7a6918",
+    "original_members": 356,
+    "declared_and_actual_output_bytes": 140617788,
+    "original_manifest_sha256": "a6b75fb44348a7b64a792427e38ce5e59a352400a4e4cd0fda301680b7b2ce9c",
+    "download_group_absent": true,
+    "extract_group_absent": true
+  },
+  "ARM": {
+    "artifact_id": 13124914601,
+    "ZIP_bytes": 79101762,
+    "ZIP_sha256": "90fdc530426317471c797d7a6b44673954168f18076855158f1e72888989b831",
+    "prior0184_output_bytes": 136198251,
+    "prior_members": 356,
+    "conservative_prior_allocated_projection": 139114603,
+    "floor": 8589934592,
+    "margin": 33554432,
+    "required_fresh_free_before_ARM_ZIP_and_output": 8841705389,
+    "observed_free": 10531508224,
+    "aggregate_fit": true,
+    "held": false,
+    "actual_ARM_central_projection_still_required_before_extraction": true
+  },
+  "no_ARM_download_submitted": true,
+  "no_dated_downloads": true
+}

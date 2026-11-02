@@ -1,0 +1,23 @@
+{
+  "at": "2026-11-02T08:43:54.861055+00:00",
+  "source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "run": 41407186362,
+  "outcome": "ROOT_CONTENT_ADMITTED_CURRENT0b7_UTILITIES_ONLY",
+  "review_sha256": "08d1bc5907162f0bfd2e5a4a45e4a1951399948a556984a1b2087c9361c620ed",
+  "actual_receipt_sha256": "f82219fbb177f63491e14445dd8df7576e7f89ac7d91b2778c4cf14f37efc6ac",
+  "payload_manifest_sha256": "5dc65068215ee89f02a051ae40bfc33cace0950d53b0621daecbbe98b4f7a252",
+  "all_797_original_payload_size_sha_regular_files_verified": true,
+  "all_712_original_artifact_members_intact": true,
+  "review_read_in_full": true,
+  "candidate_or_baseline_mutated": false,
+  "strict_existing_validators_still_required": true,
+  "scope_limits": [
+    "No image/candidate/baseline/production write.0941approvalwasalreadyRoot-reviewedandisunchanged; thisisdetailedcurrent0b7utilitycontentreview; Rootapprovalisstillrequiredforbaselineadoption.",
+    "No target/program/original-validator/Go/network/Docker/Kubernetes/auth or repository execution/mutation.",
+    "Original ZIP extraction CRC/all-memberSHA evidence was reused; no artifactZIP decompression repeated. Static fixture ZIP/gzip and complete SBOM gzip roundtrips were independently checked.",
+    "Some authored HTTP records retain decoded/asserted outcomes rather than every rawbody (notably m94); no byte-level replay of unretained bodies claimed.",
+    "Packaging/Cextension is explicitly build-only in default proof; runtime verifies exact interpreter/ENV/loader/Brotli. No predeploy/Kubernetes/native-init/allfamily/hosted28 claim.",
+    "Producer Git300 capture is exact. Stale local working tree was not compared or used as current source; no ignored local files read, removed, or waived. No baseline validator invoked."
+  ],
+  "free_bytes": 10122551296
+}

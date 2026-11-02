@@ -1,0 +1,161 @@
+{
+  "files": [
+    {
+      "path": "ACTUAL-EXTRACTION-BOUND.json",
+      "bytes": 677,
+      "sha256": "b4aaa85fe598317708363cc302c93c0d5f591d32035c4a371068e1021a54c251"
+    },
+    {
+      "path": "ACTUAL-RECEIPT.json",
+      "bytes": 3840,
+      "sha256": "f82219fbb177f63491e14445dd8df7576e7f89ac7d91b2778c4cf14f37efc6ac"
+    },
+    {
+      "path": "AMD-COMPLETE-ARM-PREFLIGHT.json",
+      "bytes": 1046,
+      "sha256": "f39045ad53e1a430c743000c2aa52c38a0526a7c32270bd2923a4cc4de432e25"
+    },
+    {
+      "path": "AMD-DOWNLOAD-PREFLIGHT.json",
+      "bytes": 579,
+      "sha256": "1eb2f4719d963a7a67af1efb0763539424f51e09a4348ea21d3c32303b2b1a15"
+    },
+    {
+      "path": "ARCHIVES.json",
+      "bytes": 1123,
+      "sha256": "24760be3a3a8103a16df51b20a12b39ecd4c5af2b5290888a984c9f6e28b1883"
+    },
+    {
+      "path": "CHECKS.json",
+      "bytes": 298,
+      "sha256": "690acdb91297ab8e5075fd54729bc9ae6bd22100ed39a29508e49d5c3eb00e32"
+    },
+    {
+      "path": "EXTRACTIONS.json",
+      "bytes": 1008,
+      "sha256": "ec9c35fc198465f9139b831582311eadcf5334e0bacbd14205c7e50828b79e5e"
+    },
+    {
+      "path": "FINAL-CI-SUMMARY.json",
+      "bytes": 13723,
+      "sha256": "7d20262b6b6e1e971e4a77c52f95ef9a4d85cca01e1475642f148c3ae897968e"
+    },
+    {
+      "path": "PLAN.json",
+      "bytes": 2192,
+      "sha256": "95997053ca4d8922b0cb0b58020b67d57de24228f8a1dc9b1e2ebb4cea6e6c25"
+    },
+    {
+      "path": "RAW-GZIP-CUSTODY.json",
+      "bytes": 3624,
+      "sha256": "da20490bb5e98844f9fcede3f099ed9546d011abaa9ec34bbc256339da8dee16"
+    },
+    {
+      "path": "REVIEW.json",
+      "bytes": 26695,
+      "sha256": "08d1bc5907162f0bfd2e5a4a45e4a1951399948a556984a1b2087c9361c620ed"
+    },
+    {
+      "path": "SOURCE-CUSTODY.json",
+      "bytes": 75336,
+      "sha256": "de08138fc8b4c88d2488b2328e57d625fd878a2ca26bb9a59cd834d27649a681"
+    },
+    {
+      "path": "SUMMARY.json",
+      "bytes": 1430,
+      "sha256": "cc3a6e9225f91e863a1d39ae8b04ca6c3633f02b0d4bf2cd085dc11be0653063"
+    },
+    {
+      "path": "amd64-PREEXTRACT.json",
+      "bytes": 182,
+      "sha256": "ce9826c9d59d0c3d54e80b972bbb5bf564ec2007fb53e2db164a21e3f5cc93ba"
+    },
+    {
+      "path": "amd64-download-guard.json",
+      "bytes": 406,
+      "sha256": "dc81a50e356632a1c0c5ad47ae86f7c74300a7270ec3bc959d1d4a2e820ed1cf"
+    },
+    {
+      "path": "amd64-download.json",
+      "bytes": 524,
+      "sha256": "afb248287a4a2ff488929edc7e89c352ab4a6b1bb88253b531b526d6638ac637"
+    },
+    {
+      "path": "amd64-extract-guard.json",
+      "bytes": 641,
+      "sha256": "f46accada077e493b956b2259f558581f0d894475dd5a475aac592b68ee91aac"
+    },
+    {
+      "path": "arm64-PREEXTRACT.json",
+      "bytes": 183,
+      "sha256": "791a35348cf8892a53cdad7ad57b5f7996f8fed553fb357e8ddd18e6ef3d295e"
+    },
+    {
+      "path": "arm64-download-guard.json",
+      "bytes": 406,
+      "sha256": "40628ef52b4f91c7d7c48e580598bcd6eed828591d0b58bf792e71cb572d6b9f"
+    },
+    {
+      "path": "arm64-download.json",
+      "bytes": 524,
+      "sha256": "c1c45ffa9efa1951fbd2e0d4a5b45b4e0e3a46cbf551f3237d85643ebba09473"
+    },
+    {
+      "path": "arm64-extract-guard.json",
+      "bytes": 642,
+      "sha256": "09920df06ab0732c9dc4824c94c81935bcfb71345409d179e94cc9d0a76fa08b"
+    },
+    {
+      "path": "artifacts-final.json",
+      "bytes": 1459,
+      "sha256": "2201719119037dc4cc78aa65d33cad01a0b454954734328c772bdde2f60b2fdf"
+    },
+    {
+      "path": "audit.py",
+      "bytes": 30513,
+      "sha256": "ce292551747b9f945f0a052ecb633c00163ae10995b728e2c80b44e5dc2658c9"
+    },
+    {
+      "path": "audit.py.diff",
+      "bytes": 4695,
+      "sha256": "5d7e396975a471f17390af06199236c61791f5964efbd6471cfa5fc5877755fa"
+    },
+    {
+      "path": "audit.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "audit.stdout",
+      "bytes": 502,
+      "sha256": "ff5adfa71e10ea7c59559051fdd240e39f6e6476dae9ef0d2d0db73256e9c59a"
+    },
+    {
+      "path": "bind_audit.py",
+      "bytes": 1379,
+      "sha256": "487512a53c9daab7841db2cc7ef2c19d3acc7ba55b42ae9faa9dff5bc5a5e11a"
+    },
+    {
+      "path": "job-amd64.log",
+      "bytes": 62963,
+      "sha256": "df731a32f747e7bcbee252ec33c166985fecad09cf13672bb0390789c4969da6"
+    },
+    {
+      "path": "job-arm64.log",
+      "bytes": 62962,
+      "sha256": "254d1263ee6bb7f44d9e5961f426e997f87a435ebf8c8b0c66cac34bbff13743"
+    },
+    {
+      "path": "jobs-04-completed.json",
+      "bytes": 12126,
+      "sha256": "936c21e3734dd122c0b602de9d62c2a5017e5d1a73889b720b5f57ec4121a3a4"
+    },
+    {
+      "path": "run-final.json",
+      "bytes": 11661,
+      "sha256": "df22c036d98c2f2a3ca1820592bf042602dfac9a66d4c1f7b5e4086ea65a097a"
+    }
+  ],
+  "files_count": 31,
+  "total_bytes": 323339
+}

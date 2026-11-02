@@ -1,0 +1,7 @@
+{
+  "command": "/opt/homebrew/bin/python3.14 -B test_preparation.py",
+  "exit": 0,
+  "tests": 6,
+  "seconds": 0.023,
+  "scope": "Host synthetic ZIP central-directory only; no download/extraction of target artifacts; all existing audit check ASTs unchanged, downloader data-only and guard exact."
+}

@@ -1,0 +1,53 @@
+{
+  "PASS": true,
+  "failure": null,
+  "source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "GITHUB_SHA": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "validation": {
+    "PASS": true,
+    "image_baseline_status": "image-only-requalification",
+    "test_baseline_status": "current-complete",
+    "source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+    "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+    "producer": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "verification": "1feba939b4697894e800ed0abb4f25a0bf415641",
+    "generator_source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+    "source_files": 300,
+    "image_input_count": 33,
+    "architectures": [
+      "amd64",
+      "arm64"
+    ],
+    "unchanged_helper": true,
+    "helper_subprocess_forbidden": true,
+    "network_forbidden": true
+  },
+  "seconds": 26.852,
+  "peak_new_allocated_bytes": 3182592,
+  "initial_free_bytes": 9439612928,
+  "minimum_free_bytes": 9383600128,
+  "owned_view_removed": true,
+  "pending_groups": [],
+  "handlers_restored": true,
+  "candidate": {
+    "bytes": 4503,
+    "sha256": "744018249157241248b868afb6b71211a809c771ac2ed09b1344baedcd0d0c5a"
+  },
+  "helper": {
+    "path": ".github/scripts/native-common-qualify.py",
+    "bytes": 60360,
+    "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5"
+  },
+  "source300_modes_unchanged": true,
+  "ignored_workingtree_pycs": "not read/copied/modified",
+  "repo_mutation": false,
+  "Go_Docker_network_or_helper_subprocess": false,
+  "stdout": {
+    "bytes": 630,
+    "sha256": "d6883175ea86fe60f7ede4f80c7a48ca05769e1bbe62768ab28e975d73f39b51"
+  },
+  "stderr": {
+    "bytes": 0,
+    "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+  }
+}

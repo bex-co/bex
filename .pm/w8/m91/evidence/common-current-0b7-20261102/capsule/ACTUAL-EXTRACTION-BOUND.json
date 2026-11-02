@@ -1,0 +1,19 @@
+{
+  "scope": "Original MANIFEST identity derivation from actual approved GitHub ZIP plus V2 full CRC/size/SHA extraction; no baseline admission",
+  "manifest_sha256": {
+    "amd64": "a6b75fb44348a7b64a792427e38ce5e59a352400a4e4cd0fda301680b7b2ce9c",
+    "arm64": "7b45e3533989603f99812eded4b460c6b676df1286baaad3e861e5ff15e92153"
+  },
+  "extractions": {
+    "amd64": {
+      "bytes": 79263,
+      "sha256": "a6b75fb44348a7b64a792427e38ce5e59a352400a4e4cd0fda301680b7b2ce9c",
+      "completed_members": 356
+    },
+    "arm64": {
+      "bytes": 79645,
+      "sha256": "7b45e3533989603f99812eded4b460c6b676df1286baaad3e861e5ff15e92153",
+      "completed_members": 356
+    }
+  }
+}

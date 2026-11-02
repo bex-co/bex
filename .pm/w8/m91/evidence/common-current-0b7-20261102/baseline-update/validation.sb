@@ -1,0 +1,6 @@
+(version 1)
+(allow default)
+(deny network*)
+(deny file-write*)
+(allow file-write* (subpath "/private/tmp/bex-w8-current0b7-publication-proposal-20261102-lk0t_bql"))
+(deny file-write* (subpath "/private/tmp/bex-w8-current0b7-publication-proposal-20261102-lk0t_bql/validation-view"))

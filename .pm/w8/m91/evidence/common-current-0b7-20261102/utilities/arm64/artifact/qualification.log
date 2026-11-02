@@ -1,0 +1,45 @@
+=== RUN   TestNativeUtilityGeneratedImages
+    nativeutility_integration_test.go:62: retained proof directory: /home/docker/actions-runner/_work/_temp/bex-native-qualification-ucqo01t1/generated/native-utilities-3298913995
+=== RUN   TestNativeUtilityGeneratedImages/supplier-removed
+    nativeutility_integration_test.go:106: ==> Using Node 24 (from NODE_VERSION=24); image=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+=== RUN   TestNativeUtilityGeneratedImages/node-compute
+    nativeutility_integration_test.go:106: ==> Using Node 24 (from NODE_VERSION=24); image=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+    nativeutility_integration_test.go:140: node-compute passed actual generated network-off commands; image sha256:8fd4ceb050ae4091a1509f66460200f82b7c82774acf71cdeb8f00d4531a00b5
+=== RUN   TestNativeUtilityGeneratedImages/node-static
+    nativeutility_integration_test.go:106: ==> Using Node 24 (from NODE_VERSION=24); image=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+    nativeutility_integration_test.go:140: node-static passed actual generated network-off commands; image sha256:60c57092880f727ead51f4a140c8df668608212f0caee76069a8c97f993efa03
+=== RUN   TestNativeUtilityGeneratedImages/python313-original
+    nativeutility_integration_test.go:106: ==> Using Python 3.13 (from PYTHON_VERSION=3.13); image=python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e
+    nativeutility_integration_test.go:106: ==> Using Poetry 2.1.3 (default); image=
+    nativeutility_integration_test.go:106: ==> Using Node 24 (default); image=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+    nativeutility_integration_test.go:140: python313-original passed actual generated network-off commands; image sha256:bde1dac1491a51f9504edf13abc458425356d7ea3e2478b3eb2a193474265669
+=== RUN   TestNativeUtilityGeneratedImages/python3148-default
+    nativeutility_integration_test.go:106: ==> Using Python 3.14.8 (default); image=python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74
+    nativeutility_integration_test.go:106: ==> Using Poetry 2.1.3 (default); image=
+    nativeutility_integration_test.go:106: ==> Using Node 24 (default); image=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+    nativeutility_integration_test.go:140: python3148-default passed actual generated network-off commands; image sha256:0393331249bce7330ed6d03243f9b8216d7c6f34a12ba16e322a57468ddf15e9
+=== RUN   TestNativeUtilityGeneratedImages/missing-jq
+    nativeutility_integration_test.go:106: ==> Using Node 24 (from NODE_VERSION=24); image=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+=== RUN   TestNativeUtilityGeneratedImages/missing-rsync
+    nativeutility_integration_test.go:106: ==> Using Node 24 (from NODE_VERSION=24); image=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+=== RUN   TestNativeUtilityGeneratedImages/missing-python-metadata
+    nativeutility_integration_test.go:106: ==> Using Node 24 (from NODE_VERSION=24); image=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+=== RUN   TestNativeUtilityGeneratedImages/missing-python-pip
+    nativeutility_integration_test.go:106: ==> Using Node 24 (from NODE_VERSION=24); image=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+=== RUN   TestNativeUtilityGeneratedImages/missing-python-headers
+    nativeutility_integration_test.go:106: ==> Using Node 24 (from NODE_VERSION=24); image=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+--- PASS: TestNativeUtilityGeneratedImages (644.45s)
+    --- PASS: TestNativeUtilityGeneratedImages/supplier-removed (52.11s)
+    --- PASS: TestNativeUtilityGeneratedImages/node-compute (107.07s)
+    --- PASS: TestNativeUtilityGeneratedImages/node-static (58.22s)
+    --- PASS: TestNativeUtilityGeneratedImages/python313-original (122.74s)
+    --- PASS: TestNativeUtilityGeneratedImages/python3148-default (262.27s)
+    --- PASS: TestNativeUtilityGeneratedImages/missing-jq (8.48s)
+    --- PASS: TestNativeUtilityGeneratedImages/missing-rsync (7.80s)
+    --- PASS: TestNativeUtilityGeneratedImages/missing-python-metadata (9.18s)
+    --- PASS: TestNativeUtilityGeneratedImages/missing-python-pip (9.47s)
+    --- PASS: TestNativeUtilityGeneratedImages/missing-python-headers (7.10s)
+=== RUN   TestNativeOriginalReplayHTTPOracles
+--- PASS: TestNativeOriginalReplayHTTPOracles (0.49s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	644.962s

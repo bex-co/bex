@@ -1,0 +1,22 @@
+{
+  "at": "2026-11-02T09:12:42.077841+00:00",
+  "candidate_source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "synced_parent": "a5f65eec3f2feac90ae44beed39ac57b88e26145",
+  "original_artifact_members": 712,
+  "frozen_plan_records_byte_exact": 762,
+  "authored_exceptions": [
+    {
+      "path": "README.md",
+      "prepared_sha256": "d44842d75e8a6f5d43700b175ffcabafbed3ae6c9309a9bc15a17797a63fc81f",
+      "published_sha256": "fa98b3061babb2cab964dc04f68aa20d90baf460a35647195067e9f12bda3b4d",
+      "reason": "Root rewrote only the authored README for readability and formatted it; all frozen evidence is unchanged."
+    }
+  ],
+  "all_full_original_bodies_preserved": true,
+  "isolated_validator_receipt_sha256": "4922ff99e19e45a2407c810562d5f7e234edb3c7321bb138d79a8c35b69f683f",
+  "current_main_admission": false,
+  "D3_production_architecture": "linux/amd64",
+  "D3_common_arm64_scope": "lightweight local-development only",
+  "foreign_sum_unchanged": true,
+  "global_and_explicit_authored_markdown_format_exit": 0
+}

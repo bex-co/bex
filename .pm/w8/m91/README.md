@@ -392,3 +392,9 @@ The exact one-file implementation is applied. Focused/full host Go checks pass i
   2. 已经在跑的双架构 run 可以收尾，不必为了改架构而取消；新的精确版本触发（例如 node-14.21.2）应在第 1 步合入后再启动，避免白跑 arm64。
   3. 验收条件改为：同一固定公共底在 amd64 上完成完整 utilities 与实际运行时/companion 资格，arm64 公共底通过轻量检查。其余 DoD 不变。
 - **相关：** D4（为镜像构建拆出 `bex-build` runner 池）在 [w6/m155](../../w6/m155/README.md) 跟进。不阻塞本项，但上线后这些构建不再与生产部署抢 runner。
+
+## Complete utility evidence for 0b7 and D3 scope — 2026-11-02
+
+[The retained packet](evidence/common-current-0b7-20261102/README.md) contains both successful full utility jobs from run 41407186362 and all 712 original artifact members. Independent content review and the unchanged validators passed on the exact isolated 0b7 source. The candidate record changes only source/utilities; the reviewed image and its approval are unchanged.
+
+This evidence does not admit current main: the publisher runner label changed a recorded input. D3 workflow migration and a fresh AMD64 baseline are next. Production family qualification now follows the user's AMD64-only decision; the common ARM64 development variant receives a lightweight check. Required AMD64 families, production adoption and the original 28 hosted cases remain open. No task closes here.

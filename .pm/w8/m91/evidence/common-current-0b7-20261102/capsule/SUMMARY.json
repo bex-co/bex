@@ -1,0 +1,44 @@
+{
+  "outcome": "PASS_CURRENT0b7_UTILITY_CONTENT_ONLY_PENDING_ROOT_APPROVAL",
+  "actual_source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "same_approved0941_image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "image_producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "run": 41407186362,
+  "architectures": [
+    {
+      "arch": "amd64",
+      "job_id": 125153305618,
+      "members": 356,
+      "source_paths": 300,
+      "original_authored_cases": 13,
+      "original_HTTP_results": 39,
+      "omissions": 5,
+      "supplier_negative": true,
+      "full_SPDX_packages": 1212,
+      "original_manifest": {
+        "bytes": 79263,
+        "sha256": "a6b75fb44348a7b64a792427e38ce5e59a352400a4e4cd0fda301680b7b2ce9c"
+      }
+    },
+    {
+      "arch": "arm64",
+      "job_id": 125153305520,
+      "members": 356,
+      "source_paths": 300,
+      "original_authored_cases": 13,
+      "original_HTTP_results": 39,
+      "omissions": 5,
+      "supplier_negative": true,
+      "full_SPDX_packages": 1208,
+      "original_manifest": {
+        "bytes": 79645,
+        "sha256": "7b45e3533989603f99812eded4b460c6b676df1286baaad3e861e5ff15e92153"
+      }
+    }
+  ],
+  "root_approval_pending": true,
+  "new_CI_actions": false,
+  "repo_or_candidate_mutations": false,
+  "original_ZIPs_all_members_raw_and_gzip_retained": true,
+  "no_dated_case_downloads": true
+}

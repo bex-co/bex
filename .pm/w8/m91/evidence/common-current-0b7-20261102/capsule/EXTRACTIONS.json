@@ -1,0 +1,30 @@
+{
+  "amd64": {
+    "complete": true,
+    "zip_bytes": 83734516,
+    "zip_sha256": "ca8d0886361bb21a8b21d5743ca227fc0520b7ed7cde8d9ddb01ab25db7a6918",
+    "completed_members": 356,
+    "member": null,
+    "observed_member_bytes": 4821,
+    "declared_bytes": 140617788,
+    "manifest_sha256": "a6b75fb44348a7b64a792427e38ce5e59a352400a4e4cd0fda301680b7b2ce9c",
+    "observed_output_bytes": 140617788,
+    "actual_file_bytes": 140617788,
+    "minimum_free": 8767967232,
+    "peak_allocated": 141529088
+  },
+  "arm64": {
+    "complete": true,
+    "zip_bytes": 79101762,
+    "zip_sha256": "90fdc530426317471c797d7a6b44673954168f18076855158f1e72888989b831",
+    "completed_members": 356,
+    "member": null,
+    "observed_member_bytes": 4820,
+    "declared_bytes": 136199639,
+    "manifest_sha256": "7b45e3533989603f99812eded4b460c6b676df1286baaad3e861e5ff15e92153",
+    "observed_output_bytes": 136199639,
+    "actual_file_bytes": 136199639,
+    "minimum_free": 10303889408,
+    "peak_allocated": 137113600
+  }
+}

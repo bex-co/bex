@@ -1,0 +1,26 @@
+[
+  {
+    "architecture": "amd64",
+    "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/amd64/original.zip",
+    "bytes": 83734516,
+    "sha256": "ca8d0886361bb21a8b21d5743ca227fc0520b7ed7cde8d9ddb01ab25db7a6918",
+    "unchanged_original_members": 356,
+    "original_manifest": {
+      "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/amd64/extracted/artifact/MANIFEST.json",
+      "bytes": 79263,
+      "sha256": "a6b75fb44348a7b64a792427e38ce5e59a352400a4e4cd0fda301680b7b2ce9c"
+    }
+  },
+  {
+    "architecture": "arm64",
+    "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/arm64/original.zip",
+    "bytes": 79101762,
+    "sha256": "90fdc530426317471c797d7a6b44673954168f18076855158f1e72888989b831",
+    "unchanged_original_members": 356,
+    "original_manifest": {
+      "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/arm64/extracted/artifact/MANIFEST.json",
+      "bytes": 79645,
+      "sha256": "7b45e3533989603f99812eded4b460c6b676df1286baaad3e861e5ff15e92153"
+    }
+  }
+]

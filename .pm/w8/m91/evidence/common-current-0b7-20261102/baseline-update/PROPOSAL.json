@@ -1,0 +1,120 @@
+{
+  "state": "DATED0b7_PROPOSAL_VALIDATED_ONLY_IN_EXACT0b7_PENDING_ROOT_PUBLICATION",
+  "source": {
+    "sha": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+    "manifest": {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/qualification-source.json",
+      "bytes": 75099,
+      "sha256": "9358ff0426b128bfcdf6220ff666a1d7cc47225cec32c1f68cfaa3833266c3f3"
+    }
+  },
+  "utilities": {
+    "amd64": {
+      "run_id": 41407186362,
+      "run_attempt": 1,
+      "job_id": 125153305618,
+      "artifact_id": 13125390305,
+      "artifact_metadata": {
+        "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utility-metadata/amd64-artifact.json",
+        "bytes": 796,
+        "sha256": "ac54a8659caf3fa60fb4f7a53c20555f195be4d0ebdbe67003d94a192e268b6a"
+      },
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/capsule/jobs-04-completed.json",
+        "bytes": 12126,
+        "sha256": "936c21e3734dd122c0b602de9d62c2a5017e5d1a73889b720b5f57ec4121a3a4"
+      },
+      "root": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact",
+      "manifest": {
+        "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/MANIFEST.json",
+        "bytes": 79263,
+        "sha256": "a6b75fb44348a7b64a792427e38ce5e59a352400a4e4cd0fda301680b7b2ce9c"
+      }
+    },
+    "arm64": {
+      "run_id": 41407186362,
+      "run_attempt": 1,
+      "job_id": 125153305520,
+      "artifact_id": 13124914601,
+      "artifact_metadata": {
+        "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utility-metadata/arm64-artifact.json",
+        "bytes": 796,
+        "sha256": "48d0fe510117d74579f744a1ee0ae19a72e92b4ed932ed3e660c00b3773ea660"
+      },
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/capsule/jobs-04-completed.json",
+        "bytes": 12126,
+        "sha256": "936c21e3734dd122c0b602de9d62c2a5017e5d1a73889b720b5f57ec4121a3a4"
+      },
+      "root": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact",
+      "manifest": {
+        "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/MANIFEST.json",
+        "bytes": 79645,
+        "sha256": "7b45e3533989603f99812eded4b460c6b676df1286baaad3e861e5ff15e92153"
+      }
+    }
+  },
+  "same_approved_image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer_verifier_unchanged": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "only_candidate_fields_changed": [
+    "source",
+    "utilities"
+  ],
+  "unchanged_image_approval_fields": {
+    "ref": {
+      "equal": true,
+      "formatted_bytes_equal": true
+    },
+    "base": {
+      "equal": true,
+      "formatted_bytes_equal": true
+    },
+    "producer": {
+      "equal": true,
+      "formatted_bytes_equal": true
+    },
+    "verification": {
+      "equal": true,
+      "formatted_bytes_equal": true
+    },
+    "publication": {
+      "equal": true,
+      "formatted_bytes_equal": true
+    },
+    "platforms": {
+      "equal": true,
+      "formatted_bytes_equal": true
+    },
+    "approval": {
+      "equal": true,
+      "formatted_bytes_equal": true
+    }
+  },
+  "root_content_admission": {
+    "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/ROOT-CONTENT-ADMISSION.json",
+    "bytes": 1807,
+    "sha256": "afede4bac1f759f6fba37fd4828f5fdd6be4784f5771e5873d34ecf7872f0504"
+  },
+  "retained_original_members": 712,
+  "no_zip_body_duplication": true,
+  "gates_left_open": [
+    "Required AMD64 runtime/companion/exact/legacy/native-init qualification under D3",
+    "Common ARM64 lightweight local-development checks under D3",
+    "Production adoption and original28 hosted acceptance"
+  ],
+  "dated_phase_scope": "Prior688/e6 NodeARM predeploy proof remains dated and unchanged; no current phase or all-runtime/phase claim.",
+  "actual_validation": {
+    "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/baseline-update/VALIDATION.json",
+    "bytes": 1798,
+    "sha256": "4922ff99e19e45a2407c810562d5f7e234edb3c7321bb138d79a8c35b69f683f"
+  },
+  "current_a5_admission": false,
+  "current_a5_limit": "native-base-image.yml runnerlabel bex-production\u2192bex-build changes functional300 and image33; existing strict current validators reject. No source/image-policy relabeling.",
+  "D3": {
+    "decision_commit": "191bb4d75",
+    "production": "linux/amd64 qualification only",
+    "arm64": "common Bookworm local-development variant/lightweight checks only; no per-runtime gate",
+    "dated_both_full_PASS": "stronger retained historical evidence, not future requirement",
+    "workflow_helper_migration_pending_before_further_dispatch": true
+  }
+}

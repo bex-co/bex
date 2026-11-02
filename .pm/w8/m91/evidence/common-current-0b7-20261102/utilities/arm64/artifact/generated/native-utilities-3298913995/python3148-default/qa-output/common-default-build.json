@@ -1,0 +1,10 @@
+{
+  "phase": "build",
+  "python": "3.14.8",
+  "python_env": "3.14.8",
+  "executable": "/usr/local/bin/python3",
+  "loaded_library": "libpython3.14.so",
+  "ldd": "\tlinux-vdso.so.1 (0x0000ffff9b58c000)\n\tlibpython3.14.so.1.0 => /usr/local/bin/../lib/libpython3.14.so.1.0 (0x0000ffff9af40000)\n\tlibc.so.6 => /lib/aarch64-linux-gnu/libc.so.6 (0x0000ffff9ad90000)\n\tlibm.so.6 => /lib/aarch64-linux-gnu/libm.so.6 (0x0000ffff9ace0000)\n\t/lib/ld-linux-aarch64.so.1 (0x0000ffff9b550000)\n",
+  "packaging_and_c_extension_executed": true,
+  "pass": true
+}

@@ -1,0 +1,73 @@
+{
+  "files": [
+    {
+      "architecture": "amd64",
+      "kind": "syft",
+      "raw": {
+        "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/amd64/extracted/artifact/generated/native-utilities-323169176/python3148-default/generated.syft.json",
+        "bytes": 31943767,
+        "sha256": "d05b77adc9b5c47de6c374d68ff3994dcec3191fa5eb522e5894793647a980e5"
+      },
+      "gzip": {
+        "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/amd64/extracted/artifact/generated/native-utilities-323169176/python3148-default/generated.syft.json.gz",
+        "bytes": 5341988,
+        "sha256": "1696d04714c24d5739b5d2d1900a95e1f5c2784eee5e49e1bb2e6a5ad5f9fd48"
+      },
+      "decoded_bytes": 31943767,
+      "decoded_sha256": "d05b77adc9b5c47de6c374d68ff3994dcec3191fa5eb522e5894793647a980e5",
+      "full_EOF_CRC_roundtrip": true
+    },
+    {
+      "architecture": "amd64",
+      "kind": "spdx",
+      "raw": {
+        "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/amd64/extracted/artifact/generated/native-utilities-323169176/python3148-default/generated.spdx.json",
+        "bytes": 32041429,
+        "sha256": "af8d0f6fe7b4f3c03ad52b83be3f000fcf7ddbf80d7cec703d7d5aec83a98f36"
+      },
+      "gzip": {
+        "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/amd64/extracted/artifact/generated/native-utilities-323169176/python3148-default/generated.spdx.json.gz",
+        "bytes": 4417224,
+        "sha256": "a88599737b452cafbc676f1d9f7dc81fceea7b20750c6cb481ff4db25ff87a1a"
+      },
+      "decoded_bytes": 32041429,
+      "decoded_sha256": "af8d0f6fe7b4f3c03ad52b83be3f000fcf7ddbf80d7cec703d7d5aec83a98f36",
+      "full_EOF_CRC_roundtrip": true
+    },
+    {
+      "architecture": "arm64",
+      "kind": "syft",
+      "raw": {
+        "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/arm64/extracted/artifact/generated/native-utilities-3298913995/python3148-default/generated.syft.json",
+        "bytes": 32019668,
+        "sha256": "5ef76eb16eaa76a20b9df458335e53a8fd4864c690fe70ed66de5f0292230baa"
+      },
+      "gzip": {
+        "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/arm64/extracted/artifact/generated/native-utilities-3298913995/python3148-default/generated.syft.json.gz",
+        "bytes": 5342642,
+        "sha256": "127d014f30de3659dd8f8db8e5b9248a1ba1c97fbca3d48667324fdcb9111ef3"
+      },
+      "decoded_bytes": 32019668,
+      "decoded_sha256": "5ef76eb16eaa76a20b9df458335e53a8fd4864c690fe70ed66de5f0292230baa",
+      "full_EOF_CRC_roundtrip": true
+    },
+    {
+      "architecture": "arm64",
+      "kind": "spdx",
+      "raw": {
+        "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/arm64/extracted/artifact/generated/native-utilities-3298913995/python3148-default/generated.spdx.json",
+        "bytes": 32058747,
+        "sha256": "cbd09d5a6787a5c72d04dd448433c4d536cd8c42fc0f8fa55c0d5f9a4561e2a8"
+      },
+      "gzip": {
+        "path": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake/arm64/extracted/artifact/generated/native-utilities-3298913995/python3148-default/generated.spdx.json.gz",
+        "bytes": 4416571,
+        "sha256": "7f9ec070b0b7cb9ad173ac0d4d096d691e2cc32931cba12759cd700b55e93ebd"
+      },
+      "decoded_bytes": 32058747,
+      "decoded_sha256": "cbd09d5a6787a5c72d04dd448433c4d536cd8c42fc0f8fa55c0d5f9a4561e2a8",
+      "full_EOF_CRC_roundtrip": true
+    }
+  ],
+  "transformations": false
+}
