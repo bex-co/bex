@@ -158,6 +158,17 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 - **Package-manager installs are left alone.** When the binary lives under a Homebrew path (Cellar / `opt/homebrew` / Linuxbrew), `bex upgrade` prints `brew upgrade bex` instead of overwriting files the package manager owns.
 - Signature verification is in-process (no `cosign` binary required) and **fail-closed**: if the sigstore trusted root can't be fetched, or the signature/identity/checksum doesn't verify, the upgrade aborts.
 
+## Canceling a running query over `bex psql`
+
+Pressing Ctrl+C in `bex psql` (and in any psql connected to a `*.db.bex.co` external URL) does **not** stop the running statement: psql, including 18.x, sends PostgreSQL's legacy cancel request, a plaintext packet with no TLS server name. bex's shared external endpoint routes every connection by TLS SNI and never decrypts it (ADR009 § TLS passthrough), so that packet has nowhere to go. The query runs to completion and the session stays usable. This is a user-signed difference from Render (w8/m87, ADR018).
+
+To cancel, use either of these, which do reach the database:
+
+- a client built on **libpq 17 or newer that calls `PQcancelCreate`/`PQcancelBlocking`** (the TLS cancel connection carries the server name), for example a driver's cancel method backed by that API;
+- `SELECT pg_cancel_backend(<pid>)` from a second session to the same database (`SELECT pg_backend_pid()` in the first session names the pid).
+
+Internal connections from services in the same workspace are not affected.
+
 ## Secret files must be UTF-8 text
 
 `--secret-file name:./path` (on `services create`) sends the file as a JSON string, the only shape Render's API takes on every surface. The pinned client sends `string(data)`, and JSON encoding replaces every invalid UTF-8 byte with U+FFFD, so a **binary** file (a keystore, `.p12`, DER certificate) reaches `/etc/secrets/` silently altered, with the command still exiting 0 (w8/029). The unmodified `render` binary does the same against Render. Text files of any size up to the limit round-trip byte for byte.
