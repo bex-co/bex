@@ -2,6 +2,10 @@ module github.com/bex-co/bex/lego/backend
 
 go 1.26.0
 
+// CVE-2026-98432: Go 1.24+ listeners default to MPTCP, the listener type the
+// claimed remote-root chain needs. Off until every node runs a fixed kernel.
+godebug multipathtcp=0
+
 require (
 	github.com/aws/aws-sdk-go-v2 v1.47.1
 	github.com/aws/aws-sdk-go-v2/credentials v1.20.6

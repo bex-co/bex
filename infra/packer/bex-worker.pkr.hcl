@@ -85,6 +85,13 @@ variable "kubelet_amd64_sha256" {
   default = "0857047b00faf0c9c56d19450f181c5d387d2a6e02f12d852a50fa56ced13809"
 }
 
+# Expected newest kernel after the bake's apt upgrade; any other fails the bake,
+# so each kernel change is reviewed (infra/packer/README.md § Kernel).
+variable "kernel_version" {
+  type    = string
+  default = "6.8.0-147"
+}
+
 variable "kubernetes_release_key_sha256" {
   type    = string
   default = "7627818cf7bae52f9008c93e8b1f961f53dea11d40891778de216fb1b43be54d"
@@ -131,7 +138,7 @@ source "hcloud" "worker" {
   ssh_username = "root"
   # Snapshot descriptions are unique in Hetzner. Include the full runtime tuple
   # so a containerd/runc-only upgrade does not collide with the previous bake.
-  snapshot_name = "${var.image_name}-k8s-${var.kubernetes_version}-containerd-${var.containerd_version}-runc-${var.runc_version}-kubelet-${substr(var.kubelet_amd64_sha256, 0, 12)}"
+  snapshot_name = "${var.image_name}-k8s-${var.kubernetes_version}-containerd-${var.containerd_version}-runc-${var.runc_version}-kubelet-${substr(var.kubelet_amd64_sha256, 0, 12)}-kernel-${var.kernel_version}"
   snapshot_labels = {
     caph-image-name     = var.image_name
     "bex.co/role"       = "node"
@@ -139,6 +146,7 @@ source "hcloud" "worker" {
     "bex.co/containerd" = var.containerd_version
     "bex.co/runc"       = var.runc_version
     "bex.co/kubelet"    = substr(var.kubelet_amd64_sha256, 0, 12)
+    "bex.co/kernel"     = var.kernel_version
   }
 }
 
@@ -159,6 +167,7 @@ build {
       "KUBERNETES_RELEASE_KEY_SHA256=${var.kubernetes_release_key_sha256}",
       "KUBELET_RELEASE_TAG=${var.kubelet_release_tag}",
       "KUBELET_AMD64_SHA256=${var.kubelet_amd64_sha256}",
+      "KERNEL_VERSION=${var.kernel_version}",
     ]
     inline = [
       "set -euxo pipefail",
@@ -168,6 +177,9 @@ build {
       "localectl set-locale LANG=en_US.UTF-8 || true",
       "localectl set-locale LANGUAGE=en_US.UTF-8 || true",
       "apt-get update -y",
+      # Security updates, kernel included, before anything else is installed.
+      "apt-get -y -o Dpkg::Options::=--force-confdef -o Dpkg::Options::=--force-confold full-upgrade",
+      "test \"$(ls /boot/vmlinuz-*-generic | sed 's|^/boot/vmlinuz-||; s|-generic$||' | sort -V | tail -1)\" = \"$KERNEL_VERSION\"",
       # Trimmed apt set (w1/m36 t003): dropped the unused at/jq/unzip/mtr/
       # apt-transport-https; keep socat (kubeadm preflight) + logrotate (kubelet
       # log rotation) + wget/curl/gpg/ca-certificates (this bake's downloads).

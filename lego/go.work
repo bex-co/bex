@@ -1,5 +1,9 @@
 go 1.27.2
 
+// CVE-2026-98432: Go 1.24+ listeners default to MPTCP, the listener type the
+// claimed remote-root chain needs. Off until every node runs a fixed kernel.
+godebug multipathtcp=0
+
 use (
 	./backend
 	./cli
