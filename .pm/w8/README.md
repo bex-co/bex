@@ -439,7 +439,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **212** — [`bex skills install` installs Render's agent skills: 22 `render-*` skills that send the user's agent to `render` CLI, `mcp.render.com` and `dashboard.render.com`](done/212.md) (~3h, major) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: sandboxed install wrote 188 Render-directing files and 0 mentioning bex; the m29 "branding residual" acceptance missed the functional effect — **PROMOTED 2026-10-28 to m143; evidence retained**
 
-- [ ] **211** — [Service URLs offer no HTTP/3: Render serves every service over HTTP/3 (`alt-svc: h3`), bex's edge is TCP-only](211.md) (~2h + decision, minor) ← `/qa-find-bugs-cli` loop sweep 3093 2026-10-28: four `onrender.com`/`docs.render.com` hosts advertise `alt-svc: h3=":443"`; bex service URLs advertise nothing, and the Hetzner TCP Load Balancer cannot carry QUIC — **READY（2026-11-02 用户决定：记为签字差异，开放注册前再议；下一步：写 ADR018 行后关闭）**
+- [x] **211** — [Service URLs offer no HTTP/3: Render serves every service over HTTP/3 (`alt-svc: h3`), bex's edge is TCP-only](done/211.md) — **DONE 2026-11-02** (recorded as a user-signed ADR018 difference; revisit before open registration)
 
 - [x] **210** — [Removing `PORT` from an image web service never takes effect: the next deploy or rollback reuses the cached network built for the old `PORT` (rollback waits on 9999 and fails; a fresh deploy stays on 9090)](done/210.md) (~1h, major) ← `/qa-find-bugs-cli` loop sweep 25 2026-10-27 on pin `f4f12981e`, running w4/m243/t006's t007 live replay — **PROMOTED 2026-10-28 to m142; evidence retained**
 
