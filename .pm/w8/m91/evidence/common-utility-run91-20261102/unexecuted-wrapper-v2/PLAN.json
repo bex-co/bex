@@ -1,0 +1,22 @@
+{
+  "status": "AWAIT_ROOT_NARROW_WRAPPER_REVIEW_NO_RETRY",
+  "at": "2026-11-02T14:52:14.923459+00:00",
+  "original_wrapper": {
+    "path": "/private/tmp/bex-w8-run91-audit-execution-proposal-20261102-fzuabo6k/run_audit.py",
+    "sha256": "0944a99ed60043e15ef0e3bcf5b692c1799ad2dd71fdee9b7fc94c8454b560c3",
+    "untouched": true
+  },
+  "correction": "sha(Path(p)) for recorded stringkeys; reset childargv before runpy; reuse only exactlycopiedc7e707 target from firstwrapper after exactregular/hashcheck, neveroverwrite",
+  "original_five_controls_and_countsource_unchanged": true,
+  "prior_reconciliation": "/private/tmp/bex-w8-run91-audit-execution-proposal-20261102-fzuabo6k/POSTFAILURE-RECONCILIATION.json",
+  "prior_outer_trace_carrier": "exact displayed toolstderr transcription, original tool invocation remains in session",
+  "steps": [
+    "same5controls",
+    "samefreshbind",
+    "samec7e707 fullcontentaudit"
+  ],
+  "bounds": "unchangedwhole60s/4MiB perstep/socketsdenied/read-only Gitonly/exactV4reap/8GiB32margin/sourceposthash",
+  "no_new_body_or_runtime_or_repo_actions": true,
+  "future_exact_command": "/opt/homebrew/bin/python3.14 -B /private/tmp/bex-w8-run91-audit-wrapper-v2-20261102-119ufxtw/run_audit.py",
+  "alreadyexecuted": false
+}

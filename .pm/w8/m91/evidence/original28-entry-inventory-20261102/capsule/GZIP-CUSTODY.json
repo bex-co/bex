@@ -1,0 +1,33 @@
+{
+  "locations": {
+    "compressed": {
+      "bytes": 5297,
+      "mode": "0o644",
+      "path": "/private/tmp/bex-w8-entry-inventory-publication-20261102-wb9wmjoy/payload/capsule/LOCATIONS.json.gz",
+      "sha256": "4e0dddd29411e132cc81878ba7f8c8b2d260adf6608ea39d94547ecf6aed54aa"
+    },
+    "decoded_bytes": 49926,
+    "decoded_sha256": "87ee8255ae7e86ac06d871d0c1fbec91032d59b2a4fd543e92079b7bd70916c6"
+  },
+  "source96": {
+    "all_members_fullroundtrip_checked": 40,
+    "compressed": {
+      "bytes": 126302,
+      "mode": "0o644",
+      "path": "/private/tmp/bex-w8-entry-inventory-publication-20261102-wb9wmjoy/payload/capsule/source96.tar.gz",
+      "sha256": "b13daf9b12254b36fc46efb4a548708f344e25aa3b99aad991f67aea9fc45aa7"
+    },
+    "decoded_tar_bytes": 563200,
+    "decoded_tar_sha256": "de22e5a2c0700a6e7bc898ea97ea92a30e7ebe69785733e02b72c7a30990a722"
+  },
+  "view_inputs": {
+    "compressed": {
+      "bytes": 23535,
+      "mode": "0o644",
+      "path": "/private/tmp/bex-w8-entry-inventory-publication-20261102-wb9wmjoy/payload/capsule/VIEW-INPUT-LOCATIONS.json.gz",
+      "sha256": "f0df9ae65a6409c12f9f99093d0f92ed97bd360b16df7ab9575b8f72479a6b35"
+    },
+    "decoded_bytes": 197060,
+    "decoded_sha256": "7dc7a844a98438fdbe43490c2667d0b01463daa76216ed0ae933c4fcba92e827"
+  }
+}

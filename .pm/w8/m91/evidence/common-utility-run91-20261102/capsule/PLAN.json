@@ -1,0 +1,65 @@
+{
+  "status": "AWAIT_ROOT_EXACT_TUPLE_AND_RESOURCE_APPROVAL_NO_BODIES_OR_AUDIT",
+  "at": "2026-11-02T14:39:47.204784+00:00",
+  "binding": {
+    "status": "BOUND_FROM_ACTUAL_COMPLETED_CI",
+    "source": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+    "run_id": 41456212207,
+    "amd64_job_id": 125315558311,
+    "attempt": 1,
+    "branch": "main",
+    "event": "workflow_dispatch"
+  },
+  "artifact": {
+    "id": 13150542707,
+    "name": "common-generated-7ad69bc18ba338ef27733eed0a77adb27477cc5a-amd64-1",
+    "bytes": 83739065,
+    "sha256": "687c178a0da3998c612979eb90c49aee1125a9161a127da19fde8f767389ff3a"
+  },
+  "constant_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "expected_captured_source": {
+    "files": 301,
+    "path": "EXPECTED-CAPTURED-SOURCE.json",
+    "sha256": "4a04605cb9963242964f7ddbb248665ac4f3eb477fe26bddee35d1236b9054c6"
+  },
+  "scope": "ONE AMD artifact; no current ARM gate; full original raw/gz/member preservation; no candidate/repo writes",
+  "exact_data_only_change": "intake/download.py INPUTS literal only; download/extract guards and auditor AST unchanged",
+  "resources": {
+    "floor": 8589934592,
+    "margin": 33554432,
+    "exact_zip_bytes": 83739065,
+    "start_required_free": 8707228089,
+    "observed_free": 23949066240,
+    "headroom_above_zip_start": 15241838151,
+    "zip_cap": 268435456,
+    "extracted_declared_cap": 536870912,
+    "members_cap": 10000,
+    "owned_file_cap": 1610612736,
+    "download_outer_seconds": 240,
+    "extract_outer_seconds": 180,
+    "fresh_fit_each_phase": true,
+    "postZIP_projection": "Before extraction, original unchanged extract_guard measures actual central directory conservative allocated file blocks+metadata and requires floor+projection+margin."
+  },
+  "actions_after_Root_approval_only": [
+    "ONE connector immutable artifact13150542707/file exactname, object structuredContent.file_uri.download_url only; sanitized shape first; no URL/token output or retained raw response; STOP unknownshape/no secondcall",
+    "ONE verifiedTLS localstream via unchanged download_guard.py amd64; exactZIP size/SHA; no retry",
+    "Actual centraldir inventory then unchanged V2 extract_guard.py amd64; retain every member+MANIFEST exactly",
+    "STOP before bind_audit/audit: expected extra two bootstrapfiles require exactsource accounting+paired controls+Root review; no automaticcountchange"
+  ],
+  "no_actions": {
+    "connector_artifact_calls": 0,
+    "local_streams": 0,
+    "ZIP_or_body_bytes": 0,
+    "audit_executions": 0,
+    "runtime_or_repo_writes": 0
+  },
+  "read_only_CI_custody": {
+    "terminal_case": "/private/tmp/bex-w8-current-7ad-0941-utility-binding-20261102-fc3qdn3j/terminal",
+    "AMD_full_log_fetches": 1,
+    "plan_full_log_fetches": 1,
+    "log_bytes": 63935,
+    "log_sha256": "e964f85451a92159844beee497a1f3eb56007de7d5b3f836eca5270b7f18e5e0",
+    "carrier": "full decoded App UTF8 joblog; not compressed HTTP response bytes"
+  }
+}

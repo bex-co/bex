@@ -1,0 +1,10 @@
+{
+  "case": "missing-python-headers",
+  "common_base": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "expected_failure": "Python.h: No such file or directory",
+  "fresh_stdout_probe": "missing-python-headers-1793630186708074051",
+  "healthy_independent_prerequisites_observed": true,
+  "original_command_expected_failure_observed": true,
+  "removed_supplier": "python-headers",
+  "scope": "test-only removal layer; no runtime or hosted acceptance"
+}

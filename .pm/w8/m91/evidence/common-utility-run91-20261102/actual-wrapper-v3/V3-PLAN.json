@@ -1,0 +1,11 @@
+{
+  "status": "SOURCE_ONLY_AWAIT_ROOT_V3_REVIEW_NO_RETRY",
+  "source_sha256": "feb8e6a3a1e94c846ff2e2ccc3a5c7bf1417b2fb471dbed70c3191a0dcb29d0d",
+  "before_v2_source_sha256": "0e32fa7b59c815cdc9f34fad2e7a4ebc8fb127e5b9925d94f7557a52da3601d2",
+  "change": "durableperstepPID/group-target/observedPGID/fullargv/scriptSHA registration immediatelyafterPopen; fullstepfinallyreceipt before finalsourceposthash; nooracles/bounds/network change",
+  "sysargv": "child captures script=sys.argv[1], then sys.argv=[script], runpy uses script; unittest seeszero selectors",
+  "steps": "same5controls\u2192samebind\u2192samec7e707 dated7ad audit",
+  "originalfirstfailure_retained": true,
+  "future_command": "/opt/homebrew/bin/python3.14 -B /private/tmp/bex-w8-run91-audit-wrapper-v2-20261102-119ufxtw/run_audit_v3.py",
+  "executed": false
+}

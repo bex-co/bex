@@ -1,0 +1,16 @@
+{
+  "at": "2026-11-02T14:55:22.585058+00:00",
+  "status": "ROOT_AUTHORIZED_ONCE_REPAIRED_V3_OFFLINE_REVIEW_WRAPPER",
+  "script_sha256": "feb8e6a3a1e94c846ff2e2ccc3a5c7bf1417b2fb471dbed70c3191a0dcb29d0d",
+  "reviewed_deltas": [
+    "Path conversion fixes final source hashes",
+    "reset unittest argv before runpy",
+    "reuse exact preexisting owned auditor copy without overwrite",
+    "durable fsynced per-step PID/PGID argv identity and final step receipts"
+  ],
+  "prior_attempt": "V1 controls loader error; bind/audit never ran; original PID/PGID unretained so exact old-group reaping remains unproved",
+  "steps": "five pure accounting controls, fresh bind, actual7ad content audit",
+  "same_oracles_and_bounds": true,
+  "free_bytes": 23511388160,
+  "no_candidate_or_runtime_authority": true
+}

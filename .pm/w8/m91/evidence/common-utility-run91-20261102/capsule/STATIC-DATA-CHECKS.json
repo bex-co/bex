@@ -1,0 +1,9 @@
+{
+  "all_auditor_function_and85check_AST_unchanged": true,
+  "guards_and_bind_byteexact": true,
+  "download_difference_only_INPUTS_literal": true,
+  "terminal_binding_matches_raw_run_job_artifact": true,
+  "source301_expected_sha": "4a04605cb9963242964f7ddbb248665ac4f3eb477fe26bddee35d1236b9054c6",
+  "actualartifactcentraldir_unknown": true,
+  "auditor_executed": false
+}

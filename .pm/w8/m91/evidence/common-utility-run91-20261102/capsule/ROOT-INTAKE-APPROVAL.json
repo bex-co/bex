@@ -1,0 +1,26 @@
+{
+  "at": "2026-11-02T14:40:28.715531+00:00",
+  "status": "ROOT_AUTHORIZED_ONE_EXACT_INTAKE_AND_UNCHANGED_V2_EXTRACTION",
+  "PLAN_sha256": "0dcbffd6ebbd82037b047247354bcb8fbef955fc021048ee4c2af8aac097eb7d",
+  "source": {
+    "status": "BOUND_FROM_ACTUAL_COMPLETED_CI",
+    "source": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+    "run_id": 41456212207,
+    "amd64_job_id": 125315558311,
+    "attempt": 1,
+    "branch": "main",
+    "event": "workflow_dispatch"
+  },
+  "artifact": {
+    "id": 13150542707,
+    "name": "common-generated-7ad69bc18ba338ef27733eed0a77adb27477cc5a-amd64-1",
+    "bytes": 83739065,
+    "sha256": "687c178a0da3998c612979eb90c49aee1125a9161a127da19fde8f767389ff3a"
+  },
+  "all_frozen_files_checked": 25,
+  "only_downloader_tuple_changed": true,
+  "same_guards_extractor_reaper": true,
+  "fresh_free_bytes": 23923310592,
+  "auditor_still_held": true,
+  "scope": "One connector, one verifiedTLS stream, exactsizeSHA, centraldir capacity fit, allmembersV2; no retry/candidate/pin/auth/runtime/audit"
+}

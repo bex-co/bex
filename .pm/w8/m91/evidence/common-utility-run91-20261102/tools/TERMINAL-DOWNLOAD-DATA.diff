@@ -1,0 +1,11 @@
+--- frozen-preparation/intake/download.py
++++ terminal-bound/intake/download.py
+@@ -4,7 +4,7 @@
+ from urllib.parse import urlsplit
+ 
+ ROOT=Path(__file__).resolve().parent
+-INPUTS={}  # Immutable tuple is bound only after actual artifact metadata and Root review.
++INPUTS={'amd64': (13150542707, 83739065, '687c178a0da3998c612979eb90c49aee1125a9161a127da19fde8f767389ff3a')}
+ def main():
+     os.umask(0o077);arch=sys.argv[1];artifact,size,sha=INPUTS[arch];url=json.loads(sys.stdin.read())
+     assert urlsplit(url).scheme=='https' and urlsplit(url).hostname.endswith('.oaiusercontent.com')

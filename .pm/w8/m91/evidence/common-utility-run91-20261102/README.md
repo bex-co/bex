@@ -1,0 +1,13 @@
+# Complete utility run91 on source7ad
+
+Run41456212207, attempt1, completes the original AMD64 utility cohort on source `7ad69bc18ba338ef27733eed0a77adb27477cc5a` and approved common0941. Plan, generated tests, original HTTP replay, capacity, cleanup, hashing and upload all pass. The complete job log and original metadata are retained here.
+
+The [original artifact](utilities/amd64/artifact/MANIFEST.json) contains all 358 files, totaling 140,675,562 bytes. Two bounded BuildKit pull attempts account for two additional raw diagnostic files: attempt1 times out with exit124; attempt2 succeeds. Both attempts and all raw outputs remain intact. The unchanged V2 extractor verifies the exact 83,739,065-byte ZIP with SHA `687c178a0da3998c612979eb90c49aee1125a9161a127da19fde8f767389ff3a` and every original member. The original ZIP remains preserved privately with its identity recorded in the intake receipts.
+
+The full content review passes four generated positive cases, all 13 original authored programs and 39 HTTP results, five omission controls, supplier removal, static gzip/ZIP checks, exact default Python3.14.8 and the complete raw/gzip Syft and SPDX reports. The captured 301-file source matches the executing Git source exactly. Original commands, data, oracles and proof predicates remain unchanged. The count adapter retains the existing functional predicates and checks the exact two raw streams for every retained bootstrap attempt; five focused accounting controls pass.
+
+The first local review wrapper fails before binding or auditing because of its unittest arguments and receipt path handling. Its source, raw failure and unretained old process-identity limitation remain recorded. The corrected V3 wrapper completes all five controls, binding and the full offline content review, retaining exact child identities and proving their groups absent. Root independently verifies all 403 intake files, all 357 manifest payloads and the captured source before admitting this dated result.
+
+[COPYPLAN.json](COPYPLAN.json), [PUBLICATION-MANIFEST.json](PUBLICATION-MANIFEST.json) and [ROOT-CUSTODY.json](ROOT-CUSTODY.json) bind this publication. Original members occur once; existing identical Git blobs and reviewed tools are reused through public immutable addresses. Full report bodies and retained wheels remain available under the original artifact paths.
+
+The later two CI test repairs change the tracked qualification inputs. This packet therefore retains a successful dated7ad result; a fresh full utility baseline is required for the repaired source before updating the current candidate or dispatching families. Production pins, the adoption contract and all original28 hosted outcomes remain open.

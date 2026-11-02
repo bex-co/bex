@@ -1,0 +1,115 @@
+{
+  "complete": true,
+  "steps": [
+    {
+      "name": "controls",
+      "argv_script": "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting.py",
+      "registration": {
+        "pid": 52397,
+        "process_group_target": 52397,
+        "observed_pgid": 52397,
+        "start_new_session": true,
+        "argv": [
+          "/opt/homebrew/bin/python3.14",
+          "-B",
+          "-c",
+          "\nimport os,re,runpy,sys\nREPO=\"/Users/tianpan/projects/bex7\"\nSOURCE=\"7ad69bc18ba338ef27733eed0a77adb27477cc5a\"\ndef guard(event,args):\n    if event.startswith(\"socket.\"):\n        raise RuntimeError(\"offline audit: socket denied\")\n    if event==\"subprocess.Popen\":\n        executable,argv,cwd,env=args\n        ok=(isinstance(argv,(list,tuple)) and executable==\"git\" and argv[0]==\"git\"\n            and cwd is not None and os.fspath(cwd)==REPO)\n        tail=list(argv[1:]) if ok else []\n        ok=ok and (tail==[\"rev-parse\",\"HEAD\"] or tail==[\"cat-file\",\"--batch\"]\n            or (len(tail)==4 and tail[:3]==[\"ls-tree\",\"-r\",\"-z\"] and re.fullmatch(\"[a-f0-9]{40}\",tail[3]))\n            or (len(tail)==2 and tail[0]==\"show\" and tail[1].startswith(SOURCE+\":\")))\n        if not ok: raise RuntimeError(\"offline audit: non-read-only-Git child denied\")\nsys.addaudithook(guard)\nscript=sys.argv[1]\nsys.argv=[script]\nrunpy.run_path(script,run_name=\"__main__\")\n",
+          "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting.py"
+        ],
+        "script": "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting.py",
+        "script_sha256": "cd045b4689390a57fd91520d3f7a6e33d1d81ce2bd103c067d32895cbb581683"
+      },
+      "pid": 52397,
+      "process_group_target": 52397,
+      "exit": 0,
+      "stop": null,
+      "group_absent": true,
+      "seconds": 0.082,
+      "stdout_bytes": 0,
+      "stderr_bytes": 707,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "6d731d9898abece847ffef8e17e385237e057a35f9acb41c1fce13b18f6a1e6c"
+    },
+    {
+      "name": "bind",
+      "argv_script": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/bind_audit.py",
+      "registration": {
+        "pid": 52399,
+        "process_group_target": 52399,
+        "observed_pgid": 52399,
+        "start_new_session": true,
+        "argv": [
+          "/opt/homebrew/bin/python3.14",
+          "-B",
+          "-c",
+          "\nimport os,re,runpy,sys\nREPO=\"/Users/tianpan/projects/bex7\"\nSOURCE=\"7ad69bc18ba338ef27733eed0a77adb27477cc5a\"\ndef guard(event,args):\n    if event.startswith(\"socket.\"):\n        raise RuntimeError(\"offline audit: socket denied\")\n    if event==\"subprocess.Popen\":\n        executable,argv,cwd,env=args\n        ok=(isinstance(argv,(list,tuple)) and executable==\"git\" and argv[0]==\"git\"\n            and cwd is not None and os.fspath(cwd)==REPO)\n        tail=list(argv[1:]) if ok else []\n        ok=ok and (tail==[\"rev-parse\",\"HEAD\"] or tail==[\"cat-file\",\"--batch\"]\n            or (len(tail)==4 and tail[:3]==[\"ls-tree\",\"-r\",\"-z\"] and re.fullmatch(\"[a-f0-9]{40}\",tail[3]))\n            or (len(tail)==2 and tail[0]==\"show\" and tail[1].startswith(SOURCE+\":\")))\n        if not ok: raise RuntimeError(\"offline audit: non-read-only-Git child denied\")\nsys.addaudithook(guard)\nscript=sys.argv[1]\nsys.argv=[script]\nrunpy.run_path(script,run_name=\"__main__\")\n",
+          "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/bind_audit.py"
+        ],
+        "script": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/bind_audit.py",
+        "script_sha256": "794ca9d431227472df6fb746b3840b78cfce91a9c01919515da17085c2fb65ab"
+      },
+      "pid": 52399,
+      "process_group_target": 52399,
+      "exit": 0,
+      "stop": null,
+      "group_absent": true,
+      "seconds": 0.027,
+      "stdout_bytes": 0,
+      "stderr_bytes": 0,
+      "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "name": "audit",
+      "argv_script": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/audit-bootstrap-accounting-v2.py",
+      "registration": {
+        "pid": 52401,
+        "process_group_target": 52401,
+        "observed_pgid": 52401,
+        "start_new_session": true,
+        "argv": [
+          "/opt/homebrew/bin/python3.14",
+          "-B",
+          "-c",
+          "\nimport os,re,runpy,sys\nREPO=\"/Users/tianpan/projects/bex7\"\nSOURCE=\"7ad69bc18ba338ef27733eed0a77adb27477cc5a\"\ndef guard(event,args):\n    if event.startswith(\"socket.\"):\n        raise RuntimeError(\"offline audit: socket denied\")\n    if event==\"subprocess.Popen\":\n        executable,argv,cwd,env=args\n        ok=(isinstance(argv,(list,tuple)) and executable==\"git\" and argv[0]==\"git\"\n            and cwd is not None and os.fspath(cwd)==REPO)\n        tail=list(argv[1:]) if ok else []\n        ok=ok and (tail==[\"rev-parse\",\"HEAD\"] or tail==[\"cat-file\",\"--batch\"]\n            or (len(tail)==4 and tail[:3]==[\"ls-tree\",\"-r\",\"-z\"] and re.fullmatch(\"[a-f0-9]{40}\",tail[3]))\n            or (len(tail)==2 and tail[0]==\"show\" and tail[1].startswith(SOURCE+\":\")))\n        if not ok: raise RuntimeError(\"offline audit: non-read-only-Git child denied\")\nsys.addaudithook(guard)\nscript=sys.argv[1]\nsys.argv=[script]\nrunpy.run_path(script,run_name=\"__main__\")\n",
+          "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/audit-bootstrap-accounting-v2.py"
+        ],
+        "script": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/audit-bootstrap-accounting-v2.py",
+        "script_sha256": "c7e70707760ccd39bc4121436194ddc61fca28f8de9895f6b486b8ecf23a51e0"
+      },
+      "pid": 52401,
+      "process_group_target": 52401,
+      "exit": 0,
+      "stop": null,
+      "group_absent": true,
+      "seconds": 1.033,
+      "stdout_bytes": 417,
+      "stderr_bytes": 0,
+      "stdout_sha256": "30f72c9e7605090aba8442b94fc24d5468bffebad8133f0cbff41de235cba576",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  ],
+  "stop": null,
+  "groups_absent": true,
+  "scope": "DATED7ad utility content only; no current baseline/adoption authority",
+  "seconds": 1.144,
+  "minimum_free": 23527575552,
+  "source_posthashes": {
+    "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/AUDITOR.diff": "fe5404e5f14fe5f55e7cf8f042a4d4196693430b437395a37f413bfbfe9f5719",
+    "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/PLAN.json": "f53dbe79954a54f18b7386dd181b12e1c7851d0cd1bf4cee994752119c6f5418",
+    "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/STATIC-SCOPE.json": "1ef51d1513fadb98382c5a20844a5ee15deb2accc83e0201d7620ba428050a4e",
+    "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/audit-bootstrap-accounting-v2.py": "c7e70707760ccd39bc4121436194ddc61fca28f8de9895f6b486b8ecf23a51e0",
+    "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/before-audit.py": "640573914435f685bec3f786ac1cb9df40a5ef49a3cbe70d05c17bf345e4c12e",
+    "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting.py": "cd045b4689390a57fd91520d3f7a6e33d1d81ce2bd103c067d32895cbb581683",
+    "/private/tmp/bex-w8-common-predeploy-controller-v3-source-20261102-cu0jri4k/retained-v4.py": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03",
+    "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/audit.py": "640573914435f685bec3f786ac1cb9df40a5ef49a3cbe70d05c17bf345e4c12e",
+    "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/bind_audit.py": "794ca9d431227472df6fb746b3840b78cfce91a9c01919515da17085c2fb65ab",
+    "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/audit-bootstrap-accounting-v2.py": "c7e70707760ccd39bc4121436194ddc61fca28f8de9895f6b486b8ecf23a51e0",
+    "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/BINDING.json": "6a8b2ddd478a9fdb609e229e68b918bb892ad0e677df8215c8575ab107881ece",
+    "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/jobs-final.json": "94c2c24eb443cde86cc290384491e8d3c819e82392b35c374b1a7b3abbf47349",
+    "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/artifacts-final.json": "6991ccda94573a8e817ece7330d8ebf7c4aa74ca0c51b78433fd9a585b3199b6",
+    "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/job-amd64.log": "e964f85451a92159844beee497a1f3eb56007de7d5b3f836eca5270b7f18e5e0"
+  },
+  "sources_unchanged": true,
+  "cancelled": false
+}

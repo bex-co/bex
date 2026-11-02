@@ -1,0 +1,8 @@
+{
+  "members": 358,
+  "declared_bytes": 140675562,
+  "conservative_allocated_bytes": 143052800,
+  "physical_floor": 8589934592,
+  "margin": 33554432,
+  "observed_free": 23781699584
+}

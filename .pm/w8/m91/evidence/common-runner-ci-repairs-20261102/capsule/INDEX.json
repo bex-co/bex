@@ -1,0 +1,90 @@
+{
+  "scope": "Two CI test repairs only; not runtime or current utility baseline admission",
+  "shipped": {
+    "shipped": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+    "parent": "d3601dc53c36ef7260515cc5308d7c7b6725eef5",
+    "tree": "6669503cc19794d4fc51c6d8157962d8bbdf34ef",
+    "local_twin": "54328cc33f1d636c3e6feae40dab8674611b9080",
+    "owned_paths": [
+      ".github/scripts/test_native_oci_common_qualification.py",
+      "lego/operator/internal/build/nativecommon_test.go"
+    ],
+    "nonforce_expected_parent_CAS": true,
+    "ref": {
+      "success": true
+    }
+  },
+  "archive": {
+    "bytes": 186790,
+    "sha256": "eb2b6dc8e10b4752566f3833b770a2de1afb24d659a26ea81a13b7bea5bb01f6",
+    "mode": "0o644"
+  },
+  "member_count": 51,
+  "logical_original_files": 55,
+  "source_Git_aliases": 6,
+  "source_bodies_and_view_bodies_copied": 0,
+  "actual_receipt": {
+    "kind": "archive-member",
+    "member": "checks/ACTUAL-RECEIPT.json",
+    "bytes": 2035,
+    "sha256": "0a97e07c1d548658c039ffa91f9ad5a7e60a32bddd12403a015278e8fbecbd08",
+    "mode": "0o644",
+    "mtime_ns": 1793631711581280024,
+    "uid": 501,
+    "gid": 0
+  },
+  "Root_source_check_admission": {
+    "kind": "archive-member",
+    "member": "checks/ROOT-SOURCE-CHECK-ADMISSION.json",
+    "bytes": 548,
+    "sha256": "f39a2a04c093a57b0c27f89d2bfb8aa4969375743ec01affed2dc8ef6e5bd4aa",
+    "mode": "0o644",
+    "mtime_ns": 1793631751118614439,
+    "uid": 501,
+    "gid": 0
+  },
+  "Root_execution_approval": {
+    "kind": "archive-member",
+    "member": "checks/ROOT-EXECUTION-APPROVAL.json",
+    "bytes": 712,
+    "sha256": "d4c92fea466423eac05af4ba6028e0d3631dbd3fa6c07b6478cbe5ace2aa3185",
+    "mode": "0o644",
+    "mtime_ns": 1793631572551154172,
+    "uid": 501,
+    "gid": 0
+  },
+  "whole_seconds": 46.774871916975826,
+  "groups_absent": true,
+  "own_TMP_HOME_gone": true,
+  "minimum_free_bytes": 23423320064,
+  "peak_TMP_bytes": 44647396,
+  "unchanged_sources": true,
+  "both_failure_logs_full_and_original": {
+    "lint.log": {
+      "kind": "archive-member",
+      "member": "failures/lint.log",
+      "bytes": 23108,
+      "sha256": "8f600b89e69b41ac2919d68600fe67d23621b34c0395287d86f6bc2b51313553",
+      "mode": "0o644",
+      "mtime_ns": 1793630613299627129,
+      "uid": 501,
+      "gid": 0
+    },
+    "publish.log": {
+      "kind": "archive-member",
+      "member": "failures/publish.log",
+      "bytes": 47668,
+      "sha256": "e25001b5b1c722dd5651120b35d8d8ec22207516b5065b325fece6e622b9fa48",
+      "mode": "0o644",
+      "mtime_ns": 1793630613299714504,
+      "uid": 501,
+      "gid": 0
+    }
+  },
+  "prior_utility91": "Dated7ad only; both tracked test fixes change qualification301. New full AMD baseline pending; no stale candidate admission.",
+  "unexecuted_controllers": [
+    "checks/run_checks.py (V1)"
+  ],
+  "actual_controller": "checks/run_checks_readonly.py (V2) authorized once",
+  "history": "repair-proposal original private files; initial already-applied Python mismatch retained. No optional counterfactual tests."
+}

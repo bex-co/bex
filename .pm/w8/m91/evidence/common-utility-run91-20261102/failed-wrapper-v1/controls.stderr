@@ -1,0 +1,11 @@
+/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting (unittest.loader._FailedTest./private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting) ... ERROR
+
+======================================================================
+ERROR: /private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting (unittest.loader._FailedTest./private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting)
+----------------------------------------------------------------------
+AttributeError: module '__main__' has no attribute '/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting'
+
+----------------------------------------------------------------------
+Ran 1 test in 0.000s
+
+FAILED (errors=1)

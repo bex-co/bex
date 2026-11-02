@@ -1,0 +1,41 @@
+{
+  "at": "2026-11-02T14:57:27.089173+00:00",
+  "scope": "read-only posthash; no rerun/extraction/normalization",
+  "all357_manifest_payloads_regular_bytes_sha256_match": true,
+  "original358_member_set_bijection": true,
+  "manifest": {
+    "path": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/intake/amd64/extracted/artifact/MANIFEST.json",
+    "bytes": 79917,
+    "sha256": "7d0e1876ba495f40338069318e9bad04dba102f0b0bbeb12588bc61bf48a4ecd"
+  },
+  "original_payload_bytes_excluding_manifest": 140595645,
+  "original_ZIP": {
+    "path": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/intake/amd64/original.zip",
+    "bytes": 83739065,
+    "sha256": "687c178a0da3998c612979eb90c49aee1125a9161a127da19fde8f767389ff3a"
+  },
+  "exact_source301": true,
+  "expected_captured_source_freshGit_and_actual_bytes_sha256": "4a04605cb9963242964f7ddbb248665ac4f3eb477fe26bddee35d1236b9054c6",
+  "fresh_original_capture_equals_auditor_fresh301_Git_names": true,
+  "durable_group_fresh_absence": [
+    {
+      "step": "controls",
+      "pid": 52397,
+      "pgid": 52397,
+      "fresh_absent": true
+    },
+    {
+      "step": "bind",
+      "pid": 52399,
+      "pgid": 52399,
+      "fresh_absent": true
+    },
+    {
+      "step": "audit",
+      "pid": 52401,
+      "pgid": 52401,
+      "fresh_absent": true
+    }
+  ],
+  "all_originals_unchanged": true
+}

@@ -1,0 +1,23 @@
+{
+  "runner-ci-repairs.tar.gz": {
+    "gzip": {
+      "bytes": 186790,
+      "sha256": "eb2b6dc8e10b4752566f3833b770a2de1afb24d659a26ea81a13b7bea5bb01f6",
+      "mode": "0o644"
+    },
+    "raw_tar_bytes": 1105920,
+    "raw_tar_sha256": "b819c568e10962df666bbe67f6284e507c3aaa495010d89bb71370a1dc188d0c",
+    "roundtrip": true,
+    "all_member_bytes_modes_UID_GID_checked": 51
+  },
+  "LOCATIONS.json.gz": {
+    "gzip": {
+      "bytes": 4293,
+      "sha256": "8638ca66fcff6337048052f12883c204a0b1f9059671c9cc65a2ceab208936a7",
+      "mode": "0o644"
+    },
+    "raw_bytes": 23892,
+    "raw_sha256": "e172b2aa7662068072303a99b21adcbcb56272e7e13ea7fcabe42321f64bce7e",
+    "roundtrip": true
+  }
+}

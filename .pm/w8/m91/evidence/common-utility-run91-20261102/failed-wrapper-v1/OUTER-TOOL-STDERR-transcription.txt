@@ -1,0 +1,11 @@
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-run91-audit-execution-proposal-20261102-fzuabo6k/run_audit.py", line 100, in <module>
+    sources_unchanged=all(sha(p)==digest for p,digest in before.items()),
+                      ^^^
+  File "/private/tmp/bex-w8-run91-audit-execution-proposal-20261102-fzuabo6k/run_audit.py", line 100, in <genexpr>
+    sources_unchanged=all(sha(p)==digest for p,digest in before.items()),
+                          ~~~^^^
+  File "/private/tmp/bex-w8-run91-audit-execution-proposal-20261102-fzuabo6k/run_audit.py", line 9, in sha
+    def sha(p): return hashlib.sha256(p.read_bytes()).hexdigest()
+                                      ^^^^^^^^^^^^
+AttributeError: 'str' object has no attribute 'read_bytes'

@@ -1,0 +1,150 @@
+#0 building with "bex-nq-860e1bf6d42440f8a15d7ff8" instance using docker-container driver
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 3.06kB done
+#1 DONE 0.0s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+#2 DONE 0.2s
+
+#3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+#3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e done
+#3 CACHED
+
+#4 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#5 DONE 0.0s
+
+#6 [internal] load metadata for ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+#6 DONE 0.0s
+
+#7 [internal] load .dockerignore
+#7 transferring context: 2B done
+#7 DONE 0.0s
+
+#8 [stage-0 10/17] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#8 DONE 0.0s
+
+#9 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+#9 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 done
+#9 DONE 0.0s
+
+#10 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+#10 resolve docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea done
+#10 DONE 0.0s
+
+#11 [stage-0  1/17] FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+#11 resolve ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0 0.0s done
+#11 CACHED
+
+#12 [internal] load build context
+#12 transferring context: 203.01kB done
+#12 DONE 0.0s
+
+#13 [internal] preparing inline document
+#13 CACHED
+
+#14 [stage-0  2/17] RUN --network=none jq --version && rsync --version && rm /usr/bin/rsync && test ! -e /usr/bin/rsync && jq --version && echo BEX_SUPPLIER_REMOVAL_READY missing-rsync-1793630171347441752
+#14 0.048 jq-1.6
+#14 0.063 rsync  version 3.2.7  protocol version 32
+#14 0.063 Copyright (C) 1996-2022 by Andrew Tridgell, Wayne Davison, and others.
+#14 0.063 Web site: https://rsync.samba.org/
+#14 0.063 Capabilities:
+#14 0.063     64-bit files, 64-bit inums, 64-bit timestamps, 64-bit long ints,
+#14 0.063     socketpairs, symlinks, symtimes, hardlinks, hardlink-specials,
+#14 0.063     hardlink-symlinks, IPv6, atimes, batchfiles, inplace, append, ACLs,
+#14 0.063     xattrs, optional secluded-args, iconv, prealloc, stop-at, no crtimes
+#14 0.063 Optimizations:
+#14 0.063     SIMD-roll, no asm-roll, openssl-crypto, no asm-MD5
+#14 0.073 Checksum list:
+#14 0.073     xxh128 xxh3 xxh64 (xxhash) md5 md4 sha1 none
+#14 0.073 Compress list:
+#14 0.073     zstd lz4 zlibx zlib none
+#14 0.073 Daemon auth list:
+#14 0.073     sha512 sha256 sha1 md5 md4
+#14 0.073 
+#14 0.073 rsync comes with ABSOLUTELY NO WARRANTY.  This is free software, and you
+#14 0.073 are welcome to redistribute it under certain conditions.  See the GNU
+#14 0.073 General Public Licence for details.
+#14 0.095 jq-1.6
+#14 0.096 BEX_SUPPLIER_REMOVAL_READY missing-rsync-1793630171347441752
+#14 DONE 0.1s
+
+#15 [stage-0  3/17] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/lib/os-release /opt/bex-primary-os-release
+#15 merging done
+#15 DONE 0.0s
+
+#16 [stage-0  4/17] RUN . /opt/bex-primary-os-release && [ -n "$VERSION_CODENAME" ] && primary_os="$VERSION_CODENAME" && . /etc/os-release && [ -n "$VERSION_CODENAME" ] && { [ "$primary_os" = "$VERSION_CODENAME" ] || { echo 'exact native primary and supplied base have different Debian distributions' >&2; exit 1; }; } && rm -f /opt/bex-primary-os-release && rm -rf /usr/local && mkdir -p /usr/local
+#16 DONE 0.1s
+
+#17 [stage-0  5/17] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /usr/local/ /usr/local/
+#17 merging 0.5s done
+#17 DONE 0.5s
+
+#18 [stage-0  6/17] RUN --network=none /sbin/ldconfig
+#18 DONE 0.1s
+
+#19 [stage-0  7/17] RUN --network=none [ "$(/usr/local/bin/node -p 'process.versions.node')" = 24.22.1 ]
+#19 DONE 0.3s
+
+#20 [stage-0  8/17] COPY --link --from=node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea /opt/yarn-v1.22.22 /opt/yarn-v1.22.22
+#20 merging 0.5s done
+#20 DONE 0.5s
+
+#21 [stage-0  9/17] RUN ln -sf /opt/yarn-v1.22.22/bin/yarn /usr/local/bin/yarn && ln -sf /opt/yarn-v1.22.22/bin/yarnpkg /usr/local/bin/yarnpkg
+#21 DONE 0.1s
+
+#22 [stage-0 10/17] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#22 DONE 0.0s
+
+#22 [stage-0 10/17] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+#22 merging 0.5s done
+#22 DONE 0.5s
+
+#23 [stage-0 11/17] RUN mkdir -p /usr/local/lib/node_modules/pnpm && tar -xzf /opt/bex/pnpm.tgz -C /usr/local/lib/node_modules/pnpm --strip-components=1 --no-same-owner && rm /opt/bex/pnpm.tgz && ln -sf ../lib/node_modules/pnpm/bin/pnpm.cjs /usr/local/bin/pnpm && ln -sf ../lib/node_modules/pnpm/bin/pnpx.cjs /usr/local/bin/pnpx
+#23 DONE 0.4s
+
+#24 [stage-0 12/17] COPY --link --from=mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 /ffmpeg /ffprobe /
+#24 merging 0.6s done
+#24 DONE 0.6s
+
+#25 [stage-0 13/17] RUN ln -sf /ffmpeg /usr/local/bin/ffmpeg && ln -sf /ffprobe /usr/local/bin/ffprobe
+#25 DONE 0.1s
+
+#26 [stage-0 14/17] WORKDIR /opt/render/project/src
+#26 DONE 0.0s
+
+#27 [stage-0 15/17] COPY . .
+#27 DONE 0.0s
+
+#28 [stage-0 16/17] COPY <<BEX_LOAD_ENV /opt/bex/load-env
+#28 DONE 0.0s
+
+#29 [stage-0 17/17] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n/usr/bin/python3 original-cases.py build node 98"]
+#29 1.226 /bin/bash: line 8: rsync: command not found
+#29 1.226 QA_ASSET_BEFORE {"marker":"QA419_5a17ae_bex","node":"v24.22.1","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"program_sha256":"b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d","input":{"bytes":201,"sha256":"62c2dde6c90754cde0058e0057b0e9adc7e45805a8c1e0de4cf3dbd24e2de72c"},"tools":{"jq":{"status":0,"error":null,"version":"jq-1.6"},"rsync":{"status":null,"error":"ENOENT","version":null}}}
+#29 1.226 QA_ASSET_JQ {"marker":"QA419_5a17ae_bex","node":"v24.22.1","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"program_sha256":"b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d","input":{"bytes":201,"sha256":"62c2dde6c90754cde0058e0057b0e9adc7e45805a8c1e0de4cf3dbd24e2de72c"},"tools":{"jq":{"status":0,"error":null,"version":"jq-1.6"},"rsync":{"status":null,"error":"ENOENT","version":null}},"manifest":{"release":"qa-1.2.3","paths":["index.html","assets/écho.txt","assets/a file.txt"]}}
+#29 1.227 Traceback (most recent call last):
+#29 1.227   File "/opt/render/project/src/original-cases.py", line 109, in <module>
+#29 1.228     print(json.dumps({'phase':PHASE,'mode':mode,'python':sys.version.split()[0],'original_cases':original_cases(),'pass':True},ensure_ascii=False))
+#29 1.228                                                                                                  ^^^^^^^^^^^^^^^^
+#29 1.228   File "/opt/render/project/src/original-cases.py", line 66, in original_cases
+#29 1.228     raise RuntimeError((command.args,command.returncode,command.stdout.decode(errors='replace')[-1500:],command.stderr.decode(errors='replace')[-1500:]))
+#29 1.229 RuntimeError: (['/bin/bash', '-c', "set -e\nnode - <<'QA_ASSET_SOURCES'\nconst fs=require('node:fs'),zlib=require('node:zlib');const files=JSON.parse(zlib.gunzipSync(Buffer.from('H4sIAAAAAAAC/61Y3W7juBV+FdUXldSRZdmO/+QoQXaa2XSxmOxMUhRobAQURcVKZEkhKSeBR0CfoFe97f0u9hH2Mm+yF32OHpKSLSvONAMUQWCZPL8fv3N45HXrHrURY4SzNsoyG9+yltvCacK4FjKPkvs8osTQkzQgbsh008oQXzTWxRLspE35VMjjrLGKF1EcXGc0xYRJAfqU8bQpJBdhd8F504BYgh0RNeWNPbXYYZxGmOvmdJaoXCgJvR8uzj/aGaKMGCGzKUHBhygmF08JNvQtCiBJKEkwsW9ZmuiWnvNwrJumtUT0jtA3WlHCTRPZAjHilanbiN6srnpziy2Q53tHKmUbg0lOzhBbGDrs9AZD3bTzLIBFwzftILohjBv6gjwCBgFhWOgaa/+JE+b6dkySG76wlKYLH6BUgGea3lC0vDg78cRaM/Lr6xAeE7Qk5hYzWOKQsL6mJCYQuGuXD5IDzL2yVbJX8y8MNjA37Cz344gtPI/TnJhfbCE4L3SLPGawTwJvYwtgtpcoiULIpmF3Z0u5sFUsBvKOUOXEBKGsXAE9s9h4EWkx79y/hW92SNPlaQJ8IMyoBKQCk/qJd3SVSByN7/IQjl4qGCKGMrtkbppzCUuYJ5hHaaLxNI2NxFyX3PJwZrMMPSQSy8S60tvtFaEMRPW5tQYypUGU3LiKBxaPliTNuTtwHKcwp5TwnCbamnHEc8jeVg8WoTSl8FV+HttggxwfJ3kcW6VtKRqApWPwHkdAitks0c0rZ67kiqIWsk/CFKqkijl8DaJy6Y48MQmCFDSbUDX5kyiIVPXZASHZ6X2OYkNqW1s7U+U9SrKce18pHymgqmeP1VoJSkHTqlPGnEKmhnIE8bJ5GmplVqRMcnu6pvky5kZYgiv2bRol9QAZxboFWVt10oC1zWmqBmCp/lgWfHlulkKlLMnrslS3FWrJpFwJdJmfIBxz9xzXlX57Dw2GMohUn9eOqaQonMoODXCaRSQwaJryigpAIG9dTDciDyi+M4KIAqixp+vmegsn0QDLEh+QkPAIyfVDxBcCsMunDLqQKP7CrOwn0KLjY/h/p3f0d8QWXcZVH9MoNIgdsT9DA8c8pU+GaUr3W8yFeSVsAt5TEjOyVkcmNYVTUJpCElCo3l5y7jUmcCmkL4nFS5KBxd2Gsjlb2AFIIXTVzj1PV8VVh+oNxKsq0fsawaaQzPKuwlpKwheRgRGaFnRTnAOnVqTEXIg/0IiTTfKhxczixer+UrNkYYm7M7mJwidjp6oaoehBxLj+lgikZCeNg3b6kEDv5Y+gp8OzBo0uJgJOiEBXvSGNiR2nN4b+6eT65OLi9PL6u9MP559PNf1dI7iqocFBzhJBC61+IiiE66INtVHBvHrjxa0uGghz9+p+yY/Vhh2vRf7Dp5dRr23briK3KmzdVbE/Cz+HUWmTQiX+/86ksttISGC2N1xLNRE5MjC37CiKD2Yx/RrXZD77ubYyX4Px5MPl6eeXSK42kJXwSONvxKYeyAYYMVeW49cFodCsDaiAe2iDzPSO1jHhGl9mU06f1vDpqWrgZJk1mkzKbNiHOgHIai51c09tbLVABYpip0jMepXQPBFzw261cO12d/aQtwGMHwTSakMDURyw9pf7/x5NSqoQSZPbajBxLPEYwFxSRbGPmbflcPIthGtMUuW1JhJCIqF2AHMil7m1ySOO84B4fxJg69Zu5+xAJstM3DffmCPd5kgbOX5LMYBzMZPc5yBwndMYRtp7Gz6LKk/04JVL1eh2LAc3UfQdZQROKoAZ//j120xSRkrZC76MgWBufRppdh7JeavkkWw5cKGVhDwDD0bPcay1DhFyuK7aHK5y3d1EyRHl7G9wzRuNAM1jnZNH3hEhTDW8EIfPPYC6PdZdHd4p4wgjMVh0ynKrHKg3FXCBHsq3lkJFRBIYUNDDa/3g7PLypz2NtRy4BDxV1Ltns7LrXzcHKFovBIgXBjHXu4AAQ7YRyVoMo0cYAYgWoijOxY2/iVFO6TCSAFD4Dm7cKEFx/LSGbi7IUI0s8FyH8i1NQ3YNupRnL068ceNawEdcXb4w0pg2vBsBvsbHfOlDC6tmT5Ks7J/OP19++dIF3jvgxbHlny7aaMtqvfYG3HJb61mLkiydtdxZSzRJ5nY6NxB/7gOkS/HYLoFhHR+xCM9a1qzlU5TghVRaIgiJylVQWEZcrg4JDh0S9nAvCEN/NBk6/T4ZIKfX605QOIbt4WB8QAZSTx4aqEEsP/7l/enHi1P1Rb73wmPXGfVATA3T0nzP8Z3hwaTr+P2ej0nXx87BYDJAA7/nHIxGqDfGA6c/mQxIOB70xpPeBPW73WCI/RHq+85k1irA4Puzk4/fn/54/n3D3XjX2QRiJf3h0BkMSBBMkBMOkT/BI3+M+qMQT3pjp49D0g36ThiiUW+ECQkcPOxP+hPcEzkWwps6AeVqW9nSw+EfghSLotTE0tEhj3hMjj6daErnsKMWDrOjv6fPv2p/1P7z738edrIjeCeUACqxzvMveJGK60UafU+ff4ZLxafPv8XPvxDt93/8SxM8/2sSifdNZbthAcmXx40JIS53NPESoCEN+jeGMSbRIs40Mak29AMKw5lgu1Qv+3gg3cotKS7AqCpUwVH+RiCVgKtdu2f3a2Zh/QqkREVJkTp6IFT+ZgBbslKsuuhLZN6mUAfibRq11HcUQgRjTDEvip06rP2GBEU4a306OehOrgeoO0Lk2iePs1ar+C8s3hpXwBMAAA==','base64')));for(const[n,s]of Object.entries(files))fs.writeFileSync(n,s);\nQA_ASSET_SOURCES\nnode qa-assets-app.cjs before\njq -e -c '{release:.release,paths:[.assets[]|select(.publish==true)|.path]}' qa-assets-input.json > qa-assets-filtered.json\nnode qa-assets-app.cjs after-jq\nrsync -a --delete --exclude='*.tmp' qa-assets-src/ dist/\nnode qa-assets-app.cjs build"], 127, 'QA_ASSET_BEFORE {"marker":"QA419_5a17ae_bex","node":"v24.22.1","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"program_sha256":"b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d","input":{"bytes":201,"sha256":"62c2dde6c90754cde0058e0057b0e9adc7e45805a8c1e0de4cf3dbd24e2de72c"},"tools":{"jq":{"status":0,"error":null,"version":"jq-1.6"},"rsync":{"status":null,"error":"ENOENT","version":null}}}\nQA_ASSET_JQ {"marker":"QA419_5a17ae_bex","node":"v24.22.1","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"program_sha256":"b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d","input":{"bytes":201,"sha256":"62c2dde6c90754cde0058e0057b0e9adc7e45805a8c1e0de4cf3dbd24e2de72c"},"tools":{"jq":{"status":0,"error":null,"version":"jq-1.6"},"rsync":{"status":null,"error":"ENOENT","version":null}},"manifest":{"release":"qa-1.2.3","paths":["index.html","assets/écho.txt","assets/a file.txt"]}}\n', '/bin/bash: line 8: rsync: command not found\n')
+#29 ERROR: process "/bin/bash -c . /opt/bex/load-env\n/usr/bin/python3 original-cases.py build node 98" did not complete successfully: exit code: 1
+------
+ > [stage-0 17/17] RUN --mount=type=secret,id=render-env,target=/run/secrets/render-env ["/bin/bash","-c",". /opt/bex/load-env\n/usr/bin/python3 original-cases.py build node 98"]:
+1.226 /bin/bash: line 8: rsync: command not found
+1.226 QA_ASSET_BEFORE {"marker":"QA419_5a17ae_bex","node":"v24.22.1","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"program_sha256":"b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d","input":{"bytes":201,"sha256":"62c2dde6c90754cde0058e0057b0e9adc7e45805a8c1e0de4cf3dbd24e2de72c"},"tools":{"jq":{"status":0,"error":null,"version":"jq-1.6"},"rsync":{"status":null,"error":"ENOENT","version":null}}}
+1.226 QA_ASSET_JQ {"marker":"QA419_5a17ae_bex","node":"v24.22.1","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"program_sha256":"b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d","input":{"bytes":201,"sha256":"62c2dde6c90754cde0058e0057b0e9adc7e45805a8c1e0de4cf3dbd24e2de72c"},"tools":{"jq":{"status":0,"error":null,"version":"jq-1.6"},"rsync":{"status":null,"error":"ENOENT","version":null}},"manifest":{"release":"qa-1.2.3","paths":["index.html","assets/écho.txt","assets/a file.txt"]}}
+1.227 Traceback (most recent call last):
+1.227   File "/opt/render/project/src/original-cases.py", line 109, in <module>
+1.228     print(json.dumps({'phase':PHASE,'mode':mode,'python':sys.version.split()[0],'original_cases':original_cases(),'pass':True},ensure_ascii=False))
+1.228                                                                                                  ^^^^^^^^^^^^^^^^
+1.228   File "/opt/render/project/src/original-cases.py", line 66, in original_cases
+1.228     raise RuntimeError((command.args,command.returncode,command.stdout.decode(errors='replace')[-1500:],command.stderr.decode(errors='replace')[-1500:]))
+1.229 RuntimeError: (['/bin/bash', '-c', "set -e\nnode - <<'QA_ASSET_SOURCES'\nconst fs=require('node:fs'),zlib=require('node:zlib');const files=JSON.parse(zlib.gunzipSync(Buffer.from('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','base64')));for(const[n,s]of Object.entries(files))fs.writeFileSync(n,s);\nQA_ASSET_SOURCES\nnode qa-assets-app.cjs before\njq -e -c '{release:.release,paths:[.assets[]|select(.publish==true)|.path]}' qa-assets-input.json > qa-assets-filtered.json\nnode qa-assets-app.cjs after-jq\nrsync -a --delete --exclude='*.tmp' qa-assets-src/ dist/\nnode qa-assets-app.cjs build"], 127, 'QA_ASSET_BEFORE {"marker":"QA419_5a17ae_bex","node":"v24.22.1","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"program_sha256":"b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d","input":{"bytes":201,"sha256":"62c2dde6c90754cde0058e0057b0e9adc7e45805a8c1e0de4cf3dbd24e2de72c"},"tools":{"jq":{"status":0,"error":null,"version":"jq-1.6"},"rsync":{"status":null,"error":"ENOENT","version":null}}}\nQA_ASSET_JQ {"marker":"QA419_5a17ae_bex","node":"v24.22.1","files":{"LICENSE":{"bytes":1072,"sha256":"20b064910b32bce1bc04595a5b20477a28c503995ef8528929a311d6cb7a3b09"},"CHANGELOG":{"bytes":18,"sha256":"9c65e366055edd9a0f6ab9c7b8a37fc92803cfe1d30ffa727ceed0c63939c2e5"}},"program_sha256":"b583854d65935832d7202046f3e47e57776b90df8852f5c003086c651eb3024d","input":{"bytes":201,"sha256":"62c2dde6c90754cde0058e0057b0e9adc7e45805a8c1e0de4cf3dbd24e2de72c"},"tools":{"jq":{"status":0,"error":null,"version":"jq-1.6"},"rsync":{"status":null,"error":"ENOENT","version":null}},"manifest":{"release":"qa-1.2.3","paths":["index.html","assets/écho.txt","assets/a file.txt"]}}\n', '/bin/bash: line 8: rsync: command not found\n')
+------
+ERROR: failed to build: failed to solve: process "/bin/bash -c . /opt/bex/load-env\n/usr/bin/python3 original-cases.py build node 98" did not complete successfully: exit code: 1

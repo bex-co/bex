@@ -1,0 +1,12 @@
+{
+  "artifact_id": 13150542707,
+  "file_name": "common-generated-7ad69bc18ba338ef27733eed0a77adb27477cc5a-amd64-1.zip",
+  "mime_type": "application/zip",
+  "isError": false,
+  "file_uri_shape": "OBJECT(download_url,file_id,mime_type,file_name)",
+  "https_oai_filehost_verified": true,
+  "nested_duplicate_agrees": true,
+  "connector_invocations": 1,
+  "local_streams_authorized": 1,
+  "signed_URL_retained": false
+}

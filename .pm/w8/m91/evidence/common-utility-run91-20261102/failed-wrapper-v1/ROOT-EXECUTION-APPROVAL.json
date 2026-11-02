@@ -1,0 +1,15 @@
+{
+  "at": "2026-11-02T14:50:05.633720+00:00",
+  "status": "ROOT_AUTHORIZED_ONCE_FIVE_PURE_CONTROLS_THEN_BIND_THEN_DATED_FULL_CONTENT_AUDIT",
+  "accounting_auditor_sha256": "c7e70707760ccd39bc4121436194ddc61fca28f8de9895f6b486b8ecf23a51e0",
+  "invocation_guard_sha256": "0944a99ed60043e15ef0e3bcf5b692c1799ad2dd71fdee9b7fc94c8454b560c3",
+  "original_functions_unchanged": 8,
+  "unchanged_original_check_AST": 83,
+  "changed_original_predicates": "two artifact accounting counts only; all358 files retained",
+  "whole_limit_seconds": 60,
+  "per_step_output_cap": 4194304,
+  "minimum_free_required": 8623489024,
+  "fresh_free": 23574220800,
+  "dated_source": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+  "authority": "content admission only pending Root output review; no currentcandidate/pins/auth/Go/Docker/network/runtime"
+}

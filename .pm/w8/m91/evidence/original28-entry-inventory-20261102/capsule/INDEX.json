@@ -1,0 +1,102 @@
+{
+  "Root_execution_approval": {
+    "identity": {
+      "bytes": 1236,
+      "mode": "0o644",
+      "sha256": "35d03f300473569d0a17ba34c553648e1fde7fbbf14994a23d08771b30525ef9"
+    },
+    "location": {
+      "bytes": 1236,
+      "kind": "new-archive-member",
+      "member": "ROOT-EXECUTION-APPROVAL.json",
+      "mode": "0o644",
+      "sha256": "35d03f300473569d0a17ba34c553648e1fde7fbbf14994a23d08771b30525ef9"
+    },
+    "original_path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/ROOT-EXECUTION-APPROVAL.json"
+  },
+  "Root_source_admission": {
+    "identity": {
+      "bytes": 747,
+      "mode": "0o644",
+      "sha256": "042ef7c50a33973ac579fde00474f2b33100f9c32579a5cbd2a5c310b8788f8f"
+    },
+    "location": {
+      "bytes": 747,
+      "kind": "new-archive-member",
+      "member": "ROOT-SOURCE-PREP-ADMISSION.json",
+      "mode": "0o644",
+      "sha256": "042ef7c50a33973ac579fde00474f2b33100f9c32579a5cbd2a5c310b8788f8f"
+    },
+    "original_path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/ROOT-SOURCE-PREP-ADMISSION.json"
+  },
+  "actual96result_location": {
+    "identity": {
+      "bytes": 8697,
+      "mode": "0o600",
+      "sha256": "cd2c6d374c5e66c43ec9164709e9eea95091424081f961210b9cc01330ff5667"
+    },
+    "location": {
+      "bytes": 8697,
+      "kind": "new-archive-member",
+      "member": "execution/RESULT.json",
+      "mode": "0o600",
+      "sha256": "cd2c6d374c5e66c43ec9164709e9eea95091424081f961210b9cc01330ff5667"
+    },
+    "original_path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/RESULT.json"
+  },
+  "actual_full_methods": 96,
+  "actual_receipt_location": {
+    "identity": {
+      "bytes": 3935,
+      "mode": "0o600",
+      "sha256": "ec9538565451145502812257a8421eee92514ba300daf295937744c4ebc31ca9"
+    },
+    "location": {
+      "bytes": 3935,
+      "kind": "new-archive-member",
+      "member": "execution/ACTUAL-RECEIPT.json",
+      "mode": "0o600",
+      "sha256": "ec9538565451145502812257a8421eee92514ba300daf295937744c4ebc31ca9"
+    },
+    "original_path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/ACTUAL-RECEIPT.json"
+  },
+  "actual_skips_errors_failures": 0,
+  "all_owned_groups_absent": true,
+  "cleanup_errors": [],
+  "execution_manifest_location": {
+    "identity": {
+      "bytes": 5618,
+      "mode": "0o600",
+      "sha256": "03f8ffe71386c7b35f5f6f78db7a78e7050e3b1b6df27ca400f34467d1c7b616"
+    },
+    "location": {
+      "bytes": 5618,
+      "kind": "new-archive-member",
+      "member": "execution/EXECUTION-MANIFEST.json",
+      "mode": "0o600",
+      "sha256": "03f8ffe71386c7b35f5f6f78db7a78e7050e3b1b6df27ca400f34467d1c7b616"
+    },
+    "original_path": "/private/tmp/bex-w8-original28-entry-inventory-proposal-20261102-yvo84ixt/execution/EXECUTION-MANIFEST.json"
+  },
+  "logical_current_packet_files": 66,
+  "new_regular_archive_members": 40,
+  "no241parent_body_view_or_fixture_data_copies": true,
+  "prior_public_capsule": {
+    "archive": {
+      "bytes": 267449,
+      "git_blob": "c12eeea3f972e500692f0440ac77e65d39ffeaec",
+      "git_commit": "b067de3c83437c0066cbee428ab50c49f40f5125",
+      "git_mode": "100644",
+      "mode": "0o644",
+      "path": ".pm/w8/m91/evidence/original28-source-readiness-20261102/capsule/source-readiness.tar.gz",
+      "sha256": "68d981fd5568f7393711afe21866c0638b0418ee12abf602517e690bdf0461ed"
+    },
+    "contains": "87PASS+81PASS+all4actualfailures+originalRootapprovals/controllers/rawlogs/manifests, preserved unchanged by exact identity.",
+    "path": ".pm/w8/m91/evidence/original28-source-readiness-20261102/capsule"
+  },
+  "reused_current_files": 26,
+  "scope": "Source96 host controls only; actual contract staysnull; standalone sourceview builder notinvoked; pins/inventory/Ready/Free/auth/hosted28 untouched.",
+  "seven_receipt_date_closure": "DATE-RECEIPT-LOCATIONS.json; no public receipt copied or rewritten",
+  "three_expectedRED": true,
+  "whole_seconds": 12.03
+}

@@ -1,0 +1,162 @@
+{
+  "actual_rows_contract_inventory_not_filled": true,
+  "all4tiny_stable_discovery_already_public": true,
+  "immutable_git_addresses_survive_future_PM_move": true,
+  "new_date_body_copies": 0,
+  "seven_date_bindings": {
+    "native-common-bookworm": {
+      "UTC_seconds_for_existing_schema": "2026-11-01T21:16:32Z",
+      "date_field": "reviewed_at",
+      "identity": {
+        "bytes": 40223,
+        "sha256": "aa36b6922c4b3b3e7afe5ceedee21f489de5f00c20a54983b92ba6d00949f263"
+      },
+      "identity_field": "ref",
+      "logical_original_path": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/common-current0941-20261101/actual/receipt.json",
+      "lookup_is_not_provenance_rewrite": true,
+      "original_full_timestamp": "2026-11-01T21:16:32.705560+00:00",
+      "public_same_bytes": {
+        "bytes": 40223,
+        "git_blob": "d7e6e4ae3286ad6b19940af3c86fa3227172d582",
+        "git_commit": "b067de3c83437c0066cbee428ab50c49f40f5125",
+        "git_mode": "100644",
+        "mode": "0o600",
+        "path": ".pm/w8/m91/evidence/common-current0941-20261101/actual/receipt.json",
+        "sha256": "aa36b6922c4b3b3e7afe5ceedee21f489de5f00c20a54983b92ba6d00949f263"
+      },
+      "retained_identity": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0"
+    },
+    "native-node14-runtime-tree": {
+      "UTC_seconds_for_existing_schema": "2026-10-30T11:25:37Z",
+      "date_field": "checked_at",
+      "identity": {
+        "bytes": 496,
+        "sha256": "13e746a49619f3a3faeddbb99de6eff5f5b43ca1d21c9d0552c9272bec48e46b"
+      },
+      "identity_field": "digest",
+      "logical_original_path": "/tmp/bex-m188-node14-discovery-confirmation.json",
+      "lookup_is_not_provenance_rewrite": true,
+      "original_full_timestamp": "2026-10-30T11:25:37.871763+00:00",
+      "public_same_bytes": {
+        "bytes": 496,
+        "git_blob": "fe5d1d4f99a3a47ad0ae1e840824e9d008ee6671",
+        "git_commit": "b067de3c83437c0066cbee428ab50c49f40f5125",
+        "git_mode": "100644",
+        "mode": "0o644",
+        "path": ".pm/w1/blocked/m188/evidence/node14-published-acceptance/discovery.json",
+        "sha256": "13e746a49619f3a3faeddbb99de6eff5f5b43ca1d21c9d0552c9272bec48e46b"
+      },
+      "retained_identity": "sha256:4fec31cbb186e340cd7ce25ac1d0705f78735631f793b75629d653c6601f83fc"
+    },
+    "native-node14212-runtime-tree": {
+      "UTC_seconds_for_existing_schema": "2026-11-02T01:12:36Z",
+      "date_field": "reviewed_at",
+      "identity": {
+        "bytes": 54556,
+        "sha256": "dae4032641e9a3fe01ee3af78476d46a5948dd6a45328e7e996a5110be0db5f7"
+      },
+      "identity_field": "ref",
+      "logical_original_path": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/exact-node14212-artifact-20261102/capsule/runtime/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/receipt.json",
+      "lookup_is_not_provenance_rewrite": true,
+      "original_full_timestamp": "2026-11-02T01:12:36.417652+00:00",
+      "public_same_bytes": {
+        "bytes": 54556,
+        "git_blob": "7814c75e805a0dad999f67c200074225fa8da36c",
+        "git_commit": "b067de3c83437c0066cbee428ab50c49f40f5125",
+        "git_mode": "100644",
+        "mode": "0o600",
+        "path": ".pm/w8/m91/evidence/exact-node14212-artifact-20261102/capsule/runtime/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/receipt.json",
+        "sha256": "dae4032641e9a3fe01ee3af78476d46a5948dd6a45328e7e996a5110be0db5f7"
+      },
+      "retained_identity": "ghcr.io/bex-co/bex-cnb-run@sha256:332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7"
+    },
+    "native-node14212-upstream": {
+      "UTC_seconds_for_existing_schema": "2026-11-02T01:12:36Z",
+      "date_field": "reviewed_at",
+      "identity": {
+        "bytes": 54556,
+        "sha256": "dae4032641e9a3fe01ee3af78476d46a5948dd6a45328e7e996a5110be0db5f7"
+      },
+      "identity_field": "official_base",
+      "logical_original_path": "/Users/tianpan/projects/bex7/.pm/w8/m91/evidence/exact-node14212-artifact-20261102/capsule/runtime/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/receipt.json",
+      "lookup_is_not_provenance_rewrite": true,
+      "original_full_timestamp": "2026-11-02T01:12:36.417652+00:00",
+      "public_same_bytes": {
+        "bytes": 54556,
+        "git_blob": "7814c75e805a0dad999f67c200074225fa8da36c",
+        "git_commit": "b067de3c83437c0066cbee428ab50c49f40f5125",
+        "git_mode": "100644",
+        "mode": "0o600",
+        "path": ".pm/w8/m91/evidence/exact-node14212-artifact-20261102/capsule/runtime/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/receipt.json",
+        "sha256": "dae4032641e9a3fe01ee3af78476d46a5948dd6a45328e7e996a5110be0db5f7"
+      },
+      "retained_identity": "node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12"
+    },
+    "native-node16-runtime-tree": {
+      "UTC_seconds_for_existing_schema": "2026-10-30T12:45:15Z",
+      "date_field": "checked_at",
+      "identity": {
+        "bytes": 576,
+        "sha256": "c20fba64dc1a0dfe0c93ab9f1ddd582d63a97bb4f77b03e11849ba9aae1c861b"
+      },
+      "identity_field": "digest",
+      "logical_original_path": "/tmp/bex-m188-node-16-bookworm-discovery-confirmation.json",
+      "lookup_is_not_provenance_rewrite": true,
+      "original_full_timestamp": "2026-10-30T12:45:15.690929+00:00",
+      "public_same_bytes": {
+        "bytes": 576,
+        "git_blob": "78392c7dee9cea9ccb5f833d0da14d4527cb093e",
+        "git_commit": "b067de3c83437c0066cbee428ab50c49f40f5125",
+        "git_mode": "100644",
+        "mode": "0o644",
+        "path": ".pm/w1/blocked/m188/evidence/node16-published-acceptance/linked/c20fba64dc1a-bex-m188-node-16-bookworm-discovery-confirmation.json",
+        "sha256": "c20fba64dc1a0dfe0c93ab9f1ddd582d63a97bb4f77b03e11849ba9aae1c861b"
+      },
+      "retained_identity": "sha256:2802078e18496838c15159ec99c01c9b260128cef8e1d1ba29cd0a1836165113"
+    },
+    "native-node18-runtime-tree": {
+      "UTC_seconds_for_existing_schema": "2026-10-31T13:40:01Z",
+      "date_field": "checked_at",
+      "identity": {
+        "bytes": 576,
+        "sha256": "2baa44d584f03b042c625e3cee3e3d6294f987ed53069ddc2171af8890acea35"
+      },
+      "identity_field": "digest",
+      "logical_original_path": "/tmp/bex-m188-node-18-bookworm-discovery-confirmation.json",
+      "lookup_is_not_provenance_rewrite": true,
+      "original_full_timestamp": "2026-10-31T13:40:01.925230+00:00",
+      "public_same_bytes": {
+        "bytes": 576,
+        "git_blob": "e13ea5bd5ecddffd89011b2c45ea30cb71d57749",
+        "git_commit": "b067de3c83437c0066cbee428ab50c49f40f5125",
+        "git_mode": "100644",
+        "mode": "0o644",
+        "path": ".pm/w1/blocked/m188/evidence/node18-published-acceptance/linked/2baa44d584f03b04-bex-m188-node-18-bookworm-discovery-confirmation.json",
+        "sha256": "2baa44d584f03b042c625e3cee3e3d6294f987ed53069ddc2171af8890acea35"
+      },
+      "retained_identity": "sha256:6c40aaf4af55979e9b923e5949704f562d8e334e7370022f0c3584341742ddd1"
+    },
+    "native-node20-runtime-tree": {
+      "UTC_seconds_for_existing_schema": "2026-10-31T03:04:22Z",
+      "date_field": "checked_at",
+      "identity": {
+        "bytes": 576,
+        "sha256": "9c767c00dfb2fd54e0eb9311eef2487db77e56ac05b395c88a0086fee52fb3f0"
+      },
+      "identity_field": "digest",
+      "logical_original_path": "/tmp/bex-m188-node-20-bookworm-discovery-confirmation.json",
+      "lookup_is_not_provenance_rewrite": true,
+      "original_full_timestamp": "2026-10-31T03:04:22.938552+00:00",
+      "public_same_bytes": {
+        "bytes": 576,
+        "git_blob": "d27c2a75ea8b6502a1ab5aa38b3956c0c769440d",
+        "git_commit": "b067de3c83437c0066cbee428ab50c49f40f5125",
+        "git_mode": "100644",
+        "mode": "0o644",
+        "path": ".pm/w1/blocked/m188/evidence/node20-published-acceptance/linked/9c767c00dfb2-bex-m188-node-20-bookworm-discovery-confirmation.json",
+        "sha256": "9c767c00dfb2fd54e0eb9311eef2487db77e56ac05b395c88a0086fee52fb3f0"
+      },
+      "retained_identity": "sha256:2c69d3e2913703a634016cc24338f9532f24a750ddb831351e1374d274846a4d"
+    }
+  }
+}

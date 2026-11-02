@@ -1,0 +1,67 @@
+{
+  "owner": "bex-nq-860e1bf6d42440f8a15d7ff8",
+  "image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+  "policy_path": "lego/operator/internal/build/toolchain-freshness.json",
+  "policy_sha256": "be63de042bcff1899db87f36d4c3a093bb3b31282079e478603b10e7359d94fc",
+  "command": [
+    "timeout",
+    "--kill-after=10s",
+    "180s",
+    "docker",
+    "pull",
+    "--quiet",
+    "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
+  ],
+  "maximum_attempts": 3,
+  "retry_delay_seconds": 15,
+  "python_timeout_seconds": 195,
+  "output_drain_seconds": 5,
+  "direct_child_wait_seconds": 1,
+  "group_absence_wait_seconds": 5,
+  "attempts": [
+    {
+      "number": 1,
+      "started_at": "2026-11-02T13:58:45.012278+00:00",
+      "finished_at": "2026-11-02T14:01:45.017674+00:00",
+      "exit_code": 124,
+      "bound": null,
+      "cancel_signal": null,
+      "direct_child_reaped": true,
+      "process_group_absent": true,
+      "timeout_exit": true,
+      "stdout": {
+        "path": "bootstrap-1.stdout.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "stderr": {
+        "path": "bootstrap-1.stderr.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    },
+    {
+      "number": 2,
+      "started_at": "2026-11-02T14:02:00.037191+00:00",
+      "finished_at": "2026-11-02T14:03:25.648494+00:00",
+      "exit_code": 0,
+      "bound": null,
+      "cancel_signal": null,
+      "direct_child_reaped": true,
+      "process_group_absent": true,
+      "timeout_exit": false,
+      "stdout": {
+        "path": "bootstrap-2.stdout.log",
+        "bytes": 104,
+        "sha256": "cb4d3b0e70f2d4e52c28206c6c799c01616f7ac12aad9490b930290737cdc621"
+      },
+      "stderr": {
+        "path": "bootstrap-2.stderr.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "image_output_emitted": true,
+  "scope": "bounded setup input only; no generated-runtime or acceptance claim"
+}

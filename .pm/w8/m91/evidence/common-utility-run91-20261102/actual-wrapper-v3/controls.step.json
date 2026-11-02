@@ -1,0 +1,29 @@
+{
+  "name": "controls",
+  "argv_script": "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting.py",
+  "registration": {
+    "pid": 52397,
+    "process_group_target": 52397,
+    "observed_pgid": 52397,
+    "start_new_session": true,
+    "argv": [
+      "/opt/homebrew/bin/python3.14",
+      "-B",
+      "-c",
+      "\nimport os,re,runpy,sys\nREPO=\"/Users/tianpan/projects/bex7\"\nSOURCE=\"7ad69bc18ba338ef27733eed0a77adb27477cc5a\"\ndef guard(event,args):\n    if event.startswith(\"socket.\"):\n        raise RuntimeError(\"offline audit: socket denied\")\n    if event==\"subprocess.Popen\":\n        executable,argv,cwd,env=args\n        ok=(isinstance(argv,(list,tuple)) and executable==\"git\" and argv[0]==\"git\"\n            and cwd is not None and os.fspath(cwd)==REPO)\n        tail=list(argv[1:]) if ok else []\n        ok=ok and (tail==[\"rev-parse\",\"HEAD\"] or tail==[\"cat-file\",\"--batch\"]\n            or (len(tail)==4 and tail[:3]==[\"ls-tree\",\"-r\",\"-z\"] and re.fullmatch(\"[a-f0-9]{40}\",tail[3]))\n            or (len(tail)==2 and tail[0]==\"show\" and tail[1].startswith(SOURCE+\":\")))\n        if not ok: raise RuntimeError(\"offline audit: non-read-only-Git child denied\")\nsys.addaudithook(guard)\nscript=sys.argv[1]\nsys.argv=[script]\nrunpy.run_path(script,run_name=\"__main__\")\n",
+      "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting.py"
+    ],
+    "script": "/private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting.py",
+    "script_sha256": "cd045b4689390a57fd91520d3f7a6e33d1d81ce2bd103c067d32895cbb581683"
+  },
+  "pid": 52397,
+  "process_group_target": 52397,
+  "exit": 0,
+  "stop": null,
+  "group_absent": true,
+  "seconds": 0.082,
+  "stdout_bytes": 0,
+  "stderr_bytes": 707,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "6d731d9898abece847ffef8e17e385237e057a35f9acb41c1fce13b18f6a1e6c"
+}

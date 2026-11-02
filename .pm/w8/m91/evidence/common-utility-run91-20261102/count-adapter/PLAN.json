@@ -1,0 +1,35 @@
+{
+  "status": "SOURCE_ONLY_AWAIT_ROOT_CONTROL_AND_AUDIT_REVIEW",
+  "at": "2026-11-02T14:44:31.885673+00:00",
+  "source_run": 41456212207,
+  "source": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+  "actual_artifact": 13150542707,
+  "actual_manifest_rows": 357,
+  "actual_members": 358,
+  "full_original_manifest_preserved": true,
+  "bound_data_root": "/private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5",
+  "new_source_sha256": "c7e70707760ccd39bc4121436194ddc61fca28f8de9895f6b486b8ecf23a51e0",
+  "source_contract": {
+    "path": ".github/scripts/native-common-qualify.py",
+    "source": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+    "function": "bootstrap",
+    "maximum_attempts": 3,
+    "raw_files": "bootstrap-N.stdout.log + bootstrap-N.stderr.log for each actual retained attempt",
+    "base_one_attempt_rows": 355,
+    "count_formula": "355 + 2*(retained_attempt_count-1); +1 for exact originalMANIFEST"
+  },
+  "exactdiff": "one new accounting function, one assignment, two fixed-count expressions; original functions/83 othercheckAST unchanged",
+  "future_after_Root_approval": [
+    "/opt/homebrew/bin/python3.14 -B /private/tmp/bex-w8-run91-bootstrap-accounting-source-20261102-xhm6a_ja/test_accounting.py",
+    "copy only exact new source to /private/tmp/bex-w8-run91-terminal-intake-bound-20261102-bymjzmq5/audit-bootstrap-accounting-v2.py (new filename; oldaudit untouched)",
+    "run unchanged bind_audit.py ONCE then approved audit-bootstrap-accounting-v2.py under existing60s/4MiBlog/8GiB+32MiB physical guard; no network/runtime/Go/Docker"
+  ],
+  "limits": {
+    "control_seconds": 60,
+    "logs_bytes": 4194304,
+    "floor": 8589934592,
+    "margin": 33554432
+  },
+  "all_originals_unchanged": true,
+  "no_new_download_or_extraction_or_recompression": true
+}

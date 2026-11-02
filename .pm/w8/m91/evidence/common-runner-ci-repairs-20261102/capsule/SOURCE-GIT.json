@@ -1,0 +1,139 @@
+{
+  "source_files": {
+    ".github/scripts/test_native_oci_common_qualification.py": {
+      "before": {
+        "kind": "immutable-Git-blob",
+        "git_commit": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+        "path": ".github/scripts/test_native_oci_common_qualification.py",
+        "git_blob": "2a9b5de9bd08e383176ef160d1f82296e6be8dee",
+        "git_mode": "100644",
+        "bytes": 140399,
+        "sha256": "3b6b7c3e29e4f8f614a8f11e612adb018f06d81ec501b3da0e34baf97cf1bac2",
+        "mode": "0o644"
+      },
+      "after": {
+        "kind": "immutable-Git-blob",
+        "git_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+        "path": ".github/scripts/test_native_oci_common_qualification.py",
+        "git_blob": "6ba52fa38697335060f41cf414b35533e30b9b31",
+        "git_mode": "100644",
+        "bytes": 139925,
+        "sha256": "f5b8b516e63931933dd8e42a9b93735f0ab1256a90c607d019f5132a9142c12e",
+        "mode": "0o644"
+      }
+    },
+    "lego/operator/internal/build/nativecommon_test.go": {
+      "before": {
+        "kind": "immutable-Git-blob",
+        "git_commit": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+        "path": "lego/operator/internal/build/nativecommon_test.go",
+        "git_blob": "2ee7b1bdfd65b97c58244476b11d7979d2f9d0f5",
+        "git_mode": "100644",
+        "bytes": 23236,
+        "sha256": "9c215e704511eb5737d420e68006990833aff83c5406467f174e035c3115f822",
+        "mode": "0o644"
+      },
+      "after": {
+        "kind": "immutable-Git-blob",
+        "git_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+        "path": "lego/operator/internal/build/nativecommon_test.go",
+        "git_blob": "3d7880d171dbd460b7134f35970e40840427c69b",
+        "git_mode": "100644",
+        "bytes": 23247,
+        "sha256": "214a1d0a0b67de7acfa7ed81218751f58440df18fb151b7a1099b03bb2eb7e2c",
+        "mode": "0o644"
+      }
+    }
+  },
+  "logical_body_aliases": {
+    "/private/tmp/bex-w8-ci-source-checks-proposal-20261102-e56u370e/source/.github/scripts/test_native_oci_common_qualification.py": {
+      "kind": "immutable-Git-blob",
+      "git_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "git_blob": "6ba52fa38697335060f41cf414b35533e30b9b31",
+      "git_mode": "100644",
+      "bytes": 139925,
+      "sha256": "f5b8b516e63931933dd8e42a9b93735f0ab1256a90c607d019f5132a9142c12e",
+      "mode": "0o644"
+    },
+    "/private/tmp/bex-w8-ci-source-checks-proposal-20261102-e56u370e/view/.github/scripts/test_native_oci_common_qualification.py": {
+      "kind": "immutable-Git-blob",
+      "git_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "git_blob": "6ba52fa38697335060f41cf414b35533e30b9b31",
+      "git_mode": "100644",
+      "bytes": 139925,
+      "sha256": "f5b8b516e63931933dd8e42a9b93735f0ab1256a90c607d019f5132a9142c12e",
+      "mode": "0o644"
+    },
+    "/private/tmp/bex-w8-ci-source-checks-proposal-20261102-e56u370e/source/lego/operator/internal/build/nativecommon_test.go": {
+      "kind": "immutable-Git-blob",
+      "git_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "path": "lego/operator/internal/build/nativecommon_test.go",
+      "git_blob": "3d7880d171dbd460b7134f35970e40840427c69b",
+      "git_mode": "100644",
+      "bytes": 23247,
+      "sha256": "214a1d0a0b67de7acfa7ed81218751f58440df18fb151b7a1099b03bb2eb7e2c",
+      "mode": "0o644"
+    },
+    "/private/tmp/bex-w8-ci-source-checks-proposal-20261102-e56u370e/view/lego/operator/internal/build/nativecommon_test.go": {
+      "kind": "immutable-Git-blob",
+      "git_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "path": "lego/operator/internal/build/nativecommon_test.go",
+      "git_blob": "3d7880d171dbd460b7134f35970e40840427c69b",
+      "git_mode": "100644",
+      "bytes": 23247,
+      "sha256": "214a1d0a0b67de7acfa7ed81218751f58440df18fb151b7a1099b03bb2eb7e2c",
+      "mode": "0o644"
+    },
+    "/private/tmp/bex-w8-git234-sparse-test-repair-20261102-k4_yp1co/source/.github/scripts/test_native_oci_common_qualification.py": {
+      "kind": "immutable-Git-blob",
+      "git_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "git_blob": "6ba52fa38697335060f41cf414b35533e30b9b31",
+      "git_mode": "100644",
+      "bytes": 139925,
+      "sha256": "f5b8b516e63931933dd8e42a9b93735f0ab1256a90c607d019f5132a9142c12e",
+      "mode": "0o644"
+    },
+    "/private/tmp/bex-w8-git234-sparse-test-repair-20261102-k4_yp1co/before/test_native_oci_common_qualification.py": {
+      "kind": "immutable-Git-blob",
+      "git_commit": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "git_blob": "2a9b5de9bd08e383176ef160d1f82296e6be8dee",
+      "git_mode": "100644",
+      "bytes": 140399,
+      "sha256": "3b6b7c3e29e4f8f614a8f11e612adb018f06d81ec501b3da0e34baf97cf1bac2",
+      "mode": "0o644"
+    }
+  },
+  "view_reconstruction": {
+    "base": "7ad69bc18ba338ef27733eed0a77adb27477cc5a",
+    "base_map_member": "checks/VIEW-GIT-PREIMAGES.json",
+    "actual_view_manifest_member": "checks/VIEW-MANIFEST.json",
+    "base_files": 640,
+    "overrides": {
+      ".github/scripts/test_native_oci_common_qualification.py": {
+        "kind": "immutable-Git-blob",
+        "git_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+        "path": ".github/scripts/test_native_oci_common_qualification.py",
+        "git_blob": "6ba52fa38697335060f41cf414b35533e30b9b31",
+        "git_mode": "100644",
+        "bytes": 139925,
+        "sha256": "f5b8b516e63931933dd8e42a9b93735f0ab1256a90c607d019f5132a9142c12e",
+        "mode": "0o644"
+      },
+      "lego/operator/internal/build/nativecommon_test.go": {
+        "kind": "immutable-Git-blob",
+        "git_commit": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+        "path": "lego/operator/internal/build/nativecommon_test.go",
+        "git_blob": "3d7880d171dbd460b7134f35970e40840427c69b",
+        "git_mode": "100644",
+        "bytes": 23247,
+        "sha256": "214a1d0a0b67de7acfa7ed81218751f58440df18fb151b7a1099b03bb2eb7e2c",
+        "mode": "0o644"
+      }
+    },
+    "method": "Read each original7ad Git blob with its stored mode, then apply exactly these2 immutable6ea blobs; verify complete640-file VIEW-MANIFEST. The view is7ad+2, not falsely claimed byte-identical current wholeHEADd360."
+  }
+}

@@ -1,0 +1,46 @@
+--- reviewed-dc08/audit.py
++++ fresh-AMD/audit.py
+@@ -19,12 +19,16 @@
+ INPUT = Path(__file__).resolve().parent / 'intake'
+ CI = Path(__file__).resolve().parent
+ OUT = Path(__file__).resolve().parent
+-SOURCE = 'dc08ae951f2be48f160b035890ced7335222a768'
++BINDING = json.loads((OUT / 'BINDING.json').read_bytes())
++assert BINDING['status'] == 'BOUND_FROM_ACTUAL_COMPLETED_CI', 'future run/source/job not bound; no audit execution authorized'
++assert isinstance(BINDING['source'], str) and re.fullmatch(r'[a-f0-9]{40}', BINDING['source'])
++assert type(BINDING['run_id']) is int and BINDING['run_id'] > 0 and type(BINDING['amd64_job_id']) is int and BINDING['amd64_job_id'] > 0
++SOURCE = BINDING['source']
+ PRODUCER = '1feba939b4697894e800ed0abb4f25a0bf415641'
+-RUN_ID = 41428447253
++RUN_ID = BINDING['run_id']
+ REF = 'ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0'
+ EXPECTED_MANIFEST = json.loads((OUT / 'ACTUAL-EXTRACTION-BOUND.json').read_bytes())['manifest_sha256']
+-JOB = {'amd64': 125221453132}
++JOB = {'amd64': BINDING['amd64_job_id']}
+ 
+ def sha(body):
+     return hashlib.sha256(body).hexdigest()
+@@ -103,7 +107,7 @@
+     origin_names.update(name for name in origin_tree if name.startswith(prefix) and '/' not in name[len(prefix):] and name.endswith('.go'))
+ source_delta=sorted(set(names)^origin_names | {n for n in names&origin_names if tree[n]!=origin_tree[n]})
+ (OUT/'SOURCE-CUSTODY.json').write_text(json.dumps({'producer':SOURCE,'comparison_origin_main':head,'names':current,'source_delta_against_comparison_HEAD':source_delta,'helper_sha256':sha(helper_body),'working_tree_used':False},indent=2)+'\n')
+-extras = None  # No physical-working-tree/source_inventory call: local HEAD is older.
++extras = None  # Git source comparison only; no physical working-tree/source_inventory call.
+ specs = json.loads(git_body(SOURCE, 'lego/operator/internal/build/testdata/native-utilities/original-cases.json'))
+ check(len(specs) == 13 and len({x['mid'] for x in specs}) == 13, 'original13 spec set differs')
+ jobs = {x['id']: x for x in load(CI / 'jobs-final.json')['jobs']}
+@@ -353,11 +357,11 @@
+ 
+ # D3 production baseline is AMD64-only; per-arch exact captured-source check above remains mandatory.
+ 
+-report = {'schema': 'bex.D3-dc08-amd64-actual-utility-content-review/v1', 'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+-          'outcome': 'PASS_D3_DC08_AMD64_UTILITY_CONTENT_ONLY_PENDING_ROOT_APPROVAL', 'candidate_ref': REF, 'source': SOURCE,
++report = {'schema': 'bex.D3-fresh-amd64-actual-utility-content-review/v1', 'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
++          'outcome': 'PASS_D3_FRESH_AMD64_UTILITY_CONTENT_ONLY_PENDING_ROOT_APPROVAL', 'candidate_ref': REF, 'source': SOURCE,
+           'comparison_HEAD_at_audit': head, 'generator_source_checked_from_Git': SOURCE, 'unchanged_approved_image_producer_verification': PRODUCER, 'source_delta_against_comparison_HEAD':source_delta, 'physical_working_tree_compared':False, 'current_tracked_qualification_source_paths': 301, 'current_physical_source_extra_paths': extras,
+           'helper_source': identity(helper_path), 'architectures': results,
+-          'limits': ['No image/candidate/baseline/production write.0941approvalwasalreadyRoot-reviewedandisunchanged; thisisdetailedD3dc08AMD64utilitycontentreview; Rootapprovalisstillrequiredforbaselineadoption.',
++          'limits': ['No image/candidate/baseline/production write.0941approvalwasalreadyRoot-reviewedandisunchanged; thisisdetailedfreshD3AMD64utilitycontentreview; Rootapprovalisstillrequiredforbaselineadoption.',
+                      'No target/program/original-validator/Go/network/Docker/Kubernetes/auth or repository execution/mutation.',
+                      'Original ZIP extraction CRC/all-memberSHA evidence was reused; no artifactZIP decompression repeated. Static fixture ZIP/gzip and complete SBOM gzip roundtrips were independently checked.',
+                      'Some authored HTTP records retain decoded/asserted outcomes rather than every rawbody (notably m94); no byte-level replay of unretained bodies claimed.',

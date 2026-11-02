@@ -1,0 +1,14 @@
+{
+  "at": "2026-11-02T14:29:02.840087+00:00",
+  "status": "ROOT_VERIFIED_COMPACT_PUBLICATION_BYTES",
+  "copyplan_sha256": "ac64aef0449f3b41f1125127bc08ad7e9fa55ee514b4e23e9885cfbd283f6b83",
+  "payloads": 8,
+  "new_members": 40,
+  "logical_files": 66,
+  "view_inputs": 245,
+  "date_bindings": 7,
+  "all_payload_original_rawbytes_modes_verified": true,
+  "all_public_git_refs_and_blobs_checked": true,
+  "runtime_or_authority_claim": false,
+  "copy_pending": true
+}
