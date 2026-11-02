@@ -1,6 +1,6 @@
 # w8 · m145 — The gzip-only web-service edge stops answering zstd
 
-**Worker:** worker8 **Goal:** a browser offer (`gzip, deflate, br, zstd`) to a web service gets gzip, as ADR018 records, by running a Traefik whose gzip handler honours `encodings`. **Status:** in progress — t001–t004 done 2026-11-02 (v3.7.17 pinned, real-Ingress parity proven); t005 live check after the edge rolls
+**Worker:** worker8 **Goal:** a browser offer (`gzip, deflate, br, zstd`) to a web service gets gzip, as ADR018 records, by running a Traefik whose gzip handler honours `encodings`. **Status:** done — 2026-11-02, verified live on production ([evidence](evidence/live-20261102.md))
 
 ## Tasks (in order)
 
@@ -10,7 +10,7 @@
 | [t002](done/t002.md) | Prove bex's edge contracts on v3.7.17 against a real Ingress — **DONE** | 60m | t001 |
 | [t003](done/t003.md) | Simplify — **DONE** | 10m | t002 |
 | [t004](done/t004.md) | Test coverage — **DONE** | 20m | t002 |
-| [t005](t005.md) | Closeout: deploy and live browser-offer check | 30m | t003, t004 |
+| [t005](done/t005.md) | Closeout: deploy and live browser-offer check — **DONE** | 30m | t003, t004 |
 
 **Total:** 5 tasks / 150m. [Finding](finding.md).
 
