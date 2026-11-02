@@ -205,15 +205,11 @@ func (c ComputeCatalog) InstanceCap(id string) (int32, bool) {
 }
 
 // ServingPool returns tier id's dedicated serving node pool (the
-// bex.co/serving-pool value), and ok=false when the tier runs on the standard
-// serving pool — including an empty or unknown id, so an untiered/bare-CR App
-// keeps today's placement.
-func (c ComputeCatalog) ServingPool(id string) (string, bool) {
-	t, found := c.byID[id]
-	if !found || t.ServingPool == "" {
-		return "", false
-	}
-	return t.ServingPool, true
+// bex.co/serving-pool value), or "" when the tier runs on the standard serving
+// pool — including an empty or unknown id, so an untiered/bare-CR App keeps
+// today's placement.
+func (c ComputeCatalog) ServingPool(id string) string {
+	return c.byID[id].ServingPool
 }
 
 // ServingPools returns every distinct dedicated serving pool the ladder

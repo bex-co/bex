@@ -86,7 +86,7 @@ func TestTierServingPoolPlacement(t *testing.T) {
 		assertServingPlacement(t, "cron", tier, (&AppReconciler{}).cronPodSpec(cron, "image", 0, nil, launchUnknown, "").Spec)
 
 		job := predeploy.Job(predeploy.Options{Name: "api", Namespace: "default", Revision: "gen-1",
-			Command: []string{"/bin/sh", "-c", "true"}, Resources: resourcesForTier(tier), ServingPool: servingPoolForTier(tier)})
+			Command: []string{"/bin/sh", "-c", "true"}, Resources: resourcesForTier(tier), ServingPool: tiers.Compute.ServingPool(tier)})
 		assertServingPlacement(t, "predeploy", tier, job.Spec.Template.Spec)
 		// HardenPod's pool selector still applies: the dedicated pools'
 		// nodes are tenant nodes too.

@@ -225,9 +225,8 @@ func TestComputeInstanceCap(t *testing.T) {
 func TestComputeServingPool(t *testing.T) {
 	want := map[string]string{"pro-plus": "xl", "pro-max": "xl", "pro-ultra": "xxl"}
 	for _, id := range append(Compute.IDs(), "", "gold") {
-		pool, ok := Compute.ServingPool(id)
-		if pool != want[id] || ok != (want[id] != "") {
-			t.Errorf("ServingPool(%q) = (%q, %v), want (%q, %v)", id, pool, ok, want[id], want[id] != "")
+		if pool := Compute.ServingPool(id); pool != want[id] {
+			t.Errorf("ServingPool(%q) = %q, want %q", id, pool, want[id])
 		}
 	}
 	if got := Compute.ServingPools(); len(got) != 2 || got[0] != "xl" || got[1] != "xxl" {
