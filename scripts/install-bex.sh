@@ -107,6 +107,13 @@ mkdir -p "$install_dir"
 # Stage in the destination directory, then rename: an interrupted copy must
 # never leave a truncated-but-executable bex on PATH.
 install -m 0755 "${workdir}/${artifact}/bex" "${install_dir}/.bex.tmp.$$"
+# Before bex-desktop ADR002 the desktop editor linked its launcher here as
+# `bex`. Say so instead of replacing it silently; the editor stays reachable.
+if [ -L "${install_dir}/bex" ]; then
+  case "$(readlink "${install_dir}/bex")" in
+    *[Bb]ex*.app/*) echo "Replacing the old bex desktop link at ${install_dir}/bex; open the editor with \`bex edit\` or \`bex-desktop\`." ;;
+  esac
+fi
 mv -f "${install_dir}/.bex.tmp.$$" "${install_dir}/bex"
 
 echo "Installed bex v${version} to ${install_dir}/bex"

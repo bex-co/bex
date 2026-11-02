@@ -97,6 +97,20 @@ mv "$srv/repos" "$tmp/repos-hidden"
 out="$(BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin2" sh "$INSTALL" 2>&1)" ||
   fail "installer (pinned) exited nonzero:\n$out"
 [ -x "$tmp/bin2/bex" ] || fail "installer (pinned) did not install bex"
+
+# A pre-ADR002 bex desktop link is replaced with a notice; any other link is
+# replaced without one.
+mkdir -p "$tmp/bin-desk" "$tmp/bin-foreign"
+ln -s "/Applications/Bex.app/Contents/MacOS/cli" "$tmp/bin-desk/bex"
+out="$(BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin-desk" sh "$INSTALL" 2>&1)" ||
+  fail "installer over a desktop link exited nonzero:\n$out"
+echo "$out" | grep -q "Replacing the old bex desktop link" || fail "desktop-link notice missing:\n$out"
+[ ! -L "$tmp/bin-desk/bex" ] && "$tmp/bin-desk/bex" | grep -q "fixture" || fail "desktop link was not replaced by bex"
+ln -s "/opt/other/bex" "$tmp/bin-foreign/bex"
+out="$(BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin-foreign" sh "$INSTALL" 2>&1)" ||
+  fail "installer over a foreign link exited nonzero:\n$out"
+echo "$out" | grep -q "bex desktop" && fail "foreign link got the desktop notice:\n$out"
+[ ! -L "$tmp/bin-foreign/bex" ] && "$tmp/bin-foreign/bex" | grep -q "fixture" || fail "foreign link was not replaced by bex"
 mv "$tmp/repos-hidden" "$srv/repos"
 
 # ── installer: a version with no release asset fails with a clear error ─────
