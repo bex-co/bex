@@ -1,0 +1,341 @@
+{
+  "schema": "bex.D3-dc08-amd64-actual-utility-content-review/v1",
+  "at": "2026-11-02T11:01:50.292269+00:00",
+  "outcome": "PASS_D3_DC08_AMD64_UTILITY_CONTENT_ONLY_PENDING_ROOT_APPROVAL",
+  "candidate_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "source": "dc08ae951f2be48f160b035890ced7335222a768",
+  "comparison_HEAD_at_audit": "996152608be49bde6b69d76962cb5ce11043f4d8",
+  "generator_source_checked_from_Git": "dc08ae951f2be48f160b035890ced7335222a768",
+  "unchanged_approved_image_producer_verification": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "source_delta_against_comparison_HEAD": [],
+  "physical_working_tree_compared": false,
+  "current_tracked_qualification_source_paths": 301,
+  "current_physical_source_extra_paths": null,
+  "helper_source": {
+    "bytes": 62244,
+    "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797"
+  },
+  "architectures": [
+    {
+      "architecture": "amd64",
+      "job_id": 125221453132,
+      "manifest": {
+        "bytes": 79263,
+        "sha256": "53953668cbd938de35c4640d73b86d4066298cb7abaea93506dea2e8d8584a23"
+      },
+      "files": 356,
+      "original_extraction": {
+        "complete": true,
+        "zip_bytes": 83733568,
+        "zip_sha256": "40cd07dee95105e601d1b4c716cbd8261c93da1df6db9d066b195f89f5423738",
+        "completed_members": 356,
+        "member": null,
+        "observed_member_bytes": 4819,
+        "declared_bytes": 140612671,
+        "manifest_sha256": "53953668cbd938de35c4640d73b86d4066298cb7abaea93506dea2e8d8584a23",
+        "observed_output_bytes": 140612671,
+        "actual_file_bytes": 140612671,
+        "minimum_free": 9374699520,
+        "peak_allocated": 141524992
+      },
+      "critical_member_hashes_checked": 29,
+      "captured_source": {
+        "bytes": 75337,
+        "sha256": "dd62343607b8f606f7647b791099ed1f56634b73a60c804f5cb59df4d0b228f2"
+      },
+      "captured_source_paths": 301,
+      "resolved_choices_metadata": {
+        "missing-jq": {
+          "choices": [
+            {
+              "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+              "label": "Node",
+              "line": "24",
+              "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [
+                "NODE_VERSION=24.22.1"
+              ],
+              "source": "NODE_VERSION=24"
+            }
+          ],
+          "exact_default_precondition_applicable": false,
+          "expected_python_version": "",
+          "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+          "selection_precondition_passed": true
+        },
+        "missing-python-headers": {
+          "choices": [
+            {
+              "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+              "label": "Node",
+              "line": "24",
+              "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [
+                "NODE_VERSION=24.22.1"
+              ],
+              "source": "NODE_VERSION=24"
+            }
+          ],
+          "exact_default_precondition_applicable": false,
+          "expected_python_version": "",
+          "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+          "selection_precondition_passed": true
+        },
+        "missing-python-metadata": {
+          "choices": [
+            {
+              "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+              "label": "Node",
+              "line": "24",
+              "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [
+                "NODE_VERSION=24.22.1"
+              ],
+              "source": "NODE_VERSION=24"
+            }
+          ],
+          "exact_default_precondition_applicable": false,
+          "expected_python_version": "",
+          "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+          "selection_precondition_passed": true
+        },
+        "missing-python-pip": {
+          "choices": [
+            {
+              "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+              "label": "Node",
+              "line": "24",
+              "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [
+                "NODE_VERSION=24.22.1"
+              ],
+              "source": "NODE_VERSION=24"
+            }
+          ],
+          "exact_default_precondition_applicable": false,
+          "expected_python_version": "",
+          "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+          "selection_precondition_passed": true
+        },
+        "missing-rsync": {
+          "choices": [
+            {
+              "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+              "label": "Node",
+              "line": "24",
+              "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [
+                "NODE_VERSION=24.22.1"
+              ],
+              "source": "NODE_VERSION=24"
+            }
+          ],
+          "exact_default_precondition_applicable": false,
+          "expected_python_version": "",
+          "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+          "selection_precondition_passed": true
+        },
+        "node-compute": {
+          "choices": [
+            {
+              "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+              "label": "Node",
+              "line": "24",
+              "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [
+                "NODE_VERSION=24.22.1"
+              ],
+              "source": "NODE_VERSION=24"
+            }
+          ],
+          "exact_default_precondition_applicable": false,
+          "expected_python_version": "",
+          "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+          "selection_precondition_passed": true
+        },
+        "node-static": {
+          "choices": [
+            {
+              "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+              "label": "Node",
+              "line": "24",
+              "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [
+                "NODE_VERSION=24.22.1"
+              ],
+              "source": "NODE_VERSION=24"
+            }
+          ],
+          "exact_default_precondition_applicable": false,
+          "expected_python_version": "",
+          "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+          "selection_precondition_passed": true
+        },
+        "python313-original": {
+          "choices": [
+            {
+              "image": "python:3.13-bookworm@sha256:3856e3e7bf4d0ba061501a84ed2eb0d429663307c0f54f191dc4de03c7081c3e",
+              "label": "Python",
+              "line": "3.13",
+              "narration": "==> Using Python 3.13 (from PYTHON_VERSION=3.13)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [
+                "PYTHON_VERSION=3.13.18"
+              ],
+              "source": "PYTHON_VERSION=3.13"
+            },
+            {
+              "image": "",
+              "label": "Poetry",
+              "line": "2.1.3",
+              "narration": "==> Using Poetry 2.1.3 (default)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [],
+              "source": ""
+            },
+            {
+              "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+              "label": "Node",
+              "line": "24",
+              "narration": "==> Using Node 24 (default)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [
+                "NODE_VERSION=24.22.1"
+              ],
+              "source": ""
+            }
+          ],
+          "exact_default_precondition_applicable": false,
+          "expected_python_version": "",
+          "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+          "selection_precondition_passed": true
+        },
+        "python3148-default": {
+          "choices": [
+            {
+              "image": "python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74",
+              "label": "Python",
+              "line": "3.14.8",
+              "narration": "==> Using Python 3.14.8 (default)",
+              "primary_image": "",
+              "requested_exact": "3.14.8",
+              "runtime_environment": [
+                "PYTHON_VERSION=3.14.8"
+              ],
+              "source": ""
+            },
+            {
+              "image": "",
+              "label": "Poetry",
+              "line": "2.1.3",
+              "narration": "==> Using Poetry 2.1.3 (default)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [],
+              "source": ""
+            },
+            {
+              "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+              "label": "Node",
+              "line": "24",
+              "narration": "==> Using Node 24 (default)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [
+                "NODE_VERSION=24.22.1"
+              ],
+              "source": ""
+            }
+          ],
+          "exact_default_precondition_applicable": true,
+          "expected_python_version": "3.14.8",
+          "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+          "selection_precondition_passed": true
+        },
+        "supplier-removed": {
+          "choices": [
+            {
+              "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+              "label": "Node",
+              "line": "24",
+              "narration": "==> Using Node 24 (from NODE_VERSION=24)",
+              "primary_image": "",
+              "requested_exact": "",
+              "runtime_environment": [],
+              "source": "NODE_VERSION=24"
+            }
+          ],
+          "exact_default_precondition_applicable": false,
+          "expected_python_version": "",
+          "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+          "selection_precondition_passed": true
+        }
+      },
+      "positive_cases": [
+        {
+          "case": "node-compute",
+          "image_config_id": "sha256:fb132a544cb7041bd3f0b223b9c3295bae7cfbbb1920c9e2dbd7566488bbe685",
+          "overlay": false
+        },
+        {
+          "case": "node-static",
+          "image_config_id": "sha256:a2e7d9750c5bfe72433e5584bf3ba702b247bf650fd46b3552d320ae310d1822",
+          "overlay": false
+        },
+        {
+          "case": "python313-original",
+          "image_config_id": "sha256:3555921a7e8240c40ff6778ff746dcf5b54e9ff56866d578823524d5b4cc2fe4",
+          "overlay": true
+        },
+        {
+          "case": "python3148-default",
+          "image_config_id": "sha256:438a44dcc63be2861a264bd43535dbfe8a76fade409237fa537e422c6b993848",
+          "overlay": true
+        }
+      ],
+      "original_authored_cases": 13,
+      "original_runtime_HTTP_results": 39,
+      "omissions": 5,
+      "supplier_removal": true,
+      "static_gzip_ZIP_payload_CRC_checks": true,
+      "actual_default_SBOM": {
+        "image_config_id": "sha256:438a44dcc63be2861a264bd43535dbfe8a76fade409237fa537e422c6b993848",
+        "syft_manifest_digest": "sha256:45660e492bf5d27320bd33af7a685414d89fa12dc1ce0bc7b6c6d8ad778f232f",
+        "platform": "linux/amd64",
+        "python": "3.14.8",
+        "libbrotli1_versions": [
+          "1.0.9-2+deb12u1"
+        ],
+        "packages": 1212
+      },
+      "full_Syft_and_SPDX_gzip_roundtrips_checked": true,
+      "actual_cleanup_declared_success_and_CI_gate_success": true,
+      "all_reviewed_content_checks": "PASS"
+    }
+  ],
+  "limits": [
+    "No image/candidate/baseline/production write.0941approvalwasalreadyRoot-reviewedandisunchanged; thisisdetailedD3dc08AMD64utilitycontentreview; Rootapprovalisstillrequiredforbaselineadoption.",
+    "No target/program/original-validator/Go/network/Docker/Kubernetes/auth or repository execution/mutation.",
+    "Original ZIP extraction CRC/all-memberSHA evidence was reused; no artifactZIP decompression repeated. Static fixture ZIP/gzip and complete SBOM gzip roundtrips were independently checked.",
+    "Some authored HTTP records retain decoded/asserted outcomes rather than every rawbody (notably m94); no byte-level replay of unretained bodies claimed.",
+    "Packaging/Cextension is explicitly build-only in default proof; runtime verifies exact interpreter/ENV/loader/Brotli. No predeploy/Kubernetes/native-init/allfamily/hosted28 claim.",
+    "Producer Git301 capture is exact. Stale local working tree was not compared or used as current source; no ignored local files read, removed, or waived. No baseline validator invoked."
+  ]
+}

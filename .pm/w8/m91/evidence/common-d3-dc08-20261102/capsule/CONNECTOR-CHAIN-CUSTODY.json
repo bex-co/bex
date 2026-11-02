@@ -1,0 +1,36 @@
+{
+  "total_connector_invocations": 3,
+  "local_verified_TLS_streams": 1,
+  "history": [
+    {
+      "path": "ORCHESTRATION-FAILURE.json",
+      "bytes": 1542,
+      "sha256": "798e4c06a2c6bde4d3a269d8a348a973da236745e116aba3c6819e64485dd935"
+    },
+    {
+      "path": "FILE-REFERENCE-NORMALIZATION.json",
+      "bytes": 491,
+      "sha256": "3ee556022fff5ac32f2230d47a0de02e1a9d66ffadb25cc1adf0ecb1992dec45"
+    },
+    {
+      "path": "CONNECTOR-ATTEMPT2-ENVELOPE.json",
+      "bytes": 387,
+      "sha256": "2be5b6915ccde010bc2af5fe399f26dbdaffd05f45c6132d4e06cd5e6a100502"
+    },
+    {
+      "path": "CONNECTOR-ATTEMPT3-SHAPE.json",
+      "bytes": 3844,
+      "sha256": "741144d5de7359d823f29132e2e120b935c648fa87bd0cda41a3ed8db93dff39"
+    },
+    {
+      "path": "ROOT-SECOND-CONNECTOR-DISPOSITION.json",
+      "bytes": 1132,
+      "sha256": "55bddaf2629e640986b4cc54cd4f088785e4b71f0802550119c9d8a86ff60cb9"
+    }
+  ],
+  "attempt1": "Unclassified return; structuredContent absent, raw localcallee value not retained; original TypeError andempty-local-state proof preserved. Not retroactively diagnosed or cleared.",
+  "attempt2": "Root controlled inspection, unresolved shape; retained sanitized envelope.",
+  "attempt3": "Root controlled successful CallToolResult object file_uri, duplicatebinding agreed; exactartifact/MIME/name/HTTPSpublicfilehost bound; URL onlyinRAM/stdin then cleared.",
+  "local_stream": "Root unchangedguard98778completed0,stopnull,groupabsent. This agent resumed extraction/audit only; no furtherdownload/call.",
+  "signed_URL_or_token_values_in_evidence": false
+}

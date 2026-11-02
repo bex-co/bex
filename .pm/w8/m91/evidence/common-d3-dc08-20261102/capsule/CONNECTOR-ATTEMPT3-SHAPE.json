@@ -1,0 +1,159 @@
+{
+  "attempt": 3,
+  "isError": false,
+  "shape": {
+    "type": "object",
+    "keys": [
+      "content",
+      "structuredContent",
+      "isError"
+    ],
+    "fields": {
+      "content": {
+        "type": "array",
+        "keys": [
+          "0"
+        ],
+        "fields": {
+          "0": {
+            "type": "object",
+            "keys": [
+              "type",
+              "text"
+            ],
+            "fields": {
+              "type": {
+                "type": "string",
+                "length": 4
+              },
+              "text": {
+                "type": "string",
+                "length": 17
+              }
+            }
+          }
+        }
+      },
+      "structuredContent": {
+        "type": "object",
+        "keys": [
+          "file_uri",
+          "artifact_id",
+          "file_name",
+          "mime_type",
+          "structuredContent"
+        ],
+        "fields": {
+          "file_uri": {
+            "type": "object",
+            "keys": [
+              "download_url",
+              "file_id",
+              "mime_type",
+              "file_name"
+            ],
+            "fields": {
+              "download_url": {
+                "type": "string",
+                "length": 402,
+                "url_omitted": true
+              },
+              "file_id": {
+                "type": "string",
+                "length": 37
+              },
+              "mime_type": {
+                "type": "string",
+                "length": 15
+              },
+              "file_name": {
+                "type": "string",
+                "length": 26
+              }
+            }
+          },
+          "artifact_id": {
+            "type": "number",
+            "value": 13133128419
+          },
+          "file_name": {
+            "type": "string",
+            "length": 26
+          },
+          "mime_type": {
+            "type": "string",
+            "length": 15
+          },
+          "structuredContent": {
+            "type": "object",
+            "keys": [
+              "file_uri",
+              "file_id",
+              "download_url",
+              "file_name",
+              "mime_type",
+              "artifact_id"
+            ],
+            "fields": {
+              "file_uri": {
+                "type": "object",
+                "keys": [
+                  "download_url",
+                  "file_id",
+                  "mime_type",
+                  "file_name"
+                ],
+                "fields": {
+                  "download_url": {
+                    "type": "string",
+                    "length": 402,
+                    "url_omitted": true
+                  },
+                  "file_id": {
+                    "type": "string",
+                    "length": 37
+                  },
+                  "mime_type": {
+                    "type": "string",
+                    "length": 15
+                  },
+                  "file_name": {
+                    "type": "string",
+                    "length": 26
+                  }
+                }
+              },
+              "file_id": {
+                "type": "string",
+                "length": 37
+              },
+              "download_url": {
+                "type": "string",
+                "length": 402,
+                "url_omitted": true
+              },
+              "file_name": {
+                "type": "string",
+                "length": 26
+              },
+              "mime_type": {
+                "type": "string",
+                "length": 15
+              },
+              "artifact_id": {
+                "type": "number",
+                "value": 13133128419
+              }
+            }
+          }
+        }
+      },
+      "isError": {
+        "type": "boolean",
+        "value": false
+      }
+    }
+  },
+  "raw_held_in_transient_memory_only": true,
+  "local_streams_started": 0
+}

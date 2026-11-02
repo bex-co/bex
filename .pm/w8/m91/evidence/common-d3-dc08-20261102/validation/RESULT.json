@@ -1,0 +1,64 @@
+{
+  "complete": true,
+  "scope": "LOCAL_READONLY_HELPER_VALIDATION_NOT_CI_OR_ADOPTION",
+  "at": "2026-11-02T11:35:16.092808+00:00",
+  "deadline_seconds": 300,
+  "physical_floor_plus_margin": 8623489024,
+  "minimum_free": 9951219712,
+  "peak_new_view_allocated_bytes": 3170304,
+  "peak_view_apparent_bytes": 469313879,
+  "processes": [
+    {
+      "script": "stage_view.py",
+      "sha256": "7a57bfe1f01b85d520bba7a0ef49506719569b3f21ae344ed5b90748bd067f5b",
+      "argv": [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "/private/tmp/bex-w8-d3-dc08-publication-plan-20261102-mn5rlwhv/stage_view.py"
+      ],
+      "at": "2026-11-02T11:35:16.093310+00:00",
+      "pid": 36719,
+      "pgid": 36719,
+      "exit_code": 0,
+      "group_absent": true,
+      "finished": "2026-11-02T11:35:16.752962+00:00"
+    },
+    {
+      "script": "validate_view.py",
+      "sha256": "6f8b674e7e0ee200bbf722897afec3bb52939eb1c091f5ec43d6cafacf2787ff",
+      "argv": [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "/private/tmp/bex-w8-d3-dc08-publication-plan-20261102-mn5rlwhv/validate_view.py"
+      ],
+      "at": "2026-11-02T11:35:16.789521+00:00",
+      "pid": 36721,
+      "pgid": 36721,
+      "exit_code": 0,
+      "group_absent": true,
+      "finished": "2026-11-02T11:35:17.681733+00:00"
+    }
+  ],
+  "errors": [],
+  "cancelled": [],
+  "seconds": 1.6255840840749443,
+  "final_free": 9951219712,
+  "outputs": {
+    "stage_view.py.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "stage_view.py.stdout": {
+      "bytes": 467,
+      "sha256": "17c0d1a1dec79ecceb59e3ba7713f74797781ad1efc0392b719ea204902b5328"
+    },
+    "validate_view.py.stdout": {
+      "bytes": 587,
+      "sha256": "bd60ded7c249b8a2901b9c93a97d30bf41b2a82ba2c3b532db843b0109d3a37d"
+    },
+    "validate_view.py.stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

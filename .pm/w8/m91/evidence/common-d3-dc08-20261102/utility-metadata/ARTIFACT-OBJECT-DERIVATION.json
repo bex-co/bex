@@ -1,0 +1,12 @@
+{
+  "source": "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/artifacts-final.json",
+  "bytes": 745,
+  "sha256": "bb85a8b18dc4d9a177c80690a8f1f542a917b984a47671695e67f4df4d5ff32f",
+  "start_utf8_offset": 30,
+  "end_utf8_offset": 743,
+  "original_object": {
+    "bytes": 713,
+    "sha256": "91fd28d983585e8176b802f5fc76d865381678d061311c44040877ef1fa4cfd4"
+  },
+  "method": "Verbatim original JSON object slice from retained actual fullREST artifact-listing; no separateGET/fieldrewrite."
+}

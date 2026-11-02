@@ -1,0 +1,81 @@
+{
+  "scope": "ACTUAL_LOCAL_UNCHANGED_HELPER_VALIDATION_NOT_CI_EXECUTION_OR_PRODUCTION_ADOPTION",
+  "complete": true,
+  "at": "2026-11-02T11:36:36.335542+00:00",
+  "qualification_status": "current-complete",
+  "candidate": {
+    "bytes": 3475,
+    "sha256": "cc39f78a8b9f128babb362e0078007380a1b44b7799394d93b06e5fc52ab7036"
+  },
+  "fixed_plan": {
+    "bytes": 4218,
+    "sha256": "def69fac2a366e9ea39fc3075d1069443f1943d12468b7edd0ec46ddd40a5e01"
+  },
+  "frozen_private_plan_manifest": {
+    "bytes": 2418,
+    "sha256": "c45d4b2bfe57c8767ad58edeba0f4da22d2dfe7674b5b5c87fb2610240fe2242"
+  },
+  "base_publication_files": {
+    "bytes": 272501,
+    "sha256": "6d3434ab62b9e5aecd91d56bb58d8220b4ea146ae66f9baf82766c0f62014e8c"
+  },
+  "actual_utility_source": "dc08ae951f2be48f160b035890ced7335222a768",
+  "current_exact_Git301_view": "36fd9c8cbc6d6f04fddde1c7dd6eca5ba3e72c01",
+  "source_files": 301,
+  "utility_architectures": [
+    "amd64"
+  ],
+  "image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "all0941_approval_deep_fields_unchanged": true,
+  "original_AMD_artifact_members": 356,
+  "logical_view_bytes": 469313879,
+  "peak_new_view_allocation_bytes": 3170304,
+  "allocation_definition": "Source Git301 file and view-directory st_blocks; existing frozen evidence hardlinks allocate no second body. No chmod or write to linked files.",
+  "minimum_observed_physical_free_bytes": 9951195136,
+  "physical_floor_plus_margin_bytes": 8623489024,
+  "whole_seconds": 1.6255840840749443,
+  "processes": [
+    {
+      "script": "stage_view.py",
+      "sha256": "7a57bfe1f01b85d520bba7a0ef49506719569b3f21ae344ed5b90748bd067f5b",
+      "argv": [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "/private/tmp/bex-w8-d3-dc08-publication-plan-20261102-mn5rlwhv/stage_view.py"
+      ],
+      "at": "2026-11-02T11:35:16.093310+00:00",
+      "pid": 36719,
+      "pgid": 36719,
+      "exit_code": 0,
+      "group_absent": true,
+      "finished": "2026-11-02T11:35:16.752962+00:00"
+    },
+    {
+      "script": "validate_view.py",
+      "sha256": "6f8b674e7e0ee200bbf722897afec3bb52939eb1c091f5ec43d6cafacf2787ff",
+      "argv": [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "/private/tmp/bex-w8-d3-dc08-publication-plan-20261102-mn5rlwhv/validate_view.py"
+      ],
+      "at": "2026-11-02T11:35:16.789521+00:00",
+      "pid": 36721,
+      "pgid": 36721,
+      "exit_code": 0,
+      "group_absent": true,
+      "finished": "2026-11-02T11:35:17.681733+00:00"
+    }
+  ],
+  "errors": [],
+  "cancelled": [],
+  "python": {
+    "executable": "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "version": "3.14.3 (main, Feb  3 2026, 15:32:20) [Clang 17.0.0 (clang-1700.6.3.2)]"
+  },
+  "network_subprocess_and_filesystem_writes_denied_inside_validator": true,
+  "Git_cat_file_only_stage_subprocess": true,
+  "repository_writes": false,
+  "candidate_applied": false,
+  "no_new_crypto_CI_or_artifact_download": true,
+  "closed_view_readonly_evidence_links": 1448
+}

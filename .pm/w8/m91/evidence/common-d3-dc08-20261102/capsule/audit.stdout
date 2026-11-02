@@ -1,0 +1,16 @@
+{
+  "outcome": "PASS_D3_DC08_AMD64_UTILITY_CONTENT_ONLY_PENDING_ROOT_APPROVAL",
+  "root": "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr",
+  "review": {
+    "bytes": 14361,
+    "sha256": "166ff184fc547933b37add9b4f0f4f6008d276a2d278287b376362f395a1e775"
+  },
+  "arches": [
+    {
+      "architecture": "amd64",
+      "files": 356,
+      "packages": 1212
+    }
+  ],
+  "local_source_extras": null
+}

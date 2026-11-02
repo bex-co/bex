@@ -1,0 +1,11 @@
+{
+  "artifact_id": 13133128419,
+  "file_name": "D3-dc08-amd64-original.zip",
+  "mime_type": "application/zip",
+  "connector_calls_total": 3,
+  "first_remote_outcome": "unknown",
+  "second_local_streams": 0,
+  "normalization": "Current file_uri is an object containing download_url; duplicate nested wrapper values agree. This is an ordinary schema handling correction; isError=false and artifact ID/name/MIME bound.",
+  "capability_URL_omitted": true,
+  "at_most_first_local_stream": true
+}

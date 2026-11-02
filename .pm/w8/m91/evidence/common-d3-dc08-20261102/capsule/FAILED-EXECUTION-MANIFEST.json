@@ -1,0 +1,24 @@
+{
+  "files": [
+    {
+      "path": "EXECUTION-PREFLIGHT.json",
+      "bytes": 444,
+      "sha256": "7a7c8fc65ecaa97d0f2560482c842c991543784079360bf5108adb35f48b7858"
+    },
+    {
+      "path": "ROOT-EXECUTION-APPROVAL.json",
+      "bytes": 1070,
+      "sha256": "2c3adf91174df0874895009232b4747552a3ee33acb5b46a6383c6511911fba1"
+    },
+    {
+      "path": "ORCHESTRATION-FAILURE.json",
+      "bytes": 1542,
+      "sha256": "798e4c06a2c6bde4d3a269d8a348a973da236745e116aba3c6819e64485dd935"
+    },
+    {
+      "path": "BOUND-SOURCE-MANIFEST.json",
+      "bytes": 3595,
+      "sha256": "c9782ce6e0b676f491304691af6f31b3256dc17d1a66d89698017a4139ed3022"
+    }
+  ]
+}

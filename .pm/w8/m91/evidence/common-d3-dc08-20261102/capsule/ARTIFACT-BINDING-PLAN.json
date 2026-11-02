@@ -1,0 +1,69 @@
+{
+  "status": "BOUND_SOURCE_METADATA_ONLY_ROOT_EXECUTION_REVIEW_PENDING",
+  "at": "2026-11-02T10:41:16.956128+00:00",
+  "approved_preparation_root": "/private/tmp/bex-w8-d3-dc08-utility-preparation-20261102-fp7iudm8",
+  "preparation_plan": {
+    "path": "/private/tmp/bex-w8-d3-dc08-utility-preparation-20261102-fp7iudm8/PLAN.json",
+    "bytes": 4154,
+    "sha256": "af40f7c863b000e4a015cf7a082ca29ce0488cbfc0ee699e673839b6b6ac3064"
+  },
+  "preparation_manifest": {
+    "path": "/private/tmp/bex-w8-d3-dc08-utility-preparation-20261102-fp7iudm8/MANIFEST-PREPARATION.json",
+    "bytes": 5111,
+    "sha256": "773416ea829e03201b8c8752d79f3065e82782ba002c555713b231fe071c385e"
+  },
+  "actual_successful_run": 41428447253,
+  "source": "dc08ae951f2be48f160b035890ced7335222a768",
+  "job_id": 125221453132,
+  "whole_job_completed_at": "2026-11-02T10:38:11Z",
+  "artifact": {
+    "id": 13133128419,
+    "node_id": "MDg6QXJ0aWZhY3QxMzEzMzEyODQxOQ==",
+    "name": "common-generated-dc08ae951f2be48f160b035890ced7335222a768-amd64-1",
+    "size_in_bytes": 83733568,
+    "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13133128419",
+    "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13133128419/zip",
+    "expired": false,
+    "digest": "sha256:40cd07dee95105e601d1b4c716cbd8261c93da1df6db9d066b195f89f5423738",
+    "created_at": "2026-11-02T10:36:54Z",
+    "updated_at": "2026-11-02T10:36:54Z",
+    "expires_at": "2026-12-02T10:36:48Z",
+    "workflow_run": {
+      "id": 41428447253,
+      "repository_id": 793852040,
+      "head_repository_id": 793852040,
+      "head_branch": "main",
+      "head_sha": "dc08ae951f2be48f160b035890ced7335222a768"
+    }
+  },
+  "source_rows": 301,
+  "unchanged_source_components": {
+    "audit.py": {
+      "path": "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/audit.py",
+      "bytes": 30281,
+      "sha256": "db7dccc53b1fa0e0c4e8e4358c76e5218c837d6fd2c2dc616faf9d0b4a508c7d"
+    },
+    "download_guard.py": {
+      "path": "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/intake/download_guard.py",
+      "bytes": 2988,
+      "sha256": "e561c5e1c230021917695c33c96bfdbee969dec4eb41fddbc0a3a2cfd48ec551"
+    },
+    "extract_guard.py": {
+      "path": "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/intake/extract_guard.py",
+      "bytes": 2770,
+      "sha256": "c7d380d7c4e2bc2fa4dca6253191ffca0a1e8c2bc7ac3d9529e46651403f83d1"
+    },
+    "bind_audit.py": {
+      "path": "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/bind_audit.py",
+      "bytes": 1371,
+      "sha256": "794ca9d431227472df6fb746b3840b78cfce91a9c01919515da17085c2fb65ab"
+    }
+  },
+  "only_new_data_delta": "Downloader INPUTS exactlyactualAMDimmutableID/ZIPsize/SHA; no body/hash/oracle gatechange. Dynamic__file__ paths bindfreshprivateRoot. Original preparation tree untouched.",
+  "current_free": 9779900416,
+  "estimated_fresh_full_ARCH_required": 8850756732,
+  "estimated_fit": true,
+  "actual_central_fit_still_required": true,
+  "no_connector_file_reference_or_body_requests": true,
+  "no_repo_or_candidate_write": true
+}

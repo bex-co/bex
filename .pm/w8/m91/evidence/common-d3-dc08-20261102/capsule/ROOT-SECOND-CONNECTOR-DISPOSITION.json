@@ -1,0 +1,14 @@
+{
+  "at": "2026-11-02T10:51:55.437265+00:00",
+  "decision": "One controlled second connector reference attempt for the same immutable artifact, with robust envelope handling; then at most one first local stream if valid authorized file reference returned.",
+  "artifact_id": 13133128419,
+  "expected_bytes": 83733568,
+  "expected_sha256": "40cd07dee95105e601d1b4c716cbd8261c93da1df6db9d066b195f89f5423738",
+  "first_attempt": "Raw envelope unretained; remote transfer unknown; structuredContent assumption failed before any local client.",
+  "first_failure_receipt_unchanged": true,
+  "local_case_directory_verified_empty_before_attempt": true,
+  "fresh_free": 9642483712,
+  "response_handling": "Persist sanitized envelope shape/error before dereferencing; accept one file_uri from structured data, JSON text or a documented resource link; enforce HTTPS artifact-service host; stop on explicit error/denial or ambiguous reference. Never retain signed URL.",
+  "not_a_retry_of_local_download": "No prior local stream was started; original body/hash/TLS/V2/oracle gates unchanged.",
+  "runtime_candidate_repository_actions": false
+}

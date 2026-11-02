@@ -1,0 +1,130 @@
+{
+  "at": "2026-11-02T11:05:11.220233+00:00",
+  "outcome": "ACTUAL_D3_DC08_AMD64_UTILITY_CONTENT_PASS_PENDING_ROOT_ADMISSION",
+  "summary": {
+    "bytes": 1432,
+    "sha256": "271acaf31592c74cbeecd2bbf48c928eb8c5406d060f977a62022bbd04cc7121"
+  },
+  "full_content_review": {
+    "bytes": 14361,
+    "sha256": "166ff184fc547933b37add9b4f0f4f6008d276a2d278287b376362f395a1e775"
+  },
+  "source_custody": {
+    "bytes": 75574,
+    "sha256": "532f98d723cfa9ae46bc9535ec5e2d5980a0e0a6aeeb4f23058f8e84b891e73d"
+  },
+  "direct_actual_source_binding": {
+    "bytes": 511,
+    "sha256": "fbe1cbe88bd54a10d00513b2ab3c401539b06685e82c60294aff827d63d9ce35"
+  },
+  "raw_gzip_roundtrips": {
+    "bytes": 1829,
+    "sha256": "9d44253fb24d20f51b9661a03b6e3d4c743f3a097030768507dcfc098798f8a6"
+  },
+  "actual_whole_CI_metadata": {
+    "run-final.json": {
+      "bytes": 11693,
+      "sha256": "7d44520da45707800cc960074613dfabd4906dc115267793630fb7e722628331"
+    },
+    "jobs-final.json": {
+      "bytes": 8785,
+      "sha256": "fbfefcdbc7b8fafd7c7a37aff4805b1abe84925f0960d8c9cdca566973a21311"
+    },
+    "artifacts-final.json": {
+      "bytes": 745,
+      "sha256": "bb85a8b18dc4d9a177c80690a8f1f542a917b984a47671695e67f4df4d5ff32f"
+    },
+    "job-amd64.log": {
+      "bytes": 63029,
+      "sha256": "07e053e5e583c2c68a6916c8bd1b5ce69a1bfcf9353a6aa533b36280938bfa75"
+    }
+  },
+  "originalZIP": {
+    "path": "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/intake/amd64/original.zip",
+    "bytes": 83733568,
+    "sha256": "40cd07dee95105e601d1b4c716cbd8261c93da1df6db9d066b195f89f5423738"
+  },
+  "all_original_members_retained": 356,
+  "extraction": {
+    "complete": true,
+    "zip_bytes": 83733568,
+    "zip_sha256": "40cd07dee95105e601d1b4c716cbd8261c93da1df6db9d066b195f89f5423738",
+    "completed_members": 356,
+    "member": null,
+    "observed_member_bytes": 4819,
+    "declared_bytes": 140612671,
+    "manifest_sha256": "53953668cbd938de35c4640d73b86d4066298cb7abaea93506dea2e8d8584a23",
+    "observed_output_bytes": 140612671,
+    "actual_file_bytes": 140612671,
+    "minimum_free": 9374699520,
+    "peak_allocated": 141524992
+  },
+  "actual_local_guard_processes": {
+    "download": {
+      "exit": 0,
+      "stop": null,
+      "group_absent": true,
+      "seconds": 14.48,
+      "minimum_free": 9557745664,
+      "arch": "amd64",
+      "artifact_id": 13133128419,
+      "signed_URL_retained": false,
+      "stdout_bytes": 133,
+      "stderr_bytes": 0,
+      "stdout_sha256": "33754d63b3f9e66bd85f4cada614768e371c94723dfbe189d91d60decc344e75",
+      "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "extract": {
+      "argv": [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/extract_utility_zip.py",
+        "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/intake/amd64/original.zip",
+        "83733568",
+        "40cd07dee95105e601d1b4c716cbd8261c93da1df6db9d066b195f89f5423738",
+        "/private/tmp/bex-w8-d3-dc08-utility-intake-bound-20261102-l637kqwr/intake/amd64/extracted"
+      ],
+      "exit": 0,
+      "stop": null,
+      "groups_absent": true,
+      "seconds": 0.785,
+      "minimum_free": 9374040064,
+      "tool_sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4"
+    }
+  },
+  "actual_audit_process": {
+    "command": "/opt/homebrew/bin/python3.14 -B audit.py",
+    "exit": 0,
+    "stdout": {
+      "bytes": 417,
+      "sha256": "1cd09bd14f06d35d2f6dac8ebfafb96636e7fb3891e2d00750ec3fd5529507e7"
+    },
+    "stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "Root_original_execution_approval": {
+    "bytes": 1070,
+    "sha256": "2c3adf91174df0874895009232b4747552a3ee33acb5b46a6383c6511911fba1"
+  },
+  "controlled_connector_recovery_chain": {
+    "bytes": 1595,
+    "sha256": "7ed485869286547cf3a2dcb1be230a4db7c212a4379fa1cd681260642e4a4935"
+  },
+  "total_connector_calls": 3,
+  "verified_local_streams": 1,
+  "all23_source_metadata_files_unchanged": true,
+  "original_programs_commands_oracles_size_SHA_CRC_checks_unchanged": true,
+  "no_new_crypto_or_target_runtime_or_CI_action": true,
+  "no_candidate_or_repo_mutation": true,
+  "Root_review_required": true,
+  "scope_limits": [
+    "No image/candidate/baseline/production write.0941approvalwasalreadyRoot-reviewedandisunchanged; thisisdetailedD3dc08AMD64utilitycontentreview; Rootapprovalisstillrequiredforbaselineadoption.",
+    "No target/program/original-validator/Go/network/Docker/Kubernetes/auth or repository execution/mutation.",
+    "Original ZIP extraction CRC/all-memberSHA evidence was reused; no artifactZIP decompression repeated. Static fixture ZIP/gzip and complete SBOM gzip roundtrips were independently checked.",
+    "Some authored HTTP records retain decoded/asserted outcomes rather than every rawbody (notably m94); no byte-level replay of unretained bodies claimed.",
+    "Packaging/Cextension is explicitly build-only in default proof; runtime verifies exact interpreter/ENV/loader/Brotli. No predeploy/Kubernetes/native-init/allfamily/hosted28 claim.",
+    "Producer Git301 capture is exact. Stale local working tree was not compared or used as current source; no ignored local files read, removed, or waived. No baseline validator invoked."
+  ]
+}
