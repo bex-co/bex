@@ -1,0 +1,18 @@
+{
+  "at": "2026-11-02T08:56:14.033148+00:00",
+  "baseline_source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "observed_current_main": "a5f65eec3f2feac90ae44beed39ac57b88e26145",
+  "outcome": "ISOLATED_0b7_BASELINE_PASS_CURRENT_MAIN_ADMISSION_NOT_CLAIMED",
+  "qualification_paths": 300,
+  "unchanged_paths": 299,
+  "changed_paths": [
+    ".github/workflows/native-base-image.yml"
+  ],
+  "change": "87f9e7b6: native-base publisher runner label bex-production to bex-build",
+  "image_input33_also_contains_changed_workflow": true,
+  "current_main_existing_validator_would_refuse": true,
+  "D3_user_decision_commit": "191bb4d75a5d3271bc99af91a84bc8cf11ddf17e",
+  "next_work": "Implement coherent D3 amd64-production/common-arm64-light publisher and test qualification; preserve old executed publication provenance and requalify exact source before dispatch.",
+  "source_or_helper_waiver": false,
+  "candidate_update_scope": "Retains exact improved historical0b7 full utility proof only; never authorizes currenta5 family dispatch."
+}

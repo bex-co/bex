@@ -1,0 +1,21 @@
+{
+  "outcome": "PASS_CURRENT0b7_UTILITY_CONTENT_ONLY_PENDING_ROOT_APPROVAL",
+  "root": "/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331",
+  "review": {
+    "bytes": 26695,
+    "sha256": "08d1bc5907162f0bfd2e5a4a45e4a1951399948a556984a1b2087c9361c620ed"
+  },
+  "arches": [
+    {
+      "architecture": "amd64",
+      "files": 356,
+      "packages": 1212
+    },
+    {
+      "architecture": "arm64",
+      "files": 356,
+      "packages": 1208
+    }
+  ],
+  "local_source_extras": null
+}

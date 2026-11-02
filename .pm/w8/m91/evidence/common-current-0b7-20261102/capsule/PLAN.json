@@ -1,0 +1,48 @@
+{
+  "status": "PREPARATION_ONLY_BODY_WRITES_HELD_FOR_ROOT_CAPACITY_AUTHORIZATION",
+  "run": 41407186362,
+  "source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "CI_root": "/private/tmp/bex-w8-current0b7-0941-monitor-20261102-_bu8v18k",
+  "image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "inputs": {
+    "amd64": [
+      13125390305,
+      83734516,
+      "ca8d0886361bb21a8b21d5743ca227fc0520b7ed7cde8d9ddb01ab25db7a6918"
+    ],
+    "arm64": [
+      13124914601,
+      79101762,
+      "90fdc530426317471c797d7a6b44673954168f18076855158f1e72888989b831"
+    ]
+  },
+  "physical_floor": 8589934592,
+  "margin": 33554432,
+  "serial_order": [
+    "AMD connector metadata -> one verified-TLS download -> exact size/SHA -> actual central-directory full allocated projection -> V2 extraction; preserve ZIP and every original member",
+    "ARM same steps only after AMD child groups absent and fresh fit check",
+    "derive actual original MANIFEST hashes from successful V2 receipts and unchanged original MANIFESTs; run unchanged content predicates adapted to current source/run/job data",
+    "freeze full original ZIPs/raw+gz/source/tool/CI custody; no baseline/candidate/repository writes"
+  ],
+  "prior0184_estimate_only": {
+    "amd64": {
+      "prior0184_output_bytes": 140622615,
+      "prior_members": 356,
+      "allocation_reserve_estimate": 143538967
+    },
+    "arm64": {
+      "prior0184_output_bytes": 136198251,
+      "prior_members": 356,
+      "allocation_reserve_estimate": 139114603
+    }
+  },
+  "combined_estimated_bytes_to_retain": 479044280,
+  "combined_estimated_free_required": 9068978872,
+  "observed_free": 9107357696,
+  "estimated_combined_fit_at_prep": true,
+  "future_actual_fit": "ZIP central-directory projection required before each extraction; any current/free/CRC/size/SHA/oracle failure stops unproved, no retry/partial success",
+  "source_limit": "Exactly current0b7 captured300 from Git; prior0184 differs one addon qualification source file. No old capture reuse as currentproof.",
+  "artifact_download_calls_submitted": 0,
+  "artifact_body_streams": 0,
+  "no_new_source_oracle_changes": true
+}

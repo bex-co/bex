@@ -1,0 +1,42 @@
+{
+  "choices": [
+    {
+      "image": "python:3.14.8-bookworm@sha256:d971782704801eedcce987f5a3aa473500e255094e86400e2078a74652973b74",
+      "label": "Python",
+      "line": "3.14.8",
+      "narration": "==\u003e Using Python 3.14.8 (default)",
+      "primary_image": "",
+      "requested_exact": "3.14.8",
+      "runtime_environment": [
+        "PYTHON_VERSION=3.14.8"
+      ],
+      "source": ""
+    },
+    {
+      "image": "",
+      "label": "Poetry",
+      "line": "2.1.3",
+      "narration": "==\u003e Using Poetry 2.1.3 (default)",
+      "primary_image": "",
+      "requested_exact": "",
+      "runtime_environment": [],
+      "source": ""
+    },
+    {
+      "image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+      "label": "Node",
+      "line": "24",
+      "narration": "==\u003e Using Node 24 (default)",
+      "primary_image": "",
+      "requested_exact": "",
+      "runtime_environment": [
+        "NODE_VERSION=24.22.1"
+      ],
+      "source": ""
+    }
+  ],
+  "exact_default_precondition_applicable": true,
+  "expected_python_version": "3.14.8",
+  "scope": "resolved image metadata and selection only; not generated-runtime or qualification success",
+  "selection_precondition_passed": true
+}

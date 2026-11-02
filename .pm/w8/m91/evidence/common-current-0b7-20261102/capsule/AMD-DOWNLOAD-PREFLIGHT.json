@@ -1,0 +1,16 @@
+{
+  "at": "2026-11-02T08:22:20.077202+00:00",
+  "arch": "amd64",
+  "run": 41407186362,
+  "source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "artifact": [
+    13125390305,
+    83734516,
+    "ca8d0886361bb21a8b21d5743ca227fc0520b7ed7cde8d9ddb01ab25db7a6918"
+  ],
+  "observed_free": 8999636992,
+  "per_arch_download_required": 8707223540,
+  "source_manifest_sha256": "6dd6a1430eb8092ae68fd8ebbaec2b7b4ea9b8e173c5868e0d0dcec3d2afa711",
+  "complete": true,
+  "authorization": "Root one-arch-at-a-time actual intake; ARM held until AMD complete and fresh aggregate output fit."
+}

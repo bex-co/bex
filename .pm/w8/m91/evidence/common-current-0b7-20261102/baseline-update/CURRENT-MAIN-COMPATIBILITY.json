@@ -1,0 +1,33 @@
+{
+  "at": "2026-11-02T08:55:53.744185+00:00",
+  "frozen_actual_source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "method": "Immutable Git tree/set/mode/full-byte source comparison only; no helper/validator execution or repo mutation.",
+  "results": [
+    {
+      "target": "a5f65eec3f2feac90ae44beed39ac57b88e26145",
+      "source300_set_equal": true,
+      "added": [],
+      "missing": [],
+      "changed": [
+        ".github/workflows/native-base-image.yml"
+      ],
+      "image33_changed": [
+        ".github/workflows/native-base-image.yml"
+      ],
+      "helper_sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+      "PASS": false
+    },
+    {
+      "target": "b302c55ab4ae7acae441ea1260e34d95847d6718",
+      "source300_set_equal": true,
+      "added": [],
+      "missing": [],
+      "changed": [
+        "lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go"
+      ],
+      "image33_changed": [],
+      "helper_sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+      "PASS": false
+    }
+  ]
+}

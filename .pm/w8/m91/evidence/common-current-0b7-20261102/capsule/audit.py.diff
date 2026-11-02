@@ -1,0 +1,60 @@
+--- verified0184/audit.py
++++ current0b7/audit.py
+@@ -16,18 +16,15 @@
+ import zlib
+ 
+ ROOT = Path('/Users/tianpan/projects/bex7')
+-INPUT = Path('/private/tmp/bex-w8-current0184-0941-baseline-audit-20261102-a86pe4nu/intake')
+-CI = Path('/private/tmp/bex-w8-current0184-0941-baseline-audit-20261102-a86pe4nu')
++INPUT = Path('/private/tmp/bex-w8-current0b7-intake-preparation-20261102-5q2tr331/intake')
++CI = Path('/private/tmp/bex-w8-current0b7-0941-monitor-20261102-_bu8v18k')
+ OUT = Path(__file__).resolve().parent
+-SOURCE = '0184f9ecee507d21b3df35c01055a4e42a2ba19f'
++SOURCE = '0b7fa17e5761a3111e3c9933b141f1a832e6eeec'
+ PRODUCER = '1feba939b4697894e800ed0abb4f25a0bf415641'
+-RUN_ID = 41403110558
++RUN_ID = 41407186362
+ REF = 'ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0'
+-EXPECTED_MANIFEST = {
+-    'amd64': '8f3e90b3c999bf47a01e74980ddf9aa14ad389c49550509112815d26d148132f',
+-    'arm64': 'ae9027db05a2033962cb6c09413d1cae0ec2cb41403e0cea7ddcd9a5aec45382',
+-}
+-JOB = {'amd64': 125139707726, 'arm64': 125139707621}
++EXPECTED_MANIFEST = json.loads((OUT / 'ACTUAL-EXTRACTION-BOUND.json').read_bytes())['manifest_sha256']
++JOB = {'amd64': 125153305618, 'arm64': 125153305520}
+ 
+ def sha(body):
+     return hashlib.sha256(body).hexdigest()
+@@ -109,7 +106,7 @@
+ extras = None  # No physical-working-tree/source_inventory call: local HEAD is older.
+ specs = json.loads(git_body(SOURCE, 'lego/operator/internal/build/testdata/native-utilities/original-cases.json'))
+ check(len(specs) == 13 and len({x['mid'] for x in specs}) == 13, 'original13 spec set differs')
+-jobs = {x['id']: x for x in load(CI / 'jobs-11.json')['jobs']}
++jobs = {x['id']: x for x in load(CI / 'jobs-04-completed.json')['jobs']}
+ artifacts = load(CI / 'artifacts-final.json')['artifacts']
+ results = []
+ 
+@@ -161,7 +158,7 @@
+     check(cleanup['owner'] == inputs['owner'] and all(type(x['exit_code']) is int and x['exit_code'] == 0 for x in cleanup['operations']), 'declared cleanup incomplete')
+     auth = next(x for x in cleanup['operations'] if x['resource'] == 'docker-auth')
+     check(auth['removed'] is True and type(auth['logout_exit_code']) is int and auth['logout_exit_code'] == 0, 'credential scope removal unproved')
+-    ci_log = (CI / (arch + '-' + str(JOB[arch]) + '.log')).read_bytes()
++    ci_log = (CI / ('job-' + arch + '.log')).read_bytes()
+     unprefixed = b''.join(re.sub(rb'^\xef\xbb\xbf', b'', re.sub(rb'^\d{4}-\d\d-\d\dT\S+Z ', b'', line)) for line in ci_log.splitlines(keepends=True))
+     cleanup_messages = []
+     pull_messages = []
+@@ -356,11 +353,11 @@
+ 
+ check((INPUT / 'amd64/extracted/artifact/qualification-source.json').read_bytes() == (INPUT / 'arm64/extracted/artifact/qualification-source.json').read_bytes(), 'actual two architecture source captures differ in raw bytes')
+ 
+-report = {'schema': 'bex.dated0184-actual-utility-content-review/v1', 'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
+-          'outcome': 'PASS_DATED0184_UTILITY_CONTENT_NOT_CURRENT0b7_BASELINE', 'candidate_ref': REF, 'source': SOURCE,
++report = {'schema': 'bex.current0b7-actual-utility-content-review/v1', 'at': datetime.datetime.now(datetime.timezone.utc).isoformat(),
++          'outcome': 'PASS_CURRENT0b7_UTILITY_CONTENT_ONLY_PENDING_ROOT_APPROVAL', 'candidate_ref': REF, 'source': SOURCE,
+           'comparison_HEAD_at_audit': head, 'generator_source_checked_from_Git': SOURCE, 'unchanged_approved_image_producer_verification': PRODUCER, 'source_delta_against_comparison_HEAD':source_delta, 'physical_working_tree_compared':False, 'current_tracked_qualification_source_paths': 300, 'current_physical_source_extra_paths': extras,
+           'helper_source': identity(helper_path), 'architectures': results,
+-          'limits': ['No image/candidate/baseline/production write.0941approvalwasalreadyRoot-reviewedandisunchanged; thisisdetailedDATED0184utilitycontentreview, not0b7currentbaseline.',
++          'limits': ['No image/candidate/baseline/production write.0941approvalwasalreadyRoot-reviewedandisunchanged; thisisdetailedcurrent0b7utilitycontentreview; Rootapprovalisstillrequiredforbaselineadoption.',
+                      'No target/program/original-validator/Go/network/Docker/Kubernetes/auth or repository execution/mutation.',
+                      'Original ZIP extraction CRC/all-memberSHA evidence was reused; no artifactZIP decompression repeated. Static fixture ZIP/gzip and complete SBOM gzip roundtrips were independently checked.',
+                      'Some authored HTTP records retain decoded/asserted outcomes rather than every rawbody (notably m94); no byte-level replay of unretained bodies claimed.',

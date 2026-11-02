@@ -1,0 +1,45 @@
+{
+  "state": "PREPARED_NOT_EXECUTED",
+  "source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "GITHUB_SHA": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "source_manifest": {
+    "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/qualification-source.json",
+    "bytes": 75099,
+    "sha256": "9358ff0426b128bfcdf6220ff666a1d7cc47225cec32c1f68cfaa3833266c3f3"
+  },
+  "source_files": 300,
+  "source_bytes": 2424682,
+  "image_input_count": 33,
+  "helper": {
+    "path": ".github/scripts/native-common-qualify.py",
+    "bytes": 60360,
+    "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5"
+  },
+  "unchanged_function_AST_sha256": {
+    "validate_image_candidate": "2a4f3e30aa569bebf98d530972074d7cd29bceb4108bcd1c5494ba65a74c9582",
+    "validate_test_candidate": "4dac0967e0a780be9d3dd615579a7002bc5a5f5ceb6835ce2eee4b89cbfc399b"
+  },
+  "candidate_proposal": {
+    "path": "/private/tmp/bex-w8-current0b7-publication-proposal-20261102-lk0t_bql/candidate-proposal.json",
+    "bytes": 4503,
+    "sha256": "744018249157241248b868afb6b71211a809c771ac2ed09b1344baedcd0d0c5a"
+  },
+  "source_view": "Fresh unique0700 private view; only exact300 Git0b7 files/modes, proposed candidate, hardlinked immutable approval/publication evidence and all listed proposed payload files. No ignored workingtree files are read/copied/deleted or waived. No full repo/cache clone.",
+  "three_ignored_workingtree_pycs": "Stay untouched outside isolated view; no validator run against dirty workingtree source.",
+  "execution_after_Root_review_only": [
+    "Fresh physical free reading; retain8GiB floor plus128MiB stop margin. Own additional allocation cap16MiB including source2.43MB, metadata/link directory entries and bounded logs; immutable evidence bodies hardlinked, not duplicated.",
+    "Read exact committed Git0b7 objects with local git cat-file only; preserve SHA,size,mode. Copy retained approval descriptors and proposed evidence through hardlinks, never symlinks. No cache, Go, network, registry, Docker, cluster or artifact-body action.",
+    "Load unchanged helper with PYTHONDONTWRITEBYTECODE=1; GITHUB_SHA exact0b7; prohibit helper subprocess.run/Popen. Execute only validate_image_candidate(view) and validate_test_candidate(view); compare helper source_inventory to captured source300.",
+    "Record complete stdout/stderr, candidate/helper/source hashes and actual result. Remove only new own validation view after receipt; preserve original source/evidence and all historical packets. If bounded stop/failure occurs, leave validation unproved, never infer baseline approval."
+  ],
+  "bounds": {
+    "own_additional_bytes": 16777216,
+    "physical_floor_bytes": 8589934592,
+    "physical_stop_margin_bytes": 134217728,
+    "whole_seconds": 180,
+    "log_bytes_each": 1048576,
+    "source_only_no_large_body_copy": true
+  },
+  "not_run": true,
+  "no_baseline_validator_result_claimed": true
+}

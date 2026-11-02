@@ -1,0 +1,2 @@
+system and bundled Brotli checks passed
+{"phase": "runtime", "python": "3.14.8", "python_env": "3.14.8", "executable": "/usr/local/bin/python3", "loaded_library": "libpython3.14.so", "ldd": "\tlibpython3.14.so.1.0 => /usr/local/bin/../lib/libpython3.14.so.1.0 (0x00007fffff1eb000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007ffffeffc000)\n\tlibm.so.6 => /lib/x86_64-linux-gnu/libm.so.6 (0x00007ffffef1c000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007ffffffcb000)\n", "packaging_and_c_extension_executed": false, "pass": true}

@@ -1,0 +1,301 @@
+{
+  "at": "2026-11-02T08:54:14.640585+00:00",
+  "method": "Read-only SHA1(blobheader+fullbytes), SHA256 and git rev-list reachability; no Git object write/upload/ref/tree action.",
+  "refs_at_inventory": {
+    "HEAD": "a5f65eec3f2feac90ae44beed39ac57b88e26145",
+    "refs/heads/main": "a5f65eec3f2feac90ae44beed39ac57b88e26145",
+    "refs/remotes/origin/main": "b302c55ab4ae7acae441ea1260e34d95847d6718"
+  },
+  "main_reachability_basis": "a5f65eec3f2feac90ae44beed39ac57b88e26145",
+  "large_threshold_bytes": 1048576,
+  "files": [
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python313-original/prepared-wheels/cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl",
+      "bytes": 4752576,
+      "sha256": "9dab55f57c74c3cad24c323bacbbd04be4705ba6eb0d92e920b1fc4837ed5079",
+      "Git_blob_SHA1": "7c1349839c059f03a051feaa1573b4f6d313b33b",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python313-original/prepared-wheels/django-5.2.18-py3-none-any.whl",
+      "bytes": 8316071,
+      "sha256": "92ed81d500be6408ecd704d7bd1366c534f30427bffcc63c5fefb129561aec7c",
+      "Git_blob_SHA1": "61f86d7a1de38ddead66ace37c919864db3a621f",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python313-original/prepared-wheels/rapidfuzz-3.14.6-cp313-cp313-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "bytes": 3165730,
+      "sha256": "6bb896f89a387219c671ebc33c4a636b222010cc3c5c83884a7fc8707bf0bbf9",
+      "Git_blob_SHA1": "2af0908b0e36da8682aea416d85f8f2178763538",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python313-original/prepared-wheels/virtualenv-20.39.1-py3-none-any.whl",
+      "bytes": 5839941,
+      "sha256": "a00332e0b089ba64edefbf94ef34e6db33f45fe5184df0652cf0b754dcd36190",
+      "Git_blob_SHA1": "a9ee8c86fedcb3cbbf78faf1918f9530290782b6",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python313-original/prepared-wheels/zstandard-0.25.0-cp313-cp313-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "bytes": 5547173,
+      "sha256": "8e735494da3db08694d26480f1493ad2cf86e99bdd53e8e9771b2752a5c0246a",
+      "Git_blob_SHA1": "e5c7cc9d7603afc208ef712879c8df631b35be87",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/generated.spdx.json",
+      "bytes": 32041429,
+      "sha256": "af8d0f6fe7b4f3c03ad52b83be3f000fcf7ddbf80d7cec703d7d5aec83a98f36",
+      "Git_blob_SHA1": "81abd4af05e01dc97fc84107d33c7939234f96fb",
+      "reachable_from_frozen_current_main": false,
+      "exists_in_local_object_store": false
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/generated.spdx.json.gz",
+      "bytes": 4417224,
+      "sha256": "a88599737b452cafbc676f1d9f7dc81fceea7b20750c6cb481ff4db25ff87a1a",
+      "Git_blob_SHA1": "97f727337fe92daf10aec871b47bd0bd0de628a0",
+      "reachable_from_frozen_current_main": false,
+      "exists_in_local_object_store": false
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/generated.syft.json",
+      "bytes": 31943767,
+      "sha256": "d05b77adc9b5c47de6c374d68ff3994dcec3191fa5eb522e5894793647a980e5",
+      "Git_blob_SHA1": "bb1642ee6e862305e5cceaad3a39777bfe9152ec",
+      "reachable_from_frozen_current_main": false,
+      "exists_in_local_object_store": false
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/generated.syft.json.gz",
+      "bytes": 5341988,
+      "sha256": "1696d04714c24d5739b5d2d1900a95e1f5c2784eee5e49e1bb2e6a5ad5f9fd48",
+      "Git_blob_SHA1": "12fa3b004a7b1aebfecb8525c474de0987f32265",
+      "reachable_from_frozen_current_main": false,
+      "exists_in_local_object_store": false
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/prepared-wheels/cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl",
+      "bytes": 4752576,
+      "sha256": "9dab55f57c74c3cad24c323bacbbd04be4705ba6eb0d92e920b1fc4837ed5079",
+      "Git_blob_SHA1": "7c1349839c059f03a051feaa1573b4f6d313b33b",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/prepared-wheels/django-5.2.18-py3-none-any.whl",
+      "bytes": 8316071,
+      "sha256": "92ed81d500be6408ecd704d7bd1366c534f30427bffcc63c5fefb129561aec7c",
+      "Git_blob_SHA1": "61f86d7a1de38ddead66ace37c919864db3a621f",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/prepared-wheels/rapidfuzz-3.14.6-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "bytes": 3167618,
+      "sha256": "08bc63b88048376114d1e66cf8fa6926495d03bb873eb87854fa74cf6848a70b",
+      "Git_blob_SHA1": "d0da6993d0879817b4f538deefc227e7138b5355",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/prepared-wheels/virtualenv-20.39.1-py3-none-any.whl",
+      "bytes": 5839941,
+      "sha256": "a00332e0b089ba64edefbf94ef34e6db33f45fe5184df0652cf0b754dcd36190",
+      "Git_blob_SHA1": "a9ee8c86fedcb3cbbf78faf1918f9530290782b6",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/prepared-wheels/zstandard-0.25.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "bytes": 5560402,
+      "sha256": "e09bb6252b6476d8d56100e8147b803befa9a12cea144bbe629dd508800d1ad0",
+      "Git_blob_SHA1": "c2b9d0662123a1ffaa313c2bee441edafc88f47d",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python313-original/prepared-wheels/cryptography-50.0.2-cp311-abi3-manylinux_2_34_aarch64.whl",
+      "bytes": 4737859,
+      "sha256": "87e9ce85beb6b328ba370cc6e6aea483c92617b4c95b1d33a49297eb662bfb04",
+      "Git_blob_SHA1": "0da893d72dfb35ef7976039087b9a4d0c57b9ef4",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python313-original/prepared-wheels/django-5.2.18-py3-none-any.whl",
+      "bytes": 8316071,
+      "sha256": "92ed81d500be6408ecd704d7bd1366c534f30427bffcc63c5fefb129561aec7c",
+      "Git_blob_SHA1": "61f86d7a1de38ddead66ace37c919864db3a621f",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python313-original/prepared-wheels/rapidfuzz-3.14.6-cp313-cp313-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl",
+      "bytes": 1377336,
+      "sha256": "0b34b7ee4f4f760690d6477163aabbec05705b5dd764cb6c3a6ba95aa1fffc42",
+      "Git_blob_SHA1": "906ed07a7803a0f9ecc70aa13e62d97fbdee903e",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python313-original/prepared-wheels/virtualenv-20.39.1-py3-none-any.whl",
+      "bytes": 5839941,
+      "sha256": "a00332e0b089ba64edefbf94ef34e6db33f45fe5184df0652cf0b754dcd36190",
+      "Git_blob_SHA1": "a9ee8c86fedcb3cbbf78faf1918f9530290782b6",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python313-original/prepared-wheels/zstandard-0.25.0-cp313-cp313-manylinux2014_aarch64.manylinux_2_17_aarch64.whl",
+      "bytes": 5063001,
+      "sha256": "bfc4e20784722098822e3eee42b8e576b379ed72cca4a7cb856ae733e62192ea",
+      "Git_blob_SHA1": "5bc4e3a9a5ba9870b1e625c6ef901ab95d3d3b74",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/generated.spdx.json",
+      "bytes": 32058747,
+      "sha256": "cbd09d5a6787a5c72d04dd448433c4d536cd8c42fc0f8fa55c0d5f9a4561e2a8",
+      "Git_blob_SHA1": "5ab59ff3526e17872cc6b933d5c216f4fc0bbc04",
+      "reachable_from_frozen_current_main": false,
+      "exists_in_local_object_store": false
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/generated.spdx.json.gz",
+      "bytes": 4416571,
+      "sha256": "7f9ec070b0b7cb9ad173ac0d4d096d691e2cc32931cba12759cd700b55e93ebd",
+      "Git_blob_SHA1": "3addaf1e1b334ef404a08b81131aeb668499fd41",
+      "reachable_from_frozen_current_main": false,
+      "exists_in_local_object_store": false
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/generated.syft.json",
+      "bytes": 32019668,
+      "sha256": "5ef76eb16eaa76a20b9df458335e53a8fd4864c690fe70ed66de5f0292230baa",
+      "Git_blob_SHA1": "2b23196ad0ac9720ced025e66184a9c2d3db40b9",
+      "reachable_from_frozen_current_main": false,
+      "exists_in_local_object_store": false
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/generated.syft.json.gz",
+      "bytes": 5342642,
+      "sha256": "127d014f30de3659dd8f8db8e5b9248a1ba1c97fbca3d48667324fdcb9111ef3",
+      "Git_blob_SHA1": "ab20188c7686b762b491b29a0b1090aa2623281e",
+      "reachable_from_frozen_current_main": false,
+      "exists_in_local_object_store": false
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/prepared-wheels/cryptography-50.0.2-cp311-abi3-manylinux_2_34_aarch64.whl",
+      "bytes": 4737859,
+      "sha256": "87e9ce85beb6b328ba370cc6e6aea483c92617b4c95b1d33a49297eb662bfb04",
+      "Git_blob_SHA1": "0da893d72dfb35ef7976039087b9a4d0c57b9ef4",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/prepared-wheels/django-5.2.18-py3-none-any.whl",
+      "bytes": 8316071,
+      "sha256": "92ed81d500be6408ecd704d7bd1366c534f30427bffcc63c5fefb129561aec7c",
+      "Git_blob_SHA1": "61f86d7a1de38ddead66ace37c919864db3a621f",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/prepared-wheels/rapidfuzz-3.14.6-cp314-cp314-manylinux_2_26_aarch64.manylinux_2_28_aarch64.whl",
+      "bytes": 1381829,
+      "sha256": "760ee152af5e8b4d241a469f933ba2d7215248618ae19770fec7d80d9e149db6",
+      "Git_blob_SHA1": "e50853cc9d9dc86b610be950c4a5005af821b0ab",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/prepared-wheels/virtualenv-20.39.1-py3-none-any.whl",
+      "bytes": 5839941,
+      "sha256": "a00332e0b089ba64edefbf94ef34e6db33f45fe5184df0652cf0b754dcd36190",
+      "Git_blob_SHA1": "a9ee8c86fedcb3cbbf78faf1918f9530290782b6",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/prepared-wheels/zstandard-0.25.0-cp314-cp314-manylinux2014_aarch64.manylinux_2_17_aarch64.manylinux_2_28_aarch64.whl",
+      "bytes": 5058095,
+      "sha256": "223415140608d0f0da010499eaa8ccdb9af210a543fac54bce15babbcfc78439",
+      "Git_blob_SHA1": "d8fa1a50f6afd9acd5b352503b623b5c8df997a5",
+      "reachable_from_frozen_current_main": true,
+      "exists_in_local_object_store": true
+    }
+  ],
+  "large_file_count": 28,
+  "unique_large_blobs": 20,
+  "new_unique_blobs": {
+    "81abd4af05e01dc97fc84107d33c7939234f96fb": {
+      "bytes": 32041429,
+      "paths": [
+        ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/generated.spdx.json"
+      ]
+    },
+    "97f727337fe92daf10aec871b47bd0bd0de628a0": {
+      "bytes": 4417224,
+      "paths": [
+        ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/generated.spdx.json.gz"
+      ]
+    },
+    "bb1642ee6e862305e5cceaad3a39777bfe9152ec": {
+      "bytes": 31943767,
+      "paths": [
+        ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/generated.syft.json"
+      ]
+    },
+    "12fa3b004a7b1aebfecb8525c474de0987f32265": {
+      "bytes": 5341988,
+      "paths": [
+        ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/amd64/artifact/generated/native-utilities-323169176/python3148-default/generated.syft.json.gz"
+      ]
+    },
+    "5ab59ff3526e17872cc6b933d5c216f4fc0bbc04": {
+      "bytes": 32058747,
+      "paths": [
+        ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/generated.spdx.json"
+      ]
+    },
+    "3addaf1e1b334ef404a08b81131aeb668499fd41": {
+      "bytes": 4416571,
+      "paths": [
+        ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/generated.spdx.json.gz"
+      ]
+    },
+    "2b23196ad0ac9720ced025e66184a9c2d3db40b9": {
+      "bytes": 32019668,
+      "paths": [
+        ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/generated.syft.json"
+      ]
+    },
+    "ab20188c7686b762b491b29a0b1090aa2623281e": {
+      "bytes": 5342642,
+      "paths": [
+        ".pm/w8/m91/evidence/common-current-0b7-20261102/utilities/arm64/artifact/generated/native-utilities-3298913995/python3148-default/generated.syft.json.gz"
+      ]
+    }
+  },
+  "new_unique_large_blob_bytes": 147582036,
+  "raw_bytes_not_pack_upload_size": true,
+  "Root_remote_upload_inventory": {
+    "path": "/private/tmp/bex-w8-current0b7-root-content-admission-20261102-ksaad8o2/APP-BLOBS.json",
+    "bytes": 2143,
+    "sha256": "02eb02ec4dbb47db21c164f4877227ff55c14a5684fbd824abd9c0f8d73fee73"
+  },
+  "Root_uploads_are_immutable_objects_not_main_reachability": true,
+  "no_uploads_by_this_agent": true,
+  "initial_reachability_basis": "b302c55ab4ae7acae441ea1260e34d95847d6718",
+  "main_reachability_ref_scope": "Root-designated synced a5f65eec; exact immutable commit, no readiness inferred",
+  "Root_all_eight_remote_objects_uploaded": true
+}

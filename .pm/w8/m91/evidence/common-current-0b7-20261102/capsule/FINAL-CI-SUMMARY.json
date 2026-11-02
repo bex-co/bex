@@ -1,0 +1,368 @@
+{
+  "outcome": "CURRENT0b7_FULL_CI_SUCCESS_ONLY_ARTIFACT_CONTENT_NOT_YET_READ",
+  "at": "2026-11-02T08:17:09.471093+00:00",
+  "run_id": 41407186362,
+  "source": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec",
+  "attempt": 1,
+  "event": "workflow_dispatch",
+  "jobs": [
+    {
+      "architecture": "amd64",
+      "job_id": 125153305618,
+      "started_at": "2026-11-02T07:39:11Z",
+      "completed_at": "2026-11-02T07:56:51Z",
+      "all_steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-02T07:39:12Z",
+          "completed_at": "2026-11-02T07:39:15Z"
+        },
+        {
+          "name": "Set up runner",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-02T07:39:15Z",
+          "completed_at": "2026-11-02T07:39:15Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-02T07:39:15Z",
+          "completed_at": "2026-11-02T07:41:22Z"
+        },
+        {
+          "name": "Run actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-02T07:41:22Z",
+          "completed_at": "2026-11-02T07:42:15Z"
+        },
+        {
+          "name": "record gated inputs and assign ownership before creating resources",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-02T07:42:15Z",
+          "completed_at": "2026-11-02T07:42:16Z"
+        },
+        {
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-02T07:42:16Z",
+          "completed_at": "2026-11-02T07:42:23Z"
+        },
+        {
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-02T07:42:23Z",
+          "completed_at": "2026-11-02T07:42:28Z"
+        },
+        {
+          "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-02T07:42:28Z",
+          "completed_at": "2026-11-02T07:42:31Z"
+        },
+        {
+          "name": "actual generated offline builds, original replays and exact-default SPDX",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-02T07:42:31Z",
+          "completed_at": "2026-11-02T07:56:17Z"
+        },
+        {
+          "name": "record capacity observations before owned cleanup",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-02T07:56:17Z",
+          "completed_at": "2026-11-02T07:56:17Z"
+        },
+        {
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-02T07:56:17Z",
+          "completed_at": "2026-11-02T07:56:32Z"
+        },
+        {
+          "name": "hash retained successes and failures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-02T07:56:32Z",
+          "completed_at": "2026-11-02T07:56:32Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-02T07:56:32Z",
+          "completed_at": "2026-11-02T07:56:46Z"
+        },
+        {
+          "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-02T07:56:46Z",
+          "completed_at": "2026-11-02T07:56:46Z"
+        },
+        {
+          "name": "Post Run actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-02T07:56:46Z",
+          "completed_at": "2026-11-02T07:56:46Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 26,
+          "started_at": "2026-11-02T07:56:46Z",
+          "completed_at": "2026-11-02T07:56:46Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 27,
+          "started_at": "2026-11-02T07:56:46Z",
+          "completed_at": "2026-11-02T07:56:46Z"
+        }
+      ],
+      "artifact": {
+        "id": 13125390305,
+        "node_id": "MDg6QXJ0aWZhY3QxMzEyNTM5MDMwNQ==",
+        "name": "common-generated-0b7fa17e5761a3111e3c9933b141f1a832e6eeec-amd64-1",
+        "size_in_bytes": 83734516,
+        "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13125390305",
+        "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13125390305/zip",
+        "expired": false,
+        "digest": "sha256:ca8d0886361bb21a8b21d5743ca227fc0520b7ed7cde8d9ddb01ab25db7a6918",
+        "created_at": "2026-11-02T07:56:46Z",
+        "updated_at": "2026-11-02T07:56:46Z",
+        "expires_at": "2026-12-02T07:56:32Z",
+        "workflow_run": {
+          "id": 41407186362,
+          "repository_id": 793852040,
+          "head_repository_id": 793852040,
+          "head_branch": "main",
+          "head_sha": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec"
+        }
+      },
+      "full_log": {
+        "path": "/private/tmp/bex-w8-current0b7-0941-monitor-20261102-_bu8v18k/job-amd64.log",
+        "bytes": 62963,
+        "sha256": "df731a32f747e7bcbee252ec33c166985fecad09cf13672bb0390789c4969da6"
+      },
+      "full_log_contains_exact0941": true
+    },
+    {
+      "architecture": "arm64",
+      "job_id": 125153305520,
+      "started_at": "2026-11-02T07:56:53Z",
+      "completed_at": "2026-11-02T08:11:16Z",
+      "all_steps": [
+        {
+          "name": "Set up job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 1,
+          "started_at": "2026-11-02T07:56:54Z",
+          "completed_at": "2026-11-02T07:56:59Z"
+        },
+        {
+          "name": "Set up runner",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 2,
+          "started_at": "2026-11-02T07:56:59Z",
+          "completed_at": "2026-11-02T07:56:59Z"
+        },
+        {
+          "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 3,
+          "started_at": "2026-11-02T07:56:59Z",
+          "completed_at": "2026-11-02T07:58:57Z"
+        },
+        {
+          "name": "Run actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 4,
+          "started_at": "2026-11-02T07:58:57Z",
+          "completed_at": "2026-11-02T07:59:12Z"
+        },
+        {
+          "name": "record gated inputs and assign ownership before creating resources",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 5,
+          "started_at": "2026-11-02T07:59:12Z",
+          "completed_at": "2026-11-02T07:59:12Z"
+        },
+        {
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 6,
+          "started_at": "2026-11-02T07:59:12Z",
+          "completed_at": "2026-11-02T07:59:24Z"
+        },
+        {
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 7,
+          "started_at": "2026-11-02T07:59:24Z",
+          "completed_at": "2026-11-02T07:59:29Z"
+        },
+        {
+          "name": "Run anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 8,
+          "started_at": "2026-11-02T07:59:29Z",
+          "completed_at": "2026-11-02T07:59:39Z"
+        },
+        {
+          "name": "actual generated offline builds, original replays and exact-default SPDX",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 9,
+          "started_at": "2026-11-02T07:59:39Z",
+          "completed_at": "2026-11-02T08:10:30Z"
+        },
+        {
+          "name": "record capacity observations before owned cleanup",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 10,
+          "started_at": "2026-11-02T08:10:30Z",
+          "completed_at": "2026-11-02T08:10:31Z"
+        },
+        {
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 11,
+          "started_at": "2026-11-02T08:10:31Z",
+          "completed_at": "2026-11-02T08:10:40Z"
+        },
+        {
+          "name": "hash retained successes and failures",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 12,
+          "started_at": "2026-11-02T08:10:40Z",
+          "completed_at": "2026-11-02T08:10:40Z"
+        },
+        {
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 13,
+          "started_at": "2026-11-02T08:10:40Z",
+          "completed_at": "2026-11-02T08:10:58Z"
+        },
+        {
+          "name": "Post Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 24,
+          "started_at": "2026-11-02T08:10:58Z",
+          "completed_at": "2026-11-02T08:10:58Z"
+        },
+        {
+          "name": "Post Run actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 25,
+          "started_at": "2026-11-02T08:10:58Z",
+          "completed_at": "2026-11-02T08:10:58Z"
+        },
+        {
+          "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 26,
+          "started_at": "2026-11-02T08:10:58Z",
+          "completed_at": "2026-11-02T08:10:59Z"
+        },
+        {
+          "name": "Complete job",
+          "status": "completed",
+          "conclusion": "success",
+          "number": 27,
+          "started_at": "2026-11-02T08:10:59Z",
+          "completed_at": "2026-11-02T08:10:59Z"
+        }
+      ],
+      "artifact": {
+        "id": 13124914601,
+        "node_id": "MDg6QXJ0aWZhY3QxMzEyNDkxNDYwMQ==",
+        "name": "common-generated-0b7fa17e5761a3111e3c9933b141f1a832e6eeec-arm64-1",
+        "size_in_bytes": 79101762,
+        "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13124914601",
+        "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13124914601/zip",
+        "expired": false,
+        "digest": "sha256:90fdc530426317471c797d7a6b44673954168f18076855158f1e72888989b831",
+        "created_at": "2026-11-02T08:10:57Z",
+        "updated_at": "2026-11-02T08:10:57Z",
+        "expires_at": "2026-12-02T08:10:40Z",
+        "workflow_run": {
+          "id": 41407186362,
+          "repository_id": 793852040,
+          "head_repository_id": 793852040,
+          "head_branch": "main",
+          "head_sha": "0b7fa17e5761a3111e3c9933b141f1a832e6eeec"
+        }
+      },
+      "full_log": {
+        "path": "/private/tmp/bex-w8-current0b7-0941-monitor-20261102-_bu8v18k/job-arm64.log",
+        "bytes": 62962,
+        "sha256": "254d1263ee6bb7f44d9e5961f426e997f87a435ebf8c8b0c66cac34bbff13743"
+      },
+      "full_log_contains_exact0941": true
+    }
+  ],
+  "raw_receipts": [
+    {
+      "path": "/private/tmp/bex-w8-current0b7-0941-monitor-20261102-_bu8v18k/run-final.json",
+      "bytes": 11661,
+      "sha256": "df22c036d98c2f2a3ca1820592bf042602dfac9a66d4c1f7b5e4086ea65a097a"
+    },
+    {
+      "path": "/private/tmp/bex-w8-current0b7-0941-monitor-20261102-_bu8v18k/jobs-04-completed.json",
+      "bytes": 12126,
+      "sha256": "936c21e3734dd122c0b602de9d62c2a5017e5d1a73889b720b5f57ec4121a3a4"
+    },
+    {
+      "path": "/private/tmp/bex-w8-current0b7-0941-monitor-20261102-_bu8v18k/artifacts-final.json",
+      "bytes": 1459,
+      "sha256": "2201719119037dc4cc78aa65d33cad01a0b454954734328c772bdde2f60b2fdf"
+    }
+  ],
+  "scope": "GitHub App complete decoded log strings preserved UTF8 including BOM; original compressed HTTP bytes/headers unavailable. Both actualjobs full gate/cleanup/hash/upload succeeded; no ZIP or body admission inferred. No repo/candidate writes."
+}
