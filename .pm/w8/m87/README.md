@@ -1,6 +1,6 @@
 # w8 · m87 — Make psql Ctrl+C stop external PostgreSQL queries
 
-**Worker:** worker8 **Goal:** Ordinary external psql cancellation stops the actual query promptly and preserves its session. **Status:** blocked — t001 done ([design](design.md)); t002–t008 need the user to accept TLS termination at the shared PostgreSQL ingress
+**Worker:** worker8 **Goal:** Ordinary external psql cancellation stops the actual query promptly and preserves its session. **Status:** todo（2026-11-01 解除阻塞；原记录：t001 done ([design](design.md)); t002–t008 need the user to accept TLS termination at the shared PostgreSQL ingress
 
 ## Tasks (in order)
 
@@ -24,7 +24,7 @@ Fresh published Bex and unchanged pinned Render on the served fix open ordinary 
 ## Source + Goal linkage
 
 - **Source:** Authorized ordinary functional CLI QA sweep365,2026-10-16; [two native settled failures, local control and modern cancellation control](finding.md).
-- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [ADR018](../../../../docs/ADR018-render-parity.md) and [managed PostgreSQL ADR009](../../../../docs/ADR009-postgresql-management.md): supported interactive database journeys must behave correctly with the existing client contract.
+- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [ADR018](../../../docs/ADR018-render-parity.md) and [managed PostgreSQL ADR009](../../../docs/ADR009-postgresql-management.md): supported interactive database journeys must behave correctly with the existing client contract.
 - **Expected outcome:** Ctrl+C ends the chosen active statement promptly while keeping the SQL session usable on the shared external endpoint.
 - **Why now:** Both normal clients report a cancellation dispatch while their actual queries run to completion. A documented modern API succeeds on the same database, isolating a concrete legacy ingress gap. The shared TLS passthrough cannot recover the missing route with a one-line header change, so this needs a reviewed design plus multi-instance and consumer verification.
 - **Render parity:** Included for tenant-facing cancellation and all exposed connection-info/trust consumers. Eight tasks todo; scheduling only; no product implementation or new ship.
@@ -35,3 +35,12 @@ Fresh published Bex and unchanged pinned Render on the served fix open ordinary 
 - **结论来源：** 当前 pg-sni-proxy passthrough 与设计复核。legacy CancelRequest 不带 SNI，当前密文 relay 无法取得 BackendKeyData；设计改为共享 ingress 终止 TLS。
 - **真正待决定：** 用户是否接受共享公网 proxy 持有全部 tenant DB 的 server 私钥，并在内存看到明文 SQL。普通 libpq Ctrl+C 将因此可路由，但这改变了 ADR009 的 TLS passthrough 信任边界，不能把它作为 routine refactor 自动采用。需专门讨论；当前没有新授权。
 - **worker 下一步：** 获准后先同步 design 和 t002：design 要保留真实 PID/key，t002 旧文仍说 replace BackendKeyData，两者冲突；统一为审阅后的方案，再做跨实例/精确 backend/证书轮换/PLUS/资源和安全验收。原全部 DoD 保留。
+
+
+## 解除阻塞记录（2026-11-01，`/unblock w8` C）
+
+- **涉及 ID：** w8/m87
+- **结论来源：** 用户明确决定。
+- **结论：** 保持 `pg-sni-proxy` 的 TLS 透传：代理不持有租户数据库私钥，也不解密流量。旧版 libpq `PQcancel` 的明文取消请求没有 SNI，无法路由，记为差异：取消查询需要新版 libpq（PG 17+ 客户端的 `PQcancelCreate`，走 TLS 并带 SNI）。不采用「代理终止 TLS」。
+- **用户门槛：** 无（用户签字的差异）。
+- **worker 下一步：** 在 ADR018 的 Postgres 相关行和 ADR009 的透传章节记录这处差异及用户签字；在 `bex psql` 文档或连接提示里说明旧客户端取消不可用、需要升级到 PG 17+ 客户端；用 PG 17+ 客户端实际验证一次取消，fixture 按 ID 删除并留 404 证据；然后按 done 规则关闭 m87，不需要实现代理改动。
