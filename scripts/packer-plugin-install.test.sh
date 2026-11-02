@@ -154,11 +154,11 @@ else
 fi
 
 # 5. The REAL repository state must be self-consistent: the template's pinned
-#    version has a checksum entry for the CI platform (linux/amd64).
+#    version has a checksum entry for the CI runner platform (linux/arm64).
 real_version=$(sed -n 's/^[[:space:]]*version[[:space:]]*=[[:space:]]*"=[[:space:]]*\([0-9.]*\)".*/\1/p' infra/packer/bex-worker.pkr.hcl | head -1)
 assert "the template pins an exact plugin version" test -n "$real_version"
-assert "the pin file covers linux/amd64 for the pinned version" \
-  grep -q "packer-plugin-hcloud_v${real_version}_x5.0_linux_amd64.zip" infra/packer/plugin-checksums.txt
+assert "the pin file covers linux/arm64 for the pinned version" \
+  grep -q "packer-plugin-hcloud_v${real_version}_x5.0_linux_arm64.zip" infra/packer/plugin-checksums.txt
 
 if [ "$fails" -ne 0 ]; then
   echo "$fails check(s) failed" >&2
