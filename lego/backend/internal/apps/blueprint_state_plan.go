@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/keyvalue"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -257,10 +258,14 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		}
 		probe := r.keyValues[resource.Name].Spec
 		if ApplyBlueprintKeyValueSpec(&probe, keyValue.spec, keyValue.fields) {
+			live := r.keyValues[resource.Name]
+			if err := keyvalue.RefuseBlueprintExternalAccessRestart(live, probe.Public); err != nil {
+				return BlueprintPlanAction{}, blueprintResourceErrors{{kind: BlueprintResourceKeyValue, name: resource.Name, err: err}}
+			}
 			action.Operation = BlueprintPlanUpdate
-			live := r.keyValues[resource.Name].Spec
+			liveSpec := live.Spec
 			action.ChangedFields = blueprintPlanFieldChanges(maps.Keys(resource.Fields), func(name string) (bool, error) {
-				probe := *live.DeepCopy()
+				probe := *liveSpec.DeepCopy()
 				return ApplyBlueprintKeyValueSpec(&probe, keyValue.spec, oneField(keyValue.fields, name)), nil
 			})
 			return action, nil

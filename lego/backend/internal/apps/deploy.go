@@ -4024,6 +4024,14 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 			return StackKeyValueView{}, err
 		}
 		if specChanged {
+			// A sync has no confirm channel and the auto-sync worker runs
+			// unattended, so a change that would empty the store is refused
+			// here as it is in the plan (w4/358).
+			next := existing.Spec
+			ApplyBlueprintKeyValueSpec(&next, kv.spec, kv.fields)
+			if err := keyvalue.RefuseBlueprintExternalAccessRestart(existing, next.Public); err != nil {
+				return StackKeyValueView{}, err
+			}
 			ApplyBlueprintKeyValueSpec(&existing.Spec, kv.spec, kv.fields)
 		}
 		if groupingChanged {

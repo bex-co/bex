@@ -990,11 +990,25 @@ func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
 
 // aclBearing reports whether an environment carries protected-environment ACL
 // state whose removal is an administrator action (codex round-9 #5): an armed
-// protectedStatus, network isolation, or a non-empty inbound IP allowlist.
+// protectedStatus, network isolation, or an inbound IP allow-list that
+// restricts something. The seeded allow-all default (Render's 0.0.0.0/0, bex's
+// ::/0 twin) restricts nothing, and an explicitly emptied list is deny-all, a
+// real restriction (w4/355).
 func aclBearing(e store.Environment) bool {
 	return e.ProtectedStatus == ProtectedStatusProtected ||
 		e.NetworkIsolationEnabled ||
-		len(e.IPAllowList) > 0
+		restrictsInbound(e.IPAllowList)
+}
+
+// restrictsInbound reports whether an allow-list keeps any source out: true
+// unless some entry admits every address.
+func restrictsInbound(list []core.IPAllowListEntry) bool {
+	for _, entry := range list {
+		if entry.CIDRBlock == "0.0.0.0/0" || entry.CIDRBlock == "::/0" {
+			return false
+		}
+	}
+	return true
 }
 
 // clearEnvironmentMembers clears environment membership and projected rules
