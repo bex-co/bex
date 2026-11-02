@@ -213,7 +213,9 @@ var imageMetadataRetryPause = 2 * time.Second
 func (d *DockerHubResolver) ImageMetadata(ctx context.Context, image string) (env, history []string, err error) {
 	ref, digest, pinned := strings.Cut(image, "@")
 	repo, _, tagged := strings.Cut(ref, ":")
-	if !pinned || !tagged || !exactRepos[repo] || !digestPattern.MatchString(digest) {
+	// Go and Rust have reviewed pinned lines, without exact-version tag lookup.
+	metadataRepo := exactRepos[repo] || repo == "golang" || repo == "rust"
+	if !pinned || !tagged || !metadataRepo || !digestPattern.MatchString(digest) {
 		return nil, nil, fmt.Errorf("%s is not a pinned reviewed runtime image", image)
 	}
 	if err := ctx.Err(); err != nil {

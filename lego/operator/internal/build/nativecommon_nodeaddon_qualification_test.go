@@ -170,8 +170,9 @@ func legacyNodeAddonGeneratedCase(t *testing.T, docker nativeUtilityDocker, comm
 	must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile.canonical"), canonical, 0o600))
 	must(t, os.WriteFile(filepath.Join(evidence, "expected-addon.json"), expected, 0o600))
 	executed := string(canonical)
+	prerequisites := false
 	if tc.common {
-		executed, _, err = commonNodeQualificationRecipe(executed, node)
+		executed, prerequisites, err = commonNodeQualificationRecipe(executed, node)
 		must(t, err)
 	}
 	if tc.runtime == nativePythonRuntime {
@@ -202,7 +203,12 @@ func legacyNodeAddonGeneratedCase(t *testing.T, docker nativeUtilityDocker, comm
 	t.Cleanup(func() { nativeUtilityCleanup("image", "rm", "-f", tag) })
 	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Minute)
 	defer cancel()
-	log, buildErr := exec.CommandContext(ctx, "docker", docker.buildArgs([]string{"--secret", "id=render-env,src=" + bundle, "-t", tag}, source, true)...).CombinedOutput()
+	extra := []string{"--secret", "id=render-env,src=" + bundle, "-t", tag}
+	args := docker.buildArgs(extra, source, true)
+	if prerequisites {
+		args = docker.prerequisiteBuildArgs(extra, source, true)
+	}
+	log, buildErr := exec.CommandContext(ctx, "docker", args...).CombinedOutput()
 	must(t, os.WriteFile(filepath.Join(evidence, "build.log"), log, 0o600))
 	if buildErr != nil {
 		t.Fatalf("actual implicit-gyp build: %v\n%s", buildErr, log)
