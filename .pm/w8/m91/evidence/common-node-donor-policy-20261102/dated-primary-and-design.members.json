@@ -1,0 +1,204 @@
+{
+  "archive": "dated-primary-and-design.tar.gz",
+  "archive_sha256": "ff6657c56ecffbd7d903a04e61a02df3ddf046ab7985669382813f547b4090d2",
+  "archive_bytes": 141536,
+  "members": {
+    "route-design/D1-MAP-MISS-PLAN.json": {
+      "sha256": "5549fe59575413e6f9dfed01489af934f23655e275cbc5756c9423c45fd0e3ae",
+      "bytes": 4230,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/D1-MAP-MISS-PLAN.json"
+    },
+    "route-design/D1-MAP-MISS-PROTOTYPE.diff": {
+      "sha256": "12edacaac1f5e4cde8effa3e0bfc5982e9a72fee86b2d5f20bdf1dfcbfb7d70d",
+      "bytes": 1029,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/D1-MAP-MISS-PROTOTYPE.diff"
+    },
+    "route-design/PLAN.json": {
+      "sha256": "675c3ad242681a3ff9f795ccb63365fcaa506d1ad16418881a258262ed73e33c",
+      "bytes": 4815,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/PLAN.json"
+    },
+    "route-design/PRESERVATION.json": {
+      "sha256": "56b1d09838eefbeda452ca877425e36566fd1d82c735e3a43d8111e11faccb8f",
+      "bytes": 1060,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/PRESERVATION.json"
+    },
+    "route-design/PRIMARY-REUSE-ASSESSMENT.json": {
+      "sha256": "62f413f3bc569cf54506e3ae4fe9634e22a2d009d54bd17764bd85a904dc12d1",
+      "bytes": 5707,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/PRIMARY-REUSE-ASSESSMENT.json"
+    },
+    "route-design/PRIMARY-REUSE-BYTE-CUSTODY.json": {
+      "sha256": "9eea33dabcdb4f0add708755a99990ca8cfcbea36b13fcc7c395e2578af4ac18",
+      "bytes": 47885,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/PRIMARY-REUSE-BYTE-CUSTODY.json"
+    },
+    "route-design/READ-CUSTODY.json": {
+      "sha256": "aea65ea98b2139889244bc6074a077d03c3179a93776b57abf1e4df344f8835d",
+      "bytes": 2795,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/READ-CUSTODY.json"
+    },
+    "route-design/README.md": {
+      "sha256": "d7545ad772e36995295451c161ee0cde66354a4cbc577b5186acaac113326ea5",
+      "bytes": 2134,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/README.md"
+    },
+    "route-design/SOURCE-COMPARE-INITIAL-DIAGNOSTIC.json": {
+      "sha256": "b5655a5c68cbb67b42d1ae930cac0061882b61fc3258bf7c558aea3d8e3d4453",
+      "bytes": 388,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/SOURCE-COMPARE-INITIAL-DIAGNOSTIC.json"
+    },
+    "route-design/SOURCE-MANIFEST.json": {
+      "sha256": "785d5446c23388b6ebde0daff169d63202b95f9eed788e2049f0bc10830cce89",
+      "bytes": 788,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/SOURCE-MANIFEST.json"
+    },
+    "route-design/SOURCE.diff": {
+      "sha256": "3195dd7bdba81d020cf9d52e30d844b89cfda2a474175f890c0c2f39986fd923",
+      "bytes": 6682,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/SOURCE.diff"
+    },
+    "route-design/before/.github/scripts/native-common-qualify.py": {
+      "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797",
+      "bytes": 62244,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/before/.github/scripts/native-common-qualify.py"
+    },
+    "route-design/before/.github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "92b3ce0610dfa32dca543c6d216a0c9123970fcfb08518da362a5968301b3bba",
+      "bytes": 129847,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/before/.github/scripts/test_native_oci_common_qualification.py"
+    },
+    "route-design/before/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "e077bcd5d600918d4c0bea36c4f214f7bd6e162cf6ff26340f67fa2ef2a4a895",
+      "bytes": 15963,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/before/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go"
+    },
+    "route-design/before/lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "d18d87e77ef609a8ecbb936aaf84273ff3431bd0035afcff72d5903d64e0ba2a",
+      "bytes": 12829,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/before/lego/operator/internal/build/nativecommon_node_qualification_test.go"
+    },
+    "route-design/seal_plan.py": {
+      "sha256": "ea1df0314ef7cd0a3b1c5009de1b6b2fed6e28da853db956eac071a6c1a96343",
+      "bytes": 15330,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/seal_plan.py"
+    },
+    "route-design/source/.github/scripts/native-common-qualify.py": {
+      "sha256": "f38bf997fcf5e1184c3570034518d4042de0330af73eaed5ba1c3f5418ea06af",
+      "bytes": 62308,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/source/.github/scripts/native-common-qualify.py"
+    },
+    "route-design/source/.github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "a9b807f1ee5ecf8b859c52486efad33210774beff3e3d16e3d3c482cf44bc987",
+      "bytes": 129966,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/source/.github/scripts/test_native_oci_common_qualification.py"
+    },
+    "route-design/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "39940f08abafa3a9d1a099d5ba8615bb131df1232d4b866ece19449a07422f4c",
+      "bytes": 16667,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go"
+    },
+    "route-design/source/lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "cd1b18f991948903d4796ab8218342c9b3a5ae7a23a89154f845dc1f8e324295",
+      "bytes": 13141,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/source/lego/operator/internal/build/nativecommon_node_qualification_test.go"
+    },
+    "route-design/MANIFEST.json": {
+      "sha256": "339c86817fa4138ed872d38340ee171f7189da8695fc7c0baf6c04d0ac59dc45",
+      "bytes": 3049,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/MANIFEST.json"
+    },
+    "route-design/ROOT-DATED-PRIMARY-ADMISSION.json": {
+      "sha256": "823a2fdca291bdc58d583c18d8405dce9b4ea2b90219762e9f9ce3275ea87d54",
+      "bytes": 1490,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-route-plan-20261102-wy9tkq9j/ROOT-DATED-PRIMARY-ADMISSION.json"
+    },
+    "dated-primary/MANIFEST.json": {
+      "sha256": "644d91a900326c579b991234d78f2ae61d3fa7897bf73cd0446edc4911c670bb",
+      "bytes": 38378,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-node-exact14212-amd64-1801f2c99e101c2fcb738978/evidence/MANIFEST.json"
+    },
+    "dated-primary/generated/native-common-node-3669795487/node-exact14212/Dockerfile.canonical": {
+      "sha256": "6dddfdf0cb7dcde88eae806ac54fdd3ed125ea0cfbbe1cfa0cd2be5a43fc11f6",
+      "bytes": 4330,
+      "permissions": 384,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-node-exact14212-amd64-1801f2c99e101c2fcb738978/evidence/generated/native-common-node-3669795487/node-exact14212/Dockerfile.canonical"
+    },
+    "dated-primary/generated/native-common-node-3669795487/node-exact14212/source-custody.json": {
+      "sha256": "db3735df151992fe34310c50079f3d521967f288b265a34bdf593f9b4481a2ef",
+      "bytes": 2874,
+      "permissions": 384,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-node-exact14212-amd64-1801f2c99e101c2fcb738978/evidence/generated/native-common-node-3669795487/node-exact14212/source-custody.json"
+    },
+    "dated-primary/generated/native-common-node-3669795487/node-exact14212/expected-node.json": {
+      "sha256": "450345170313035edbc5a2eb6b09685c26aa0887b62f7b4cecd943c17f9ba5dc",
+      "bytes": 315,
+      "permissions": 384,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-donor-node-exact14212-amd64-1801f2c99e101c2fcb738978/evidence/generated/native-common-node-3669795487/node-exact14212/expected-node.json"
+    },
+    "dated-primary-independent/SUMMARY.json": {
+      "sha256": "0d462308c3c063480ac375181cd3302db1e180d8d58c5e6274017d7d9d0eb48b",
+      "bytes": 2678,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-three-cell-independent-20261102-o9i43j5j/SUMMARY.json"
+    },
+    "dated-primary-independent/primary-amd64/AUDIT.json": {
+      "sha256": "b73bc00ccea6b558cd506eb649a7a447b1a7dab9045a974f1687f1c4bc98c163",
+      "bytes": 5294,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-exact14212-three-cell-independent-20261102-o9i43j5j/primary-amd64/AUDIT.json"
+    }
+  },
+  "normalization": "Only archive-envelope uid/gid/names/mtime are canonicalized. Every regular member retains exact source bytes, length and permissions; no links/directories/executable invocation."
+}

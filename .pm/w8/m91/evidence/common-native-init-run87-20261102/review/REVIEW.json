@@ -1,0 +1,45 @@
+{
+  "status": "PASS_ACTUAL_CONTENT_REVIEW_FOR_ROOT_ADMISSION",
+  "scope": "Single original native-init/all-launches AMD64 target on same reviewed0941 source30b1/run87, full79originalfiles",
+  "receipt": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/ACTUAL-RECEIPT.json",
+    "bytes": 8434,
+    "sha256": "6a2796413954f6c4a4fee230e51f5b183d743abce76725f93d59be121d1b9be2"
+  },
+  "actual_whole_CI_log": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/job-125260213820.log",
+    "bytes": 63836,
+    "sha256": "95320bc5175ac1fe95fc99192fbda126b6e562eba59bad653942c742c12ced55"
+  },
+  "terminal_metadata": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/TERMINAL-SNAPSHOT.json",
+    "bytes": 8187,
+    "sha256": "83816d14757da138d6cff27e8ef1064bfd70579617115fddfab44d00b0facdcc"
+  },
+  "source_oracle_binding": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/AUDITOR-SOURCE-REVIEW.json",
+    "bytes": 2311,
+    "sha256": "4e408be3425bcdbc387d4a409889734ae74fcb4f647bc1bd5c58b0ccab064dbf"
+  },
+  "Root_reviewed_V2_source_manifest": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/AUDITOR-V2-MANIFEST.json",
+    "bytes": 984,
+    "sha256": "1ef46d95fd4036996cc3f2653c34df8837d1784a2e5626a504b669f9e2ded503"
+  },
+  "full_audit_source": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit_native_init_v2.py",
+    "bytes": 14996,
+    "sha256": "d68e1f3541409aebe62f5eb2b073f2e99c35dd99cc4696757fe752fc69f39fca"
+  },
+  "controls_source": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/test_audit_native_init_v2.py",
+    "bytes": 5152,
+    "sha256": "7d1d2a22ae2ac9b9c6d3569d665831657b378657ddfea7eeb3143a8911ab3f7a"
+  },
+  "all_audit_commands_exit0_and_groups_absent": true,
+  "original_raw_and_Go_port_carriers_retained": true,
+  "original_all79_tree_and_ZIP_retained": true,
+  "V1_failurechain_retained": true,
+  "repo_candidate_or_production_mutations": false,
+  "next": "Root independent payload/source review and dated-content admission/publication; no automatic dispatch or adoption."
+}

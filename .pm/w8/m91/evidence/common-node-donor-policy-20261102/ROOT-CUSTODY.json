@@ -1,0 +1,9 @@
+{
+  "outcome": "ROOT_COPIED_EXACT10_REVIEWED_PUBLICATION_PAYLOADS",
+  "copy_plan_sha256": "761cfff3bd296b4e5a37d88938582d53e8fcf7ef9ef604020b0cabf5b74d21b4",
+  "all15_preparation_payloads_and209_original_archive_members_independently_checked": true,
+  "original_member_bytes": 3531092,
+  "originalSHA_size_mode_regular_and_bijection": true,
+  "source": "/private/tmp/bex-w8-node-donor-policy-publication-20261102-40q7k948",
+  "README_authored_formatter_exception": "README may be formatted; all frozen archives/membermaps/rawrecords remain exact. Final formatting identities recorded in shipchecks."
+}

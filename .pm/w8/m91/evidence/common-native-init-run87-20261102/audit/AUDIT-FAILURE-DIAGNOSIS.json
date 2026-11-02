@@ -1,0 +1,97 @@
+{
+  "at": "2026-11-02T12:32:35.102344+00:00",
+  "classification": "NEW_AUDITOR_CARRIER_EQUALITY_FAILURE_NOT_TARGET_DRAIN_VERDICT",
+  "original_failure_retained": true,
+  "audit_exit": 1,
+  "three_purecontrols_exit": 0,
+  "observed_cases": [
+    {
+      "launch": "npm",
+      "original_stopped_fields_equal": true,
+      "raw_stopped_Ports": {},
+      "recorded_Go_receipt_Ports": {
+        "10000/tcp": [
+          {
+            "HostIP": "127.0.0.1",
+            "HostPort": "32768"
+          }
+        ]
+      },
+      "source_fields_required": [
+        "ID",
+        "Image",
+        "Running",
+        "ExitCode",
+        "Network",
+        "Labels"
+      ]
+    },
+    {
+      "launch": "yarn",
+      "original_stopped_fields_equal": true,
+      "raw_stopped_Ports": {},
+      "recorded_Go_receipt_Ports": {
+        "10000/tcp": [
+          {
+            "HostIP": "127.0.0.1",
+            "HostPort": "32769"
+          }
+        ]
+      },
+      "source_fields_required": [
+        "ID",
+        "Image",
+        "Running",
+        "ExitCode",
+        "Network",
+        "Labels"
+      ]
+    },
+    {
+      "launch": "pnpm",
+      "original_stopped_fields_equal": true,
+      "raw_stopped_Ports": {},
+      "recorded_Go_receipt_Ports": {
+        "10000/tcp": [
+          {
+            "HostIP": "127.0.0.1",
+            "HostPort": "32770"
+          }
+        ]
+      },
+      "source_fields_required": [
+        "ID",
+        "Image",
+        "Running",
+        "ExitCode",
+        "Network",
+        "Labels"
+      ]
+    },
+    {
+      "launch": "direct",
+      "original_stopped_fields_equal": true,
+      "raw_stopped_Ports": {},
+      "recorded_Go_receipt_Ports": {
+        "10000/tcp": [
+          {
+            "HostIP": "127.0.0.1",
+            "HostPort": "32771"
+          }
+        ]
+      },
+      "source_fields_required": [
+        "ID",
+        "Image",
+        "Running",
+        "ExitCode",
+        "Network",
+        "Labels"
+      ]
+    }
+  ],
+  "source_explanation": "Go source json.Unmarshal(inspected,&state) reuses state with map Ports populated from running inspect. Actual stopped JSON Ports={} does not provide entries to replace prior keys; receipt retains old running map. The stopped original predicate does not compare Ports; running original predicate checks the exact localhost-only binding independently. This explanation is source/retained-data inference, not a new Go execution.",
+  "proposed_only_fix": "Compare original stopped scalar/Labels fields rather than full dictionary; explicitly retain raw/recorded Ports difference. Keep running full port validation, all other original identity/drain/status/once/cleanup/source predicates. No artifact/source/oracle transformations.",
+  "source_changes": false,
+  "reruns": 0
+}

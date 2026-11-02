@@ -1,0 +1,218 @@
+{
+  "archive": "merged-go-history.tar.gz",
+  "archive_sha256": "1e819b77f79e3ea841cd7ca99cb523900fbaec476cf0de396efa026a5d1cb646",
+  "archive_bytes": 175500,
+  "members": {
+    "first-Go-setup-failure/APPROVED-PLAN.json": {
+      "sha256": "a64a74ea8d7014819f2f677dc4e70689c49de16b391d4726abeb5f1896732cce",
+      "bytes": 838,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/APPROVED-PLAN.json"
+    },
+    "first-Go-setup-failure/CHECK-SOURCE-AFTER.json": {
+      "sha256": "60ccd7fffe93a841228a2103a5c44698a7ca14b76535e7b3e8dda128cf9646de",
+      "bytes": 40437,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/CHECK-SOURCE-AFTER.json"
+    },
+    "first-Go-setup-failure/CHECK-SOURCE-BEFORE.json": {
+      "sha256": "60ccd7fffe93a841228a2103a5c44698a7ca14b76535e7b3e8dda128cf9646de",
+      "bytes": 40437,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/CHECK-SOURCE-BEFORE.json"
+    },
+    "first-Go-setup-failure/CONTROLLER-DELTA.diff": {
+      "sha256": "da37baaa9f2a9320bf0cd4a1bfeb21487eb9087847d42c5147b402b6f8c32f7d",
+      "bytes": 6427,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/CONTROLLER-DELTA.diff"
+    },
+    "first-Go-setup-failure/PREIMAGE-PATHS.json": {
+      "sha256": "06cf5e44233547f765aea7ee7f3e174fd54dbd87b40f78936c2d6049554ff497",
+      "bytes": 18099,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/PREIMAGE-PATHS.json"
+    },
+    "first-Go-setup-failure/RESULT.json": {
+      "sha256": "2b26f325fad6ecc26482407e689abc46f3fae0a3784029a5c04204c058504c5e",
+      "bytes": 1116,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/RESULT.json"
+    },
+    "first-Go-setup-failure/SCOPE.json": {
+      "sha256": "5a8ac4b8a076f509659d18cf0f716765688394a20325c21d0685d06e13259c2e",
+      "bytes": 42151,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/SCOPE.json"
+    },
+    "first-Go-setup-failure/VIEW-MANIFEST.json": {
+      "sha256": "84038fe747609f8a81288c24ed129a886f0bb577b762bc73988941a2ef79ef37",
+      "bytes": 113026,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/VIEW-MANIFEST.json"
+    },
+    "first-Go-setup-failure/controller.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/controller.stderr"
+    },
+    "first-Go-setup-failure/controller.stdout": {
+      "sha256": "54bc46232a44f6c45b9b60076fd55516e8c21216718ca0cb01ad82b5cf588397",
+      "bytes": 1602,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/controller.stdout"
+    },
+    "first-Go-setup-failure/full-buildpkg-merged-PROCESS.json": {
+      "sha256": "4554eade74127194ca0c5c4f9e05b9e5f4b39a0cfabaec5ab47407a01f3eea8c",
+      "bytes": 503,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/full-buildpkg-merged-PROCESS.json"
+    },
+    "first-Go-setup-failure/full-buildpkg-merged-RESULT.json": {
+      "sha256": "7f584ca0f2fec3a5e33fc2598980a2d758e69d176ec15fc5a8f272e7fa5addf7",
+      "bytes": 712,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/full-buildpkg-merged-RESULT.json"
+    },
+    "first-Go-setup-failure/full-buildpkg-merged.stderr": {
+      "sha256": "d952036f202883c369ee65b8130027a77ded8589c45580b81b70d163a88ac959",
+      "bytes": 2336,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/full-buildpkg-merged.stderr"
+    },
+    "first-Go-setup-failure/full-buildpkg-merged.stdout": {
+      "sha256": "ba7d9af02ef97e7a9794a8e756d3a38e70331822d52122465d486b386751b1e5",
+      "bytes": 76,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/full-buildpkg-merged.stdout"
+    },
+    "first-Go-setup-failure/run_checks.py": {
+      "sha256": "b410a7b476d07020dc50add1f34e065854b72bc599f13d6e8767fad2af5ec2b0",
+      "bytes": 7409,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-check-20261102-a4u3v9r4/run_checks.py"
+    },
+    "final-Go-pass/CHECK-SOURCE-AFTER.json": {
+      "sha256": "60ccd7fffe93a841228a2103a5c44698a7ca14b76535e7b3e8dda128cf9646de",
+      "bytes": 40437,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/CHECK-SOURCE-AFTER.json"
+    },
+    "final-Go-pass/CHECK-SOURCE-BEFORE.json": {
+      "sha256": "60ccd7fffe93a841228a2103a5c44698a7ca14b76535e7b3e8dda128cf9646de",
+      "bytes": 40437,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/CHECK-SOURCE-BEFORE.json"
+    },
+    "final-Go-pass/DELTA.diff": {
+      "sha256": "3c187be1811ac78cd46a2087e507e23fa8eeb101def8c495100cff972e7f1d14",
+      "bytes": 1832,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/DELTA.diff"
+    },
+    "final-Go-pass/PREIMAGE-PATHS.json": {
+      "sha256": "06cf5e44233547f765aea7ee7f3e174fd54dbd87b40f78936c2d6049554ff497",
+      "bytes": 18099,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/PREIMAGE-PATHS.json"
+    },
+    "final-Go-pass/RESULT.json": {
+      "sha256": "73e71dd5fd844ba78571249df02f816cf3eb90fbf52b61869ae95f48cb27aa27",
+      "bytes": 1120,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/RESULT.json"
+    },
+    "final-Go-pass/REVIEW.json": {
+      "sha256": "789c9f05af668c5eeaad5af173b514935706ff71245ef59c0ce50561915514c5",
+      "bytes": 601,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/REVIEW.json"
+    },
+    "final-Go-pass/SCOPE.json": {
+      "sha256": "5a8ac4b8a076f509659d18cf0f716765688394a20325c21d0685d06e13259c2e",
+      "bytes": 42151,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/SCOPE.json"
+    },
+    "final-Go-pass/VIEW-MANIFEST.json": {
+      "sha256": "84038fe747609f8a81288c24ed129a886f0bb577b762bc73988941a2ef79ef37",
+      "bytes": 113026,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/VIEW-MANIFEST.json"
+    },
+    "final-Go-pass/controller.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/controller.stderr"
+    },
+    "final-Go-pass/controller.stdout": {
+      "sha256": "925c8c9fed3289c92c212fb5540bcab7e358233e10dcf90d02e4b30f5575c4ea",
+      "bytes": 1605,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/controller.stdout"
+    },
+    "final-Go-pass/full-buildpkg-merged-PROCESS.json": {
+      "sha256": "7c4e64c923ea7d1dc8b671b7651ae98dadfcfde209503e8efc2c22c1c50a4fff",
+      "bytes": 503,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/full-buildpkg-merged-PROCESS.json"
+    },
+    "final-Go-pass/full-buildpkg-merged-RESULT.json": {
+      "sha256": "7b85c41198aee9d281467eb7485089239820924274c6088c172a0d88a521b5ec",
+      "bytes": 711,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/full-buildpkg-merged-RESULT.json"
+    },
+    "final-Go-pass/full-buildpkg-merged.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/full-buildpkg-merged.stderr"
+    },
+    "final-Go-pass/full-buildpkg-merged.stdout": {
+      "sha256": "fcdb4c4896d8d1add7fcdffbbb97ee1b8318fe491456ac2e0fe2bdff416a9aae",
+      "bytes": 63,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/full-buildpkg-merged.stdout"
+    },
+    "final-Go-pass/run_checks.py": {
+      "sha256": "0ecfb15edbf99ef8482ccd8eeedac115f0d4e88b53224e6b8c62f723d96f5c8e",
+      "bytes": 7475,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-merged-go-v2-20261102-r03dkkic/run_checks.py"
+    }
+  },
+  "normalization": "Only archive-envelope uid/gid/names/mtime normalized. Exact regular member bytes,length,permissions preserved; no links, trees, executable invocation or raw diff outside gzip."
+}

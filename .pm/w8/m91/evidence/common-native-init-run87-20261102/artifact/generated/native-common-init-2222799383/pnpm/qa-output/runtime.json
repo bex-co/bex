@@ -1,0 +1,65 @@
+{
+  "phase": "runtime",
+  "run": "bex-init-1959-1793620664844627629",
+  "identity": {
+    "node": "24.22.1",
+    "executable": "/usr/local/bin/node",
+    "env": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/opt/render/project/src/node_modules/.bin:/usr/local/lib/node_modules/pnpm/dist/node-gyp-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    },
+    "baseEnv": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    },
+    "launch": "pnpm",
+    "init": {
+      "sha256": "6adc4e08abc09bb47eb0a0463e68403af13aa66eacbad029304ed8c28639fd47",
+      "machine": 62,
+      "executable": true,
+      "device": "0:81",
+      "inode": "13683964",
+      "pid1": "/run/rosetta/rosetta",
+      "pid1Machine": 183,
+      "argv": [
+        "/native-init",
+        "/bin/bash",
+        "-c",
+        "node capture-env.js pnpm && exec pnpm start"
+      ],
+      "mappings": [
+        {
+          "permissions": "r-xp",
+          "device": "0:81",
+          "inode": "13683964",
+          "path": "/native-init"
+        },
+        {
+          "permissions": "r--p",
+          "device": "0:81",
+          "inode": "13683964",
+          "path": "/native-init"
+        },
+        {
+          "permissions": "rw-p",
+          "device": "0:81",
+          "inode": "13683964",
+          "path": "/native-init"
+        }
+      ]
+    }
+  },
+  "events": [
+    "listening",
+    "hold_begin",
+    "SIGTERM",
+    "hold_end",
+    "closed"
+  ],
+  "holds": 1,
+  "completed": 1,
+  "signals": 1,
+  "pass": true
+}

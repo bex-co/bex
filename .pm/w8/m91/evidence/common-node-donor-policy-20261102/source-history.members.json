@@ -1,0 +1,904 @@
+{
+  "archive": "source-history.tar.gz",
+  "archive_sha256": "277bf3fe498fa178fc1d6339bed23c4c9b1f11b5eb5b2542a3b7bb1a0cad1a19",
+  "archive_bytes": 577673,
+  "members": {
+    "v1/CHECK-INPUTS.json": {
+      "sha256": "55e8afa497387c62b8513eba8329a30711992fb3ab374cd9250abbd350c5049c",
+      "bytes": 27833,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/CHECK-INPUTS.json"
+    },
+    "v1/COMMANDS.json": {
+      "sha256": "44b77c1b9c4e02acf74787f39adb2494ba1f9eb00c955c488e6b0ca51727fad3",
+      "bytes": 3216,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/COMMANDS.json"
+    },
+    "v1/DATED-PRIMARY-REPLAY-INPUTS.json": {
+      "sha256": "46a72aad5b98149fa57b570371d557f910cd23f12825c580689d793ace68fde1",
+      "bytes": 1801,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/DATED-PRIMARY-REPLAY-INPUTS.json"
+    },
+    "v1/PARENT.json": {
+      "sha256": "8d1bd009a779c0f0315e24b42e855006faabdf8022234447400b726db8b10cb7",
+      "bytes": 954,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/PARENT.json"
+    },
+    "v1/PREIMAGE-MANIFEST.json": {
+      "sha256": "0c1bf40a68af316f560ba0e72e28f44e67a04f2eecba4c8d68ff7f768bd29ee4",
+      "bytes": 1665,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/PREIMAGE-MANIFEST.json"
+    },
+    "v1/PRESERVATION.json": {
+      "sha256": "f99acdd7d6521a5e0f107ea03b5f3a7c273877488e93e53bf288aac0fc1e7577",
+      "bytes": 31507,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/PRESERVATION.json"
+    },
+    "v1/PROPOSAL.json": {
+      "sha256": "c2e0e3c66e93180b6cb8e2c61246517a23046a0e56c9eeb98779f6e81e75d462",
+      "bytes": 5286,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/PROPOSAL.json"
+    },
+    "v1/SOURCE-MANIFEST.json": {
+      "sha256": "5a8cc1b8f9e2f1ea784b205b3ec06e5a2955e4bdb81735db3547b461ee1632c7",
+      "bytes": 1665,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/SOURCE-MANIFEST.json"
+    },
+    "v1/SOURCE-TRACKED-BEFORE.json": {
+      "sha256": "7212c115cf162e80156388b12285c7d8a1189bb9abb48cec67a685f2c8e11a9e",
+      "bytes": 71050,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/SOURCE-TRACKED-BEFORE.json"
+    },
+    "v1/SOURCE.diff": {
+      "sha256": "75c36ae4245cfcba999021c5d1d8fef8ab0fac1b24d9a4ea2beb39412204fe8b",
+      "bytes": 21286,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/SOURCE.diff"
+    },
+    "v1/UNTRACKED-PRESERVED-METADATA.json": {
+      "sha256": "ed50753ce24fd1e95f87ce8e2f0efc31808a7b7c6567cdbb73167575bc05247a",
+      "bytes": 643,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/UNTRACKED-PRESERVED-METADATA.json"
+    },
+    "v1/before/.github/scripts/native-common-qualify.py": {
+      "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797",
+      "bytes": 62244,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/before/.github/scripts/native-common-qualify.py"
+    },
+    "v1/before/.github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "92b3ce0610dfa32dca543c6d216a0c9123970fcfb08518da362a5968301b3bba",
+      "bytes": 129847,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/before/.github/scripts/test_native_oci_common_qualification.py"
+    },
+    "v1/before/lego/operator/internal/build/nativebases_test.go": {
+      "sha256": "15c8e5283b7b814a0e1986101c82bdb697aa6ddb3f8845f9b4f2065138455491",
+      "bytes": 22731,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/before/lego/operator/internal/build/nativebases_test.go"
+    },
+    "v1/before/lego/operator/internal/build/nativecommon.go": {
+      "sha256": "a36780e1c2ff677df49a765c2b82722173936e6df28c1251eb5055ad673357dd",
+      "bytes": 8351,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/before/lego/operator/internal/build/nativecommon.go"
+    },
+    "v1/before/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "e077bcd5d600918d4c0bea36c4f214f7bd6e162cf6ff26340f67fa2ef2a4a895",
+      "bytes": 15963,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/before/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go"
+    },
+    "v1/before/lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "d18d87e77ef609a8ecbb936aaf84273ff3431bd0035afcff72d5903d64e0ba2a",
+      "bytes": 12829,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/before/lego/operator/internal/build/nativecommon_node_qualification_test.go"
+    },
+    "v1/before/lego/operator/internal/build/nativecommon_test.go": {
+      "sha256": "260286b4ff60c968f8253956fba3eb18623f0e018ae7a874208bde6230157ac4",
+      "bytes": 17816,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/before/lego/operator/internal/build/nativecommon_test.go"
+    },
+    "v1/overlay-old-runtime.json": {
+      "sha256": "a67439db9037602e65ecec96668035688ed6e67c0ed335087be3a718812bd604",
+      "bytes": 1159,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/overlay-old-runtime.json"
+    },
+    "v1/overlay.json": {
+      "sha256": "c9581b2638a1522c14371d10f81d47f249530678446aa6bf6e852a41997fd0ae",
+      "bytes": 1159,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/overlay.json"
+    },
+    "v1/run_checks.py": {
+      "sha256": "8962fc6d2d87a54fd6fe52302af8531a63c64d01989681d7e33dac77e7c6c84a",
+      "bytes": 14868,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/run_checks.py"
+    },
+    "v1/source/.github/scripts/native-common-qualify.py": {
+      "sha256": "f38bf997fcf5e1184c3570034518d4042de0330af73eaed5ba1c3f5418ea06af",
+      "bytes": 62308,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/source/.github/scripts/native-common-qualify.py"
+    },
+    "v1/source/.github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "a9b807f1ee5ecf8b859c52486efad33210774beff3e3d16e3d3c482cf44bc987",
+      "bytes": 129966,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/source/.github/scripts/test_native_oci_common_qualification.py"
+    },
+    "v1/source/lego/operator/internal/build/nativebases_test.go": {
+      "sha256": "3f03c8840022379631012778db045dbfbb2753033e48787ce81f26ddf5a46899",
+      "bytes": 26789,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/source/lego/operator/internal/build/nativebases_test.go"
+    },
+    "v1/source/lego/operator/internal/build/nativecommon.go": {
+      "sha256": "6c5f2bb8fb846001b7879345d2ebc09fef4f4db59b103b8fddf2d856a379e1ea",
+      "bytes": 8642,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/source/lego/operator/internal/build/nativecommon.go"
+    },
+    "v1/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "e5088d30a6ee67ecd3eb546e40104c6f5f5d7e00e1c4f3072ee9fc258ce15a17",
+      "bytes": 19121,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go"
+    },
+    "v1/source/lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "cd1b18f991948903d4796ab8218342c9b3a5ae7a23a89154f845dc1f8e324295",
+      "bytes": 13141,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/source/lego/operator/internal/build/nativecommon_node_qualification_test.go"
+    },
+    "v1/source/lego/operator/internal/build/nativecommon_test.go": {
+      "sha256": "6f6772956f3d4ddc8689b2a420a1ce12bb88d91140db76887fadbf24ed7dd830",
+      "bytes": 23168,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/source/lego/operator/internal/build/nativecommon_test.go"
+    },
+    "v1/MANIFEST.json": {
+      "sha256": "841be720f7f9d350d1210045ab0c76ffd8f6c9316245b2e3d343184aefe3fff1",
+      "bytes": 5624,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/MANIFEST.json"
+    },
+    "v1/RECEIPT.json": {
+      "sha256": "93bfeeef6c67bf3d4af069b490ac2e06a48ea8696d05f0abb165d00617680da7",
+      "bytes": 1004,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-combined-20261102-1l406x55/RECEIPT.json"
+    },
+    "v2/CHECK-INPUTS.json": {
+      "sha256": "491e64c40e0dcec239560d66af8c659f2a269ba8515f70d8a1c67259122bf410",
+      "bytes": 27833,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/CHECK-INPUTS.json"
+    },
+    "v2/COMMANDS-V1-V2.diff": {
+      "sha256": "e94fe2a7949a73da90257ba7955b7ef1717e9baf285729e9aaa707fe7f58f779",
+      "bytes": 1730,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/COMMANDS-V1-V2.diff"
+    },
+    "v2/COMMANDS.json": {
+      "sha256": "17939536e14494f1febc5e02375a0d0bc6c05957905e135a3d3f2664d833b63c",
+      "bytes": 3235,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/COMMANDS.json"
+    },
+    "v2/CONTROLLER-V1-V2.diff": {
+      "sha256": "843eaab1965b0536382acd7f6881b8ecb86d0fdde5d79cbac001f5e1d7c73570",
+      "bytes": 2528,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/CONTROLLER-V1-V2.diff"
+    },
+    "v2/DATED-PRIMARY-REPLAY-INPUTS.json": {
+      "sha256": "46a72aad5b98149fa57b570371d557f910cd23f12825c580689d793ace68fde1",
+      "bytes": 1801,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/DATED-PRIMARY-REPLAY-INPUTS.json"
+    },
+    "v2/GOFMT-RECEIPT.json": {
+      "sha256": "22f99479372bd82149fc5076e7ffb2d1e2e0b02ba80c56476cbd57a62a404733",
+      "bytes": 3676,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/GOFMT-RECEIPT.json"
+    },
+    "v2/GOFMT.diff": {
+      "sha256": "8a87ef00abf45a398ce510c06d77072c83890ab543a38119bc0b15dd7326db00",
+      "bytes": 2595,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/GOFMT.diff"
+    },
+    "v2/PARENT.json": {
+      "sha256": "8d1bd009a779c0f0315e24b42e855006faabdf8022234447400b726db8b10cb7",
+      "bytes": 954,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/PARENT.json"
+    },
+    "v2/PREIMAGE-MANIFEST.json": {
+      "sha256": "0c1bf40a68af316f560ba0e72e28f44e67a04f2eecba4c8d68ff7f768bd29ee4",
+      "bytes": 1665,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/PREIMAGE-MANIFEST.json"
+    },
+    "v2/PRESERVATION.json": {
+      "sha256": "f99acdd7d6521a5e0f107ea03b5f3a7c273877488e93e53bf288aac0fc1e7577",
+      "bytes": 31507,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/PRESERVATION.json"
+    },
+    "v2/PROPOSAL.json": {
+      "sha256": "0a215e3d904c13535d1f7bd7ba6a301a145820bdd04b94a1dede5ee78c7112f8",
+      "bytes": 5479,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/PROPOSAL.json"
+    },
+    "v2/SOURCE-MANIFEST.json": {
+      "sha256": "d83203c64ef9b0da72d298eb4a1c89deb5b64abc216b753eb85a0280a6391882",
+      "bytes": 1665,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/SOURCE-MANIFEST.json"
+    },
+    "v2/SOURCE-TRACKED-BEFORE.json": {
+      "sha256": "7212c115cf162e80156388b12285c7d8a1189bb9abb48cec67a685f2c8e11a9e",
+      "bytes": 71050,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/SOURCE-TRACKED-BEFORE.json"
+    },
+    "v2/SOURCE.diff": {
+      "sha256": "013bc4351c729d8719a0c27f4197b28711899d31ac7a4e1b967550b4302de82a",
+      "bytes": 22184,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/SOURCE.diff"
+    },
+    "v2/UNTRACKED-PRESERVED-METADATA.json": {
+      "sha256": "ed50753ce24fd1e95f87ce8e2f0efc31808a7b7c6567cdbb73167575bc05247a",
+      "bytes": 643,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/UNTRACKED-PRESERVED-METADATA.json"
+    },
+    "v2/V2-CORRECTIONS.json": {
+      "sha256": "4b4486529acbf65ab270936bfde5c79d0e953e9678cd5024d1bc85a026fc5ffe",
+      "bytes": 4425,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/V2-CORRECTIONS.json"
+    },
+    "v2/V2-PARENT.json": {
+      "sha256": "a75844409ab31baee57eea599f950ffd78910535c5d5b1acc9697da9439c2e25",
+      "bytes": 642,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/V2-PARENT.json"
+    },
+    "v2/before/.github/scripts/native-common-qualify.py": {
+      "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797",
+      "bytes": 62244,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/before/.github/scripts/native-common-qualify.py"
+    },
+    "v2/before/.github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "92b3ce0610dfa32dca543c6d216a0c9123970fcfb08518da362a5968301b3bba",
+      "bytes": 129847,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/before/.github/scripts/test_native_oci_common_qualification.py"
+    },
+    "v2/before/lego/operator/internal/build/nativebases_test.go": {
+      "sha256": "15c8e5283b7b814a0e1986101c82bdb697aa6ddb3f8845f9b4f2065138455491",
+      "bytes": 22731,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/before/lego/operator/internal/build/nativebases_test.go"
+    },
+    "v2/before/lego/operator/internal/build/nativecommon.go": {
+      "sha256": "a36780e1c2ff677df49a765c2b82722173936e6df28c1251eb5055ad673357dd",
+      "bytes": 8351,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/before/lego/operator/internal/build/nativecommon.go"
+    },
+    "v2/before/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "e077bcd5d600918d4c0bea36c4f214f7bd6e162cf6ff26340f67fa2ef2a4a895",
+      "bytes": 15963,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/before/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go"
+    },
+    "v2/before/lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "d18d87e77ef609a8ecbb936aaf84273ff3431bd0035afcff72d5903d64e0ba2a",
+      "bytes": 12829,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/before/lego/operator/internal/build/nativecommon_node_qualification_test.go"
+    },
+    "v2/before/lego/operator/internal/build/nativecommon_test.go": {
+      "sha256": "260286b4ff60c968f8253956fba3eb18623f0e018ae7a874208bde6230157ac4",
+      "bytes": 17816,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/before/lego/operator/internal/build/nativecommon_test.go"
+    },
+    "v2/overlay-old-runtime.json": {
+      "sha256": "27f4fef0abe76d9d9f4b42414dc6565cfac2b94faa28407921c4d0aa6c1dc6fb",
+      "bytes": 1164,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/overlay-old-runtime.json"
+    },
+    "v2/overlay.json": {
+      "sha256": "9fc341a5c84d662a480e6a35078a062a2ea6fffbc634a8ac572b1d4b0d13f02d",
+      "bytes": 1164,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/overlay.json"
+    },
+    "v2/preformat/COMMANDS.json": {
+      "sha256": "44b77c1b9c4e02acf74787f39adb2494ba1f9eb00c955c488e6b0ca51727fad3",
+      "bytes": 3216,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/preformat/COMMANDS.json"
+    },
+    "v2/preformat/SOURCE-MANIFEST.json": {
+      "sha256": "5a8cc1b8f9e2f1ea784b205b3ec06e5a2955e4bdb81735db3547b461ee1632c7",
+      "bytes": 1665,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/preformat/SOURCE-MANIFEST.json"
+    },
+    "v2/preformat/SOURCE.diff": {
+      "sha256": "75c36ae4245cfcba999021c5d1d8fef8ab0fac1b24d9a4ea2beb39412204fe8b",
+      "bytes": 21286,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/preformat/SOURCE.diff"
+    },
+    "v2/preformat/lego/operator/internal/build/nativebases_test.go": {
+      "sha256": "3f03c8840022379631012778db045dbfbb2753033e48787ce81f26ddf5a46899",
+      "bytes": 26789,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/preformat/lego/operator/internal/build/nativebases_test.go"
+    },
+    "v2/preformat/lego/operator/internal/build/nativecommon.go": {
+      "sha256": "6c5f2bb8fb846001b7879345d2ebc09fef4f4db59b103b8fddf2d856a379e1ea",
+      "bytes": 8642,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/preformat/lego/operator/internal/build/nativecommon.go"
+    },
+    "v2/preformat/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "e5088d30a6ee67ecd3eb546e40104c6f5f5d7e00e1c4f3072ee9fc258ce15a17",
+      "bytes": 19121,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/preformat/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go"
+    },
+    "v2/preformat/lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "cd1b18f991948903d4796ab8218342c9b3a5ae7a23a89154f845dc1f8e324295",
+      "bytes": 13141,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/preformat/lego/operator/internal/build/nativecommon_node_qualification_test.go"
+    },
+    "v2/preformat/lego/operator/internal/build/nativecommon_test.go": {
+      "sha256": "6f6772956f3d4ddc8689b2a420a1ce12bb88d91140db76887fadbf24ed7dd830",
+      "bytes": 23168,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/preformat/lego/operator/internal/build/nativecommon_test.go"
+    },
+    "v2/preformat/overlay-old-runtime.json": {
+      "sha256": "a67439db9037602e65ecec96668035688ed6e67c0ed335087be3a718812bd604",
+      "bytes": 1159,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/preformat/overlay-old-runtime.json"
+    },
+    "v2/preformat/overlay.json": {
+      "sha256": "c9581b2638a1522c14371d10f81d47f249530678446aa6bf6e852a41997fd0ae",
+      "bytes": 1159,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/preformat/overlay.json"
+    },
+    "v2/preformat/run_checks.py": {
+      "sha256": "8962fc6d2d87a54fd6fe52302af8531a63c64d01989681d7e33dac77e7c6c84a",
+      "bytes": 14868,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/preformat/run_checks.py"
+    },
+    "v2/run_checks.py": {
+      "sha256": "9154ecabfc347bd30131da065a297b8c11c4dffd3082dab052f91ca6aab8a673",
+      "bytes": 15158,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/run_checks.py"
+    },
+    "v2/source/.github/scripts/native-common-qualify.py": {
+      "sha256": "f38bf997fcf5e1184c3570034518d4042de0330af73eaed5ba1c3f5418ea06af",
+      "bytes": 62308,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/source/.github/scripts/native-common-qualify.py"
+    },
+    "v2/source/.github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "a9b807f1ee5ecf8b859c52486efad33210774beff3e3d16e3d3c482cf44bc987",
+      "bytes": 129966,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/source/.github/scripts/test_native_oci_common_qualification.py"
+    },
+    "v2/source/lego/operator/internal/build/nativebases_test.go": {
+      "sha256": "3f03c8840022379631012778db045dbfbb2753033e48787ce81f26ddf5a46899",
+      "bytes": 26789,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/source/lego/operator/internal/build/nativebases_test.go"
+    },
+    "v2/source/lego/operator/internal/build/nativecommon.go": {
+      "sha256": "6c5f2bb8fb846001b7879345d2ebc09fef4f4db59b103b8fddf2d856a379e1ea",
+      "bytes": 8642,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/source/lego/operator/internal/build/nativecommon.go"
+    },
+    "v2/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "e5088d30a6ee67ecd3eb546e40104c6f5f5d7e00e1c4f3072ee9fc258ce15a17",
+      "bytes": 19121,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go"
+    },
+    "v2/source/lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "351b4002e34a946966a494a2aec9a768f67743ecd7caa69d1084ff0d826272c6",
+      "bytes": 13161,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/source/lego/operator/internal/build/nativecommon_node_qualification_test.go"
+    },
+    "v2/source/lego/operator/internal/build/nativecommon_test.go": {
+      "sha256": "456f7b0e8902274367268e8369eb44bd17bce66fea6f5e3d0c685b333c6c3226",
+      "bytes": 23169,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/source/lego/operator/internal/build/nativecommon_test.go"
+    },
+    "v2/MANIFEST.json": {
+      "sha256": "52363f4fa8161fb0092ebf4a12a5fecd0c2657cf3d6540b031eb7271bd75984a",
+      "bytes": 9929,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/MANIFEST.json"
+    },
+    "v2/RECEIPT.json": {
+      "sha256": "dfe37df7dfed425b79308e2121e4e941ed5e54240d4ef9865fe5c12dfd9e8296",
+      "bytes": 981,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/RECEIPT.json"
+    },
+    "v3/CHECK-INPUTS.json": {
+      "sha256": "491e64c40e0dcec239560d66af8c659f2a269ba8515f70d8a1c67259122bf410",
+      "bytes": 27833,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/CHECK-INPUTS.json"
+    },
+    "v3/COMMANDS-V1-V2.diff": {
+      "sha256": "e94fe2a7949a73da90257ba7955b7ef1717e9baf285729e9aaa707fe7f58f779",
+      "bytes": 1730,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/COMMANDS-V1-V2.diff"
+    },
+    "v3/COMMANDS.json": {
+      "sha256": "9dd4d5bd6cd884e3c956cf45f8edbed249437597d11d07862b301096a07d989e",
+      "bytes": 3235,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/COMMANDS.json"
+    },
+    "v3/CONTROLLER-V1-V2.diff": {
+      "sha256": "843eaab1965b0536382acd7f6881b8ecb86d0fdde5d79cbac001f5e1d7c73570",
+      "bytes": 2528,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/CONTROLLER-V1-V2.diff"
+    },
+    "v3/DATED-PRIMARY-REPLAY-INPUTS.json": {
+      "sha256": "46a72aad5b98149fa57b570371d557f910cd23f12825c580689d793ace68fde1",
+      "bytes": 1801,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/DATED-PRIMARY-REPLAY-INPUTS.json"
+    },
+    "v3/GOFMT-RECEIPT.json": {
+      "sha256": "22f99479372bd82149fc5076e7ffb2d1e2e0b02ba80c56476cbd57a62a404733",
+      "bytes": 3676,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/GOFMT-RECEIPT.json"
+    },
+    "v3/GOFMT.diff": {
+      "sha256": "8a87ef00abf45a398ce510c06d77072c83890ab543a38119bc0b15dd7326db00",
+      "bytes": 2595,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/GOFMT.diff"
+    },
+    "v3/PARENT.json": {
+      "sha256": "8d1bd009a779c0f0315e24b42e855006faabdf8022234447400b726db8b10cb7",
+      "bytes": 954,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/PARENT.json"
+    },
+    "v3/PREIMAGE-MANIFEST.json": {
+      "sha256": "0c1bf40a68af316f560ba0e72e28f44e67a04f2eecba4c8d68ff7f768bd29ee4",
+      "bytes": 1665,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/PREIMAGE-MANIFEST.json"
+    },
+    "v3/PRESERVATION.json": {
+      "sha256": "f99acdd7d6521a5e0f107ea03b5f3a7c273877488e93e53bf288aac0fc1e7577",
+      "bytes": 31507,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/PRESERVATION.json"
+    },
+    "v3/PROPOSAL.json": {
+      "sha256": "36776134367462f9970b04bae0c6be68157afc5ca2dff64baae7c026061e2f5a",
+      "bytes": 5924,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/PROPOSAL.json"
+    },
+    "v3/SOURCE-MANIFEST.json": {
+      "sha256": "f64946b8de476abf2e826ee78c449205fa6fa08bb772e32811cad96b191790f9",
+      "bytes": 1665,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/SOURCE-MANIFEST.json"
+    },
+    "v3/SOURCE-TRACKED-BEFORE.json": {
+      "sha256": "7212c115cf162e80156388b12285c7d8a1189bb9abb48cec67a685f2c8e11a9e",
+      "bytes": 71050,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/SOURCE-TRACKED-BEFORE.json"
+    },
+    "v3/SOURCE.diff": {
+      "sha256": "27863a584da96986bd2e16c96cbd1f40878ea9d495726a6905580e4d8bc87d03",
+      "bytes": 22251,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/SOURCE.diff"
+    },
+    "v3/UNTRACKED-PRESERVED-METADATA.json": {
+      "sha256": "ed50753ce24fd1e95f87ce8e2f0efc31808a7b7c6567cdbb73167575bc05247a",
+      "bytes": 643,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/UNTRACKED-PRESERVED-METADATA.json"
+    },
+    "v3/V2-CORRECTIONS.json": {
+      "sha256": "4b4486529acbf65ab270936bfde5c79d0e953e9678cd5024d1bc85a026fc5ffe",
+      "bytes": 4425,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/V2-CORRECTIONS.json"
+    },
+    "v3/V2-PARENT.json": {
+      "sha256": "a75844409ab31baee57eea599f950ffd78910535c5d5b1acc9697da9439c2e25",
+      "bytes": 642,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/V2-PARENT.json"
+    },
+    "v3/V2-V3-SOURCE.diff": {
+      "sha256": "59f6ea01241d84caf6ba9b5bc5a5f98da2b5644c6148f78b39e0bc09f4c627b9",
+      "bytes": 542,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/V2-V3-SOURCE.diff"
+    },
+    "v3/V3-GOFMT.json": {
+      "sha256": "e412d34085dd8b08a6d2b57a009f1fe2fc22850e6994301d388371cb56924d47",
+      "bytes": 755,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/V3-GOFMT.json"
+    },
+    "v3/V3-PARENT.json": {
+      "sha256": "e62135dfdc332f1a1ed8559020d796f5c0a82249333db914a8107078fb077441",
+      "bytes": 1298,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/V3-PARENT.json"
+    },
+    "v3/before/.github/scripts/native-common-qualify.py": {
+      "sha256": "351f6cc2f0f37caa81ff9b322f1256815bb180057e6e85f66ca1f50980edc797",
+      "bytes": 62244,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/before/.github/scripts/native-common-qualify.py"
+    },
+    "v3/before/.github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "92b3ce0610dfa32dca543c6d216a0c9123970fcfb08518da362a5968301b3bba",
+      "bytes": 129847,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/before/.github/scripts/test_native_oci_common_qualification.py"
+    },
+    "v3/before/lego/operator/internal/build/nativebases_test.go": {
+      "sha256": "15c8e5283b7b814a0e1986101c82bdb697aa6ddb3f8845f9b4f2065138455491",
+      "bytes": 22731,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/before/lego/operator/internal/build/nativebases_test.go"
+    },
+    "v3/before/lego/operator/internal/build/nativecommon.go": {
+      "sha256": "a36780e1c2ff677df49a765c2b82722173936e6df28c1251eb5055ad673357dd",
+      "bytes": 8351,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/before/lego/operator/internal/build/nativecommon.go"
+    },
+    "v3/before/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "e077bcd5d600918d4c0bea36c4f214f7bd6e162cf6ff26340f67fa2ef2a4a895",
+      "bytes": 15963,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/before/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go"
+    },
+    "v3/before/lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "d18d87e77ef609a8ecbb936aaf84273ff3431bd0035afcff72d5903d64e0ba2a",
+      "bytes": 12829,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/before/lego/operator/internal/build/nativecommon_node_qualification_test.go"
+    },
+    "v3/before/lego/operator/internal/build/nativecommon_test.go": {
+      "sha256": "260286b4ff60c968f8253956fba3eb18623f0e018ae7a874208bde6230157ac4",
+      "bytes": 17816,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/before/lego/operator/internal/build/nativecommon_test.go"
+    },
+    "v3/overlay-old-runtime.json": {
+      "sha256": "1a9f994fe0ac09b91949819462af4d0253ac773c3ba6edcb1b96d03d9a362490",
+      "bytes": 1164,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/overlay-old-runtime.json"
+    },
+    "v3/overlay.json": {
+      "sha256": "7412fb7cd09706f0941281da41e13e58809abc6ebf90e648b39ebc314ee29852",
+      "bytes": 1164,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/overlay.json"
+    },
+    "v3/preformat/COMMANDS.json": {
+      "sha256": "44b77c1b9c4e02acf74787f39adb2494ba1f9eb00c955c488e6b0ca51727fad3",
+      "bytes": 3216,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/preformat/COMMANDS.json"
+    },
+    "v3/preformat/SOURCE-MANIFEST.json": {
+      "sha256": "5a8cc1b8f9e2f1ea784b205b3ec06e5a2955e4bdb81735db3547b461ee1632c7",
+      "bytes": 1665,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/preformat/SOURCE-MANIFEST.json"
+    },
+    "v3/preformat/SOURCE.diff": {
+      "sha256": "75c36ae4245cfcba999021c5d1d8fef8ab0fac1b24d9a4ea2beb39412204fe8b",
+      "bytes": 21286,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/preformat/SOURCE.diff"
+    },
+    "v3/preformat/lego/operator/internal/build/nativebases_test.go": {
+      "sha256": "3f03c8840022379631012778db045dbfbb2753033e48787ce81f26ddf5a46899",
+      "bytes": 26789,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/preformat/lego/operator/internal/build/nativebases_test.go"
+    },
+    "v3/preformat/lego/operator/internal/build/nativecommon.go": {
+      "sha256": "6c5f2bb8fb846001b7879345d2ebc09fef4f4db59b103b8fddf2d856a379e1ea",
+      "bytes": 8642,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/preformat/lego/operator/internal/build/nativecommon.go"
+    },
+    "v3/preformat/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "e5088d30a6ee67ecd3eb546e40104c6f5f5d7e00e1c4f3072ee9fc258ce15a17",
+      "bytes": 19121,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/preformat/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go"
+    },
+    "v3/preformat/lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "cd1b18f991948903d4796ab8218342c9b3a5ae7a23a89154f845dc1f8e324295",
+      "bytes": 13141,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/preformat/lego/operator/internal/build/nativecommon_node_qualification_test.go"
+    },
+    "v3/preformat/lego/operator/internal/build/nativecommon_test.go": {
+      "sha256": "6f6772956f3d4ddc8689b2a420a1ce12bb88d91140db76887fadbf24ed7dd830",
+      "bytes": 23168,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/preformat/lego/operator/internal/build/nativecommon_test.go"
+    },
+    "v3/preformat/overlay-old-runtime.json": {
+      "sha256": "a67439db9037602e65ecec96668035688ed6e67c0ed335087be3a718812bd604",
+      "bytes": 1159,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/preformat/overlay-old-runtime.json"
+    },
+    "v3/preformat/overlay.json": {
+      "sha256": "c9581b2638a1522c14371d10f81d47f249530678446aa6bf6e852a41997fd0ae",
+      "bytes": 1159,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/preformat/overlay.json"
+    },
+    "v3/preformat/run_checks.py": {
+      "sha256": "8962fc6d2d87a54fd6fe52302af8531a63c64d01989681d7e33dac77e7c6c84a",
+      "bytes": 14868,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/preformat/run_checks.py"
+    },
+    "v3/run_checks.py": {
+      "sha256": "9154ecabfc347bd30131da065a297b8c11c4dffd3082dab052f91ca6aab8a673",
+      "bytes": 15158,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/run_checks.py"
+    },
+    "v3/source/.github/scripts/native-common-qualify.py": {
+      "sha256": "f38bf997fcf5e1184c3570034518d4042de0330af73eaed5ba1c3f5418ea06af",
+      "bytes": 62308,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/source/.github/scripts/native-common-qualify.py"
+    },
+    "v3/source/.github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "a9b807f1ee5ecf8b859c52486efad33210774beff3e3d16e3d3c482cf44bc987",
+      "bytes": 129966,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/source/.github/scripts/test_native_oci_common_qualification.py"
+    },
+    "v3/source/lego/operator/internal/build/nativebases_test.go": {
+      "sha256": "3f03c8840022379631012778db045dbfbb2753033e48787ce81f26ddf5a46899",
+      "bytes": 26789,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/source/lego/operator/internal/build/nativebases_test.go"
+    },
+    "v3/source/lego/operator/internal/build/nativecommon.go": {
+      "sha256": "6c5f2bb8fb846001b7879345d2ebc09fef4f4db59b103b8fddf2d856a379e1ea",
+      "bytes": 8642,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/source/lego/operator/internal/build/nativecommon.go"
+    },
+    "v3/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "e5088d30a6ee67ecd3eb546e40104c6f5f5d7e00e1c4f3072ee9fc258ce15a17",
+      "bytes": 19121,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go"
+    },
+    "v3/source/lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "351b4002e34a946966a494a2aec9a768f67743ecd7caa69d1084ff0d826272c6",
+      "bytes": 13161,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/source/lego/operator/internal/build/nativecommon_node_qualification_test.go"
+    },
+    "v3/source/lego/operator/internal/build/nativecommon_test.go": {
+      "sha256": "9c215e704511eb5737d420e68006990833aff83c5406467f174e035c3115f822",
+      "bytes": 23236,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/source/lego/operator/internal/build/nativecommon_test.go"
+    },
+    "v3/MANIFEST.json": {
+      "sha256": "1eb21b0d8b9d77483d5a24468073069037b6eb15860cb95784ce2a02a06de0f5",
+      "bytes": 10517,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/MANIFEST.json"
+    },
+    "v3/RECEIPT.json": {
+      "sha256": "38d737db086c193fc3ab289abf2d873324d51abc7c626b829a0a94904d17c248",
+      "bytes": 1006,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/RECEIPT.json"
+    },
+    "v3/ROOT-SOURCE-CHECKS-ADMISSION.json": {
+      "sha256": "0b147d8e9de5a6dc89a012293e6da48a8fc0877f2e7871fcf97e0574b752470f",
+      "bytes": 1391,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/ROOT-SOURCE-CHECKS-ADMISSION.json"
+    }
+  },
+  "normalization": "Only archive-envelope uid/gid/names/mtime are canonicalized. Every regular member retains exact source bytes, length and permissions; no links/directories/executable invocation."
+}

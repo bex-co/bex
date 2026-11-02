@@ -1,0 +1,29 @@
+{
+  "status": "ACTUAL local archive roundtrip only; no test/image/runtime/network activity",
+  "archives": {
+    "source-history": {
+      "archive_sha256": "277bf3fe498fa178fc1d6339bed23c4c9b1f11b5eb5b2542a3b7bb1a0cad1a19",
+      "archive_bytes": 577673,
+      "regular_members": 128,
+      "original_member_bytes": 2547132,
+      "all_members_SHA_size_permissions_bijection_verified": true
+    },
+    "check-history": {
+      "archive_sha256": "0be7b038601ad3076ed481fda44c95e39fc9001850b1b0b8cb59ae7ee6c3a4e7",
+      "archive_bytes": 80970,
+      "regular_members": 53,
+      "original_member_bytes": 389744,
+      "all_members_SHA_size_permissions_bijection_verified": true
+    },
+    "dated-primary-and-design": {
+      "archive_sha256": "ff6657c56ecffbd7d903a04e61a02df3ddf046ab7985669382813f547b4090d2",
+      "archive_bytes": 141536,
+      "regular_members": 28,
+      "original_member_bytes": 594216,
+      "all_members_SHA_size_permissions_bijection_verified": true
+    }
+  },
+  "input_member_bytes": 3531092,
+  "original_frozen_packets_and_execution_outputs_unchanged": true,
+  "source_bodies_omitted": "301-file source views, SDK/ELF binaries, ZIPs/image layers and full dated224-member runtime body are not duplicated. Hash inventories and selected small recipe/custody/admission records are retained."
+}

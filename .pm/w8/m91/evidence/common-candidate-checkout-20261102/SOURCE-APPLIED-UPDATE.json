@@ -1,0 +1,84 @@
+{
+  "at": "2026-11-02T12:56:00.423503+00:00",
+  "status": "READ-ONLY binding: Root applied exact8, then accepted one-line slices.Clone cleanup; final merged Go passed",
+  "base_commit": "30b1f4dce5e25644c996a07fce84bb8338f1953f",
+  "final_source_manifest_sha256": "2013fe499041a7f54c1cfb7ec8bae895833b5473f20b101e20c5cb648a5356bf",
+  "actual_repository8": {
+    ".github/scripts/native-common-qualify.py": {
+      "sha256": "ce5fb6d2fe6a4a3f203823a48f24785a93685c027f920c6f648d4fdb13f5d163",
+      "bytes": 67266,
+      "permissions": 420,
+      "type": "regular"
+    },
+    ".github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "3b6b7c3e29e4f8f614a8f11e612adb018f06d81ec501b3da0e34baf97cf1bac2",
+      "bytes": 140399,
+      "permissions": 420,
+      "type": "regular"
+    },
+    ".github/workflows/native-common-image.yml": {
+      "sha256": "b13e0f028728f6f2dbe1270befaebe6b6114764e5edc43dcf22821bbc2dc6d9c",
+      "bytes": 22377,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativebases_test.go": {
+      "sha256": "b8eb3237a46708a25192b42abf03326c89a383c8ef417a3ff88d8f69324cd5e0",
+      "bytes": 26773,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon.go": {
+      "sha256": "6c5f2bb8fb846001b7879345d2ebc09fef4f4db59b103b8fddf2d856a379e1ea",
+      "bytes": 8642,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "e5088d30a6ee67ecd3eb546e40104c6f5f5d7e00e1c4f3072ee9fc258ce15a17",
+      "bytes": 19121,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "351b4002e34a946966a494a2aec9a768f67743ecd7caa69d1084ff0d826272c6",
+      "bytes": 13161,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "lego/operator/internal/build/nativecommon_test.go": {
+      "sha256": "9c215e704511eb5737d420e68006990833aff83c5406467f174e035c3115f822",
+      "bytes": 23236,
+      "permissions": 420,
+      "type": "regular"
+    }
+  },
+  "Root_applied_receipt": {
+    "path": "/private/tmp/bex-w8-node-checkout-applied-20261102-36buv0h2/APPLIED.json",
+    "sha256": "4a6b4f39a37c60a3f56d25286e966d8cd61769c1755e83142d1e00fc71b268aa",
+    "bytes": 80373,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "one_line_cleanup": {
+    "sha256": "c40739240ae572c3ae431e7fdbfbc3aff28fec1100b771f1d863636d695587a1",
+    "bytes": 646,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "Root_final_source_admission": {
+    "sha256": "7265d20d1e4a6f4312463cbeab63d512c3f0b898c3c7352c48fc9f4c6a85bf86",
+    "bytes": 1236,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "actual_merged_Go_result": {
+    "sha256": "73e71dd5fd844ba78571249df02f816cf3eb90fbf52b61869ae95f48cb27aa27",
+    "bytes": 1120,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "foreign_sum_sha256": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6",
+  "subagent_repository_mutations": false,
+  "actual_runtime_or_CI_or_adoption_claim": false
+}

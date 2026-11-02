@@ -1,0 +1,43 @@
+{
+  "status": "PRIVATE COMPACT PUBLICATION CANDIDATE; applied source and actual local checks only",
+  "created_at": "2026-11-02T12:59:16.246359+00:00",
+  "target": ".pm/w8/m91/evidence/common-candidate-checkout-20261102",
+  "final_source_manifest_sha256": "2013fe499041a7f54c1cfb7ec8bae895833b5473f20b101e20c5cb648a5356bf",
+  "source_applied_update_sha256": "6e8a0c1141be6034395412c8802083bf278c43344298f04a819a555b31f68ede",
+  "host_checks_sha256": "75f81e1ab877707c5bc468366dbef2b0320a6d5c71a9c869fcf0a2638c0c4a32",
+  "archives": {
+    "merged-source-and-reviews": {
+      "sha256": "344719501dba540286c7a9d13c11e4155c609319f6fb1df62ae87f64b3dbec74",
+      "archive_bytes": 118513,
+      "regular_members": 18,
+      "original_member_bytes": 463827,
+      "SHA_size_mode_bijection_stream_roundtrip": true
+    },
+    "checkout-host-history": {
+      "sha256": "408a894978b3660383d389afb59c29af4498a7a2c6c132b881f8c0a547b30b52",
+      "archive_bytes": 191526,
+      "regular_members": 50,
+      "original_member_bytes": 628309,
+      "SHA_size_mode_bijection_stream_roundtrip": true
+    },
+    "merged-go-history": {
+      "sha256": "1e819b77f79e3ea841cd7ca99cb523900fbaec476cf0de396efa026a5d1cb646",
+      "archive_bytes": 175500,
+      "regular_members": 30,
+      "original_member_bytes": 543229,
+      "SHA_size_mode_bijection_stream_roundtrip": true
+    }
+  },
+  "archive_regular_members": 98,
+  "original_member_bytes": 1635365,
+  "ROUNDTRIP_sha256": "518eb9416938bc71e9b852b91c3c3fcc65017816eee83db73b924659dabbd8e4",
+  "no_duplicate_640_file_views_or_standalone_V3_proof_archives": true,
+  "repository_writes_or_new_test_network_resource_actions_by_packager": false,
+  "scope_limits": [
+    "No new all-green full153 run",
+    "No final merged scoped-lint rerun",
+    "No fresh actual AMD utility baseline",
+    "No missing actual companion, production adoption or hosted acceptance"
+  ],
+  "original_failures_and_root_admissions_lossless": true
+}

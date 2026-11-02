@@ -1,0 +1,46 @@
+{
+  "status": "NEW_READONLY_AUDITOR_SOURCE_FOR_ROOT_REVIEW_NOT_EXECUTED",
+  "files": [
+    {
+      "path": "audit_native_init.py",
+      "bytes": 14156,
+      "sha256": "3712fa928ddb9182e3326c755dc23d837d5621e5add92655e92ad24e2794535e"
+    },
+    {
+      "path": "test_audit_native_init.py",
+      "bytes": 3041,
+      "sha256": "779751cafb0a1796600d6dba8463bdc95f5fc010c421cc092ebaf798db356859"
+    }
+  ],
+  "original_source_oracle_anchors": [
+    {
+      "path": "lego/operator/internal/build/nativequalification_init_test.go",
+      "bytes": 38306,
+      "sha256": "5540c1665b514cb2bf92c9ad47c8d48a6c174edadd486dad24115e0cb764ca86"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-common-init/identity.js",
+      "bytes": 5842,
+      "sha256": "b112a923a58f6a390f212e66f64eccbb004567448ef1f654081f167d6162cbd9"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-common-init/build.js",
+      "bytes": 315,
+      "sha256": "b3c6caa49c24cbdfafa20cbd4b86aa43ce3a2fee396668123d2191867c228d13"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-common-init/capture-env.js",
+      "bytes": 367,
+      "sha256": "d9736618f1f7016707feedeb96bccdd75634a7389af7c299a2a9d3e3573d214e"
+    },
+    {
+      "path": "lego/operator/internal/build/testdata/native-common-init/server.js",
+      "bytes": 1550,
+      "sha256": "4256bcc3baa62ac6bc8545a2b90daf11363263f2db63d58977dda4318d9e6cc3"
+    }
+  ],
+  "artifact_root": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/amd64/extracted/artifact",
+  "audit_scope": "All79originalfiles+manifest; exactcapturedsource301; actualCI/run/source/current0941/candidate/provenance; selectedNode24+primaryENV/stagedELF/config; all4oncecreates/rawJSvsGo carriers/argv+RXguestmapping/drain/events/counts/wrapperstatus/exactCIDabsence/declaredbuilder-authcleanup. No originalprogram orbinary executed.",
+  "controls_source_only": "Three methods:4actualproof positives;13identity/drain/typed/RXmapping mutations; wrapper/directPATH matrix. No tests/imports run yet.",
+  "limits": "Image targetAMD executedunderRosetta onARMrunner; HTTPstatus200/deadlines are originalsource-bound Go gates with actualsubtestPASS, notretainedrawHTTPwire/timertrace. No production/hosted/family adoption."
+}

@@ -1,0 +1,379 @@
+{
+  "archive": "check-history.tar.gz",
+  "archive_sha256": "0be7b038601ad3076ed481fda44c95e39fc9001850b1b0b8cb59ae7ee6c3a4e7",
+  "archive_bytes": 80970,
+  "members": {
+    "v2/CHECK-RESULT.json": {
+      "sha256": "1c0e57ddf5d99e6ad6f69b56b437748d55562058854e87d4f9c72cd985d9d740",
+      "bytes": 2911,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/CHECK-RESULT.json"
+    },
+    "v2/CHECK-SCOPE.json": {
+      "sha256": "c99d8751b7e440e43efb7cc5bee2f3d274a5cf7838e9278baca126166d22954b",
+      "bytes": 87255,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/CHECK-SCOPE.json"
+    },
+    "v2/CHECK-SOURCE-AFTER.json": {
+      "sha256": "0c09c21c99f595067168c36cd95b69fb7a5b53e320afb272b8357c97533882fb",
+      "bytes": 79124,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/CHECK-SOURCE-AFTER.json"
+    },
+    "v2/go-version-PROCESS.json": {
+      "sha256": "dbacec64632f30ec22c71107088cfa61de8fb7255f80b8c4bbfad6528ff9c5c1",
+      "bytes": 247,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/go-version-PROCESS.json"
+    },
+    "v2/go-version-RESULT.json": {
+      "sha256": "7fb523eeebcc7cd7e0237241f5af896ecf157bf8525626fa7dcb5c7374ea44a3",
+      "bytes": 460,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/go-version-RESULT.json"
+    },
+    "v2/go-version.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/go-version.stderr"
+    },
+    "v2/go-version.stdout": {
+      "sha256": "36849436282e424cf1142184057f25a7bd6845d03b16fedbb1071bc6722524c4",
+      "bytes": 33,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/go-version.stdout"
+    },
+    "v2/lint-version-PROCESS.json": {
+      "sha256": "6e9950e4c2f54d11d9a4ec1c41ab2ca794e01857c5aa9e89b40cf1585efb2589",
+      "bytes": 262,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/lint-version-PROCESS.json"
+    },
+    "v2/lint-version-RESULT.json": {
+      "sha256": "f29500f9fd7a7135b33474e1a50c9713b3cffde1b68493f3f7be6bf1a860ffa6",
+      "bytes": 479,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/lint-version-RESULT.json"
+    },
+    "v2/lint-version.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/lint-version.stderr"
+    },
+    "v2/lint-version.stdout": {
+      "sha256": "be4b4ec451481410702351739d2d424cc995d5a7a31bad3023003b4b44e09833",
+      "bytes": 156,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/lint-version.stdout"
+    },
+    "v2/new-focused-PROCESS.json": {
+      "sha256": "46542af1176e554aa8ec69981d8883051454f1a4a44436e5cfe3bf2bdd020484",
+      "bytes": 422,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/new-focused-PROCESS.json"
+    },
+    "v2/new-focused-RESULT.json": {
+      "sha256": "05052464f109f1dedaaf2d2916233aa401a6084712222ea5b39299b4b53027a6",
+      "bytes": 637,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/new-focused-RESULT.json"
+    },
+    "v2/new-focused.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/new-focused.stderr"
+    },
+    "v2/new-focused.stdout": {
+      "sha256": "7ef2cb4a2b440de83755181cf3d558fa41c1faabdce48d079eb1239478df55f6",
+      "bytes": 9208,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/new-focused.stdout"
+    },
+    "v2/old-runtime-red-PROCESS.json": {
+      "sha256": "529ad4ed6e997b882cdeb9d559c18462e2a585c0e8962dee222eeac3f3a74772",
+      "bytes": 390,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/old-runtime-red-PROCESS.json"
+    },
+    "v2/old-runtime-red-RESULT.json": {
+      "sha256": "d86b32d3a5206c5a1afd666001e1c675f77d9990eb0d73e595123f7b10859127",
+      "bytes": 609,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/old-runtime-red-RESULT.json"
+    },
+    "v2/old-runtime-red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/old-runtime-red.stderr"
+    },
+    "v2/old-runtime-red.stdout": {
+      "sha256": "fb67f6f5acb499505864ba7935b712cbe277774f841f16059332ac3a143577f8",
+      "bytes": 5430,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/old-runtime-red.stdout"
+    },
+    "v2/EXECUTION-MANIFEST.json": {
+      "sha256": "83c8e8ec1cd3a6689f7f4e8a0b479c125c63960062bc0e63b799cc6dbc2b75d3",
+      "bytes": 2953,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v2-source-20261102-tczs1l2m/EXECUTION-MANIFEST.json"
+    },
+    "v3/CHECK-RESULT.json": {
+      "sha256": "265867c23b9679a5688615688be9e4c0210da830cfe86b32b981b44b41d189d6",
+      "bytes": 5379,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/CHECK-RESULT.json"
+    },
+    "v3/CHECK-SCOPE.json": {
+      "sha256": "4150d0be33fe1c258865dc8c43c89ccbd5da577d5fef45a9d11d1c296b8a2b16",
+      "bytes": 87256,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/CHECK-SCOPE.json"
+    },
+    "v3/CHECK-SOURCE-AFTER.json": {
+      "sha256": "ade883ed54bcab976e59f9093b547663e453952697df6298d696712a5e98d20a",
+      "bytes": 79124,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/CHECK-SOURCE-AFTER.json"
+    },
+    "v3/full-buildpkg-PROCESS.json": {
+      "sha256": "e861b32f111a9f14951ba5dbc1437fa997bff28fe53e834376956c1f132ce5fa",
+      "bytes": 303,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/full-buildpkg-PROCESS.json"
+    },
+    "v3/full-buildpkg-RESULT.json": {
+      "sha256": "4f56af5a92114d84fd172d8693af5c4ab1ce40ab7f3fcdc69f89298e13428a74",
+      "bytes": 520,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/full-buildpkg-RESULT.json"
+    },
+    "v3/full-buildpkg.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/full-buildpkg.stderr"
+    },
+    "v3/full-buildpkg.stdout": {
+      "sha256": "1a6973f0319d59351775f53a9f75598831927c3b64313cf8e8520abc359772df",
+      "bytes": 63,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/full-buildpkg.stdout"
+    },
+    "v3/go-version-PROCESS.json": {
+      "sha256": "d4a8b098d28148f3f49f666e62b7b096693bed4f4e575d9138e0305e3a5f2727",
+      "bytes": 247,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/go-version-PROCESS.json"
+    },
+    "v3/go-version-RESULT.json": {
+      "sha256": "89e1001ae766b8d4ec01b3d1004e61aa326c2bd1215fc81efa11c3dddd4dd21c",
+      "bytes": 462,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/go-version-RESULT.json"
+    },
+    "v3/go-version.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/go-version.stderr"
+    },
+    "v3/go-version.stdout": {
+      "sha256": "36849436282e424cf1142184057f25a7bd6845d03b16fedbb1071bc6722524c4",
+      "bytes": 33,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/go-version.stdout"
+    },
+    "v3/lint-version-PROCESS.json": {
+      "sha256": "fd3940cce637b5174f8f44e76909d757a12fc7322b8105e53e177f530100dc53",
+      "bytes": 262,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/lint-version-PROCESS.json"
+    },
+    "v3/lint-version-RESULT.json": {
+      "sha256": "ebf208ab300d856100bd92bb07812b36fd6c36764a4271072b044aa2ead34263",
+      "bytes": 479,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/lint-version-RESULT.json"
+    },
+    "v3/lint-version.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/lint-version.stderr"
+    },
+    "v3/lint-version.stdout": {
+      "sha256": "be4b4ec451481410702351739d2d424cc995d5a7a31bad3023003b4b44e09833",
+      "bytes": 156,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/lint-version.stdout"
+    },
+    "v3/new-focused-PROCESS.json": {
+      "sha256": "fb8c1aafc8050d46650dca79ca63bb507ec90216bbbd2b35720d6173be648358",
+      "bytes": 422,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/new-focused-PROCESS.json"
+    },
+    "v3/new-focused-RESULT.json": {
+      "sha256": "db23f3616a7df302316d1ae625a3b38feb9de7955488c8adde9ad4497b09c65f",
+      "bytes": 635,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/new-focused-RESULT.json"
+    },
+    "v3/new-focused.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/new-focused.stderr"
+    },
+    "v3/new-focused.stdout": {
+      "sha256": "2cd61fecbba95276bbfd951dd1bec2030cd9f1798d5742d1cd2bc585d372d4ef",
+      "bytes": 63,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/new-focused.stdout"
+    },
+    "v3/old-runtime-red-PROCESS.json": {
+      "sha256": "fa1a4b4f4f747eb07884ed752b2fc262c5979f70fd51474110e4006591f98222",
+      "bytes": 390,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/old-runtime-red-PROCESS.json"
+    },
+    "v3/old-runtime-red-RESULT.json": {
+      "sha256": "72299c856e1ed09b691f9536f3ff056246bed8236740f58be7ee15de9ea2b194",
+      "bytes": 608,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/old-runtime-red-RESULT.json"
+    },
+    "v3/old-runtime-red.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/old-runtime-red.stderr"
+    },
+    "v3/old-runtime-red.stdout": {
+      "sha256": "d1e00d93aef966eb65af616605b7c2f1a0a6882f2a7911e2be908e43402bbaf0",
+      "bytes": 5430,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/old-runtime-red.stdout"
+    },
+    "v3/routing-host-PROCESS.json": {
+      "sha256": "41958e11bd8a710dfa15d860fd92173a46b9adf9423b5ffd776f8b3cedc4e6dd",
+      "bytes": 951,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/routing-host-PROCESS.json"
+    },
+    "v3/routing-host-RESULT.json": {
+      "sha256": "59dd540184e7eadf1464336165720c604307242f295e459af0be9b14d92e0894",
+      "bytes": 1167,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/routing-host-RESULT.json"
+    },
+    "v3/routing-host.stderr": {
+      "sha256": "90bdb755d57c575f46f17b3fbf6d536a9e179485de534b5daac0ed57c8b9f94b",
+      "bytes": 1153,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/routing-host.stderr"
+    },
+    "v3/routing-host.stdout": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/routing-host.stdout"
+    },
+    "v3/scoped-lint-PROCESS.json": {
+      "sha256": "425c5f4b1d69bf3d5fc1819d9496e18dbf40c81ea9f5f9a15c31b43555c824d4",
+      "bytes": 312,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/scoped-lint-PROCESS.json"
+    },
+    "v3/scoped-lint-RESULT.json": {
+      "sha256": "864f9e5f4637b6c08c05a91c50487488cb3a065069ae5907e3b1e6334c6f04aa",
+      "bytes": 527,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/scoped-lint-RESULT.json"
+    },
+    "v3/scoped-lint.stderr": {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "bytes": 0,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/scoped-lint.stderr"
+    },
+    "v3/scoped-lint.stdout": {
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+      "bytes": 10,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/scoped-lint.stdout"
+    },
+    "v3/EXECUTION-MANIFEST.json": {
+      "sha256": "dbd96958894447e10cc4b7dd89df7514f4460fa798c0a78b14c7ab1f8e2e7168",
+      "bytes": 5409,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/EXECUTION-MANIFEST.json"
+    },
+    "v3/EXECUTION-REVIEW.json": {
+      "sha256": "7f0a3dff84c22bd47f12f20e1367481553f4d7ea46936da143151d339a69d73f",
+      "bytes": 7807,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-donor-policy-v3-source-20261102-qabhvq88/EXECUTION-REVIEW.json"
+    }
+  },
+  "normalization": "Only archive-envelope uid/gid/names/mtime are canonicalized. Every regular member retains exact source bytes, length and permissions; no links/directories/executable invocation."
+}

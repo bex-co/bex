@@ -1,0 +1,237 @@
+{
+  "at": "2026-11-02T12:41:16.567694+00:00",
+  "outcome": "ACTUAL_NATIVE_INIT_RUN87_AMD_TARGET_ARTIFACT_CONTENT_AUDIT_PASS_ROOT_ADMISSION_PENDING",
+  "source": "30b1f4dce5e25644c996a07fce84bb8338f1953f",
+  "run_id": 41439172465,
+  "run_attempt": 1,
+  "job_id": 125260213820,
+  "profile": "native-init",
+  "case": "all-launches",
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "candidate_sha256": "cc39f78a8b9f128babb362e0078007380a1b44b7799394d93b06e5fc52ab7036",
+  "producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "artifact_id": 13140138422,
+  "original_ZIP": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/amd64/original.zip",
+    "bytes": 875486,
+    "sha256": "9ef790cdb4d8c1391cc175e91956acc9ce8042dab3469924453f1da8339417de"
+  },
+  "original_artifact_manifest": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/amd64/extracted/artifact/MANIFEST.json",
+    "bytes": 14875,
+    "sha256": "e11a4ca058ec82afe6e6b7fc0f069092360b7ecc8e8b6a3c7dfd3f9c3bd4ee78"
+  },
+  "original_regular_members": 79,
+  "original_manifest_rows": 78,
+  "original_declared_bytes": 2047632,
+  "source_files": 301,
+  "image_config": "sha256:6ba61d236f08896cdbbd5cbe0156623df9f650dc0347d29780e2482a810e4320",
+  "staged_init_sha256": "6adc4e08abc09bb47eb0a0463e68403af13aa66eacbad029304ed8c28639fd47",
+  "Node_exact": "24.22.1",
+  "launches": [
+    {
+      "launch": "npm",
+      "node": "24.22.1",
+      "status": 143,
+      "PID1": "/run/rosetta/rosetta",
+      "guest_ELF_machine": 62,
+      "drain_events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "own_CID_absent": true,
+      "localhost_port": 32768,
+      "port_carriers_retained_unmodified": {
+        "raw_running": {
+          "10000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "32768"
+            }
+          ]
+        },
+        "raw_stopped": {},
+        "Go_receipt": {
+          "10000/tcp": [
+            {
+              "HostIP": "127.0.0.1",
+              "HostPort": "32768"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "launch": "yarn",
+      "node": "24.22.1",
+      "status": 1,
+      "PID1": "/run/rosetta/rosetta",
+      "guest_ELF_machine": 62,
+      "drain_events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "own_CID_absent": true,
+      "localhost_port": 32769,
+      "port_carriers_retained_unmodified": {
+        "raw_running": {
+          "10000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "32769"
+            }
+          ]
+        },
+        "raw_stopped": {},
+        "Go_receipt": {
+          "10000/tcp": [
+            {
+              "HostIP": "127.0.0.1",
+              "HostPort": "32769"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "launch": "pnpm",
+      "node": "24.22.1",
+      "status": 143,
+      "PID1": "/run/rosetta/rosetta",
+      "guest_ELF_machine": 62,
+      "drain_events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "own_CID_absent": true,
+      "localhost_port": 32770,
+      "port_carriers_retained_unmodified": {
+        "raw_running": {
+          "10000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "32770"
+            }
+          ]
+        },
+        "raw_stopped": {},
+        "Go_receipt": {
+          "10000/tcp": [
+            {
+              "HostIP": "127.0.0.1",
+              "HostPort": "32770"
+            }
+          ]
+        }
+      }
+    },
+    {
+      "launch": "direct",
+      "node": "24.22.1",
+      "status": 0,
+      "PID1": "/run/rosetta/rosetta",
+      "guest_ELF_machine": 62,
+      "drain_events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "own_CID_absent": true,
+      "localhost_port": 32771,
+      "port_carriers_retained_unmodified": {
+        "raw_running": {
+          "10000/tcp": [
+            {
+              "HostIp": "127.0.0.1",
+              "HostPort": "32771"
+            }
+          ]
+        },
+        "raw_stopped": {},
+        "Go_receipt": {
+          "10000/tcp": [
+            {
+              "HostIP": "127.0.0.1",
+              "HostPort": "32771"
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "all_original_manifest_members_full_SHA_size_verified": true,
+  "unchanged_V2_ZIP_CRC_bijection_path_type_collision_controls_passed": true,
+  "connector_invocations": 1,
+  "verified_TLS_streams": 1,
+  "signed_URL_on_disk_or_output": false,
+  "actual_download": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/amd64/download-guard.json",
+    "bytes": 407,
+    "sha256": "eca3bbd53c66ea3ccb31ac91349c7b9091942c569e0a9b8a88db3064f587f9b8"
+  },
+  "actual_extraction": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/amd64/extract-guard.json",
+    "bytes": 656,
+    "sha256": "b2b4356c0a01bc4326627f26b38c8d653f2e47f4fd000db7bad83e23739eb592"
+  },
+  "five_pure_controls": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit-v2-execution/test_audit_native_init_v2.py.stderr",
+    "bytes": 103,
+    "sha256": "baf49b59538192f3e136ca0404cac516ecb8dd2fe5ba1416604056f3080fa49c"
+  },
+  "full_readonly_audit": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit-v2-execution/audit_native_init_v2.py.stdout",
+    "bytes": 3886,
+    "sha256": "0ac3e82a0285e0857cf86de61a364a702e3ff30d089dfbff99a3c7d5069cc7d5"
+  },
+  "execution": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit-v2-execution/RESULT.json",
+    "bytes": 1985,
+    "sha256": "fbbb2441e69e82fa18fbf9df330a9583731312989713fc97b89d2fbcae3b8a95"
+  },
+  "minimum_free_all_stages": 25153368064,
+  "all_owned_localclient_groups_absent": true,
+  "new_target_runtime_CI_or_repository_actions": 0,
+  "history": {
+    "old_native_init_AMD9bc_failure": "Preserved original committed FINDING descriptor in NATIVE-INIT-INTAKE-PLAN.json; not relabeled.",
+    "V1_three_controls_PASS": {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit-execution/test_audit_native_init.py.stderr",
+      "bytes": 101,
+      "sha256": "edb4e2159c923ea45a32656078835cdf531c3d7b414c670dd786978875cb0678"
+    },
+    "V1_fullaudit_FAILED_preserved": {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit-execution/RESULT.json",
+      "bytes": 2028,
+      "sha256": "fb39bbde4ddf8998857c8534d82b851f882fd46575688aaadd64fbe5a5ed6820"
+    },
+    "V1_traceback": {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit-execution/audit_native_init.py.stderr",
+      "bytes": 1436,
+      "sha256": "c045fa8016de866167692c49f9f981c4f174191f4cbb2400dfa643b208070f74"
+    },
+    "V1_source": {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit_native_init.py",
+      "bytes": 14156,
+      "sha256": "3712fa928ddb9182e3326c755dc23d837d5621e5add92655e92ad24e2794535e"
+    },
+    "V2_diff": {
+      "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/AUDITOR-V1-TO-V2.diff",
+      "bytes": 6701,
+      "sha256": "3850baaf65f2c28c851dc9a6c79c70a4c710ac0dc7241eeeb30b6e331ef39221"
+    },
+    "reason": "V1 added full stopped-container dictionary equality beyond original stopped scalar/owner gate; Go reused Ports map differs from raw stopped {}. Root additionally found Docker rawHostIp vs GoHostIP spelling before rerun. V2 corrects only read-only representation handling; all original predicates/artifact bytes unchanged."
+  },
+  "limits": "AMD guest target executed on ARM CI runner with retained Rosetta mapping. HTTP200/4s/20s/2m predicates are source-bound original Go gates; separate raw HTTP headers/timer trace not retained. Original artifact transport does not establish local extracted executable mode.",
+  "approval_boundary": "Content review of this datedsource/AMDguesttarget case only; no production/common pin/original28hosted/allfamily/actualnativeAMDhost acceptance inferred."
+}

@@ -1,0 +1,115 @@
+{
+  "status": "ACTUAL source/host checks; no synthetic all-green full153 run",
+  "first153": {
+    "source_manifest": {
+      "sha256": "4d5763122d7a4908651ab1d0c847b7e8a18d6df9fa60aa9993b4869e398bea55",
+      "bytes": 1505,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "result": {
+      "sha256": "6a39128a743d2376909950d048d7a0b2c07b67521dbab807589bc9f77ca638a2",
+      "bytes": 1816,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "actual_summary": "153 run,152 pass+1 stale workflow-header expectation failure; new6 Git controls passed in targeted and full runs",
+    "raw_stderr": {
+      "sha256": "5f8493fa83d018fd42799d57233d8c6a2d3c3c3f4d37721ba2e0619db3b2ffb9",
+      "bytes": 1624,
+      "permissions": 420,
+      "type": "regular"
+    }
+  },
+  "repair": {
+    "source_manifest": {
+      "sha256": "b7d57a3d62fdc6f378ab3298a5c65919b599b90f2a60c1ddd8c5cc750a057072",
+      "bytes": 1505,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "only_changed_method_diff": {
+      "sha256": "a901b364d74ac77c61025439bd573660492838cb5e2895468fe009ace2b5e28a",
+      "bytes": 1130,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "result": {
+      "sha256": "2231ac849ad76be563a7582bba97529da155b4319329f2edc0ab9eb94080bd76",
+      "bytes": 3145,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "actual_scope": "Corrected one method PASS, configured actionlint PASS, Actions guard/selftests PASS; other152 methods unchanged, no whole153 rerun claimed"
+  },
+  "simplify": {
+    "scope": "Three independent perspectives on qbed8 before one-line stdlib clone reuse; no tests executed by these reviews",
+    "reuse": {
+      "sha256": "1753331f807514c4080cc66fc7560f565ca45f09d05898d4d5c57cf446ee254b",
+      "bytes": 3537,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "quality": {
+      "sha256": "fc1aa70e68b260776e950e242cf7e9715323c2c801acea17bb990c988709cb22",
+      "bytes": 2778,
+      "permissions": 384,
+      "type": "regular"
+    },
+    "efficiency": {
+      "sha256": "e1a312237eb8ae8992ec0367a1191f85f2a17da8c45e4e1a62e7dc34fff913ac",
+      "bytes": 3691,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "applied": "Only existing imported slices.Clone replaces manual slice copy; final Go verifies applied source"
+  },
+  "first_Go": {
+    "result": {
+      "sha256": "2b26f325fad6ecc26482407e689abc46f3fae0a3784029a5c04204c058504c5e",
+      "bytes": 1116,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "controller": {
+      "sha256": "b410a7b476d07020dc50add1f34e065854b72bc599f13d6e8767fad2af5ec2b0",
+      "bytes": 7409,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "scope": "Actual setup failure before tests: empty HOME hides default module cache; GOPROXYoff refuses lookup. Not a source failure or successful test."
+  },
+  "final_Go": {
+    "result": {
+      "sha256": "73e71dd5fd844ba78571249df02f816cf3eb90fbf52b61869ae95f48cb27aa27",
+      "bytes": 1120,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "controller": {
+      "sha256": "0ecfb15edbf99ef8482ccd8eeedac115f0d4e88b53224e6b8c62f723d96f5c8e",
+      "bytes": 7475,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "scope": "Only explicit pre-existing GOPATH/GOMODCACHE binding added. Same source8/sandbox/network-off/write-denied/cache/caps; full build package7.606s, wrapper13.391s PASS.",
+    "raw_stdout": {
+      "sha256": "fcdb4c4896d8d1add7fcdffbbb97ee1b8318fe491456ac2e0fe2bdff416a9aae",
+      "bytes": 63,
+      "permissions": 420,
+      "type": "regular"
+    },
+    "source_unchanged": true,
+    "groups": [],
+    "TMP_gone": true,
+    "minimum_free_bytes": 24908435456,
+    "peak_TMP_bytes": 44867417
+  },
+  "standalone_GoV3": "Prior focused/full/lint/5routes and counterfactual source history reused from separate common-node-donor-policy packet; not duplicated or relabeled as merged final lint.",
+  "not_claimed": [
+    "A new all153 green run",
+    "Final merged scoped-lint rerun",
+    "Current-source AMD utility CI baseline",
+    "Actual generated companion or production adoption/hosted acceptance"
+  ]
+}

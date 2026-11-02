@@ -1,0 +1,110 @@
+{
+  "Root_approval_logical_paths": [
+    "family87/ROOT-EXECUTION-APPROVAL.json",
+    "family87/ROOT-SOURCE-PREP-ADMISSION.json",
+    "baseline81/ROOT-SOURCE-PREP-ADMISSION.json"
+  ],
+  "actual_attempts": {
+    "baseline81": {
+      "PASS": true,
+      "actual_full_summary": {
+        "actual_adapter_or_native_program_called": false,
+        "errors": 0,
+        "expected_definition_count": 81,
+        "failures": 0,
+        "mode": "full",
+        "skipped": 0,
+        "successful": true,
+        "testsRun": 81
+      },
+      "all_owned_groups_absent": true,
+      "cleanup_errors": [],
+      "failure": null,
+      "handlers_restored": true,
+      "result_logical_path": "baseline81/execution/RESULT.json",
+      "scope": "Synthetic host controls only. No supplier/family/runtime/adoption/Ready/Free/auth/hosted approval.",
+      "whole_seconds": 12.231
+    },
+    "failure01": {
+      "PASS": false,
+      "actual_full_summary": "NOT RUN: pre-unittest infrastructure failure",
+      "all_owned_groups_absent": true,
+      "cleanup_errors": [],
+      "failure": "RuntimeError:actual host-control case did not meet fixed outcome:full",
+      "handlers_restored": true,
+      "result_logical_path": "failure01/execution/RESULT.json",
+      "scope": "Synthetic host controls only. No supplier/family/runtime/adoption/Ready/Free/auth/hosted approval.",
+      "whole_seconds": 0.18
+    },
+    "failure02": {
+      "PASS": false,
+      "actual_full_summary": "NOT RUN: pre-unittest infrastructure failure",
+      "all_owned_groups_absent": true,
+      "cleanup_errors": [],
+      "failure": "RuntimeError:actual host-control case did not meet fixed outcome:full",
+      "handlers_restored": true,
+      "result_logical_path": "failure02/execution/RESULT.json",
+      "scope": "Synthetic host controls only. No supplier/family/runtime/adoption/Ready/Free/auth/hosted approval.",
+      "whole_seconds": 0.183
+    },
+    "failure03": {
+      "PASS": false,
+      "actual_full_summary": "NOT RUN: pre-unittest infrastructure failure",
+      "all_owned_groups_absent": true,
+      "cleanup_errors": [],
+      "failure": "RuntimeError:actual host-control case did not meet fixed outcome:full",
+      "handlers_restored": true,
+      "result_logical_path": "failure03/execution/RESULT.json",
+      "scope": "Synthetic host controls only. No supplier/family/runtime/adoption/Ready/Free/auth/hosted approval.",
+      "whole_seconds": 0.194
+    },
+    "failure04": {
+      "PASS": false,
+      "actual_full_summary": {
+        "actual_adapter_or_native_program_called": false,
+        "errors": 2,
+        "expected_definition_count": 81,
+        "failures": 2,
+        "mode": "full",
+        "skipped": 0,
+        "successful": false,
+        "testsRun": 81
+      },
+      "all_owned_groups_absent": true,
+      "cleanup_errors": [],
+      "failure": "RuntimeError:actual host-control case did not meet fixed outcome:full",
+      "handlers_restored": true,
+      "result_logical_path": "failure04/execution/RESULT.json",
+      "scope": "Synthetic host controls only. No supplier/family/runtime/adoption/Ready/Free/auth/hosted approval.",
+      "whole_seconds": 3.163
+    },
+    "family87": {
+      "PASS": true,
+      "actual_full_summary": {
+        "actual_adapter_or_native_program_called": false,
+        "errors": 0,
+        "expected_definition_count": 87,
+        "failures": 0,
+        "mode": "full",
+        "skipped": 0,
+        "successful": true,
+        "testsRun": 87
+      },
+      "all_owned_groups_absent": true,
+      "cleanup_errors": [],
+      "failure": null,
+      "handlers_restored": true,
+      "result_logical_path": "family87/execution/RESULT.json",
+      "scope": "Synthetic host controls only. No supplier/family/runtime/adoption/Ready/Free/auth/hosted approval.",
+      "whole_seconds": 12.19
+    }
+  },
+  "all_previous_failures_retained_without_relabeling": true,
+  "archive_members": 149,
+  "logical_original_files": 382,
+  "original_programs_data_commands_HTTP_once_cleanup_ownership_unchanged": true,
+  "raw_bytes_before_dedup": 2816419,
+  "reconstruction": "Use PARENT-SOURCE-GIT original241 then overlay family87/source six files. Before/source variants and all controllers/diffs/rawlogs/manifests are inside archive or logical aliases. Archive is custody material, not a live entrypoint.",
+  "scope": "Source/readiness host controls only; actual ADOPTION-CONTRACT stays null; no actual family/catalog/pins/Ready/Free/auth/hosted28 or optional compiler proof.",
+  "unique_raw_file_bytes": 1093507
+}

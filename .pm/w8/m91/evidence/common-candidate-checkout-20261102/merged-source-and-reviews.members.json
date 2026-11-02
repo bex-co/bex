@@ -1,0 +1,134 @@
+{
+  "archive": "merged-source-and-reviews.tar.gz",
+  "archive_sha256": "344719501dba540286c7a9d13c11e4155c609319f6fb1df62ae87f64b3dbec74",
+  "archive_bytes": 118513,
+  "members": {
+    "final8/REVIEW.json": {
+      "sha256": "87cd1ccbb1dffc1659fd7f1cb8d0a8ce69c08eff9a7c1699beab21a48e7eec5c",
+      "bytes": 611,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/REVIEW.json"
+    },
+    "final8/ROOT-MERGED-SOURCE-ADMISSION.json": {
+      "sha256": "7265d20d1e4a6f4312463cbeab63d512c3f0b898c3c7352c48fc9f4c6a85bf86",
+      "bytes": 1236,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/ROOT-MERGED-SOURCE-ADMISSION.json"
+    },
+    "final8/SIMPLIFY.diff": {
+      "sha256": "c40739240ae572c3ae431e7fdbfbc3aff28fec1100b771f1d863636d695587a1",
+      "bytes": 646,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/SIMPLIFY.diff"
+    },
+    "final8/SOURCE-MANIFEST.json": {
+      "sha256": "2013fe499041a7f54c1cfb7ec8bae895833b5473f20b101e20c5cb648a5356bf",
+      "bytes": 1505,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/SOURCE-MANIFEST.json"
+    },
+    "final8/source/.github/scripts/native-common-qualify.py": {
+      "sha256": "ce5fb6d2fe6a4a3f203823a48f24785a93685c027f920c6f648d4fdb13f5d163",
+      "bytes": 67266,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/source/.github/scripts/native-common-qualify.py"
+    },
+    "final8/source/.github/scripts/test_native_oci_common_qualification.py": {
+      "sha256": "3b6b7c3e29e4f8f614a8f11e612adb018f06d81ec501b3da0e34baf97cf1bac2",
+      "bytes": 140399,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/source/.github/scripts/test_native_oci_common_qualification.py"
+    },
+    "final8/source/.github/workflows/native-common-image.yml": {
+      "sha256": "b13e0f028728f6f2dbe1270befaebe6b6114764e5edc43dcf22821bbc2dc6d9c",
+      "bytes": 22377,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/source/.github/workflows/native-common-image.yml"
+    },
+    "final8/source/lego/operator/internal/build/nativebases_test.go": {
+      "sha256": "b8eb3237a46708a25192b42abf03326c89a383c8ef417a3ff88d8f69324cd5e0",
+      "bytes": 26773,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/source/lego/operator/internal/build/nativebases_test.go"
+    },
+    "final8/source/lego/operator/internal/build/nativecommon.go": {
+      "sha256": "6c5f2bb8fb846001b7879345d2ebc09fef4f4db59b103b8fddf2d856a379e1ea",
+      "bytes": 8642,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/source/lego/operator/internal/build/nativecommon.go"
+    },
+    "final8/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "sha256": "e5088d30a6ee67ecd3eb546e40104c6f5f5d7e00e1c4f3072ee9fc258ce15a17",
+      "bytes": 19121,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go"
+    },
+    "final8/source/lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "sha256": "351b4002e34a946966a494a2aec9a768f67743ecd7caa69d1084ff0d826272c6",
+      "bytes": 13161,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/source/lego/operator/internal/build/nativecommon_node_qualification_test.go"
+    },
+    "final8/source/lego/operator/internal/build/nativecommon_test.go": {
+      "sha256": "9c215e704511eb5737d420e68006990833aff83c5406467f174e035c3115f822",
+      "bytes": 23236,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-final-v2-20261102-hzk662vl/source/lego/operator/internal/build/nativecommon_test.go"
+    },
+    "final8/FINAL-SOURCE.diff": {
+      "sha256": "567bd475709934e0f227cd64aeed292e4c83f07a70dc95142f376882f8a5e7e0",
+      "bytes": 48309,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-publication-20261102-ful0svk2/FINAL-SOURCE.diff"
+    },
+    "first-applied/APPLIED.json": {
+      "sha256": "4a6b4f39a37c60a3f56d25286e966d8cd61769c1755e83142d1e00fc71b268aa",
+      "bytes": 80373,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-applied-20261102-36buv0h2/APPLIED.json"
+    },
+    "reviews/reuse/REVIEW.json": {
+      "sha256": "1753331f807514c4080cc66fc7560f565ca45f09d05898d4d5c57cf446ee254b",
+      "bytes": 3537,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-reuse-review-20261102-4aiwr6ng/REVIEW.json"
+    },
+    "reviews/quality/REVIEW.json": {
+      "sha256": "fc1aa70e68b260776e950e242cf7e9715323c2c801acea17bb990c988709cb22",
+      "bytes": 2778,
+      "permissions": 384,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-quality-review-20261102-cs447loz/REVIEW.json"
+    },
+    "reviews/efficiency/MANIFEST.json": {
+      "sha256": "8c9f2e495337884ea3caa1e6903fbf53b22c4cafa0e51feeb6abe0faa6745f84",
+      "bytes": 166,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-efficiency-review-20261102-egol6ly6/MANIFEST.json"
+    },
+    "reviews/efficiency/REVIEW.json": {
+      "sha256": "e1a312237eb8ae8992ec0367a1191f85f2a17da8c45e4e1a62e7dc34fff913ac",
+      "bytes": 3691,
+      "permissions": 420,
+      "type": "regular",
+      "private_source": "/private/tmp/bex-w8-node-checkout-efficiency-review-20261102-egol6ly6/REVIEW.json"
+    }
+  },
+  "normalization": "Only archive-envelope uid/gid/names/mtime normalized. Exact regular member bytes,length,permissions preserved; no links, trees, executable invocation or raw diff outside gzip."
+}

@@ -1,0 +1,56 @@
+{
+  "PUBLICATION-RECEIPT.json": {
+    "sha256": "c1e1f9f7cee4f083a88f98838a9ced6a3d2c636a354ccccf85bfca87b5a13b67",
+    "bytes": 2412,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "README.md": {
+    "sha256": "da9616a6d1a4d3fc376312505d5ba71a11c423ad7a137698d218c876aad57801",
+    "bytes": 4520,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "ROUNDTRIP.json": {
+    "sha256": "d98ce4006af6155178ee1a1b7436393bc253c1c19f480cf055dc4349ce128ff3",
+    "bytes": 1318,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "check-history.members.json": {
+    "sha256": "8f97ba737c528e303877018cef4a33d09f64d2df75ae03211f9a8d48f0422ce3",
+    "bytes": 16840,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "check-history.tar.gz": {
+    "sha256": "0be7b038601ad3076ed481fda44c95e39fc9001850b1b0b8cb59ae7ee6c3a4e7",
+    "bytes": 80970,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "dated-primary-and-design.members.json": {
+    "sha256": "be09e1f4bb97e70f13fab07a61761d9d2dd624497eb79836bd00bc80731a4a1b",
+    "bytes": 10549,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "dated-primary-and-design.tar.gz": {
+    "sha256": "ff6657c56ecffbd7d903a04e61a02df3ddf046ab7985669382813f547b4090d2",
+    "bytes": 141536,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "source-history.members.json": {
+    "sha256": "ada8d231a06885a5adb5fdb6c05e82d2a4c77e572256197189de6fbd931960bf",
+    "bytes": 44244,
+    "permissions": 420,
+    "type": "regular"
+  },
+  "source-history.tar.gz": {
+    "sha256": "277bf3fe498fa178fc1d6339bed23c4c9b1f11b5eb5b2542a3b7bb1a0cad1a19",
+    "bytes": 577673,
+    "permissions": 420,
+    "type": "regular"
+  }
+}

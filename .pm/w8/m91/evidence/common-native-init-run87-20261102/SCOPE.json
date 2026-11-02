@@ -1,0 +1,68 @@
+{
+  "outcome": "ROOT_ADMITTED_NATIVE_INIT_RUN87_FOUR_LAUNCH_AMD64_TARGET_CONTENT",
+  "source": "30b1f4dce5e25644c996a07fce84bb8338f1953f",
+  "run_id": 41439172465,
+  "job_id": 125260213820,
+  "artifact_id": 13140138422,
+  "common_ref": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "candidate_sha256": "cc39f78a8b9f128babb362e0078007380a1b44b7799394d93b06e5fc52ab7036",
+  "four_launches": {
+    "npm": 143,
+    "yarn": 1,
+    "pnpm": 143,
+    "direct": 0
+  },
+  "original_members": 79,
+  "source_files": 301,
+  "Root_admission": {
+    "bytes": 1818,
+    "sha256": "dcedad6893680ff4570429965f5522e60b5f92b1266aaec0dfc196ebc6929446"
+  },
+  "history": "Original9bc AMD precondition failure remains separate prior evidence. Local V1 auditor added an unsupported whole-dict carrier equality; V1 failure/source/rawtrace retained. V2 corrects only original checked-field projection and DockerHostIp spelling;5purecontrols+fullread-onlyauditPASS, unchanged Go/JS/programs/data.",
+  "limits": [
+    "Actual AMD64 guest target under retained ARM/Rosetta mapping; no native-host performance claim.",
+    "Original HTTP200/4s/20s/2m predicates are bound to actual original GoPASS; no separate raw-wire/timer trace invented.",
+    "Exactly one case/four launches; no complete family/all35/original28hosted or production/common adoption claim.",
+    "Executed source remains30b1. Pending checkout/donor/source merge requires fresh strict AMD utility baseline; any later reuse of this dated family result requires explicit exact nonimpact binding.",
+    "Captured executable runtime/ELF identity precedes artifact transport; extracted local file mode is not runtime executable-mode proof."
+  ],
+  "publication_style": "Complete original artifact tree once, no report/program/body transformations; all historical absolute paths in original audit sources are custody records, not a newly runnable public CI executor.",
+  "candidate_update": null,
+  "original_ZIP_private_retained": {
+    "path": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/amd64/original.zip",
+    "bytes": 875486,
+    "sha256": "9ef790cdb4d8c1391cc175e91956acc9ce8042dab3469924453f1da8339417de"
+  },
+  "unpublished_interim_metadata": "All initial/polling/unsupported-endpoint snapshots stay private under original152-payload manifest; complete terminal rawmetadata+wholelog retained publicly.",
+  "reused_public_tools": [
+    {
+      "original": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/download_guard.py",
+      "existing_public_path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/capsule/tools/download_guard.py",
+      "bytes": 2988,
+      "sha256": "e561c5e1c230021917695c33c96bfdbee969dec4eb41fddbc0a3a2cfd48ec551",
+      "disposition": "existing_exact_public_tool_reference_no_duplicate_copy"
+    },
+    {
+      "original": "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/intake-preparation/extract_guard.py",
+      "existing_public_path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/capsule/tools/extract_guard.py",
+      "bytes": 2770,
+      "sha256": "c7d380d7c4e2bc2fa4dca6253191ffca0a1e8c2bc7ac3d9529e46651403f83d1",
+      "disposition": "existing_exact_public_tool_reference_no_duplicate_copy"
+    },
+    {
+      "original": "/private/tmp/bex-w8-utility-zip-extractor-v2-source-20261101-evaszd_j/extract_utility_zip.py",
+      "existing_public_path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/capsule/tools/extract_utility_zip.py",
+      "bytes": 14716,
+      "sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4",
+      "disposition": "existing_exact_public_tool_reference_no_duplicate_copy"
+    },
+    {
+      "original": "/private/tmp/bex-w8-common-predeploy-controller-v3-source-20261102-cu0jri4k/retained-v4.py",
+      "existing_public_path": ".pm/w8/m91/evidence/common-d3-dc08-20261102/capsule/tools/retained-v4.py",
+      "bytes": 22064,
+      "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03",
+      "disposition": "existing_exact_public_tool_reference_no_duplicate_copy"
+    }
+  ]
+}

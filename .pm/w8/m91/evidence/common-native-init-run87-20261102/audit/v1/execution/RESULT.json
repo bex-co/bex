@@ -1,0 +1,65 @@
+{
+  "complete": false,
+  "at": "2026-11-02T12:31:35.329340+00:00",
+  "scope": "PURE_CONTROLS_AND_READONLY_ACTUAL_ARTIFACT_AUDIT_NO_TARGET_OR_CI_ACTION",
+  "deadline": 60,
+  "log_cap": 4194304,
+  "physical_floor_plus_margin": 8623489024,
+  "minimum_free": 25134448640,
+  "processes": [
+    {
+      "script": "test_audit_native_init.py",
+      "at": "2026-11-02T12:31:35.329848+00:00",
+      "argv": [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/test_audit_native_init.py"
+      ],
+      "pid": 67035,
+      "pgid": 67035,
+      "exit": 0,
+      "group_absent": true
+    },
+    {
+      "script": "audit_native_init.py",
+      "at": "2026-11-02T12:31:35.442211+00:00",
+      "argv": [
+        "/opt/homebrew/bin/python3.14",
+        "-B",
+        "/private/tmp/bex-w8-native-init-run87-monitor-20261102-m10__m4u/audit_native_init.py"
+      ],
+      "pid": 67036,
+      "pgid": 67036,
+      "exit": 1,
+      "group_absent": true
+    }
+  ],
+  "errors": [
+    "AssertionError:audit_native_init.py failed; stop without rerun"
+  ],
+  "cancelled": [],
+  "seconds": 0.22418395895510912,
+  "final_free": 25134448640,
+  "source_posthash": {
+    "audit_native_init.py": "3712fa928ddb9182e3326c755dc23d837d5621e5add92655e92ad24e2794535e",
+    "test_audit_native_init.py": "779751cafb0a1796600d6dba8463bdc95f5fc010c421cc092ebaf798db356859"
+  },
+  "outputs": {
+    "test_audit_native_init.py.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    "test_audit_native_init.py.stderr": {
+      "bytes": 101,
+      "sha256": "edb4e2159c923ea45a32656078835cdf531c3d7b414c670dd786978875cb0678"
+    },
+    "audit_native_init.py.stderr": {
+      "bytes": 1436,
+      "sha256": "c045fa8016de866167692c49f9f981c4f174191f4cbb2400dfa643b208070f74"
+    },
+    "audit_native_init.py.stdout": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  }
+}

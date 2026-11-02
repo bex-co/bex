@@ -62,31 +62,6 @@ jobs:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             !/**
-            /.github/
-            /.pm/
-            /deploy/
-            /lego/
-            /scripts/
-            /.pm/w8/
-            /deploy/native-base/
-            /deploy/native-common/
-            /lego/operator/
-            /lego/types/
-            /scripts/lib/
-            /.pm/w8/m91/
-            /lego/operator/cmd/
-            /lego/operator/internal/
-            /lego/types/k8sname/
-            /lego/types/netutil/
-            /lego/types/v1alpha1/
-            /.pm/w8/m91/evidence/
-            /lego/operator/cmd/native-init/
-            /lego/operator/internal/build/
-            /lego/operator/internal/execution/
-            /lego/operator/internal/httpclient/
-            /lego/operator/internal/identity/
-            /lego/operator/internal/publish/
-            /lego/operator/internal/registry/
             /.github/**
             /deploy/native-base/**
             /deploy/native-common/**
@@ -100,7 +75,6 @@ jobs:
             /lego/types/k8sname/**
             /lego/types/netutil/**
             /lego/types/v1alpha1/**
-            /.pm/w8/m91/evidence/**
             /lego/operator/go.mod
             /lego/operator/go.sum
             /lego/types/go.mod
@@ -108,6 +82,19 @@ jobs:
             /lego/Dockerfile
             /lego/.dockerignore
             /scripts/lib/toolchain-freshness.py
+      - name: materialize only complete candidate evidence packets
+        timeout-minutes: 5
+        env:
+          CHECKOUT_SOURCE: ${{ inputs.source || 'fresh' }}
+        run: |
+          set -euo pipefail
+          umask 077
+          patterns="$(mktemp "$RUNNER_TEMP/bex-candidate-checkout.XXXXXX")"
+          trap 'rm -f -- "$patterns"' EXIT
+          python3 .github/scripts/native-common-qualify.py checkout-evidence "$CHECKOUT_SOURCE" > "$patterns"
+          if test -s "$patterns"; then
+            timeout --kill-after=10s 180s git sparse-checkout add --no-cone --stdin < "$patterns"
+          fi
       - id: selection
         name: validate the fixed profile and case before publication resources
         env:
@@ -157,31 +144,6 @@ jobs:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             !/**
-            /.github/
-            /.pm/
-            /deploy/
-            /lego/
-            /scripts/
-            /.pm/w8/
-            /deploy/native-base/
-            /deploy/native-common/
-            /lego/operator/
-            /lego/types/
-            /scripts/lib/
-            /.pm/w8/m91/
-            /lego/operator/cmd/
-            /lego/operator/internal/
-            /lego/types/k8sname/
-            /lego/types/netutil/
-            /lego/types/v1alpha1/
-            /.pm/w8/m91/evidence/
-            /lego/operator/cmd/native-init/
-            /lego/operator/internal/build/
-            /lego/operator/internal/execution/
-            /lego/operator/internal/httpclient/
-            /lego/operator/internal/identity/
-            /lego/operator/internal/publish/
-            /lego/operator/internal/registry/
             /.github/**
             /deploy/native-base/**
             /deploy/native-common/**
@@ -195,7 +157,6 @@ jobs:
             /lego/types/k8sname/**
             /lego/types/netutil/**
             /lego/types/v1alpha1/**
-            /.pm/w8/m91/evidence/**
             /lego/operator/go.mod
             /lego/operator/go.sum
             /lego/types/go.mod
@@ -203,6 +164,19 @@ jobs:
             /lego/Dockerfile
             /lego/.dockerignore
             /scripts/lib/toolchain-freshness.py
+      - name: materialize only complete candidate evidence packets
+        timeout-minutes: 5
+        env:
+          CHECKOUT_SOURCE: ${{ needs.plan.outputs.source }}
+        run: |
+          set -euo pipefail
+          umask 077
+          patterns="$(mktemp "$RUNNER_TEMP/bex-candidate-checkout.XXXXXX")"
+          trap 'rm -f -- "$patterns"' EXIT
+          python3 .github/scripts/native-common-qualify.py checkout-evidence "$CHECKOUT_SOURCE" > "$patterns"
+          if test -s "$patterns"; then
+            timeout --kill-after=10s 180s git sparse-checkout add --no-cone --stdin < "$patterns"
+          fi
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
@@ -315,31 +289,6 @@ jobs:
           sparse-checkout-cone-mode: false
           sparse-checkout: |
             !/**
-            /.github/
-            /.pm/
-            /deploy/
-            /lego/
-            /scripts/
-            /.pm/w8/
-            /deploy/native-base/
-            /deploy/native-common/
-            /lego/operator/
-            /lego/types/
-            /scripts/lib/
-            /.pm/w8/m91/
-            /lego/operator/cmd/
-            /lego/operator/internal/
-            /lego/types/k8sname/
-            /lego/types/netutil/
-            /lego/types/v1alpha1/
-            /.pm/w8/m91/evidence/
-            /lego/operator/cmd/native-init/
-            /lego/operator/internal/build/
-            /lego/operator/internal/execution/
-            /lego/operator/internal/httpclient/
-            /lego/operator/internal/identity/
-            /lego/operator/internal/publish/
-            /lego/operator/internal/registry/
             /.github/**
             /deploy/native-base/**
             /deploy/native-common/**
@@ -353,7 +302,6 @@ jobs:
             /lego/types/k8sname/**
             /lego/types/netutil/**
             /lego/types/v1alpha1/**
-            /.pm/w8/m91/evidence/**
             /lego/operator/go.mod
             /lego/operator/go.sum
             /lego/types/go.mod
@@ -361,6 +309,19 @@ jobs:
             /lego/Dockerfile
             /lego/.dockerignore
             /scripts/lib/toolchain-freshness.py
+      - name: materialize only complete candidate evidence packets
+        timeout-minutes: 5
+        env:
+          CHECKOUT_SOURCE: ${{ needs.plan.outputs.source }}
+        run: |
+          set -euo pipefail
+          umask 077
+          patterns="$(mktemp "$RUNNER_TEMP/bex-candidate-checkout.XXXXXX")"
+          trap 'rm -f -- "$patterns"' EXIT
+          python3 .github/scripts/native-common-qualify.py checkout-evidence "$CHECKOUT_SOURCE" > "$patterns"
+          if test -s "$patterns"; then
+            timeout --kill-after=10s 180s git sparse-checkout add --no-cone --stdin < "$patterns"
+          fi
       - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: lego/operator/go.mod
