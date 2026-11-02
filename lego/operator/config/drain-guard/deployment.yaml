@@ -34,9 +34,12 @@ spec:
           command: ["/drain-guard"]
           args:
             - --machine-namespace=bex-capi
-            # The serving pool. The build pools (bex-tenant-burst, bex-tenant-lg)
+            # The serving pools: bex-tenant-0 plus the dedicated large-tier
+            # pools (bex-tenant-xl/xxl, w2/m250), whose single-instance Apps
+            # need the same hand-off when the autoscaler consolidates or a roll
+            # replaces a node. The build pools (bex-tenant-burst, bex-tenant-lg)
             # carry the build-only taint, so no App runs there to hand over.
-            - --machine-selector=nodepool=bex-tenant-0
+            - --machine-selector=nodepool in (bex-tenant-0,bex-tenant-xl,bex-tenant-xxl)
           ports:
             - name: health
               containerPort: 8081

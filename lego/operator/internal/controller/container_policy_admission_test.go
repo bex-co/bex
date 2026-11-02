@@ -26,6 +26,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/execution"
 	"github.com/bex-co/bex/lego/operator/internal/publish"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -373,6 +374,84 @@ var _ = Describe("Application container policy admission", func() {
 			}
 		}
 
+		By("confining the dedicated serving-pool and build-only tolerations to their own workloads (w2/m250)")
+		// The pool rule itself must be what refuses each case, not some other
+		// shape rule the mutation happens to trip.
+		expectPoolDenied := func(err error, scenario string) {
+			expectDenied(err, scenario)
+			Expect(err.Error()).To(ContainSubstring("may tolerate a dedicated serving pool"), scenario)
+		}
+		for _, tier := range []string{"pro-plus", "pro-ultra"} {
+			for _, workload := range admissionTierWorkloads(workspace, "", tier) {
+				scenario := fmt.Sprintf("%s %T %s", tier, workload, workload.GetName())
+				Expect(admissionPodTemplate(workload).Spec.Tolerations).To(HaveLen(1), scenario)
+				Expect(operator.Create(ctx, admissionFreshWorkload(workload), client.DryRunAll)).To(Succeed(), scenario)
+				for _, mutation := range []struct {
+					name   string
+					change func(client.Object, *corev1.PodTemplateSpec)
+				}{
+					{"unowned", func(o client.Object, _ *corev1.PodTemplateSpec) { o.SetOwnerReferences(nil) }},
+					{"non-app-owner", func(o client.Object, _ *corev1.PodTemplateSpec) { o.GetOwnerReferences()[0].Kind = "KeyValue" }},
+					{"forged-app-uid", func(_ client.Object, p *corev1.PodTemplateSpec) { p.Labels["app.bex.co/app-uid"] = "foreign-uid" }},
+					{"uncataloged-pool", func(_ client.Object, p *corev1.PodTemplateSpec) { p.Spec.Tolerations[0].Value = "xxxl" }},
+					{"any-pool", func(_ client.Object, p *corev1.PodTemplateSpec) {
+						p.Spec.Tolerations[0].Operator, p.Spec.Tolerations[0].Value = corev1.TolerationOpExists, ""
+					}},
+					{"build-only", func(_ client.Object, p *corev1.PodTemplateSpec) {
+						p.Spec.Tolerations = append(p.Spec.Tolerations, corev1.Toleration{
+							Key: execution.BuildPoolTaintKey, Operator: corev1.TolerationOpEqual, Value: execution.BuildPoolTaintValue, Effect: corev1.TaintEffectNoSchedule,
+						})
+					}},
+				} {
+					bad := workload.DeepCopyObject().(client.Object)
+					mutation.change(bad, admissionPodTemplate(bad))
+					expectPoolDenied(operator.Create(ctx, admissionFreshWorkload(bad), client.DryRunAll), scenario+"/"+mutation.name)
+				}
+			}
+		}
+		// No platform workload — datastore, backup, export, purge, publish —
+		// may carry either pool's toleration: each would pin a node the
+		// autoscaler exists to release. The one App-owned helper among them,
+		// the disk restore Job, may follow its App's volume onto the App's
+		// serving pool, and still never onto a build node.
+		for _, workload := range admissionPlatformWorkloads(workspace) {
+			appOwned := slices.ContainsFunc(workload.GetOwnerReferences(), func(o metav1.OwnerReference) bool {
+				return o.Kind == "App" && o.Controller != nil && *o.Controller
+			})
+			for _, toleration := range []corev1.Toleration{
+				{Key: execution.ServingPoolKey, Operator: corev1.TolerationOpEqual, Value: "xl", Effect: corev1.TaintEffectNoSchedule},
+				{Key: execution.BuildPoolTaintKey, Operator: corev1.TolerationOpEqual, Value: execution.BuildPoolTaintValue, Effect: corev1.TaintEffectNoSchedule},
+			} {
+				bad := admissionFreshWorkload(workload)
+				pod := admissionPodTemplate(bad)
+				pod.Spec.Tolerations = append(pod.Spec.Tolerations, toleration)
+				scenario := fmt.Sprintf("%T %s with %s", workload, workload.GetName(), toleration.Key)
+				if appOwned && toleration.Key == execution.ServingPoolKey {
+					Expect(operator.Create(ctx, bad, client.DryRunAll)).To(Succeed(), scenario)
+					continue
+				}
+				expectPoolDenied(operator.Create(ctx, bad, client.DryRunAll), scenario)
+			}
+		}
+		// The build Job keeps its build-only toleration in its isolated
+		// execution namespace, and still may not reach a serving pool.
+		const buildNamespace = "build-boundary-test"
+		Expect(admin.Create(ctx, &corev1.Namespace{ObjectMeta: metav1.ObjectMeta{Name: buildNamespace, Labels: map[string]string{
+			"app.bex.co/execution-boundary": "untrusted",
+		}}})).To(Succeed())
+		buildOpts := build.Options{Repo: "https://github.com/bex-co/hello", Ref: "main", Name: "hello", AppUID: "uid-hello",
+			Registry: "zot.bex-registry.svc:5000", Revision: "gen-7", Namespace: buildNamespace}
+		buildJob := build.BuildJob(buildOpts, buildOpts.ImageRef())
+		Expect(buildJob.Spec.Template.Spec.Tolerations).To(ContainElement(HaveField("Key", execution.BuildPoolTaintKey)))
+		Expect(operator.Create(ctx, admissionFreshWorkload(buildJob), client.DryRunAll)).To(Succeed(), "build Job with the build-only toleration")
+		servingBuild := admissionFreshWorkload(buildJob)
+		admissionPodTemplate(servingBuild).Spec.Tolerations = append(admissionPodTemplate(servingBuild).Spec.Tolerations,
+			corev1.Toleration{Key: execution.ServingPoolKey, Operator: corev1.TolerationOpEqual, Value: "xxl", Effect: corev1.TaintEffectNoSchedule})
+		expectPoolDenied(operator.Create(ctx, servingBuild, client.DryRunAll), "build Job with a serving-pool toleration")
+		relabelled := admissionFreshWorkload(buildJob)
+		admissionPodTemplate(relabelled).Labels[execution.LabelComponent] = "predeploy"
+		expectPoolDenied(operator.Create(ctx, relabelled, client.DryRunAll), "non-build Job with the build-only toleration")
+
 		By("allowing deletion of legacy invalid bodies while retaining the namespace boundary")
 		for _, workload := range admissionApplicationWorkloads("default", appv1alpha1.ContainerPolicyImageV1) {
 			legacy := admissionFreshWorkload(workload)
@@ -387,14 +466,24 @@ var _ = Describe("Application container policy admission", func() {
 // objects to the real API server. This keeps unrelated release/status machinery
 // outside this admission test without replacing any workload constructor.
 func admissionApplicationWorkloads(namespace, policy string) []client.Object {
+	return admissionTierWorkloads(namespace, policy, "free")
+}
+
+// admissionTierWorkloads is admissionApplicationWorkloads at a given compute
+// tier: a tier with a dedicated serving pool (w2/m250) projects that pool's
+// toleration and node affinity onto every runtime workload.
+func admissionTierWorkloads(namespace, policy, tier string) []client.Object {
 	suffix := policy
 	if suffix == "" {
 		suffix = "legacy"
 	}
+	if tier != "free" {
+		suffix += "-" + tier
+	}
 	newApp := func(name, kind string) (*AppReconciler, *appv1alpha1.App) {
 		app := &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{Name: name + "-" + suffix, Namespace: namespace, UID: types.UID(name + "-" + suffix + "-uid"), Generation: 1},
-			Spec:       appv1alpha1.AppSpec{Type: kind, ContainerPolicy: policy, Tier: "free"},
+			Spec:       appv1alpha1.AppSpec{Type: kind, ContainerPolicy: policy, Tier: tier},
 		}
 		cl := fake.NewClientBuilder().WithScheme(k8sClient.Scheme()).WithObjects(app).WithStatusSubresource(&appv1alpha1.App{}).Build()
 		return &AppReconciler{Client: cl, BuildClient: cl, Scheme: cl.Scheme()}, app

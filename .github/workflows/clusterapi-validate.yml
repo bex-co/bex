@@ -23,6 +23,10 @@ on:
       - "deploy/gitops/base/**"
       - "lego/operator/config/**"
       - "lego/operator/internal/build/build.go"
+      # w2/m250: the serving-pool guards route every compute tier from the
+      # catalog and read the pool label/taint key from the execution package.
+      - "lego/types/tiers/tiers.yaml"
+      - "lego/operator/internal/execution/security.go"
   push:
     branches: [main]
     paths:
@@ -38,6 +42,10 @@ on:
       - "deploy/gitops/base/**"
       - "lego/operator/config/**"
       - "lego/operator/internal/build/build.go"
+      # w2/m250: the serving-pool guards route every compute tier from the
+      # catalog and read the pool label/taint key from the execution package.
+      - "lego/types/tiers/tiers.yaml"
+      - "lego/operator/internal/execution/security.go"
 
 permissions:
   contents: read

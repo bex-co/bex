@@ -795,13 +795,14 @@ groups:
           summary: "ClusterBuilder image pin is older than the 30-day freshness SLO"
           description: "Committed builder resolution metadata is missing, malformed, or older than 30 days. Resolve with python3 scripts/lib/toolchain-freshness.py resolve, review the observed digest, update the listed files and resolved_at together. The workflow never applies a pin. Runbook: docs/ADR060-build-worker-reliability-and-performance.md D7."
 
-      # The meter DaemonSet tolerates nothing
-      # (lego/operator/config/egress-meter/daemonset.yaml), so its
-      # population is exactly "nodes with no scheduling taint": every
-      # pool taint (bex.co/platform, bex.co/sandbox, bex.co/build-only,
-      # the control-plane role taint) excludes a node by design, while
-      # the kubelet's own node.kubernetes.io/* condition taints are
-      # exempt because DaemonSet pods tolerate those automatically.
+      # The meter DaemonSet tolerates only the dedicated serving-pool
+      # taint (lego/operator/config/egress-meter/daemonset.yaml; w2/m250:
+      # those nodes run tenant Apps), so its population is exactly "nodes
+      # with no other scheduling taint": every other pool taint
+      # (bex.co/platform, bex.co/sandbox, bex.co/build-only, the
+      # control-plane role taint) excludes a node by design, while the
+      # kubelet's own node.kubernetes.io/* condition taints are exempt
+      # because DaemonSet pods tolerate those automatically.
       # Naming one pool taint here (the previous shape) fired
       # continuously once the sandbox pool and the build-only node
       # existed. The Grafana "Egress meter fleet" panel mirrors this
@@ -812,7 +813,7 @@ groups:
           !=
           count(
             kube_node_info
-            unless on (node) kube_node_spec_taint{effect=~"NoSchedule|NoExecute", key!~"node\\.kubernetes\\.io/.*"}
+            unless on (node) kube_node_spec_taint{effect=~"NoSchedule|NoExecute", key!~"node\\.kubernetes\\.io/.*|bex\\.co/serving-pool"}
           )
         for: 2m
         labels:

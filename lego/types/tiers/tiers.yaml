@@ -11,6 +11,15 @@
 #             carries, so tenant code cannot fill a node's filesystem
 #             (round-14 #2). 1→32Gi scales with the tier; a runaway writer is
 #             evicted at its own limit instead of pressuring co-tenants.
+#             servingPool names the dedicated serving node pool a tier that
+#             cannot fit a standard bex-tenant-0 node (cx33, ~7.47Gi
+#             allocatable) runs on (w2/m250). The operator turns it into a
+#             toleration of, and a required node affinity to,
+#             bex.co/serving-pool=<servingPool>; the CAPH overlay's
+#             MachineDeployment carrying that label + NoSchedule taint is the
+#             pool (bex-tenant-xl: cx53, bex-tenant-xxl: ccx43), and
+#             scripts/clusterapi-validate.sh fails when a tier no longer fits
+#             the pool it names — or bex-tenant-0, when it names none.
 #
 #   postgres: managed-Postgres instance types (the Database CRD's spec.plan),
 #             named in Render's newer family-size style (their Postgres
@@ -64,16 +73,19 @@ compute:
       cpu: "4"
       memory: 8Gi
       ephemeralStorage: 16Gi
+      servingPool: xl
     - id: pro-max
       renderPlan: pro_max
       cpu: "4"
       memory: 16Gi
       ephemeralStorage: 16Gi
+      servingPool: xl
     - id: pro-ultra
       renderPlan: pro_ultra
       cpu: "8"
       memory: 32Gi
       ephemeralStorage: 32Gi
+      servingPool: xxl
 
 postgres:
   # Unknown/empty Database plans resolve to free (the operator's prior

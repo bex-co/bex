@@ -74,8 +74,12 @@ spec:
           nodeSelector:
             kubernetes.io/os: linux
             bex.co/pool: tenant
+          # Every tenant node is expected to report filesystem headroom
+          # (bex:tenant_node_filesystem_expected), including the dedicated
+          # serving pools' nodes (bex.co/serving-pool, w2/m250).
           tolerations:
             - { key: bex.co/build-only, operator: Equal, value: "true", effect: NoSchedule }
+            - { key: bex.co/serving-pool, operator: Exists, effect: NoSchedule }
           containerSecurityContext:
             readOnlyRootFilesystem: true
             allowPrivilegeEscalation: false

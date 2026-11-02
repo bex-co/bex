@@ -17,7 +17,10 @@
 #      and the download-at-boot pools must stay in lockstep.
 #   5. every CAPI workload and snapshot default matches that pin, and the retired
 #      Kubernetes 1.31-or-older line cannot return.
-#   6. the sandbox pool's gVisor runtime (codex-security round 18, CWE-494) is
+#   6. the dedicated serving pools (w2/m250) route every compute tier to a
+#      pool it fits, stay tainted and cold at zero, and bootstrap in sync
+#      with bex-tenant-0 (as the build pools' template must too).
+#   7. the sandbox pool's gVisor runtime (codex-security round 18, CWE-494) is
 #      verified against SHA-512 digests pinned in this repository — never a
 #      checksum co-fetched from the release origin — and fails closed on any
 #      non-x86_64 architecture.
@@ -308,10 +311,17 @@ fi
 # docs/ADR060 § Measured node arithmetic). Allocatable, not capacity: the
 # kubelet's own reservations are already subtracted, and that is the number the
 # scheduler actually compares a pod's requests against.
+# cx53 and ccx43 (the w2/m250 serving pools) are ESTIMATES until their first
+# node exists: the cx33→cx43 measurements are linear in nominal GB (~1006415Ki
+# per GB, -216488Ki), which predicts ~31988808Ki (cx53, 32 GB) and ~64194104Ki
+# (ccx43, 64 GB); both are taken ~2% lower. Replace them with the measured
+# allocatable at w2/m250 t003.
 alloc_ki() {
   case "$1" in
     cx33) echo 7834836 ;;
     cx43) echo 15886160 ;;
+    cx53) echo 31300000 ;;  # estimate, see above
+    ccx43) echo 62900000 ;; # estimate, see above
     *) return 1 ;;
   esac
 }
@@ -338,19 +348,21 @@ mem_bytes() {
 
 mib() { echo $(($1 / 1024 / 1024)); }
 
-# tolerates_build_taint <file> <yq expression yielding the tolerations array>
+# tolerates_taint <file> <yq expression yielding the tolerations array> <key>
+# <value> <effect>
 # Implements the Kubernetes toleration match: a keyless Exists toleration
 # matches every taint, an Exists toleration on the key ignores the value, and an
 # empty effect matches every effect.
-tolerates_build_taint() {
-  local file="$1" expr="$2" n
+tolerates_taint() {
+  local file="$1" expr="$2" key="$3" value="$4" effect="$5" n
   n="$(yq -N "[${expr} // [] | .[] | select(
-        (((.key // \"\") == \"\" and (.operator // \"Equal\") == \"Exists\") or .key == \"$BUILD_TAINT_KEY\")
-        and ((.operator // \"Equal\") == \"Exists\" or (.value // \"\") == \"$BUILD_TAINT_VALUE\")
-        and ((.effect // \"\") == \"\" or .effect == \"$BUILD_TAINT_EFFECT\")
+        (((.key // \"\") == \"\" and (.operator // \"Equal\") == \"Exists\") or .key == \"$key\")
+        and ((.operator // \"Equal\") == \"Exists\" or (.value // \"\") == \"$value\")
+        and ((.effect // \"\") == \"\" or .effect == \"$effect\")
       )] | length" "$file" 2>/dev/null)"
   [ "${n:-0}" -gt 0 ]
 }
+tolerates_build_taint() { tolerates_taint "$1" "$2" "$BUILD_TAINT_KEY" "$BUILD_TAINT_VALUE" "$BUILD_TAINT_EFFECT"; }
 
 # Every DaemonSet the repository declares, as "<label>|<file>|<tolerations expr>|
 # <container requests expr>". Plain manifests are discovered rather than listed
@@ -487,6 +499,253 @@ if lg_alloc="$(alloc_ki "$lg_type")"; then
     fail=1
   fi
 fi
+
+# ── Dedicated serving pools (w2/m250) ────────────────────────────────────────
+# The compute tiers no bex-tenant-0 node can hold run on their own pools
+# (lego/types/tiers/tiers.yaml servingPool → bex.co/serving-pool=<pool>). Every
+# way this breaks is silent: a pool that loses its taint fills with small
+# tiers and is pinned above zero; a pool that loses min 0 is billed forever; a
+# tier that outgrows its pool — or one left on bex-tenant-0 that never fit
+# it — sits Pending while cluster-autoscaler declines to scale, with no error.
+# So the routing, the bootstrap and the arithmetic are all guarded here.
+TIERS_FILE="${TIERS_FILE:-lego/types/tiers/tiers.yaml}"
+SERVING_KEY="$(go_const ServingPoolKey "$EXECUTION_SOURCE")"
+if [ -z "$SERVING_KEY" ]; then
+  echo "FAIL: could not read ServingPoolKey from $EXECUTION_SOURCE" >&2
+  fail=1
+fi
+
+# The user-approved autoscaler ceiling per pool (2026-11-02, .pm/w2/m250). A
+# new pool, or a new ceiling, is a spend decision: record it here with it.
+serving_pool_max() {
+  case "$1" in
+    xl) echo 4 ;;
+    xxl) echo 2 ;;
+    *) return 1 ;;
+  esac
+}
+
+# vCPUs per Hetzner server type (Hetzner API /server_types). Allocatable CPU
+# equals capacity: the kubelet reserves none (no system/kube-reserved flag).
+server_vcpus() {
+  case "$1" in
+    cx33 | cpx32) echo 4 ;;
+    cx43) echo 8 ;;
+    cx53 | ccx43) echo 16 ;;
+    *) return 1 ;;
+  esac
+}
+
+# cpu_milli converts a Kubernetes CPU quantity to millicores.
+cpu_milli() {
+  local q="$1" whole frac
+  case "$q" in
+    *m) echo "${q%m}" ;;
+    *.*)
+      whole="${q%%.*}"; frac="${q#*.}000"; frac="${frac:0:3}"
+      echo $((10#${whole:-0} * 1000 + 10#$frac)) ;;
+    *[!0-9]* | "") return 1 ;;
+    *) echo $((q * 1000)) ;;
+  esac
+}
+
+# daemonset_floor <taint key> <taint value>: the memory (bytes) and CPU
+# (millicores) every DaemonSet that lands on a tenant node carrying that taint
+# requests — "" for an untainted node, where every tenant-eligible DaemonSet
+# lands. A DaemonSet pinned to another pool (bex.co/pool != tenant) never runs
+# there. Sets ds_mem, ds_cpu and ds_names.
+ds_pool_exprs=()
+for i in "${!ds_files[@]}"; do
+  case "${ds_tol_exprs[$i]}" in
+    .spec.source.helm.values*) ds_pool_exprs+=('[select(.spec.source.helm.values != null) | .spec.source.helm.values | from_yaml | .controller.nodeSelector."bex.co/pool"] | .[0] // "tenant"') ;;
+    *) ds_pool_exprs+=('[select(.kind == "DaemonSet") | .spec.template.spec.nodeSelector."bex.co/pool"] | .[0] // "tenant"') ;;
+  esac
+done
+daemonset_floor() {
+  local key="$1" value="$2" i file q bytes milli cpu_expr
+  ds_mem=0 ds_cpu=0 ds_names=()
+  for i in "${!ds_files[@]}"; do
+    file="${ds_files[$i]}"
+    # eval-all with the collector outside the select: one answer per file on
+    # both yq 4.44 and 4.5x (see scripts/gitops-validate.sh on the `//` trap).
+    [ "$(yq -N ea "${ds_pool_exprs[$i]}" "$file" 2>/dev/null)" = tenant ] || continue
+    if [ -n "$key" ] && ! tolerates_taint "$file" "${ds_tol_exprs[$i]}" "$key" "$value" NoSchedule; then
+      continue
+    fi
+    name="$(basename "$file" .yaml)"; [ "$name" != daemonset ] || name="$(basename "$(dirname "$file")")"
+    ds_names+=("$name")
+    while read -r q; do
+      [ -n "$q" ] || continue
+      if bytes="$(mem_bytes "$q")"; then ds_mem=$((ds_mem + bytes)); else
+        echo "FAIL: $file declares an unparseable memory request '$q'" >&2; fail=1
+      fi
+    done < <(yq -N "${ds_req_exprs[$i]} | .[]" "$file" 2>/dev/null)
+    # CPU mirrors the memory expressions; the chart sidecar allowance is the
+    # Alloy chart's config-reloader request (10m, chart default — not measured).
+    cpu_expr="${ds_req_exprs[$i]//.memory/.cpu}"
+    cpu_expr="${cpu_expr//\"50Mi\"/\"10m\"}"
+    while read -r q; do
+      [ -n "$q" ] || continue
+      if milli="$(cpu_milli "$q")"; then ds_cpu=$((ds_cpu + milli)); else
+        echo "FAIL: $file declares an unparseable cpu request '$q'" >&2; fail=1
+      fi
+    done < <(yq -N "$cpu_expr | .[]" "$file" 2>/dev/null)
+  done
+}
+
+# Single-object reads use eval-all with the collector outside the select, so
+# they yield exactly one value on both yq 4.44 (CI) and 4.5x — a bare
+# `select(...) | .x // ""` prints one line PER DOCUMENT on 4.44 (see
+# scripts/gitops-validate.sh).
+overlay_one() { yq -N ea "[select(.kind==\"$1\" and .metadata.name==\"$2\") | $3] | .[0] // ${4:-\"\"}" "$OVERLAY"; }
+md_field() { overlay_one MachineDeployment "$1" "$2"; }
+md_hint() { md_field "$1" ".metadata.annotations.\"$2\""; }
+
+# tier_fits <tier line> <pool label> <md> <server type>: the tier's pod plus the
+# DaemonSet floor (ds_mem/ds_cpu, set by the caller) must fit what the CA
+# capacity hint promises AND what the node really allocates.
+tier_fits() {
+  local id="$1" cpu="$2" mem="$3" disk="$4" where="$5" md="$6" type="$7"
+  local cpu_hint mem_hint disk_hint alloc vcpus need_mem need_cpu hint_bytes cpu_m mem_b disk_b
+  cpu_hint="$(md_hint "$md" capacity.cluster-autoscaler.kubernetes.io/cpu)"
+  mem_hint="$(md_hint "$md" capacity.cluster-autoscaler.kubernetes.io/memory)"
+  if ! cpu_m="$(cpu_milli "$cpu")" || ! mem_b="$(mem_bytes "$mem")"; then
+    echo "FAIL: tier $id has an unparseable cpu '$cpu' or memory '$mem' in $TIERS_FILE" >&2; fail=1; return
+  fi
+  if ! alloc="$(alloc_ki "$type")" || ! vcpus="$(server_vcpus "$type")"; then
+    echo "FAIL: $md runs unmeasured server type '$type' — add it to alloc_ki()/server_vcpus() before routing tier $id there" >&2; fail=1; return
+  fi
+  if ! hint_bytes="$(mem_bytes "$mem_hint")" || ! [[ "$cpu_hint" =~ ^[0-9]+$ ]]; then
+    echo "FAIL: $md has no readable cpu/memory capacity hint (cpu='$cpu_hint' memory='$mem_hint')" >&2; fail=1; return
+  fi
+  need_mem=$((mem_b + ds_mem)); need_cpu=$((cpu_m + ds_cpu))
+  if ((need_mem > hint_bytes || need_mem > alloc * 1024 || need_cpu > cpu_hint * 1000 || need_cpu > vcpus * 1000)); then
+    echo "FAIL: tier $id ($cpu CPU / $mem) no longer fits $where $md ($type): it needs $need_cpu""m / $(mib "$need_mem")Mi with the DaemonSet floor [${ds_names[*]:-none}]," >&2
+    echo "      the CA hint offers ${cpu_hint}000m / $(mib "$hint_bytes")Mi and the node allocates $((vcpus * 1000))m / $(mib $((alloc * 1024)))Mi — it would sit Pending with no scale-up (w2/m250)" >&2
+    fail=1
+  fi
+  if [ -n "$disk" ] && [ "$where" = "its serving pool" ]; then
+    disk_hint="$(md_hint "$md" capacity.cluster-autoscaler.kubernetes.io/ephemeral-disk)"
+    if ! disk_b="$(mem_bytes "$disk")" || [ -z "$disk_hint" ] || ! hint_bytes="$(mem_bytes "$disk_hint")" || ((disk_b > hint_bytes)); then
+      echo "FAIL: tier $id requests $disk ephemeral-storage but $md's CA ephemeral-disk hint is '$disk_hint' — a scale-from-zero template node without room for it fits no pod (w2/m250)" >&2
+      fail=1
+    fi
+  fi
+}
+
+# kct_core <name>: a KubeadmConfigTemplate with the per-pool divergences (taints,
+# node-labels) removed, as canonical JSON — what must equal bex-tenant-0's.
+kct_core() {
+  yq -o=json -I=0 -N "select(.kind==\"KubeadmConfigTemplate\" and .metadata.name==\"$1\") | .spec
+    | del(.template.spec.joinConfiguration.nodeRegistration.taints)
+    | del(.template.spec.joinConfiguration.nodeRegistration.kubeletExtraArgs.\"node-labels\")" "$OVERLAY"
+}
+tenant_core="$(kct_core bex-tenant-0)"
+
+echo "==> serving pools: every tier lands on a pool it fits, each pool tainted, cold at zero, and in sync with bex-tenant-0"
+serving_pools="$(yq -N '[.compute.tiers[] | .servingPool // ""] | unique | .[] | select(. != "")' "$TIERS_FILE")"
+for pool in $serving_pools; do
+  want_label="$SERVING_KEY=$pool"
+  mds="$(yq -N "select(.kind==\"MachineDeployment\") | select((.metadata.annotations.\"capacity.cluster-autoscaler.kubernetes.io/labels\" // \"\") | split(\",\") | contains([\"$want_label\"])) | .metadata.name" "$OVERLAY")"
+  if [ "$(printf '%s\n' "$mds" | grep -c .)" -ne 1 ]; then
+    echo "FAIL: tiers.yaml routes tiers to serving pool '$pool', but $(printf '%s\n' "$mds" | grep -c .) MachineDeployments advertise $want_label (want exactly one) — those tiers would never schedule" >&2
+    fail=1
+    continue
+  fi
+  md="$mds"
+  min="$(md_hint "$md" cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size)"
+  max="$(md_hint "$md" cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size)"
+  if [ "$min" != "0" ]; then
+    echo "FAIL: serving pool $md min-size is '$min' (want 0 — a node is billed only while a $pool-tier service runs, w2/m250)" >&2
+    fail=1
+  fi
+  if ! want_max="$(serving_pool_max "$pool")"; then
+    echo "FAIL: serving pool '$pool' ($md) has no user-approved max in serving_pool_max() — a new pool is a spend decision (w2/m250)" >&2
+    fail=1
+  elif [ "$max" != "$want_max" ]; then
+    echo "FAIL: serving pool $md max-size is '$max' (want $want_max, the user-approved ceiling, w2/m250)" >&2
+    fail=1
+  fi
+  taint_hint="$(md_hint "$md" capacity.cluster-autoscaler.kubernetes.io/taints)"
+  if [ "$taint_hint" != "$SERVING_KEY=$pool:NoSchedule" ]; then
+    echo "FAIL: serving pool $md scale-from-zero taints hint is '$taint_hint' (want $SERVING_KEY=$pool:NoSchedule)" >&2
+    fail=1
+  fi
+  labels_hint="$(md_hint "$md" capacity.cluster-autoscaler.kubernetes.io/labels)"
+  if [ "$labels_hint" != "bex.co/pool=tenant,$want_label" ]; then
+    echo "FAIL: serving pool $md scale-from-zero labels hint is '$labels_hint' (want bex.co/pool=tenant,$want_label)" >&2
+    fail=1
+  fi
+  # The bootstrap registers the same taint + label at kubelet join; it is the
+  # real node, the hints above are only CA's picture of it.
+  cfg="$(md_field "$md" .spec.template.spec.bootstrap.configRef.name)"
+  kct_taints="$(yq -o=json -I=0 -N ea "[select(.kind==\"KubeadmConfigTemplate\" and .metadata.name==\"$cfg\") | .spec.template.spec.joinConfiguration.nodeRegistration.taints] | .[0] // []" "$OVERLAY")"
+  kct_labels="$(overlay_one KubeadmConfigTemplate "$cfg" '.spec.template.spec.joinConfiguration.nodeRegistration.kubeletExtraArgs."node-labels"')"
+  if [ "$kct_taints" != "[{\"key\":\"$SERVING_KEY\",\"value\":\"$pool\",\"effect\":\"NoSchedule\"}]" ]; then
+    echo "FAIL: $md bootstraps from KubeadmConfigTemplate '$cfg' whose registered taints are $kct_taints (want exactly $SERVING_KEY=$pool:NoSchedule) — without it every tier, build and datastore lands on, and pins, this pool" >&2
+    fail=1
+  fi
+  if [ "$kct_labels" != "bex.co/pool=tenant,$want_label" ]; then
+    echo "FAIL: KubeadmConfigTemplate '$cfg' node-labels are '$kct_labels' (want bex.co/pool=tenant,$want_label — the label the tiers' node affinity requires)" >&2
+    fail=1
+  fi
+  if [ -z "$tenant_core" ] || [ "$(kct_core "$cfg")" != "$tenant_core" ]; then
+    echo "FAIL: KubeadmConfigTemplate '$cfg' ($md) differs from bex-tenant-0 in more than its taint and node-labels — keep files/preKubeadmCommands/kubeletExtraArgs in sync" >&2
+    fail=1
+  fi
+  infra="$(md_field "$md" .spec.template.spec.infrastructureRef.name)"
+  type="$(overlay_one HCloudMachineTemplate "$infra" .spec.template.spec.type)"
+  # Own spread group: Hetzner caps one at 10 servers, and tenant-0's pools
+  # alone can already reach 11 (w2/m250).
+  pg="$(overlay_one HCloudMachineTemplate "$infra" .spec.template.spec.placementGroupName)"
+  if [ "$pg" != "tenant-large" ]; then
+    echo "FAIL: serving pool $md ($infra) uses placement group '$pg' (want tenant-large: a shared spread group would pass Hetzner's 10-server cap)" >&2
+    fail=1
+  elif ! yq -e -N 'select(.kind=="HetznerCluster") | .spec.hcloudPlacementGroups[] | select(.name=="tenant-large" and .type=="spread")' "$OVERLAY" >/dev/null 2>&1; then
+    echo "FAIL: HetznerCluster does not declare the tenant-large spread placement group that $md uses" >&2
+    fail=1
+  fi
+  mem_hint="$(md_hint "$md" capacity.cluster-autoscaler.kubernetes.io/memory)"
+  if alloc="$(alloc_ki "$type")" && hint_bytes="$(mem_bytes "$mem_hint")" && ((hint_bytes > alloc * 1024)); then
+    echo "FAIL: $md ($type) CA memory hint $mem_hint EXCEEDS its allocatable $(mib $((alloc * 1024)))Mi — scale-from-zero simulation must stay conservative" >&2
+    fail=1
+  fi
+  daemonset_floor "$SERVING_KEY" "$pool"
+  echo "    $md ($type): DaemonSet floor $(mib "$ds_mem")Mi / ${ds_cpu}m [${ds_names[*]:-none}]"
+  while read -r id cpu mem disk; do
+    [ -n "$id" ] || continue
+    tier_fits "$id" "$cpu" "$mem" "$disk" "its serving pool" "$md" "$type"
+  done < <(yq -N ".compute.tiers[] | select(.servingPool == \"$pool\") | .id + \" \" + .cpu + \" \" + .memory + \" \" + .ephemeralStorage" "$TIERS_FILE")
+done
+
+# A pool no tier names would only be idle spend headroom; a serving-tainted
+# pool a tier does name but no label advertises is caught above.
+while read -r md; do
+  [ -n "$md" ] || continue
+  pool="$(md_hint "$md" capacity.cluster-autoscaler.kubernetes.io/taints | sed -n "s#^$SERVING_KEY=\([^:]*\):NoSchedule\$#\1#p")"
+  if [ -z "$pool" ] || ! printf '%s\n' $serving_pools | grep -qx "$pool"; then
+    echo "FAIL: $md carries the $SERVING_KEY taint but no tier in $TIERS_FILE routes to its pool ('$pool')" >&2
+    fail=1
+  fi
+done < <(yq -N "select(.kind==\"MachineDeployment\") | select((.metadata.annotations.\"capacity.cluster-autoscaler.kubernetes.io/taints\" // \"\") | test(\"$SERVING_KEY\")) | .metadata.name" "$OVERLAY")
+
+# Every other tier stays on bex-tenant-0, so it must fit one: a new or grown
+# tier that no longer does needs a servingPool, not a Pending service.
+tenant0_infra="$(md_field bex-tenant-0 .spec.template.spec.infrastructureRef.name)"
+tenant0_type="$(overlay_one HCloudMachineTemplate "$tenant0_infra" .spec.template.spec.type)"
+daemonset_floor "" ""
+echo "    bex-tenant-0 ($tenant0_type): DaemonSet floor $(mib "$ds_mem")Mi / ${ds_cpu}m [${ds_names[*]:-none}]"
+while read -r id cpu mem disk; do
+  [ -n "$id" ] || continue
+  tier_fits "$id" "$cpu" "$mem" "" "the standard serving pool" bex-tenant-0 "$tenant0_type"
+done < <(yq -N '.compute.tiers[] | select((.servingPool // "") == "") | .id + " " + .cpu + " " + .memory + " " + .ephemeralStorage' "$TIERS_FILE")
+
+# The build pools' bootstrap is held to the same sync contract.
+if [ -z "$tenant_core" ] || [ "$(kct_core bex-tenant-build)" != "$tenant_core" ]; then
+  echo "FAIL: KubeadmConfigTemplate bex-tenant-build differs from bex-tenant-0 in more than its taint and node-labels — keep files/preKubeadmCommands/kubeletExtraArgs in sync (docs/ADR060)" >&2
+  fail=1
+fi
+
 
 
 # A Cilium node starts with agent-not-ready:NoSchedule and loses it only after

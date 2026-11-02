@@ -21,6 +21,7 @@ OVERLAY_SRC="$root/infra/clusterapi/overlays/hetzner-caph/cluster.yaml"
 SANDBOX_SRC="$root/infra/clusterapi/overlays/hetzner-caph/sandbox-pool.yaml"
 GITOPS_SRC="$root/deploy/gitops/base"
 PACKER_SRC="$root/infra/packer/bex-worker.pkr.hcl"
+TIERS_SRC="$root/lego/types/tiers/tiers.yaml"
 
 fails=0
 tmp="$(mktemp -d)"
@@ -34,6 +35,7 @@ fixture() {
   cp "$SANDBOX_SRC" "$dir/sandbox-pool.yaml"
   cp "$GITOPS_SRC/build-image-prewarm.yaml" "$GITOPS_SRC/log-shipper.yaml" "$dir/gitops/"
   cp "$PACKER_SRC" "$dir/bex-worker.pkr.hcl"
+  cp "$TIERS_SRC" "$dir/tiers.yaml"
   echo "$dir"
 }
 
@@ -41,7 +43,7 @@ fixture() {
 assert() {
   local label="$1" want="$2" dir="$3" needle="${4:-}" err got
   set +e
-  err="$(OVERLAY_FILE="$dir/cluster.yaml" SANDBOX_OVERLAY_FILE="$dir/sandbox-pool.yaml" GITOPS_BASE_DIR="$dir/gitops" PACKER_FILE="$dir/bex-worker.pkr.hcl" "$SCRIPT" 2>&1 >/dev/null)"
+  err="$(OVERLAY_FILE="$dir/cluster.yaml" SANDBOX_OVERLAY_FILE="$dir/sandbox-pool.yaml" GITOPS_BASE_DIR="$dir/gitops" PACKER_FILE="$dir/bex-worker.pkr.hcl" TIERS_FILE="$dir/tiers.yaml" "$SCRIPT" 2>&1 >/dev/null)"
   got=$?
   set -e
   if [ "$got" -ne "$want" ]; then
@@ -108,7 +110,7 @@ assert "prewarm image drifted from defaultBuildkitImage" 1 "$d" "but builds run"
 # ── The floor is composed, not a constant ───────────────────────────────────
 # floor_line echoes the guard's own arithmetic line for a fixture.
 floor_line() {
-  OVERLAY_FILE="$1/cluster.yaml" SANDBOX_OVERLAY_FILE="$1/sandbox-pool.yaml" GITOPS_BASE_DIR="$1/gitops" "$SCRIPT" 2>/dev/null | grep 'DaemonSet floor'
+  OVERLAY_FILE="$1/cluster.yaml" SANDBOX_OVERLAY_FILE="$1/sandbox-pool.yaml" GITOPS_BASE_DIR="$1/gitops" TIERS_FILE="$1/tiers.yaml" "$SCRIPT" 2>/dev/null | grep 'build request.*DaemonSet floor'
 }
 d="$(fixture floor-composition)"
 canonical="$(floor_line "$d")"
@@ -149,7 +151,7 @@ assert "CA hint above measured allocatable" 1 "$d" "EXCEEDS measured allocatable
 # ── RED (t004): an unmeasured server type may not become a build pool ────────
 d="$(fixture unmeasured-type)"
 yq -i '(select(.kind == "HCloudMachineTemplate" and .metadata.name == "bex-tenant-burst-k134-cx33")
-        | .spec.template.spec.type) = "cx53"' "$d/cluster.yaml"
+        | .spec.template.spec.type) = "cax31"' "$d/cluster.yaml"
 assert "build pool on an unmeasured server type" 1 "$d" "unmeasured server type"
 
 # ── RED: the dedicated build pool disappears entirely ────────────────────────
@@ -158,6 +160,64 @@ yq -i '(select(.kind == "MachineDeployment")
         | .metadata.annotations) |= with_entries(select(.key != "capacity.cluster-autoscaler.kubernetes.io/taints"))' \
   "$d/cluster.yaml"
 assert "no MachineDeployment registers the build taint" 1 "$d" "the dedicated build pool"
+
+# ── RED (w2/m250): the dedicated serving pools ──────────────────────────────
+# Each failure mode is silent in production: an untainted pool fills with small
+# tiers and never returns to zero, a warm floor bills forever, and a tier that
+# outgrows its pool (or never had one) sits Pending with no scale-up.
+d="$(fixture serving-taint-dropped)"
+yq -i 'del(select(.kind == "KubeadmConfigTemplate" and .metadata.name == "bex-tenant-xl") | .spec.template.spec.joinConfiguration.nodeRegistration.taints)' "$d/cluster.yaml"
+assert "xl pool bootstrap without its taint" 1 "$d" "whose registered taints are []"
+
+d="$(fixture serving-taint-hint-dropped)"
+yq -i '(select(.kind == "MachineDeployment" and .metadata.name == "bex-tenant-xxl") | .metadata.annotations) |= with_entries(select(.key != "capacity.cluster-autoscaler.kubernetes.io/taints"))' "$d/cluster.yaml"
+assert "xxl pool without its scale-from-zero taint hint" 1 "$d" "bex-tenant-xxl scale-from-zero taints hint is ''"
+
+d="$(fixture serving-warm-floor)"
+yq -i '(select(.kind == "MachineDeployment" and .metadata.name == "bex-tenant-xl") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-min-size") = "1"' "$d/cluster.yaml"
+assert "xl pool kept warm at min 1" 1 "$d" "bex-tenant-xl min-size is '1'"
+
+d="$(fixture serving-max-raised)"
+yq -i '(select(.kind == "MachineDeployment" and .metadata.name == "bex-tenant-xxl") | .metadata.annotations."cluster.x-k8s.io/cluster-api-autoscaler-node-group-max-size") = "3"' "$d/cluster.yaml"
+assert "xxl pool above its approved max" 1 "$d" "bex-tenant-xxl max-size is '3' (want 2"
+
+d="$(fixture serving-label-dropped)"
+yq -i '(select(.kind == "KubeadmConfigTemplate" and .metadata.name == "bex-tenant-xxl") | .spec.template.spec.joinConfiguration.nodeRegistration.kubeletExtraArgs."node-labels") = "bex.co/pool=tenant"' "$d/cluster.yaml"
+assert "xxl pool bootstrap without its node label" 1 "$d" "node-labels are 'bex.co/pool=tenant'"
+
+d="$(fixture serving-bootstrap-drift)"
+yq -i '(select(.kind == "KubeadmConfigTemplate" and .metadata.name == "bex-tenant-xl") | .spec.template.spec.preKubeadmCommands) += ["echo drift"]' "$d/cluster.yaml"
+assert "xl pool bootstrap drifted from bex-tenant-0" 1 "$d" "KubeadmConfigTemplate 'bex-tenant-xl' (bex-tenant-xl) differs from bex-tenant-0"
+
+d="$(fixture build-bootstrap-drift)"
+yq -i '(select(.kind == "KubeadmConfigTemplate" and .metadata.name == "bex-tenant-build") | .spec.template.spec.joinConfiguration.nodeRegistration.kubeletExtraArgs."max-pods") = "110"' "$d/cluster.yaml"
+assert "build pool bootstrap drifted from bex-tenant-0" 1 "$d" "KubeadmConfigTemplate bex-tenant-build differs from bex-tenant-0"
+
+# A tier that outgrows its pool, one routed to a pool that does not exist, and
+# one left on bex-tenant-0 that never fit it.
+d="$(fixture tier-outgrows-pool)"
+yq -i '(.compute.tiers[] | select(.id == "pro-max") | .memory) = "40Gi"' "$d/tiers.yaml"
+assert "pro-max grown past the cx53 pool" 1 "$d" "tier pro-max (4 CPU / 40Gi) no longer fits its serving pool bex-tenant-xl"
+
+d="$(fixture tier-routed-to-small-pool)"
+yq -i '(.compute.tiers[] | select(.id == "pro-ultra") | .servingPool) = "xl"' "$d/tiers.yaml"
+assert "pro-ultra routed to the 32 GB pool" 1 "$d" "tier pro-ultra (8 CPU / 32Gi) no longer fits its serving pool bex-tenant-xl"
+
+d="$(fixture tier-unrouted)"
+yq -i 'del(.compute.tiers[] | select(.id == "pro-plus") | .servingPool)' "$d/tiers.yaml"
+assert "pro-plus left on bex-tenant-0" 1 "$d" "tier pro-plus (4 CPU / 8Gi) no longer fits the standard serving pool bex-tenant-0"
+
+d="$(fixture tier-unknown-pool)"
+yq -i '(.compute.tiers[] | select(.id == "pro-max") | .servingPool) = "xxxl"' "$d/tiers.yaml"
+assert "a tier routed to a pool no MachineDeployment provides" 1 "$d" "routes tiers to serving pool 'xxxl'"
+
+d="$(fixture serving-hint-optimistic)"
+yq -i '(select(.kind == "MachineDeployment" and .metadata.name == "bex-tenant-xl") | .metadata.annotations."capacity.cluster-autoscaler.kubernetes.io/memory") = "34G"' "$d/cluster.yaml"
+assert "xl pool CA memory hint above its allocatable" 1 "$d" "bex-tenant-xl (cx53) CA memory hint 34G EXCEEDS"
+
+d="$(fixture serving-no-disk-hint)"
+yq -i '(select(.kind == "MachineDeployment" and .metadata.name == "bex-tenant-xxl") | .metadata.annotations) |= with_entries(select(.key != "capacity.cluster-autoscaler.kubernetes.io/ephemeral-disk"))' "$d/cluster.yaml"
+assert "xxl pool without an ephemeral-disk hint" 1 "$d" "tier pro-ultra requests 32Gi ephemeral-storage"
 
 # ── RED (codex-security round 18, CWE-494): the gVisor trust anchor ──────────
 # runsc is the kernel boundary for hostile tenant sandboxes. These cases prove
@@ -230,7 +290,7 @@ else
 fi
 
 if [ "$fails" -eq 0 ]; then
-  echo "PASS: clusterapi-validate.sh build-pool guards (red and green proven)"
+  echo "PASS: clusterapi-validate.sh build-pool + serving-pool guards (red and green proven)"
 else
   echo "FAIL: $fails case(s)" >&2
   exit 1
