@@ -1,0 +1,123 @@
+{
+  "actual_triage": {
+    "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+    "bytes": 95855,
+    "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb",
+    "mode": "0644"
+  },
+  "source_rows": {
+    "lego/operator/internal/build/nativeutility_qualification_test.go": {
+      "actual_failed_source_Git_bytes": 18823,
+      "actual_failed_source_sha256": "8de6b083d4d7afcd7e51736818063431d9b6f90a640291b26b123cde05ffbd74",
+      "before_equals_actual_failed_source": true
+    },
+    "lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+      "actual_failed_source_Git_bytes": 12787,
+      "actual_failed_source_sha256": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4",
+      "before_equals_actual_failed_source": true
+    },
+    "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+      "actual_failed_source_Git_bytes": 13945,
+      "actual_failed_source_sha256": "40d4b9607b0b831635890945c942eb124773bef48d3c8c2a3ec981f1337789bd",
+      "before_equals_actual_failed_source": true
+    },
+    "lego/operator/internal/build/nativecommon_elixir_qualification_test.go": {
+      "actual_failed_source_Git_bytes": 10725,
+      "actual_failed_source_sha256": "019e2bb64eab75d9c92e0d48e7d1d18ce20df556df0cbde0270d34c6f8642702",
+      "before_equals_actual_failed_source": true
+    },
+    "lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go": {
+      "actual_failed_source_Git_bytes": 12466,
+      "actual_failed_source_sha256": "d59edc33fe3b91ddf83bd9b7e0b862c3216bcceb40dc885ddb73e3220cbd2e6a",
+      "before_equals_actual_failed_source": true
+    }
+  },
+  "four_actual_failures": [
+    {
+      "case": "node-14",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "run_id": 41375576977,
+      "job_id": 125057542764,
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-14-125057542764.log",
+        "bytes": 175679,
+        "sha256": "ca2db6a5ffe8af0ffceb9ea8548a25c9930b4b00b6276a0b02a5dbaa5146ddce"
+      },
+      "actual_source_RUN_line": {
+        "number": 1729,
+        "text": "2026-11-02T03:12:29.8186482Z         #27 [bex-node-build 4/4] RUN --network=default /sbin/ldconfig && /usr/local/bin/python3.9 -c 'import sys; assert sys.version_info[:2] == (3, 9)' && /usr/libexec/bex-native/build-node --common-bookworm 14.21.3 458ec092e60ad700ddcf079cb63d435c15da4c7bb3d3f99b9a8e58a99e54075e"
+      },
+      "actual_curl6_line": {
+        "number": 1733,
+        "text": "2026-11-02T03:12:29.8188455Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+      },
+      "cleanup_and_artifact_history": "Retained unchanged in original TRIAGE; this fix does not relabel failed jobs."
+    },
+    {
+      "case": "node-16",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "run_id": 41375567050,
+      "job_id": 125057695217,
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-16-125057695217.log",
+        "bytes": 180014,
+        "sha256": "8a543799b196c9765fb31a1dc1bbd8030ddba42bc59570d20c768229699a010a"
+      },
+      "actual_source_RUN_line": {
+        "number": 1795,
+        "text": "2026-11-02T03:12:01.0228867Z         #27 [bex-node-build 4/4] RUN --network=default /sbin/ldconfig && /usr/local/bin/python3.9 -c 'import sys; assert sys.version_info[:2] == (3, 9)' && /usr/libexec/bex-native/build-node --common-bookworm 16.20.2 576f1a03c455e491a8d132b587eb6b3b84651fc8974bb3638433dd44d22c8f49"
+      },
+      "actual_curl6_line": {
+        "number": 1799,
+        "text": "2026-11-02T03:12:01.0229639Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+      },
+      "cleanup_and_artifact_history": "Retained unchanged in original TRIAGE; this fix does not relabel failed jobs."
+    },
+    {
+      "case": "node-18",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "run_id": 41375561914,
+      "job_id": 125057701493,
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-18-125057701493.log",
+        "bytes": 170892,
+        "sha256": "56120e147d02bd18f9886002e1fc64f19b2062bd25ddb7e6f5f04adca9aa5e74"
+      },
+      "actual_source_RUN_line": {
+        "number": 1685,
+        "text": "2026-11-02T03:12:01.0326637Z         #20 [bex-node-build 4/4] RUN --network=default /sbin/ldconfig && /usr/local/bin/python3.9 -c 'import sys; assert sys.version_info[:2] == (3, 9)' && /usr/libexec/bex-native/build-node --common-bookworm 18.20.8 36a7bf1a76d62ce4badd881ee5974a323c70e1d8d19165732684e145632460d9"
+      },
+      "actual_curl6_line": {
+        "number": 1689,
+        "text": "2026-11-02T03:12:01.0328575Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+      },
+      "cleanup_and_artifact_history": "Retained unchanged in original TRIAGE; this fix does not relabel failed jobs."
+    },
+    {
+      "case": "ruby-node-exact14212",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "run_id": 41375695085,
+      "job_id": 125058109221,
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby-node-exact14212-125058109221.log",
+        "bytes": 195898,
+        "sha256": "9e17ef4e2c04e72a779b4e1359ded7055dcb118d4742621df784680aa7fc5600"
+      },
+      "actual_source_RUN_line": {
+        "number": 1967,
+        "text": "2026-11-02T03:12:25.8982303Z         #32 [bex-node-build 4/4] RUN --network=default /sbin/ldconfig && /usr/local/bin/python3.9 -c 'import sys; assert sys.version_info[:2] == (3, 9)' && /usr/libexec/bex-native/build-node --common-bookworm 14.21.2 d8f09a0f16773a77613c3817606f6d455624992d9c43443aca15e91807a1ff03"
+      },
+      "actual_curl6_line": {
+        "number": 1980,
+        "text": "2026-11-02T03:12:25.8984979Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+      },
+      "cleanup_and_artifact_history": "Retained unchanged in original TRIAGE; this fix does not relabel failed jobs."
+    }
+  ],
+  "mechanism": "Existing prerequisiteBuildArgs documented source invariant: build-level --network none binds RUN --network=default too. These three callers instead used buildArgs/globalnone. The source repair uses existing prerequisiteBuildArgs and makes every other canonical RUN explicitly offline.",
+  "limits": [
+    "No new Docker/BuildKit/CI/network execution; target-source-download success remains to be demonstrated.",
+    "Logs establish curl6 during the trusted RUN, not a new independent live BuildKit network probe.",
+    "Production generation/source-build helpers, all original13/28 fixture bytes and original35 selectors are unchanged."
+  ]
+}

@@ -1,0 +1,1 @@
+{"PASS":true,"checks":12,"scope":"Pure fixed-source VM predicates and dev_t boundaries only; no native runtime/proc/app/Go/Docker/network execution","actual_CI_qualification":false}

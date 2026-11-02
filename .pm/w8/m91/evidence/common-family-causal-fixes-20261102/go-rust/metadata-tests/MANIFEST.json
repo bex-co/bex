@@ -1,0 +1,99 @@
+{
+  "excludes": [
+    "MANIFEST.json"
+  ],
+  "files": [
+    {
+      "bytes": 2668,
+      "mode": "0644",
+      "path": "RECEIPT.json",
+      "sha256": "116be6cf1bd3cd148da8f61450559b4c8b12abf4db55c5c98ef46aada325cd7e"
+    },
+    {
+      "bytes": 2422,
+      "mode": "0644",
+      "path": "RESULT.json",
+      "sha256": "9489914827d7b73ff96dead639d60bbd1ccdea365af7e3823771a212814943eb"
+    },
+    {
+      "bytes": 2107,
+      "mode": "0644",
+      "path": "SCOPE.json",
+      "sha256": "6e9e7920f6cd43aac9bf4035640aaa13f8dd7ae0ded7f9a8fa56da69f42e6b5a"
+    },
+    {
+      "bytes": 297,
+      "mode": "0644",
+      "path": "new-focused-PROCESS.json",
+      "sha256": "ff1716bbfa9f76f4d958662fead97d6829b76ecdfac786fa149a0c8df7cbbf66"
+    },
+    {
+      "bytes": 487,
+      "mode": "0644",
+      "path": "new-focused-RESULT.json",
+      "sha256": "27a7432dbeaed22382d1cf631b6d330ddd0632716280c1050bf1db223e29d43e"
+    },
+    {
+      "bytes": 63,
+      "mode": "0644",
+      "path": "new-focused.log",
+      "sha256": "e7d3454bbb153202cb026aa16e849a9cdbe3fec780d7bb1360a7f4271e1f3b87"
+    },
+    {
+      "bytes": 416,
+      "mode": "0644",
+      "path": "new-overlay.json",
+      "sha256": "ace8fb197a2bc51d8e4b22d4f50c8c95ef4d2d5530f53d6ae5aec6afb115fbb3"
+    },
+    {
+      "bytes": 292,
+      "mode": "0644",
+      "path": "old-red-PROCESS.json",
+      "sha256": "217159d4b7104e2ad9d8140cd29d445209d15516c4bad68f94a7b3181de1a9ad"
+    },
+    {
+      "bytes": 478,
+      "mode": "0644",
+      "path": "old-red-RESULT.json",
+      "sha256": "5a50c4c5aec83f99b115aeced9d75e85bfe77662aca6c674edc4d0ac5fac8889"
+    },
+    {
+      "bytes": 416,
+      "mode": "0644",
+      "path": "old-red-overlay.json",
+      "sha256": "a5b4490b222f6fbfa4f3eae79cbeef6ab6296236dcfeb7ba3f2597d17afc1daa"
+    },
+    {
+      "bytes": 564,
+      "mode": "0644",
+      "path": "old-red.log",
+      "sha256": "72f6277e830705f3754be355b6e7c23f7708fd7d00d383486c320a88976305c1"
+    },
+    {
+      "bytes": 5940,
+      "mode": "0644",
+      "path": "run.py",
+      "sha256": "86563896e9deda29e7ad736f8113912602cdb6c1c12d5b23a9c8cdcef45c52f8"
+    },
+    {
+      "bytes": 6386,
+      "mode": "0644",
+      "path": "run.py.diff",
+      "sha256": "428071e8dfc14147cbdfdc51b9fd0f8117b348b1852f421f6600aeca758ba0c6"
+    },
+    {
+      "bytes": 0,
+      "mode": "0644",
+      "path": "runner.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 2422,
+      "mode": "0644",
+      "path": "runner.stdout",
+      "sha256": "9489914827d7b73ff96dead639d60bbd1ccdea365af7e3823771a212814943eb"
+    }
+  ],
+  "payload_bytes": 24958,
+  "payload_files": 15
+}

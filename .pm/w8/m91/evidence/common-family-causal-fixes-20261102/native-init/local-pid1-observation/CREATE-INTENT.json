@@ -1,0 +1,12 @@
+{
+  "name": "bex-init-observe-a80669f36fd547e6",
+  "image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+  "label": {
+    "co.bex.native-qualification": "bex-init-observe-a80669f36fd547e6"
+  },
+  "entrypoint": "/native-init",
+  "args": [
+    "/bin/sh",
+    "/observe.sh"
+  ]
+}

@@ -1,0 +1,21 @@
+{
+  "expected_exit": 1,
+  "label": "old-red",
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/old-red-overlay.json",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build",
+    "-run",
+    "^TestImageMetadataOfficialGoAndRust$"
+  ],
+  "exit": 1,
+  "bound": null,
+  "seconds": 6.240837457822636,
+  "group_absent": true,
+  "log_sha256": "72f6277e830705f3754be355b6e7c23f7708fd7d00d383486c320a88976305c1"
+}

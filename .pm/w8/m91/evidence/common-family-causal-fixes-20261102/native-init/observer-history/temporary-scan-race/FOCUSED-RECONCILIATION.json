@@ -1,0 +1,8 @@
+{
+  "pid": 73056,
+  "process_group_ESRCH": true,
+  "focused_log_sha256": "ea06f5976469cae0abe7d851462e2d796303304d3c3d3cbfe7df76c6c6803518",
+  "result": "Go focused tests printedPASS0.699s; outerharnessfailedtransientTMPwalk sooverallnotaccepted/fullnotrun",
+  "own_cache_removed": true,
+  "own_tmp_removed": true
+}

@@ -1,0 +1,27 @@
+{
+  "downloader": {
+    "change": "INPUTS selected ARM actual artifactid/size/SHA only; remaining source exact",
+    "parent": "/private/tmp/bex-w8-e6-utility-intake-20261102-c40h5x0g/download.py",
+    "parent_identity": {
+      "bytes": 2641,
+      "mode": "0644",
+      "sha256": "3a72aedc6b673265e491c2bd0e07640e5088dc19b36d7eb62aeac0d3e4e09282"
+    }
+  },
+  "extractor": {
+    "decompressed_sha256": "365b18ed6583b5d1c0184d412027abcaf19001402b46d7eb123798f10a5e96a4",
+    "path": ".pm/w8/m91/evidence/utility-artifact-intake-source-20261101/v2-source/extract_utility_zip.py.gz",
+    "unchanged": true
+  },
+  "new_framework": false,
+  "no_target_test_native_app_or_Docker_execution": true,
+  "pure_audit": {
+    "identity": {
+      "bytes": 18188,
+      "mode": "0644",
+      "sha256": "2e9b27ca4b3f58d80395f37dc30610cde0d7008605b497897d43681f730cc244"
+    },
+    "parent": "/private/tmp/bex-w8-native-init-actual-independent-20261101-TRPEDCkS/audit.py",
+    "reuse": "Only final lower() and validate() pure function definitions reused; original top-level program/export not imported/executed. Source-equivalent predicates reapplied to retainedJSON; allcaseIDs/actualSDK/header/sourceRoles rebound as actualdata."
+  }
+}

@@ -1,0 +1,20 @@
+{
+  "label": "cow-seed",
+  "command": [
+    "cp",
+    "-cR",
+    "/Users/tianpan/Library/Caches/go-build",
+    "/private/tmp/bex-w8-native-init-mapped-pid1-go-final-20261102-eucdvm8r/go-cache"
+  ],
+  "exit": -15,
+  "bound": {
+    "free": 11886018560,
+    "global_drop": 1152139264,
+    "owned_tmp": 0,
+    "seconds": 73.80023470893502,
+    "signals": []
+  },
+  "seconds": 73.91551841702312,
+  "group_absent": true,
+  "log_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

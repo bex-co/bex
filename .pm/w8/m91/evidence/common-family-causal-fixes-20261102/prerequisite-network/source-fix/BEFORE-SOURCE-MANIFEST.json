@@ -1,0 +1,27 @@
+{
+  "lego/operator/internal/build/nativeutility_qualification_test.go": {
+    "bytes": 18823,
+    "sha256": "8de6b083d4d7afcd7e51736818063431d9b6f90a640291b26b123cde05ffbd74",
+    "mode": "0644"
+  },
+  "lego/operator/internal/build/nativecommon_node_qualification_test.go": {
+    "bytes": 12787,
+    "sha256": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4",
+    "mode": "0644"
+  },
+  "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go": {
+    "bytes": 13945,
+    "sha256": "40d4b9607b0b831635890945c942eb124773bef48d3c8c2a3ec981f1337789bd",
+    "mode": "0644"
+  },
+  "lego/operator/internal/build/nativecommon_elixir_qualification_test.go": {
+    "bytes": 10725,
+    "sha256": "019e2bb64eab75d9c92e0d48e7d1d18ce20df556df0cbde0270d34c6f8642702",
+    "mode": "0644"
+  },
+  "lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go": {
+    "bytes": 12466,
+    "sha256": "d59edc33fe3b91ddf83bd9b7e0b862c3216bcceb40dc885ddb73e3220cbd2e6a",
+    "mode": "0644"
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "source_triage": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+  "source_triage_sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb",
+  "cases": [
+    {
+      "profile": "go-rust",
+      "case": "go",
+      "run_id": 41375472665,
+      "job_id": 125055631670,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "fault_class": "SUPPORTED_GO_RUST_METADATA_REPOSITORY_GUARD",
+      "reason": "Selected pinned official canonical Go/Rust source rejected by ImageMetadata exactRepos guard before build; source map omits both repos.",
+      "excerpts": [
+        {
+          "line": 751,
+          "text": "2026-11-02T02:26:25.6116504Z     nativecommon_gorust_test.go:142: read selected native primary environment: golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9 is not a pinned reviewed runtime image"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/go-125055631670.log",
+        "bytes": 63374,
+        "sha256": "99f39c3ad8b60b89cbe802cff0e1c1b25d9b1cf2002e0b11e60ba7518a817e53"
+      },
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375472665.json",
+        "bytes": 8730,
+        "sha256": "0df731effc42c392b7293cc60dbc86ca3606417b462557efc80d0b7cad13cb60"
+      }
+    },
+    {
+      "profile": "go-rust",
+      "case": "rust",
+      "run_id": 41375488574,
+      "job_id": 125055846561,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "fault_class": "SUPPORTED_GO_RUST_METADATA_REPOSITORY_GUARD",
+      "reason": "Selected pinned official canonical Go/Rust source rejected by ImageMetadata exactRepos guard before build; source map omits both repos.",
+      "excerpts": [
+        {
+          "line": 751,
+          "text": "2026-11-02T02:36:05.8955551Z     nativecommon_gorust_test.go:142: read selected native primary environment: rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b is not a pinned reviewed runtime image"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/rust-125055846561.log",
+        "bytes": 63416,
+        "sha256": "a3e0aee192fab6a8fdaa1312bfd4a9bf1eac48f6f5d8c7156ee043842034fad3"
+      },
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375488574.json",
+        "bytes": 8730,
+        "sha256": "6767fb44252285bd9d0372dc41925588cb6bd1c1e1ea5ce08f32d4023a0b7132"
+      }
+    }
+  ],
+  "fetches": 0,
+  "original_logs_unchanged": true
+}

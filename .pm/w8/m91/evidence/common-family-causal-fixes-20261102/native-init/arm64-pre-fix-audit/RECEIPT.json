@@ -1,0 +1,60 @@
+{
+  "actual_runtime_fix_scope": "Pre-mapped-PID1 fix source only; nativeARM PID1path direct. OldAMDfailure untouched, no AMD/postfix/botharch/fullfamily/adoption/hosted claim.",
+  "all75originalmembers_preserved": true,
+  "artifact_id": 13112713664,
+  "assessment": "CLEAN_ACTUAL_ARM_NATIVE_INIT_CI_FOUR_LAUNCHES",
+  "at": "2026-11-02T04:01:58.665245+00:00",
+  "audit": {
+    "bytes": 7199,
+    "mode": "0644",
+    "sha256": "4295a71a285161e31b0166010632b2c910fc79c0085df1143e4545717fbfca89"
+  },
+  "download": {
+    "bytes": 522,
+    "mode": "0600",
+    "sha256": "d9be4c76fd99ee4ff4f42cd4486551c12c9a5fa53b8c7b9232e4ba16d5ff168e"
+  },
+  "extraction": {
+    "bytes": 453,
+    "mode": "0600",
+    "sha256": "06b038988b689cb3333dc9cf5540e86b5cb62809d99204e9754eb35ea7aa47db"
+  },
+  "functional300_baseline": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+  "job_id": 125054905622,
+  "job_log": {
+    "bytes": 63821,
+    "mode": "0644",
+    "sha256": "5ae5f777e03716d96406b42d66324a12ada538757e6e0f5384d8a422ebf9ee32"
+  },
+  "job_log_format": "Full connector-decoded content encodedUTF8verbatim; not originalcompressedlogtransport bytes.",
+  "jobs": {
+    "bytes": 12092,
+    "mode": "0644",
+    "sha256": "69fab6a990475ffd4ba69d53f8e9e535393dbc330fe793519330b1c90b16bf69"
+  },
+  "metadata": {
+    "bytes": 1796,
+    "mode": "0644",
+    "sha256": "08a9509f42c3a91c4f67dc95414bd1ad6b8bb330f756107bf9b598c357c3a98d"
+  },
+  "only_ARM_artifact_downloaded": true,
+  "original_MANIFEST": {
+    "bytes": 14040,
+    "mode": "0600",
+    "sha256": "cef53b37bdaed59288dc90804cfebcb7c748e04bd2987b214d5d1d0ac20832f8"
+  },
+  "original_ZIP": {
+    "bytes": 793651,
+    "mode": "0600",
+    "sha256": "46dbabfc0269b19c7ac20a11bdb9793113429303111c19b242a84abd84a5dc6f"
+  },
+  "portable_copy_plan": {
+    "bytes": 16525,
+    "mode": "0644",
+    "sha256": "1a98ebdbf16eb26f6041c473a4be67ca153424cbeeadfe28c2cec19abcb44763"
+  },
+  "review_actions": "Only actualmetadata+authorizedexisting bounded archive transfer/extraction and read-only pureJSONaudit. No Go/native/test/app/JS rerun, Docker, auth/resource, CI mutation or repo/PM edit.",
+  "run_id": 41375346506,
+  "signed_transfer_URL_retained": false,
+  "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b"
+}

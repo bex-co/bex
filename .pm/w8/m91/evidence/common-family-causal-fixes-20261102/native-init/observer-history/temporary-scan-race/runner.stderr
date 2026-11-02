@@ -1,0 +1,14 @@
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-native-init-mapped-pid1-go-20261102-081u3b9a/run.py", line 33, in <module>
+    free=shutil.disk_usage(R).free;owned=size(TMP);minimum=min(minimum,free);peak=max(peak,owned)
+  File "/private/tmp/bex-w8-native-init-mapped-pid1-go-20261102-081u3b9a/run.py", line 10, in size
+    def size(p):return sum(f.stat().st_size for f in p.rglob('*') if f.is_file() and not f.is_symlink())
+  File "/private/tmp/bex-w8-native-init-mapped-pid1-go-20261102-081u3b9a/run.py", line 10, in <genexpr>
+    def size(p):return sum(f.stat().st_size for f in p.rglob('*') if f.is_file() and not f.is_symlink())
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 1180, in rglob
+    for p in selector.select_from(self):
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 601, in _select_from
+    for p in successor_select(starting_point, is_dir, exists, scandir):
+  File "/Applications/Xcode.app/Contents/Developer/Library/Frameworks/Python3.framework/Versions/3.9/lib/python3.9/pathlib.py", line 548, in _select_from
+    with scandir(parent_path) as scandir_it:
+FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/bex-w8-native-init-mapped-pid1-go-20261102-081u3b9a/tmp/go-build740916512/b534'

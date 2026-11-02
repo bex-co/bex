@@ -1,0 +1,6 @@
+{
+  "Replace": {
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativequalification_init_test.go": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/nativequalification_init_test.go",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/testdata/native-common-init/identity.js": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/testdata/native-common-init/identity.js"
+  }
+}

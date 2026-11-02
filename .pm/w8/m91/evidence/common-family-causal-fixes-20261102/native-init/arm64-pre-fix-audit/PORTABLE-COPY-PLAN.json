@@ -1,0 +1,464 @@
+{
+  "artifact_root": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact",
+  "bytes": 1888698,
+  "exclude_auth_config_bodies": true,
+  "files": [
+    {
+      "bytes": 14040,
+      "mode": "0600",
+      "path": "MANIFEST.json",
+      "sha256": "cef53b37bdaed59288dc90804cfebcb7c748e04bd2987b214d5d1d0ac20832f8"
+    },
+    {
+      "bytes": 0,
+      "mode": "0600",
+      "path": "bootstrap-1.stderr.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 104,
+      "mode": "0600",
+      "path": "bootstrap-1.stdout.log",
+      "sha256": "cb4d3b0e70f2d4e52c28206c6c799c01616f7ac12aad9490b930290737cdc621"
+    },
+    {
+      "bytes": 1514,
+      "mode": "0600",
+      "path": "bootstrap.json",
+      "sha256": "740a851be17e0da3f43cdba78b00bb525eff4463906433df994bf11c5f91955c"
+    },
+    {
+      "bytes": 1313,
+      "mode": "0600",
+      "path": "capacity-after-tests.json",
+      "sha256": "78adb80ba4e9607e3483ef10f7b8863c13b277d143e05c88f94f82ab92722911"
+    },
+    {
+      "bytes": 1320,
+      "mode": "0600",
+      "path": "capacity-before-builder.json",
+      "sha256": "0d14ac9618893664cb3945c8d2dd8bd56aed788e7d1fca68dd5fbfd6a6d58ddf"
+    },
+    {
+      "bytes": 494,
+      "mode": "0600",
+      "path": "cleanup.json",
+      "sha256": "2da56b746257c5cd08a7cb7c807722aac53cfcbff4e12c04175614bcadd6570a"
+    },
+    {
+      "bytes": 2894,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/Dockerfile.canonical",
+      "sha256": "8b923804931c37c2384f2570c083b668fb19be563de08098599c9b7744843486"
+    },
+    {
+      "bytes": 40998,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/build.log",
+      "sha256": "c66711f3fce47c3737569f1f4b68223a99f95c52668b82aa8e1c3c6149d934b3"
+    },
+    {
+      "bytes": 1312,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/cleanup-runtime.log",
+      "sha256": "a12608d7a55212f2d7f17f0fa36871a6829120d253dab305ed772a818b75f7ef"
+    },
+    {
+      "bytes": 312,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/cleanup.json",
+      "sha256": "845ff835be1443f1341ea672e1410af97c2e569380c97e54422fe2132201775a"
+    },
+    {
+      "bytes": 362,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/create-intent.json",
+      "sha256": "5f468d4d10bd6d16ce2f1c6be71855a1442a5b4478f7bf103f91b1a4897a9129"
+    },
+    {
+      "bytes": 0,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/create.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 65,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/create.stdout",
+      "sha256": "b95fd7d6481c5f9d09475fb58a7d52f058a8765fd38b28cb3bb150b8815ba6a4"
+    },
+    {
+      "bytes": 0,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/export.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 285,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/qa-output/build.json",
+      "sha256": "d91ddd25a0a2248e18404fdb8c9a2bc630af73041794f2874636f5629380a9db"
+    },
+    {
+      "bytes": 317,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/qa-output/launch.json",
+      "sha256": "b2c9672cd44dca118a7b9a5661ae3491436026f3181415bf36d70282349ef526"
+    },
+    {
+      "bytes": 997,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/qa-output/runtime.json",
+      "sha256": "5f5f04d67143002086b5c7c3f3227fa5882d4e5e172f57e719407014dc21b1b7"
+    },
+    {
+      "bytes": 3272,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/receipt.json",
+      "sha256": "f8f6c5c2fceedac77e027e10cd4f42527d4b69752d442f0a619f3ea24f9f5a57"
+    },
+    {
+      "bytes": 489,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/running.log",
+      "sha256": "b110b312c971b749d3a0ff22b9d7f21c5ad8b8481f2b534edc07564320a2d385"
+    },
+    {
+      "bytes": 1312,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/runtime.log",
+      "sha256": "a12608d7a55212f2d7f17f0fa36871a6829120d253dab305ed772a818b75f7ef"
+    },
+    {
+      "bytes": 65,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/start.log",
+      "sha256": "b95fd7d6481c5f9d09475fb58a7d52f058a8765fd38b28cb3bb150b8815ba6a4"
+    },
+    {
+      "bytes": 120,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/stop.log",
+      "sha256": "ed3faa172973942a1d3aeaaea8ad668bf6051133dcc52aaa60c24d3ef4ac8520"
+    },
+    {
+      "bytes": 435,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/direct/stopped.log",
+      "sha256": "aa3b91479871567fcfca797a70db671704654e400b6f0c427d4b294809543dd9"
+    },
+    {
+      "bytes": 101,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/image-identity.txt",
+      "sha256": "cbff33821cc7fe4de8875281a621d16eb6fa4f846c2914a681d80cdbf21d0705"
+    },
+    {
+      "bytes": 1704098,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/init/native-init",
+      "sha256": "a98891512176fb22df4bd64032b55ffcc00722a7754f9eb3903bf58b20e6f7f7"
+    },
+    {
+      "bytes": 1604,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/cleanup-runtime.log",
+      "sha256": "3fb0c46c5ca29b63a177563e0aec8daa7745983d38df40f8f14a84f73b8e61f2"
+    },
+    {
+      "bytes": 312,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/cleanup.json",
+      "sha256": "d9e4bfabb027f5bde349ae62939cd028e471fd4bfd76f24ead69467ed1c9e42c"
+    },
+    {
+      "bytes": 359,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/create-intent.json",
+      "sha256": "31728896b5ace95afc948f170c3d617141072f7e54eff83726a3fc0ba25a9bea"
+    },
+    {
+      "bytes": 0,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/create.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 65,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/create.stdout",
+      "sha256": "d040376d3af8d8f008288f83db0aa17cbdb5a0bdfe3977127a986509f15daadf"
+    },
+    {
+      "bytes": 0,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/export.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 285,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/qa-output/build.json",
+      "sha256": "d91ddd25a0a2248e18404fdb8c9a2bc630af73041794f2874636f5629380a9db"
+    },
+    {
+      "bytes": 314,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/qa-output/launch.json",
+      "sha256": "de7241b2ad26d94624bfa29796fc0b9e0b3e8d3cc99a0d21429f6432206d4ac3"
+    },
+    {
+      "bytes": 1219,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/qa-output/runtime.json",
+      "sha256": "dec79b82e77117ac2d477ce31f7b4105da7c91333c3ccc4782514541f623918c"
+    },
+    {
+      "bytes": 3621,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/receipt.json",
+      "sha256": "ae92b0ed0898a995cdf2c888b816d8028620ffe3726c57939e4bed9a0f3aae35"
+    },
+    {
+      "bytes": 489,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/running.log",
+      "sha256": "2edd352695a236a66ee06f68c25b073f8694bd39c1571425374a59e985b5d5bd"
+    },
+    {
+      "bytes": 1604,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/runtime.log",
+      "sha256": "3fb0c46c5ca29b63a177563e0aec8daa7745983d38df40f8f14a84f73b8e61f2"
+    },
+    {
+      "bytes": 65,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/start.log",
+      "sha256": "d040376d3af8d8f008288f83db0aa17cbdb5a0bdfe3977127a986509f15daadf"
+    },
+    {
+      "bytes": 120,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/stop.log",
+      "sha256": "13a23b30babedb474ce98e7321532ce6b10e20073763c51f10df296366f14071"
+    },
+    {
+      "bytes": 437,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/npm/stopped.log",
+      "sha256": "aedc34463c2b3cd00589cbd01f1a90116794fa19eee33f6dcb33f7021783203d"
+    },
+    {
+      "bytes": 1614,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/cleanup-runtime.log",
+      "sha256": "7f4780335dfa7b06eccde72273e6da365b78d86ea325fb93b2bf138d641e801d"
+    },
+    {
+      "bytes": 312,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/cleanup.json",
+      "sha256": "b435302f7e356184f9393d745a4aebd0417fe8d698a0c3ec930465abce444425"
+    },
+    {
+      "bytes": 360,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/create-intent.json",
+      "sha256": "150861e44eb82469802d4e2b60cb9e79691bb30b1c3257fc94dca1b34c7ec38e"
+    },
+    {
+      "bytes": 0,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/create.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 65,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/create.stdout",
+      "sha256": "95eac0a7ede44c661c908b51e7b46f9c8f2b325c1d1a8e36a0100a1ffe916216"
+    },
+    {
+      "bytes": 0,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/export.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 285,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/qa-output/build.json",
+      "sha256": "d91ddd25a0a2248e18404fdb8c9a2bc630af73041794f2874636f5629380a9db"
+    },
+    {
+      "bytes": 315,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/qa-output/launch.json",
+      "sha256": "10d7c26f3aac55d365309aeb9263ee453c4418d3eb49b9ae20b23d44186cdd8d"
+    },
+    {
+      "bytes": 1082,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/qa-output/runtime.json",
+      "sha256": "48764e5761b1124f6d4548f1ae0b79d7a70da0827b9f1c0b70bf06f52aa79a3c"
+    },
+    {
+      "bytes": 3436,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/receipt.json",
+      "sha256": "cdb78944efdc680d70a01d461051a7161d521bec10b70b8421ff77f24de95a09"
+    },
+    {
+      "bytes": 489,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/running.log",
+      "sha256": "2084430e673a99db68cc49dc24bdc4580f31a6e80498c5d102464d4f01221412"
+    },
+    {
+      "bytes": 1614,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/runtime.log",
+      "sha256": "7f4780335dfa7b06eccde72273e6da365b78d86ea325fb93b2bf138d641e801d"
+    },
+    {
+      "bytes": 65,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/start.log",
+      "sha256": "95eac0a7ede44c661c908b51e7b46f9c8f2b325c1d1a8e36a0100a1ffe916216"
+    },
+    {
+      "bytes": 120,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/stop.log",
+      "sha256": "205ec099d4a325d4d798003edb7874669513f543194b4c40136954c927359ef6"
+    },
+    {
+      "bytes": 437,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/pnpm/stopped.log",
+      "sha256": "86c78fc435744df3f44d8d038a7639afc396eb0fa6f2a1f7d857083921d4bd79"
+    },
+    {
+      "bytes": 1790,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/source-custody.json",
+      "sha256": "86f7b6777086c4c4e100a7a35345e1acbb0ce6e970793b9919207ad41f11a9d1"
+    },
+    {
+      "bytes": 1633,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/cleanup-runtime.log",
+      "sha256": "ede0a0640e4c5423e9ea20a6c412487f64225a8e8c1ccefd1ea40273bdf54ac9"
+    },
+    {
+      "bytes": 312,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/cleanup.json",
+      "sha256": "8d127373b5f2c32361fd2162bffc27f71786e4298794cfc3e329de1362740702"
+    },
+    {
+      "bytes": 360,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/create-intent.json",
+      "sha256": "6024603b89b8117ec83d332726484902ebeb5711c79eedf6f869605472bfd239"
+    },
+    {
+      "bytes": 0,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/create.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 65,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/create.stdout",
+      "sha256": "389129bab5466c06f39e5af0b236273d55f1017bfe36aafd662da41c77238ece"
+    },
+    {
+      "bytes": 0,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/export.log",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 285,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/qa-output/build.json",
+      "sha256": "d91ddd25a0a2248e18404fdb8c9a2bc630af73041794f2874636f5629380a9db"
+    },
+    {
+      "bytes": 315,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/qa-output/launch.json",
+      "sha256": "7117c1b024c53521cf1432a94b53eab379139aac088a91d8d56ad5c715a53368"
+    },
+    {
+      "bytes": 1283,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/qa-output/runtime.json",
+      "sha256": "aac4b5702acb1d8dd4fad18e3f047ac3e9270a50d2bee77319b50dfd235165d1"
+    },
+    {
+      "bytes": 3836,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/receipt.json",
+      "sha256": "ddc0d17c7350e85e3786de501b54e4741e82964ab73ac7b758c26ae5d95ceb99"
+    },
+    {
+      "bytes": 489,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/running.log",
+      "sha256": "e49c52493f5e3ea1a69fda75d9cc178c8c7a4807b9673dc7592f01f59186c8fa"
+    },
+    {
+      "bytes": 1633,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/runtime.log",
+      "sha256": "ede0a0640e4c5423e9ea20a6c412487f64225a8e8c1ccefd1ea40273bdf54ac9"
+    },
+    {
+      "bytes": 65,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/start.log",
+      "sha256": "389129bab5466c06f39e5af0b236273d55f1017bfe36aafd662da41c77238ece"
+    },
+    {
+      "bytes": 120,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/stop.log",
+      "sha256": "25e484503efce0a7c246a515c49068bd563a18c6cba76c6c3b9fd224029e3816"
+    },
+    {
+      "bytes": 435,
+      "mode": "0600",
+      "path": "generated/native-common-init-1434254458/yarn/stopped.log",
+      "sha256": "2c71639d0d6e200805a3f0ff88ada54c4b7a5b002c0f9642a7c2f01334585907"
+    },
+    {
+      "bytes": 3270,
+      "mode": "0600",
+      "path": "inputs.json",
+      "sha256": "eea85c74823b709b557562604fafc0756101c033d12d1116db5f046ee484567e"
+    },
+    {
+      "bytes": 75099,
+      "mode": "0600",
+      "path": "qualification-source.json",
+      "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031"
+    },
+    {
+      "bytes": 801,
+      "mode": "0600",
+      "path": "qualification.log",
+      "sha256": "7dcbf2337a9b575e82b01485a36a17fef14b2fc575a82a2b3d7382fdeca982bd"
+    }
+  ],
+  "no_borrowed_SDK_or_TestELF": true,
+  "only_native_ARM_pre_fix": true,
+  "proposed_prefix": ".pm/w8/m91/evidence/common-native-init-arm-20261102",
+  "retain_all_original75members_ASIS": true,
+  "retain_extra": "Exactmetadata/fullconnector-decodedjoblog/download/extraction/auditreceipts; source300manifest and existingpublicfixture/native-init source by recordedhash ifneeded. RawZIP retainedprivate with actualAPI SHA/size.",
+  "source_role": "9bcactualCIheader/e6functional300; inheritedcommonOCI1feba; oldnativePID1fixture735\u2026/Go86\u2026.",
+  "state": "PLAN_ONLY_NO_REPO_OR_CAPSULE_COPY"
+}

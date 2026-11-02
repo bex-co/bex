@@ -1,0 +1,20 @@
+{
+  "label": "focused",
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/overlay.json",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build",
+    "-run",
+    "^(TestNativeInitQualificationMappedPID1Controls|TestNativeInitQualificationDrainAndTransportControls)$"
+  ],
+  "exit": 0,
+  "bound": null,
+  "seconds": 8.843864082824439,
+  "group_absent": true,
+  "log_sha256": "ea370cf839243fb02647cf3e7dceadc5b44256142a2d96092090800021bb064e"
+}

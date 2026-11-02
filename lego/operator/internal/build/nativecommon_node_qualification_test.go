@@ -170,9 +170,8 @@ func commonNodeQualificationRecipe(canonical string, node NativeChoice) (string,
 		!strings.Contains(canonical, "\nCOPY . .\n") {
 		return "", false, fmt.Errorf("Node source prerequisite requires one exact canonical builder RUN")
 	}
-	executed := strings.Replace(canonical, "\n"+selected+"\n",
-		"\nRUN --network=default "+strings.TrimPrefix(selected, "RUN ")+"\n", 1)
-	return executed, true, nil
+	executed, err := nativeUtilityPrerequisiteRecipe(canonical, selected)
+	return executed, true, err
 }
 
 // This is an additional profile, not the Node24 original13/28 cohort. In
@@ -261,7 +260,12 @@ func commonNodeQualificationCase(t *testing.T, docker nativeUtilityDocker, commo
 	t.Cleanup(func() { nativeUtilityCleanup("image", "rm", "-f", tag) })
 	ctx, cancel := context.WithTimeout(t.Context(), 45*time.Minute)
 	defer cancel()
-	command := exec.CommandContext(ctx, "docker", docker.buildArgs([]string{"--secret", "id=render-env,src=" + bundle, "-t", tag}, source, true)...)
+	extra := []string{"--secret", "id=render-env,src=" + bundle, "-t", tag}
+	args := docker.buildArgs(extra, source, true)
+	if overlay {
+		args = docker.prerequisiteBuildArgs(extra, source, true)
+	}
+	command := exec.CommandContext(ctx, "docker", args...)
 	log, buildErr := command.CombinedOutput()
 	must(t, os.WriteFile(filepath.Join(evidence, "build.log"), log, 0o600))
 	if buildErr != nil {

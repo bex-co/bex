@@ -1,0 +1,30 @@
+{
+  "Go_tests": "Not run by independent reviewer; author boundedGooverlay checks separate. No image/test/runtime/native-init execution by reviewer.",
+  "actual_evidence_scope": {
+    "actual_CI": "Onlyretained/run/rosetta/rosetta path; no realheader/argv/maps available; incompletecontrol remainsREFUSED",
+    "local_raw": "Onlyactualnative-init/ELF62/RXdevice-inode shape; not app/drainqualification",
+    "synthetic": "Completeemulation proof is synthetic and never called actual CI acceptance"
+  },
+  "assessment": "CLEAN",
+  "at": "2026-11-02T03:21:50.812075+00:00",
+  "checks": [
+    "All11frozen payload hashes and bothbefore/currentrepo identities verified",
+    "WholeoldGo restored byteexact by inverse of intended new helpers/type/identityfields andsinglePID1clause; holdHTTP/events/SIGTERM/status/cleanup unchanged",
+    "JS selectedNode/PATH/ENV/basecapture/arch/processPID checks preserved; same SHA/machine/executable/exactargv assertions remain",
+    "Mapped branch requires AMD64guest62, ARM64PID1exe183, absoluteinterpreterpath, canonical generateddevice/inode, exactnative-initRXmapping matchedtoopened SHA-checkedfile; no nameallowlist",
+    "Go JSON field names/types and JS generated values agree; Linuxdev_t masks match retained x/sys/unix/dev_linux.go",
+    "Boundedproc reads emit diagnostics beforeidentityassert, staticerrorclass/code only; incomplete map/header/argv cannot qualify mappedguest",
+    "Existinghostcontrols independentlyPASS nativeactualshape, partialCIrefusal, syntheticoldRED/newPASS and15negativecontrols",
+    "12additionalpureVM controlsPASS dev_t highbits/normalization/deletedmapignore/nointerpreternameallowlist/wrongtypedmachine/device/inode/nonRX/argv"
+  ],
+  "findings": [],
+  "full_manifest_sha256": "2dd1a7a7da2607427980174da404cf00a8d093bcf35fb27d1bde3217353b58ac",
+  "required_future": "Actual freshlyobserved CI mapped-PID1/completephase evidence remains pending; no originalCI failure rewritten, no admission/adoption authority.",
+  "schema": "bex.mapped-pid1-test-oracle-independent-review/v1",
+  "source_files": {
+    "identity.js": "b112a923a58f6a390f212e66f64eccbb004567448ef1f654081f167d6162cbd9",
+    "nativequalification_init_test.go": "5540c1665b514cb2bf92c9ad47c8d48a6c174edadd486dad24115e0cb764ca86"
+  },
+  "source_manifest_sha256": "5edd70222f5d22bb0014268d4d83596ef8e2261e78c7d59608be67377a159830",
+  "source_root": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na"
+}

@@ -1,0 +1,14 @@
+{
+  "assessment": "CLEAN_READ_ONLY_NETWORK_SLICE",
+  "input_custody": {
+    "bytes": 1018,
+    "mode": "0644",
+    "sha256": "e85dee2719c62b79227a08d6fcafb415ac518480c11fbda0e5c87c50bf1506e0"
+  },
+  "no_new_tests_or_resources": true,
+  "review": {
+    "bytes": 5679,
+    "mode": "0644",
+    "sha256": "f744ad5313d7ee4531cc45d1113d8ed3dd42fe81dc4c5834b3a9554e88ec6bda"
+  }
+}

@@ -55,17 +55,24 @@ type nativeInitQualificationExpected struct {
 	Commands map[string]string             `json:"commands"`
 }
 
+type nativeInitQualificationMapping struct {
+	Path, Permissions, Device, Inode string
+}
+
 type nativeInitQualificationIdentity struct {
 	Node, Executable string
 	Env              map[string]string
 	BaseEnv          map[string]string
 	Launch           string
 	Init             struct {
-		SHA256     string
-		Machine    uint16
-		Executable bool
-		PID1       string
-		Argv       []string
+		SHA256        string
+		Machine       uint16
+		Executable    bool
+		PID1          string
+		Argv          []string
+		PID1Machine   uint16
+		Device, Inode string
+		Mappings      []nativeInitQualificationMapping
 	}
 }
 
@@ -159,11 +166,26 @@ func nativeInitQualificationExpect(choices []NativeChoice, arch, run string, sta
 	return nativeInitQualificationExpected{run, node, arch, environment, staged, commands}, nil
 }
 
+// Native /proc identity is unchanged. An interpreter path needs a complete
+// AMD guest RX mapping to the exact SHA-checked executable's device/inode.
+func nativeInitQualificationPID1(expected nativeInitQualificationExpected, actual nativeInitQualificationIdentity) bool {
+	if actual.Init.PID1 == nativeInitPath {
+		return true
+	}
+	if !strings.HasPrefix(actual.Init.PID1, "/") || expected.Arch != "amd64" || actual.Init.Machine != uint16(elf.EM_X86_64) || actual.Init.PID1Machine != uint16(elf.EM_AARCH64) ||
+		!regexp.MustCompile(`^(0|[1-9a-f][0-9a-f]*):(0|[1-9a-f][0-9a-f]*)$`).MatchString(actual.Init.Device) || !regexp.MustCompile(`^[1-9][0-9]*$`).MatchString(actual.Init.Inode) {
+		return false
+	}
+	return slices.ContainsFunc(actual.Init.Mappings, func(row nativeInitQualificationMapping) bool {
+		return row.Path == nativeInitPath && (row.Permissions == "r-xp" || row.Permissions == "r-xs") && row.Device == actual.Init.Device && row.Inode == actual.Init.Inode
+	})
+}
+
 func nativeInitQualificationValidate(expected nativeInitQualificationExpected, proof nativeInitQualificationProof, launch string, drained bool) error {
 	actual := proof.Identity
 	command := nativeInitQualificationCommand(launch)
 	if command == "" || proof.Run != expected.Run || actual.Node != expected.Node || actual.Executable != "/usr/local/bin/node" || !reflect.DeepEqual(actual.BaseEnv, expected.Env) || actual.Launch != launch ||
-		actual.Init.SHA256 != expected.Init.SHA256 || actual.Init.Machine != expected.Init.Machine || !actual.Init.Executable || actual.Init.PID1 != nativeInitPath ||
+		actual.Init.SHA256 != expected.Init.SHA256 || actual.Init.Machine != expected.Init.Machine || !actual.Init.Executable || !nativeInitQualificationPID1(expected, actual) ||
 		!slices.Equal(actual.Init.Argv, []string{nativeInitPath, "/bin/bash", "-c", command}) {
 		return fmt.Errorf("actual primary/PID1 identity differs from selected Node/native-init")
 	}
@@ -709,5 +731,49 @@ esac
 			}
 			t.Logf("LOCAL FAKE DOCKER ONLY; expected failing child %s:\n%s\ncommands:\n%s", mode, output, trace)
 		})
+	}
+}
+
+// This complete emulation control is synthetic. Actual CI retained only its
+// interpreter path; the next run must supply its own mapped guest observations.
+func TestNativeInitQualificationMappedPID1Controls(t *testing.T) {
+	expected := nativeInitQualificationExpected{Run: "mapped-control", Node: "24.22.1", Arch: "amd64", Env: map[string]string{"NODE_VERSION": "24.22.1", "PATH": "/usr/local/bin:/usr/bin"}, Init: nativeInitQualificationBinary{SHA256: "159a39e14b60d9dcea04c2ec9c55f33b9da42d1580807407edfd02bde7b7e16f", Machine: 62, Executable: true}}
+	proof := nativeInitQualificationProof{Phase: "runtime", Run: expected.Run, Events: []string{"listening", "hold_begin", "SIGTERM", "hold_end", "closed"}, Holds: 1, Completed: 1, Signals: 1, Pass: true}
+	proof.Identity.Node, proof.Identity.Executable, proof.Identity.Env, proof.Identity.BaseEnv, proof.Identity.Launch = expected.Node, "/usr/local/bin/node", expected.Env, expected.Env, "direct"
+	proof.Identity.Init.SHA256, proof.Identity.Init.Machine, proof.Identity.Init.Executable = expected.Init.SHA256, 62, true
+	proof.Identity.Init.Argv = []string{nativeInitPath, "/bin/bash", "-c", nativeInitQualificationCommand("direct")}
+	proof.Identity.Init.PID1, proof.Identity.Init.Device, proof.Identity.Init.Inode = nativeInitPath, "0:25", "186068"
+	proof.Identity.Init.Mappings = []nativeInitQualificationMapping{{Path: nativeInitPath, Permissions: "r-xp", Device: "0:25", Inode: "186068"}}
+	must(t, nativeInitQualificationValidate(expected, proof, "direct", true))
+	proof.Identity.Init.PID1, proof.Identity.Init.PID1Machine = "/run/rosetta/rosetta", 183
+	must(t, nativeInitQualificationValidate(expected, proof, "direct", true))
+	for _, mutate := range []func(*nativeInitQualificationProof){
+		func(p *nativeInitQualificationProof) { p.Identity.Init.SHA256 = strings.Repeat("b", 64) },
+		func(p *nativeInitQualificationProof) { p.Identity.Init.Machine = 183 },
+		func(p *nativeInitQualificationProof) { p.Identity.Init.PID1Machine = 62 },
+		func(p *nativeInitQualificationProof) { p.Identity.Init.Executable = false },
+		func(p *nativeInitQualificationProof) { p.Identity.Init.Mappings = nil },
+		func(p *nativeInitQualificationProof) { p.Identity.Init.Mappings[0].Inode = "186069" },
+		func(p *nativeInitQualificationProof) { p.Identity.Init.Mappings[0].Device = "0:24" },
+		func(p *nativeInitQualificationProof) { p.Identity.Init.Mappings[0].Path = "/other" },
+		func(p *nativeInitQualificationProof) { p.Identity.Init.Mappings[0].Permissions = "rw-p" },
+		func(p *nativeInitQualificationProof) { p.Identity.Init.Inode = "0" },
+		func(p *nativeInitQualificationProof) { p.Identity.Init.Device = "invalid" },
+		func(p *nativeInitQualificationProof) { p.Identity.Init.Argv[3] = "different command" },
+		func(p *nativeInitQualificationProof) { p.Signals = 2 },
+		func(p *nativeInitQualificationProof) { p.Completed = 0 },
+	} {
+		bad := proof
+		bad.Identity.Init.Mappings = slices.Clone(proof.Identity.Init.Mappings)
+		bad.Identity.Init.Argv = slices.Clone(proof.Identity.Init.Argv)
+		mutate(&bad)
+		if nativeInitQualificationValidate(expected, bad, "direct", true) == nil {
+			t.Fatal("incomplete/changed emulated PID1 or drain accepted")
+		}
+	}
+	wrongTarget := expected
+	wrongTarget.Arch = "arm64"
+	if nativeInitQualificationValidate(wrongTarget, proof, "direct", true) == nil {
+		t.Fatal("mapped AMD guest accepted for ARM target")
 	}
 }

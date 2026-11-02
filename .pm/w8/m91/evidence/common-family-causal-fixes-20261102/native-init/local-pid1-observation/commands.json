@@ -1,0 +1,199 @@
+[
+  {
+    "label": "cached-image",
+    "argv": [
+      "docker",
+      "image",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Os\":{{json .Os}},\"Architecture\":{{json .Architecture}}}",
+      "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.409,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 50381,
+    "pending_pgids": [],
+    "stdout": "cached-image.stdout",
+    "stderr": "cached-image.stderr"
+  },
+  {
+    "label": "actual-daemon",
+    "argv": [
+      "docker",
+      "info",
+      "--format",
+      "{\"Architecture\":{{json .Architecture}},\"OSType\":{{json .OSType}}}"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.209,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 50382,
+    "pending_pgids": [],
+    "stdout": "actual-daemon.stdout",
+    "stderr": "actual-daemon.stderr"
+  },
+  {
+    "label": "before-absence",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Path\":{{json .Path}},\"Args\":{{json .Args}},\"Config\":{\"Entrypoint\":{{json .Config.Entrypoint}},\"Cmd\":{{json .Config.Cmd}},\"Labels\":{{json .Config.Labels}}},\"State\":{{json .State}},\"Mounts\":{{json .Mounts}}}",
+      "bex-init-observe-a80669f36fd547e6"
+    ],
+    "exit_code": 1,
+    "bound": null,
+    "elapsed_seconds": 0.031,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 50384,
+    "pending_pgids": [],
+    "stdout": "before-absence.stdout",
+    "stderr": "before-absence.stderr"
+  },
+  {
+    "label": "create",
+    "argv": [
+      "docker",
+      "create",
+      "--pull=never",
+      "--platform",
+      "linux/arm64",
+      "--name",
+      "bex-init-observe-a80669f36fd547e6",
+      "--label",
+      "co.bex.native-qualification=bex-init-observe-a80669f36fd547e6",
+      "--read-only",
+      "--network",
+      "none",
+      "--memory",
+      "128m",
+      "--cpus",
+      "1",
+      "--pids-limit",
+      "32",
+      "--tmpfs",
+      "/tmp:rw,nosuid,nodev,size=8388608",
+      "--mount",
+      "type=bind,source=/private/tmp/bex-init-observe-a80669f36fd547e6/input/native-init,target=/native-init,readonly",
+      "--mount",
+      "type=bind,source=/private/tmp/bex-init-observe-a80669f36fd547e6/input/observe.sh,target=/observe.sh,readonly",
+      "--entrypoint",
+      "/native-init",
+      "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+      "/bin/sh",
+      "/observe.sh"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.207,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 50385,
+    "pending_pgids": [],
+    "stdout": "create.stdout",
+    "stderr": "create.stderr"
+  },
+  {
+    "label": "before-start",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Path\":{{json .Path}},\"Args\":{{json .Args}},\"Config\":{\"Entrypoint\":{{json .Config.Entrypoint}},\"Cmd\":{{json .Config.Cmd}},\"Labels\":{{json .Config.Labels}}},\"State\":{{json .State}},\"Mounts\":{{json .Mounts}}}",
+      "bex-init-observe-a80669f36fd547e6"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.026,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 50386,
+    "pending_pgids": [],
+    "stdout": "before-start.stdout",
+    "stderr": "before-start.stderr"
+  },
+  {
+    "label": "attach",
+    "argv": [
+      "docker",
+      "start",
+      "--attach",
+      "78bf3624664ef61d392070d88231f5364eb8027eaee21c9d39394f24946b241b"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.407,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 50387,
+    "pending_pgids": [],
+    "stdout": "attach.stdout",
+    "stderr": "attach.stderr"
+  },
+  {
+    "label": "after-exit",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Path\":{{json .Path}},\"Args\":{{json .Args}},\"Config\":{\"Entrypoint\":{{json .Config.Entrypoint}},\"Cmd\":{{json .Config.Cmd}},\"Labels\":{{json .Config.Labels}}},\"State\":{{json .State}},\"Mounts\":{{json .Mounts}}}",
+      "bex-init-observe-a80669f36fd547e6"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.051,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 50388,
+    "pending_pgids": [],
+    "stdout": "after-exit.stdout",
+    "stderr": "after-exit.stderr"
+  },
+  {
+    "label": "exact-remove",
+    "argv": [
+      "docker",
+      "rm",
+      "--force",
+      "78bf3624664ef61d392070d88231f5364eb8027eaee21c9d39394f24946b241b"
+    ],
+    "exit_code": 0,
+    "bound": null,
+    "elapsed_seconds": 0.036,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 50390,
+    "pending_pgids": [],
+    "stdout": "exact-remove.stdout",
+    "stderr": "exact-remove.stderr"
+  },
+  {
+    "label": "exact-absence",
+    "argv": [
+      "docker",
+      "container",
+      "inspect",
+      "--format",
+      "{\"Id\":{{json .Id}},\"Image\":{{json .Image}},\"Path\":{{json .Path}},\"Args\":{{json .Args}},\"Config\":{\"Entrypoint\":{{json .Config.Entrypoint}},\"Cmd\":{{json .Config.Cmd}},\"Labels\":{{json .Config.Labels}}},\"State\":{{json .State}},\"Mounts\":{{json .Mounts}}}",
+      "bex-init-observe-a80669f36fd547e6"
+    ],
+    "exit_code": 1,
+    "bound": null,
+    "elapsed_seconds": 0.023,
+    "direct_child_reaped": true,
+    "group_absent": true,
+    "pgid": 50391,
+    "pending_pgids": [],
+    "stdout": "exact-absence.stdout",
+    "stderr": "exact-absence.stderr"
+  }
+]

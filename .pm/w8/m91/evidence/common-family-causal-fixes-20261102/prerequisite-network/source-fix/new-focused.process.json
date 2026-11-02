@@ -1,0 +1,35 @@
+{
+  "argv": [
+    "/opt/homebrew/bin/go",
+    "test",
+    "-p=1",
+    "-mod=readonly",
+    "-count=1",
+    "-timeout=180s",
+    "-overlay=/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/new-overlay.json",
+    "-run=^(TestNativeSourcePrerequisiteNetworkRegression|TestNativeUtilityBuildUsesExplicitBuilderPlatformAndOwner|TestNativeUtilityPrerequisiteRecipePreservesCommandsAndHeredocs|TestNativeUtilityWheelPreparation.*|TestCommonNodeQualification.*|TestCommonElixir.*|TestLegacyNodeAddonCanonicalRoutes)$",
+    "-v",
+    "./internal/build"
+  ],
+  "exit": 1,
+  "stop": null,
+  "groups_absent": true,
+  "seconds": 2.788,
+  "free_before": 18759999488,
+  "minimum_free": 18699476992,
+  "free_after": 18743111680,
+  "normal_shared_cache": true,
+  "network_compile_env": "GOPROXY=off GOSUMDB=off GOWORK=off GOTOOLCHAIN=local; no integration flags",
+  "result_is_source_test_only": true,
+  "output": {
+    "stdout": {
+      "bytes": 9759,
+      "sha256": "34fc75f42720ff1c6a3ac8aeaa638c97de124f9b67740ea1177bc40a41bec7bb"
+    },
+    "stderr": {
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    }
+  },
+  "owned_compile_tmp_absent": true
+}

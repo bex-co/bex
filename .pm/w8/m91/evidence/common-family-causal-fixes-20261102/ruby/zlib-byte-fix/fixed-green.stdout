@@ -1,0 +1,2 @@
+{"ruby":"4.0.5","ruby_executable":"/opt/homebrew/Cellar/ruby/4.0.5/bin/ruby","zlib":"1.2.12","zlib_runtime":"1.2.12","text_sha256":"f34c305d5e8e9a3047e92abb225dfa1a67adc422ed93694e46fe4a539dc18f9e","text_hex":"5275627920e99baa20272024205c22","expected_encoding":"UTF-8","actual_encoding":"ASCII-8BIT","literal_equality":false,"binary_equality":true}
+PASS

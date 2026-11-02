@@ -1,0 +1,228 @@
+{
+  "at": "2026-11-02T02:06:29.972010+00:00",
+  "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+  "workflow": ".github/workflows/native-common-image.yml",
+  "mechanism": "Root normal GitHub Run workflow UI, explicit reviewed-candidate/profile/case DOM values, once per original case; each resulting run summary/source captured",
+  "source_input": "reviewed-candidate",
+  "baseline_run": 41368533416,
+  "baseline_source": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+  "image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "architectures": [
+    "amd64",
+    "arm64"
+  ],
+  "runs": [
+    {
+      "profile": "native-init",
+      "case": "all-launches",
+      "run_id": 41375346506,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375346506"
+    },
+    {
+      "profile": "node",
+      "case": "node-22",
+      "run_id": 41375390166,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375390166"
+    },
+    {
+      "profile": "node",
+      "case": "node-26",
+      "run_id": 41375422833,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375422833"
+    },
+    {
+      "profile": "modern-python",
+      "case": "3.9",
+      "run_id": 41375428758,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375428758"
+    },
+    {
+      "profile": "modern-python",
+      "case": "3.10",
+      "run_id": 41375434664,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375434664"
+    },
+    {
+      "profile": "modern-python",
+      "case": "3.11",
+      "run_id": 41375455883,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375455883"
+    },
+    {
+      "profile": "modern-python",
+      "case": "3.12",
+      "run_id": 41375461070,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375461070"
+    },
+    {
+      "profile": "modern-python",
+      "case": "3.14",
+      "run_id": 41375466839,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375466839"
+    },
+    {
+      "profile": "go-rust",
+      "case": "go",
+      "run_id": 41375472665,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375472665"
+    },
+    {
+      "profile": "go-rust",
+      "case": "rust",
+      "run_id": 41375488574,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375488574"
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby34",
+      "run_id": 41375495533,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375495533"
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby40",
+      "run_id": 41375501385,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375501385"
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby344-creation-default",
+      "run_id": 41375507144,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375507144"
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby30",
+      "run_id": 41375519527,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375519527"
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby31",
+      "run_id": 41375525481,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375525481"
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby32",
+      "run_id": 41375530745,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375530745"
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby33",
+      "run_id": 41375536053,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375536053"
+    },
+    {
+      "profile": "ruby",
+      "case": "node-static-ruby34",
+      "run_id": 41375551913,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375551913"
+    },
+    {
+      "profile": "node",
+      "case": "node-20",
+      "run_id": 41375556805,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375556805"
+    },
+    {
+      "profile": "node",
+      "case": "node-18",
+      "run_id": 41375561914,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375561914"
+    },
+    {
+      "profile": "node",
+      "case": "node-16",
+      "run_id": 41375567050,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375567050"
+    },
+    {
+      "profile": "node",
+      "case": "node-14",
+      "run_id": 41375576977,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375576977"
+    },
+    {
+      "profile": "node",
+      "case": "node-exact14212",
+      "run_id": 41375689572,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375689572"
+    },
+    {
+      "profile": "node",
+      "case": "ruby-node-exact14212",
+      "run_id": 41375695085,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375695085"
+    },
+    {
+      "profile": "legacy-python",
+      "case": "3.7",
+      "run_id": 41375700551,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375700551"
+    },
+    {
+      "profile": "legacy-python",
+      "case": "3.8",
+      "run_id": 41375734819,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375734819"
+    },
+    {
+      "profile": "elixir",
+      "case": "elixir-1.18",
+      "run_id": 41375740029,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375740029"
+    },
+    {
+      "profile": "elixir",
+      "case": "elixir-1.17",
+      "run_id": 41375779779,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375779779"
+    },
+    {
+      "profile": "elixir",
+      "case": "elixir-1.19",
+      "run_id": 41375786429,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375786429"
+    },
+    {
+      "profile": "elixir",
+      "case": "elixir-1.20",
+      "run_id": 41375793680,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375793680"
+    },
+    {
+      "profile": "elixir",
+      "case": "elixir-exact-otp280",
+      "run_id": 41375800234,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375800234"
+    },
+    {
+      "profile": "node-addon",
+      "case": "common-node14-primary",
+      "run_id": 41375818643,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375818643"
+    },
+    {
+      "profile": "node-addon",
+      "case": "common-node16-primary",
+      "run_id": 41375823911,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375823911"
+    },
+    {
+      "profile": "node-addon",
+      "case": "common-python313-node16",
+      "run_id": 41375829158,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375829158"
+    },
+    {
+      "profile": "node-addon",
+      "case": "historical-python313-node16",
+      "run_id": 41375834550,
+      "url": "https://github.com/bex-co/bex/actions/runs/41375834550"
+    }
+  ],
+  "completed_or_accepted": false,
+  "node_donors_supplemental_not_substituted": true
+}

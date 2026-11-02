@@ -1,0 +1,51 @@
+{
+  "at": "2026-11-02T03:43:03.438838+00:00",
+  "version": "go version go1.26.4 darwin/arm64",
+  "source_before": {
+    "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/source/lego/operator/internal/build/dockerhub.go": "522e2cbb4d0efecde76638f11311d002a903099041b5f1dc293092f36ecdae04",
+    "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/source/lego/operator/internal/build/dockerhub_test.go": "a9e52e7ec61cccc6b6e1217eb92cf12d6cd0634c9396c7fd838e6c50582b8844",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/dockerhub.go": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/dockerhub_test.go": "a943f9abf486bec635ece79e5fe68174170c302a1ac88b9340b0edd5e717a382",
+    "/Users/tianpan/projects/bex7/lego/go.work.sum": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6"
+  },
+  "commands": [
+    [
+      "old-red",
+      [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/old-red-overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build",
+        "-run",
+        "^TestImageMetadataOfficialGoAndRust$"
+      ],
+      300
+    ],
+    [
+      "new-focused",
+      [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/new-overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build",
+        "-run",
+        "^(TestImageMetadata.*|TestDockerHubResolver)$"
+      ],
+      300
+    ]
+  ],
+  "start_free": 21992648704,
+  "physical_free_floor": 8589934592,
+  "margin": 134217728,
+  "owned_tmp_cap": 536870912,
+  "cache": "Root-authorized standard shared content-addressed Go build cache; ordinary Go-managed reads/writes only. No direct edit/delete/prune/cachecleanup. Module/source reads unchanged; offline/modreadonly.",
+  "scope": "Focused localhost HTTP unit controls with old-code regression replay; no external network, Docker, runtimeimage or full-buildpackage claim."
+}

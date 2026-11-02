@@ -1,0 +1,5 @@
+{
+  "parent": "/private/tmp/bex-w8-native-init-mapped-pid1-go-final-20261102-eucdvm8r",
+  "reason": "Root explicitly authorized normal concurrent Go-managed shared build cache use and removed agent global-drop cap; preserve physical floor8GiB plus128MiB, ownTMP512MiB, CPU2/memory512MiB, timeout300/600s and exact source. No cache deletion/prune.",
+  "scope": "Source/focused/fullpkg checks only, no runtime resources."
+}

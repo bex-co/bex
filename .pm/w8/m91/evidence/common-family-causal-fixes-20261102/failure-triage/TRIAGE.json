@@ -1,0 +1,2438 @@
+{
+  "at": "2026-11-02T03:33:17.680358+00:00",
+  "scope": "Actualfailed35cohortjoblogtriage only; allsource9bc/common0941; no rerun/cancel/dispatch/resources/sourcewrites/admission",
+  "snapshot": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE",
+  "completed_failed_noninit_cases_reviewed": 16,
+  "unique_log_fetches": 16,
+  "full_retained_UTF8_log_bytes": 2011882,
+  "fault_counts": {
+    "SUPPORTED_GO_RUST_METADATA_REPOSITORY_GUARD": 2,
+    "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON": 7,
+    "REGISTRY_METADATA_HTTP429": 1,
+    "REGISTRY_METADATA_CONTEXT_DEADLINE": 1,
+    "NODE_SOURCE_PREREQUISITE_DNS_CURL6": 4,
+    "ARTIFACT_FINALIZATION_ECONNRESET_AFTER_TEST_PASS": 1
+  },
+  "cases": [
+    {
+      "profile": "go-rust",
+      "case": "go",
+      "run_id": 41375472665,
+      "job_id": 125055631670,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:21:22Z",
+      "job_completed_at": "2026-11-02T02:26:35Z",
+      "fault_class": "SUPPORTED_GO_RUST_METADATA_REPOSITORY_GUARD",
+      "reason": "Selected pinned official canonical Go/Rust source rejected by ImageMetadata exactRepos guard before build; source map omits both repos.",
+      "excerpts": [
+        {
+          "line": 751,
+          "text": "2026-11-02T02:26:25.6116504Z     nativecommon_gorust_test.go:142: read selected native primary environment: golang:1.27-bookworm@sha256:d9b6a1beb9474adc2a1ce842573639b44b2a0dd49b6669f51d3821baf9ec37c9 is not a pinned reviewed runtime image"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/go-125055631670.log",
+        "bytes": 63374,
+        "sha256": "99f39c3ad8b60b89cbe802cff0e1c1b25d9b1cf2002e0b11e60ba7518a817e53"
+      },
+      "log_lines": 898,
+      "log_first_timestamp": "2026-11-02T02:21:23.0729623Z",
+      "log_last_timestamp": "2026-11-02T02:26:31.9445404Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:25:58.497499+00:00",
+          "finished_at": "2026-11-02T02:26:12.510900+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 808,
+          "timestamp": "2026-11-02T02:26:25.9923691Z",
+          "value": {
+            "owner": "bex-nq-8e2475d46ece497f80c38cf2",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-8e2475d46ece497f80c38cf2",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-8e2475d46ece497f80c38cf2 removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:25:58Z",
+          "completed_at": "2026-11-02T02:26:12Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:26:12Z",
+          "completed_at": "2026-11-02T02:26:21Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T02:26:21Z",
+          "completed_at": "2026-11-02T02:26:25Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:26:25Z",
+          "completed_at": "2026-11-02T02:26:25Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:26:25Z",
+          "completed_at": "2026-11-02T02:26:25Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:26:25Z",
+          "completed_at": "2026-11-02T02:26:26Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:26:26Z",
+          "completed_at": "2026-11-02T02:26:31Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:26:31Z",
+          "completed_at": "2026-11-02T02:26:31Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13112236304,
+          "name": "common-pilot-go-rust-go-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 21477,
+          "digest": "sha256:9f947390d24c2e39e1e9ddb57d230275d1c3ccf4c7f662f8511b2d5b36996017",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375472665.json",
+        "bytes": 792,
+        "sha256": "cee8e42783243466e16deaae16bdcc8a255e0524a7ef9fd437246d4aaad0c411"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375472665.json",
+        "bytes": 8730,
+        "sha256": "0df731effc42c392b7293cc60dbc86ca3606417b462557efc80d0b7cad13cb60"
+      }
+    },
+    {
+      "profile": "go-rust",
+      "case": "rust",
+      "run_id": 41375488574,
+      "job_id": 125055846561,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:28:50Z",
+      "job_completed_at": "2026-11-02T02:36:18Z",
+      "fault_class": "SUPPORTED_GO_RUST_METADATA_REPOSITORY_GUARD",
+      "reason": "Selected pinned official canonical Go/Rust source rejected by ImageMetadata exactRepos guard before build; source map omits both repos.",
+      "excerpts": [
+        {
+          "line": 751,
+          "text": "2026-11-02T02:36:05.8955551Z     nativecommon_gorust_test.go:142: read selected native primary environment: rust:1-bookworm@sha256:9181b56c2a21ab1d5e73cffe04fc762426d30aa7fac3c91141dd033f49a7fc8b is not a pinned reviewed runtime image"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/rust-125055846561.log",
+        "bytes": 63416,
+        "sha256": "a3e0aee192fab6a8fdaa1312bfd4a9bf1eac48f6f5d8c7156ee043842034fad3"
+      },
+      "log_lines": 898,
+      "log_first_timestamp": "2026-11-02T02:28:51.6573223Z",
+      "log_last_timestamp": "2026-11-02T02:36:09.2035800Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:35:05.053455+00:00",
+          "finished_at": "2026-11-02T02:35:25.157338+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 808,
+          "timestamp": "2026-11-02T02:36:06.2428508Z",
+          "value": {
+            "owner": "bex-nq-0ed0964ab6204079a88830bb",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-0ed0964ab6204079a88830bb",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-0ed0964ab6204079a88830bb removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:35:05Z",
+          "completed_at": "2026-11-02T02:35:25Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:35:25Z",
+          "completed_at": "2026-11-02T02:36:03Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T02:36:03Z",
+          "completed_at": "2026-11-02T02:36:05Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:36:05Z",
+          "completed_at": "2026-11-02T02:36:05Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:36:05Z",
+          "completed_at": "2026-11-02T02:36:06Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:36:06Z",
+          "completed_at": "2026-11-02T02:36:06Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:36:06Z",
+          "completed_at": "2026-11-02T02:36:08Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:36:09Z",
+          "completed_at": "2026-11-02T02:36:09Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13111603905,
+          "name": "common-pilot-go-rust-rust-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 21470,
+          "digest": "sha256:c633bff3aa9ad0dbab0602bcec2d9df3fa1453892ab58af25530604cfb4cc216",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375488574.json",
+        "bytes": 794,
+        "sha256": "aef201d26facf278605fe02293ea7fd1dc8adbb74c31fbfcd991698de6a4cbb6"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375488574.json",
+        "bytes": 8730,
+        "sha256": "6767fb44252285bd9d0372dc41925588cb6bd1c1e1ea5ce08f32d4023a0b7132"
+      }
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby34",
+      "run_id": 41375495533,
+      "job_id": 125055996963,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:28:53Z",
+      "job_completed_at": "2026-11-02T02:44:00Z",
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON",
+      "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+      "excerpts": [
+        {
+          "line": 1339,
+          "text": "2026-11-02T02:43:49.2135464Z         #37 4.737 check.rb:51:in '<main>': zlib failed (RuntimeError)"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby34-125055996963.log",
+        "bytes": 129428,
+        "sha256": "f0d890cd6a19a032e65260a1c479773d5f912286b545b4472111ec3f24159c39"
+      },
+      "log_lines": 1501,
+      "log_first_timestamp": "2026-11-02T02:28:54.7839952Z",
+      "log_last_timestamp": "2026-11-02T02:43:54.6084123Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:34:48.091107+00:00",
+          "finished_at": "2026-11-02T02:36:16.158084+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 1411,
+          "timestamp": "2026-11-02T02:43:50.5968348Z",
+          "value": {
+            "owner": "bex-nq-2decf1f831db47d29552c50a",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-2decf1f831db47d29552c50a",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-2decf1f831db47d29552c50a removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:34:48Z",
+          "completed_at": "2026-11-02T02:36:16Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:36:16Z",
+          "completed_at": "2026-11-02T02:36:31Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T02:36:31Z",
+          "completed_at": "2026-11-02T02:43:49Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:43:49Z",
+          "completed_at": "2026-11-02T02:43:49Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:43:49Z",
+          "completed_at": "2026-11-02T02:43:50Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:43:50Z",
+          "completed_at": "2026-11-02T02:43:50Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:43:50Z",
+          "completed_at": "2026-11-02T02:43:54Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:43:54Z",
+          "completed_at": "2026-11-02T02:43:54Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13112234187,
+          "name": "common-pilot-ruby-ruby34-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 36582,
+          "digest": "sha256:935c033f0aa45f3feeecb79ee9f7b1fdc42fe14c9e78907acf614d70b236f02c",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375495533.json",
+        "bytes": 793,
+        "sha256": "65a77b87008b231abe815ee716b29e2b9a86fc424160639df58ea11f6e89f755"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375495533.json",
+        "bytes": 8730,
+        "sha256": "a486dfa41bd56ff65e2132e0debb4aed827a8f334c52652576c2beeeeaa53ddb"
+      }
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby40",
+      "run_id": 41375501385,
+      "job_id": 125056758950,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:40:26Z",
+      "job_completed_at": "2026-11-02T02:50:04Z",
+      "fault_class": "REGISTRY_METADATA_HTTP429",
+      "reason": "Selected primary ENV metadata returned actualHTTP429 before build; no generatedRuby4.0 runtime result.",
+      "excerpts": [
+        {
+          "line": 753,
+          "text": "2026-11-02T02:49:44.6497946Z     nativecommon_ruby_test.go:117: read selected native primary environment: image metadata request returned status 429"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby40-125056758950.log",
+        "bytes": 64422,
+        "sha256": "45d9aa4f50131a0ca3fa72a62fa623d9a2440e6eda983378aa6c56d363cbc4a9"
+      },
+      "log_lines": 900,
+      "log_first_timestamp": "2026-11-02T02:40:27.8884543Z",
+      "log_last_timestamp": "2026-11-02T02:49:53.4804144Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:43:41.347134+00:00",
+          "finished_at": "2026-11-02T02:46:41.345260+00:00",
+          "exit_code": 124,
+          "bound": null,
+          "timeout_exit": true,
+          "process_group_absent": true
+        },
+        {
+          "number": 2,
+          "started_at": "2026-11-02T02:46:56.392252+00:00",
+          "finished_at": "2026-11-02T02:48:20.367868+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 810,
+          "timestamp": "2026-11-02T02:49:45.9339958Z",
+          "value": {
+            "owner": "bex-nq-e57e51925e064b83882520b6",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-e57e51925e064b83882520b6",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-e57e51925e064b83882520b6 removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:43:41Z",
+          "completed_at": "2026-11-02T02:48:20Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:48:20Z",
+          "completed_at": "2026-11-02T02:49:22Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T02:49:22Z",
+          "completed_at": "2026-11-02T02:49:44Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:44Z",
+          "completed_at": "2026-11-02T02:49:45Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:45Z",
+          "completed_at": "2026-11-02T02:49:45Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:45Z",
+          "completed_at": "2026-11-02T02:49:45Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:45Z",
+          "completed_at": "2026-11-02T02:49:53Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:53Z",
+          "completed_at": "2026-11-02T02:49:53Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13113245804,
+          "name": "common-pilot-ruby-ruby40-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 21738,
+          "digest": "sha256:524a6955c1391c733e1e7b66561a47a6ffdcc201443d4710ed22341f8d35f4c5",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375501385.json",
+        "bytes": 793,
+        "sha256": "ee7fe8a1b2e90450bf0273edcae065cdf3cd658e4867861b5506e24c78625410"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375501385.json",
+        "bytes": 8730,
+        "sha256": "87ef494ad0a2d249ab223fe1c9cb8aa2b35e28dded530e1cc48a736d870a58f9"
+      }
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby344-creation-default",
+      "run_id": 41375507144,
+      "job_id": 125056317602,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:29:39Z",
+      "job_completed_at": "2026-11-02T02:40:09Z",
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON",
+      "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+      "excerpts": [
+        {
+          "line": 1317,
+          "text": "2026-11-02T02:39:54.7936549Z         #37 4.569 check.rb:51:in '<main>': zlib failed (RuntimeError)"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby344-creation-default-125056317602.log",
+        "bytes": 128935,
+        "sha256": "55b624efa71cb58d6e4d8afb3fd179c78f436210f2ba8f98e85dffecdd3e5d21"
+      },
+      "log_lines": 1479,
+      "log_first_timestamp": "2026-11-02T02:29:40.4211813Z",
+      "log_last_timestamp": "2026-11-02T02:40:01.1831366Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:33:06.177501+00:00",
+          "finished_at": "2026-11-02T02:34:23.647318+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 1389,
+          "timestamp": "2026-11-02T02:39:56.5414135Z",
+          "value": {
+            "owner": "bex-nq-bb27b8f134d440a1b0bc097b",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-bb27b8f134d440a1b0bc097b",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-bb27b8f134d440a1b0bc097b removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:33:06Z",
+          "completed_at": "2026-11-02T02:34:23Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:34:23Z",
+          "completed_at": "2026-11-02T02:34:36Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T02:34:36Z",
+          "completed_at": "2026-11-02T02:39:54Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:39:54Z",
+          "completed_at": "2026-11-02T02:39:54Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:39:54Z",
+          "completed_at": "2026-11-02T02:39:56Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:39:56Z",
+          "completed_at": "2026-11-02T02:39:56Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:39:56Z",
+          "completed_at": "2026-11-02T02:40:00Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:40:01Z",
+          "completed_at": "2026-11-02T02:40:01Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13112645216,
+          "name": "common-pilot-ruby-ruby344-creation-default-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 37781,
+          "digest": "sha256:7c539e90df29d984887901a7531fea4ce2b6d7d4aafab6765e918784fd68de73",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375507144.json",
+        "bytes": 811,
+        "sha256": "3841569f50b16668e57739c40fbf80dd8e9217cc0546948a6e9b289ced61b494"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375507144.json",
+        "bytes": 8730,
+        "sha256": "41211b4196935a70c02a888c175d875ef6764ef715845d55aa845bee9e2d382b"
+      }
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby30",
+      "run_id": 41375519527,
+      "job_id": 125056527087,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:31:10Z",
+      "job_completed_at": "2026-11-02T02:42:47Z",
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON",
+      "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+      "excerpts": [
+        {
+          "line": 1587,
+          "text": "2026-11-02T02:42:31.0482691Z         #37 4.681 check.rb:51:in `<main>': zlib failed (RuntimeError)"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby30-125056527087.log",
+        "bytes": 153831,
+        "sha256": "0d8ed0c0cd13c35b8b583c459ebb458f27a7e143e01805b5aa08c34a8e0b2731"
+      },
+      "log_lines": 1749,
+      "log_first_timestamp": "2026-11-02T02:31:12.5706065Z",
+      "log_last_timestamp": "2026-11-02T02:42:39.3483238Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:34:34.307749+00:00",
+          "finished_at": "2026-11-02T02:34:56.030943+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 1659,
+          "timestamp": "2026-11-02T02:42:33.1975542Z",
+          "value": {
+            "owner": "bex-nq-e758639f76624c01981e554f",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-e758639f76624c01981e554f",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-e758639f76624c01981e554f removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:34:34Z",
+          "completed_at": "2026-11-02T02:34:56Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:34:56Z",
+          "completed_at": "2026-11-02T02:35:18Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T02:35:18Z",
+          "completed_at": "2026-11-02T02:42:31Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:42:31Z",
+          "completed_at": "2026-11-02T02:42:31Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:42:31Z",
+          "completed_at": "2026-11-02T02:42:33Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:42:33Z",
+          "completed_at": "2026-11-02T02:42:33Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:42:33Z",
+          "completed_at": "2026-11-02T02:42:38Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:42:39Z",
+          "completed_at": "2026-11-02T02:42:39Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13112328538,
+          "name": "common-pilot-ruby-ruby30-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 39536,
+          "digest": "sha256:391725baf1d3392f9d1f2bcb950ff7c10d3c015849226f3d6783c6d05857fc9d",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375519527.json",
+        "bytes": 793,
+        "sha256": "d2075d1dffae8e939052b3ec02eafc009abb506620da66ba565f1b1662276512"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375519527.json",
+        "bytes": 8730,
+        "sha256": "8dbf7e3a851d67646b1f78967ffd60c01e9334ae284bd09cdf63ddc00e77bb6e"
+      }
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby31",
+      "run_id": 41375525481,
+      "job_id": 125056391774,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:30:12Z",
+      "job_completed_at": "2026-11-02T02:50:11Z",
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON",
+      "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+      "excerpts": [
+        {
+          "line": 1384,
+          "text": "2026-11-02T02:49:57.3801011Z         #37 4.135 check.rb:51:in `<main>': zlib failed (RuntimeError)"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby31-125056391774.log",
+        "bytes": 139242,
+        "sha256": "f01bf7e4e8a2c99fb61278c087ce6860138baa873197f28702e9bb9a78df5a70"
+      },
+      "log_lines": 1546,
+      "log_first_timestamp": "2026-11-02T02:30:13.9869996Z",
+      "log_last_timestamp": "2026-11-02T02:50:06.2172382Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:35:20.328391+00:00",
+          "finished_at": "2026-11-02T02:38:20.327267+00:00",
+          "exit_code": 124,
+          "bound": null,
+          "timeout_exit": true,
+          "process_group_absent": true
+        },
+        {
+          "number": 2,
+          "started_at": "2026-11-02T02:38:35.343932+00:00",
+          "finished_at": "2026-11-02T02:40:17.101774+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 1456,
+          "timestamp": "2026-11-02T02:49:59.9124612Z",
+          "value": {
+            "owner": "bex-nq-848d0072f9d9431a94679340",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-848d0072f9d9431a94679340",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-848d0072f9d9431a94679340 removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:35:20Z",
+          "completed_at": "2026-11-02T02:40:17Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:40:17Z",
+          "completed_at": "2026-11-02T02:40:36Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T02:40:36Z",
+          "completed_at": "2026-11-02T02:49:57Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:57Z",
+          "completed_at": "2026-11-02T02:49:57Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:57Z",
+          "completed_at": "2026-11-02T02:49:59Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:59Z",
+          "completed_at": "2026-11-02T02:49:59Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:59Z",
+          "completed_at": "2026-11-02T02:50:05Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:50:06Z",
+          "completed_at": "2026-11-02T02:50:06Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13113166083,
+          "name": "common-pilot-ruby-ruby31-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 39316,
+          "digest": "sha256:45ca21208c7280906d4f3338fdc3dc94c84fa07f0eda1d5a996c6eed084fd5c3",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375525481.json",
+        "bytes": 793,
+        "sha256": "594bc69550d0e0bea38ec4e8f89aa128080df1531f21cd74a4cf4511c73ac9a8"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375525481.json",
+        "bytes": 8730,
+        "sha256": "56e76f051aecced1479a0fb5277ab70b09af79cdec3e615c1e293c87ad094356"
+      }
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby32",
+      "run_id": 41375530745,
+      "job_id": 125056666478,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:33:59Z",
+      "job_completed_at": "2026-11-02T02:47:59Z",
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON",
+      "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+      "excerpts": [
+        {
+          "line": 1422,
+          "text": "2026-11-02T02:47:48.9776011Z         #37 4.126 check.rb:51:in `<main>': zlib failed (RuntimeError)"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby32-125056666478.log",
+        "bytes": 140273,
+        "sha256": "e22099a61735d11676a00abc82b418860207cbf1ce402d7585e24d393c19f2ee"
+      },
+      "log_lines": 1584,
+      "log_first_timestamp": "2026-11-02T02:34:00.4042793Z",
+      "log_last_timestamp": "2026-11-02T02:47:55.9525951Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:40:48.123165+00:00",
+          "finished_at": "2026-11-02T02:41:46.798274+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 1494,
+          "timestamp": "2026-11-02T02:47:52.0441578Z",
+          "value": {
+            "owner": "bex-nq-96f4bd17efa04809b4d43a88",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-96f4bd17efa04809b4d43a88",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-96f4bd17efa04809b4d43a88 removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:40:48Z",
+          "completed_at": "2026-11-02T02:41:46Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:41:46Z",
+          "completed_at": "2026-11-02T02:42:20Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T02:42:20Z",
+          "completed_at": "2026-11-02T02:47:49Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:47:49Z",
+          "completed_at": "2026-11-02T02:47:49Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:47:49Z",
+          "completed_at": "2026-11-02T02:47:52Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:47:52Z",
+          "completed_at": "2026-11-02T02:47:52Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:47:52Z",
+          "completed_at": "2026-11-02T02:47:55Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:47:55Z",
+          "completed_at": "2026-11-02T02:47:55Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13112053885,
+          "name": "common-pilot-ruby-ruby32-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 38921,
+          "digest": "sha256:ab425691ca09dd6041e001c9f2f391107875152b372a3d8ce2b948986e17b0f4",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375530745.json",
+        "bytes": 793,
+        "sha256": "48c91fe4524f8757de44b2e11a46b50e832d2f6f338076c8173b8b56476beae3"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375530745.json",
+        "bytes": 8730,
+        "sha256": "d9e20c5c65837ac45edd2e058623e26a81cd3d84f123ab9a5471db373d3bd0be"
+      }
+    },
+    {
+      "profile": "ruby",
+      "case": "ruby33",
+      "run_id": 41375536053,
+      "job_id": 125056673239,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:36:33Z",
+      "job_completed_at": "2026-11-02T02:48:58Z",
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON",
+      "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+      "excerpts": [
+        {
+          "line": 1395,
+          "text": "2026-11-02T02:48:24.6543481Z         #37 4.431 check.rb:51:in `<main>': zlib failed (RuntimeError)"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby33-125056673239.log",
+        "bytes": 135380,
+        "sha256": "7a5095cbc764e6f9d20bd3b3d5612b800391bda572039e65aeedd5758fa4cfc0"
+      },
+      "log_lines": 1557,
+      "log_first_timestamp": "2026-11-02T02:36:34.9703156Z",
+      "log_last_timestamp": "2026-11-02T02:48:39.8938672Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:40:07.304166+00:00",
+          "finished_at": "2026-11-02T02:40:38.860433+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 1467,
+          "timestamp": "2026-11-02T02:48:27.5883100Z",
+          "value": {
+            "owner": "bex-nq-638eabba751d46588474b0c2",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-638eabba751d46588474b0c2",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-638eabba751d46588474b0c2 removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:40:07Z",
+          "completed_at": "2026-11-02T02:40:38Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:40:38Z",
+          "completed_at": "2026-11-02T02:41:36Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T02:41:36Z",
+          "completed_at": "2026-11-02T02:48:24Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:48:24Z",
+          "completed_at": "2026-11-02T02:48:24Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:48:24Z",
+          "completed_at": "2026-11-02T02:48:27Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:48:27Z",
+          "completed_at": "2026-11-02T02:48:27Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:48:27Z",
+          "completed_at": "2026-11-02T02:48:39Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:48:39Z",
+          "completed_at": "2026-11-02T02:48:39Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13111754801,
+          "name": "common-pilot-ruby-ruby33-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 37394,
+          "digest": "sha256:511a2f0d0a765d3c8eb650042259dbc013d83464d2b3b758ef3f4bc3bf8eedf3",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375536053.json",
+        "bytes": 793,
+        "sha256": "ecbb7d1e72425ddf04ef8897195498cdfeee4863f956b9e6fd1caaf072a225ad"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375536053.json",
+        "bytes": 8730,
+        "sha256": "bfe033dd17b822e17cbe12d00618222a8fd856e7c9acf731d8941e70a0d9cea5"
+      }
+    },
+    {
+      "profile": "ruby",
+      "case": "node-static-ruby34",
+      "run_id": 41375551913,
+      "job_id": 125056614477,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:33:44Z",
+      "job_completed_at": "2026-11-02T02:50:30Z",
+      "fault_class": "RUBY_EXTRA_FIXTURE_ZLIB_ENCODING_COMPARISON",
+      "reason": "Generated build reaches check.rb:51; compares binary Inflate output against nonASCIIUTF8text. Exact-source hoststdlib control produces samebytes withfalse== dueASCII8BIT/UTF8. ActualCI does not logroundtripbytes, so no image-bytecorruption claim.",
+      "excerpts": [
+        {
+          "line": 1471,
+          "text": "2026-11-02T02:50:20.9963786Z         #44 5.215 check.rb:51:in '<main>': zlib failed (RuntimeError)"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-static-ruby34-125056614477.log",
+        "bytes": 143242,
+        "sha256": "a3c33b48cac3976059309de79bc8a9ad1d8ee37cdf76503d7b672e6a92a35947"
+      },
+      "log_lines": 1659,
+      "log_first_timestamp": "2026-11-02T02:33:46.1758485Z",
+      "log_last_timestamp": "2026-11-02T02:50:25.7791652Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:40:02.028917+00:00",
+          "finished_at": "2026-11-02T02:43:00.858497+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 1569,
+          "timestamp": "2026-11-02T02:50:22.6412406Z",
+          "value": {
+            "owner": "bex-nq-1179a059dc1b4ea1bd943ace",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-1179a059dc1b4ea1bd943ace",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-1179a059dc1b4ea1bd943ace removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:40:01Z",
+          "completed_at": "2026-11-02T02:43:00Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:43:00Z",
+          "completed_at": "2026-11-02T02:43:39Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T02:43:39Z",
+          "completed_at": "2026-11-02T02:50:21Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:50:21Z",
+          "completed_at": "2026-11-02T02:50:21Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:50:21Z",
+          "completed_at": "2026-11-02T02:50:22Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:50:22Z",
+          "completed_at": "2026-11-02T02:50:22Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:50:22Z",
+          "completed_at": "2026-11-02T02:50:25Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:50:25Z",
+          "completed_at": "2026-11-02T02:50:25Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13112821769,
+          "name": "common-pilot-ruby-node-static-ruby34-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 40116,
+          "digest": "sha256:f96f027db455cc9cc73250aae8f6a07513e67ec750faab03e3a0a782b848b62c",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375551913.json",
+        "bytes": 805,
+        "sha256": "8e5f1086fb9a4ca12c064d020037eafddaf9e5ddc9382067df26cbac8367b3a6"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375551913.json",
+        "bytes": 8730,
+        "sha256": "b6810df1a2b3c11eaeeeeeeeeaadb36f96c9f90b4c845ebaf904a7326311f3f8"
+      }
+    },
+    {
+      "profile": "node",
+      "case": "node-20",
+      "run_id": 41375556805,
+      "job_id": 125057044576,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:43:20Z",
+      "job_completed_at": "2026-11-02T02:49:57Z",
+      "fault_class": "REGISTRY_METADATA_CONTEXT_DEADLINE",
+      "reason": "Selected primary ENV immutable manifest GET exceeded callercontext in~21s before build.",
+      "excerpts": [
+        {
+          "line": 751,
+          "text": "2026-11-02T02:49:36.1808707Z     nativecommon_node_qualification_test.go:212: read selected native primary environment: Get \"https://registry-1.docker.io/v2/library/node/manifests/sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5\": context deadline exceeded"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-20-125057044576.log",
+        "bytes": 63484,
+        "sha256": "f13a65fec0102159a7b809f34281d41bef85d5fafc322d05164c8c676b0113da"
+      },
+      "log_lines": 898,
+      "log_first_timestamp": "2026-11-02T02:43:23.2033909Z",
+      "log_last_timestamp": "2026-11-02T02:49:45.9786997Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:46:46.630530+00:00",
+          "finished_at": "2026-11-02T02:48:18.128916+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 808,
+          "timestamp": "2026-11-02T02:49:36.6148415Z",
+          "value": {
+            "owner": "bex-nq-113849d6f03240d5a886b43a",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-113849d6f03240d5a886b43a",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-113849d6f03240d5a886b43a removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:46:46Z",
+          "completed_at": "2026-11-02T02:48:18Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:48:18Z",
+          "completed_at": "2026-11-02T02:49:12Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T02:49:12Z",
+          "completed_at": "2026-11-02T02:49:36Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:36Z",
+          "completed_at": "2026-11-02T02:49:36Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:36Z",
+          "completed_at": "2026-11-02T02:49:36Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:36Z",
+          "completed_at": "2026-11-02T02:49:36Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:36Z",
+          "completed_at": "2026-11-02T02:49:45Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:49:45Z",
+          "completed_at": "2026-11-02T02:49:45Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13113026365,
+          "name": "common-pilot-node-node-20-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 21500,
+          "digest": "sha256:a00173bd4e0b77b913309b20feb8a60e39a3a983a1dc560f8e54dff1e61a50dd",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375556805.json",
+        "bytes": 794,
+        "sha256": "c7b3564776e711d829f825664c73a486d82a7997b6f28ff818e0f1b48cf8de40"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375556805.json",
+        "bytes": 8730,
+        "sha256": "397f09531a77996453822a59d44d0110a03cfccbcb27ee7863ff8c40968024fe"
+      }
+    },
+    {
+      "profile": "node",
+      "case": "node-18",
+      "run_id": 41375561914,
+      "job_id": 125057701493,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:50:48Z",
+      "job_completed_at": "2026-11-02T03:12:19Z",
+      "fault_class": "NODE_SOURCE_PREREQUISITE_DNS_CURL6",
+      "reason": "Trusted single source-prerequisite RUN did receive networkdefault. curlstillcannotresolve nodejs.org; exits6 afterbuilt-in retries beforeNodecompile. Underlyingrunner/builderDNSmechanism unproved; notHTTP429/missingoverlay.",
+      "excerpts": [
+        {
+          "line": 1689,
+          "text": "2026-11-02T03:12:01.0328575Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+        },
+        {
+          "line": 1701,
+          "text": "2026-11-02T03:12:01.0334471Z          > [bex-node-build 4/4] RUN --network=default /sbin/ldconfig && /usr/local/bin/python3.9 -c 'import sys; assert sys.version_info[:2] == (3, 9)' && /usr/libexec/bex-native/build-node --common-bookworm 18.20.8 36a7bf1a76d62ce4badd881ee5974a323c70e1d8d19165732684e145632460d9:"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-18-125057701493.log",
+        "bytes": 170892,
+        "sha256": "56120e147d02bd18f9886002e1fc64f19b2062bd25ddb7e6f5f04adca9aa5e74"
+      },
+      "log_lines": 1860,
+      "log_first_timestamp": "2026-11-02T02:50:49.6830238Z",
+      "log_last_timestamp": "2026-11-02T03:12:10.2806939Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:58:30.948061+00:00",
+          "finished_at": "2026-11-02T03:00:58.895446+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 1770,
+          "timestamp": "2026-11-02T03:12:06.3844977Z",
+          "value": {
+            "owner": "bex-nq-a91c84b7b364493f93b8d2a4",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-a91c84b7b364493f93b8d2a4",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-a91c84b7b364493f93b8d2a4 removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:58:30Z",
+          "completed_at": "2026-11-02T03:00:58Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:00:58Z",
+          "completed_at": "2026-11-02T03:01:17Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T03:01:17Z",
+          "completed_at": "2026-11-02T03:12:01Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:01Z",
+          "completed_at": "2026-11-02T03:12:01Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:01Z",
+          "completed_at": "2026-11-02T03:12:06Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:06Z",
+          "completed_at": "2026-11-02T03:12:06Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:06Z",
+          "completed_at": "2026-11-02T03:12:09Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:10Z",
+          "completed_at": "2026-11-02T03:12:10Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13113677191,
+          "name": "common-pilot-node-node-18-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 45292,
+          "digest": "sha256:315ca82676aa675c7600024750ddb8becbc3809d85fdde02836de883bc7a842e",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375561914.json",
+        "bytes": 794,
+        "sha256": "77f7c9540aeaa013fc4dc29573776ca29d51ff89d0203f0e41c0b50f3656c23b"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375561914.json",
+        "bytes": 8730,
+        "sha256": "9d9c1a8fee7f3a723540c6039cf51eb1801d768200271d36e631e3aaa5fb325f"
+      }
+    },
+    {
+      "profile": "node",
+      "case": "node-16",
+      "run_id": 41375567050,
+      "job_id": 125057695217,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:50:43Z",
+      "job_completed_at": "2026-11-02T03:12:16Z",
+      "fault_class": "NODE_SOURCE_PREREQUISITE_DNS_CURL6",
+      "reason": "Trusted single source-prerequisite RUN did receive networkdefault. curlstillcannotresolve nodejs.org; exits6 afterbuilt-in retries beforeNodecompile. Underlyingrunner/builderDNSmechanism unproved; notHTTP429/missingoverlay.",
+      "excerpts": [
+        {
+          "line": 1799,
+          "text": "2026-11-02T03:12:01.0229639Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+        },
+        {
+          "line": 1811,
+          "text": "2026-11-02T03:12:01.0233199Z          > [bex-node-build 4/4] RUN --network=default /sbin/ldconfig && /usr/local/bin/python3.9 -c 'import sys; assert sys.version_info[:2] == (3, 9)' && /usr/libexec/bex-native/build-node --common-bookworm 16.20.2 576f1a03c455e491a8d132b587eb6b3b84651fc8974bb3638433dd44d22c8f49:"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-16-125057695217.log",
+        "bytes": 180014,
+        "sha256": "8a543799b196c9765fb31a1dc1bbd8030ddba42bc59570d20c768229699a010a"
+      },
+      "log_lines": 1970,
+      "log_first_timestamp": "2026-11-02T02:50:45.0154722Z",
+      "log_last_timestamp": "2026-11-02T03:12:08.8932472Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:58:34.638198+00:00",
+          "finished_at": "2026-11-02T03:01:29.601885+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 1880,
+          "timestamp": "2026-11-02T03:12:04.1348767Z",
+          "value": {
+            "owner": "bex-nq-41c1193f8c554c628a384700",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-41c1193f8c554c628a384700",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-41c1193f8c554c628a384700 removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:58:34Z",
+          "completed_at": "2026-11-02T03:01:29Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:01:29Z",
+          "completed_at": "2026-11-02T03:01:42Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T03:01:42Z",
+          "completed_at": "2026-11-02T03:12:01Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:01Z",
+          "completed_at": "2026-11-02T03:12:01Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:01Z",
+          "completed_at": "2026-11-02T03:12:04Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:04Z",
+          "completed_at": "2026-11-02T03:12:04Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:04Z",
+          "completed_at": "2026-11-02T03:12:08Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:08Z",
+          "completed_at": "2026-11-02T03:12:08Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13113423848,
+          "name": "common-pilot-node-node-16-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 47190,
+          "digest": "sha256:32e23a8605f5abc0fdc02c79bf562af6dd7882258ecec63daf3f7410dd90237c",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375567050.json",
+        "bytes": 794,
+        "sha256": "58201ae265ff795f542d998d79dff4d41727600a9537fd58bb82e6bffbfc13ef"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375567050.json",
+        "bytes": 8730,
+        "sha256": "9b41cf7e2fa6c8c1df9d0f09be0d7eb6c6f404167e9987f576fb228d304786ec"
+      }
+    },
+    {
+      "profile": "node",
+      "case": "node-14",
+      "run_id": 41375576977,
+      "job_id": 125057542764,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:50:26Z",
+      "job_completed_at": "2026-11-02T03:12:47Z",
+      "fault_class": "NODE_SOURCE_PREREQUISITE_DNS_CURL6",
+      "reason": "Trusted single source-prerequisite RUN did receive networkdefault. curlstillcannotresolve nodejs.org; exits6 afterbuilt-in retries beforeNodecompile. Underlyingrunner/builderDNSmechanism unproved; notHTTP429/missingoverlay.",
+      "excerpts": [
+        {
+          "line": 1733,
+          "text": "2026-11-02T03:12:29.8188455Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+        },
+        {
+          "line": 1745,
+          "text": "2026-11-02T03:12:29.8194835Z          > [bex-node-build 4/4] RUN --network=default /sbin/ldconfig && /usr/local/bin/python3.9 -c 'import sys; assert sys.version_info[:2] == (3, 9)' && /usr/libexec/bex-native/build-node --common-bookworm 14.21.3 458ec092e60ad700ddcf079cb63d435c15da4c7bb3d3f99b9a8e58a99e54075e:"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-14-125057542764.log",
+        "bytes": 175679,
+        "sha256": "ca2db6a5ffe8af0ffceb9ea8548a25c9930b4b00b6276a0b02a5dbaa5146ddce"
+      },
+      "log_lines": 1904,
+      "log_first_timestamp": "2026-11-02T02:50:27.6998445Z",
+      "log_last_timestamp": "2026-11-02T03:12:37.6695429Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:55:40.147968+00:00",
+          "finished_at": "2026-11-02T02:58:40.148810+00:00",
+          "exit_code": 124,
+          "bound": null,
+          "timeout_exit": true,
+          "process_group_absent": true
+        },
+        {
+          "number": 2,
+          "started_at": "2026-11-02T02:58:55.167539+00:00",
+          "finished_at": "2026-11-02T03:01:29.185869+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 1814,
+          "timestamp": "2026-11-02T03:12:33.7919141Z",
+          "value": {
+            "owner": "bex-nq-76c41f5c2f5440949783822a",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-76c41f5c2f5440949783822a",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-76c41f5c2f5440949783822a removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:55:40Z",
+          "completed_at": "2026-11-02T03:01:29Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:01:29Z",
+          "completed_at": "2026-11-02T03:01:35Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T03:01:35Z",
+          "completed_at": "2026-11-02T03:12:29Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:29Z",
+          "completed_at": "2026-11-02T03:12:29Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:29Z",
+          "completed_at": "2026-11-02T03:12:33Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:33Z",
+          "completed_at": "2026-11-02T03:12:33Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:33Z",
+          "completed_at": "2026-11-02T03:12:36Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:37Z",
+          "completed_at": "2026-11-02T03:12:37Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13113159674,
+          "name": "common-pilot-node-node-14-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 47383,
+          "digest": "sha256:36160e3f6040f8d5b8b92adf2c14b2dcb98cbbd02f6643af95985145da281b2c",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375576977.json",
+        "bytes": 794,
+        "sha256": "bb0c7826a64adddc7f2ef3f39490480b547025779f2b205feca7ac2af4a534e2"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375576977.json",
+        "bytes": 8730,
+        "sha256": "fdb703fcc1325eefdaafe5bf529b9bdb6851f181665dcd34d019030862ec192e"
+      }
+    },
+    {
+      "profile": "node",
+      "case": "ruby-node-exact14212",
+      "run_id": 41375695085,
+      "job_id": 125058109221,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:53:32Z",
+      "job_completed_at": "2026-11-02T03:12:47Z",
+      "fault_class": "NODE_SOURCE_PREREQUISITE_DNS_CURL6",
+      "reason": "Trusted single source-prerequisite RUN did receive networkdefault. curlstillcannotresolve nodejs.org; exits6 afterbuilt-in retries beforeNodecompile. Underlyingrunner/builderDNSmechanism unproved; notHTTP429/missingoverlay.",
+      "excerpts": [
+        {
+          "line": 1980,
+          "text": "2026-11-02T03:12:25.8984979Z   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0curl: (6) Could not resolve host: nodejs.org"
+        },
+        {
+          "line": 1992,
+          "text": "2026-11-02T03:12:25.8990027Z          > [bex-node-build 4/4] RUN --network=default /sbin/ldconfig && /usr/local/bin/python3.9 -c 'import sys; assert sys.version_info[:2] == (3, 9)' && /usr/libexec/bex-native/build-node --common-bookworm 14.21.2 d8f09a0f16773a77613c3817606f6d455624992d9c43443aca15e91807a1ff03:"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby-node-exact14212-125058109221.log",
+        "bytes": 195898,
+        "sha256": "9e17ef4e2c04e72a779b4e1359ded7055dcb118d4742621df784680aa7fc5600"
+      },
+      "log_lines": 2151,
+      "log_first_timestamp": "2026-11-02T02:53:33.7425709Z",
+      "log_last_timestamp": "2026-11-02T03:12:35.0032952Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T02:59:38.072268+00:00",
+          "finished_at": "2026-11-02T03:01:22.451135+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 2061,
+          "timestamp": "2026-11-02T03:12:30.8086397Z",
+          "value": {
+            "owner": "bex-nq-986439e4feca41b09c767928",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-986439e4feca41b09c767928",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-986439e4feca41b09c767928 removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T02:59:38Z",
+          "completed_at": "2026-11-02T03:01:22Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:01:22Z",
+          "completed_at": "2026-11-02T03:01:31Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T03:01:31Z",
+          "completed_at": "2026-11-02T03:12:25Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:25Z",
+          "completed_at": "2026-11-02T03:12:26Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:26Z",
+          "completed_at": "2026-11-02T03:12:30Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:30Z",
+          "completed_at": "2026-11-02T03:12:30Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:30Z",
+          "completed_at": "2026-11-02T03:12:34Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:12:35Z",
+          "completed_at": "2026-11-02T03:12:35Z"
+        }
+      ],
+      "actual_artifacts": [
+        {
+          "id": 13113975213,
+          "name": "common-pilot-node-ruby-node-exact14212-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1",
+          "bytes": 50260,
+          "digest": "sha256:22590a90941b5fdd92327b12f70f77e89fa8dcd84322fd8b770762bcef0bf3a4",
+          "expired": false
+        }
+      ],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375695085.json",
+        "bytes": 807,
+        "sha256": "62ab7feaf6c291fc33dc30542f326802406486f077777d46ff122394d314e65f"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375695085.json",
+        "bytes": 8730,
+        "sha256": "dc1a533f36a2e98fee5834cc65473f2dd506666bd82d5b1077d69a66b8700614"
+      }
+    },
+    {
+      "profile": "legacy-python",
+      "case": "3.8",
+      "run_id": 41375734819,
+      "job_id": 125058904545,
+      "arch": "amd64",
+      "source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "whole_job": "completed/failure perretainedactualREST",
+      "job_started_at": "2026-11-02T02:57:48Z",
+      "job_completed_at": "2026-11-02T03:15:32Z",
+      "fault_class": "ARTIFACT_FINALIZATION_ECONNRESET_AFTER_TEST_PASS",
+      "reason": "Actualnetwork-off generatedprofilePASS439.4s; cleanup/manifeststepssuccess. Uploadall24,680,107B/SHAprinted thenFinalizeArtifactECONNRESET. Freshartifactmetadata listempty.",
+      "excerpts": [
+        {
+          "line": 752,
+          "text": "2026-11-02T03:13:33.9341724Z     nativelegacy_python_test.go:129: legacy-python-3.8.20 passed actual generated network-off commands; image sha256:fd5530a788fe0bb320145355b2f07dc325bc4ac8de7b3fea014bffc615c423cc"
+        },
+        {
+          "line": 875,
+          "text": "2026-11-02T03:15:18.1136237Z ##[error]Failed to FinalizeArtifact: Unable to make request: ECONNRESET"
+        }
+      ],
+      "full_log": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/python38-125058904545.log",
+        "bytes": 64372,
+        "sha256": "2228510b9f2033d017fcafd9a67c5deaf4015712359c418befcd7e54bf302e47"
+      },
+      "log_lines": 898,
+      "log_first_timestamp": "2026-11-02T02:57:50.0092079Z",
+      "log_last_timestamp": "2026-11-02T03:15:18.3887773Z",
+      "UTF8_BOM_preserved": true,
+      "log_format": "Full connector decoded content retained as UTF8verbatim, no trimming/normalization. RawHTTPheaders/compressedtransportnotprovidedbyconnector.",
+      "log_fetches": 1,
+      "bootstrap_attempts": [
+        {
+          "number": 1,
+          "started_at": "2026-11-02T03:01:32.154788+00:00",
+          "finished_at": "2026-11-02T03:04:32.137829+00:00",
+          "exit_code": 124,
+          "bound": null,
+          "timeout_exit": true,
+          "process_group_absent": true
+        },
+        {
+          "number": 2,
+          "started_at": "2026-11-02T03:04:47.152964+00:00",
+          "finished_at": "2026-11-02T03:05:53.849869+00:00",
+          "exit_code": 0,
+          "bound": null,
+          "timeout_exit": false,
+          "process_group_absent": true
+        }
+      ],
+      "cleanup_ack": [
+        {
+          "line": 807,
+          "timestamp": "2026-11-02T03:13:43.1721161Z",
+          "value": {
+            "owner": "bex-nq-a95434dab3454e918fb159ba",
+            "operations": [
+              {
+                "resource": "builder",
+                "identity": "bex-nq-a95434dab3454e918fb159ba",
+                "exit_code": 0,
+                "stdout": "",
+                "stderr": "bex-nq-a95434dab3454e918fb159ba removed\n"
+              },
+              {
+                "resource": "docker-auth",
+                "logout_exit_code": 0,
+                "exit_code": 0,
+                "removed": true
+              }
+            ]
+          }
+        }
+      ],
+      "cleanup_limit": "ActualhelperACK0+jobcleanupstepSuccess, no independentCIhostinspectionperformed.",
+      "steps": [
+        {
+          "number": 7,
+          "name": "pre-pull the pinned BuildKit image with bounded retries",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:01:32Z",
+          "completed_at": "2026-11-02T03:05:53Z"
+        },
+        {
+          "number": 8,
+          "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:05:53Z",
+          "completed_at": "2026-11-02T03:06:12Z"
+        },
+        {
+          "number": 9,
+          "name": "measure the selected family case without claiming full-family acceptance",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:06:12Z",
+          "completed_at": "2026-11-02T03:13:35Z"
+        },
+        {
+          "number": 10,
+          "name": "record capacity observations before owned cleanup",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:13:35Z",
+          "completed_at": "2026-11-02T03:13:35Z"
+        },
+        {
+          "number": 11,
+          "name": "remove only this job's labeled resources, exact builder and credentials",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:13:35Z",
+          "completed_at": "2026-11-02T03:13:43Z"
+        },
+        {
+          "number": 12,
+          "name": "hash retained successes and failures",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:13:43Z",
+          "completed_at": "2026-11-02T03:13:43Z"
+        },
+        {
+          "number": 13,
+          "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+          "conclusion": "failure",
+          "started_at": "2026-11-02T03:13:43Z",
+          "completed_at": "2026-11-02T03:15:18Z"
+        },
+        {
+          "number": 27,
+          "name": "Complete job",
+          "conclusion": "success",
+          "started_at": "2026-11-02T03:15:18Z",
+          "completed_at": "2026-11-02T03:15:18Z"
+        }
+      ],
+      "actual_artifacts": [],
+      "artifact_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375734819.json",
+        "bytes": 32,
+        "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c"
+      },
+      "artifact_bodies_downloaded": 0,
+      "raw_jobs_metadata": {
+        "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/raw-jobs-41375734819.json",
+        "bytes": 8740,
+        "sha256": "5560c1b2dbca1ec2ad22eef01f1279aeab7c7135948b8211afb67510fac8f988"
+      }
+    }
+  ],
+  "host_Ruby_exactsource_control": {
+    "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/RUBY-EXACT-HOST-CONTROL.json",
+    "bytes": 1340,
+    "sha256": "08bcd87a2947b1532d10608350b285771b1f09e66a8efd0b04119e8c2e55c558"
+  },
+  "source_custody": {
+    "path": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/SOURCE-CUSTODY.json",
+    "bytes": 1185,
+    "sha256": "bf11af9b7b0cd4b9a5110aea26fe59a6fbfb30cb632a74ba0aaa2d6a17c0a28d"
+  },
+  "native_init_AMD": "Notrefetched: Roothandlesknownnative-initfixturefailure; originalARMsuccessnotborrowed.",
+  "node_exact14212_nonterminal_in_supplied_snapshot": {
+    "profile": "node",
+    "case": "node-exact14212",
+    "run_id": 41375689572,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375689572",
+    "jobs": [
+      {
+        "id": 125055306337,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125057832997,
+        "name": "qualify-profile (amd64)",
+        "status": "in_progress",
+        "conclusion": null,
+        "active": [
+          "measure the selected family case without claiming full-family acceptance",
+          "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+        ]
+      },
+      {
+        "id": 125057833172,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125057834114,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125057834281,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  "pending_limit": "StandaloneNodeexact14212job125057832997 hasmeasure+uploadfailurebutwholejobinprogress inprovidedrawmetadata. No duplicatejobsquery/incompletelogfetch; Rootmayprovidecompletedmetadataforonefullloglater.",
+  "actual_FIX_candidates_no_edits": [
+    "ImageMetadata guard supports canonicalofficialGo/Rust pinned inputs; retainrepo/digest/configvalidation, reviewsharedexactRepos semantics beforepatch.",
+    "ExtraRubyfixture zlibcheck shouldcompareexactbytes while retainingUnicode/originaltextandactualdeflate/inflate; no removalofcheck or original13/28 change.",
+    "Node20metadata timeout/Ruby40HTTP429/Node14-18fallbackDNScurl6 andPy38FinalizeECONNRESET are distinctexternalmechanisms; no single429assumption or blindsourcewaiver."
+  ],
+  "all_failures_retained": true,
+  "CI_jobs_queries": 0,
+  "artifact_metadata_GET_once_per_16run": true,
+  "artifact_bodies_downloaded": 0,
+  "runtime_or_supplier_approval": false
+}

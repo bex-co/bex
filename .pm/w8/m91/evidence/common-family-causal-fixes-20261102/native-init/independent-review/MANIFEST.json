@@ -1,0 +1,51 @@
+{
+  "excludes": [
+    "MANIFEST.json"
+  ],
+  "files": [
+    {
+      "bytes": 761,
+      "mode": "0644",
+      "path": "DRIFT-CHECKS.json",
+      "sha256": "ea7e7fa04c4d2eb9c1332062ff48eeec246a0155848cf8e87a0b2ffbf7f05035"
+    },
+    {
+      "bytes": 537,
+      "mode": "0644",
+      "path": "HOST-CONTROL-RESULT.json",
+      "sha256": "3bac2e37aa048e70ec2f35132edebd469f775fafd6517547a17bd99d34fbc64c"
+    },
+    {
+      "bytes": 2635,
+      "mode": "0644",
+      "path": "INPUT-CUSTODY.json",
+      "sha256": "ad12faaf491e0aa743c443ef3daeea7271d1464c33eee9478eb318f90016a1f5"
+    },
+    {
+      "bytes": 895,
+      "mode": "0644",
+      "path": "RECEIPT.json",
+      "sha256": "bc5ef069a921b0981cc33dfabf3b40ce5bc925deb190ea9a7acb7dbdc9e3c646"
+    },
+    {
+      "bytes": 2460,
+      "mode": "0644",
+      "path": "REVIEW.json",
+      "sha256": "2b7328bfa86365e8c722400d216e14479c8bab65ae441ad9aa06849020c39717"
+    },
+    {
+      "bytes": 0,
+      "mode": "0644",
+      "path": "independent.stderr",
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "bytes": 182,
+      "mode": "0644",
+      "path": "independent.stdout",
+      "sha256": "3d3cc39e3063b55a295c8e2a4166b8277eea050def990acfca429c84827c41ac"
+    }
+  ],
+  "payload_bytes": 7470,
+  "payload_files": 7
+}

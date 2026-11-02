@@ -1,0 +1,59 @@
+{
+  "at": "2026-11-02T02:31:03.831891+00:00",
+  "status": "PROPOSAL_ONLY_NO_DOCKER_COMMAND_EXECUTED",
+  "owner": "bex-init-observe-a80669f36fd547e6",
+  "container_name": "bex-init-observe-a80669f36fd547e6",
+  "cached_image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+  "image_role": "Existing verifiedcachedAlpineLinuxARM64 fromLinuxCosign/toolpreflights. Readonlyexactimageinspect first; pullnever. ItsARMrootfs isNOTclaimedAMDNodeimage. AMDguesttargetisprovenbyactualinitELF62/hash. Diagnostic only, futureactualfamilyrerun retains requestedlinux/amd64+Nodeprocess.arch.",
+  "target": {
+    "path": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/init/native-init",
+    "sha256": "159a39e14b60d9dcea04c2ec9c55f33b9da42d1580807407edfd02bde7b7e16f",
+    "bytes": 1753250,
+    "machine": 62,
+    "staged_expected_match": true
+  },
+  "controller_reuse": "Use alreadyreviewed localpilot command PGTERM/KILL/reap/absence+CID-before-artifacts+exactrm/absence pattern. No BuildKit/builder/Go SDK/sourcecompilation/imagepull. ParentRootownsactualboundedexecution afterreadingthisplan.",
+  "bounds": {
+    "whole_seconds": 120,
+    "attach_seconds": 30,
+    "cleanup_reserve_seconds": 40,
+    "output_bytes": 1048576,
+    "container_memory_bytes": 134217728,
+    "cpus": 1,
+    "pids": 32,
+    "own_tmpfs_bytes": 8388608,
+    "host_operating_free_floor_bytes": 8589934592,
+    "work_seconds": 80,
+    "host_files_bytes": 8388608,
+    "remaining_host_floor_bytes": 8589934592
+  },
+  "environment": "ExistingqualifiedhostDocker endpointexplicit; emptyownDOCKER_CONFIG/noauthcopy/unsetDOCKER_CONTEXT. No host/globalconfig/trustchange. Container readonly/networknone/noSocket/nopublishedports; onlyexactownedreadonlyinputbinds.",
+  "steps": [
+    "Verifytargetinputhash/ELF62 andcopy1,753,250bytes toownstage/native-init thenchmod0755 onCOPYonly, originalartifactremainsunchanged. Writefixedobserver shell toowninput.",
+    "Read-onlyinspect cached exactimageID\u2192LinuxARM64 anddaemon actualarchitecture. Missingcache/ref mismatch aborts; nopull/fallback. Confirmexactownedcontainername absent usingknowncanonicalmissingcontainerparser.",
+    "Createonefinitecontainer --pull=never --platform=linux/arm64 --name=<owner> --label co.bex.native-qualification=<owner> --memory128m --cpus1 --pids-limit32 --networknone --read-only --tmpfs /tmp:rw,nosuid,nodev,size=8388608 --mount type=bind,src=<ownstage/native-init>,dst=/native-init,readonly --mount type=bind,src=<owninput/observe.sh>,dst=/observe.sh,readonly --entrypoint /native-init <cachedARMimageID> /bin/sh /observe.sh. This mixed-rootfs probe asksglobalbinfmt toexecuteexactAMDnative-init; ifunsupportedretainexecfailureandstop, donotweaken/sourcealter.",
+    "RegisterexactCIDbeforeanyoptionalwrites. Capturefullowncontainerinspect beforestart (Config.Entrypoint,Path,Args,image/configID,requestedplatform/labels). Start--attach once underexistingboundedclientgroup; preservefullstdout/stderr/canonicalexit; neverexecutehelpercompiler/app/listener.",
+    "Observerrecords raw/proc/1/exe path/header+machine/inode, exactNULPID1argv asbase64, target/native-init SHA/ELF/inode/dev, all/proc/1/maps and matching map_files readlinks/stat. It writesnocredentials/auth/foreignfiles andopensnonetwork. Missing/permissiondenied/truncatedmapping staysUNPROVED.",
+    "Afterexit exactowninspect preservesPath/Args/Entrypoint/exit. ALWAYSstop/reapattachclient group BEFORE exactstop/rm/inspectabsence; retainpendingCID/group/configonuncertainty, noforeigncleanup."
+  ],
+  "fix_scope_after_actual_observation": [
+    "Keeprawpid1exepath asobserved ratherthanrewriteit to/native-init. Keepcompiled/staged/runtime/native-init exactSHA+ELF/executable andactualprocess.archtarget assertions.",
+    "Keepactual/proc/1/cmdline EXACTnative-init/bash/canonicalcommand vector ifobserved; iftranslatoradds prefix, recordentirerawvector andchooseonlytheactualdocumentedshapeafterinspection, notagenericstriprule.",
+    "Nativepathremainsnative-initoracle. Emulatedcase needsactualARMinterpreterELF183 +targetAMD62 +mapped/native-init exactinode/device/pathboundtoSHA-verifiedtarget +exactDockerentrypoint/path/args provenance. A Rosettabasenamealonecannotpass.",
+    "Recordboundedrawidentityobservations beforeassertions so futurefailures retaintheactualfacts. Go validator andJSobservermustenforce sameidentity distinction; leaveallfourlaunches/heldHTTP/5events/oneSIGTERM/exit/ENV/drain/cleanup unchanged.",
+    "NoapplicationuntilRootreviewsactualobservations andnarrowpredicate. Preserveoldfailureandallpending35results. Newtestsourceonlychangesrequirefreshsameimageutilitybaseline, andonlynative-initrerun; otherfamilyresultsretainactualsourceandequivalence scope."
+  ],
+  "red_control_plan": [
+    "Useactualobservedemulationfacts asretainedcontrol: oldstrictPID1pathrefuses; narrownewpredicatepassesonlycompletebinary+map+argvbinding. Native/native-init stillpassesunchanged.",
+    "WrongguestSHA/ELF/inode/dev/missingmap/changedPID1argv/changedDockerentrypoint/wrongexpectedtargetarch/mereRosettapath/undrainedHTTP muststillrefuse. ExistingSIGTERM/hold/ENV/statuscontrols retained.",
+    "CurrentartifactdoesNOTyetcontainargv/maps; no syntheticvaluesmaypromoteactualfailure or choosepredicate."
+  ],
+  "run_root": "/private/tmp/bex-init-observe-a80669f36fd547e6",
+  "endpoint": "unix:///Users/tianpan/.orbstack/run/docker.sock",
+  "source_root": "/Users/tianpan/projects/bex7",
+  "reused_controller": {
+    "path": "/private/tmp/bex-w8-node14-local-pilot-v4-source-20261101-bop3sbht/run_pilot.py",
+    "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03"
+  },
+  "helper_sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5"
+}

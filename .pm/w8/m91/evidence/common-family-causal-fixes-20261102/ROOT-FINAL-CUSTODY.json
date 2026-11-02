@@ -1,0 +1,26 @@
+{
+  "at": "2026-11-02T04:37:21.838760+00:00",
+  "Root_verification": {
+    "frozen_stored_files": 355,
+    "lossless_patch_roundtrips": 7,
+    "final_local_verification_files": 20,
+    "final_source_paths": 10,
+    "all_verified": true
+  },
+  "authored_after_Root_formatter": {
+    ".pm/w8/m91/evidence/common-family-causal-fixes-20261102/README.md": "865d614cb39f85020f741b61ce90030d366707fc408a05ccfff86b344ed10708",
+    ".pm/w8/m91/README.md": "f430581874f35db6f60cb6d4f81e77ed7d8af60372eeba9e0752b4f0a27821e4",
+    ".pm/w8/m91/t007.md": "1ac74211c3d803b29c353919f8cf170b0b8c6278b2ff0c15c06425ca1fc66dc1"
+  },
+  "original_combined_Go_package_seconds": 19.447,
+  "original_wrapper_seconds": 28.821558959,
+  "final_Go_package_seconds": 19.675,
+  "final_wrapper_seconds": 29.352764749899507,
+  "lint": "0 issues; actual final exec83926",
+  "actual_new_source_CI_phase_adoption_hosted_acceptance": "OPEN; no completion claimed",
+  "whitespace_check": {
+    "source_and_authored_markdown": "PASS",
+    "frozen_raw_logs": "Verbatim trailing spaces retained; whole-index diffcheck flags frozen data, not edited source. Source/log hashes verified without normalization.",
+    "whole_index_diagnostic_sha256": "393e4bbc582e627382a7f902ed38e66608b1e2b4068d82873ae881daa52d9077"
+  }
+}

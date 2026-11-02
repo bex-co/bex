@@ -1,0 +1,21 @@
+{
+  "expected_exit": 0,
+  "label": "new-focused",
+  "command": [
+    "go",
+    "test",
+    "-overlay",
+    "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/new-overlay.json",
+    "-p",
+    "1",
+    "-count=1",
+    "./internal/build",
+    "-run",
+    "^(TestImageMetadata.*|TestDockerHubResolver)$"
+  ],
+  "exit": 0,
+  "bound": null,
+  "seconds": 3.122988000046462,
+  "group_absent": true,
+  "log_sha256": "e7d3454bbb153202cb026aa16e849a9cdbe3fec780d7bb1360a7f4271e1f3b87"
+}

@@ -1,0 +1,41 @@
+{
+  "build_network": "none",
+  "choices": [
+    {
+      "Label": "Node",
+      "Line": "24",
+      "Image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+      "Source": ".node-version",
+      "Exact": ""
+    }
+  ],
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "expected": {
+    "run": "bex-init-1406-1793588518862785917",
+    "node": "24.22.1",
+    "arch": "arm64",
+    "env": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    },
+    "init": {
+      "sha256": "a98891512176fb22df4bd64032b55ffcc00722a7754f9eb3903bf58b20e6f7f7",
+      "machine": 183,
+      "executable": true,
+      "bytes": 1704098
+    },
+    "commands": {
+      "direct": "node capture-env.js direct \u0026\u0026 exec node server.js",
+      "npm": "node capture-env.js npm \u0026\u0026 exec npm start",
+      "pnpm": "node capture-env.js pnpm \u0026\u0026 exec pnpm start",
+      "yarn": "node capture-env.js yarn \u0026\u0026 exec yarn start"
+    }
+  },
+  "named_context": "bex-init=/home/docker/actions-runner/_work/_temp/bex-native-qualification-7u8o2vkn/generated/native-common-init-1434254458/init",
+  "platform": "linux/arm64",
+  "resolver_image_field": "registry.example/bex@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+  "resolver_image_role": "test-only nativeInitOptions staging sentinel; not queried, executed or claimed as image provenance",
+  "runtime_network": "bridge; published127.0.0.1 ephemeral port only",
+  "scope": "separate Node24/common/native-init local drain profile; original13/28 and first cohort unchanged; no hosted/Kubernetes/publication claim"
+}

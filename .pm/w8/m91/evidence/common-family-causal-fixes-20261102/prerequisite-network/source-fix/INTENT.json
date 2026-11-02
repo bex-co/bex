@@ -1,0 +1,10 @@
+{
+  "at": "2026-11-02T03:48:10.434549+00:00",
+  "scope": "Private5testfileharnessfix; no productiongenerator/sourcebuilder/frozenfixture/original35selector changes. No repoapply/ship/Docker/CI.",
+  "base_HEAD": "77307722e157e148ef04b1f77b675a72e0bd9d35",
+  "go_floor": 8589934592,
+  "normal_shared_Go_cache": true,
+  "COW_or_full_source_copy": false,
+  "free_before": 21767962624,
+  "actual_failure_proof": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json"
+}

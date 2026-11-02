@@ -1,0 +1,9 @@
+{
+  "exit": 0,
+  "stdout": "0 issues.\n",
+  "command": "GOWORK=off GOFLAGS=-mod=readonly GOTOOLCHAIN=local GOPROXY=off GOSUMDB=off GOTELEMETRY=off GOMAXPROCS=2 GOMEMLIMIT=512MiB ./bin/golangci-lint run --concurrency 2 ./internal/build",
+  "cwd": "lego/operator",
+  "actual_exec_session": 83926,
+  "final_source_manifest_sha256": "3642fd18f3b2409679bd3cb2c842ace4e990716c72825d12636157c7bd951628",
+  "scope": "local lint; no CI/runtime acceptance"
+}

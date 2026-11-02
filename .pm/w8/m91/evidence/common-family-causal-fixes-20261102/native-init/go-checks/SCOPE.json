@@ -1,0 +1,49 @@
+{
+  "at": "2026-11-02T03:32:10.952553+00:00",
+  "version": "go version go1.26.4 darwin/arm64",
+  "source_before": {
+    "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/nativequalification_init_test.go": "5540c1665b514cb2bf92c9ad47c8d48a6c174edadd486dad24115e0cb764ca86",
+    "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/testdata/native-common-init/identity.js": "b112a923a58f6a390f212e66f64eccbb004567448ef1f654081f167d6162cbd9",
+    "/Users/tianpan/projects/bex7/lego/go.work.sum": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativequalification_init_test.go": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/testdata/native-common-init/identity.js": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+  },
+  "commands": [
+    [
+      "focused",
+      [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build",
+        "-run",
+        "^(TestNativeInitQualificationMappedPID1Controls|TestNativeInitQualificationDrainAndTransportControls)$"
+      ],
+      300
+    ],
+    [
+      "full-buildpkg",
+      [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build"
+      ],
+      600
+    ]
+  ],
+  "start_free": 10232254464,
+  "physical_free_floor": 8589934592,
+  "margin": 134217728,
+  "owned_tmp_cap": 536870912,
+  "cache": "Root-authorized standard shared content-addressed Go build cache; ordinary Go-managed reads/writes only. No direct edit/delete/prune/cachecleanup. Module/source reads unchanged; offline/modreadonly.",
+  "scope": "Actual localunit checks only. Runtimeos.ReadFile doesnot useGooverlayforJS; patchedJS independentlyNodepredicate/syntax tested; no runtimeimage/Docker/GoSDKdownload."
+}

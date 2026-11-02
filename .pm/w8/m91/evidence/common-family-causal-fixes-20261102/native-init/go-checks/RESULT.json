@@ -1,0 +1,57 @@
+{
+  "results": [
+    {
+      "label": "focused",
+      "command": [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build",
+        "-run",
+        "^(TestNativeInitQualificationMappedPID1Controls|TestNativeInitQualificationDrainAndTransportControls)$"
+      ],
+      "exit": 0,
+      "bound": null,
+      "seconds": 8.843864082824439,
+      "group_absent": true,
+      "log_sha256": "ea370cf839243fb02647cf3e7dceadc5b44256142a2d96092090800021bb064e"
+    },
+    {
+      "label": "full-buildpkg",
+      "command": [
+        "go",
+        "test",
+        "-overlay",
+        "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/overlay.json",
+        "-p",
+        "1",
+        "-count=1",
+        "./internal/build"
+      ],
+      "exit": 0,
+      "bound": null,
+      "seconds": 25.939025207888335,
+      "group_absent": true,
+      "log_sha256": "b03d6a4ca911c867a3a6156b699ed5c7134e9d25016d0b578ee168e21cf6d0a2"
+    }
+  ],
+  "source_unchanged": true,
+  "source_after": {
+    "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/nativequalification_init_test.go": "5540c1665b514cb2bf92c9ad47c8d48a6c174edadd486dad24115e0cb764ca86",
+    "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/testdata/native-common-init/identity.js": "b112a923a58f6a390f212e66f64eccbb004567448ef1f654081f167d6162cbd9",
+    "/Users/tianpan/projects/bex7/lego/go.work.sum": "efb45a8fffa3eaa979709e70e7e8c6660b207181450ac5f17febc6d0365f4ff6",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/nativequalification_init_test.go": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466",
+    "/Users/tianpan/projects/bex7/lego/operator/internal/build/testdata/native-common-init/identity.js": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+  },
+  "minimum_free": 10164604928,
+  "peak_owned_tmp": 43925148,
+  "shared_build_cache_retained": true,
+  "tmp_removed": true,
+  "pending_pgids": [],
+  "cancelled_signals": [],
+  "scope": "No networkdownloads/modulewrites/Docker/DB/source or production changes. Root-authorized Go-managed shared build-cache writes only; focused+fullbuildpackageunit via exact private Gooverlay. No sharedcache deletion."
+}

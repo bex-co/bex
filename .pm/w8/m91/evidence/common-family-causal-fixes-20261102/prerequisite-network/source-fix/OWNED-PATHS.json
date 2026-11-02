@@ -1,0 +1,7 @@
+[
+  "lego/operator/internal/build/nativeutility_qualification_test.go",
+  "lego/operator/internal/build/nativecommon_node_qualification_test.go",
+  "lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+  "lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+  "lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go"
+]

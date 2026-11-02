@@ -1,0 +1,16 @@
+{
+  "command": [
+    "node",
+    "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/host-controls.cjs"
+  ],
+  "exit": 0,
+  "method": "Full observed tool stdout projected as JSON; not relabeled as an original file capture.",
+  "observed_tool_output": {
+    "actualCIEmulationOrDrainQualified": false,
+    "actualLocalNativeShape": "PASS",
+    "actualPartialCIShape": "REFUSED",
+    "negativeControls": 15,
+    "scope": "pure predicate controls only",
+    "syntheticCompleteEmulation": "PASS_OLD_STRICT_GUARD_RED"
+  }
+}

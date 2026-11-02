@@ -1,0 +1,1554 @@
+[
+  {
+    "profile": "native-init",
+    "case": "all-launches",
+    "run_id": 41375346506,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375346506",
+    "jobs": [
+      {
+        "id": 125054264973,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125054905589,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125054905622,
+        "name": "qualify-profile (arm64)",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125054906522,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125054906628,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node",
+    "case": "node-22",
+    "run_id": 41375390166,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375390166",
+    "jobs": [
+      {
+        "id": 125054390305,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055427731,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055427809,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125055428179,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125055428860,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node",
+    "case": "node-26",
+    "run_id": 41375422833,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375422833",
+    "jobs": [
+      {
+        "id": 125054488873,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055681153,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055681203,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125055682007,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125055682514,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "modern-python",
+    "case": "3.9",
+    "run_id": 41375428758,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375428758",
+    "jobs": [
+      {
+        "id": 125054505529,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055436874,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125055436976,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055437729,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125055438056,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "modern-python",
+    "case": "3.10",
+    "run_id": 41375434664,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375434664",
+    "jobs": [
+      {
+        "id": 125054523378,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055277369,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055277391,
+        "name": "qualify-profile (arm64)",
+        "status": "in_progress",
+        "conclusion": null,
+        "active": [
+          "pre-pull the pinned BuildKit image with bounded retries"
+        ]
+      },
+      {
+        "id": 125055278360,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125055278448,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "modern-python",
+    "case": "3.11",
+    "run_id": 41375455883,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375455883",
+    "jobs": [
+      {
+        "id": 125054587058,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055227638,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055227667,
+        "name": "qualify-profile (arm64)",
+        "status": "in_progress",
+        "conclusion": null,
+        "active": [
+          "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+        ]
+      },
+      {
+        "id": 125055228742,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125055229013,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "modern-python",
+    "case": "3.12",
+    "run_id": 41375461070,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375461070",
+    "jobs": [
+      {
+        "id": 125054603819,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055633459,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055633534,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125055634039,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125055634746,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "modern-python",
+    "case": "3.14",
+    "run_id": 41375466839,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375466839",
+    "jobs": [
+      {
+        "id": 125054623295,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055560241,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125055560331,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055560647,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125055560819,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "go-rust",
+    "case": "go",
+    "run_id": 41375472665,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375472665",
+    "jobs": [
+      {
+        "id": 125054638236,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055631481,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125055631670,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125055632041,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125055632597,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "go-rust",
+    "case": "rust",
+    "run_id": 41375488574,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375488574",
+    "jobs": [
+      {
+        "id": 125054688529,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055846561,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125055846594,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125055847415,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125055847478,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "ruby",
+    "case": "ruby34",
+    "run_id": 41375495533,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375495533",
+    "jobs": [
+      {
+        "id": 125054708869,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125055996881,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125055996963,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125055997642,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125055997659,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "ruby",
+    "case": "ruby40",
+    "run_id": 41375501385,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375501385",
+    "jobs": [
+      {
+        "id": 125054727583,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125056758928,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125056758950,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125056759280,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125056759744,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "ruby",
+    "case": "ruby344-creation-default",
+    "run_id": 41375507144,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375507144",
+    "jobs": [
+      {
+        "id": 125054744990,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125056317475,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125056317602,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125056318441,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125056318565,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "ruby",
+    "case": "ruby30",
+    "run_id": 41375519527,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375519527",
+    "jobs": [
+      {
+        "id": 125054783274,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125056527087,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125056527088,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125056528205,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125056528271,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "ruby",
+    "case": "ruby31",
+    "run_id": 41375525481,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375525481",
+    "jobs": [
+      {
+        "id": 125054801209,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125056391774,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125056391852,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125056391885,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125056392471,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "ruby",
+    "case": "ruby32",
+    "run_id": 41375530745,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375530745",
+    "jobs": [
+      {
+        "id": 125054817212,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125056666455,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125056666478,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125056667272,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125056667689,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "ruby",
+    "case": "ruby33",
+    "run_id": 41375536053,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375536053",
+    "jobs": [
+      {
+        "id": 125054833483,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125056673239,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125056673323,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125056673863,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125056674487,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "ruby",
+    "case": "node-static-ruby34",
+    "run_id": 41375551913,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375551913",
+    "jobs": [
+      {
+        "id": 125054883853,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125056614453,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125056614477,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125056614903,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125056615574,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node",
+    "case": "node-20",
+    "run_id": 41375556805,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375556805",
+    "jobs": [
+      {
+        "id": 125054898423,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125057044476,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125057044576,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125057045142,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125057045946,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node",
+    "case": "node-18",
+    "run_id": 41375561914,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375561914",
+    "jobs": [
+      {
+        "id": 125054915126,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125057701493,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125057701509,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125057701870,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125057702303,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node",
+    "case": "node-16",
+    "run_id": 41375567050,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375567050",
+    "jobs": [
+      {
+        "id": 125054930899,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125057695217,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125057695237,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125057696091,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125057696619,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node",
+    "case": "node-14",
+    "run_id": 41375576977,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375576977",
+    "jobs": [
+      {
+        "id": 125054964755,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125057542723,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125057542764,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125057543502,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125057543738,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node",
+    "case": "node-exact14212",
+    "run_id": 41375689572,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375689572",
+    "jobs": [
+      {
+        "id": 125055306337,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125057832997,
+        "name": "qualify-profile (amd64)",
+        "status": "in_progress",
+        "conclusion": null,
+        "active": [
+          "measure the selected family case without claiming full-family acceptance",
+          "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+        ]
+      },
+      {
+        "id": 125057833172,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125057834114,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125057834281,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node",
+    "case": "ruby-node-exact14212",
+    "run_id": 41375695085,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375695085",
+    "jobs": [
+      {
+        "id": 125055324904,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125058109135,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125058109221,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125058110057,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125058110282,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "legacy-python",
+    "case": "3.7",
+    "run_id": 41375700551,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375700551",
+    "jobs": [
+      {
+        "id": 125055342051,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125058940435,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125058940548,
+        "name": "qualify-profile (amd64)",
+        "status": "in_progress",
+        "conclusion": null,
+        "active": [
+          "measure the selected family case without claiming full-family acceptance"
+        ]
+      },
+      {
+        "id": 125058941115,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125058941364,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "legacy-python",
+    "case": "3.8",
+    "run_id": 41375734819,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375734819",
+    "jobs": [
+      {
+        "id": 125055448775,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125058904482,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125058904545,
+        "name": "qualify-profile (amd64)",
+        "status": "completed",
+        "conclusion": "failure",
+        "active": [
+          "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9"
+        ]
+      },
+      {
+        "id": 125058905195,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125058906070,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "elixir",
+    "case": "elixir-1.18",
+    "run_id": 41375740029,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375740029",
+    "jobs": [
+      {
+        "id": 125055465280,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125059235961,
+        "name": "qualify-profile (amd64)",
+        "status": "in_progress",
+        "conclusion": null,
+        "active": [
+          "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+        ]
+      },
+      {
+        "id": 125059236017,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125059236986,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125059237311,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "elixir",
+    "case": "elixir-1.17",
+    "run_id": 41375779779,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375779779",
+    "jobs": [
+      {
+        "id": 125055589548,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125060083567,
+        "name": "qualify-profile (amd64)",
+        "status": "in_progress",
+        "conclusion": null,
+        "active": [
+          "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1"
+        ]
+      },
+      {
+        "id": 125060083616,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125060084494,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125060085029,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "elixir",
+    "case": "elixir-1.19",
+    "run_id": 41375786429,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375786429",
+    "jobs": [
+      {
+        "id": 125055605652,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125060201435,
+        "name": "qualify-profile (amd64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125060201484,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125060201883,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125060202338,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "elixir",
+    "case": "elixir-1.20",
+    "run_id": 41375793680,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375793680",
+    "jobs": [
+      {
+        "id": 125055626085,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125061103943,
+        "name": "qualify-profile (amd64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125061103982,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125061104483,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125061105071,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "elixir",
+    "case": "elixir-exact-otp280",
+    "run_id": 41375800234,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375800234",
+    "jobs": [
+      {
+        "id": 125055646794,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125061319746,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125061319749,
+        "name": "qualify-profile (amd64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125061320767,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125061321094,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node-addon",
+    "case": "common-node14-primary",
+    "run_id": 41375818643,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375818643",
+    "jobs": [
+      {
+        "id": 125055697367,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125062175875,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125062175979,
+        "name": "qualify-profile (amd64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125062176739,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125062176920,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node-addon",
+    "case": "common-node16-primary",
+    "run_id": 41375823911,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375823911",
+    "jobs": [
+      {
+        "id": 125055713364,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125062548280,
+        "name": "qualify-profile (amd64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125062548313,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125062548804,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125062549277,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node-addon",
+    "case": "common-python313-node16",
+    "run_id": 41375829158,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375829158",
+    "jobs": [
+      {
+        "id": 125055728852,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125062409253,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125062409265,
+        "name": "qualify-profile (amd64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125062409757,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125062410499,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  },
+  {
+    "profile": "node-addon",
+    "case": "historical-python313-node16",
+    "run_id": 41375834550,
+    "url": "https://github.com/bex-co/bex/actions/runs/41375834550",
+    "jobs": [
+      {
+        "id": 125055747582,
+        "name": "plan",
+        "status": "completed",
+        "conclusion": "success",
+        "active": []
+      },
+      {
+        "id": 125063570262,
+        "name": "qualify-profile (arm64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125063570332,
+        "name": "qualify-profile (amd64)",
+        "status": "queued",
+        "conclusion": null,
+        "active": []
+      },
+      {
+        "id": 125063570899,
+        "name": "qualify",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      },
+      {
+        "id": 125063571305,
+        "name": "publish",
+        "status": "completed",
+        "conclusion": "skipped",
+        "active": []
+      }
+    ]
+  }
+]

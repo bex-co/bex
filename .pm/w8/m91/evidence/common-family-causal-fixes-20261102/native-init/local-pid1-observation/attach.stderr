@@ -1,0 +1,3 @@
+stat: can't stat '/proc/1/map_files/400000-4b6000': Operation not permitted
+stat: can't stat '/proc/1/map_files/4b6000-5a1000': Operation not permitted
+stat: can't stat '/proc/1/map_files/5a1000-5ac000': Operation not permitted

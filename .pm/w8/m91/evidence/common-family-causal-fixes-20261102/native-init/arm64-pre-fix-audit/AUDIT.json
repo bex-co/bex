@@ -1,0 +1,191 @@
+{
+  "HTTP200_limit": "ExactUnicodebody retained; HTTP200 enforcedby actual successfulGo test/source, rawstatus/headers not separately emitted.",
+  "Node": "24.22.1",
+  "actual_SDK_and_control": {
+    "BuildKit": "0.30.0 pinned0168606b\u2026",
+    "Buildx": "0.38.1 linux-arm64",
+    "Go": "1.26.0 linux/arm64",
+    "runner_labels": [
+      "self-hosted",
+      "Linux",
+      "ARM64",
+      "bex-ci"
+    ],
+    "scope": "Actual joblog version/context, not independently downloaded/hashedfullSDK archive or borrowedlocal1.27.3SDK."
+  },
+  "actual_generated_image": [
+    "sha256:0150cee4abb175e5d92d5ce2730645c11509d6574905edebd04ff308647e512b",
+    "linux/arm64",
+    "[\"/native-init\"]"
+  ],
+  "artifact_id": 13112713664,
+  "artifact_zip": {
+    "bytes": 793651,
+    "mode": "0600",
+    "sha256": "46dbabfc0269b19c7ac20a11bdb9793113429303111c19b242a84abd84a5dc6f"
+  },
+  "assessment": "CLEAN_ACTUAL_NATIVE_ARM64_FOUR_LAUNCH_JOB",
+  "cleanup": "All4exactworkloadCIDabsence rawreceipts; ownedbuilderremove0/configlogout0+removedtrue andsuccessfulownerlabelscan/helper+poststeps. No new CIhostinspection or independentvolumeinspect performed.",
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "common_producer_verifier": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "compiled_staged_runtime_binding": "Actual successful source-bound Go test compares compiled and staged binary structs; staged fullbody independently SHA/ELFchecked; all4runtime proof SHA+machine match. Temporary compiledbody is not separately retained.",
+  "functional300_equal_baseline": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+  "inherited_OCI_revision": "1feba939b4697894e800ed0abb4f25a0bf415641; not relabeled generator9bc",
+  "job": "completed/success inclcleanup/upload/poststeps",
+  "job_id": 125054905622,
+  "job_log": {
+    "bytes": 63821,
+    "mode": "0644",
+    "sha256": "5ae5f777e03716d96406b42d66324a12ada538757e6e0f5384d8a422ebf9ee32"
+  },
+  "launches": [
+    {
+      "PID1": "/native-init",
+      "completed": 1,
+      "container_id": "9ead073876325c2bb35be90f86f2c08f4b42768ddfb61d8e7fec850d1e96459a",
+      "events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "exact_ENV_argv_primary_and_childPID_checks": true,
+      "exact_container_absence": true,
+      "held_body": "held \u96ea \u03bb\ud83d\ude42",
+      "holds": 1,
+      "launch": "npm",
+      "native_init_SHA": "a98891512176fb22df4bd64032b55ffcc00722a7754f9eb3903bf58b20e6f7f7",
+      "receipt": {
+        "bytes": 3621,
+        "mode": "0600",
+        "sha256": "ae92b0ed0898a995cdf2c888b816d8028620ffe3726c57939e4bed9a0f3aae35"
+      },
+      "runtime_ELF_machine": 183,
+      "signals": 1,
+      "wrapper_exit": 143
+    },
+    {
+      "PID1": "/native-init",
+      "completed": 1,
+      "container_id": "712200f53b0de903cf6b87d5661f7f9d490fce3349ea5022bdb6ffa14335b295",
+      "events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "exact_ENV_argv_primary_and_childPID_checks": true,
+      "exact_container_absence": true,
+      "held_body": "held \u96ea \u03bb\ud83d\ude42",
+      "holds": 1,
+      "launch": "yarn",
+      "native_init_SHA": "a98891512176fb22df4bd64032b55ffcc00722a7754f9eb3903bf58b20e6f7f7",
+      "receipt": {
+        "bytes": 3836,
+        "mode": "0600",
+        "sha256": "ddc0d17c7350e85e3786de501b54e4741e82964ab73ac7b758c26ae5d95ceb99"
+      },
+      "runtime_ELF_machine": 183,
+      "signals": 1,
+      "wrapper_exit": 1
+    },
+    {
+      "PID1": "/native-init",
+      "completed": 1,
+      "container_id": "349d7b69a39043c6ab24c365054eb20a15c5074217ae46f75f12e901020a88dd",
+      "events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "exact_ENV_argv_primary_and_childPID_checks": true,
+      "exact_container_absence": true,
+      "held_body": "held \u96ea \u03bb\ud83d\ude42",
+      "holds": 1,
+      "launch": "pnpm",
+      "native_init_SHA": "a98891512176fb22df4bd64032b55ffcc00722a7754f9eb3903bf58b20e6f7f7",
+      "receipt": {
+        "bytes": 3436,
+        "mode": "0600",
+        "sha256": "cdb78944efdc680d70a01d461051a7161d521bec10b70b8421ff77f24de95a09"
+      },
+      "runtime_ELF_machine": 183,
+      "signals": 1,
+      "wrapper_exit": 143
+    },
+    {
+      "PID1": "/native-init",
+      "completed": 1,
+      "container_id": "83dd1b5abb74beb3763da30df66b0ccb47f2e60a6a407a6fd98a2270c0c9c60b",
+      "events": [
+        "listening",
+        "hold_begin",
+        "SIGTERM",
+        "hold_end",
+        "closed"
+      ],
+      "exact_ENV_argv_primary_and_childPID_checks": true,
+      "exact_container_absence": true,
+      "held_body": "held \u96ea \u03bb\ud83d\ude42",
+      "holds": 1,
+      "launch": "direct",
+      "native_init_SHA": "a98891512176fb22df4bd64032b55ffcc00722a7754f9eb3903bf58b20e6f7f7",
+      "receipt": {
+        "bytes": 3272,
+        "mode": "0600",
+        "sha256": "f8f6c5c2fceedac77e027e10cd4f42527d4b69752d442f0a619f3ea24f9f5a57"
+      },
+      "runtime_ELF_machine": 183,
+      "signals": 1,
+      "wrapper_exit": 0
+    }
+  ],
+  "opaque_original_bytes": 1888698,
+  "original_manifest": {
+    "bytes": 14040,
+    "mode": "0600",
+    "sha256": "cef53b37bdaed59288dc90804cfebcb7c748e04bd2987b214d5d1d0ac20832f8"
+  },
+  "original_members": 75,
+  "proof_source": {
+    "Go": {
+      "bytes": 33727,
+      "mode": "0644",
+      "sha256": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466"
+    },
+    "JS": {
+      "bytes": 2232,
+      "mode": "0644",
+      "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438"
+    },
+    "mapped_PID1_fix_present": false
+  },
+  "pure_parent": {
+    "path": "/private/tmp/bex-w8-native-init-actual-independent-20261101-TRPEDCkS/audit.py",
+    "sha256": "2e9b27ca4b3f58d80395f37dc30610cde0d7008605b497897d43681f730cc244"
+  },
+  "review_method": "Existing priornativeinit pureaudit lower/validate predicates reapplied only toretainedJSON; noGo/testbinary/JS/nativefixture execution/rerun orDocker/resourceactions.",
+  "run_id": 41375346506,
+  "scope": "Actual pre-fix native ARM64 CI result only. No mappedPID1-postfix, AMD64, botharchitecture/fullfamily/adoption/hosted acceptance. Previous AMDfailure unchanged atbhbx.",
+  "source_header": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+  "staged_native_init": {
+    "ELF_machine": 183,
+    "ET_EXEC": true,
+    "PT_DYNAMIC": false,
+    "PT_INTERP": false,
+    "bytes": 1704098,
+    "expected_and_runtime_executable": true,
+    "extracted_private_mode_note": "Extractor sets0600; actual runtime/staging executable flag comes from retained expected/proofs, not private extractionmode.",
+    "mode": "0600",
+    "sha256": "a98891512176fb22df4bd64032b55ffcc00722a7754f9eb3903bf58b20e6f7f7"
+  },
+  "staging_sentinel": {
+    "actual_OCI_identity": false,
+    "field": "registry.example/bex@sha256:0000000000000000000000000000000000000000000000000000000000000000",
+    "role": "test-only nativeInitOptions staging sentinel; not queried, executed or claimed as image provenance"
+  }
+}

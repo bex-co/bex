@@ -1,0 +1,27 @@
+{
+  "excludes": [
+    "MANIFEST.json"
+  ],
+  "files": [
+    {
+      "bytes": 1018,
+      "mode": "0644",
+      "path": "INPUT-CUSTODY.json",
+      "sha256": "e85dee2719c62b79227a08d6fcafb415ac518480c11fbda0e5c87c50bf1506e0"
+    },
+    {
+      "bytes": 374,
+      "mode": "0644",
+      "path": "RECEIPT.json",
+      "sha256": "c020e73aa72d36757eb294ec7d58bd1ae1d7a46d55b0bbd84ebaa56707843a84"
+    },
+    {
+      "bytes": 5679,
+      "mode": "0644",
+      "path": "REVIEW.json",
+      "sha256": "f744ad5313d7ee4531cc45d1113d8ed3dd42fe81dc4c5834b3a9554e88ec6bda"
+    }
+  ],
+  "payload_bytes": 7071,
+  "payload_files": 3
+}

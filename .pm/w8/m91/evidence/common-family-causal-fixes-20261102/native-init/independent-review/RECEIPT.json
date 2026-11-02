@@ -1,0 +1,34 @@
+{
+  "assessment": "CLEAN_SOURCE_ONLY",
+  "drift": {
+    "bytes": 761,
+    "mode": "0644",
+    "sha256": "ea7e7fa04c4d2eb9c1332062ff48eeec246a0155848cf8e87a0b2ffbf7f05035"
+  },
+  "host_controls": {
+    "bytes": 537,
+    "mode": "0644",
+    "sha256": "3bac2e37aa048e70ec2f35132edebd469f775fafd6517547a17bd99d34fbc64c"
+  },
+  "independent12": {
+    "bytes": 182,
+    "mode": "0644",
+    "sha256": "3d3cc39e3063b55a295c8e2a4166b8277eea050def990acfca429c84827c41ac"
+  },
+  "no_actions": [
+    "Go",
+    "Docker",
+    "network",
+    "native/app execution",
+    "CI",
+    "resources",
+    "repo edits"
+  ],
+  "no_product_source_mutation": true,
+  "review": {
+    "bytes": 2460,
+    "mode": "0644",
+    "sha256": "2b7328bfa86365e8c722400d216e14479c8bab65ae441ad9aa06849020c39717"
+  },
+  "scope": "Two-file test-oracle correction only; complete syntheticemulation does not establish actualCIbehavior."
+}

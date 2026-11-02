@@ -1,0 +1,8 @@
+{
+  "argv_interpreter": "/opt/homebrew/opt/ruby/bin/ruby",
+  "program": "require 'zlib'; require 'json'; text = \"Ruby \u96ea ' $ \\\\\\\"\"; roundtrip = Zlib::Inflate.inflate(Zlib::Deflate.deflate(text)); puts JSON.generate({ruby: RUBY_VERSION, expected_encoding: text.encoding.name, actual_encoding: roundtrip.encoding.name, literal_equality: roundtrip == text, exact_bytes_equal: roundtrip.bytes == text.bytes, binary_equality: roundtrip.b == text.b, decoded_UTF8_equal: roundtrip.dup.force_encoding(text.encoding) == text, byte_count: text.bytesize})",
+  "exit": 0,
+  "scope": "Readonlyhoststdlibcontrol only, no generatedimage/CI/runtime execution orsourceedit",
+  "stdout_sha256": "113c41fbffa90f2e31da595ae9b0b8aed087703ff511c3e32d7fe926dbed6515",
+  "stderr_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

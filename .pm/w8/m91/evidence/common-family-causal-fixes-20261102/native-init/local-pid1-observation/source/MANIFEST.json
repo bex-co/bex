@@ -1,0 +1,26 @@
+{
+  "observe.sh": {
+    "bytes": 1045,
+    "sha256": "b91a24e7d66cf1ad98d981623c515b60cb763a5404a514a0cd5a7c6056c193f4"
+  },
+  "probe.py.first-draft": {
+    "bytes": 10168,
+    "sha256": "45ce3d14073a946915db44e6a454e980824508aa04b28f0affc12c05d6407f3b"
+  },
+  "PLAN.json": {
+    "bytes": 5815,
+    "sha256": "ab00c66ab8d19eb1ca525db3ea82a442d996b4a401d14043782ae7b5ec0d1564"
+  },
+  "DRAFT-CHANGES.diff": {
+    "bytes": 3135,
+    "sha256": "8158cc9a7df6fed182b40e5f61f454735c7bec6bc30f37986c420f25b8ad02c8"
+  },
+  "probe.py": {
+    "bytes": 10365,
+    "sha256": "6b1d55a775983d57e5cff91c2272734bef4bd59cc19ef711ecf80ec5ac0805e2"
+  },
+  "SOURCE-RECEIPT.json": {
+    "bytes": 1750,
+    "sha256": "c3fba255e0d70c04aea532469efec78d244ca170d581752559c3b7cb41ea59ee"
+  }
+}

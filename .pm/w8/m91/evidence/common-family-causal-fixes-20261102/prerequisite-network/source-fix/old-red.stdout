@@ -1,0 +1,11 @@
+=== RUN   TestNativeSourcePrerequisiteNetworkRegression
+=== RUN   TestNativeSourcePrerequisiteNetworkRegression/Node
+    nativecommon_node_qualification_controls_test.go:334: non-prerequisite command inherits the open build network: RUN preserve-tool-setup
+=== RUN   TestNativeSourcePrerequisiteNetworkRegression/OTP
+    nativecommon_node_qualification_controls_test.go:334: non-prerequisite command inherits the open build network: RUN preserve-tool-setup
+--- FAIL: TestNativeSourcePrerequisiteNetworkRegression (0.00s)
+    --- FAIL: TestNativeSourcePrerequisiteNetworkRegression/Node (0.00s)
+    --- FAIL: TestNativeSourcePrerequisiteNetworkRegression/OTP (0.00s)
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/build	0.565s
+FAIL

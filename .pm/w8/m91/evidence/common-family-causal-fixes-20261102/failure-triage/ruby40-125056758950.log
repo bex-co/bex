@@ -1,0 +1,900 @@
+﻿2026-11-02T02:40:27.8884543Z Current runner version: '2.337.0'
+2026-11-02T02:40:27.8888421Z Runner name: '239d6e52dba9'
+2026-11-02T02:40:27.8888982Z Runner group name: 'bex-ci'
+2026-11-02T02:40:27.8889717Z Machine name: '239d6e52dba9'
+2026-11-02T02:40:27.8891608Z ##[group]GITHUB_TOKEN Permissions
+2026-11-02T02:40:27.8893135Z Contents: read
+2026-11-02T02:40:27.8893512Z Metadata: read
+2026-11-02T02:40:27.8893956Z ##[endgroup]
+2026-11-02T02:40:27.8895283Z Secret source: Actions
+2026-11-02T02:40:27.8895945Z Cache mode: write
+2026-11-02T02:40:27.8896400Z Prepare workflow directory
+2026-11-02T02:40:27.9128130Z Prepare all required actions
+2026-11-02T02:40:27.9163843Z Getting action download info
+2026-11-02T02:40:28.7682597Z Download action repository 'actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1' (SHA:3d3c42e5aac5ba805825da76410c181273ba90b1)
+2026-11-02T02:40:30.3558906Z Download action repository 'actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e' (SHA:b7ad1dad31e06c5925ef5d2fc7ad053ef454303e)
+2026-11-02T02:40:34.5929698Z Download action repository 'docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e' (SHA:37fe631027851001ddb9b187196cc803df7f5f0e)
+2026-11-02T02:40:36.6012680Z Download action repository 'actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9' (SHA:cf430e030ddbb5b0abf93d22962f4752f3646cd9)
+2026-11-02T02:40:38.3802012Z Complete job name: qualify-profile (amd64)
+2026-11-02T02:40:38.4021963Z A job started hook has been configured by the self-hosted runner administrator
+2026-11-02T02:40:38.4096389Z ##[group]Run '/home/docker/actions-runner/hooks/job-started.sh'
+2026-11-02T02:40:38.4104904Z shell: /usr/bin/bash --noprofile --norc -e -o pipefail {0}
+2026-11-02T02:40:38.4105218Z ##[endgroup]
+2026-11-02T02:40:38.4386457Z ##[group]Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+2026-11-02T02:40:38.4386763Z with:
+2026-11-02T02:40:38.4386903Z   persist-credentials: false
+2026-11-02T02:40:38.4387078Z   sparse-checkout-cone-mode: false
+2026-11-02T02:40:38.4389830Z   sparse-checkout: !/**
+/.github/
+/.pm/
+/deploy/
+/lego/
+/scripts/
+/.pm/w8/
+/deploy/native-base/
+/deploy/native-common/
+/lego/operator/
+/lego/types/
+/scripts/lib/
+/.pm/w8/m91/
+/lego/operator/cmd/
+/lego/operator/internal/
+/lego/types/k8sname/
+/lego/types/netutil/
+/lego/types/v1alpha1/
+/.pm/w8/m91/evidence/
+/lego/operator/cmd/native-init/
+/lego/operator/internal/build/
+/lego/operator/internal/execution/
+/lego/operator/internal/httpclient/
+/lego/operator/internal/identity/
+/lego/operator/internal/publish/
+/lego/operator/internal/registry/
+/.github/**
+/deploy/native-base/**
+/deploy/native-common/**
+/lego/operator/internal/build/**
+/lego/operator/cmd/native-init/**
+/lego/operator/internal/execution/**
+/lego/operator/internal/httpclient/**
+/lego/operator/internal/identity/**
+/lego/operator/internal/publish/**
+/lego/operator/internal/registry/**
+/lego/types/k8sname/**
+/lego/types/netutil/**
+/lego/types/v1alpha1/**
+/.pm/w8/m91/evidence/**
+/lego/operator/go.mod
+/lego/operator/go.sum
+/lego/types/go.mod
+/lego/types/go.sum
+/lego/Dockerfile
+/lego/.dockerignore
+/scripts/lib/toolchain-freshness.py
+
+2026-11-02T02:40:38.4392558Z   repository: bex-co/bex
+2026-11-02T02:40:38.4394387Z   token: ***
+2026-11-02T02:40:38.4394537Z   ssh-strict: true
+2026-11-02T02:40:38.4394676Z   ssh-user: git
+2026-11-02T02:40:38.4394822Z   clean: true
+2026-11-02T02:40:38.4394950Z   fetch-depth: 1
+2026-11-02T02:40:38.4395080Z   fetch-tags: false
+2026-11-02T02:40:38.4395213Z   show-progress: true
+2026-11-02T02:40:38.4395349Z   lfs: false
+2026-11-02T02:40:38.4395487Z   submodules: false
+2026-11-02T02:40:38.4395623Z   set-safe-directory: true
+2026-11-02T02:40:38.4395784Z   allow-unsafe-pr-checkout: false
+2026-11-02T02:40:38.4395950Z env:
+2026-11-02T02:40:38.4396067Z   GOWORK: off
+2026-11-02T02:40:38.4396188Z   GOMAXPROCS: 2
+2026-11-02T02:40:38.4396330Z   GODEBUG: http2client=0
+2026-11-02T02:40:38.4396491Z ##[endgroup]
+2026-11-02T02:40:38.4966000Z Syncing repository: bex-co/bex
+2026-11-02T02:40:38.4966955Z ##[group]Getting Git version info
+2026-11-02T02:40:38.4967204Z Working directory is '/home/docker/actions-runner/_work/bex/bex'
+2026-11-02T02:40:38.4967962Z [command]/usr/bin/git version
+2026-11-02T02:40:38.4968120Z git version 2.34.1
+2026-11-02T02:40:38.4977309Z ##[endgroup]
+2026-11-02T02:40:38.4983610Z Copying '/home/docker/.gitconfig' to '/home/docker/actions-runner/_work/_temp/7ede7556-6209-4756-a598-8638eba7d7c1/.gitconfig'
+2026-11-02T02:40:38.4991418Z Temporarily overriding HOME='/home/docker/actions-runner/_work/_temp/7ede7556-6209-4756-a598-8638eba7d7c1' before making global git config changes
+2026-11-02T02:40:38.4992232Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-02T02:40:38.4995265Z [command]/usr/bin/git config --global --add safe.directory /home/docker/actions-runner/_work/bex/bex
+2026-11-02T02:40:38.5019904Z Deleting the contents of '/home/docker/actions-runner/_work/bex/bex'
+2026-11-02T02:40:38.5020381Z ##[group]Determining repository object format
+2026-11-02T02:40:38.5020684Z ##[endgroup]
+2026-11-02T02:40:38.5020917Z ##[group]Initializing the repository
+2026-11-02T02:40:38.5022490Z [command]/usr/bin/git init /home/docker/actions-runner/_work/bex/bex
+2026-11-02T02:40:38.5091731Z hint: Using 'master' as the name for the initial branch. This default branch name
+2026-11-02T02:40:38.5092125Z hint: is subject to change. To configure the initial branch name to use in all
+2026-11-02T02:40:38.5092454Z hint: of your new repositories, which will suppress this warning, call:
+2026-11-02T02:40:38.5092693Z hint: 
+2026-11-02T02:40:38.5092893Z hint: 	git config --global init.defaultBranch <name>
+2026-11-02T02:40:38.5093091Z hint: 
+2026-11-02T02:40:38.5093277Z hint: Names commonly chosen instead of 'master' are 'main', 'trunk' and
+2026-11-02T02:40:38.5093820Z hint: 'development'. The just-created branch can be renamed via this command:
+2026-11-02T02:40:38.5094115Z hint: 
+2026-11-02T02:40:38.5094240Z hint: 	git branch -m <name>
+2026-11-02T02:40:38.5108249Z Initialized empty Git repository in /home/docker/actions-runner/_work/bex/bex/.git/
+2026-11-02T02:40:38.5114937Z [command]/usr/bin/git remote add origin https://github.com/bex-co/bex
+2026-11-02T02:40:38.5144529Z ##[endgroup]
+2026-11-02T02:40:38.5144801Z ##[group]Disabling automatic garbage collection
+2026-11-02T02:40:38.5148220Z [command]/usr/bin/git config --local gc.auto 0
+2026-11-02T02:40:38.5170845Z ##[endgroup]
+2026-11-02T02:40:38.5171099Z ##[group]Setting up auth
+2026-11-02T02:40:38.5171314Z Removing SSH command configuration
+2026-11-02T02:40:38.5172943Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-02T02:40:38.5196443Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-02T02:40:38.5341758Z Removing HTTP extra header
+2026-11-02T02:40:38.5343807Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-02T02:40:38.5370120Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-02T02:40:38.5505898Z Removing includeIf entries pointing to credentials config files
+2026-11-02T02:40:38.5507733Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T02:40:38.5531841Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-02T02:40:38.5703072Z [command]/usr/bin/git config --file /home/docker/actions-runner/_work/_temp/git-credentials-8a0f6202-cb31-4c6c-8e42-b1735928c82f.config http.https://github.com/.extraheader AUTHORIZATION: basic ***
+2026-11-02T02:40:38.5744910Z [command]/usr/bin/git config --local includeIf.gitdir:/home/docker/actions-runner/_work/bex/bex/.git.path /home/docker/actions-runner/_work/_temp/git-credentials-8a0f6202-cb31-4c6c-8e42-b1735928c82f.config
+2026-11-02T02:40:38.5761459Z [command]/usr/bin/git config --local includeIf.gitdir:/home/docker/actions-runner/_work/bex/bex/.git/worktrees/*.path /home/docker/actions-runner/_work/_temp/git-credentials-8a0f6202-cb31-4c6c-8e42-b1735928c82f.config
+2026-11-02T02:40:38.5785636Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git.path /github/runner_temp/git-credentials-8a0f6202-cb31-4c6c-8e42-b1735928c82f.config
+2026-11-02T02:40:38.5809265Z [command]/usr/bin/git config --local includeIf.gitdir:/github/workspace/.git/worktrees/*.path /github/runner_temp/git-credentials-8a0f6202-cb31-4c6c-8e42-b1735928c82f.config
+2026-11-02T02:40:38.5830340Z ##[endgroup]
+2026-11-02T02:40:38.5830614Z ##[group]Fetching the repository
+2026-11-02T02:40:38.5834085Z [command]/usr/bin/git -c protocol.version=2 fetch --no-tags --prune --no-recurse-submodules --filter=blob:none --depth=1 origin +9bc6a5d10b3f479926180698d60a0cfdf238db9b:refs/remotes/origin/main
+2026-11-02T02:40:42.3045413Z From https://github.com/bex-co/bex
+2026-11-02T02:40:42.3045914Z  * [new ref]         9bc6a5d10b3f479926180698d60a0cfdf238db9b -> origin/main
+2026-11-02T02:40:42.3060295Z [command]/usr/bin/git branch --list --remote origin/main
+2026-11-02T02:40:42.3078475Z   origin/main
+2026-11-02T02:40:42.3084354Z [command]/usr/bin/git rev-parse refs/remotes/origin/main
+2026-11-02T02:40:42.3101728Z 9bc6a5d10b3f479926180698d60a0cfdf238db9b
+2026-11-02T02:40:42.3103188Z ##[endgroup]
+2026-11-02T02:40:42.3103462Z ##[group]Determining the checkout info
+2026-11-02T02:40:42.3103740Z ##[endgroup]
+2026-11-02T02:40:42.3104055Z ##[group]Setting up sparse checkout
+2026-11-02T02:40:42.3106216Z [command]/usr/bin/git config core.sparseCheckout true
+2026-11-02T02:40:42.3123195Z [command]/usr/bin/git rev-parse --git-path info/sparse-checkout
+2026-11-02T02:40:42.3136779Z .git/info/sparse-checkout
+2026-11-02T02:40:42.3142671Z ##[endgroup]
+2026-11-02T02:40:42.3142969Z ##[group]Checking out the ref
+2026-11-02T02:40:42.3145894Z [command]/usr/bin/git checkout --progress --force -B main refs/remotes/origin/main
+2026-11-02T02:42:42.5125810Z Updating files:   0% (2/12366)
+2026-11-02T02:42:42.5442023Z Updating files:   1% (124/12366)
+2026-11-02T02:42:42.5667630Z Updating files:   2% (248/12366)
+2026-11-02T02:42:42.6330577Z Updating files:   2% (249/12366)
+2026-11-02T02:42:42.6740105Z Updating files:   3% (371/12366)
+2026-11-02T02:42:42.6836043Z Updating files:   4% (495/12366)
+2026-11-02T02:42:42.6893245Z Updating files:   5% (619/12366)
+2026-11-02T02:42:42.6961554Z Updating files:   6% (742/12366)
+2026-11-02T02:42:42.7067249Z Updating files:   7% (866/12366)
+2026-11-02T02:42:42.7190826Z Updating files:   8% (990/12366)
+2026-11-02T02:42:42.7847647Z Updating files:   9% (1113/12366)
+2026-11-02T02:42:43.0709616Z Updating files:  10% (1237/12366)
+2026-11-02T02:42:43.1160647Z Updating files:  11% (1361/12366)
+2026-11-02T02:42:43.2005957Z Updating files:  12% (1484/12366)
+2026-11-02T02:42:43.2919132Z Updating files:  13% (1608/12366)
+2026-11-02T02:42:43.4204156Z Updating files:  14% (1732/12366)
+2026-11-02T02:42:43.4301113Z Updating files:  15% (1855/12366)
+2026-11-02T02:42:43.4710889Z Updating files:  16% (1979/12366)
+2026-11-02T02:42:43.5218989Z Updating files:  17% (2103/12366)
+2026-11-02T02:42:43.5611134Z Updating files:  18% (2226/12366)
+2026-11-02T02:42:43.6321487Z Updating files:  18% (2257/12366)
+2026-11-02T02:42:43.7160459Z Updating files:  19% (2350/12366)
+2026-11-02T02:42:43.7703207Z Updating files:  20% (2474/12366)
+2026-11-02T02:42:43.9244023Z Updating files:  21% (2597/12366)
+2026-11-02T02:42:43.9721465Z Updating files:  22% (2721/12366)
+2026-11-02T02:42:43.9873798Z Updating files:  23% (2845/12366)
+2026-11-02T02:42:44.0001815Z Updating files:  24% (2968/12366)
+2026-11-02T02:42:44.0126678Z Updating files:  25% (3092/12366)
+2026-11-02T02:42:44.0236295Z Updating files:  26% (3216/12366)
+2026-11-02T02:42:44.0286423Z Updating files:  27% (3339/12366)
+2026-11-02T02:42:44.0338438Z Updating files:  28% (3463/12366)
+2026-11-02T02:42:44.0839570Z Updating files:  29% (3587/12366)
+2026-11-02T02:42:44.2262741Z Updating files:  30% (3710/12366)
+2026-11-02T02:42:44.2527603Z Updating files:  31% (3834/12366)
+2026-11-02T02:42:44.2731869Z Updating files:  32% (3958/12366)
+2026-11-02T02:42:44.2843789Z Updating files:  33% (4081/12366)
+2026-11-02T02:42:44.2991261Z Updating files:  34% (4205/12366)
+2026-11-02T02:42:44.3129906Z Updating files:  35% (4329/12366)
+2026-11-02T02:42:44.3215164Z Updating files:  36% (4452/12366)
+2026-11-02T02:42:44.3336253Z Updating files:  37% (4576/12366)
+2026-11-02T02:42:44.3541006Z Updating files:  38% (4700/12366)
+2026-11-02T02:42:44.3597303Z Updating files:  39% (4823/12366)
+2026-11-02T02:42:44.3652146Z Updating files:  40% (4947/12366)
+2026-11-02T02:42:44.3720793Z Updating files:  41% (5071/12366)
+2026-11-02T02:42:44.3854256Z Updating files:  42% (5194/12366)
+2026-11-02T02:42:44.3950971Z Updating files:  43% (5318/12366)
+2026-11-02T02:42:44.4058024Z Updating files:  44% (5442/12366)
+2026-11-02T02:42:44.4109714Z Updating files:  45% (5565/12366)
+2026-11-02T02:42:44.4177907Z Updating files:  46% (5689/12366)
+2026-11-02T02:42:44.4231047Z Updating files:  47% (5813/12366)
+2026-11-02T02:42:44.4298868Z Updating files:  48% (5936/12366)
+2026-11-02T02:42:44.4346945Z Updating files:  49% (6060/12366)
+2026-11-02T02:42:44.4406057Z Updating files:  50% (6183/12366)
+2026-11-02T02:42:44.4467904Z Updating files:  51% (6307/12366)
+2026-11-02T02:42:44.4532751Z Updating files:  52% (6431/12366)
+2026-11-02T02:42:44.4578610Z Updating files:  53% (6554/12366)
+2026-11-02T02:42:44.4685269Z Updating files:  54% (6678/12366)
+2026-11-02T02:42:44.4745333Z Updating files:  55% (6802/12366)
+2026-11-02T02:42:44.4865570Z Updating files:  56% (6925/12366)
+2026-11-02T02:42:44.4997047Z Updating files:  57% (7049/12366)
+2026-11-02T02:42:44.5101245Z Updating files:  58% (7173/12366)
+2026-11-02T02:42:44.5128150Z Updating files:  59% (7296/12366)
+2026-11-02T02:42:44.5157368Z Updating files:  60% (7420/12366)
+2026-11-02T02:42:44.5181648Z Updating files:  61% (7544/12366)
+2026-11-02T02:42:44.5216463Z Updating files:  62% (7667/12366)
+2026-11-02T02:42:44.5244747Z Updating files:  63% (7791/12366)
+2026-11-02T02:42:44.5273474Z Updating files:  64% (7915/12366)
+2026-11-02T02:42:44.5384514Z Updating files:  65% (8038/12366)
+2026-11-02T02:42:44.5463794Z Updating files:  66% (8162/12366)
+2026-11-02T02:42:44.5531291Z Updating files:  66% (8252/12366)
+2026-11-02T02:42:44.5647848Z Updating files:  67% (8286/12366)
+2026-11-02T02:42:44.5814698Z Updating files:  68% (8409/12366)
+2026-11-02T02:42:44.6496462Z Updating files:  69% (8533/12366)
+2026-11-02T02:42:44.6860902Z Updating files:  70% (8657/12366)
+2026-11-02T02:42:44.7254154Z Updating files:  71% (8780/12366)
+2026-11-02T02:42:44.7309250Z Updating files:  72% (8904/12366)
+2026-11-02T02:42:44.7372918Z Updating files:  73% (9028/12366)
+2026-11-02T02:42:44.8589436Z Updating files:  74% (9151/12366)
+2026-11-02T02:42:44.9495668Z Updating files:  75% (9275/12366)
+2026-11-02T02:42:44.9736126Z Updating files:  76% (9399/12366)
+2026-11-02T02:42:45.0433326Z Updating files:  77% (9522/12366)
+2026-11-02T02:42:45.0540933Z Updating files:  78% (9646/12366)
+2026-11-02T02:42:45.1230236Z Updating files:  79% (9770/12366)
+2026-11-02T02:42:45.1321397Z Updating files:  80% (9893/12366)
+2026-11-02T02:42:45.2009575Z Updating files:  81% (10017/12366)
+2026-11-02T02:42:45.2556689Z Updating files:  82% (10141/12366)
+2026-11-02T02:42:45.2804697Z Updating files:  83% (10264/12366)
+2026-11-02T02:42:45.3467364Z Updating files:  84% (10388/12366)
+2026-11-02T02:42:45.4013577Z Updating files:  85% (10512/12366)
+2026-11-02T02:42:45.4264213Z Updating files:  86% (10635/12366)
+2026-11-02T02:42:45.4318910Z Updating files:  87% (10759/12366)
+2026-11-02T02:42:45.4359268Z Updating files:  88% (10883/12366)
+2026-11-02T02:42:45.4446458Z Updating files:  89% (11006/12366)
+2026-11-02T02:42:45.4525994Z Updating files:  90% (11130/12366)
+2026-11-02T02:42:45.4636385Z Updating files:  91% (11254/12366)
+2026-11-02T02:42:45.5336761Z Updating files:  92% (11377/12366)
+2026-11-02T02:42:45.5421490Z Updating files:  93% (11501/12366)
+2026-11-02T02:42:45.5459848Z Updating files:  94% (11625/12366)
+2026-11-02T02:42:45.5510660Z Updating files:  94% (11681/12366)
+2026-11-02T02:42:45.5644206Z Updating files:  95% (11748/12366)
+2026-11-02T02:42:45.5863600Z Updating files:  96% (11872/12366)
+2026-11-02T02:42:45.5948440Z Updating files:  97% (11996/12366)
+2026-11-02T02:42:45.6052125Z Updating files:  98% (12119/12366)
+2026-11-02T02:42:45.6156500Z Updating files:  99% (12243/12366)
+2026-11-02T02:42:45.6158092Z Updating files: 100% (12366/12366)
+2026-11-02T02:42:45.6158292Z Updating files: 100% (12366/12366), done.
+2026-11-02T02:42:45.6433323Z Switched to a new branch 'main'
+2026-11-02T02:42:45.6433636Z Branch 'main' set up to track remote branch 'main' from 'origin'.
+2026-11-02T02:42:45.6717040Z ##[endgroup]
+2026-11-02T02:42:45.6747676Z [command]/usr/bin/git log -1 --format=%H
+2026-11-02T02:42:45.6765788Z 9bc6a5d10b3f479926180698d60a0cfdf238db9b
+2026-11-02T02:42:45.6771061Z ##[group]Removing auth
+2026-11-02T02:42:45.6771218Z Removing SSH command configuration
+2026-11-02T02:42:45.6775040Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-02T02:42:45.6797164Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-02T02:42:45.6962830Z Removing HTTP extra header
+2026-11-02T02:42:45.6965722Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-02T02:42:45.6995647Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-02T02:42:45.7151482Z Removing includeIf entries pointing to credentials config files
+2026-11-02T02:42:45.7152962Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T02:42:45.7165883Z includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git.path
+2026-11-02T02:42:45.7166275Z includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git/worktrees/*.path
+2026-11-02T02:42:45.7166578Z includeif.gitdir:/github/workspace/.git.path
+2026-11-02T02:42:45.7166810Z includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-02T02:42:45.7170485Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git.path
+2026-11-02T02:42:45.7186480Z /home/docker/actions-runner/_work/_temp/git-credentials-8a0f6202-cb31-4c6c-8e42-b1735928c82f.config
+2026-11-02T02:42:45.7192053Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git.path \/home\/docker\/actions\-runner\/_work\/_temp\/git\-credentials\-8a0f6202\-cb31\-4c6c\-8e42\-b1735928c82f\.config
+2026-11-02T02:42:45.7214633Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git/worktrees/*.path
+2026-11-02T02:42:45.7226825Z /home/docker/actions-runner/_work/_temp/git-credentials-8a0f6202-cb31-4c6c-8e42-b1735928c82f.config
+2026-11-02T02:42:45.7231619Z [command]/usr/bin/git config --local --unset includeif.gitdir:/home/docker/actions-runner/_work/bex/bex/.git/worktrees/*.path \/home\/docker\/actions\-runner\/_work\/_temp\/git\-credentials\-8a0f6202\-cb31\-4c6c\-8e42\-b1735928c82f\.config
+2026-11-02T02:42:45.7253156Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git.path
+2026-11-02T02:42:45.7272758Z /github/runner_temp/git-credentials-8a0f6202-cb31-4c6c-8e42-b1735928c82f.config
+2026-11-02T02:42:45.7286820Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git.path \/github\/runner_temp\/git\-credentials\-8a0f6202\-cb31\-4c6c\-8e42\-b1735928c82f\.config
+2026-11-02T02:42:45.7316343Z [command]/usr/bin/git config --local --get-all includeif.gitdir:/github/workspace/.git/worktrees/*.path
+2026-11-02T02:42:45.7336661Z /github/runner_temp/git-credentials-8a0f6202-cb31-4c6c-8e42-b1735928c82f.config
+2026-11-02T02:42:45.7342094Z [command]/usr/bin/git config --local --unset includeif.gitdir:/github/workspace/.git/worktrees/*.path \/github\/runner_temp\/git\-credentials\-8a0f6202\-cb31\-4c6c\-8e42\-b1735928c82f\.config
+2026-11-02T02:42:45.7364755Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-02T02:42:45.7519243Z Removing credentials config '/home/docker/actions-runner/_work/_temp/git-credentials-8a0f6202-cb31-4c6c-8e42-b1735928c82f.config'
+2026-11-02T02:42:45.7525524Z ##[endgroup]
+2026-11-02T02:42:45.7652417Z ##[group]Run actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e
+2026-11-02T02:42:45.7652680Z with:
+2026-11-02T02:42:45.7652810Z   go-version-file: lego/operator/go.mod
+2026-11-02T02:42:45.7652979Z   cache: false
+2026-11-02T02:42:45.7653100Z   check-latest: false
+2026-11-02T02:42:45.7654863Z   token: ***
+2026-11-02T02:42:45.7655001Z env:
+2026-11-02T02:42:45.7655126Z   GOWORK: off
+2026-11-02T02:42:45.7655296Z   GOMAXPROCS: 2
+2026-11-02T02:42:45.7655438Z   GODEBUG: http2client=0
+2026-11-02T02:42:45.7655605Z ##[endgroup]
+2026-11-02T02:42:45.8400056Z Setup go version spec 1.26.0
+2026-11-02T02:42:45.8405165Z Attempting to download 1.26.0...
+2026-11-02T02:42:50.4019677Z matching 1.26.0...
+2026-11-02T02:42:50.4033268Z Acquiring 1.26.0 from https://github.com/actions/go-versions/releases/download/1.26.0-21889650668/go-1.26.0-linux-arm64.tar.gz
+2026-11-02T02:43:31.0728647Z Extracting Go...
+2026-11-02T02:43:31.0802049Z [command]/usr/bin/tar xz --warning=no-unknown-keyword --overwrite -C /home/docker/actions-runner/_work/_temp/51cbaee4-3c32-4599-bc3c-4ef44352132d -f /home/docker/actions-runner/_work/_temp/1187f2c4-cef0-4565-a326-765e3c5790d9
+2026-11-02T02:43:32.9148408Z Successfully extracted go to /home/docker/actions-runner/_work/_temp/51cbaee4-3c32-4599-bc3c-4ef44352132d
+2026-11-02T02:43:32.9148848Z Adding to the cache ...
+2026-11-02T02:43:40.7326745Z Successfully cached go to /home/docker/actions-runner/_work/_tool/go/1.26.0/arm64
+2026-11-02T02:43:40.7327447Z Added go to the path
+2026-11-02T02:43:40.7328462Z Successfully set up Go version 1.26.0
+2026-11-02T02:43:40.7493568Z go version go1.26.0 linux/arm64
+2026-11-02T02:43:40.7493729Z 
+2026-11-02T02:43:40.7493947Z ##[group]go env
+2026-11-02T02:43:40.7554683Z AR='ar'
+2026-11-02T02:43:40.7554847Z CC='gcc'
+2026-11-02T02:43:40.7554975Z CGO_CFLAGS='-O2 -g'
+2026-11-02T02:43:40.7555122Z CGO_CPPFLAGS=''
+2026-11-02T02:43:40.7555258Z CGO_CXXFLAGS='-O2 -g'
+2026-11-02T02:43:40.7555397Z CGO_ENABLED='1'
+2026-11-02T02:43:40.7555585Z CGO_FFLAGS='-O2 -g'
+2026-11-02T02:43:40.7555718Z CGO_LDFLAGS='-O2 -g'
+2026-11-02T02:43:40.7555847Z CXX='g++'
+2026-11-02T02:43:40.7556105Z GCCGO='gccgo'
+2026-11-02T02:43:40.7556226Z GO111MODULE=''
+2026-11-02T02:43:40.7556343Z GOARCH='arm64'
+2026-11-02T02:43:40.7556460Z GOARM64='v8.0'
+2026-11-02T02:43:40.7556578Z GOAUTH='netrc'
+2026-11-02T02:43:40.7556697Z GOBIN=''
+2026-11-02T02:43:40.7556829Z GOCACHE='/home/docker/.cache/go-build'
+2026-11-02T02:43:40.7557011Z GOCACHEPROG=''
+2026-11-02T02:43:40.7557135Z GODEBUG='http2client=0'
+2026-11-02T02:43:40.7557287Z GOENV='/home/docker/.config/go/env'
+2026-11-02T02:43:40.7557445Z GOEXE=''
+2026-11-02T02:43:40.7557552Z GOEXPERIMENT=''
+2026-11-02T02:43:40.7557670Z GOFIPS140='off'
+2026-11-02T02:43:40.7557787Z GOFLAGS=''
+2026-11-02T02:43:40.7558212Z GOGCCFLAGS='-fPIC -pthread -Wl,--no-gc-sections -fmessage-length=0 -ffile-prefix-map=/tmp/go-build1173482718=/tmp/go-build -gno-record-gcc-switches'
+2026-11-02T02:43:40.7558611Z GOHOSTARCH='arm64'
+2026-11-02T02:43:40.7558726Z GOHOSTOS='linux'
+2026-11-02T02:43:40.7558841Z GOINSECURE=''
+2026-11-02T02:43:40.7558952Z GOMOD='/dev/null'
+2026-11-02T02:43:40.7559080Z GOMODCACHE='/home/docker/go/pkg/mod'
+2026-11-02T02:43:40.7559227Z GONOPROXY=''
+2026-11-02T02:43:40.7559330Z GONOSUMDB=''
+2026-11-02T02:43:40.7559435Z GOOS='linux'
+2026-11-02T02:43:40.7559549Z GOPATH='/home/docker/go'
+2026-11-02T02:43:40.7559696Z GOPRIVATE=''
+2026-11-02T02:43:40.7559889Z GOPROXY='https://proxy.golang.org,direct'
+2026-11-02T02:43:40.7560443Z GOROOT='/home/docker/actions-runner/_work/_tool/go/1.26.0/arm64'
+2026-11-02T02:43:40.7560675Z GOSUMDB='sum.golang.org'
+2026-11-02T02:43:40.7560820Z GOTELEMETRY='local'
+2026-11-02T02:43:40.7560987Z GOTELEMETRYDIR='/home/docker/.config/go/telemetry'
+2026-11-02T02:43:40.7561178Z GOTMPDIR=''
+2026-11-02T02:43:40.7561294Z GOTOOLCHAIN='local'
+2026-11-02T02:43:40.7561543Z GOTOOLDIR='/home/docker/actions-runner/_work/_tool/go/1.26.0/arm64/pkg/tool/linux_arm64'
+2026-11-02T02:43:40.7561794Z GOVCS=''
+2026-11-02T02:43:40.7561894Z GOVERSION='go1.26.0'
+2026-11-02T02:43:40.7562168Z GOWORK='off'
+2026-11-02T02:43:40.7562290Z PKG_CONFIG='pkg-config'
+2026-11-02T02:43:40.7562371Z 
+2026-11-02T02:43:40.7562600Z ##[endgroup]
+2026-11-02T02:43:40.7698128Z ##[group]Run python3 .github/scripts/native-common-qualify.py profile-env
+2026-11-02T02:43:40.7698538Z [36;1mpython3 .github/scripts/native-common-qualify.py profile-env[0m
+2026-11-02T02:43:40.7707895Z shell: /usr/bin/bash -e {0}
+2026-11-02T02:43:40.7708062Z env:
+2026-11-02T02:43:40.7708175Z   GOWORK: off
+2026-11-02T02:43:40.7708290Z   GOMAXPROCS: 2
+2026-11-02T02:43:40.7708413Z   GODEBUG: http2client=0
+2026-11-02T02:43:40.7708550Z   GOTOOLCHAIN: local
+2026-11-02T02:43:40.7708685Z   QUALIFICATION_PROFILE: ruby
+2026-11-02T02:43:40.7708836Z   QUALIFICATION_CASE: ruby40
+2026-11-02T02:43:40.7708983Z ##[endgroup]
+2026-11-02T02:43:40.8101610Z ##[group]Run python3 .github/scripts/native-common-qualify.py init
+2026-11-02T02:43:40.8101910Z [36;1mpython3 .github/scripts/native-common-qualify.py init[0m
+2026-11-02T02:43:40.8112201Z shell: /usr/bin/bash -e {0}
+2026-11-02T02:43:40.8112565Z env:
+2026-11-02T02:43:40.8112711Z   GOWORK: off
+2026-11-02T02:43:40.8112841Z   GOMAXPROCS: 2
+2026-11-02T02:43:40.8112968Z   GODEBUG: http2client=0
+2026-11-02T02:43:40.8113117Z   GOTOOLCHAIN: local
+2026-11-02T02:43:40.8113291Z   BEX_NATIVE_TEST_NODE_ADDON_PROFILE: 0
+2026-11-02T02:43:40.8113510Z   BEX_NATIVE_TEST_NODE_PROFILE: 0
+2026-11-02T02:43:40.8113711Z   BEX_NATIVE_TEST_NODE_DONORS: 0
+2026-11-02T02:43:40.8113885Z   BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE: 0
+2026-11-02T02:43:40.8114160Z   BEX_NATIVE_LEGACY_PYTHON_INTEGRATION: 0
+2026-11-02T02:43:40.8114340Z   BEX_NATIVE_TEST_RUBY_PROFILE: 1
+2026-11-02T02:43:40.8114506Z   BEX_NATIVE_TEST_GORUST_PROFILE: 0
+2026-11-02T02:43:40.8115453Z   BEX_NATIVE_ELIXIR_INTEGRATION: 0
+2026-11-02T02:43:40.8115687Z   BEX_NATIVE_TEST_INIT_PROFILE: 0
+2026-11-02T02:43:40.8115859Z   BEX_BUILDKIT_INTEGRATION: 1
+2026-11-02T02:43:40.8116019Z   QUALIFICATION_PROFILE: ruby
+2026-11-02T02:43:40.8116176Z   QUALIFICATION_CASE: ruby40
+2026-11-02T02:43:40.8116643Z   QUALIFICATION_SELECTOR: ^TestCommonRubyGeneratedImages$/^ruby40$
+2026-11-02T02:43:40.8117041Z   QUALIFICATION_GO_TIMEOUT: 75m
+2026-11-02T02:43:40.8117384Z   COMMON_IMAGE: ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+2026-11-02T02:43:40.8117791Z   PRODUCER_SHA: 1feba939b4697894e800ed0abb4f25a0bf415641
+2026-11-02T02:43:40.8118105Z   VERIFICATION_SHA: 1feba939b4697894e800ed0abb4f25a0bf415641
+2026-11-02T02:43:40.8118344Z   QUALIFICATION_SOURCE: reviewed-candidate
+2026-11-02T02:43:40.8118646Z   CANDIDATE_RECEIPT_SHA256: ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426
+2026-11-02T02:43:40.8118935Z   TARGET_PLATFORM: linux/amd64
+2026-11-02T02:43:40.8119113Z ##[endgroup]
+2026-11-02T02:43:41.3168200Z ##[group]Run python3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"
+2026-11-02T02:43:41.3168670Z [36;1mpython3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"[0m
+2026-11-02T02:43:41.3176403Z shell: /usr/bin/bash -e {0}
+2026-11-02T02:43:41.3176550Z env:
+2026-11-02T02:43:41.3176659Z   GOWORK: off
+2026-11-02T02:43:41.3176779Z   GOMAXPROCS: 2
+2026-11-02T02:43:41.3176904Z   GODEBUG: http2client=0
+2026-11-02T02:43:41.3177046Z   GOTOOLCHAIN: local
+2026-11-02T02:43:41.3177190Z   BEX_NATIVE_TEST_NODE_ADDON_PROFILE: 0
+2026-11-02T02:43:41.3177367Z   BEX_NATIVE_TEST_NODE_PROFILE: 0
+2026-11-02T02:43:41.3177670Z   BEX_NATIVE_TEST_NODE_DONORS: 0
+2026-11-02T02:43:41.3177848Z   BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE: 0
+2026-11-02T02:43:41.3178036Z   BEX_NATIVE_LEGACY_PYTHON_INTEGRATION: 0
+2026-11-02T02:43:41.3178216Z   BEX_NATIVE_TEST_RUBY_PROFILE: 1
+2026-11-02T02:43:41.3178377Z   BEX_NATIVE_TEST_GORUST_PROFILE: 0
+2026-11-02T02:43:41.3178586Z   BEX_NATIVE_ELIXIR_INTEGRATION: 0
+2026-11-02T02:43:41.3178747Z   BEX_NATIVE_TEST_INIT_PROFILE: 0
+2026-11-02T02:43:41.3178910Z   BEX_BUILDKIT_INTEGRATION: 1
+2026-11-02T02:43:41.3179063Z   QUALIFICATION_PROFILE: ruby
+2026-11-02T02:43:41.3179215Z   QUALIFICATION_CASE: ruby40
+2026-11-02T02:43:41.3179425Z   QUALIFICATION_SELECTOR: ^TestCommonRubyGeneratedImages$/^ruby40$
+2026-11-02T02:43:41.3179663Z   QUALIFICATION_GO_TIMEOUT: 75m
+2026-11-02T02:43:41.3179980Z   DOCKER_CONFIG: /home/docker/actions-runner/_work/_temp/bex-nq-e57e51925e064b83882520b6-docker-config
+2026-11-02T02:43:41.3180426Z   QUALIFICATION_ROOT: /home/docker/actions-runner/_work/_temp/bex-native-qualification-cgl_oew8
+2026-11-02T02:43:41.3180745Z ##[endgroup]
+2026-11-02T02:46:41.3462562Z BEX_BUILDKIT_PULL_ATTEMPT {"owner": "bex-nq-e57e51925e064b83882520b6", "image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f", "command": ["timeout", "--kill-after=10s", "180s", "docker", "pull", "--quiet", "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"], "policy_sha256": "be63de042bcff1899db87f36d4c3a093bb3b31282079e478603b10e7359d94fc", "attempt": {"number": 1, "started_at": "2026-11-02T02:43:41.347134+00:00", "finished_at": "2026-11-02T02:46:41.345260+00:00", "exit_code": 124, "bound": null, "cancel_signal": null, "direct_child_reaped": true, "process_group_absent": true, "timeout_exit": true, "stdout": {"path": "bootstrap-1.stdout.log", "bytes": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}, "stderr": {"path": "bootstrap-1.stderr.log", "bytes": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}}, "stdout_base64": "", "stderr_base64": ""}
+2026-11-02T02:48:20.3700369Z BEX_BUILDKIT_PULL_ATTEMPT {"owner": "bex-nq-e57e51925e064b83882520b6", "image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f", "command": ["timeout", "--kill-after=10s", "180s", "docker", "pull", "--quiet", "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"], "policy_sha256": "be63de042bcff1899db87f36d4c3a093bb3b31282079e478603b10e7359d94fc", "attempt": {"number": 2, "started_at": "2026-11-02T02:46:56.392252+00:00", "finished_at": "2026-11-02T02:48:20.367868+00:00", "exit_code": 0, "bound": null, "cancel_signal": null, "direct_child_reaped": true, "process_group_absent": true, "timeout_exit": false, "stdout": {"path": "bootstrap-2.stdout.log", "bytes": 104, "sha256": "cb4d3b0e70f2d4e52c28206c6c799c01616f7ac12aad9490b930290737cdc621"}, "stderr": {"path": "bootstrap-2.stderr.log", "bytes": 0, "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"}}, "stdout_base64": "ZG9ja2VyLmlvL21vYnkvYnVpbGRraXQ6djAuMzAuMEBzaGEyNTY6MDE2ODYwNmJlMjMxNWI3YzgwN2EwM2IzZDhhYTc5YmVlZmRiMzFjOTg3NDBjZWJkZmZkZmVlYmYzMTE5MGM5Zgo=", "stderr_base64": ""}
+2026-11-02T02:48:20.3903802Z ##[group]Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e
+2026-11-02T02:48:20.3904236Z with:
+2026-11-02T02:48:20.3904474Z   name: bex-nq-e57e51925e064b83882520b6
+2026-11-02T02:48:20.3904933Z   driver-opts: image=moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f
+2026-11-02T02:48:20.3905467Z   use: false
+2026-11-02T02:48:20.3905634Z   keep-state: false
+2026-11-02T02:48:20.3905848Z   cleanup: false
+2026-11-02T02:48:20.3906185Z   driver: docker-container
+2026-11-02T02:48:20.3906382Z   cache-binary: true
+2026-11-02T02:48:20.3906548Z env:
+2026-11-02T02:48:20.3906745Z   GOWORK: off
+2026-11-02T02:48:20.3907032Z   GOMAXPROCS: 2
+2026-11-02T02:48:20.3907312Z   GODEBUG: http2client=0
+2026-11-02T02:48:20.3907828Z   GOTOOLCHAIN: local
+2026-11-02T02:48:20.3908014Z   BEX_NATIVE_TEST_NODE_ADDON_PROFILE: 0
+2026-11-02T02:48:20.3908400Z   BEX_NATIVE_TEST_NODE_PROFILE: 0
+2026-11-02T02:48:20.3908647Z   BEX_NATIVE_TEST_NODE_DONORS: 0
+2026-11-02T02:48:20.3908933Z   BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE: 0
+2026-11-02T02:48:20.3909152Z   BEX_NATIVE_LEGACY_PYTHON_INTEGRATION: 0
+2026-11-02T02:48:20.3909362Z   BEX_NATIVE_TEST_RUBY_PROFILE: 1
+2026-11-02T02:48:20.3909606Z   BEX_NATIVE_TEST_GORUST_PROFILE: 0
+2026-11-02T02:48:20.3909862Z   BEX_NATIVE_ELIXIR_INTEGRATION: 0
+2026-11-02T02:48:20.3910091Z   BEX_NATIVE_TEST_INIT_PROFILE: 0
+2026-11-02T02:48:20.3910250Z   BEX_BUILDKIT_INTEGRATION: 1
+2026-11-02T02:48:20.3910492Z   QUALIFICATION_PROFILE: ruby
+2026-11-02T02:48:20.3910833Z   QUALIFICATION_CASE: ruby40
+2026-11-02T02:48:20.3911141Z   QUALIFICATION_SELECTOR: ^TestCommonRubyGeneratedImages$/^ruby40$
+2026-11-02T02:48:20.3911537Z   QUALIFICATION_GO_TIMEOUT: 75m
+2026-11-02T02:48:20.3911995Z   DOCKER_CONFIG: /home/docker/actions-runner/_work/_temp/bex-nq-e57e51925e064b83882520b6-docker-config
+2026-11-02T02:48:20.3912364Z ##[endgroup]
+2026-11-02T02:48:20.5341736Z ##[group]Docker info
+2026-11-02T02:48:20.5356922Z [command]/usr/bin/docker version
+2026-11-02T02:48:20.5541245Z Client:
+2026-11-02T02:48:20.5541503Z  Version:           29.1.3
+2026-11-02T02:48:20.5541845Z  API version:       1.52
+2026-11-02T02:48:20.5542138Z  Go version:        go1.24.4
+2026-11-02T02:48:20.5542480Z  Git commit:        29.1.3-0ubuntu3~22.04.2
+2026-11-02T02:48:20.5542876Z  Built:             Wed Apr 29 22:18:59 2026
+2026-11-02T02:48:20.5543354Z  OS/Arch:           linux/arm64
+2026-11-02T02:48:20.5543556Z  Context:           default
+2026-11-02T02:48:20.5543650Z 
+2026-11-02T02:48:20.5543699Z Server:
+2026-11-02T02:48:20.5543810Z  Engine:
+2026-11-02T02:48:20.5543939Z   Version:          29.1.3
+2026-11-02T02:48:20.5547019Z   API version:      1.52 (minimum version 1.44)
+2026-11-02T02:48:20.5547326Z   Go version:       go1.24.4
+2026-11-02T02:48:20.5547595Z   Git commit:       29.1.3-0ubuntu3~22.04.2
+2026-11-02T02:48:20.5547859Z   Built:            Wed Apr 29 22:18:59 2026
+2026-11-02T02:48:20.5548055Z   OS/Arch:          linux/arm64
+2026-11-02T02:48:20.5548401Z   Experimental:     false
+2026-11-02T02:48:20.5548560Z  containerd:
+2026-11-02T02:48:20.5548719Z   Version:          2.2.1
+2026-11-02T02:48:20.5548907Z   GitCommit:        
+2026-11-02T02:48:20.5549036Z  runc:
+2026-11-02T02:48:20.5549223Z   Version:          1.3.4-0ubuntu1~22.04.1
+2026-11-02T02:48:20.5549470Z   GitCommit:        
+2026-11-02T02:48:20.5549691Z  docker-init:
+2026-11-02T02:48:20.5549878Z   Version:          0.19.0
+2026-11-02T02:48:20.5550088Z   GitCommit:        
+2026-11-02T02:48:20.5575170Z [command]/usr/bin/docker info
+2026-11-02T02:48:20.5885702Z Client:
+2026-11-02T02:48:20.5889303Z  Version:    29.1.3
+2026-11-02T02:48:20.5890340Z  Context:    default
+2026-11-02T02:48:20.5890492Z  Debug Mode: false
+2026-11-02T02:48:20.5890620Z  Plugins:
+2026-11-02T02:48:20.5890771Z   compose: Docker Compose (Docker Inc.)
+2026-11-02T02:48:20.5891007Z     Version:  v5.5.1
+2026-11-02T02:48:20.5891238Z     Path:     /usr/local/lib/docker/cli-plugins/docker-compose
+2026-11-02T02:48:20.5891510Z   trust: Manage trust on Docker images (Docker Inc.)
+2026-11-02T02:48:20.5892138Z     Version:  29.1.3
+2026-11-02T02:48:20.5892384Z     Path:     /usr/libexec/docker/cli-plugins/docker-trust
+2026-11-02T02:48:20.5892537Z 
+2026-11-02T02:48:20.5892588Z Server:
+2026-11-02T02:48:20.5892696Z  Containers: 0
+2026-11-02T02:48:20.5892817Z   Running: 0
+2026-11-02T02:48:20.5892933Z   Paused: 0
+2026-11-02T02:48:20.5893050Z   Stopped: 0
+2026-11-02T02:48:20.5893165Z  Images: 1
+2026-11-02T02:48:20.5893283Z  Server Version: 29.1.3
+2026-11-02T02:48:20.5893428Z  Storage Driver: overlay2
+2026-11-02T02:48:20.5893584Z   Backing Filesystem: extfs
+2026-11-02T02:48:20.5893794Z   Supports d_type: true
+2026-11-02T02:48:20.5893942Z   Using metacopy: false
+2026-11-02T02:48:20.5894097Z   Native Overlay Diff: true
+2026-11-02T02:48:20.5894463Z   userxattr: false
+2026-11-02T02:48:20.5894600Z  Logging Driver: json-file
+2026-11-02T02:48:20.5894754Z  Cgroup Driver: cgroupfs
+2026-11-02T02:48:20.5894894Z  Cgroup Version: 2
+2026-11-02T02:48:20.5895016Z  Plugins:
+2026-11-02T02:48:20.5895137Z   Volume: local
+2026-11-02T02:48:20.5895308Z   Network: bridge host ipvlan macvlan null overlay
+2026-11-02T02:48:20.5897587Z   Log: awslogs fluentd gcplogs gelf journald json-file local splunk syslog
+2026-11-02T02:48:20.5897941Z  CDI spec directories:
+2026-11-02T02:48:20.5898088Z   /etc/cdi
+2026-11-02T02:48:20.5898214Z   /var/run/cdi
+2026-11-02T02:48:20.5898339Z  Swarm: inactive
+2026-11-02T02:48:20.5898489Z  Runtimes: io.containerd.runc.v2 runc
+2026-11-02T02:48:20.5898666Z  Default Runtime: runc
+2026-11-02T02:48:20.5898808Z  Init Binary: docker-init
+2026-11-02T02:48:20.5898956Z  containerd version: 
+2026-11-02T02:48:20.5899088Z  runc version: 
+2026-11-02T02:48:20.5899210Z  init version: 
+2026-11-02T02:48:20.5899338Z  Security Options:
+2026-11-02T02:48:20.5899467Z   seccomp
+2026-11-02T02:48:20.5899626Z    Profile: builtin
+2026-11-02T02:48:20.5899752Z   cgroupns
+2026-11-02T02:48:20.5899880Z  Kernel Version: 7.0.12-linuxkit
+2026-11-02T02:48:20.5900078Z  Operating System: Ubuntu 22.04.5 LTS (containerized)
+2026-11-02T02:48:20.5900289Z  OSType: linux
+2026-11-02T02:48:20.5900414Z  Architecture: aarch64
+2026-11-02T02:48:20.5900541Z  CPUs: 15
+2026-11-02T02:48:20.5900657Z  Total Memory: 47.7GiB
+2026-11-02T02:48:20.5900791Z  Name: 239d6e52dba9
+2026-11-02T02:48:20.5900936Z  ID: d9f69053-1698-4967-b9e2-c8d4df21261a
+2026-11-02T02:48:20.5901114Z  Docker Root Dir: /var/lib/docker
+2026-11-02T02:48:20.5901265Z  Debug Mode: false
+2026-11-02T02:48:20.5901390Z  Experimental: false
+2026-11-02T02:48:20.5901518Z  Insecure Registries:
+2026-11-02T02:48:20.5901683Z   ::1/128
+2026-11-02T02:48:20.5901786Z   127.0.0.0/8
+2026-11-02T02:48:20.5901913Z  Live Restore Enabled: false
+2026-11-02T02:48:20.5902080Z  Firewall Backend: iptables
+2026-11-02T02:48:20.5902183Z 
+2026-11-02T02:48:20.5903235Z ##[endgroup]
+2026-11-02T02:48:20.6032333Z ##[group]Download buildx from GitHub Releases
+2026-11-02T02:48:21.3635250Z Use 0.38.1 version spec cache key for v0.38.1
+2026-11-02T02:48:22.1467602Z Downloading https://github.com/docker/buildx/releases/download/v0.38.1/buildx-v0.38.1.linux-arm64
+2026-11-02T02:49:18.3665482Z Copying /home/docker/actions-runner/_work/_temp/0b53cb79-1219-44f5-8b60-f3bd65dc126d to /home/docker/actions-runner/_work/_temp/bex-nq-e57e51925e064b83882520b6-docker-config/buildx/.bin/0.38.1/linux-arm64/docker-buildx
+2026-11-02T02:49:18.4318973Z Cached to /home/docker/actions-runner/_work/_temp/bex-nq-e57e51925e064b83882520b6-docker-config/buildx/.bin/0.38.1/linux-arm64/docker-buildx
+2026-11-02T02:49:18.4320180Z ##[endgroup]
+2026-11-02T02:49:18.4321860Z ##[group]Install buildx
+2026-11-02T02:49:18.4322070Z Docker plugin mode
+2026-11-02T02:49:18.4574083Z Fixing perms
+2026-11-02T02:49:18.4574979Z Plugin path: /home/docker/actions-runner/_work/_temp/bex-nq-e57e51925e064b83882520b6-docker-config/cli-plugins/docker-buildx
+2026-11-02T02:49:18.4575633Z ##[endgroup]
+2026-11-02T02:49:18.4575863Z ##[group]Buildx version
+2026-11-02T02:49:18.4588402Z [command]/usr/bin/docker buildx version
+2026-11-02T02:49:18.4919835Z github.com/docker/buildx v0.38.1 0dbe87f36ed472fe36b6796c3f70b4210a731fc5
+2026-11-02T02:49:18.4940220Z ##[endgroup]
+2026-11-02T02:49:18.5031944Z ##[group]Inspecting default docker context
+2026-11-02T02:49:18.5109200Z [
+2026-11-02T02:49:18.5109368Z   {
+2026-11-02T02:49:18.5111224Z     "Name": "default",
+2026-11-02T02:49:18.5111433Z     "Metadata": {},
+2026-11-02T02:49:18.5111585Z     "Endpoints": {
+2026-11-02T02:49:18.5111729Z       "docker": {
+2026-11-02T02:49:18.5111935Z         "Host": "unix:///var/run/docker.sock",
+2026-11-02T02:49:18.5112255Z         "SkipTLSVerify": false
+2026-11-02T02:49:18.5112421Z       }
+2026-11-02T02:49:18.5112536Z     },
+2026-11-02T02:49:18.5112673Z     "TLSMaterial": {},
+2026-11-02T02:49:18.5112824Z     "Storage": {
+2026-11-02T02:49:18.5112993Z       "MetadataPath": "<IN MEMORY>",
+2026-11-02T02:49:18.5113587Z       "TLSPath": "<IN MEMORY>"
+2026-11-02T02:49:18.5113738Z     }
+2026-11-02T02:49:18.5113846Z   }
+2026-11-02T02:49:18.5114000Z ]
+2026-11-02T02:49:18.5114282Z ##[endgroup]
+2026-11-02T02:49:18.5114525Z ##[group]Creating a new builder instance
+2026-11-02T02:49:18.5881781Z [command]/usr/bin/docker buildx create --name bex-nq-e57e51925e064b83882520b6 --driver docker-container --driver-opt image=moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f --buildkitd-flags --allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host
+2026-11-02T02:49:18.6365080Z bex-nq-e57e51925e064b83882520b6
+2026-11-02T02:49:18.6385183Z ##[endgroup]
+2026-11-02T02:49:18.6385439Z ##[group]Booting builder
+2026-11-02T02:49:18.6401837Z [command]/usr/bin/docker buildx inspect --bootstrap --builder bex-nq-e57e51925e064b83882520b6
+2026-11-02T02:49:18.6727143Z #1 [internal] booting buildkit
+2026-11-02T02:49:18.8233443Z #1 pulling image moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f
+2026-11-02T02:49:21.6154023Z #1 pulling image moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f 2.9s done
+2026-11-02T02:49:21.7669486Z #1 creating container buildx_buildkit_bex-nq-e57e51925e064b83882520b60
+2026-11-02T02:49:22.2242184Z #1 creating container buildx_buildkit_bex-nq-e57e51925e064b83882520b60 0.6s done
+2026-11-02T02:49:22.2448393Z #1 DONE 3.6s
+2026-11-02T02:49:22.2632229Z Name:          bex-nq-e57e51925e064b83882520b6
+2026-11-02T02:49:22.2632470Z Driver:        docker-container
+2026-11-02T02:49:22.2632647Z Last Activity: 2026-11-02 02:49:18 +0000 UTC
+2026-11-02T02:49:22.2632773Z 
+2026-11-02T02:49:22.2632824Z Nodes:
+2026-11-02T02:49:22.2632972Z Name:                  bex-nq-e57e51925e064b83882520b60
+2026-11-02T02:49:22.2633191Z Endpoint:              unix:///var/run/docker.sock
+2026-11-02T02:49:22.2633593Z Driver Options:        image="moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
+2026-11-02T02:49:22.2633999Z Status:                running
+2026-11-02T02:49:22.2634388Z BuildKit daemon flags: --allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host
+2026-11-02T02:49:22.2634746Z BuildKit version:      v0.30.0
+2026-11-02T02:49:22.2635139Z Platforms:             linux/arm64, linux/amd64, linux/amd64/v2, linux/riscv64, linux/ppc64le, linux/s390x, linux/386, linux/arm/v7, linux/arm/v6
+2026-11-02T02:49:22.2635525Z Labels:
+2026-11-02T02:49:22.2635853Z  org.mobyproject.buildkit.worker.executor:         oci
+2026-11-02T02:49:22.2636214Z  org.mobyproject.buildkit.worker.hostname:         e29428a4b8ff
+2026-11-02T02:49:22.2636632Z  org.mobyproject.buildkit.worker.network:          host
+2026-11-02T02:49:22.2637037Z  org.mobyproject.buildkit.worker.oci.process-mode: sandbox
+2026-11-02T02:49:22.2637330Z  org.mobyproject.buildkit.worker.selinux.enabled:  false
+2026-11-02T02:49:22.2637613Z  org.mobyproject.buildkit.worker.snapshotter:      overlayfs
+2026-11-02T02:49:22.2637841Z GC Policy rule#0:
+2026-11-02T02:49:22.2637969Z  All:            false
+2026-11-02T02:49:22.2638212Z  Filters:        type==source.local,type==exec.cachemount,type==source.git.checkout
+2026-11-02T02:49:22.2638930Z  Keep Duration:  48h0m0s
+2026-11-02T02:49:22.2639096Z  Max Used Space: 488.3MiB
+2026-11-02T02:49:22.2639239Z GC Policy rule#1:
+2026-11-02T02:49:22.2639367Z  All:            false
+2026-11-02T02:49:22.2639508Z  Keep Duration:  1440h0m0s
+2026-11-02T02:49:22.2639681Z  Reserved Space: 9.313GiB
+2026-11-02T02:49:22.2639827Z  Max Used Space: 93.13GiB
+2026-11-02T02:49:22.2639973Z  Min Free Space: 170.4GiB
+2026-11-02T02:49:22.2640110Z GC Policy rule#2:
+2026-11-02T02:49:22.2640235Z  All:            false
+2026-11-02T02:49:22.2640373Z  Reserved Space: 9.313GiB
+2026-11-02T02:49:22.2640519Z  Max Used Space: 93.13GiB
+2026-11-02T02:49:22.2640663Z  Min Free Space: 170.4GiB
+2026-11-02T02:49:22.2640799Z GC Policy rule#3:
+2026-11-02T02:49:22.2640927Z  All:            true
+2026-11-02T02:49:22.2641417Z  Reserved Space: 9.313GiB
+2026-11-02T02:49:22.2641566Z  Max Used Space: 93.13GiB
+2026-11-02T02:49:22.2641716Z  Min Free Space: 170.4GiB
+2026-11-02T02:49:22.2667851Z ##[endgroup]
+2026-11-02T02:49:22.3273783Z ##[group]Inspect builder
+2026-11-02T02:49:22.3274256Z {
+2026-11-02T02:49:22.3274449Z   "nodes": [
+2026-11-02T02:49:22.3274563Z     {
+2026-11-02T02:49:22.3274748Z       "name": "bex-nq-e57e51925e064b83882520b60",
+2026-11-02T02:49:22.3275006Z       "endpoint": "unix:///var/run/docker.sock",
+2026-11-02T02:49:22.3275233Z       "driver-opts": [
+2026-11-02T02:49:22.3275670Z         "image=moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
+2026-11-02T02:49:22.3276018Z       ],
+2026-11-02T02:49:22.3276161Z       "status": "running",
+2026-11-02T02:49:22.3276733Z       "buildkitd-flags": "--allow-insecure-entitlement security.insecure --allow-insecure-entitlement network.host",
+2026-11-02T02:49:22.3277118Z       "buildkit": "v0.30.0",
+2026-11-02T02:49:22.3285393Z       "platforms": "linux/arm64,linux/amd64,linux/amd64/v2,linux/riscv64,linux/ppc64le,linux/s390x,linux/386,linux/arm/v7,linux/arm/v6",
+2026-11-02T02:49:22.3285832Z       "features": {
+2026-11-02T02:49:22.3286139Z         "Automatically load images to the Docker Engine image store": true,
+2026-11-02T02:49:22.3286589Z         "Cache export": true,
+2026-11-02T02:49:22.3286784Z         "Direct push": true,
+2026-11-02T02:49:22.3286972Z         "Docker exporter": true,
+2026-11-02T02:49:22.3287170Z         "Multi-platform build": true,
+2026-11-02T02:49:22.3287368Z         "OCI exporter": true
+2026-11-02T02:49:22.3287512Z       },
+2026-11-02T02:49:22.3287633Z       "labels": {
+2026-11-02T02:49:22.3287866Z         "org.mobyproject.buildkit.worker.executor": "oci",
+2026-11-02T02:49:22.3288207Z         "org.mobyproject.buildkit.worker.hostname": "e29428a4b8ff",
+2026-11-02T02:49:22.3288565Z         "org.mobyproject.buildkit.worker.network": "host",
+2026-11-02T02:49:22.3288927Z         "org.mobyproject.buildkit.worker.oci.process-mode": "sandbox",
+2026-11-02T02:49:22.3289310Z         "org.mobyproject.buildkit.worker.selinux.enabled": "false",
+2026-11-02T02:49:22.3289668Z         "org.mobyproject.buildkit.worker.snapshotter": "overlayfs"
+2026-11-02T02:49:22.3289893Z       },
+2026-11-02T02:49:22.3290017Z       "gcPolicy": [
+2026-11-02T02:49:22.3290144Z         {
+2026-11-02T02:49:22.3290278Z           "all": false,
+2026-11-02T02:49:22.3290428Z           "filter": [
+2026-11-02T02:49:22.3290610Z             "type==source.local",
+2026-11-02T02:49:22.3290821Z             "type==exec.cachemount",
+2026-11-02T02:49:22.3291049Z             "type==source.git.checkout"
+2026-11-02T02:49:22.3291223Z           ],
+2026-11-02T02:49:22.3291395Z           "keepDuration": "48h0m0s",
+2026-11-02T02:49:22.3291617Z           "maxUsedSpace": "488.3MiB"
+2026-11-02T02:49:22.3291773Z         },
+2026-11-02T02:49:22.3291886Z         {
+2026-11-02T02:49:22.3292020Z           "all": false,
+2026-11-02T02:49:22.3292223Z           "keepDuration": "1440h0m0s",
+2026-11-02T02:49:22.3292443Z           "reservedSpace": "9.313GiB",
+2026-11-02T02:49:22.3292653Z           "maxUsedSpace": "93.13GiB",
+2026-11-02T02:49:22.3292860Z           "minFreeSpace": "170.4GiB"
+2026-11-02T02:49:22.3293265Z         },
+2026-11-02T02:49:22.3293385Z         {
+2026-11-02T02:49:22.3293520Z           "all": false,
+2026-11-02T02:49:22.3293705Z           "reservedSpace": "9.313GiB",
+2026-11-02T02:49:22.3293915Z           "maxUsedSpace": "93.13GiB",
+2026-11-02T02:49:22.3294126Z           "minFreeSpace": "170.4GiB"
+2026-11-02T02:49:22.3294283Z         },
+2026-11-02T02:49:22.3294395Z         {
+2026-11-02T02:49:22.3294531Z           "all": true,
+2026-11-02T02:49:22.3294720Z           "reservedSpace": "9.313GiB",
+2026-11-02T02:49:22.3294934Z           "maxUsedSpace": "93.13GiB",
+2026-11-02T02:49:22.3295146Z           "minFreeSpace": "170.4GiB"
+2026-11-02T02:49:22.3295305Z         }
+2026-11-02T02:49:22.3295416Z       ]
+2026-11-02T02:49:22.3295515Z     }
+2026-11-02T02:49:22.3295730Z   ],
+2026-11-02T02:49:22.3295872Z   "name": "bex-nq-e57e51925e064b83882520b6",
+2026-11-02T02:49:22.3296066Z   "driver": "docker-container",
+2026-11-02T02:49:22.3296245Z   "lastActivity": "2026-11-02T02:49:18.000Z"
+2026-11-02T02:49:22.3296575Z }
+2026-11-02T02:49:22.3296815Z ##[endgroup]
+2026-11-02T02:49:22.3297018Z ##[group]BuildKit version
+2026-11-02T02:49:22.3297182Z bex-nq-e57e51925e064b83882520b60: v0.30.0
+2026-11-02T02:49:22.3297426Z ##[endgroup]
+2026-11-02T02:49:22.3393328Z ##[group]Run set -o pipefail
+2026-11-02T02:49:22.3393728Z [36;1mset -o pipefail[0m
+2026-11-02T02:49:22.3394065Z [36;1mgo test -p 1 -count=1 -timeout "$QUALIFICATION_GO_TIMEOUT" ./internal/build \[0m
+2026-11-02T02:49:22.3394446Z [36;1m  -run "$QUALIFICATION_SELECTOR" -v \[0m
+2026-11-02T02:49:22.3394766Z [36;1m  2>&1 | tee "$QUALIFICATION_ROOT/qualification.log"[0m
+2026-11-02T02:49:22.3406975Z shell: /usr/bin/bash -e {0}
+2026-11-02T02:49:22.3407285Z env:
+2026-11-02T02:49:22.3407405Z   GOWORK: off
+2026-11-02T02:49:22.3407532Z   GOMAXPROCS: 2
+2026-11-02T02:49:22.3407647Z   GODEBUG: http2client=0
+2026-11-02T02:49:22.3407791Z   GOTOOLCHAIN: local
+2026-11-02T02:49:22.3407967Z   BEX_NATIVE_TEST_NODE_ADDON_PROFILE: 0
+2026-11-02T02:49:22.3408158Z   BEX_NATIVE_TEST_NODE_PROFILE: 0
+2026-11-02T02:49:22.3408321Z   BEX_NATIVE_TEST_NODE_DONORS: 0
+2026-11-02T02:49:22.3408635Z   BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE: 0
+2026-11-02T02:49:22.3408822Z   BEX_NATIVE_LEGACY_PYTHON_INTEGRATION: 0
+2026-11-02T02:49:22.3409178Z   BEX_NATIVE_TEST_RUBY_PROFILE: 1
+2026-11-02T02:49:22.3409515Z   BEX_NATIVE_TEST_GORUST_PROFILE: 0
+2026-11-02T02:49:22.3409685Z   BEX_NATIVE_ELIXIR_INTEGRATION: 0
+2026-11-02T02:49:22.3409983Z   BEX_NATIVE_TEST_INIT_PROFILE: 0
+2026-11-02T02:49:22.3410297Z   BEX_BUILDKIT_INTEGRATION: 1
+2026-11-02T02:49:22.3410473Z   QUALIFICATION_PROFILE: ruby
+2026-11-02T02:49:22.3410628Z   QUALIFICATION_CASE: ruby40
+2026-11-02T02:49:22.3410996Z   QUALIFICATION_SELECTOR: ^TestCommonRubyGeneratedImages$/^ruby40$
+2026-11-02T02:49:22.3411249Z   QUALIFICATION_GO_TIMEOUT: 75m
+2026-11-02T02:49:22.3411822Z   DOCKER_CONFIG: /home/docker/actions-runner/_work/_temp/bex-nq-e57e51925e064b83882520b6-docker-config
+2026-11-02T02:49:22.3412623Z   BEX_NATIVE_TEST_COMMON_IMAGE: ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+2026-11-02T02:49:22.3413181Z   BEX_NATIVE_TEST_BUILDER: bex-nq-e57e51925e064b83882520b6
+2026-11-02T02:49:22.3413553Z   BEX_NATIVE_TEST_OWNER: bex-nq-e57e51925e064b83882520b6
+2026-11-02T02:49:22.3413884Z   BEX_NATIVE_TEST_PLATFORM: linux/amd64
+2026-11-02T02:49:22.3414476Z   BEX_NATIVE_TEST_OUTPUT: /home/docker/actions-runner/_work/_temp/bex-native-qualification-cgl_oew8/generated
+2026-11-02T02:49:22.3415043Z   QUALIFICATION_ROOT: /home/docker/actions-runner/_work/_temp/bex-native-qualification-cgl_oew8
+2026-11-02T02:49:22.3415569Z ##[endgroup]
+2026-11-02T02:49:25.4543550Z === RUN   TestCommonRubyGeneratedImages
+2026-11-02T02:49:25.4555185Z     nativecommon_ruby_test.go:111: Ruby qualification evidence: /home/docker/actions-runner/_work/_temp/bex-native-qualification-cgl_oew8/generated/native-ruby-qualification-1026957650
+2026-11-02T02:49:25.4555837Z === RUN   TestCommonRubyGeneratedImages/ruby40
+2026-11-02T02:49:44.6497946Z     nativecommon_ruby_test.go:117: read selected native primary environment: image metadata request returned status 429
+2026-11-02T02:49:44.6498495Z --- FAIL: TestCommonRubyGeneratedImages (19.20s)
+2026-11-02T02:49:44.6498820Z     --- FAIL: TestCommonRubyGeneratedImages/ruby40 (19.19s)
+2026-11-02T02:49:44.6499025Z FAIL
+2026-11-02T02:49:44.6514103Z FAIL	github.com/bex-co/bex/lego/operator/internal/build	19.206s
+2026-11-02T02:49:44.6550405Z FAIL
+2026-11-02T02:49:44.9246913Z ##[error]Process completed with exit code 1.
+2026-11-02T02:49:44.9283842Z ##[group]Run python3 .github/scripts/native-common-qualify.py capacity "$QUALIFICATION_ROOT" after-tests
+2026-11-02T02:49:44.9284496Z [36;1mpython3 .github/scripts/native-common-qualify.py capacity "$QUALIFICATION_ROOT" after-tests[0m
+2026-11-02T02:49:44.9293201Z shell: /usr/bin/bash -e {0}
+2026-11-02T02:49:44.9293347Z env:
+2026-11-02T02:49:44.9293452Z   GOWORK: off
+2026-11-02T02:49:44.9293568Z   GOMAXPROCS: 2
+2026-11-02T02:49:44.9293691Z   GODEBUG: http2client=0
+2026-11-02T02:49:44.9293832Z   GOTOOLCHAIN: local
+2026-11-02T02:49:44.9293975Z   BEX_NATIVE_TEST_NODE_ADDON_PROFILE: 0
+2026-11-02T02:49:44.9294145Z   BEX_NATIVE_TEST_NODE_PROFILE: 0
+2026-11-02T02:49:44.9294434Z   BEX_NATIVE_TEST_NODE_DONORS: 0
+2026-11-02T02:49:44.9294605Z   BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE: 0
+2026-11-02T02:49:44.9294791Z   BEX_NATIVE_LEGACY_PYTHON_INTEGRATION: 0
+2026-11-02T02:49:44.9294966Z   BEX_NATIVE_TEST_RUBY_PROFILE: 1
+2026-11-02T02:49:44.9295133Z   BEX_NATIVE_TEST_GORUST_PROFILE: 0
+2026-11-02T02:49:44.9295358Z   BEX_NATIVE_ELIXIR_INTEGRATION: 0
+2026-11-02T02:49:44.9295522Z   BEX_NATIVE_TEST_INIT_PROFILE: 0
+2026-11-02T02:49:44.9295679Z   BEX_BUILDKIT_INTEGRATION: 1
+2026-11-02T02:49:44.9295833Z   QUALIFICATION_PROFILE: ruby
+2026-11-02T02:49:44.9295994Z   QUALIFICATION_CASE: ruby40
+2026-11-02T02:49:44.9296198Z   QUALIFICATION_SELECTOR: ^TestCommonRubyGeneratedImages$/^ruby40$
+2026-11-02T02:49:44.9296438Z   QUALIFICATION_GO_TIMEOUT: 75m
+2026-11-02T02:49:44.9296735Z   DOCKER_CONFIG: /home/docker/actions-runner/_work/_temp/bex-nq-e57e51925e064b83882520b6-docker-config
+2026-11-02T02:49:44.9297182Z   QUALIFICATION_ROOT: /home/docker/actions-runner/_work/_temp/bex-native-qualification-cgl_oew8
+2026-11-02T02:49:44.9297490Z ##[endgroup]
+2026-11-02T02:49:45.0879486Z ##[group]Run python3 .github/scripts/native-common-qualify.py cleanup "$QUALIFICATION_ROOT"
+2026-11-02T02:49:45.0879938Z [36;1mpython3 .github/scripts/native-common-qualify.py cleanup "$QUALIFICATION_ROOT"[0m
+2026-11-02T02:49:45.0888648Z shell: /usr/bin/bash -e {0}
+2026-11-02T02:49:45.0888840Z env:
+2026-11-02T02:49:45.0888963Z   GOWORK: off
+2026-11-02T02:49:45.0889084Z   GOMAXPROCS: 2
+2026-11-02T02:49:45.0889215Z   GODEBUG: http2client=0
+2026-11-02T02:49:45.0889362Z   GOTOOLCHAIN: local
+2026-11-02T02:49:45.0889524Z   BEX_NATIVE_TEST_NODE_ADDON_PROFILE: 0
+2026-11-02T02:49:45.0889703Z   BEX_NATIVE_TEST_NODE_PROFILE: 0
+2026-11-02T02:49:45.0889868Z   BEX_NATIVE_TEST_NODE_DONORS: 0
+2026-11-02T02:49:45.0890035Z   BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE: 0
+2026-11-02T02:49:45.0890220Z   BEX_NATIVE_LEGACY_PYTHON_INTEGRATION: 0
+2026-11-02T02:49:45.0890400Z   BEX_NATIVE_TEST_RUBY_PROFILE: 1
+2026-11-02T02:49:45.0890564Z   BEX_NATIVE_TEST_GORUST_PROFILE: 0
+2026-11-02T02:49:45.0890790Z   BEX_NATIVE_ELIXIR_INTEGRATION: 0
+2026-11-02T02:49:45.0890957Z   BEX_NATIVE_TEST_INIT_PROFILE: 0
+2026-11-02T02:49:45.0891116Z   BEX_BUILDKIT_INTEGRATION: 1
+2026-11-02T02:49:45.0891270Z   QUALIFICATION_PROFILE: ruby
+2026-11-02T02:49:45.0891421Z   QUALIFICATION_CASE: ruby40
+2026-11-02T02:49:45.0891632Z   QUALIFICATION_SELECTOR: ^TestCommonRubyGeneratedImages$/^ruby40$
+2026-11-02T02:49:45.0891877Z   QUALIFICATION_GO_TIMEOUT: 75m
+2026-11-02T02:49:45.0892175Z   DOCKER_CONFIG: /home/docker/actions-runner/_work/_temp/bex-nq-e57e51925e064b83882520b6-docker-config
+2026-11-02T02:49:45.0892631Z   QUALIFICATION_ROOT: /home/docker/actions-runner/_work/_temp/bex-native-qualification-cgl_oew8
+2026-11-02T02:49:45.0892973Z ##[endgroup]
+2026-11-02T02:49:45.9339958Z BEX_NATIVE_CLEANUP_RESULT {"owner": "bex-nq-e57e51925e064b83882520b6", "operations": [{"resource": "builder", "identity": "bex-nq-e57e51925e064b83882520b6", "exit_code": 0, "stdout": "", "stderr": "bex-nq-e57e51925e064b83882520b6 removed\n"}, {"resource": "docker-auth", "logout_exit_code": 0, "exit_code": 0, "removed": true}]}
+2026-11-02T02:49:45.9455028Z ##[group]Run python3 .github/scripts/native-common-qualify.py manifest "$QUALIFICATION_ROOT"
+2026-11-02T02:49:45.9455521Z [36;1mpython3 .github/scripts/native-common-qualify.py manifest "$QUALIFICATION_ROOT"[0m
+2026-11-02T02:49:45.9464645Z shell: /usr/bin/bash -e {0}
+2026-11-02T02:49:45.9464824Z env:
+2026-11-02T02:49:45.9464959Z   GOWORK: off
+2026-11-02T02:49:45.9465084Z   GOMAXPROCS: 2
+2026-11-02T02:49:45.9465208Z   GODEBUG: http2client=0
+2026-11-02T02:49:45.9465509Z   GOTOOLCHAIN: local
+2026-11-02T02:49:45.9465649Z   BEX_NATIVE_TEST_NODE_ADDON_PROFILE: 0
+2026-11-02T02:49:45.9465827Z   BEX_NATIVE_TEST_NODE_PROFILE: 0
+2026-11-02T02:49:45.9465987Z   BEX_NATIVE_TEST_NODE_DONORS: 0
+2026-11-02T02:49:45.9466153Z   BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE: 0
+2026-11-02T02:49:45.9466335Z   BEX_NATIVE_LEGACY_PYTHON_INTEGRATION: 0
+2026-11-02T02:49:45.9466508Z   BEX_NATIVE_TEST_RUBY_PROFILE: 1
+2026-11-02T02:49:45.9466666Z   BEX_NATIVE_TEST_GORUST_PROFILE: 0
+2026-11-02T02:49:45.9466874Z   BEX_NATIVE_ELIXIR_INTEGRATION: 0
+2026-11-02T02:49:45.9467037Z   BEX_NATIVE_TEST_INIT_PROFILE: 0
+2026-11-02T02:49:45.9467193Z   BEX_BUILDKIT_INTEGRATION: 1
+2026-11-02T02:49:45.9467345Z   QUALIFICATION_PROFILE: ruby
+2026-11-02T02:49:45.9467499Z   QUALIFICATION_CASE: ruby40
+2026-11-02T02:49:45.9467711Z   QUALIFICATION_SELECTOR: ^TestCommonRubyGeneratedImages$/^ruby40$
+2026-11-02T02:49:45.9467950Z   QUALIFICATION_GO_TIMEOUT: 75m
+2026-11-02T02:49:45.9468246Z   DOCKER_CONFIG: /home/docker/actions-runner/_work/_temp/bex-nq-e57e51925e064b83882520b6-docker-config
+2026-11-02T02:49:45.9468699Z   QUALIFICATION_ROOT: /home/docker/actions-runner/_work/_temp/bex-native-qualification-cgl_oew8
+2026-11-02T02:49:45.9469005Z ##[endgroup]
+2026-11-02T02:49:45.9904496Z ##[group]Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9
+2026-11-02T02:49:45.9904788Z with:
+2026-11-02T02:49:45.9905175Z   name: common-pilot-ruby-ruby40-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1
+2026-11-02T02:49:45.9905705Z   path: /home/docker/actions-runner/_work/_temp/bex-native-qualification-cgl_oew8
+2026-11-02T02:49:45.9906030Z   if-no-files-found: error
+2026-11-02T02:49:45.9906178Z   include-hidden-files: true
+2026-11-02T02:49:45.9906482Z   retention-days: 30
+2026-11-02T02:49:45.9906615Z   compression-level: 6
+2026-11-02T02:49:45.9906748Z   overwrite: false
+2026-11-02T02:49:45.9906866Z   archive: true
+2026-11-02T02:49:45.9906986Z env:
+2026-11-02T02:49:45.9907095Z   GOWORK: off
+2026-11-02T02:49:45.9907229Z   GOMAXPROCS: 2
+2026-11-02T02:49:45.9907351Z   GODEBUG: http2client=0
+2026-11-02T02:49:45.9907493Z   GOTOOLCHAIN: local
+2026-11-02T02:49:45.9907630Z   BEX_NATIVE_TEST_NODE_ADDON_PROFILE: 0
+2026-11-02T02:49:45.9907841Z   BEX_NATIVE_TEST_NODE_PROFILE: 0
+2026-11-02T02:49:45.9908033Z   BEX_NATIVE_TEST_NODE_DONORS: 0
+2026-11-02T02:49:45.9908199Z   BEX_NATIVE_TEST_MODERN_PYTHON_PROFILE: 0
+2026-11-02T02:49:45.9908381Z   BEX_NATIVE_LEGACY_PYTHON_INTEGRATION: 0
+2026-11-02T02:49:45.9908555Z   BEX_NATIVE_TEST_RUBY_PROFILE: 1
+2026-11-02T02:49:45.9908716Z   BEX_NATIVE_TEST_GORUST_PROFILE: 0
+2026-11-02T02:49:45.9908876Z   BEX_NATIVE_ELIXIR_INTEGRATION: 0
+2026-11-02T02:49:45.9909034Z   BEX_NATIVE_TEST_INIT_PROFILE: 0
+2026-11-02T02:49:45.9909191Z   BEX_BUILDKIT_INTEGRATION: 1
+2026-11-02T02:49:45.9909343Z   QUALIFICATION_PROFILE: ruby
+2026-11-02T02:49:45.9909494Z   QUALIFICATION_CASE: ruby40
+2026-11-02T02:49:45.9909697Z   QUALIFICATION_SELECTOR: ^TestCommonRubyGeneratedImages$/^ruby40$
+2026-11-02T02:49:45.9909941Z   QUALIFICATION_GO_TIMEOUT: 75m
+2026-11-02T02:49:45.9910230Z   DOCKER_CONFIG: /home/docker/actions-runner/_work/_temp/bex-nq-e57e51925e064b83882520b6-docker-config
+2026-11-02T02:49:45.9910545Z ##[endgroup]
+2026-11-02T02:49:46.0885165Z With the provided path, there will be 12 files uploaded
+2026-11-02T02:49:46.0888076Z Artifact name is valid!
+2026-11-02T02:49:46.0888665Z Root directory input is valid!
+2026-11-02T02:49:47.5458776Z Uploading artifact: common-pilot-ruby-ruby40-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1.zip
+2026-11-02T02:49:47.5481130Z Beginning upload of artifact content to blob storage
+2026-11-02T02:49:50.4281547Z Uploaded bytes 21738
+2026-11-02T02:49:50.9296738Z Finished uploading artifact content to blob storage!
+2026-11-02T02:49:50.9297180Z SHA256 digest of uploaded artifact is 524a6955c1391c733e1e7b66561a47a6ffdcc201443d4710ed22341f8d35f4c5
+2026-11-02T02:49:50.9297539Z Finalizing artifact upload
+2026-11-02T02:49:53.2243060Z Artifact common-pilot-ruby-ruby40-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1 successfully finalized. Artifact ID 13113245804
+2026-11-02T02:49:53.2244383Z Artifact common-pilot-ruby-ruby40-reviewed-candidate-ac17d21d7e5a09c8ea41fece0333b8f613900c7b5f793e8bf2edcdb160e59426-amd64-1 has been successfully uploaded! Final size is 21738 bytes. Artifact ID is 13113245804
+2026-11-02T02:49:53.2246236Z Artifact download URL: https://github.com/bex-co/bex/actions/runs/41375501385/artifacts/13113245804
+2026-11-02T02:49:53.2374400Z Post job cleanup.
+2026-11-02T02:49:53.3415723Z ##[group]Post cache
+2026-11-02T02:49:53.3416058Z Caching buildx-dl-bin-0.38.1-linux-arm64 to GitHub Actions cache
+2026-11-02T02:49:53.3460118Z ##[warning]Failed to save cache: Error: Path Validation Error: Path(s) specified in the action for caching do(es) not exist, hence no cache is being saved.
+2026-11-02T02:49:53.3461217Z ##[endgroup]
+2026-11-02T02:49:53.3578190Z Post job cleanup.
+2026-11-02T02:49:53.4083934Z [command]/usr/bin/git version
+2026-11-02T02:49:53.4115959Z git version 2.34.1
+2026-11-02T02:49:53.4133274Z Copying '/home/docker/.gitconfig' to '/home/docker/actions-runner/_work/_temp/f2bf79db-27b3-4eb9-a646-68355567cf34/.gitconfig'
+2026-11-02T02:49:53.4139818Z Temporarily overriding HOME='/home/docker/actions-runner/_work/_temp/f2bf79db-27b3-4eb9-a646-68355567cf34' before making global git config changes
+2026-11-02T02:49:53.4140442Z Adding repository directory to the temporary git global config as a safe directory
+2026-11-02T02:49:53.4148163Z [command]/usr/bin/git config --global --add safe.directory /home/docker/actions-runner/_work/bex/bex
+2026-11-02T02:49:53.4173789Z Removing SSH command configuration
+2026-11-02T02:49:53.4177504Z [command]/usr/bin/git config --local --name-only --get-regexp core\.sshCommand
+2026-11-02T02:49:53.4194616Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'core\.sshCommand' && git config --local --unset-all 'core.sshCommand' || :"
+2026-11-02T02:49:53.4370179Z Removing HTTP extra header
+2026-11-02T02:49:53.4373500Z [command]/usr/bin/git config --local --name-only --get-regexp http\.https\:\/\/github\.com\/\.extraheader
+2026-11-02T02:49:53.4395143Z [command]/usr/bin/git submodule foreach --recursive sh -c "git config --local --name-only --get-regexp 'http\.https\:\/\/github\.com\/\.extraheader' && git config --local --unset-all 'http.https://github.com/.extraheader' || :"
+2026-11-02T02:49:53.4537264Z Removing includeIf entries pointing to credentials config files
+2026-11-02T02:49:53.4541301Z [command]/usr/bin/git config --local --name-only --get-regexp ^includeIf\.gitdir:
+2026-11-02T02:49:53.4561118Z [command]/usr/bin/git submodule foreach --recursive git config --local --show-origin --name-only --get-regexp remote.origin.url
+2026-11-02T02:49:53.4804144Z Cleaning up orphan processes

@@ -1,0 +1,3052 @@
+{
+  "at": "2026-11-02T04:33:38.925847+00:00",
+  "status": "COPIED_EXACT_FROZEN_BYTES_PM_EVIDENCE_ONLY",
+  "initial_plan_source": "/private/tmp/bex-w8-family-causal-publication-plan-20261102-10y2g7wq/PUBLICATION-COPY-PLAN.json",
+  "initial_plan_sha256": "cb0411e9c7188a53c1d8c3ce6766484cd4494c7a386029a424af3e0580a6b2ac",
+  "original_plan_files_verified_and_copied": 199,
+  "all_frozen_copies": 355,
+  "all_frozen_copy_bytes": 3652372,
+  "files": [
+    {
+      "source": "/private/tmp/bex-w8-original35-dispatch-20261102-mghxtdo_/DISPATCHES.json",
+      "destination": "dispatch/DISPATCHES.json",
+      "bytes": 6626,
+      "sha256": "04d8c307acb8df370f810a661bc7a1475bf47277615bdb0593145aa03022f166",
+      "mode": "0o644",
+      "scope": "ActualRoot normalUI controls; original35 and supplemental6 keptseparate; not acceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-dispatch-20261102-mghxtdo_/SUPPLEMENTAL-DONORS.json",
+      "destination": "dispatch/SUPPLEMENTAL-DONORS.json",
+      "bytes": 1424,
+      "sha256": "7fd3f0aa962ea7d78848d357c0608114bdc56c365fb948c4b253be4ca7de0684",
+      "mode": "0o644",
+      "scope": "ActualRoot normalUI controls; original35 and supplemental6 keptseparate; not acceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/SUMMARY.json",
+      "destination": "snapshot/SUMMARY.json",
+      "bytes": 36521,
+      "sha256": "f6484def21b641abf8d7f4fb8bf9e84be1599eadd3d413de19faadac3536a445",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375346506.json",
+      "destination": "snapshot/jobs-41375346506.json",
+      "bytes": 12092,
+      "sha256": "69fab6a990475ffd4ba69d53f8e9e535393dbc330fe793519330b1c90b16bf69",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375390166.json",
+      "destination": "snapshot/jobs-41375390166.json",
+      "bytes": 8730,
+      "sha256": "a39f29f858522769303b5825f892ca39199da39463f1f1aaee1456461a548d2a",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375422833.json",
+      "destination": "snapshot/jobs-41375422833.json",
+      "bytes": 8730,
+      "sha256": "6f24310241ccbbe7deb350adb7f31094f334a6e1550229d67abfd2da840495b5",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375428758.json",
+      "destination": "snapshot/jobs-41375428758.json",
+      "bytes": 8730,
+      "sha256": "c1a838cff9d2676722ad751ea391b098ddef40cac4e114efed42d8b38ee794f2",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375434664.json",
+      "destination": "snapshot/jobs-41375434664.json",
+      "bytes": 11334,
+      "sha256": "6f8a5616191f6b055d0fb759f9ff55c9e309c0f4027c7a102afc72aa10677975",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375455883.json",
+      "destination": "snapshot/jobs-41375455883.json",
+      "bytes": 10997,
+      "sha256": "22e3316aafcf39beb895cb65fa26ddacc331ef93f9b3e1e78d4262f69881114e",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375461070.json",
+      "destination": "snapshot/jobs-41375461070.json",
+      "bytes": 8730,
+      "sha256": "c2909696b95e307b526368436b44a5e6d0d4790e6d4e25f74140564090295f75",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375466839.json",
+      "destination": "snapshot/jobs-41375466839.json",
+      "bytes": 8730,
+      "sha256": "8746e5548352b48e64f0733427f71eabd4db0d67768ec01adf85843360760921",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375472665.json",
+      "destination": "snapshot/jobs-41375472665.json",
+      "bytes": 8730,
+      "sha256": "0df731effc42c392b7293cc60dbc86ca3606417b462557efc80d0b7cad13cb60",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375488574.json",
+      "destination": "snapshot/jobs-41375488574.json",
+      "bytes": 8730,
+      "sha256": "6767fb44252285bd9d0372dc41925588cb6bd1c1e1ea5ce08f32d4023a0b7132",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375495533.json",
+      "destination": "snapshot/jobs-41375495533.json",
+      "bytes": 8730,
+      "sha256": "a486dfa41bd56ff65e2132e0debb4aed827a8f334c52652576c2beeeeaa53ddb",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375501385.json",
+      "destination": "snapshot/jobs-41375501385.json",
+      "bytes": 8730,
+      "sha256": "87ef494ad0a2d249ab223fe1c9cb8aa2b35e28dded530e1cc48a736d870a58f9",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375507144.json",
+      "destination": "snapshot/jobs-41375507144.json",
+      "bytes": 8730,
+      "sha256": "41211b4196935a70c02a888c175d875ef6764ef715845d55aa845bee9e2d382b",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375519527.json",
+      "destination": "snapshot/jobs-41375519527.json",
+      "bytes": 8730,
+      "sha256": "8dbf7e3a851d67646b1f78967ffd60c01e9334ae284bd09cdf63ddc00e77bb6e",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375525481.json",
+      "destination": "snapshot/jobs-41375525481.json",
+      "bytes": 8730,
+      "sha256": "56e76f051aecced1479a0fb5277ab70b09af79cdec3e615c1e293c87ad094356",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375530745.json",
+      "destination": "snapshot/jobs-41375530745.json",
+      "bytes": 8730,
+      "sha256": "d9e20c5c65837ac45edd2e058623e26a81cd3d84f123ab9a5471db373d3bd0be",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375536053.json",
+      "destination": "snapshot/jobs-41375536053.json",
+      "bytes": 8730,
+      "sha256": "bfe033dd17b822e17cbe12d00618222a8fd856e7c9acf731d8941e70a0d9cea5",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375551913.json",
+      "destination": "snapshot/jobs-41375551913.json",
+      "bytes": 8730,
+      "sha256": "b6810df1a2b3c11eaeeeeeeeeaadb36f96c9f90b4c845ebaf904a7326311f3f8",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375556805.json",
+      "destination": "snapshot/jobs-41375556805.json",
+      "bytes": 8730,
+      "sha256": "397f09531a77996453822a59d44d0110a03cfccbcb27ee7863ff8c40968024fe",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375561914.json",
+      "destination": "snapshot/jobs-41375561914.json",
+      "bytes": 8730,
+      "sha256": "9d9c1a8fee7f3a723540c6039cf51eb1801d768200271d36e631e3aaa5fb325f",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375567050.json",
+      "destination": "snapshot/jobs-41375567050.json",
+      "bytes": 8730,
+      "sha256": "9b41cf7e2fa6c8c1df9d0f09be0d7eb6c6f404167e9987f576fb228d304786ec",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375576977.json",
+      "destination": "snapshot/jobs-41375576977.json",
+      "bytes": 8730,
+      "sha256": "fdb703fcc1325eefdaafe5bf529b9bdb6851f181665dcd34d019030862ec192e",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375689572.json",
+      "destination": "snapshot/jobs-41375689572.json",
+      "bytes": 8719,
+      "sha256": "491962e2c27d2567cfc352201cdd56dc1ad9018b885603f3398dc52f9c0e538f",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375695085.json",
+      "destination": "snapshot/jobs-41375695085.json",
+      "bytes": 8730,
+      "sha256": "dc1a533f36a2e98fee5834cc65473f2dd506666bd82d5b1077d69a66b8700614",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375700551.json",
+      "destination": "snapshot/jobs-41375700551.json",
+      "bytes": 8243,
+      "sha256": "71b81dc806e796b1b6f06820ae9aa83d0a477eea70ceca65a6b13134dbafe459",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375734819.json",
+      "destination": "snapshot/jobs-41375734819.json",
+      "bytes": 8740,
+      "sha256": "5560c1b2dbca1ec2ad22eef01f1279aeab7c7135948b8211afb67510fac8f988",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375740029.json",
+      "destination": "snapshot/jobs-41375740029.json",
+      "bytes": 7645,
+      "sha256": "9f21da1e6eafb2356b2a89093d094ff9f4aa0167451f7420339ae7448ceac79c",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375779779.json",
+      "destination": "snapshot/jobs-41375779779.json",
+      "bytes": 7645,
+      "sha256": "42361ce45fb0f5b4f5da544f483c08799c40ca0e642c180e452c68620386682b",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375786429.json",
+      "destination": "snapshot/jobs-41375786429.json",
+      "bytes": 5378,
+      "sha256": "2ca7ac2887d2aba6627822ac0ceda557172893947dca06551f50605595a6934d",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375793680.json",
+      "destination": "snapshot/jobs-41375793680.json",
+      "bytes": 5378,
+      "sha256": "35cfff961474b785ff9d5eb60c0ae08e1896344441879e4f3c512d161e003c89",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375800234.json",
+      "destination": "snapshot/jobs-41375800234.json",
+      "bytes": 5378,
+      "sha256": "897d06a700f770160f1e54b9c3ab8ddcbbfdf4febe582a154ad19274c9a97568",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375818643.json",
+      "destination": "snapshot/jobs-41375818643.json",
+      "bytes": 5378,
+      "sha256": "5e8b63aaf5f9529f29e12ddaa732eb41f25de5bfd30c85722aea42a92ac7869d",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375823911.json",
+      "destination": "snapshot/jobs-41375823911.json",
+      "bytes": 5378,
+      "sha256": "8f18a336df16721062ac2bee372094744083f5f8e41e3aab2d37a98dc325c257",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375829158.json",
+      "destination": "snapshot/jobs-41375829158.json",
+      "bytes": 5378,
+      "sha256": "140b9e9268ab0f97fa059b14bfe402e590888f451179c5a7a56ce2ee48fa8820",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-jobs-snapshot-20261102-OBkM44EE/jobs-41375834550.json",
+      "destination": "snapshot/jobs-41375834550.json",
+      "bytes": 5378,
+      "sha256": "4f7fc70725607aed116e1632fb4e6a7ba9556fb8ab723563e739dce108b959b7",
+      "mode": "0o644",
+      "scope": "RawcompleteREST retainedsnapshot only; no refetch/freshness/currentauthority claim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.json",
+      "destination": "failure-triage/TRIAGE.json",
+      "bytes": 95855,
+      "sha256": "3ed66d26de707fb39837fa98f46205b90e214a4b43fead3f15cc3fa2c4e4fedb",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/TRIAGE.tsv",
+      "destination": "failure-triage/TRIAGE.tsv",
+      "bytes": 1120,
+      "sha256": "a517ff64427f32d9176b4d28b19fd80ed190f37899640b5198bfb61d3ca49e5c",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/SOURCE-CUSTODY.json",
+      "destination": "failure-triage/SOURCE-CUSTODY.json",
+      "bytes": 1185,
+      "sha256": "bf11af9b7b0cd4b9a5110aea26fe59a6fbfb30cb632a74ba0aaa2d6a17c0a28d",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/MANIFEST.json",
+      "destination": "failure-triage/MANIFEST.json",
+      "bytes": 10601,
+      "sha256": "dc70b733d3d3ea8ecf8422501ce86dbc1b8ab7ae2401446c00ca4937556eff34",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/RUBY-EXACT-HOST-CONTROL.json",
+      "destination": "failure-triage/RUBY-EXACT-HOST-CONTROL.json",
+      "bytes": 1340,
+      "sha256": "08bcd87a2947b1532d10608350b285771b1f09e66a8efd0b04119e8c2e55c558",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/RUBY-HOST-CONTROL.json",
+      "destination": "failure-triage/RUBY-HOST-CONTROL.json",
+      "bytes": 843,
+      "sha256": "e510bbffa88f095249a78b351ebe2b5b0e70fb3f00d1be8e49ed8522324d4c0f",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby-exact-fixture-host.stdout",
+      "destination": "failure-triage/ruby-exact-fixture-host.stdout",
+      "bytes": 225,
+      "sha256": "11a2267aafe4193914054df932d96f8fba80bea09fd871226dbb665bb3fd2872",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby-exact-fixture-host.stderr",
+      "destination": "failure-triage/ruby-exact-fixture-host.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby-host-encoding.stdout",
+      "destination": "failure-triage/ruby-host-encoding.stdout",
+      "bytes": 191,
+      "sha256": "113c41fbffa90f2e31da595ae9b0b8aed087703ff511c3e32d7fe926dbed6515",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby-host-encoding.stderr",
+      "destination": "failure-triage/ruby-host-encoding.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/source-check.rb",
+      "destination": "failure-triage/source-check.rb",
+      "bytes": 3871,
+      "sha256": "36bf12ce0ed5fca238776e88250a2e78e373c2f8d4b3800a4a8ac528642d6082",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/source-dockerhub.go",
+      "destination": "failure-triage/source-dockerhub.go",
+      "bytes": 12874,
+      "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/source-nativecommon_gorust_test.go",
+      "destination": "failure-triage/source-nativecommon_gorust_test.go",
+      "bytes": 12042,
+      "sha256": "08a76cc2a45656e323f99d792c6c13cae8ede4f2a99ab03b03dbdcbf143496ce",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/source-nativecommon_node_qualification_test.go",
+      "destination": "failure-triage/source-nativecommon_node_qualification_test.go",
+      "bytes": 12787,
+      "sha256": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4",
+      "mode": "0o644",
+      "scope": "Historical16actualcompletedfailedjoblogs/source triage. HostRuby control isnotactualimageproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/go-125055631670.log",
+      "destination": "failure-triage/go-125055631670.log",
+      "bytes": 63374,
+      "sha256": "99f39c3ad8b60b89cbe802cff0e1c1b25d9b1cf2002e0b11e60ba7518a817e53",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/rust-125055846561.log",
+      "destination": "failure-triage/rust-125055846561.log",
+      "bytes": 63416,
+      "sha256": "a3e0aee192fab6a8fdaa1312bfd4a9bf1eac48f6f5d8c7156ee043842034fad3",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby34-125055996963.log",
+      "destination": "failure-triage/ruby34-125055996963.log",
+      "bytes": 129428,
+      "sha256": "f0d890cd6a19a032e65260a1c479773d5f912286b545b4472111ec3f24159c39",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby40-125056758950.log",
+      "destination": "failure-triage/ruby40-125056758950.log",
+      "bytes": 64422,
+      "sha256": "45d9aa4f50131a0ca3fa72a62fa623d9a2440e6eda983378aa6c56d363cbc4a9",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby344-creation-default-125056317602.log",
+      "destination": "failure-triage/ruby344-creation-default-125056317602.log",
+      "bytes": 128935,
+      "sha256": "55b624efa71cb58d6e4d8afb3fd179c78f436210f2ba8f98e85dffecdd3e5d21",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby30-125056527087.log",
+      "destination": "failure-triage/ruby30-125056527087.log",
+      "bytes": 153831,
+      "sha256": "0d8ed0c0cd13c35b8b583c459ebb458f27a7e143e01805b5aa08c34a8e0b2731",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby31-125056391774.log",
+      "destination": "failure-triage/ruby31-125056391774.log",
+      "bytes": 139242,
+      "sha256": "f01bf7e4e8a2c99fb61278c087ce6860138baa873197f28702e9bb9a78df5a70",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby32-125056666478.log",
+      "destination": "failure-triage/ruby32-125056666478.log",
+      "bytes": 140273,
+      "sha256": "e22099a61735d11676a00abc82b418860207cbf1ce402d7585e24d393c19f2ee",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby33-125056673239.log",
+      "destination": "failure-triage/ruby33-125056673239.log",
+      "bytes": 135380,
+      "sha256": "7a5095cbc764e6f9d20bd3b3d5612b800391bda572039e65aeedd5758fa4cfc0",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-static-ruby34-125056614477.log",
+      "destination": "failure-triage/node-static-ruby34-125056614477.log",
+      "bytes": 143242,
+      "sha256": "a3c33b48cac3976059309de79bc8a9ad1d8ee37cdf76503d7b672e6a92a35947",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-20-125057044576.log",
+      "destination": "failure-triage/node-20-125057044576.log",
+      "bytes": 63484,
+      "sha256": "f13a65fec0102159a7b809f34281d41bef85d5fafc322d05164c8c676b0113da",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-18-125057701493.log",
+      "destination": "failure-triage/node-18-125057701493.log",
+      "bytes": 170892,
+      "sha256": "56120e147d02bd18f9886002e1fc64f19b2062bd25ddb7e6f5f04adca9aa5e74",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-16-125057695217.log",
+      "destination": "failure-triage/node-16-125057695217.log",
+      "bytes": 180014,
+      "sha256": "8a543799b196c9765fb31a1dc1bbd8030ddba42bc59570d20c768229699a010a",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/node-14-125057542764.log",
+      "destination": "failure-triage/node-14-125057542764.log",
+      "bytes": 175679,
+      "sha256": "ca2db6a5ffe8af0ffceb9ea8548a25c9930b4b00b6276a0b02a5dbaa5146ddce",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/ruby-node-exact14212-125058109221.log",
+      "destination": "failure-triage/ruby-node-exact14212-125058109221.log",
+      "bytes": 195898,
+      "sha256": "9e17ef4e2c04e72a779b4e1359ded7055dcb118d4742621df784680aa7fc5600",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/python38-125058904545.log",
+      "destination": "failure-triage/python38-125058904545.log",
+      "bytes": 64372,
+      "sha256": "2228510b9f2033d017fcafd9a67c5deaf4015712359c418befcd7e54bf302e47",
+      "mode": "0o644",
+      "scope": "Fullactualfailedjoblog; decodedconnectorcontent UTF8verbatim asretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375472665.json",
+      "destination": "failure-triage/artifacts-41375472665.json",
+      "bytes": 792,
+      "sha256": "cee8e42783243466e16deaae16bdcc8a255e0524a7ef9fd437246d4aaad0c411",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375488574.json",
+      "destination": "failure-triage/artifacts-41375488574.json",
+      "bytes": 794,
+      "sha256": "aef201d26facf278605fe02293ea7fd1dc8adbb74c31fbfcd991698de6a4cbb6",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375495533.json",
+      "destination": "failure-triage/artifacts-41375495533.json",
+      "bytes": 793,
+      "sha256": "65a77b87008b231abe815ee716b29e2b9a86fc424160639df58ea11f6e89f755",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375501385.json",
+      "destination": "failure-triage/artifacts-41375501385.json",
+      "bytes": 793,
+      "sha256": "ee7fe8a1b2e90450bf0273edcae065cdf3cd658e4867861b5506e24c78625410",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375507144.json",
+      "destination": "failure-triage/artifacts-41375507144.json",
+      "bytes": 811,
+      "sha256": "3841569f50b16668e57739c40fbf80dd8e9217cc0546948a6e9b289ced61b494",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375519527.json",
+      "destination": "failure-triage/artifacts-41375519527.json",
+      "bytes": 793,
+      "sha256": "d2075d1dffae8e939052b3ec02eafc009abb506620da66ba565f1b1662276512",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375525481.json",
+      "destination": "failure-triage/artifacts-41375525481.json",
+      "bytes": 793,
+      "sha256": "594bc69550d0e0bea38ec4e8f89aa128080df1531f21cd74a4cf4511c73ac9a8",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375530745.json",
+      "destination": "failure-triage/artifacts-41375530745.json",
+      "bytes": 793,
+      "sha256": "48c91fe4524f8757de44b2e11a46b50e832d2f6f338076c8173b8b56476beae3",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375536053.json",
+      "destination": "failure-triage/artifacts-41375536053.json",
+      "bytes": 793,
+      "sha256": "ecbb7d1e72425ddf04ef8897195498cdfeee4863f956b9e6fd1caaf072a225ad",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375551913.json",
+      "destination": "failure-triage/artifacts-41375551913.json",
+      "bytes": 805,
+      "sha256": "8e5f1086fb9a4ca12c064d020037eafddaf9e5ddc9382067df26cbac8367b3a6",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375556805.json",
+      "destination": "failure-triage/artifacts-41375556805.json",
+      "bytes": 794,
+      "sha256": "c7b3564776e711d829f825664c73a486d82a7997b6f28ff818e0f1b48cf8de40",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375561914.json",
+      "destination": "failure-triage/artifacts-41375561914.json",
+      "bytes": 794,
+      "sha256": "77f7c9540aeaa013fc4dc29573776ca29d51ff89d0203f0e41c0b50f3656c23b",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375567050.json",
+      "destination": "failure-triage/artifacts-41375567050.json",
+      "bytes": 794,
+      "sha256": "58201ae265ff795f542d998d79dff4d41727600a9537fd58bb82e6bffbfc13ef",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375576977.json",
+      "destination": "failure-triage/artifacts-41375576977.json",
+      "bytes": 794,
+      "sha256": "bb0c7826a64adddc7f2ef3f39490480b547025779f2b205feca7ac2af4a534e2",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375695085.json",
+      "destination": "failure-triage/artifacts-41375695085.json",
+      "bytes": 807,
+      "sha256": "62ab7feaf6c291fc33dc30542f326802406486f077777d46ff122394d314e65f",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-original35-failure-logs-20261102-81hbj334/artifacts-41375734819.json",
+      "destination": "failure-triage/artifacts-41375734819.json",
+      "bytes": 32,
+      "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c",
+      "mode": "0o644",
+      "scope": "Actualartifactmetadata only; failedartifactbodiesnotdownloadedbythistriage."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/FINDING.json",
+      "destination": "native-init/old-amd64/FINDING.json",
+      "bytes": 1735,
+      "sha256": "d2120786a337160f4d384dd3b6ecc8f4c104d6d25e292259bd01c0f13a2249f4",
+      "mode": "0o644",
+      "scope": "ActualAMDfailurebeforeReady; no native-initdrainverdict. RawCIargv/mapsnotretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/native-init-amd64-job.log",
+      "destination": "native-init/old-amd64/native-init-amd64-job.log",
+      "bytes": 63526,
+      "sha256": "52ededd1b51057e0530d92febbd48e11ca34b43e11ecc1f8558da53cd29b0947",
+      "mode": "0o644",
+      "scope": "ActualAMDfailurebeforeReady; no native-initdrainverdict. RawCIargv/mapsnotretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/native-init-artifacts.json",
+      "destination": "native-init/old-amd64/native-init-artifacts.json",
+      "bytes": 807,
+      "sha256": "9d7bb75816f1e8d9529b37017c42c342f949f2f89bdd07d0b631e42c24269dd6",
+      "mode": "0o644",
+      "scope": "ActualAMDfailurebeforeReady; no native-initdrainverdict. RawCIargv/mapsnotretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/actual-identity.js",
+      "destination": "native-init/old-amd64/actual-identity.js",
+      "bytes": 2232,
+      "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438",
+      "mode": "0o644",
+      "scope": "ActualAMDfailurebeforeReady; no native-initdrainverdict. RawCIargv/mapsnotretained."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/download.json",
+      "destination": "native-init/old-amd64/intake/download.json",
+      "bytes": 514,
+      "sha256": "1264a684fe0f82c51b058ebc54d04a4a6e348a4a7b481cf5027c01751079f5ab",
+      "mode": "0o600",
+      "scope": "FullZIPidentity/extractionreceipt retained; ZIPbody staysprivate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/extraction.json",
+      "destination": "native-init/old-amd64/intake/extracted/extraction.json",
+      "bytes": 453,
+      "sha256": "a1dd3b082a1952877b6e3fb26efd61137bf8cec8658f85e1873a128e9018e1f5",
+      "mode": "0o600",
+      "scope": "FullZIPidentity/extractionreceipt retained; ZIPbody staysprivate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/MANIFEST.json",
+      "destination": "native-init/old-amd64/artifact/MANIFEST.json",
+      "bytes": 3780,
+      "sha256": "b33c017c40adecf0dab0770f7687e49a6aee9e84053c0a9956fab3ea18b1a536",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/bootstrap-1.stderr.log",
+      "destination": "native-init/old-amd64/artifact/bootstrap-1.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/bootstrap-1.stdout.log",
+      "destination": "native-init/old-amd64/artifact/bootstrap-1.stdout.log",
+      "bytes": 104,
+      "sha256": "cb4d3b0e70f2d4e52c28206c6c799c01616f7ac12aad9490b930290737cdc621",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/bootstrap.json",
+      "destination": "native-init/old-amd64/artifact/bootstrap.json",
+      "bytes": 1514,
+      "sha256": "879f70860d0cad90c2fccd1ecfe7275a205495d586b1811a5d843441c999f693",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/capacity-after-tests.json",
+      "destination": "native-init/old-amd64/artifact/capacity-after-tests.json",
+      "bytes": 1317,
+      "sha256": "c58fa06a2f154a6600b95a3e4a36ffbc0fbe5eaea2f2b0fb93d01e307b974298",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/capacity-before-builder.json",
+      "destination": "native-init/old-amd64/artifact/capacity-before-builder.json",
+      "bytes": 1320,
+      "sha256": "9e0acc6c16cd73280739ed88ceb1493ead7114fd60307a59edf760005bf541c5",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/cleanup.json",
+      "destination": "native-init/old-amd64/artifact/cleanup.json",
+      "bytes": 494,
+      "sha256": "b34e7db5b2d272d20fb0ddf86ed5dc35fc55b17f30cc1e126cfc87fc18dd133c",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/Dockerfile.canonical",
+      "destination": "native-init/old-amd64/artifact/generated/native-common-init-236768202/Dockerfile.canonical",
+      "bytes": 2894,
+      "sha256": "8b923804931c37c2384f2570c083b668fb19be563de08098599c9b7744843486",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/build.log",
+      "destination": "native-init/old-amd64/artifact/generated/native-common-init-236768202/build.log",
+      "bytes": 33231,
+      "sha256": "d499245f2244c12c0962c0bc06bc0ecfe5bbb4cb0badcf912024c7f4aadc5562",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/image-identity.txt",
+      "destination": "native-init/old-amd64/artifact/generated/native-common-init-236768202/image-identity.txt",
+      "bytes": 101,
+      "sha256": "a43561ea85a15705dfb0349e41070066f993ac105ceaa112e70142825761bb3d",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/npm/cleanup-runtime.log",
+      "destination": "native-init/old-amd64/artifact/generated/native-common-init-236768202/npm/cleanup-runtime.log",
+      "bytes": 1015,
+      "sha256": "986afe04408968c965d65f4ef8b23d4e41fabe34fdae0e88fd22c922f583ddfb",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/npm/cleanup.json",
+      "destination": "native-init/old-amd64/artifact/generated/native-common-init-236768202/npm/cleanup.json",
+      "bytes": 312,
+      "sha256": "a8188d0f6e1ffd729b97e705f10d3416fa3a00918a085e4b1ca6de7cac439b39",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/npm/create-intent.json",
+      "destination": "native-init/old-amd64/artifact/generated/native-common-init-236768202/npm/create-intent.json",
+      "bytes": 359,
+      "sha256": "910b70c9e7da2e8ce2381a08ade9501ca019d6972f8dd30c38485abe806649e9",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/npm/create.stderr",
+      "destination": "native-init/old-amd64/artifact/generated/native-common-init-236768202/npm/create.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/npm/create.stdout",
+      "destination": "native-init/old-amd64/artifact/generated/native-common-init-236768202/npm/create.stdout",
+      "bytes": 65,
+      "sha256": "ce0e71ce4a708710fe15abc0035c15b65172e1180aaaec33901f804d9e002115",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/npm/running.log",
+      "destination": "native-init/old-amd64/artifact/generated/native-common-init-236768202/npm/running.log",
+      "bytes": 489,
+      "sha256": "ca19370fe7b2e4122f8a4583f934028420b07d506027506a3b3ef6b54ad6a394",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/npm/start.log",
+      "destination": "native-init/old-amd64/artifact/generated/native-common-init-236768202/npm/start.log",
+      "bytes": 65,
+      "sha256": "ce0e71ce4a708710fe15abc0035c15b65172e1180aaaec33901f804d9e002115",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/source-custody.json",
+      "destination": "native-init/old-amd64/artifact/generated/native-common-init-236768202/source-custody.json",
+      "bytes": 1788,
+      "sha256": "a746ca53bd469fc5536adbf309024580a3e314701c6aebb9c7f54053fbf558c6",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/inputs.json",
+      "destination": "native-init/old-amd64/artifact/inputs.json",
+      "bytes": 3270,
+      "sha256": "1cd5f8b2e6a603239cc4ad9369b63fb53ab6dc0fae93152680713fb664c53a53",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/qualification-source.json",
+      "destination": "native-init/old-amd64/artifact/qualification-source.json",
+      "bytes": 75099,
+      "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/qualification.log",
+      "destination": "native-init/old-amd64/artifact/qualification.log",
+      "bytes": 658,
+      "sha256": "20717cd976bfb2b2dac605895d879cb10a5156126d91fb3cd9444858969766c9",
+      "mode": "0o600",
+      "scope": "Actualoriginalfailedartifactmember retainedASIS; artifactMANIFESTlistsomittedstagedELF explicitly, not a completecopiedartifactclaim."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/CREATE-INTENT.json",
+      "destination": "native-init/local-pid1-observation/CREATE-INTENT.json",
+      "bytes": 307,
+      "sha256": "3ae36aaab189be3dc6383fbafef4a91b6eed92207eff85a44438e9d868ad928f",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/INPUTS.json",
+      "destination": "native-init/local-pid1-observation/INPUTS.json",
+      "bytes": 6194,
+      "sha256": "ffb4a12693d36a19b636bf1b66080e231018fd5970dee664e9eb7e22ade68496",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/RESULT.json",
+      "destination": "native-init/local-pid1-observation/RESULT.json",
+      "bytes": 490,
+      "sha256": "96cbc203251db15996a40a8704eaf7c0acab044e5dac0a7744b5c91488a0cd5c",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/RETURNED-CID.json",
+      "destination": "native-init/local-pid1-observation/RETURNED-CID.json",
+      "bytes": 127,
+      "sha256": "5b82e40e433668c31e0e9d61c1e89bc08a3cbe52274480bd01bbb53dfeacec88",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/actual-daemon.stderr",
+      "destination": "native-init/local-pid1-observation/actual-daemon.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/actual-daemon.stdout",
+      "destination": "native-init/local-pid1-observation/actual-daemon.stdout",
+      "bytes": 44,
+      "sha256": "f628acbfaaf50b1de3ee5a6eb36296402311c0aa0ab1dcbe6a6fd7eb67ddfae4",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/after-exit.stderr",
+      "destination": "native-init/local-pid1-observation/after-exit.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/after-exit.stdout",
+      "destination": "native-init/local-pid1-observation/after-exit.stdout",
+      "bytes": 936,
+      "sha256": "1adc03a097bf2bde7589baf0a2dd42275bc41c0ad38b2ccac73c4febfa1c4376",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/attach.stderr",
+      "destination": "native-init/local-pid1-observation/attach.stderr",
+      "bytes": 228,
+      "sha256": "d2da09626efe6e898cfcfa36df37925892c7e1e5ee81e2e89a21c859537ab8fe",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/attach.stdout",
+      "destination": "native-init/local-pid1-observation/attach.stdout",
+      "bytes": 4282,
+      "sha256": "2bb47bb0481e5723ef9912ca19d5d89b9fbe23fe6b2784c26a911f1d14dc5d33",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/before-absence.stderr",
+      "destination": "native-init/local-pid1-observation/before-absence.stderr",
+      "bytes": 81,
+      "sha256": "afee08420ddf7eda9e0f6cb55db2d90a8dfb526cbfdfa8a1e6afebe042268680",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/before-absence.stdout",
+      "destination": "native-init/local-pid1-observation/before-absence.stdout",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/before-start.stderr",
+      "destination": "native-init/local-pid1-observation/before-start.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/before-start.stdout",
+      "destination": "native-init/local-pid1-observation/before-start.stdout",
+      "bytes": 917,
+      "sha256": "356772e9e680be64a62ef47c5ba28c8fe8c5f91c3ccb949469c75650a34f00df",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/cached-image.stderr",
+      "destination": "native-init/local-pid1-observation/cached-image.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/cached-image.stdout",
+      "destination": "native-init/local-pid1-observation/cached-image.stdout",
+      "bytes": 117,
+      "sha256": "8243c34e5c7ae80e2317192756281eef967b24880eed22dac2fa7be3098b33c7",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/commands.json",
+      "destination": "native-init/local-pid1-observation/commands.json",
+      "bytes": 5759,
+      "sha256": "000a696d9f0828c2ca13bb0ec8c5a0aab9ebeed356848a476ff46ddb6127e682",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/create.stderr",
+      "destination": "native-init/local-pid1-observation/create.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/create.stdout",
+      "destination": "native-init/local-pid1-observation/create.stdout",
+      "bytes": 65,
+      "sha256": "c8bb17730f735d7366f634cd26b3fffbf3d6e570a97d7ba66d4e448da1511b63",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/exact-absence.stderr",
+      "destination": "native-init/local-pid1-observation/exact-absence.stderr",
+      "bytes": 81,
+      "sha256": "afee08420ddf7eda9e0f6cb55db2d90a8dfb526cbfdfa8a1e6afebe042268680",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/exact-absence.stdout",
+      "destination": "native-init/local-pid1-observation/exact-absence.stdout",
+      "bytes": 1,
+      "sha256": "01ba4719c80b6fe911b091a7c05124b64eeece964e09c058ef8f9805daca546b",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/exact-remove.stderr",
+      "destination": "native-init/local-pid1-observation/exact-remove.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-init-observe-a80669f36fd547e6/evidence/exact-remove.stdout",
+      "destination": "native-init/local-pid1-observation/exact-remove.stdout",
+      "bytes": 65,
+      "sha256": "c8bb17730f735d7366f634cd26b3fffbf3d6e570a97d7ba66d4e448da1511b63",
+      "mode": "0o644",
+      "scope": "ActualboundedRootlocalOrbStack mixedrootfs observation only; /proc1exe native-init differsfromCI; map_filesstatEPERM notproved; no appdrainqualification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-pid1-observation-source-20261102-75grx3bk/probe.py",
+      "destination": "native-init/local-pid1-observation/source/probe.py",
+      "bytes": 10365,
+      "sha256": "6b1d55a775983d57e5cff91c2272734bef4bd59cc19ef711ecf80ec5ac0805e2",
+      "mode": "0o644",
+      "scope": "Exactreviewedfiniteobserver; binarytarget notmirrored. No authority toexecute."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-pid1-observation-source-20261102-75grx3bk/PLAN.json",
+      "destination": "native-init/local-pid1-observation/source/PLAN.json",
+      "bytes": 5815,
+      "sha256": "ab00c66ab8d19eb1ca525db3ea82a442d996b4a401d14043782ae7b5ec0d1564",
+      "mode": "0o644",
+      "scope": "Exactreviewedfiniteobserver; binarytarget notmirrored. No authority toexecute."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-pid1-observation-source-20261102-75grx3bk/observe.sh",
+      "destination": "native-init/local-pid1-observation/source/observe.sh",
+      "bytes": 1045,
+      "sha256": "b91a24e7d66cf1ad98d981623c515b60cb763a5404a514a0cd5a7c6056c193f4",
+      "mode": "0o644",
+      "scope": "Exactreviewedfiniteobserver; binarytarget notmirrored. No authority toexecute."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-pid1-observation-source-20261102-75grx3bk/MANIFEST.json",
+      "destination": "native-init/local-pid1-observation/source/MANIFEST.json",
+      "bytes": 767,
+      "sha256": "8d400e793d2ef055909a00513425b8cbb60363f26a2bfb96ea50283546fef302",
+      "mode": "0o644",
+      "scope": "Exactreviewedfiniteobserver; binarytarget notmirrored. No authority toexecute."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/MANIFEST.json",
+      "destination": "native-init/mapped-pid1-fix/MANIFEST.json",
+      "bytes": 1671,
+      "sha256": "2dd1a7a7da2607427980174da404cf00a8d093bcf35fb27d1bde3217353b58ac",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/RECEIPT.json",
+      "destination": "native-init/mapped-pid1-fix/RECEIPT.json",
+      "bytes": 3674,
+      "sha256": "49b011a6a3a7e600dbf32c40e69edf57d7465c82278deaca5b4605126b5960ef",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/SOURCE-MANIFEST.json",
+      "destination": "native-init/mapped-pid1-fix/SOURCE-MANIFEST.json",
+      "bytes": 664,
+      "sha256": "5edd70222f5d22bb0014268d4d83596ef8e2261e78c7d59608be67377a159830",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/before/lego/operator/internal/build/nativequalification_init_test.go",
+      "destination": "native-init/mapped-pid1-fix/before/lego/operator/internal/build/nativequalification_init_test.go",
+      "bytes": 33727,
+      "sha256": "86a36952d184810308dc98ec6101f4ad05fd9a23269c94e41d72ace4c1c32466",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/before/lego/operator/internal/build/testdata/native-common-init/identity.js",
+      "destination": "native-init/mapped-pid1-fix/before/lego/operator/internal/build/testdata/native-common-init/identity.js",
+      "bytes": 2232,
+      "sha256": "7357133f10356ef71ac46ff48856c40e47c9b210d17313cc10f8718e2d813438",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/host-controls.cjs",
+      "destination": "native-init/mapped-pid1-fix/host-controls.cjs",
+      "bytes": 4343,
+      "sha256": "858376793a1a0720f868e04ba663801a532dc574f2148cd47322295fafb43703",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/host-controls.stderr",
+      "destination": "native-init/mapped-pid1-fix/host-controls.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/host-controls.stdout",
+      "destination": "native-init/mapped-pid1-fix/host-controls.stdout",
+      "bytes": 227,
+      "sha256": "9df62acb1df806bd331104bb91959dba79333607d640128f8a2e0b68e01a51a4",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/identity.js.diff",
+      "destination": "native-init/mapped-pid1-fix/identity.js.diff.gz",
+      "bytes": 2261,
+      "sha256": "a65742919aa10185422a12927ea018f494c4f66ce7401148e258bcdb6d9ebf31",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved.",
+      "source_identity": {
+        "bytes": 6187,
+        "sha256": "9e8ca3ddf2b2f5c1c52bcfd2ab885b7dc7bd3b3cc808df8a216c3fdecf3b73bf",
+        "mode": "0o644"
+      },
+      "original_destination": "native-init/mapped-pid1-fix/identity.js.diff",
+      "storage_encoding": "gzip-mtime0"
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/nativequalification_init_test.go.diff",
+      "destination": "native-init/mapped-pid1-fix/nativequalification_init_test.go.diff.gz",
+      "bytes": 1983,
+      "sha256": "5133287869d3d05f3ca11352ed5fc454e52df427835f781d1ab6d7c1a39f4989",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved.",
+      "source_identity": {
+        "bytes": 6401,
+        "sha256": "3c5a3f106e703709d64b24bba5c96854fb092cf19ca5a03210331118e77270fe",
+        "mode": "0o644"
+      },
+      "original_destination": "native-init/mapped-pid1-fix/nativequalification_init_test.go.diff",
+      "storage_encoding": "gzip-mtime0"
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/nativequalification_init_test.go",
+      "destination": "native-init/mapped-pid1-fix/source/lego/operator/internal/build/nativequalification_init_test.go",
+      "bytes": 38306,
+      "sha256": "5540c1665b514cb2bf92c9ad47c8d48a6c174edadd486dad24115e0cb764ca86",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/source/lego/operator/internal/build/testdata/native-common-init/identity.js",
+      "destination": "native-init/mapped-pid1-fix/source/lego/operator/internal/build/testdata/native-common-init/identity.js",
+      "bytes": 5842,
+      "sha256": "b112a923a58f6a390f212e66f64eccbb004567448ef1f654081f167d6162cbd9",
+      "mode": "0o644",
+      "scope": "Private2testsourcefix before/source/diff+hostcontrols; completeemulationshape issynthetic; actualCIshape remainsunproved."
+    },
+    {
+      "source": "/private/tmp/bex-w8-mapped-pid1-independent-20261102-v6y4qtlp/DRIFT-CHECKS.json",
+      "destination": "native-init/independent-review/DRIFT-CHECKS.json",
+      "bytes": 761,
+      "sha256": "ea7e7fa04c4d2eb9c1332062ff48eeec246a0155848cf8e87a0b2ffbf7f05035",
+      "mode": "0o644",
+      "scope": "Independentstatic/pureVMreview CLEAN; noactualCIruntimequalification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-mapped-pid1-independent-20261102-v6y4qtlp/HOST-CONTROL-RESULT.json",
+      "destination": "native-init/independent-review/HOST-CONTROL-RESULT.json",
+      "bytes": 537,
+      "sha256": "3bac2e37aa048e70ec2f35132edebd469f775fafd6517547a17bd99d34fbc64c",
+      "mode": "0o644",
+      "scope": "Independentstatic/pureVMreview CLEAN; noactualCIruntimequalification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-mapped-pid1-independent-20261102-v6y4qtlp/INPUT-CUSTODY.json",
+      "destination": "native-init/independent-review/INPUT-CUSTODY.json",
+      "bytes": 2635,
+      "sha256": "ad12faaf491e0aa743c443ef3daeea7271d1464c33eee9478eb318f90016a1f5",
+      "mode": "0o644",
+      "scope": "Independentstatic/pureVMreview CLEAN; noactualCIruntimequalification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-mapped-pid1-independent-20261102-v6y4qtlp/MANIFEST.json",
+      "destination": "native-init/independent-review/MANIFEST.json",
+      "bytes": 1318,
+      "sha256": "2b5fd6ba3cdf6c8e6bd023265e604969115134b9b627ab6809c334bb1241a569",
+      "mode": "0o644",
+      "scope": "Independentstatic/pureVMreview CLEAN; noactualCIruntimequalification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-mapped-pid1-independent-20261102-v6y4qtlp/RECEIPT.json",
+      "destination": "native-init/independent-review/RECEIPT.json",
+      "bytes": 895,
+      "sha256": "bc5ef069a921b0981cc33dfabf3b40ce5bc925deb190ea9a7acb7dbdc9e3c646",
+      "mode": "0o644",
+      "scope": "Independentstatic/pureVMreview CLEAN; noactualCIruntimequalification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-mapped-pid1-independent-20261102-v6y4qtlp/REVIEW.json",
+      "destination": "native-init/independent-review/REVIEW.json",
+      "bytes": 2460,
+      "sha256": "2b7328bfa86365e8c722400d216e14479c8bab65ae441ad9aa06849020c39717",
+      "mode": "0o644",
+      "scope": "Independentstatic/pureVMreview CLEAN; noactualCIruntimequalification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-mapped-pid1-independent-20261102-v6y4qtlp/independent.stderr",
+      "destination": "native-init/independent-review/independent.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Independentstatic/pureVMreview CLEAN; noactualCIruntimequalification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-mapped-pid1-independent-20261102-v6y4qtlp/independent.stdout",
+      "destination": "native-init/independent-review/independent.stdout",
+      "bytes": 182,
+      "sha256": "3d3cc39e3063b55a295c8e2a4166b8277eea050def990acfca429c84827c41ac",
+      "mode": "0o644",
+      "scope": "Independentstatic/pureVMreview CLEAN; noactualCIruntimequalification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/MANIFEST.json",
+      "destination": "native-init/go-checks/MANIFEST.json",
+      "bytes": 1665,
+      "sha256": "8edc1f070eb0fa8e9362fb680194d0181b3dd020893053e2b3bef1f17c22399b",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/RECEIPT.json",
+      "destination": "native-init/go-checks/RECEIPT.json",
+      "bytes": 2359,
+      "sha256": "89ca3be9f2cb0cd6b677da24cde8f7023780e8090566a0c65f409ee88b64a2b9",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/RESOURCE-AMENDMENT.json",
+      "destination": "native-init/go-checks/RESOURCE-AMENDMENT.json",
+      "bytes": 422,
+      "sha256": "cbed49eb74a4b880e671e8318c5c6a9510555481c211e9b214beb60a5cf49940",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/RESULT.json",
+      "destination": "native-init/go-checks/RESULT.json",
+      "bytes": 2468,
+      "sha256": "b43569a213ed2c10db6b15a059389930f383b534148122071cff67fbad64856e",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/SCOPE.json",
+      "destination": "native-init/go-checks/SCOPE.json",
+      "bytes": 2246,
+      "sha256": "43fbe41d1e42cb1b7eeac757a8e55e33cb7fbcb230942869e758e6e9042cd6d1",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/focused-PROCESS.json",
+      "destination": "native-init/go-checks/focused-PROCESS.json",
+      "bytes": 366,
+      "sha256": "f23b22f4467558c03f4f792761c109ba019f23341a601b4cc3c83f436af73d81",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/focused-RESULT.json",
+      "destination": "native-init/go-checks/focused-RESULT.json",
+      "bytes": 530,
+      "sha256": "6977c9798b42cf76f89f05c335610959287e20d85872eefca63a3b3f109d2b59",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/focused.log",
+      "destination": "native-init/go-checks/focused.log",
+      "bytes": 63,
+      "sha256": "ea370cf839243fb02647cf3e7dceadc5b44256142a2d96092090800021bb064e",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/full-buildpkg-PROCESS.json",
+      "destination": "native-init/go-checks/full-buildpkg-PROCESS.json",
+      "bytes": 244,
+      "sha256": "40c44ca4363ea02aafb322479ceeb8ce5e436077450df46fe857a570a84f45aa",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/full-buildpkg-RESULT.json",
+      "destination": "native-init/go-checks/full-buildpkg-RESULT.json",
+      "bytes": 415,
+      "sha256": "4db897d28469d30eb453ed3ec1c6763b746cb5d99809605e5c9773caeeccfdf6",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/full-buildpkg.log",
+      "destination": "native-init/go-checks/full-buildpkg.log",
+      "bytes": 64,
+      "sha256": "b03d6a4ca911c867a3a6156b699ed5c7134e9d25016d0b578ee168e21cf6d0a2",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/overlay.json",
+      "destination": "native-init/go-checks/overlay.json",
+      "bytes": 514,
+      "sha256": "8c4738d64a100ea5aa16666b76c2ca2f76148fd73d2dc1a81c93499967e440ff",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/run.py",
+      "destination": "native-init/go-checks/run.py",
+      "bytes": 5955,
+      "sha256": "9c6f7675b225b1b031b2f352fc5f4511940b18fb4a68fba5c6addd86821bce44",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/runner.stderr",
+      "destination": "native-init/go-checks/runner.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-sharedcache-20261102-r_tq5er2/runner.stdout",
+      "destination": "native-init/go-checks/runner.stdout",
+      "bytes": 2468,
+      "sha256": "b43569a213ed2c10db6b15a059389930f383b534148122071cff67fbad64856e",
+      "mode": "0o644",
+      "scope": "Actualfocused0.646s/fullinternalbuild23.084s PASS; ordinaryGo-managedsharedcacheauthorized. JS filesystemreadsnotGooverlay; patchedJS separatelyVMtested. Noactualimages."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-20261102-081u3b9a/runner.stderr",
+      "destination": "native-init/observer-history/temporary-scan-race/runner.stderr",
+      "bytes": 1413,
+      "sha256": "6bcae4549a7d0279ef3686570c160f02d4f71726cd00d2702e65ec15b3afe653",
+      "mode": "0o644",
+      "scope": "Earlierverificationwrapper failure/refusal, NOTsourceorGofailure: exactlateTMPscanENOENT / separateCOWseedglobaldropguard. Ownedprocessesreconciled/cacheTMPremoved. Finalstandardcachechecksseparate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-20261102-081u3b9a/RESULT.json",
+      "destination": "native-init/observer-history/temporary-scan-race/RESULT.json",
+      "bytes": 1641,
+      "sha256": "37c0f17751845e9e8dd58cc1a42a001984bd0d0291e79699a00dc7c4edcb7dc4",
+      "mode": "0o644",
+      "scope": "Earlierverificationwrapper failure/refusal, NOTsourceorGofailure: exactlateTMPscanENOENT / separateCOWseedglobaldropguard. Ownedprocessesreconciled/cacheTMPremoved. Finalstandardcachechecksseparate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-20261102-081u3b9a/SCOPE.json",
+      "destination": "native-init/observer-history/temporary-scan-race/SCOPE.json",
+      "bytes": 2399,
+      "sha256": "e9f1cadcacdb6f6e54850b45c40ec3d9d56208f9abf84bd6e03b506ecb5a398b",
+      "mode": "0o644",
+      "scope": "Earlierverificationwrapper failure/refusal, NOTsourceorGofailure: exactlateTMPscanENOENT / separateCOWseedglobaldropguard. Ownedprocessesreconciled/cacheTMPremoved. Finalstandardcachechecksseparate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-20261102-081u3b9a/focused.log",
+      "destination": "native-init/observer-history/temporary-scan-race/focused.log",
+      "bytes": 63,
+      "sha256": "ea06f5976469cae0abe7d851462e2d796303304d3c3d3cbfe7df76c6c6803518",
+      "mode": "0o644",
+      "scope": "Earlierverificationwrapper failure/refusal, NOTsourceorGofailure: exactlateTMPscanENOENT / separateCOWseedglobaldropguard. Ownedprocessesreconciled/cacheTMPremoved. Finalstandardcachechecksseparate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-20261102-081u3b9a/FOCUSED-RECONCILIATION.json",
+      "destination": "native-init/observer-history/temporary-scan-race/FOCUSED-RECONCILIATION.json",
+      "bytes": 316,
+      "sha256": "e7920634aefc9030ede637d2953f2a5f28ca1af5f8ec25599d9b7af5fc1cd3f6",
+      "mode": "0o644",
+      "scope": "Earlierverificationwrapper failure/refusal, NOTsourceorGofailure: exactlateTMPscanENOENT / separateCOWseedglobaldropguard. Ownedprocessesreconciled/cacheTMPremoved. Finalstandardcachechecksseparate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-final-20261102-eucdvm8r/runner.stderr",
+      "destination": "native-init/observer-history/cache-seed-resource-guard/runner.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Earlierverificationwrapper failure/refusal, NOTsourceorGofailure: exactlateTMPscanENOENT / separateCOWseedglobaldropguard. Ownedprocessesreconciled/cacheTMPremoved. Finalstandardcachechecksseparate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-final-20261102-eucdvm8r/RESULT.json",
+      "destination": "native-init/observer-history/cache-seed-resource-guard/RESULT.json",
+      "bytes": 1826,
+      "sha256": "7c8cff8bd918ebe784e49feffb2996473e11175c91418c1fd63aa7bf880aff6e",
+      "mode": "0o644",
+      "scope": "Earlierverificationwrapper failure/refusal, NOTsourceorGofailure: exactlateTMPscanENOENT / separateCOWseedglobaldropguard. Ownedprocessesreconciled/cacheTMPremoved. Finalstandardcachechecksseparate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-final-20261102-eucdvm8r/SCOPE.json",
+      "destination": "native-init/observer-history/cache-seed-resource-guard/SCOPE.json",
+      "bytes": 2417,
+      "sha256": "7a3762ee5886b3013c044dc7d2ba1073603246b793d0ca65e0b0bf8583135d29",
+      "mode": "0o644",
+      "scope": "Earlierverificationwrapper failure/refusal, NOTsourceorGofailure: exactlateTMPscanENOENT / separateCOWseedglobaldropguard. Ownedprocessesreconciled/cacheTMPremoved. Finalstandardcachechecksseparate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-final-20261102-eucdvm8r/cow-seed-RESULT.json",
+      "destination": "native-init/observer-history/cache-seed-resource-guard/cow-seed-RESULT.json",
+      "bytes": 500,
+      "sha256": "40f443e3a5f1a27eb90ffb82b9c030a99891b9f0d6adebe794274cda08925a37",
+      "mode": "0o644",
+      "scope": "Earlierverificationwrapper failure/refusal, NOTsourceorGofailure: exactlateTMPscanENOENT / separateCOWseedglobaldropguard. Ownedprocessesreconciled/cacheTMPremoved. Finalstandardcachechecksseparate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-mapped-pid1-go-final-20261102-eucdvm8r/ATTEMPT-MANIFEST.json",
+      "destination": "native-init/observer-history/cache-seed-resource-guard/ATTEMPT-MANIFEST.json",
+      "bytes": 1129,
+      "sha256": "5da60acadd439fceefa19e4b72187e3ae70e4548e7cfeeb5c18db3cec502b865",
+      "mode": "0o644",
+      "scope": "Earlierverificationwrapper failure/refusal, NOTsourceorGofailure: exactlateTMPscanENOENT / separateCOWseedglobaldropguard. Ownedprocessesreconciled/cacheTMPremoved. Finalstandardcachechecksseparate."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/MANIFEST.json",
+      "destination": "ruby/zlib-byte-fix/MANIFEST.json",
+      "bytes": 2400,
+      "sha256": "d22081b88c41e9e9b3b2a0c7d1aba9399e4e602b0a81ab641668bf545822d283",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/RECEIPT.json",
+      "destination": "ruby/zlib-byte-fix/RECEIPT.json",
+      "bytes": 6217,
+      "sha256": "5d16b050562e0b8f20fc5113d7ef8381d72046a60e0606e14fbd8a30a82cc5e7",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/before/lego/operator/internal/build/testdata/native-ruby-qualification/check.rb",
+      "destination": "ruby/zlib-byte-fix/before/lego/operator/internal/build/testdata/native-ruby-qualification/check.rb",
+      "bytes": 3871,
+      "sha256": "36bf12ce0ed5fca238776e88250a2e78e373c2f8d4b3800a4a8ac528642d6082",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/corrupted-decoded-bytes-refused.rb",
+      "destination": "ruby/zlib-byte-fix/corrupted-decoded-bytes-refused.rb",
+      "bytes": 624,
+      "sha256": "3159bbc0f28daa762c6bbd50488877d5ceb0a10f2cc6bac578d64bfbfac85958",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/corrupted-decoded-bytes-refused.stderr",
+      "destination": "ruby/zlib-byte-fix/corrupted-decoded-bytes-refused.stderr",
+      "bytes": 138,
+      "sha256": "9339328b93e0effb4265ddb0224bedb3c006de6b6cbbc36717e37536a85cab7a",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/corrupted-decoded-bytes-refused.stdout",
+      "destination": "ruby/zlib-byte-fix/corrupted-decoded-bytes-refused.stdout",
+      "bytes": 350,
+      "sha256": "29bca24c64f264cd35db8ce26968f20bcd19b3aead5673681d5ad4b136be5de1",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/fixed-green.rb",
+      "destination": "ruby/zlib-byte-fix/fixed-green.rb",
+      "bytes": 615,
+      "sha256": "c6a480995b19fc6b21a745d58bbab4a2f752b95acfc994706b2a958fe37e8bf7",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/fixed-green.stderr",
+      "destination": "ruby/zlib-byte-fix/fixed-green.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/fixed-green.stdout",
+      "destination": "ruby/zlib-byte-fix/fixed-green.stdout",
+      "bytes": 355,
+      "sha256": "562b717e53631acf7dfe6ce66a0c7d10e2e53d15d504bf92132fabbfe7d8ba40",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/old-red.rb",
+      "destination": "ruby/zlib-byte-fix/old-red.rb",
+      "bytes": 611,
+      "sha256": "e0d301098f902dc1fe666d16d4eb0768008d66f20bfd570d2d4eb8a182c35e57",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/old-red.stderr",
+      "destination": "ruby/zlib-byte-fix/old-red.stderr",
+      "bytes": 114,
+      "sha256": "6a851ce99bee703420c6f027f0b106134dc7c215c6732fcb33f131abc0806e9b",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/old-red.stdout",
+      "destination": "ruby/zlib-byte-fix/old-red.stdout",
+      "bytes": 350,
+      "sha256": "29bca24c64f264cd35db8ce26968f20bcd19b3aead5673681d5ad4b136be5de1",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/patch.diff",
+      "destination": "ruby/zlib-byte-fix/patch.diff.gz",
+      "bytes": 425,
+      "sha256": "a802e5b23dcde967cc9a9e60da16d862a3510f84563deb53356dbc8a95e9e808",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof.",
+      "source_identity": {
+        "bytes": 846,
+        "sha256": "8ff17e21b412a0ccc59f849d9c928dab4fe13d763e58708b03115496e80394ff",
+        "mode": "0o644"
+      },
+      "original_destination": "ruby/zlib-byte-fix/patch.diff",
+      "storage_encoding": "gzip-mtime0"
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/source/lego/operator/internal/build/testdata/native-ruby-qualification/check.rb",
+      "destination": "ruby/zlib-byte-fix/source/lego/operator/internal/build/testdata/native-ruby-qualification/check.rb",
+      "bytes": 3875,
+      "sha256": "aeab0b2a5899f06731a584ccc4de53219179a1ef1e42afd32e5dcf9cdd0d9264",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/syntax.stderr",
+      "destination": "ruby/zlib-byte-fix/syntax.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/syntax.stdout",
+      "destination": "ruby/zlib-byte-fix/syntax.stdout",
+      "bytes": 10,
+      "sha256": "bbafef10c22b9323fa5589564990f57fbf57f9a632381d5e765dc5a3b25b4a1b",
+      "mode": "0o644",
+      "scope": "PrivateONE-LINEfixturecomparison only; exacttextunchanged; hostRuby4.0.5 oldRED/newPASS/corrupteddecodedbytesrefused. Noactualallimages/ARMproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-causal-publication-plan-20261102-10y2g7wq/PUBLICATION-COPY-PLAN.json",
+      "destination": "preparation/PUBLICATION-COPY-PLAN.json",
+      "bytes": 98300,
+      "sha256": "cb0411e9c7188a53c1d8c3ce6766484cd4494c7a386029a424af3e0580a6b2ac",
+      "mode": "0o644",
+      "scope": "Unchangedoriginalproposal/copyplan; historicalpendingfields supersededby README/PUBLISHED-COPY-RECEIPT."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/CI-CAUSE.json",
+      "destination": "go-rust/metadata-fix/CI-CAUSE.json",
+      "bytes": 2758,
+      "sha256": "e7eb76c2a6d53745028656d4c2c61424cc3971c5b6632fb91406976e5e6d08f9",
+      "mode": "0o644",
+      "scope": "Frozenreviewed2filesourcefix; no actualgeneratedGoRustqualification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/MANIFEST.json",
+      "destination": "go-rust/metadata-fix/MANIFEST.json",
+      "bytes": 1991,
+      "sha256": "857be93f1c15e61b3356df6831ad8db6a142503124a733ca6ab1a42dc279d426",
+      "mode": "0o644",
+      "scope": "Frozenreviewed2filesourcefix; no actualgeneratedGoRustqualification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/RECEIPT.json",
+      "destination": "go-rust/metadata-fix/RECEIPT.json",
+      "bytes": 3095,
+      "sha256": "7e26b2ba150875bba94d4eb2a9653105fa853f3300ed65aa32fd171fcad46fe6",
+      "mode": "0o644",
+      "scope": "Frozenreviewed2filesourcefix; no actualgeneratedGoRustqualification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/SOURCE-MANIFEST.json",
+      "destination": "go-rust/metadata-fix/SOURCE-MANIFEST.json",
+      "bytes": 714,
+      "sha256": "5277bc06246657e1f7fc6af9bb6b6637568a5ebbca02eca4ea100aa6b40136c0",
+      "mode": "0o644",
+      "scope": "Frozenreviewed2filesourcefix; no actualgeneratedGoRustqualification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/SOURCE-PRESERVATION.json",
+      "destination": "go-rust/metadata-fix/SOURCE-PRESERVATION.json",
+      "bytes": 218,
+      "sha256": "c313725ce37735e89af21ae6c4880e45af6724df8c81bcbfc7b5ce5ba0c30343",
+      "mode": "0o644",
+      "scope": "Frozenreviewed2filesourcefix; no actualgeneratedGoRustqualification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/before/lego/operator/internal/build/dockerhub.go",
+      "destination": "go-rust/metadata-fix/before/lego/operator/internal/build/dockerhub.go",
+      "bytes": 12874,
+      "sha256": "bd9619dbf3fa90f34a19858d91938d52b54373194e60913e6a46ee9d021009d3",
+      "mode": "0o644",
+      "scope": "Frozenreviewed2filesourcefix; no actualgeneratedGoRustqualification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/before/lego/operator/internal/build/dockerhub_test.go",
+      "destination": "go-rust/metadata-fix/before/lego/operator/internal/build/dockerhub_test.go",
+      "bytes": 11347,
+      "sha256": "a943f9abf486bec635ece79e5fe68174170c302a1ac88b9340b0edd5e717a382",
+      "mode": "0o644",
+      "scope": "Frozenreviewed2filesourcefix; no actualgeneratedGoRustqualification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/dockerhub.go.diff",
+      "destination": "go-rust/metadata-fix/dockerhub.go.diff.gz",
+      "bytes": 412,
+      "sha256": "e1d4579abde7d026f1048c542bcff0354ab622af55009e7a54586b2f76ee7811",
+      "mode": "0o644",
+      "scope": "Frozenreviewed2filesourcefix; no actualgeneratedGoRustqualification.",
+      "source_identity": {
+        "bytes": 716,
+        "sha256": "944b405d6eb8ba393c26011726e189fcf77b21a8e064fe2b2d6d867a089e1d4e",
+        "mode": "0o644"
+      },
+      "original_destination": "go-rust/metadata-fix/dockerhub.go.diff",
+      "storage_encoding": "gzip-mtime0"
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/dockerhub_test.go.diff",
+      "destination": "go-rust/metadata-fix/dockerhub_test.go.diff.gz",
+      "bytes": 1077,
+      "sha256": "d3b7ebcc100ca90679b6e6f7f56cf0befd25310597d0dc5fd11fab50cb407408",
+      "mode": "0o644",
+      "scope": "Frozenreviewed2filesourcefix; no actualgeneratedGoRustqualification.",
+      "source_identity": {
+        "bytes": 3003,
+        "sha256": "f95ba3db4fe5de8e8d1bf2855b95ec6522d761d870da2542b2c4bbea2f579259",
+        "mode": "0o644"
+      },
+      "original_destination": "go-rust/metadata-fix/dockerhub_test.go.diff",
+      "storage_encoding": "gzip-mtime0"
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/source/lego/operator/internal/build/dockerhub.go",
+      "destination": "go-rust/metadata-fix/source/lego/operator/internal/build/dockerhub.go",
+      "bytes": 13020,
+      "sha256": "522e2cbb4d0efecde76638f11311d002a903099041b5f1dc293092f36ecdae04",
+      "mode": "0o644",
+      "scope": "Frozenreviewed2filesourcefix; no actualgeneratedGoRustqualification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/source/lego/operator/internal/build/dockerhub_test.go",
+      "destination": "go-rust/metadata-fix/source/lego/operator/internal/build/dockerhub_test.go",
+      "bytes": 14124,
+      "sha256": "a9e52e7ec61cccc6b6e1217eb92cf12d6cd0634c9396c7fd838e6c50582b8844",
+      "mode": "0o644",
+      "scope": "Frozenreviewed2filesourcefix; no actualgeneratedGoRustqualification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/MANIFEST.json",
+      "destination": "go-rust/metadata-tests/MANIFEST.json",
+      "bytes": 2677,
+      "sha256": "b3d46380a52f5723d5142bdb666fdd43bda5e022fc7135eab586801e9c27770b",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/RECEIPT.json",
+      "destination": "go-rust/metadata-tests/RECEIPT.json",
+      "bytes": 2668,
+      "sha256": "116be6cf1bd3cd148da8f61450559b4c8b12abf4db55c5c98ef46aada325cd7e",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/RESULT.json",
+      "destination": "go-rust/metadata-tests/RESULT.json",
+      "bytes": 2422,
+      "sha256": "9489914827d7b73ff96dead639d60bbd1ccdea365af7e3823771a212814943eb",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/SCOPE.json",
+      "destination": "go-rust/metadata-tests/SCOPE.json",
+      "bytes": 2107,
+      "sha256": "6e9e7920f6cd43aac9bf4035640aaa13f8dd7ae0ded7f9a8fa56da69f42e6b5a",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/new-focused-PROCESS.json",
+      "destination": "go-rust/metadata-tests/new-focused-PROCESS.json",
+      "bytes": 297,
+      "sha256": "ff1716bbfa9f76f4d958662fead97d6829b76ecdfac786fa149a0c8df7cbbf66",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/new-focused-RESULT.json",
+      "destination": "go-rust/metadata-tests/new-focused-RESULT.json",
+      "bytes": 487,
+      "sha256": "27a7432dbeaed22382d1cf631b6d330ddd0632716280c1050bf1db223e29d43e",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/new-focused.log",
+      "destination": "go-rust/metadata-tests/new-focused.log",
+      "bytes": 63,
+      "sha256": "e7d3454bbb153202cb026aa16e849a9cdbe3fec780d7bb1360a7f4271e1f3b87",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/new-overlay.json",
+      "destination": "go-rust/metadata-tests/new-overlay.json",
+      "bytes": 416,
+      "sha256": "ace8fb197a2bc51d8e4b22d4f50c8c95ef4d2d5530f53d6ae5aec6afb115fbb3",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/old-red-PROCESS.json",
+      "destination": "go-rust/metadata-tests/old-red-PROCESS.json",
+      "bytes": 292,
+      "sha256": "217159d4b7104e2ad9d8140cd29d445209d15516c4bad68f94a7b3181de1a9ad",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/old-red-RESULT.json",
+      "destination": "go-rust/metadata-tests/old-red-RESULT.json",
+      "bytes": 478,
+      "sha256": "5a50c4c5aec83f99b115aeced9d75e85bfe77662aca6c674edc4d0ac5fac8889",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/old-red-overlay.json",
+      "destination": "go-rust/metadata-tests/old-red-overlay.json",
+      "bytes": 416,
+      "sha256": "a5b4490b222f6fbfa4f3eae79cbeef6ab6296236dcfeb7ba3f2597d17afc1daa",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/old-red.log",
+      "destination": "go-rust/metadata-tests/old-red.log",
+      "bytes": 564,
+      "sha256": "72f6277e830705f3754be355b6e7c23f7708fd7d00d383486c320a88976305c1",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/run.py",
+      "destination": "go-rust/metadata-tests/run.py",
+      "bytes": 5940,
+      "sha256": "86563896e9deda29e7ad736f8113912602cdb6c1c12d5b23a9c8cdcef45c52f8",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/run.py.diff",
+      "destination": "go-rust/metadata-tests/run.py.diff.gz",
+      "bytes": 2281,
+      "sha256": "04b0999349408035b113f8b745fa4583487b98f29257db94e6378e66c1399a8a",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source.",
+      "source_identity": {
+        "bytes": 6386,
+        "sha256": "428071e8dfc14147cbdfdc51b9fd0f8117b348b1852f421f6600aeca758ba0c6",
+        "mode": "0o644"
+      },
+      "original_destination": "go-rust/metadata-tests/run.py.diff",
+      "storage_encoding": "gzip-mtime0"
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/runner.stderr",
+      "destination": "go-rust/metadata-tests/runner.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/runner.stdout",
+      "destination": "go-rust/metadata-tests/runner.stdout",
+      "bytes": 2422,
+      "sha256": "9489914827d7b73ff96dead639d60bbd1ccdea365af7e3823771a212814943eb",
+      "mode": "0o644",
+      "scope": "ActualoldREDbothrepos/newfocused0.486sPASS; exact frozen source."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-independent-20261102-c7rim1k0/MANIFEST.json",
+      "destination": "go-rust/independent-review/MANIFEST.json",
+      "bytes": 127,
+      "sha256": "2c6266177533133239986f93d16576279365de36666fb4defc34eb4f6089e776",
+      "mode": "0o644",
+      "scope": "IndependentCLEANsource/inverse/fullcustody; no newtests/resources."
+    },
+    {
+      "source": "/private/tmp/bex-w8-go-rust-metadata-independent-20261102-c7rim1k0/REVIEW.json",
+      "destination": "go-rust/independent-review/REVIEW.json",
+      "bytes": 1643,
+      "sha256": "724629f9d5a115717e3933ca7f02968616889655e3eb3d41db303d409f971e5e",
+      "mode": "0o644",
+      "scope": "IndependentCLEANsource/inverse/fullcustody; no newtests/resources."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/ACTUAL-SOURCE-PROOF.json",
+      "destination": "prerequisite-network/source-fix/ACTUAL-SOURCE-PROOF.json",
+      "bytes": 7012,
+      "sha256": "e5585fa6b29065b5651065a3d1f518d8d723568ec6696b4360491ada6ae0c4c9",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/BEFORE-SOURCE-MANIFEST.json",
+      "destination": "prerequisite-network/source-fix/BEFORE-SOURCE-MANIFEST.json",
+      "bytes": 1025,
+      "sha256": "cf3f7d8157aeb9d303f861decefd776f2dc795806ee67b3ea87e34e3863d930f",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/INTENT.json",
+      "destination": "prerequisite-network/source-fix/INTENT.json",
+      "bytes": 485,
+      "sha256": "cd1ce552f1fe23224dc1c5c982bb99877577e4fc05c6d9b3755a8d6004d67fc1",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/MANIFEST.json",
+      "destination": "prerequisite-network/source-fix/MANIFEST.json",
+      "bytes": 6630,
+      "sha256": "aac2d3f541a1428f2d1a132c5bde6892024fde472dbc04ddb1471b277e1d051b",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/OWNED-PATHS.json",
+      "destination": "prerequisite-network/source-fix/OWNED-PATHS.json",
+      "bytes": 385,
+      "sha256": "ed533afea37f1ec8189af45bf9c53622ca6a74c19ae2f3dc1db03780917227ce",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/RECEIPT.json",
+      "destination": "prerequisite-network/source-fix/RECEIPT.json",
+      "bytes": 4667,
+      "sha256": "acc1879ca826d2d4f6c1861d92cb94fa9c452b27b3edfc2ab65432654d81ca8a",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/SOURCE-CHECKS.json",
+      "destination": "prerequisite-network/source-fix/SOURCE-CHECKS.json",
+      "bytes": 2876,
+      "sha256": "b05ee4b8de15299648a3d40423e1023b31fcc3564f60681bd96b824c39a5a57b",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/SOURCE-MANIFEST.json",
+      "destination": "prerequisite-network/source-fix/SOURCE-MANIFEST.json",
+      "bytes": 2694,
+      "sha256": "0bf1b5267a55efbc98c0e6cc8e30498dc7a535272ef56399c374d86d8b7c7b85",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/apply-check.stderr",
+      "destination": "prerequisite-network/source-fix/apply-check.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/apply-check.stdout",
+      "destination": "prerequisite-network/source-fix/apply-check.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/before/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+      "destination": "prerequisite-network/source-fix/before/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+      "bytes": 10725,
+      "sha256": "019e2bb64eab75d9c92e0d48e7d1d18ce20df556df0cbde0270d34c6f8642702",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/before/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+      "destination": "prerequisite-network/source-fix/before/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+      "bytes": 13945,
+      "sha256": "40d4b9607b0b831635890945c942eb124773bef48d3c8c2a3ec981f1337789bd",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/before/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+      "destination": "prerequisite-network/source-fix/before/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+      "bytes": 12787,
+      "sha256": "9c7f045314c3b9eb34e71104848882c53e00f3d8cd7e1df8f63a4840366e47e4",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/before/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+      "destination": "prerequisite-network/source-fix/before/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+      "bytes": 12466,
+      "sha256": "d59edc33fe3b91ddf83bd9b7e0b862c3216bcceb40dc885ddb73e3220cbd2e6a",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/before/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "destination": "prerequisite-network/source-fix/before/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 18823,
+      "sha256": "8de6b083d4d7afcd7e51736818063431d9b6f90a640291b26b123cde05ffbd74",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/format.stderr",
+      "destination": "prerequisite-network/source-fix/format.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/format.stdout",
+      "destination": "prerequisite-network/source-fix/format.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/new-focused-final.process.json",
+      "destination": "prerequisite-network/source-fix/new-focused-final.process.json",
+      "bytes": 1211,
+      "sha256": "fbe59f7bba80032681448b37973554f406081a006b518099bf7e16f398dc48c9",
+      "mode": "0o600",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/new-focused-final.stderr",
+      "destination": "prerequisite-network/source-fix/new-focused-final.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/new-focused-final.stdout",
+      "destination": "prerequisite-network/source-fix/new-focused-final.stdout",
+      "bytes": 9633,
+      "sha256": "fe5ad62eb0a420fd8d23e496392659df092181eae050b2923e5ac445f0d2322b",
+      "mode": "0o600",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/new-focused.process.json",
+      "destination": "prerequisite-network/source-fix/new-focused.process.json",
+      "bytes": 1211,
+      "sha256": "61e77295a1f35e92734b7a43fb0748c48038e6cfed895433ca862e8910c2f86b",
+      "mode": "0o600",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/new-focused.stderr",
+      "destination": "prerequisite-network/source-fix/new-focused.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/new-focused.stdout",
+      "destination": "prerequisite-network/source-fix/new-focused.stdout",
+      "bytes": 9759,
+      "sha256": "34fc75f42720ff1c6a3ac8aeaa638c97de124f9b67740ea1177bc40a41bec7bb",
+      "mode": "0o600",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/new-overlay.json",
+      "destination": "prerequisite-network/source-fix/new-overlay.json",
+      "bytes": 1316,
+      "sha256": "6580560b4cd920d76c58b33c387dcc626fce019378201b100d45dcc7f51269ae",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/old-overlay.json",
+      "destination": "prerequisite-network/source-fix/old-overlay.json",
+      "bytes": 1288,
+      "sha256": "f3c0b522543893ceb3e8801af352860c2a5acce25a9e8d9f46a5c8ffddf74c97",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/old-red/nativecommon_node_qualification_controls_test.go",
+      "destination": "prerequisite-network/source-fix/old-red/nativecommon_node_qualification_controls_test.go",
+      "bytes": 16009,
+      "sha256": "4aefc2d61560a8153c54a52ad698e3abb2d3b2dbbee11477d00096d140287d01",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/old-red.process.json",
+      "destination": "prerequisite-network/source-fix/old-red.process.json",
+      "bytes": 966,
+      "sha256": "f70d4473550d8e852303e28297f4906628b5a3f212eaf14e519eed198e6f3960",
+      "mode": "0o600",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/old-red.stderr",
+      "destination": "prerequisite-network/source-fix/old-red.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/old-red.stdout",
+      "destination": "prerequisite-network/source-fix/old-red.stdout",
+      "bytes": 739,
+      "sha256": "ed1f6a0f24739279d561ed6e3c224c8f880779f380eae8bd5c7b3f4606a82bb7",
+      "mode": "0o600",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/run_go.py",
+      "destination": "prerequisite-network/source-fix/run_go.py",
+      "bytes": 2667,
+      "sha256": "9c640f8d1657f8c5e0a8c55398d6a17dcc350642be37d688258abcc0e417513c",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+      "destination": "prerequisite-network/source-fix/source/lego/operator/internal/build/nativecommon_elixir_qualification_test.go",
+      "bytes": 11272,
+      "sha256": "3698ceec0656a26e7b8803d6c7b147974b06c6e3dbff30134cf3560d59d6e89f",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+      "destination": "prerequisite-network/source-fix/source/lego/operator/internal/build/nativecommon_node_qualification_controls_test.go",
+      "bytes": 15963,
+      "sha256": "e077bcd5d600918d4c0bea36c4f214f7bd6e162cf6ff26340f67fa2ef2a4a895",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+      "destination": "prerequisite-network/source-fix/source/lego/operator/internal/build/nativecommon_node_qualification_test.go",
+      "bytes": 12829,
+      "sha256": "d18d87e77ef609a8ecbb936aaf84273ff3431bd0035afcff72d5903d64e0ba2a",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+      "destination": "prerequisite-network/source-fix/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+      "bytes": 12614,
+      "sha256": "9141c281cfcb6b4f2f836df049673748ec53516ce45c30bdcab879e54c6758f6",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "destination": "prerequisite-network/source-fix/source/lego/operator/internal/build/nativeutility_qualification_test.go",
+      "bytes": 24741,
+      "sha256": "6331504e87626f0ede4878d25e103f725b88c7d97b21ad647e978c46f52c02b2",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source.patch",
+      "destination": "prerequisite-network/source-fix/source.patch.gz",
+      "bytes": 4971,
+      "sha256": "11032453a26b61daa02b5a9d99d16e377bf959fa11049d655984e705cd5a6800",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification.",
+      "source_identity": {
+        "bytes": 18326,
+        "sha256": "45d490cc4a4ca80ea5f74c6dc6af3be1c11aa748e9f66969e34b4e84493c729c",
+        "mode": "0o644"
+      },
+      "original_destination": "prerequisite-network/source-fix/source.patch",
+      "storage_encoding": "gzip-mtime0"
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/whitespace.stderr",
+      "destination": "prerequisite-network/source-fix/whitespace.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/whitespace.stdout",
+      "destination": "prerequisite-network/source-fix/whitespace.stdout",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o644",
+      "scope": "Fivefrozenqualificationtestfiles; exacttrustedsourceRUNonline/otherRUNoffline/heredocsunchanged. LaterRoothasNetworkbool sourcehashseparatefinal-verification."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-independent-20261102-oq7q_kbb/INPUT-CUSTODY.json",
+      "destination": "prerequisite-network/independent-review/INPUT-CUSTODY.json",
+      "bytes": 1018,
+      "sha256": "e85dee2719c62b79227a08d6fcafb415ac518480c11fbda0e5c87c50bf1506e0",
+      "mode": "0o644",
+      "scope": "IndependentCLEANnetworksourceonly, no actualfetch/runtime/botharchproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-independent-20261102-oq7q_kbb/MANIFEST.json",
+      "destination": "prerequisite-network/independent-review/MANIFEST.json",
+      "bytes": 619,
+      "sha256": "5f853c674a8e33e69239993d2b0fece26cb1a92e70dbfb96e3694f8ba0ec8dbc",
+      "mode": "0o644",
+      "scope": "IndependentCLEANnetworksourceonly, no actualfetch/runtime/botharchproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-independent-20261102-oq7q_kbb/RECEIPT.json",
+      "destination": "prerequisite-network/independent-review/RECEIPT.json",
+      "bytes": 374,
+      "sha256": "c020e73aa72d36757eb294ec7d58bd1ae1d7a46d55b0bbd84ebaa56707843a84",
+      "mode": "0o644",
+      "scope": "IndependentCLEANnetworksourceonly, no actualfetch/runtime/botharchproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-prerequisite-network-independent-20261102-oq7q_kbb/REVIEW.json",
+      "destination": "prerequisite-network/independent-review/REVIEW.json",
+      "bytes": 5679,
+      "sha256": "f744ad5313d7ee4531cc45d1113d8ed3dd42fe81dc4c5834b3a9554e88ec6bda",
+      "mode": "0o644",
+      "scope": "IndependentCLEANnetworksourceonly, no actualfetch/runtime/botharchproof."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/SOURCE-DERIVATION.json",
+      "destination": "native-init/arm64-pre-fix-audit/SOURCE-DERIVATION.json",
+      "bytes": 1223,
+      "sha256": "9856c9978bab11d0147d3be214c32fd3f9709f548c19ed8ac6dae7079500ec10",
+      "mode": "0o644",
+      "scope": "ActualcompletednativeARM64fourlaunchCIaudit; predatesmappedfix; not AMD/postfix/botharchacceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/AUDIT.json",
+      "destination": "native-init/arm64-pre-fix-audit/AUDIT.json",
+      "bytes": 7199,
+      "sha256": "4295a71a285161e31b0166010632b2c910fc79c0085df1143e4545717fbfca89",
+      "mode": "0o644",
+      "scope": "ActualcompletednativeARM64fourlaunchCIaudit; predatesmappedfix; not AMD/postfix/botharchacceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/RECEIPT.json",
+      "destination": "native-init/arm64-pre-fix-audit/RECEIPT.json",
+      "bytes": 2238,
+      "sha256": "8d52b659ddb5790667863517e4f2e370148fea26baaa079738bfa056a22ff0e4",
+      "mode": "0o644",
+      "scope": "ActualcompletednativeARM64fourlaunchCIaudit; predatesmappedfix; not AMD/postfix/botharchacceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/MANIFEST.json",
+      "destination": "native-init/arm64-pre-fix-audit/MANIFEST.json",
+      "bytes": 19811,
+      "sha256": "709cb41056846d2d234950bbe98e61e66662e5a08ad83626b27cbf491be287a8",
+      "mode": "0o644",
+      "scope": "ActualcompletednativeARM64fourlaunchCIaudit; predatesmappedfix; not AMD/postfix/botharchacceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/job.log",
+      "destination": "native-init/arm64-pre-fix-audit/job.log",
+      "bytes": 63821,
+      "sha256": "5ae5f777e03716d96406b42d66324a12ada538757e6e0f5384d8a422ebf9ee32",
+      "mode": "0o644",
+      "scope": "ActualcompletednativeARM64fourlaunchCIaudit; predatesmappedfix; not AMD/postfix/botharchacceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/jobs.json",
+      "destination": "native-init/arm64-pre-fix-audit/jobs.json",
+      "bytes": 12092,
+      "sha256": "69fab6a990475ffd4ba69d53f8e9e535393dbc330fe793519330b1c90b16bf69",
+      "mode": "0o644",
+      "scope": "ActualcompletednativeARM64fourlaunchCIaudit; predatesmappedfix; not AMD/postfix/botharchacceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/artifact-listing.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact-listing.json",
+      "bytes": 1796,
+      "sha256": "08a9509f42c3a91c4f67dc95414bd1ad6b8bb330f756107bf9b598c357c3a98d",
+      "mode": "0o644",
+      "scope": "ActualcompletednativeARM64fourlaunchCIaudit; predatesmappedfix; not AMD/postfix/botharchacceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/PORTABLE-COPY-PLAN.json",
+      "destination": "native-init/arm64-pre-fix-audit/PORTABLE-COPY-PLAN.json",
+      "bytes": 16525,
+      "sha256": "1a98ebdbf16eb26f6041c473a4be67ca153424cbeeadfe28c2cec19abcb44763",
+      "mode": "0o644",
+      "scope": "ActualcompletednativeARM64fourlaunchCIaudit; predatesmappedfix; not AMD/postfix/botharchacceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/download.json",
+      "destination": "native-init/arm64-pre-fix-audit/arm64/download.json",
+      "bytes": 522,
+      "sha256": "d9be4c76fd99ee4ff4f42cd4486551c12c9a5fa53b8c7b9232e4ba16d5ff168e",
+      "mode": "0o600",
+      "scope": "ActualcompletednativeARM64fourlaunchCIaudit; predatesmappedfix; not AMD/postfix/botharchacceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/extraction.json",
+      "destination": "native-init/arm64-pre-fix-audit/arm64/extracted/extraction.json",
+      "bytes": 453,
+      "sha256": "06b038988b689cb3333dc9cf5540e86b5cb62809d99204e9754eb35ea7aa47db",
+      "mode": "0o600",
+      "scope": "ActualcompletednativeARM64fourlaunchCIaudit; predatesmappedfix; not AMD/postfix/botharchacceptance."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/MANIFEST.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/MANIFEST.json",
+      "bytes": 14040,
+      "sha256": "cef53b37bdaed59288dc90804cfebcb7c748e04bd2987b214d5d1d0ac20832f8",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/bootstrap-1.stderr.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/bootstrap-1.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/bootstrap-1.stdout.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/bootstrap-1.stdout.log",
+      "bytes": 104,
+      "sha256": "cb4d3b0e70f2d4e52c28206c6c799c01616f7ac12aad9490b930290737cdc621",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/bootstrap.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/bootstrap.json",
+      "bytes": 1514,
+      "sha256": "740a851be17e0da3f43cdba78b00bb525eff4463906433df994bf11c5f91955c",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/capacity-after-tests.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/capacity-after-tests.json",
+      "bytes": 1313,
+      "sha256": "78adb80ba4e9607e3483ef10f7b8863c13b277d143e05c88f94f82ab92722911",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/capacity-before-builder.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/capacity-before-builder.json",
+      "bytes": 1320,
+      "sha256": "0d14ac9618893664cb3945c8d2dd8bd56aed788e7d1fca68dd5fbfd6a6d58ddf",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/cleanup.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/cleanup.json",
+      "bytes": 494,
+      "sha256": "2da56b746257c5cd08a7cb7c807722aac53cfcbff4e12c04175614bcadd6570a",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/Dockerfile.canonical",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/Dockerfile.canonical",
+      "bytes": 2894,
+      "sha256": "8b923804931c37c2384f2570c083b668fb19be563de08098599c9b7744843486",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/build.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/build.log",
+      "bytes": 40998,
+      "sha256": "c66711f3fce47c3737569f1f4b68223a99f95c52668b82aa8e1c3c6149d934b3",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/cleanup-runtime.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/cleanup-runtime.log",
+      "bytes": 1312,
+      "sha256": "a12608d7a55212f2d7f17f0fa36871a6829120d253dab305ed772a818b75f7ef",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/cleanup.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/cleanup.json",
+      "bytes": 312,
+      "sha256": "845ff835be1443f1341ea672e1410af97c2e569380c97e54422fe2132201775a",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/create-intent.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/create-intent.json",
+      "bytes": 362,
+      "sha256": "5f468d4d10bd6d16ce2f1c6be71855a1442a5b4478f7bf103f91b1a4897a9129",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/create.stderr",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/create.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/create.stdout",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/create.stdout",
+      "bytes": 65,
+      "sha256": "b95fd7d6481c5f9d09475fb58a7d52f058a8765fd38b28cb3bb150b8815ba6a4",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/export.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/export.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/qa-output/build.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/qa-output/build.json",
+      "bytes": 285,
+      "sha256": "d91ddd25a0a2248e18404fdb8c9a2bc630af73041794f2874636f5629380a9db",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/qa-output/launch.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/qa-output/launch.json",
+      "bytes": 317,
+      "sha256": "b2c9672cd44dca118a7b9a5661ae3491436026f3181415bf36d70282349ef526",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/qa-output/runtime.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/qa-output/runtime.json",
+      "bytes": 997,
+      "sha256": "5f5f04d67143002086b5c7c3f3227fa5882d4e5e172f57e719407014dc21b1b7",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/receipt.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/receipt.json",
+      "bytes": 3272,
+      "sha256": "f8f6c5c2fceedac77e027e10cd4f42527d4b69752d442f0a619f3ea24f9f5a57",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/running.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/running.log",
+      "bytes": 489,
+      "sha256": "b110b312c971b749d3a0ff22b9d7f21c5ad8b8481f2b534edc07564320a2d385",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/runtime.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/runtime.log",
+      "bytes": 1312,
+      "sha256": "a12608d7a55212f2d7f17f0fa36871a6829120d253dab305ed772a818b75f7ef",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/start.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/start.log",
+      "bytes": 65,
+      "sha256": "b95fd7d6481c5f9d09475fb58a7d52f058a8765fd38b28cb3bb150b8815ba6a4",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/stop.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/stop.log",
+      "bytes": 120,
+      "sha256": "ed3faa172973942a1d3aeaaea8ad668bf6051133dcc52aaa60c24d3ef4ac8520",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/direct/stopped.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/direct/stopped.log",
+      "bytes": 435,
+      "sha256": "aa3b91479871567fcfca797a70db671704654e400b6f0c427d4b294809543dd9",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/image-identity.txt",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/image-identity.txt",
+      "bytes": 101,
+      "sha256": "cbff33821cc7fe4de8875281a621d16eb6fa4f846c2914a681d80cdbf21d0705",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/cleanup-runtime.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/cleanup-runtime.log",
+      "bytes": 1604,
+      "sha256": "3fb0c46c5ca29b63a177563e0aec8daa7745983d38df40f8f14a84f73b8e61f2",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/cleanup.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/cleanup.json",
+      "bytes": 312,
+      "sha256": "d9e4bfabb027f5bde349ae62939cd028e471fd4bfd76f24ead69467ed1c9e42c",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/create-intent.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/create-intent.json",
+      "bytes": 359,
+      "sha256": "31728896b5ace95afc948f170c3d617141072f7e54eff83726a3fc0ba25a9bea",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/create.stderr",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/create.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/create.stdout",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/create.stdout",
+      "bytes": 65,
+      "sha256": "d040376d3af8d8f008288f83db0aa17cbdb5a0bdfe3977127a986509f15daadf",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/export.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/export.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/qa-output/build.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/qa-output/build.json",
+      "bytes": 285,
+      "sha256": "d91ddd25a0a2248e18404fdb8c9a2bc630af73041794f2874636f5629380a9db",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/qa-output/launch.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/qa-output/launch.json",
+      "bytes": 314,
+      "sha256": "de7241b2ad26d94624bfa29796fc0b9e0b3e8d3cc99a0d21429f6432206d4ac3",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/qa-output/runtime.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/qa-output/runtime.json",
+      "bytes": 1219,
+      "sha256": "dec79b82e77117ac2d477ce31f7b4105da7c91333c3ccc4782514541f623918c",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/receipt.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/receipt.json",
+      "bytes": 3621,
+      "sha256": "ae92b0ed0898a995cdf2c888b816d8028620ffe3726c57939e4bed9a0f3aae35",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/running.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/running.log",
+      "bytes": 489,
+      "sha256": "2edd352695a236a66ee06f68c25b073f8694bd39c1571425374a59e985b5d5bd",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/runtime.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/runtime.log",
+      "bytes": 1604,
+      "sha256": "3fb0c46c5ca29b63a177563e0aec8daa7745983d38df40f8f14a84f73b8e61f2",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/start.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/start.log",
+      "bytes": 65,
+      "sha256": "d040376d3af8d8f008288f83db0aa17cbdb5a0bdfe3977127a986509f15daadf",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/stop.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/stop.log",
+      "bytes": 120,
+      "sha256": "13a23b30babedb474ce98e7321532ce6b10e20073763c51f10df296366f14071",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/npm/stopped.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/npm/stopped.log",
+      "bytes": 437,
+      "sha256": "aedc34463c2b3cd00589cbd01f1a90116794fa19eee33f6dcb33f7021783203d",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/cleanup-runtime.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/cleanup-runtime.log",
+      "bytes": 1614,
+      "sha256": "7f4780335dfa7b06eccde72273e6da365b78d86ea325fb93b2bf138d641e801d",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/cleanup.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/cleanup.json",
+      "bytes": 312,
+      "sha256": "b435302f7e356184f9393d745a4aebd0417fe8d698a0c3ec930465abce444425",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/create-intent.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/create-intent.json",
+      "bytes": 360,
+      "sha256": "150861e44eb82469802d4e2b60cb9e79691bb30b1c3257fc94dca1b34c7ec38e",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/create.stderr",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/create.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/create.stdout",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/create.stdout",
+      "bytes": 65,
+      "sha256": "95eac0a7ede44c661c908b51e7b46f9c8f2b325c1d1a8e36a0100a1ffe916216",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/export.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/export.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/qa-output/build.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/qa-output/build.json",
+      "bytes": 285,
+      "sha256": "d91ddd25a0a2248e18404fdb8c9a2bc630af73041794f2874636f5629380a9db",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/qa-output/launch.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/qa-output/launch.json",
+      "bytes": 315,
+      "sha256": "10d7c26f3aac55d365309aeb9263ee453c4418d3eb49b9ae20b23d44186cdd8d",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/qa-output/runtime.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/qa-output/runtime.json",
+      "bytes": 1082,
+      "sha256": "48764e5761b1124f6d4548f1ae0b79d7a70da0827b9f1c0b70bf06f52aa79a3c",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/receipt.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/receipt.json",
+      "bytes": 3436,
+      "sha256": "cdb78944efdc680d70a01d461051a7161d521bec10b70b8421ff77f24de95a09",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/running.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/running.log",
+      "bytes": 489,
+      "sha256": "2084430e673a99db68cc49dc24bdc4580f31a6e80498c5d102464d4f01221412",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/runtime.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/runtime.log",
+      "bytes": 1614,
+      "sha256": "7f4780335dfa7b06eccde72273e6da365b78d86ea325fb93b2bf138d641e801d",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/start.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/start.log",
+      "bytes": 65,
+      "sha256": "95eac0a7ede44c661c908b51e7b46f9c8f2b325c1d1a8e36a0100a1ffe916216",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/stop.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/stop.log",
+      "bytes": 120,
+      "sha256": "205ec099d4a325d4d798003edb7874669513f543194b4c40136954c927359ef6",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/pnpm/stopped.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/pnpm/stopped.log",
+      "bytes": 437,
+      "sha256": "86c78fc435744df3f44d8d038a7639afc396eb0fa6f2a1f7d857083921d4bd79",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/source-custody.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/source-custody.json",
+      "bytes": 1790,
+      "sha256": "86f7b6777086c4c4e100a7a35345e1acbb0ce6e970793b9919207ad41f11a9d1",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/cleanup-runtime.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/cleanup-runtime.log",
+      "bytes": 1633,
+      "sha256": "ede0a0640e4c5423e9ea20a6c412487f64225a8e8c1ccefd1ea40273bdf54ac9",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/cleanup.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/cleanup.json",
+      "bytes": 312,
+      "sha256": "8d127373b5f2c32361fd2162bffc27f71786e4298794cfc3e329de1362740702",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/create-intent.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/create-intent.json",
+      "bytes": 360,
+      "sha256": "6024603b89b8117ec83d332726484902ebeb5711c79eedf6f869605472bfd239",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/create.stderr",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/create.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/create.stdout",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/create.stdout",
+      "bytes": 65,
+      "sha256": "389129bab5466c06f39e5af0b236273d55f1017bfe36aafd662da41c77238ece",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/export.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/export.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/qa-output/build.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/qa-output/build.json",
+      "bytes": 285,
+      "sha256": "d91ddd25a0a2248e18404fdb8c9a2bc630af73041794f2874636f5629380a9db",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/qa-output/launch.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/qa-output/launch.json",
+      "bytes": 315,
+      "sha256": "7117c1b024c53521cf1432a94b53eab379139aac088a91d8d56ad5c715a53368",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/qa-output/runtime.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/qa-output/runtime.json",
+      "bytes": 1283,
+      "sha256": "aac4b5702acb1d8dd4fad18e3f047ac3e9270a50d2bee77319b50dfd235165d1",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/receipt.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/receipt.json",
+      "bytes": 3836,
+      "sha256": "ddc0d17c7350e85e3786de501b54e4741e82964ab73ac7b758c26ae5d95ceb99",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/running.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/running.log",
+      "bytes": 489,
+      "sha256": "e49c52493f5e3ea1a69fda75d9cc178c8c7a4807b9673dc7592f01f59186c8fa",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/runtime.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/runtime.log",
+      "bytes": 1633,
+      "sha256": "ede0a0640e4c5423e9ea20a6c412487f64225a8e8c1ccefd1ea40273bdf54ac9",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/start.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/start.log",
+      "bytes": 65,
+      "sha256": "389129bab5466c06f39e5af0b236273d55f1017bfe36aafd662da41c77238ece",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/stop.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/stop.log",
+      "bytes": 120,
+      "sha256": "25e484503efce0a7c246a515c49068bd563a18c6cba76c6c3b9fd224029e3816",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/yarn/stopped.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/generated/native-common-init-1434254458/yarn/stopped.log",
+      "bytes": 435,
+      "sha256": "2c71639d0d6e200805a3f0ff88ada54c4b7a5b002c0f9642a7c2f01334585907",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/inputs.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/inputs.json",
+      "bytes": 3270,
+      "sha256": "eea85c74823b709b557562604fafc0756101c033d12d1116db5f046ee484567e",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/qualification-source.json",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/qualification-source.json",
+      "bytes": 75099,
+      "sha256": "8a910231e881721cf3744c2b88e511454e926b95952a438bb645ef630e253031",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/qualification.log",
+      "destination": "native-init/arm64-pre-fix-audit/artifact/qualification.log",
+      "bytes": 801,
+      "sha256": "7dcbf2337a9b575e82b01485a36a17fef14b2fc575a82a2b3d7382fdeca982bd",
+      "mode": "0o600",
+      "scope": "ActualoriginalARMnonbinaryartifactmemberASIS; subsetexplicitlyomitsoneELF."
+    }
+  ],
+  "explicit_omitted_private_bodies": [
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/extracted/artifact/generated/native-common-init-236768202/init/native-init",
+      "bytes": 1753250,
+      "sha256": "159a39e14b60d9dcea04c2ec9c55f33b9da42d1580807407edfd02bde7b7e16f",
+      "mode": "0o600",
+      "reason": "ActualstagedELF staysprivate. Originalartifactmanifest, sourcecustody, fullbuildlog andlocalprobe exactSHA/ELF binding retained; avoid secondbinarymirror."
+    },
+    {
+      "source": "/private/tmp/bex-w8-family-first8-snapshot-20261102-bhbxnoai/amd64/original.zip",
+      "bytes": 829076,
+      "sha256": "16d866c1fb27937279979b8cd6af0190f6ddf16dea0d70ed7d6226c724673b12",
+      "mode": "0o600",
+      "reason": "FulloriginalZIP remainsprivate; download/extraction receipts andallcausalnonbinarymembers proposedforpublication."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/extracted/artifact/generated/native-common-init-1434254458/init/native-init",
+      "bytes": 1704098,
+      "sha256": "a98891512176fb22df4bd64032b55ffcc00722a7754f9eb3903bf58b20e6f7f7",
+      "mode": "0o600",
+      "reason": "PrivateoriginalARMELF; fulloriginalartifactmanifest/SHA/proofs retained; binarynotmirrored."
+    },
+    {
+      "source": "/private/tmp/bex-w8-native-init-arm-artifact-intake-20261102-e2sit8o6/arm64/original.zip",
+      "bytes": 793651,
+      "sha256": "46dbabfc0269b19c7ac20a11bdb9793113429303111c19b242a84abd84a5dc6f",
+      "mode": "0o600",
+      "reason": "FulloriginalZIP remainsprivate; originaldownload/extraction andactualartifactSHAmetadata retained."
+    }
+  ],
+  "native_init_ARM_scope": "Actualoldsource9bc/functional300e6 nativeARMfourlaunchCI auditPASS; AMDoldfailure retained; no postfix/botharchclaim.",
+  "Root_final_verification_owned_separately": "final-verification/; excludedfromthisauthorfrozencopylist. Rootreports actualfinalGo19.675s+scopedlint0 and FINAL-SOURCE3642fd18f3b2409679bd3cb2c842ace4e990716c72825d12636157c7bd951628.",
+  "repo_source_changes_by_author": false,
+  "CI_dispatch_or_live_action_by_author": false,
+  "status_changes_or_completed_DoD_claim": false,
+  "lossless_storage_overrides": [
+    {
+      "raw_source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/identity.js.diff",
+      "original_destination": "native-init/mapped-pid1-fix/identity.js.diff",
+      "raw_identity": {
+        "bytes": 6187,
+        "sha256": "9e8ca3ddf2b2f5c1c52bcfd2ab885b7dc7bd3b3cc808df8a216c3fdecf3b73bf",
+        "mode": "0o644"
+      },
+      "stored_destination": "native-init/mapped-pid1-fix/identity.js.diff.gz",
+      "stored_identity": {
+        "bytes": 2261,
+        "sha256": "a65742919aa10185422a12927ea018f494c4f66ce7401148e258bcdb6d9ebf31",
+        "mode": "0o644"
+      },
+      "roundtrip_exact": true
+    },
+    {
+      "raw_source": "/private/tmp/bex-w8-native-init-mapped-pid1-source-20261102-pq0r_5na/nativequalification_init_test.go.diff",
+      "original_destination": "native-init/mapped-pid1-fix/nativequalification_init_test.go.diff",
+      "raw_identity": {
+        "bytes": 6401,
+        "sha256": "3c5a3f106e703709d64b24bba5c96854fb092cf19ca5a03210331118e77270fe",
+        "mode": "0o644"
+      },
+      "stored_destination": "native-init/mapped-pid1-fix/nativequalification_init_test.go.diff.gz",
+      "stored_identity": {
+        "bytes": 1983,
+        "sha256": "5133287869d3d05f3ca11352ed5fc454e52df427835f781d1ab6d7c1a39f4989",
+        "mode": "0o644"
+      },
+      "roundtrip_exact": true
+    },
+    {
+      "raw_source": "/private/tmp/bex-w8-ruby-zlib-bytes-source-20261102-755ii7xo/patch.diff",
+      "original_destination": "ruby/zlib-byte-fix/patch.diff",
+      "raw_identity": {
+        "bytes": 846,
+        "sha256": "8ff17e21b412a0ccc59f849d9c928dab4fe13d763e58708b03115496e80394ff",
+        "mode": "0o644"
+      },
+      "stored_destination": "ruby/zlib-byte-fix/patch.diff.gz",
+      "stored_identity": {
+        "bytes": 425,
+        "sha256": "a802e5b23dcde967cc9a9e60da16d862a3510f84563deb53356dbc8a95e9e808",
+        "mode": "0o644"
+      },
+      "roundtrip_exact": true
+    },
+    {
+      "raw_source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/dockerhub.go.diff",
+      "original_destination": "go-rust/metadata-fix/dockerhub.go.diff",
+      "raw_identity": {
+        "bytes": 716,
+        "sha256": "944b405d6eb8ba393c26011726e189fcf77b21a8e064fe2b2d6d867a089e1d4e",
+        "mode": "0o644"
+      },
+      "stored_destination": "go-rust/metadata-fix/dockerhub.go.diff.gz",
+      "stored_identity": {
+        "bytes": 412,
+        "sha256": "e1d4579abde7d026f1048c542bcff0354ab622af55009e7a54586b2f76ee7811",
+        "mode": "0o644"
+      },
+      "roundtrip_exact": true
+    },
+    {
+      "raw_source": "/private/tmp/bex-w8-go-rust-metadata-source-20261102-ubj864aa/dockerhub_test.go.diff",
+      "original_destination": "go-rust/metadata-fix/dockerhub_test.go.diff",
+      "raw_identity": {
+        "bytes": 3003,
+        "sha256": "f95ba3db4fe5de8e8d1bf2855b95ec6522d761d870da2542b2c4bbea2f579259",
+        "mode": "0o644"
+      },
+      "stored_destination": "go-rust/metadata-fix/dockerhub_test.go.diff.gz",
+      "stored_identity": {
+        "bytes": 1077,
+        "sha256": "d3b7ebcc100ca90679b6e6f7f56cf0befd25310597d0dc5fd11fab50cb407408",
+        "mode": "0o644"
+      },
+      "roundtrip_exact": true
+    },
+    {
+      "raw_source": "/private/tmp/bex-w8-go-rust-metadata-tests-20261102-7u5syx6m/run.py.diff",
+      "original_destination": "go-rust/metadata-tests/run.py.diff",
+      "raw_identity": {
+        "bytes": 6386,
+        "sha256": "428071e8dfc14147cbdfdc51b9fd0f8117b348b1852f421f6600aeca758ba0c6",
+        "mode": "0o644"
+      },
+      "stored_destination": "go-rust/metadata-tests/run.py.diff.gz",
+      "stored_identity": {
+        "bytes": 2281,
+        "sha256": "04b0999349408035b113f8b745fa4583487b98f29257db94e6378e66c1399a8a",
+        "mode": "0o644"
+      },
+      "roundtrip_exact": true
+    },
+    {
+      "raw_source": "/private/tmp/bex-w8-prerequisite-network-fix-source-20261102-txsxwups/source.patch",
+      "original_destination": "prerequisite-network/source-fix/source.patch",
+      "raw_identity": {
+        "bytes": 18326,
+        "sha256": "45d490cc4a4ca80ea5f74c6dc6af3be1c11aa748e9f66969e34b4e84493c729c",
+        "mode": "0o644"
+      },
+      "stored_destination": "prerequisite-network/source-fix/source.patch.gz",
+      "stored_identity": {
+        "bytes": 4971,
+        "sha256": "11032453a26b61daa02b5a9d99d16e377bf959fa11049d655984e705cd5a6800",
+        "mode": "0o644"
+      },
+      "roundtrip_exact": true
+    }
+  ],
+  "original_frozen_source_bytes": 3652372,
+  "all_stored_copy_bytes": 3623917,
+  "nested_manifest_scope": "Frozen nested manifests retain originalrawsource paths/identities. For compressed patch/diff payloads only, use explicitlossless_storage_overrides to map originalraw identity to storedgzip. No rawtext normalized; originalprivatefreezesunchanged."
+}
