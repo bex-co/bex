@@ -1,6 +1,6 @@
 # w8 · m146 — `deploy_ended` and `build_ended` carry Render's `reason` object
 
-**Worker:** worker8 **Goal:** every ended deploy and build event carries Render's `buildDeployEndReason` (`failure` / `buildFailed` / `newDeploy` / `newBuild`), so a client written against Render can tell a crash from an OOM, a timeout or a superseding deploy. **Status:** in progress — t001–t006 done 2026-11-02; t007 live closeout after the operator and bex-api deploy
+**Worker:** worker8 **Goal:** every ended deploy and build event carries Render's `buildDeployEndReason` (`failure` / `buildFailed` / `newDeploy` / `newBuild`), so a client written against Render can tell a crash from an OOM, a timeout or a superseding deploy. **Status:** done — 2026-11-02, verified live on production ([evidence](evidence/live-20261102.md))
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | [t004](done/t004.md) | Render parity — **DONE** | 20m | t003 |
 | [t005](done/t005.md) | Simplify — **DONE** | 10m | t004 |
 | [t006](done/t006.md) | Test coverage — **DONE** | 30m | t004 |
-| [t007](t007.md) | Closeout: live crash / superseded / build-failed checks | 30m | t005, t006 |
+| [t007](done/t007.md) | Closeout: live crash / superseded / build-failed checks — **DONE** | 30m | t005, t006 |
 
 **Total:** 7 tasks / 225m. [Finding](finding.md).
 
