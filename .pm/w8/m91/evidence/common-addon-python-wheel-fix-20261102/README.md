@@ -1,0 +1,7 @@
+# Python wheel export for the Node 16 addon qualifier
+
+The qualifier now resolves a separate wheel-export fixture with identical application-Python and Poetry choices and the ordinary default Node 24. This avoids compiling Node 16 while acquiring Python wheels. The main Node 16 recipe, original programs, final 45-minute build, implicit package-manager addon installs and runtime checks remain unchanged. The generic wheel helper retains its 30-minute limit.
+
+Actual ARM64 job `125062409253` had verified its downloads and configured Python 3.9, then hit that export limit at 1803.8 seconds before reaching addon code. The exact applied patch passes focused Go controls in 0.452 seconds, the full build package in 7.517 seconds, and pinned scoped lint with zero issues. All 303 test inputs and the foreign workspace sum stayed unchanged during those checks; owned temporary files and process groups are gone.
+
+The [archive map](ARCHIVE-MEMBERS.json), [round-trip check](ROUNDTRIP.json) and [source custody](ROOT-CUSTODY.json) retain 65 members with 78 original-file bindings, including all five final failed-job logs and Root’s application receipt. The original 70 outcomes remain 17 successes and 53 failures. The replay plan preserves 35 original cases and six supplemental cases, allowing dated passes only after full artifact and nonimpact review. Actual revised generated-image acceptance, production adoption and the original 28 hosted cases remain open. The existing current-source utility/candidate gate still applies.
