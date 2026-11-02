@@ -1,3 +1,4 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { DeploysListPage } from "@/features/deploys/components/deploys-list-page";
 import { DeploysListSkeleton } from "@/common/components/route-skeletons";
@@ -14,6 +15,7 @@ import {
  * (loop-free) instead of bouncing to /services.
  */
 export const Route = createFileRoute("/static/$serviceId/deploys/")({
+  head: serviceTabHead("services.navDeploys", "/static/$serviceId"),
   component: RouteComponent,
   pendingComponent: DeploysListSkeleton,
   // The history's filters live in the URL, so Back from a deploy's detail

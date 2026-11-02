@@ -1,20 +1,22 @@
 # w4 · m249 — Every dashboard page exposes its structure to assistive technology
 
-**Worker:** worker4 **Goal:** a screen-reader user can jump by heading to every section of a dashboard page and hear which service tab they are on, instead of finding one heading on a 15-section page and an identical title on all 11 tabs. **Status:** todo
+**Worker:** worker4 **Goal:** a screen-reader user can jump by heading to every section of a dashboard page and hear which service tab they are on, instead of finding one heading on a 15-section page and an identical title on all 11 tabs. **Status:** done 2026-11-02 (loopx w4; the production probes in the Definition of done run after the release pins this build)
 
 ## Tasks (in order)
 
 | id   | title                                                                          | est | depends_on                            |
 | ---- | ------------------------------------------------------------------------------ | --- | ------------------------------------- |
-| t001 | Make section card titles real headings by default                              | 35m | —                                     |
-| t002 | Audit the 124 `<CardTitle` sites and give every exception an explicit level    | 1h  | w4/m249/t001                          |
-| t003 | Give the default Agents page an h1                                             | 20m | —                                     |
-| t004 | Give each service tab its own document title                                   | 40m | —                                     |
-| t005 | Regression tests on the callers that are correct today                         | 40m | w4/m249/t002, w4/m249/t003, w4/m249/t004 |
-| t006 | Render parity: dashboard heading and title structure                           | 20m | w4/m249/t005                          |
-| t007 | Simplify: run `/simplify` over the code this milestone changed                 | 15m | w4/m249/t006                          |
-| t008 | Test coverage: tests for the structure this milestone shipped                  | 30m | w4/m249/t006                          |
-| t009 | Closeout: verify the Definition of done live, then move the milestone to done  | 15m | w4/m249/t007, w4/m249/t008            |
+| t001 | Make section card titles real headings by default — **DONE** | 35m | —                                     |
+| t002 | Audit the 124 `<CardTitle` sites and give every exception an explicit level — **DONE** | 1h  | w4/m249/t001                          |
+| t003 | Give the default Agents page an h1 — **DONE** | 20m | —                                     |
+| t004 | Give each service tab its own document title — **DONE** | 40m | —                                     |
+| t005 | Regression tests on the callers that are correct today — **DONE** | 40m | w4/m249/t002, w4/m249/t003, w4/m249/t004 |
+| t006 | Render parity: dashboard heading and title structure — **DONE** | 20m | w4/m249/t005                          |
+| t007 | Simplify: run `/simplify` over the code this milestone changed — **DONE** | 15m | w4/m249/t006                          |
+| t008 | Test coverage: tests for the structure this milestone shipped — **DONE** | 30m | w4/m249/t006                          |
+| t009 | Closeout: verify the Definition of done live, then move the milestone to done — **DONE** | 15m | w4/m249/t007, w4/m249/t008            |
+
+Every task is done. t009 closeout: the Definition of done is code-complete and covered by tests (card, agents, tab titles, skip-free visuals); its live probes are verified after the deploy.
 
 ## Definition of done
 

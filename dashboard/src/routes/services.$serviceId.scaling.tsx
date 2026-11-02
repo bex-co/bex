@@ -1,3 +1,4 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { CardSkeleton } from "@/common/components/detail-skeletons";
 import {
@@ -18,6 +19,7 @@ import { runsInstances } from "@/features/services/lib/status";
 import { ServiceScalingSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/scaling")({
+  head: serviceTabHead("services.navScaling", "/services/$serviceId"),
   component: RouteComponent,
   pendingComponent: ServiceScalingSkeleton,
 });
@@ -74,7 +76,9 @@ export function ServiceScalingPage({ serviceId }: { serviceId: string }) {
       {/* Reserve the manual-card slot while autoscaling state resolves so the
           card doesn't pop in and shift the layout (w9/m63 t003). */}
       {scalable && autoscaling.loading ? <CardSkeleton rows={2} /> : null}
-      {scalable && !autoscaling.loading && (!autoscaling.enabled || service.plan === "free") ? (
+      {scalable &&
+      !autoscaling.loading &&
+      (!autoscaling.enabled || service.plan === "free") ? (
         <ManualScalingSection
           serviceId={serviceId}
           replicas={service.replicas ?? 1}

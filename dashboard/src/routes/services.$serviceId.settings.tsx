@@ -1,3 +1,4 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import type { ReactNode } from "react";
 import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import {
@@ -58,6 +59,7 @@ import {
 import { cn } from "@/common/lib/utils/utils";
 
 export const Route = createFileRoute("/services/$serviceId/settings")({
+  head: serviceTabHead("services.navSettings", "/services/$serviceId"),
   component: RouteComponent,
   pendingComponent: ServiceSettingsPending,
 });

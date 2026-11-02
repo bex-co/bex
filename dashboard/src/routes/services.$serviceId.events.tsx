@@ -1,3 +1,4 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { useMemo, useState } from "react";
 import { createFileRoute, Link } from "@tanstack/react-router";
 import { Activity, AlertCircle, ListFilter, RefreshCcw } from "lucide-react";
@@ -46,6 +47,7 @@ const CATALOG_TYPES = new Set(SERVICE_EVENT_TYPES);
 import { ServiceEventsSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/events")({
+  head: serviceTabHead("services.navEvents", "/services/$serviceId"),
   component: RouteComponent,
   pendingComponent: ServiceEventsSkeleton,
 });

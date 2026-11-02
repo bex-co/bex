@@ -144,6 +144,9 @@ function ComposerSection() {
       className="mx-auto w-full max-w-[40rem] space-y-3"
       aria-label={t("agentSessions.taskLabel")}
     >
+      {/* The default page has no visible title; give assistive technology the
+          one h1 list mode shows (w4/m249). */}
+      <h1 className="sr-only">{t("agentSessions.pageTitle")}</h1>
       <NewSessionComposer />
     </section>
   );

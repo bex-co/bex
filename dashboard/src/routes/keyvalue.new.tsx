@@ -141,10 +141,8 @@ export function NewKeyValuePage() {
         <div className="mx-auto w-full max-w-2xl space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>
-                <h1 className="text-xl font-semibold">
-                  {t("keyvalue.createTitle")}
-                </h1>
+              <CardTitle as="h1" className="text-xl font-semibold">
+                {t("keyvalue.createTitle")}
               </CardTitle>
               <CardDescription>
                 {t("keyvalue.createDescription")}
