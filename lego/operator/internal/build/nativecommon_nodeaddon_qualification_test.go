@@ -21,9 +21,11 @@ import (
 	"crypto/sha256"
 	"encoding/json"
 	"fmt"
+	"maps"
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 	"time"
@@ -158,7 +160,8 @@ func legacyNodeAddonGeneratedCase(t *testing.T, docker nativeUtilityDocker, comm
 	}
 	o, env, files := legacyNodeAddonFixture(t, tc)
 	bundle, path, source := writeResolveFixture(t, o, env, files)
-	choices, err := ResolveNativeBuildAt(time.Time{}, tc.runtime, bundle, path, source)
+	resolver := NewDockerHubResolver()
+	choices, err := ResolveNativeBuildExact(t.Context(), resolver, time.Time{}, tc.runtime, bundle, path, source)
 	must(t, err)
 	expected, node, err := legacyNodeAddonExpected(tc, choices, docker.platform)
 	must(t, err)
@@ -182,7 +185,29 @@ func legacyNodeAddonGeneratedCase(t *testing.T, docker nativeUtilityDocker, comm
 		}
 		// The original3.13 closure (including its original Django/pyvips solve)
 		// is reused unchanged; the modern family helper intentionally excludes3.13.
-		wheels := nativeUtilityPrepareWheels(t, docker, []byte(executed), base, bundle, source, evidence)
+		// The wheel solve needs the exact application Python, not its Node16
+		// companion's source compiler. Resolve an auxiliary canonical fixture;
+		// the original files, Node16 recipe and final45m build stay unchanged.
+		wheelFiles := maps.Clone(files)
+		delete(wheelFiles, ".node-version")
+		wheelBundle, wheelPath, wheelSource := writeResolveFixture(t, o, env, wheelFiles)
+		wheelChoices, err := ResolveNativeBuildExact(t.Context(), resolver, time.Time{}, tc.runtime, wheelBundle, wheelPath, wheelSource)
+		must(t, err)
+		wheelCanonical, err := os.ReadFile(wheelPath)
+		must(t, err)
+		prepared, err := legacyNodeAddonWheelRecipe(string(wheelCanonical), base, choices, wheelChoices)
+		must(t, err)
+		must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile.wheels.canonical"), wheelCanonical, 0o600))
+		wheelCustody, err := json.MarshalIndent(map[string]any{"common": base, "main_choices": choices, "auxiliary_choices": wheelChoices,
+			"primary_all_fields_equal": reflect.DeepEqual(choices[0], wheelChoices[0]), "poetry_all_fields_equal": reflect.DeepEqual(choices[1], wheelChoices[1]),
+			"primary_image_env": wheelChoices[0].imageEnv, "primary_image_suite": wheelChoices[0].imageSuite,
+			"primary_runtime_artifact": wheelChoices[0].primaryImage, "primary_stage": wheelChoices[0].primaryStage,
+			"primary_runtime_check": wheelChoices[0].runtimeCheck, "primary_legacy_source": wheelChoices[0].legacySource,
+			"auxiliary_canonical_sha256": fmt.Sprintf("%x", sha256.Sum256(wheelCanonical)), "prerequisite_recipe_sha256": fmt.Sprintf("%x", sha256.Sum256([]byte(prepared))),
+			"scope": "Python-only wheel acquisition; canonical default Node companion copied without a Node16 compiler; original main Node16 source/addon/runtime checks unchanged"}, "", "  ")
+		must(t, err)
+		must(t, os.WriteFile(filepath.Join(evidence, "wheel-inputs.json"), wheelCustody, 0o600))
+		wheels := nativeUtilityExportWheels(t, docker, prepared, wheelBundle, wheelSource, evidence)
 		copyNativeUtilityWheels(t, wheels, source, evidence)
 		executed, err = afterNativeBase(executed, base, "COPY .bex-test-wheels/ /opt/bex-test-wheels/\nENV PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/bex-test-wheels\n")
 		must(t, err)
@@ -214,6 +239,21 @@ func legacyNodeAddonGeneratedCase(t *testing.T, docker nativeUtilityDocker, comm
 		t.Fatalf("actual implicit-gyp build: %v\n%s", buildErr, log)
 	}
 	docker.runImage(t, nativeUtilityCase{name: tc.name}, tag, evidence, tc.runtime == nativePythonRuntime || tc.common)
+}
+
+// Preserve the generic wheel helper's full-prefix contract. Only the addon's
+// auxiliary input omits the irrelevant legacy companion compiler.
+func legacyNodeAddonWheelRecipe(canonical, base string, main, auxiliary []NativeChoice) (string, error) {
+	if len(main) < 2 || len(auxiliary) != 3 || main[0].Label != nativeToolchains[nativePythonRuntime].label || main[1].Label != "Poetry" ||
+		!reflect.DeepEqual(main[:2], auxiliary[:2]) {
+		return "", fmt.Errorf("auxiliary wheel input changed the full application Python or Poetry choice")
+	}
+	node := auxiliary[2]
+	if node.Label != nativeToolchains[nativeNodeRuntime].label || node.Source != "" || node.Image != nativeToolchains[nativeNodeRuntime].defaultImage() ||
+		strings.Contains(canonical, "/usr/libexec/bex-native/build-node") || strings.Contains(canonical, " AS bex-node-build\n") {
+		return "", fmt.Errorf("auxiliary wheel input must use the canonical default Node without a legacy compiler dependency")
+	}
+	return nativeUtilityWheelRecipe(canonical, base)
 }
 
 func TestLegacyNodeAddonCanonicalRoutes(t *testing.T) {
@@ -275,6 +315,97 @@ func TestLegacyNodeAddonCanonicalRoutes(t *testing.T) {
 				if strings.Contains(prepared, "addon-check.py build") || strings.Index(prepared, "pip wheel") > strings.Index(prepared, " -m venv /opt/bex/poetry") {
 					t.Fatal("wheel preparation ran authored source or followed Poetry bootstrap")
 				}
+			}
+		})
+	}
+}
+
+func TestLegacyNodeAddonWheelAcquisitionDoesNotCompileCompanion(t *testing.T) {
+	original, supplied, artifacts := nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts
+	t.Cleanup(func() { nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = original, supplied, artifacts })
+	for _, tc := range legacyNodeAddonCases() {
+		if tc.runtime != nativePythonRuntime {
+			continue
+		}
+		t.Run(tc.name, func(t *testing.T) {
+			nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = "", nil, nil
+			base := ""
+			if tc.common {
+				nativeCommonBase, base = commonFixtureImage, commonFixtureImage
+			}
+			o, env, files := legacyNodeAddonFixture(t, tc)
+			originalFiles := maps.Clone(files)
+			fake := commonNodeQualificationFake()
+			bundle, path, source := writeResolveFixture(t, o, env, files)
+			main, err := ResolveNativeBuildExact(t.Context(), fake, time.Time{}, tc.runtime, bundle, path, source)
+			must(t, err)
+			canonical, err := os.ReadFile(path)
+			must(t, err)
+			if base == "" {
+				base = main[0].Image
+			}
+			reviewedNode, found := nativeToolchains[nativeNodeRuntime].find("16")
+			if !found {
+				t.Fatal("reviewed Node16 line missing")
+			}
+			sourceCompiler := "/usr/libexec/bex-native/build-node --common-bookworm " + reviewedNode.version + " "
+			oldWheels, err := nativeUtilityWheelRecipe(string(canonical), base)
+			must(t, err)
+			if tc.common && !strings.Contains(oldWheels, sourceCompiler) {
+				t.Fatal("old full-prefix export no longer reproduces the observed Node16 compiler dependency")
+			}
+			wheelFiles := maps.Clone(files)
+			delete(wheelFiles, ".node-version")
+			wheelBundle, wheelPath, wheelSource := writeResolveFixture(t, o, env, wheelFiles)
+			auxiliary, err := ResolveNativeBuildExact(t.Context(), fake, time.Time{}, tc.runtime, wheelBundle, wheelPath, wheelSource)
+			must(t, err)
+			auxCanonical, err := os.ReadFile(wheelPath)
+			must(t, err)
+			prepared, err := legacyNodeAddonWheelRecipe(string(auxCanonical), base, main, auxiliary)
+			must(t, err)
+			if strings.Contains(prepared, "/usr/libexec/bex-native/build-node") || strings.Contains(prepared, main[2].Image) ||
+				!strings.Contains(prepared, "pyvips==3.2.0 Django==5.2.18 poetry==2.1.3") || strings.Contains(prepared, "addon-check.py build") {
+				t.Fatal("wheel export retained Node16 or changed the original solve/source boundary")
+			}
+			after, err := os.ReadFile(path)
+			must(t, err)
+			if string(after) != string(canonical) || !maps.Equal(files, originalFiles) || files[".node-version"] != "16\n" || !reflect.DeepEqual(main[0], auxiliary[0]) {
+				t.Fatal("auxiliary preparation mutated the main Node16 recipe/files or selected app Python")
+			}
+			if tc.common {
+				_, selectedNode, err := legacyNodeAddonExpected(tc, main, "linux/arm64")
+				must(t, err)
+				executed, overlay, err := commonNodeQualificationRecipe(string(after), selectedNode)
+				must(t, err)
+				if !overlay || !strings.Contains(executed, sourceCompiler) {
+					t.Fatal("main generated build lost its mandatory Node16 source compiler")
+				}
+			}
+			for name, change := range map[string]func(*NativeChoice){
+				"image":         func(c *NativeChoice) { c.Image += "wrong" },
+				"version":       func(c *NativeChoice) { c.Line = "3.14" },
+				"env":           func(c *NativeChoice) { c.imageEnv = append([]string{"PYTHON_VERSION=wrong"}, c.imageEnv...) },
+				"artifact":      func(c *NativeChoice) { c.primaryImage = "wrong" },
+				"stage":         func(c *NativeChoice) { c.primaryStage = "wrong" },
+				"runtime-check": func(c *NativeChoice) { c.runtimeCheck = "wrong" },
+				"suite":         func(c *NativeChoice) { c.imageSuite = "wrong" },
+				"legacy":        func(c *NativeChoice) { c.legacySource = !c.legacySource },
+			} {
+				t.Run(name, func(t *testing.T) {
+					wrong := append([]NativeChoice(nil), auxiliary...)
+					change(&wrong[0])
+					if _, err := legacyNodeAddonWheelRecipe(string(auxCanonical), base, main, wrong); err == nil {
+						t.Fatal("changed full primary identity accepted for wheel acquisition")
+					}
+				})
+			}
+			wrongPoetry := append([]NativeChoice(nil), auxiliary...)
+			wrongPoetry[1].Line = "2.2.0"
+			if _, err := legacyNodeAddonWheelRecipe(string(auxCanonical), base, main, wrongPoetry); err == nil {
+				t.Fatal("different Poetry closure accepted")
+			}
+			if _, err := legacyNodeAddonWheelRecipe(string(canonical), base, main, main); err == nil {
+				t.Fatal("original selected Node16 compiler input still accepted for wheel acquisition")
 			}
 		})
 	}
