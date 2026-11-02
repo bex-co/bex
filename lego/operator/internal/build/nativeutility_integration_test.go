@@ -69,6 +69,7 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 	if commonImage != "" {
 		addCommonDefaultProofFiles(t, files)
 	}
+	resolver := NewDockerHubResolver()
 	for _, tc := range nativeUtilityCases(commonImage, pythonImage) {
 		t.Run(tc.name, func(t *testing.T) {
 			nativeSuppliedBases = nil
@@ -94,7 +95,7 @@ func TestNativeUtilityGeneratedImages(t *testing.T) {
 				env = nil // Genuine creation-date default: no primary version signal.
 			}
 			bundle, dockerfile, source := writeResolveFixture(t, o, env, files)
-			choices, err := ResolveNativeBuildAt(tc.created, tc.runtime, bundle, dockerfile, source)
+			choices, err := ResolveNativeBuildExact(t.Context(), resolver, tc.created, tc.runtime, bundle, dockerfile, source)
 			must(t, err)
 			recipe, err := os.ReadFile(dockerfile)
 			must(t, err)
