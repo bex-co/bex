@@ -1000,6 +1000,8 @@ class ProfileRoutingControls(unittest.TestCase):
                 actual += re.findall(r'nativeRubyQualificationCase\{name: "([^"]+)",', raw)
                 self.assertIn('name: "ruby" + strings.ReplaceAll(line.line, ".", "")', raw)
             elif profile == "elixir":
+                # Only the case table is a route; unit tests reuse the struct.
+                raw = raw.split("func commonElixirCases()", 1)[1].split("\nfunc ", 1)[0]
                 actual = ["elixir-" + line for line in table_lines("nativeElixirRuntime")]
                 actual += re.findall(r'commonElixirCase\{name: "([^"]+)",', raw)
                 self.assertIn('name: "elixir-" + line.line', raw)
