@@ -38,7 +38,7 @@ Classified by what each job can touch — secrets, `environment:` gates, and wri
 
 Ordering rule: **production first** — a not-yet-labeled pool only queues its jobs, so bringing `runner-bex-production` up first unblocks main-branch deploys before PR traffic resumes; there is no window where a job runs on the wrong pool.
 
-1. **Pool sizing on the single operator host** (`.pm/DO_NOT_DO.md` `#RUNNER-HOSTS`): keep each runner container in exactly one pool — today 7× `runner-bex-ci`, 3× `runner-bex-production`.
+1. **Pool sizing on the single operator host** (`.pm/DO_NOT_DO.md` `#RUNNER-HOSTS`): keep each runner container in exactly one pool — today 7× `runner-bex-ci`, 2× `runner-bex-build` (since 2026-11-02, w6/m155), 3× `runner-bex-production`.
 2. **Configure durable registration** in the runner source. Production must use `RUNNER_GROUP=bex-production` and include `bex-production` in `RUNNER_LABELS`; CI must use `RUNNER_GROUP=bex-ci` and include `bex-ci`. Never include both pool labels on one runner. Preserve the existing `self-hosted`, `Linux`, `ARM64`, and organization compatibility labels.
 3. **Apply both compose services** after checking for active jobs: `docker compose up -d --build runner-bex-production runner-bex-ci`. This also starts the emulation prerequisite. Never print `docker compose config` with real credentials; the configuration test uses a dummy token.
 4. **Verify:** push (or re-run a queued run) and confirm placement per job:

@@ -76,7 +76,7 @@ jobs:
   build:
     needs: matrix
     if: github.ref == 'refs/heads/main' && needs.matrix.outputs.publish == 'true'
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: [self-hosted, Linux, ARM64, bex-build]
     permissions:
       contents: read
       packages: write

@@ -82,7 +82,7 @@ A compromised `bex-production` runner process can read every secret GitHub injec
 
 ## Finding 6 (low) — ARM64 runner fleet
 
-All jobs target the `[self-hosted, Linux, ARM64]` labels plus their `bex-ci` or `bex-production` pool label. Jobs queue until an operator-registered ARM64 runner carrying the selected pool label is online.
+All jobs target the `[self-hosted, Linux, ARM64]` labels plus their `bex-ci`, `bex-production` or (since 2026-11-02, w6/m155) `bex-build` pool label. `bex-build` is the main-only image-publication pool: GITHUB_TOKEN write scopes only, no secrets or environments (ADR019 § Decision 5). Jobs queue until an operator-registered ARM64 runner carrying the selected pool label is online.
 
 **Accepted.**
 
