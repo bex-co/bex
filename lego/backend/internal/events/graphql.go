@@ -65,6 +65,62 @@ var triggerGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// endReasonIDGQLType, failureReasonGQLType and endReasonGQLType are Render's
+// buildDeployEndReason on deploy_ended / build_ended (w8/m146).
+var endReasonIDGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BuildDeployEndReasonId",
+	Fields: graphql.Fields{
+		"id": gqlutil.StrField(func(r EndReasonID) any { return r.ID }),
+	},
+})
+
+var oomKilledGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "OomKilled",
+	Fields: graphql.Fields{
+		"memoryLimit": gqlutil.StrField(func(o OOMKilledInfo) any { return o.MemoryLimit }),
+	},
+})
+
+var failureReasonGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "FailureReason",
+	Fields: graphql.Fields{
+		"earlyExit":       gqlutil.BoolField(func(f FailureReason) any { return f.EarlyExit }),
+		"evicted":         gqlutil.BoolField(func(f FailureReason) any { return f.Evicted }),
+		"nonZeroExit":     gqlutil.IntField(func(f FailureReason) any { return f.NonZeroExit }),
+		"timedOutSeconds": gqlutil.IntField(func(f FailureReason) any { return f.TimedOutSeconds }),
+		"oomKilled": &graphql.Field{Type: oomKilledGQLType, Resolve: gqlutil.Field(func(f FailureReason) any {
+			if f.OOMKilled == nil {
+				return nil
+			}
+			return *f.OOMKilled
+		})},
+	},
+})
+
+func endReasonIDField(get func(EndReason) *EndReasonID) *graphql.Field {
+	return &graphql.Field{Type: endReasonIDGQLType, Resolve: gqlutil.Field(func(r EndReason) any {
+		if id := get(r); id != nil {
+			return *id
+		}
+		return nil
+	})}
+}
+
+var endReasonGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BuildDeployEndReason",
+	Fields: graphql.Fields{
+		"buildFailed": endReasonIDField(func(r EndReason) *EndReasonID { return r.BuildFailed }),
+		"newBuild":    endReasonIDField(func(r EndReason) *EndReasonID { return r.NewBuild }),
+		"newDeploy":   endReasonIDField(func(r EndReason) *EndReasonID { return r.NewDeploy }),
+		"failure": &graphql.Field{Type: failureReasonGQLType, Resolve: gqlutil.Field(func(r EndReason) any {
+			if r.Failure == nil {
+				return nil
+			}
+			return *r.Failure
+		})},
+	},
+})
+
 // eventDetailsGQLType is the per-type payload, flattened: a field is null for a
 // type that does not define it (GraphQL has no ergonomic union-per-type here, and
 // a client selects only the fields its type needs anyway).
@@ -125,6 +181,13 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// container exit status beside reasonCode non_zero_exit / oom_killed.
 		"cronJobRunId": gqlutil.StrField(func(d Details) any { return d.CronJobRunID }),
 		"exitCode":     gqlutil.IntField(func(d Details) any { return d.ExitCode }),
+		// deploy_ended / build_ended (w8/m146): Render's buildDeployEndReason.
+		"reason": &graphql.Field{Type: endReasonGQLType, Resolve: gqlutil.Field(func(d Details) any {
+			if d.EndReason == nil {
+				return nil
+			}
+			return *d.EndReason
+		})},
 		// postgres_cluster_leader_changed (w2/m171): the new primary, Render's leaderId.
 		"leaderId": gqlutil.StrField(func(d Details) any { return d.LeaderID }),
 		"trigger": &graphql.Field{Type: triggerGQLType, Resolve: gqlutil.Field(func(d Details) any {

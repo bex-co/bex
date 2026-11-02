@@ -855,7 +855,7 @@ func (m *memStore) ListOpenDeploys(_ context.Context) ([]Deploy, error) {
 	return out, nil
 }
 
-func (m *memStore) TransitionDeploy(_ context.Context, id, status string, ran RanImage, failureReason, _, cancelReason string, startedAt *time.Time) (bool, error) {
+func (m *memStore) TransitionDeploy(_ context.Context, id, status string, ran RanImage, failureReason, _, cancelReason string, startedAt *time.Time, _ ...DeployEnd) (bool, error) {
 	m.mu.Lock()
 	defer m.mu.Unlock()
 	d, ok := m.deploys[id]

@@ -121,6 +121,10 @@ func TestFirstDeployRolloutDeadlineSettlesFailedCrashLoop(t *testing.T) {
 	if ready == nil || ready.Reason != "CrashLoopBackOff" || !strings.Contains(ready.Message, "restarting") {
 		t.Fatalf("Ready = %+v, want CrashLoopBackOff diagnosis preserved for the deploy row", ready)
 	}
+	// w8/m146: the deadline and the container's exit are both on record.
+	if f := stored.Status.RolloutFailure; f == nil || f.TimedOutSeconds != rolloutBudgetSeconds || f.ExitCode == nil || *f.ExitCode != 127 {
+		t.Fatalf("rolloutFailure = %+v, want the %ds budget and exit 127", f, rolloutBudgetSeconds)
+	}
 }
 
 func TestFirstDeployRolloutDeadlineSettlesFailedImagePull(t *testing.T) {
@@ -555,6 +559,10 @@ func TestPermanentStartupCrashSettlesBeforeRolloutDeadline(t *testing.T) {
 			if rollout == nil || rollout.Status != metav1.ConditionFalse || rollout.Reason != "CrashLoopBackOff" ||
 				!strings.Contains(rollout.Message, "last exit code 3") || rollout.ObservedGeneration != 3 {
 				t.Fatalf("crash not settled: %+v", rollout)
+			}
+			// w8/m146: the structured exit rides with the verdict, release-attributed.
+			if f := stored.Status.RolloutFailure; f == nil || f.ExitCode == nil || *f.ExitCode != 3 || f.OOMKilled || f.TimedOutSeconds != 0 || f.Generation != 3 {
+				t.Fatalf("rolloutFailure = %+v, want exit 3 before any deadline for release 3", f)
 			}
 			if stored.Status.Phase != appv1alpha1.PhaseRunning || stored.Status.ActiveRevision != "old" {
 				t.Fatalf("prior release changed: %+v", stored.Status)

@@ -72,18 +72,20 @@ func TestCronJobRunEndedCarriesRendersReasonObject(t *testing.T) {
 	}
 }
 
-// Only cron run events carry a cronJobRunId, and only cron_job_run_ended a
-// reason: other event types never grow either, even from a fact row that
-// happens to carry the columns.
-func TestReasonObjectIsOnlyOnCronJobRunEnded(t *testing.T) {
+// Only cron run events carry a cronJobRunId and the cron run reason: another
+// event type never grows either from a fact row that happens to carry the
+// columns. build_ended has a reason of its own (w8/m146) — Render's
+// buildDeployEndReason, empty here — never the cron run's.
+func TestCronRunReasonIsOnlyOnCronJobRunEnded(t *testing.T) {
 	exit := int32(1)
 	row := store.ServiceEventRow{
 		Key: "deploy:dep-1:build_ended", Source: store.EventSourceFact, FactType: TypeBuildEnded,
 		FactStatus: store.EventStatusFailed, ReasonCode: store.EventReasonNonZeroExit, FactExitCode: &exit, FactRunID: "crr-x",
 	}
 	d := toRenderEvent(view(row, "srv-1")).Details
-	if d.Reason != nil || d.CronJobRunID != "" {
-		t.Fatalf("build_ended details = %+v, want no cron run reason or id", d)
+	reason, ok := d.Reason.(*EndReason)
+	if !ok || *reason != (EndReason{}) || d.CronJobRunID != "" {
+		t.Fatalf("build_ended details = %+v, want an empty build reason and no cron run id", d)
 	}
 }
 

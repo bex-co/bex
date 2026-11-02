@@ -969,7 +969,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 			startedAt = failedPreDeployStart(cur, open)
 		}
 	}
-	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, ran, failureReason, failureCode, cancelReason, startedAt)
+	ok, err := r.Store.TransitionDeploy(ctx, open.ID, status, ran, failureReason, failureCode, cancelReason, startedAt, deployCloseEnd(cur, open, status))
 	if err != nil {
 		log.Printf("controlplane: transition deploy %s to %s: %v", open.ID, status, err)
 		return
@@ -1049,6 +1049,17 @@ func deployCloseFailureReason(cur *appv1alpha1.App, open Deploy, status string, 
 		}
 	}
 	return "", ""
+}
+
+// deployCloseEnd is the structured cause an update_failed close records
+// (w8/m146): the operator's status.rolloutFailure for this row's own release
+// generation, never another release's.
+func deployCloseEnd(app *appv1alpha1.App, open Deploy, status string) DeployEnd {
+	f := app.Status.RolloutFailure
+	if status != DeployUpdateFailed || f == nil || open.Generation == 0 || f.Generation != open.Generation {
+		return DeployEnd{}
+	}
+	return DeployEnd{ExitCode: f.ExitCode, OOMKilled: f.OOMKilled, TimedOutSeconds: f.TimedOutSeconds}
 }
 
 // recordedRolloutFailure reads the operator's durable verdict on a failed

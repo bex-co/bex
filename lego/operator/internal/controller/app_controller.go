@@ -3729,6 +3729,7 @@ func (r *AppReconciler) settleFailedRollout(ctx context.Context, app *appv1alpha
 		}
 	}
 	msg = terminalStallMessage(reason, msg)
+	rolloutFailureFor(app).TimedOutSeconds = rolloutBudgetSeconds
 	if stopsFirstRelease(app, dep) {
 		// The release-scoped verdict stops the release (failedFirstRelease); the
 		// settle below writes it with Ready in one status update.
@@ -3777,6 +3778,8 @@ func lastStallDiagnosis(app *appv1alpha1.App) (string, string) {
 // template (w1/m172), so the phase it settles describes pods that can serve; with
 // nothing to restore from it settles Failed rather than a Running no pod backs.
 func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, reason, msg string) (ctrl.Result, error) {
+	// Read before a restore puts the Deployment back on the served release.
+	r.recordRolloutExit(ctx, app, dep)
 	if releaseHasServed(app) {
 		// The diagnosis outlives the Ready condition, which now describes the
 		// serving release: ConditionRollout carries it to the failed deploy
@@ -3810,6 +3813,52 @@ func (r *AppReconciler) settleFailedRolloutMessage(ctx context.Context, app *app
 		return ctrl.Result{}, err
 	}
 	return ctrl.Result{}, nil
+}
+
+// recordRolloutExit records how the app container last ended in a pod of the
+// failing release (w8/m146): its exit code, and whether the kernel killed it
+// for memory. Nothing is recorded when no current-revision container exited
+// non-zero; an earlier record for the same release (a deadline) is kept.
+func (r *AppReconciler) recordRolloutExit(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) {
+	revision := dep.Spec.Template.Labels[labelRevision]
+	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 || revision == "" {
+		return
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return
+	}
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		if pod.DeletionTimestamp != nil || pod.Labels[labelRevision] != revision {
+			continue
+		}
+		for _, cs := range pod.Status.ContainerStatuses {
+			if cs.Name != appContainerName {
+				continue
+			}
+			t := cs.LastTerminationState.Terminated
+			if t == nil {
+				t = cs.State.Terminated
+			}
+			if t != nil && (t.ExitCode != 0 || t.Reason == "OOMKilled") {
+				failure := rolloutFailureFor(app)
+				exit := t.ExitCode
+				failure.ExitCode, failure.OOMKilled = &exit, t.Reason == "OOMKilled"
+				return
+			}
+		}
+	}
+}
+
+// rolloutFailureFor is the current release's RolloutFailure record, started
+// fresh when the recorded one belongs to an earlier release.
+func rolloutFailureFor(app *appv1alpha1.App) *appv1alpha1.RolloutFailureStatus {
+	if f := app.Status.RolloutFailure; f != nil && f.Generation == releaseGeneration(app) {
+		return f
+	}
+	app.Status.RolloutFailure = &appv1alpha1.RolloutFailureStatus{Generation: releaseGeneration(app)}
+	return app.Status.RolloutFailure
 }
 
 // failedRolloutSummary names a failed rollout in the serving release's Ready

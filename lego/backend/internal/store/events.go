@@ -101,6 +101,9 @@ type ServiceEventRow struct {
 	// ClearCache records a deploy opened with clearCache=clear (w4/413);
 	// the started phase only.
 	ClearCache bool
+	// End is the structured cause of a failed rollout (w8/m146); the ended
+	// phase of a deploy row only, attached after the page is read.
+	End DeployEnd
 	// Deployed image URI; empty for non-deploy rows. (w1/m47)
 	Image string
 	// Commit ID (git revision); empty for non-deploy rows. (w1/m47)
@@ -499,7 +502,45 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, ownerWorkspace s
 		}
 		out = append(out, r)
 	}
-	return out, rows.Err()
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return out, s.attachDeployEnds(ctx, out)
+}
+
+// attachDeployEnds fills End on a page's ended deploy rows from their deploy
+// rows in one read (w8/m146), so the feed's UNION projection stays as it is.
+func (s *PGStore) attachDeployEnds(ctx context.Context, rows []ServiceEventRow) error {
+	at := map[string][]int{}
+	for i, r := range rows {
+		if r.Source == EventSourceDeploy && r.Phase == EventPhaseEnded && r.DeployID != "" {
+			at[r.DeployID] = append(at[r.DeployID], i)
+		}
+	}
+	if len(at) == 0 {
+		return nil
+	}
+	ids := make([]string, 0, len(at))
+	for id := range at {
+		ids = append(ids, id)
+	}
+	found, err := s.Pool.Query(ctx,
+		`SELECT id, end_exit_code, end_oom_killed, end_timed_out_seconds FROM deploys WHERE id = ANY($1)`, ids)
+	if err != nil {
+		return fmt.Errorf("read deploy end reasons: %w", err)
+	}
+	defer found.Close()
+	for found.Next() {
+		var id string
+		var end DeployEnd
+		if err := found.Scan(&id, &end.ExitCode, &end.OOMKilled, &end.TimedOutSeconds); err != nil {
+			return fmt.Errorf("read deploy end reasons: %w", err)
+		}
+		for _, i := range at[id] {
+			rows[i].End = end
+		}
+	}
+	return found.Err()
 }
 
 // getServiceEventQuery starts from service_event_index's owner/event primary
@@ -648,6 +689,11 @@ func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID stri
 	if err != nil {
 		return ServiceEventLookup{}, classify("service event", err)
 	}
+	one := []ServiceEventRow{out.Event}
+	if err := s.attachDeployEnds(ctx, one); err != nil {
+		return ServiceEventLookup{}, err
+	}
+	out.Event = one[0]
 	return out, nil
 }
 
