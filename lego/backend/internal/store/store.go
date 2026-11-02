@@ -2563,6 +2563,10 @@ type RanImage struct {
 	Ref              string
 	SHA              string
 	DetectedHTTPPort int32
+	// Commit is the git commit a source build checked out, read from the
+	// image's revision label. It only fills a row whose trigger-time lookup
+	// recorded none (w4/458); a recorded commit is never overwritten.
+	Commit string
 }
 
 func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran RanImage, failureReason, failureCode, cancelReason string, startedAt *time.Time) (bool, error) {
@@ -2608,6 +2612,7 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 			     resolved_image = COALESCE(NULLIF($3, ''), resolved_image),
 			     image_sha = COALESCE(NULLIF($16, ''), image_sha),
 			     detected_http_port = CASE WHEN $2 = $11 AND $17 > 0 THEN $17 ELSE detected_http_port END,
+			     commit = CASE WHEN $2 = $11 AND commit = '' THEN $18::text ELSE commit END,
 			     failure_reason = COALESCE(NULLIF($6, ''), failure_reason),
 			     cancel_reason = COALESCE(NULLIF($8, ''), cancel_reason),
 			     -- A terminal row's story is failure_reason/cancel_reason; the
@@ -2627,7 +2632,7 @@ func (s *PGStore) TransitionDeploy(ctx context.Context, id, status string, ran R
 			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
 			 WHERE id = $1`,
 			id, status, ran.Ref, stampNow, terminal, failureReason, DeployQueued, cancelReason, startedAt,
-			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled, DeployPreDeployFailed, PreDeployFailed, ran.SHA, ran.DetectedHTTPPort); err != nil {
+			PreDeployRunning, DeployLive, PreDeploySucceeded, PreDeployCanceled, DeployPreDeployFailed, PreDeployFailed, ran.SHA, ran.DetectedHTTPPort, ran.Commit); err != nil {
 			return err
 		}
 		if status == DeployLive {

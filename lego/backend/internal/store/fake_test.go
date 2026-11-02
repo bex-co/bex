@@ -879,6 +879,9 @@ func (m *memStore) TransitionDeploy(_ context.Context, id, status string, ran Ra
 	if ran.Ref != "" {
 		d.ResolvedImage = ran.Ref
 	}
+	if status == DeployLive && d.Commit == "" {
+		d.Commit = ran.Commit
+	}
 	if ran.SHA != "" {
 		d.ImageSHA = ran.SHA
 	}
