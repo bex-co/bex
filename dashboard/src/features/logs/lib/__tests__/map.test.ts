@@ -107,6 +107,42 @@ describe("toLogLine / toLogLines", () => {
   });
 });
 
+describe("newest-first pages keep the chronological tie order (w4/457)", () => {
+  // A failed deploy's terminal lines share one instant; the API returns a
+  // backward page in exact reverse of the forward reading.
+  const T = "2026-11-02T04:05:52.074359Z";
+  const page = [
+    gqlEntry({
+      id: "d",
+      timestamp: T,
+      message: "the Dockerfile does not exist",
+    }),
+    gqlEntry({ id: "c", timestamp: T, message: "* branch -> FETCH_HEAD" }),
+    gqlEntry({ id: "b", timestamp: T, message: "From https://github.com/x" }),
+    gqlEntry({ id: "a", timestamp: T, message: "Build failed: clone step:" }),
+    gqlEntry({
+      id: "z",
+      timestamp: "2026-11-02T04:05:00.000Z",
+      message: "earlier",
+    }),
+  ];
+  it("renders equal stamps oldest-first and distinct stamps by time", () => {
+    const merged = mergeLogLines(toLogLines(page), []);
+    expect(merged.map((l) => l.message)).toEqual([
+      "earlier",
+      "Build failed: clone step:",
+      "From https://github.com/x",
+      "* branch -> FETCH_HEAD",
+      "the Dockerfile does not exist",
+    ]);
+  });
+  it("keeps live arrivals after history at an equal stamp", () => {
+    const live = [fromRenderLog({ id: "l", message: "live", timestamp: T })];
+    const merged = mergeLogLines(toLogLines(page), live);
+    expect(merged[merged.length - 1].message).toBe("live");
+  });
+});
+
 describe("fromRenderLog (SSE frame)", () => {
   it("reads instance/type out of the Render labels array", () => {
     const line = fromRenderLog({

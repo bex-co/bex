@@ -3582,6 +3582,9 @@ func (r *AppReconciler) reportRolloutProgress(ctx context.Context, app *appv1alp
 	if reason, msg := r.permanentRolloutPullFailure(ctx, dep, time.Now()); msg != "" {
 		return r.settleFailedRolloutMessage(ctx, app, dep, reason, msg)
 	}
+	if reason, msg := r.permanentRolloutCrash(ctx, dep, port); msg != "" {
+		return r.settleFailedRolloutMessage(ctx, app, dep, reason, msg)
+	}
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	notReadyReason := reasonRolloutProgressing
 	if fullyReady := r.currentRevisionFullyReady(ctx, dep, replicas); fullyReady {
@@ -3840,6 +3843,86 @@ func (r *AppReconciler) permanentRolloutPullFailure(ctx context.Context, dep *ap
 	}
 	return "", ""
 }
+
+// crashSettleRestarts is the restart floor before a startup crash is final:
+// two restarts is the kubelet's own CrashLoopBackOff verdict (10 s, then 20 s
+// back-off), about 30-40 s after the first start (w4/454).
+const crashSettleRestarts = 2
+
+// permanentRolloutCrash settles a rollout whose start command exits during
+// startup, as Render fails a deploy whose process "exited or crashed during
+// startup", instead of holding update_in_progress for the whole progress
+// deadline. Only current-revision, non-deleting pods count, and every such
+// pod must be crash-looping on its app container with a restart floor and
+// must never have been Ready: a process that served and later died is a
+// runtime failure that keeps the deadline path, as does a running pod whose
+// health check fails (ADR004's three-timer contract). Never-Ready is read
+// from the pod's Ready condition, which the kubelet stamps False at first
+// sync and moves only when the pod actually turned Ready.
+// CreateContainerConfigError is not settled: a linked datastore's Secret can
+// legitimately arrive later.
+func (r *AppReconciler) permanentRolloutCrash(ctx context.Context, dep *appsv1.Deployment, port int) (string, string) {
+	revision := dep.Spec.Template.Labels[labelRevision]
+	if dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 || revision == "" {
+		return "", ""
+	}
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return "", ""
+	}
+	msg := ""
+	for i := range pods.Items {
+		pod := &pods.Items[i]
+		if pod.DeletionTimestamp != nil || pod.Labels[labelRevision] != revision {
+			continue
+		}
+		crashed := false
+		for _, cs := range pod.Status.ContainerStatuses {
+			if cs.Name != appContainerName {
+				continue
+			}
+			crashed = cs.State.Waiting != nil && cs.State.Waiting.Reason == crashLoopBackOff &&
+				cs.RestartCount >= crashSettleRestarts && !podEverReady(pod)
+			if crashed && msg == "" {
+				msg = crashLoopMessage(cs, port)
+			}
+		}
+		if !crashed {
+			return "", ""
+		}
+	}
+	if msg == "" {
+		return "", ""
+	}
+	return crashLoopBackOff, msg
+}
+
+// podEverReady reports whether the pod may ever have been Ready: its Ready
+// condition is True, or it flipped to False well after scheduling. A pod that
+// never started keeps the condition's first-sync stamp, within seconds of
+// being scheduled.
+func podEverReady(pod *corev1.Pod) bool {
+	var scheduled, ready *corev1.PodCondition
+	for i := range pod.Status.Conditions {
+		switch c := &pod.Status.Conditions[i]; c.Type {
+		case corev1.PodScheduled:
+			scheduled = c
+		case corev1.PodReady:
+			ready = c
+		}
+	}
+	if ready == nil || ready.Status == corev1.ConditionTrue {
+		return ready != nil
+	}
+	if scheduled == nil {
+		return false
+	}
+	return ready.LastTransitionTime.Sub(scheduled.LastTransitionTime.Time) > neverReadyFirstSyncSlack
+}
+
+// neverReadyFirstSyncSlack bounds how long after scheduling the kubelet's
+// first status sync may stamp Ready=False.
+const neverReadyFirstSyncSlack = 30 * time.Second
 
 // deploymentRolloutReady follows the Deployment controller's rollout-complete
 // shape. ReadyReplicas alone is insufficient: during a failed rolling update,
@@ -5703,20 +5786,7 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 			}
 			switch w.Reason {
 			case crashLoopBackOff:
-				exit := ""
-				if t := cs.LastTerminationState.Terminated; t != nil {
-					if t.Reason == runtimeStartError {
-						return crashLoopBackOff, startErrorMessage(t.Message)
-					}
-					exit = fmt.Sprintf(" (last exit code %d)", t.ExitCode)
-				}
-				msg := fmt.Sprintf(
-					"container exited shortly after start and is restarting repeatedly%s — check the service logs for the crash output.", exit)
-				if port > 0 {
-					msg += fmt.Sprintf(
-						" If the crash is a port bind: the process must listen on $PORT (%d).", port)
-				}
-				return crashLoopBackOff, msg
+				return crashLoopBackOff, crashLoopMessage(cs, port)
 			case imagePullBackOff, "ErrImagePull":
 				return imagePullBackOff, appv1alpha1.ImagePullStallWaiting + ": " + w.Message
 			case reasonInvalidImageName:
@@ -5753,6 +5823,26 @@ func (r *AppReconciler) stuckPodMessage(ctx context.Context, dep *appsv1.Deploym
 	// keeps failing (w4/m112). Diagnose it last, so a pod that is both
 	// crash-looping and unready still reports the crash — the stronger signal.
 	return probeStallMessage(pods.Items)
+}
+
+// crashLoopMessage words a crash-looping container's diagnosis; the Ready
+// condition while the rollout is in flight and the terminal deploy reason
+// (permanentRolloutCrash) are the same text.
+func crashLoopMessage(cs corev1.ContainerStatus, port int) string {
+	exit := ""
+	if t := cs.LastTerminationState.Terminated; t != nil {
+		if t.Reason == runtimeStartError {
+			return startErrorMessage(t.Message)
+		}
+		exit = fmt.Sprintf(" (last exit code %d)", t.ExitCode)
+	}
+	msg := fmt.Sprintf(
+		"container exited shortly after start and is restarting repeatedly%s — check the service logs for the crash output.", exit)
+	if port > 0 {
+		msg += fmt.Sprintf(
+			" If the crash is a port bind: the process must listen on $PORT (%d).", port)
+	}
+	return msg
 }
 
 // pendingStallGrace and containerCreatingStallAfter keep a merely slow start

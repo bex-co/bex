@@ -99,12 +99,18 @@ export function toLogLine(e: GraphQLLogEntry): LogLine {
 }
 
 // toLogLines maps the GraphQL envelope's `logs` array, dropping nullable holes.
+// The dashboard never sets `direction`, so every page arrives newest-first
+// (w8/m116). The result is returned oldest-first so that lines sharing one
+// instant (a failed deploy's synthesized terminal lines all carry the deploy's
+// finish time) keep the API's chronological tie order through mergeLogLines'
+// stable sort, which keeps source order for equal stamps (w4/457).
 export function toLogLines(
   entries: NonNullable<LogsQuery["logs"]>["logs"] | undefined,
 ): LogLine[] {
   return (entries ?? [])
     .filter((e): e is GraphQLLogEntry => e != null)
-    .map(toLogLine);
+    .map(toLogLine)
+    .reverse();
 }
 
 // renderLog is bex-api's REST/SSE log object (internal/logs/render.go): id +
