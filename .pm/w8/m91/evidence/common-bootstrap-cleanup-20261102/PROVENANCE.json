@@ -1,0 +1,129 @@
+{
+  "V1": {
+    "cleanup": "Three direct groups absent as recorded; V1 TMP/HOME deliberately retained privately, not published.",
+    "expected_old_RED_controls": "Both passed their expected-red predicates against exact old helper; retained full raw stdout/stderr/process/results. Not repeated by V2.",
+    "full161": "159 PASS, 2 FAIL under blanket write-deny harness. Two original Bash here-document failures; actual denied filesystem path unknown. No project/test predicate repaired."
+  },
+  "V2": {
+    "V2_TMP_HOME_gone": true,
+    "canonical_actions_guard_exit": 0,
+    "configured_actionlint_exit": 0,
+    "direct_groups": [
+      5245,
+      5835,
+      5836
+    ],
+    "full161": "161 PASS, no skip/error/failure; actual suite38.143s; command38.51693829102442s",
+    "minimum_physical_free_bytes": 21744951296,
+    "peak_measured_owned_runtime_bytes": 211708,
+    "pending_pgids": [],
+    "policy": "allow-default normal OS temporary I/O; readonly protected roots; nonloopback outbound denied. Own cap does not measure every OS-default temp file. No global process absence claim.",
+    "source_unchanged_recorded": true,
+    "whole_seconds": 40.54239954194054
+  },
+  "actual_commit": "f30c874fc6ab226a9f9177d8356d2776fdde53b5",
+  "base": "7e5a327eeb093a11317979629dce1bb384277064",
+  "destination": ".pm/w8/m91/evidence/common-bootstrap-cleanup-20261102",
+  "failed93": {
+    "artifact": "Metadata only; ZIP body was never downloaded or hash-verified.",
+    "cleanup": "setup-buildx skipped; unknown buildx command. Old builder absence unproved; failed remains failed. Exact auth logout/removal was declared success.",
+    "full_log": {
+      "bytes": 39550,
+      "mode": "0o644",
+      "sha256": "a4ca5197b62d99ab0eecedc7e33bf7527c7fbb2592a02654883cfbd8d0eb8ddf"
+    },
+    "initial_bindings": "Terminal run/jobs/artifact metadata supersedes prior nonterminal inert binding. No old preparation expectations are accepted as observed outputs.",
+    "job": 125372650762,
+    "pulls": "Three180s exit124 with all six stdout/stderr streams empty; direct children reaped/groups absent. Underlying stall UNKNOWN.",
+    "run": 41468087341,
+    "source": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77"
+  },
+  "host_tools": {
+    "actionlint": {
+      "bytes": 5813330,
+      "mode": "0o555",
+      "path": "/opt/homebrew/Cellar/actionlint/1.7.12/bin/actionlint",
+      "sha256": "0bb6a3ba245f823147f0580dd72679dfa7c389262ffdbb88c749fb808a1db25f"
+    },
+    "bash": {
+      "bytes": 1293840,
+      "mode": "0o555",
+      "path": "/bin/bash",
+      "sha256": "fde343ee184953c1fa1185abddeaa8be61c6acbebae4eb54db5d6b55b09a5755"
+    },
+    "python": {
+      "bytes": 52448,
+      "mode": "0o755",
+      "path": "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/bin/python3.14",
+      "sha256": "cbf84109626aa1013bbe408fbb9590bd0f1c1548f038b2221c6b8b87de26ca43"
+    },
+    "reaper": {
+      "bytes": 22064,
+      "mode": "0o644",
+      "path": "/private/tmp/bex-w8-node14-local-pilot-v4-source-20261101-bop3sbht/run_pilot.py",
+      "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03"
+    }
+  },
+  "local_twin": "569f634caa4ad9543951c20f68af34f41a1d2552",
+  "old_helper": {
+    "body_in_archive": false,
+    "git_commit": "7e5a327eeb093a11317979629dce1bb384277064",
+    "identity": {
+      "bytes": 67266,
+      "mode": "0o644",
+      "sha256": "ce5fb6d2fe6a4a3f203823a48f24785a93685c027f920c6f648d4fdb13f5d163"
+    },
+    "path": ".github/scripts/native-common-qualify.py"
+  },
+  "open": "Fresh full current-source AMD64 utility baseline, required family qualification, candidate admission, production adoption and original28 hosted acceptance remain open. No mandatory additional ARM64 runtime gate is added.",
+  "reaper": {
+    "bytes": 22064,
+    "mode": "0o644",
+    "path": "/private/tmp/bex-w8-node14-local-pilot-v4-source-20261101-bop3sbht/run_pilot.py",
+    "sha256": "e158acde2c44aac290d09f109ddf4f3bf2ca93dc660161dd326fb3ad7cc72c03"
+  },
+  "run95": "Root UI receipt and screenshot are separate original observations: selected input DOM and run-ID/source binding versus screenshot-visible queue/title/source. No CI success or artifact acceptance.",
+  "scope": "PRIVATE publication proposal; original evidence is unchanged. No execution, API call, repository/PM edits, credential read or artifact body download was performed for publication.",
+  "source3": [
+    {
+      "bytes": 73862,
+      "mode": "0o644",
+      "path": ".github/scripts/native-common-qualify.py",
+      "sha256": "4d7398692be4de5a18648dbc41a3058fd838b6c316ac4b00f31fa557cbeeb894"
+    },
+    {
+      "bytes": 157030,
+      "mode": "0o644",
+      "path": ".github/scripts/test_native_oci_common_qualification.py",
+      "sha256": "8f396b4e9499c7b84c77e528322c1a5a3106d0de5b8c23323abacba1d0ef63f6"
+    },
+    {
+      "bytes": 22566,
+      "mode": "0o644",
+      "path": ".github/workflows/native-common-image.yml",
+      "sha256": "3b6df3079be9527775c59b80c03106cc49773e80a5f2a073059a135a7de7e879"
+    }
+  ],
+  "source_archiving": "Three final applied source files + their diffs only. No 301/640-source body views, original fixture bodies, shared cache, generated credential/config data or ZIP artifact bodies.",
+  "source_binding": "Exact frozen tested/applied bytes, also committed at actual f30c874. The original 7e5 source observations ended before Root applied the fix; no assertion main stayed at that preimage afterward.",
+  "tree": "dc1f6f107a825257f3c7aeaa0ee26d9f1e5f0342",
+  "unpublished_app_plan": {
+    "identity": {
+      "bytes": 266022,
+      "mode": "0o644",
+      "sha256": "f80bdb2494448917af0db8c8978e75297e47430da3c9108151396b0057d039ca"
+    },
+    "path": "/private/tmp/bex-w8-bootstrap-cleanup-ci-ship-20261102-p41_7c8_/APPPLAN.json",
+    "reason": "Omits duplicated source-content entries; actual parent/tree/commit/source metadata are retained in SHIPPED/APPLIED and exact source3 archive."
+  },
+  "views": {
+    "base_commit": "7e5a327eeb093a11317979629dce1bb384277064",
+    "files_per_view": 640,
+    "manifests": [
+      "checks-v1/VIEW-GIT-PREIMAGES.json",
+      "checks-v1/OLD-VIEW-MANIFEST.json",
+      "checks-v1/NEW-VIEW-MANIFEST.json"
+    ],
+    "overlay_rule": "Both views start from the recorded immutable 7e5 Git blobs/modes. Old-view overlays tests/workflow but retains exact old helper; new-view overlays all three final files. Manifest mappings preserve all omissions; view bodies are not copied."
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "at": "2026-11-02T16:59:42.210274+00:00",
+  "scope": "Root reviewed and copied actual offline audit/static6ea proof metadata only; currentbaseline/catalog/contract pending",
+  "copyplan_sha256": "6841cc368b69ca8ad8d632864c0b4f949e31a85c59aafe0ffcacf9fc28130028",
+  "payloads": 12,
+  "members_verified": 141,
+  "original_member_bytes_verified": 2510140,
+  "all7_prior_frozen_payloads_byte_exact": true,
+  "all_regular_members_full_bytes_size_mode_and_gzip_mtime0_verified": true,
+  "runtime_count": "35 manifested files =34execution outputs+1Rootreview, includedonce",
+  "README_may_be_edited_or_formatted": true,
+  "actual_catalog": null,
+  "actual_contract": null
+}

@@ -1,0 +1,1189 @@
+{
+  "executed-source.tar.gz": [
+    {
+      "member": "source/audit_dated10.py",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/source/audit_dated10.py",
+        "bytes": 2729,
+        "sha256": "50bdd317c2980249ddbc9c9c9d5d99923036dfa9483ac3496c5a99b453d36d9f",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "source/donor14213.py",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/source/donor14213.py",
+        "bytes": 15400,
+        "sha256": "236c1642f6bcd54ea5f3efa868b2974b5982df611b6c1bad3f844a2abee05f49",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "source/exact14212.py",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/source/exact14212.py",
+        "bytes": 14152,
+        "sha256": "8275820b6d10aac339a54327904fea82171070b40c3805af02fb4c8e0dc852aa",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "source/legacy-inputs.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/source/legacy-inputs.json",
+        "bytes": 1002,
+        "sha256": "a4cd25975059390942371b4fa027909b2733b636ccb6e7ac6fe2edfe0b072e80",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "source/legacy.py",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/source/legacy.py",
+        "bytes": 13762,
+        "sha256": "3902b58b4607fc73bf30830e0c7c47799fa46c5bf2ce4edf0a26f8dee65a6b63",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "source/modern.py",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/source/modern.py",
+        "bytes": 11177,
+        "sha256": "a06e8e456950611ea7fe3c0a6b2412eea7eee484c7686d77401001448f3c1491",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "source/node-inputs.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/source/node-inputs.json",
+        "bytes": 1445,
+        "sha256": "d9733d8bc2858ec7e42b732c4a3a001790faacec5923e2452d5b4ae342552591",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "source/node_cases.py",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/source/node_cases.py",
+        "bytes": 11318,
+        "sha256": "2397e3359097926bccfdc077da4293c84c11077aadb2c54de3db86a2d61e3c42",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "source/reviewed_reaper.py",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/source/reviewed_reaper.py",
+        "bytes": 1069,
+        "sha256": "85565abdae33b3f8296dee8dc77f549a9a9efd96c52fc75b0fe524989e0514d8",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "source/run_audit.py",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/source/run_audit.py",
+        "bytes": 8562,
+        "sha256": "be6574f1878aa90542fa42455770aa527f938cc48bec785097eb820495e1a0fa",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "source/test_adapter.py",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/source/test_adapter.py",
+        "bytes": 3771,
+        "sha256": "4ac181dd6aac361a68d0a85a8b97d929e71c489b6fb810edb2666fcdd33cc859",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "binding/SOURCE-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/SOURCE-MANIFEST.json",
+        "bytes": 1403,
+        "sha256": "8137894c60e6a94c9f798d00f286ebe0a34fd3d5ed31803d54ea66f667036d8f",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "binding/READONLY-INPUTS.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/READONLY-INPUTS.json",
+        "bytes": 350001,
+        "sha256": "b8dbfc9968b15bdb421ffd3a86c869df079a45f092f6ed9296033530bbf4d332",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "binding/PLAN.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/PLAN.json",
+        "bytes": 4710,
+        "sha256": "1680dfec4190ceb6f2a4b2c1b5176a29a375547c7e2b22bfd22a052e279bf046",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "binding/RECEIPT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/RECEIPT.json",
+        "bytes": 1924,
+        "sha256": "61b062ca9ed84507fb2f2c46cf1dd7744a3681350b0b1f91c11056966ddb6876",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "binding/MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/MANIFEST.json",
+        "bytes": 6295,
+        "sha256": "6798973e52b3e18bfee0b1362eaf1dbc54305d8affbcfd60d7b012a32bf8c76d",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "binding/ROOT-EXECUTION-APPROVAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/ROOT-EXECUTION-APPROVAL.json",
+        "bytes": 968,
+        "sha256": "bcf70b9eee77dbecc8783c0239d850f065c1bed0ff59ddf2f7c6110d99775ce4",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "binding/REUSE-PRESERVATION.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/REUSE-PRESERVATION.json",
+        "bytes": 4876,
+        "sha256": "7ae8d3a44e3c428e4ec4bea912915d093406f316eb5a90b6ae6c80575086c455",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "binding/NODE-PURE-BLOCK-DERIVATION.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/NODE-PURE-BLOCK-DERIVATION.json",
+        "bytes": 1250,
+        "sha256": "189f3bd88da1260ccd0d4a81167848c23d5e9a73d1b03af86718c66a0967cc89",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "binding/V2-CORRECTION.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/V2-CORRECTION.json",
+        "bytes": 2298,
+        "sha256": "bd88f5bbcae5c6f9e1345cd416ff3b0a6ae4a0d117274ffd64e4c7e9c0971154",
+        "mode": "0644"
+      }
+    }
+  ],
+  "actual-execution.tar.gz": [
+    {
+      "member": "runtime/ROOT-ACTUAL-CONTROLLER-REVIEW.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/ROOT-ACTUAL-CONTROLLER-REVIEW.json",
+        "bytes": 674,
+        "sha256": "d720ccbb2cbf16ec58966cb53d0573750217b95b4711e49f70a38bd38da87d21",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/INPUTS-AFTER.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/INPUTS-AFTER.json",
+        "bytes": 350001,
+        "sha256": "b8dbfc9968b15bdb421ffd3a86c869df079a45f092f6ed9296033530bbf4d332",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/RESULT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/RESULT.json",
+        "bytes": 3175,
+        "sha256": "8e952df7b6d518f7ba0aaac50631eb3ecf51806697d00694f06efd32cdf08bc0",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/SOURCE-AFTER.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/SOURCE-AFTER.json",
+        "bytes": 1403,
+        "sha256": "afe15eccc7996bae3cd22bd35b559dc55454488f47835ec00eccdb6c5fb6f13b",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/adapter-controls-PROCESS.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/adapter-controls-PROCESS.json",
+        "bytes": 493,
+        "sha256": "964c93e7638c41455072d08a6015246a44aa964530adaf11d91a5fdd65457184",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/adapter-controls-RESULT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/adapter-controls-RESULT.json",
+        "bytes": 1081,
+        "sha256": "a788ed4120c0f136c0912c735d7fcfc48977c672be906d9e4cc225c0f118962e",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/adapter-controls.stderr",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/adapter-controls.stderr",
+        "bytes": 724,
+        "sha256": "00f8a07cba305823eb9916dbe7844421781f2080fc5731f8b3202164610e37d7",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/adapter-controls.stdout",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/adapter-controls.stdout",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/BATCH-CONTENT-RESULT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/BATCH-CONTENT-RESULT.json",
+        "bytes": 6010,
+        "sha256": "1f7121085fabc07651cecbda0842553f786463dda2e2b11afabcb5f984a5e8f6",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/donor14213/AUDIT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/donor14213/AUDIT.json",
+        "bytes": 3761,
+        "sha256": "18c49f474b0deab1f01786ec9ade64a9eed8b2459cce9bfa4d25820ec5bcfdf6",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/donor14213-STEP.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/donor14213-STEP.json",
+        "bytes": 1043,
+        "sha256": "2488f37b91498fadd05dfcdb6dd58de720ef18aa2f2f4e53f6a90f14979abba2",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/donor14213.stderr",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/donor14213.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/donor14213.stdout",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/donor14213.stdout",
+        "bytes": 202,
+        "sha256": "9ec2f1ba58ee758886d7bb5d54d9c8ad4cd73f7403dcf4e3930ba098cfbe8b49",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/exact14212-primary/AUDIT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/exact14212-primary/AUDIT.json",
+        "bytes": 5294,
+        "sha256": "b73bc00ccea6b558cd506eb649a7a447b1a7dab9045a974f1687f1c4bc98c163",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/exact14212-primary/INPUT-CUSTODY.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/exact14212-primary/INPUT-CUSTODY.json",
+        "bytes": 142720,
+        "sha256": "e161445b3625bc83c3b828b97e3ec5e6cca8b40ff3996057888f5a485130d36e",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/exact14212-primary-STEP.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/exact14212-primary-STEP.json",
+        "bytes": 1075,
+        "sha256": "d45d578bbf7062231b9b75f052f9f0580637e24547859cd7f1554424abe5428b",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/exact14212-primary.stderr",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/exact14212-primary.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/exact14212-primary.stdout",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/exact14212-primary.stdout",
+        "bytes": 181,
+        "sha256": "5afd513a322f641a6afb6dbdc76a495f4b3150c36b3250e7f52af87e84959a19",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/legacy37-amd/REVIEW.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/legacy37-amd/REVIEW.json",
+        "bytes": 2588,
+        "sha256": "778f7fd00a685fa33f5d8cd09a5e871661f2e93676f37077da12c7b4dc12ee40",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/legacy37-amd-STEP.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/legacy37-amd-STEP.json",
+        "bytes": 1048,
+        "sha256": "f5236e746af60b55dbdacaec549656421416b4df9d81e3e79ca33f8a4a8e4779",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/legacy37-amd.stderr",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/legacy37-amd.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/legacy37-amd.stdout",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/legacy37-amd.stdout",
+        "bytes": 215,
+        "sha256": "c98a4f5e4438c5ef5b14b3147e97b5e59fdcd8a32804b203d4ba6b70a5aae46d",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/modern-five/REVIEW.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/modern-five/REVIEW.json",
+        "bytes": 5297,
+        "sha256": "6a7539d7219f00b04a0b2675371c0b12cfb4dc3f57b2e77cc8e3638e147629e8",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/modern-five-STEP.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/modern-five-STEP.json",
+        "bytes": 1044,
+        "sha256": "f667c167ed6427b9caf15a0082073cfb9a176525906629ae2787e8548465c375",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/modern-five.stderr",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/modern-five.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/modern-five.stdout",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/modern-five.stdout",
+        "bytes": 281,
+        "sha256": "34c8952e0fefba040aca83ca342358a72dd414afe0c60ca82470d68bff0fcd0f",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/node22-node26/REPORT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/node22-node26/REPORT.json",
+        "bytes": 37196,
+        "sha256": "a5dabe30a34da68247440726d4659443fe6b49b0b7b6d29afe25756f3252e11d",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/node22-node26-STEP.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/node22-node26-STEP.json",
+        "bytes": 1059,
+        "sha256": "b1b31c2eb9ff74a014b594a374ee087093784a8847052a467ad96d3b5a5044c3",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/node22-node26.stderr",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/node22-node26.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/audit/node22-node26.stdout",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/audit/node22-node26.stdout",
+        "bytes": 25558,
+        "sha256": "2f3bfe1481eedca6626c8d54b72718c06a6844af8b2eca6ced798bf393616587",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/dated10-audit-PROCESS.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/dated10-audit-PROCESS.json",
+        "bytes": 758,
+        "sha256": "50b841660487935fc002d8c2a1b5a772403265c3212cee088279410ed26d3e12",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/dated10-audit-RESULT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/dated10-audit-RESULT.json",
+        "bytes": 1341,
+        "sha256": "432bcb48d22c9010c2effa54bcb52b78d00904b6f2e007d233e71c5e537df2bf",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/dated10-audit.stderr",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/dated10-audit.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/evidence/dated10-audit.stdout",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/dated10-audit.stdout",
+        "bytes": 5100,
+        "sha256": "953a400d87b45a9222c5d648bf7ebece69592613a231985d02994cf800fd1975",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "runtime/offline.sb",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/offline.sb",
+        "bytes": 204,
+        "sha256": "c117465ed114f357201a092c62de7c9bc681fdab21736aacff1fc45e02cb1cab",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "outer/ACTUAL-EXECUTION-RECEIPT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-actual-20261102-lo7pah9l/ACTUAL-EXECUTION-RECEIPT.json",
+        "bytes": 1750,
+        "sha256": "934deab9ff5b27533c58043c623d9a77de7116062862e02ebe114b541cffa7d9",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "outer/INPUT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-actual-20261102-lo7pah9l/INPUT.json",
+        "bytes": 816,
+        "sha256": "9d78a8b14149df60efe843d1141663d36a9f63345eb6934f2e78da120d05bb9d",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "outer/MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-actual-20261102-lo7pah9l/MANIFEST.json",
+        "bytes": 894,
+        "sha256": "f0ed263a87980365f31be3c197a7d0b6eb3d3dde15d2d177b0a26ae6be595300",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "outer/RUNTIME-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-actual-20261102-lo7pah9l/RUNTIME-MANIFEST.json",
+        "bytes": 6087,
+        "sha256": "33b3e036aa60b0280460170fcb553ddbff79875a48d86f7f811a744c22a9fc18",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "outer/TOOL-EXIT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-actual-20261102-lo7pah9l/TOOL-EXIT.json",
+        "bytes": 834,
+        "sha256": "882557a76fdfa9af6c841e71ded5874dfee01a71adbcab8a836c55e053e50ab2",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "outer/outer.stderr",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-actual-20261102-lo7pah9l/outer.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "outer/outer.stdout",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-offline-audit-actual-20261102-lo7pah9l/outer.stdout",
+        "bytes": 2573,
+        "sha256": "e95a9c417e137660307871daba9b7215eaba9e0e0be17ac1cb6dc7ecb37b51a5",
+        "mode": "0644"
+      }
+    }
+  ],
+  "carrier-normalization.tar.gz": [
+    {
+      "member": "CARRIER-FACTS.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/CARRIER-FACTS.json",
+        "bytes": 7935,
+        "sha256": "74a3919b940f8e240aee6dc9600c342b582784525a8c16e5303c346d3a8f6243",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "NORMALIZATION-INDEX.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/NORMALIZATION-INDEX.json",
+        "bytes": 35088,
+        "sha256": "03b61229b77cf71832aa7bf2a75ea74dfbc8a9a963d0a9c50373b75eb02bf4e1",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "README.md",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/README.md",
+        "bytes": 2709,
+        "sha256": "9722efa4445e65f146d9c42a9d6a4802c68510e308118391098260dcc1d1d7aa",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "ROOT-CONTROLLER-ADMISSION-REFERENCE.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/ROOT-CONTROLLER-ADMISSION-REFERENCE.json",
+        "bytes": 884,
+        "sha256": "901262b477e0fe41263287dbf4e5111d5f045cff8597204ffdc9c24c9384ae51",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "STRUCTURAL-LINKAGE-NOT-BINDER-EXECUTION.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/STRUCTURAL-LINKAGE-NOT-BINDER-EXECUTION.json",
+        "bytes": 564,
+        "sha256": "14f5e57369dd26dfd74d4d1eab00814472aea004387ee1f146a5cfda0a27ea64",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/legacy-python-3.7/BODY-RESULT-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/legacy-python-3.7/BODY-RESULT-PROPOSAL.json",
+        "bytes": 10392,
+        "sha256": "9307d9dd6ebd2eadbefa1111cd66b798e03632a0e727ec8943cab8036d1f5f76",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/legacy-python-3.7/CASE-MAPPING-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/legacy-python-3.7/CASE-MAPPING-PROPOSAL.json",
+        "bytes": 26747,
+        "sha256": "cbb2452ed451354549a1dc5bcc93d6da34fb954864604e17832e1ca811cf60aa",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/legacy-python-3.7/NONIMPACT-REVIEW-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/legacy-python-3.7/NONIMPACT-REVIEW-PROPOSAL.json",
+        "bytes": 5633,
+        "sha256": "8169ab7cda0e0ef842832f8c1bb9b8a98f6041c7a8224b8ac02b8215ed91385f",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/legacy-python-3.7/ORACLE-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/legacy-python-3.7/ORACLE-MANIFEST.json",
+        "bytes": 2465,
+        "sha256": "54b46ba76d6e7e6c51539eb98b6cc509d0b51438cfa69eaa27ab435c5d2f668f",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/legacy-python-3.7/SOURCE-EQUIVALENCE-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/legacy-python-3.7/SOURCE-EQUIVALENCE-PROPOSAL.json",
+        "bytes": 4734,
+        "sha256": "e97113cdd26773dbcdd6e2708e4b35a44188d1518c651e9bf2d430c53864b5a2",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.10/BODY-RESULT-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.10/BODY-RESULT-PROPOSAL.json",
+        "bytes": 10129,
+        "sha256": "dc9f972be6d4adfa922be08e713cab07a74bfc21a116bbd7f472babbf1ea79b3",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.10/CASE-MAPPING-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.10/CASE-MAPPING-PROPOSAL.json",
+        "bytes": 26421,
+        "sha256": "6201b6c8a67d962a0bd6926d5bc88c78f8cea789ff0834a176c3fb535738f672",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.10/NONIMPACT-REVIEW-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.10/NONIMPACT-REVIEW-PROPOSAL.json",
+        "bytes": 5632,
+        "sha256": "75b6faa38c125a63bca0c3b0dab0272b67c1367b540347c2f9795c85e03e9376",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.10/ORACLE-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.10/ORACLE-MANIFEST.json",
+        "bytes": 2464,
+        "sha256": "ce78c99d1b000d542fab6b2eb926bbedb0f3e7aab18c4608528f899477c76a58",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.10/SOURCE-EQUIVALENCE-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.10/SOURCE-EQUIVALENCE-PROPOSAL.json",
+        "bytes": 4736,
+        "sha256": "a4b6486df14ae90ad57ce8b74cca667514f56b852f7e41c3b0fc0c39976d0de8",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.11/BODY-RESULT-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.11/BODY-RESULT-PROPOSAL.json",
+        "bytes": 10129,
+        "sha256": "83939993b1e6ccc523296b1e2826495e0d4fb0bd9e24a5112feca8239b37aad4",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.11/CASE-MAPPING-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.11/CASE-MAPPING-PROPOSAL.json",
+        "bytes": 26421,
+        "sha256": "201cbc2e4cf24e1114a049778ca0ec9183856b1855849350c9bfbfd7edeba623",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.11/NONIMPACT-REVIEW-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.11/NONIMPACT-REVIEW-PROPOSAL.json",
+        "bytes": 5632,
+        "sha256": "da0412ab2e0f5d4b1da3ae5f254380fef8391fd987ec662c4383126d36026b4a",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.11/ORACLE-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.11/ORACLE-MANIFEST.json",
+        "bytes": 2464,
+        "sha256": "d2e4acd90ef83c990c949854131770cd5f2436d7b7253d9fd2d784f7ece42ce1",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.11/SOURCE-EQUIVALENCE-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.11/SOURCE-EQUIVALENCE-PROPOSAL.json",
+        "bytes": 4736,
+        "sha256": "a3894baecb4b885db510573a778470a98ace499dfef43060cba3429968a0e1dc",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.12/BODY-RESULT-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.12/BODY-RESULT-PROPOSAL.json",
+        "bytes": 10129,
+        "sha256": "7d56d20d9fb754ba4fa02d2fecd5c38d380668dae53f68eb63fb629e17796f53",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.12/CASE-MAPPING-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.12/CASE-MAPPING-PROPOSAL.json",
+        "bytes": 26421,
+        "sha256": "502a48def427bf65026447c66c101372be18299f7ad0dd67eebe0b75d518366a",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.12/NONIMPACT-REVIEW-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.12/NONIMPACT-REVIEW-PROPOSAL.json",
+        "bytes": 5632,
+        "sha256": "7f074fac4999e76778909a6d9feb55cf4ff5f9f83f219ed08478629d674599da",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.12/ORACLE-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.12/ORACLE-MANIFEST.json",
+        "bytes": 2464,
+        "sha256": "0375821cd8afab5dd37143b3208477b681941f8eb832b3b20c021e6ff322ea70",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.12/SOURCE-EQUIVALENCE-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.12/SOURCE-EQUIVALENCE-PROPOSAL.json",
+        "bytes": 4736,
+        "sha256": "ae49016b6c8aab0e9e353d501cb6d61f0f0763d41d33a6859bedd03c9011f847",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.14/BODY-RESULT-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.14/BODY-RESULT-PROPOSAL.json",
+        "bytes": 10129,
+        "sha256": "7d71aa2ef5dc10ef2287c480622eb905d7bfc87e4b586026406dbca1f2737d74",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.14/CASE-MAPPING-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.14/CASE-MAPPING-PROPOSAL.json",
+        "bytes": 26421,
+        "sha256": "1b16a007eccc715af00ca46d44b642bfbae7663a65ab1fce2d8b0661cd25c528",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.14/NONIMPACT-REVIEW-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.14/NONIMPACT-REVIEW-PROPOSAL.json",
+        "bytes": 5632,
+        "sha256": "1cd7aa6407c57ed38ef9b25c55816b19326a097b6b4887efce953e6f7248e5bf",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.14/ORACLE-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.14/ORACLE-MANIFEST.json",
+        "bytes": 2464,
+        "sha256": "27e57db56b2f9cfe41d206610220ed84496620c24776bb173a886de571dcbdf5",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.14/SOURCE-EQUIVALENCE-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.14/SOURCE-EQUIVALENCE-PROPOSAL.json",
+        "bytes": 4736,
+        "sha256": "81c8d0f9f076b87898c022a6f3469a7830cbf906fdb31afcf3f737b65395457b",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.9/BODY-RESULT-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.9/BODY-RESULT-PROPOSAL.json",
+        "bytes": 10115,
+        "sha256": "6d24537f7462b9ae5fc91f48de530ac33ce6c3f5ad6fddf00f0d311fa083e0bf",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.9/CASE-MAPPING-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.9/CASE-MAPPING-PROPOSAL.json",
+        "bytes": 26398,
+        "sha256": "85ff87d3ee08b564069d762a09d4f366536c20e053ea2ec3f95e3ab6390e8604",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.9/NONIMPACT-REVIEW-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.9/NONIMPACT-REVIEW-PROPOSAL.json",
+        "bytes": 5630,
+        "sha256": "6c1bfbc231345cc6fd055a239675faa7e6aabb9356e9a063e0351dcb66af26f1",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.9/ORACLE-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.9/ORACLE-MANIFEST.json",
+        "bytes": 2462,
+        "sha256": "1db8000af86121d1b6bc3857b1da0629b0ec1b6b8a02bd96a71b95588f4c6011",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/modern-python-3.9/SOURCE-EQUIVALENCE-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/modern-python-3.9/SOURCE-EQUIVALENCE-PROPOSAL.json",
+        "bytes": 4734,
+        "sha256": "20771ab03d4a1354d9922afe6809d836c61335d192b26c0f52a65f191fde36aa",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-donors-node-exact14212/BODY-RESULT-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-donors-node-exact14212/BODY-RESULT-PROPOSAL.json",
+        "bytes": 9716,
+        "sha256": "7780be24d5445fd229c9009147ffc2814d966f214bc2ff05efc10eaa9c6fdaa1",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-donors-node-exact14212/CASE-MAPPING-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-donors-node-exact14212/CASE-MAPPING-PROPOSAL.json",
+        "bytes": 25460,
+        "sha256": "432573253db4fce0f7d31ad3855d0395adf2ebfffbdd04a5fa8b6f9148796705",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-donors-node-exact14212/NONIMPACT-REVIEW-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-donors-node-exact14212/NONIMPACT-REVIEW-PROPOSAL.json",
+        "bytes": 5476,
+        "sha256": "aa8d7ea20dc8e4cacaf9f0af00a7daa87c49d15c008f87198304ead945e77679",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-donors-node-exact14212/ORACLE-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-donors-node-exact14212/ORACLE-MANIFEST.json",
+        "bytes": 2506,
+        "sha256": "e65e66b755aad64ff91305b0db865c23152066592c8eeb5ad206d4b3e27c2ec7",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-donors-node-exact14212/SOURCE-EQUIVALENCE-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-donors-node-exact14212/SOURCE-EQUIVALENCE-PROPOSAL.json",
+        "bytes": 4532,
+        "sha256": "85e05c242b750021f8b084a6218b200871a52e82f7d4e74f159519f5b7c08bac",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-donors-node-exact14213/BODY-RESULT-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-donors-node-exact14213/BODY-RESULT-PROPOSAL.json",
+        "bytes": 10064,
+        "sha256": "7c69399978d94cbe473713a01ed88bfa7f58abe42baa142d01d1750510e23fbb",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-donors-node-exact14213/CASE-MAPPING-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-donors-node-exact14213/CASE-MAPPING-PROPOSAL.json",
+        "bytes": 26121,
+        "sha256": "8833769dec07213c63b354a6e9c0f4f59b3d25cbb9429bf2dcbfcf1d633ae737",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-donors-node-exact14213/NONIMPACT-REVIEW-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-donors-node-exact14213/NONIMPACT-REVIEW-PROPOSAL.json",
+        "bytes": 5456,
+        "sha256": "682910c3a54ab908347d157330f01b691b60238e9c1b6371e61b88390c9cbf2d",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-donors-node-exact14213/ORACLE-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-donors-node-exact14213/ORACLE-MANIFEST.json",
+        "bytes": 2482,
+        "sha256": "1a3f6de602bff5630445befbd7898f6acb72e6c132e8d88a2ca17bb2d37d8df2",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-donors-node-exact14213/SOURCE-EQUIVALENCE-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-donors-node-exact14213/SOURCE-EQUIVALENCE-PROPOSAL.json",
+        "bytes": 4525,
+        "sha256": "691f8c636a31d7283a8430a4b399bf005c5ebb405732f53f68f1c016da2781c8",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-node-22/BODY-RESULT-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-node-22/BODY-RESULT-PROPOSAL.json",
+        "bytes": 9659,
+        "sha256": "01bd3bd43ea47f998de783bfe65f89419462e01f8b62e990f0fc8f71c933f53a",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-node-22/CASE-MAPPING-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-node-22/CASE-MAPPING-PROPOSAL.json",
+        "bytes": 25296,
+        "sha256": "87aa9cfba2f452f13d2b12fbee35f1ab101426590999f5b2122723d853dcd8e5",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-node-22/NONIMPACT-REVIEW-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-node-22/NONIMPACT-REVIEW-PROPOSAL.json",
+        "bytes": 5390,
+        "sha256": "5277f5949ace97c143ac72a817481e988e7c9fe5780c607ec3a3b24e6a5ead17",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-node-22/ORACLE-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-node-22/ORACLE-MANIFEST.json",
+        "bytes": 2465,
+        "sha256": "d03c9ba135a88d5c2872d317f0beb0a24fb0a22568e9bc475af7782a5ea8e56f",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-node-22/SOURCE-EQUIVALENCE-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-node-22/SOURCE-EQUIVALENCE-PROPOSAL.json",
+        "bytes": 4494,
+        "sha256": "a634f213104b21aaa8f855105e441449a4a6b3a3e940985d810f2d4db20abff8",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-node-26/BODY-RESULT-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-node-26/BODY-RESULT-PROPOSAL.json",
+        "bytes": 9609,
+        "sha256": "01558ab0105e4e0d240cb46c0d6433120c271d21b5cc769eea0b4e96bd0d3b97",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-node-26/CASE-MAPPING-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-node-26/CASE-MAPPING-PROPOSAL.json",
+        "bytes": 25290,
+        "sha256": "308fbb48cb47aca90a12a0889cf5ef89b3fd29ca33edbddd2c43c0764a4d36e7",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-node-26/NONIMPACT-REVIEW-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-node-26/NONIMPACT-REVIEW-PROPOSAL.json",
+        "bytes": 5344,
+        "sha256": "fcc75c0bc5db0adf7f78dfceaaed045fffc75da59663796917705f55579726ca",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-node-26/ORACLE-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-node-26/ORACLE-MANIFEST.json",
+        "bytes": 2465,
+        "sha256": "b0c23fd553315ce6d52b29e2777b0f4d8c1047c61ac2975e29212b1cb37c49ea",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "cases/node-node-26/SOURCE-EQUIVALENCE-PROPOSAL.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/cases/node-node-26/SOURCE-EQUIVALENCE-PROPOSAL.json",
+        "bytes": 4494,
+        "sha256": "b73a118d9e80b3743e6a9788efe1f3e7590c928b3aa79b397187e0ee551515fc",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "prepare_normalization.py",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/prepare_normalization.py",
+        "bytes": 10240,
+        "sha256": "f744f71ad8ba58287164b115205073627f71bab564fbf58be48f0b135c9f7b74",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "prepare_normalization.stderr",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/prepare_normalization.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "prepare_normalization.stdout",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/prepare_normalization.stdout",
+        "bytes": 623,
+        "sha256": "0a871a724c8f850d8d1540f9710f576181ea41e9f60c238e5f2683aa63506fee",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/MANIFEST.json",
+        "bytes": 10545,
+        "sha256": "7fad5d6ce1081be0ca2ec5bd523f1fe119257767a8103642438e7e030654aa19",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "RECEIPT.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/RECEIPT.json",
+        "bytes": 1975,
+        "sha256": "11f2d3ba2018dd8fce6c431af1ed8148f0bfc09caf756369ea066f802fadc979",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "ROOT-CARRIER-NORMALIZATION-ADMISSION.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/ROOT-CARRIER-NORMALIZATION-ADMISSION.json",
+        "bytes": 1208,
+        "sha256": "73726bb32cee71aae43e356f6fee633c2ba414ea1dfb2e43e103893c77219291",
+        "mode": "0644"
+      }
+    }
+  ],
+  "source-inputs-and-extension.tar.gz": [
+    {
+      "member": "TARGET6EA-SOURCE-INPUTS.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/TARGET6EA-SOURCE-INPUTS.json",
+        "bytes": 61237,
+        "sha256": "87e4ad8e4191f90f3bb997b8d435822ab640d47bc48c215ef165e00cfde0be3f",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "ACTUAL9BC-SOURCE-INPUTS.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUAL9BC-SOURCE-INPUTS.json",
+        "bytes": 61424,
+        "sha256": "6d6ce2bec4163d5123cac8aca5abde90295c467fe90e7cd01186a1ffc1a6111e",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "ACTUAL773-SOURCE-INPUTS.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUAL773-SOURCE-INPUTS.json",
+        "bytes": 61419,
+        "sha256": "ce4a625f0652bb9e96bd57df8b41d2a9ba01d1393af4cc14d5f6be0d43e0f5b1",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "ACTUALE6-PLUS-E4E-SOURCE-INPUTS.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUALE6-PLUS-E4E-SOURCE-INPUTS.json",
+        "bytes": 62555,
+        "sha256": "e234596ee9cb96789cf0188602398e7a10e8d466820d3126226e1d0bd7d72609",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "TWO-TEST-SOURCE-EXTENSION.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/TWO-TEST-SOURCE-EXTENSION.json",
+        "bytes": 2692,
+        "sha256": "9932987ce73b397daaa28ff244aed880f26d00db86c64b0401aa0ebb5f41ca3d",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "7AD-6EA-TWO-TEST-REPAIRS.diff",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/7AD-6EA-TWO-TEST-REPAIRS.diff",
+        "bytes": 1937,
+        "sha256": "f4d7443f1e91ccf8b363e7777acbe0d99d71ecbb1359dbe20ca930610d0202e1",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "SOURCE-TABLE-DERIVATION.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/SOURCE-TABLE-DERIVATION.json",
+        "bytes": 1561,
+        "sha256": "d380ec64a8bae8e2b938896f9062ce49f6b61f766b79fac1c3399b23fb48ffcf",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "GIT-READ-RECORDS.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/GIT-READ-RECORDS.json",
+        "bytes": 82597,
+        "sha256": "3cf8a03d0d5d20d2add84d383cb6b1c5fd6ac3459932bdb988caf42380309680",
+        "mode": "0644"
+      }
+    }
+  ]
+}

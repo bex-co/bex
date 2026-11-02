@@ -1,0 +1,299 @@
+{
+  "status": "Reference-only retained original bodies/history; no target body/ZIP/ELF duplicates",
+  "original_body_cases": [
+    {
+      "case_id": "node/node-22",
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "actual_body_manifest": {
+        "path": "/private/tmp/bex-w8-node22-amd-artifact-intake-20261102-5_n1wriw/amd64/extracted/artifact/MANIFEST.json",
+        "bytes": 12807,
+        "sha256": "5399ccdd3fd292647a0bb2112c54ddb48f5c951b1be2cdec048f0478146591b5"
+      },
+      "actual_canonical_recipe": {
+        "path": "/private/tmp/bex-w8-node22-amd-artifact-intake-20261102-5_n1wriw/amd64/extracted/artifact/generated/native-common-node-3184167380/node-22/Dockerfile.canonical",
+        "bytes": 2847,
+        "sha256": "bf941c9c28b69c7ce54f1d6d4cc217b6c83250fc037023aa4e7fc7ff1ee58cd0"
+      },
+      "actual_input_custody": {
+        "path": "/private/tmp/bex-w8-node22-amd-artifact-intake-20261102-5_n1wriw/amd64/extracted/artifact/generated/native-common-node-3184167380/node-22/source-custody.json",
+        "bytes": 1850,
+        "sha256": "c3aaaf93637f9cb8f75e498903137fd10d36989f578d47289ad555cc3b61bdf8"
+      },
+      "source_input_metadata": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUAL9BC-SOURCE-INPUTS.json",
+        "bytes": 61424,
+        "sha256": "6d6ce2bec4163d5123cac8aca5abde90295c467fe90e7cd01186a1ffc1a6111e"
+      },
+      "copy_status": "Reference only; old raw body trees, wheels, original ZIPs and compiler/test ELF not copied"
+    },
+    {
+      "case_id": "node/node-26",
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "actual_body_manifest": {
+        "path": "/private/tmp/bex-w8-node26-amd-artifact-intake-20261102-41yvyg4o/amd64/extracted/artifact/MANIFEST.json",
+        "bytes": 12754,
+        "sha256": "d0f62b2569edfe686f7042363b5c9330024f334dff0cd8cdeb71cb2b86efee38"
+      },
+      "actual_canonical_recipe": {
+        "path": "/private/tmp/bex-w8-node26-amd-artifact-intake-20261102-41yvyg4o/amd64/extracted/artifact/generated/native-common-node-386570466/node-26/Dockerfile.canonical",
+        "bytes": 2820,
+        "sha256": "d1b41ce654f0eb8ce218c4dc7a778e25070897cac0247f111d7a87a4b189687a"
+      },
+      "actual_input_custody": {
+        "path": "/private/tmp/bex-w8-node26-amd-artifact-intake-20261102-41yvyg4o/amd64/extracted/artifact/generated/native-common-node-386570466/node-26/source-custody.json",
+        "bytes": 1850,
+        "sha256": "a37fa73486231f9c18651cc28dbc84e91e55b48a4bdea44233342a7fbfd01401"
+      },
+      "source_input_metadata": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUAL9BC-SOURCE-INPUTS.json",
+        "bytes": 61424,
+        "sha256": "6d6ce2bec4163d5123cac8aca5abde90295c467fe90e7cd01186a1ffc1a6111e"
+      },
+      "copy_status": "Reference only; old raw body trees, wheels, original ZIPs and compiler/test ELF not copied"
+    },
+    {
+      "case_id": "node-donors/node-exact14213",
+      "actual_source": "77307722e157e148ef04b1f77b675a72e0bd9d35",
+      "actual_body_manifest": {
+        "path": "/private/tmp/bex-w8-donor14213-amd-intake-20261102-28wszm9w/amd64/extracted/artifact/MANIFEST.json",
+        "bytes": 13487,
+        "sha256": "16be11bd486f918798e25332b167f6179b24e52a5ba7baba944389fe5a18f23f"
+      },
+      "actual_canonical_recipe": {
+        "path": "/private/tmp/bex-w8-donor14213-amd-intake-20261102-28wszm9w/amd64/extracted/artifact/generated/native-common-node-632147573/node-exact14213/Dockerfile.canonical",
+        "bytes": 4330,
+        "sha256": "f8882058e2825458bb8feb317ea2efd8a3ca7dc2191b2d6b6908fc77bf558e29"
+      },
+      "actual_input_custody": {
+        "path": "/private/tmp/bex-w8-donor14213-amd-intake-20261102-28wszm9w/amd64/extracted/artifact/generated/native-common-node-632147573/node-exact14213/source-custody.json",
+        "bytes": 2649,
+        "sha256": "63a060a40fe1157f594aac31f1914781a27729e5ddff420fe96ac7a5ebb9296d"
+      },
+      "source_input_metadata": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUAL773-SOURCE-INPUTS.json",
+        "bytes": 61419,
+        "sha256": "ce4a625f0652bb9e96bd57df8b41d2a9ba01d1393af4cc14d5f6be0d43e0f5b1"
+      },
+      "copy_status": "Reference only; old raw body trees, wheels, original ZIPs and compiler/test ELF not copied"
+    },
+    {
+      "case_id": "node-donors/node-exact14212",
+      "actual_source": "e6a2386101a78d679f729b7ec0d251373c0aa678",
+      "actual_body_manifest": {
+        "path": "/private/tmp/bex-w8-exact14212-donor-node-exact14212-amd64-1801f2c99e101c2fcb738978/evidence/MANIFEST.json",
+        "bytes": 38378,
+        "sha256": "644d91a900326c579b991234d78f2ae61d3fa7897bf73cd0446edc4911c670bb"
+      },
+      "actual_canonical_recipe": {
+        "path": "/private/tmp/bex-w8-exact14212-donor-node-exact14212-amd64-1801f2c99e101c2fcb738978/evidence/generated/native-common-node-3669795487/node-exact14212/Dockerfile.canonical",
+        "bytes": 4330,
+        "sha256": "6dddfdf0cb7dcde88eae806ac54fdd3ed125ea0cfbbe1cfa0cd2be5a43fc11f6"
+      },
+      "actual_input_custody": {
+        "path": "/private/tmp/bex-w8-exact14212-donor-node-exact14212-amd64-1801f2c99e101c2fcb738978/evidence/generated/native-common-node-3669795487/node-exact14212/source-custody.json",
+        "bytes": 2874,
+        "sha256": "db3735df151992fe34310c50079f3d521967f288b265a34bdf593f9b4481a2ef"
+      },
+      "source_input_metadata": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUALE6-PLUS-E4E-SOURCE-INPUTS.json",
+        "bytes": 62555,
+        "sha256": "e234596ee9cb96789cf0188602398e7a10e8d466820d3126226e1d0bd7d72609"
+      },
+      "copy_status": "Reference only; old raw body trees, wheels, original ZIPs and compiler/test ELF not copied"
+    },
+    {
+      "case_id": "modern-python/3.9",
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "actual_body_manifest": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.9/amd64/extracted/artifact/MANIFEST.json",
+        "bytes": 17771,
+        "sha256": "5e16e50128057ff437e9db58a09f62cd351102b55f93f54d71acce402f865c18"
+      },
+      "actual_canonical_recipe": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.9/amd64/extracted/artifact/generated/native-modern-python-3774205438/3.9.25/Dockerfile.canonical",
+        "bytes": 4554,
+        "sha256": "4902a823015764228c763291bb0cebc1bab44ce480bd30611aa98e72489b7fb7"
+      },
+      "actual_input_custody": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.9/amd64/extracted/artifact/generated/native-modern-python-3774205438/3.9.25/source-custody.json",
+        "bytes": 2286,
+        "sha256": "ea3272a420790d605627e5281bf537e25376114faad5a7ad5926949bacb51200"
+      },
+      "source_input_metadata": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUAL9BC-SOURCE-INPUTS.json",
+        "bytes": 61424,
+        "sha256": "6d6ce2bec4163d5123cac8aca5abde90295c467fe90e7cd01186a1ffc1a6111e"
+      },
+      "copy_status": "Reference only; old raw body trees, wheels, original ZIPs and compiler/test ELF not copied"
+    },
+    {
+      "case_id": "modern-python/3.10",
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "actual_body_manifest": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.10/amd64/extracted/artifact/MANIFEST.json",
+        "bytes": 17852,
+        "sha256": "3bde6894a3a5a8cc37684f7fa72dfac2215d4bcda21a1252b6aab4aceede42d4"
+      },
+      "actual_canonical_recipe": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.10/amd64/extracted/artifact/generated/native-modern-python-3768780311/3.10.22/Dockerfile.canonical",
+        "bytes": 4560,
+        "sha256": "9b47b7cd1a5cea30228238ad25ed060ba6681f7b9d8964f3dd2081bf7d3e93ef"
+      },
+      "actual_input_custody": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.10/amd64/extracted/artifact/generated/native-modern-python-3768780311/3.10.22/source-custody.json",
+        "bytes": 2290,
+        "sha256": "4dc58cd5c0da0715a868bb130c8ad912ee1c50c72fd19384f98005f4ad44e877"
+      },
+      "source_input_metadata": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUAL9BC-SOURCE-INPUTS.json",
+        "bytes": 61424,
+        "sha256": "6d6ce2bec4163d5123cac8aca5abde90295c467fe90e7cd01186a1ffc1a6111e"
+      },
+      "copy_status": "Reference only; old raw body trees, wheels, original ZIPs and compiler/test ELF not copied"
+    },
+    {
+      "case_id": "modern-python/3.11",
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "actual_body_manifest": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.11/amd64/extracted/artifact/MANIFEST.json",
+        "bytes": 17371,
+        "sha256": "b79019c757f8ca36fe8b71c522d6b2ae39e9e5cde4c327b23845f7b29651b179"
+      },
+      "actual_canonical_recipe": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.11/amd64/extracted/artifact/generated/native-modern-python-1589717801/3.11.18/Dockerfile.canonical",
+        "bytes": 4560,
+        "sha256": "0c19d40e2a13a8a6bdd74b8924177eec404a667243c37b1f42bc794a5d6c06ec"
+      },
+      "actual_input_custody": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.11/amd64/extracted/artifact/generated/native-modern-python-1589717801/3.11.18/source-custody.json",
+        "bytes": 2290,
+        "sha256": "a17817e1460ca69c32ac94188fb247fde2be377af2ddf93ee7fb27a79426c67f"
+      },
+      "source_input_metadata": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUAL9BC-SOURCE-INPUTS.json",
+        "bytes": 61424,
+        "sha256": "6d6ce2bec4163d5123cac8aca5abde90295c467fe90e7cd01186a1ffc1a6111e"
+      },
+      "copy_status": "Reference only; old raw body trees, wheels, original ZIPs and compiler/test ELF not copied"
+    },
+    {
+      "case_id": "modern-python/3.12",
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "actual_body_manifest": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.12/amd64/extracted/artifact/MANIFEST.json",
+        "bytes": 16635,
+        "sha256": "7063768ed7b1ff670c62a3305d7e5a33cb240b3f561863cdfcaf1a5aca567001"
+      },
+      "actual_canonical_recipe": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.12/amd64/extracted/artifact/generated/native-modern-python-3583391853/3.12.16/Dockerfile.canonical",
+        "bytes": 4560,
+        "sha256": "da5066bf66cf6a1d72a7575598a36e7e4a83826aedc64e5e84138ae07dc76790"
+      },
+      "actual_input_custody": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.12/amd64/extracted/artifact/generated/native-modern-python-3583391853/3.12.16/source-custody.json",
+        "bytes": 2290,
+        "sha256": "02feebcf5b017150e8a54c4166a3838e65b98ff52bf12bc5cbf51b6a7aa27b85"
+      },
+      "source_input_metadata": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUAL9BC-SOURCE-INPUTS.json",
+        "bytes": 61424,
+        "sha256": "6d6ce2bec4163d5123cac8aca5abde90295c467fe90e7cd01186a1ffc1a6111e"
+      },
+      "copy_status": "Reference only; old raw body trees, wheels, original ZIPs and compiler/test ELF not copied"
+    },
+    {
+      "case_id": "modern-python/3.14",
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "actual_body_manifest": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.14/amd64/extracted/artifact/MANIFEST.json",
+        "bytes": 16614,
+        "sha256": "fd61a6ecc8431cc0fedae68af82e6ab9ea16bb961ff6ec63fc8fda6039118ef2"
+      },
+      "actual_canonical_recipe": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.14/amd64/extracted/artifact/generated/native-modern-python-3849242294/3.14.10/Dockerfile.canonical",
+        "bytes": 4505,
+        "sha256": "6519c36da3c186c5b284be697099ab80a9024b7f52178994c69c6675ddd3edfa"
+      },
+      "actual_input_custody": {
+        "path": "/private/tmp/bex-w8-modern-python-amd64-intake-20261102-ddkxjg7q/3.14/amd64/extracted/artifact/generated/native-modern-python-3849242294/3.14.10/source-custody.json",
+        "bytes": 2290,
+        "sha256": "9b2a9475638d0fe9605e1bd7711923c689e72f15ac6aebf9991295e7ba6d627b"
+      },
+      "source_input_metadata": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUAL9BC-SOURCE-INPUTS.json",
+        "bytes": 61424,
+        "sha256": "6d6ce2bec4163d5123cac8aca5abde90295c467fe90e7cd01186a1ffc1a6111e"
+      },
+      "copy_status": "Reference only; old raw body trees, wheels, original ZIPs and compiler/test ELF not copied"
+    },
+    {
+      "case_id": "legacy-python/3.7",
+      "actual_source": "9bc6a5d10b3f479926180698d60a0cfdf238db9b",
+      "actual_body_manifest": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-amd64/extracted/artifact/MANIFEST.json",
+        "bytes": 17615,
+        "sha256": "5d78438949dd134478d9a15e192f4edda9e94784b6a00a7ba95fe5002fb55b9d"
+      },
+      "actual_canonical_recipe": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-amd64/extracted/artifact/generated/native-legacy-python-1099622288/3.7.17/Dockerfile.canonical",
+        "bytes": 4844,
+        "sha256": "96c859516341ba7649aecd5b28c7a837176abc8d2103c4870cac7ad7e466edd7"
+      },
+      "actual_input_custody": {
+        "path": "/private/tmp/bex-w8-five-dated-intake-preparation-20261102-wsoq2zv2/outputs/legacy-python-3.7-amd64/extracted/artifact/generated/native-legacy-python-1099622288/3.7.17/source-custody.json",
+        "bytes": 2210,
+        "sha256": "0cf0e1e5639d85723e319bfd94719711060e2fec75dfa36f39af663fdf03922b"
+      },
+      "source_input_metadata": {
+        "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/ACTUAL9BC-SOURCE-INPUTS.json",
+        "bytes": 61424,
+        "sha256": "6d6ce2bec4163d5123cac8aca5abde90295c467fe90e7cd01186a1ffc1a6111e"
+      },
+      "copy_status": "Reference only; old raw body trees, wheels, original ZIPs and compiler/test ELF not copied"
+    }
+  ],
+  "unrun_V1_source": {
+    "path": "/private/tmp/bex-w8-dated10-offline-audit-source-20261102-xz3ogsul/MANIFEST.json",
+    "bytes": 5194,
+    "sha256": "5c105a8453f6b9576ddb55c2cf6d8c7b8fb9b66ced747910e8eb94d0cc0bc140",
+    "mode": "0644"
+  },
+  "unrun_V1_receipt": {
+    "path": "/private/tmp/bex-w8-dated10-offline-audit-source-20261102-xz3ogsul/RECEIPT.json",
+    "bytes": 2283,
+    "sha256": "a0754f0064fd83bf2025c8f83c4fcfd355ffe7521999b490d17951919feec688",
+    "mode": "0644"
+  },
+  "reviewed_V2_source": {
+    "path": "/private/tmp/bex-w8-dated10-offline-audit-v2-source-20261102-4qe04fk0/MANIFEST.json",
+    "bytes": 6295,
+    "sha256": "6798973e52b3e18bfee0b1362eaf1dbc54305d8affbcfd60d7b012a32bf8c76d",
+    "mode": "0644"
+  },
+  "prior_7ad_normalization": {
+    "path": "/private/tmp/bex-w8-nativeinit87-source96-normalization-20261102-noipdi4t/MANIFEST.json",
+    "bytes": 2453,
+    "sha256": "0c0b04b357b46ca5b24728cd7059cabdc01a7f98cd490ee978f08b2757d1cd9d",
+    "mode": "0644"
+  },
+  "prior_7ad_Root_admission": {
+    "path": "/private/tmp/bex-w8-nativeinit87-source96-normalization-20261102-noipdi4t/ROOT-NORMALIZATION-ADMISSION.json",
+    "bytes": 1520,
+    "sha256": "576cee770ed49cd95ab91536a201b11b8800edfd0968c128ade276a5b7c83730",
+    "mode": "0644"
+  },
+  "prior_7ad_table": {
+    "path": "/private/tmp/bex-w8-nativeinit87-source96-normalization-20261102-noipdi4t/TARGET7AD-SOURCE-INPUTS.json",
+    "bytes": 61237,
+    "sha256": "7a68e523ba1e5d4ccc1d9d8fbe2d550a10aa369b2092b331de1143b7180129fb",
+    "mode": "0644"
+  },
+  "6ea_preparation_manifest": {
+    "path": "/private/tmp/bex-w8-dated-cases-6ea-source-normalization-20261102-7zeyltxt/MANIFEST.json",
+    "bytes": 13068,
+    "sha256": "a02f1694859f1cab9e6f8173becd59d77fad17c965b681e3101b528800af37e4",
+    "mode": "0644"
+  },
+  "source_nonimpact_admission": null,
+  "future_target_extension": null
+}
