@@ -151,8 +151,8 @@ jobs:
         run: bash scripts/deploy-superseded.test.sh
       - name: Packer plugin pin/verify unit tests
         run: bash scripts/packer-plugin-install.test.sh
-      - name: Terraform rootless installer unit tests
-        run: bash scripts/terraform-install.test.sh
+      - name: HashiCorp rootless installer unit tests
+        run: bash scripts/hashicorp-install.test.sh
       - name: SSH host-key policy unit tests
         run: bash scripts/ssh-hostkey.test.sh
       - name: SSH gateway grant reconciliation unit tests
@@ -190,7 +190,7 @@ jobs:
           scripts/build-toolchain-freshness.sh scripts/build-toolchain-freshness.test.sh
           scripts/ci-schedule-drift.sh scripts/ci-schedule-drift.test.sh
           scripts/image-pin-validate.sh scripts/image-pin-validate.test.sh
-          scripts/terraform-install.sh scripts/terraform-install.test.sh
+          scripts/hashicorp-install.sh scripts/hashicorp-install.test.sh
           scripts/lib/image-digest-exists.sh
           scripts/disk-snapshot-secret.sh scripts/disk-snapshot-secret.test.sh
           scripts/request-logs-liveness.sh
