@@ -1,0 +1,90 @@
+{
+  "at": "2026-11-02T13:36:24.451371+00:00",
+  "status": "ACTUAL_PLAN_MATERIALIZATION_TIMEOUT_UTILITY_NOT_EXECUTED",
+  "run_id": 41449940993,
+  "source": "b067de3c83437c0066cbee428ab50c49f40f5125",
+  "attempt": 1,
+  "branch": "main",
+  "event": "workflow_dispatch",
+  "plan_job": 125292377874,
+  "actual_run_conclusion": "failure",
+  "failed_step": {
+    "name": "materialize only complete candidate evidence packets",
+    "status": "completed",
+    "conclusion": "failure",
+    "number": 4,
+    "started_at": "2026-11-02T13:25:33Z",
+    "completed_at": "2026-11-02T13:28:34Z"
+  },
+  "actual_initial_checkout": {
+    "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+    "status": "completed",
+    "conclusion": "success",
+    "number": 3,
+    "started_at": "2026-11-02T13:25:25Z",
+    "completed_at": "2026-11-02T13:25:33Z"
+  },
+  "actual_exit_code": 124,
+  "actual_failure_timestamp": "2026-11-02T13:28:34.2747578Z",
+  "source_bound_command": "timeout --kill-after=10s 180s git sparse-checkout add --no-cone --stdin < \"$patterns\"",
+  "full_raw_joblog": {
+    "path": "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/job-plan-125292377874.log",
+    "bytes": 22328,
+    "sha256": "487f1fa1043d8a475282d9ca956915f8edd7973f3c2cbfef83ad6ae18320156d"
+  },
+  "raw_run": {
+    "path": "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/run-final.json",
+    "bytes": 12143,
+    "sha256": "b81b32c2621fefd5ead32ac5e83a138734fb96adfee6101949788100b227b067"
+  },
+  "raw_jobs": {
+    "path": "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/jobs-final.json",
+    "bytes": 5625,
+    "sha256": "0f5031fd421c9730d39b23c9b89234965f4ef7e4fc8e63d10728741efa9099c3"
+  },
+  "raw_artifacts": {
+    "path": "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/artifacts-final.json",
+    "bytes": 32,
+    "sha256": "244563f989470892c537c9a4622920af0d228ee4528f7d00c64a06d6cd95856c"
+  },
+  "evidence": "Hydration begins13:25:33.264; GNUtimeout command ends13:28:34.274 exit124. No Gitfatal/HTTPerror/Pythontraceback/BEX_CANDIDATE_GIT_READ_FAILURE diagnostic occurs. Pythonpattern producer evidently completed before sparse-add; exact Gitinternal IO/transport cause remainsUNKNOWN.",
+  "underlying_cause": "UNKNOWN",
+  "strict_selection_validation_executed": false,
+  "AMD_utility_job_executed": false,
+  "publication_and_all_dependents": [
+    {
+      "id": 125303695514,
+      "name": "publish",
+      "conclusion": "skipped"
+    },
+    {
+      "id": 125303696667,
+      "name": "qualify-profile",
+      "conclusion": "skipped"
+    },
+    {
+      "id": 125303697697,
+      "name": "qualify",
+      "conclusion": "skipped"
+    },
+    {
+      "id": 125303698856,
+      "name": "common-arm64-local",
+      "conclusion": "skipped"
+    }
+  ],
+  "artifacts": 0,
+  "one_completed_joblog_fetch": true,
+  "artifact_body_downloads": 0,
+  "CI_mutations": 0,
+  "repo_or_runtime_changes": false,
+  "automatic_fresh88_run_queried_or_changed": false,
+  "current_binding_remains_inert": true,
+  "source301_projection_unchanged": {
+    "path": "/private/tmp/bex-w8-current-b067-0941-utility-binding-20261102-f94gdbfg/EXPECTED-CAPTURED-SOURCE.json",
+    "bytes": 75337,
+    "sha256": "6908b0391f79519aa7ceae1f58b92e1db2e14dc41485d701558af93d5d981f09"
+  },
+  "no_utility_runtime_or_image_regression_verdict": true,
+  "next": "Root reviews a bounded source repair or controlledsame-source retry decision. No automaticrerun/dispatch/pin/artifactsubstitution. Existing shape/all356/current301/fullSBOM/originaloracles unchanged."
+}

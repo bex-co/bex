@@ -1,0 +1,12 @@
+{
+  "outcome": "ROOT_EXACT41_COPY_REVIEWED",
+  "copyplan_sha256": "14aaf9a3c7494d1d3c29102d95d4c68e9f178c8d2c802f74b0c600eb7d705445",
+  "all41regularpayloads_SHA_size_checked_and38originals_fullbytes_equal": true,
+  "frozenbytes": 401075,
+  "actualfailedfullplanlog_read": true,
+  "six_literal_workflow_changes_only_independently_checked": true,
+  "all4actualhostchecks_exit0_andcleanup_source301foreignsum_unchanged": true,
+  "actualutility_execution": 0,
+  "originalfailed89_remainsfailure": true,
+  "currentcandidate_unchanged": "cc39f78a8b9f128babb362e0078007380a1b44b7799394d93b06e5fc52ab7036"
+}

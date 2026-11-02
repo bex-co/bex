@@ -1,0 +1,57 @@
+{
+  "scope": "ACTUAL_FAILED89_CHECKOUT_BUDGET_REPAIR_SOURCE_AND_HOSTCHECKS_ONLY",
+  "at": "2026-11-02T13:43:55.114402+00:00",
+  "failed_run": 41449940993,
+  "failed_source": "b067de3c83437c0066cbee428ab50c49f40f5125",
+  "failed_job": 125292377874,
+  "observed": {
+    "initial_source_checkout_seconds": 8,
+    "hydration_Git_limit_seconds": 180,
+    "hydration_exit": 124,
+    "strict_plan_validation_executed": false,
+    "actual_utility_jobs": 0,
+    "artifacts": 0,
+    "underlying_IO_transport_cause": "UNKNOWN",
+    "no_Git_fatal_HTTP_Python_failure_in_full_rawlog": true
+  },
+  "repair": {
+    "workflow_only": ".github/workflows/native-common-image.yml",
+    "workflow_after": {
+      "bytes": 22380,
+      "sha256": "e5fb4b08d3e400158341788b704c8c653527216c0441b391d2b7f84142fbbc5c"
+    },
+    "all3_steps_minutes_before_after": [
+      5,
+      12
+    ],
+    "all3_Git_seconds_before_after": [
+      180,
+      600
+    ],
+    "kill_after_seconds": 10,
+    "plan_job_minutes_unchanged": 15,
+    "metadata_client_seconds_unchanged": 30,
+    "helper_Go_tests_programs_selectors_proofs_auth_runtime_jobbounds_unchanged": true,
+    "Git_commit_SHA": "NOT_YET_BOUND_IN_THIS_SOURCE_PACKET"
+  },
+  "Root_rationale": "Introduced180s full-packet materialization budget was insufficient in actualrun. Prior broadcheckouts493/523s support bounded600s, with12minstep and15minplan. No claim that underlying IO/network cause has been fixed or that future materialization/utility execution passed.",
+  "Root_actual_checks": {
+    "labels": [
+      "checkout-controls",
+      "workflow-guard",
+      "actionlint-configured",
+      "actions-guard"
+    ],
+    "all4_exit0_groups_absent": true,
+    "seconds": 3.0116848330944777,
+    "minimum_free_bytes": 24550088704,
+    "peak_TMP_bytes": 66788,
+    "own_TMP_gone": true,
+    "source_and_view_unchanged": true
+  },
+  "disposition": "Failed89 result/log preserved, never rerun. Root will ship workflow fix alone and create a new normal same0941 utility run; no child dispatch/action/body/audit/runtime.",
+  "candidate_update": null,
+  "production_adoption_or_successful_utility_baseline_claim": false,
+  "body_views_and_old_artifact_trees_copied": false,
+  "omitted": "640-file check view/source contexts and unrelated old audit/body preps remain private. Only one before/after workflow source and complete small metadata/check logs are included."
+}

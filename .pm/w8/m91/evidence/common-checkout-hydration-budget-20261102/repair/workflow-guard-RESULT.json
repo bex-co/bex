@@ -1,0 +1,25 @@
+{
+  "label": "workflow-guard",
+  "argv": [
+    "/usr/bin/sandbox-exec",
+    "-p",
+    "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+    "/opt/homebrew/bin/python3.14",
+    "-B",
+    "-m",
+    "unittest",
+    "discover",
+    "-s",
+    ".github/scripts",
+    "-p",
+    "test_native_oci_common_qualification.py",
+    "-k",
+    "test_workflow_preserves_complete_amd64_job_before_pilot"
+  ],
+  "exit": 0,
+  "bound": null,
+  "seconds": 0.31327187502756715,
+  "group_absent": true,
+  "stdout_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "stderr_sha256": "fb184ea57734512b1f088f9181209901b9cd46df3eb7eaa2500ea9e48dde20b5"
+}

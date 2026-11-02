@@ -1,0 +1,16 @@
+{
+  "pid": 15795,
+  "pgid": 15795,
+  "argv": [
+    "/usr/bin/sandbox-exec",
+    "-p",
+    "(version 1) (allow default) (deny network-outbound) (allow network-outbound (remote ip \"localhost:*\"))",
+    "/opt/homebrew/bin/actionlint",
+    "-shellcheck=",
+    "-pyflakes=",
+    "-config-file",
+    "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/actionlint.yaml",
+    ".github/workflows/native-common-image.yml"
+  ],
+  "cwd": "/private/tmp/bex-w8-candidate-hydration-budget-20261102-je2m9su0/view"
+}
