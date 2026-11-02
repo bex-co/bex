@@ -1,0 +1,31 @@
+{
+  "image_config_id": "sha256:a547f83ced0f2c9e9ec65befa23433868d86bf17062e9340867778d0c88e5afa",
+  "syft_manifest_digest": "sha256:6c39abaeb3a605e77f9c457dfcfc6914de8111331251b4e7eb88065d55f2e366",
+  "platform": "linux/amd64",
+  "python": "3.14.8",
+  "libbrotli1_versions": [
+    "1.0.9-2+deb12u1"
+  ],
+  "packages": 1212,
+  "custody": {
+    "syft": {
+      "raw_file": "generated.syft.json",
+      "raw_bytes": 31943771,
+      "raw_sha256": "de94e7194f28dbcf51eaf418e3eb13da9db163bbda0cd765779e9a0cb8387e7c",
+      "gzip_file": "generated.syft.json.gz",
+      "gzip_bytes": 5342162,
+      "gzip_sha256": "4c595873d266dff7e62f6962983f92bf056f030870d687dd6b32ac316c04d71e",
+      "roundtrip": true
+    },
+    "spdx": {
+      "raw_file": "generated.spdx.json",
+      "raw_bytes": 32041429,
+      "raw_sha256": "c3d1e6a7cb06cf6efb9688bbc210c78bfd8287b31dd302d87a7e6edf4a03f339",
+      "gzip_file": "generated.spdx.json.gz",
+      "gzip_bytes": 4417164,
+      "gzip_sha256": "97b725da60356364a538907a90fd745eb4f6248c81aa51adebc2ff8e5f5b8c31",
+      "roundtrip": true
+    }
+  },
+  "scope": "actual ephemeral exact-default image; no hosted/adoption claim"
+}

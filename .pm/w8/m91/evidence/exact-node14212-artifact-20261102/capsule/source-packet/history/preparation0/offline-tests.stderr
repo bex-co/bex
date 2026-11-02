@@ -1,0 +1,30 @@
+test_actual_literal_selector_rejects_wrong_selector_row_base_and_duplicates (test_exact_adapter.ExactAdapterControls.test_actual_literal_selector_rejects_wrong_selector_row_base_and_duplicates) ... ok
+test_actual_run_job_and_ref_are_each_mandatory_before_review (test_exact_adapter.ExactAdapterControls.test_actual_run_job_and_ref_are_each_mandatory_before_review) ... ok
+test_actual_shipped_source_preparation_is_not_artifact_verification (test_exact_adapter.ExactAdapterControls.test_actual_shipped_source_preparation_is_not_artifact_verification) ... ok
+test_retained_v11_methods_are_inherited_byte_pinned_and_unreplaced (test_exact_adapter.ExactAdapterControls.test_retained_v11_methods_are_inherited_byte_pinned_and_unreplaced) ... ERROR
+test_review_cli_refuses_unknown_actual_metadata_before_creating_output_or_cache (test_exact_adapter.ExactAdapterControls.test_review_cli_refuses_unknown_actual_metadata_before_creating_output_or_cache) ... ok
+test_selector_reads_immutable_workflow_and_rejects_foreign_requests_or_bytes (test_exact_adapter.ExactAdapterControls.test_selector_reads_immutable_workflow_and_rejects_foreign_requests_or_bytes) ... ok
+test_source_closure_cannot_drop_the_patch_or_change_a_mode (test_exact_adapter.ExactAdapterControls.test_source_closure_cannot_drop_the_patch_or_change_a_mode) ... ok
+test_wrong_plan_source_name_version_workflow_base_and_support_are_rejected (test_exact_adapter.ExactAdapterControls.test_wrong_plan_source_name_version_workflow_base_and_support_are_rejected) ... ok
+
+======================================================================
+ERROR: test_retained_v11_methods_are_inherited_byte_pinned_and_unreplaced (test_exact_adapter.ExactAdapterControls.test_retained_v11_methods_are_inherited_byte_pinned_and_unreplaced)
+----------------------------------------------------------------------
+Traceback (most recent call last):
+  File "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/test_exact_adapter.py", line 114, in test_retained_v11_methods_are_inherited_byte_pinned_and_unreplaced
+    cls = a.review_class(driver, self.plan, REPO, ROOT / 'PLAN-PENDING.json')
+  File "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/exact-node-v11-adapter.py", line 129, in review_class
+    plan_hash = sha(plan_path.read_bytes())
+                    ~~~~~~~~~~~~~~~~~~~~^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 777, in read_bytes
+    with self.open(mode='rb', buffering=0) as f:
+         ~~~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^
+  File "/opt/homebrew/Cellar/python@3.14/3.14.3_1/Frameworks/Python.framework/Versions/3.14/lib/python3.14/pathlib/__init__.py", line 771, in open
+    return io.open(self, mode, buffering, encoding, errors, newline)
+           ~~~~~~~^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+FileNotFoundError: [Errno 2] No such file or directory: '/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/PLAN-PENDING.json'
+
+----------------------------------------------------------------------
+Ran 8 tests in 2.584s
+
+FAILED (errors=1)

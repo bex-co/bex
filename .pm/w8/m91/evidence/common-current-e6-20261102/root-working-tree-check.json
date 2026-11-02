@@ -1,0 +1,13 @@
+{
+  "scope": "Read-only local inventory diagnostic, not CI execution",
+  "strict_physical_inventory": 303,
+  "tracked_expected_inventory": 300,
+  "all_expected_inputs_match": true,
+  "extra_ignored_paths": [
+    "lego/operator/internal/build/testdata/native-elixir-qualification/__pycache__/check.cpython-314.pyc",
+    "lego/operator/internal/build/testdata/native-node-qualification/__pycache__/check.cpython-314.pyc",
+    "lego/operator/internal/build/testdata/native-utilities/__pycache__/original-cases.cpython-314.pyc"
+  ],
+  "action": "left unchanged; existing strict validator passes in clean exact tracked-source view",
+  "clean_validation": "baseline-proposal/VALIDATION.json in frozen private intake; retained public validation record"
+}

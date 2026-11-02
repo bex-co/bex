@@ -1,0 +1,7 @@
+{
+  "exit": 0,
+  "elapsed": 4.194998000049964,
+  "pid": 89023,
+  "group_absent": true,
+  "scope": "metadata only; no Docker/runtime resources"
+}

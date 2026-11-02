@@ -1,0 +1,62 @@
+--- /private/tmp/bex-w8-common0941-final-source-20261101-kxl6d0xc/run_review.py
++++ /private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/run_review.py
+@@ -13,7 +13,7 @@
+ import sys
+ import time
+ 
+-import common499_review as review
++import exact_linux_review as review
+ import linux_cosign as lc
+ 
+ FLOOR=(1<<30)+(128<<20)
+@@ -65,23 +65,23 @@
+     # the worker or any Docker command. Root supplies reviewed exact input SHAs.
+     source_manifest(source_sha)
+     lc.require(re.fullmatch('[a-f0-9]{64}',plan_sha) and lc.sha(plan_path)==plan_sha,'reviewed new plan differs')
+-    plan=json.loads(plan_path.read_bytes());base=review.validate_plan(plan,resources=True)
+-    base.candidate_job(plan,review.rest_projection(plan))
++    plan=json.loads(plan_path.read_bytes());review.validate_plan(plan,resources=True)
++    review.candidate_inputs(plan)
+     root=Path(root)
+-    lc.require(root.is_absolute() and root.parent==Path('/private/tmp') and re.fullmatch('bex-w8-common499-review-[a-z0-9_-]{8,64}',root.name)
++    lc.require(root.is_absolute() and root.parent==Path('/private/tmp') and re.fullmatch('bex-w8-exact14212-review-[a-z0-9_-]{8,64}',root.name)
+         and not root.exists() and not root.is_symlink(),'fresh exact private execution root required')
+     startfree=shutil.disk_usage(root.parent).free;lc.require(startfree>=FLOOR+CAP,'full owned cap plus1GiB128MiB remaining floor does not fit')
+     root.mkdir(mode=0o700);owner=secrets.token_hex(8)
+     for part in ('evidence','cache','tmp','anonymous-docker-config'):(root/part).mkdir(mode=0o700)
+     (root/'anonymous-docker-config/config.json').write_bytes(b'{"auths":{}}\n');(root/'anonymous-docker-config/config.json').chmod(0o600)
+     lc.write(root/'linux-cosign-lifecycle.json',{'owner':owner,'name':lc.owner_name(owner),'pending':False,'state':'registered before worker/resources'})
+-    command=[sys.executable,'-B',str(HERE/'common499_review.py'),'review','--plan',str(plan_path.resolve()),'--repo-root','/Users/tianpan/projects/bex7',
++    command=[sys.executable,'-B',str(HERE/'exact_linux_review.py'),'review','--plan',str(plan_path.resolve()),'--repo-root','/Users/tianpan/projects/bex7',
+         '--output-root',str(root/'evidence'),'--cache-root',str(root/'cache'),'--lifecycle-root',str(root),'--docker-config',str(root/'anonymous-docker-config'),'--owner',owner]
+-    scope={'command':command,'parent_pid':os.getpid(),'candidate_ref':review.REF,'producer':review.SOURCE,'verification':review.SOURCE,'generator':plan['generator_sha'],
++    scope={'command':command,'parent_pid':os.getpid(),'candidate_ref':review.REF,'producer':review.SOURCE,'verification':review.SOURCE,'generator':plan['source_sha'],
+         'source_manifest_sha256':source_sha,'plan_sha256':plan_sha,'start_free_bytes':startfree,'remaining_floor_bytes':FLOOR,'owned_cap_bytes':CAP,
+         'stop_owned_bytes':STOP,'layer_workers':1,'maximum_live_crypto_containers':1,'crypto_memory_bytes':512<<20,
+         'owner':owner,'container_name':lc.owner_name(owner),'sizing_inputs':plan['local_resource_sizing'],
+-        'capacity_semantics':'Operating entry/observation limits, no kernel reservation or future-allocation guarantee; no old56 artifact acceptance.'}
++        'capacity_semantics':'Operating entry/observation limits, no kernel reservation or future-allocation guarantee; no prior supplier acceptance.'}
+     lc.write(root/'SCOPE.json',scope)
+     cancelled={'signal':None};handlers={};p=None;errors=[];reason=None;group=None;cleanup=None;started=time.monotonic();minimum=startfree;peak=0
+     def cancel(signum,frame):cancelled['signal']=signum
+@@ -128,17 +128,17 @@
+     try:final=observation();reason=reason or violation(final)
+     except BaseException as error:final=None;errors.append('final-observer:'+type(error).__name__)
+     if cancelled['signal'] is not None:reason='cancelled-signal-'+str(cancelled['signal'])
+-    matches=list((root/'evidence').glob('native-common-bookworm-*/receipt.json'))
++    matches=list((root/'evidence').glob('native-node-14.21.2-bullseye-*/receipt.json'))
+     receipt=json.loads(matches[0].read_bytes()) if len(matches)==1 else {}
+     try:
+         source_manifest(source_sha);lc.require(lc.sha(plan_path)==plan_sha,'plan changed during review')
+     except BaseException as error:errors.append('final-source:'+type(error).__name__)
+     approved=bool(p is not None and type(p.returncode) is int and p.returncode==0 and not errors and reason is None and group and group['group_absent']
+         and cleanup and cleanup.get('absence_proved') is True and receipt.get('approved_supplier_candidate') is True and receipt.get('ref')==review.REF)
+-    result={'candidate_approved':approved,'ref':review.REF,'producer':review.SOURCE,'verification':review.SOURCE,'generator':plan['generator_sha'],
++    result={'candidate_approved':approved,'ref':review.REF,'producer':review.SOURCE,'verification':review.SOURCE,'generator':plan['source_sha'],
+         'exit':p.returncode if p is not None else None,'stop':reason,'errors':errors,'cancelled_signal':cancelled['signal'],'minimum_free':minimum,
+         'peak_owned_bytes':peak,'final_observation':final,'process_cleanup':group,'container_cleanup':cleanup,'receipt':str(matches[0]) if len(matches)==1 else None,
+-        'scope':'New499 complete supplier review only if all inherited cryptographic/report/blob and source/CI plus owned execution gates pass. No production/generated/phase/hosted authority.'}
++        'scope':'Exact14.21.2 complete supplier review only if all inherited cryptographic/report/blob and source/CI plus owned execution gates pass. No production/generated/phase/hosted authority.'}
+     lc.write(root/'RESULT.json',result)
+     if cancelled['signal'] is not None:
+         result.update(candidate_approved=False,stop='cancelled-signal-'+str(cancelled['signal']),cancelled_signal=cancelled['signal'])

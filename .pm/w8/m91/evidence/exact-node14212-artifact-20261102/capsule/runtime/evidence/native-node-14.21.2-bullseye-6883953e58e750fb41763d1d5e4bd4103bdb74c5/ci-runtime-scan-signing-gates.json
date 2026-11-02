@@ -1,0 +1,36 @@
+{
+  "run_id": "41360577241",
+  "url": "https://github.com/bex-co/bex/actions/runs/41360577241",
+  "run_status": "completed",
+  "run_conclusion": "success",
+  "job_id": 125010454454,
+  "job_url": "https://github.com/bex-co/bex/actions/runs/41360577241/job/125010454454",
+  "job_name": "build (node-14.21.2-bullseye, node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765e...",
+  "job_conclusion": "success",
+  "verified_steps": [
+    "scan amd64 candidate",
+    "scan arm64 candidate",
+    "sign and attest the immutable candidate",
+    "verify real native tool transformations without network on both architectures"
+  ],
+  "primary_build_conclusion": "success",
+  "recovery_selection_conclusion": "success",
+  "actual_metadata_method": "retained completed REST run/fulljobs plus explicitly retained member; no separate job-endpoint fetch or raw CLI claim",
+  "actual_metadata_inputs": {
+    "run": {
+      "path": "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/ci-inputs/run.json",
+      "bytes": 11455,
+      "sha256": "2bc70d0d1ee6323ef3824889f98ca420089814f4b0daa14e197e4bfa1041f2e2"
+    },
+    "jobs": {
+      "path": "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/ci-inputs/jobs.json",
+      "bytes": 7649,
+      "sha256": "9437edbf92ec02da1bc753de3f8d7e2751b3c097f87c3fe7a82600f58dd83ec6"
+    },
+    "job": {
+      "path": "/private/tmp/bex-w8-exact14212-linux-execution-source-20261102-7vVr3rpd/ci-inputs/job-from-full-jobs.json",
+      "bytes": 7583,
+      "sha256": "daed15eaf1ea385615b0d0e1ef6868954f58eea6b2633c4dc9811cc7c1186d97"
+    }
+  }
+}

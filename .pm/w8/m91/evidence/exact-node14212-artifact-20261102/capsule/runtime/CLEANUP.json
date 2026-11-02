@@ -1,0 +1,42 @@
+{
+  "container": {
+    "absence_proved": true,
+    "after": {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-w8-common499-cosign-bc0691bfa23bce98"
+      ],
+      "complete": true,
+      "exit": 1,
+      "stderr": "Error response from daemon: No such container: bex-w8-common499-cosign-bc0691bfa23bce98\n",
+      "stdout": "[]\n"
+    },
+    "before": {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-w8-common499-cosign-bc0691bfa23bce98"
+      ],
+      "complete": true,
+      "exit": 1,
+      "stderr": "Error response from daemon: No such container: bex-w8-common499-cosign-bc0691bfa23bce98\n",
+      "stdout": "[]\n"
+    },
+    "container_id": null,
+    "errors": [],
+    "name": "bex-w8-common499-cosign-bc0691bfa23bce98",
+    "owner": "bc0691bfa23bce98",
+    "remove": null
+  },
+  "errors": [],
+  "group": {
+    "exit": 0,
+    "group_absent": true,
+    "pgid": 3850,
+    "pid": 3850,
+    "reaped": true
+  }
+}

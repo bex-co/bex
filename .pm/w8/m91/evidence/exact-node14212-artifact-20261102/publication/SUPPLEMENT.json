@@ -1,0 +1,26 @@
+{
+  "publisher-job.log": {
+    "bytes": 912890,
+    "sha256": "2dab93ab2153ba620920ea63da93b47c6312aac20198ff215fc8c40f302cdbd9"
+  },
+  "new-utilities-run.json": {
+    "bytes": 11651,
+    "sha256": "4bb5c60d22fec1ad717e589dd0b807e995ff2037080ba800f303a7f752f0ca55"
+  },
+  "job-from-full-jobs.json": {
+    "bytes": 7583,
+    "sha256": "daed15eaf1ea385615b0d0e1ef6868954f58eea6b2633c4dc9811cc7c1186d97"
+  },
+  "run.json": {
+    "bytes": 11455,
+    "sha256": "2bc70d0d1ee6323ef3824889f98ca420089814f4b0daa14e197e4bfa1041f2e2"
+  },
+  "jobs.json": {
+    "bytes": 7649,
+    "sha256": "9437edbf92ec02da1bc753de3f8d7e2751b3c097f87c3fe7a82600f58dd83ec6"
+  },
+  "artifacts.json": {
+    "bytes": 1276,
+    "sha256": "1ad62ca8d7bab6888f19d12103bee4e67f2eacfda2e940d5a0f0b371223b72dd"
+  }
+}

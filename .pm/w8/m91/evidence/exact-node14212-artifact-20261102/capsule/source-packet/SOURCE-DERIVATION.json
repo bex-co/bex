@@ -1,0 +1,37 @@
+{
+  "exact_source_adapter_and2retained_driver_helpers": "byteexact from Root rebound3k2vp4cd; full matrixselector/source30 mandatory",
+  "linux_cosign": "BYTEEXACT from reviewed kxl6d0xc",
+  "strict_verify_command_AST": "exactlyequal kxl6d0xc, including flags/controlargs/3retry predicate/backoff/freshTUF",
+  "inner_command_AST": "exactlyequal kxl6d0xc",
+  "runtime_scope_AST": "exactlyequal except workerfilename",
+  "outer_run_review": "source/read-only CIvalidation hook switches from common rules to exact original30source/matrix path; candidate/source/name/rootglob/workerfilename rebind only. Same lifecycle/bounds/cleanup; no common row/path validators used.",
+  "resource_semantics": "640MiBcap608stop/1GiB128floor/1sec/90min/8MiBparentlog/1layerworker/1Linux512MiBcontainer. Original V11 driver constants/methods unchanged, including stronger2GiB layer free reserve.",
+  "metadata_only_actual_bundle_sizing": "5manifests+referrerindex only; no payload/crypto/body/container commands",
+  "source_manifest": {
+    "exact_linux_review.py": {
+      "bytes": 15017,
+      "sha256": "503dc06841582a1aee2ca8da3c62fb82f25edf64564fd434a591870270cac17e"
+    },
+    "linux_cosign.py": {
+      "bytes": 13213,
+      "sha256": "edf0c3235c1b7ade5d178f364b99b255edad5a0c75c1e01c80c59a5396e1b5be"
+    },
+    "run_review.py": {
+      "bytes": 10212,
+      "sha256": "5585dc89bcf108f46f8c18a3d6cc05868dab541477ca93168f358cdefd535eda"
+    },
+    "exact-node-v11-adapter.py": {
+      "bytes": 10722,
+      "sha256": "eb7a32be7a8f02fd9c629b29190225818020772b5f4920f210998bee8897475f"
+    },
+    "retained/loopx-w8-native-review-v11.py": {
+      "bytes": 43608,
+      "sha256": "ea03d2a9c7a21fde50c0d55f6ead84910c2c431f8c7b52c490624fc5ff8bff85"
+    },
+    "retained/loopx-w8-verify-native-artifact-ranged.py": {
+      "bytes": 40720,
+      "sha256": "ca4a765d547b92f567f7e08149183a8cb094249d544ae594655c92b93d09ae15"
+    }
+  },
+  "actual_REST_job_member": "Original {method,job} wrapper preserved and compared to selected full collection member; never presented as separate job-endpoint fetch."
+}

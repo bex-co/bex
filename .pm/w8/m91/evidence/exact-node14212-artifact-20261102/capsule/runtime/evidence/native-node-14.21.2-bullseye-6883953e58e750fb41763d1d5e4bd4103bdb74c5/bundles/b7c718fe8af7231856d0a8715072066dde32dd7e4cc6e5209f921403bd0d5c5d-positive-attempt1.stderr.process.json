@@ -1,0 +1,431 @@
+{
+  "cleanup": {
+    "absence_proved": true,
+    "after": {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-w8-common499-cosign-bc0691bfa23bce98"
+      ],
+      "complete": true,
+      "exit": 1,
+      "stderr": "Error response from daemon: No such container: bex-w8-common499-cosign-bc0691bfa23bce98\n",
+      "stdout": "[]\n"
+    },
+    "before": {
+      "argv": [
+        "docker",
+        "container",
+        "inspect",
+        "bex-w8-common499-cosign-bc0691bfa23bce98"
+      ],
+      "complete": true,
+      "exit": 0,
+      "stderr": "",
+      "stdout": "[\n    {\n        \"Id\": \"608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21\",\n        \"Created\": \"2026-11-02T01:10:23.481964337Z\",\n        \"Path\": \"/usr/local/bin/cosign\",\n        \"Args\": [\n            \"verify-blob-attestation\",\n            \"--bundle\",\n            \"/bundle.json\",\n            \"--type\",\n            \"https://aquasecurity.github.io/trivy/attestation/vuln/v1\",\n            \"--digest\",\n            \"332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7\",\n            \"--digestAlg\",\n            \"sha256\",\n            \"--certificate-identity\",\n            \"https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main\",\n            \"--certificate-oidc-issuer\",\n            \"https://token.actions.githubusercontent.com\",\n            \"--certificate-github-workflow-sha\",\n            \"6883953e58e750fb41763d1d5e4bd4103bdb74c5\",\n            \"--use-signed-timestamps\",\n            \"--timeout\",\n            \"5m\"\n        ],\n        \"State\": {\n            \"Status\": \"exited\",\n            \"Running\": false,\n            \"Paused\": false,\n            \"Restarting\": false,\n            \"OOMKilled\": false,\n            \"Dead\": false,\n            \"Pid\": 0,\n            \"ExitCode\": 0,\n            \"Error\": \"\",\n            \"StartedAt\": \"2026-11-02T01:10:23.561436961Z\",\n            \"FinishedAt\": \"2026-11-02T01:10:30.549710577Z\"\n        },\n        \"Image\": \"sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4\",\n        \"ResolvConfPath\": \"/var/lib/docker/containers/608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21/resolv.conf\",\n        \"HostnamePath\": \"/var/lib/docker/containers/608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21/hostname\",\n        \"HostsPath\": \"/var/lib/docker/containers/608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21/hosts\",\n        \"LogPath\": \"/var/lib/docker/containers/608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21/608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21-json.log\",\n        \"Name\": \"/bex-w8-common499-cosign-bc0691bfa23bce98\",\n        \"RestartCount\": 0,\n        \"Driver\": \"overlay2\",\n        \"Platform\": \"linux\",\n        \"MountLabel\": \"\",\n        \"ProcessLabel\": \"\",\n        \"AppArmorProfile\": \"\",\n        \"ExecIDs\": null,\n        \"HostConfig\": {\n            \"Binds\": null,\n            \"ContainerIDFile\": \"\",\n            \"LogConfig\": {\n                \"Type\": \"json-file\",\n                \"Config\": {\n                    \"max-file\": \"5\",\n                    \"max-size\": \"20m\"\n                }\n            },\n            \"NetworkMode\": \"bridge\",\n            \"PortBindings\": {},\n            \"RestartPolicy\": {\n                \"Name\": \"no\",\n                \"MaximumRetryCount\": 0\n            },\n            \"AutoRemove\": false,\n            \"VolumeDriver\": \"\",\n            \"VolumesFrom\": null,\n            \"ConsoleSize\": [\n                0,\n                0\n            ],\n            \"CapAdd\": null,\n            \"CapDrop\": [\n                \"ALL\"\n            ],\n            \"CgroupnsMode\": \"private\",\n            \"Dns\": null,\n            \"DnsOptions\": [],\n            \"DnsSearch\": [],\n            \"ExtraHosts\": null,\n            \"GroupAdd\": null,\n            \"IpcMode\": \"private\",\n            \"Cgroup\": \"\",\n            \"Links\": null,\n            \"OomScoreAdj\": 0,\n            \"PidMode\": \"\",\n            \"Privileged\": false,\n            \"PublishAllPorts\": false,\n            \"ReadonlyRootfs\": true,\n            \"SecurityOpt\": [\n                \"no-new-privileges\"\n            ],\n            \"Tmpfs\": {\n                \"/tmp\": \"rw,noexec,nosuid,size=16m\"\n            },\n            \"UTSMode\": \"\",\n            \"UsernsMode\": \"\",\n            \"ShmSize\": 8408530944,\n            \"Runtime\": \"runc\",\n            \"Isolation\": \"\",\n            \"CpuShares\": 0,\n            \"Memory\": 536870912,\n            \"NanoCpus\": 1000000000,\n            \"CgroupParent\": \"\",\n            \"BlkioWeight\": 0,\n            \"BlkioWeightDevice\": [],\n            \"BlkioDeviceReadBps\": [],\n            \"BlkioDeviceWriteBps\": [],\n            \"BlkioDeviceReadIOps\": [],\n            \"BlkioDeviceWriteIOps\": [],\n            \"CpuPeriod\": 0,\n            \"CpuQuota\": 0,\n            \"CpuRealtimePeriod\": 0,\n            \"CpuRealtimeRuntime\": 0,\n            \"CpusetCpus\": \"\",\n            \"CpusetMems\": \"\",\n            \"Devices\": [],\n            \"DeviceCgroupRules\": null,\n            \"DeviceRequests\": null,\n            \"MemoryReservation\": 0,\n            \"MemorySwap\": 1073741824,\n            \"MemorySwappiness\": null,\n            \"OomKillDisable\": null,\n            \"PidsLimit\": 64,\n            \"Ulimits\": null,\n            \"CpuCount\": 0,\n            \"CpuPercent\": 0,\n            \"IOMaximumIOps\": 0,\n            \"IOMaximumBandwidth\": 0,\n            \"Mounts\": [\n                {\n                    \"Type\": \"bind\",\n                    \"Source\": \"/private/tmp/bex-w8-cosign-linux-verified-20261101-iqdmo3bn/cosign-linux-arm64\",\n                    \"Target\": \"/usr/local/bin/cosign\",\n                    \"ReadOnly\": true\n                },\n                {\n                    \"Type\": \"bind\",\n                    \"Source\": \"/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d.bundle.json\",\n                    \"Target\": \"/bundle.json\",\n                    \"ReadOnly\": true\n                },\n                {\n                    \"Type\": \"bind\",\n                    \"Source\": \"/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/cosign-tuf-cache/b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d-positive-attempt1-56whnuel\",\n                    \"Target\": \"/tuf\"\n                },\n                {\n                    \"Type\": \"bind\",\n                    \"Source\": \"/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/anonymous-docker-config\",\n                    \"Target\": \"/docker\",\n                    \"ReadOnly\": true\n                }\n            ],\n            \"MaskedPaths\": [\n                \"/proc/acpi\",\n                \"/proc/asound\",\n                \"/proc/interrupts\",\n                \"/proc/kcore\",\n                \"/proc/keys\",\n                \"/proc/latency_stats\",\n                \"/proc/sched_debug\",\n                \"/proc/scsi\",\n                \"/proc/timer_list\",\n                \"/proc/timer_stats\",\n                \"/sys/devices/virtual/powercap\",\n                \"/sys/firmware\"\n            ],\n            \"ReadonlyPaths\": [\n                \"/proc/bus\",\n                \"/proc/fs\",\n                \"/proc/irq\",\n                \"/proc/sys\",\n                \"/proc/sysrq-trigger\"\n            ]\n        },\n        \"GraphDriver\": {\n            \"Data\": {\n                \"ID\": \"608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21\",\n                \"LowerDir\": \"/var/lib/docker/overlay2/8a182e3fbcc15290ce031d7ae31f22a234ea932baeeee1c0c1b087d4a64b2829-init/diff:/var/lib/docker/overlay2/ede07570786a91d70253d93ce4a604932e5a10026ce330efa7166946a3f625a8/diff\",\n                \"MergedDir\": \"/var/lib/docker/overlay2/8a182e3fbcc15290ce031d7ae31f22a234ea932baeeee1c0c1b087d4a64b2829/merged\",\n                \"UpperDir\": \"/var/lib/docker/overlay2/8a182e3fbcc15290ce031d7ae31f22a234ea932baeeee1c0c1b087d4a64b2829/diff\",\n                \"WorkDir\": \"/var/lib/docker/overlay2/8a182e3fbcc15290ce031d7ae31f22a234ea932baeeee1c0c1b087d4a64b2829/work\"\n            },\n            \"Name\": \"overlay2\"\n        },\n        \"Mounts\": [\n            {\n                \"Type\": \"bind\",\n                \"Source\": \"/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d.bundle.json\",\n                \"Destination\": \"/bundle.json\",\n                \"Mode\": \"\",\n                \"RW\": false,\n                \"Propagation\": \"rprivate\"\n            },\n            {\n                \"Type\": \"bind\",\n                \"Source\": \"/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/anonymous-docker-config\",\n                \"Destination\": \"/docker\",\n                \"Mode\": \"\",\n                \"RW\": false,\n                \"Propagation\": \"rprivate\"\n            },\n            {\n                \"Type\": \"bind\",\n                \"Source\": \"/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/cosign-tuf-cache/b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d-positive-attempt1-56whnuel\",\n                \"Destination\": \"/tuf\",\n                \"Mode\": \"\",\n                \"RW\": true,\n                \"Propagation\": \"rprivate\"\n            },\n            {\n                \"Type\": \"bind\",\n                \"Source\": \"/private/tmp/bex-w8-cosign-linux-verified-20261101-iqdmo3bn/cosign-linux-arm64\",\n                \"Destination\": \"/usr/local/bin/cosign\",\n                \"Mode\": \"\",\n                \"RW\": false,\n                \"Propagation\": \"rprivate\"\n            }\n        ],\n        \"Config\": {\n            \"Hostname\": \"608582c005c2\",\n            \"Domainname\": \"\",\n            \"User\": \"501:20\",\n            \"AttachStdin\": false,\n            \"AttachStdout\": true,\n            \"AttachStderr\": true,\n            \"Tty\": false,\n            \"OpenStdin\": false,\n            \"StdinOnce\": false,\n            \"Env\": [\n                \"XDG_CACHE_HOME=/tuf/cache\",\n                \"GODEBUG=http2client=0\",\n                \"TUF_ROOT=/tuf\",\n                \"DOCKER_CONFIG=/docker\",\n                \"PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin\"\n            ],\n            \"Cmd\": [\n                \"verify-blob-attestation\",\n                \"--bundle\",\n                \"/bundle.json\",\n                \"--type\",\n                \"https://aquasecurity.github.io/trivy/attestation/vuln/v1\",\n                \"--digest\",\n                \"332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7\",\n                \"--digestAlg\",\n                \"sha256\",\n                \"--certificate-identity\",\n                \"https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main\",\n                \"--certificate-oidc-issuer\",\n                \"https://token.actions.githubusercontent.com\",\n                \"--certificate-github-workflow-sha\",\n                \"6883953e58e750fb41763d1d5e4bd4103bdb74c5\",\n                \"--use-signed-timestamps\",\n                \"--timeout\",\n                \"5m\"\n            ],\n            \"Image\": \"sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4\",\n            \"Volumes\": null,\n            \"WorkingDir\": \"/\",\n            \"Entrypoint\": [\n                \"/usr/local/bin/cosign\"\n            ],\n            \"Labels\": {\n                \"bex.w8.owned\": \"bc0691bfa23bce98\"\n            }\n        },\n        \"NetworkSettings\": {\n            \"SandboxID\": \"\",\n            \"SandboxKey\": \"\",\n            \"Ports\": {},\n            \"Networks\": {\n                \"bridge\": {\n                    \"IPAMConfig\": null,\n                    \"Links\": null,\n                    \"Aliases\": null,\n                    \"DriverOpts\": null,\n                    \"GwPriority\": 0,\n                    \"NetworkID\": \"0dbbd4593099855957c1e246093eab955c3e62d90d79a10b7909e717f289eff6\",\n                    \"EndpointID\": \"\",\n                    \"Gateway\": \"\",\n                    \"IPAddress\": \"\",\n                    \"MacAddress\": \"\",\n                    \"IPPrefixLen\": 0,\n                    \"IPv6Gateway\": \"\",\n                    \"GlobalIPv6Address\": \"\",\n                    \"GlobalIPv6PrefixLen\": 0,\n                    \"DNSNames\": null\n                }\n            }\n        }\n    }\n]\n"
+    },
+    "container_id": "608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21",
+    "errors": [],
+    "name": "bex-w8-common499-cosign-bc0691bfa23bce98",
+    "owner": "bc0691bfa23bce98",
+    "remove": {
+      "argv": [
+        "docker",
+        "rm",
+        "--force",
+        "bex-w8-common499-cosign-bc0691bfa23bce98"
+      ],
+      "complete": true,
+      "exit": 0,
+      "stderr": "",
+      "stdout": "bex-w8-common499-cosign-bc0691bfa23bce98\n"
+    }
+  },
+  "command": [
+    "docker",
+    "run",
+    "--pull=never",
+    "--name",
+    "bex-w8-common499-cosign-bc0691bfa23bce98",
+    "--label",
+    "bex.w8.owned=bc0691bfa23bce98",
+    "--read-only",
+    "--user",
+    "501:20",
+    "--cap-drop",
+    "ALL",
+    "--security-opt",
+    "no-new-privileges",
+    "--cpus",
+    "1",
+    "--memory",
+    "512m",
+    "--pids-limit",
+    "64",
+    "--network",
+    "bridge",
+    "--tmpfs",
+    "/tmp:rw,noexec,nosuid,size=16m",
+    "--mount",
+    "type=bind,source=/private/tmp/bex-w8-cosign-linux-verified-20261101-iqdmo3bn/cosign-linux-arm64,target=/usr/local/bin/cosign,readonly",
+    "--mount",
+    "type=bind,source=/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d.bundle.json,target=/bundle.json,readonly",
+    "--mount",
+    "type=bind,source=/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/cosign-tuf-cache/b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d-positive-attempt1-56whnuel,target=/tuf",
+    "--mount",
+    "type=bind,source=/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/anonymous-docker-config,target=/docker,readonly",
+    "--env",
+    "TUF_ROOT=/tuf",
+    "--env",
+    "DOCKER_CONFIG=/docker",
+    "--env",
+    "XDG_CACHE_HOME=/tuf/cache",
+    "--env",
+    "GODEBUG=http2client=0",
+    "--entrypoint",
+    "/usr/local/bin/cosign",
+    "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+    "verify-blob-attestation",
+    "--bundle",
+    "/bundle.json",
+    "--type",
+    "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+    "--digest",
+    "332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "complete": true,
+  "container": {
+    "AppArmorProfile": "",
+    "Args": [
+      "verify-blob-attestation",
+      "--bundle",
+      "/bundle.json",
+      "--type",
+      "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+      "--digest",
+      "332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7",
+      "--digestAlg",
+      "sha256",
+      "--certificate-identity",
+      "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+      "--certificate-oidc-issuer",
+      "https://token.actions.githubusercontent.com",
+      "--certificate-github-workflow-sha",
+      "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+      "--use-signed-timestamps",
+      "--timeout",
+      "5m"
+    ],
+    "Config": {
+      "AttachStderr": true,
+      "AttachStdin": false,
+      "AttachStdout": true,
+      "Cmd": [
+        "verify-blob-attestation",
+        "--bundle",
+        "/bundle.json",
+        "--type",
+        "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+        "--digest",
+        "332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7",
+        "--digestAlg",
+        "sha256",
+        "--certificate-identity",
+        "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+        "--certificate-oidc-issuer",
+        "https://token.actions.githubusercontent.com",
+        "--certificate-github-workflow-sha",
+        "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+        "--use-signed-timestamps",
+        "--timeout",
+        "5m"
+      ],
+      "Domainname": "",
+      "Entrypoint": [
+        "/usr/local/bin/cosign"
+      ],
+      "Env": [
+        "XDG_CACHE_HOME=/tuf/cache",
+        "GODEBUG=http2client=0",
+        "TUF_ROOT=/tuf",
+        "DOCKER_CONFIG=/docker",
+        "PATH=/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+      ],
+      "Hostname": "608582c005c2",
+      "Image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+      "Labels": {
+        "bex.w8.owned": "bc0691bfa23bce98"
+      },
+      "OpenStdin": false,
+      "StdinOnce": false,
+      "Tty": false,
+      "User": "501:20",
+      "Volumes": null,
+      "WorkingDir": "/"
+    },
+    "Created": "2026-11-02T01:10:23.481964337Z",
+    "Driver": "overlay2",
+    "ExecIDs": null,
+    "GraphDriver": {
+      "Data": {
+        "ID": "608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21",
+        "LowerDir": "/var/lib/docker/overlay2/8a182e3fbcc15290ce031d7ae31f22a234ea932baeeee1c0c1b087d4a64b2829-init/diff:/var/lib/docker/overlay2/ede07570786a91d70253d93ce4a604932e5a10026ce330efa7166946a3f625a8/diff",
+        "MergedDir": "/var/lib/docker/overlay2/8a182e3fbcc15290ce031d7ae31f22a234ea932baeeee1c0c1b087d4a64b2829/merged",
+        "UpperDir": "/var/lib/docker/overlay2/8a182e3fbcc15290ce031d7ae31f22a234ea932baeeee1c0c1b087d4a64b2829/diff",
+        "WorkDir": "/var/lib/docker/overlay2/8a182e3fbcc15290ce031d7ae31f22a234ea932baeeee1c0c1b087d4a64b2829/work"
+      },
+      "Name": "overlay2"
+    },
+    "HostConfig": {
+      "AutoRemove": false,
+      "Binds": null,
+      "BlkioDeviceReadBps": [],
+      "BlkioDeviceReadIOps": [],
+      "BlkioDeviceWriteBps": [],
+      "BlkioDeviceWriteIOps": [],
+      "BlkioWeight": 0,
+      "BlkioWeightDevice": [],
+      "CapAdd": null,
+      "CapDrop": [
+        "ALL"
+      ],
+      "Cgroup": "",
+      "CgroupParent": "",
+      "CgroupnsMode": "private",
+      "ConsoleSize": [
+        0,
+        0
+      ],
+      "ContainerIDFile": "",
+      "CpuCount": 0,
+      "CpuPercent": 0,
+      "CpuPeriod": 0,
+      "CpuQuota": 0,
+      "CpuRealtimePeriod": 0,
+      "CpuRealtimeRuntime": 0,
+      "CpuShares": 0,
+      "CpusetCpus": "",
+      "CpusetMems": "",
+      "DeviceCgroupRules": null,
+      "DeviceRequests": null,
+      "Devices": [],
+      "Dns": null,
+      "DnsOptions": [],
+      "DnsSearch": [],
+      "ExtraHosts": null,
+      "GroupAdd": null,
+      "IOMaximumBandwidth": 0,
+      "IOMaximumIOps": 0,
+      "IpcMode": "private",
+      "Isolation": "",
+      "Links": null,
+      "LogConfig": {
+        "Config": {
+          "max-file": "5",
+          "max-size": "20m"
+        },
+        "Type": "json-file"
+      },
+      "MaskedPaths": [
+        "/proc/acpi",
+        "/proc/asound",
+        "/proc/interrupts",
+        "/proc/kcore",
+        "/proc/keys",
+        "/proc/latency_stats",
+        "/proc/sched_debug",
+        "/proc/scsi",
+        "/proc/timer_list",
+        "/proc/timer_stats",
+        "/sys/devices/virtual/powercap",
+        "/sys/firmware"
+      ],
+      "Memory": 536870912,
+      "MemoryReservation": 0,
+      "MemorySwap": 1073741824,
+      "MemorySwappiness": null,
+      "Mounts": [
+        {
+          "ReadOnly": true,
+          "Source": "/private/tmp/bex-w8-cosign-linux-verified-20261101-iqdmo3bn/cosign-linux-arm64",
+          "Target": "/usr/local/bin/cosign",
+          "Type": "bind"
+        },
+        {
+          "ReadOnly": true,
+          "Source": "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d.bundle.json",
+          "Target": "/bundle.json",
+          "Type": "bind"
+        },
+        {
+          "Source": "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/cosign-tuf-cache/b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d-positive-attempt1-56whnuel",
+          "Target": "/tuf",
+          "Type": "bind"
+        },
+        {
+          "ReadOnly": true,
+          "Source": "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/anonymous-docker-config",
+          "Target": "/docker",
+          "Type": "bind"
+        }
+      ],
+      "NanoCpus": 1000000000,
+      "NetworkMode": "bridge",
+      "OomKillDisable": null,
+      "OomScoreAdj": 0,
+      "PidMode": "",
+      "PidsLimit": 64,
+      "PortBindings": {},
+      "Privileged": false,
+      "PublishAllPorts": false,
+      "ReadonlyPaths": [
+        "/proc/bus",
+        "/proc/fs",
+        "/proc/irq",
+        "/proc/sys",
+        "/proc/sysrq-trigger"
+      ],
+      "ReadonlyRootfs": true,
+      "RestartPolicy": {
+        "MaximumRetryCount": 0,
+        "Name": "no"
+      },
+      "Runtime": "runc",
+      "SecurityOpt": [
+        "no-new-privileges"
+      ],
+      "ShmSize": 8408530944,
+      "Tmpfs": {
+        "/tmp": "rw,noexec,nosuid,size=16m"
+      },
+      "UTSMode": "",
+      "Ulimits": null,
+      "UsernsMode": "",
+      "VolumeDriver": "",
+      "VolumesFrom": null
+    },
+    "HostnamePath": "/var/lib/docker/containers/608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21/hostname",
+    "HostsPath": "/var/lib/docker/containers/608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21/hosts",
+    "Id": "608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21",
+    "Image": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+    "LogPath": "/var/lib/docker/containers/608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21/608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21-json.log",
+    "MountLabel": "",
+    "Mounts": [
+      {
+        "Destination": "/bundle.json",
+        "Mode": "",
+        "Propagation": "rprivate",
+        "RW": false,
+        "Source": "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d.bundle.json",
+        "Type": "bind"
+      },
+      {
+        "Destination": "/docker",
+        "Mode": "",
+        "Propagation": "rprivate",
+        "RW": false,
+        "Source": "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/anonymous-docker-config",
+        "Type": "bind"
+      },
+      {
+        "Destination": "/tuf",
+        "Mode": "",
+        "Propagation": "rprivate",
+        "RW": true,
+        "Source": "/private/tmp/bex-w8-exact14212-review-d0f7eaaeacfe45fd/evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/cosign-tuf-cache/b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d-positive-attempt1-56whnuel",
+        "Type": "bind"
+      },
+      {
+        "Destination": "/usr/local/bin/cosign",
+        "Mode": "",
+        "Propagation": "rprivate",
+        "RW": false,
+        "Source": "/private/tmp/bex-w8-cosign-linux-verified-20261101-iqdmo3bn/cosign-linux-arm64",
+        "Type": "bind"
+      }
+    ],
+    "Name": "/bex-w8-common499-cosign-bc0691bfa23bce98",
+    "NetworkSettings": {
+      "Networks": {
+        "bridge": {
+          "Aliases": null,
+          "DNSNames": null,
+          "DriverOpts": null,
+          "EndpointID": "",
+          "Gateway": "",
+          "GlobalIPv6Address": "",
+          "GlobalIPv6PrefixLen": 0,
+          "GwPriority": 0,
+          "IPAMConfig": null,
+          "IPAddress": "",
+          "IPPrefixLen": 0,
+          "IPv6Gateway": "",
+          "Links": null,
+          "MacAddress": "",
+          "NetworkID": "0dbbd4593099855957c1e246093eab955c3e62d90d79a10b7909e717f289eff6"
+        }
+      },
+      "Ports": {},
+      "SandboxID": "",
+      "SandboxKey": ""
+    },
+    "Path": "/usr/local/bin/cosign",
+    "Platform": "linux",
+    "ProcessLabel": "",
+    "ResolvConfPath": "/var/lib/docker/containers/608582c005c257a65f34c18748af46e8bb640328245bd301f232776524b9be21/resolv.conf",
+    "RestartCount": 0,
+    "State": {
+      "Dead": false,
+      "Error": "",
+      "ExitCode": 0,
+      "FinishedAt": "2026-11-02T01:10:30.549710577Z",
+      "OOMKilled": false,
+      "Paused": false,
+      "Pid": 0,
+      "Restarting": false,
+      "Running": false,
+      "StartedAt": "2026-11-02T01:10:23.561436961Z",
+      "Status": "exited"
+    }
+  },
+  "container_image_id": "sha256:ab3fe4defd29ba6231229a4d41440ac8bde8218e85870e53876277faa24b35c4",
+  "cosign_argv": [
+    "/usr/local/bin/cosign",
+    "verify-blob-attestation",
+    "--bundle",
+    "/bundle.json",
+    "--type",
+    "https://aquasecurity.github.io/trivy/attestation/vuln/v1",
+    "--digest",
+    "332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7",
+    "--digestAlg",
+    "sha256",
+    "--certificate-identity",
+    "https://github.com/bex-co/bex/.github/workflows/native-base-image.yml@refs/heads/main",
+    "--certificate-oidc-issuer",
+    "https://token.actions.githubusercontent.com",
+    "--certificate-github-workflow-sha",
+    "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+    "--use-signed-timestamps",
+    "--timeout",
+    "5m"
+  ],
+  "error_class": null,
+  "owner": "bc0691bfa23bce98",
+  "pid": 4261,
+  "process_exit": 0,
+  "seconds": 7.375828250078484,
+  "tool_sha256": "ade83b7aac62e131cacfe96d958948b2150cc9efec46a570a2649b8e27dedad2"
+}

@@ -1,0 +1,21 @@
+{
+  "outcome": "PASS_CURRENT_E6_BOTH_ARCH_UTILITY_CONTENT_ONLY",
+  "root": "/private/tmp/bex-w8-e6-utility-intake-20261102-c40h5x0g/both-content",
+  "review": {
+    "bytes": 26608,
+    "sha256": "4c996f1524e5d89030c42f1a580b2a22ee3fd6a446f96f99b6b711ad027574ee"
+  },
+  "arches": [
+    {
+      "architecture": "amd64",
+      "files": 356,
+      "packages": 1212
+    },
+    {
+      "architecture": "arm64",
+      "files": 356,
+      "packages": 1208
+    }
+  ],
+  "local_source_extras": null
+}

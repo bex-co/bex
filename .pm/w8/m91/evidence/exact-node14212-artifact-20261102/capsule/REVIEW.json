@@ -1,0 +1,143 @@
+{
+  "actual_resources": {
+    "container_absence_proved": true,
+    "group_absent": true,
+    "minimum_free": 34912030720,
+    "peak_owned_bytes": 329123944,
+    "seconds": 163.72186487494037
+  },
+  "anonymous_full_reads": {
+    "bytes": 1240078073,
+    "count": 39,
+    "reused_bytes": 0,
+    "storage": "Original stream/discard body semantics; retained complete SHA/size receipts, not retained layer bodies."
+  },
+  "assessment": "CLEAN",
+  "checks": {
+    "all_findings_retained": "PASS",
+    "final_result": "PASS",
+    "full_blob_receipt_and_descriptor_set": "PASS",
+    "full_bundle_predicate_roundtrips": "PASS",
+    "official_environment_and_diff_id_ancestry_both_platforms": "PASS",
+    "source30_and_executed_tools": "PASS",
+    "strict_linux_process_and_cleanup": "PASS"
+  },
+  "ci": {
+    "job": 125010454454,
+    "projection": "exact member of retained complete actual REST jobs response; not separately fetched job endpoint",
+    "run": 41360577241,
+    "source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+    "status": "completed/success"
+  },
+  "crypto_commands": [
+    {
+      "bundle_digest": "sha256:f1ce3292a852afa9417cdf89ce92f74b42d84e148b61f4c15585d6b4b2baaf46",
+      "container_cleanup": "PASS",
+      "exit": 0,
+      "label": "positive",
+      "process": "evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/f1ce3292a852afa9417cdf89ce92f74b42d84e148b61f4c15585d6b4b2baaf46-positive-attempt1.stderr.process.json"
+    },
+    {
+      "bundle_digest": "sha256:46070f3499fff90a3845164c530c92bf3cde1722e7331ac35d34e6fdb8b7d6ae",
+      "container_cleanup": "PASS",
+      "exit": 0,
+      "label": "positive",
+      "process": "evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/46070f3499fff90a3845164c530c92bf3cde1722e7331ac35d34e6fdb8b7d6ae-positive-attempt1.stderr.process.json"
+    },
+    {
+      "bundle_digest": "sha256:b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d",
+      "container_cleanup": "PASS",
+      "exit": 0,
+      "label": "positive",
+      "process": "evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d-positive-attempt1.stderr.process.json"
+    },
+    {
+      "bundle_digest": "sha256:ad5c3970f8d996242366d10349e5065d256a1745580bd13a5e5c3fbce34be565",
+      "container_cleanup": "PASS",
+      "exit": 0,
+      "label": "positive",
+      "process": "evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/ad5c3970f8d996242366d10349e5065d256a1745580bd13a5e5c3fbce34be565-positive-attempt1.stderr.process.json"
+    },
+    {
+      "bundle_digest": "sha256:bbb444279f559212a3bca32886205c2eee2895e08bff86ea6dcde8aa95fd255d",
+      "container_cleanup": "PASS",
+      "exit": 0,
+      "label": "positive",
+      "process": "evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/bbb444279f559212a3bca32886205c2eee2895e08bff86ea6dcde8aa95fd255d-positive-attempt1.stderr.process.json"
+    },
+    {
+      "bundle_digest": "sha256:46070f3499fff90a3845164c530c92bf3cde1722e7331ac35d34e6fdb8b7d6ae",
+      "container_cleanup": "PASS",
+      "exit": 1,
+      "label": "wrong-source",
+      "process": "evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/46070f3499fff90a3845164c530c92bf3cde1722e7331ac35d34e6fdb8b7d6ae-wrong-source-attempt1.stderr.process.json"
+    },
+    {
+      "bundle_digest": "sha256:46070f3499fff90a3845164c530c92bf3cde1722e7331ac35d34e6fdb8b7d6ae",
+      "container_cleanup": "PASS",
+      "exit": 1,
+      "label": "wrong-subject",
+      "process": "evidence/native-node-14.21.2-bullseye-6883953e58e750fb41763d1d5e4bd4103bdb74c5/bundles/46070f3499fff90a3845164c530c92bf3cde1722e7331ac35d34e6fdb8b7d6ae-wrong-subject-attempt1.stderr.process.json"
+    }
+  ],
+  "executing_source": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "method": "Read-only local retained inputs; exact source Git objects and reviewed pure Docker argv constructor; no network, Docker commands, Cosign or build rerun.",
+  "official_base": "node:14.21.2-bullseye@sha256:cc748803fe49871926c433ae6aafbfd59b765eed6005dc0843b916eb74f67b12",
+  "producer": "6883953e58e750fb41763d1d5e4bd4103bdb74c5",
+  "ref": "ghcr.io/bex-co/bex-cnb-run@sha256:332869e644cdd45bf1f9e7c42ed3df91fedb95c4d0cee6bf2abf771c9eb760c7",
+  "schema": "bex.exact14212.actual-retained-audit/v1",
+  "scope": "Approved published exact14.21.2 supplier only. All vulnerability findings, including unfixed findings, remain present. Generated common qualification, catalog adoption and hosted acceptance remain pending; no production pin, no new execution, no zero-findings claim.",
+  "signed_reports": [
+    {
+      "architecture": "amd64",
+      "bundle_bytes": 34084971,
+      "bundle_digest": "sha256:f1ce3292a852afa9417cdf89ce92f74b42d84e148b61f4c15585d6b4b2baaf46",
+      "findings": null,
+      "full_signed_payload_and_predicate": true,
+      "kind": "sbom",
+      "predicate_bytes": 25079486,
+      "predicate_sha256": "683a37f03a4c844ab697bb436fb49cab4c885af91b9974a792040df819914b5d"
+    },
+    {
+      "architecture": null,
+      "bundle_bytes": 9651,
+      "bundle_digest": "sha256:46070f3499fff90a3845164c530c92bf3cde1722e7331ac35d34e6fdb8b7d6ae",
+      "findings": null,
+      "full_signed_payload_and_predicate": true,
+      "kind": "image-signature",
+      "predicate_bytes": 2,
+      "predicate_sha256": "44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a"
+    },
+    {
+      "architecture": "amd64",
+      "bundle_bytes": 91938835,
+      "bundle_digest": "sha256:b7c718fe8af7231856d0a8715072066dde32dd7e4cc6e5209f921403bd0d5c5d",
+      "findings": 18639,
+      "full_signed_payload_and_predicate": true,
+      "kind": "vulnerability",
+      "predicate_bytes": 67862005,
+      "predicate_sha256": "6266459f6af999e6a0769995e01ece3b34217966b6d2f79a4442055f520c7211"
+    },
+    {
+      "architecture": "arm64",
+      "bundle_bytes": 91936903,
+      "bundle_digest": "sha256:ad5c3970f8d996242366d10349e5065d256a1745580bd13a5e5c3fbce34be565",
+      "findings": 18638,
+      "full_signed_payload_and_predicate": true,
+      "kind": "vulnerability",
+      "predicate_bytes": 67860617,
+      "predicate_sha256": "a6d03ad23549349cb427ed635829e56b6a5aa84c962531dd4a705ebf422e0340"
+    },
+    {
+      "architecture": "arm64",
+      "bundle_bytes": 34062935,
+      "bundle_digest": "sha256:bbb444279f559212a3bca32886205c2eee2895e08bff86ea6dcde8aa95fd255d",
+      "findings": null,
+      "full_signed_payload_and_predicate": true,
+      "kind": "sbom",
+      "predicate_bytes": 25063289,
+      "predicate_sha256": "0f7c9470b228209feb0e3f042e480951ef8ac484eeedc03c88bb4591658ce516"
+    }
+  ],
+  "verifier": "6883953e58e750fb41763d1d5e4bd4103bdb74c5"
+}
