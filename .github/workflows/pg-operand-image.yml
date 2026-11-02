@@ -32,7 +32,7 @@ env:
 jobs:
   matrix:
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: [self-hosted, Linux, ARM64, bex-build]
     outputs:
       majors: ${{ steps.read.outputs.majors }}
     steps:
@@ -48,14 +48,16 @@ jobs:
 
   build:
     needs: matrix
+    if: github.ref == 'refs/heads/main'
     permissions:
       contents: read
       packages: write
       id-token: write
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: [self-hosted, Linux, ARM64, bex-build]
     strategy:
       fail-fast: false
-      # The runner pool also serves deploys (w4/439); two majors at a time.
+      # Deploys run on bex-production (w6/m155); two majors at a time still
+      # leave the build pool to the other image builds.
       max-parallel: 2
       matrix:
         major: ${{ fromJSON(needs.matrix.outputs.majors) }}
