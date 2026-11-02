@@ -187,6 +187,132 @@ class QualificationControls(unittest.TestCase):
                     self.assertTrue(auth["removed"])
                     self.assertEqual(auth["logout_exit_code"], 124 if failure == "logout-timeout" else 0)
 
+    def test_skipped_buildx_setup_requires_both_exact_daemon_absence_proofs(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config = self.initialize_owned(Path(directory).resolve())
+            owner = inputs["owner"]
+            container = "buildx_buildkit_" + owner + "0"
+            calls = []
+
+            def execute(command, **kwargs):
+                calls.append(command)
+                self.assertEqual(kwargs["env"]["DOCKER_CONFIG"], str(config))
+                if command[1:3] == ["container", "inspect"]:
+                    self.assertEqual(command, ["docker", "container", "inspect", "--format", "{{json .Name}}", container])
+                    self.assertEqual(kwargs["timeout"], 10)
+                    return subprocess.CompletedProcess(command, 1, "[]\n", "Error: No such container: " + container + "\n")
+                if command[1:3] == ["volume", "inspect"]:
+                    self.assertEqual(command, ["docker", "volume", "inspect", "--format", "{{json .Name}}", container + "_state"])
+                    self.assertEqual(kwargs["timeout"], 10)
+                    return subprocess.CompletedProcess(command, 1, "", "Error response from daemon: get " + container + "_state: no such volume\n")
+                if command[1:3] == ["buildx", "rm"]:
+                    # The old helper takes this failing CLI path before setup.
+                    return subprocess.CompletedProcess(command, 1, "", "docker: unknown command: docker buildx\n")
+                self.assertIn(command[1:3], [["ps", "-aq"], ["image", "ls"], ["logout", "ghcr.io"]])
+                return subprocess.CompletedProcess(command, 0, "", "")
+
+            with patch.dict(os.environ, QUALIFICATION_BUILDX_SETUP_OUTCOME="skipped"), \
+                 patch.object(qualification.subprocess, "run", side_effect=execute):
+                qualification.cleanup(root)
+            builder = json.loads((root / "cleanup.json").read_text())["operations"][0]
+            self.assertEqual(builder["state"], "daemon-confirmed-absent-before-setup")
+            self.assertEqual(builder["removal"], "not-invoked")
+            self.assertEqual(builder["exit_code"], 0)
+            self.assertEqual([row["exit_code"] for row in builder["state_probes"]], [1, 1])
+            self.assertTrue(all(row["absence_proved"] for row in builder["state_probes"]))
+            self.assertFalse(any(command[1:3] == ["buildx", "rm"] for command in calls))
+            self.assertEqual(calls[-1], ["docker", "logout", "ghcr.io"])
+            self.assertFalse(config.exists())
+        for job in (ProfileRoutingControls.jobs()[name] for name in ("qualify", "qualify-profile")):
+            self.assertLess(job.index("native-common-qualify.py bootstrap"), job.index("id: buildx"))
+            self.assertIn("QUALIFICATION_BUILDX_SETUP_OUTCOME: ${{ steps.buildx.outcome }}", job)
+
+    def test_skipped_buildx_setup_probe_errors_keep_removal_and_cleanup_failure(self):
+        cases = ("timeout", "daemon-error", "wrong-name", "extra-error", "partial-stdout", "empty-success")
+        for fault in cases:
+            with self.subTest(fault=fault), tempfile.TemporaryDirectory() as directory:
+                root, inputs, config = self.initialize_owned(Path(directory).resolve())
+                owner = inputs["owner"]
+                container = "buildx_buildkit_" + owner + "0"
+                calls = []
+
+                def execute(command, **kwargs):
+                    calls.append(command)
+                    self.assertEqual(kwargs["env"]["DOCKER_CONFIG"], str(config))
+                    if command[1:3] == ["container", "inspect"]:
+                        self.assertEqual(command, ["docker", "container", "inspect", "--format", "{{json .Name}}", container])
+                        self.assertEqual(kwargs["timeout"], 10)
+                        if fault == "timeout":
+                            raise subprocess.TimeoutExpired(command, 10)
+                        stdout, stderr, code = "", "Error: No such container: " + container + "\n", 1
+                        if fault == "daemon-error":stderr = "Cannot connect to the Docker daemon\n"
+                        if fault == "wrong-name":stderr = "Error: No such container: foreign\n"
+                        if fault == "extra-error":stderr += "additional daemon failure\n"
+                        if fault == "partial-stdout":stdout = "[partial"
+                        if fault == "empty-success":code, stderr = 0, ""
+                        return subprocess.CompletedProcess(command, code, stdout, stderr)
+                    if command[1:3] == ["volume", "inspect"]:
+                        self.assertEqual(command, ["docker", "volume", "inspect", "--format", "{{json .Name}}", container + "_state"])
+                        self.assertEqual(kwargs["timeout"], 10)
+                        return subprocess.CompletedProcess(command, 1, "", "Error response from daemon: get " + container + "_state: no such volume\n")
+                    if command[1:3] == ["buildx", "rm"]:
+                        self.assertEqual(command, ["docker", "buildx", "rm", owner])
+                        return subprocess.CompletedProcess(command, 7, "", "docker: unknown command: docker buildx\n")
+                    self.assertIn(command[1:3], [["ps", "-aq"], ["image", "ls"], ["logout", "ghcr.io"]])
+                    return subprocess.CompletedProcess(command, 0, "", "")
+
+                with patch.dict(os.environ, QUALIFICATION_BUILDX_SETUP_OUTCOME="skipped"), \
+                     patch.object(qualification.subprocess, "run", side_effect=execute):
+                    with self.assertRaisesRegex(RuntimeError, "owned resource cleanup failed"):
+                        qualification.cleanup(root)
+                builder = json.loads((root / "cleanup.json").read_text())["operations"][0]
+                self.assertEqual(builder["exit_code"], 7)
+                self.assertEqual(len(builder["state_probes"]), 2)
+                self.assertFalse(builder["state_probes"][0]["absence_proved"])
+                self.assertIn("unknown command", builder["stderr"])
+                self.assertEqual(calls[-1], ["docker", "logout", "ghcr.io"])
+                self.assertFalse(config.exists())
+
+    def test_skipped_buildx_setup_present_state_keeps_exact_builder_removal(self):
+        for present in ("container", "volume", "both"):
+            for removal_exit in (0, 7):
+                with self.subTest(present=present, removal_exit=removal_exit), tempfile.TemporaryDirectory() as directory:
+                    root, inputs, config = self.initialize_owned(Path(directory).resolve())
+                    owner = inputs["owner"]
+                    container = "buildx_buildkit_" + owner + "0"
+                    calls = []
+
+                    def execute(command, **kwargs):
+                        calls.append(command)
+                        self.assertEqual(kwargs["env"]["DOCKER_CONFIG"], str(config))
+                        if command[1] in ("container", "volume") and command[2] == "inspect":
+                            kind, name = command[1], command[-1]
+                            self.assertEqual(command, ["docker", kind, "inspect", "--format", "{{json .Name}}", container if kind == "container" else container + "_state"])
+                            self.assertEqual(kwargs["timeout"], 10)
+                            if present in (kind, "both"):
+                                return subprocess.CompletedProcess(command, 0, json.dumps("/" + name if kind == "container" else name) + "\n", "")
+                            error = "Error: No such container: " + name if kind == "container" else "Error response from daemon: get " + name + ": no such volume"
+                            return subprocess.CompletedProcess(command, 1, "", error + "\n")
+                        if command[1:3] == ["buildx", "rm"]:
+                            self.assertEqual(command, ["docker", "buildx", "rm", owner])
+                            return subprocess.CompletedProcess(command, removal_exit, "retained exact builder removal", "" if removal_exit == 0 else "CONTROL removal failure")
+                        self.assertIn(command[1:3], [["ps", "-aq"], ["image", "ls"], ["logout", "ghcr.io"]])
+                        return subprocess.CompletedProcess(command, 0, "", "")
+
+                    with patch.dict(os.environ, QUALIFICATION_BUILDX_SETUP_OUTCOME="skipped"), \
+                         patch.object(qualification.subprocess, "run", side_effect=execute):
+                        if removal_exit:
+                            with self.assertRaises(RuntimeError):qualification.cleanup(root)
+                        else:
+                            qualification.cleanup(root)
+                    builder = json.loads((root / "cleanup.json").read_text())["operations"][0]
+                    self.assertEqual(builder["exit_code"], removal_exit)
+                    self.assertFalse(all(row["absence_proved"] for row in builder["state_probes"]))
+                    self.assertIn(["docker", "buildx", "rm", owner], calls)
+                    self.assertFalse(any(command[1:3] in (["container", "rm"], ["volume", "rm"]) for command in calls))
+                    self.assertEqual(calls[-1], ["docker", "logout", "ghcr.io"])
+                    self.assertFalse(config.exists())
+
     def test_cleanup_refuses_foreign_symlinked_or_changed_credential_ownership(self):
         for invalid in ("path", "directory-symlink", "marker-symlink", "marker-owner", "permissions"):
             with self.subTest(invalid=invalid), tempfile.TemporaryDirectory() as directory:
@@ -410,9 +536,10 @@ class BuildKitBootstrapControls(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root, inputs, config, policy, helper, output = self.fixture(directory)
             pin = next(row["committed"] for row in json.loads(policy.read_text())["images"] if row["id"] == "helper-buildkit")
-            def controlled(command, environment, cancellation):
+            def controlled(command, environment, cancellation, output_limit=None):
                 self.assertFalse(output.exists())
-                self.assertEqual(command, ["timeout", "--kill-after=10s", "180s", "docker", "pull", "--quiet", pin])
+                self.assertEqual(command, ["timeout", "--kill-after=10s", "180s", "docker", "pull", pin])
+                self.assertEqual(output_limit, qualification.BOOTSTRAP_OUTPUT_LIMIT)
                 self.assertEqual(environment["DOCKER_CONFIG"], str(config))
                 self.assertEqual(json.loads((config / ".qualification-owner.json").read_text())["owner"], inputs["owner"])
                 return self.result(0)
@@ -434,7 +561,7 @@ class BuildKitBootstrapControls(unittest.TestCase):
         with tempfile.TemporaryDirectory() as directory:
             root, inputs, config, policy, helper, output = self.fixture(directory)
             results = iter([self.result(124), self.result(137), self.result(0)])
-            def controlled(*args):
+            def controlled(*args, **kwargs):
                 self.assertFalse(output.exists())
                 return next(results)
             with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
@@ -633,7 +760,7 @@ before={s:signal.getsignal(s) for s in (signal.SIGINT,signal.SIGTERM)}
 real_popen=subprocess.Popen
 program='import time;print("CONTROL owned pull",flush=True);time.sleep(30)'
 def controlled(command,**kwargs):
- assert command[:6]==['timeout','--kill-after=10s','180s','docker','pull','--quiet']
+ assert command[:5]==['timeout','--kill-after=10s','180s','docker','pull']
  process=real_popen([sys.executable,'-c',program],**kwargs)
  ready=pathlib.Path(journal+'.pending')
  ready.write_text(json.dumps({'pid':process.pid,'group':process.pid}))
@@ -737,7 +864,7 @@ pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':
                         triggered[0] = True
                         active(signum, None)
                     return actual_signal(signum, handler)
-                def controlled(command, environment, cancellation):
+                def controlled(command, environment, cancellation, output_limit=None):
                     if phase == "cleanup":cancellation["signal"] = qualification.signal.SIGTERM
                     return self.result(0)
                 with patch.object(qualification, "__file__", str(helper)), patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
@@ -786,12 +913,12 @@ pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':
         jobs = ProfileRoutingControls.jobs()
         for name in ("qualify", "qualify-profile"):
             body = jobs[name]
-            prepull = body.split("      - id: buildkit\n", 1)[1].split("      - uses: docker/setup-buildx-action@", 1)[0]
+            prepull = body.split("      - id: buildkit\n", 1)[1].split("      - id: buildx\n", 1)[0]
             self.assertIn("timeout-minutes: 11", prepull)
             self.assertIn('native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"', prepull)
             self.assertLess(body.index("id: owned"), body.index("id: buildkit"))
             self.assertLess(body.index("id: buildkit"), body.index("uses: docker/setup-buildx-action@"))
-            buildx = body.split("      - uses: docker/setup-buildx-action@", 1)[1].split("      - ", 1)[0]
+            buildx = body.split("      - id: buildx\n", 1)[1].split("      - ", 1)[0]
             self.assertIn("timeout-minutes: 5", buildx)
             self.assertIn("driver-opts: image=${{ steps.buildkit.outputs.image }}", buildx)
             self.assertNotIn("buildx-stable", body)
@@ -814,6 +941,130 @@ pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':
         self.assertNotIn("${{", blocks[0])
 
 
+class BuildKitProgressOutputControls(unittest.TestCase):
+    """Owned finite Python byte streams only; never Docker, registry or network."""
+    def optional_cap(self, command, cap, cancellation=None):
+        # Deliberately run the old implementation too for a behavioral old-RED.
+        import inspect
+        if "output_limit" in inspect.signature(qualification.pull_buildkit).parameters:
+            return qualification.pull_buildkit(command, dict(os.environ), cancellation, output_limit=cap)
+        return qualification.pull_buildkit(command, dict(os.environ), cancellation)
+
+    def test_finite_progress_nonutf8_and_natural_failure_keep_full_bytes(self):
+        stdout = b"CONTROL layer1\rCONTROL layer2\n\x00\xff"
+        stderr = b"CONTROL diagnostic\n\xfe"
+        for code in (0, 17):
+            with self.subTest(exit=code):
+                program = ("import os,sys;os.write(1,bytes.fromhex(" + repr(stdout.hex())
+                           + "));os.write(2,bytes.fromhex(" + repr(stderr.hex()) + "));sys.exit(" + str(code) + ")")
+                result, out, err = self.optional_cap([sys.executable, "-c", program], 4096)
+                self.assertEqual((out, err), (stdout, stderr))
+                self.assertEqual(result["exit_code"], code)
+                self.assertIsNone(result["bound"])
+                self.assertTrue(result["direct_child_reaped"] and result["process_group_absent"])
+                self.assertTrue(result.get("output_capture_complete", True))
+
+    def test_real_overcap_aborts_once_without_image_output_and_keeps_prefix(self):
+        real_popen = subprocess.Popen
+        processes = []
+        commands = []
+        program = "import os;os.write(1,b'A'*4196)"
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = BuildKitBootstrapControls().fixture(directory)
+            def controlled(command, **kwargs):
+                commands.append(command)
+                process = real_popen([sys.executable, "-c", program], **kwargs)
+                processes.append(process)
+                return process
+            try:
+                with patch.object(qualification, "__file__", str(helper)), \
+                     patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                     patch.object(qualification, "BOOTSTRAP_OUTPUT_LIMIT", 4096, create=True), \
+                     patch.object(qualification.subprocess, "Popen", side_effect=controlled), \
+                     patch.object(qualification.time, "sleep"):
+                    with self.assertRaisesRegex(RuntimeError, "output"):
+                        qualification.bootstrap(root)
+                self.assertEqual(len(processes), 1)
+                self.assertFalse(output.exists())
+                receipt = json.loads((root / "bootstrap.json").read_bytes())
+                attempt = receipt["attempts"][0]
+                self.assertEqual(attempt["bound"], "output-byte-limit")
+                self.assertFalse(attempt["output_capture_complete"])
+                self.assertEqual(receipt["captured_output_bytes"], 4097)
+                self.assertEqual((root / attempt["stdout"]["path"]).read_bytes(), b"A" * 4097)
+                self.assertTrue(attempt["direct_child_reaped"] and attempt["process_group_absent"])
+                self.assertNotIn("--quiet", commands[0])
+                for process in processes:
+                    with self.assertRaises(ProcessLookupError):
+                        os.killpg(process.pid, 0)
+            finally:
+                for process in processes:
+                    try: os.killpg(process.pid, qualification.signal.SIGKILL)
+                    except ProcessLookupError: pass
+                    process.wait(timeout=2)
+
+    def test_shared_default_transport_does_not_gain_the_bootstrap_cap(self):
+        payload = b"CONTROL unbounded-legacy-default\n" * 512
+        program = "import os;os.write(1,bytes.fromhex(" + repr(payload.hex()) + "))"
+        with patch.object(qualification, "BOOTSTRAP_OUTPUT_LIMIT", 1, create=True):
+            result, out, err = qualification.pull_buildkit([sys.executable, "-c", program], dict(os.environ))
+        self.assertEqual(out, payload)
+        self.assertEqual(err, b"")
+        self.assertIsNone(result["bound"])
+        self.assertNotIn("output_limit_bytes", result)
+        self.assertTrue(result["direct_child_reaped"] and result["process_group_absent"])
+
+    def test_cancel_and_outer_timeout_preserve_already_captured_progress(self):
+        real_read = os.read
+        real_clock = qualification.time.monotonic
+        for mode in ("cancel", "timeout"):
+            with self.subTest(mode=mode):
+                cancellation = {"signal": None}
+                observed = [False]
+                def read(fd, count):
+                    body = real_read(fd, count)
+                    if b"CONTROL_PROGRESS" in body:
+                        observed[0] = True
+                        if mode == "cancel":
+                            cancellation["signal"] = qualification.signal.SIGTERM
+                    return body
+                program = "import os,time;os.write(1,b'CONTROL_PROGRESS\\n');time.sleep(30)"
+                with patch.object(qualification.os, "read", side_effect=read), \
+                     patch.object(qualification.time, "monotonic", side_effect=lambda: real_clock() + (196 if observed[0] and mode == "timeout" else 0)):
+                    result, out, err = self.optional_cap([sys.executable, "-c", program], 4096, cancellation)
+                self.assertEqual(out, b"CONTROL_PROGRESS\n")
+                self.assertEqual(err, b"")
+                self.assertEqual(result["bound"], "cancelled" if mode == "cancel" else "python-timeout")
+                self.assertTrue(result["direct_child_reaped"] and result["process_group_absent"])
+                self.assertFalse(result.get("output_capture_complete", False))
+
+    def test_whole_bootstrap_budget_shrinks_across_failed_attempts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root, inputs, config, policy, helper, output = BuildKitBootstrapControls().fixture(directory)
+            budgets = []
+            def controlled(command, environment, cancellation, output_limit=None):
+                budgets.append(output_limit)
+                body = b"A" * 56 if len(budgets) == 1 else b"B" * 9
+                result = {"exit_code": 124, "bound": None if len(budgets) == 1 else "output-byte-limit",
+                          "cancel_signal": None, "direct_child_reaped": True, "process_group_absent": True,
+                          "output_capture_complete": len(budgets) == 1}
+                return result, body, b""
+            with patch.object(qualification, "__file__", str(helper)), \
+                 patch.dict(os.environ, GITHUB_OUTPUT=str(output)), \
+                 patch.object(qualification, "BOOTSTRAP_OUTPUT_LIMIT", 64, create=True), \
+                 patch.object(qualification, "pull_buildkit", side_effect=controlled), \
+                 patch.object(qualification.time, "sleep"):
+                with self.assertRaisesRegex(RuntimeError, "output"):
+                    qualification.bootstrap(root)
+            self.assertEqual(budgets, [64, 8])
+            self.assertFalse(output.exists())
+            receipt = json.loads((root / "bootstrap.json").read_bytes())
+            self.assertEqual(len(receipt["attempts"]), 2)
+            self.assertEqual(receipt["captured_output_bytes"], 65)
+            self.assertEqual((root / "bootstrap-1.stdout.log").read_bytes(), b"A" * 56)
+            self.assertEqual((root / "bootstrap-2.stdout.log").read_bytes(), b"B" * 9)
+
+
 class JobLogDiagnosticsControls(unittest.TestCase):
     def test_real_failed_pull_bytes_survive_artifact_unavailability_without_image_output(self):
         real_popen = subprocess.Popen
@@ -832,7 +1083,7 @@ class JobLogDiagnosticsControls(unittest.TestCase):
             root, inputs, config, policy, helper, output = BuildKitBootstrapControls().fixture(directory)
             log = FlushedLog()
             def controlled(command, **kwargs):
-                self.assertEqual(command[:6], ['timeout', '--kill-after=10s', '180s', 'docker', 'pull', '--quiet'])
+                self.assertEqual(command[:5], ['timeout', '--kill-after=10s', '180s', 'docker', 'pull'])
                 self.assertEqual(kwargs['env']['DOCKER_CONFIG'], str(config))
                 self.assertEqual({p.name for p in config.iterdir()}, {'.qualification-owner.json'})
                 self.assertTrue(kwargs['start_new_session'])
