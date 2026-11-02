@@ -32,6 +32,13 @@ spec:
       # tenant pool. Build pools are tainted; their Jobs are billed by
       # build_seconds, not tenant egress bytes (ADR060 D8).
       # Platform/control-plane nodes cannot run tenant Apps and need no meter.
+      # The dedicated serving pools (bex-tenant-xl/xxl, w2/m250) DO run tenant
+      # Apps, so the meter tolerates their taint — any pool value. Keep
+      # EgressMeterTargetMissing's expected-node expression in step.
+      tolerations:
+        - key: bex.co/serving-pool
+          operator: Exists
+          effect: NoSchedule
       priorityClassName: system-node-critical
       terminationGracePeriodSeconds: 20
       containers:

@@ -2041,6 +2041,17 @@ func resourcesForTier(tier string) corev1.ResourceRequirements {
 	return out
 }
 
+// servingPoolForTier is the dedicated serving node pool (bex.co/serving-pool
+// value) an App tier runs on, "" for the standard serving pool (w2/m250). The
+// tier catalog decides it, never a tier name here, and every execution mode
+// resourcesForTier sizes — serving Deployment, cron and one-off runs,
+// pre-deploy Jobs — is placed by it, since a pod the standard node cannot hold
+// would otherwise stay Pending forever.
+func servingPoolForTier(tier string) string {
+	pool, _ := tiers.Compute.ServingPool(tier)
+	return pool
+}
+
 // guaranteedResources builds a Guaranteed-QoS allocation (requests == limits)
 // from two k8s quantity strings — the mechanism every tier family (compute for
 // Apps, valkey for KeyValue) shares. Catalog quantities are validated at load,
@@ -5340,6 +5351,7 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 	// every caller of cronPodSpec gets it without a post-hoc patch at each site.
 	spec.ImagePullSecrets = r.imagePullSecrets(app, image)
 	spec.HostUsers = appHostUsers(app.Spec, r.userNamespacesFor(app))
+	execution.PlaceOnServingPool(&spec, servingPoolForTier(app.Spec.Tier))
 	// Last, always — this PodSpec is built from nothing every pass. See
 	// server_defaults.go.
 	applyPodSpecServerDefaults(&spec)
@@ -6709,6 +6721,7 @@ func (r *AppReconciler) reconcilePreDeploy(ctx context.Context, app *appv1alpha1
 		FreePlan:         isFreeApp(app),
 		EgressAppID:      appIDOrName(app),
 		Resources:        resourcesForTier(app.Spec.Tier),
+		ServingPool:      servingPoolForTier(app.Spec.Tier),
 		Volumes:          vols,
 		VolumeMounts:     mounts,
 		Client:           r.Client,

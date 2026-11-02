@@ -123,6 +123,10 @@ type Options struct {
 	// carries no bex.co/app-id, so no Service selects it (w4/m181).
 	EgressAppID string
 	Resources   corev1.ResourceRequirements
+	// ServingPool is the tier's dedicated serving node pool ("" = standard):
+	// a migration runs at the App's tier size, so it needs the same node the
+	// App does (w2/m250).
+	ServingPool string
 	// Volumes/VolumeMounts carry the app pod's /etc/secrets projection so a
 	// migration can read the same secret files; nil when the app has none.
 	Volumes      []corev1.Volume
@@ -202,6 +206,7 @@ func Job(o Options) *batchv1.Job {
 		Volumes:            o.Volumes,
 	}
 	execution.HardenPod(&podSpec)
+	execution.PlaceOnServingPool(&podSpec, o.ServingPool)
 
 	return &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{

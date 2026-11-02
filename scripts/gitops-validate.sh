@@ -2655,7 +2655,11 @@ for required_operator_workload_guard in \
   "variables.target.metadata.name.startsWith('purge-db-')" \
   "variables.target.metadata.?labels['app.bex.co/database-uid'].orValue('') != ''" \
   "variables.target.metadata.name.startsWith('purge-kv-')" \
-  "variables.target.metadata.?labels['app.bex.co/keyvalue-uid'].orValue('') != ''"; do
+  "variables.target.metadata.?labels['app.bex.co/keyvalue-uid'].orValue('') != ''" \
+  "t.?key.orValue('') != 'bex.co/serving-pool' ||" \
+  "t.?value.orValue('') in variables.servingPools" \
+  "t.?key.orValue('') != 'bex.co/build-only' ||" \
+  "variables.podMetadata.?labels['app.bex.co/component'].orValue('') == 'build'"; do
   grep -qF "$required_operator_workload_guard" deploy/gitops/base/operator-workload-admission.yaml || {
     echo "FAIL: operator workload admission lost '$required_operator_workload_guard'" >&2
     fail=1
@@ -2663,12 +2667,12 @@ for required_operator_workload_guard in \
 done
 # DELETE is namespace-confined above, but must not re-validate the old Pod
 # against today's CREATE/UPDATE grammar: doing so could make a legacy workload
-# impossible for the operator to clean up. Each of the seven shape validations
-# (the seventh is the w2/m247 priority grammar) explicitly short-circuits on
-# DELETE.
+# impossible for the operator to clean up. Each of the eight shape validations
+# (the seventh is the w2/m247 priority grammar, the eighth the w2/m250 pool
+# grammar) explicitly short-circuits on DELETE.
 operator_delete_shape_bypasses="$(grep -Fc "request.operation == 'DELETE' ||" deploy/gitops/base/operator-workload-admission.yaml || true)"
-if [ "$operator_delete_shape_bypasses" -ne 7 ]; then
-  echo "FAIL: operator workload admission has $operator_delete_shape_bypasses DELETE shape bypasses, want 7" >&2
+if [ "$operator_delete_shape_bypasses" -ne 8 ]; then
+  echo "FAIL: operator workload admission has $operator_delete_shape_bypasses DELETE shape bypasses, want 8" >&2
   fail=1
 fi
 # w7/m57: the bex-tenant-api / bex-tenant-operator ClusterRoles grant cluster-wide
@@ -2994,7 +2998,7 @@ headroom_pool="$(yq -N "$headroom_pod | .nodeSelector.\"bex.co/pool\"" "$headroo
 # shape shipped in d82cc98cd and made this check fail on every push from
 # 2026-09-12 onward -- it never passed once. Keep the `ea` form, and if you change
 # it, test against BOTH yq versions before trusting a local green.
-headroom_build_tol="$(yq -N ea "[$headroom_pod | .tolerations[]? | select(.key==\"bex.co/build-only\")] | length" "$headroom_yaml")"
+headroom_build_tol="$(yq -N ea "[$headroom_pod | .tolerations[]? | select(.key==\"bex.co/build-only\" or .key==\"bex.co/serving-pool\")] | length" "$headroom_yaml")"
 # The Pending-by-design placeholder must be the prod root app's LAST sync wave,
 # or a full tenant pool stalls every sync behind it (see tenant-headroom.yaml).
 headroom_wave="$(yq -N "$headroom_deploy | .metadata.annotations.\"argocd.argoproj.io/sync-wave\"" "$tmp/prod-apps.yaml")"
@@ -3015,7 +3019,7 @@ if [ "$headroom_pool" != tenant ]; then
   fail=1
 fi
 if [ "$headroom_build_tol" != 0 ]; then
-  echo "FAIL: tenant-headroom tolerates bex.co/build-only — that holds an elastic BUILD node (ADR060 D8) warm for serving rollouts that may not schedule there" >&2
+  echo "FAIL: tenant-headroom tolerates bex.co/build-only or bex.co/serving-pool — that holds an elastic BUILD node (ADR060 D8) or a dedicated serving-pool node (w2/m250) warm for rollouts that may not schedule there" >&2
   fail=1
 fi
 if ! [ "$headroom_wave" -gt "$other_max_wave" ] 2>/dev/null; then

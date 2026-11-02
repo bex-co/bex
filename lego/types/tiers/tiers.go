@@ -30,8 +30,10 @@ package tiers
 import (
 	_ "embed"
 	"fmt"
+	"slices"
 
 	"k8s.io/apimachinery/pkg/api/resource"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/apimachinery/pkg/util/yaml"
 )
 
@@ -66,6 +68,13 @@ type ComputeTier struct {
 	// free therefore pins to 1, matching Render, whose free instance types offer
 	// no horizontal scaling (render.com/docs/scaling, docs/render-artifacts).
 	MaxInstances int32 `json:"maxInstances,omitempty"`
+	// ServingPool names the dedicated serving node pool this tier runs on
+	// (w2/m250): "" for every tier a standard bex-tenant-0 node can hold, and
+	// the pool's bex.co/serving-pool value (xl, xxl) for the tiers it cannot.
+	// The operator projects it as a toleration of, and a required node
+	// affinity to, that pool; the CAPH overlay owns the pool itself, and
+	// scripts/clusterapi-validate.sh fails when the tier no longer fits it.
+	ServingPool string `json:"servingPool,omitempty"`
 }
 
 // PostgresTier is one rung of the managed-Postgres ladder (the Database
@@ -193,6 +202,30 @@ func (c ComputeCatalog) InstanceCap(id string) (int32, bool) {
 		return 0, false
 	}
 	return t.MaxInstances, true
+}
+
+// ServingPool returns tier id's dedicated serving node pool (the
+// bex.co/serving-pool value), and ok=false when the tier runs on the standard
+// serving pool — including an empty or unknown id, so an untiered/bare-CR App
+// keeps today's placement.
+func (c ComputeCatalog) ServingPool(id string) (string, bool) {
+	t, found := c.byID[id]
+	if !found || t.ServingPool == "" {
+		return "", false
+	}
+	return t.ServingPool, true
+}
+
+// ServingPools returns every distinct dedicated serving pool the ladder
+// names, in catalog order — the set workload admission must admit.
+func (c ComputeCatalog) ServingPools() []string {
+	var pools []string
+	for _, t := range c.tiers {
+		if t.ServingPool != "" && !slices.Contains(pools, t.ServingPool) {
+			pools = append(pools, t.ServingPool)
+		}
+	}
+	return pools
 }
 
 // Resources returns the pod requests/limits (as parseable Quantity strings)
@@ -401,6 +434,9 @@ func parseCompute(entries []ComputeTier, defaultID string) (ComputeCatalog, erro
 		}
 		if _, err := resource.ParseQuantity(t.EphemeralStorage); err != nil {
 			return ComputeCatalog{}, fmt.Errorf("tier %q: bad ephemeralStorage quantity %q: %w", t.ID, t.EphemeralStorage, err)
+		}
+		if t.ServingPool != "" && len(validation.IsDNS1123Label(t.ServingPool)) > 0 {
+			return ComputeCatalog{}, fmt.Errorf("tier %q: servingPool %q is not a valid node label value", t.ID, t.ServingPool)
 		}
 		if _, dup := byRender[t.RenderPlan]; dup {
 			return ComputeCatalog{}, fmt.Errorf("duplicate renderPlan %q (tier %q)", t.RenderPlan, t.ID)

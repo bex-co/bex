@@ -217,6 +217,24 @@ func TestComputeInstanceCap(t *testing.T) {
 	}
 }
 
+// TestComputeServingPool pins the w2/m250 routing: the three tiers no standard
+// bex-tenant-0 node can hold name their dedicated pool — pro-plus and pro-max
+// the cx53 xl pool, pro-ultra (32Gi, more than any 32 GB node allocates) the
+// ccx43 xxl pool — and every other tier, plus an empty/unknown id, keeps the
+// standard serving pool.
+func TestComputeServingPool(t *testing.T) {
+	want := map[string]string{"pro-plus": "xl", "pro-max": "xl", "pro-ultra": "xxl"}
+	for _, id := range append(Compute.IDs(), "", "gold") {
+		pool, ok := Compute.ServingPool(id)
+		if pool != want[id] || ok != (want[id] != "") {
+			t.Errorf("ServingPool(%q) = (%q, %v), want (%q, %v)", id, pool, ok, want[id], want[id] != "")
+		}
+	}
+	if got := Compute.ServingPools(); len(got) != 2 || got[0] != "xl" || got[1] != "xxl" {
+		t.Errorf("ServingPools() = %v, want [xl xxl]", got)
+	}
+}
+
 // --- parse() validation: every malformed-catalog case fails loudly, never silently ---
 
 // valid is a minimal well-formed catalog the malformed cases below mutate from.
@@ -451,6 +469,16 @@ compute:
   default: starter
   tiers:
     - {id: "", renderPlan: starter, cpu: 500m, memory: 512Mi}
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+` + validValkey,
+		"servingPool not a node label value": `
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi, servingPool: "XL pool"}
 postgres:
   default: free
   tiers:

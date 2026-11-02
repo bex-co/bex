@@ -351,6 +351,10 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 				},
 			}},
 		}}
+		// That node may be one of the App's dedicated serving pool (a large
+		// tier, w2/m250), whose taint would otherwise strand the snapshot
+		// beside a volume it can never reach.
+		execution.TolerateServingPool(&podSpec, servingPoolForTier(app.Spec.Tier))
 	}
 	podSpec.Containers = []corev1.Container{container}
 

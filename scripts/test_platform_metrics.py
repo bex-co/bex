@@ -169,7 +169,9 @@ def verify_filesystem_collector(resources, prometheus, environment):
     assert pod["nodeSelector"] == {"kubernetes.io/os": "linux", "bex.co/pool": "tenant"}
     assert pod["tolerations"] == [{
         "key": "bex.co/build-only", "operator": "Equal", "value": "true", "effect": "NoSchedule",
-    }], "Build nodes are in scope; platform/control-plane taints must not be tolerated"
+    }, {
+        "key": "bex.co/serving-pool", "operator": "Exists", "effect": "NoSchedule",
+    }], "Build and dedicated serving-pool nodes are in scope; platform/control-plane taints must not be tolerated"
     assert not any(pod.get(flag, False) for flag in ("hostNetwork", "hostPID", "hostIPC"))
     assert pod["automountServiceAccountToken"] is False
     assert pod["securityContext"]["runAsNonRoot"] is True
