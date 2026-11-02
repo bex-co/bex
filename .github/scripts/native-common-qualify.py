@@ -23,6 +23,9 @@ LABEL = "co.bex.native-qualification"
 OWNER = re.compile(r"bex-nq-[a-f0-9]{24}")
 IMAGE = re.compile(r"sha256:[a-f0-9]{64}")
 BOOTSTRAP_OUTPUT_LIMIT = 4 * 1024 * 1024
+BOOTSTRAP_WALL_SECONDS = 570
+# GNU kill-after10 + direct wait1 + group-absence wait5.
+BOOTSTRAP_CLEANUP_RESERVE_SECONDS = 16
 
 
 def dump(path, value):
@@ -737,7 +740,7 @@ def bounded_pull_output(process, deadline, cancellation, limit):
     return bytes(buffers["stdout"]), bytes(buffers["stderr"]), bound, complete
 
 
-def pull_buildkit(command, environment, cancellation=None, output_limit=None):
+def pull_buildkit(command, environment, cancellation=None, output_limit=None, deadline=None):
     """Bound this pre-pull; signals only flag cancellation until its group is gone."""
     cancellation = cancellation if cancellation is not None else {"signal": None}
     if output_limit is not None and (type(output_limit) is not int or output_limit <= 0):
@@ -761,7 +764,8 @@ def pull_buildkit(command, environment, cancellation=None, output_limit=None):
             # A nonraising handler cannot interrupt Popen's PID registration.
             process = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE,
                                        env=environment, start_new_session=True)
-            deadline = time.monotonic() + 195
+            if deadline is None:
+                deadline = time.monotonic() + 195
             if output_limit is not None:
                 stdout, stderr, bound, capture_complete = bounded_pull_output(
                     process, deadline, cancellation, output_limit)
@@ -871,13 +875,18 @@ def bootstrap(root):
     if not isinstance(image, str) or not re.fullmatch(r"moby/buildkit:v[0-9]+\.[0-9]+\.[0-9]+@sha256:[a-f0-9]{64}", image):
         raise ValueError("production BuildKit pin must be an immutable moby image")
     output_path = Path(os.environ["GITHUB_OUTPUT"])
-    command = ["timeout", "--kill-after=10s", "180s", "docker", "pull", image]
+    began = time.monotonic()
+    deadline = began + BOOTSTRAP_WALL_SECONDS
+    command = None  # Actual first argv is recorded only when enough budget remains.
     receipt = {"owner": owner, "image": image,
                "policy_path": "lego/operator/internal/build/toolchain-freshness.json",
                "policy_sha256": hashlib.sha256(policy_bytes).hexdigest(),
                "command": command, "maximum_attempts": 3, "retry_delay_seconds": 15,
-               "python_timeout_seconds": 195, "output_drain_seconds": 0,
-               "output_drain_policy": "EOF read under195s; stop closes pipes without an unbounded drain",
+               "whole_timeout_seconds": BOOTSTRAP_WALL_SECONDS,
+               "cleanup_reserve_seconds": BOOTSTRAP_CLEANUP_RESERVE_SECONDS,
+               "started_monotonic": began, "deadline_monotonic": deadline,
+               "whole_budget_stop": None, "output_drain_seconds": 0,
+               "output_drain_policy": "EOF under shared deadline minus direct/group cleanup6s; no unbounded drain",
                "direct_child_wait_seconds": 1, "group_absence_wait_seconds": 5,
                "attempts": [], "image_output_emitted": False,
                "combined_output_limit_bytes": BOOTSTRAP_OUTPUT_LIMIT,
@@ -905,13 +914,22 @@ def bootstrap(root):
         for number in range(1, 4):
             if cancellation["signal"] is not None:
                 break
+            remaining = deadline - time.monotonic()
+            command_seconds = int(remaining - BOOTSTRAP_CLEANUP_RESERVE_SECONDS)
+            if command_seconds <= 0:
+                receipt["whole_budget_stop"] = "insufficient-cleanup-reserved-pull-budget"
+                break
+            command = ["timeout", "--kill-after=10s", str(command_seconds) + "s", "docker", "pull", image]
+            if receipt["command"] is None:
+                receipt["command"] = command
             remaining_output = BOOTSTRAP_OUTPUT_LIMIT - receipt["captured_output_bytes"]
             if remaining_output <= 0:
                 raise RuntimeError("BuildKit pull output budget exhausted; no retry or image output")
             started = datetime.datetime.now(datetime.timezone.utc).isoformat()
             try:
                 result, stdout, stderr = pull_buildkit(
-                    command, environment, cancellation, output_limit=remaining_output)
+                    command, environment, cancellation, output_limit=remaining_output,
+                    deadline=deadline - 6)  # Preserve1s directwait +5s group proof inside whole budget.
                 attempt = {"number": number, "started_at": started,
                            "finished_at": datetime.datetime.now(datetime.timezone.utc).isoformat(),
                            **result, "timeout_exit": result["exit_code"] in (124, 137)}
@@ -921,6 +939,10 @@ def bootstrap(root):
                            "exit_code": None, "launch_error": type(error).__name__, "timeout_exit": False}
                 # No subprocess stream exists on launch failure; keep its class above.
                 stdout, stderr = b"", b""
+            attempt.update(command=command, command_timeout_seconds=command_seconds,
+                           whole_remaining_before_seconds=remaining,
+                           python_deadline_monotonic=deadline - 6,
+                           whole_elapsed_after_seconds=time.monotonic() - began)
             for label, raw in (("stdout", stdout), ("stderr", stderr)):
                 path = root / ("bootstrap-" + str(number) + "." + label + ".log")
                 path.write_bytes(raw)
@@ -940,6 +962,9 @@ def bootstrap(root):
             }), flush=True)
             if cancellation["signal"] is not None:
                 break
+            if time.monotonic() >= deadline:
+                receipt["whole_budget_stop"] = "whole-bootstrap-deadline"
+                break
             if (attempt.get("bound") or "").startswith("output-"):
                 raise RuntimeError("bounded BuildKit pull output capture stopped; no retry or image output")
             if (type(attempt["exit_code"]) is int and attempt["exit_code"] == 0
@@ -952,9 +977,15 @@ def bootstrap(root):
             if receipt["output_budget_exhausted"]:
                 raise RuntimeError("BuildKit pull output budget exhausted; no retry or image output")
             if number < 3:
-                # Preserve the15s delay while observing cancellation within1s.
+                # Never spend the cleanup reserve or reset the shared deadline on a retry.
+                if deadline - time.monotonic() <= 15 + BOOTSTRAP_CLEANUP_RESERVE_SECONDS:
+                    receipt["whole_budget_stop"] = "insufficient-budget-for-retry-delay-and-pull"
+                    break
                 for _ in range(15):
                     if cancellation["signal"] is not None:
+                        break
+                    if deadline - time.monotonic() <= BOOTSTRAP_CLEANUP_RESERVE_SECONDS:
+                        receipt["whole_budget_stop"] = "shared-budget-during-retry-delay"
                         break
                     time.sleep(1)
     finally:
@@ -964,6 +995,10 @@ def bootstrap(root):
                 signal.signal(signum, handler)
             except (OSError, ValueError, RuntimeError) as error:
                 restoration_errors.append(type(error).__name__)
+        receipt["elapsed_seconds"] = time.monotonic() - began
+        if time.monotonic() >= deadline:
+            receipt["whole_budget_stop"] = "whole-bootstrap-deadline"
+        dump(receipt_path, receipt)
         if cancellation["signal"] is not None:
             receipt["cancel_signal"] = cancellation["signal"]
             if receipt["attempts"]:
@@ -973,6 +1008,11 @@ def bootstrap(root):
             raise RuntimeError("BuildKit bootstrap signal-handler restoration failed")
     if cancellation["signal"] is not None:
         raise RuntimeError("BuildKit bootstrap cancelled; exact result retained without retry or image output")
+    if time.monotonic() >= deadline:
+        receipt["whole_budget_stop"] = "whole-bootstrap-deadline"
+        dump(receipt_path, receipt)
+    if receipt["whole_budget_stop"] is not None:
+        raise RuntimeError("shared BuildKit bootstrap budget exhausted; exact results retained")
     if not succeeded:
         raise RuntimeError("all three bounded production BuildKit pulls failed; exact results retained")
     with output_path.open("a") as output:
