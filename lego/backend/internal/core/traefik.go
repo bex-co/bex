@@ -37,7 +37,7 @@ const traefikIngressClass = "traefik"
 // traefikTLSEntrypoint is the HTTPS entrypoint name in the deployed Traefik
 // (deploy/gitops/base/values/traefik.values.yaml `ports.websecure`) — the
 // prefix Traefik v3 puts on the TLS sibling router it mints for every
-// TLS-covered Ingress host (w1/m51/t001 ground truth, Traefik v3.7.5).
+// TLS-covered Ingress host (w1/m51/t001 ground truth, Traefik v3.7.5; unchanged through v3.7.17, w8/m145).
 const traefikTLSEntrypoint = "websecure"
 
 // TraefikRouterNames resolves the exact metric-label identities Traefik 3.7.5
@@ -106,7 +106,8 @@ func (b *Base) TraefikRouterNames(ctx context.Context, app *appv1alpha1.App) ([]
 }
 
 // TraefikRouterNamesForIngress reproduces the Kubernetes Ingress provider's
-// router-key algorithm in the Traefik version pinned by production (v3.7.5).
+// router-key algorithm in the Traefik version pinned by production (v3.7.17;
+// identical to v3.7.5, which it was written against — w8/m145).
 // It deliberately accepts only the shape reconcileIngress owns: one Prefix
 // path at "/" per host. If that contract drifts, metering fails closed rather
 // than guessing at an identity and charging another App's bytes.
@@ -119,7 +120,7 @@ func TraefikRouterNamesForIngress(ingress *networkingv1.Ingress) ([]string, erro
 	}
 
 	// TLS-covered hosts get a second router: Traefik v3's Kubernetes Ingress
-	// provider (v3.7.5 on prod, chart 41.0.0) creates the base router
+	// provider (v3.7.17 on prod, chart 41.0.0) creates the base router
 	// `<ns>-<name>-<host>-<path>@kubernetes` on the non-TLS entrypoints and,
 	// for every host in spec.tls, a TLS sibling named `websecure-<same>` on
 	// the HTTPS entrypoint — and that sibling is where essentially all real
@@ -209,7 +210,7 @@ func TraefikRouterMatcher(names []string) string {
 	return "^(" + strings.Join(quoted, "|") + ")$"
 }
 
-// traefikNormalize is provider.Normalize from Traefik v3.7.5: runs of every
+// traefikNormalize is provider.Normalize from Traefik v3.7.5–v3.7.17: runs of every
 // non-letter/non-number character collapse to one hyphen.
 func traefikNormalize(name string) string {
 	return strings.Join(strings.FieldsFunc(name, func(r rune) bool {

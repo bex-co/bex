@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"os"
 	"slices"
 	"strings"
 	"testing"
@@ -78,5 +79,18 @@ func TestWebServiceEdgeCompressionProjection(t *testing.T) {
 	reconcileOnce(t, r, nn)
 	if _, err := middleware("edge-compress"); !apierrors.IsNotFound(err) {
 		t.Errorf("compress after unexposing: %v, want removed", err)
+	}
+}
+
+// The actual-proxy gate runs the Traefik production runs: its image is the
+// base values' `image.tag` pin (w8/m145), so a Traefik bump cannot leave the
+// gate measuring the previous release.
+func TestEdgeTraefikImageIsTheDeployedPin(t *testing.T) {
+	values, err := os.ReadFile("../../../../deploy/gitops/base/values/traefik.values.yaml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(values), "\n  tag: "+strings.TrimPrefix(edgeTraefikImage, "traefik:")+"\n") {
+		t.Fatalf("edgeTraefikImage %q is not the image.tag pinned in traefik.values.yaml", edgeTraefikImage)
 	}
 }

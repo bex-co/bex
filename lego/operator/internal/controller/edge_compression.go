@@ -39,9 +39,11 @@ var edgeCompressedTypes = []any{
 // edgeCompressionMiddlewares is the router chain that compresses a web
 // service's public responses: Traefik's own compress, gzip only, for at least
 // 1 KiB of a listed type and never an already encoded or HEAD response. Brotli
-// is left off because Traefik v3.7.5's Brotli writer encodes a 206 Range body
-// while Content-Range still counts identity bytes; its gzip writer passes a
-// partial response through untouched. Two differences from Render remain,
+// is left off because Traefik's Brotli writer (v3.7.5 through the pinned
+// v3.7.17) encodes a 206 Range body while Content-Range still counts identity
+// bytes; its gzip writer passes a partial response through untouched. zstd is
+// never sent: from v3.7.9 the gzip writer no longer negotiates it itself
+// (w8/m145). Two differences from Render remain,
 // signed off by the user in ADR018: a Cache-Control: no-transform response is
 // still compressed, and a strong ETag stays strong on the encoded body (w8/m83).
 func edgeCompressionMiddlewares(app *appv1alpha1.App) (names []string, specs []map[string]any) {

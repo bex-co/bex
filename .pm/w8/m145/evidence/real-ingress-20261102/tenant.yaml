@@ -1,0 +1,62 @@
+apiVersion: v1
+kind: Namespace
+metadata: {name: tea-w8test}
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata: {name: web, namespace: tea-w8test}
+spec:
+  selector: {matchLabels: {app: web}}
+  template:
+    metadata: {labels: {app: web}}
+    spec:
+      containers:
+        - name: whoami
+          image: traefik/whoami:v1.10.3
+          args: ["--port", "8080"]
+---
+apiVersion: v1
+kind: Service
+metadata: {name: web, namespace: tea-w8test}
+spec:
+  selector: {app: web}
+  ports: [{port: 8080, targetPort: 8080}]
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata: {name: web-ws-egress, namespace: tea-w8test}
+spec:
+  plugin:
+    bexWebsocketEgress: {appId: srv-w8test, metricsAddr: ":9101"}
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata: {name: blocked-ip-allow, namespace: tea-w8test}
+spec:
+  ipAllowList: {sourceRange: ["192.0.2.1/32"]}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: web
+  namespace: tea-w8test
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: tea-w8test-web-ws-egress@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: web.onbex.test
+      http: {paths: [{path: /, pathType: Prefix, backend: {service: {name: web, port: {number: 8080}}}}]}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: blocked
+  namespace: tea-w8test
+  annotations:
+    traefik.ingress.kubernetes.io/router.middlewares: tea-w8test-blocked-ip-allow@kubernetescrd
+spec:
+  ingressClassName: traefik
+  rules:
+    - host: blocked.onbex.test
+      http: {paths: [{path: /, pathType: Prefix, backend: {service: {name: web, port: {number: 8080}}}}]}

@@ -1,0 +1,25 @@
+== routed
+Rndr-Id: <uuid>
+True-Client-Ip: 127.0.0.1
+X-Forwarded-For: 127.0.0.1
+X-Real-Ip: 127.0.0.1
+== blocked
+403
+== unknown host
+404
+== websocket
+101
+== ws meter
+bex_http_request_starts_total{app_id="srv-w8test"} <n>
+bex_websocket_egress_bytes_total{app_id="srv-w8test"} <n>
+bex_websocket_ingress_bytes_total{app_id="srv-w8test"} <n>
+== router/service metrics
+traefik_router_requests_bytes_total{code="200",method="GET",protocol="http",router="web-tea-w8test-web-web-onbex-test@kubernetes",service="tea-w8test-web-8080@kubernetes"} <n>
+traefik_router_requests_bytes_total{code="403",method="GET",protocol="http",router="web-tea-w8test-blocked-blocked-onbex-test@kubernetes",service="tea-w8test-web-8080@kubernetes"} <n>
+traefik_router_requests_total{code="200",method="GET",protocol="http",router="web-tea-w8test-web-web-onbex-test@kubernetes",service="tea-w8test-web-8080@kubernetes"} <n>
+traefik_router_requests_total{code="403",method="GET",protocol="http",router="web-tea-w8test-blocked-blocked-onbex-test@kubernetes",service="tea-w8test-web-8080@kubernetes"} <n>
+traefik_router_responses_bytes_total{code="200",method="GET",protocol="http",router="web-tea-w8test-web-web-onbex-test@kubernetes",service="tea-w8test-web-8080@kubernetes"} <n>
+traefik_router_responses_bytes_total{code="403",method="GET",protocol="http",router="web-tea-w8test-blocked-blocked-onbex-test@kubernetes",service="tea-w8test-web-8080@kubernetes"} <n>
+traefik_service_requests_bytes_total{code="200",method="GET",protocol="http",service="tea-w8test-web-8080@kubernetes"} <n>
+traefik_service_requests_total{code="200",method="GET",protocol="http",service="tea-w8test-web-8080@kubernetes"} <n>
+traefik_service_responses_bytes_total{code="200",method="GET",protocol="http",service="tea-w8test-web-8080@kubernetes"} <n>

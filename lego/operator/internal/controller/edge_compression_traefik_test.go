@@ -36,9 +36,9 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// edgeTraefikImage is the Traefik the deployed chart runs (base values: chart
-// 41.0.0 = Traefik v3.7.5).
-const edgeTraefikImage = "traefik:v3.7.5"
+// edgeTraefikImage is the Traefik the deployed chart runs: the `image.tag` pin
+// in deploy/gitops/base/values/traefik.values.yaml (w8/m145).
+const edgeTraefikImage = "traefik:v3.7.17@sha256:30ff62491aacdb862ceb8c9edcf2627da638d7deafdd4b6dab32fe34f8aa3e90"
 
 // TestEdgeCompressionOnTheDeployedTraefik is w8/m83's actual-proxy gate: the
 // operator's own middleware chain, loaded into the deployed Traefik release,
@@ -137,6 +137,8 @@ func TestEdgeCompressionOnTheDeployedTraefik(t *testing.T) {
 		{name: "gzip decodes exactly", path: "/text", acceptEncoding: "gzip", wantStatus: 200, wantEncoding: "gzip", want: text},
 		{name: "a Brotli offer still gets gzip", path: "/text", acceptEncoding: "br, gzip", wantStatus: 200, wantEncoding: "gzip", want: text},
 		{name: "Brotli only is identity", path: "/text", acceptEncoding: "br", wantStatus: 200, want: text},
+		{name: "a browser offer gets gzip", path: "/text", acceptEncoding: "gzip, deflate, br, zstd", wantStatus: 200, wantEncoding: "gzip", want: text},
+		{name: "zstd only is identity", path: "/text", acceptEncoding: "zstd", wantStatus: 200, want: text},
 		{name: "no offer is identity", path: "/text", wantStatus: 200, want: text},
 		{name: "refused coding is identity", path: "/text", acceptEncoding: "gzip;q=0, br;q=0", wantStatus: 200, want: text},
 		{name: "strong ETag kept (ADR018 divergence)", path: "/etag", acceptEncoding: "gzip", wantStatus: 200, wantEncoding: "gzip", wantETag: `"v1"`, want: text},
