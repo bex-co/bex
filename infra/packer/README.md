@@ -18,6 +18,12 @@ The bake replaces the pkgs.k8s.io `kubelet` binary with the same release built w
 - **Kubernetes bump:** rebuild and re-pin the patch with it. `scripts/clusterapi-validate.sh` fails if the patch, its version or the pinned install step drifts.
 - **Rollback:** re-label the previous snapshot (see below).
 
+## Kernel
+
+The base Hetzner image is pinned by immutable id, so node kernels move only when the bake runs `apt-get full-upgrade`. Without it, nodes kept the base's `6.8.0-117` while noble-security shipped `147`. `kernel_version` is the expected newest kernel after that upgrade. The bake fails when apt installs any other newest kernel, so every kernel change is a reviewed bump plus a bake and roll. The pin also goes into the snapshot name and the `bex.co/kernel` label.
+
+CVE-2026-98432 (IPv4 TCP use-after-free) is fixed in noble `6.8.0-149`. Bump `kernel_version` to it once it reaches noble-security, then bake and roll. Until every node runs a fixed kernel, the platform's Go services build with `godebug multipathtcp=0` (in `lego/go.work` plus the operator and backend `go.mod`), so they don't open the MPTCP listeners the claimed exploit chain needs.
+
 ## How CAPH picks the image
 
 CAPH resolves `HCloudMachineTemplate.spec.template.spec.imageName` against a snapshot **label** `caph-image-name`, not the description, and requires that selector to match exactly one image. The reviewed `infra/packer/release.conf` selects a versioned label such as `bex-worker-k8s-1-34`; `snapshot.yml` immediately retires that label from every older match. `cluster.yaml` uses that exact selector for control-plane and worker templates. Snapshot descriptions include the Kubernetes/containerd/runc tuple, and corresponding labels make the artifact auditable while retired snapshots remain available for an explicit rollback.

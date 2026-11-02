@@ -533,6 +533,20 @@ else
   echo "FAIL: $PACKER missing — the baked-image recipe must stay in the repo (w1/m36 t001)" >&2; fail=1
 fi
 
+# 3a. The base image is pinned, so only the bake's upgrade moves node kernels.
+echo "==> $PACKER upgrades to the reviewed kernel"
+if [ -f "$PACKER" ]; then
+  pk_kernel="$(pk_var kernel_version)"
+  if [[ ! "$pk_kernel" =~ ^[0-9]+\.[0-9]+\.[0-9]+-[0-9]+$ ]] \
+    || ! grep -Fq 'full-upgrade",' "$PACKER" \
+    || ! grep -Fq '"KERNEL_VERSION=${var.kernel_version}"' "$PACKER" \
+    || ! grep -Fq '= \"$KERNEL_VERSION\"' "$PACKER" \
+    || ! grep -Fq -- '-kernel-${var.kernel_version}' "$PACKER"; then
+    echo "FAIL: $PACKER must full-upgrade, pass a strict kernel_version (got '$pk_kernel'), assert the newest installed kernel equals it, and name the snapshot by it" >&2
+    fail=1
+  fi
+fi
+
 # 3b. CAPH requires imageName to resolve to exactly one snapshot. A bake must
 # preserve old snapshots for rollback while retiring their active selector.
 echo "==> $SNAPSHOT_WORKFLOW retires prior active worker snapshots"
