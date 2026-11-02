@@ -1,0 +1,99 @@
+{
+  "at": "2026-11-02T17:05:33.772336+00:00",
+  "scope": "Static source extension only; full current AMD utility result+artifact admission stillpending",
+  "from": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+  "to": "f30c874fc6ab226a9f9177d8356d2776fdde53b5",
+  "archive": {
+    "path": "source-extension.tar.gz",
+    "bytes": 48107,
+    "sha256": "1ad61d5a8d87981f953a4dde45ae4e1b632729d8f5e75f5ea9f7a80948942c4f"
+  },
+  "members": [
+    {
+      "member": "CI3-CHANGED-PATHS.json",
+      "source": "/private/tmp/bex-w8-f30-run95-source-extension-20261102-mfm32ix1/CI3-CHANGED-PATHS.json",
+      "bytes": 1848,
+      "sha256": "3f98bcd80ba233a6f433304a34b45b899c25719c1ffca68de138d7d4c6ca5943",
+      "mode": "0o644"
+    },
+    {
+      "member": "CI3-ONLY.diff",
+      "source": "/private/tmp/bex-w8-f30-run95-source-extension-20261102-mfm32ix1/CI3-ONLY.diff",
+      "bytes": 40658,
+      "sha256": "098c08771924d5ef5e5224b79f33025f84302e0b567c78fab85775acaaf2283a",
+      "mode": "0o644"
+    },
+    {
+      "member": "EXPECTED-CAPTURED-SOURCE.json",
+      "source": "/private/tmp/bex-w8-f30-run95-source-extension-20261102-mfm32ix1/EXPECTED-CAPTURED-SOURCE.json",
+      "bytes": 75337,
+      "sha256": "ceb6e1d9f066529781d54a348dcb7d03e5075fb692d154c980cf961366ce885f",
+      "mode": "0o644"
+    },
+    {
+      "member": "FUNCTION-SCOPE.json",
+      "source": "/private/tmp/bex-w8-f30-run95-source-extension-20261102-mfm32ix1/FUNCTION-SCOPE.json",
+      "bytes": 869,
+      "sha256": "5a9a39e8b62cd9af5713d9478e2ce9405c27705322339ea7285df5150bb8e999",
+      "mode": "0o644"
+    },
+    {
+      "member": "IMAGE33-UNCHANGED.json",
+      "source": "/private/tmp/bex-w8-f30-run95-source-extension-20261102-mfm32ix1/IMAGE33-UNCHANGED.json",
+      "bytes": 8547,
+      "sha256": "2a35ba641fa360ed39dd16170984a3ce00ce013b7d55f72d08fc5010891f39f3",
+      "mode": "0o644"
+    },
+    {
+      "member": "MANIFEST.json",
+      "source": "/private/tmp/bex-w8-f30-run95-source-extension-20261102-mfm32ix1/MANIFEST.json",
+      "bytes": 1501,
+      "sha256": "75da75b08ddf70d443e55bbbdc819cd648dc34a840c54ffcf880f610638fb53e",
+      "mode": "0o644"
+    },
+    {
+      "member": "NATIVEINIT58-INPUTS-UNCHANGED.json",
+      "source": "/private/tmp/bex-w8-f30-run95-source-extension-20261102-mfm32ix1/NATIVEINIT58-INPUTS-UNCHANGED.json",
+      "bytes": 3855,
+      "sha256": "e29c2439dadeb3b3cb8265293a62656cf77c474d9883491e4889773d6008e276",
+      "mode": "0o644"
+    },
+    {
+      "member": "ROOT-STATIC-EXTENSION-ADMISSION.json",
+      "source": "/private/tmp/bex-w8-f30-run95-source-extension-20261102-mfm32ix1/ROOT-STATIC-EXTENSION-ADMISSION.json",
+      "bytes": 1345,
+      "sha256": "e69d3da66031eb7bf3b314f07bbd77de2334a0a84411f3b2bef15e8847e5a27f",
+      "mode": "0o644"
+    },
+    {
+      "member": "RUN95-INERT-PLAN.json",
+      "source": "/private/tmp/bex-w8-f30-run95-source-extension-20261102-mfm32ix1/RUN95-INERT-PLAN.json",
+      "bytes": 779,
+      "sha256": "50aa3c2143fcc6ed2719cabf8c726cb8e5639cca1b086ecf29244dae95ee8ff5",
+      "mode": "0o644"
+    },
+    {
+      "member": "STATIC-SOURCE-EXTENSION.json",
+      "source": "/private/tmp/bex-w8-f30-run95-source-extension-20261102-mfm32ix1/STATIC-SOURCE-EXTENSION.json",
+      "bytes": 3424,
+      "sha256": "a0026b8ecd321acbfde9c69097bace977b0add0661ef8717a141c92e4823ac72",
+      "mode": "0o644"
+    },
+    {
+      "member": "TARGET-F30-SOURCE-INPUTS.json",
+      "source": "/private/tmp/bex-w8-f30-run95-source-extension-20261102-mfm32ix1/TARGET-F30-SOURCE-INPUTS.json",
+      "bytes": 61237,
+      "sha256": "03b9801df1f214ec4a56bf47e730d67c48119ebf609e058000a20a9f5e2fd14d",
+      "mode": "0o644"
+    }
+  ],
+  "Root_admission_sha256": "e69d3da66031eb7bf3b314f07bbd77de2334a0a84411f3b2bef15e8847e5a27f",
+  "closed_Git_source_inputs": 301,
+  "CI_paths_changed": 3,
+  "other_inputs_unchanged": 298,
+  "image_critical_inputs_unchanged": 33,
+  "nativeinit_selected_inputs_unchanged_7ad_6ea_f30": 58,
+  "target_runtime_or_recipe_reproduction": false,
+  "actual_catalog": null,
+  "actual_contract": null
+}

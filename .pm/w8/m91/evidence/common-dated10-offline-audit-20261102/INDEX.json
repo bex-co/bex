@@ -1,0 +1,121 @@
+{
+  "scope": "ACTUAL OFFLINE CONTENT AUDIT/CARRIER METADATA FOR TEN DATED AMD CASES; NOT TARGET RUNTIME/CI/CURRENT BASELINE/ADOPTION",
+  "archives": {
+    "executed-source.tar.gz": {
+      "stored": {
+        "path": "/private/tmp/bex-w8-dated10-offline-publication-20261102-ksf_ljjw/payload/executed-source.tar.gz",
+        "bytes": 83114,
+        "sha256": "e19c9cfa9ee5e438296b9270eb6a27d641b4924422e90423d962dc408aceb8ad",
+        "mode": "0644"
+      },
+      "members": 20,
+      "original_member_bytes": 458112,
+      "compression": "gzip mtime0; regular PAX tar members; original bytes/modes verified by full roundtrip",
+      "all_roundtrip_exact": true
+    },
+    "actual-execution.tar.gz": {
+      "stored": {
+        "path": "/private/tmp/bex-w8-dated10-offline-publication-20261102-ksf_ljjw/payload/actual-execution.tar.gz",
+        "bytes": 97697,
+        "sha256": "81abff262badde097a163b43eafd3455836322f0fdf36bfd5023e39e4c1cef87",
+        "mode": "0644"
+      },
+      "members": 42,
+      "original_member_bytes": 612480,
+      "compression": "gzip mtime0; regular PAX tar members; original bytes/modes verified by full roundtrip",
+      "all_roundtrip_exact": true
+    },
+    "carrier-normalization.tar.gz": {
+      "stored": {
+        "path": "/private/tmp/bex-w8-dated10-offline-publication-20261102-ksf_ljjw/payload/carrier-normalization.tar.gz",
+        "bytes": 67317,
+        "sha256": "ac613eb869d975304af1551b2db0ae3583de40a919e85ad93b9db69cc822feb8",
+        "mode": "0644"
+      },
+      "members": 61,
+      "original_member_bytes": 559453,
+      "compression": "gzip mtime0; regular PAX tar members; original bytes/modes verified by full roundtrip",
+      "all_roundtrip_exact": true
+    },
+    "source-inputs-and-extension.tar.gz": {
+      "stored": {
+        "path": "/private/tmp/bex-w8-dated10-offline-publication-20261102-ksf_ljjw/payload/source-inputs-and-extension.tar.gz",
+        "bytes": 71227,
+        "sha256": "ada5303d07a78063e7a3d483ce03f274bd04310866d70cfa9776b66739e2a93d",
+        "mode": "0644"
+      },
+      "members": 8,
+      "original_member_bytes": 335422,
+      "compression": "gzip mtime0; regular PAX tar members; original bytes/modes verified by full roundtrip",
+      "all_roundtrip_exact": true
+    },
+    "static-6ea-branch-review.tar.gz": {
+      "stored": {
+        "path": "/private/tmp/bex-w8-dated10-offline-publication-v2-20261102-2bbs244d/payload/static-6ea-branch-review.tar.gz",
+        "bytes": 134929,
+        "sha256": "3f2eb7b17871dba409f8fb901a4e654af6d47000e2eb783c5f6d70352fed319b",
+        "mode": "0644"
+      },
+      "members": 10,
+      "listed_review_payloads": 9,
+      "included_manifest_seal": 1,
+      "original_member_bytes": 544673,
+      "compression": "gzip mtime0; regular PAX members; all original bytes/modes roundtrip exact",
+      "member_map": {
+        "path": "/private/tmp/bex-w8-dated10-offline-publication-v2-20261102-2bbs244d/payload/BRANCH-ARCHIVE-MEMBERS.json",
+        "bytes": 3820,
+        "sha256": "b4fe2217e2b69507abd19818b2b8f2024e8cc9aebe1c93ea8b4c4a02bd95c752",
+        "mode": "0644"
+      },
+      "all_roundtrip_exact": true
+    }
+  },
+  "executed_sources": 11,
+  "paired_control_methods": 4,
+  "authoritative_runtime_manifest_files": 35,
+  "runtime_manifest_bytes": 599526,
+  "runtime_execution_outputs": 34,
+  "runtime_Root_review_files": 1,
+  "actual_carrier_normalization_payloads": 58,
+  "source_input_tables": 4,
+  "actual_controller": {
+    "complete": true,
+    "seconds": 1.8038448330480605,
+    "pending_groups": [],
+    "own_TMP_removed": true
+  },
+  "actual_batch_stdout": {
+    "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/evidence/dated10-audit.stdout",
+    "bytes": 5100,
+    "sha256": "953a400d87b45a9222c5d648bf7ebece69592613a231985d02994cf800fd1975",
+    "mode": "0644"
+  },
+  "Root_controller_admission": {
+    "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/ROOT-ACTUAL-CONTROLLER-REVIEW.json",
+    "bytes": 674,
+    "sha256": "d720ccbb2cbf16ec58966cb53d0573750217b95b4711e49f70a38bd38da87d21",
+    "mode": "0644"
+  },
+  "Root_carrier_metadata_admission": {
+    "path": "/private/tmp/bex-w8-dated10-actual-metadata-normalization-20261102-9mdypssd/ROOT-CARRIER-NORMALIZATION-ADMISSION.json",
+    "bytes": 1208,
+    "sha256": "73726bb32cee71aae43e356f6fee633c2ba414ea1dfb2e43e103893c77219291",
+    "mode": "0644"
+  },
+  "source_equivalence": "ROOT-ADMITTED case-specific STATIC nonimpact of ten dated retained bodies toward6ea only; no target/runtime/recipe reproduction or current-baseline/adoption authority",
+  "future_CI_target": "Separate future three-CI-path source extension after ship remains REQUIRED/pending; current full AMD utility baseline/catalog/contract remain unaccepted here",
+  "actual_catalog": null,
+  "actual_contract": null,
+  "production_pins_changed": false,
+  "Root_static_6ea_source_admission": {
+    "path": "/private/tmp/bex-w8-dated10-offline-publication-v2-20261102-2bbs244d/payload/ROOT-6EA-SOURCE-NONIMPACT-ADMISSION.json",
+    "bytes": 1709,
+    "sha256": "e13be3aa8059dda216149885da688bafb4e9d9a7593795aba3304e0e6c60e024",
+    "mode": "0644"
+  },
+  "independent_source_branch_review": {
+    "path": "static-6ea-branch-review.tar.gz:REVIEW.json",
+    "bytes": 6349,
+    "sha256": "6a15c6d0888e46140233c207ce6562b832fe46e0cd63c936e43e29f524705422"
+  }
+}

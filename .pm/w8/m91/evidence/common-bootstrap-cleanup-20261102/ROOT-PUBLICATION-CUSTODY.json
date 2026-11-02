@@ -1,0 +1,14 @@
+{
+  "at": "2026-11-02T17:04:58.070487+00:00",
+  "scope": "Root independently reviewed and copied full actual failed93/hostchecks/source/f30ship/queued95 evidence; no currentutilityacceptance",
+  "copyplan_sha256": "de873d6f2aefc088a47c6511f3e623b94ba527c82359c9fe031eee332baf4ad0",
+  "payload_files": 4,
+  "all99_logical_originals_size_SHA_mode_verified": true,
+  "regular_tar_objects": 86,
+  "stored_body_bytes": 1441232,
+  "README_authored_only": true,
+  "source_commit": "f30c874fc6ab226a9f9177d8356d2776fdde53b5",
+  "actual_current_utility_baseline": null,
+  "actual_catalog": null,
+  "actual_contract": null
+}

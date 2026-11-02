@@ -1,0 +1,24 @@
+{
+  "authoritative_runtime_manifest": {
+    "path": "/private/tmp/bex-w8-dated10-offline-audit-actual-20261102-lo7pah9l/RUNTIME-MANIFEST.json",
+    "bytes": 6087,
+    "sha256": "33b3e036aa60b0280460170fcb553ddbff79875a48d86f7f811a744c22a9fc18",
+    "mode": "0644"
+  },
+  "total_files": 35,
+  "total_bytes": 599526,
+  "execution_output_files": 34,
+  "execution_output_bytes": 598852,
+  "Root_review_files": 1,
+  "Root_review_bytes": 674,
+  "Root_review": {
+    "path": "/private/tmp/bex-w8-dated10-offline-audit-217d4caafbb2969b08f91957/ROOT-ACTUAL-CONTROLLER-REVIEW.json",
+    "bytes": 674,
+    "sha256": "d720ccbb2cbf16ec58966cb53d0573750217b95b4711e49f70a38bd38da87d21",
+    "mode": "0644"
+  },
+  "Root_review_is_in_original_manifest": true,
+  "frozen_narrative_correction": "9md README/Root-reference narrative incorrectly described the Root review as separately appended; preserved unchanged. The manifest and all raw proof hashes are authoritative and unchanged.",
+  "initial_publication_selection_refusal": "Duplicate-name assertion before any archive write; raw failure remains private history.",
+  "proof_schema_result_source_changes": false
+}

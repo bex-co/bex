@@ -1,0 +1,38 @@
+{
+  "at": "2026-11-02T16:48:27.373005+00:00",
+  "scope": "Case-specific static source nonimpact for10 dated retained bodies toward6ea only; no new runtime or recipe reproduction",
+  "independent_review": {
+    "bytes": 6349,
+    "sha256": "6a15c6d0888e46140233c207ce6562b832fe46e0cd63c936e43e29f524705422"
+  },
+  "case_basis": {
+    "bytes": 21853,
+    "sha256": "bb564ba09b02cc279c0caf0eaeb534729963adab87e0bdbbe24dd5ba5a68eca3"
+  },
+  "no_host_Go_payload_addendum": {
+    "bytes": 4828,
+    "sha256": "e59b76fb480519d3cf2fbfc1be4caaa56c21a0ab35ab1a13c3c9347b837acd3d"
+  },
+  "carrier_normalization_root_admission": {
+    "bytes": 1208,
+    "sha256": "73726bb32cee71aae43e356f6fee633c2ba414ea1dfb2e43e103893c77219291"
+  },
+  "Root_review": "Full independent branch review and Go-payload addendum read, key actual nativecommon/node-qualification/dockerhub diffs read; eachcase exact recipe/custody/oracle references rechecked. 8x9bc and773/e6+explicit e4e remain actual execution sources. Node22/26+PythonNode24 bypass changedbackport, donor primaryImage hits preserve selectedinstructions, other changedbranches unselected/transport/observer only. Prior301 source table4roles/1201rows independentlyverified.",
+  "case_ids": [
+    "node/node-22",
+    "node/node-26",
+    "node-donors/node-exact14213",
+    "node-donors/node-exact14212",
+    "modern-python/3.9",
+    "modern-python/3.10",
+    "modern-python/3.11",
+    "modern-python/3.12",
+    "modern-python/3.14",
+    "legacy-python/3.7"
+  ],
+  "static_target": "6ea2804bcb3d3c479349ad8ccd693a5d90e5bb77",
+  "future_three_CI_path_extension_required": true,
+  "current_utility_baseline_admission": null,
+  "actual_catalog": null,
+  "actual_contract": null
+}

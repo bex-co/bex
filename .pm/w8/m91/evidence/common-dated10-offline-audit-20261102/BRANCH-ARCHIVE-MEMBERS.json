@@ -1,0 +1,103 @@
+{
+  "archive": {
+    "path": "/private/tmp/bex-w8-dated10-offline-publication-v2-20261102-2bbs244d/payload/static-6ea-branch-review.tar.gz",
+    "bytes": 134929,
+    "sha256": "3f2eb7b17871dba409f8fb901a4e654af6d47000e2eb783c5f6d70352fed319b",
+    "mode": "0644"
+  },
+  "listed_review_payloads": 9,
+  "included_final_manifest_seal": 1,
+  "members": [
+    {
+      "member": "CASE-BASIS.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-6ea-branch-independent-review-20261102-ew9_x5n7/CASE-BASIS.json",
+        "bytes": 21853,
+        "sha256": "bb564ba09b02cc279c0caf0eaeb534729963adab87e0bdbbe24dd5ba5a68eca3",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-6ea-branch-independent-review-20261102-ew9_x5n7/MANIFEST.json",
+        "bytes": 1214,
+        "sha256": "969989185502f9e6fc156b5d26b4d19eaf32ecca68227a757781f7053fc93fe7",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "REVIEW.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-6ea-branch-independent-review-20261102-ew9_x5n7/REVIEW.json",
+        "bytes": 6349,
+        "sha256": "6a15c6d0888e46140233c207ce6562b832fe46e0cd63c936e43e29f524705422",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "SELECTED-RUNTIME-NO-HOST-GO.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-6ea-branch-independent-review-20261102-ew9_x5n7/SELECTED-RUNTIME-NO-HOST-GO.json",
+        "bytes": 4828,
+        "sha256": "e59b76fb480519d3cf2fbfc1be4caaa56c21a0ab35ab1a13c3c9347b837acd3d",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "SOURCE-BINDINGS.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-6ea-branch-independent-review-20261102-ew9_x5n7/SOURCE-BINDINGS.json",
+        "bytes": 24664,
+        "sha256": "3fb0cc35faed2e9c2b90f2c6100524a93102f45940fb6fb11bccc60afd981682",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "diffs/ACTUAL773-SOURCE-INPUTS.diff",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-6ea-branch-independent-review-20261102-ew9_x5n7/diffs/ACTUAL773-SOURCE-INPUTS.diff",
+        "bytes": 160294,
+        "sha256": "e69eae922eb3445f073d0a1e3681c7a6adb54f100cbdb3859fab712b626942fa",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "diffs/ACTUAL9BC-SOURCE-INPUTS.diff",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-6ea-branch-independent-review-20261102-ew9_x5n7/diffs/ACTUAL9BC-SOURCE-INPUTS.diff",
+        "bytes": 160294,
+        "sha256": "e69eae922eb3445f073d0a1e3681c7a6adb54f100cbdb3859fab712b626942fa",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "diffs/ACTUALE6-PLUS-E4E-SOURCE-INPUTS.diff",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-6ea-branch-independent-review-20261102-ew9_x5n7/diffs/ACTUALE6-PLUS-E4E-SOURCE-INPUTS.diff",
+        "bytes": 160294,
+        "sha256": "e69eae922eb3445f073d0a1e3681c7a6adb54f100cbdb3859fab712b626942fa",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "diffs/EXPLICIT-E4E-OVERLAY-to6ea.diff",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-6ea-branch-independent-review-20261102-ew9_x5n7/diffs/EXPLICIT-E4E-OVERLAY-to6ea.diff",
+        "bytes": 3309,
+        "sha256": "163d4e25687acde743639847a193d6ceeeb5c5f81a382aff669741c9035ea3af",
+        "mode": "0644"
+      }
+    },
+    {
+      "member": "FINAL-MANIFEST.json",
+      "original": {
+        "path": "/private/tmp/bex-w8-dated10-6ea-branch-independent-review-20261102-ew9_x5n7/FINAL-MANIFEST.json",
+        "bytes": 1574,
+        "sha256": "eb451505312ec142564f0ba19b343b4c710c3790a3e16debbf332e9dd1c8912b",
+        "mode": "0644"
+      }
+    }
+  ],
+  "all_original_bytes_modes_roundtrip_exact": true
+}
