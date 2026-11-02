@@ -231,6 +231,13 @@ func TestServedDigestOfTheSavedTagIsTheSavedImage(t *testing.T) {
 		{"an override resolved from another reference", func(a *appv1alpha1.App) {
 			a.Status.ServingNetwork.Source = "docker.io/mendhak/http-https-echo:canary"
 		}, digest, false},
+		{"a candidate network not yet promoted (w4/456)", func(a *appv1alpha1.App) {
+			a.Status.ImageNetwork, a.Status.ServingNetwork = a.Status.ServingNetwork, nil
+		}, digest, true},
+		{"a candidate resolved from another reference", func(a *appv1alpha1.App) {
+			a.Status.ImageNetwork, a.Status.ServingNetwork = a.Status.ServingNetwork, nil
+			a.Status.ImageNetwork.Source = "docker.io/mendhak/http-https-echo:canary"
+		}, digest, false},
 		{"a network recorded before Source", func(a *appv1alpha1.App) { a.Status.ServingNetwork.Source = "" }, digest, false},
 		{"a configured-port image service runs its tag", func(a *appv1alpha1.App) { a.Spec.PortMode = "" }, digest, false},
 	} {

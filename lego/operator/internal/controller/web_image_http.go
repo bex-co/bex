@@ -193,6 +193,9 @@ func (r *AppReconciler) reportWebHTTPSelection(ctx context.Context, app *appv1al
 	if reason, pullMessage := r.permanentRolloutPullFailure(ctx, dep, time.Now()); pullMessage != "" {
 		return r.settleFailedRolloutMessage(ctx, app, dep, reason, pullMessage)
 	}
+	if reason, crashMessage := r.permanentRolloutCrash(ctx, dep, port); crashMessage != "" {
+		return r.settleFailedRolloutMessage(ctx, app, dep, reason, crashMessage)
+	}
 	app.Status.Image = image
 	app.Status.Phase = appv1alpha1.PhaseDeploying
 	replicas := int32(1)

@@ -488,3 +488,77 @@ func TestRolloutDeadlineKeepsProbeDiagnosisAcrossLateRestart(t *testing.T) {
 		}
 	})
 }
+
+// w4/454: a start command that exits during startup settles the deploy once the
+// kubelet's own CrashLoopBackOff verdict is in (two restarts), not after the
+// whole progress deadline. A pod that ever served, a running-but-unready pod,
+// too few restarts and an old revision's pod keep the deadline path.
+func TestPermanentStartupCrashSettlesBeforeRolloutDeadline(t *testing.T) {
+	sched := metav1.NewTime(time.Now().Add(-3 * time.Minute))
+	neverReady := []corev1.PodCondition{
+		{Type: corev1.PodScheduled, Status: corev1.ConditionTrue, LastTransitionTime: sched},
+		{Type: corev1.PodReady, Status: corev1.ConditionFalse, LastTransitionTime: metav1.NewTime(sched.Add(2 * time.Second))},
+	}
+	wasReady := []corev1.PodCondition{
+		{Type: corev1.PodScheduled, Status: corev1.ConditionTrue, LastTransitionTime: sched},
+		{Type: corev1.PodReady, Status: corev1.ConditionFalse, LastTransitionTime: metav1.NewTime(sched.Add(90 * time.Second))},
+	}
+	crash := func(restarts int32) corev1.ContainerStatus {
+		return corev1.ContainerStatus{Name: "app", RestartCount: restarts,
+			State:                corev1.ContainerState{Waiting: &corev1.ContainerStateWaiting{Reason: "CrashLoopBackOff"}},
+			LastTerminationState: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 3}}}
+	}
+	running := corev1.ContainerStatus{Name: "app", RestartCount: 3,
+		State: corev1.ContainerState{Running: &corev1.ContainerStateRunning{}}}
+	for _, tc := range []struct {
+		name       string
+		status     corev1.ContainerStatus
+		conds      []corev1.PodCondition
+		revision   string
+		wantFailed bool
+	}{
+		{"crash loop never ready", crash(2), neverReady, "rev-1", true},
+		{"too few restarts", crash(1), neverReady, "rev-1", false},
+		{"was ready once", crash(5), wasReady, "rev-1", false},
+		{"running but unready", running, neverReady, "rev-1", false},
+		{"old revision", crash(5), neverReady, "old", false},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			ctx := context.Background()
+			app := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: "web", Namespace: "default", Generation: 3},
+				Status: appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseDeploying, ActiveRevision: "old", ReleaseGeneration: 3}}
+			dep := progressDeadlineDep("web")
+			dep.Status.Conditions = nil
+			pod := &corev1.Pod{ObjectMeta: metav1.ObjectMeta{Name: "web-new", Namespace: "default",
+				Labels: map[string]string{"app": "web", labelRevision: tc.revision}},
+				Status: corev1.PodStatus{Conditions: tc.conds, ContainerStatuses: []corev1.ContainerStatus{tc.status}}}
+			cl := fake.NewClientBuilder().WithScheme(rolloutFailScheme(t)).WithObjects(app, dep, pod, servedReplicaSet(dep, "old")).WithStatusSubresource(&appv1alpha1.App{}).Build()
+			r := &AppReconciler{Client: cl, Scheme: cl.Scheme(), Mode: ModeKubernetes}
+			result, err := r.reportRolloutProgress(ctx, app, dep, 1, 3000, "waiting")
+			if err != nil {
+				t.Fatal(err)
+			}
+			var stored appv1alpha1.App
+			if err := cl.Get(ctx, client.ObjectKeyFromObject(app), &stored); err != nil {
+				t.Fatal(err)
+			}
+			rollout := meta.FindStatusCondition(stored.Status.Conditions, appv1alpha1.ConditionRollout)
+			if !tc.wantFailed {
+				if rollout != nil && rollout.Status == metav1.ConditionFalse {
+					t.Fatalf("settled early: %+v", rollout)
+				}
+				if result.RequeueAfter == 0 || stored.Status.Phase != appv1alpha1.PhaseDeploying {
+					t.Fatalf("did not keep the rollout budget: %+v %+v", result, stored.Status)
+				}
+				return
+			}
+			if rollout == nil || rollout.Status != metav1.ConditionFalse || rollout.Reason != "CrashLoopBackOff" ||
+				!strings.Contains(rollout.Message, "last exit code 3") || rollout.ObservedGeneration != 3 {
+				t.Fatalf("crash not settled: %+v", rollout)
+			}
+			if stored.Status.Phase != appv1alpha1.PhaseRunning || stored.Status.ActiveRevision != "old" {
+				t.Fatalf("prior release changed: %+v", stored.Status)
+			}
+		})
+	}
+}
