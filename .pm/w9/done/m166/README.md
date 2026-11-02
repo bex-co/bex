@@ -1,6 +1,6 @@
 # w9 · m166 — Reject invalid service patches before applying any settings
 
-**Worker:** worker9 **Goal:** a rejected multi-field service update leaves the service unchanged and does not trigger a deployment. **Status:** in progress — t001–t004 done (fix, blast-radius, cross-surface parity, simplify); t005 blocked on live CLI acceptance, t006 gated behind it
+**Worker:** worker9 **Goal:** a rejected multi-field service update leaves the service unchanged and does not trigger a deployment. **Status:** done — t001–t004 shipped; t005 live CLI acceptance passed 2026-11-02 on production (`0688d26b5`)
 
 ## Tasks (in order)
 
@@ -10,8 +10,8 @@
 | t002 | Verify the shared patch and setter blast radius — **DONE** | 45m | t001 |
 | t003 | Render parity across CLI, REST, MCP, GraphQL, and dashboard — **DONE** | 25m | t002 |
 | t004 | Simplify — **DONE** | 15m | t003 |
-| t005 | Test coverage and live CLI regression — **BLOCKED** (steps 1–2 done; live acceptance needs a deployed build + QA credentials) | 40m | t003, t004 |
-| t006 | Closeout | 10m | t005 |
+| t005 | Test coverage and live CLI regression — **DONE** | 40m | t003, t004 |
+| t006 | Closeout — **DONE** | 10m | t005 |
 
 ## Definition of done
 
