@@ -925,6 +925,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 		}
 		ran.SHA = releaseImageDigest(cur, open.Generation)
 		ran.DetectedHTTPPort = releaseDetectedHTTPPort(cur, open.Generation, ran.Ref)
+		ran.Commit = builtCommit(cur, ran.Ref)
 	}
 	// w9/011: a failing close carries its actionable cause rather than an opaque
 	// terminal state; deployCloseFailureReason owns the sourcing order.
@@ -1617,6 +1618,18 @@ func releaseImageDigest(app *appv1alpha1.App, generation int64) string {
 		return ""
 	}
 	return d.Digest
+}
+
+// builtCommit is the commit a source build of ref checked out, which the
+// operator reads from the image's revision label. It backfills a deploy whose
+// trigger-time lookup failed (w4/458). Empty for an image-backed service, an
+// unread label, or a label cached for another image.
+func builtCommit(app *appv1alpha1.App, ref string) string {
+	rev := app.Status.ImageRevision
+	if app.Spec.Repo == "" || ref == "" || rev == nil || rev.Image != ref {
+		return ""
+	}
+	return rev.Commit
 }
 
 // servesGeneration reports that status.activeRevision names generation: the
