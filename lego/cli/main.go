@@ -18,6 +18,7 @@ import (
 	"github.com/bex-co/bex/lego/cli/internal/branding"
 	"github.com/bex-co/bex/lego/cli/internal/bridge"
 	"github.com/bex-co/bex/lego/cli/internal/code"
+	"github.com/bex-co/bex/lego/cli/internal/desktop"
 	"github.com/bex-co/bex/lego/cli/internal/pgtrust"
 	"github.com/bex-co/bex/lego/cli/internal/skills"
 	"github.com/bex-co/bex/lego/cli/internal/telemetry"
@@ -51,6 +52,7 @@ func main() {
 	// upstream commands remain untouched.
 	cmd.RootCmd.AddCommand(code.Commands()...)
 	cmd.RootCmd.AddCommand(upgrade.Command(bexVersion))
+	cmd.RootCmd.AddCommand(desktop.Command())
 	// Upstream's `skills` installs Render's skills (w8/m143); bex's own tree
 	// takes its place with the same subcommands and flags.
 	replaceCommand(cmd.RootCmd, skills.Command())
@@ -58,6 +60,14 @@ func main() {
 	// Branding mutates exported cobra metadata (Use/help/docs) after native
 	// commands attach so ungrouped Bex commands keep their help section.
 	branding.Apply(cmd.RootCmd, bexVersion)
+	// `bex <path>` is `bex edit <path>`; rewritten before cobra and the
+	// os.Args readers below. A path-shaped argument never names a command.
+	args, err := desktop.Shorthand(os.Args[1:])
+	if err != nil {
+		fmt.Fprintf(os.Stderr, "bex: %v\n", err)
+		os.Exit(1)
+	}
+	os.Args = append([]string{os.Args[0]}, args...)
 	// Brands the children upstream Execute registers after Apply before any
 	// command, including __complete, runs (w2/043). The BEX_WORKSPACE name
 	// resolves here too, once the complete tree can name the invoked command:

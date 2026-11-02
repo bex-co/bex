@@ -1,6 +1,6 @@
 # `bex` CLI
 
-`bex` is a Bex-configured executable of the upstream [Render CLI](https://github.com/render-oss/cli). It imports the pinned upstream command package: commands, flags, parsing, request construction, and most runtime behavior are upstream. The Bex bridge changes the default API origin and local configuration location, registers Bex-native commands (`bex code`, `bex upgrade`) alongside the imported command tree, and applies a help-chrome branding overlay plus a fixed-prefix explicit-login prompt rewrite (`internal/branding`) without modifying upstream implementations.
+`bex` is a Bex-configured executable of the upstream [Render CLI](https://github.com/render-oss/cli). It imports the pinned upstream command package: commands, flags, parsing, request construction, and most runtime behavior are upstream. The Bex bridge changes the default API origin and local configuration location, registers Bex-native commands (`bex code`, `bex edit`, `bex upgrade`) alongside the imported command tree, and applies a help-chrome branding overlay plus a fixed-prefix explicit-login prompt rewrite (`internal/branding`) without modifying upstream implementations.
 
 The current pin and its update procedure are recorded in [`lego/cli/UPSTREAM_RENDER_CLI.md`](../lego/cli/UPSTREAM_RENDER_CLI.md).
 
@@ -126,6 +126,28 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 - **Isolation:** every provider gets its own `CLAUDE_CONFIG_DIR` under `~/.bex/code/claude-<name>` (base overridable with `BEX_CODE_HOME`) — settings, history, and permissions are independent, instances run in parallel, and a personal `~/.claude` setup is neither read nor modified. Inherited `ANTHROPIC_*`/`CLAUDE_CONFIG_DIR` values are stripped so the personal environment cannot leak in.
 - **Keys are bring-your-own, captured once.** A provider's first launch opens its API-key console, takes one hidden paste, **verifies the key live** against the provider's Messages endpoint (only an explicit 401/403 fails), and stores it owner-only in `~/.bex/code/keys.toml` — the key is injected into the child process environment at launch and written into no configuration file. The environment (`ZAI_API_KEY`/`GLM_API_KEY`, `META_MODEL_API_KEY`/`META_API_KEY`, `MOONSHOT_API_KEY`/`KIMI_API_KEY`, `DEEPSEEK_API_KEY`) always overrides the store. `bex code` / `bex code keys` show status; `bex code keys set|unset <provider>` manage the store (piped stdin works for scripting).
 - **Passthrough:** everything after the provider name goes to `claude` unchanged — `bex glm --continue`, `bex glm -p "one prompt"`, `bex glm --help` for Claude Code's own flags. The catalog lives in `lego/cli/internal/code/provider.go`; adding a provider is a data change. A Bex-served provider catalog and Bex-brokered keys (via `bex login`) are the forward path.
+
+### Open code in bex desktop: `bex edit` and `bex <path>`
+
+`bex edit` hands its arguments, unchanged, to the bex desktop editor's launcher. The launcher's names and locations are a cross-repo contract: [bex-desktop ADR002](https://github.com/bex-co/bex-desktop/blob/main/docs/adrs/ADR002-cli-command-bex-desktop.md).
+
+- **The name `bex` belongs to this CLI.** bex desktop installs its own terminal command as `bex-desktop`. Desktop builds before ADR002 linked it as `bex`, and `scripts/install-bex.sh` says so when it replaces such a link.
+- **Lookup order:**
+
+  1. `bex-desktop` on `PATH`.
+  2. On macOS, `/Applications` or `~/Applications` `Bex.app` (or `Bex Preview` / `Bex Nightly` / `Bex Dev`) `/Contents/MacOS/cli`.
+  3. On Linux, `~/.local/bex.app/bin/bex`, then the other channels' `~/.local/bex-*.app/bin/{bex,cli}`.
+
+  It never runs a `bex` from `PATH`, and it skips any candidate that resolves to itself. If no launcher is found, it fails with an install hint.
+
+- **Passthrough:** paths, `path:line[:col]`, `-n`/`-a`/`-e`/`-w`, `-` for stdin, `--diff OLD NEW` and `ssh://` URLs. Relative paths resolve in the current directory. `bex edit --help` shows this command's help; every other flag belongs to the editor.
+- **Agent sessions:** `bex edit ags-<id>` reads the session from the API and opens its running sandbox's `/workspace` over SSH. It uses the same target as the dashboard's Open in Zed ([ADR054](ADR054-open-in-zed.md)). You need `can_view_sensitive` on the session and an SSH key registered with bex. A session with no running sandbox says so; send it a message to start one. An existing file or folder named `ags-…` is opened as a path.
+- **Shorthand:** `bex <path> …` is `bex edit <path> …` when the first argument exists and looks like a path: `.`, `..`, `~`, or a value that starts with `./`, `../`, `/` or `~/` or contains a `/`, optionally with `:line[:col]`.
+  - A bare word is always a command, even beside a same-named folder: `bex docs` runs `docs`, while `bex ./docs` opens the folder.
+  - A path-shaped argument that does not exist is an error, not a new file. `bex edit <path>` creates it on purpose.
+  - Bare `bex`, flags, and URLs are never rewritten.
+- **Interactive only:** with no terminal on stdout or stderr, or with `CI` set, both forms fail fast instead of launching a GUI. Scripts can call `bex-desktop` directly.
+- **Telemetry:** one launch event with the command path `bex edit`, as for `bex code`. It never includes the paths or other arguments.
 
 ### Self-update: `bex upgrade`
 

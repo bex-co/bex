@@ -15,7 +15,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m167** — [`bex edit`: the platform CLI delegates editing to bex desktop](m167/README.md) (8 tasks, ~4h 40m) ← user discussion 2026-11-02: bex desktop's editor launcher and the platform CLI both installed as `bex`; `bex` stays the platform CLI, the desktop launcher becomes `bex-desktop` (bex-desktop repo), and the CLI gains `bex edit [path…|ags-id]` plus a strict path-shaped shorthand `bex <path>`.
+- [x] **m167** — [`bex edit`: the platform CLI delegates editing to bex desktop](done/m167/README.md) (8 tasks) ← user discussion 2026-11-02 — **DONE (2026-11-02):** `bex edit [path…|ags-id]` + strict path-shaped `bex <path>` exec `bex-desktop` (bex-desktop `ecfa77a9d1`, ADR002); installer notice for the old desktop link; CLI/backend contract tests, lint green.
 - [ ] **072** — [An image web service whose process binds a port other than its `EXPOSE` never goes live](072.md) ← found 2026-11-02 during m166's live acceptance: `explicitServingPort` treats `web-image-v1` declared ports as explicit, so w8/177 runtime port detection never runs (Render detects the bound port).
 - [x] **m166** — [Reject invalid service patches before applying any settings](done/m166/README.md) (6 tasks) ← looping `/qa-find-bugs-cli`, 2026-09-22 UTC — **DONE (2026-11-02):** fix `1657e29e4`; live pinned-CLI replay on production `0688d26b5` — the three rejected compound updates exit 1 with the 400 and change nothing, no deploy minted; a valid multi-field update applies all fields and serves 200; fixtures deleted and absence verified.
 - [x] **m1** — Deploy detail page: Manual Deploy jumps to a per-deploy page with its logs (9 tasks) ← from user request 2026-07-14
