@@ -133,6 +133,7 @@ export function SSHKeysPanel() {
                   {publicKey && !keyValid ? (
                     <p
                       id="ssh-public-key-invalid"
+                      role="alert"
                       className="text-destructive text-sm"
                     >
                       {t("sshKeys.invalid")}

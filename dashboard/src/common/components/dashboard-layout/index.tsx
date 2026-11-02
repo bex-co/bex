@@ -1,5 +1,6 @@
 import { createContext, useContext } from "react";
 import { SidebarProvider } from "@/common/components/ui/sidebar.tsx";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { DashboardSidebar } from "./dashboard-sidebar";
 import { DashboardHeader } from "./dashboard-header";
 
@@ -16,6 +17,8 @@ import { DashboardHeader } from "./dashboard-header";
  * while those inner wrappers are being removed, and guarantees a page can never
  * double up the chrome.
  */
+const MAIN_CONTENT_ID = "main-content";
+
 const InShellContext = createContext(false);
 
 /**
@@ -33,6 +36,7 @@ const InShellContext = createContext(false);
  */
 export function DashboardLayout({ children }: { children?: React.ReactNode }) {
   const inShell = useContext(InShellContext);
+  const { t } = useTranslations();
   // Already inside the persistent root shell → pass the content straight
   // through so we never render a second sidebar/header.
   if (inShell) {
@@ -41,9 +45,27 @@ export function DashboardLayout({ children }: { children?: React.ReactNode }) {
   return (
     <InShellContext.Provider value={true}>
       <SidebarProvider>
+        {/* WCAG 2.4.1 bypass block (w4/460): the first Tab stop, visible on
+            focus, jumps past the sidebar and header to the page content. */}
+        <a
+          href={`#${MAIN_CONTENT_ID}`}
+          onClick={(event) => {
+            const main = document.getElementById(MAIN_CONTENT_ID);
+            if (!main) return;
+            event.preventDefault();
+            main.focus();
+          }}
+          className="bg-background text-foreground focus:ring-ring sr-only z-50 rounded-md px-3 py-2 text-sm font-medium shadow focus:not-sr-only focus:fixed focus:top-2 focus:left-2 focus:ring-2 focus:outline-hidden"
+        >
+          {t("common.skipToMainContent")}
+        </a>
         <div className="flex h-(--visual-viewport-height,100vh) w-full">
           <DashboardSidebar />
-          <main className="flex flex-1 flex-col min-w-0 w-full">
+          <main
+            id={MAIN_CONTENT_ID}
+            tabIndex={-1}
+            className="flex flex-1 flex-col min-w-0 w-full focus:outline-hidden"
+          >
             <DashboardHeader />
             {children}
           </main>

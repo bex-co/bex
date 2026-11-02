@@ -669,6 +669,7 @@ function AddDomainButton({
               {invalid ? (
                 <p
                   id="custom-domain-invalid"
+                  role="alert"
                   className="text-destructive text-xs"
                 >
                   {t("services.domainInvalid")}

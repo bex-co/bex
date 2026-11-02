@@ -103,6 +103,9 @@ export function WorkspaceDetailsCard({
               maxLength={MAX_LABEL_LENGTH}
               autoComplete="off"
               aria-invalid={showNameError}
+              aria-describedby={
+                showNameError ? "workspace-settings-name-error" : undefined
+              }
               className="max-w-sm"
             />
             <Button onClick={() => void handleSave()} disabled={!canSave}>
@@ -111,7 +114,11 @@ export function WorkspaceDetailsCard({
             </Button>
           </div>
           {showNameError ? (
-            <p className="text-sm text-destructive">
+            <p
+              id="workspace-settings-name-error"
+              role="alert"
+              className="text-sm text-destructive"
+            >
               {t("workspaces.fieldNameError")}
             </p>
           ) : null}

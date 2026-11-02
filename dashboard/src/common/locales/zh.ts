@@ -38,6 +38,11 @@ const zhCommon: Record<string, TranslationEntry> = {
     message: "显示移动端侧边栏。",
     description: "Screen-reader description of the mobile navigation drawer.",
   },
+  "common.skipToMainContent": {
+    message: "跳到主要内容",
+    description:
+      "Label of the first-tab skip link that moves keyboard focus past the sidebar and header to the page content.",
+  },
   "common.sidebarToggle": {
     message: "切换侧边栏",
     description:

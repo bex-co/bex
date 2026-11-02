@@ -220,6 +220,11 @@ export function NewServicePage() {
                       placeholder={t("services.createFieldNamePlaceholder")}
                       autoComplete="off"
                       aria-invalid={showNameError || showNameTaken}
+                      aria-describedby={
+                        showNameError || showNameTaken
+                          ? "svc-name-error"
+                          : undefined
+                      }
                     />
                     {name.resourceNamePreview !== null ? (
                       <p className="text-sm text-muted-foreground">
@@ -229,11 +234,19 @@ export function NewServicePage() {
                       </p>
                     ) : null}
                     {showNameError ? (
-                      <p className="text-sm text-destructive">
+                      <p
+                        id="svc-name-error"
+                        role="alert"
+                        className="text-sm text-destructive"
+                      >
                         {t("services.createFieldNameError")}
                       </p>
                     ) : showNameTaken ? (
-                      <p className="flex flex-wrap items-center gap-2 text-sm text-destructive">
+                      <p
+                        id="svc-name-error"
+                        role="alert"
+                        className="flex flex-wrap items-center gap-2 text-sm text-destructive"
+                      >
                         <span>{t("services.createFieldNameTaken")}</span>
                         {name.nameTaken && name.nameSuggestion ? (
                           <Button
