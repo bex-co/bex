@@ -15,10 +15,11 @@
 # alongside the artifact at run time.
 #
 # TO BUMP: change `version` in bex-worker.pkr.hcl, fetch the new release's
-# SHA256SUMS, replace the lines below (keep linux_amd64 for CI and the platform
-# you build on locally), and re-run scripts/packer-plugin-install.sh.
+# SHA256SUMS, replace the lines below (keep linux_arm64 for the CI runners and
+# the platform you build on locally), and re-run scripts/packer-plugin-install.sh.
 #
 # format: <sha256>  <artifact filename>
 
 5fc34e07bd7a97cd2c5c367fbbab9db9beb03fd47706c70a02bf8d3b02f6d05b  packer-plugin-hcloud_v1.7.2_x5.0_darwin_arm64.zip
 a2e818ff4f67dca19b1ef4b6f636e6bcb1f5d8cbab4f320a4e90d997eafc37d6  packer-plugin-hcloud_v1.7.2_x5.0_linux_amd64.zip
+4cd397e95e5003cffa59bb45e37850ad692c456469d677f0f9cc3a3834e55385  packer-plugin-hcloud_v1.7.2_x5.0_linux_arm64.zip
