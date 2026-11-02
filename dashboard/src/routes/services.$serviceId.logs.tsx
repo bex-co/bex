@@ -1,3 +1,4 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { LogViewer } from "@/features/logs/components/log-viewer";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
@@ -19,6 +20,7 @@ import type { LogFilters } from "@/features/logs/types";
 import { ServiceLogsSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/logs")({
+  head: serviceTabHead("services.navLogs", "/services/$serviceId"),
   component: RouteComponent,
   pendingComponent: ServiceLogsSkeleton,
   validateSearch: parseLogSearch,

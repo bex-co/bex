@@ -50,6 +50,20 @@ describe("AgentSessionsPageContent", () => {
     expect(useAgentSessions).not.toHaveBeenCalled();
   });
 
+  // w4/m249: exactly one h1 in either mode, with the translated page title.
+  it("has exactly one h1 on the default page and in list mode", () => {
+    const { unmount } = render(<AgentSessionsPageContent />);
+    const composerH1 = screen.getAllByRole("heading", { level: 1 });
+    expect(composerH1).toHaveLength(1);
+    expect(composerH1[0]).toHaveTextContent("Agent sessions");
+    unmount();
+
+    render(<AgentSessionsPageContent archived="all" />);
+    const listH1 = screen.getAllByRole("heading", { level: 1 });
+    expect(listH1).toHaveLength(1);
+    expect(listH1[0]).toHaveTextContent("Agent sessions");
+  });
+
   it.each([
     [{ archived: "archived" as const, phase: undefined }, "Archived"],
     [{ archived: "all" as const, phase: undefined }, "All"],

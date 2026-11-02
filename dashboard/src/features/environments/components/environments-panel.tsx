@@ -358,9 +358,7 @@ function UnassignedResources({
   return (
     <Card>
       <CardHeader>
-        <CardTitle>
-          <h3>{t("environments.unassignedOption")}</h3>
-        </CardTitle>
+        <CardTitle as="h3">{t("environments.unassignedOption")}</CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
         <ProjectResourceFilters

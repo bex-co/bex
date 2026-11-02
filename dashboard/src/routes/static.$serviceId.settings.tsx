@@ -1,3 +1,4 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute, getRouteApi } from "@tanstack/react-router";
 import { ServiceSettingsPage } from "./services.$serviceId.settings";
 import { ServiceSettingsSkeleton } from "@/common/components/route-skeletons";
@@ -5,6 +6,7 @@ import { toServiceView } from "@/features/services/lib/status";
 
 /** Static-site Settings tab — the shared page under the /static base (w5/m57). */
 export const Route = createFileRoute("/static/$serviceId/settings")({
+  head: serviceTabHead("services.navSettings", "/static/$serviceId"),
   component: RouteComponent,
   pendingComponent: StaticSettingsPending,
 });

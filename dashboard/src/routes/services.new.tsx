@@ -144,8 +144,8 @@ export function NewServicePage() {
         <div className="mx-auto w-full max-w-2xl space-y-6">
           <Card>
             <CardHeader>
-              <CardTitle>
-                <h1 className="text-xl">{t(createCopy.titleKey)}</h1>
+              <CardTitle as="h1" className="text-xl">
+                {t(createCopy.titleKey)}
               </CardTitle>
               <CardDescription>{t(createCopy.descriptionKey)}</CardDescription>
             </CardHeader>

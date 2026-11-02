@@ -1,3 +1,4 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { useMemo, useState } from "react";
 import { createFileRoute } from "@tanstack/react-router";
 import { ApplicationMetricsCard } from "@/features/metrics/components/application-metrics-card";
@@ -21,6 +22,7 @@ import { runsInstances } from "@/features/services/lib/status";
 import { ServiceMetricsSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/metrics")({
+  head: serviceTabHead("services.navMetrics", "/services/$serviceId"),
   component: RouteComponent,
   pendingComponent: ServiceMetricsSkeleton,
   // The time range persists to the URL in the Logs page's param shape

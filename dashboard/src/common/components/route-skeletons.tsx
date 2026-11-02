@@ -903,7 +903,7 @@ function WebhooksCardPreview() {
     return (
       <Card inert aria-busy="true">
         <CardHeader>
-          <CardTitle className="relative w-fit">
+          <CardTitle as="h1" className="relative w-fit">
             <ReservedText>{t("webhooks.title")}</ReservedText>
           </CardTitle>
           <CardDescription className="relative">
@@ -923,7 +923,7 @@ function WebhooksCardPreview() {
   return (
     <Card inert aria-busy="true">
       <CardHeader>
-        <CardTitle className="relative w-fit">
+        <CardTitle as="h1" className="relative w-fit">
           <ReservedText>{t("webhooks.title")}</ReservedText>
         </CardTitle>
         <CardDescription className="relative">

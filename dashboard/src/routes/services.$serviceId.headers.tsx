@@ -1,9 +1,11 @@
+import { serviceTabHead } from "@/features/services/lib/service-tab-head";
 import { createFileRoute } from "@tanstack/react-router";
 import { StaticEdgeRulePage } from "@/features/services/components/static-edge-rule-page";
 import { HeadersEditor } from "@/features/services/components/static-site-section";
 import { StaticEdgeRulesSkeleton } from "@/common/components/route-skeletons";
 
 export const Route = createFileRoute("/services/$serviceId/headers")({
+  head: serviceTabHead("services.navHeaders", "/services/$serviceId"),
   component: RouteComponent,
   pendingComponent: StaticEdgeRulesSkeleton,
 });
