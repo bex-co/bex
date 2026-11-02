@@ -1,0 +1,14 @@
+{
+  "PASS": true,
+  "preparation_manifest_sha256": "35f5dc0b0575f3a9ca6d264576a737828b33a598793f5bd9957c7be12e4679b4",
+  "copy_plan_sha256": "5e59e66fde980a69c74f0faddd9c36297783c1cf6e9755bdeeec6f3110909f2c",
+  "archive_unique_regular_members_verified": 65,
+  "all_original_to_member_bytes_SHA_size_mode_verified": 78,
+  "frozen_manifests_unchanged": true,
+  "applied_source_sha256": "01c64e35c6b85d0ed1d469bedf8b81666d5e491332c9fa107ec9700dc4297b84",
+  "prepared_readme_sha256": "6275b24602dc6580926d309719daf439b29006de21458cb0d57398526e9b0e5c",
+  "README_is_authored_presentation_and_formatted_separately": true,
+  "actual_generated_success_claim": false,
+  "published_readme_sha256": "9cb99e9cd32e8c7ca7a85004df1a9b82436decfed70bcff80b199102fae0b57f",
+  "README_presentation": "Root shortened and formatted the new summary; frozen archive/source/log bytes unchanged."
+}

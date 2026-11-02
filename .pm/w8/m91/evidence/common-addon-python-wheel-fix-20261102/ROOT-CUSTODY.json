@@ -1,0 +1,58 @@
+{
+  "at": "2026-11-02T07:28:58.928437+00:00",
+  "source_fix": {
+    "root": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y",
+    "manifest": {
+      "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/MANIFEST.json",
+      "bytes": 7940,
+      "sha256": "945d88b77d7fcf90c8492fcf9c18ea716a7d406eb0581741128a8eea82804ad5"
+    },
+    "receipt": {
+      "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/RECEIPT.json",
+      "bytes": 3725,
+      "sha256": "00e2a07d120dc3488b67d6305f3a51574d586f6cd516bd0f39668903b4422cbb"
+    },
+    "source_manifest": {
+      "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/SOURCE-MANIFEST.json",
+      "bytes": 379,
+      "sha256": "1e70410212aa208f9750c3048dcabe274c2e0ad34502c0a231baaea58e30f8e1"
+    }
+  },
+  "refined_replay_plan": {
+    "root": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq",
+    "manifest": {
+      "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/MANIFEST.json",
+      "bytes": 1625,
+      "sha256": "8868d0a7b52bfc4edd8696f8a05dc33322661d8fe3cb128ffd3d49e6f3804ab4"
+    },
+    "plan": {
+      "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/REPLAY-PLAN.json",
+      "bytes": 180595,
+      "sha256": "c9df07069ca02f1021c38e8fd3ed69da5c54c46c46848ab3dc6b5922ba01c465"
+    }
+  },
+  "five_actual_terminal_failures": {
+    "root": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317",
+    "manifest": {
+      "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/MANIFEST.json",
+      "bytes": 1604,
+      "sha256": "c40cb886c0e6b344edb69b089d0668c1437faccde92618023e2936558e5f247f"
+    },
+    "outcomes": {
+      "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/OUTCOMES.json",
+      "bytes": 22449,
+      "sha256": "0e64c082e761f9924eaf51d4c457a31bfe3bdf01132fe64badb775d05ecb1465"
+    }
+  },
+  "root_application": {
+    "path": "/private/tmp/bex-w8-addon-wheel-root-apply-20261102-it3ogmtm/APPLIED.json",
+    "bytes": 679,
+    "sha256": "3f273c1fb3dc5c3c588c8f2b9dd3438a3680233fb9469e5efc1280af64d9c551"
+  },
+  "actual_oldsource_status_counts": {
+    "success": 17,
+    "failure": 53
+  },
+  "actual_generated_compiler_gyp_runtime_after_fix_accepted": false,
+  "current_source_family_admission": "Existing strict current-captured-source/fullutility/test-candidate validator remains required; image approval/provenance never relabeled."
+}

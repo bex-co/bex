@@ -1,0 +1,24 @@
+{
+  "PASS": true,
+  "archive": {
+    "file": "capsule.tar.gz",
+    "bytes": 284874,
+    "sha256": "81fb9cdf92601b4ac30d816e450c3943504e367b137c7418afbf24fffeef8b3f"
+  },
+  "raw_tar": {
+    "bytes": 1587200,
+    "sha256": "1f8b59ffd484e9c034b0710616b60ebdc751608b39c62fb18a5954579c64fadf"
+  },
+  "all_regular_member_names_unique_safe": true,
+  "all_member_original_bytes_sizes_SHA_permissions_exact": true,
+  "unique_members": 65,
+  "source_fix_complete_filesystem_files": 51,
+  "source_fix_frozen_manifest_records": 49,
+  "source_fix_top_and_nested_custody_manifests": 2,
+  "refined_plan_complete_original_payloads": 13,
+  "last5_complete_original_payloads": 13,
+  "last5_aliases_stored_once_inside_wheel_fix": 13,
+  "root_application_files": 1,
+  "decompression_byte_exact": true,
+  "no_executable_original_import_or_client_execution": true
+}

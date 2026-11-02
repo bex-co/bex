@@ -1,0 +1,1264 @@
+{
+  "schema": "bex.pm.lossless-evidence-archive/v1",
+  "archive": "capsule.tar.gz",
+  "archive_bytes": 284874,
+  "archive_sha256": "81fb9cdf92601b4ac30d816e450c3943504e367b137c7418afbf24fffeef8b3f",
+  "raw_tar_bytes": 1587200,
+  "raw_tar_sha256": "1f8b59ffd484e9c034b0710616b60ebdc751608b39c62fb18a5954579c64fadf",
+  "gzip_mtime": 0,
+  "tar_header_scope": "Regularfiles only; original permission bits retained. Tar uid/gid/mtime normalized0, emptyowner names; no original timestamp/owner or execution identity claim.",
+  "unique_regular_members": 65,
+  "original_record_count": 78,
+  "original_to_member": [
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/CHECK-SOURCE-AFTER.json",
+        "bytes": 76867,
+        "sha256": "5f6fa42b803ad1d8f84ff72ac1765f9e322dd9b39c45f620c559d555d2e603cb"
+      },
+      "archive_member": "wheel-fix/CHECK-SOURCE-AFTER.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/CHECK-SOURCE-BEFORE.json",
+        "bytes": 76867,
+        "sha256": "5f6fa42b803ad1d8f84ff72ac1765f9e322dd9b39c45f620c559d555d2e603cb"
+      },
+      "archive_member": "wheel-fix/CHECK-SOURCE-BEFORE.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/COPY-PLAN.json",
+        "bytes": 14060,
+        "sha256": "eba9fc1ecdb9a3051e7c2137264d20bc41bd150ec506c3e98cb31833383a8406"
+      },
+      "archive_member": "wheel-fix/COPY-PLAN.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/FOREIGN-SUM.json",
+        "bytes": 182,
+        "sha256": "c493d30f896962ead6130110d89a490e1a0e620044d2fa03a403109ebc02442f"
+      },
+      "archive_member": "wheel-fix/FOREIGN-SUM.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/PRESERVATION.json",
+        "bytes": 928,
+        "sha256": "780aaba83209bb32b35e8840eee088df758a62ffa9c5fb6871a6d67981fbd633"
+      },
+      "archive_member": "wheel-fix/PRESERVATION.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/PROPOSAL.json",
+        "bytes": 1180,
+        "sha256": "63ec6ee153495063df2823bdb0ebfcb414e32dcc970a18b138ca26f3e3c7884b"
+      },
+      "archive_member": "wheel-fix/PROPOSAL.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/READY.json",
+        "bytes": 1581,
+        "sha256": "3c3b22a65fcaa8ca7ef491aa794d899060e8ebd0debb98986264dac799e6ed41"
+      },
+      "archive_member": "wheel-fix/READY.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/RECEIPT.json",
+        "bytes": 3725,
+        "sha256": "00e2a07d120dc3488b67d6305f3a51574d586f6cd516bd0f39668903b4422cbb"
+      },
+      "archive_member": "wheel-fix/RECEIPT.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/RESULT.json",
+        "bytes": 3202,
+        "sha256": "4373520714177f6562019280715540235651f0167140752daa2668d25062f912"
+      },
+      "archive_member": "wheel-fix/RESULT.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/SCOPE.json",
+        "bytes": 83299,
+        "sha256": "45f4b1b20a3ba4561186333e3ac60c7520750a5d639c4a21a00da60e165c57a4"
+      },
+      "archive_member": "wheel-fix/SCOPE.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/SOURCE-BEFORE.json",
+        "bytes": 75982,
+        "sha256": "5c05eea9e3ad8720db2a839fc9e62708fdbaf8cb9b4767923745c036c9c61d7a"
+      },
+      "archive_member": "wheel-fix/SOURCE-BEFORE.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/SOURCE-MANIFEST.json",
+        "bytes": 379,
+        "sha256": "1e70410212aa208f9750c3048dcabe274c2e0ad34502c0a231baaea58e30f8e1"
+      },
+      "archive_member": "wheel-fix/SOURCE-MANIFEST.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/SOURCE.diff.gz",
+        "bytes": 2867,
+        "sha256": "0a74aa9eeab40a7d480dfa8a636bdec45d7858ee3c7ec74f04c175c04772106a"
+      },
+      "archive_member": "wheel-fix/SOURCE.diff.gz",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/FETCHES.json",
+        "bytes": 4302,
+        "sha256": "de405d2b8e864abd263846da849dafcd90b46c8304a4209a487d231a85239813"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/FETCHES.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/OUTCOMES.json",
+        "bytes": 22449,
+        "sha256": "0e64c082e761f9924eaf51d4c457a31bfe3bdf01132fe64badb775d05ecb1465"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/OUTCOMES.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/job-125061103982.log",
+        "bytes": 154080,
+        "sha256": "fdbe8111cd69d811190d98daab5353eec1af5d4b2a31f941987a3a61db4bd616"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/job-125061103982.log",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/job-125062175875.log",
+        "bytes": 161904,
+        "sha256": "80740c891d0991d96baa64abe3ff469a2ac75b0066a0c1a8f55d6a4eb3b528b6"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/job-125062175875.log",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/job-125062409253.log",
+        "bytes": 157081,
+        "sha256": "edd475f014d2bcec869a63aa7703e96b089ca256afd4caa264c9d974d271ad56"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/job-125062409253.log",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/job-125062548313.log",
+        "bytes": 142027,
+        "sha256": "6e79b891a90403af015f63b339e10e241713de593269f8c07867194c2c5496f9"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/job-125062548313.log",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/job-125063570262.log",
+        "bytes": 70295,
+        "sha256": "76cfb32614ed26deedc9e8ecd19d816a2b2da8c74592e91cd35417f090977d0f"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/job-125063570262.log",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/jobs-41375793680.json",
+        "bytes": 12092,
+        "sha256": "ceb0e548629dd911803a2888ca3bb2ef728c9a5a6553c3c4148be2f65f2c5672"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/jobs-41375793680.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/jobs-41375818643.json",
+        "bytes": 12092,
+        "sha256": "d20782e338e3b46b83ebb89482368941c300dc2454b21e15dd0a25fa59637849"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/jobs-41375818643.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/jobs-41375823911.json",
+        "bytes": 12092,
+        "sha256": "3888fa32a3623dc6a827de72ff39cffd9e5aa3305d40ae2bfe03fc93432284d6"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/jobs-41375823911.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/jobs-41375829158.json",
+        "bytes": 12092,
+        "sha256": "d275843d406e5a834dd31325f3394cbb1209683a85b2af8230313e2660111ff4"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/jobs-41375829158.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/jobs-41375834550.json",
+        "bytes": 12092,
+        "sha256": "659ff4f627b5a1a8aee77dfe7eb095cb055f417ed69ae2f7b4f3483835d7357d"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/jobs-41375834550.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/before/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+        "bytes": 12614,
+        "sha256": "9141c281cfcb6b4f2f836df049673748ec53516ce45c30bdcab879e54c6758f6"
+      },
+      "archive_member": "wheel-fix/before/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/focused-PROCESS.json",
+        "bytes": 279,
+        "sha256": "2553238567926dc58ded914faee7397d97339398b61869d42c21cc05509642a7"
+      },
+      "archive_member": "wheel-fix/focused-PROCESS.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/focused-RESULT.json",
+        "bytes": 528,
+        "sha256": "e02ee8ba6e11f02765b40444561b8d6b739544215b3740a62fc23ba8c0cd3eaf"
+      },
+      "archive_member": "wheel-fix/focused-RESULT.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/focused.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "archive_member": "wheel-fix/focused.stderr",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/focused.stdout",
+        "bytes": 63,
+        "sha256": "30410cb2bdb712a623e4182169a198fdad8729cf8847a6b9bfb162af6fcc481f"
+      },
+      "archive_member": "wheel-fix/focused.stdout",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/full-buildpkg-PROCESS.json",
+        "bytes": 176,
+        "sha256": "3035ecbbda0e7b92edf22279063258f6ee49e1ae23c6a6a5a5770996c7ca62fc"
+      },
+      "archive_member": "wheel-fix/full-buildpkg-PROCESS.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/full-buildpkg-RESULT.json",
+        "bytes": 431,
+        "sha256": "03dd2c26aae111b31e61a63cc9d008b33503982174caccd0958fc02519c1e8d0"
+      },
+      "archive_member": "wheel-fix/full-buildpkg-RESULT.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/full-buildpkg.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "archive_member": "wheel-fix/full-buildpkg.stderr",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/full-buildpkg.stdout",
+        "bytes": 63,
+        "sha256": "13c186c34f7a2e74e06ed83916b26c0df125dc8a88140f47d11e9dccc97f1726"
+      },
+      "archive_member": "wheel-fix/full-buildpkg.stdout",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/go-version-PROCESS.json",
+        "bytes": 120,
+        "sha256": "e471abedd19831db4b24e2f042a9832a1720bcc20fbabe608980c4f38cfde8f8"
+      },
+      "archive_member": "wheel-fix/go-version-PROCESS.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/go-version-RESULT.json",
+        "bytes": 374,
+        "sha256": "963bd30f7fa76616851f90210371e08fac4a34978b703339b44cb224e5356e69"
+      },
+      "archive_member": "wheel-fix/go-version-RESULT.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/go-version.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "archive_member": "wheel-fix/go-version.stderr",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/go-version.stdout",
+        "bytes": 33,
+        "sha256": "36849436282e424cf1142184057f25a7bd6845d03b16fedbb1071bc6722524c4"
+      },
+      "archive_member": "wheel-fix/go-version.stdout",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/lint-version-PROCESS.json",
+        "bytes": 135,
+        "sha256": "38e06b640c8bf9f5f07ab4860357e59f3a1220f8975dd414f7d5882524d10f79"
+      },
+      "archive_member": "wheel-fix/lint-version-PROCESS.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/lint-version-RESULT.json",
+        "bytes": 390,
+        "sha256": "2263a529132d4b5cb2204209339346b291057fb7302fdfea67f481747bff9937"
+      },
+      "archive_member": "wheel-fix/lint-version-RESULT.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/lint-version.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "archive_member": "wheel-fix/lint-version.stderr",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/lint-version.stdout",
+        "bytes": 156,
+        "sha256": "be4b4ec451481410702351739d2d424cc995d5a7a31bad3023003b4b44e09833"
+      },
+      "archive_member": "wheel-fix/lint-version.stdout",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/overlay.json",
+        "bytes": 285,
+        "sha256": "1edc5124dc50f927d6b17f1a78b8dc6f2697eb33ae210a3c35529d2d5eb2027a"
+      },
+      "archive_member": "wheel-fix/overlay.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/run_checks.py",
+        "bytes": 7400,
+        "sha256": "92b651ba3f0b9a24b2e29d6fa70fb5d6b7c4a5a965804e06b294d65881e54235"
+      },
+      "archive_member": "wheel-fix/run_checks.py",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/scoped-lint-PROCESS.json",
+        "bytes": 185,
+        "sha256": "adb9e663c8f6aaf8f9e9ce794669b2f6e89d950e4d92d9ee2db0a2f5d85f24c0"
+      },
+      "archive_member": "wheel-fix/scoped-lint-PROCESS.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/scoped-lint-RESULT.json",
+        "bytes": 439,
+        "sha256": "3fcd3ad76ddfeba850e537aff3f6cda89e1372c2a0b2b9981eaad2be327254c2"
+      },
+      "archive_member": "wheel-fix/scoped-lint-RESULT.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/scoped-lint.stderr",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      },
+      "archive_member": "wheel-fix/scoped-lint.stderr",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/scoped-lint.stdout",
+        "bytes": 10,
+        "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47"
+      },
+      "archive_member": "wheel-fix/scoped-lint.stdout",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+        "bytes": 20072,
+        "sha256": "01c64e35c6b85d0ed1d469bedf8b81666d5e491332c9fa107ec9700dc4297b84"
+      },
+      "archive_member": "wheel-fix/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/actual-prior-five/MANIFEST.json",
+        "bytes": 1604,
+        "sha256": "c40cb886c0e6b344edb69b089d0668c1437faccde92618023e2936558e5f247f"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/MANIFEST.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-python-only-wheel-source-20261102-8rs3cy8y/MANIFEST.json",
+        "bytes": 7940,
+        "sha256": "945d88b77d7fcf90c8492fcf9c18ea716a7d406eb0581741128a8eea82804ad5"
+      },
+      "archive_member": "wheel-fix/MANIFEST.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/CASES.tsv",
+        "bytes": 7841,
+        "sha256": "90e320672083ec9a2320fddaaf42658ea59dcdf54f4db475d4de6ee4056be933"
+      },
+      "archive_member": "replay-plan/CASES.tsv",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/CHECKS.json",
+        "bytes": 574,
+        "sha256": "33fa00cc4adcd355e5165dcd843b536d3c2f026bed9ce3883a8ad4aa31a3d1b8"
+      },
+      "archive_member": "replay-plan/CHECKS.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/COPY-PLAN.json",
+        "bytes": 3733,
+        "sha256": "a8e1d43dbaf61dbc96530239b3beb8cc9cc2998a07258c1ac8be78bdab129614"
+      },
+      "archive_member": "replay-plan/COPY-PLAN.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/CURRENT-TRACKED-SOURCE.json",
+        "bytes": 75099,
+        "sha256": "a35a6ea493c2a47dd83e9228bf77bdc18e81e0895ceebe377302334e8ae442fb"
+      },
+      "archive_member": "replay-plan/CURRENT-TRACKED-SOURCE.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/INPUT-CUSTODY.json",
+        "bytes": 2489,
+        "sha256": "8254fbabafdabe4a36e8da33f0c0c4b5929a4ac3d0b65751588b98da79a9331d"
+      },
+      "archive_member": "replay-plan/INPUT-CUSTODY.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/OUTCOME-SUPPLEMENT-POINTER.json",
+        "bytes": 509,
+        "sha256": "0514b668eeebea79e57cd49f86631c8c1b038788eb09e7b42c94cfe4c0459f55"
+      },
+      "archive_member": "replay-plan/OUTCOME-SUPPLEMENT-POINTER.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/PREPARATION-HISTORY.json",
+        "bytes": 966,
+        "sha256": "1077d2a5e7a53ff807768a0603f5c29a6e409caa0e612e6b9ed2dfc5990c26af"
+      },
+      "archive_member": "replay-plan/PREPARATION-HISTORY.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/REPLAY-PLAN.json",
+        "bytes": 180595,
+        "sha256": "c9df07069ca02f1021c38e8fd3ed69da5c54c46c46848ab3dc6b5922ba01c465"
+      },
+      "archive_member": "replay-plan/REPLAY-PLAN.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/inputs/DISPATCHES.json",
+        "bytes": 6626,
+        "sha256": "04d8c307acb8df370f810a661bc7a1475bf47277615bdb0593145aa03022f166"
+      },
+      "archive_member": "replay-plan/inputs/DISPATCHES.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/inputs/SUPPLEMENTAL-DONORS.json",
+        "bytes": 1424,
+        "sha256": "7fd3f0aa962ea7d78848d357c0608114bdc56c365fb948c4b253be4ca7de0684"
+      },
+      "archive_member": "replay-plan/inputs/SUPPLEMENTAL-DONORS.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/source/native-common-image.yml",
+        "bytes": 19834,
+        "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1"
+      },
+      "archive_member": "replay-plan/source/native-common-image.yml",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/source/native-common-qualify.py",
+        "bytes": 60360,
+        "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5"
+      },
+      "archive_member": "replay-plan/source/native-common-qualify.py",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-current-family-replay-refined-20261102-xm6wfeyq/MANIFEST.json",
+        "bytes": 1625,
+        "sha256": "8868d0a7b52bfc4edd8696f8a05dc33322661d8fe3cb128ffd3d49e6f3804ab4"
+      },
+      "archive_member": "replay-plan/MANIFEST.json",
+      "original_permissions": 384,
+      "bytes_preserved": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/FETCHES.json",
+        "bytes": 4302,
+        "sha256": "de405d2b8e864abd263846da849dafcd90b46c8304a4209a487d231a85239813"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/FETCHES.json",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/OUTCOMES.json",
+        "bytes": 22449,
+        "sha256": "0e64c082e761f9924eaf51d4c457a31bfe3bdf01132fe64badb775d05ecb1465"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/OUTCOMES.json",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/job-125061103982.log",
+        "bytes": 154080,
+        "sha256": "fdbe8111cd69d811190d98daab5353eec1af5d4b2a31f941987a3a61db4bd616"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/job-125061103982.log",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/job-125062175875.log",
+        "bytes": 161904,
+        "sha256": "80740c891d0991d96baa64abe3ff469a2ac75b0066a0c1a8f55d6a4eb3b528b6"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/job-125062175875.log",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/job-125062409253.log",
+        "bytes": 157081,
+        "sha256": "edd475f014d2bcec869a63aa7703e96b089ca256afd4caa264c9d974d271ad56"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/job-125062409253.log",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/job-125062548313.log",
+        "bytes": 142027,
+        "sha256": "6e79b891a90403af015f63b339e10e241713de593269f8c07867194c2c5496f9"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/job-125062548313.log",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/job-125063570262.log",
+        "bytes": 70295,
+        "sha256": "76cfb32614ed26deedc9e8ecd19d816a2b2da8c74592e91cd35417f090977d0f"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/job-125063570262.log",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/jobs-41375793680.json",
+        "bytes": 12092,
+        "sha256": "ceb0e548629dd911803a2888ca3bb2ef728c9a5a6553c3c4148be2f65f2c5672"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/jobs-41375793680.json",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/jobs-41375818643.json",
+        "bytes": 12092,
+        "sha256": "d20782e338e3b46b83ebb89482368941c300dc2454b21e15dd0a25fa59637849"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/jobs-41375818643.json",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/jobs-41375823911.json",
+        "bytes": 12092,
+        "sha256": "3888fa32a3623dc6a827de72ff39cffd9e5aa3305d40ae2bfe03fc93432284d6"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/jobs-41375823911.json",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/jobs-41375829158.json",
+        "bytes": 12092,
+        "sha256": "d275843d406e5a834dd31325f3394cbb1209683a85b2af8230313e2660111ff4"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/jobs-41375829158.json",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/jobs-41375834550.json",
+        "bytes": 12092,
+        "sha256": "659ff4f627b5a1a8aee77dfe7eb095cb055f417ed69ae2f7b4f3483835d7357d"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/jobs-41375834550.json",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-original35-last5-outcomes-20261102-dcc55317/MANIFEST.json",
+        "bytes": 1604,
+        "sha256": "c40cb886c0e6b344edb69b089d0668c1437faccde92618023e2936558e5f247f"
+      },
+      "archive_member": "wheel-fix/actual-prior-five/MANIFEST.json",
+      "original_permissions": 384,
+      "bytes_preserved": true,
+      "deduplicated_alias": true
+    },
+    {
+      "original": {
+        "path": "/private/tmp/bex-w8-addon-wheel-root-apply-20261102-it3ogmtm/APPLIED.json",
+        "bytes": 679,
+        "sha256": "3f273c1fb3dc5c3c588c8f2b9dd3438a3680233fb9469e5efc1280af64d9c551"
+      },
+      "archive_member": "root-application/APPLIED.json",
+      "original_permissions": 420,
+      "bytes_preserved": true
+    }
+  ],
+  "members": [
+    {
+      "member": "replay-plan/CASES.tsv",
+      "bytes": 7841,
+      "sha256": "90e320672083ec9a2320fddaaf42658ea59dcdf54f4db475d4de6ee4056be933",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/CHECKS.json",
+      "bytes": 574,
+      "sha256": "33fa00cc4adcd355e5165dcd843b536d3c2f026bed9ce3883a8ad4aa31a3d1b8",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/COPY-PLAN.json",
+      "bytes": 3733,
+      "sha256": "a8e1d43dbaf61dbc96530239b3beb8cc9cc2998a07258c1ac8be78bdab129614",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/CURRENT-TRACKED-SOURCE.json",
+      "bytes": 75099,
+      "sha256": "a35a6ea493c2a47dd83e9228bf77bdc18e81e0895ceebe377302334e8ae442fb",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/INPUT-CUSTODY.json",
+      "bytes": 2489,
+      "sha256": "8254fbabafdabe4a36e8da33f0c0c4b5929a4ac3d0b65751588b98da79a9331d",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/MANIFEST.json",
+      "bytes": 1625,
+      "sha256": "8868d0a7b52bfc4edd8696f8a05dc33322661d8fe3cb128ffd3d49e6f3804ab4",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/OUTCOME-SUPPLEMENT-POINTER.json",
+      "bytes": 509,
+      "sha256": "0514b668eeebea79e57cd49f86631c8c1b038788eb09e7b42c94cfe4c0459f55",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/PREPARATION-HISTORY.json",
+      "bytes": 966,
+      "sha256": "1077d2a5e7a53ff807768a0603f5c29a6e409caa0e612e6b9ed2dfc5990c26af",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/REPLAY-PLAN.json",
+      "bytes": 180595,
+      "sha256": "c9df07069ca02f1021c38e8fd3ed69da5c54c46c46848ab3dc6b5922ba01c465",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/inputs/DISPATCHES.json",
+      "bytes": 6626,
+      "sha256": "04d8c307acb8df370f810a661bc7a1475bf47277615bdb0593145aa03022f166",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/inputs/SUPPLEMENTAL-DONORS.json",
+      "bytes": 1424,
+      "sha256": "7fd3f0aa962ea7d78848d357c0608114bdc56c365fb948c4b253be4ca7de0684",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/source/native-common-image.yml",
+      "bytes": 19834,
+      "sha256": "91909ae322cb1318c9e91df3bcdbc6ce597bd6b962b81a900df196f81541cab1",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "replay-plan/source/native-common-qualify.py",
+      "bytes": 60360,
+      "sha256": "f564dae9b771de166d18b16564165b8140a7bb857769cb94fed390cbdec406e5",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "root-application/APPLIED.json",
+      "bytes": 679,
+      "sha256": "3f273c1fb3dc5c3c588c8f2b9dd3438a3680233fb9469e5efc1280af64d9c551",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/CHECK-SOURCE-AFTER.json",
+      "bytes": 76867,
+      "sha256": "5f6fa42b803ad1d8f84ff72ac1765f9e322dd9b39c45f620c559d555d2e603cb",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/CHECK-SOURCE-BEFORE.json",
+      "bytes": 76867,
+      "sha256": "5f6fa42b803ad1d8f84ff72ac1765f9e322dd9b39c45f620c559d555d2e603cb",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/COPY-PLAN.json",
+      "bytes": 14060,
+      "sha256": "eba9fc1ecdb9a3051e7c2137264d20bc41bd150ec506c3e98cb31833383a8406",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/FOREIGN-SUM.json",
+      "bytes": 182,
+      "sha256": "c493d30f896962ead6130110d89a490e1a0e620044d2fa03a403109ebc02442f",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/MANIFEST.json",
+      "bytes": 7940,
+      "sha256": "945d88b77d7fcf90c8492fcf9c18ea716a7d406eb0581741128a8eea82804ad5",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/PRESERVATION.json",
+      "bytes": 928,
+      "sha256": "780aaba83209bb32b35e8840eee088df758a62ffa9c5fb6871a6d67981fbd633",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/PROPOSAL.json",
+      "bytes": 1180,
+      "sha256": "63ec6ee153495063df2823bdb0ebfcb414e32dcc970a18b138ca26f3e3c7884b",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/READY.json",
+      "bytes": 1581,
+      "sha256": "3c3b22a65fcaa8ca7ef491aa794d899060e8ebd0debb98986264dac799e6ed41",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/RECEIPT.json",
+      "bytes": 3725,
+      "sha256": "00e2a07d120dc3488b67d6305f3a51574d586f6cd516bd0f39668903b4422cbb",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/RESULT.json",
+      "bytes": 3202,
+      "sha256": "4373520714177f6562019280715540235651f0167140752daa2668d25062f912",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/SCOPE.json",
+      "bytes": 83299,
+      "sha256": "45f4b1b20a3ba4561186333e3ac60c7520750a5d639c4a21a00da60e165c57a4",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/SOURCE-BEFORE.json",
+      "bytes": 75982,
+      "sha256": "5c05eea9e3ad8720db2a839fc9e62708fdbaf8cb9b4767923745c036c9c61d7a",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/SOURCE-MANIFEST.json",
+      "bytes": 379,
+      "sha256": "1e70410212aa208f9750c3048dcabe274c2e0ad34502c0a231baaea58e30f8e1",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/SOURCE.diff.gz",
+      "bytes": 2867,
+      "sha256": "0a74aa9eeab40a7d480dfa8a636bdec45d7858ee3c7ec74f04c175c04772106a",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/FETCHES.json",
+      "bytes": 4302,
+      "sha256": "de405d2b8e864abd263846da849dafcd90b46c8304a4209a487d231a85239813",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/MANIFEST.json",
+      "bytes": 1604,
+      "sha256": "c40cb886c0e6b344edb69b089d0668c1437faccde92618023e2936558e5f247f",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/OUTCOMES.json",
+      "bytes": 22449,
+      "sha256": "0e64c082e761f9924eaf51d4c457a31bfe3bdf01132fe64badb775d05ecb1465",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/job-125061103982.log",
+      "bytes": 154080,
+      "sha256": "fdbe8111cd69d811190d98daab5353eec1af5d4b2a31f941987a3a61db4bd616",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/job-125062175875.log",
+      "bytes": 161904,
+      "sha256": "80740c891d0991d96baa64abe3ff469a2ac75b0066a0c1a8f55d6a4eb3b528b6",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/job-125062409253.log",
+      "bytes": 157081,
+      "sha256": "edd475f014d2bcec869a63aa7703e96b089ca256afd4caa264c9d974d271ad56",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/job-125062548313.log",
+      "bytes": 142027,
+      "sha256": "6e79b891a90403af015f63b339e10e241713de593269f8c07867194c2c5496f9",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/job-125063570262.log",
+      "bytes": 70295,
+      "sha256": "76cfb32614ed26deedc9e8ecd19d816a2b2da8c74592e91cd35417f090977d0f",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/jobs-41375793680.json",
+      "bytes": 12092,
+      "sha256": "ceb0e548629dd911803a2888ca3bb2ef728c9a5a6553c3c4148be2f65f2c5672",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/jobs-41375818643.json",
+      "bytes": 12092,
+      "sha256": "d20782e338e3b46b83ebb89482368941c300dc2454b21e15dd0a25fa59637849",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/jobs-41375823911.json",
+      "bytes": 12092,
+      "sha256": "3888fa32a3623dc6a827de72ff39cffd9e5aa3305d40ae2bfe03fc93432284d6",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/jobs-41375829158.json",
+      "bytes": 12092,
+      "sha256": "d275843d406e5a834dd31325f3394cbb1209683a85b2af8230313e2660111ff4",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/actual-prior-five/jobs-41375834550.json",
+      "bytes": 12092,
+      "sha256": "659ff4f627b5a1a8aee77dfe7eb095cb055f417ed69ae2f7b4f3483835d7357d",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/before/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+      "bytes": 12614,
+      "sha256": "9141c281cfcb6b4f2f836df049673748ec53516ce45c30bdcab879e54c6758f6",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/focused-PROCESS.json",
+      "bytes": 279,
+      "sha256": "2553238567926dc58ded914faee7397d97339398b61869d42c21cc05509642a7",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/focused-RESULT.json",
+      "bytes": 528,
+      "sha256": "e02ee8ba6e11f02765b40444561b8d6b739544215b3740a62fc23ba8c0cd3eaf",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/focused.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/focused.stdout",
+      "bytes": 63,
+      "sha256": "30410cb2bdb712a623e4182169a198fdad8729cf8847a6b9bfb162af6fcc481f",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/full-buildpkg-PROCESS.json",
+      "bytes": 176,
+      "sha256": "3035ecbbda0e7b92edf22279063258f6ee49e1ae23c6a6a5a5770996c7ca62fc",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/full-buildpkg-RESULT.json",
+      "bytes": 431,
+      "sha256": "03dd2c26aae111b31e61a63cc9d008b33503982174caccd0958fc02519c1e8d0",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/full-buildpkg.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/full-buildpkg.stdout",
+      "bytes": 63,
+      "sha256": "13c186c34f7a2e74e06ed83916b26c0df125dc8a88140f47d11e9dccc97f1726",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/go-version-PROCESS.json",
+      "bytes": 120,
+      "sha256": "e471abedd19831db4b24e2f042a9832a1720bcc20fbabe608980c4f38cfde8f8",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/go-version-RESULT.json",
+      "bytes": 374,
+      "sha256": "963bd30f7fa76616851f90210371e08fac4a34978b703339b44cb224e5356e69",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/go-version.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/go-version.stdout",
+      "bytes": 33,
+      "sha256": "36849436282e424cf1142184057f25a7bd6845d03b16fedbb1071bc6722524c4",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/lint-version-PROCESS.json",
+      "bytes": 135,
+      "sha256": "38e06b640c8bf9f5f07ab4860357e59f3a1220f8975dd414f7d5882524d10f79",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/lint-version-RESULT.json",
+      "bytes": 390,
+      "sha256": "2263a529132d4b5cb2204209339346b291057fb7302fdfea67f481747bff9937",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/lint-version.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/lint-version.stdout",
+      "bytes": 156,
+      "sha256": "be4b4ec451481410702351739d2d424cc995d5a7a31bad3023003b4b44e09833",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/overlay.json",
+      "bytes": 285,
+      "sha256": "1edc5124dc50f927d6b17f1a78b8dc6f2697eb33ae210a3c35529d2d5eb2027a",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/run_checks.py",
+      "bytes": 7400,
+      "sha256": "92b651ba3f0b9a24b2e29d6fa70fb5d6b7c4a5a965804e06b294d65881e54235",
+      "mode": 384,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/scoped-lint-PROCESS.json",
+      "bytes": 185,
+      "sha256": "adb9e663c8f6aaf8f9e9ce794669b2f6e89d950e4d92d9ee2db0a2f5d85f24c0",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/scoped-lint-RESULT.json",
+      "bytes": 439,
+      "sha256": "3fcd3ad76ddfeba850e537aff3f6cda89e1372c2a0b2b9981eaad2be327254c2",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/scoped-lint.stderr",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/scoped-lint.stdout",
+      "bytes": 10,
+      "sha256": "e92606b0bf483111dff0a120c315ea165821348f31365020e2468a0059095c47",
+      "mode": 420,
+      "byte_equal": true
+    },
+    {
+      "member": "wheel-fix/source/lego/operator/internal/build/nativecommon_nodeaddon_qualification_test.go",
+      "bytes": 20072,
+      "sha256": "01c64e35c6b85d0ed1d469bedf8b81666d5e491332c9fa107ec9700dc4297b84",
+      "mode": 384,
+      "byte_equal": true
+    }
+  ]
+}
