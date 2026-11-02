@@ -39,7 +39,7 @@ jobs:
       id-token: write
     # Ref guard: only reviewed main may publish a platform image.
     if: github.ref == 'refs/heads/main'
-    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    runs-on: [self-hosted, Linux, ARM64, bex-build]
     outputs:
       digest: ${{ steps.build.outputs.digest }}
     steps:

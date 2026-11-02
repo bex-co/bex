@@ -15,11 +15,12 @@
 #     kubeconfig alive until their last cluster command.
 #  5. Self-hosted runner custody (ADR083, `.pm/DO_NOT_DO.md` #CI-RUNNERS): every
 #     job `runs-on` must be the scalar [self-hosted, Linux, ARM64, <pool>] form
-#     carrying exactly one of the non-overlapping `bex-ci` / `bex-production`
+#     carrying exactly one of the non-overlapping `bex-ci` / `bex-production` / `bex-build`
 #     pool labels (an unmatched label queues; org group membership is managed
 #     independently at runner registration) and install tools without sudo,
 #     which the deliberately unprivileged runner account does not have.
-#  6. Trust separation: credential-bearing jobs must use `bex-production`, and
+#  6. Trust separation: credential-bearing jobs must use `bex-production` (or
+#     `bex-build` for main-only image publication holding only GITHUB_TOKEN), and
 #     production-pool jobs in a `pull_request` workflow must reject PR events.
 #  7. Public-fork isolation: any self-hosted job in a `pull_request` workflow
 #     must either reject fork PRs by repository identity or reject all PR events.
@@ -202,18 +203,18 @@ for wf in $(collect_workflow_files); do
   fi
   violations="$(awk -v file="$wf" '
     /^[[:space:]]*runs-on:/ {
-      if ($0 ~ /^    runs-on: \[self-hosted, Linux, ARM64, bex-(ci|production)\][[:space:]]*$/) next
+      if ($0 ~ /^    runs-on: \[self-hosted, Linux, ARM64, bex-(ci|production|build)\][[:space:]]*$/) next
       if ($0 ~ /^    runs-on: \[self-hosted, Linux, ARM64\][[:space:]]*$/) {
-        print file ":" NR ": missing bex-ci or bex-production pool label"
+        print file ":" NR ": missing bex-ci, bex-production or bex-build pool label"
         next
       }
       if ($0 ~ /^    runs-on: \[self-hosted, Linux, ARM64, [A-Za-z0-9_-]+\][[:space:]]*$/) {
-        print file ":" NR ": unapproved pool label (only bex-ci or bex-production exist)"
+        print file ":" NR ": unapproved pool label (only bex-ci, bex-production or bex-build exist)"
         next
       }
       print file ":" NR ": runs-on must be the scalar [self-hosted, Linux, ARM64, <pool>] label form"
     }
-    /^[[:space:]]+group: bex-(ci|production)[[:space:]]*$/ {
+    /^[[:space:]]+group: bex-(ci|production|build)[[:space:]]*$/ {
       print file ":" NR ": runner-group syntax is outside the workflow contract; use the pool label form"
     }
   ' "$wf")"
@@ -243,6 +244,12 @@ fi
 # permission applies to every job in that workflow; job-local credentials apply
 # only to that job. A production-pool job inside a mixed-event workflow must
 # also reject pull_request before GitHub schedules it.
+#
+# bex-build (w6/m155) is the main-only image-publication pool: a job there may
+# hold GITHUB_TOKEN write scopes (packages, id-token, attestations) but never
+# another secret, an environment or write-all, must be gated to refs/heads/main,
+# and rejects pull_request like bex-production. Hours-long image builds then
+# never hold the runners deploys need.
 runner_trust_violations() {
   local wf
   for wf in $(collect_workflow_files); do
@@ -250,23 +257,52 @@ runner_trust_violations() {
       function check_job() {
         if (job == "" || block !~ /\n    runs-on:/) return
         production = block ~ /\n    runs-on: \[self-hosted, Linux, ARM64, bex-production\]/
+        build = block ~ /\n    runs-on: \[self-hosted, Linux, ARM64, bex-build\]/
+        foreign_secret = workflow_foreign_secret || block_foreign_secret(block)
         credentialed = workflow_credentialed \
           || block ~ /\$\{\{[[:space:]]*secrets\./ \
+          || whole_secrets(block) \
           || block ~ /\n    environment:/ \
           || block ~ /\n    permissions:[[:space:]]*write-all([[:space:]]|$)/ \
           || block ~ /\n      [A-Za-z0-9_-]+:[[:space:]]*write([[:space:]]|$)/
         excludes_pr = block ~ /github\.event_name[[:space:]]*!=[[:space:]]*[^[:space:]]*pull_request/
         excludes_pr_target = block ~ /github\.event_name[[:space:]]*!=[[:space:]]*[^[:space:]]*pull_request_target/
-        if (credentialed && !production) {
+        if (credentialed && !production && !build) {
           print file ":" job ": credential-bearing job must use bex-production"
         }
-        if (production && ((has_pull_request && !excludes_pr) || (has_pull_request_target && !excludes_pr_target))) {
-          print file ":" job ": bex-production job must reject pull_request events"
+        if ((production || build) && ((has_pull_request && !excludes_pr) || (has_pull_request_target && !excludes_pr_target))) {
+          print file ":" job ": " (build ? "bex-build" : "bex-production") " job must reject pull_request events"
         }
+        if (build) {
+          if (foreign_secret) print file ":" job ": bex-build job may hold only GITHUB_TOKEN, not another secret"
+          if (block ~ /\n    environment:/) print file ":" job ": bex-build job must not use an environment"
+          if (workflow_write_all || block ~ /\n    permissions:[[:space:]]*write-all([[:space:]]|$)/) print file ":" job ": bex-build job must not use write-all"
+          if (block !~ /\n    if: github\.ref == \047refs\/heads\/main\047([[:space:]]+&&[^|!\n]*)?\n/) print file ":" job ": bex-build job must be gated to refs/heads/main"
+        }
+      }
+      # The whole secrets object inside an expression, e.g. toJSON(secrets):
+      # it carries every secret at once.
+      function whole_secrets(text) {
+        return text ~ /\$\{\{[^}]*[^A-Za-z0-9_.]secrets[[:space:]]*(\)|\}\})/
+      }
+      # A secrets.<NAME> reference other than GITHUB_TOKEN (dot or bracket form;
+      # context names are case-insensitive), or the whole secrets object.
+      function block_foreign_secret(text,    rest, name) {
+        if (whole_secrets(text)) return 1
+        rest = text
+        while (match(rest, /secrets(\.[A-Za-z0-9_]+|\[[^]]*\])/)) {
+          name = substr(rest, RSTART + 7, RLENGTH - 7)
+          gsub(/^[.[]|[]"\047 ]/, "", name)
+          if (toupper(name) != "GITHUB_TOKEN") return 1
+          rest = substr(rest, RSTART + RLENGTH)
+        }
+        return 0
       }
       !in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*write([[:space:]]|$)/ { workflow_credentialed = 1 }
       !in_jobs && /^permissions:[[:space:]]*write-all([[:space:]]|$)/ { workflow_credentialed = 1 }
       !in_jobs && /\$\{\{[[:space:]]*secrets\./ { workflow_credentialed = 1 }
+      !in_jobs && block_foreign_secret($0) { workflow_foreign_secret = 1 }
+      !in_jobs && /^permissions:[[:space:]]*write-all([[:space:]]|$)/ { workflow_write_all = 1 }
       /^  pull_request:[[:space:]]*$/ { has_pull_request = 1 }
       /^  pull_request_target:[[:space:]]*$/ { has_pull_request_target = 1 }
       /^jobs:[[:space:]]*$/ { in_jobs = 1; next }
@@ -283,9 +319,32 @@ runner_trust_violations() {
   done
 }
 
-trust_violations="$(runner_trust_violations)"
+# A reusable workflow with a bex-build job must not be handed secrets by its
+# caller (`secrets:` mapping or `secrets: inherit`): the callee's own scan
+# cannot see what the caller passes.
+build_caller_violations() {
+  local wf callee name
+  for callee in $(collect_workflow_files); do
+    grep -q '^    runs-on: \[self-hosted, Linux, ARM64, bex-build\]' "$callee" || continue
+    name="$(basename "$callee")"
+    for wf in $(collect_workflow_files); do
+      awk -v file="$wf" -v callee="$name" '
+        function check() {
+          if (job != "" && block ~ ("\n    uses: \\./\\.github/workflows/" callee) && block ~ /\n    secrets:/)
+            print file ":" job ": passes secrets to " callee ", which runs on bex-build"
+        }
+        /^jobs:[[:space:]]*$/ { in_jobs = 1; next }
+        in_jobs && /^  [A-Za-z0-9_-]+:[[:space:]]*$/ { check(); job = $1; sub(/:$/, "", job); block = "\n" $0; next }
+        in_jobs && job != "" { block = block "\n" $0 }
+        END { check() }
+      ' "$wf"
+    done
+  done
+}
+
+trust_violations="$(runner_trust_violations; build_caller_violations)"
 if [ -n "$trust_violations" ]; then
-  echo "FAIL: CI and production runner trust classes overlap:" >&2
+  echo "FAIL: CI, build and production runner trust classes overlap:" >&2
   printf '%s\n' "$trust_violations" >&2
   exit 1
 fi

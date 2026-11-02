@@ -73,8 +73,8 @@ assert "ubuntu-latest fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: ubuntu-lates
   "GitHub-hosted ubuntu runners"
 # RED: the legacy shared label pool no longer passes.
 assert "shared self-hosted pool fails" 1 "$(printf 'jobs:\n  x:\n    runs-on: [self-hosted, Linux, ARM64]\n    steps:\n      - uses: %s' "$PINNED")" \
-  "missing bex-ci or bex-production pool label"
-# RED: an arbitrary fourth label cannot silently create a third trust class.
+  "missing bex-ci, bex-production or bex-build pool label"
+# RED: an arbitrary label cannot silently create a fourth trust class.
 assert "unknown pool label fails" 1 "$(job_body "default" "      - uses: $PINNED")" \
   "unapproved pool label"
 # RED: group-only routing does not satisfy the repository pool-label contract.
@@ -141,6 +141,55 @@ assert "deploy secret in non-build job passes" 0 "$(job_body "bex-production" " 
         run: ./deploy")"
 
 # --- Public-fork isolation --------------------------------------------------
+# bex-build (w6/m155): main-only image publication holding only GITHUB_TOKEN.
+build_job() {
+  printf 'jobs:\n  x:\n    if: %s\n    runs-on: [self-hosted, Linux, ARM64, bex-build]\n    permissions:\n      contents: read\n      packages: write\n      id-token: write\n%s    steps:\n%s' \
+    "${1:-github.ref == 'refs/heads/main'}" "${2:-}" "${3:-      - uses: $PINNED}"
+}
+# GREEN: a main-gated job with GITHUB_TOKEN write scopes and secrets.GITHUB_TOKEN.
+assert "main-only GITHUB_TOKEN image build on bex-build passes" 0 "$(build_job "" "" "      - env:
+          GHCR_TOKEN: \${{ secrets.GITHUB_TOKEN }}
+        run: ./publish")"
+# RED: any other secret, dot or bracket form.
+assert "deploy secret on bex-build fails" 1 "$(build_job "" "" "      - env:
+          T: \${{ secrets.BEX_SSH_PRIVATE_KEY }}
+        run: ./x")" "bex-build job may hold only GITHUB_TOKEN"
+assert "bracket-form secret on bex-build fails" 1 "$(build_job "" "" "      - env:
+          T: \${{ secrets['HCLOUD_TOKEN'] }}
+        run: ./x")" "bex-build job may hold only GITHUB_TOKEN"
+assert "workflow-header secret reaching bex-build fails" 1 "$(printf 'env:\n  T: ${{ secrets.HCLOUD_TOKEN }}\n%s' "$(build_job)")" \
+  "bex-build job may hold only GITHUB_TOKEN"
+# RED: an environment, write-all, or a job not gated to main.
+assert "environment on bex-build fails" 1 "$(build_job "" "    environment: production-deploy\n")" \
+  "bex-build job must not use an environment"
+assert "write-all on bex-build fails" 1 "$(printf 'permissions: write-all\n%s' "$(build_job)")" \
+  "bex-build job must not use write-all"
+assert "ungated bex-build job fails" 1 "$(build_job "always()")" \
+  "bex-build job must be gated to refs/heads/main"
+# RED: a pull_request workflow must keep PR events off bex-build too.
+assert "bex-build job in a PR workflow fails" 1 "$(printf 'on:\n  pull_request:\n%s' "$(build_job)")" \
+  "bex-build job must reject pull_request events"
+
+# Bypass regressions (w6/m155 review).
+assert "lower-case github_token on bex-build passes" 0 "$(build_job "" "" "      - env:
+          T: \${{ secrets.github_token }}
+        run: ./publish")"
+assert "toJSON(secrets) on bex-build fails" 1 "$(build_job "" "" "      - env:
+          ALL: \${{ toJSON(secrets) }}
+        run: ./x")" "bex-build job may hold only GITHUB_TOKEN"
+assert "toJSON(secrets) on bex-ci fails" 1 "$(job_body "bex-ci" "      - env:
+          ALL: \${{ toJSON(secrets) }}
+        run: ./x")" "credential-bearing job must use bex-production"
+assert "main lookalike gate on bex-build fails" 1 "$(build_job "github.ref == 'refs/heads/main-x'")" \
+  "bex-build job must be gated to refs/heads/main"
+assert "ORed main gate on bex-build fails" 1 "$(build_job "github.ref == 'refs/heads/main' || true")" \
+  "bex-build job must be gated to refs/heads/main"
+assert "main gate only in a comment fails" 1 "$(build_job "always()" "    # if: github.ref == 'refs/heads/main'\n")" \
+  "bex-build job must be gated to refs/heads/main"
+assert "ANDed main gate on bex-build passes" 0 "$(build_job "github.ref == 'refs/heads/main' && needs.plan.outputs.ok == 'true'")"
+assert "caller passing secrets to a bex-build workflow fails" 1 "$(printf '%s\n  caller:\n    uses: ./.github/workflows/ci.yml\n    secrets: inherit\n' "$(build_job)")" \
+  "which runs on bex-build"
+
 pr_job_body() {
   printf 'on:\n  pull_request:\njobs:\n  x:\n    %s\n    runs-on: [self-hosted, Linux, ARM64, %s]\n    steps:\n      - uses: %s' "$1" "${2:-bex-ci}" "$PINNED"
 }
