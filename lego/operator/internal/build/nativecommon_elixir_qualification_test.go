@@ -131,6 +131,38 @@ func commonElixirQualificationRecipe(recipe string, primary NativeChoice) (strin
 	return executed, true, err
 }
 
+const commonElixirEmulationEnv = "ERL_FLAGS=+JMsingle true"
+
+func commonElixirSingleMapping(daemon, target string) bool {
+	return daemon == "linux/arm64" && target == "linux/amd64"
+}
+
+// Only the qualification's known generated stage prefixes gain a build ARG.
+// The authored commands/heredocs stay byte-exact, and ARG is not an image ENV.
+func commonElixirEmulationRecipe(canonical, common string, primary NativeChoice) (string, error) {
+	const header = "# syntax=docker/dockerfile:1.7\n"
+	stage, emulatedStage := primary.primaryStage, primary.primaryStage
+	if stage != "" {
+		first, rest, found := strings.Cut(stage, "\n")
+		if !found || !strings.HasPrefix(first, "FROM "+common+" AS ") || strings.Contains(rest, "\nFROM ") {
+			return "", fmt.Errorf("emulation ARG requires the known common OTP stage")
+		}
+		emulatedStage = first + "\nARG ERL_FLAGS\n" + rest
+	}
+	prefix, replacement := header, header
+	if stage != "" {
+		prefix += stage + "\n"
+		replacement += emulatedStage + "\n"
+	}
+	prefix += "FROM " + common + "\n"
+	replacement += "FROM " + common + "\nARG ERL_FLAGS\n"
+	rest, found := strings.CutPrefix(canonical, prefix)
+	if !found {
+		return "", fmt.Errorf("emulation ARG requires the exact canonical common stage prefix")
+	}
+	return replacement + rest, nil
+}
+
 // Separate from the frozen original 13 tool replays and 28 hosted cases.
 // Explicit opt-in prevents this expensive full-OTP profile from joining the
 // first common-image cohort or a generic BuildKit integration invocation.
@@ -157,6 +189,20 @@ func TestCommonElixirOfflineQualification(t *testing.T) {
 		must(t, err)
 	}
 	t.Logf("retained Elixir/OTP qualification evidence: %s", output)
+	// Record the actual daemon, rather than inferring it from this test's Go ELF.
+	ctx, cancel := context.WithTimeout(t.Context(), 10*time.Second)
+	daemon, daemonErr := exec.CommandContext(ctx, "docker", "version", "--format", "{{.Server.Os}}/{{.Server.Arch}}").CombinedOutput()
+	cancel()
+	must(t, os.WriteFile(filepath.Join(output, "daemon-platform.txt"), daemon, 0o600))
+	must(t, daemonErr)
+	emulatedAMD := commonElixirSingleMapping(strings.TrimSpace(string(daemon)), docker.platform)
+	var runtimeEnv []string
+	if emulatedAMD {
+		runtimeEnv = []string{commonElixirEmulationEnv}
+	}
+	observation, err := json.MarshalIndent(map[string]any{"daemon": strings.TrimSpace(string(daemon)), "target": docker.platform, "single_mapping": emulatedAMD, "runtime_environment": runtimeEnv, "scope": "qualification emulator compatibility only; no customer or final-image ENV change"}, "", "  ")
+	must(t, err)
+	must(t, os.WriteFile(filepath.Join(output, "emulation.json"), observation, 0o600))
 	for _, tc := range commonElixirCases() {
 		t.Run(tc.name, func(t *testing.T) {
 			o := nativeOptions()
@@ -174,7 +220,12 @@ func TestCommonElixirOfflineQualification(t *testing.T) {
 			recipe, err := os.ReadFile(path)
 			must(t, err)
 			must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile.canonical"), recipe, 0o600))
-			executed, prerequisites, err := commonElixirQualificationRecipe(string(recipe), choices[0])
+			executed := string(recipe)
+			if emulatedAMD {
+				executed, err = commonElixirEmulationRecipe(executed, common, choices[0])
+				must(t, err)
+			}
+			executed, prerequisites, err := commonElixirQualificationRecipe(executed, choices[0])
 			must(t, err)
 			must(t, os.WriteFile(filepath.Join(evidence, "Dockerfile"), []byte(executed), 0o600))
 			must(t, os.WriteFile(path, []byte(executed), 0o600))
@@ -184,6 +235,9 @@ func TestCommonElixirOfflineQualification(t *testing.T) {
 			ctx, cancel := context.WithTimeout(t.Context(), 45*time.Minute)
 			defer cancel()
 			extra := []string{"--secret", "id=render-env,src=" + bundle, "-t", tag}
+			if emulatedAMD {
+				extra = append(extra, "--build-arg", commonElixirEmulationEnv)
+			}
 			args := docker.buildArgs(extra, source, true)
 			if prerequisites {
 				args = docker.prerequisiteBuildArgs(extra, source, true)
@@ -194,7 +248,19 @@ func TestCommonElixirOfflineQualification(t *testing.T) {
 			if buildErr != nil {
 				t.Fatalf("actual common Elixir/OTP build: %v\n%s", buildErr, log)
 			}
-			docker.runImage(t, nativeUtilityCase{name: tc.name}, tag, evidence, prerequisites)
+			if emulatedAMD {
+				imageEnv, err := exec.CommandContext(ctx, "docker", "image", "inspect", tag, "--format", "{{json .Config.Env}}").Output()
+				must(t, os.WriteFile(filepath.Join(evidence, "image-env.json"), imageEnv, 0o600))
+				must(t, err)
+				var entries []string
+				must(t, json.Unmarshal(imageEnv, &entries))
+				for _, entry := range entries {
+					if strings.HasPrefix(entry, "ERL_FLAGS=") {
+						t.Fatal("qualification VM setting escaped into the final OCI environment")
+					}
+				}
+			}
+			docker.runImage(t, nativeUtilityCase{name: tc.name}, tag, evidence, prerequisites || emulatedAMD, runtimeEnv...)
 		})
 	}
 }
@@ -302,5 +368,72 @@ func TestCommonElixirRequestedOTPMatchesResolvedMetadata(t *testing.T) {
 				t.Fatal("fixture rewrote the authored OTP request to satisfy its expectation")
 			}
 		})
+	}
+}
+
+func TestCommonElixirSingleMappingRequiresActualEmulation(t *testing.T) {
+	for _, tc := range []struct {
+		daemon, target string
+		want           bool
+	}{
+		{"linux/arm64", "linux/amd64", true},
+		{"linux/amd64", "linux/amd64", false},
+		{"linux/arm64", "linux/arm64", false},
+		{"linux/amd64", "linux/arm64", false},
+		{"", "linux/amd64", false},
+		{"linux/arm64", "", false},
+		{"windows/arm64", "linux/amd64", false},
+		{"linux/arm64\nwarning", "linux/amd64", false},
+	} {
+		if actual := commonElixirSingleMapping(tc.daemon, tc.target); actual != tc.want {
+			t.Errorf("daemon=%q target=%q: %v, want %v", tc.daemon, tc.target, actual, tc.want)
+		}
+	}
+}
+
+func TestCommonElixirEmulationRecipePreservesAuthoredBytes(t *testing.T) {
+	const common = "ghcr.io/bex-co/bex-cnb-run@" + exactDigest
+	const header = "# syntax=docker/dockerfile:1.7\n"
+	for _, stage := range []string{"", "FROM " + common + " AS bex-otp-bookworm\nCOPY --from=reviewed /usr/local/ /usr/local/\nRUN exact-otp-source\n"} {
+		primary := NativeChoice{primaryStage: stage}
+		prefix := header
+		expected := header
+		if stage != "" {
+			prefix += stage + "\n"
+			first, rest, _ := strings.Cut(stage, "\n")
+			expected += first + "\nARG ERL_FLAGS\n" + rest + "\n"
+		}
+		prefix += "FROM " + common + "\n"
+		expected += "FROM " + common + "\nARG ERL_FLAGS\n"
+		body := "COPY <<'AUTHORED' /app/data\nFROM " + common + "\nARG ERL_FLAGS\nENV ERL_FLAGS=literal-data\nAUTHORED\nRUN --network=none original-build\nCMD [\"original-runtime\"]\n"
+		executed, err := commonElixirEmulationRecipe(prefix+body, common, primary)
+		must(t, err)
+		if executed != expected+body {
+			t.Fatal("emulation ARG changed authored command, data or stage bytes")
+		}
+		for _, changed := range []string{strings.Replace(prefix+body, header, "# changed syntax\n", 1), strings.Replace(prefix+body, "FROM "+common, "FROM unrelated", 1)} {
+			if _, err := commonElixirEmulationRecipe(changed, common, primary); err == nil {
+				t.Fatal("unrecognized stage prefix accepted")
+			}
+		}
+	}
+	if _, err := commonElixirEmulationRecipe(header+"FROM "+common+"\n", common, NativeChoice{primaryStage: "FROM unrelated AS otp\n"}); err == nil {
+		t.Fatal("unreviewed source-stage prefix accepted")
+	}
+}
+
+func TestCommonElixirEmulationComposesWithSourcePrerequisite(t *testing.T) {
+	const common = "ghcr.io/bex-co/bex-cnb-run@" + exactDigest
+	primary := NativeChoice{Image: "erlang:28.0@" + otherDigest, commonOTP: "28.0"}
+	selected := "RUN --mount=type=bind,from=" + primary.Image + ",source=/usr/local/lib/erlang,target=/opt/bex-otp-reference,readonly /usr/libexec/bex-native/build-otp 28.0 " + strings.Repeat("a", 64)
+	primary.primaryStage = "FROM " + common + " AS bex-otp-bookworm\n" + selected + "\n"
+	body := "RUN --network=none original-authored-build\nCMD [\"original-authored-runtime\"]\n"
+	canonical := "# syntax=docker/dockerfile:1.7\n" + primary.primaryStage + "\nFROM " + common + "\n" + body
+	emulated, err := commonElixirEmulationRecipe(canonical, common, primary)
+	must(t, err)
+	executed, prerequisites, err := commonElixirQualificationRecipe(emulated, primary)
+	must(t, err)
+	if !prerequisites || strings.Count(executed, "\nARG ERL_FLAGS\n") != 2 || !strings.Contains(executed, "RUN --network=default "+strings.TrimPrefix(selected, "RUN ")) || !strings.HasSuffix(executed, body) {
+		t.Fatal("emulation build ARG changed the checksum-bound prerequisite or authored commands")
 	}
 }
