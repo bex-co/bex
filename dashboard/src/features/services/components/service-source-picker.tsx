@@ -317,13 +317,26 @@ export function ServiceSourcePicker({
                   aria-invalid={
                     imageProblem !== null || Boolean(image.serverError)
                   }
+                  aria-describedby={
+                    imageProblem !== null || image.serverError
+                      ? `${idPrefix}-image-error`
+                      : undefined
+                  }
                 />
                 {imageProblem !== null ? (
-                  <p className="text-sm text-destructive">
+                  <p
+                    id={`${idPrefix}-image-error`}
+                    role="alert"
+                    className="text-sm text-destructive"
+                  >
                     {t(IMAGE_PROBLEM_KEYS[imageProblem])}
                   </p>
                 ) : image.serverError ? (
-                  <p className="text-sm text-destructive">
+                  <p
+                    id={`${idPrefix}-image-error`}
+                    role="alert"
+                    className="text-sm text-destructive"
+                  >
                     {image.serverError}
                   </p>
                 ) : null}

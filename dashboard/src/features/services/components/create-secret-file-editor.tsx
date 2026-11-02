@@ -1,3 +1,4 @@
+import { useId } from "react";
 import { Plus, Trash2 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Button } from "@/common/components/ui/button";
@@ -17,6 +18,7 @@ export function CreateSecretFileEditor({
   onChange: (rows: SecretFileEntry[]) => void;
 }) {
   const { t } = useTranslations();
+  const baseId = useId();
 
   function addRow() {
     onChange([...rows, { name: "", content: "" }]);
@@ -54,6 +56,9 @@ export function CreateSecretFileEditor({
                   )}
                   aria-label={t("services.createFieldSecretFilesName")}
                   aria-invalid={invalid}
+                  aria-describedby={
+                    invalid ? `${baseId}-${i}-error` : undefined
+                  }
                   className="font-mono text-sm"
                 />
                 <Textarea
@@ -77,7 +82,11 @@ export function CreateSecretFileEditor({
               </Button>
             </div>
             {invalid ? (
-              <p className="text-xs text-destructive">
+              <p
+                id={`${baseId}-${i}-error`}
+                role="alert"
+                className="text-xs text-destructive"
+              >
                 {t("services.createFieldSecretFilesNameError")}
               </p>
             ) : null}

@@ -351,7 +351,7 @@ export function EditableFieldRow({
       )}
 
       {validationError !== null && (
-        <p id={errorId} className="text-destructive text-sm">
+        <p id={errorId} role="alert" className="text-destructive text-sm">
           {validationError}
         </p>
       )}

@@ -524,7 +524,7 @@ function RuleInput({
         className="font-mono text-xs"
       />
       {error ? (
-        <p id={`${id}-error`} className="text-destructive text-xs">
+        <p id={`${id}-error`} role="alert" className="text-destructive text-xs">
           {t(error)}
         </p>
       ) : null}

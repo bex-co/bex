@@ -161,9 +161,16 @@ export function NewKeyValuePage() {
                     placeholder={t("keyvalue.fieldNamePlaceholder")}
                     autoComplete="off"
                     aria-invalid={showNameError}
+                    aria-describedby={
+                      showNameError ? "kv-name-error" : undefined
+                    }
                   />
                   {showNameError ? (
-                    <p className="text-sm text-destructive">
+                    <p
+                      id="kv-name-error"
+                      role="alert"
+                      className="text-sm text-destructive"
+                    >
                       {t("keyvalue.fieldNameError")}
                     </p>
                   ) : null}

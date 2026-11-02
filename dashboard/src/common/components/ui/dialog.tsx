@@ -7,6 +7,26 @@ import { XIcon } from "lucide-react";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { useTranslations } from "@/common/hooks/use-translations";
 
+// lastOutsideFocus tracks the last element focused outside any dialog. A
+// dialog's content mounts only while open and Radix moves focus inside it, so
+// the opener has to be remembered while the dialog is closed.
+let lastFocusedOutside: HTMLElement | null = null;
+if (typeof document !== "undefined") {
+  document.addEventListener("focusin", (event) => {
+    const target = event.target;
+    if (
+      target instanceof HTMLElement &&
+      target !== document.body &&
+      !target.closest('[role="dialog"], [role="alertdialog"]')
+    ) {
+      lastFocusedOutside = target;
+    }
+  });
+}
+function lastOutsideFocus(): HTMLElement | null {
+  return lastFocusedOutside;
+}
+
 function Dialog({
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Root>) {
@@ -51,11 +71,31 @@ function DialogContent({
   className,
   children,
   showCloseButton = true,
+  onOpenAutoFocus,
+  onCloseAutoFocus,
   ...props
 }: React.ComponentProps<typeof DialogPrimitive.Content> & {
   showCloseButton?: boolean;
 }) {
   const { t } = useTranslations();
+  // The control that opened the dialog: most callers control `open` and
+  // render no Trigger, so Radix has nothing to return focus to (w4/459).
+  const openerRef = React.useRef<HTMLElement | null>(null);
+  const handleOpenAutoFocus = (event: Event) => {
+    openerRef.current = lastOutsideFocus();
+    onOpenAutoFocus?.(event);
+  };
+  const handleCloseAutoFocus = (event: Event) => {
+    onCloseAutoFocus?.(event);
+    if (event.defaultPrevented) return;
+    // If the action removed the opener (create then navigate, delete), leave
+    // Radix's default alone.
+    const opener = openerRef.current;
+    openerRef.current = null;
+    if (!opener?.isConnected) return;
+    event.preventDefault();
+    opener.focus();
+  };
   return (
     <DialogPortal data-slot="dialog-portal">
       <DialogOverlay />
@@ -65,6 +105,8 @@ function DialogContent({
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[90vh] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 overflow-y-auto sm:max-w-lg",
           className,
         )}
+        onOpenAutoFocus={handleOpenAutoFocus}
+        onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
         {children}
