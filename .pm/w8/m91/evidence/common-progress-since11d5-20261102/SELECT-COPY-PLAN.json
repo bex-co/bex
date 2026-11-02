@@ -1,0 +1,102 @@
+{
+  "state": "PRIVATE_SOURCE_ONLY_PUBLICATION_PROPOSAL_NOT_APPLIED",
+  "target": ".pm/w8/m91/evidence/common-progress-since11d5-20261102",
+  "files": [
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-progress-publication-v2-select-20261102-p24o6sw1/unpublished-progress.tar.gz",
+        "bytes": 1337396,
+        "sha256": "b169347fee18dd87de1e851c25d88eaa0865eafa83bbb88aa20f0c049cd50830",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/unpublished-progress.tar.gz",
+      "git_mode": "100644"
+    },
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/SELECTION-MAP.json",
+        "bytes": 408911,
+        "sha256": "193f9d36204133878252423c55279569ea3f85347a582a627aeac969c1704833",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/SELECTION-MAP.json",
+      "git_mode": "100644"
+    },
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/OMISSIONS-AND-FUTURE.json",
+        "bytes": 2446,
+        "sha256": "07c594e3ddaa6f54a3f57aae6b09f48eca57f71561b050b249e6c7d31128e0d0",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/OMISSIONS-AND-FUTURE.json",
+      "git_mode": "100644"
+    },
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/ORIGINS-AND-SCOPE.json",
+        "bytes": 8994,
+        "sha256": "8f12c688cc60de601ad525ee93891cec1d6c8f1f08bae427c974123b8c50f9c0",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/ORIGINS-AND-SCOPE.json",
+      "git_mode": "100644"
+    },
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/STALE-CLAIMS.json",
+        "bytes": 1646,
+        "sha256": "84b0318f586133b38f8ed412bfd56e55ccee10d692eb534409dafcbd06fe4937",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/STALE-CLAIMS.json",
+      "git_mode": "100644"
+    },
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/PUBLIC-REFERENCE-VERIFICATION.json",
+        "bytes": 4987,
+        "sha256": "522d6a9dd0be42ced3c4208af5c5a46d1c28df9734a45fca0a0824376c895b20",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/PUBLIC-REFERENCE-VERIFICATION.json",
+      "git_mode": "100644"
+    },
+    {
+      "source": {
+        "path": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/README.md",
+        "bytes": 3420,
+        "sha256": "e28e1ca28a6b9ed2b959356f98bf0bc6b438ddbe529b3e577083d81ff6a24414",
+        "mode": "0644"
+      },
+      "destination": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/README.md",
+      "git_mode": "100644"
+    }
+  ],
+  "copy_count": 7,
+  "copy_bytes": 1767800,
+  "all_selected_sources_unchanged": true,
+  "archive_roundtrip": true,
+  "probe_originals": 30,
+  "probe_Root_review": {
+    "path": "/private/tmp/bex-w8-snapshot-group-probe-source-20261102-maifb68m/ROOT-ACTUAL-PROBE-REVIEW.json",
+    "bytes": 6714,
+    "sha256": "35694c36c6e942e50cf0aa0b7a2471e3fa5b43c56e185d65a5542ef98a354a53",
+    "mode": "0644"
+  },
+  "actual_current_success_candidate_adoption_live_fields": null,
+  "Root_review_required": true,
+  "public_body_reuse_full_SHA256_reads": {
+    "path": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/PUBLIC-REFERENCE-VERIFICATION.json",
+    "bytes": 4987,
+    "sha256": "522d6a9dd0be42ced3c4208af5c5a46d1c28df9734a45fca0a0824376c895b20",
+    "mode": "0644"
+  },
+  "predecessor": {
+    "path": "/private/tmp/bex-w8-progress-publication-v2-select-20261102-p24o6sw1/RECEIPT.json",
+    "bytes": 740,
+    "sha256": "5039d84d50f3a33c32ddebc8c495e5604a643cfd2d876e2b2028c236bbb65a24",
+    "mode": "0644"
+  },
+  "external_archive_referenced_not_duplicated": true
+}

@@ -1,0 +1,93 @@
+{
+  "status": "ROOT_COPIED_REVIEWED_LOSSLESS_PROGRESS_EVIDENCE",
+  "at": "2026-11-02T19:32:37.564992+00:00",
+  "source_selection_copy_plan_sha256": "1826bf03110841774f9a9a7357c5cafe49c8f01ef36013d594f2901dbec89b12",
+  "copied_exact_original_payloads": [
+    {
+      "path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/unpublished-progress.tar.gz",
+      "source": "/private/tmp/bex-w8-progress-publication-v2-select-20261102-p24o6sw1/unpublished-progress.tar.gz",
+      "bytes": 1337396,
+      "sha256": "b169347fee18dd87de1e851c25d88eaa0865eafa83bbb88aa20f0c049cd50830",
+      "mode": "0o644"
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/SELECTION-MAP.json",
+      "source": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/SELECTION-MAP.json",
+      "bytes": 408911,
+      "sha256": "193f9d36204133878252423c55279569ea3f85347a582a627aeac969c1704833",
+      "mode": "0o644"
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/OMISSIONS-AND-FUTURE.json",
+      "source": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/OMISSIONS-AND-FUTURE.json",
+      "bytes": 2446,
+      "sha256": "07c594e3ddaa6f54a3f57aae6b09f48eca57f71561b050b249e6c7d31128e0d0",
+      "mode": "0o644"
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/ORIGINS-AND-SCOPE.json",
+      "source": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/ORIGINS-AND-SCOPE.json",
+      "bytes": 8994,
+      "sha256": "8f12c688cc60de601ad525ee93891cec1d6c8f1f08bae427c974123b8c50f9c0",
+      "mode": "0o644"
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/STALE-CLAIMS.json",
+      "source": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/STALE-CLAIMS.json",
+      "bytes": 1646,
+      "sha256": "84b0318f586133b38f8ed412bfd56e55ccee10d692eb534409dafcbd06fe4937",
+      "mode": "0o644"
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/PUBLIC-REFERENCE-VERIFICATION.json",
+      "source": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/PUBLIC-REFERENCE-VERIFICATION.json",
+      "bytes": 4987,
+      "sha256": "522d6a9dd0be42ced3c4208af5c5a46d1c28df9734a45fca0a0824376c895b20",
+      "mode": "0o644"
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/README.md",
+      "source": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/README.md",
+      "bytes": 3420,
+      "sha256": "e28e1ca28a6b9ed2b959356f98bf0bc6b438ddbe529b3e577083d81ff6a24414",
+      "mode": "0o644"
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/SELECT-COPY-PLAN.json",
+      "source": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/SELECT-COPY-PLAN.json",
+      "bytes": 4121,
+      "sha256": "1826bf03110841774f9a9a7357c5cafe49c8f01ef36013d594f2901dbec89b12",
+      "mode": "0o644"
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/MANIFEST.json",
+      "source": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/MANIFEST.json",
+      "bytes": 1823,
+      "sha256": "fd8c12d253572917b73ded321dd4c7c03b98aff75bbd6e5052b91ab3ceaec1b8",
+      "mode": "0o644"
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/ROOT-PUBLICATION-REVIEW.json",
+      "source": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/ROOT-PUBLICATION-REVIEW.json",
+      "bytes": 1368,
+      "sha256": "ae8e2e7ce45c2102923c760c98a261d75683d8b9ffd276f037c3cc07ed5d6729",
+      "mode": "0o644"
+    },
+    {
+      "path": ".pm/w8/m91/evidence/common-progress-since11d5-20261102/ROOT-FAILED95-COVERAGE-REVIEW.json",
+      "source": "/private/tmp/bex-w8-progress-publication-v3-select-20261102-rdyp7svs/ROOT-FAILED95-COVERAGE-REVIEW.json",
+      "bytes": 394,
+      "sha256": "0d45af51e61384df272c5e5e485f39cb6f0d01d51d13a5bfa855c3b3b9bea9f5",
+      "mode": "0o644"
+    }
+  ],
+  "authored_README_exception": "Public README rewritten for readability with all facts and evidence roles preserved. Source preparation README stays exact privately and is identified in copied provenance; raw archive/JSON payloads unchanged. Markdown formatting is permitted on authored public README and OPERATOR-SUPPLEMENT.md only.",
+  "all_failed95_manifest_payloads_selected": {
+    "attempt1": 68,
+    "attempt2": 97,
+    "attempt3": 58
+  },
+  "archive_public_basename": "unpublished-progress.tar.gz",
+  "current_utility_or_operator_terminal_result_admitted_in_this_packet": false,
+  "candidate_or_production_adoption": false
+}
