@@ -5,6 +5,8 @@
       "command": "npx",
       "args": [
         "@playwright/mcp@0.0.79",
+        "--browser",
+        "chromium",
         "--output-dir",
         ".playwright-mcp"
       ],
