@@ -72,7 +72,7 @@ func (f *fakeStore) CreateEnvironment(_ context.Context, projectID, tenantID, na
 			return store.Environment{}, fmt.Errorf("environment: %w", store.ErrConflict)
 		}
 	}
-	e := store.Environment{ID: id.EnvironmentStorageID(id.New(id.Environment)), ProjectID: projectID, TenantID: tenantID, Name: name, ProtectedStatus: ProtectedStatusUnprotected}
+	e := store.Environment{ID: id.EnvironmentStorageID(id.New(id.Environment)), ProjectID: projectID, TenantID: tenantID, Name: name, ProtectedStatus: ProtectedStatusUnprotected, IPAllowList: core.DefaultEnvironmentAllowList()}
 	f.envs[e.ID] = e
 	return e, nil
 }

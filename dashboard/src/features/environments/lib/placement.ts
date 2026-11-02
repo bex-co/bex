@@ -31,8 +31,9 @@ export function placementIndex(
 }
 
 /**
- * bex-api's `aclBearing`: protected, isolated, or carrying any inbound IP
- * allow-list. Taking a resource out of such an environment needs its admin
+ * bex-api's `aclBearing`: protected, isolated, or carrying an inbound IP
+ * allow-list that restricts something (the allow-all default does not; an
+ * emptied list is deny-all and does, w4/355). Taking a resource out of such an environment needs its admin
  * (w4/m232), so the dialog disables that move for anyone else instead of
  * letting Save meet a 403.
  */
@@ -40,11 +41,18 @@ export function aclBearing(e: EnvironmentView): boolean {
   return (
     e.protectedStatus === "protected" ||
     e.networkIsolationEnabled ||
-    e.ipAllowListEntries.length > 0
+    restrictsInbound(e)
   );
 }
 
-const DEFAULT_ALLOW_ALL = ["0.0.0.0/0", "::/0"];
+const ALLOW_ALL = ["0.0.0.0/0", "::/0"];
+
+/** An allow-list restricts unless some entry admits every address. */
+function restrictsInbound(e: EnvironmentView): boolean {
+  return !e.ipAllowListEntries.some((entry) =>
+    ALLOW_ALL.includes(entry.cidrBlock),
+  );
+}
 
 /**
  * The restrictions a resource sheds by leaving e, as marker locale keys. The
@@ -55,11 +63,6 @@ export function restrictionMarkers(e: EnvironmentView): string[] {
   if (e.protectedStatus === "protected")
     markers.push("environments.markerProtected");
   if (e.networkIsolationEnabled) markers.push("environments.markerIsolated");
-  const cidrs = e.ipAllowListEntries.map((entry) => entry.cidrBlock);
-  const allowAll =
-    cidrs.length === DEFAULT_ALLOW_ALL.length &&
-    DEFAULT_ALLOW_ALL.every((cidr) => cidrs.includes(cidr));
-  if (cidrs.length > 0 && !allowAll)
-    markers.push("environments.markerAllowList");
+  if (restrictsInbound(e)) markers.push("environments.markerAllowList");
   return markers;
 }

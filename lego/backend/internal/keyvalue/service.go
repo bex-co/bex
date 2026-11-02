@@ -1116,6 +1116,19 @@ func requireRestartConfirmation(ctx context.Context, kv *appv1alpha1.KeyValue, p
 		map[string]any{"name": kv.Spec.Name})
 }
 
+// RefuseBlueprintExternalAccessRestart is requireRestartConfirmation for a
+// caller with no confirm channel (a Blueprint plan or sync, including the
+// unattended auto-sync worker, w4/358): it refuses the first enable of external
+// access on a running Persistence Off store, whose restart deletes every key,
+// and points at the surfaces that take the confirmation.
+func RefuseBlueprintExternalAccessRestart(kv *appv1alpha1.KeyValue, wantPublic bool) error {
+	if !wantPublic || kv.Spec.PersistenceMode != appv1alpha1.KeyValuePersistenceOff || !externalAccessRestarts(kv) {
+		return nil
+	}
+	return fmt.Errorf("%w: key value %q: ipAllowList would turn on external access, which restarts this running Persistence Off store and deletes every key; turn it on from the service's Networking settings (or PATCH /v1/key-value/{id} with confirm=%q), then sync again",
+		core.ErrBadRequest, kv.Spec.Name, ProtectedConfirmation("clear", kv.Spec.Name))
+}
+
 // UpdateKeyValue applies a partial update (Render's PATCH /key-value/{id}
 // semantics — only fields set in patch change). SetPlan above stays the
 // plan-only entry point GraphQL/MCP use; this is the general handler REST's
