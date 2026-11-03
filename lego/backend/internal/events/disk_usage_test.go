@@ -38,7 +38,7 @@ import (
 func TestDiskUsageEventRendersRenderDetails(t *testing.T) {
 	row := store.ServiceEventRow{
 		Key: "fact:disk_usage:dsk-1:high:1", At: now, Source: store.EventSourceFact,
-		FactType: TypeServiceDiskUsageHigh,
+		FactType:  TypeServiceDiskUsageHigh,
 		DiskUsage: &store.DiskUsageDetails{DiskID: "dsk-1", DiskName: "data", MountPath: "/data", UsagePercent: 85.5, ThresholdPercent: 80},
 	}
 	eventID := ids.Derive(ids.Event, row.Key)
