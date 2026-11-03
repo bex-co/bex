@@ -342,6 +342,49 @@ build_caller_violations() {
   done
 }
 
+# 6b. Checkout size (w6/m157). .pm board evidence is ~93% of the tree, and a
+# full checkout of it held production runners for 31 minutes. Every
+# actions/checkout step uses a sparse checkout (skipping /.pm/ unless it re-
+# includes the board paths it reads) or says why it needs everything with a
+# `# full-checkout: <reason>` comment on the line above.
+checkout_violations() {
+  local wf
+  for wf in $(collect_workflow_files); do
+    # lego/operator/.github is kubebuilder scaffolding GitHub never runs. The
+    # two native image workflows are byte-pinned by w8/m91's D3 custody
+    # (.github/scripts/native-common-qualify.py), so they keep their checkouts
+    # until that evidence is re-recorded.
+    case "$wf" in
+      lego/operator/.github/* | */native-base-image.yml | */native-common-image.yml) continue ;;
+    esac
+    awk -v file="$wf" '
+      function flush() {
+        if (open && !sparse && !full) print file ":" line ": actions/checkout must use a sparse-checkout that skips /.pm/, or carry a # full-checkout: <reason> comment"
+        open = 0
+      }
+      /^[[:space:]]*(- )?uses:[[:space:]]*actions\/checkout@/ {
+        flush()
+        open = 1; sparse = 0; line = NR; full = (prev ~ /#[[:space:]]*full-checkout:[[:space:]]*[^[:space:]]/)
+        indent = match($0, /[^ ]/)
+        prev = $0; next
+      }
+      open {
+        if ($0 ~ /^[[:space:]]*$/) { prev = $0; next }
+        if (match($0, /[^ ]/) <= indent || $0 ~ /^[[:space:]]*- /) flush()
+        else if ($0 ~ /sparse-checkout:/) sparse = 1
+      }
+      { prev = $0 }
+      END { flush() }
+    ' "$wf"
+  done
+}
+checkout_problems="$(checkout_violations)"
+if [ -n "$checkout_problems" ]; then
+  echo "FAIL: a checkout fetches the whole tree, .pm board evidence included:" >&2
+  printf '%s\n' "$checkout_problems" >&2
+  exit 1
+fi
+
 trust_violations="$(runner_trust_violations; build_caller_violations)"
 if [ -n "$trust_violations" ]; then
   echo "FAIL: CI, build and production runner trust classes overlap:" >&2
