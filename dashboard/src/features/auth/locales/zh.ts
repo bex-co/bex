@@ -350,6 +350,11 @@ const zhAuth: Record<string, TranslationEntry> = {
     message: "读取密钥与连接字符串（环境变量、数据库 URL、文件）",
     description: "Human description of the bex.sensitive OAuth capability",
   },
+  "auth.consentScopeCloudAgents": {
+    message:
+      "代表你运行云端编码代理（启动会消耗算力与模型额度的任务，并可推送分支）",
+    description: "Human description of the bex.cloud_agents OAuth capability",
+  },
   "auth.consentScopeApiCompat": {
     message: "完整控制面访问（平台客户端兼容别名）",
     description: "Human description of the bex.api compatibility scope",

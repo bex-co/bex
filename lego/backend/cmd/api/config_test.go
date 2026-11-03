@@ -320,6 +320,38 @@ func TestLoadConfigMCPStdioFromArgs(t *testing.T) {
 	}
 }
 
+func TestLoadConfigMCPToolsetFlagAndEnv(t *testing.T) {
+	none := func(string) string { return "" }
+	for name, tc := range map[string]struct {
+		args []string
+		env  string
+		want string
+	}{
+		"flag":           {[]string{"api", "mcp-stdio", "--toolset", "cloud-agents"}, "", "cloud-agents"},
+		"flag equals":    {[]string{"api", "mcp-stdio", "--toolset=cloud-agents"}, "", "cloud-agents"},
+		"env":            {[]string{"api", "mcp-stdio"}, "cloud-agents", "cloud-agents"},
+		"flag beats env": {[]string{"api", "mcp-stdio", "--toolset", "a"}, "b", "a"},
+		"absent":         {[]string{"api", "mcp-stdio"}, "", ""},
+		"dangling flag":  {[]string{"api", "mcp-stdio", "--toolset"}, "", ""},
+	} {
+		t.Run(name, func(t *testing.T) {
+			getenv := func(k string) string {
+				if k == "BEX_MCP_TOOLSET" {
+					return tc.env
+				}
+				return none(k)
+			}
+			cfg, _, err := loadConfig(getenv, time.Now(), tc.args)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if cfg.MCPToolset != tc.want {
+				t.Fatalf("MCPToolset = %q, want %q", cfg.MCPToolset, tc.want)
+			}
+		})
+	}
+}
+
 // TestLoadConfigStripeStaysInert pins the gate ordering: with no runtime key,
 // stale malformed BEX_STRIPE_* values must not fail startup.
 func TestLoadConfigStripeStaysInert(t *testing.T) {

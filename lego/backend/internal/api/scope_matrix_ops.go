@@ -510,6 +510,7 @@ var classifiedOps = map[string]string{
 	"MCP update_webhook_endpoint":                            core.OpClassWrite,
 	"MCP validate_bex_yml":                                   core.OpClassWrite,
 	"MCP verify_custom_domain":                               core.OpClassWrite,
+	"MCP wait_agent_sessions":                                core.OpClassRead,
 	"REST DELETE /v1/agent-sessions/{id}":                    core.OpClassWrite,
 	"REST DELETE /v1/api-keys/{id}":                          core.OpClassWrite,
 	"REST DELETE /v1/blueprints/{id}":                        core.OpClassWrite,

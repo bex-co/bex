@@ -120,18 +120,20 @@ var alwaysPublicInventory = map[string]string{
 	"/v1/deploy-hooks":                          "unguessable URL token; IP-keyed pre-lookup limiter + per-hook token bucket",
 	"/v1/deploy-hooks/":                         "unguessable URL token; IP-keyed pre-lookup limiter + per-hook token bucket",
 	"GET /.well-known/oauth-protected-resource": "RFC 9728 discovery; public by spec; no credential, unmetered",
-	sandbox.ConnectStreamPattern:                "sandbox run connect token (HMAC, single-use, ≤60s, bound to workspace+sandbox+execution+command; minted by the gated runs/{operation}/token route); IP-keyed pre-lookup limiter shared with deploy hooks, sheds pre-verify (w7/m147)",
-	sandbox.ConnectFileUploadPattern:            "sandbox file connect token (HMAC, single-use, ≤60s, bound to caller+workspace+sandbox+operation+path); IP-keyed pre-verify limiter, gateway streaming byte/time bounds",
-	sandbox.ConnectFileDownloadPattern:          "sandbox file connect token (HMAC, single-use, ≤60s, bound to caller+workspace+sandbox+operation+path); IP-keyed pre-verify limiter, gateway streaming byte/time bounds",
+	"GET /.well-known/oauth-protected-resource/mcp/cloud-agents": "RFC 9728 path-inserted discovery for the cloud-agents mount (ADR094); public by spec; no credential, unmetered",
+	sandbox.ConnectStreamPattern:                                 "sandbox run connect token (HMAC, single-use, ≤60s, bound to workspace+sandbox+execution+command; minted by the gated runs/{operation}/token route); IP-keyed pre-lookup limiter shared with deploy hooks, sheds pre-verify (w7/m147)",
+	sandbox.ConnectFileUploadPattern:                             "sandbox file connect token (HMAC, single-use, ≤60s, bound to caller+workspace+sandbox+operation+path); IP-keyed pre-verify limiter, gateway streaming byte/time bounds",
+	sandbox.ConnectFileDownloadPattern:                           "sandbox file connect token (HMAC, single-use, ≤60s, bound to caller+workspace+sandbox+operation+path); IP-keyed pre-verify limiter, gateway streaming byte/time bounds",
 }
 
 // gatedWildcards are the three surfaces behind the OAuth gate + identity-keyed
 // RateLimiter. They are present on rootMux but are NOT always-public, so the
 // census skips them (they are not an unmetered outside-gate hazard).
 var gatedWildcards = map[string]bool{
-	"/v1/":          true,
-	"POST /graphql": true,
-	"/mcp":          true,
+	"/v1/":               true,
+	"POST /graphql":      true,
+	"/mcp":               true,
+	cloudAgentsMountPath: true, // narrow toolset of the same MCP server; same auth gate + rate limiter (ADR094)
 }
 
 func TestGraphQLIsPostOnly(t *testing.T) {

@@ -21,10 +21,12 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
+	"github.com/jackc/pgx/v5/pgconn"
 
 	"github.com/bex-co/bex/lego/backend/internal/agenttranscript"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -150,22 +152,42 @@ type AgentSession struct {
 	// NULL ⇒ the session is in the working set; set ⇒ it is archived (hidden from
 	// the default list, mutation verbs refused) but still viewable.
 	ArchivedAt *time.Time
+	// Title and Tags are the create-time display title and filter tags
+	// (ADR094 D3); read-only afterwards.
+	Title string
+	Tags  []string
 	// InitialPrompt is create-only input used to atomically insert turn 1 with
 	// the session row. It is not an agent_sessions column and is never scanned.
 	InitialPrompt string
+	// IdempotencyKey and IdempotencyHash are create-only input (ADR094 D4): the
+	// client's key and the digest of its normalized request. Not scanned by
+	// scanAgentSession; FindAgentSessionByIdempotencyKey reads the hash back.
+	IdempotencyKey  string
+	IdempotencyHash string
 }
+
+// DefaultAgentBranchPrefix prefixes the branch a session gets when the caller
+// names none; it is the bex-agent/ prefix agentsession.ValidateBranch requires.
+const DefaultAgentBranchPrefix = "bex-agent/"
+
+// ErrAgentSessionIdempotencyKey is a create that lost the race for its key: a
+// session already holds it in this workspace. Callers look the holder up.
+var ErrAgentSessionIdempotencyKey = errors.New("agent session idempotency key already in use")
+
+// AgentSessionIdempotencyWindow is how long a key stays bound to its session.
+const AgentSessionIdempotencyWindow = 24 * time.Hour
 
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
 	phase, status, head_sha, pr_url, pr_number, turns, delivery_mode, delivery_note,
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
-	archived_at`
+	archived_at, title, tags`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
 	err := row.Scan(&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
-		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt)
+		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags)
 	return s, err
 }
 
@@ -173,18 +195,36 @@ func scanAgentSession(row pgx.Row) (AgentSession, error) {
 // the row in creating phase before any external OpenFGA/OpenSandbox mutation.
 func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (AgentSession, error) {
 	in.ID = ids.New(ids.AgentSession)
+	// A repository session with no branch gets the session's own (ADR094 D3):
+	// an LLM caller should not have to invent a name that passes the prefix rule.
+	if in.Repo != "" && in.Branch == "" {
+		in.Branch = DefaultAgentBranchPrefix + in.ID
+	}
 	if len(in.AgentConfig) == 0 {
 		in.AgentConfig = json.RawMessage(`{}`)
 	}
 	var row AgentSession
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var err error
+		if in.IdempotencyKey != "" {
+			// Release a key past its window so it can bind to this new session.
+			if _, err = tx.Exec(ctx, `
+				UPDATE agent_sessions SET idempotency_key=NULL, idempotency_hash=NULL
+				WHERE workspace_id=$1 AND idempotency_key=$2 AND created_at <= now() - $3::interval`,
+				in.WorkspaceID, in.IdempotencyKey, AgentSessionIdempotencyWindow.String()); err != nil {
+				return err
+			}
+		}
 		row, err = scanAgentSession(tx.QueryRow(ctx, `
-			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns)
-			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END)
+			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags)
+			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10)
 			RETURNING `+agentSessionColumns,
-			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt))
+			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags)))
 		if err != nil {
+			var pgErr *pgconn.PgError
+			if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "agent_sessions_idempotency_key_idx" {
+				return ErrAgentSessionIdempotencyKey
+			}
 			return err
 		}
 		if in.InitialPrompt != "" {
@@ -197,10 +237,33 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 		}
 		return insertAgentDispatch(ctx, tx, row, "")
 	})
+	if errors.Is(err, ErrAgentSessionIdempotencyKey) {
+		return AgentSession{}, err
+	}
 	if err != nil {
 		return AgentSession{}, classify("agent session", err)
 	}
 	return row, nil
+}
+
+// FindAgentSessionByIdempotencyKey returns the session bound to key in the
+// workspace within the idempotency window, with the request digest it was
+// created from. ErrNotFound when none holds the key (or it has expired).
+func (s *PGStore) FindAgentSessionByIdempotencyKey(ctx context.Context, workspaceID, key string) (AgentSession, string, error) {
+	var hash string
+	var out AgentSession
+	row := s.Pool.QueryRow(ctx, `
+		SELECT `+agentSessionColumns+`, idempotency_hash FROM agent_sessions
+		WHERE workspace_id=$1 AND idempotency_key=$2 AND created_at > now() - $3::interval`,
+		workspaceID, key, AgentSessionIdempotencyWindow.String())
+	err := row.Scan(&out.ID, &out.WorkspaceID, &out.Repo, &out.Branch, &out.AgentConfig,
+		&out.SandboxID, &out.Phase, &out.Status, &out.HeadSHA, &out.PRURL, &out.PRNumber,
+		&out.Turns, &out.DeliveryMode, &out.DeliveryNote, &out.FailureReason, &out.FailureReasonCode,
+		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &hash)
+	if err != nil {
+		return AgentSession{}, "", classify("agent session", err)
+	}
+	return out, hash, nil
 }
 
 func (s *PGStore) GetAgentSession(ctx context.Context, id string) (AgentSession, error) {
@@ -335,8 +398,10 @@ const (
 // Limit must be normalized (>0) by the caller — the store never substitutes a
 // default, so an unbounded read is impossible by construction.
 type AgentSessionListQuery struct {
-	Archived      ArchivedFilter
-	Phases        []string
+	Archived ArchivedFilter
+	Phases   []string
+	// Tag keeps only sessions carrying this tag (ADR094 D3).
+	Tag           string
 	Repo          string
 	CreatedBefore time.Time
 	CreatedAfter  time.Time
@@ -366,6 +431,9 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 	}
 	if len(q.Phases) > 0 {
 		sql += ` AND phase = ANY(` + arg(q.Phases) + `)`
+	}
+	if q.Tag != "" {
+		sql += ` AND ` + arg(q.Tag) + ` = ANY(tags)`
 	}
 	if q.Repo != "" {
 		sql += ` AND repo = ` + arg(q.Repo)
@@ -1025,4 +1093,46 @@ func (s *PGStore) StampAgentSessionFailureCode(ctx context.Context, id, reason, 
 		UPDATE agent_sessions SET failure_reason_code=$3
 		WHERE id=$1 AND phase='failed' AND failure_reason=$2`, id, reason, code)
 	return err
+}
+
+// AgentSessionStateChannel is the Postgres NOTIFY channel announcing an agent
+// session's phase change (payload: the session id).
+const AgentSessionStateChannel = "agent_session_state"
+
+// ListenAgentSessionStates delivers the id of every agent session whose phase
+// changes to fn until ctx ends, on one dedicated connection (so a pod holds a
+// single LISTEN no matter how many waiters it serves). A dropped connection
+// reconnects after a short pause; notifications missed meanwhile are recovered
+// by callers re-reading on a timer.
+func (s *PGStore) ListenAgentSessionStates(ctx context.Context, fn func(id string)) error {
+	for ctx.Err() == nil {
+		if err := s.listenOnce(ctx, fn); err != nil && ctx.Err() == nil {
+			log.Printf("agent-session state listener: %v (reconnecting)", err)
+		}
+		select {
+		case <-ctx.Done():
+		case <-time.After(time.Second):
+		}
+	}
+	return ctx.Err()
+}
+
+func (s *PGStore) listenOnce(ctx context.Context, fn func(id string)) error {
+	conn, err := s.Pool.Acquire(ctx)
+	if err != nil {
+		return err
+	}
+	defer conn.Release()
+	if _, err := conn.Exec(ctx, "LISTEN "+AgentSessionStateChannel); err != nil {
+		return err
+	}
+	for {
+		n, err := conn.Conn().WaitForNotification(ctx)
+		if err != nil {
+			// A listening connection must not return to the pool with LISTEN set.
+			_ = conn.Conn().Close(context.Background())
+			return err
+		}
+		fn(n.Payload)
+	}
 }

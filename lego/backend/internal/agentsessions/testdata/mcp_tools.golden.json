@@ -63,6 +63,12 @@
             "string"
           ]
         },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "createdAt": {
           "type": "string"
         },
@@ -176,7 +182,19 @@
         "streamUrl": {
           "type": "string"
         },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "ticket": {
+          "type": "string"
+        },
+        "title": {
           "type": "string"
         },
         "turns": {
@@ -272,6 +290,12 @@
             "string"
           ]
         },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "createdAt": {
           "type": "string"
         },
@@ -385,7 +409,19 @@
         "streamUrl": {
           "type": "string"
         },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "ticket": {
+          "type": "string"
+        },
+        "title": {
           "type": "string"
         },
         "turns": {
@@ -478,6 +514,12 @@
             "string"
           ]
         },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "createdAt": {
           "type": "string"
         },
@@ -591,7 +633,19 @@
         "streamUrl": {
           "type": "string"
         },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "ticket": {
+          "type": "string"
+        },
+        "title": {
           "type": "string"
         },
         "turns": {
@@ -668,6 +722,9 @@
             "array"
           ]
         },
+        "idempotencyKey": {
+          "type": "string"
+        },
         "ownerId": {
           "type": "string"
         },
@@ -675,6 +732,18 @@
           "type": "string"
         },
         "resumeSessionId": {
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "title": {
           "type": "string"
         }
       },
@@ -722,6 +791,12 @@
           "type": [
             "null",
             "string"
+          ]
+        },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
           ]
         },
         "createdAt": {
@@ -837,7 +912,19 @@
         "streamUrl": {
           "type": "string"
         },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "ticket": {
+          "type": "string"
+        },
+        "title": {
           "type": "string"
         },
         "turns": {
@@ -1044,6 +1131,12 @@
             "string"
           ]
         },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "createdAt": {
           "type": "string"
         },
@@ -1157,7 +1250,19 @@
         "streamUrl": {
           "type": "string"
         },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "ticket": {
+          "type": "string"
+        },
+        "title": {
           "type": "string"
         },
         "turns": {
@@ -1501,6 +1606,18 @@
         },
         "repo": {
           "type": "string"
+        },
+        "states": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "tag": {
+          "type": "string"
         }
       },
       "type": "object"
@@ -1551,6 +1668,12 @@
                 "type": [
                   "null",
                   "string"
+                ]
+              },
+              "created": {
+                "type": [
+                  "null",
+                  "boolean"
                 ]
               },
               "createdAt": {
@@ -1666,7 +1789,19 @@
               "streamUrl": {
                 "type": "string"
               },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
               "ticket": {
+                "type": "string"
+              },
+              "title": {
                 "type": "string"
               },
               "turns": {
@@ -1768,6 +1903,12 @@
           "type": [
             "null",
             "string"
+          ]
+        },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
           ]
         },
         "createdAt": {
@@ -1883,7 +2024,19 @@
         "streamUrl": {
           "type": "string"
         },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "ticket": {
+          "type": "string"
+        },
+        "title": {
           "type": "string"
         },
         "turns": {
@@ -1989,6 +2142,12 @@
             "string"
           ]
         },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "createdAt": {
           "type": "string"
         },
@@ -2102,7 +2261,19 @@
         "streamUrl": {
           "type": "string"
         },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "ticket": {
+          "type": "string"
+        },
+        "title": {
           "type": "string"
         },
         "turns": {
@@ -2179,6 +2350,9 @@
             "array"
           ]
         },
+        "idempotencyKey": {
+          "type": "string"
+        },
         "ownerId": {
           "type": "string"
         },
@@ -2186,6 +2360,18 @@
           "type": "string"
         },
         "resumeSessionId": {
+          "type": "string"
+        },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "title": {
           "type": "string"
         }
       },
@@ -2233,6 +2419,12 @@
           "type": [
             "null",
             "string"
+          ]
+        },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
           ]
         },
         "createdAt": {
@@ -2348,7 +2540,19 @@
         "streamUrl": {
           "type": "string"
         },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "ticket": {
+          "type": "string"
+        },
+        "title": {
           "type": "string"
         },
         "turns": {
@@ -2454,6 +2658,12 @@
             "string"
           ]
         },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "createdAt": {
           "type": "string"
         },
@@ -2567,7 +2777,19 @@
         "streamUrl": {
           "type": "string"
         },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "ticket": {
+          "type": "string"
+        },
+        "title": {
           "type": "string"
         },
         "turns": {
@@ -2660,6 +2882,12 @@
             "string"
           ]
         },
+        "created": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "createdAt": {
           "type": "string"
         },
@@ -2773,7 +3001,19 @@
         "streamUrl": {
           "type": "string"
         },
+        "tags": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "ticket": {
+          "type": "string"
+        },
+        "title": {
           "type": "string"
         },
         "turns": {
@@ -2899,6 +3139,138 @@
         "pinnedModel",
         "registryHosts",
         "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Block until cloud coding-agent sessions settle, instead of polling get_agent_session in a loop. ids: 1-20 sessions. until: all (default) returns when every session has left state working, any when the first does. timeoutSeconds: 1-25 (default 25). Returns each session's id, state and outcome, the ids that settled, and timedOut. When timedOut is true the sessions are still working: call again.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ids": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "timeoutSeconds": {
+          "type": "integer"
+        },
+        "until": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "ids"
+      ],
+      "type": "object"
+    },
+    "name": "wait_agent_sessions",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "sessions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "outcome": {
+                "additionalProperties": false,
+                "properties": {
+                  "deliveryNote": {
+                    "type": "string"
+                  },
+                  "failureReasonCode": {
+                    "type": "string"
+                  },
+                  "pullRequest": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "headSha": {
+                        "type": "string"
+                      },
+                      "number": {
+                        "type": "integer"
+                      },
+                      "url": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "url"
+                    ],
+                    "type": [
+                      "null",
+                      "object"
+                    ]
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "steerable": {
+                    "type": "boolean"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "turn": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "state",
+                  "steerable",
+                  "turn"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "state": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "state"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "settled": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "timedOut": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "sessions",
+        "settled",
+        "timedOut"
       ],
       "type": "object"
     }

@@ -29,6 +29,8 @@ var scopeClassOverrides = map[string]string{
 	// Read-only bearer preview uses a POST body to keep capabilities out of URLs.
 	"REST POST /v1/invites/preview": core.OpClassRead,
 	"MCP preview_workspace_invite":  core.OpClassRead,
+	// wait_ blocks on state but writes nothing (ADR094 D6).
+	"MCP wait_agent_sessions": core.OpClassRead,
 	// Durable-credential mint. AuthorizeMintClass still runs at the verb.
 	"REST POST /v1/api-keys":                             core.OpClassMint,
 	"REST POST /v1/ssh-keys":                             core.OpClassMint,

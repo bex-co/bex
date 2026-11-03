@@ -19,12 +19,24 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if owner := r.URL.Query().Get("ownerId"); owner != "" {
 			req.OwnerID = owner
 		}
+		// ADR094 D4: the header is the REST spelling of the body's idempotencyKey.
+		if key := r.Header.Get("Idempotency-Key"); key != "" {
+			if req.IdempotencyKey != "" && req.IdempotencyKey != key {
+				core.WriteErrStatus(w, http.StatusBadRequest, "Idempotency-Key header and idempotencyKey body field disagree")
+				return
+			}
+			req.IdempotencyKey = key
+		}
 		view, err := s.Create(r.Context(), req)
 		if err != nil {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusCreated, view)
+		status := http.StatusCreated
+		if view.Created != nil && !*view.Created {
+			status = http.StatusOK // an idempotent replay: the session already existed
+		}
+		core.WriteJSON(w, status, view)
 	})
 	// The list is filtered + keyset-paginated (ADR065 D3): the default answer is
 	// one page of the unarchived working set; `cursor` is the prior page's last
@@ -46,6 +58,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			OwnerID:       q.Get("ownerId"),
 			Archived:      q.Get("archived"),
 			Phases:        core.QueryList(q, "phase"),
+			States:        core.QueryList(q, "state"),
+			Tag:           q.Get("tag"),
 			Repo:          q.Get("repo"),
 			CreatedBefore: window.Before,
 			CreatedAfter:  window.After,

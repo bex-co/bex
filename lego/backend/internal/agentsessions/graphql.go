@@ -161,6 +161,8 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"ownerId":     gqlutil.ReqStrField(func(v View) any { return v.OwnerID }),
 		"repo":        gqlutil.ReqStrField(func(v View) any { return v.Repo }),
 		"branch":      gqlutil.ReqStrField(func(v View) any { return v.Branch }),
+		"title":       gqlutil.StrField(func(v View) any { return v.Title }),
+		"tags":        &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
 		"agentConfig": gqlutil.Typed(graphql.NewNonNull(agentConfigGQLType), func(v View) any { return v.AgentConfig }),
 		"sandboxId":   gqlutil.StrField(func(v View) any { return v.SandboxID }),
 		"sshAddress":  gqlutil.StrField(func(v View) any { return v.SSHAddress }),
@@ -197,6 +199,14 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 				return nil
 			}
 			return gqlTime(*v.ExpiresAt)
+		})},
+		// created: true for a new session, false for an idempotent replay; null
+		// on every read (ADR094 D4).
+		"created": &graphql.Field{Type: graphql.Boolean, Resolve: gqlutil.Field(func(v View) any {
+			if v.Created == nil {
+				return nil
+			}
+			return *v.Created
 		})},
 		"outcome": &graphql.Field{Type: agentSessionOutcomeGQLType, Resolve: gqlutil.Field(func(v View) any {
 			if v.Outcome == nil {
@@ -301,6 +311,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId":       gqlutil.Arg(graphql.String),
 				"archived":      &graphql.ArgumentConfig{Type: graphql.String, Description: "Archive membership: false (default, the working set), true (archived only), all."},
 				"phases":        gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"states":        gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"tag":           gqlutil.Arg(graphql.String),
 				"repo":          gqlutil.Arg(graphql.String),
 				"createdBefore": gqlutil.Arg(graphql.String),
 				"createdAfter":  gqlutil.Arg(graphql.String),
@@ -324,6 +336,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					OwnerID:       gqlutil.Str(p.Args, "ownerId"),
 					Archived:      gqlutil.Str(p.Args, "archived"),
 					Phases:        gqlutil.StringList(p.Args["phases"]),
+					States:        gqlutil.StringList(p.Args["states"]),
+					Tag:           gqlutil.Str(p.Args, "tag"),
 					Repo:          gqlutil.Str(p.Args, "repo"),
 					CreatedBefore: before,
 					CreatedAfter:  after,
@@ -389,12 +403,15 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"ownerId":         gqlutil.Arg(graphql.String),
 				"repo":            gqlutil.ReqArg(graphql.String),
-				"branch":          gqlutil.ReqArg(graphql.String),
+				"branch":          gqlutil.Arg(graphql.String),
+				"title":           gqlutil.Arg(graphql.String),
+				"tags":            gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"agentConfig":     gqlutil.ReqArg(agentConfigGQLInput),
 				"egressAllowlist": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"idempotencyKey":  gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Create(p.Context, CreateRequest{OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"])})
+				return s.Create(p.Context, CreateRequest{OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"])})
 			},
 		},
 		"steerAgentSession": &graphql.Field{

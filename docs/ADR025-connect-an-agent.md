@@ -61,6 +61,28 @@ It hits the same `/mcp` introspection and OpenFGA authorization path a user-cons
 
 `api mcp-stdio` (or `BEX_MCP_STDIO=1`) serves the same MCP tools over stdin/stdout for an agent launched on the same host — its trust boundary is the subprocess itself, so no bearer, no OAuth dance, no `BEX_HYDRA_ADMIN_URL` needed. Claude Code: `claude mcp add bex-api-local -- api mcp-stdio` (stdio is the default transport, so no `--transport` flag).
 
+## Delegating coding work: the narrow `/mcp/cloud-agents` endpoint
+
+An orchestrator, CI bot or third-party agent that only needs to hand bex coding work does not have to load the whole catalog or ask for `bex.write` ([ADR094](ADR094-coding-agent-mcp.md)). `https://api.bex.co/mcp/cloud-agents` is the same MCP server — same auth gate, rate limiter, `workspaceId` binding and error shapes — filtered to the **Cloud Agents** toolset: `get_agent_session_capabilities`, `create_agent_session`, `wait_agent_sessions`, `get_agent_session`, `list_agent_sessions`, `send_agent_session_message`, `get_agent_session_transcript`, `get_agent_session_tool_output`, `cancel_agent_session`, plus `list_workspaces` and `list_repos` to address them. Archive, delete, attach-ticket and admin tools stay on `/mcp`.
+
+```bash
+claude mcp add --transport http bex-cloud-agents https://api.bex.co/mcp/cloud-agents
+# local, no auth (same trust boundary as the full stdio server):
+claude mcp add bex-cloud-agents -- api mcp-stdio --toolset cloud-agents   # or BEX_MCP_TOOLSET=cloud-agents
+```
+
+**Consent.** Request the scope **`bex.cloud_agents`** (advertised in `scopes_supported`). It lets the token run cloud agents and nothing else: it satisfies the scope check for the toolset above only, never for services, databases or env vars, and OpenFGA still decides every call (the caller needs `can_create` to start a session). `bex.read` / `bex.write` keep working as before. Tokens stay audience-bound to the `BEX_OAUTH_RESOURCE` (`…/mcp`), which the MCP authorization spec lets a client accept for the deeper path; `/.well-known/oauth-protected-resource/mcp/cloud-agents` names that same resource.
+
+**The loop.** The model should never poll:
+
+1. `get_agent_session_capabilities` — is GitHub connected and a model ready (`ready`)?
+2. `create_agent_session` with `idempotencyKey` (any unique string, 1–128 printable ASCII). A timed-out call can be retried with the same key and request: the first session comes back with `created: false` instead of a second sandbox. The same key with a different request is `409 AGENT_SESSION_IDEMPOTENCY_KEY_REUSED`; a key frees after 24 h. `branch` is optional (the server uses `bex-agent/<ags-id>`); `title` and `tags` label the session for filtering.
+3. `wait_agent_sessions { ids, until: "all"|"any", timeoutSeconds ≤ 25 }` — blocks server-side until the sessions leave `state: working`. When `timedOut` is true they are still working: call again.
+4. Read `outcome` (`summary`, `pullRequest`, `deliveryNote`, `failureReasonCode`) from the result or `get_agent_session`; fall back to `get_agent_session_transcript` only when the summary is not enough.
+5. `send_agent_session_message` for a follow-up turn when `steerable` is true.
+
+`state` is `working`, `succeeded`, `failed` or `canceled` (`needs_input` is reserved); a `succeeded` session usually stays `steerable`, so "finished" never means "closed".
+
 ## Troubleshooting
 
 - **401 with a bare `WWW-Authenticate: Bearer` (no `resource_metadata`), or the `.well-known` URL 404s** — this deployment hasn't set `BEX_OAUTH_ISSUER`/`BEX_OAUTH_RESOURCE`, so there's nothing for a discovery-driven client to find. Nothing to fix agent-side: either ask the platform operator to set both, or use the [API-key path](#the-api-key-alternative-headless--ci-any-client) instead, which needs neither.

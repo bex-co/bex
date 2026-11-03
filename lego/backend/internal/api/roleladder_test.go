@@ -349,6 +349,7 @@ var representativeVerbRelations = map[string]string{
 	// run-now/cancel are lifecycle with history pinned as a read above.
 	"*agentsessions.Service.List":        core.RelCanOperate,
 	"*agentsessions.Service.Get":         core.RelCanOperate,
+	"*agentsessions.Service.Wait":        core.RelCanOperate,
 	"*agentsessions.Service.Transcript":  core.RelCanOperate,
 	"*agentsessions.Service.Cancel":      core.RelCanOperate,
 	"*deploys.Service.Cancel":            core.RelCanOperate,

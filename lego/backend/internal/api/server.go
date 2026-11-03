@@ -30,6 +30,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"log"
 	"maps"
@@ -285,6 +286,10 @@ type Server struct {
 
 	mcpOnce   sync.Once
 	mcpServer *mcp.Server
+	// toolsetServers holds the narrow per-toolset MCP servers (ADR094 D1),
+	// built once on first use like mcpServer.
+	toolsetMu      sync.Mutex
+	toolsetServers map[string]*mcp.Server
 }
 
 type accountStore interface {
@@ -1354,6 +1359,10 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// generic body limiter intentionally skips bodies).
 	mux.Handle("POST /graphql", auth(rl(bodyLimit(s.graphqlHandler()))))
 	mux.Handle("/mcp", auth(rl(bodyLimit(s.mcpHTTPHandler()))))
+	// The cloud-agents toolset (ADR094 D1): the same server, auth gate, rate
+	// limiter, workspace binding and scope gate, serving only the nine
+	// cloud-agent tools plus list_workspaces and list_repos.
+	mux.Handle(cloudAgentsMountPath, auth(rl(bodyLimit(s.mcpToolsetHTTPHandler(ToolsetCloudAgents)))))
 
 	// RFC 9728 protected-resource metadata (w4/m9): open by design — it's how an
 	// unauthenticated MCP client discovers the authorization server (the MCP
@@ -1365,6 +1374,18 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// not advertised.
 	if s.resourceMetadataURL() != "" {
 		mux.HandleFunc("GET /.well-known/oauth-protected-resource", func(w http.ResponseWriter, _ *http.Request) {
+			core.WriteJSON(w, http.StatusOK, map[string]any{
+				"resource":                 s.OAuthResource,
+				"authorization_servers":    []string{s.OAuthIssuer},
+				"bearer_methods_supported": []string{"header"},
+				"scopes_supported":         core.AdvertisedScopes(),
+			})
+		})
+		// RFC 9728 path-inserted metadata for the cloud-agents mount. Tokens are
+		// audience-bound to the parent resource (BEX_OAUTH_RESOURCE), which the
+		// MCP authorization spec lets a client accept for a deeper path, so the
+		// document names that same resource rather than minting a second audience.
+		mux.HandleFunc("GET /.well-known/oauth-protected-resource"+cloudAgentsMountPath, func(w http.ResponseWriter, _ *http.Request) {
 			core.WriteJSON(w, http.StatusOK, map[string]any{
 				"resource":                 s.OAuthResource,
 				"authorization_servers":    []string{s.OAuthIssuer},
@@ -1831,7 +1852,12 @@ func (s *Server) MCPServer() *mcp.Server {
 // and resolving every tool's schemas each time was most of their CPU (w5/107).
 var mcpSchemaCache = mcp.NewSchemaCache()
 
-func (s *Server) buildMCPServer() *mcp.Server {
+func (s *Server) buildMCPServer() *mcp.Server { return s.buildMCPServerFor(nil) }
+
+// buildMCPServerFor builds the MCP server with every feature registered; a
+// non-nil toolset narrows it to those tool names (list and call), so a narrow
+// mount can never drift from /mcp: it is the same registration, filtered.
+func (s *Server) buildMCPServerFor(toolset map[string]struct{}) *mcp.Server {
 	srv := mcp.NewServer(&mcp.Implementation{Name: mcpServerName, Version: mcpVersion}, &mcp.ServerOptions{SchemaCache: mcpSchemaCache})
 	for _, f := range s.features() {
 		if r, ok := f.(mcpRegistrar); ok {
@@ -1848,7 +1874,49 @@ func (s *Server) buildMCPServer() *mcp.Server {
 	if s.OriginMetrics != nil {
 		srv.AddReceivingMiddleware(mcpMetricsMiddleware(s.OriginMetrics))
 	}
+	if toolset != nil {
+		// Outermost of all: a tool outside the toolset is neither listed nor
+		// reachable, and never counts as a call.
+		srv.AddReceivingMiddleware(mcpToolsetMiddleware(toolset))
+	}
 	return srv
+}
+
+// MCPToolsetServer returns the narrow MCP server for a named toolset, or nil
+// for an unknown name.
+func (s *Server) MCPToolsetServer(name string) *mcp.Server {
+	tools, ok := mcpToolsets[name]
+	if !ok {
+		return nil
+	}
+	s.toolsetMu.Lock()
+	defer s.toolsetMu.Unlock()
+	if srv, ok := s.toolsetServers[name]; ok {
+		return srv
+	}
+	if s.toolsetServers == nil {
+		s.toolsetServers = map[string]*mcp.Server{}
+	}
+	srv := s.buildMCPServerFor(tools)
+	s.toolsetServers[name] = srv
+	return srv
+}
+
+func (s *Server) mcpToolsetHTTPHandler(name string) http.Handler {
+	srv := s.MCPToolsetServer(name)
+	return mcp.NewStreamableHTTPHandler(
+		func(*http.Request) *mcp.Server { return srv },
+		&mcp.StreamableHTTPOptions{Stateless: true},
+	)
+}
+
+// RunStdioToolset serves one toolset over stdio (`api mcp-stdio --toolset X`).
+func (s *Server) RunStdioToolset(ctx context.Context, name string) error {
+	srv := s.MCPToolsetServer(name)
+	if srv == nil {
+		return fmt.Errorf("unknown MCP toolset %q", name)
+	}
+	return srv.Run(ctx, &mcp.StdioTransport{})
 }
 
 // mcpHTTPHandler serves the MCP streamable-HTTP transport (mounted at /mcp behind
