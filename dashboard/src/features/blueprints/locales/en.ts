@@ -637,6 +637,70 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "render.yaml manifest",
     description: "Blueprint detail section heading for the stored manifest",
   },
+  // --- Planned sync (w2/m256 t012) ---
+  "blueprints.plannedTitle": {
+    message: "Planned sync",
+    description:
+      "Blueprint detail: heading of the planned-sync card a created Blueprint shows",
+  },
+  "blueprints.plannedBody": {
+    message:
+      "This Blueprint was created with a plan. Review what approving will change at commit {commit}, then approve to apply it.",
+    description:
+      "Planned-sync card: explains plan-then-approve; {commit} is a short commit SHA",
+  },
+  "blueprints.plannedActions": {
+    message: "Planned changes",
+    description: "Planned-sync card: accessible label of the action list",
+  },
+  "blueprints.plannedAction": {
+    message: "{operation} {kind} {name}",
+    description:
+      "Planned-sync card: one plan action, e.g. 'create service api'",
+  },
+  "blueprints.plannedActionsUnavailable": {
+    message:
+      "This plan was recorded before plans kept their changes. Plan again to see them, or approve to apply it.",
+    description:
+      "Planned-sync card: a plan stored without its actions (recorded before migration 0187)",
+  },
+  "blueprints.plannedManualEnvVars": {
+    message:
+      "These values are not in the Blueprint file (sync: false). Enter them to approve.",
+    description:
+      "Planned-sync card: intro to the required manual env var fields",
+  },
+  "blueprints.plannedManualEnvVarLabel": {
+    message: "{service}: {key}",
+    description: "Planned-sync card: label of one manual env var field",
+  },
+  "blueprints.plannedApprove": {
+    message: "Approve",
+    description: "Planned-sync card: button that applies the planned sync",
+  },
+  "blueprints.plannedReplan": {
+    message: "Plan again",
+    description:
+      "Planned-sync card: button that plans a new sync at the branch head",
+  },
+  "blueprints.plannedNone": {
+    message:
+      "No plan is waiting for approval. Plan again to read the branch head.",
+    description:
+      "Planned-sync card: shown when a created Blueprint has no approvable plan",
+  },
+  "blueprints.plannedApproved": {
+    message: "Planned sync approved",
+    description: "Toast after approving a planned sync",
+  },
+  "blueprints.plannedApproveFailed": {
+    message: "Could not approve the planned sync",
+    description: "Toast when approving fails",
+  },
+  "blueprints.plannedReplanFailed": {
+    message: "Could not plan a new sync",
+    description: "Toast when re-planning fails",
+  },
   // --- Sync action ---
   "blueprints.syncButton": {
     message: "Sync",

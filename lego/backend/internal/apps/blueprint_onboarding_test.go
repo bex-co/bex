@@ -27,6 +27,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -383,4 +386,122 @@ func appKey(t *testing.T, svc *Service, service string) client.ObjectKey {
 	}
 	t.Fatalf("no App for service %q among %v", service, names)
 	return client.ObjectKey{}
+}
+
+// w2/m256 t012: a created Blueprint applies only by approving its plan, so the
+// manual sync refuses it by name on every surface and creates nothing.
+func TestBlueprintManualSyncRefusesACreatedBlueprint(t *testing.T) {
+	for _, surface := range []string{"REST", "GraphQL", "MCP"} {
+		t.Run(surface, func(t *testing.T) {
+			svc, st, ctx := newOnboardingService(t, onboardingManifest)
+			res, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "stack", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}})
+			if err != nil {
+				t.Fatal(err)
+			}
+			id := res.Blueprint.ID
+			var refusal string
+			switch surface {
+			case "REST":
+				mux := http.NewServeMux()
+				svc.RegisterREST(mux)
+				rec := httptest.NewRecorder()
+				mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/"+id+"/sync", strings.NewReader(`{"ownerId":"tea-a"}`)).WithContext(ctx))
+				if rec.Code != http.StatusConflict {
+					t.Fatalf("sync = %d %s, want 409", rec.Code, rec.Body.String())
+				}
+				refusal = rec.Body.String()
+			case "GraphQL":
+				out := graphql.Do(graphql.Params{Schema: blueprintSchema(t, svc), Context: ctx,
+					RequestString: fmt.Sprintf(`mutation { syncBlueprint(id:%q,ownerId:"tea-a") { blueprint { id } } }`, id)})
+				if len(out.Errors) == 0 {
+					t.Fatal("syncBlueprint succeeded on a created Blueprint")
+				}
+				refusal = fmt.Sprint(out.Errors[0].Extensions["code"], out.Errors[0].Message)
+			case "MCP":
+				server := mcp.NewServer(&mcp.Implementation{Name: "t012", Version: "0"}, nil)
+				svc.RegisterMCP(server)
+				a, b := mcp.NewInMemoryTransports()
+				if _, err := server.Connect(ctx, a, nil); err != nil {
+					t.Fatal(err)
+				}
+				session, err := mcp.NewClient(&mcp.Implementation{Name: "t012", Version: "0"}, nil).Connect(ctx, b, nil)
+				if err != nil {
+					t.Fatal(err)
+				}
+				defer func() { _ = session.Close() }()
+				out, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "sync_blueprint", Arguments: map[string]any{"id": id}})
+				if err != nil {
+					t.Fatal(err)
+				}
+				if !out.IsError {
+					t.Fatal("sync_blueprint succeeded on a created Blueprint")
+				}
+				for _, c := range out.Content {
+					if text, ok := c.(*mcp.TextContent); ok {
+						refusal += text.Text
+					}
+				}
+			}
+			if !strings.Contains(refusal, BlueprintAwaitingApprovalCode) {
+				t.Errorf("refusal = %s, want %s", refusal, BlueprintAwaitingApprovalCode)
+			}
+			var apps appv1alpha1.AppList
+			if err := svc.Client.List(ctx, &apps); err != nil || len(apps.Items) != 0 {
+				t.Fatalf("the refused sync created %d Apps (err %v)", len(apps.Items), err)
+			}
+			if b := st.blueprints[id]; b.Status != store.BlueprintStatusCreated {
+				t.Errorf("status after the refusal = %q, want created", b.Status)
+			}
+		})
+	}
+}
+
+// w2/m256 t012: a waiting plan stays readable — actions and required manual
+// env vars — without planning again, and is gone once approved.
+func TestBlueprintPlannedSyncIsReadableUntilApproved(t *testing.T) {
+	svc, _, ctx := newOnboardingService(t, onboardingManifest)
+	res, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "stack", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	id := res.Blueprint.ID
+	// The plan mutation's own sync reads through the same type: its fields
+	// must not come back null.
+	replanned := graphql.Do(graphql.Params{Schema: blueprintSchema(t, svc), Context: ctx,
+		RequestString: fmt.Sprintf(`mutation { planBlueprintSync(id:%q, ownerId:"tea-a") { sync { id state } } }`, id)})
+	if len(replanned.Errors) != 0 {
+		t.Fatal(replanned.Errors)
+	}
+	sync, _ := replanned.Data.(map[string]any)["planBlueprintSync"].(map[string]any)["sync"].(map[string]any)
+	if sync["id"] == nil || sync["state"] != store.BlueprintSyncStateCreated {
+		t.Fatalf("planBlueprintSync sync = %v, want its id and created state", sync)
+	}
+	res.Sync.ID = sync["id"].(string)
+	query := fmt.Sprintf(`{ blueprintPlannedSync(id:%q, ownerId:"tea-a") { id state rawPlan requiredManualEnvVars { serviceName key } } }`, id)
+	out := graphql.Do(graphql.Params{Schema: blueprintSchema(t, svc), Context: ctx, RequestString: query})
+	if len(out.Errors) != 0 {
+		t.Fatal(out.Errors)
+	}
+	planned, _ := out.Data.(map[string]any)["blueprintPlannedSync"].(map[string]any)
+	if planned["id"] != res.Sync.ID || planned["state"] != store.BlueprintSyncStateCreated {
+		t.Fatalf("planned sync = %v, want %s waiting", planned, res.Sync.ID)
+	}
+	if raw, _ := planned["rawPlan"].(string); !strings.Contains(raw, `"operation":"create"`) || !strings.Contains(raw, `"name":"api"`) {
+		t.Errorf("rawPlan = %v, want the create of api", planned["rawPlan"])
+	}
+	if vars, _ := planned["requiredManualEnvVars"].([]any); len(vars) != 1 || vars[0].(map[string]any)["key"] != "API_TOKEN" {
+		t.Errorf("requiredManualEnvVars = %v, want API_TOKEN", planned["requiredManualEnvVars"])
+	}
+
+	token := "s3cret"
+	if _, err := svc.ApproveBlueprint(ctx, id, "tea-a", []ManualEnvVar{{ServiceType: "web", ServiceName: "api", Key: "API_TOKEN", Value: &token}}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := svc.PlannedSync(ctx, id, "tea-a"); err != nil || got != nil {
+		t.Fatalf("planned sync after approval = %+v err=%v, want none", got, err)
+	}
+	out = graphql.Do(graphql.Params{Schema: blueprintSchema(t, svc), Context: ctx, RequestString: query})
+	if len(out.Errors) != 0 || out.Data.(map[string]any)["blueprintPlannedSync"] != nil {
+		t.Fatalf("GraphQL after approval = %v %v, want null", out.Data, out.Errors)
+	}
 }
