@@ -25,59 +25,104 @@ import (
 	boundedhttp "github.com/bex-co/bex/lego/operator/internal/httpclient"
 )
 
-// TagManifest pushes repo's manifest digest under tag, server-side: the
-// manifest is read by digest and PUT back unchanged, so no blob moves and the
-// digest stays the same. authorization is the full Authorization value (""
-// for an anonymous registry); like ReadImageConfig it is never sent over
-// plaintext to an off-cluster host, and redirects are refused so it cannot be
-// forwarded elsewhere.
-func TagManifest(ctx context.Context, httpClient *http.Client, registryHost, repo, digest, tag, authorization string) error {
+// manifestRequester issues registry API requests against registryHost with
+// authorization (the full Authorization value, "" for an anonymous registry).
+// Like ReadImageConfig it never sends credentials over plaintext to an
+// off-cluster host, and redirects are refused so they cannot be forwarded.
+// Each request gets its own bounded deadline, so a multi-request operation
+// (a copy mounts every blob) is not starved by one shared budget.
+type manifestRequester struct {
+	ctx           context.Context
+	client        http.Client
+	base          string
+	authorization string
+}
+
+func newManifestRequester(ctx context.Context, httpClient *http.Client, registryHost, authorization string) (*manifestRequester, error) {
 	base, err := baseFor(registryHost, authorization)
 	if err != nil {
-		return err
+		return nil, err
 	}
-	ctx, cancel := boundedhttp.WithTimeout(ctx)
-	defer cancel()
 	if httpClient == nil {
 		httpClient = defaultHTTPClient
 	}
 	bounded := *httpClient
 	bounded.CheckRedirect = func(*http.Request, []*http.Request) error { return http.ErrUseLastResponse }
-	do := func(method, ref, contentType string, body []byte) (*http.Response, error) {
-		req, err := http.NewRequestWithContext(ctx, method, fmt.Sprintf("%s/v2/%s/manifests/%s", base, repo, ref), bytes.NewReader(body))
-		if err != nil {
-			return nil, err
-		}
-		if method == http.MethodGet {
-			req.Header.Set("Accept", manifestAccept)
-		} else {
-			req.Header.Set("Content-Type", contentType)
-		}
-		if authorization != "" {
-			req.Header.Set("Authorization", authorization)
-		}
-		return bounded.Do(req)
-	}
-	resp, err := do(http.MethodGet, digest, "", nil)
+	return &manifestRequester{ctx: ctx, client: bounded, base: base, authorization: authorization}, nil
+}
+
+// registryResponse is a fully read response.
+type registryResponse struct {
+	status int
+	header http.Header
+	body   []byte
+}
+
+func (m *manifestRequester) do(method, path, contentType string, body []byte) (registryResponse, error) {
+	ctx, cancel := boundedhttp.WithTimeout(m.ctx)
+	defer cancel()
+	req, err := http.NewRequestWithContext(ctx, method, m.base+path, bytes.NewReader(body))
 	if err != nil {
-		return fmt.Errorf("get manifest %s: %w", digest, err)
+		return registryResponse{}, err
 	}
-	manifest, err := boundedhttp.ReadAll(resp.Body)
-	_ = resp.Body.Close()
+	if method == http.MethodGet {
+		req.Header.Set("Accept", manifestAccept)
+	} else if contentType != "" {
+		req.Header.Set("Content-Type", contentType)
+	}
+	if m.authorization != "" {
+		req.Header.Set("Authorization", m.authorization)
+	}
+	resp, err := m.client.Do(req)
 	if err != nil {
-		return fmt.Errorf("read manifest %s: %w", digest, err)
+		return registryResponse{}, err
 	}
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("get manifest %s: status %d: %s", digest, resp.StatusCode, manifest)
-	}
-	resp, err = do(http.MethodPut, tag, resp.Header.Get("Content-Type"), manifest)
+	defer func() { _ = resp.Body.Close() }()
+	read, err := boundedhttp.ReadAll(resp.Body)
 	if err != nil {
-		return fmt.Errorf("put manifest %s as %s: %w", digest, tag, err)
+		return registryResponse{}, fmt.Errorf("read response: %w", err)
 	}
-	body, _ := boundedhttp.ReadAll(resp.Body)
-	_ = resp.Body.Close()
-	if resp.StatusCode != http.StatusCreated && resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("put manifest %s as %s: status %d: %s", digest, tag, resp.StatusCode, body)
+	return registryResponse{status: resp.StatusCode, header: resp.Header, body: read}, nil
+}
+
+// getManifest reads repo's manifest at ref, returning its bytes and media type.
+func (m *manifestRequester) getManifest(repo, ref string) ([]byte, string, error) {
+	resp, err := m.do(http.MethodGet, fmt.Sprintf("/v2/%s/manifests/%s", repo, ref), "", nil)
+	if err != nil {
+		return nil, "", fmt.Errorf("get manifest %s: %w", ref, err)
+	}
+	if resp.status != http.StatusOK {
+		return nil, "", fmt.Errorf("get manifest %s: status %d: %s", ref, resp.status, resp.body)
+	}
+	return resp.body, resp.header.Get("Content-Type"), nil
+}
+
+// putManifest stores manifest in repo under ref.
+func (m *manifestRequester) putManifest(repo, ref, mediaType string, manifest []byte) error {
+	resp, err := m.do(http.MethodPut, fmt.Sprintf("/v2/%s/manifests/%s", repo, ref), mediaType, manifest)
+	if err != nil {
+		return fmt.Errorf("put manifest %s: %w", ref, err)
+	}
+	if resp.status != http.StatusCreated && resp.status != http.StatusOK {
+		return fmt.Errorf("put manifest %s: status %d: %s", ref, resp.status, resp.body)
+	}
+	return nil
+}
+
+// TagManifest pushes repo's manifest digest under tag, server-side: the
+// manifest is read by digest and PUT back unchanged, so no blob moves and the
+// digest stays the same.
+func TagManifest(ctx context.Context, httpClient *http.Client, registryHost, repo, digest, tag, authorization string) error {
+	m, err := newManifestRequester(ctx, httpClient, registryHost, authorization)
+	if err != nil {
+		return err
+	}
+	manifest, mediaType, err := m.getManifest(repo, digest)
+	if err != nil {
+		return err
+	}
+	if err := m.putManifest(repo, tag, mediaType, manifest); err != nil {
+		return fmt.Errorf("tag %s as %s: %w", digest, tag, err)
 	}
 	return nil
 }

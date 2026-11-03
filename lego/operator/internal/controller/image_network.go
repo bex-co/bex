@@ -43,15 +43,32 @@ import (
 // repository; ok is false for any other image, which can never receive
 // platform registry credentials.
 func (r *AppReconciler) ownImageReference(app *appv1alpha1.App, image string) (string, bool) {
-	prefix := r.Registry + "/" + appIdentity(app).Repo()
-	if r.Registry == "" || !strings.HasPrefix(image, prefix+":") && !strings.HasPrefix(image, prefix+"@") {
+	repo, reference, ok := r.platformRepoReference(image)
+	if !ok || repo != appIdentity(app).Repo() {
 		return "", false
 	}
-	reference := strings.TrimPrefix(image, prefix)
-	if _, digest, ok := strings.Cut(reference, "@"); ok {
-		return digest, true
+	return reference, true
+}
+
+// platformRepoReference splits an image in the platform registry
+// ("<registry>/<repo>[:tag][@digest]") into its repository and its most
+// specific reference — the digest when pinned, else the tag.
+func (r *AppReconciler) platformRepoReference(image string) (repo, reference string, ok bool) {
+	prefix := r.Registry + "/"
+	if r.Registry == "" || !strings.HasPrefix(image, prefix) {
+		return "", "", false
 	}
-	return strings.TrimPrefix(reference, ":"), true
+	name, digest, pinned := strings.Cut(strings.TrimPrefix(image, prefix), "@")
+	repo, tag, tagged := strings.Cut(name, ":")
+	switch {
+	case repo == "":
+		return "", "", false
+	case pinned:
+		return repo, digest, true
+	case tagged:
+		return repo, tag, true
+	}
+	return "", "", false
 }
 
 // imagePortPreferred is the declared image port chosen as primary when present.

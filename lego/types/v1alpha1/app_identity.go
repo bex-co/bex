@@ -59,6 +59,7 @@ var AppSpecIdentityClasses = map[string]SpecIdentityClass{
 	"Headers":                    IdentityOperational,
 	"Repo":                       IdentityArtifact | IdentityRelease,
 	"Image":                      IdentityArtifact | IdentityRelease,
+	"BuildSource":                IdentityArtifact | IdentityRelease,
 	"RootDir":                    IdentityArtifact | IdentityRelease,
 	"BuildFilter":                IdentityOperational,
 	"DockerfilePath":             IdentityArtifact | IdentityRelease,

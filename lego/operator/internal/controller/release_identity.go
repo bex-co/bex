@@ -75,6 +75,9 @@ type artifactIdentityInput struct {
 	EnvFromSecrets             []string        `json:"envFromSecrets,omitempty"`
 	FilesFromSecrets           []string        `json:"filesFromSecrets,omitempty"`
 	RestartedAt                string          `json:"restartedAt,omitempty"`
+	// BuildSource is the carrier and build a linked service deploys (ADR097);
+	// linking another source or selecting another build is a new artifact.
+	BuildSource *appv1alpha1.BuildSourceLink `json:"buildSource,omitempty"`
 }
 
 type releaseIdentityInput struct {
@@ -157,6 +160,7 @@ func appReleaseIdentityOf(spec appv1alpha1.AppSpec, version string) appReleaseId
 		BuildCommand:               spec.BuildCommand,
 		Builder:                    builder,
 		RestartedAt:                spec.RestartedAt,
+		BuildSource:                spec.BuildSource,
 	}
 	// Native/buildpack builders bake the launch command into the image. Their
 	// selected literal build env must also participate in the artifact identity;
