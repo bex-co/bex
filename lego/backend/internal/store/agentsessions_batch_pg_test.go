@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -266,4 +267,120 @@ func TestPGAgentSessionTurnTailReturnsCompleteItemsNewestFirst(t *testing.T) {
 	if err != nil || len(limited) != 1 || limited[0].PartIndex != 3 {
 		t.Fatalf("limit 1 = %+v err=%v", limited, err)
 	}
+}
+
+// The idempotency key is unique per workspace within 24 h (ADR094 D4): a second
+// create with the key loses to the first, the finder returns the holder with
+// its request digest, and a key past its window is released for reuse.
+func TestPGAgentSessionIdempotencyKeyWindow(t *testing.T) {
+	s, firstID, _ := transcriptBatchPGFixture(t)
+	ctx := context.Background()
+	first, err := s.GetAgentSession(ctx, firstID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	mk := func(key, hash string) (AgentSession, error) {
+		return s.CreateAgentSession(ctx, AgentSession{
+			WorkspaceID: first.WorkspaceID, Repo: "bex-co/example", Branch: "main",
+			AgentConfig: []byte(`{"agent":"codex","task":"x"}`), IdempotencyKey: key, IdempotencyHash: hash,
+		})
+	}
+	holder, err := mk("k1", "h1")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := mk("k1", "h1"); !errors.Is(err, ErrAgentSessionIdempotencyKey) {
+		t.Fatalf("second create with the key = %v, want ErrAgentSessionIdempotencyKey", err)
+	}
+	found, hash, err := s.FindAgentSessionByIdempotencyKey(ctx, first.WorkspaceID, "k1")
+	if err != nil || found.ID != holder.ID || hash != "h1" {
+		t.Fatalf("find = %+v %q err=%v, want holder %s with h1", found, hash, err, holder.ID)
+	}
+	if _, _, err := s.FindAgentSessionByIdempotencyKey(ctx, first.WorkspaceID, "other"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown key = %v, want ErrNotFound", err)
+	}
+	// A session without a key never collides with another keyless one.
+	if _, err := mk("", ""); err != nil {
+		t.Fatalf("keyless create: %v", err)
+	}
+	// Age the holder past the window: it no longer answers, and the key frees up.
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET created_at = now() - interval '25 hours' WHERE id=$1`, holder.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := s.FindAgentSessionByIdempotencyKey(ctx, first.WorkspaceID, "k1"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("expired key still found: %v", err)
+	}
+	renewed, err := mk("k1", "h2")
+	if err != nil || renewed.ID == holder.ID {
+		t.Fatalf("expired key not released: %+v err=%v", renewed, err)
+	}
+}
+
+// A repository session created without a branch gets bex-agent/<id>; title and
+// tags round-trip, and the tag filter keeps only sessions carrying the tag
+// (ADR094 D3).
+func TestPGAgentSessionDefaultBranchTitleAndTagFilter(t *testing.T) {
+	s, firstID, _ := transcriptBatchPGFixture(t)
+	ctx := context.Background()
+	first, err := s.GetAgentSession(ctx, firstID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	tagged, err := s.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: first.WorkspaceID, Repo: "bex-co/example", AgentConfig: []byte(`{"agent":"codex"}`),
+		Title: "Fix flaky test", Tags: []string{"ci", "team:billing"},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if tagged.Branch != DefaultAgentBranchPrefix+tagged.ID || tagged.Title != "Fix flaky test" || len(tagged.Tags) != 2 {
+		t.Fatalf("created = %+v", tagged)
+	}
+	if first.Tags == nil || len(first.Tags) != 0 {
+		t.Fatalf("untagged session tags = %#v, want empty non-nil", first.Tags)
+	}
+	got, err := s.ListAgentSessions(ctx, first.WorkspaceID, AgentSessionListQuery{Tag: "ci", Limit: 10})
+	if err != nil || len(got) != 1 || got[0].ID != tagged.ID {
+		t.Fatalf("tag=ci list = %+v err=%v, want only %s", got, err, tagged.ID)
+	}
+	if got, err = s.ListAgentSessions(ctx, first.WorkspaceID, AgentSessionListQuery{Tag: "absent", Limit: 10}); err != nil || len(got) != 0 {
+		t.Fatalf("tag=absent list = %+v err=%v", got, err)
+	}
+}
+
+// The notify trigger (ADR094 D6) announces a session's id on insert and on a
+// phase change, and stays quiet for updates that leave the phase alone.
+func TestPGAgentSessionStateNotifications(t *testing.T) {
+	s, sessionID, _ := transcriptBatchPGFixture(t)
+	ctx, cancel := context.WithTimeout(context.Background(), 20*time.Second)
+	defer cancel()
+	got := make(chan string, 16)
+	go func() { _ = s.ListenAgentSessionStates(ctx, func(id string) { got <- id }) }()
+	time.Sleep(500 * time.Millisecond) // let LISTEN take hold
+
+	expect := func(what string, want bool) {
+		t.Helper()
+		select {
+		case id := <-got:
+			if !want || id != sessionID {
+				t.Fatalf("%s: notified %q (want notification=%t for %s)", what, id, want, sessionID)
+			}
+		case <-time.After(time.Second):
+			if want {
+				t.Fatalf("%s: no notification", what)
+			}
+		}
+	}
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET phase='running' WHERE id=$1`, sessionID); err != nil {
+		t.Fatal(err)
+	}
+	expect("phase change", true)
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET head_sha='abc' WHERE id=$1`, sessionID); err != nil {
+		t.Fatal(err)
+	}
+	expect("non-phase update", false)
+	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET phase='completed' WHERE id=$1`, sessionID); err != nil {
+		t.Fatal(err)
+	}
+	expect("second phase change", true)
 }

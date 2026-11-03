@@ -503,7 +503,11 @@ func main() {
 	// adapter over stdin/stdout — how a local agent launches bex as a subprocess.
 	if cfg.MCPStdio {
 		log.Printf("bex-api: serving MCP over stdio (namespace %s)", base.Namespace)
-		if err := srv.RunStdio(ctx); err != nil {
+		run := srv.RunStdio
+		if cfg.MCPToolset != "" {
+			run = func(ctx context.Context) error { return srv.RunStdioToolset(ctx, cfg.MCPToolset) }
+		}
+		if err := run(ctx); err != nil {
 			log.Fatalf("bex-api mcp stdio: %v", err)
 		}
 		return

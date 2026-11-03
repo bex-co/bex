@@ -27,9 +27,14 @@ import (
 // bex.api remains a platform-client compatibility alias and is never an
 // umbrella grant for a non-platform client (w8/m27, docs/ADR012-auth.md §7).
 const (
-	ScopeRead             = "bex.read"
-	ScopeWrite            = "bex.write"
-	ScopeSensitive        = "bex.sensitive"
+	ScopeRead      = "bex.read"
+	ScopeWrite     = "bex.write"
+	ScopeSensitive = "bex.sensitive"
+	// ScopeCloudAgents lets a token run cloud coding agents (ADR094 D9) and
+	// nothing else: it satisfies the scope check for the cloud-agents MCP
+	// toolset only, never for services, databases or env vars. OpenFGA stays
+	// the authority; the scope never grants more than the caller's relations.
+	ScopeCloudAgents      = "bex.cloud_agents"
 	ScopeAPICompatibility = "bex.api"
 )
 
@@ -49,14 +54,14 @@ const (
 // a scope requires a follow-on CHECK migration (0089's ARRAY; do not rewrite
 // 0089 after it has shipped). TestAuditRelationCheckMatchesRelCan pins this.
 func ClosedOAuthScopes() []string {
-	return []string{ScopeRead, ScopeWrite, ScopeSensitive, ScopeAPICompatibility}
+	return []string{ScopeRead, ScopeWrite, ScopeSensitive, ScopeCloudAgents, ScopeAPICompatibility}
 }
 
 // granularScopes is the closed least-privilege vocabulary a third-party human
 // token must carry at least one member of — and, in the same stable order, the
 // RFC 9728 scopes_supported list AdvertisedScopes serves. Defined once here so
 // the advertised set and the enforced set (HasGranularCapability) cannot drift.
-var granularScopes = []string{ScopeRead, ScopeWrite, ScopeSensitive}
+var granularScopes = []string{ScopeRead, ScopeWrite, ScopeSensitive, ScopeCloudAgents}
 
 // AdvertisedScopes is the RFC 9728 scopes_supported list in one stable order.
 // Discovery-driven clients request exactly these; bex.api is compatibility-only
@@ -170,7 +175,7 @@ func NormalizeOAuthGrant(scope string, audiences []string, clientID, resource st
 			return OAuthGrant{}, fmt.Errorf("oauth scope exceeds %d bytes", MaxOAuthScopeLen)
 		}
 		switch s {
-		case ScopeRead, ScopeWrite, ScopeSensitive, ScopeAPICompatibility:
+		case ScopeRead, ScopeWrite, ScopeSensitive, ScopeCloudAgents, ScopeAPICompatibility:
 			if _, ok := seen[s]; ok {
 				continue
 			}

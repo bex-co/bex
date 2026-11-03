@@ -26,6 +26,7 @@ import (
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
@@ -224,4 +225,63 @@ func mcpCallError(ctx context.Context, err error) *mcp.CallToolResult {
 	var result mcp.CallToolResult
 	result.SetError(err)
 	return &result
+}
+
+// MCP toolsets (ADR094 D1): named, narrow subsets of the one tool registry.
+const (
+	ToolsetCloudAgents   = "cloud-agents"
+	cloudAgentsMountPath = "/mcp/cloud-agents"
+)
+
+// mcpToolsets maps a toolset name to its tool names. The cloud-agents toolset
+// is the agent-session tools plus the two lookups a caller needs to address
+// them (workspace and repository).
+var mcpToolsets = map[string]map[string]struct{}{
+	ToolsetCloudAgents: toolSet(append(append([]string{}, agentsessions.CloudAgentsTools...), "list_workspaces", "list_repos")),
+}
+
+func toolSet(names []string) map[string]struct{} {
+	out := make(map[string]struct{}, len(names))
+	for _, n := range names {
+		out[n] = struct{}{}
+	}
+	return out
+}
+
+// mcpToolsetMiddleware hides every tool outside the toolset from tools/list and
+// refuses to run one.
+func mcpToolsetMiddleware(allowed map[string]struct{}) mcp.Middleware {
+	return func(next mcp.MethodHandler) mcp.MethodHandler {
+		return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+			switch method {
+			case "tools/list":
+				result, err := next(ctx, method, req)
+				if err != nil {
+					return nil, err
+				}
+				listed, ok := result.(*mcp.ListToolsResult)
+				if !ok {
+					return result, nil
+				}
+				out := *listed
+				out.Tools = make([]*mcp.Tool, 0, len(listed.Tools))
+				for _, tool := range listed.Tools {
+					if tool == nil {
+						continue
+					}
+					if _, in := allowed[tool.Name]; in {
+						out.Tools = append(out.Tools, tool)
+					}
+				}
+				return &out, nil
+			case "tools/call":
+				if call, ok := req.(*mcp.CallToolRequest); ok && call.Params != nil {
+					if _, in := allowed[call.Params.Name]; !in {
+						return mcpCallError(ctx, fmt.Errorf("unknown tool %q on this endpoint", call.Params.Name)), nil
+					}
+				}
+			}
+			return next(ctx, method, req)
+		}
+	}
 }

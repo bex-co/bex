@@ -3,7 +3,12 @@ import { Badge } from "@/common/components/ui/badge";
 import { RevokeIconButton } from "@/common/components/revoke-icon-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { RelativeAge } from "@/common/components/relative-time";
-import { SCOPE_DESCRIPTION_KEYS, SCOPE_SENSITIVE, SCOPE_WRITE } from "@/common/lib/oauth-scopes";
+import {
+  SCOPE_DESCRIPTION_KEYS,
+  SCOPE_CLOUD_AGENTS,
+  SCOPE_SENSITIVE,
+  SCOPE_WRITE,
+} from "@/common/lib/oauth-scopes";
 import type { ConnectedAgentView } from "@/features/connected-agents/types";
 
 export interface ConnectedAgentRowProps {
@@ -43,7 +48,9 @@ export function ConnectedAgentRow({
             <Badge
               key={scope}
               variant={
-                scope === SCOPE_WRITE || scope === SCOPE_SENSITIVE
+                scope === SCOPE_WRITE ||
+                scope === SCOPE_SENSITIVE ||
+                scope === SCOPE_CLOUD_AGENTS
                   ? "destructive"
                   : "secondary"
               }

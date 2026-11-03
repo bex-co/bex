@@ -1,12 +1,15 @@
 export const SCOPE_READ = "bex.read";
 export const SCOPE_WRITE = "bex.write";
 export const SCOPE_SENSITIVE = "bex.sensitive";
+/** Run cloud coding agents and nothing else (ADR094 D9). */
+export const SCOPE_CLOUD_AGENTS = "bex.cloud_agents";
 export const SCOPE_API_COMPAT = "bex.api";
 
 export const GRANULAR_SCOPES = [
   SCOPE_READ,
   SCOPE_WRITE,
   SCOPE_SENSITIVE,
+  SCOPE_CLOUD_AGENTS,
 ] as const;
 
 export const IDENTITY_SCOPES = [
@@ -30,6 +33,7 @@ export const SCOPE_DESCRIPTION_KEYS: Record<string, string> = {
   [SCOPE_READ]: "auth.consentScopeRead",
   [SCOPE_WRITE]: "auth.consentScopeWrite",
   [SCOPE_SENSITIVE]: "auth.consentScopeSensitive",
+  [SCOPE_CLOUD_AGENTS]: "auth.consentScopeCloudAgents",
   [SCOPE_API_COMPAT]: "auth.consentScopeApiCompat",
 };
 
@@ -44,7 +48,8 @@ export function hasGranularCapability(scopes: readonly string[]): boolean {
     (scope) =>
       scope === SCOPE_READ ||
       scope === SCOPE_WRITE ||
-      scope === SCOPE_SENSITIVE,
+      scope === SCOPE_SENSITIVE ||
+      scope === SCOPE_CLOUD_AGENTS,
   );
 }
 

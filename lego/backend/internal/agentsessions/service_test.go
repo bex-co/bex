@@ -11,6 +11,7 @@ import (
 	"slices"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 	"time"
 
@@ -34,12 +35,19 @@ type fakeDispatch struct {
 }
 
 type fakeStore struct {
-	dispatches map[string]fakeDispatch
-	rows       map[string]store.AgentSession
-	getCalls   int
-	now        time.Time
-	transcript map[string]map[int64]store.AgentSessionTranscriptPart
-	turns      map[string]map[int]store.AgentSessionTurn
+	// stateListeners are the ListenAgentSessionStates callbacks (the PG
+	// LISTEN stand-in); notifyState drives them.
+	listenMu sync.Mutex
+	// rowMu guards rows/getCalls for the wait tests, where a goroutine moves a
+	// session's phase while a waiter reads it.
+	rowMu          sync.Mutex
+	stateListeners []func(string)
+	dispatches     map[string]fakeDispatch
+	rows           map[string]store.AgentSession
+	getCalls       int
+	now            time.Time
+	transcript     map[string]map[int64]store.AgentSessionTranscriptPart
+	turns          map[string]map[int]store.AgentSessionTurn
 	// openSSH models the ssh_sessions table for the teardown-deferral tests
 	// (ADR054 D6): resource id -> the started_at of a still-open editor session.
 	openSSH map[string]time.Time
@@ -441,7 +449,15 @@ func (f *fakeStore) recordTurn(id string, turn int, prompt, delivery string) {
 }
 
 func (f *fakeStore) CreateAgentSession(_ context.Context, in store.AgentSession) (store.AgentSession, error) {
+	if in.IdempotencyKey != "" {
+		if _, _, err := f.FindAgentSessionByIdempotencyKey(context.Background(), in.WorkspaceID, in.IdempotencyKey); err == nil {
+			return store.AgentSession{}, store.ErrAgentSessionIdempotencyKey
+		}
+	}
 	in.ID, in.Phase, in.CreatedAt, in.UpdatedAt = ids.New(ids.AgentSession), PhaseCreating, f.now, f.now
+	if in.Repo != "" && in.Branch == "" {
+		in.Branch = store.DefaultAgentBranchPrefix + in.ID
+	}
 	f.rows[in.ID] = in
 	prompt := in.InitialPrompt
 	if prompt == "" {
@@ -479,6 +495,8 @@ func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, deliver
 	return row, nil
 }
 func (f *fakeStore) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {
+	f.rowMu.Lock()
+	defer f.rowMu.Unlock()
 	f.getCalls++
 	row, ok := f.rows[id]
 	if !ok {
@@ -507,6 +525,9 @@ func (f *fakeStore) ListAgentSessions(_ context.Context, workspace string, q sto
 			continue
 		}
 		if q.Repo != "" && row.Repo != q.Repo {
+			continue
+		}
+		if q.Tag != "" && !slices.Contains(row.Tags, q.Tag) {
 			continue
 		}
 		out = append(out, row)
@@ -1952,4 +1973,33 @@ func (f *fakeStore) AgentSessionTurnTail(_ context.Context, id string, turn int,
 		out = out[:limit]
 	}
 	return out, nil
+}
+
+// FindAgentSessionByIdempotencyKey mirrors the PG read: the workspace's session
+// bound to the key within the 24 h window.
+func (f *fakeStore) FindAgentSessionByIdempotencyKey(_ context.Context, workspaceID, key string) (store.AgentSession, string, error) {
+	for _, row := range f.rows {
+		if row.WorkspaceID == workspaceID && row.IdempotencyKey == key && f.now.Sub(row.CreatedAt) < store.AgentSessionIdempotencyWindow {
+			return row, row.IdempotencyHash, nil
+		}
+	}
+	return store.AgentSession{}, "", store.ErrNotFound
+}
+
+// ListenAgentSessionStates stands in for the PG LISTEN loop: it registers the
+// callback and blocks until ctx ends; notifyState delivers a phase change.
+func (f *fakeStore) ListenAgentSessionStates(ctx context.Context, fn func(id string)) error {
+	f.listenMu.Lock()
+	f.stateListeners = append(f.stateListeners, fn)
+	f.listenMu.Unlock()
+	<-ctx.Done()
+	return ctx.Err()
+}
+
+func (f *fakeStore) notifyState(id string) {
+	f.listenMu.Lock()
+	defer f.listenMu.Unlock()
+	for _, fn := range f.stateListeners {
+		fn(id)
+	}
 }
