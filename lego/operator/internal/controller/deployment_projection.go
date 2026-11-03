@@ -240,7 +240,20 @@ const (
 	launchUnknown launchMode = ""      // no recorded evidence: the saved source decides
 	launchShell   launchMode = "shell" // the app container runs it through the shell
 	launchImage   launchMode = "image" // the image's own entrypoint, which a native/buildpack build bakes it into
+	// launchNativeArgs passes it as `/bin/bash -c` arguments to the image's own
+	// entrypoint: a native build source's image has native-init and no CMD.
+	launchNativeArgs launchMode = "native-args"
 )
+
+// nativeStartArgs is a native image's CMD for command (build.shellJSON),
+// as container args with Kubernetes' $(VAR) expansion escaped.
+func nativeStartArgs(command string) []string {
+	args := build.NativeStartArgv(command)
+	for i := range args {
+		args[i] = execution.KubernetesLiteral(args[i])
+	}
+	return args
+}
 
 // shellRunsStartCommand reports whether the app container running image must
 // launch the saved StartCommand itself (the Docker Command override) rather
@@ -254,7 +267,7 @@ func shellRunsStartCommand(app *appv1alpha1.App, image string, recorded launchMo
 	switch recorded {
 	case launchShell:
 		return true
-	case launchImage:
+	case launchImage, launchNativeArgs:
 		return false
 	}
 	if app.Spec.Repo == "" && app.Spec.Image != "" && image == app.Spec.Image {
@@ -295,7 +308,11 @@ func appContainer(app *appv1alpha1.App, p deploymentParams, probeHost string) co
 		Resources:       resourcesForTier(app.Spec.Tier),
 		SecurityContext: appSecCtx(app.Spec),
 	}
-	if app.Spec.StartCommand != "" && shellRunsStartCommand(app, p.image, p.launch) {
+	switch {
+	case app.Spec.StartCommand == "":
+	case p.launch == launchNativeArgs:
+		container.Args = nativeStartArgs(app.Spec.StartCommand)
+	case shellRunsStartCommand(app, p.image, p.launch):
 		container.Command = shellCommand(app.Spec.StartCommand)
 	}
 	// Health-gating: a non-worker service speaks HTTP, so gate pod readiness on
