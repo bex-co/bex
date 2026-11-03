@@ -142,6 +142,9 @@ type Broker struct {
 	// PullRequests is the bex-api PR verb (ADR090) behind the fifth path
 	// segment `pull-request`. nil answers that route 503.
 	PullRequests PullRequestSyncer
+	// Files is the bex-api share verb (ADR095 D6) behind ShareFileProxyPath.
+	// nil ⇒ the route answers unavailable.
+	Files ShareFileForwarder
 	// MaxResponseBytes bounds one streamed upstream response body; 0 means
 	// defaultMaxResponseBodyBytes. Exceeding it aborts the exchange loudly.
 	MaxResponseBytes int64
@@ -175,6 +178,9 @@ func (b *Broker) limiter() *sshgateway.SessionLimiter {
 func (b *Broker) Enabled() bool         { return b != nil && b.Pods != nil && b.API != nil }
 func (b *Broker) Handler() http.Handler { return http.HandlerFunc(b.serveGit) }
 
+// ShareFileHandler serves the sandbox's share route (ADR095 D6).
+func (b *Broker) ShareFileHandler() http.Handler { return http.HandlerFunc(b.serveShareFile) }
+
 // admissionRefusal names why admit turned a request away, so each route can
 // answer in its own error shape.
 type admissionRefusal int
@@ -198,13 +204,37 @@ type admission struct {
 	release  func()
 }
 
-// admit is the shared gate in front of every sandbox route (Git and the PR
-// verb): admission before any stateful work (codex round-9 #4) — the
-// concurrency slot is held across the Pod lookup and everything after it, under
-// one timeout — then the source-IP Pod binding, label-digest authorization, and
-// the per-session/workspace budgets. On refusal it records the metric, calls
-// refuse, and reports false.
-func (b *Broker) admit(r *http.Request, namespace string, claimed agentsession.MintRequest, refuse func(admissionRefusal)) (admission, bool) {
+// podAuthorizer binds a resolved source Pod to the request's claimed target:
+// the branch-scoped label digests for Git and the PR verb (authorizeBranch),
+// the session label alone for the share route.
+type podAuthorizer func(namespace string, pod SessionPod) (agentsession.MintRequest, error)
+
+// authorizeBranch is the Git and PR-verb rule: the Pod's labels must bind the
+// claimed session, repository and branch.
+func authorizeBranch(claimed agentsession.MintRequest) podAuthorizer {
+	return func(namespace string, pod SessionPod) (agentsession.MintRequest, error) {
+		return agentsession.AuthorizePod(namespace, pod.Name, pod.UID, pod.Labels, claimed)
+	}
+}
+
+// authorizeSession is the share route's rule: the Pod's labels must bind the
+// claimed session; a repo-less session has no repository or branch to check.
+func authorizeSession(sessionID string) podAuthorizer {
+	return func(namespace string, pod SessionPod) (agentsession.MintRequest, error) {
+		verified, err := agentsession.AuthorizeSessionPod(namespace, pod.Name, pod.UID, pod.Labels, sessionID)
+		return agentsession.MintRequest{SessionID: verified.SessionID, Workspace: verified.Workspace,
+			PodName: verified.PodName, PodUID: verified.PodUID}, err
+	}
+}
+
+// admit is the shared gate in front of every sandbox route (Git, the PR verb
+// and the share route): admission before any stateful work (codex round-9 #4)
+// — the concurrency slot is held across the Pod lookup and everything after
+// it, under one timeout — then the source-IP Pod binding, authorize, and the
+// per-session/workspace budgets. On refusal it records the metric, calls
+// refuse, and reports false. The budget metric labels keep their git_ names
+// for dashboard continuity although every route on this listener charges them.
+func (b *Broker) admit(r *http.Request, namespace string, authorize podAuthorizer, refuse func(admissionRefusal)) (admission, bool) {
 	sourceIP, err := RemoteIP(r.RemoteAddr)
 	if err != nil {
 		refuse(refusedSource)
@@ -229,7 +259,7 @@ func (b *Broker) admit(r *http.Request, namespace string, claimed agentsession.M
 		release()
 		return admission{}, false
 	}
-	verified, err := agentsession.AuthorizePod(namespace, pod.Name, pod.UID, pod.Labels, claimed)
+	verified, err := authorize(namespace, pod)
 	if err != nil {
 		b.Metrics.Authentication("rejected_target")
 		refuse(refusedTarget)
@@ -265,7 +295,7 @@ func (b *Broker) serveGit(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "invalid git request", http.StatusBadRequest)
 		return
 	}
-	admitted, ok := b.admit(r, namespace, mintRequest, func(refusal admissionRefusal) {
+	admitted, ok := b.admit(r, namespace, authorizeBranch(mintRequest), func(refusal admissionRefusal) {
 		switch refusal {
 		case refusedConcurrency:
 			http.Error(w, "too many concurrent git requests from this sandbox", http.StatusTooManyRequests)

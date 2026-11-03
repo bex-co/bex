@@ -155,3 +155,43 @@ export function turnAttachmentsFrom(value: unknown): AttachmentView[] {
   if (!Array.isArray(value)) return [];
   return value.flatMap((item) => attachmentFrom(item) ?? []);
 }
+
+const ATTACHMENT_ID = /^att-[a-z0-9]+$/;
+
+/**
+ * The attachment id a `share_file` tool call returned (ADR095 D6), from
+ * whatever shape the agent's ACP adapter relayed: the structured result, its
+ * JSON text, or MCP content blocks / `structuredContent` around it. Only the
+ * id is taken; the card shows the stored attachment, never the tool's words.
+ */
+export function sharedFileIdFrom(
+  output: unknown,
+  depth = 0,
+): string | undefined {
+  if (depth > 5 || output === null || output === undefined) return undefined;
+  if (typeof output === "string") {
+    // Cheap precheck: most tool output is not a share result.
+    if (!output.includes('"attachmentId"')) return undefined;
+    try {
+      return sharedFileIdFrom(JSON.parse(output), depth + 1);
+    } catch {
+      return undefined;
+    }
+  }
+  if (Array.isArray(output)) {
+    for (const item of output) {
+      const found = sharedFileIdFrom(item, depth + 1);
+      if (found) return found;
+    }
+    return undefined;
+  }
+  if (typeof output !== "object") return undefined;
+  const record = output as Record<string, unknown>;
+  const id = record.attachmentId;
+  if (typeof id === "string" && ATTACHMENT_ID.test(id)) return id;
+  return (
+    sharedFileIdFrom(record.structuredContent, depth + 1) ??
+    sharedFileIdFrom(record.content, depth + 1) ??
+    sharedFileIdFrom(record.text, depth + 1)
+  );
+}

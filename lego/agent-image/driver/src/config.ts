@@ -70,6 +70,9 @@ export interface AgentDriverConfig {
   // Driver-owned file (outside the repo) where the bex MCP server records the
   // last successful open_or_update_draft_pr result.
   prRecordPath: string;
+  // The session's Pod-bound share URL (ADR095 D6) the bex MCP server's
+  // share_file posts to; empty when the deployment has no attachments store.
+  shareUrl: string;
   // The draft PR earlier turns of this session opened (empty on turn 1), so a
   // re-dispatched sandbox updates it rather than describing only its own turn.
   existingPrUrl: string;
@@ -283,6 +286,7 @@ export function loadConfig(
     sessionLogPath,
     statusPath,
     prRecordPath: path.join(path.dirname(statusPath), "pull-request.json"),
+    shareUrl: env.BEX_AGENT_SHARE_URL || "",
     existingPrUrl: env.BEX_AGENT_PR_URL || "",
     existingPrNumber:
       optionalNonNegativeInt(env.BEX_AGENT_PR_NUMBER, "BEX_AGENT_PR_NUMBER") ||

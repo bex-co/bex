@@ -94,6 +94,8 @@ func (f *fakeObjects) PresignGet(_ context.Context, key, mediaType, disposition 
 type fakeAttachmentRows struct {
 	rows  map[string]store.AgentAttachment
 	state map[string]string
+	// readied records every id that was ever made visible.
+	readied []string
 }
 
 func (f *fakeAttachmentRows) BeginAgentAttachment(_ context.Context, a store.AgentAttachment) error {
@@ -111,6 +113,7 @@ func (f *fakeAttachmentRows) ReadyAgentAttachment(_ context.Context, id, sum str
 		a.ExpiresAt = &expiry
 	}
 	f.rows[id], f.state[id] = a, "ready"
+	f.readied = append(f.readied, id)
 	return a, nil
 }
 func (f *fakeAttachmentRows) GetAgentAttachment(_ context.Context, id string) (store.AgentAttachment, error) {

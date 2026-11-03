@@ -244,3 +244,49 @@ func TestAgentAttachmentListPagesByKeyset(t *testing.T) {
 		t.Fatalf("outputs = %+v, want none", outputs)
 	}
 }
+
+// Concurrent agent outputs race for a session's last quota slots: the session
+// lock serializes them, so exactly the room left is admitted and no writer
+// deadlocks.
+func TestConcurrentOutputsNeverPassTheSessionQuota(t *testing.T) {
+	s, _, tenant := agentSessionPGStore(t, "attach-race")
+	ctx := context.Background()
+	record, err := s.CreateAgentSession(ctx, AgentSession{WorkspaceID: tenant.ID, InitialPrompt: "task"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Leave exactly 3 file slots in the session.
+	for range MaxAgentSessionAttachments - 3 {
+		id := ids.New(ids.AgentAttachment)
+		if err := s.BeginAgentAttachment(ctx, AgentAttachment{
+			ID: id, WorkspaceID: tenant.ID, SessionID: record.ID, Turn: 1, Direction: AgentAttachmentOutput,
+			Name: "o", MediaType: "text/plain", SizeBytes: 1, ObjectKey: tenant.ID + "/" + id, CreatedBy: "agent",
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	const writers = 12
+	results := make(chan error, writers)
+	for range writers {
+		go func() {
+			id := ids.New(ids.AgentAttachment)
+			results <- s.BeginAgentAttachment(ctx, AgentAttachment{
+				ID: id, WorkspaceID: tenant.ID, SessionID: record.ID, Turn: 1, Direction: AgentAttachmentOutput,
+				Name: "o", MediaType: "text/plain", SizeBytes: 1, ObjectKey: tenant.ID + "/" + id, CreatedBy: "agent",
+			})
+		}()
+	}
+	admitted := 0
+	for range writers {
+		switch err := <-results; {
+		case err == nil:
+			admitted++
+		case errors.Is(err, ErrAgentSessionAttachmentQuota):
+		default:
+			t.Fatalf("a concurrent output failed with %v (deadlock?)", err)
+		}
+	}
+	if admitted != 3 {
+		t.Fatalf("admitted %d concurrent outputs into 3 free slots", admitted)
+	}
+}

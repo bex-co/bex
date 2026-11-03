@@ -98,6 +98,9 @@ type AttachmentListQuery struct {
 	Limit     int
 }
 
+var errAttachmentDigestMismatch = core.NewBadRequestError("AGENT_ATTACHMENT_INVALID",
+	"the file's bytes do not match its declared SHA-256", nil)
+
 var errAttachmentsUnavailable = core.NewUnavailableError("AGENT_ATTACHMENTS_UNAVAILABLE",
 	"agent attachments are not configured on this deployment", nil)
 
@@ -164,15 +167,15 @@ func (s *Service) UploadAttachment(ctx context.Context, req UploadAttachmentRequ
 		Direction:   store.AgentAttachmentInput,
 		Name:        sanitizeAttachmentName(req.Name),
 		CreatedBy:   core.SubjectFrom(ctx),
-	}, req.Size, req.Body)
+	}, req.Size, req.Body, "")
 }
 
 // storeAttachment records the row as pending, stores the object, then marks
 // the row ready. Any failure retires the row, so the sweep removes whatever
 // object may exist; a row left pending by a crash expires into the same sweep.
 // The caller has authorized and bounded size; row.SessionID set binds the row
-// at insert (an agent output).
-func (s *Service) storeAttachment(ctx context.Context, row store.AgentAttachment, size int64, body io.Reader) (Attachment, error) {
+// at insert (an agent output), and a non-empty wantSHA256 must match the body.
+func (s *Service) storeAttachment(ctx context.Context, row store.AgentAttachment, size int64, body io.Reader, wantSHA256 string) (Attachment, error) {
 	head := make([]byte, 512)
 	n, err := io.ReadFull(body, head[:min(int64(len(head)), size)])
 	if err != nil && !errors.Is(err, io.ErrUnexpectedEOF) {
@@ -198,7 +201,14 @@ func (s *Service) storeAttachment(ctx context.Context, row store.AgentAttachment
 		s.retireAttachment(ctx, row.ID)
 		return Attachment{}, core.HideCause(errAttachmentsUnavailable, err)
 	}
-	stored, err := s.AttachmentRows.ReadyAgentAttachment(ctx, row.ID, hex.EncodeToString(hash.Sum(nil)), time.Now().Add(attachmentUnboundTTL))
+	sum := hex.EncodeToString(hash.Sum(nil))
+	// A caller that knows the digest (the agent's share envelope) is checked
+	// before the row turns ready, so bytes that do not match are never visible.
+	if wantSHA256 != "" && sum != wantSHA256 {
+		s.retireAttachment(ctx, row.ID)
+		return Attachment{}, errAttachmentDigestMismatch
+	}
+	stored, err := s.AttachmentRows.ReadyAgentAttachment(ctx, row.ID, sum, time.Now().Add(attachmentUnboundTTL))
 	if err != nil {
 		s.retireAttachment(ctx, row.ID)
 		return Attachment{}, err

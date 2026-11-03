@@ -145,11 +145,40 @@ const AuditVerbMintModelCredential = "agentsessions.MintModelCredential"
 // the per-provider path suffix (e.g. OpenAI's `/v1`) is added by the driver,
 // which owns per-agent base-URL routing (ADR062 D5).
 func ModelProxyURL(baseURL, namespace, sessionID string) (string, error) {
+	return sessionScopedURL(baseURL, ModelProxyPath, namespace, sessionID)
+}
+
+// sessionScopedURL is a gateway route that names a sandbox's namespace and
+// session as base64url segments after prefix: the shape of the model proxy and
+// the share route. It carries no credential.
+func sessionScopedURL(baseURL, prefix, namespace, sessionID string) (string, error) {
 	if strings.TrimSpace(baseURL) == "" || namespace == "" || sessionID == "" {
 		return "", ErrInvalidRequest
 	}
 	encode := func(value string) string { return base64.RawURLEncoding.EncodeToString([]byte(value)) }
-	return strings.TrimRight(baseURL, "/") + ModelProxyPath + encode(namespace) + "/" + encode(sessionID), nil
+	return strings.TrimRight(baseURL, "/") + prefix + encode(namespace) + "/" + encode(sessionID), nil
+}
+
+// parseSessionScopedPath splits a sessionScopedURL path into its claimed
+// namespace and session and whatever follows them; hasRest reports a third
+// segment, even an empty one.
+func parseSessionScopedPath(path, prefix string) (namespace, sessionID, rest string, hasRest bool, err error) {
+	if !strings.HasPrefix(path, prefix) {
+		return "", "", "", false, ErrInvalidRequest
+	}
+	parts := strings.SplitN(strings.TrimPrefix(path, prefix), "/", 3)
+	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
+		return "", "", "", false, ErrInvalidRequest
+	}
+	ns, nsErr := base64.RawURLEncoding.DecodeString(parts[0])
+	sid, sidErr := base64.RawURLEncoding.DecodeString(parts[1])
+	if nsErr != nil || sidErr != nil {
+		return "", "", "", false, ErrInvalidRequest
+	}
+	if len(parts) == 3 {
+		return string(ns), string(sid), parts[2], true, nil
+	}
+	return string(ns), string(sid), "", false, nil
 }
 
 // ParseModelProxyPath extracts the claimed namespace, session id, and the vendor
@@ -157,28 +186,11 @@ func ModelProxyURL(baseURL, namespace, sessionID string) (string, error) {
 // model-proxy request path. The namespace/session are claims only: the gateway
 // still authorizes them against the resolved source Pod before minting.
 func ParseModelProxyPath(path string) (namespace, sessionID, upstreamPath string, err error) {
-	if !strings.HasPrefix(path, ModelProxyPath) {
-		return "", "", "", ErrInvalidRequest
+	namespace, sessionID, rest, _, err := parseSessionScopedPath(path, ModelProxyPath)
+	if err != nil {
+		return "", "", "", err
 	}
-	parts := strings.SplitN(strings.TrimPrefix(path, ModelProxyPath), "/", 3)
-	if len(parts) < 2 || parts[0] == "" || parts[1] == "" {
-		return "", "", "", ErrInvalidRequest
-	}
-	decode := func(value string) (string, error) {
-		raw, decodeErr := base64.RawURLEncoding.DecodeString(value)
-		return string(raw), decodeErr
-	}
-	if namespace, err = decode(parts[0]); err != nil {
-		return "", "", "", ErrInvalidRequest
-	}
-	if sessionID, err = decode(parts[1]); err != nil {
-		return "", "", "", ErrInvalidRequest
-	}
-	upstreamPath = "/"
-	if len(parts) == 3 {
-		upstreamPath = "/" + parts[2]
-	}
-	return namespace, sessionID, upstreamPath, nil
+	return namespace, sessionID, "/" + rest, nil
 }
 
 // ModelMintRequest carries only the verified session identity — no repository or
@@ -311,7 +323,7 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	// bind to the session's CURRENT phase, not just the pod's immutable identity,
 	// so a retained or compromised sandbox in the grace window cannot pull a fresh
 	// model credential after the task is done/failed/canceled/canceling.
-	if !currentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
+	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
 		return ModelMintResponse{}, ErrForbidden
 	}
 	agent, host, err := modelEndpointHostOf(req.Workspace, session.AgentConfig)
@@ -419,7 +431,7 @@ func (f *ModelAuthFailer) Fail(ctx context.Context, req ModelMintRequest) (respo
 		}
 		return ModelAuthFailureResponse{}, sessErr
 	}
-	if !currentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
+	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
 		// A stale/cross sandbox — or a session already terminal (its sandbox reaped,
 		// so the pod triple no longer matches) — is refused here. A repeated report
 		// after the session has failed lands here and 403s harmlessly (the gateway's

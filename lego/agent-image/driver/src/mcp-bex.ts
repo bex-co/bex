@@ -14,13 +14,16 @@
  * limitations under the License.
  */
 
-// The `bex` stdio MCP server (ADR090). The driver registers it on
-// session/new and session/load of repo sessions; the agent's adapter launches
-// it. It exposes exactly one tool, open_or_update_draft_pr, which forwards to
-// the gateway's pull-request verb on the session's Pod-bound Git proxy path.
-// Owner, repository, head and base are fixed server-side by that path, so the
-// agent supplies only a title and a body. No secret is involved: the gateway
-// authenticates the source Pod.
+// The `bex` stdio MCP server (ADR090, ADR095 D6). The driver registers it on
+// session/new and session/load; the agent's adapter launches it. It lists a
+// tool only when the session has its endpoint:
+//   - open_or_update_draft_pr (repo sessions) forwards to the gateway's
+//     pull-request verb on the session's Pod-bound Git proxy path. Owner,
+//     repository, head and base are fixed server-side by that path, so the
+//     agent supplies only a title and a body.
+//   - share_file (when the deployment stores attachments) posts a file to the
+//     session's Pod-bound share URL.
+// No secret is involved: the gateway authenticates the source Pod.
 //
 // The transport is newline-delimited JSON-RPC 2.0 over stdio, hand-rolled to
 // keep the image free of another runtime dependency.
@@ -29,7 +32,13 @@ import path from "node:path";
 import readline from "node:readline";
 import { fileURLToPath } from "node:url";
 import { describeError } from "./errors.js";
+import { postToGateway, type ToolError } from "./gateway.js";
 import { writeJsonAtomic } from "./fs-util.js";
+import {
+  shareFile,
+  shareFileToolDefinition,
+  shareFileToolName,
+} from "./share-file.js";
 
 export const toolName = "open_or_update_draft_pr";
 export const maxTitleRunes = 256;
@@ -69,11 +78,6 @@ const toolDefinition = {
   annotations: { idempotentHint: true, openWorldHint: true },
 };
 
-interface ToolError {
-  code: string;
-  message: string;
-  hint?: string;
-}
 
 interface PullRequestResult {
   url: string;
@@ -137,14 +141,6 @@ function upstreamError(message: string): ToolOutcome {
   return { ok: false, error: { code: "upstream_error", message } };
 }
 
-function asToolError(value: unknown): ToolError | undefined {
-  if (!value || typeof value !== "object") return undefined;
-  const error = (value as Record<string, unknown>).error;
-  if (!error || typeof error !== "object") return undefined;
-  const { code, message, hint } = error as Record<string, unknown>;
-  if (typeof code !== "string" || typeof message !== "string") return undefined;
-  return { code, message, ...(typeof hint === "string" ? { hint } : {}) };
-}
 
 function asResult(value: unknown): PullRequestResult | undefined {
   if (!value || typeof value !== "object") return undefined;
@@ -184,36 +180,20 @@ export async function openOrUpdateDraftPr(
     );
   }
   const { title, body } = args as { title: string; body: string };
-  let response: Response;
-  try {
-    response = await fetch(endpoint, {
-      method: "POST",
+  const reply = await postToGateway(
+    endpoint,
+    {
       headers: { "content-type": "application/json" },
       body: JSON.stringify({ title: title.trim(), body }),
-      signal: AbortSignal.timeout(requestTimeoutMs),
-    });
-  } catch (error) {
-    return upstreamError(
-      `pull-request endpoint unreachable: ${describeError(error)}`,
-    );
-  }
-  const text = await response.text();
-  let payload: unknown;
-  try {
-    payload = text ? JSON.parse(text) : undefined;
-  } catch {
-    payload = undefined;
-  }
-  if (!response.ok) {
-    return {
-      ok: false,
-      error: asToolError(payload) ?? {
-        code: "upstream_error",
-        message: `pull-request endpoint returned HTTP ${response.status}`,
-      },
-    };
-  }
-  const result = asResult(payload);
+    },
+    {
+      label: "pull-request endpoint",
+      fallbackCode: "upstream_error",
+      timeoutMs: requestTimeoutMs,
+    },
+  );
+  if (!reply.ok) return reply;
+  const result = asResult(reply.payload);
   if (!result) {
     return upstreamError(
       "pull-request endpoint returned an unexpected response",
@@ -229,6 +209,28 @@ export async function openOrUpdateDraftPr(
     );
   }
   return { ok: true, result };
+}
+
+// availableTools lists a tool only when this session has its endpoint, so the
+// agent is never offered a tool that can only fail.
+export function availableTools(
+  env: NodeJS.ProcessEnv = process.env,
+): Array<{ name: string }> {
+  const tools: Array<{ name: string }> = [];
+  if (env.BEX_PR_ENDPOINT) tools.push(toolDefinition);
+  if (env.BEX_SHARE_ENDPOINT) tools.push(shareFileToolDefinition);
+  return tools;
+}
+
+function serverInstructions(env: NodeJS.ProcessEnv): string {
+  const lines: string[] = [];
+  if (env.BEX_PR_ENDPOINT) {
+    lines.push(`Use ${toolName} after pushing the session branch to open or update its draft pull request.`);
+  }
+  if (env.BEX_SHARE_ENDPOINT) {
+    lines.push(`Use ${shareFileToolName} to hand the user a file that should not be committed.`);
+  }
+  return lines.join(" ");
 }
 
 interface JsonRpcMessage {
@@ -269,19 +271,22 @@ export async function handleMessage(
         protocolVersion,
         capabilities: { tools: { listChanged: false } },
         serverInfo: { name: "bex", version: "1.0.0" },
-        instructions: `Use ${toolName} after pushing the session branch to open or update its draft pull request.`,
+        instructions: serverInstructions(env),
       });
     }
     case "ping":
       return rpcResult(message.id, {});
     case "tools/list":
-      return rpcResult(message.id, { tools: [toolDefinition] });
+      return rpcResult(message.id, { tools: availableTools(env) });
     case "tools/call": {
       const name = message.params?.name;
-      if (name !== toolName) {
+      if (!availableTools(env).some((tool) => tool.name === name)) {
         return rpcError(message.id, -32602, `unknown tool: ${String(name)}`);
       }
-      const outcome = await openOrUpdateDraftPr(message.params?.arguments, env);
+      const outcome =
+        name === shareFileToolName
+          ? await shareFile(message.params?.arguments, env)
+          : await openOrUpdateDraftPr(message.params?.arguments, env);
       const structured = outcome.ok ? outcome.result : { error: outcome.error };
       return rpcResult(message.id, {
         content: [{ type: "text", text: JSON.stringify(structured) }],
