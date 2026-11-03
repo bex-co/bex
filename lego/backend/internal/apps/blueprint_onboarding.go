@@ -167,10 +167,8 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	mode := store.BlueprintExistingAdopt
 	if req.ExistingResources != nil {
 		switch *req.ExistingResources {
-		case store.BlueprintExistingAdopt:
-		case store.BlueprintExistingCreateNew:
-			return BlueprintPlanResult{}, core.NewBadRequestError("BLUEPRINT_EXISTING_RESOURCES_UNSUPPORTED",
-				"existingResources create_new is not supported on bex yet; omit it (adopt) to bring matching existing resources under this Blueprint", nil)
+		case store.BlueprintExistingAdopt, store.BlueprintExistingCreateNew:
+			mode = *req.ExistingResources
 		default:
 			return BlueprintPlanResult{}, fmt.Errorf("%w: existingResources must be adopt or create_new", core.ErrBadRequest)
 		}
@@ -337,7 +335,7 @@ func planChangesAnything(actions []BlueprintPlanAction) bool {
 // on services the plan creates — the values approval must supply (an existing
 // service keeps the value it already has).
 func requiredManualEnvVars(b store.Blueprint, manifest string, actions []BlueprintPlanAction) ([]ManualEnvVar, error) {
-	parsed, _, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, ContainingSource: true, Manifest: manifest})
+	parsed, _, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, ContainingSource: true, Manifest: manifest, resourceSuffix: b.ResourceSuffix})
 	if err != nil {
 		return nil, err
 	}
@@ -654,7 +652,7 @@ type createPlannedBlueprintArgs struct {
 	Branch            *string `json:"branch,omitempty" jsonschema:"branch to read (default main)"`
 	Path              *string `json:"path,omitempty" jsonschema:"Blueprint file path (default render.yaml)"`
 	AutoSync          *bool   `json:"autoSync,omitempty" jsonschema:"sync on every push once a sync is approved (default true)"`
-	ExistingResources *string `json:"existingResources,omitempty" jsonschema:"adopt (default) brings matching existing resources under the Blueprint"`
+	ExistingResources *string `json:"existingResources,omitempty" jsonschema:"adopt (default) brings matching existing resources under the Blueprint; create_new manages a separate copy whose names carry a random suffix, leaving existing resources unchanged"`
 }
 
 type planBlueprintArgs struct {

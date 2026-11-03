@@ -30,6 +30,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // --- fakeBlueprintStore: blueprintPlanStore (w2/m256) ---
@@ -46,6 +47,9 @@ func (f *fakeBlueprintStore) CreatePlannedBlueprint(_ context.Context, b store.B
 		b.ID = fmt.Sprintf("blp-fake%016d", len(f.blueprints))
 	}
 	b.Status, b.ExecutionGeneration = store.BlueprintStatusCreated, 1
+	if b.ExistingResources == store.BlueprintExistingCreateNew && b.ResourceSuffix == "" {
+		b.ResourceSuffix = "t3st" // the PG store mints a random one
+	}
 	f.blueprints[b.ID] = b
 	return b, nil
 }
@@ -202,6 +206,63 @@ func TestBlueprintOnboardingCreatePlanApprove(t *testing.T) {
 	}
 }
 
+// w2/m261: create_new manages a suffixed copy of every resource beside the
+// same-named ones another Blueprint already manages, and keeps managing that
+// copy on later plans.
+func TestBlueprintOnboardingCreateNewManagesASuffixedCopy(t *testing.T) {
+	svc, st, ctx := newOnboardingService(t, onboardingManifest)
+	token := "s3cret"
+	answer := func(service string) []ManualEnvVar {
+		return []ManualEnvVar{{ServiceType: "web", ServiceName: service, Key: "API_TOKEN", Value: &token}}
+	}
+	adopted, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "first", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.ApproveBlueprint(ctx, adopted.Blueprint.ID, "tea-a", answer("api")); err != nil {
+		t.Fatal(err)
+	}
+	original := &appv1alpha1.App{}
+	if err := svc.Client.Get(ctx, appKey(t, svc, "api"), original); err != nil {
+		t.Fatalf("adopt Blueprint's api: %v", err)
+	}
+
+	createNew := store.BlueprintExistingCreateNew
+	res, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "second", OwnerID: "tea-a",
+		Source: RenderBlueprintSource{Repo: "https://github.com/a/copy"}, ExistingResources: &createNew})
+	if err != nil {
+		t.Fatal(err)
+	}
+	b := st.blueprints[res.Blueprint.ID]
+	if b.ExistingResources != store.BlueprintExistingCreateNew || b.ResourceSuffix == "" {
+		t.Fatalf("stored blueprint = %+v, want create_new with a suffix", b)
+	}
+	copyName := "api-" + b.ResourceSuffix
+	want := ManualEnvVar{ServiceType: "web", ServiceName: copyName, Key: "API_TOKEN"}
+	if res.PlanningOutcome != PlanningPlanned || len(res.Sync.RequiredManualEnvVars) != 1 || res.Sync.RequiredManualEnvVars[0] != want {
+		t.Fatalf("plan = %+v, want the suffixed service's manual env var %+v", res, want)
+	}
+	if _, err := svc.ApproveBlueprint(ctx, b.ID, "tea-a", answer(copyName)); err != nil {
+		t.Fatal(err)
+	}
+	var apps appv1alpha1.AppList
+	if err := svc.Client.List(ctx, &apps); err != nil || len(apps.Items) != 2 {
+		t.Fatalf("Apps after the create_new approval = %d (err %v), want api and %s", len(apps.Items), err, copyName)
+	}
+	if err := svc.Client.Get(ctx, appKey(t, svc, copyName), &appv1alpha1.App{}); err != nil {
+		t.Fatalf("suffixed copy: %v", err)
+	}
+	untouched := &appv1alpha1.App{}
+	if err := svc.Client.Get(ctx, appKey(t, svc, "api"), untouched); err != nil || untouched.ResourceVersion != original.ResourceVersion {
+		t.Fatalf("the adopt Blueprint's api changed: resourceVersion %s → %s (err %v)", original.ResourceVersion, untouched.ResourceVersion, err)
+	}
+	// The suffix sticks: re-planning the same file changes nothing.
+	again, err := svc.PlanBlueprint(ctx, b.ID, "tea-a")
+	if err != nil || again.PlanningOutcome != PlanningNoChanges {
+		t.Fatalf("re-plan = %+v err=%v, want no_changes", again, err)
+	}
+}
+
 func TestBlueprintOnboardingFailedPlanCannotBeApproved(t *testing.T) {
 	svc, st, ctx := newOnboardingService(t, onboardingManifest)
 	res, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "stack", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}})
@@ -240,11 +301,11 @@ func TestBlueprintOnboardingRefusals(t *testing.T) {
 	if _, err := blind.CreatePlannedBlueprint(blindCtx, RenderCreateBlueprintRequest{Name: "blind", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/blind"}}); err == nil || coded(t, err) != "BLUEPRINT_PLAN_UNAVAILABLE" {
 		t.Fatalf("plan without current state: err = %v", err)
 	}
-	createNew := "create_new"
+	bogus := "replace"
 	_, err = svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: "fresh", OwnerID: "tea-a",
-		Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}, ExistingResources: &createNew})
-	if err == nil || coded(t, err) != "BLUEPRINT_EXISTING_RESOURCES_UNSUPPORTED" {
-		t.Fatalf("create_new: err = %v", err)
+		Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}, ExistingResources: &bogus})
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("existingResources outside adopt|create_new: err = %v", err)
 	}
 	for _, req := range []RenderCreateBlueprintRequest{
 		{OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}},
@@ -304,4 +365,22 @@ services:
 	if code != http.StatusCreated || legacy["status"] == "created" {
 		t.Fatalf("legacy create = %d %v", code, legacy)
 	}
+}
+
+// appKey finds the App the Blueprint named service in svc's fake cluster.
+func appKey(t *testing.T, svc *Service, service string) client.ObjectKey {
+	t.Helper()
+	var apps appv1alpha1.AppList
+	if err := svc.Client.List(context.Background(), &apps); err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, a := range apps.Items {
+		if a.Name == service || a.Name == core.CRName("tea-a", service) {
+			return client.ObjectKeyFromObject(&a)
+		}
+		names = append(names, a.Namespace+"/"+a.Name)
+	}
+	t.Fatalf("no App for service %q among %v", service, names)
+	return client.ObjectKey{}
 }

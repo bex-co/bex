@@ -158,30 +158,9 @@ func NormalizeBlueprintIR(source *BlueprintSource) (BlueprintIR, []BlueprintSour
 	}
 	ir := BlueprintIR{}
 	var problems []BlueprintSourceProblem
-	normalizeBlueprintResourceLists(&ir, &problems, source, root, nil, "", "", false)
-
-	if ungrouped, ok := root["ungrouped"].(map[string]any); ok {
-		normalizeBlueprintResourceLists(&ir, &problems, source, ungrouped, []string{"ungrouped"}, "", "", true)
-	}
-	if projects, ok := root["projects"].([]any); ok {
-		for projectIndex, rawProject := range projects {
-			project, ok := rawProject.(map[string]any)
-			if !ok {
-				continue
-			}
-			projectName, _ := project["name"].(string)
-			environments, _ := project["environments"].([]any)
-			for environmentIndex, rawEnvironment := range environments {
-				environment, ok := rawEnvironment.(map[string]any)
-				if !ok {
-					continue
-				}
-				environmentName, _ := environment["name"].(string)
-				path := []string{"projects", fmt.Sprintf("%d", projectIndex), "environments", fmt.Sprintf("%d", environmentIndex)}
-				normalizeBlueprintResourceLists(&ir, &problems, source, environment, path, projectName, environmentName, false)
-			}
-		}
-	}
+	forEachBlueprintContainer(root, func(c blueprintContainer) {
+		normalizeBlueprintResourceLists(&ir, &problems, source, c.value, c.path, c.project, c.environment, c.ungrouped)
+	})
 
 	seen := map[BlueprintResourceKind]map[string]BlueprintResourceIR{}
 	for _, resource := range ir.Resources {
@@ -212,26 +191,57 @@ func NormalizeBlueprintIR(source *BlueprintSource) (BlueprintIR, []BlueprintSour
 // source locations while returning the normalized resource view required by
 // every downstream adapter.
 func CompileBlueprintIR(manifest string) (*BlueprintSource, BlueprintIR, []BlueprintSourceProblem) {
-	source, problems := CompileBlueprintSource(manifest)
-	if len(problems) > 0 {
-		return source, BlueprintIR{}, problems
+	return compileBlueprintIRFor(manifest, "")
+}
+
+// blueprintContainer is one object that declares resource lists: the root,
+// ungrouped, or a projects[].environments[] entry.
+type blueprintContainer struct {
+	value                map[string]any
+	path                 []string
+	project, environment string
+	ungrouped            bool
+}
+
+// forEachBlueprintContainer visits every container in root, in document order.
+func forEachBlueprintContainer(root map[string]any, visit func(blueprintContainer)) {
+	visit(blueprintContainer{value: root})
+	if ungrouped, ok := root["ungrouped"].(map[string]any); ok {
+		visit(blueprintContainer{value: ungrouped, path: []string{"ungrouped"}, ungrouped: true})
 	}
-	ir, problems := NormalizeBlueprintIR(source)
-	if len(problems) > 0 {
-		return source, BlueprintIR{}, problems
+	projects, _ := root["projects"].([]any)
+	for projectIndex, rawProject := range projects {
+		project, ok := rawProject.(map[string]any)
+		if !ok {
+			continue
+		}
+		projectName, _ := project["name"].(string)
+		environments, _ := project["environments"].([]any)
+		for environmentIndex, rawEnvironment := range environments {
+			environment, ok := rawEnvironment.(map[string]any)
+			if !ok {
+				continue
+			}
+			environmentName, _ := environment["name"].(string)
+			visit(blueprintContainer{value: environment, project: projectName, environment: environmentName,
+				path: []string{"projects", fmt.Sprintf("%d", projectIndex), "environments", fmt.Sprintf("%d", environmentIndex)}})
+		}
 	}
-	return source, ir, nil
+}
+
+// blueprintResourceDeclarations are the fields that declare resources in a
+// container; Key Value instances are services entries.
+var blueprintResourceDeclarations = []struct {
+	Field string
+	Kind  BlueprintResourceKind
+}{
+	{Field: "services", Kind: BlueprintResourceService},
+	{Field: "databases", Kind: BlueprintResourcePostgres},
+	{Field: "envVarGroups", Kind: BlueprintResourceEnvVarGroup},
 }
 
 func normalizeBlueprintResourceLists(ir *BlueprintIR, problems *[]BlueprintSourceProblem, source *BlueprintSource, container map[string]any, basePath []string, project, environment string, ungrouped bool) {
-	for _, declaration := range []struct {
-		Field string
-		Kind  BlueprintResourceKind
-	}{
-		{Field: "services", Kind: BlueprintResourceService},
-		{Field: "databases", Kind: BlueprintResourcePostgres},
-		{Field: "envVarGroups", Kind: BlueprintResourceEnvVarGroup},
-	} {
+	for _, declaration := range blueprintResourceDeclarations {
 		entries, _ := container[declaration.Field].([]any)
 		for index, rawEntry := range entries {
 			entry, ok := rawEntry.(map[string]any)
