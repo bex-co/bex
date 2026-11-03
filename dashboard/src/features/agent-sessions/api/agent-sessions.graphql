@@ -201,9 +201,26 @@ query AgentSessionToolOutput($id: String!, $turn: Int!, $toolCallId: String!) {
 query AgentAttachment($id: String!) {
   agentAttachment(id: $id) {
     id
+    sessionId
+    direction
     name
     mediaType
     size
     downloadUrl
+  }
+}
+
+# A session's files, inputs and agent outputs, oldest first, one keyset page
+# at a time (ADR095 D10 Files sheet). The cursor is the previous page's last
+# id. No downloadUrl: a click signs a fresh one (AgentAttachment).
+query AgentSessionAttachments($id: String!, $cursor: String, $limit: Int) {
+  agentSessionAttachments(id: $id, cursor: $cursor, limit: $limit) {
+    id
+    direction
+    turn
+    name
+    mediaType
+    size
+    createdAt
   }
 }

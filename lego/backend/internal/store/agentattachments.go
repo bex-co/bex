@@ -133,6 +133,11 @@ func (s *PGStore) BeginAgentAttachment(ctx context.Context, in AgentAttachment) 
 		var session, turn any
 		if in.SessionID != "" {
 			session, turn = in.SessionID, in.Turn
+			// Take the session lock before the INSERT, so concurrent shares
+			// queue here and each counts the others' committed rows.
+			if err := lockAgentSession(ctx, tx, in.SessionID); err != nil {
+				return err
+			}
 		}
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO agent_session_attachments
@@ -330,6 +335,11 @@ func isAgentAttachmentRefusal(err error) bool {
 	return errors.As(err, &invalid) || errors.Is(err, ErrAgentSessionAttachmentQuota) || errors.Is(err, ErrUnboundAttachmentQuota)
 }
 
+// enforceAgentAttachmentQuota counts the session's live files. The caller must
+// already hold the session row (lockAgentSession, the turn's FOR UPDATE, or the
+// session's own uncommitted INSERT): concurrent writers — a turn binding
+// inputs, the agent sharing outputs — would otherwise each count only their own
+// rows under READ COMMITTED and together pass the cap.
 func enforceAgentAttachmentQuota(ctx context.Context, tx pgx.Tx, sessionID string) error {
 	var count int
 	var bytes int64
@@ -342,4 +352,13 @@ func enforceAgentAttachmentQuota(ctx context.Context, tx pgx.Tx, sessionID strin
 		return ErrAgentSessionAttachmentQuota
 	}
 	return nil
+}
+
+// lockAgentSession serializes attachment quota checks on one session. FOR NO
+// KEY UPDATE conflicts with itself and with the turn's FOR UPDATE, so quota
+// writers queue, but not with the KEY SHARE lock the attachment row's foreign
+// key takes — the writer's own INSERT never waits on its own lock.
+func lockAgentSession(ctx context.Context, tx pgx.Tx, sessionID string) error {
+	var id string
+	return tx.QueryRow(ctx, `SELECT id FROM agent_sessions WHERE id=$1 FOR NO KEY UPDATE`, sessionID).Scan(&id)
 }

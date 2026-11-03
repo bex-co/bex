@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
+  sharedFileIdFrom,
   isInlineImage,
   turnAttachmentsFrom,
   uploadAttachment,
@@ -192,5 +193,41 @@ describe("uploadAttachment", () => {
     });
     controller.abort();
     await expect(pending).rejects.toMatchObject({ name: "AbortError" });
+  });
+});
+
+describe("sharedFileIdFrom", () => {
+  const file = {
+    attachmentId: "att-abc1",
+    name: "r.csv",
+    mediaType: "text/csv",
+    size: 9,
+  };
+
+  it("reads the id from every shape an ACP adapter relays", () => {
+    for (const output of [
+      file,
+      JSON.stringify(file),
+      [{ type: "text", text: JSON.stringify(file) }],
+      { content: [{ type: "text", text: JSON.stringify(file) }] },
+      { structuredContent: file, content: [] },
+    ]) {
+      expect(sharedFileIdFrom(output)).toBe("att-abc1");
+    }
+  });
+
+  it("ignores errors, other ids and plain text", () => {
+    for (const output of [
+      { error: { code: "too_large", message: "x" } },
+      { attachmentId: "srv-abc", name: "x" },
+      { attachmentId: "att-ABC", name: "x" },
+      "not json",
+      '{"attachmentId": broken',
+      null,
+      undefined,
+      42,
+    ]) {
+      expect(sharedFileIdFrom(output)).toBeUndefined();
+    }
   });
 });

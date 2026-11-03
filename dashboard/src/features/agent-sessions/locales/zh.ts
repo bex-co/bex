@@ -872,6 +872,58 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "拖放文件以附加",
     description: "Overlay shown while dragging files over a composer",
   },
+  "agentSessions.sharedFileLabel": {
+    message: "分享了一个文件",
+    description: "Label above a file the agent shared with share_file",
+  },
+  "agentSessions.filesButton": {
+    message: "文件",
+    description: "Session header button that opens the session files",
+  },
+  "agentSessions.filesTitle": {
+    message: "会话文件",
+    description: "Title of the session files sheet",
+  },
+  "agentSessions.filesDescription": {
+    message: "你在本会话中附加的文件，以及代理分享的文件。",
+    description: "Description under the session files sheet title",
+  },
+  "agentSessions.filesEmpty": {
+    message: "还没有文件。可以在消息中附加文件，或让代理分享文件。",
+    description: "Empty state of the session files sheet",
+  },
+  "agentSessions.filesError": {
+    message: "无法加载会话文件。",
+    description: "Error state of the session files sheet",
+  },
+  "agentSessions.filesColumnName": {
+    message: "名称",
+    description: "Files table column: file name",
+  },
+  "agentSessions.filesColumnFrom": {
+    message: "来源",
+    description: "Files table column: who added the file",
+  },
+  "agentSessions.filesColumnTurn": {
+    message: "轮次",
+    description: "Files table column: turn number",
+  },
+  "agentSessions.filesColumnSize": {
+    message: "大小",
+    description: "Files table column: file size",
+  },
+  "agentSessions.filesFromInput": {
+    message: "你",
+    description: "Files table: a file the user attached",
+  },
+  "agentSessions.filesFromOutput": {
+    message: "代理",
+    description: "Files table: a file the agent shared",
+  },
+  "agentSessions.filesLoadMore": {
+    message: "加载更多",
+    description: "Files table: load the next page",
+  },
   "agentSessions.attachmentsBlockSend": {
     message: "请先移除上传失败的文件再发送",
     description: "Hint when failed attachment chips block sending",
@@ -896,15 +948,18 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.attachmentReady": {
     message: "已上传",
-    description: "Screen-reader status of an attachment chip once its upload landed",
+    description:
+      "Screen-reader status of an attachment chip once its upload landed",
   },
   "agentSessions.attachmentHttpError": {
     message: "上传失败（HTTP {status}）",
-    description: "Attachment chip error when the server answered without a message",
+    description:
+      "Attachment chip error when the server answered without a message",
   },
   "agentSessions.attachmentNetworkError": {
     message: "上传失败：网络错误",
-    description: "Attachment chip error when the upload could not reach the server",
+    description:
+      "Attachment chip error when the upload could not reach the server",
   },
   "agentSessions.attachmentsUploading": {
     message: "正在等待文件上传完成…",

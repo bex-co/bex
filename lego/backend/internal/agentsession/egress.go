@@ -145,7 +145,7 @@ func (g *EgressGranter) Grant(ctx context.Context, req ModelMintRequest) (respon
 		}
 		return EgressGrantResponse{}, err
 	}
-	if !currentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
+	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
 		return EgressGrantResponse{}, ErrForbidden
 	}
 	env, err := g.Environments.GetAgentEnvironment(ctx, req.Workspace)

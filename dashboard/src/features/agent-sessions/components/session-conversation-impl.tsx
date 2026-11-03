@@ -1,4 +1,5 @@
 import {
+  Fragment,
   memo,
   startTransition,
   useEffect,
@@ -8,6 +9,7 @@ import {
   type ReactNode,
 } from "react";
 import { useChat } from "@ai-sdk/react";
+import { useQuery } from "@apollo/client/react";
 import type { ChatTransport } from "ai";
 import { AlertCircle, ChevronDown, Loader2, User } from "lucide-react";
 import {
@@ -19,7 +21,9 @@ import { ConversationSkeleton } from "@/features/agent-sessions/components/conve
 import { MarkdownRenderer } from "@/common/components/markdown-renderer";
 import { cn } from "@/common/lib/utils/utils";
 import { TurnAttachments } from "@/features/agent-sessions/components/turn-attachments";
+import { AgentAttachmentDocument } from "@/graphql/definitions";
 import {
+  sharedFileIdFrom,
   turnAttachmentsFrom,
   type AttachmentView,
 } from "@/features/agent-sessions/lib/attachments";
@@ -644,6 +648,9 @@ type DisplayBlock =
       key: string;
       steps: ActivityStep[];
       sourceTimesMs: number[];
+      // Ids of files the group's share_file calls returned (ADR095 D6),
+      // shown after the group so a share never splits a run of tool calls.
+      sharedFileIds: string[];
     }
   // The driver's ADR047 D3 continuity annotation: which ladder rung primed a
   // fresh agent generation. Rendered as an honest system line so the UI never
@@ -672,6 +679,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
         key: `activity-${index}`,
         steps: [step],
         sourceTimesMs: [...times],
+        sharedFileIds: [],
       });
     }
   };
@@ -798,17 +806,26 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
     }
 
     if (isToolPart(part)) {
+      const info = toolPartInfo(part);
       pushStep(
         {
           kind: "tool",
           toolCallId: str(part.toolCallId) || undefined,
-          ...toolPartInfo(part),
+          ...info,
           turn,
           fullOutput: hasFullOutput(part),
         },
         index,
         part,
       );
+      const sharedId =
+        info.state === "output-available"
+          ? sharedFileIdFrom(info.output)
+          : undefined;
+      const group = blocks[blocks.length - 1];
+      if (sharedId && group?.type === "activity") {
+        group.sharedFileIds.push(sharedId);
+      }
       return;
     }
 
@@ -816,6 +833,51 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
   });
 
   return blocks;
+}
+
+// Files the agent shared (ADR095 D6). Each card is drawn from the stored
+// attachment, never from the tool output: a tool result contributes only an
+// id, and only an output of this very session is shown, so an agent cannot
+// dress up a card with a name, type or size of its choosing.
+function SharedFiles({ sessionId, ids }: { sessionId: string; ids: string[] }) {
+  return (
+    <div data-block="shared-files" className="min-w-0">
+      {ids.map((id) => (
+        <SharedFile key={id} sessionId={sessionId} id={id} />
+      ))}
+    </div>
+  );
+}
+
+function SharedFile({ sessionId, id }: { sessionId: string; id: string }) {
+  const { t } = useTranslations();
+  const { data } = useQuery(AgentAttachmentDocument, {
+    variables: { id },
+    fetchPolicy: "cache-first",
+    errorPolicy: "all",
+  });
+  const row = data?.agentAttachment;
+  if (!row || row.direction !== "output" || row.sessionId !== sessionId) {
+    return null;
+  }
+  return (
+    <>
+      <p className="text-muted-foreground text-xs">
+        {t("agentSessions.sharedFileLabel")}
+      </p>
+      <TurnAttachments
+        items={[
+          {
+            id: row.id,
+            name: row.name,
+            mediaType: row.mediaType,
+            size: row.size,
+          },
+        ]}
+        align="start"
+      />
+    </>
+  );
 }
 
 // The user's own avatar — Devin keeps an avatar on the right-aligned USER
@@ -919,13 +981,17 @@ const MessageRow = memo(function MessageRow({
             return <ContinuityNote key={block.key} rung={block.rung} />;
           }
           return (
-            <ActivityGroup
-              key={block.key}
-              sessionId={sessionId}
-              steps={block.steps}
-              sourceTimesMs={block.sourceTimesMs}
-              interrupted={interrupted}
-            />
+            <Fragment key={block.key}>
+              <ActivityGroup
+                sessionId={sessionId}
+                steps={block.steps}
+                sourceTimesMs={block.sourceTimesMs}
+                interrupted={interrupted}
+              />
+              {block.sharedFileIds.length > 0 ? (
+                <SharedFiles sessionId={sessionId} ids={block.sharedFileIds} />
+              ) : null}
+            </Fragment>
           );
         })}
       </div>

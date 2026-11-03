@@ -114,31 +114,44 @@ func readSignedRequest[Req any](w http.ResponseWriter, r *http.Request, secret [
 		http.Error(w, "invalid signature", http.StatusUnauthorized)
 		return req, false
 	}
-	if err := json.Unmarshal(body, &req); err != nil {
+	if err := json.Unmarshal(body, &req); err != nil || carriesVerbKind(body) {
 		http.Error(w, "invalid request", http.StatusBadRequest)
 		return req, false
 	}
 	// Single-use claim closes the replay window: a captured (timestamp,
 	// signature, body) presented again within ±skew carries the same body-bound
-	// nonce, so the second claim loses. Fail closed — an absent nonce (a
-	// pre-nonce caller) or a store error is rejected, never let through, so an
-	// on-path attacker cannot bypass by stripping the nonce. Only enforced when a
-	// claimer is wired (store present); nil is byte-identical to before.
-	if claimer != nil {
-		nonce := nonceOf(req)
-		if nonce == "" {
-			http.Error(w, "invalid signature", http.StatusUnauthorized)
-			return req, false
-		}
-		claimCtx, cancel := context.WithTimeout(r.Context(), 2*time.Second)
-		claimed, claimErr := claimer.ClaimShellNonce(claimCtx, "agent-mint:"+nonce, now.Add(2*mintClockSkew))
-		cancel()
-		if claimErr != nil || !claimed {
-			http.Error(w, "invalid signature", http.StatusUnauthorized)
-			return req, false
-		}
+	// nonce, so the second claim loses. Only enforced when a claimer is wired
+	// (store present); nil is byte-identical to before.
+	if claimer != nil && !claimNonce(r.Context(), claimer, nonceOf(req), now) {
+		http.Error(w, "invalid signature", http.StatusUnauthorized)
+		return req, false
 	}
 	return req, true
+}
+
+// carriesVerbKind reports a body naming a domain-separated verb ("kind", as the
+// ADR095 share envelope does). The original verbs carry no kind, so a request
+// meant for another verb is refused here even before its own MAC domain fails.
+func carriesVerbKind(body []byte) bool {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(body, &fields) != nil {
+		return false
+	}
+	_, ok := fields["kind"]
+	return ok
+}
+
+// claimNonce durably claims a request's single-use nonce. It fails closed: an
+// absent nonce (a pre-nonce caller) or a store error is refused, so an on-path
+// attacker cannot bypass by stripping the nonce.
+func claimNonce(ctx context.Context, claimer NonceClaimer, nonce string, now time.Time) bool {
+	if nonce == "" {
+		return false
+	}
+	claimCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
+	defer cancel()
+	claimed, err := claimer.ClaimShellNonce(claimCtx, "agent-mint:"+nonce, now.Add(2*mintClockSkew))
+	return err == nil && claimed
 }
 
 // postSignedMint is the shared client half: sign the request, POST it, and
@@ -176,6 +189,14 @@ func postSignedMint[Req, Resp any](ctx context.Context, url string, secret []byt
 	return out, nil
 }
 
+// signHeaders sets the gateway HMAC over signed (the exact bytes the verb's
+// verifier recomputes) on an outgoing internal request.
+func signHeaders(header http.Header, secret, signed []byte, now time.Time) {
+	timestamp, signature := Sign(secret, signed, now)
+	header.Set(TimestampHeader, timestamp)
+	header.Set(SignatureHeader, signature)
+}
+
 // signedPost marshals req, signs it with the shared gateway HMAC, and POSTs it.
 // The caller owns the response body.
 func signedPost(ctx context.Context, url string, secret []byte, now time.Time, httpClient *http.Client, req any) (*http.Response, error) {
@@ -187,10 +208,8 @@ func signedPost(ctx context.Context, url string, secret []byte, now time.Time, h
 	if err != nil {
 		return nil, err
 	}
-	timestamp, signature := Sign(secret, body, now)
 	httpReq.Header.Set("Content-Type", "application/json")
-	httpReq.Header.Set(TimestampHeader, timestamp)
-	httpReq.Header.Set(SignatureHeader, signature)
+	signHeaders(httpReq.Header, secret, body, now)
 	if httpClient == nil {
 		httpClient = &http.Client{Timeout: 30 * time.Second}
 	}

@@ -935,6 +935,59 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Drop files to attach",
     description: "Overlay shown while dragging files over a composer",
   },
+  "agentSessions.sharedFileLabel": {
+    message: "Shared a file",
+    description: "Label above a file the agent shared with share_file",
+  },
+  "agentSessions.filesButton": {
+    message: "Files",
+    description: "Session header button that opens the session files",
+  },
+  "agentSessions.filesTitle": {
+    message: "Session files",
+    description: "Title of the session files sheet",
+  },
+  "agentSessions.filesDescription": {
+    message: "Files you attached and files the agent shared in this session.",
+    description: "Description under the session files sheet title",
+  },
+  "agentSessions.filesEmpty": {
+    message:
+      "No files yet. Attach files to a message, or ask the agent to share one.",
+    description: "Empty state of the session files sheet",
+  },
+  "agentSessions.filesError": {
+    message: "Could not load the session's files.",
+    description: "Error state of the session files sheet",
+  },
+  "agentSessions.filesColumnName": {
+    message: "Name",
+    description: "Files table column: file name",
+  },
+  "agentSessions.filesColumnFrom": {
+    message: "From",
+    description: "Files table column: who added the file",
+  },
+  "agentSessions.filesColumnTurn": {
+    message: "Turn",
+    description: "Files table column: turn number",
+  },
+  "agentSessions.filesColumnSize": {
+    message: "Size",
+    description: "Files table column: file size",
+  },
+  "agentSessions.filesFromInput": {
+    message: "You",
+    description: "Files table: a file the user attached",
+  },
+  "agentSessions.filesFromOutput": {
+    message: "Agent",
+    description: "Files table: a file the agent shared",
+  },
+  "agentSessions.filesLoadMore": {
+    message: "Load more",
+    description: "Files table: load the next page",
+  },
   "agentSessions.attachmentsBlockSend": {
     message: "Remove the files that failed to upload to send",
     description: "Hint when failed attachment chips block sending",
@@ -959,15 +1012,18 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.attachmentReady": {
     message: "Uploaded",
-    description: "Screen-reader status of an attachment chip once its upload landed",
+    description:
+      "Screen-reader status of an attachment chip once its upload landed",
   },
   "agentSessions.attachmentHttpError": {
     message: "Upload failed (HTTP {status})",
-    description: "Attachment chip error when the server answered without a message",
+    description:
+      "Attachment chip error when the server answered without a message",
   },
   "agentSessions.attachmentNetworkError": {
     message: "Upload failed: network error",
-    description: "Attachment chip error when the upload could not reach the server",
+    description:
+      "Attachment chip error when the upload could not reach the server",
   },
   "agentSessions.attachmentsUploading": {
     message: "Waiting for files to finish uploading…",

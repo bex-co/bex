@@ -274,7 +274,42 @@ test("repo sessions register the bex stdio MCP server on session/new and session
     ]);
   }
   assert.deepEqual(
-    bexMcpServers({ deliver: false, repoUrl: "", prRecordPath: "/x" }),
+    bexMcpServers({
+      deliver: false,
+      repoUrl: "",
+      prRecordPath: "/x",
+      shareUrl: "",
+    }),
     [],
+  );
+  // A repo-less session still gets the server when it can share files, with
+  // only the share endpoint.
+  const [scratch] = bexMcpServers({
+    deliver: false,
+    repoUrl: "",
+    prRecordPath: "/x",
+    shareUrl: "http://gw:8082/agent-attachments/bnM/c2lk",
+  });
+  assert.deepEqual(scratch.env, [
+    {
+      name: "BEX_SHARE_ENDPOINT",
+      value: "http://gw:8082/agent-attachments/bnM/c2lk",
+    },
+  ]);
+});
+
+test("the overlay explains share_file only when the session can share", () => {
+  const base = {
+    cwd: "/workspace",
+    deliver: false,
+    repoUrl: "",
+    branch: "",
+    baseBranch: "",
+    repository: "",
+  };
+  assert.doesNotMatch(platformOverlay(base), /share_file/);
+  assert.match(
+    platformOverlay({ ...base, shareUrl: "http://gw/agent-attachments/a/b" }),
+    /## Sharing files[\s\S]*`share_file`/,
   );
 });
