@@ -203,6 +203,9 @@ func (q DatastoreMetricQuery) normalized(now time.Time) DatastoreMetricQuery {
 // appv1alpha1.DiskPVCName is the same function the operator creates the claim
 // with, so a long app name's truncated-plus-digest claim is matched rather than
 // silently missed. QuoteMeta still applies: the result is going into a regex.
+// ServiceDiskPVCPattern matches a service's disk volume by its App name.
+func ServiceDiskPVCPattern(appName string) string { return pvcPattern(DatastoreService, appName) }
+
 func pvcPattern(kind, resource string) string {
 	name := regexp.QuoteMeta(resource)
 	switch kind {
@@ -218,7 +221,10 @@ func pvcPattern(kind, resource string) string {
 // bytesPerGiB converts a logical StorageGB — which the operator provisions as a
 // binary "<n>Gi" volume (database_controller.go / keyvalue_controller.go) — into
 // bytes, so the reported capacity matches the volume the plan actually sizes.
-const bytesPerGiB = 1 << 30
+const bytesPerGiB = BytesPerGiB
+
+// BytesPerGiB converts a logical size in GB, provisioned as "<n>Gi", to bytes.
+const BytesPerGiB = 1 << 30
 
 // logicalDiskCapacitySeries builds the config-shaped disk_capacity series from a
 // datastore's logical (billed/autoscaled) storage size — the value the user is

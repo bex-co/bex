@@ -23,6 +23,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // graphql.go is the GraphQL fragment: one read query, serviceEvents(serviceId, …),
@@ -190,6 +191,20 @@ var eventDetailsGQLType = graphql.NewObject(graphql.ObjectConfig{
 		})},
 		// postgres_cluster_leader_changed (w2/m171): the new primary, Render's leaderId.
 		"leaderId": gqlutil.StrField(func(d Details) any { return d.LeaderID }),
+		// service_disk_usage_high / _recovered (w2/m255): Render's disk details.
+		"diskId": gqlutil.StrField(func(d Details) any { return diskUsageField(d, func(u store.DiskUsageDetails) any { return u.DiskID }) }),
+		"diskName": gqlutil.StrField(func(d Details) any {
+			return diskUsageField(d, func(u store.DiskUsageDetails) any { return u.DiskName })
+		}),
+		"mountPath": gqlutil.StrField(func(d Details) any {
+			return diskUsageField(d, func(u store.DiskUsageDetails) any { return u.MountPath })
+		}),
+		"usagePercent": gqlutil.FloatField(func(d Details) any {
+			return diskUsageField(d, func(u store.DiskUsageDetails) any { return u.UsagePercent })
+		}),
+		"thresholdPercent": gqlutil.FloatField(func(d Details) any {
+			return diskUsageField(d, func(u store.DiskUsageDetails) any { return u.ThresholdPercent })
+		}),
 		"trigger": &graphql.Field{Type: triggerGQLType, Resolve: gqlutil.Field(func(d Details) any {
 			if d.Trigger == nil {
 				return nil
@@ -285,4 +300,12 @@ func filterFromArgs(args map[string]any) Filter {
 	}
 	limit, _ := args["limit"].(int)
 	return FilterOf([]string{str("type")}, str("startTime"), str("endTime"), str("cursor"), limit)
+}
+
+// diskUsageField reads one disk-usage detail, nil when the event has none.
+func diskUsageField(d Details, f func(store.DiskUsageDetails) any) any {
+	if d.DiskUsage == nil {
+		return nil
+	}
+	return f(*d.DiskUsage)
 }

@@ -104,6 +104,9 @@ type ServiceEventRow struct {
 	// End is the structured cause of a failed rollout (w8/m146); the ended
 	// phase of a deploy row only, attached after the page is read.
 	End DeployEnd
+	// DiskUsage is a disk-usage fact's details (w2/m255), attached after the
+	// page is read; nil on every other row.
+	DiskUsage *DiskUsageDetails
 	// Deployed image URI; empty for non-deploy rows. (w1/m47)
 	Image string
 	// Commit ID (git revision); empty for non-deploy rows. (w1/m47)
@@ -505,7 +508,10 @@ func (s *PGStore) ListServiceEvents(ctx context.Context, appID, ownerWorkspace s
 	if err := rows.Err(); err != nil {
 		return nil, err
 	}
-	return out, s.attachDeployEnds(ctx, out)
+	if err := s.attachDeployEnds(ctx, out); err != nil {
+		return nil, err
+	}
+	return out, s.attachDiskUsage(ctx, out)
 }
 
 // attachDeployEnds fills End on a page's ended deploy rows from their deploy
@@ -691,6 +697,9 @@ func (s *PGStore) GetServiceEvent(ctx context.Context, workspaceID, eventID stri
 	}
 	one := []ServiceEventRow{out.Event}
 	if err := s.attachDeployEnds(ctx, one); err != nil {
+		return ServiceEventLookup{}, err
+	}
+	if err := s.attachDiskUsage(ctx, one); err != nil {
 		return ServiceEventLookup{}, err
 	}
 	out.Event = one[0]

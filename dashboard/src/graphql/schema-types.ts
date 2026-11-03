@@ -85,6 +85,7 @@ export type AgentSession = {
   failureReasonCode: Maybe<Scalars['String']['output']>;
   headSha: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
+  outcome: Maybe<AgentSessionOutcome>;
   ownerId: Scalars['String']['output'];
   phase: Scalars['String']['output'];
   prNumber: Maybe<Scalars['Int']['output']>;
@@ -92,7 +93,9 @@ export type AgentSession = {
   repo: Scalars['String']['output'];
   sandboxId: Maybe<Scalars['String']['output']>;
   sshAddress: Maybe<Scalars['String']['output']>;
+  state: Scalars['String']['output'];
   status: Scalars['String']['output'];
+  steerable: Scalars['Boolean']['output'];
   streamUrl: Maybe<Scalars['String']['output']>;
   ticket: Maybe<Scalars['String']['output']>;
   turns: Maybe<Scalars['Int']['output']>;
@@ -133,10 +136,28 @@ export type AgentSessionGitHubReadiness = {
   installUrl: Maybe<Scalars['String']['output']>;
 };
 
+export type AgentSessionOutcome = {
+  __typename: 'AgentSessionOutcome';
+  deliveryNote: Maybe<Scalars['String']['output']>;
+  failureReasonCode: Maybe<Scalars['String']['output']>;
+  pullRequest: Maybe<AgentSessionPullRequest>;
+  state: Scalars['String']['output'];
+  steerable: Scalars['Boolean']['output'];
+  summary: Maybe<Scalars['String']['output']>;
+  turn: Maybe<Scalars['Int']['output']>;
+};
+
 export type AgentSessionProfile = {
   __typename: 'AgentSessionProfile';
   id: Scalars['String']['output'];
   label: Scalars['String']['output'];
+};
+
+export type AgentSessionPullRequest = {
+  __typename: 'AgentSessionPullRequest';
+  headSha: Maybe<Scalars['String']['output']>;
+  number: Maybe<Scalars['Int']['output']>;
+  url: Scalars['String']['output'];
 };
 
 export type AgentSessionToolOutput = {
@@ -3901,6 +3922,8 @@ export type ServiceEventDetails = {
   cronJobRunId: Maybe<Scalars['String']['output']>;
   deployId: Maybe<Scalars['String']['output']>;
   deployStatus: Maybe<Scalars['String']['output']>;
+  diskId: Maybe<Scalars['String']['output']>;
+  diskName: Maybe<Scalars['String']['output']>;
   environmentFrom: Maybe<Scalars['String']['output']>;
   environmentTo: Maybe<Scalars['String']['output']>;
   exitCode: Maybe<Scalars['Int']['output']>;
@@ -3913,6 +3936,7 @@ export type ServiceEventDetails = {
   instanceCountTo: Maybe<Scalars['Int']['output']>;
   instanceId: Maybe<Scalars['String']['output']>;
   leaderId: Maybe<Scalars['String']['output']>;
+  mountPath: Maybe<Scalars['String']['output']>;
   planFrom: Maybe<Scalars['String']['output']>;
   planTo: Maybe<Scalars['String']['output']>;
   preDeployStatus: Maybe<Scalars['String']['output']>;
@@ -3925,9 +3949,11 @@ export type ServiceEventDetails = {
   startedAt: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
   suspendedByUser: Maybe<EventUser>;
+  thresholdPercent: Maybe<Scalars['Float']['output']>;
   toCount: Maybe<Scalars['Int']['output']>;
   trigger: Maybe<DeployTrigger>;
   triggeredByUser: Maybe<Scalars['String']['output']>;
+  usagePercent: Maybe<Scalars['Float']['output']>;
 };
 
 export type ServiceInstance = {

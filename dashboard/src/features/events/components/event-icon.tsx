@@ -46,6 +46,8 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   custom_domain_verified: Globe,
   service_moved: FolderInput,
   disk_created: HardDrive,
+  service_disk_usage_high: HardDrive,
+  service_disk_usage_recovered: HardDrive,
   disk_updated: HardDrive,
   disk_deleted: Unplug,
   disk_restored: History,

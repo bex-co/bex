@@ -4293,6 +4293,21 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Instance failed",
     description: "Service activity type: running instance became unhealthy",
   },
+  "services.eventsTypeDiskUsageHigh": {
+    message: "Disk usage high",
+    description:
+      "Service activity type: a service disk is over 80% full (service_disk_usage_high)",
+  },
+  "services.eventsTypeDiskUsageRecovered": {
+    message: "Disk usage recovered",
+    description:
+      "Service activity type: a service disk dropped back below 80% (service_disk_usage_recovered)",
+  },
+  "services.eventsDiskUsage": {
+    message:
+      "Disk {disk} at {mountPath}: {usage}% used (threshold {threshold}%)",
+    description: "Disk usage event detail line",
+  },
   "services.eventsTypeHardwareFailure": {
     message: "Hardware failure",
     description:

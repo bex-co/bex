@@ -276,3 +276,38 @@ func TestCrashLoopNotifierEnqueuesTheSuspension(t *testing.T) {
 		t.Errorf("policy none: err=%v items=%+v", err, rec.items)
 	}
 }
+
+// w2/m255: a disk over 80% is a failure notification; back below 80% is sent
+// only to "all notifications", as Render documents.
+func TestDiskUsageNotifierLevels(t *testing.T) {
+	d := store.DiskUsageDetails{DiskID: "dsk-1", DiskName: "data", MountPath: "/data", UsagePercent: 85.5, ThresholdPercent: 80}
+	for _, tc := range []struct {
+		policy    string
+		high      bool
+		wantItems int
+	}{
+		{appv1alpha1.NotificationsToSendDefault, true, 1},
+		{appv1alpha1.NotificationsToSendDefault, false, 0},
+		{appv1alpha1.NotificationsToSendFailure, false, 0},
+		{appv1alpha1.NotificationsToSendAll, false, 2},
+		{appv1alpha1.NotificationsToSendNone, true, 0},
+	} {
+		rec := &enqueueRecorder{recipients: []store.AlertEmailRecipient{
+			{TenantID: "tea-a", Subject: "alice", DeployFailed: true},
+			{TenantID: "tea-a", Subject: "bob", DeployFailed: false},
+		}}
+		policy := tc.policy
+		n := DiskUsageNotifier{Store: rec, Policy: func(context.Context, string, string) (string, error) { return policy, nil }}
+		if err := n.NotifyDiskUsage(t.Context(), "tea-a", "srv-1", "db", tc.high, d, "disk_usage:dsk-1:x:1", time.Now()); err != nil {
+			t.Fatal(err)
+		}
+		if len(rec.items) != tc.wantItems {
+			t.Errorf("policy %s high=%v: %d items, want %d", tc.policy, tc.high, len(rec.items), tc.wantItems)
+		}
+	}
+	subject, msg := alertEmail(store.AlertEmailStream{Event: store.AlertEmailDiskUsageHigh, ResourceName: "db",
+		Detail: diskUsageDetail(d), Occurrences: []time.Time{time.Now()}, PendingCount: 1}, "")
+	if subject != "Disk usage high: db" || !strings.Contains(msg.Text(), `"data" mounted at /data is 85.5% full (threshold 80%)`) {
+		t.Errorf("mail = %q / %q", subject, msg.Text())
+	}
+}
