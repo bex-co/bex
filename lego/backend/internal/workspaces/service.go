@@ -1414,6 +1414,7 @@ func (s *Service) ResourceLimits(ctx context.Context, ownerID string) (ResourceL
 	if listErr := s.ListByTenant(ctx, &apps, tenantID); listErr != nil {
 		return ResourceLimitsView{}, fmt.Errorf("counting services: %w", listErr)
 	}
+	apps.Items = core.ServiceApps(apps.Items)
 	var dbs appv1alpha1.DatabaseList
 	if listErr := s.ListByTenant(ctx, &dbs, tenantID); listErr != nil {
 		return ResourceLimitsView{}, fmt.Errorf("counting databases: %w", listErr)

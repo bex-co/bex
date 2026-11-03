@@ -1438,7 +1438,7 @@ func (s *Service) List(ctx context.Context, ownerID string) ([]AppView, error) {
 	if err := s.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
 	}
-	return s.readViews(ctx, list.Items)
+	return s.readViews(ctx, core.ServiceApps(list.Items))
 }
 
 // InstanceType is the display-shaped projection of one lego/types/tiers
