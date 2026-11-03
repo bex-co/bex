@@ -12,7 +12,8 @@ export function eventIconClass(
     factStatus === "failed" ||
     type === "image_pull_failed" ||
     type === "server_failed" ||
-    type === "server_hardware_failure"
+    type === "server_hardware_failure" ||
+    type === "service_disk_usage_high"
   ) {
     return "bg-destructive/10 text-destructive";
   }

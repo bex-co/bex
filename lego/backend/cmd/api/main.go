@@ -468,6 +468,9 @@ func main() {
 	// Crash-loop suspension (w2/m253): a service failing to start and become
 	// healthy for 24h is suspended (stuck_crashlooping) and its owners emailed.
 	go srv.CrashLoop.Run(ctx)
+	// Service disk usage (w2/m255): crossing 80% of a disk's size, and dropping
+	// back below, records Render's events and emails the workspace.
+	go srv.DiskUsageAlerts.Run(ctx)
 	// Durable Blueprint auto-sync worker (w8/m38): claims intents accepted at
 	// the signed git webhook. No-op unless Blueprints store is wired.
 	go srv.BlueprintAutoSync.Run(ctx)

@@ -129,6 +129,12 @@ type renderDetails struct {
 	Reason       any    `json:"reason,omitempty"`
 	// postgres_cluster_leader_changed: Render's leaderId, the new primary.
 	LeaderID string `json:"leaderId,omitempty"`
+	// service_disk_usage_high / _recovered (w2/m255): Render's disk details.
+	DiskID           string   `json:"diskId,omitempty"`
+	DiskName         string   `json:"diskName,omitempty"`
+	MountPath        string   `json:"mountPath,omitempty"`
+	UsagePercent     *float64 `json:"usagePercent,omitempty"`
+	ThresholdPercent *float64 `json:"thresholdPercent,omitempty"`
 }
 
 // cronRunReason is the reason object on Render's "Cron Job Run Ended" event.
@@ -279,6 +285,12 @@ func toRenderEvent(e Event) renderEvent {
 		}
 	case TypePostgresClusterLeaderChanged:
 		d.LeaderID = e.Details.LeaderID
+	case TypeServiceDiskUsageHigh, TypeServiceDiskUsageRecovered:
+		if u := e.Details.DiskUsage; u != nil {
+			d.DiskID, d.DiskName, d.MountPath = u.DiskID, u.DiskName, u.MountPath
+			usage, threshold := u.UsagePercent, u.ThresholdPercent
+			d.UsagePercent, d.ThresholdPercent = &usage, &threshold
+		}
 	}
 	return renderEvent{
 		ID:        e.ID,

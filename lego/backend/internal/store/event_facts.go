@@ -67,26 +67,28 @@ const (
 )
 
 var serviceEventFactTypes = map[ServiceEventFactType]bool{
-	EventFactImagePullFailed:       true,
-	EventFactServiceSuspended:      true,
-	EventFactServiceResumed:        true,
-	EventFactServiceHibernated:     true,
-	EventFactServiceWoken:          true,
-	EventFactServerFailed:          true,
-	EventFactServerHardwareFailure: true,
-	EventFactServerAvailable:       true,
-	EventFactBranchChanged:         true,
-	EventFactBranchDeleted:         true,
-	EventFactCommitIgnored:         true,
-	EventFactAutoscalingStarted:    true,
-	EventFactAutoscalingEnded:      true,
-	EventFactBuildStarted:          true,
-	EventFactBuildEnded:            true,
-	EventFactPreDeployStarted:      true,
-	EventFactPreDeployEnded:        true,
-	EventFactJobRunEnded:           true,
-	EventFactCronRunStarted:        true,
-	EventFactCronRunEnded:          true,
+	EventFactImagePullFailed:           true,
+	EventFactServiceSuspended:          true,
+	EventFactServiceResumed:            true,
+	EventFactServiceHibernated:         true,
+	EventFactServiceWoken:              true,
+	EventFactServerFailed:              true,
+	EventFactServerHardwareFailure:     true,
+	EventFactServerAvailable:           true,
+	EventFactBranchChanged:             true,
+	EventFactBranchDeleted:             true,
+	EventFactCommitIgnored:             true,
+	EventFactAutoscalingStarted:        true,
+	EventFactAutoscalingEnded:          true,
+	EventFactBuildStarted:              true,
+	EventFactBuildEnded:                true,
+	EventFactPreDeployStarted:          true,
+	EventFactPreDeployEnded:            true,
+	EventFactJobRunEnded:               true,
+	EventFactCronRunStarted:            true,
+	EventFactCronRunEnded:              true,
+	EventFactServiceDiskUsageHigh:      true,
+	EventFactServiceDiskUsageRecovered: true,
 }
 
 // Closed lifecycle-step outcomes for a *_ended fact's Status column — the same
@@ -164,6 +166,9 @@ type ServiceEventFact struct {
 	// and cron_job_run_ended.
 	ExitCode *int32
 	RunID    string
+	// DiskUsage is a service_disk_usage_high/_recovered fact's details
+	// (w2/m255); written only through RecordDiskUsageCrossing.
+	DiskUsage *DiskUsageDetails
 }
 
 // EventFactWriter is the narrow producer seam used by apps and webhook code.
@@ -189,7 +194,7 @@ func validateServiceEventFact(f ServiceEventFact) error {
 	if !terminal && f.Status != "" {
 		return fmt.Errorf("nonterminal service event fact %q cannot carry status", f.Type)
 	}
-	return nil
+	return validateDiskUsageDetails(f)
 }
 
 // InsertServiceEventFact appends a fact exactly once. A producer retry with the
@@ -197,6 +202,9 @@ func validateServiceEventFact(f ServiceEventFact) error {
 func (s *PGStore) InsertServiceEventFact(ctx context.Context, fact ServiceEventFact) (bool, error) {
 	if err := validateServiceEventFact(fact); err != nil {
 		return false, err
+	}
+	if fact.DiskUsage != nil {
+		return false, fmt.Errorf("disk usage facts are recorded with RecordDiskUsageCrossing: %w", ErrInvalid)
 	}
 	if fact.At.IsZero() {
 		fact.At = time.Now().UTC()
@@ -216,6 +224,9 @@ func (s *PGStore) InsertServiceEventFacts(ctx context.Context, facts []ServiceEv
 	for i := range facts {
 		if err := validateServiceEventFact(facts[i]); err != nil {
 			return err
+		}
+		if facts[i].DiskUsage != nil {
+			return fmt.Errorf("disk usage facts are recorded with RecordDiskUsageCrossing: %w", ErrInvalid)
 		}
 		if facts[i].At.IsZero() {
 			facts[i].At = time.Now().UTC()

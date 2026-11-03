@@ -56,6 +56,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/crashloop"
 	"github.com/bex-co/bex/lego/backend/internal/datastorelogs"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
+	"github.com/bex-co/bex/lego/backend/internal/diskusage"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
 	"github.com/bex-co/bex/lego/backend/internal/environments"
 	"github.com/bex-co/bex/lego/backend/internal/events"
@@ -135,25 +136,28 @@ type Server struct {
 	FreeHours *freehours.Sweeper
 	// CrashLoop suspends services that keep failing to start (w2/m253).
 	// main.go starts it with the serve context.
-	CrashLoop     *crashloop.Sweeper
-	KeyValue      *keyvalue.Service
-	Secrets       *secrets.Service
-	EnvGroups     *envgroups.Service
-	Workspaces    *workspaces.Service
-	Members       *members.Service
-	Billing       *billing.Service
-	Usage         *usage.Service
-	Deploys       *deploys.Service
-	Events        *events.Service
-	Audit         *audit.Service
-	GitHub        *github.Service
-	Notifications *notifications.Service
-	Projects      *projects.Service
-	Environments  *environments.Service
-	RegistryCreds *registrycreds.Service
-	Webhooks      *webhooks.Service
-	Jobs          *jobs.Service
-	CLITelemetry  *clitelemetry.Service
+	CrashLoop *crashloop.Sweeper
+	// DiskUsageAlerts watches service disks cross 80% of their size
+	// (w2/m255). main.go starts it with the serve context.
+	DiskUsageAlerts *diskusage.Sweeper
+	KeyValue        *keyvalue.Service
+	Secrets         *secrets.Service
+	EnvGroups       *envgroups.Service
+	Workspaces      *workspaces.Service
+	Members         *members.Service
+	Billing         *billing.Service
+	Usage           *usage.Service
+	Deploys         *deploys.Service
+	Events          *events.Service
+	Audit           *audit.Service
+	GitHub          *github.Service
+	Notifications   *notifications.Service
+	Projects        *projects.Service
+	Environments    *environments.Service
+	RegistryCreds   *registrycreds.Service
+	Webhooks        *webhooks.Service
+	Jobs            *jobs.Service
+	CLITelemetry    *clitelemetry.Service
 	// StripeWebhook is the signature-verifying public billing callback. It is
 	// nil unless BEX_STRIPE_WEBHOOK_SECRET is configured.
 	StripeWebhook http.Handler
@@ -1024,6 +1028,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},
 		FreeHours:          newFreeHours(appsSvc, d, notificationsSvc),
 		CrashLoop:          newCrashLoop(appsSvc, d),
+		DiskUsageAlerts:    newDiskUsage(appsSvc, d),
 		BlueprintAutoSync:  &apps.BlueprintAutoSyncWorker{Svc: appsSvc},
 		CheckedDeploys:     &apps.CheckedDeployWorker{Svc: appsSvc},
 		DomainVerification: &apps.DomainVerificationWorker{Svc: appsSvc},

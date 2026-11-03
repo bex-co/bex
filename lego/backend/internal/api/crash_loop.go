@@ -19,6 +19,7 @@ package api
 import (
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/crashloop"
+	"github.com/bex-co/bex/lego/backend/internal/diskusage"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 )
 
@@ -30,10 +31,25 @@ func newCrashLoop(appsSvc *apps.Service, d Deps) *crashloop.Sweeper {
 		window = crashloop.DefaultWindow
 	}
 	w := &crashloop.Sweeper{Apps: apps.CrashLoopWorker{Svc: appsSvc}, Window: window}
-	if alerts, ok := d.Store.(notifications.CrashLoopAlertStore); ok && appsSvc != nil && appsSvc.Base != nil {
+	if alerts, ok := d.Store.(notifications.ServiceAlertStore); ok && appsSvc != nil && appsSvc.Base != nil {
 		w.Notifier = notifications.CrashLoopNotifier{
 			Store: alerts, Policy: notifications.AppNotificationPolicy(appsSvc.Client), Window: window,
 		}
+	}
+	return w
+}
+
+// newDiskUsage wires the service-disk usage sweeper (w2/m255). It needs the
+// control-plane store (disks, state, facts) and the kubelet volume-stats
+// source; without either it does nothing.
+func newDiskUsage(appsSvc *apps.Service, d Deps) *diskusage.Sweeper {
+	st, ok := d.Store.(diskusage.Store)
+	if !ok || d.DiskUsage == nil || appsSvc == nil || appsSvc.Base == nil {
+		return nil
+	}
+	w := &diskusage.Sweeper{Apps: appsSvc.Client, Store: st, Usage: d.DiskUsage}
+	if alerts, ok := d.Store.(notifications.ServiceAlertStore); ok {
+		w.Notifier = notifications.DiskUsageNotifier{Store: alerts, Policy: notifications.AppNotificationPolicy(appsSvc.Client)}
 	}
 	return w
 }

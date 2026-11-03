@@ -52,6 +52,8 @@ export const SERVICE_EVENT_GROUPS: ServiceEventGroup[] = [
       "service_hibernated",
       "service_woken",
       "server_available",
+      "service_disk_usage_high",
+      "service_disk_usage_recovered",
     ],
   },
   {
@@ -138,6 +140,8 @@ const LABEL_KEYS: Record<string, string> = {
   service_hibernated: "services.eventsTypeServiceHibernated",
   service_woken: "services.eventsTypeServiceWoken",
   server_available: "services.eventsTypeServiceRecovered",
+  service_disk_usage_high: "services.eventsTypeDiskUsageHigh",
+  service_disk_usage_recovered: "services.eventsTypeDiskUsageRecovered",
   autoscaling_started: "services.eventsTypeAutoscalingStarted",
   autoscaling_ended: "services.eventsTypeAutoscalingEnded",
   autoscaling_config_changed: "services.eventsTypeAutoscalingChanged",

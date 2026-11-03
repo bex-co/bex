@@ -4192,6 +4192,20 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "实例失败",
     description: "Service activity type: running instance became unhealthy",
   },
+  "services.eventsTypeDiskUsageHigh": {
+    message: "磁盘用量过高",
+    description:
+      "Service activity type: a service disk is over 80% full (service_disk_usage_high)",
+  },
+  "services.eventsTypeDiskUsageRecovered": {
+    message: "磁盘用量已恢复",
+    description:
+      "Service activity type: a service disk dropped back below 80% (service_disk_usage_recovered)",
+  },
+  "services.eventsDiskUsage": {
+    message: "磁盘 {disk}（{mountPath}）：已用 {usage}%（阈值 {threshold}%）",
+    description: "Disk usage event detail line",
+  },
   "services.eventsTypeHardwareFailure": {
     message: "硬件故障",
     description:
