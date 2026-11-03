@@ -61,6 +61,8 @@ WINDOWS="
 ssh-edge-liveness.yml 12
 # w3/m174. Hourly; no history yet. Six missed hours must trip.
 alerting-heartbeat.yml 6
+# w6/m156. Hourly deploy latency watchdog; six missed hours must trip.
+deploy-latency.yml 6
 # Daily. Worst measured 34h24m (infra); one skipped day (~48h) must still trip.
 infra.yml 40
 ci-red-streak.yml 40
