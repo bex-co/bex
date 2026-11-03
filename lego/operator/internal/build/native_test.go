@@ -1210,3 +1210,30 @@ func TestNativeGoBuildsCurrentAndOldModules(t *testing.T) {
 		})
 	}
 }
+
+// w2/m254 t016: a build source carrier's native build needs no start command
+// (each linked service supplies its own) and bakes no CMD, while keeping the
+// runtime's environment; a service build still requires and bakes one.
+func TestBuildOnlyNativeBuildNeedsNoStartCommand(t *testing.T) {
+	o := nativeOptions()
+	o.StartCommand = ""
+	if err := validateNativeOptions(o); err == nil {
+		t.Fatal("a service's native build without a start command was accepted")
+	}
+	o.BuildOnly = true
+	if err := validateNativeOptions(o); err != nil {
+		t.Fatalf("a build source's native build: %v", err)
+	}
+	dockerfile := nativeDockerfile(o)
+	if strings.Contains(dockerfile, "\nCMD ") || !strings.Contains(dockerfile, "ENV PORT=10000") {
+		t.Fatalf("build-only Dockerfile must keep the runtime env and bake no CMD:\n%s", dockerfile)
+	}
+	o.BuildOnly, o.StartCommand = false, "npm start"
+	if dockerfile := nativeDockerfile(o); !strings.Contains(dockerfile, "\nCMD ") {
+		t.Fatalf("a service's Dockerfile lost its CMD:\n%s", dockerfile)
+	}
+	o.BuildOnly, o.BuildCommand = true, ""
+	if err := validateNativeOptions(o); err == nil {
+		t.Fatal("a build source's native build without a build command was accepted")
+	}
+}

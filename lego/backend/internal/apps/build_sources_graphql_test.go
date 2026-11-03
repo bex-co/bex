@@ -48,7 +48,7 @@ func TestBuildSourceGraphQLRoundTrip(t *testing.T) {
 		return res.Data.(map[string]any)
 	}
 
-	created := do(`mutation { createBuildSource(ownerId:"tea-a", name:"Mono", git:{repoUrl:"https://github.com/acme/mono", branch:"main", runtime:"node"}) {
+	created := do(`mutation { createBuildSource(ownerId:"tea-a", name:"Mono", git:{repoUrl:"https://github.com/acme/mono", branch:"main", runtime:"node", buildCommand:"npm ci"}) {
 		id name ownerId git { repoUrl branch runtime registryCredentialId } image { imageUrl } serviceLinks { id } } }`)["createBuildSource"].(map[string]any)
 	id, _ := created["id"].(string)
 	git, _ := created["git"].(map[string]any)
@@ -109,7 +109,7 @@ func TestBuildSourceMCPTools(t *testing.T) {
 	}
 
 	created, failed := call("create_build_source", map[string]any{"ownerId": "tea-a", "name": "Mono",
-		"git": map[string]any{"repoUrl": "https://github.com/acme/mono", "branch": "main", "runtime": "node"}})
+		"git": map[string]any{"repoUrl": "https://github.com/acme/mono", "branch": "main", "runtime": "node", "buildCommand": "npm ci"}})
 	id, _ := created["id"].(string)
 	if failed || !strings.HasPrefix(id, "bds-") {
 		t.Fatalf("create_build_source = %+v (error %v)", created, failed)
@@ -119,6 +119,10 @@ func TestBuildSourceMCPTools(t *testing.T) {
 	}
 	if got, failed := call("list_build_sources", map[string]any{"ownerId": "tea-a"}); failed || len(got["buildSources"].([]any)) != 1 {
 		t.Fatalf("list_build_sources = %+v (error %v)", got, failed)
+	}
+	if _, failed := call("create_build_source", map[string]any{"ownerId": "tea-a", "name": "NoBuild",
+		"git": map[string]any{"repoUrl": "https://github.com/acme/mono", "runtime": "node"}}); !failed {
+		t.Error("a native build source without a buildCommand was created; every build would fail")
 	}
 	if _, failed := call("create_build_source", map[string]any{"ownerId": "tea-a", "name": "Bad",
 		"git": map[string]any{"repoUrl": "https://github.com/acme/mono", "runtime": "cobol"}}); !failed {

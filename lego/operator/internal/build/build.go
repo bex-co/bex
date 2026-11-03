@@ -352,6 +352,10 @@ type Options struct {
 	// run) and an undeclared runtime defaults to the node toolchain — Render's
 	// static build environment (ADR029, w8/m19).
 	StaticSite bool
+	// BuildOnly marks a build source carrier's build (w2/m254, ADR097): every
+	// linked service runs the image under its own start command, so a native
+	// build needs no startCommand and bakes no CMD.
+	BuildOnly bool
 	// StaticPublishPath is a static site's publish directory, relative to its
 	// root directory; a site publishing the root itself gets no automatic
 	// dependency install (w8/m86).

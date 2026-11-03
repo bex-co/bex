@@ -3372,16 +3372,12 @@ func resolveBuildStrategy(svcType string, req CreateRequest) (string, string, er
 		}
 		required, missing := "buildCommand and startCommand", strings.TrimSpace(req.BuildCommand) == "" || strings.TrimSpace(req.StartCommand) == ""
 		// A static site serves its build's files and runs no start command,
-		// which create refuses there (w5/090).
-		// A build source builds and runs nothing either: the start command
-		// belongs to each linked service (Render, w2/m254).
-		if svcType == appv1alpha1.TypeStaticSite {
+		// which create refuses there (w5/090). A build source builds and runs
+		// nothing either: each linked service supplies the start command
+		// (Render, w2/m254). Both still need the build command the native build
+		// requires (t016), refused here rather than failed at every build.
+		if svcType == appv1alpha1.TypeStaticSite || req.buildSource != nil {
 			required, missing = "buildCommand", strings.TrimSpace(req.BuildCommand) == ""
-		}
-		// A build source needs only its runtime (Render's schema): each
-		// linked service supplies the start command.
-		if req.buildSource != nil {
-			missing = false
 		}
 		if missing {
 			return "", "", fmt.Errorf("%w: native runtime %s requires %s", core.ErrBadRequest, runtime, required)
