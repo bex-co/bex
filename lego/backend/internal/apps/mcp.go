@@ -490,6 +490,7 @@ type updateBlueprintArgs struct {
 	Name     *string `json:"name,omitempty" jsonschema:"new display name"`
 	AutoSync *bool   `json:"autoSync,omitempty" jsonschema:"enable or disable auto-sync on push"`
 	Path     *string `json:"path,omitempty" jsonschema:"new Blueprint path within the repo"`
+	Branch   *string `json:"branch,omitempty" jsonschema:"move the Blueprint to another branch; it must hold the Blueprint file, and no sync is planned"`
 }
 
 // disconnectedBlueprintResult is disconnect_blueprint's output.
@@ -1125,12 +1126,13 @@ func (s *Service) registerBlueprintTools(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_blueprint",
-		Description: "Update a Blueprint's name, autoSync flag, or render.yaml path. Setting autoSync=false pauses auto-sync on push; true re-enables it. bex extension (w2/m62).",
+		Description: "Update a Blueprint's name, autoSync flag, render.yaml path, or branch (the branch must hold the Blueprint file; changing it plans no sync). Setting autoSync=false pauses auto-sync on push; true re-enables it. bex extension (w2/m62).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateBlueprintArgs) (*mcp.CallToolResult, BlueprintView, error) {
 		view, err := s.UpdateBlueprint(ctx, in.ID, core.NamedWorkspace(ctx), UpdateBlueprintRequest{
 			Name:     in.Name,
 			AutoSync: in.AutoSync,
 			Path:     in.Path,
+			Branch:   in.Branch,
 		})
 		return nil, view, err
 	})

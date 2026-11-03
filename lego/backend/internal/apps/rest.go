@@ -1524,6 +1524,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			Name     *string `json:"name"`
 			AutoSync *bool   `json:"autoSync"`
 			Path     *string `json:"path"`
+			Branch   *string `json:"branch"`
 			OwnerID  string  `json:"ownerId"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil {
@@ -1533,6 +1534,7 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			Name:     body.Name,
 			AutoSync: body.AutoSync,
 			Path:     body.Path,
+			Branch:   body.Branch,
 		})
 	}))
 	mux.HandleFunc("DELETE /v1/blueprints/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
@@ -1885,6 +1887,7 @@ func decodeBlueprintValidationRequest(w http.ResponseWriter, r *http.Request) (o
 type renderBlueprint struct {
 	ID       string  `json:"id"`
 	Name     string  `json:"name"`
+	OwnerID  string  `json:"ownerId"`
 	Status   string  `json:"status"`
 	AutoSync bool    `json:"autoSync"`
 	Repo     string  `json:"repo"`
@@ -1906,7 +1909,7 @@ func renderBlueprintsWithCursor(views []BlueprintView) []blueprintWithCursor {
 	for i, v := range views {
 		out[i] = blueprintWithCursor{
 			Blueprint: renderBlueprint{
-				ID: v.ID, Name: v.Name, Status: v.Status, AutoSync: v.AutoSync,
+				ID: v.ID, Name: v.Name, OwnerID: v.OwnerID, Status: v.Status, AutoSync: v.AutoSync,
 				Repo: v.Repo, Branch: v.Branch, Path: v.Path, LastSync: v.LastSync,
 			},
 			Cursor: v.ID,

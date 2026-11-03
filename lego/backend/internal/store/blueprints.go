@@ -218,7 +218,7 @@ func (s *PGStore) ListBlueprints(ctx context.Context, tenantID string) ([]Bluepr
 // UpdateBlueprint applies a partial update (only non-zero pointer fields are
 // changed). Returns the updated row. Disconnected rows are untouched —
 // ordinary updates cannot reactivate one (w8/m37 t001).
-func (s *PGStore) UpdateBlueprint(ctx context.Context, id, tenantID string, name *string, autoSync *bool, path *string, status *string, lastSyncAt *time.Time) (Blueprint, error) {
+func (s *PGStore) UpdateBlueprint(ctx context.Context, id, tenantID string, name *string, autoSync *bool, path, branch *string, status *string, lastSyncAt *time.Time) (Blueprint, error) {
 	var out Blueprint
 	err := s.Pool.QueryRow(ctx,
 		`UPDATE blueprints SET
@@ -227,11 +227,12 @@ func (s *PGStore) UpdateBlueprint(ctx context.Context, id, tenantID string, name
 			path        = COALESCE($5, path),
 			status      = COALESCE($6, status),
 			last_sync_at = COALESCE($7, last_sync_at),
+			branch      = COALESCE($8, branch),
 			updated_at  = now()
 		 WHERE id = $1 AND tenant_id = $2 AND status != 'disconnected'
 		 RETURNING id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
 		           last_sync_at, created_at, updated_at`,
-		id, tenantID, name, autoSync, path, status, lastSyncAt,
+		id, tenantID, name, autoSync, path, status, lastSyncAt, branch,
 	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
 		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt)
 	if err != nil {

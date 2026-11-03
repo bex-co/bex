@@ -322,7 +322,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// suspenders lists WHO suspended the service (Render's array; w4/014):
 		// ["user"], ["billing"] (spent Free instance hours) or
 		// ["stuck_crashlooping"] (w2/m253) while suspended, and [] otherwise.
-		"suspenders":   gqlutil.StrsField(func(a AppView) any { return core.SuspendersFor(a.Suspended, a.FreeHoursSuspended, a.CrashLoopSuspended) }),
+		"suspenders": gqlutil.StrsField(func(a AppView) any {
+			return core.SuspendersFor(a.Suspended, a.FreeHoursSuspended, a.CrashLoopSuspended)
+		}),
 		"dashboardUrl": gqlutil.StrField(func(a AppView) any { return a.DashboardURL }),
 		"url":          gqlutil.StrField(func(a AppView) any { return a.URL }),
 		// internalAddress is the private-network "<slug>:<port>" for web/private
@@ -995,6 +997,7 @@ var blueprintGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Fields: graphql.Fields{
 		"id":        gqlutil.StrField(func(b BlueprintView) any { return b.ID }),
 		"name":      gqlutil.StrField(func(b BlueprintView) any { return b.Name }),
+		"ownerId":   gqlutil.StrField(func(b BlueprintView) any { return b.OwnerID }),
 		"repo":      gqlutil.StrField(func(b BlueprintView) any { return b.Repo }),
 		"branch":    gqlutil.StrField(func(b BlueprintView) any { return b.Branch }),
 		"path":      gqlutil.StrField(func(b BlueprintView) any { return b.Path }),
@@ -1963,7 +1966,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "bexYaml"), gqlutil.Str(p.Args, "confirm"), reviewed)
 			},
 		},
-		// updateBlueprint: PATCH name/autoSync/path (w2/m62).
+		// updateBlueprint: PATCH name/autoSync/path (w2/m62) and branch (w2/065).
 		"updateBlueprint": &graphql.Field{
 			Type: blueprintGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -1971,10 +1974,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"name":     gqlutil.Arg(graphql.String),
 				"autoSync": gqlutil.Arg(graphql.Boolean),
 				"path":     gqlutil.Arg(graphql.String),
+				"branch":   gqlutil.Arg(graphql.String),
 				"ownerId":  gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				var name, bpPath *string
+				var name, bpPath, branch *string
 				var autoSync *bool
 				if v, ok := p.Args["name"].(string); ok {
 					name = &v
@@ -1985,10 +1989,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				if v, ok := p.Args["autoSync"].(bool); ok {
 					autoSync = &v
 				}
+				if v, ok := p.Args["branch"].(string); ok {
+					branch = &v
+				}
 				return s.UpdateBlueprint(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"), UpdateBlueprintRequest{
 					Name:     name,
 					AutoSync: autoSync,
 					Path:     bpPath,
+					Branch:   branch,
 				})
 			},
 		},
