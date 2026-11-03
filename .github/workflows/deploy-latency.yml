@@ -1,0 +1,77 @@
+name: deploy latency
+
+# A green main that does not reach production is invisible: every deploy run
+# can end cancelled or superseded without failing, and ci-red-streak counts
+# only failures. Gaps of 15.7 h and 24.9 h with 16 and 29 deployable commits
+# waiting went unnoticed in one week (w6/m156; w6/087's ">12 h means reopen"
+# rule had no check). Hourly, this measures how long main's oldest deployable
+# commit has waited for a production pin and why, and keeps one issue open
+# while it is over the threshold. Like ci-red-streak it gates nothing.
+
+on:
+  workflow_dispatch:
+    inputs:
+      threshold:
+        description: "Hours a deployable commit may wait before reporting"
+        required: false
+        default: "6"
+  schedule:
+    - cron: "41 * * * *"
+
+permissions:
+  contents: read
+  actions: read
+  issues: write
+
+jobs:
+  latency:
+    runs-on: [self-hosted, Linux, ARM64, bex-production]
+    if: github.event_name != 'pull_request'
+    timeout-minutes: 15
+    env:
+      GH_TOKEN: ${{ github.token }}
+      GH_REPO: ${{ github.repository }}
+      THRESHOLD: ${{ inputs.threshold || '6' }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # The walk from the pinned commit to main needs the history between them.
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Self-test the classification
+        run: python3 -B -m unittest scripts/test_deploy_latency.py
+      - name: Measure the oldest waiting deployable commit
+        id: check
+        run: |
+          set +e
+          python3 scripts/deploy_latency.py --threshold-hours "$THRESHOLD" > latency.txt 2>&1
+          rc=$?
+          set -e
+          cat latency.txt
+          if [ "$rc" -eq 2 ]; then
+            exit 2 # unusable: an operator problem, never a silent pass
+          fi
+          if [ "$rc" -eq 1 ]; then echo "late=true" >> "$GITHUB_OUTPUT"; else echo "late=false" >> "$GITHUB_OUTPUT"; fi
+      - name: Open or update the tracking issue
+        if: steps.check.outputs.late == 'true'
+        run: |
+          gh label create deploy-latency --repo "$GITHUB_REPOSITORY" \
+            --color B60205 --description "A deployable commit on main has waited too long for production" --force
+          body="$(printf 'A deployable commit on main has waited more than %s h for a production pin (state, age, commit, run, cause, subject):\n\n```\n%s\n```\n\nSee scripts/deploy_latency.py for the states.' "$THRESHOLD" "$(cat latency.txt)")"
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label deploy-latency --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+          else
+            gh issue create --repo "$GITHUB_REPOSITORY" \
+              --title "main is not reaching production" \
+              --label deploy-latency \
+              --body "$body"
+          fi
+      - name: Close the tracking issue once main deploys again
+        if: steps.check.outputs.late == 'false'
+        run: |
+          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label deploy-latency --state open --json number --jq '.[0].number // empty')"
+          if [[ -n "$existing" ]]; then
+            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+              --comment "$(printf 'Recovered: %s' "$(cat latency.txt)")"
+          fi
