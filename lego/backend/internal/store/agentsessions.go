@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strconv"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -875,6 +876,18 @@ func (s *PGStore) AgentSessionTranscript(ctx context.Context, sessionID string, 
 		FROM agent_session_transcripts
 		WHERE session_id=$1 AND seq > $2
 		ORDER BY seq ASC`, []any{sessionID, afterSeq}, maxBytes, limit)
+}
+
+// AgentSessionTurnTail returns up to limit of a turn's complete transcript items
+// (not legacy chunks, not partial items), last first, under the byte budget. It
+// backs the session outcome summary (ADR094 D7), which wants only the final
+// assistant text, not the whole transcript.
+func (s *PGStore) AgentSessionTurnTail(ctx context.Context, sessionID string, turn int, maxBytes int64, limit int) ([]AgentSessionTranscriptPart, error) {
+	return s.readAgentSessionTranscript(ctx, `
+		SELECT seq, part_index, turn, part, item_state, created_at
+		FROM agent_session_transcripts
+		WHERE session_id=$1 AND turn=$2 AND item_state=`+strconv.Itoa(transcriptRowItem)+`
+		ORDER BY part_index DESC`, []any{sessionID, turn}, maxBytes, limit)
 }
 
 // TranscriptPosition is a part's place in the conversation, (turn,

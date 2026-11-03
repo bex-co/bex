@@ -127,6 +127,33 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 	return input
 }
 
+var agentSessionPullRequestGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionPullRequest",
+	Fields: graphql.Fields{
+		"url":     gqlutil.ReqStrField(func(v PullRequest) any { return v.URL }),
+		"number":  gqlutil.IntField(func(v PullRequest) any { return v.Number }),
+		"headSha": gqlutil.StrField(func(v PullRequest) any { return v.HeadSHA }),
+	},
+})
+
+var agentSessionOutcomeGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionOutcome",
+	Fields: graphql.Fields{
+		"state":     gqlutil.ReqStrField(func(v Outcome) any { return v.State }),
+		"steerable": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v Outcome) any { return v.Steerable })},
+		"turn":      gqlutil.IntField(func(v Outcome) any { return v.Turn }),
+		"summary":   gqlutil.OptionalStrField(func(v Outcome) any { return v.Summary }),
+		"pullRequest": &graphql.Field{Type: agentSessionPullRequestGQLType, Resolve: gqlutil.Field(func(v Outcome) any {
+			if v.PullRequest == nil {
+				return nil
+			}
+			return *v.PullRequest
+		})},
+		"deliveryNote":      gqlutil.OptionalStrField(func(v Outcome) any { return v.DeliveryNote }),
+		"failureReasonCode": gqlutil.OptionalStrField(func(v Outcome) any { return v.FailureReasonCode }),
+	},
+})
+
 var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSession",
 	Fields: graphql.Fields{
@@ -138,6 +165,8 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"sandboxId":   gqlutil.StrField(func(v View) any { return v.SandboxID }),
 		"sshAddress":  gqlutil.StrField(func(v View) any { return v.SSHAddress }),
 		"phase":       gqlutil.ReqStrField(func(v View) any { return v.Phase }),
+		"state":       gqlutil.ReqStrField(func(v View) any { return v.State }),
+		"steerable":   &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v View) any { return v.Steerable })},
 		"status":      gqlutil.ReqStrField(func(v View) any { return v.Status }),
 		"headSha":     gqlutil.StrField(func(v View) any { return v.HeadSHA }),
 		"prUrl":       gqlutil.StrField(func(v View) any { return v.PRURL }),
@@ -168,6 +197,12 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 				return nil
 			}
 			return gqlTime(*v.ExpiresAt)
+		})},
+		"outcome": &graphql.Field{Type: agentSessionOutcomeGQLType, Resolve: gqlutil.Field(func(v View) any {
+			if v.Outcome == nil {
+				return nil
+			}
+			return *v.Outcome
 		})},
 		"archivedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v View) any {
 			if v.ArchivedAt == nil {
