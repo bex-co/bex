@@ -40,6 +40,8 @@ import (
 type DrainBudget struct {
 	total      *semaphore.Weighted
 	perChannel int64
+	// Metrics, when set, observes buffered bytes and fallbacks (w6/101).
+	Metrics *Metrics
 }
 
 // NewDrainBudget allows perChannel bytes per channel and total across all;
@@ -132,11 +134,13 @@ func (d *DrainWriter) Write(p []byte) (int, error) {
 		}
 		if !c.budget.total.TryAcquire(int64(n)) {
 			c.own.Release(int64(n))
+			c.budget.Metrics.DrainFallback()
 			if err := d.direct(p[:n]); err != nil {
 				return written, err
 			}
 		} else {
 			chunk := append([]byte(nil), p[:n]...)
+			c.budget.Metrics.DrainBuffered(int64(n))
 			d.mu.Lock()
 			d.queue = append(d.queue, chunk)
 			d.mu.Unlock()
@@ -203,6 +207,7 @@ func (d *DrainWriter) run() {
 			}
 		}
 		d.channel.budget.total.Release(int64(len(chunk)))
+		d.channel.budget.Metrics.DrainBuffered(-int64(len(chunk)))
 		d.channel.own.Release(int64(len(chunk)))
 		d.mu.Lock()
 		d.sending = false

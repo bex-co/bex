@@ -25,6 +25,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
@@ -238,5 +240,37 @@ func TestDisabledDrainBudgetPassesWritersThrough(t *testing.T) {
 	var buf bytes.Buffer
 	if w := NewDrainBudget(0, 0).Channel(t.Context()).Writer(&buf); w != io.Writer(&buf) {
 		t.Fatalf("writer = %T, want the original", w)
+	}
+}
+
+// w6/101: the buffer reports what it holds and every write it could not
+// buffer, so a saturated budget is visible before a short export is.
+func TestDrainBudgetReportsBufferedBytesAndFallbacks(t *testing.T) {
+	metrics := NewMetrics(prometheus.NewRegistry())
+	budget := NewDrainBudget(1<<20, 1<<20)
+	budget.Metrics = metrics
+	stalled := &gatedWriter{open: make(chan struct{})}
+	first := budget.Channel(t.Context())
+	if _, err := first.Writer(stalled).Write(make([]byte, 1<<20)); err != nil {
+		t.Fatal(err)
+	}
+	if got := testutil.ToFloat64(metrics.drainBuffered); got != 1<<20 {
+		t.Fatalf("buffered bytes = %v, want %d while the client is stalled", got, 1<<20)
+	}
+	var other bytes.Buffer
+	second := budget.Channel(t.Context())
+	if _, err := second.Writer(&other).Write([]byte("x")); err != nil {
+		t.Fatal(err)
+	}
+	if got := testutil.ToFloat64(metrics.drainFallbacks); got != 1 {
+		t.Fatalf("fallback writes = %v, want 1 once the budget is spent", got)
+	}
+	close(stalled.open)
+	if err := first.Close(); err != nil {
+		t.Fatal(err)
+	}
+	_ = second.Close()
+	if got := testutil.ToFloat64(metrics.drainBuffered); got != 0 {
+		t.Fatalf("buffered bytes = %v after the drain, want 0", got)
 	}
 }

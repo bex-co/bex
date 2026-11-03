@@ -160,6 +160,9 @@ func main() {
 			intEnv("BEX_SSH_DRAIN_BUFFER_TOTAL", 128<<20),
 		),
 	}
+	if executor.Budget != nil {
+		executor.Budget.Metrics = metrics
+	}
 	handshakeTimeout := durationEnv("BEX_SSH_HANDSHAKE_TIMEOUT", 10*time.Second)
 	sessionTimeout := durationEnv("BEX_SSH_SESSION_TIMEOUT", 4*time.Hour)
 	// codex round-9 #6: every established stream (native-SSH exec, web shell,

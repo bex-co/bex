@@ -47,6 +47,8 @@ func TestMetricsUseOnlyBoundedPrivacySafeLabels(t *testing.T) {
 		"bex_ssh_gateway_authentications_total",
 		"bex_ssh_gateway_channel_reauthorizations_total",
 		"bex_ssh_gateway_channels_total",
+		"bex_ssh_gateway_drain_buffered_bytes",
+		"bex_ssh_gateway_drain_fallback_writes_total",
 		"bex_ssh_gateway_git_proxy_upstream_failures_total",
 		"bex_ssh_gateway_handshakes_total",
 		"bex_ssh_gateway_limit_rejections_total",

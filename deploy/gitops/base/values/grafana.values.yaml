@@ -4360,8 +4360,8 @@ dashboards:
             {
              "id": 7,
              "type": "timeseries",
-             "title": "SSH gateway rejections + git-proxy failures (15m)",
-             "description": "Session-limit rejections by scope and admitted-but-failed gateway\u2192forge Git exchanges by cause.",
+             "title": "SSH gateway rejections + git-proxy failures + drain fallbacks (15m)",
+             "description": "Session-limit rejections by scope, admitted-but-failed gateway\u2192forge Git exchanges by cause, and exec output writes that bypassed the spent drain buffer (w6/101; SSHGatewayDrainBudgetExhausted).",
              "gridPos": {
                "h": 9,
                "w": 12,
@@ -4389,6 +4389,11 @@ dashboards:
                  "refId": "B",
                  "expr": "sum by (cause) (increase(bex_ssh_gateway_git_proxy_upstream_failures_total[15m]))",
                  "legendFormat": "git upstream ({{cause}})"
+                },
+                {
+                 "refId": "C",
+                 "expr": "sum(increase(bex_ssh_gateway_drain_fallback_writes_total[15m]))",
+                 "legendFormat": "drain fallback writes"
                 }
               ]
             },
