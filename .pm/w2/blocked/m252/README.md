@@ -1,6 +1,6 @@
 # w2 · m252 — Failure alerts reach email, as on Render
 
-**Worker:** worker2 **Goal:** every failure event Render emails about — a running service becoming unhealthy, a cron run failing, an image pull failing, a Blueprint sync failing — bex emails too, under the existing `notificationsToSend` and member settings. **Status:** in progress — t001–t005, t007–t009 done; t006 (dev-2 + production check) next, then t010
+**Worker:** worker2 **Goal:** every failure event Render emails about — a running service becoming unhealthy, a cron run failing, an image pull failing, a Blueprint sync failing — bex emails too, under the existing `notificationsToSend` and member settings. **Status:** blocked — t001–t005, t007–t009 done; t006 (dev-2 + production check) next, then t010
 
 ## Tasks (in order)
 
@@ -39,3 +39,7 @@
 - **Found and fixed:** push "Cron job failed" was driven by `job_run_ended` (retired one-off jobs) and never fired for real cron runs; it now reads `cron_job_run_ended`.
 - **t001:** ADR018 Notifications row is ◐ with the per-event matrix (disk 80% → w2/m255, crash-loop suspension → w2/m253).
 - **Tests:** `TestAlertEmailWorkerMailsFailures` and `TestAlertEmailStreamLifecycle` (real Postgres), `alert_email_worker_test.go` (classification, policy matrix, copy, send outcomes), push vocabulary tests updated.
+
+## Blocked (2026-11-03)
+
+All implementation is done (t001–t005 and t007–t009 done; t006 (live walk) blocked). The remaining walk needs a gate this session cannot clear: user: (1) choose how the local CAPD cluster runs the egress nft rule (drop it locally, or rework it to bind in nested kind nodes) so dev-2 comes up for the crash / cron / image-pull / Blueprint-failure emails in Mailpit; and (2) approve a paid production canary (cron jobs are paid) plus an inbox to read the alert, for the production repeat. Run `/unblock w2` to decide. The milestone returns to the queue once the gate clears.

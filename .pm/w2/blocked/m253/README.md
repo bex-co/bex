@@ -1,6 +1,6 @@
 # w2 · m253 — A service that crash-loops for 24 hours is suspended with `stuck_crashlooping`, as on Render
 
-**Worker:** worker2 **Goal:** a service that repeatedly fails to start and become healthy over 24 hours is suspended with Render's `stuck_crashlooping` suspender, its owners are told, and a user resume brings it back. **Status:** in progress — t001–t004, t006–t008 done; t005 (dev-2 walk with a short window) next, then t009
+**Worker:** worker2 **Goal:** a service that repeatedly fails to start and become healthy over 24 hours is suspended with Render's `stuck_crashlooping` suspender, its owners are told, and a user resume brings it back. **Status:** blocked — t001–t004, t006–t008 done; t005 (dev-2 walk with a short window) next, then t009
 
 ## Tasks (in order)
 
@@ -41,3 +41,7 @@
 - **t003/t006:** `suspenders: ["stuck_crashlooping"]` on REST, GraphQL and MCP via `core.SuspendersFor`; a manual resume clears it; the dashboard Resume card explains the cause (en/zh); `CrashLoopBackOff`/`HealthCheckFailing` promoted to `lego/types` reason constants. ADR018 Suspend/Resume and Notifications rows updated.
 - **t004:** `CrashLoopNotifier` enqueues a `service_suspended` failure alert (migration 0178) through w2/m252's queue; push and webhooks get the observed `service_suspended` event as before.
 - **t008:** `internal/crashloop` (window boundary, exclusions, sighting, generation reset, recovery, notify-first), `apps/crash_loop_test.go` (suspenders + resume), notifier unit test, PG test for the cursor-less enqueue and the new event value, dashboard mapping test; full dashboard suite (5749) green.
+
+## Blocked (2026-11-03)
+
+All implementation is done (t001–t004 and t006–t008 done; t005 (dev-2 walk with a short crash-loop window) blocked). The remaining walk needs a gate this session cannot clear: user: choose how the local CAPD cluster runs the egress nft rule (drop it locally, or rework it to bind in nested kind nodes) so dev-2 comes up for the short-window crash-loop walk. Run `/unblock w2` to decide. The milestone returns to the queue once the gate clears.

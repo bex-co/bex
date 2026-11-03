@@ -1,6 +1,6 @@
 # w2 · m255 — Disk usage over 80% notifies, as on Render
 
-**Worker:** worker2 **Goal:** when a service's persistent disk usage exceeds 80% of its allocated size, and when it drops back below, owners get exactly one notice each way. **Status:** in progress — t001–t003, t005–t007 done; t004 (live walk on production) next, then t008
+**Worker:** worker2 **Goal:** when a service's persistent disk usage exceeds 80% of its allocated size, and when it drops back below, owners get exactly one notice each way. **Status:** blocked — t001–t003, t005–t007 done; t004 (live walk on production) next, then t008
 
 ## Tasks (in order)
 
@@ -37,3 +37,7 @@
 - **DoD refinement (2026-11-03, worker2):** the first bullet's "and push" is dropped. Render delivers these two notifications by email and Slack only (render.com/docs/notifications); bex's push channel has no disk event in its vocabulary and Render gives no basis to add one. Email both ways, plus the event, is the parity behavior.
 - **t005 Render parity:** ADR018 Notifications row back to ✅ (every Render notification row is now covered or a recorded non-goal: Slack, one-off jobs).
 - **t006/t007:** review fixes (stale-sighting guard, confirm only the pending crossing, shared metrics helpers); tests: `internal/diskusage` (two-sweep confirmation both ways, no flap on a one-sweep dip, stale sighting, unmounted/suspended/hibernated skipped, notify-before-record), `TestDiskUsageCrossingsPG`, `TestDiskUsageEventRendersRenderDetails` (REST/GraphQL/MCP), `TestDiskUsageNotifierLevels`.
+
+## Blocked (2026-11-03)
+
+All implementation is done (t001–t003 and t005–t007 done; t004 (disk-fill walk) blocked). The remaining walk needs a gate this session cannot clear: user: choose how the local CAPD cluster runs the egress nft rule so dev-2 comes up, or approve a paid disk-bearing production canary (QA rules forbid buying one). Run `/unblock w2` to decide. The milestone returns to the queue once the gate clears.
