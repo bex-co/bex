@@ -7,7 +7,7 @@ const enNotifications: Record<string, TranslationEntry> = {
   },
   "notifications.description": {
     message:
-      "Get emailed when a deploy of one of your services starts, succeeds, or fails. These are your own preferences — every workspace member sets theirs independently.",
+      "Get emailed when a deploy of one of your services starts, succeeds, or fails, and when something fails at runtime. These are your own preferences — every workspace member sets theirs independently.",
     description: "Settings Notifications section card description",
   },
   "notifications.deployStarted": {
@@ -27,11 +27,12 @@ const enNotifications: Record<string, TranslationEntry> = {
     description: "Toggle hint",
   },
   "notifications.deployFailed": {
-    message: "Deploy failed",
+    message: "Failures",
     description: "Toggle label",
   },
   "notifications.deployFailedHint": {
-    message: "Email me when a deploy fails.",
+    message:
+      "Email me when a deploy fails, a service becomes unhealthy, a cron run fails, an image pull fails, or a Blueprint sync fails.",
     description: "Toggle hint",
   },
   "notifications.errorTitle": {

@@ -7,7 +7,7 @@ const zhNotifications: Record<string, TranslationEntry> = {
   },
   "notifications.description": {
     message:
-      "当你的某个服务开始部署、部署成功或失败时通过邮件通知你。这些是你的个人偏好设置——工作区内每位成员都可独立设置自己的通知偏好。",
+      "当你的某个服务开始部署、部署成功或失败，以及运行时出现故障时通过邮件通知你。这些是你的个人偏好设置——工作区内每位成员都可独立设置自己的通知偏好。",
     description: "Settings Notifications section card description",
   },
   "notifications.deployStarted": {
@@ -27,11 +27,12 @@ const zhNotifications: Record<string, TranslationEntry> = {
     description: "Toggle hint",
   },
   "notifications.deployFailed": {
-    message: "部署失败",
+    message: "故障",
     description: "Toggle label",
   },
   "notifications.deployFailedHint": {
-    message: "部署失败时通过邮件通知我。",
+    message:
+      "部署失败、服务变为不健康、定时任务运行失败、镜像拉取失败或 Blueprint 同步失败时通过邮件通知我。",
     description: "Toggle hint",
   },
   "notifications.errorTitle": {

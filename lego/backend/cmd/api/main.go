@@ -1393,6 +1393,20 @@ func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st 
 		}
 		go whWorker.Run(ctx)
 	}
+	// Failure alert emails (w2/m252): a crashing service, a failed cron run, a
+	// failed image pull or a failed Blueprint sync email the workspace, as
+	// Render does. Without SMTP there is nothing to send, so no worker runs and
+	// its cursors are seeded only once mail is configured.
+	if n := srv.Notifications; st != nil && n != nil && n.Mailer != nil && n.Identities != nil {
+		var cl client.Client
+		if n.Base != nil {
+			cl = n.Base.Client
+		}
+		go (&notifications.AlertEmailWorker{
+			Store: st, Policy: notifications.AppNotificationPolicy(cl),
+			Mailer: n.Mailer, Identities: n.Identities, DashboardBaseURL: n.DashboardBaseURL,
+		}).Run(ctx)
+	}
 	// Native push (ADR048 D2): only an explicitly configured, startup-validated
 	// transport starts the event consumer. With config absent there is no client,
 	// no worker, no feed advancement, and no provider network traffic.

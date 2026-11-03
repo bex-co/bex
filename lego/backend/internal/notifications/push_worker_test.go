@@ -472,8 +472,10 @@ func TestProjectPushEventVocabulary(t *testing.T) {
 		{"server available", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactServerAvailable)}, "", "server_available", true},
 		{"service suspended", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactServiceSuspended)}, "", "service_suspended", true},
 		{"service resumed", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactServiceResumed)}, "", "service_resumed", true},
-		{"failed job", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactJobRunEnded)}, store.EventStatusFailed, "cron_failed", true},
-		{"successful job ignored", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactJobRunEnded)}, store.EventStatusSucceeded, "", false},
+		{"failed cron run", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactCronRunEnded)}, store.EventStatusFailed, "cron_failed", true},
+		{"successful cron run ignored", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactCronRunEnded)}, store.EventStatusSucceeded, "", false},
+		// One-off jobs are retired; their failure is not a cron failure (w2/m252).
+		{"failed one-off job ignored", store.WebhookEventRow{Source: store.EventSourceFact, FactType: string(store.EventFactJobRunEnded)}, store.EventStatusFailed, "", false},
 	}
 	for _, test := range tests {
 		t.Run(test.name, func(t *testing.T) {
