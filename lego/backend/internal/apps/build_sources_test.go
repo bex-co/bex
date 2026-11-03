@@ -45,13 +45,15 @@ func newBuildSourceStore() *buildSourceStore {
 	return &buildSourceStore{recordingStore: &recordingStore{}, rows: map[string]store.App{}, links: map[string][]store.App{}}
 }
 
+// CreateApp follows PGStore: a carrier keeps its minted id, any other row
+// gets a fresh one.
 func (b *buildSourceStore) CreateApp(ctx context.Context, a store.App) (store.App, error) {
 	id := a.ID
 	row, err := b.recordingStore.CreateApp(ctx, a)
 	if err != nil {
 		return row, err
 	}
-	if id != "" {
+	if a.Type == store.TypeBuildSource {
 		row.ID = id
 	}
 	b.rows[row.ID] = row

@@ -61,6 +61,13 @@ func (b *buildSourceCreate) rowID() string {
 	return b.id
 }
 
+func (b *buildSourceCreate) displayName() string {
+	if b == nil {
+		return ""
+	}
+	return b.name
+}
+
 func (b *buildSourceCreate) scope() string {
 	if b == nil {
 		return ""
@@ -197,11 +204,6 @@ func (s *Service) CreateBuildSource(ctx context.Context, req CreateBuildSourceRe
 	}
 	if _, err := s.create(ctx, create); err != nil {
 		return BuildSourceView{}, err
-	}
-	if s.Store != nil {
-		if err := s.Store.SetAppDisplayName(ctx, id, req.Name); err != nil {
-			return BuildSourceView{}, err
-		}
 	}
 	return s.GetBuildSource(ctx, id)
 }
