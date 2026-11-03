@@ -82,14 +82,17 @@ func TestPGAuditRecordWithDerivedIDRecordsOnce(t *testing.T) {
 	t.Cleanup(func() {
 		_, _ = pool.Exec(context.Background(), `DELETE FROM audit_events WHERE workspace_id = $1`, workspace)
 	})
-	event := func(session, caller string) core.AuditEvent {
+	base := time.Now().UTC().Truncate(time.Second)
+	event := func(session, caller string, at time.Time) core.AuditEvent {
 		return core.AuditEvent{
 			ID: ids.Derive(ids.Audit, "checkout", session), Caller: caller, CallerMethod: "session",
 			Verb: core.AuditVerbUpdatePaymentMethod, Resource: core.WorkspaceObject(workspace),
-			Outcome: core.AuditAllowed, At: time.Now().UTC(),
+			Outcome: core.AuditAllowed, At: at,
 		}
 	}
-	for _, ev := range []core.AuditEvent{event("cs_once", "usr-member"), event("cs_once", "usr-member"), event("cs_second", "usr-other")} {
+	for _, ev := range []core.AuditEvent{
+		event("cs_once", "usr-member", base), event("cs_once", "usr-member", base), event("cs_second", "usr-other", base.Add(time.Minute)),
+	} {
 		if err := st.Record(ctx, ev); err != nil {
 			t.Fatal(err)
 		}
