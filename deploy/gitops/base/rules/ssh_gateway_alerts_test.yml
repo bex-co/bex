@@ -1,0 +1,28 @@
+# w6/101: sustained drain-buffer fallbacks warn; a single burst does not.
+rule_files:
+- alerting_rules.yml
+evaluation_interval: 1m
+tests:
+- name: drain fallbacks every minute for half an hour warn
+  interval: 1m
+  input_series:
+  - series: bex_ssh_gateway_drain_fallback_writes_total{job="bex-ssh-gateway",instance="gw-1"}
+    values: 0+5x60
+  alert_rule_test:
+  - eval_time: 40m
+    alertname: SSHGatewayDrainBudgetExhausted
+    exp_alerts:
+    - exp_labels:
+        severity: warning
+      exp_annotations:
+        summary: SSH gateway exec output is bypassing the drain buffer
+        description: 'The process-wide drain budget (BEX_SSH_DRAIN_BUFFER_TOTAL) has been spent for 15 minutes, so exec output reaches slow clients unbuffered and a large export can lose its tail. Runbook: docs/ADR035-ssh.md#ssh-protocol-and-exec-behavior'
+- name: one fallback burst stays quiet once it passes
+  interval: 1m
+  input_series:
+  - series: bex_ssh_gateway_drain_fallback_writes_total{job="bex-ssh-gateway",instance="gw-1"}
+    values: 0x5 3x55
+  alert_rule_test:
+  - eval_time: 40m
+    alertname: SSHGatewayDrainBudgetExhausted
+    exp_alerts: []
