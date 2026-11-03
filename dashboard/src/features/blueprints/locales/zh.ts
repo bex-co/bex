@@ -618,6 +618,68 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "render.yaml 清单",
     description: "Blueprint detail section heading for the stored manifest",
   },
+  // --- Planned sync (w2/m256 t012) ---
+  "blueprints.plannedTitle": {
+    message: "计划同步",
+    description:
+      "Blueprint detail: heading of the planned-sync card a created Blueprint shows",
+  },
+  "blueprints.plannedBody": {
+    message:
+      "此 Blueprint 创建时附带了一份计划。请查看批准后将在提交 {commit} 上发生的变更，然后批准以应用。",
+    description:
+      "Planned-sync card: explains plan-then-approve; {commit} is a short commit SHA",
+  },
+  "blueprints.plannedActions": {
+    message: "计划的变更",
+    description: "Planned-sync card: accessible label of the action list",
+  },
+  "blueprints.plannedAction": {
+    message: "{operation} {kind} {name}",
+    description:
+      "Planned-sync card: one plan action, e.g. 'create service api'",
+  },
+  "blueprints.plannedActionsUnavailable": {
+    message:
+      "此计划记录于计划保存变更明细之前。重新计划以查看变更，或直接批准以应用。",
+    description:
+      "Planned-sync card: a plan stored without its actions (recorded before migration 0187)",
+  },
+  "blueprints.plannedManualEnvVars": {
+    message: "这些值不在 Blueprint 文件中（sync: false）。请输入它们以批准。",
+    description:
+      "Planned-sync card: intro to the required manual env var fields",
+  },
+  "blueprints.plannedManualEnvVarLabel": {
+    message: "{service}：{key}",
+    description: "Planned-sync card: label of one manual env var field",
+  },
+  "blueprints.plannedApprove": {
+    message: "批准",
+    description: "Planned-sync card: button that applies the planned sync",
+  },
+  "blueprints.plannedReplan": {
+    message: "重新计划",
+    description:
+      "Planned-sync card: button that plans a new sync at the branch head",
+  },
+  "blueprints.plannedNone": {
+    message: "没有等待批准的计划。重新计划以读取分支最新提交。",
+    description:
+      "Planned-sync card: shown when a created Blueprint has no approvable plan",
+  },
+  "blueprints.plannedApproved": {
+    message: "计划同步已批准",
+    description: "Toast after approving a planned sync",
+  },
+  "blueprints.plannedApproveFailed": {
+    message: "无法批准计划同步",
+    description: "Toast when approving fails",
+  },
+  "blueprints.plannedReplanFailed": {
+    message: "无法计划新的同步",
+    description: "Toast when re-planning fails",
+  },
   // --- Sync action ---
   "blueprints.syncButton": {
     message: "同步",

@@ -5,6 +5,7 @@ import type {
   ValidateBlueprintQuery,
 } from "@/graphql/definitions";
 import type {
+  BlueprintPlanAction,
   BlueprintPreviewReason,
   BlueprintPreviewResult,
   BlueprintPreviewValidation,
@@ -140,22 +141,28 @@ function toPreviewPlan(plan: PlanData) {
     envGroups: strings(plan.envGroups),
     syncFalseVars: strings(plan.syncFalseVars),
     totalActions: plan.totalActions,
-    actions: plan.actions
-      ? plan.actions.filter(nonNull).map((a) => ({
-          operation: a.operation ?? "",
-          kind: a.kind ?? "",
-          name: a.name ?? "",
-          sourcePath: a.sourcePath ?? "",
-          resourceId: a.resourceId,
-          changedFields: a.changedFields
-            ? a.changedFields
-                .filter(nonNull)
-                .map((c) => ({ path: c.path ?? "" }))
-            : null,
-          message: a.message,
-        }))
-      : null,
+    actions: plan.actions ? toPlanActions(plan.actions) : null,
   };
+}
+
+type PlanActionData = NonNullable<PlanData["actions"]>[number];
+
+/** toPlanActions maps GraphQL BlueprintPlanAction rows (preview and planned
+ *  sync alike) to the dashboard's plan action shape. */
+export function toPlanActions(
+  actions: ReadonlyArray<PlanActionData> | null | undefined,
+): BlueprintPlanAction[] {
+  return (actions ?? []).filter(nonNull).map((a) => ({
+    operation: a.operation ?? "",
+    kind: a.kind ?? "",
+    name: a.name ?? "",
+    sourcePath: a.sourcePath ?? "",
+    resourceId: a.resourceId,
+    changedFields: a.changedFields
+      ? a.changedFields.filter(nonNull).map((c) => ({ path: c.path ?? "" }))
+      : null,
+    message: a.message,
+  }));
 }
 
 function toEstimatedPricing(pricing: PricingData) {

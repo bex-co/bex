@@ -79,13 +79,15 @@ func TestPlannedBlueprintSyncsPG(t *testing.T) {
 		BlueprintSync:         store.BlueprintSync{BlueprintID: b.ID, CommitID: commit, State: store.BlueprintSyncStateCreated, StartedAt: time.Now().UTC()},
 		Path:                  "render.yaml",
 		RequiredManualEnvVars: json.RawMessage(`[{"serviceType":"web","serviceName":"api","key":"K"}]`),
+		PlanActions:           json.RawMessage(`[{"operation":"create","kind":"service","name":"api"}]`),
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	latest, err := st.LatestBlueprintPlan(ctx, b.ID)
-	if err != nil || latest.ID != planned.ID || latest.Path != "render.yaml" || string(latest.RequiredManualEnvVars) == "[]" {
-		t.Fatalf("latest = %+v err=%v", latest, err)
+	if err != nil || latest.ID != planned.ID || latest.Path != "render.yaml" || string(latest.RequiredManualEnvVars) == "[]" ||
+		!strings.Contains(string(latest.PlanActions), `"operation": "create"`) && !strings.Contains(string(latest.PlanActions), `"operation":"create"`) {
+		t.Fatalf("latest = %+v (actions %s) err=%v", latest, latest.PlanActions, err)
 	}
 
 	admitted, run, err := st.AdmitBlueprintSyncRun(ctx, b.ID, ws.ID, store.BlueprintSync{ID: planned.ID, CommitID: commit, State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()})

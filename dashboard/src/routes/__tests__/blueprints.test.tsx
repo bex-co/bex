@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -60,6 +60,42 @@ const sync = vi.fn(async (): Promise<BlueprintSyncActionResult> => ({
 vi.mock("@/features/blueprints/hooks/use-sync-blueprint", () => ({
   useSyncBlueprint: () => ({ sync, busy: false }),
 }));
+
+// --- planned-sync hook mock (w2/m256 t012) ---
+const approvePlanned = vi.fn(async () => true);
+const plannedSyncState = {
+  planned: {
+    id: "exe-1",
+    commitId: "0123456789abcdef",
+    actions: [
+      {
+        operation: "create",
+        kind: "service",
+        name: "express-hello-world",
+        sourcePath: "#/services/0",
+        resourceId: null,
+        changedFields: [],
+        message: null,
+      },
+    ],
+    requiredManualEnvVars: [],
+  } as
+    | import("@/features/blueprints/hooks/use-planned-sync").PlannedSyncView
+    | null,
+  loading: false,
+  busy: false,
+  approve: approvePlanned,
+  replan: vi.fn(async () => undefined),
+};
+vi.mock(
+  "@/features/blueprints/hooks/use-planned-sync",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/blueprints/hooks/use-planned-sync")
+    >()),
+    usePlannedSync: () => plannedSyncState,
+  }),
+);
 
 // --- validate hook stub (used by ValidatePanel inside detail page) ---
 vi.mock("@/features/blueprints/hooks/use-validate-blueprint", () => ({
@@ -299,6 +335,19 @@ describe("BlueprintsPage (list)", () => {
 });
 
 describe("BlueprintDetailPage", () => {
+  // w2/m256 t012: a created Blueprint shows its plan and Approve, and offers no
+  // Sync that would apply it past the plan.
+  it("shows a created Blueprint's plan with Approve instead of Sync", async () => {
+    blueprintDetailState.blueprint = bp({ status: "created" });
+    renderDetailPage();
+
+    await screen.findAllByText("hello-go");
+    expect(screen.getByText("express-hello-world")).toBeInTheDocument();
+    expect(screen.queryByRole("button", { name: /^sync$/i })).toBeNull();
+    fireEvent.click(screen.getByRole("button", { name: /approve/i }));
+    expect(approvePlanned).toHaveBeenCalledWith({});
+  });
+
   it("renders the manifest and metadata for a found blueprint", async () => {
     blueprintDetailState.blueprint = bp();
     renderDetailPage();
