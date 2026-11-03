@@ -206,6 +206,9 @@ type renderService struct {
 	// Repo/Branch are the build-from-git source, empty for an image-backed App.
 	Repo   string `json:"repo,omitempty"`
 	Branch string `json:"branch,omitempty"`
+	// BuildSourceID is the Build Source the service builds and deploys from,
+	// if any (w2/m254 t005).
+	BuildSourceID string `json:"buildSourceId,omitempty"`
 	// Autoscaling mirrors Render's autoscaling sub-object (minInstances /
 	// maxInstances / targetCPUPercent / targetMemoryPercent); omitted when
 	// autoscaling is not configured.
@@ -448,6 +451,7 @@ func toRenderServiceWithMetadata(a AppView, metadata resourcemeta.Config) render
 		BuildFilter:               a.BuildFilter,
 		Repo:                      a.Repo,
 		Branch:                    a.Branch,
+		BuildSourceID:             a.BuildSourceID,
 		Autoscaling:               toRenderAutoscaling(a.Autoscaling),
 		AutoDeploy:                yesNoEnum(a.AutoDeploy),
 		LinkedEnvGroupIDs:         a.LinkedEnvGroupIDs,

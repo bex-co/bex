@@ -40,6 +40,11 @@ func TestGenerateBlueprintRoundTripsRealCreates(t *testing.T) {
 	ctx := context.Background()
 	differs := map[string]bool{}
 	for _, req := range roundTripCreates(t) {
+		// A Build Source link has no Blueprint form (ADR018: Blueprint
+		// buildSources are a recorded non-goal), so it does not round-trip.
+		if req.BuildSourceID != "" {
+			continue
+		}
 		svc, cl := newService(nil)
 		svc.RegistryCreds = probeRegistryCreds()
 		svc.Checks = &fakeChecks{permitted: true}

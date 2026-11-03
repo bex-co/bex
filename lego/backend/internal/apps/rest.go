@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"maps"
 	"mime"
 	"net/http"
 	"net/url"
@@ -318,8 +319,8 @@ type serviceDetailsReq struct {
 	// PullRequestPreviewsEnabled is refused by name like previews (PR previews
 	// are a recorded non-goal).
 	PullRequestPreviewsEnabled json.RawMessage `json:"pullRequestPreviewsEnabled"`
-	// BuildSourceID links Render's Build Sources, which bex does not serve
-	// yet (w2/m254); a non-empty value is refused by name.
+	// BuildSourceID links the new service to a Render Build Source, which
+	// then provides all its source and build configuration (w2/m254 t005).
 	BuildSourceID *string `json:"buildSourceId"`
 }
 
@@ -363,16 +364,10 @@ func (r createServiceRequest) unsupportedField() string {
 	if r.ServiceDetails == nil {
 		return ""
 	}
-	if field := unsupportedBuildSourceField(r.ServiceDetails.BuildSourceID); field != "" {
-		return field
-	}
 	return unsupportedPreviewsField(r.ServiceDetails.Previews, r.ServiceDetails.PullRequestPreviewsEnabled)
 }
 
 func (r patchServiceRequest) unsupportedField() string {
-	if field := unsupportedBuildSourceField(r.BuildSourceID); field != "" {
-		return field
-	}
 	if r.ServiceDetails == nil {
 		return ""
 	}
@@ -382,13 +377,60 @@ func (r patchServiceRequest) unsupportedField() string {
 	return ""
 }
 
-// unsupportedBuildSourceField refuses a Render Build Source link (w2/m254
-// serves them); empty or null means "none", which is already true.
-func unsupportedBuildSourceField(buildSourceID *string) string {
-	if buildSourceID != nil && *buildSourceID != "" {
-		return "buildSourceId"
+// linkBuildSourcePatch serves a PATCH carrying buildSourceId (w2/m254 t005):
+// Render accepts no other field with it but
+// serviceDetails.envSpecificDetails.startCommand.
+func (s *Service) linkBuildSourcePatch(w http.ResponseWriter, r *http.Request, raw []byte, buildSourceID string) {
+	var body map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &body); err != nil {
+		core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
+		return
 	}
-	return ""
+	var startCommand *string
+	dryRun := r.URL.Query().Get("dryRun") == "true"
+	for _, key := range slices.Sorted(maps.Keys(body)) {
+		value := body[key]
+		switch key {
+		case "buildSourceId":
+		case "dryRun":
+			var v bool
+			if json.Unmarshal(value, &v) != nil {
+				core.WriteErr(w, fmt.Errorf("%w: dryRun must be a boolean", core.ErrBadRequest))
+				return
+			}
+			dryRun = dryRun || v
+		case "serviceDetails":
+			var details map[string]json.RawMessage
+			if err := json.Unmarshal(value, &details); err != nil {
+				core.WriteErr(w, fmt.Errorf("%w: serviceDetails must be an object", core.ErrBadRequest))
+				return
+			}
+			for _, detail := range slices.Sorted(maps.Keys(details)) {
+				inner := details[detail]
+				var env map[string]json.RawMessage
+				if detail == "envSpecificDetails" && json.Unmarshal(inner, &env) == nil {
+					if cmd, ok := env["startCommand"]; ok && len(env) == 1 {
+						var v string
+						if json.Unmarshal(cmd, &v) == nil {
+							startCommand = &v
+							continue
+						}
+					}
+				}
+				core.WriteErr(w, fmt.Errorf("%w: serviceDetails.%s cannot be combined with buildSourceId (only envSpecificDetails.startCommand can)", core.ErrBadRequest, detail))
+				return
+			}
+		default:
+			core.WriteErr(w, fmt.Errorf("%w: %s cannot be combined with buildSourceId (only serviceDetails.envSpecificDetails.startCommand can)", core.ErrBadRequest, key))
+			return
+		}
+	}
+	app, err := s.LinkBuildSource(r.Context(), r.PathValue("id"), buildSourceID, startCommand, dryRun)
+	if err != nil {
+		core.WriteErr(w, err)
+		return
+	}
+	core.WriteJSON(w, http.StatusOK, s.restService(r.Context(), app))
 }
 
 // unsupportedPreviewsField names the Render serviceDetails field bex cannot
@@ -666,7 +708,12 @@ func (r createServiceRequest) toCreateRequest(ctx context.Context, defaultOwnerI
 	if r.Type == appv1alpha1.TypeStaticSite && strings.TrimSpace(publishPath) == "" {
 		publishPath = "public"
 	}
+	var buildSourceID string
+	if r.ServiceDetails != nil && r.ServiceDetails.BuildSourceID != nil {
+		buildSourceID = *r.ServiceDetails.BuildSourceID
+	}
 	return CreateRequest{
+		BuildSourceID:           buildSourceID,
 		OwnerID:                 ownerID,
 		EnvironmentID:           r.EnvironmentID,
 		Region:                  region,
@@ -1062,9 +1109,19 @@ func (req patchServiceRequest) resolveFields(r *http.Request) (patchFields, erro
 // Pass `dryRun: true` in the body or `?dryRun=true` to run the whole patch's
 // checks without writing; returns 200 with the resolved spec (w2/m29, w5/m116).
 func (s *Service) patchService(w http.ResponseWriter, r *http.Request) {
+	raw, err := io.ReadAll(r.Body)
+	if err != nil {
+		core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
+		return
+	}
+	r.Body = io.NopCloser(bytes.NewReader(raw))
 	var req patchServiceRequest
 	if err := core.DecodeJSON(r, &req); err != nil {
 		core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
+		return
+	}
+	if req.BuildSourceID != nil && *req.BuildSourceID != "" {
+		s.linkBuildSourcePatch(w, r, raw, *req.BuildSourceID)
 		return
 	}
 	if field := req.unsupportedField(); field != "" {

@@ -1081,6 +1081,24 @@ const appColumns = `a.id, a.tenant_id, a.name, a.slug, a.type, COALESCE(a.repo,'
 	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at, a.container_policy, a.port_mode, a.creation_pending,
 	COALESCE(a.display_name,''), COALESCE(a.build_source_id,''), a.build_source_image, COALESCE(a.scope_project_id,'')`
 
+// SetAppBuildSource links service id to build source carrierID, deploying
+// image (empty until the source has built): the source then provides the
+// service's source, so its own repo, image and branch are cleared in the same
+// write (apps_check admits a linked service with neither).
+func (s *PGStore) SetAppBuildSource(ctx context.Context, id, carrierID, image string) error {
+	tag, err := s.Pool.Exec(ctx, `
+		UPDATE apps SET build_source_id = $2, build_source_image = $3, repo = NULL, image = NULL, branch = '',
+		    registry_credential_id = NULL, updated_at = now()
+		WHERE id = $1 AND type <> '`+TypeBuildSource+`'`, id, carrierID, image)
+	if err != nil {
+		return classify("app", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("app %s: %w", id, ErrNotFound)
+	}
+	return nil
+}
+
 // ListBuildSourceLinks returns the services linked to build source carrierID,
 // by name (Render's serviceLinks).
 func (s *PGStore) ListBuildSourceLinks(ctx context.Context, carrierID string) ([]App, error) {
@@ -2112,7 +2130,12 @@ func serviceNameTaken(ctx context.Context, q queryRower, tenantID, selfID, name 
 // credential binding so the projector never observes mismatched source/auth.
 func (s *PGStore) SetAppSource(ctx context.Context, id, repo, image, branch string, registryCredentialID *string) error {
 	tag, err := s.Pool.Exec(ctx,
-		`UPDATE apps SET repo = NULLIF($2, ''), image = NULLIF($3, ''), branch = $4, registry_credential_id = $5, updated_at = now() WHERE id = $1`,
+		`UPDATE apps SET repo = NULLIF($2, ''), image = NULLIF($3, ''), branch = $4, registry_credential_id = $5,
+		    -- A service given its own source no longer builds from a build
+		    -- source (w2/m254 t005).
+		    build_source_id = CASE WHEN NULLIF($2, '') IS NULL AND NULLIF($3, '') IS NULL THEN build_source_id END,
+		    build_source_image = CASE WHEN NULLIF($2, '') IS NULL AND NULLIF($3, '') IS NULL THEN build_source_image ELSE '' END,
+		    updated_at = now() WHERE id = $1`,
 		id, repo, image, branch, registryCredentialID)
 	if err != nil {
 		return classify("app", err)
