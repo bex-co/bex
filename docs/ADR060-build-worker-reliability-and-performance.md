@@ -459,6 +459,8 @@ So a cx33 fits one build with **~297 MiB** spare, a cx43 fits two with **~1.0 Gi
 
 That margin is thin enough to erode silently: if a DaemonSet request grows, another DaemonSet gains the build toleration, or the build request rises, a cx33 stops fitting and **cluster-autoscaler declines to scale up without emitting an error**. `scripts/clusterapi-validate.sh` therefore computes the floor — build request (read from `build.go`, never a copied literal) + the summed requests of every repository-declared DaemonSet that tolerates the build taint + the off-repo sidecar — and fails closed if any build pool's hint drops below it, if the hint ever exceeds measured allocatable, or if a build pool appears on a server type whose allocatable is not recorded here. `scripts/clusterapi-validate.test.sh` proves it red in each of those directions.
 
+_Addendum 2026-11-02 (w2/m250):_ two more tainted pools, `bex-tenant-xl` (cx53) and `bex-tenant-xxl` (ccx43), now serve the compute tiers too large for a cx33 (pro-plus/pro-max and pro-ultra). They are serving pools, not build pools: their taint is `bex.co/serving-pool`, and admission keeps the build-only toleration on build Jobs alone. See ADR053 § Serving pools for large tiers.
+
 ### Addendum (w8/m129, 2026-10-29) — builds that migrate their own database
 
 Render's free-plan recipe runs `migrate` at the end of the build command, so a build now depends on a datastore. Three effects on the build plane:
