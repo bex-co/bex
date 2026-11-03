@@ -232,6 +232,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 
 // GraphQLMutation returns the env-group write mutations.
 func (s *Service) GraphQLMutation() graphql.Fields {
+	// A build source's bds- id links its build-time groups through these
+	// serviceId verbs (ADR097); a carrier's links are always staged.
+	return gqlutil.ScopeArg(s.graphQLMutation(), "serviceId", s.ScopeBuildSourceID)
+}
+
+func (s *Service) graphQLMutation() graphql.Fields {
 	idService := graphql.FieldConfigArgument{
 		"id":        gqlutil.ReqArg(graphql.String),
 		"serviceId": gqlutil.ReqArg(graphql.String),

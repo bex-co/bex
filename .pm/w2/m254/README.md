@@ -1,6 +1,6 @@
 # w2 · m254 — Build Sources: one build feeding several services, as on Render
 
-**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** in progress — t001–t006, t013, t014 done
+**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** in progress — t001–t007, t013, t014 done
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Build-time env vars, secret files and env-group links — **DONE** | 1.5h | t003 |
 | t005 | buildSourceId on service create and PATCH — **DONE** | 1h | t003 |
 | t006 | Trigger a build and list builds — **DONE** | 1h | t004, t005 |
-| t007 | GraphQL and MCP equivalents | 1h | t006 |
+| t007 | GraphQL and MCP equivalents — **DONE** | 1h | t006 |
 | t008 | Dashboard: Settings → Build → Source "Update source" dialog | 1.5h | t007 |
 | t013 | Deploys report buildId; deploy and rollback accept a build — **DONE** | 45m | t006 |
 | t014 | POST /v1/build-sources answers 500 after creating the source: PGStore.CreateApp overwrites the bds- id with a srv- id — **DONE** | 45m | t003 |

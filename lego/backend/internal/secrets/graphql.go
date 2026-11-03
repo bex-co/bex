@@ -158,6 +158,10 @@ func environmentPatchFromArgs(p graphql.ResolveParams) EnvironmentPatch {
 // service.secretFileNames fields remain intact for old dashboard clients; new
 // clients use envVars(serviceId,cursor,limit) / secretFiles(serviceId,cursor,limit).
 func (s *Service) GraphQLQuery() graphql.Fields {
+	return gqlutil.ScopeArg(s.graphQLQuery(), "serviceId", s.envScope)
+}
+
+func (s *Service) graphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"envVars": &graphql.Field{
 			Type: graphql.NewList(envVarWithCursorGQLType),
@@ -204,6 +208,10 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 
 // GraphQLMutation returns the env-var write mutations for the root to merge.
 func (s *Service) GraphQLMutation() graphql.Fields {
+	return gqlutil.ScopeArg(s.graphQLMutation(), "serviceId", s.envScope)
+}
+
+func (s *Service) graphQLMutation() graphql.Fields {
 	svcKey := graphql.FieldConfigArgument{
 		"serviceId": gqlutil.ReqArg(graphql.String),
 		"key":       gqlutil.ReqArg(graphql.String),

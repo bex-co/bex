@@ -113,6 +113,11 @@ func (s *Service) PatchEnvironment(ctx context.Context, service string, patch En
 	if patch.SaveMode != SaveModeOnly && patch.SaveMode != SaveModeDeploy && !rebuild {
 		return EnvironmentPatchResult{}, fmt.Errorf("%w: saveMode must be %q, %q or %q", core.ErrBadRequest, SaveModeOnly, SaveModeDeploy, SaveModeRebuild)
 	}
+	// A build source saves its environment without building (Render, ADR097):
+	// a deploying save would build the carrier and fan its build out.
+	if core.IsBuildSource(a) && patch.SaveMode != SaveModeOnly {
+		return EnvironmentPatchResult{}, fmt.Errorf("%w: a build source saves its environment without building; use saveMode %q and trigger a build", core.ErrBadRequest, SaveModeOnly)
+	}
 	// A suspended service cannot deploy (Trigger and Rollback refuse it), so a
 	// deploying save stages like Save only and says why instead of claiming a
 	// deploy the reconciler would only cancel; the locked write re-checks the

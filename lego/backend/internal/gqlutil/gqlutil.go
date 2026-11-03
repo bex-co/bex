@@ -507,3 +507,30 @@ func PositiveLimit(args map[string]any) (int, error) {
 	}
 	return v, nil
 }
+
+// ScopeArg returns fields with every field that takes arg resolving in
+// scope(ctx, arg's value) — the context a feature resolves that id in (a
+// build source's id scoped to its carrier, ADR097). Fields are copied, never
+// changed in place, and a field without arg is returned as is.
+func ScopeArg(fields graphql.Fields, arg string, scope func(context.Context, string) (context.Context, error)) graphql.Fields {
+	out := make(graphql.Fields, len(fields))
+	for name, f := range fields {
+		if _, ok := f.Args[arg]; !ok || f.Resolve == nil {
+			out[name] = f
+			continue
+		}
+		scoped, resolve := *f, f.Resolve
+		scoped.Resolve = func(p graphql.ResolveParams) (any, error) {
+			if id, ok := p.Args[arg].(string); ok {
+				ctx, err := scope(p.Context, id)
+				if err != nil {
+					return nil, err
+				}
+				p.Context = ctx
+			}
+			return resolve(p)
+		}
+		out[name] = &scoped
+	}
+	return out
+}

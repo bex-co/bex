@@ -270,6 +270,41 @@ func (s *Service) GetBuildSource(ctx context.Context, id string) (BuildSourceVie
 	return s.buildSourceView(ctx, a)
 }
 
+// parseBuildSourceFilter reads Render's list-build-sources filters, get
+// returning each by its Render name (projectId, createdBefore, …).
+func parseBuildSourceFilter(names []string, get func(string) string) (BuildSourceFilter, error) {
+	f := BuildSourceFilter{Names: names, ProjectID: get("projectId")}
+	for field, dst := range map[string]*time.Time{
+		"createdBefore": &f.CreatedBefore, "createdAfter": &f.CreatedAfter,
+		"updatedBefore": &f.UpdatedBefore, "updatedAfter": &f.UpdatedAfter,
+	} {
+		t, err := core.ParseTime(field, get(field))
+		if err != nil {
+			return BuildSourceFilter{}, err
+		}
+		*dst = t
+	}
+	return f, nil
+}
+
+// listBuildSourcesPage is one page of ListBuildSources, after the build
+// source id after.
+func (s *Service) listBuildSourcesPage(ctx context.Context, ownerID string, f BuildSourceFilter, after string, limit int) ([]BuildSourceView, error) {
+	views, err := s.ListBuildSources(ctx, ownerID, f)
+	if err != nil {
+		return nil, err
+	}
+	return core.StablePage(views, after, limit, true, func(v BuildSourceView) string { return v.ID }), nil
+}
+
+func toBuildSourceList(views []BuildSourceView) []buildSourceWithCursor {
+	out := make([]buildSourceWithCursor, len(views))
+	for i, v := range views {
+		out[i] = buildSourceWithCursor{BuildSource: v, Cursor: v.ID}
+	}
+	return out
+}
+
 // BuildSourceFilter is Render's list-build-sources query.
 type BuildSourceFilter struct {
 	Names                                                    []string
@@ -581,28 +616,16 @@ func (s *Service) registerBuildSourceRoutes(mux *http.ServeMux) {
 	}))
 	mux.HandleFunc("GET /v1/build-sources", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
-		f := BuildSourceFilter{Names: q["name"], ProjectID: q.Get("projectId")}
-		for field, dst := range map[string]*time.Time{
-			"createdBefore": &f.CreatedBefore, "createdAfter": &f.CreatedAfter,
-			"updatedBefore": &f.UpdatedBefore, "updatedAfter": &f.UpdatedAfter,
-		} {
-			t, err := core.ParseTime(field, q.Get(field))
-			if err != nil {
-				return nil, err
-			}
-			*dst = t
-		}
-		views, err := s.ListBuildSources(r.Context(), q.Get("ownerId"), f)
+		f, err := parseBuildSourceFilter(q["name"], q.Get)
 		if err != nil {
 			return nil, err
 		}
 		after, limit := core.PageParams(q)
-		page := core.StablePage(views, after, limit, true, func(v BuildSourceView) string { return v.ID })
-		out := make([]buildSourceWithCursor, len(page))
-		for i, v := range page {
-			out[i] = buildSourceWithCursor{BuildSource: v, Cursor: v.ID}
+		page, err := s.listBuildSourcesPage(r.Context(), q.Get("ownerId"), f, after, limit)
+		if err != nil {
+			return nil, err
 		}
-		return out, nil
+		return toBuildSourceList(page), nil
 	}))
 	mux.HandleFunc("GET /v1/build-sources/{buildSourceId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.GetBuildSource(r.Context(), r.PathValue("buildSourceId"))

@@ -238,6 +238,7 @@ var callerScopedMCPTools = map[string]bool{
 	"list_services":           true,
 	"list_key_value":          true,
 	"list_postgres_instances": true,
+	"list_build_sources":      true,
 	// Validates a posted bex.yml manifest string — a pure function on the input,
 	// no resource and no workspace touched.
 	"validate_bex_yml": true,

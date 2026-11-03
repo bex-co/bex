@@ -17,6 +17,8 @@ limitations under the License.
 package gqlutil
 
 import (
+	"context"
+	"errors"
 	"fmt"
 	"io/fs"
 	"os"
@@ -285,5 +287,40 @@ func TestTimeField(t *testing.T) {
 	shifted := TimeField(func(v view) any { return v.At })
 	if got := resolve(shifted, view{At: instant.In(zoned)}); got != "2026-07-18T04:56:00Z" {
 		t.Errorf("zoned time: got %v, want UTC RFC3339", got)
+	}
+}
+
+type scopeKey struct{}
+
+// ScopeArg runs a field that takes the argument in scope(ctx, its value),
+// surfaces a scope refusal, and leaves fields without it alone.
+func TestScopeArgScopesOnlyFieldsTakingTheArgument(t *testing.T) {
+	seen := func(p graphql.ResolveParams) (any, error) {
+		v, _ := p.Context.Value(scopeKey{}).(string)
+		return v, nil
+	}
+	scopedField := &graphql.Field{Type: graphql.String, Args: graphql.FieldConfigArgument{"serviceId": ReqArg(graphql.String)}, Resolve: seen}
+	unscopedField := &graphql.Field{Type: graphql.String, Resolve: seen}
+	fields := ScopeArg(graphql.Fields{"scoped": scopedField, "unscoped": unscopedField}, "serviceId", func(ctx context.Context, id string) (context.Context, error) {
+		if id == "refused" {
+			return ctx, errors.New("not a build source")
+		}
+		return context.WithValue(ctx, scopeKey{}, "scoped:"+id), nil
+	})
+	if fields["unscoped"] != unscopedField || fields["scoped"] == scopedField {
+		t.Fatal("ScopeArg must copy the fields it wraps and return the others as they are")
+	}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: fields})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `{ scoped(serviceId:"bds-1") unscoped }`})
+	data, _ := res.Data.(map[string]any)
+	if res.HasErrors() || data["scoped"] != "scoped:bds-1" || data["unscoped"] != "" {
+		t.Fatalf("data = %+v, errors %v", data, res.Errors)
+	}
+	res = graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `{ scoped(serviceId:"refused") }`})
+	if !res.HasErrors() || !strings.Contains(res.Errors[0].Message, "not a build source") {
+		t.Fatalf("refused scope = %+v", res.Errors)
 	}
 }

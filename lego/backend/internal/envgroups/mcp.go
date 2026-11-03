@@ -262,16 +262,16 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "link_env_group",
 		Description: "Link an environment group to a service: the service gains the group's env vars + secret files and rolls.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in linkEnvGroupArgs) (*mcp.CallToolResult, okResult, error) {
+	}, mcputil.Scoped(s.ScopeBuildSourceID, func(in linkEnvGroupArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in linkEnvGroupArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.LinkService(ctx, in.ID, in.ServiceID)
 		return nil, okResult{OK: err == nil}, err
-	})
+	}))
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "unlink_env_group",
 		Description: "Unlink an environment group from a service: the group's vars + files are removed from the service and it rolls.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in linkEnvGroupArgs) (*mcp.CallToolResult, okResult, error) {
+	}, mcputil.Scoped(s.ScopeBuildSourceID, func(in linkEnvGroupArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in linkEnvGroupArgs) (*mcp.CallToolResult, okResult, error) {
 		err := s.UnlinkService(ctx, in.ID, in.ServiceID)
 		return nil, okResult{OK: err == nil}, err
-	})
+	}))
 }
