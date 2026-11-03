@@ -807,6 +807,7 @@ export type DatastoreMetricsQueryInput = {
 
 export type Deploy = {
   __typename: 'Deploy';
+  buildId: Maybe<Scalars['String']['output']>;
   cancelReason: Maybe<Scalars['String']['output']>;
   commitCreatedAt: Maybe<Scalars['String']['output']>;
   commitId: Maybe<Scalars['String']['output']>;
@@ -2599,6 +2600,7 @@ export type MutationTerminateSandboxArgs = {
 
 
 export type MutationTriggerDeployArgs = {
+  buildId?: InputMaybe<Scalars['String']['input']>;
   clearCache?: InputMaybe<Scalars['String']['input']>;
   commitId?: InputMaybe<Scalars['String']['input']>;
   confirm?: InputMaybe<Scalars['String']['input']>;

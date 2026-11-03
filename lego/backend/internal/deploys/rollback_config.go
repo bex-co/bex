@@ -134,7 +134,8 @@ func (s *Service) openSelectedRelease(ctx context.Context, a *appv1alpha1.App, s
 		}
 		return nil
 	}, func(release int64) (store.Deploy, error) {
-		commit := store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage}
+		// The restored release's build source build travels with its commit.
+		commit := store.CommitInfo{Hash: target.Commit, Message: target.CommitMessage, BuildID: target.BuildID}
 		if rollback {
 			return s.Store.CreateRollbackDeploy(ctx, appID, selected.Image, target.ID, release, commit, core.SubjectFrom(ctx))
 		}

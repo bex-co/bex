@@ -44,6 +44,7 @@ var deployGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// the fragment's existing style (REST nests them as Render's commit
 		// object). Empty/nil when unresolved; clients omit rather than fake.
 		"commitId":        gqlutil.StrField(func(d DeployView) any { return d.CommitID }),
+		"buildId":         gqlutil.StrField(func(d DeployView) any { return d.BuildID }),
 		"commitMessage":   gqlutil.StrField(func(d DeployView) any { return d.CommitMessage }),
 		"commitCreatedAt": gqlutil.StrField(func(d DeployView) any { return formatTimePtr(d.CommitAuthorAt) }),
 		"createdAt":       gqlutil.StrField(func(d DeployView) any { return formatTime(d.CreatedAt) }),
@@ -210,6 +211,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"commitId":   gqlutil.Arg(graphql.String),
 				"deployMode": gqlutil.Arg(graphql.String),
 				"imageUrl":   gqlutil.Arg(graphql.String),
+				"buildId":    gqlutil.Arg(graphql.String),
 				// Render's "clear" | "do_not_clear" enum. With registry caching
 				// enabled, "clear" rebuilds without importing prior layers (w7/m88);
 				// with the gate off both values are no-ops. See TriggerParams.
@@ -228,6 +230,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					DeployMode: deployMode,
 					ImageURL:   imageURL,
 					ClearCache: clearCache,
+					BuildID:    gqlutil.Str(p.Args, "buildId"),
 				})
 			},
 		},

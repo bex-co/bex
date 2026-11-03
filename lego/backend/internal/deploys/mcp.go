@@ -65,6 +65,7 @@ type triggerDeployArgs struct {
 	ImageURL   string `json:"imageUrl,omitempty" jsonschema:"image-backed services only: deploy this specific image tag or digest instead of the saved image; rejected for repo-backed services"`
 	CommitID   string `json:"commitId,omitempty" jsonschema:"repo-backed services only: build from this git ref instead of Branch HEAD; rejected for image-backed and cron_job services"`
 	DeployMode string `json:"deployMode,omitempty" jsonschema:"build_and_deploy (default) or deploy_only (image-backed only — skips rebuild, re-pulls current image)"`
+	BuildID    string `json:"buildId,omitempty" jsonschema:"services linked to a build source only: deploy this build (a bld- id from the build source's builds) instead of the source's current build; cannot be combined with imageUrl, commitId or deployMode"`
 	// ClearCache is a boolean on Render's MCP server (w5/m145); bex also keeps
 	// accepting its REST clear|do_not_clear spelling.
 	ClearCache any    `json:"clearCache,omitempty" jsonschema:"true clears the build cache (Render's MCP boolean); the REST strings clear and do_not_clear are also accepted. With BEX_BUILD_CACHE=registry, clearing rebuilds without importing prior layers and still exports a fresh cache; with the gate off it is a no-op."`
@@ -205,6 +206,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			CommitID:   in.CommitID,
 			DeployMode: in.DeployMode,
 			ClearCache: clearCache,
+			BuildID:    in.BuildID,
 		})
 		if err != nil {
 			return nil, renderDeploy{}, err
