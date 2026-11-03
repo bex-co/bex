@@ -53,6 +53,13 @@ jobs:
       BEX_CANARY_STATIC_REPO: ${{ vars.BEX_CANARY_STATIC_REPO }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
       # The bex-production pool is not homogeneous: one host lacks the gh CLI,
       # so the issue-bookkeeping steps fail on `gh: command not found` even when
       # the probe itself is healthy. Pinned + checksummed so a compromised

@@ -61,6 +61,13 @@ jobs:
     runs-on: [self-hosted, Linux, ARM64, bex-ci]
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
       - name: install yq
         # Always download + checksum-verify into the ephemeral $RUNNER_TEMP and
         # prepend it to PATH — never short-circuit on a yq already in PATH. On a
