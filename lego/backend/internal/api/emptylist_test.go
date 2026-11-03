@@ -111,6 +111,14 @@ var emptyListCases = []emptyListCase{
 	{route: "GET /v1/agent-environment", path: "/v1/agent-environment", field: "customHosts"},
 }
 
+func init() {
+	for _, route := range buildSourceRoutes {
+		if strings.HasPrefix(route, "GET ") {
+			neverEmptyArrayRoutes[route] = "answers 404 not offered until w2/m254 (ADR018, w2/m251)"
+		}
+	}
+}
+
 // neverEmptyArrayRoutes are array routes whose contents are a build-time
 // constant, so there is no empty case to assert — they cannot regress to null.
 var neverEmptyArrayRoutes = map[string]string{

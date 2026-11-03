@@ -255,7 +255,7 @@ const (
 	// deliberately NOT TypeServiceEnvironmentChanged, which despite its name is
 	// the env-var/config-rollout fact. Render's pinned enums have no
 	// membership-move type (render-public-api-1.json eventTypeParam +
-	// docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-08-17.json,
+	// docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-11-02.json,
 	// re-checked 2026-08-28), so this is a bex extension.
 	TypeServiceMoved     = "service_moved"
 	TypeEnvGroupLinked   = "env_group_linked"

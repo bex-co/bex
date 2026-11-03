@@ -38,14 +38,14 @@ import (
 )
 
 const (
-	renderOpenAPISHA256 = "c6851bc830fa0f01fa58face22c8cf46d4762054c6fe879d724fae5ade72a520"
+	renderOpenAPISHA256 = "6ac5d3d473625d5e8d921e3a008f500afa400c1f14e25c1f55efc657f6fdbf44"
 	renderAPIPrefix     = "/v1"
 )
 
 // renderOpenAPISource is Render's complete, unversioned public contract,
 // fetched from https://api-docs.render.com/openapi/render-public-api-1.json on
-// 2026-09-11 (refreshed from the 2026-07-20 pin by w6/073 to admit
-// retrieve-service-outbound-ips). It is deliberately embedded: API startup and
+// 2026-11-02 (round-5 drift, w2/m251: 208 -> 252 operations; the previous
+// 2026-09-11 pin came from w6/073). It is deliberately embedded: API startup and
 // CI never depend on Render's availability or silently accept an upstream
 // contract change.
 //
@@ -104,6 +104,9 @@ var renderOptionalParameterCompatibility = map[string][]string{
 	"list-logs":        {"ownerId"},
 	"list-logs-values": {"ownerId"},
 	"subscribe-logs":   {"ownerId"},
+	// The sandbox list resolves an omitted ownerId from the caller's selected
+	// or default workspace, as it did before the operation entered the pin.
+	"list-sandboxes": {"ownerId"},
 }
 
 // renderPathParameterPatternCompatibility widens a path parameter's id-shape
@@ -133,7 +136,19 @@ var renderPathParameterPatternCompatibility = map[string]map[string]string{
 	"update-blueprint":     {"blueprintId": renderBlueprintIDPattern},
 	"disconnect-blueprint": {"blueprintId": renderBlueprintIDPattern},
 	"list-blueprint-syncs": {"blueprintId": renderBlueprintIDPattern},
+	// Render's sandbox ids carry 25 characters after `sbx-`; bex mints the
+	// same prefix with xid's 20 (id.Sandbox, w9/m94). The routes predate
+	// these operations entering the pin (round-5 drift, w2/m251), so without
+	// the widening every existing sandbox call would 400 on its own id.
+	"retrieve-sandbox":      {"sandboxId": renderSandboxIDPattern},
+	"terminate-sandbox":     {"sandboxId": renderSandboxIDPattern},
+	"connect-sandbox-run":   {"sandboxId": renderSandboxIDPattern},
+	"connect-sandbox-files": {"sandboxId": renderSandboxIDPattern},
 }
+
+// renderSandboxIDPattern accepts bex's 20-character sbx- ids alongside
+// Render's 25-character ones.
+const renderSandboxIDPattern = `^sbx-[0-9a-v]{20}(?:[0-9a-v]{5})?$`
 
 // renderBlueprintIDPattern accepts bex's blp- alongside Render's exs-. The
 // character class stays Render's [0-9a-z] rather than narrowing to xid's own
@@ -622,6 +637,10 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	_, pattern := v.next.Handler(r)
 	if pattern == "" {
 		serveMuxJSON(v.next, w, r)
+		return
+	}
+	if notOfferedRoutes[pattern] {
+		v.next.ServeHTTP(w, r)
 		return
 	}
 

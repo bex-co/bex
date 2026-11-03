@@ -8,7 +8,7 @@ set -euo pipefail
 repo_root="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 script="$repo_root/scripts/render-schema-drift.sh"
 pinned="$repo_root/lego/backend/internal/apps/schema/render.yaml.json"
-fixture="$repo_root/docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-08-17.json"
+fixture="$repo_root/docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-11-02.json"
 pinned_openapi="$repo_root/lego/backend/internal/api/openapi/render-public-api-1.json"
 
 failures=0
@@ -35,7 +35,7 @@ sandbox="$(mktemp -d -t bex-schema-drift-test.XXXXXX)"
 trap 'rm -rf "$sandbox"' EXIT
 
 # The "upstream" OpenAPI: Render's pinned spec with the event type enum set to
-# exactly the fixture's 67 values, so only a deliberate mutation below differs.
+# exactly the fixture's values, so only a deliberate mutation below differs.
 jq --slurpfile fx "$fixture" \
   '.paths["/events/{eventId}"].get.responses["200"].content["application/json"].schema.properties.type.enum = $fx[0].renderOpenAPI' \
   "$pinned_openapi" >"$sandbox/openapi.json"
@@ -43,9 +43,10 @@ jq --slurpfile fx "$fixture" \
 root="$sandbox/repo"
 run_with() { # run_with <upstream-schema-file> <upstream-openapi-file>
   rm -rf "$root"
-  mkdir -p "$root/scripts" "$root/lego/backend/internal/apps/schema" "$root/docs/render-artifacts/fixtures"
+  mkdir -p "$root/scripts" "$root/lego/backend/internal/apps/schema" "$root/lego/backend/internal/api/openapi" "$root/docs/render-artifacts/fixtures"
   cp "$script" "$root/scripts/render-schema-drift.sh"
   cp "$pinned" "$root/lego/backend/internal/apps/schema/render.yaml.json"
+  cp "$pinned_openapi" "$root/lego/backend/internal/api/openapi/render-public-api-1.json"
   cp "$fixture" "$root/docs/render-artifacts/fixtures/"
   RENDER_BLUEPRINT_SCHEMA_URL="file://$1" RENDER_OPENAPI_URL="file://$2" \
     "$root/scripts/render-schema-drift.sh"
@@ -78,7 +79,7 @@ check "Blueprint drift names a removed definition" 1 "definition $first_definiti
 # Webhook vocabulary drift: upstream adds an event type the fixture lacks.
 jq '.paths["/events/{eventId}"].get.responses["200"].content["application/json"].schema.properties.type.enum += ["brand_new_event"]' \
   "$sandbox/openapi.json" >"$sandbox/openapi-drift.json"
-check "webhook enum drift fails and names the fixture" 1 "render-webhook-vocabulary-2026-08-17.json" \
+check "webhook enum drift fails and names the fixture" 1 "render-webhook-vocabulary-2026-11-02.json" \
   run_with "$pinned" "$sandbox/openapi-drift.json"
 check "webhook enum drift shows the new value" 1 "+brand_new_event" \
   run_with "$pinned" "$sandbox/openapi-drift.json"
@@ -88,6 +89,20 @@ check "webhook enum drift names the action" 1 "capture a new dated webhook vocab
 jq 'del(.paths["/events/{eventId}"])' "$sandbox/openapi.json" >"$sandbox/openapi-moved.json"
 check "moved webhook enum says the fixture is not at fault" 1 "is not at fault" \
   run_with "$pinned" "$sandbox/openapi-moved.json"
+
+# REST operation drift: upstream adds an operation and removes another.
+jq '.paths["/bex-drift-probe"] = {"get": {"operationId": "bex-drift-probe"}} | del(.paths["/services/{serviceId}/suspend"])' \
+  "$sandbox/openapi.json" >"$sandbox/openapi-ops.json"
+check "matching operations pass" 0 "Render REST operations match the pinned" \
+  run_with "$pinned" "$sandbox/openapi.json"
+check "operation drift fails" 1 "::error title=Render REST operation drift::" \
+  run_with "$pinned" "$sandbox/openapi-ops.json"
+check "operation drift names the added operation" 1 "GET /bex-drift-probe" \
+  run_with "$pinned" "$sandbox/openapi-ops.json"
+check "operation drift names the removed operation" 1 "POST /services/{serviceId}/suspend" \
+  run_with "$pinned" "$sandbox/openapi-ops.json"
+check "operation drift names the action" 1 "renderOperationOmissions" \
+  run_with "$pinned" "$sandbox/openapi-ops.json"
 
 # Both halves report on one run: Blueprint drift must not hide webhook drift.
 check "Blueprint and webhook drift are both reported" 1 "Render webhook OpenAPI drift" \
@@ -104,8 +119,9 @@ check "a drifting run leaves pin and fixture untouched" 0 "" pins_untouched
 # A hand-edited pin fails on integrity, before any download, naming the action.
 edited_pin() {
   rm -rf "$root"
-  mkdir -p "$root/scripts" "$root/lego/backend/internal/apps/schema" "$root/docs/render-artifacts/fixtures"
+  mkdir -p "$root/scripts" "$root/lego/backend/internal/apps/schema" "$root/lego/backend/internal/api/openapi" "$root/docs/render-artifacts/fixtures"
   cp "$script" "$root/scripts/render-schema-drift.sh"
+  cp "$pinned_openapi" "$root/lego/backend/internal/api/openapi/render-public-api-1.json"
   jq '.title = "tampered"' "$pinned" >"$root/lego/backend/internal/apps/schema/render.yaml.json"
   cp "$fixture" "$root/docs/render-artifacts/fixtures/"
   RENDER_BLUEPRINT_SCHEMA_URL="file:///nonexistent" RENDER_OPENAPI_URL="file:///nonexistent" \
