@@ -119,7 +119,7 @@ func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
 		    high_availability_enabled, connection_pool_enabled, disk_size_gb, maxmemory_policy, persistence_mode,
 		    disk_id)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17, $18, $19, $20, $21, $22, $23, $24, $25, $26, $27, $28, $29, $30, $31, $32, $33, $34, $35, $36, $37, $38)
-		ON CONFLICT (id) DO NOTHING`,
+		ON CONFLICT DO NOTHING`,
 		auditID(ev), workspaceOf(ev.Resource), ev.Caller, ev.CallerMethod, ev.Verb, ev.Resource, ev.Target, ev.TargetName, string(ev.Outcome), ev.At,
 		ev.MaintenanceModeTo,
 		ev.PlanFrom, ev.PlanTo,
@@ -134,7 +134,9 @@ func (s *PGStore) Record(ctx context.Context, ev core.AuditEvent) error {
 	return err
 }
 
-// auditID is ev's own id when the writer derived one, else a fresh one.
+// auditID is ev's own id when the writer derived one, else a fresh one. Record's
+// ON CONFLICT names no target on purpose: a target needs SELECT on its columns,
+// and the ssh-gateway's scoped role may only INSERT audit rows.
 func auditID(ev core.AuditEvent) string {
 	if ev.ID != "" {
 		return ev.ID
