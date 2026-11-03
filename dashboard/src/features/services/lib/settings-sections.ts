@@ -38,6 +38,8 @@ export type NavigableSettingsSectionId = Exclude<
 export interface SettingsSectionsService {
   type: string;
   repo?: string | null;
+  /** A build source the service builds from: it holds the registry binding. */
+  buildSourceId?: string | null;
   runtime?: string | null;
   builder?: string | null;
 }
@@ -81,7 +83,11 @@ export function serviceSettingsSections(
     if (publiclyRoutable(type)) sections.push("domains", "networking");
     sections.push("outbound-ips");
   }
-  if (!staticSite && (!repo || isDockerBuild(service))) {
+  if (
+    !staticSite &&
+    !service.buildSourceId &&
+    (!repo || isDockerBuild(service))
+  ) {
     sections.push("registry-credential");
   }
   sections.push("notifications");

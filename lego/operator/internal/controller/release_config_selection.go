@@ -392,6 +392,17 @@ func (r *AppReconciler) selectedRuntime(ctx context.Context, app *appv1alpha1.Ap
 	return runtime, rec.launch(app), nil
 }
 
+// selectedLaunch is selectedRuntime with the launch a Deployment or CronJob
+// projects: a release with no recorded launch that deploys its build source's
+// current native build starts as launchNativeArgs (w2/m254 t017).
+func (r *AppReconciler) selectedLaunch(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.App, launchMode, error) {
+	runtime, launch, err := r.selectedRuntime(ctx, app)
+	if err == nil && launch == launchUnknown && r.linkedToNativeSource(ctx, app) {
+		launch = launchNativeArgs
+	}
+	return runtime, launch, err
+}
+
 // launch reads how the release launched its StartCommand back from its recorded
 // app container: through the shell, or by the artifact's own entrypoint.
 // launchUnknown when the record cannot tell: no template, no StartCommand, a

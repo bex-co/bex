@@ -184,6 +184,9 @@ func buildView(carrier *appv1alpha1.App, sourceID string, d DeployView) BuildVie
 type sourceBuild struct {
 	link *appv1alpha1.BuildSourceLink
 	id   string
+	// commit is what the build built, so the service's deploy reports the
+	// build's commit as Render's does.
+	commit store.CommitInfo
 }
 
 // Render's create-deploy refusals for buildId.
@@ -218,7 +221,7 @@ func (s *Service) linkedBuild(ctx context.Context, a *appv1alpha1.App, buildID s
 	// provenance only, so an unresolved row ships the build without one.
 	b := &sourceBuild{link: link}
 	if d, err := s.servingDeploy(ctx, carrier.Name, &carrier); err == nil && d.ID != "" {
-		b.id = BuildID(d.ID)
+		b.id, b.commit = BuildID(d.ID), d.CommitInfo()
 	}
 	return b, nil
 }
@@ -242,7 +245,7 @@ func (s *Service) chosenBuild(ctx context.Context, carrier *appv1alpha1.App, bui
 	if !RollbackEligible(carrier, d) {
 		return nil, core.NewConflictError(buildNotSucceededCode, fmt.Sprintf("build %s has not succeeded", buildID), map[string]any{"buildId": buildID})
 	}
-	return &sourceBuild{link: &appv1alpha1.BuildSourceLink{Name: carrier.Name, Image: d.ResolvedImage}, id: buildID}, nil
+	return &sourceBuild{link: &appv1alpha1.BuildSourceLink{Name: carrier.Name, Image: d.ResolvedImage}, id: buildID, commit: d.CommitInfo()}, nil
 }
 
 // buildSourceStore is the control-plane store surface linked services need.
@@ -306,7 +309,7 @@ func (s *Service) BuildSucceeded(ctx context.Context, b store.BuiltSource) {
 		fail("its services", err)
 		return
 	}
-	build := &sourceBuild{link: &appv1alpha1.BuildSourceLink{Name: b.Carrier, Image: b.Image}, id: BuildID(b.DeployID)}
+	build := &sourceBuild{link: &appv1alpha1.BuildSourceLink{Name: b.Carrier, Image: b.Image}, id: BuildID(b.DeployID), commit: b.Commit}
 	for _, row := range links {
 		waiting := row.BuildSourceImage == ""
 		if row.Suspended || row.BuildSourceImage == b.Image {

@@ -2078,6 +2078,7 @@ export type MutationLeaveWorkspaceArgs = {
 
 export type MutationLinkBuildSourceArgs = {
   buildSourceId: Scalars['String']['input'];
+  dryRun?: InputMaybe<Scalars['Boolean']['input']>;
   serviceId: Scalars['String']['input'];
   startCommand?: InputMaybe<Scalars['String']['input']>;
 };

@@ -4782,7 +4782,7 @@ func (r *AppReconciler) reconcileCronJob(ctx context.Context, app *appv1alpha1.A
 	if err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
-	effectiveApp, launch, err := r.selectedRuntime(ctx, app)
+	effectiveApp, launch, err := r.selectedLaunch(ctx, app)
 	if err != nil {
 		return r.fail(ctx, app, "DeployFailed", err)
 	}
@@ -5341,10 +5341,16 @@ func (r *AppReconciler) cronPodSpec(app *appv1alpha1.App, image string, port int
 		SecurityContext: appSecCtx(app.Spec),
 	}
 	command := app.Spec.Command
-	if command == "" && shellRunsStartCommand(app, image, launch) {
+	if command == "" && (launch == launchNativeArgs || shellRunsStartCommand(app, image, launch)) {
 		command = app.Spec.StartCommand
 	}
-	if command != "" {
+	switch {
+	case command == "":
+	case launch == launchNativeArgs:
+		// A cron linked to a native build source: bash arguments to the
+		// image's native-init entrypoint, as a native service runs (w2/m262).
+		container.Args = nativeStartArgs(command)
+	default:
 		container.Command = shellCommand(command)
 	}
 	spec := corev1.PodSpec{

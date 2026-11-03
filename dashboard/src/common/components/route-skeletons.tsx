@@ -2066,7 +2066,7 @@ function SettingsSourceCardSkeleton({ repo }: { repo: boolean }) {
 }
 
 /** The skeleton of one Settings section's card or cards. */
-function SettingsSectionSkeleton({
+export function SettingsSectionSkeleton({
   section,
   service,
 }: {
