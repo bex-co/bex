@@ -77,7 +77,7 @@ func scanBlueprintAutoSyncIntent(scan interface {
 func (s *PGStore) ListAutoSyncBlueprints(ctx context.Context, branch, tenantScope string) ([]Blueprint, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
-		       last_sync_at, created_at, updated_at
+		       last_sync_at, created_at, updated_at, existing_resources, resource_suffix
 		  FROM blueprints
 		 WHERE auto_sync = true
 		   -- A created Blueprint has no approved sync yet; Render does not
@@ -96,7 +96,7 @@ func (s *PGStore) ListAutoSyncBlueprints(ctx context.Context, branch, tenantScop
 	for rows.Next() {
 		var b Blueprint
 		if err := rows.Scan(&b.ID, &b.TenantID, &b.Name, &b.Repo, &b.Branch, &b.Path,
-			&b.AutoSync, &b.Manifest, &b.Status, &b.LastSyncAt, &b.CreatedAt, &b.UpdatedAt); err != nil {
+			&b.AutoSync, &b.Manifest, &b.Status, &b.LastSyncAt, &b.CreatedAt, &b.UpdatedAt, &b.ExistingResources, &b.ResourceSuffix); err != nil {
 			return nil, err
 		}
 		out = append(out, b)

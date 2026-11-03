@@ -713,15 +713,18 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 	if repo == "" {
 		ctx = context.WithValue(ctx, unresolvedRepoKey{}, true)
 	}
+	var suffix string
 	if blueprintID != "" {
 		if s.Blueprints == nil {
 			return BlueprintValidation{}, ErrBlueprintsUnavailable
 		}
-		if _, err := s.Blueprints.GetBlueprint(ctx, blueprintID, s.resolveTenantID(ctx)); err != nil {
+		b, err := s.Blueprints.GetBlueprint(ctx, blueprintID, s.resolveTenantID(ctx))
+		if err != nil {
 			return BlueprintValidation{}, store.MapError(err)
 		}
+		suffix = b.ResourceSuffix
 	}
-	source, ir, problems := CompileBlueprintIR(bexYAML)
+	source, ir, problems := compileBlueprintIRFor(bexYAML, suffix)
 	if len(problems) > 0 {
 		return BlueprintValidation{Errors: blueprintCompilerValidationErrors(problems)}, nil
 	}
@@ -1361,7 +1364,7 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 // manifest (the sync-owned field) is written: current name/path/autoSync
 // settings survive the sync (w8/m37 t005).
 func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, run store.BlueprintSync, manifest string, envVarValues map[string]string, snap *workspaceSnapshot) (store.Blueprint, *parsedStack, error) {
-	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, ContainingSource: true, Manifest: manifest, EnvVarValues: envVarValues})
+	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, ContainingSource: true, Manifest: manifest, EnvVarValues: envVarValues, resourceSuffix: b.ResourceSuffix})
 	if err != nil {
 		return store.Blueprint{}, nil, err
 	}
@@ -1598,6 +1601,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		Manifest:            b.Manifest,
 		Confirm:             confirm,
 		EnvVarValues:        envVarValues,
+		resourceSuffix:      b.ResourceSuffix,
 	}
 	var applyErr error
 	if prepared == nil {
@@ -1990,7 +1994,7 @@ func (s *Service) resolveBlueprintResources(ctx context.Context, b store.Bluepri
 	if b.Manifest == "" {
 		return nil
 	}
-	_, ir, problems := CompileBlueprintIR(b.Manifest)
+	_, ir, problems := compileBlueprintIRFor(b.Manifest, b.ResourceSuffix)
 	if len(problems) > 0 || len(ir.Resources) == 0 {
 		return nil
 	}

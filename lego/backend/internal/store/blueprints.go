@@ -132,10 +132,10 @@ func (s *PGStore) UpsertBlueprint(ctx context.Context, b Blueprint) (Blueprint, 
 			updated_at = now()
 		WHERE blueprints.status != 'disconnected'
 		RETURNING id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
-		          last_sync_at, created_at, updated_at`,
+		          last_sync_at, created_at, updated_at, existing_resources, resource_suffix`,
 		b.ID, b.TenantID, b.Name, b.Repo, b.Branch, b.Path, b.AutoSync, b.Manifest, b.Status,
 	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
-		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt)
+		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt, &out.ExistingResources, &out.ResourceSuffix)
 	if err != nil {
 		return Blueprint{}, classify("blueprint", err)
 	}
@@ -183,13 +183,13 @@ func (s *PGStore) GetBlueprintByRepo(ctx context.Context, tenantID, repo, branch
 	var out Blueprint
 	err := s.Pool.QueryRow(ctx,
 		`SELECT id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
-		        last_sync_at, created_at, updated_at
+		        last_sync_at, created_at, updated_at, existing_resources, resource_suffix
 		 FROM blueprints WHERE tenant_id = $1 AND repo = $2 AND branch = $3
 		   AND status != 'disconnected'
 		 LIMIT 1`,
 		tenantID, repo, branch,
 	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
-		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt)
+		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt, &out.ExistingResources, &out.ResourceSuffix)
 	if err != nil {
 		return Blueprint{}, classify("blueprint", err)
 	}
@@ -200,7 +200,7 @@ func (s *PGStore) GetBlueprintByRepo(ctx context.Context, tenantID, repo, branch
 func (s *PGStore) ListBlueprints(ctx context.Context, tenantID string) ([]Blueprint, error) {
 	rows, err := s.Pool.Query(ctx,
 		`SELECT id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
-		        last_sync_at, created_at, updated_at
+		        last_sync_at, created_at, updated_at, existing_resources, resource_suffix
 		 FROM blueprints WHERE tenant_id = $1 AND status != 'disconnected'
 		 ORDER BY created_at DESC`,
 		tenantID,
@@ -213,7 +213,7 @@ func (s *PGStore) ListBlueprints(ctx context.Context, tenantID string) ([]Bluepr
 	for rows.Next() {
 		var b Blueprint
 		if err := rows.Scan(&b.ID, &b.TenantID, &b.Name, &b.Repo, &b.Branch, &b.Path,
-			&b.AutoSync, &b.Manifest, &b.Status, &b.LastSyncAt, &b.CreatedAt, &b.UpdatedAt); err != nil {
+			&b.AutoSync, &b.Manifest, &b.Status, &b.LastSyncAt, &b.CreatedAt, &b.UpdatedAt, &b.ExistingResources, &b.ResourceSuffix); err != nil {
 			return nil, err
 		}
 		out = append(out, b)
@@ -237,10 +237,10 @@ func (s *PGStore) UpdateBlueprint(ctx context.Context, id, tenantID string, name
 			updated_at  = now()
 		 WHERE id = $1 AND tenant_id = $2 AND status != 'disconnected'
 		 RETURNING id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
-		           last_sync_at, created_at, updated_at`,
+		           last_sync_at, created_at, updated_at, existing_resources, resource_suffix`,
 		id, tenantID, name, autoSync, path, status, lastSyncAt, branch,
 	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
-		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt)
+		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt, &out.ExistingResources, &out.ResourceSuffix)
 	if err != nil {
 		return Blueprint{}, classify("blueprint", err)
 	}

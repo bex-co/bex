@@ -55,6 +55,12 @@ func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (Blue
 	if b.ExistingResources == "" {
 		b.ExistingResources = BlueprintExistingAdopt
 	}
+	// create_new's suffix is minted once, here, and kept for the life of the
+	// connection: every later plan and sync names the same suffixed resources
+	// (w2/m261). Render's shape, like the onrender.com slug suffix.
+	if b.ExistingResources == BlueprintExistingCreateNew && b.ResourceSuffix == "" {
+		b.ResourceSuffix = randomSlugSuffix()
+	}
 	var out Blueprint
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
