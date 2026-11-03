@@ -110,7 +110,7 @@ func TestRenderCLIBinaryAgainstLiveServer(t *testing.T) {
 
 	refused := func(t *testing.T, s string) {
 		t.Helper()
-		for _, needle := range []string{"not allowed to take this action", "INSUFFICIENT_SCOPE", "403"} {
+		for _, needle := range []string{"not allowed to take this action", core.InsufficientScopeCode, "403"} {
 			if strings.Contains(s, needle) {
 				t.Fatalf("CLI was refused (%q): %s", needle, s)
 			}

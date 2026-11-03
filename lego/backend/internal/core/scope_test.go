@@ -169,7 +169,7 @@ func TestCapabilityMatrixAtSharedSeam(t *testing.T) {
 			}
 			var coded *CodedError
 			if !errors.As(err, &coded) || coded.Code != InsufficientScopeCode {
-				t.Fatalf("Authorize = %v, want INSUFFICIENT_SCOPE", err)
+				t.Fatalf("Authorize = %v, want insufficient_token_scope", err)
 			}
 			if tc.wantCap == "" {
 				if coded.Params["required"] != nil {

@@ -272,7 +272,7 @@ func TestExecuteQueryWriteRequiresBothCapabilities(t *testing.T) {
 		t.Helper()
 		var coded *core.CodedError
 		if !errors.As(err, &coded) || coded.Code != core.InsufficientScopeCode {
-			t.Fatalf("err = %v, want INSUFFICIENT_SCOPE", err)
+			t.Fatalf("err = %v, want insufficient_token_scope", err)
 		}
 	}
 

@@ -265,7 +265,7 @@ func (s *Service) deviceGrant(w http.ResponseWriter, r *http.Request) {
 	// authority. 9081fbdb deliberately removed that exemption -- "Human OAuth
 	// delegations are never exempt, including first-party public clients" -- but
 	// nothing updated this request, so every CLI login received an identity-only
-	// grant and then 403'd on every operation with INSUFFICIENT_SCOPE.
+	// grant and then 403'd on every operation with insufficient_token_scope.
 	//
 	// Ask for what the Hydra client registration already advertises. That keeps
 	// the hardening intact (no blanket exemption; the grant is explicit and shows
