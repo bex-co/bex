@@ -35,8 +35,15 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          # The walk from the pinned commit to main needs the history between them.
+          # The walk from the pinned commit to main needs commits and trees,
+          # never file contents: a full clone of this repository outran the
+          # 15-minute budget (w6/100: .pm is 93% of its bytes). A blobless
+          # partial clone with a sparse worktree fetches only what is read.
           fetch-depth: 0
+          filter: blob:none
+          sparse-checkout: |
+            scripts
+            .github
           persist-credentials: false
       - name: Self-test the classification
         run: python3 -B -m unittest scripts/test_deploy_latency.py
