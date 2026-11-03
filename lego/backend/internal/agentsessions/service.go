@@ -93,6 +93,8 @@ type Store interface {
 	AgentSessionTurns(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
 	CompleteAgentSessionTurn(ctx context.Context, sessionID string, turn int, complete, truncated bool, reason string) error
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
+	// Last complete items of one turn, newest first (ADR094 D7 outcome summary).
+	AgentSessionTurnTail(ctx context.Context, sessionID string, turn int, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
 	// Transcript read (ADR065 D2): the poll-shaped seq-keyset page backing the
 	// REST/GraphQL/MCP transcript verb (byte budget + row limit bound one page).
 	AgentSessionTranscript(ctx context.Context, sessionID string, afterSeq int64, maxBytes int64, limit int) ([]store.AgentSessionTranscriptPart, error)
@@ -978,7 +980,14 @@ func (s *Service) Get(ctx context.Context, sessionID string) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(sessionID, err)
 	}
-	return s.toView(record)
+	view, err := s.toView(record)
+	if err != nil {
+		return View{}, err
+	}
+	// The summary costs a transcript read, so only the single-session read
+	// pays it; list pages carry the outcome without it.
+	view.Outcome.Summary = s.outcomeSummary(ctx, record)
+	return view, nil
 }
 
 func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
@@ -1536,6 +1545,8 @@ func viewOf(record store.AgentSession) (View, error) {
 	}
 	return View{ID: record.ID, OwnerID: record.WorkspaceID, Repo: record.Repo, Branch: record.Branch,
 		AgentConfig: config, SandboxID: record.SandboxID, Phase: record.Phase, Status: record.Status,
+		State: stateOf(record.Phase), Steerable: steerable(record.Phase, record.ArchivedAt != nil),
+		Outcome: outcomeOf(record),
 		HeadSHA: record.HeadSHA, PRURL: record.PRURL, PRNumber: record.PRNumber,
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,

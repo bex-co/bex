@@ -178,3 +178,18 @@ func marshalNoEscape(v any) (json.RawMessage, error) {
 	}
 	return bytes.TrimSuffix(buf.Bytes(), []byte("\n")), nil
 }
+
+// ClipHeadTail returns s unchanged when it has at most max characters;
+// otherwise its first and last max/2 characters around the same
+// "\n\n[bex: N chars clipped]\n\n" marker ClipText writes. It is ClipText for
+// a caller-chosen budget (the session outcome summary, ADR094 D7).
+func ClipHeadTail(s string, max int) string {
+	total := utf8.RuneCountInString(s)
+	if total <= max {
+		return s
+	}
+	keep := max / 2
+	head := byteOffsetOfRune(s, keep)
+	tail := byteOffsetOfRune(s, total-keep)
+	return s[:head] + "\n\n[bex: " + strconv.Itoa(total-2*keep) + " chars clipped]\n\n" + s[tail:]
+}

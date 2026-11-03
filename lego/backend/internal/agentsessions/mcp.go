@@ -75,11 +75,15 @@ type listResult struct {
 // spawn/list/get/cancel/resume, with agent_session making the bex-native
 // resource explicit rather than pretending Render has a corresponding API.
 func (s *Service) RegisterMCP(server *mcp.Server) {
-	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_agent_session", Description: "Start a cloud coding-agent session on a repository and return its sandbox attach ticket."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in CreateRequest) (*mcp.CallToolResult, View, error) {
-			out, err := s.Create(ctx, in)
-			return nil, out, err
-		})
+	// create_agent_session is the canonical name (ADR094 D2: `create_` is the
+	// vocabulary every other bex create tool uses); spawn_agent_session stays
+	// as an alias so existing clients keep working.
+	createSession := func(ctx context.Context, _ *mcp.CallToolRequest, in CreateRequest) (*mcp.CallToolResult, View, error) {
+		out, err := s.Create(ctx, in)
+		return nil, out, err
+	}
+	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_session", Description: "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one)."}, createSession)
+	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_agent_session", Description: "Alias of create_agent_session. Start a cloud coding-agent session on a repository; it does not return an attach ticket (call attach_agent_session for one)."}, createSession)
 	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_sessions", Description: "List cloud coding-agent sessions in a workspace: one filtered page, newest first. Defaults to the unarchived working set; archived selects false|true|all; cursor is the prior page's last session id (a shorter/empty page is the end)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listArgs) (*mcp.CallToolResult, listResult, error) {
 			before, err := core.ParseTime("createdBefore", in.CreatedBefore)
@@ -148,7 +152,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			}
 			return nil, deleteResult{Deleted: true}, nil
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "resume_agent_session", Description: "Resume a suspended cloud coding-agent session and mint a fresh attach ticket."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "resume_agent_session", Description: "Resume a suspended cloud coding-agent session. Returns the session; it does not mint an attach ticket (call attach_agent_session for one)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Resume(ctx, in.ID)
 			return nil, out, err
@@ -167,9 +171,12 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			out, err := s.Cancel(ctx, in.ID)
 			return nil, out, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, in steerArgs) (*mcp.CallToolResult, View, error) {
-			out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist})
-			return nil, out, err
-		})
+	// send_agent_session_message is the canonical name for a follow-up turn
+	// (ADR094 D2); steer_agent_session stays as an alias.
+	sendMessage := func(ctx context.Context, _ *mcp.CallToolRequest, in steerArgs) (*mcp.CallToolResult, View, error) {
+		out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist})
+		return nil, out, err
+	}
+	mcputil.AddTool(server, &mcp.Tool{Name: "send_agent_session_message", Description: "Send a follow-up message to a cloud coding-agent session: it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. The session must be steerable (state succeeded or failed, not archived or canceled)."}, sendMessage)
+	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."}, sendMessage)
 }

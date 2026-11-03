@@ -36,6 +36,38 @@ const (
 	PhaseCanceled      = "canceled"
 )
 
+// Session states (ADR094 D7): a coarse, derived answer to "is it done?" that a
+// client reads instead of decoding Phase. Phase stays the lifecycle field.
+const (
+	StateWorking    = "working"
+	StateNeedsInput = "needs_input" // reserved: emitted once the decision-request contract ships (w11/m7)
+	StateSucceeded  = "succeeded"
+	StateFailed     = "failed"
+	StateCanceled   = "canceled"
+)
+
+// stateOf maps a lifecycle phase to its coarse state. An unknown phase reads as
+// working: a client keeps waiting rather than treating it as finished.
+func stateOf(phase string) string {
+	switch phase {
+	case PhaseCompleted:
+		return StateSucceeded
+	case PhaseFailed:
+		return StateFailed
+	case PhaseCanceled:
+		return StateCanceled
+	default:
+		return StateWorking
+	}
+}
+
+// steerable reports whether a follow-up message is accepted now: the turn has
+// ended (completed or failed), the session is not canceled, and it is not
+// archived. It mirrors the refusals in Steer.
+func steerable(phase string, archived bool) bool {
+	return !archived && (phase == PhaseCompleted || phase == PhaseFailed)
+}
+
 // Delivery mode records how a turn's sandbox was obtained (ADR047 D8 phase 1):
 // resume of the existing sandbox, or a re-dispatch onto a fresh sandbox+clone.
 const (
@@ -131,19 +163,24 @@ type SteerRequest struct {
 // MCP. Ticket/URL/ExpiresAt are present only on create/resume/steer; list/get
 // never mint ambient attach authority.
 type View struct {
-	ID           string      `json:"id"`
-	OwnerID      string      `json:"ownerId"`
-	Repo         string      `json:"repo"`
-	Branch       string      `json:"branch"`
-	AgentConfig  AgentConfig `json:"agentConfig"`
-	SandboxID    string      `json:"sandboxId,omitempty"`
-	Phase        string      `json:"phase"`
-	Status       string      `json:"status"`
-	HeadSHA      string      `json:"headSha,omitempty"`
-	PRURL        string      `json:"prUrl,omitempty"`
-	PRNumber     int         `json:"prNumber,omitempty"`
-	Turns        int         `json:"turns,omitempty"`
-	DeliveryMode string      `json:"deliveryMode,omitempty"`
+	ID          string      `json:"id"`
+	OwnerID     string      `json:"ownerId"`
+	Repo        string      `json:"repo"`
+	Branch      string      `json:"branch"`
+	AgentConfig AgentConfig `json:"agentConfig"`
+	SandboxID   string      `json:"sandboxId,omitempty"`
+	Phase       string      `json:"phase"`
+	// State is the coarse derived state (ADR094 D7): working, needs_input,
+	// succeeded, failed or canceled. Steerable says a follow-up message is
+	// accepted now, so a finished-but-open session is never ambiguous.
+	State        string `json:"state"`
+	Steerable    bool   `json:"steerable"`
+	Status       string `json:"status"`
+	HeadSHA      string `json:"headSha,omitempty"`
+	PRURL        string `json:"prUrl,omitempty"`
+	PRNumber     int    `json:"prNumber,omitempty"`
+	Turns        int    `json:"turns,omitempty"`
+	DeliveryMode string `json:"deliveryMode,omitempty"`
 	// DeliveryNote is the driver's plain-language account of what a completed
 	// turn left undelivered (ADR090): uncommitted changes, unpushed commits, or
 	// a pushed branch with no pull request. The work stays in the sandbox only
@@ -177,6 +214,32 @@ type View struct {
 	// ArchivedAt marks the session archived (ADR065 D1): out of the working set,
 	// mutation verbs refused, reads always allowed. Nil ⇒ in the working set.
 	ArchivedAt *time.Time `json:"archivedAt,omitempty"`
+	// Outcome is the compact result an LLM reads instead of the transcript
+	// (ADR094 D7). Summary is filled only by the single-session read.
+	Outcome *Outcome `json:"outcome,omitempty"`
+}
+
+// Outcome is the compact account of where a session stands (ADR094 D7): its
+// state, whether it accepts a message, the latest turn's final answer, and
+// what it delivered. result (structured output) and cost arrive with later
+// milestones and stay absent until then.
+type Outcome struct {
+	State     string `json:"state"`
+	Steerable bool   `json:"steerable"`
+	Turn      int    `json:"turn"`
+	// Summary is the final assistant text of the latest completed turn, clipped
+	// to maxOutcomeSummaryChars head-and-tail. Empty until a turn completes.
+	Summary           string       `json:"summary,omitempty"`
+	PullRequest       *PullRequest `json:"pullRequest,omitempty"`
+	DeliveryNote      string       `json:"deliveryNote,omitempty"`
+	FailureReasonCode string       `json:"failureReasonCode,omitempty"`
+}
+
+// PullRequest is the PR the agent opened for the session (ADR090).
+type PullRequest struct {
+	URL     string `json:"url"`
+	Number  int    `json:"number,omitempty"`
+	HeadSHA string `json:"headSha,omitempty"`
 }
 
 // Archived-filter wire vocabulary for the session list (ADR065 D3). Empty and
