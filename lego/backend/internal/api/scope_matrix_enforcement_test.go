@@ -202,7 +202,7 @@ func TestScopeClassEnforcementReadToken(t *testing.T) {
 		t.Fatal("suspend_service must be a tool error")
 	}
 	if !strings.Contains(fmtMCP(suspend), core.InsufficientScopeCode) {
-		t.Errorf("MCP error = %s, want INSUFFICIENT_SCOPE", fmtMCP(suspend))
+		t.Errorf("MCP error = %s, want insufficient_token_scope", fmtMCP(suspend))
 	}
 }
 
@@ -233,10 +233,10 @@ func TestScopeClassEnforcementWriteToken(t *testing.T) {
 		t.Fatalf("link_env_group transport: %v", err)
 	}
 	if link == nil || !link.IsError || !strings.Contains(fmtMCP(link), core.InsufficientScopeCode) {
-		t.Fatalf("link_env_group = %s, want INSUFFICIENT_SCOPE", fmtMCP(link))
+		t.Fatalf("link_env_group = %s, want insufficient_token_scope", fmtMCP(link))
 	}
 	// Mint class is write at dispatch; AuthorizeMintClass still refuses a
-	// third-party client (plain 403, not INSUFFICIENT_SCOPE).
+	// third-party client (plain 403, not insufficient_token_scope).
 	for _, tc := range []struct {
 		path string
 		body string
@@ -251,7 +251,7 @@ func TestScopeClassEnforcementWriteToken(t *testing.T) {
 		var resp map[string]any
 		_ = json.Unmarshal(w.Body.Bytes(), &resp)
 		if resp["code"] == core.InsufficientScopeCode {
-			t.Errorf("%s: AuthorizeMintClass must stay a plain forbidden, got INSUFFICIENT_SCOPE: %v", tc.path, resp)
+			t.Errorf("%s: AuthorizeMintClass must stay a plain forbidden, got insufficient_token_scope: %v", tc.path, resp)
 		}
 	}
 }
@@ -273,7 +273,7 @@ func bodyCode(w *httptest.ResponseRecorder) string {
 // SAME client with identity-only scopes is refused 403 on every write — i.e.
 // the "you are not allowed to take this action" the user reported. Here the
 // fixed token must clear read, write, sensitive, and mint op classes at the
-// dispatch matrix (the class gate never answers INSUFFICIENT_SCOPE, and mint
+// dispatch matrix (the class gate never answers insufficient_token_scope, and mint
 // clears AuthorizeMintClass rather than the plain mint 403).
 func TestRenderCLITokenClearsEveryOpClassEndToEnd(t *testing.T) {
 	// Audience-less (device flow requests no resource) + platform-marked, exactly
@@ -293,7 +293,7 @@ func TestRenderCLITokenClearsEveryOpClassEndToEnd(t *testing.T) {
 	// is unconfigured in this harness, so we assert only that the class gate was
 	// cleared: the response is never the sensitive-scope refusal.
 	if w := do(t, h, http.MethodGet, "/v1/services/web/env-vars", testToken, ""); bodyCode(w) == core.InsufficientScopeCode {
-		t.Fatalf("sensitive: env-vars refused for INSUFFICIENT_SCOPE (%s), fix did not clear the sensitive class", w.Body.String())
+		t.Fatalf("sensitive: env-vars refused for insufficient_token_scope (%s), fix did not clear the sensitive class", w.Body.String())
 	}
 	// mint — API-key creation. Platform + granular clears both the dispatch
 	// matrix (write) AND AuthorizeMintClass; the third-party token in

@@ -488,7 +488,7 @@ echo "  ✓ already signed in -> no login form, no consent page -> token (this u
 
 echo "-> extra/w8-m27 read-only token cannot mutate..."
 # ACCESS is the consented bex.read token from leg 13. A write verb must fail
-# closed with INSUFFICIENT_SCOPE before OpenFGA or resource lookup.
+# closed with insufficient_token_scope before OpenFGA or resource lookup.
 status="$(curl -s -o "$TMP/write.out" -w '%{http_code}' -X POST \
   -H "Authorization: Bearer $ACCESS" \
   "http://localhost:$API_PORT/v1/services/does-not-exist/suspend")"
@@ -496,9 +496,9 @@ status="$(curl -s -o "$TMP/write.out" -w '%{http_code}' -X POST \
 python3 -c "
 import json
 body = json.load(open('$TMP/write.out'))
-assert body.get('code') == 'INSUFFICIENT_SCOPE', body
+assert body.get('code') == 'insufficient_token_scope', body
 assert body.get('params', {}).get('required') == 'bex.write', body
-print('  ✓ bex.read token refused RelCanOperate with INSUFFICIENT_SCOPE')
+print('  ✓ bex.read token refused RelCanOperate with insufficient_token_scope')
 "
 
 echo "-> 14/14 Settings -> Security & Compliance 'Connected agents': list -> revoke -> token dead..."

@@ -18,7 +18,7 @@ import (
 // ("Human OAuth delegations are never exempt, including first-party public
 // clients"), which the CLI had been relying on to carry its authority with an
 // identity-only grant. Nothing updated this request, so every CLI login produced
-// a token that 403'd on every operation with INSUFFICIENT_SCOPE. Nothing covered
+// a token that 403'd on every operation with insufficient_token_scope. Nothing covered
 // the pairing, which is how it shipped.
 func TestDeviceAuthRequestsGranularCapabilities(t *testing.T) {
 	var deviceForm url.Values
