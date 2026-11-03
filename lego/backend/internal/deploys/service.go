@@ -792,6 +792,11 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// starts the rollout (w9/001) — best-effort provenance: the deploy row
 	// opens either way, so a GitHub hiccup can never block a deploy.
 	commit := s.resolveCommit(ctx, a, p.CommitID)
+	// A linked service builds nothing: its deploy reports the build's commit,
+	// as Render's does.
+	if build != nil && build.commit.Hash != "" {
+		commit = build.commit
+	}
 	// Deploy-hook URLs are unauthenticated; git paths use TriggerNewCommit
 	// elsewhere. Manual/API (and any other authenticated Trigger) stamps the
 	// request subject — including API keys — the same form audit uses (w4/072).

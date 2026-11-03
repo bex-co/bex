@@ -329,6 +329,11 @@ type CommitInfo struct {
 	BuildID string `json:"buildId,omitempty"`
 }
 
+// CommitInfo is the commit d built (its BuildID is the caller's to set).
+func (d Deploy) CommitInfo() CommitInfo {
+	return CommitInfo{Hash: d.Commit, Message: d.CommitMessage, AuthorAt: d.CommitAuthorAt}
+}
+
 // Deploy is a row of `deploys` — one rollout attempt of an app, Render's
 // deploy history (list_deploys/get_deploy). Trigger is "create" (the app's
 // first deploy, opened by CreateApp), "api" (an explicit POST .../deploys),

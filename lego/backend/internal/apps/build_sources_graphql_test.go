@@ -161,6 +161,15 @@ func TestBuildSourceGraphQLLink(t *testing.T) {
 	if res := link(""); !res.HasErrors() || !strings.Contains(res.Errors[0].Message, "startCommand") {
 		t.Fatalf("a native source without a start command = %+v, want REST's refusal", res.Errors)
 	}
+	if res := link(`, dryRun:true`); !res.HasErrors() || !strings.Contains(res.Errors[0].Message, "startCommand") {
+		t.Fatalf("a dryRun link still refuses bad input: got %+v", res.Errors)
+	}
+	if res := link(`, startCommand:"node server.js", dryRun:true`); res.HasErrors() || res.Data.(map[string]any)["linkBuildSource"].(map[string]any)["buildSourceId"] != nil {
+		t.Fatalf("dryRun link = %+v %v, want the service unchanged", res.Data, res.Errors)
+	}
+	if got := getTenantApp(t, svc.Client, "tea-a", "web"); got.Spec.BuildSource != nil {
+		t.Fatalf("a dryRun link wrote the link: %+v", got.Spec.BuildSource)
+	}
 	res := link(`, startCommand:"node server.js"`)
 	if res.HasErrors() {
 		t.Fatal(res.Errors)

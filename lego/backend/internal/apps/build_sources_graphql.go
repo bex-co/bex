@@ -220,9 +220,12 @@ func (s *Service) buildSourceGQLMutationFields() graphql.Fields {
 				"serviceId":     gqlutil.ReqArg(graphql.String),
 				"buildSourceId": gqlutil.ReqArg(graphql.String),
 				"startCommand":  gqlutil.Arg(graphql.String),
+				// dryRun runs every check and writes nothing (REST's ?dryRun).
+				"dryRun": gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.LinkBuildSource(p.Context, p.Args["serviceId"].(string), p.Args["buildSourceId"].(string), gqlutil.StrPtr(p.Args, "startCommand"), false)
+				dryRun, _ := p.Args["dryRun"].(bool)
+				return s.LinkBuildSource(p.Context, p.Args["serviceId"].(string), p.Args["buildSourceId"].(string), gqlutil.StrPtr(p.Args, "startCommand"), dryRun)
 			},
 		},
 		"deleteBuildSource": &graphql.Field{
@@ -267,6 +270,7 @@ type linkBuildSourceArgs struct {
 	ServiceID     string  `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
 	BuildSourceID string  `json:"buildSourceId" jsonschema:"the build source id (bds-…) the service builds from from now on"`
 	StartCommand  *string `json:"startCommand,omitempty" jsonschema:"the service's start command: required for a native-runtime source, refused for a Docker or image one"`
+	DryRun        bool    `json:"dryRun,omitempty" jsonschema:"run every check and change nothing"`
 }
 
 type deleteBuildSourceResult struct {
@@ -313,7 +317,7 @@ func (s *Service) registerBuildSourceTools(srv *mcp.Server) {
 		Name:        "link_service_to_build_source",
 		Description: "Make a service build from a build source, as Render's update-service buildSourceId does: its own repo or image is cleared, and the link is saved without deploying (trigger a deploy to use it). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in linkBuildSourceArgs) (*mcp.CallToolResult, renderService, error) {
-		return renderServiceResult(s.LinkBuildSource(ctx, in.ServiceID, in.BuildSourceID, in.StartCommand, false))
+		return renderServiceResult(s.LinkBuildSource(ctx, in.ServiceID, in.BuildSourceID, in.StartCommand, in.DryRun))
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_build_source",

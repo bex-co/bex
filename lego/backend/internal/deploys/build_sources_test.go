@@ -213,8 +213,13 @@ func TestBuildSucceededDeploysLinkedAutoDeployServices(t *testing.T) {
 		linkedService(cr("current"), "srv-5", "bds-1", built, true),
 		linkedService(cr("first"), "srv-6", "bds-1", "", false))
 
-	carrierDeploy := ids.New(ids.Deploy)
-	svc.BuildSucceeded(context.Background(), store.BuiltSource{TenantID: tenant, CarrierID: "bds-1", DeployID: carrierDeploy, Namespace: "default", Carrier: "bds-1", Image: built})
+	ds.mintIDs = true
+	built1, err := ds.CreateDeploy(context.Background(), "bds-1", store.TriggerAPI, "", 1, store.CommitInfo{Hash: "abc1234", Message: "ship the monorepo"}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	carrierDeploy := built1.ID
+	svc.BuildSucceeded(context.Background(), store.BuiltSource{TenantID: tenant, CarrierID: "bds-1", DeployID: carrierDeploy, Commit: built1.CommitInfo(), Namespace: "default", Carrier: "bds-1", Image: built})
 
 	for _, id := range []string{"srv-1", "srv-6"} {
 		if n := len(ds.byApp[id]); n != 1 || ds.byApp[id][0].Trigger != store.TriggerNewCommit {
@@ -222,6 +227,10 @@ func TestBuildSucceededDeploysLinkedAutoDeployServices(t *testing.T) {
 		}
 		if ds.builds[id] != built || ds.byApp[id][0].BuildID != BuildID(carrierDeploy) {
 			t.Errorf("%s row build = %q, deploy buildId %q; want %s from %s", id, ds.builds[id], ds.byApp[id][0].BuildID, built, BuildID(carrierDeploy))
+		}
+		// w2/m262 t005: the deploy reports the build's commit, as Render's does.
+		if d := ds.byApp[id][0]; d.Commit != "abc1234" || d.CommitMessage != "ship the monorepo" {
+			t.Errorf("%s fan-out deploy commit = %q %q, want the build's", id, d.Commit, d.CommitMessage)
 		}
 	}
 	if got := getApp(t, cl, cr("web")).Spec.BuildSource.Image; got != built {

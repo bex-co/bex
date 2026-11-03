@@ -220,6 +220,7 @@ type BuiltSource struct {
 	Namespace string
 	Carrier   string // the carrier's CR name
 	Image     string // the build that went live
+	Commit    CommitInfo
 }
 
 // Reconciler projects the source of truth into the cluster: each apps row
@@ -1000,7 +1001,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// linked service once. Backgrounded: it does API and store I/O per service.
 	if ok && status == DeployLive && d.Type == TypeBuildSource && r.BuildFanout != nil {
 		go r.BuildFanout.BuildSucceeded(context.WithoutCancel(ctx), BuiltSource{
-			TenantID: d.TenantID, CarrierID: d.ID, DeployID: open.ID, Namespace: cur.Namespace, Carrier: cur.Name, Image: cur.Status.Image,
+			TenantID: d.TenantID, CarrierID: d.ID, DeployID: open.ID, Commit: open.CommitInfo(), Namespace: cur.Namespace, Carrier: cur.Name, Image: cur.Status.Image,
 		})
 	}
 	// Notify only the pass that actually closed the row (ok) — a race with a

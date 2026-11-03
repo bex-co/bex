@@ -16,6 +16,10 @@ import { IdleTimeoutRow } from "@/features/services/components/idle-timeout-row"
 import { BuildDeploySection } from "@/features/services/components/build-deploy-section";
 import { DeployCard } from "@/features/services/components/deploy-card";
 import { ServiceSourceCard } from "@/features/services/components/service-source-card";
+import {
+  useBuildSource,
+  type BuildSourceOption,
+} from "@/features/services/hooks/use-build-sources";
 import { CustomDomainsSection } from "@/features/services/components/custom-domains-section";
 import { CronDeploySection } from "@/features/services/components/cron-deploy-section";
 import { DeleteServiceCard } from "@/features/services/components/delete-service-card";
@@ -51,7 +55,10 @@ import {
   settingsPort,
 } from "@/features/services/lib/port";
 import { toServiceView } from "@/features/services/lib/status";
-import { ServiceSettingsSkeleton } from "@/common/components/route-skeletons";
+import {
+  ServiceSettingsSkeleton,
+  SettingsSectionSkeleton,
+} from "@/common/components/route-skeletons";
 import {
   SECTION_NAVIGATION_STICKY_CLASS,
   SECTION_NAVIGATION_TARGET_CLASS,
@@ -93,6 +100,9 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
   const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
   const sections = serviceSettingsSections(service ?? undefined);
+  const { source: linkedSource, loading: linkedSourceLoading } = useBuildSource(
+    service?.buildSourceId ?? null,
+  );
   const cron = service ? isCron(service) : false;
   const staticSite = service ? isStaticSite(service) : false;
 
@@ -172,6 +182,16 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
         );
       case "deploy":
         if (!service) return null;
+        // A linked service's command copy depends on its source: hold the
+        // card's skeleton until the source arrives rather than flip labels.
+        if (
+          !cron &&
+          service.buildSourceId &&
+          !linkedSource &&
+          linkedSourceLoading
+        ) {
+          return <SettingsSectionSkeleton section="deploy" service={service} />;
+        }
         return cron ? (
           <CronDeploySection
             serviceId={serviceId}
@@ -182,10 +202,12 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
           />
         ) : (
           // An Existing Image service has no build, so the Deploy card a
-          // repo-backed service shows under Build stands alone (w4/m166).
+          // repo-backed service shows under Build stands alone (w4/m166). A
+          // service linked to a build source builds nothing either; its
+          // command is a Start Command for a native source (w2/m262).
           <DeployCard
             serviceId={serviceId}
-            commandKind="image"
+            commandKind={deployCommandKind(service, linkedSource)}
             command={service.startCommand ?? null}
             preDeployCommand={service.preDeployCommand ?? null}
             showPreDeployCommand
@@ -424,4 +446,18 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
       </div>
     </div>
   );
+}
+
+/**
+ * The Deploy card's command copy: an Existing Image service's, or for a
+ * service linked to a build source (w2/m262) a Start Command for a native
+ * source, a Docker Command for a Dockerfile one, the image's for an image one.
+ */
+function deployCommandKind(
+  service: { buildSourceId?: string | null },
+  linkedSource: BuildSourceOption | null,
+): "start" | "docker" | "image" {
+  if (!service.buildSourceId) return "image";
+  if (linkedSource?.nativeRuntime) return "start";
+  return linkedSource?.kind === "image" ? "image" : "docker";
 }
