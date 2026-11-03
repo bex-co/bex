@@ -286,11 +286,8 @@ func toRenderEvent(e Event) renderEvent {
 	case TypePostgresClusterLeaderChanged:
 		d.LeaderID = e.Details.LeaderID
 	case TypeServiceDiskUsageHigh, TypeServiceDiskUsageRecovered:
-		if u := e.Details.DiskUsage; u != nil {
-			d.DiskID, d.DiskName, d.MountPath = u.DiskID, u.DiskName, u.MountPath
-			usage, threshold := u.UsagePercent, u.ThresholdPercent
-			d.UsagePercent, d.ThresholdPercent = &usage, &threshold
-		}
+		d.DiskID, d.DiskName, d.MountPath = e.Details.DiskID, e.Details.DiskName, e.Details.MountPath
+		d.UsagePercent, d.ThresholdPercent = e.Details.UsagePercent, e.Details.ThresholdPercent
 	}
 	return renderEvent{
 		ID:        e.ID,

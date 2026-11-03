@@ -799,7 +799,11 @@ type Details struct {
 	// primary — Render's leaderId.
 	LeaderID string
 	// service_disk_usage_high / _recovered (w2/m255): Render's disk details.
-	DiskUsage *store.DiskUsageDetails
+	DiskID           string
+	DiskName         string
+	MountPath        string
+	UsagePercent     *float64
+	ThresholdPercent *float64
 }
 
 // Event is the neutral projection every adapter renders. Cursor is the opaque
@@ -1231,7 +1235,11 @@ func view(r store.ServiceEventRow, service string) Event {
 		}
 		ev.Details.ExitCode = r.FactExitCode
 		ev.Details.LeaderID = r.LeaderID
-		ev.Details.DiskUsage = r.DiskUsage
+		if u := r.DiskUsage; u != nil {
+			usage, threshold := u.UsagePercent, u.ThresholdPercent
+			ev.Details.DiskID, ev.Details.DiskName, ev.Details.MountPath = u.DiskID, u.DiskName, u.MountPath
+			ev.Details.UsagePercent, ev.Details.ThresholdPercent = &usage, &threshold
+		}
 		if ev.Type == TypeBuildEnded {
 			ev.Details.EndReason = buildEndReason(r)
 		}
