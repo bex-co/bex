@@ -4450,7 +4450,7 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "已删除磁盘",
     description: "Service activity type: persistent disk deleted",
   },
-  "services.eventsTypeDiskRestored": {
+  "services.eventsTypeDiskSnapshotRestored": {
     message: "已从快照恢复磁盘",
     description:
       "Service activity type: persistent disk restored from a snapshot",

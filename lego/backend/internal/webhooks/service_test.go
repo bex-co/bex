@@ -617,17 +617,19 @@ func TestDiskEventTypesAreSubscribableAndLegacyAliasesNormalize(t *testing.T) {
 		}
 	}
 	for verb, want := range map[string]string{
-		"apps.AddDisk":    TypeDiskCreated,
-		"apps.UpdateDisk": TypeDiskUpdated,
-		"apps.DeleteDisk": TypeDiskDeleted,
+		"apps.AddDisk":             TypeDiskCreated,
+		"apps.UpdateDisk":          TypeDiskUpdated,
+		"apps.DeleteDisk":          TypeDiskDeleted,
+		"apps.RestoreDiskSnapshot": TypeDiskSnapshotRestored,
 	} {
 		if got := verbEvents[verb]; got != want {
 			t.Errorf("verbEvents[%q] = %q, want %q", verb, got, want)
 		}
 	}
-	// disk_restored stays a service-feed extension — not webhook-subscribable.
-	if slices.Contains(EventTypes, "disk_restored") {
-		t.Error("disk_restored must not enter the webhook vocabulary (bex-only restore)")
+	// A restore is Render's disk_snapshot_restored (w2/064); bex's former
+	// disk_restored spelling never was a webhook type.
+	if !slices.Contains(EventTypes, TypeDiskSnapshotRestored) || slices.Contains(EventTypes, "disk_restored") {
+		t.Errorf("EventTypes = %v, want disk_snapshot_restored and not disk_restored", EventTypes)
 	}
 
 	s, _ := newTestService()

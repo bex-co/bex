@@ -168,6 +168,7 @@
     "deploy_started",
     "disk_created",
     "disk_deleted",
+    "disk_snapshot_restored",
     "disk_updated",
     "image_pull_failed",
     "instance_count_changed",
@@ -242,8 +243,5 @@
     "pipeline_minutes_exhausted",
     "postgres_connection_pool_changed",
     "postgres_read_replica_stale"
-  ],
-  "plannedUnsupported": {
-    "disk_snapshot_restored": "w2/064"
-  }
+  ]
 }

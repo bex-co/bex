@@ -156,11 +156,12 @@ const (
 	// Persistent-disk lifecycle (ADR082; w8/m34). Render's webhook enum spells
 	// these disk_created/disk_updated/disk_deleted — the earlier bex-only
 	// disk_attached/disk_detached filters are rewritten by migration 0106.
-	TypeDiskCreated     = "disk_created"
-	TypeDiskUpdated     = "disk_updated"
-	TypeDiskDeleted     = "disk_deleted"
-	TypeImagePullFailed = "image_pull_failed"
-	TypeServerFailed    = "server_failed"
+	TypeDiskCreated          = "disk_created"
+	TypeDiskUpdated          = "disk_updated"
+	TypeDiskDeleted          = "disk_deleted"
+	TypeDiskSnapshotRestored = "disk_snapshot_restored"
+	TypeImagePullFailed      = "image_pull_failed"
+	TypeServerFailed         = "server_failed"
 	// TypeServerHardwareFailure is server_failed for an instance lost with its
 	// node (w5/m142).
 	TypeServerHardwareFailure = "server_hardware_failure"
@@ -188,6 +189,7 @@ var verbEvents = func() map[string]string {
 	types["apps.AddDisk"] = TypeDiskCreated
 	types["apps.UpdateDisk"] = TypeDiskUpdated
 	types["apps.DeleteDisk"] = TypeDiskDeleted
+	types["apps.RestoreDiskSnapshot"] = TypeDiskSnapshotRestored
 	types[core.AuditVerbMaintenanceModeEnabled] = TypeMaintenanceModeEnabled
 	types[core.AuditVerbMaintenanceModeURIUpdated] = TypeMaintenanceModeURIUpdated
 	types[core.AuditVerbSetPlan] = TypePlanChanged

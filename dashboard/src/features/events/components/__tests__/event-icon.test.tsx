@@ -23,7 +23,7 @@ describe("EventIcon", () => {
     ["disk_created", "hard-drive"],
     ["disk_updated", "hard-drive"],
     ["disk_deleted", "unplug"],
-    ["disk_restored", "history"],
+    ["disk_snapshot_restored", "history"],
     ["instance_count_changed", "scale"],
     ["autoscaling_config_changed", "scale"],
     ["autoscaling_started", "scale"],

@@ -79,7 +79,7 @@ describe("ServiceEventFilter", () => {
       "Disk created",
       "Disk updated",
       "Disk deleted",
-      "Disk restored",
+      "Disk snapshot restored",
     ]) {
       expect(screen.getByRole("checkbox", { name: label })).toBeChecked();
     }

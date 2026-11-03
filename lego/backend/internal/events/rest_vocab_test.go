@@ -76,7 +76,6 @@ func TestRESTEventTypesAreRenderOrDeclaredExtensions(t *testing.T) {
 		TypeNotifyOnFailChanged:                   config,
 		TypeSubdomainPolicyChanged:                config,
 		TypeIPAllowListChanged:                    config,
-		TypeDiskRestored:                          "restore from snapshot; Render has no restore event (labeled extension, w8/m34)",
 		TypeCustomDomainAdded:                     "custom-domain write; Render has no custom-domain service event",
 		TypeCustomDomainRemoved:                   "custom-domain write; Render has no custom-domain service event",
 		TypeCustomDomainVerified:                  "custom-domain verification; Render has no custom-domain service event",
