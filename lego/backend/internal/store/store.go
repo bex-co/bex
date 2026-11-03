@@ -1122,6 +1122,22 @@ func (s *PGStore) SetAppBuildSource(ctx context.Context, id, carrierID, image st
 	return nil
 }
 
+// SetAppBuildSourceImage selects the carrier build linked service id deploys
+// (ADR097): the projector carries it onto spec.buildSource.image. ErrNotFound
+// unless the row still links carrierID.
+func (s *PGStore) SetAppBuildSourceImage(ctx context.Context, id, carrierID, image string) error {
+	tag, err := s.Pool.Exec(ctx, `
+		UPDATE apps SET build_source_image = $3, updated_at = now()
+		WHERE id = $1 AND build_source_id = $2`, id, carrierID, image)
+	if err != nil {
+		return classify("app", err)
+	}
+	if tag.RowsAffected() == 0 {
+		return fmt.Errorf("app %s: %w", id, ErrNotFound)
+	}
+	return nil
+}
+
 // ListBuildSourceLinks returns the services linked to build source carrierID,
 // by name (Render's serviceLinks).
 func (s *PGStore) ListBuildSourceLinks(ctx context.Context, carrierID string) ([]App, error) {

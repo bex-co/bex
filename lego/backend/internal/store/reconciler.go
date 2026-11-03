@@ -203,6 +203,24 @@ type DeployNotifier interface {
 	NotifyDeploy(ctx context.Context, n DeployNotification)
 }
 
+// BuildFanout is called by the Reconciler when a build source carrier's
+// deploy goes live (ADR097 §5): it deploys the new build to the linked
+// services with auto-deploy on. *deploys.Service satisfies it (deploys
+// imports store, so the dependency runs this way). Best-effort, like
+// DeployNotifier.
+type BuildFanout interface {
+	BuildSucceeded(ctx context.Context, b BuiltSource)
+}
+
+// BuiltSource is the carrier build BuildFanout deploys.
+type BuiltSource struct {
+	TenantID  string
+	CarrierID string // the carrier's apps row (its bds- id)
+	Namespace string
+	Carrier   string // the carrier's CR name
+	Image     string // the build that went live
+}
+
 // Reconciler projects the source of truth into the cluster: each apps row
 // (+ its domains) becomes an App CR; rows deleted from Postgres get their CR
 // deleted; the CR's observed status (phase, url) is written back to the row.
@@ -241,6 +259,9 @@ type Reconciler struct {
 	// deploy as succeeded or failed — see DeployNotifier. nil => no emails
 	// (notifications feature off / store off).
 	DeployNotifier DeployNotifier
+	// BuildFanout, when non-nil, deploys a carrier's live build to its linked
+	// services — see BuildFanout.
+	BuildFanout BuildFanout
 
 	// Metrics, when non-nil, counts the conclusions rejectStaleUnhealthy
 	// refuses (w6/m41). nil => rejections are logged but not metered.
@@ -973,6 +994,13 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	if err != nil {
 		log.Printf("controlplane: transition deploy %s to %s: %v", open.ID, status, err)
 		return
+	}
+	// Only the pass that closed the row fans out, so one build deploys each
+	// linked service once. Backgrounded: it does API and store I/O per service.
+	if ok && status == DeployLive && d.Type == TypeBuildSource && r.BuildFanout != nil {
+		go r.BuildFanout.BuildSucceeded(context.WithoutCancel(ctx), BuiltSource{
+			TenantID: d.TenantID, CarrierID: d.ID, Namespace: cur.Namespace, Carrier: cur.Name, Image: cur.Status.Image,
+		})
 	}
 	// Notify only the pass that actually closed the row (ok) — a race with a
 	// concurrent Cancel must fire at most one notification for this deploy,

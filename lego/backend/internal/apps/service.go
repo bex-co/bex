@@ -1174,7 +1174,7 @@ func view(a *appv1alpha1.App) AppView {
 		// Same class as w9/068: never publish a value the write side rejects.
 		Branch:            imageBackedBranch(a),
 		BuildFilter:       buildFilterView(a.Spec.BuildFilter),
-		BuildSourceID:     buildSourceIDOf(a),
+		BuildSourceID:     core.BuildSourceIDOf(a),
 		Autoscaling:       asView,
 		Disk:              serviceDiskView(a.Spec.Disk),
 		LinkedEnvGroupIDs: linkedEnvGroupIDs(a),

@@ -1355,6 +1355,9 @@ func wireReconcilers(ctx context.Context, srv *api.Server, rec *store.Reconciler
 		// same wiring shape as CloneSecrets, deferred until here so it's set
 		// before the first reconcile pass.
 		rec.DeployNotifier = srv.Notifications
+		// BuildFanout (w2/m254, ADR097 §5): a build source's live build deploys
+		// to its linked auto-deploy services.
+		rec.BuildFanout = srv.Deploys
 
 		// Per-tenant namespace isolation (ADR043): whenever the store is wired the
 		// control plane also provisions each workspace's `<ws>` and `<ws>-sandbox`
