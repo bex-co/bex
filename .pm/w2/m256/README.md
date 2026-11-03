@@ -1,6 +1,6 @@
 # w2 · m256 — Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does
 
-**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** in progress — t001–t006, t008–t010 done; t007 (unmodified CLI v2.35 walk on production) next; t012 (dashboard Approve, found live 2026-11-03), then t011
+**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** in progress — t001–t006, t008–t010 done; t007 (unmodified CLI v2.35 walk on production) next; t012 implemented 2026-11-03 (backend refusal + dashboard plan/Approve; its production check rides with t007's walk), then t011
 
 ## Tasks (in order)
 

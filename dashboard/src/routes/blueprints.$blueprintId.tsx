@@ -29,6 +29,8 @@ import {
   TableRow,
 } from "@/common/components/ui/table";
 import { BlueprintDetailContentSkeleton } from "@/common/components/route-skeletons";
+import { PlannedSyncPanel } from "@/features/blueprints/components/planned-sync-panel";
+import { usePlannedSync } from "@/features/blueprints/hooks/use-planned-sync";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint-status-badge";
@@ -196,6 +198,10 @@ export function BlueprintDetailPage() {
   const { update, busy: updateBusy } = useUpdateBlueprint();
   const { disconnect, busy: disconnectBusy } = useDisconnectBlueprint();
   const { syncs, loading: syncsLoading } = useBlueprintSyncs(blueprintId);
+  // A Blueprint created through Render's plan-then-approve flow applies only by
+  // approving its plan; the legacy Sync refuses it (w2/m256 t012).
+  const awaitingApproval = blueprint?.status === "created";
+  const plannedSync = usePlannedSync(blueprintId, awaitingApproval);
 
   const [confirming, setConfirming] = useState(false);
   // Snapshot of the preview the user is about to confirm (w8/m41). Never
@@ -233,7 +239,7 @@ export function BlueprintDetailPage() {
     | null
   >(null);
 
-  const busy = syncBusy || updateBusy || disconnectBusy;
+  const busy = syncBusy || updateBusy || disconnectBusy || plannedSync.busy;
 
   useNotFoundRedirect(resourceNotFound(blueprint, loading, error));
   useLoaderErrorRetry(Route.useLoaderData(), blueprintId);
@@ -333,13 +339,15 @@ export function BlueprintDetailPage() {
         )}
         {blueprint ? (
           <div className="flex items-center gap-2">
-            <Button
-              size="sm"
-              onClick={() => setConfirming(true)}
-              disabled={busy}
-            >
-              {t("blueprints.syncButton")}
-            </Button>
+            {awaitingApproval ? null : (
+              <Button
+                size="sm"
+                onClick={() => setConfirming(true)}
+                disabled={busy}
+              >
+                {t("blueprints.syncButton")}
+              </Button>
+            )}
             <Button
               size="sm"
               variant="outline"
@@ -363,6 +371,16 @@ export function BlueprintDetailPage() {
             <ResourceLoadError onRetry={refetch} variant={loadErrorVariant} />
           ) : blueprint ? (
             <>
+              {awaitingApproval ? (
+                <PlannedSyncPanel
+                  key={plannedSync.planned?.id ?? "none"}
+                  planned={plannedSync.planned}
+                  loading={plannedSync.loading}
+                  busy={busy}
+                  onApprove={plannedSync.approve}
+                  onReplan={plannedSync.replan}
+                />
+              ) : null}
               <Card>
                 <CardHeader>
                   <CardTitle className="text-base">

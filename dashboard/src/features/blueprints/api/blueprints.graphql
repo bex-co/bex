@@ -265,3 +265,51 @@ mutation SyncBlueprint(
     }
   }
 }
+
+# --- plan-then-approve (w2/m256 t012) ---
+
+# The plan a created Blueprint waits to have approved; null when there is none.
+query BlueprintPlannedSync($id: String!, $ownerId: String) {
+  blueprintPlannedSync(id: $id, ownerId: $ownerId) {
+    id
+    commitId
+    state
+    actions {
+      operation
+      kind
+      name
+      sourcePath
+      resourceId
+      changedFields {
+        path
+      }
+      message
+    }
+    requiredManualEnvVars {
+      serviceType
+      serviceName
+      key
+    }
+  }
+}
+
+mutation PlanBlueprintSync($id: String!, $ownerId: String) {
+  planBlueprintSync(id: $id, ownerId: $ownerId) {
+    planningOutcome
+    notices {
+      severity
+      message
+    }
+  }
+}
+
+mutation ApproveBlueprint(
+  $id: String!
+  $ownerId: String
+  $manualEnvVars: [BlueprintManualEnvVarInput]
+) {
+  approveBlueprint(id: $id, ownerId: $ownerId, manualEnvVars: $manualEnvVars) {
+    id
+    state
+  }
+}

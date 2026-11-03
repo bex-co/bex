@@ -110,6 +110,8 @@ type SyncWithPlan struct {
 	DashboardURL          string             `json:"dashboardUrl"`
 	RawPlan               any                `json:"rawPlan"`
 	RequiredManualEnvVars []ManualEnvVar     `json:"requiredManualEnvVars"`
+	// Actions are rawPlan's actions, typed for bex's own GraphQL.
+	Actions []BlueprintPlanAction `json:"-"`
 }
 
 // BlueprintPlanResult is Render's createBlueprintSyncResponse; the create
@@ -293,10 +295,14 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 	if err != nil {
 		return BlueprintPlanResult{}, err
 	}
+	rawActions, err := json.Marshal(actions)
+	if err != nil {
+		return BlueprintPlanResult{}, err
+	}
 	now := s.Now().UTC()
 	planned, err := plans.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
 		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateCreated, StartedAt: now},
-		Path:          b.Path, RequiredManualEnvVars: rawRequired,
+		Path:          b.Path, RequiredManualEnvVars: rawRequired, PlanActions: rawActions,
 	})
 	if err != nil {
 		return BlueprintPlanResult{}, err
@@ -381,8 +387,50 @@ func (s *Service) syncWithPlan(b store.Blueprint, p store.PlannedBlueprintSync, 
 		ID: p.ID, Commit: BlueprintCommitRef{ID: p.CommitID}, CommitID: p.CommitID, RawPlanJSON: rawPlanJSON(rawPlan), State: p.State,
 		StartedAt: &started, CompletedAt: p.CompletedAt,
 		DashboardURL: s.Metadata.DashboardURL("blueprints", b.ID),
-		RawPlan:      rawPlan, RequiredManualEnvVars: required,
+		RawPlan:      rawPlan, RequiredManualEnvVars: required, Actions: actions,
 	}
+}
+
+// PlannedSync is the Blueprint's newest planning attempt while it still waits
+// for approval — the plan and the manual env vars approval must supply — or
+// nil when there is nothing to approve (w2/m256 t012: the dashboard shows it
+// with its Approve control).
+func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncWithPlan, error) {
+	ctx, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	plans, err := s.blueprintPlans()
+	if err != nil {
+		return nil, err
+	}
+	b, err := s.Blueprints.GetBlueprint(ctx, bpID, s.resolveTenantID(ctx))
+	if err != nil {
+		return nil, store.MapError(err)
+	}
+	p, err := plans.LatestBlueprintPlan(ctx, b.ID)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, store.MapError(err)
+	}
+	if p.State != store.BlueprintSyncStateCreated {
+		return nil, nil
+	}
+	var actions []BlueprintPlanAction
+	if len(p.PlanActions) > 0 {
+		if err := json.Unmarshal(p.PlanActions, &actions); err != nil {
+			return nil, fmt.Errorf("read the planned sync's actions: %w", err)
+		}
+	}
+	required := []ManualEnvVar{}
+	if len(p.RequiredManualEnvVars) > 0 {
+		if err := json.Unmarshal(p.RequiredManualEnvVars, &required); err != nil {
+			return nil, fmt.Errorf("read the planned sync's manual env vars: %w", err)
+		}
+	}
+	return s.syncWithPlan(b, p, actions, required), nil
 }
 
 // ApproveBlueprint applies the Blueprint's newest planned sync, with the
@@ -533,6 +581,7 @@ var syncWithPlanGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"rawPlan": gqlutil.StrField(func(s SyncWithPlan) any { return s.RawPlanJSON }),
 		"requiredManualEnvVars": gqlutil.Typed(graphql.NewList(manualEnvVarGQLType),
 			func(s SyncWithPlan) any { return s.RequiredManualEnvVars }),
+		"actions": gqlutil.Typed(graphql.NewList(blueprintPlanActionGQLType), func(s SyncWithPlan) any { return s.Actions }),
 	},
 })
 
@@ -542,7 +591,7 @@ var blueprintPlanResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"blueprint":       gqlutil.Typed(blueprintGQLType, func(r BlueprintPlanResult) any { return planResultBlueprint(r) }),
 		"planningOutcome": gqlutil.StrField(func(r BlueprintPlanResult) any { return r.PlanningOutcome }),
 		"notices":         gqlutil.Typed(graphql.NewList(blueprintNoticeGQLType), func(r BlueprintPlanResult) any { return r.Notices }),
-		"sync":            gqlutil.Typed(syncWithPlanGQLType, func(r BlueprintPlanResult) any { return r.Sync }),
+		"sync":            gqlutil.Typed(syncWithPlanGQLType, func(r BlueprintPlanResult) any { return plannedSyncValue(r.Sync) }),
 	},
 })
 
@@ -557,6 +606,14 @@ var approvedSyncGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"completedAt":  gqlutil.TimeField(func(a ApprovedSync) any { return a.CompletedAt }),
 	},
 })
+
+// plannedSyncValue is p as the value its GraphQL fields read, nil for none.
+func plannedSyncValue(p *SyncWithPlan) any {
+	if p == nil {
+		return nil
+	}
+	return *p
+}
 
 func rawPlanJSON(plan any) *string {
 	if plan == nil {

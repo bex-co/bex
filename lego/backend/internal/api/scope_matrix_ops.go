@@ -216,6 +216,7 @@ var classifiedOps = map[string]string{
 	"GQL Query.auditLogs":                                    core.OpClassRead,
 	"GQL Query.autoscalingConfig":                            core.OpClassRead,
 	"GQL Query.blueprint":                                    core.OpClassRead,
+	"GQL Query.blueprintPlannedSync":                         core.OpClassRead,
 	"GQL Query.blueprintPreview":                             core.OpClassSensitive,
 	"GQL Query.blueprintSyncs":                               core.OpClassRead,
 	"GQL Query.blueprints":                                   core.OpClassRead,

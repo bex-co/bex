@@ -1313,6 +1313,22 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.GetBlueprintByID(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
+		// blueprintPlannedSync: the plan a created Blueprint waits to have approved,
+		// null when there is none (w2/m256 t012).
+		"blueprintPlannedSync": &graphql.Field{
+			Type: syncWithPlanGQLType,
+			Args: graphql.FieldConfigArgument{
+				"id":      gqlutil.ReqArg(graphql.String),
+				"ownerId": gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				planned, err := s.PlannedSync(p.Context, p.Args["id"].(string), gqlutil.Str(p.Args, "ownerId"))
+				if err != nil {
+					return nil, err
+				}
+				return plannedSyncValue(planned), nil
+			},
+		},
 		// validateBlueprint: dry-run parse render.yaml content — per-entry errors, no apply (w2/m15).
 		"validateBlueprint": &graphql.Field{
 			Type: blueprintValidationGQLType,

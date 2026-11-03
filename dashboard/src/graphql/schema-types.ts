@@ -443,6 +443,7 @@ export type BlueprintPlanResult = {
 
 export type BlueprintPlannedSync = {
   __typename: 'BlueprintPlannedSync';
+  actions: Maybe<Array<Maybe<BlueprintPlanAction>>>;
   commitId: Maybe<Scalars['String']['output']>;
   completedAt: Maybe<Scalars['String']['output']>;
   dashboardUrl: Maybe<Scalars['String']['output']>;
@@ -2967,6 +2968,7 @@ export type Query = {
   auditLogs: Maybe<Array<Maybe<AuditLog>>>;
   autoscalingConfig: Maybe<Autoscaling>;
   blueprint: Maybe<Blueprint>;
+  blueprintPlannedSync: Maybe<BlueprintPlannedSync>;
   blueprintPreview: Maybe<BlueprintPreview>;
   blueprintSyncs: Maybe<Array<Maybe<BlueprintSync>>>;
   blueprints: Maybe<Array<Maybe<Blueprint>>>;
@@ -3157,6 +3159,12 @@ export type QueryAutoscalingConfigArgs = {
 
 
 export type QueryBlueprintArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryBlueprintPlannedSyncArgs = {
   id: Scalars['String']['input'];
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };

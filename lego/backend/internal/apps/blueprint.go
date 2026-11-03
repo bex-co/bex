@@ -1350,8 +1350,20 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 	if err != nil {
 		return SyncBlueprintResult{}, store.MapError(err)
 	}
+	// A Blueprint created through Render's plan-then-approve flow (w2/m256)
+	// applies only by approving its plan, which is also where the plan's
+	// manual env var values are supplied. A manual sync would skip both.
+	if b.Status == store.BlueprintStatusCreated {
+		return SyncBlueprintResult{}, core.NewConflictError(BlueprintAwaitingApprovalCode,
+			"this Blueprint is waiting for its planned sync to be approved; approve it (or plan a new sync) instead of syncing",
+			map[string]any{"blueprintId": b.ID})
+	}
 	return s.runSync(ctx, b, bexYAML, confirm, reviewed, nil)
 }
+
+// BlueprintAwaitingApprovalCode refuses a manual sync of a Blueprint that has
+// not had a planned sync approved yet.
+const BlueprintAwaitingApprovalCode = "BLUEPRINT_AWAITING_APPROVAL"
 
 // runSync is the shared sync engine: admits the apply, pulls-from-repo or uses
 // the supplied/stored manifest, applies the stack, and commits status +
