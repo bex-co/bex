@@ -52,7 +52,7 @@ const (
 // blueprintPlanStore is the persistence onboarding needs; *store.PGStore
 // satisfies it.
 type blueprintPlanStore interface {
-	CreatePlannedBlueprint(ctx context.Context, b store.Blueprint) (store.Blueprint, error)
+	CreatePlannedBlueprint(ctx context.Context, b store.Blueprint) (store.Blueprint, bool, error)
 	BlueprintNameTaken(ctx context.Context, tenantID, name, exceptID string) (bool, error)
 	InsertPlannedBlueprintSync(ctx context.Context, p store.PlannedBlueprintSync) (store.PlannedBlueprintSync, error)
 	LatestBlueprintPlan(ctx context.Context, blueprintID string) (store.PlannedBlueprintSync, error)
@@ -206,7 +206,7 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	if req.AutoSync != nil {
 		autoSync = *req.AutoSync
 	}
-	b, err := plans.CreatePlannedBlueprint(ctx, store.Blueprint{
+	b, revived, err := plans.CreatePlannedBlueprint(ctx, store.Blueprint{
 		TenantID: tenantID, Name: req.Name, Repo: req.Source.Repo, Branch: branch, Path: discoveredPath,
 		AutoSync: autoSync, ExistingResources: mode,
 	})
@@ -218,7 +218,13 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 		}
 		return BlueprintPlanResult{}, err
 	}
-	result, err := s.planBlueprintSync(ctx, plans, b, contents, commitSHA)
+	// A revived row keeps its sync history: its planned sync marks where this
+	// connection's history begins, as the legacy create's run does (w4/120).
+	note := ""
+	if revived {
+		note = reconnectionNote(req.Source.Repo, branch)
+	}
+	result, err := s.planBlueprintSync(ctx, plans, b, contents, commitSHA, note)
 	if err != nil {
 		return BlueprintPlanResult{}, err
 	}
@@ -257,15 +263,16 @@ func (s *Service) PlanBlueprint(ctx context.Context, bpID, ownerID string) (Blue
 	contents, commitSHA, _, fetchErr := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, b.Repo, b.Branch, b.Path)
 	if fetchErr != nil {
 		_, message := classifyBlueprintFetchError(fetchErr, b.Path, b.Branch)
-		return s.recordFailedPlan(ctx, plans, b, commitSHA, []BlueprintNotice{{Severity: "error", Message: message}})
+		return s.recordFailedPlan(ctx, plans, b, commitSHA, "", []BlueprintNotice{{Severity: "error", Message: message}})
 	}
-	return s.planBlueprintSync(ctx, plans, b, contents, commitSHA)
+	return s.planBlueprintSync(ctx, plans, b, contents, commitSHA, "")
 }
 
 // planBlueprintSync validates manifest against the workspace and persists the
 // outcome: a planned sync awaiting approval, nothing when no resource would
 // change, or an error sync carrying the validation notices.
-func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStore, b store.Blueprint, manifest, commitSHA string) (BlueprintPlanResult, error) {
+// note is recorded on the sync row it writes ("" for none).
+func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStore, b store.Blueprint, manifest, commitSHA, note string) (BlueprintPlanResult, error) {
 	validation, err := s.blueprintValidationFor(ctx, b.Repo, b.Branch, manifest, b.ID)
 	if err != nil {
 		return BlueprintPlanResult{}, err
@@ -275,7 +282,7 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 		for _, e := range validation.Errors {
 			notices = append(notices, BlueprintNotice{Severity: "error", Message: e.Error, Path: e.Path, Line: e.Line, Column: e.Column})
 		}
-		return s.recordFailedPlan(ctx, plans, b, commitSHA, notices)
+		return s.recordFailedPlan(ctx, plans, b, commitSHA, note, notices)
 	}
 	// Only a plan against the workspace's current resources can say what
 	// would change; a structural plan (state unreadable) cannot.
@@ -301,7 +308,7 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 	}
 	now := s.Now().UTC()
 	planned, err := plans.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
-		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateCreated, StartedAt: now},
+		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateCreated, StartedAt: now, Note: note},
 		Path:          b.Path, RequiredManualEnvVars: rawRequired, PlanActions: rawActions,
 	})
 	if err != nil {
@@ -311,7 +318,7 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 }
 
 // recordFailedPlan persists a planning failure as an error sync.
-func (s *Service) recordFailedPlan(ctx context.Context, plans blueprintPlanStore, b store.Blueprint, commitSHA string, notices []BlueprintNotice) (BlueprintPlanResult, error) {
+func (s *Service) recordFailedPlan(ctx context.Context, plans blueprintPlanStore, b store.Blueprint, commitSHA, note string, notices []BlueprintNotice) (BlueprintPlanResult, error) {
 	messages := make([]string, 0, len(notices))
 	for _, n := range notices {
 		messages = append(messages, n.Message)
@@ -320,7 +327,7 @@ func (s *Service) recordFailedPlan(ctx context.Context, plans blueprintPlanStore
 	now := s.Now().UTC()
 	failed, err := plans.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
 		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commitSHA, State: store.BlueprintSyncStateError,
-			StartedAt: now, CompletedAt: &now, ErrorMessage: &summary},
+			StartedAt: now, CompletedAt: &now, ErrorMessage: &summary, Note: note},
 		Path: b.Path,
 	})
 	if err != nil {

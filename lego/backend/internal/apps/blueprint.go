@@ -1216,7 +1216,7 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	// the inherited entries are read, rather than leaving them to read as this
 	// connection's own.
 	if revived && takeoverNote == "" {
-		takeoverNote = "re-established a previously disconnected connection to " + req.Repo + "@" + req.Branch + "; earlier sync history below belongs to that connection"
+		takeoverNote = reconnectionNote(req.Repo, req.Branch)
 		if err := s.Blueprints.SetBlueprintSyncNote(ctx, run.ID, takeoverNote); err != nil {
 			// The connection is real either way; an unrecorded note is worth a
 			// line in the log, not a failed create.
@@ -2296,4 +2296,10 @@ func errMsgPtr(err error) *string {
 	}
 	msg := err.Error()
 	return &msg
+}
+
+// reconnectionNote marks the run a revived Blueprint row starts its new
+// connection with: the history below it belongs to the earlier one (w4/120).
+func reconnectionNote(repo, branch string) string {
+	return "re-established a previously disconnected connection to " + repo + "@" + branch + "; earlier sync history below belongs to that connection"
 }

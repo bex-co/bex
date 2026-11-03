@@ -562,6 +562,11 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "暂无资源——请同步蓝图以应用您的 render.yaml。",
     description: "Blueprint managed-resources empty state (never synced)",
   },
+  "blueprints.resourcesEmptyAwaitingApproval": {
+    message: "暂无资源——批准计划同步后即会创建 render.yaml 中的资源。",
+    description:
+      "Blueprint managed-resources empty state while the Blueprint awaits approval of its planned sync",
+  },
   "blueprints.resourcesEmptyAfterError": {
     message:
       "没有归属此蓝图的资源。上次同步失败——请查看同步历史中的错误，修复蓝图后再重试。",
@@ -831,9 +836,9 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     description: "Validate panel placeholder before first run",
   },
   "blueprints.stateCreated": {
-    message: "已排队",
+    message: "待批准",
     description:
-      "Sync-run state: the run has been created but has not started.",
+      "Sync state (and Blueprint status) created: a planned sync waiting for approval (w2/m256); never a queued run.",
   },
   "blueprints.stateRunning": {
     message: "进行中",

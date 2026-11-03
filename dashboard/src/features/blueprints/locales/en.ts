@@ -580,6 +580,12 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "No resources yet — sync the Blueprint to apply your render.yaml.",
     description: "Blueprint managed-resources empty state (never synced)",
   },
+  "blueprints.resourcesEmptyAwaitingApproval": {
+    message:
+      "No resources yet — approve the planned sync to create the resources in your render.yaml.",
+    description:
+      "Blueprint managed-resources empty state while the Blueprint awaits approval of its planned sync",
+  },
   "blueprints.resourcesEmptyAfterError": {
     message:
       "No claimed resources. The last sync failed — check Sync History for the error, then retry after fixing the Blueprint.",
@@ -853,9 +859,9 @@ const enBlueprints: Record<string, TranslationEntry> = {
     description: "Validate panel placeholder before first run",
   },
   "blueprints.stateCreated": {
-    message: "Queued",
+    message: "Awaiting approval",
     description:
-      "Sync-run state: the run has been created but has not started.",
+      "Sync state (and Blueprint status) created: a planned sync waiting for approval (w2/m256); never a queued run.",
   },
   "blueprints.stateRunning": {
     message: "Running",

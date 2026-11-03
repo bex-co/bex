@@ -17,7 +17,7 @@
 | t009 | Simplify — **DONE** | 15m | t008 |
 | t010 | Test coverage — **DONE** | 30m | t008 |
 | t012 | Dashboard: a created Blueprint shows its plan and an Approve action, and Sync cannot apply it past the plan | 1h | t006 |
-| t013 | Planned Blueprint page: the reconnection note on a revived row, the right status chip, and approve-not-sync empty copy | 30m | t012 |
+| t013 | Planned Blueprint page: the reconnection note on a revived row, the right status chip, and approve-not-sync empty copy — **DONE** | 30m | t012 |
 | t011 | Closeout | 10m | t009, t010, t012, t013 |
 
 ## Definition of done
