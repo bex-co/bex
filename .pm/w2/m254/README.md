@@ -1,12 +1,12 @@
 # w2 · m254 — Build Sources: one build feeding several services, as on Render
 
-**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** todo
+**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** in progress — t001 done (ADR097); implementation deferred to the end of this drain
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Design ADR: Build Sources on bex's CR and build model | 1h | w2/m251/t004 |
+| t001 | Design ADR: Build Sources on bex's CR and build model — **DONE** | 1h | w2/m251/t004 |
 | t002 | Types, storage and build fan-out | 2h | t001 |
 | t003 | REST CRUD for /v1/build-sources | 1.5h | t002 |
 | t004 | Build-time env vars, secret files and env-group links | 1.5h | t003 |
@@ -35,3 +35,8 @@
 - **Expected outcome:** monorepo/multi-service users build once and deploy many, exactly as on Render; Render clients that send `buildSourceId` work against bex.
 - **Why now:** the field is on Render's core service object; Render clients will read and write it. Depends on w2/m251's pin refresh.
 - **Render parity included:** new REST/GraphQL/MCP/UI surface.
+
+## Work log — 2026-11-03
+
+- **t001:** [ADR097](../../../docs/ADR097-build-sources.md). A build source is a carrier App of type `build_source` that the operator builds but never runs; linked services deploy a copy of its image in their own repository (cross-repository blob mount + manifest PUT with the builder credential), so no per-link Zot ACL entry and no registry restart; bex-api fans a successful build out to auto-deploy services and records `buildId` on deploys.
+- **Size:** the operator side (carrier type, skip-runtime path, `registry.CopyManifest`, linked-service image selection) plus 20 REST operations, the fan-out and the dashboard dialog is roughly three times the 11h estimate. Per the `/loopx w2` checkpoint, the remaining independent items (m255, 065 → m256, 064, 067, 068) are drained first and m254 is implemented last as one uninterrupted block.
