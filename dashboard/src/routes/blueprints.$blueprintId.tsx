@@ -512,9 +512,11 @@ export function BlueprintDetailPage() {
                   ) : (
                     <p className="text-sm text-muted-foreground">
                       {t(
-                        blueprint.status === "error" && blueprint.lastSync
-                          ? "blueprints.resourcesEmptyAfterError"
-                          : "blueprints.resourcesEmpty",
+                        blueprint.status === "created"
+                          ? "blueprints.resourcesEmptyAwaitingApproval"
+                          : blueprint.status === "error" && blueprint.lastSync
+                            ? "blueprints.resourcesEmptyAfterError"
+                            : "blueprints.resourcesEmpty",
                       )}
                     </p>
                   )}

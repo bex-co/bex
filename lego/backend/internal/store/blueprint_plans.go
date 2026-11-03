@@ -50,8 +50,9 @@ type PlannedBlueprintSync struct {
 // CreatePlannedBlueprint inserts a Blueprint in the `created` status: its
 // first sync is planned, not applied, and auto-sync does not run until a sync
 // is approved. A live Blueprint on the same repo and branch is a conflict; a
-// disconnected one is reconnected under a fresh generation.
-func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (Blueprint, error) {
+// disconnected one is reconnected under a fresh generation, keeping its id and
+// history, which revived reports (w4/120, as AdmitBlueprintCreate does).
+func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (out Blueprint, revived bool, err error) {
 	if b.ID == "" {
 		b.ID = ids.New(ids.Blueprint)
 	}
@@ -64,13 +65,17 @@ func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (Blue
 	if b.ExistingResources == BlueprintExistingCreateNew && b.ResourceSuffix == "" {
 		b.ResourceSuffix = randomSlugSuffix()
 	}
-	var out Blueprint
 	tx, err := s.Pool.Begin(ctx)
 	if err != nil {
-		return Blueprint{}, err
+		return Blueprint{}, false, err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	// prior reads the row's status before the upsert, the only way to tell a
+	// revive from a fresh insert once the conflict arm has run.
 	err = tx.QueryRow(ctx, `
+		WITH prior AS (
+			SELECT status FROM blueprints WHERE tenant_id = $2 AND repo = $4 AND branch = $5
+		)
 		INSERT INTO blueprints (id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
 			existing_resources, resource_suffix, execution_generation)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, '', 'created', $8, $9, 1)
@@ -82,15 +87,17 @@ func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (Blue
 			created_at = now(), updated_at = now()
 		WHERE blueprints.status = 'disconnected' AND blueprints.active_run_id IS NULL
 		RETURNING id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
-		          last_sync_at, created_at, updated_at, existing_resources, resource_suffix`,
+		          last_sync_at, created_at, updated_at, existing_resources, resource_suffix,
+		          COALESCE((SELECT status FROM prior), '') = 'disconnected'`,
 		b.ID, b.TenantID, b.Name, b.Repo, b.Branch, b.Path, b.AutoSync, b.ExistingResources, b.ResourceSuffix,
 	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path, &out.AutoSync,
-		&out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt, &out.ExistingResources, &out.ResourceSuffix)
+		&out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt, &out.ExistingResources, &out.ResourceSuffix,
+		&revived)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return Blueprint{}, fmt.Errorf("blueprint: %w", ErrConflict)
+		return Blueprint{}, false, fmt.Errorf("blueprint: %w", ErrConflict)
 	}
 	if err != nil {
-		return Blueprint{}, classify("blueprint", err)
+		return Blueprint{}, false, classify("blueprint", err)
 	}
 	// A reconnected Blueprint keeps its id and history; a plan left waiting by
 	// the earlier connection must not be approvable under the new one.
@@ -98,9 +105,9 @@ func (s *PGStore) CreatePlannedBlueprint(ctx context.Context, b Blueprint) (Blue
 		UPDATE blueprint_syncs SET state = 'error', completed_at = now(),
 			error_message = 'superseded: the Blueprint was reconnected'
 		WHERE blueprint_id = $1 AND state = 'created'`, out.ID); err != nil {
-		return Blueprint{}, err
+		return Blueprint{}, false, err
 	}
-	return out, tx.Commit(ctx)
+	return out, revived, tx.Commit(ctx)
 }
 
 // BlueprintNameTaken reports whether another live, approved Blueprint in the
@@ -130,11 +137,11 @@ func (s *PGStore) InsertPlannedBlueprintSync(ctx context.Context, p PlannedBluep
 	}
 	err := s.Pool.QueryRow(ctx, `
 		INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, completed_at, error_message,
-			plan_path, required_manual_env_vars, plan_actions)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
+			plan_path, required_manual_env_vars, plan_actions, note)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
 		RETURNING created_at`,
 		p.ID, p.BlueprintID, p.CommitID, p.State, p.StartedAt, p.CompletedAt, p.ErrorMessage,
-		p.Path, required, nullJSON(p.PlanActions),
+		p.Path, required, nullJSON(p.PlanActions), p.Note,
 	).Scan(&p.CreatedAt)
 	if err != nil {
 		return PlannedBlueprintSync{}, classify("blueprint_sync", err)

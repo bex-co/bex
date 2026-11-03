@@ -494,6 +494,20 @@ describe("BlueprintDetailPage", () => {
     ).not.toBeInTheDocument();
   });
 
+  it("tells a Blueprint awaiting approval to approve, not sync (w2/m256 t013)", async () => {
+    blueprintDetailState.blueprint = bp({ status: "created", resources: [] });
+    renderDetailPage();
+
+    expect(
+      await screen.findByText(/approve the planned sync/i),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText(/sync the Blueprint to apply/i),
+    ).not.toBeInTheDocument();
+    expect(screen.getAllByText("Awaiting approval").length).toBeGreaterThan(0);
+    expect(screen.queryByText("Queued")).not.toBeInTheDocument();
+  });
+
   it("redirects a dead blueprint id home (w9/m55)", async () => {
     blueprintDetailState.blueprint = null;
     const router = renderDetailPage("blp-missing");
