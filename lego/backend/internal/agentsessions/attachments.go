@@ -317,6 +317,44 @@ func (s *Service) signedView(ctx context.Context, row store.AgentAttachment) (At
 	return view, nil
 }
 
+// AttachmentInline returns the attachment with a download URL and, when it is
+// a raster image or a text file small enough to hand an MCP caller in the tool
+// result, its bytes. Larger or other files return nil bytes: the URL is the way
+// to them.
+func (s *Service) AttachmentInline(ctx context.Context, id string) (Attachment, []byte, error) {
+	row, err := s.readableAttachment(ctx, id, core.RelCanOperate)
+	if err != nil {
+		return Attachment{}, nil, err
+	}
+	view, err := s.signedView(ctx, row)
+	if err != nil || !inlineEligible(row.MediaType, row.SizeBytes) {
+		return view, nil, err
+	}
+	body, err := s.Attachments.Get(ctx, row.ObjectKey)
+	if err != nil {
+		return Attachment{}, nil, core.HideCause(errAttachmentsUnavailable, err)
+	}
+	defer func() { _ = body.Close() }()
+	data, err := io.ReadAll(io.LimitReader(body, row.SizeBytes+1))
+	if err != nil || int64(len(data)) != row.SizeBytes {
+		return Attachment{}, nil, core.HideCause(errAttachmentsUnavailable, fmt.Errorf("read %s: %d of %d bytes: %w", row.ID, len(data), row.SizeBytes, err))
+	}
+	return view, data, nil
+}
+
+// inlineEligible is the D11 rule: a raster image up to 5 MiB, or text up to
+// 256 KiB.
+func inlineEligible(mediaType string, size int64) bool {
+	if slices.Contains(inlineImageTypes, mediaType) {
+		return size <= maxInlineImageBytes
+	}
+	return isTextMediaType(mediaType) && size <= maxInlineTextBytes
+}
+
+func isTextMediaType(mediaType string) bool {
+	return strings.HasPrefix(mediaType, "text/") || mediaType == "application/json" || mediaType == "application/yaml"
+}
+
 // AttachmentURL returns a short-lived GET URL on the storage origin (ADR095
 // D7). Bytes are never served from a bex origin.
 func (s *Service) AttachmentURL(ctx context.Context, id string) (string, error) {
