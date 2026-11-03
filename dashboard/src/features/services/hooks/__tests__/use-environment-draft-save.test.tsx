@@ -23,6 +23,7 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
     displayName: null,
     type: "web_service",
     suspended: "not_suspended",
+    suspenders: [],
     dashboardUrl: null,
     region: null,
     url: null,
