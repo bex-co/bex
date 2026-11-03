@@ -347,7 +347,7 @@ spec:
         - printf 'table inet bex_containerd_egress\ndelete table inet bex_containerd_egress\ntable inet bex_containerd_egress {\n  chain output {\n    type filter hook output priority filter; policy accept;\n    socket cgroupv2 level 2 "system.slice/containerd.service" ip daddr 169.254.0.0/16 counter reject\n  }\n}\n' > /etc/bex-containerd-egress.nft
         - mkdir -p /etc/systemd/system/containerd.service.d
         - printf '[Service]\nExecStartPost=/usr/sbin/nft -f /etc/bex-containerd-egress.nft\n' > /etc/systemd/system/containerd.service.d/20-bex-egress.conf
-        - systemctl restart containerd
+        - systemctl daemon-reload && systemctl restart containerd
         - nft list table inet bex_containerd_egress | grep -q '169.254.0.0/16'
         clusterConfiguration:
           apiServer:
@@ -469,7 +469,7 @@ spec:
       - printf 'table inet bex_containerd_egress\ndelete table inet bex_containerd_egress\ntable inet bex_containerd_egress {\n  chain output {\n    type filter hook output priority filter; policy accept;\n    socket cgroupv2 level 2 "system.slice/containerd.service" ip daddr 169.254.0.0/16 counter reject\n  }\n}\n' > /etc/bex-containerd-egress.nft
       - mkdir -p /etc/systemd/system/containerd.service.d
       - printf '[Service]\nExecStartPost=/usr/sbin/nft -f /etc/bex-containerd-egress.nft\n' > /etc/systemd/system/containerd.service.d/20-bex-egress.conf
-      - systemctl restart containerd
+      - systemctl daemon-reload && systemctl restart containerd
       - nft list table inet bex_containerd_egress | grep -q '169.254.0.0/16'
       joinConfiguration:
         nodeRegistration:
@@ -514,7 +514,7 @@ spec:
       - printf 'table inet bex_containerd_egress\ndelete table inet bex_containerd_egress\ntable inet bex_containerd_egress {\n  chain output {\n    type filter hook output priority filter; policy accept;\n    socket cgroupv2 level 2 "system.slice/containerd.service" ip daddr 169.254.0.0/16 counter reject\n  }\n}\n' > /etc/bex-containerd-egress.nft
       - mkdir -p /etc/systemd/system/containerd.service.d
       - printf '[Service]\nExecStartPost=/usr/sbin/nft -f /etc/bex-containerd-egress.nft\n' > /etc/systemd/system/containerd.service.d/20-bex-egress.conf
-      - systemctl restart containerd
+      - systemctl daemon-reload && systemctl restart containerd
       - nft list table inet bex_containerd_egress | grep -q '169.254.0.0/16'
       joinConfiguration:
         nodeRegistration:

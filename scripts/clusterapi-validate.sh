@@ -195,6 +195,13 @@ while read -r kind name; do
     echo "FAIL: $kind/$name must deny containerd's cgroup link-local egress (w5/171) and verify the table after restarting containerd" >&2
     fail=1
   fi
+  # The egress rule loads from a systemd drop-in written during bootstrap;
+  # restarting containerd without a daemon-reload never reads it, so the table
+  # check after it fails and the node never bootstraps.
+  if ! echo "$prek" | grep -q 'systemctl daemon-reload'; then
+    echo "FAIL: $kind/$name must systemctl daemon-reload before restarting containerd, or its egress drop-in is never loaded" >&2
+    fail=1
+  fi
 done < <(yq -N 'select(.kind=="KubeadmControlPlane" or .kind=="KubeadmConfigTemplate") | .kind + " " + .metadata.name' "$OVERLAY")
 
 # Kubernetes 1.33 removed kube-apiserver's cloud-provider flag. The external
@@ -929,6 +936,17 @@ for kubelet_args_file in "$OVERLAY" "$SANDBOX_OVERLAY" "$CAPD_OVERLAY"; do
     fail=1
   fi
 done
+
+# The local CAPD overlay writes the same containerd egress drop-in; without a
+# daemon-reload before the restart the drop-in is never loaded, the table check
+# after it fails, and no CAPD node ever bootstraps (2026-11-03).
+echo "==> $CAPD_OVERLAY reloads systemd before restarting containerd with its egress drop-in"
+while IFS= read -r block; do
+  if echo "$block" | grep -q '20-bex-egress.conf' && ! echo "$block" | grep -q 'systemctl daemon-reload'; then
+    echo "FAIL: $CAPD_OVERLAY writes the containerd egress drop-in without systemctl daemon-reload before the restart" >&2
+    fail=1
+  fi
+done < <(yq -o=json -I=0 -N '[.. | select(has("preKubeadmCommands")) | .preKubeadmCommands | join("\n")] | .[]' "$CAPD_OVERLAY" 2>/dev/null)
 
 # w4/m200: the bake must keep installing the reviewed patched kubelet. A
 # recipe that drops the step, or a release bump that leaves the patch behind,
