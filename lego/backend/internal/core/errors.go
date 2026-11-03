@@ -586,9 +586,11 @@ func NewPaymentRequiredError() *CodedError {
 // InsufficientScopeCode is the one machine-readable refusal when a third-party
 // human OAuth token lacks the capability a relation requires. REST, GraphQL,
 // and MCP all project it; the required capability is the only parameter so the
-// response cannot reveal whether an inaccessible target exists.
+// response cannot reveal whether an inaccessible target exists. The value is
+// Render's own errorCode for a scoped token below an endpoint's minimum scope
+// (w2/068; was bex's own INSUFFICIENT_SCOPE).
 const (
-	InsufficientScopeCode    = "INSUFFICIENT_SCOPE"
+	InsufficientScopeCode    = "insufficient_token_scope"
 	InsufficientScopeMessage = "insufficient OAuth scope"
 )
 
@@ -599,14 +601,17 @@ const (
 // itself is unknown (still fail closed, still the same code).
 func NewInsufficientScopeError(required string) *CodedError {
 	params := map[string]any{}
+	msg := InsufficientScopeMessage
 	if required != "" {
 		params["required"] = required
+		// Render's 403 message lists the minimum required scope.
+		msg += "; requires " + required
 	}
 	return &CodedError{
 		Code:     InsufficientScopeCode,
 		Params:   params,
 		sentinel: ErrForbidden,
-		msg:      InsufficientScopeMessage,
+		msg:      msg,
 	}
 }
 

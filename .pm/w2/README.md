@@ -37,7 +37,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] [065 — Blueprint responses carry `ownerId`; Blueprint PATCH accepts `branch`](done/065.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [ ] [066 — Render removed Postgres `parameterOverrides`; keep bex's or retire it?](066.md) ← w2/m251 round-5 drift (needs a user decision)
 - [x] [067 — The audit log records a workspace payment-method change, as Render's does](done/067.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
-- [ ] [068 — Scope refusals: Render now names `insufficient_token_scope`; bex answers `INSUFFICIENT_SCOPE`](068.md) ← w2/m251 round-5 drift
+- [x] [068 — Scope refusals: Render now names `insufficient_token_scope`; bex answers `INSUFFICIENT_SCOPE`](done/068.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [ ] [069 — Blueprint create with `existingResources: create_new`](069.md) ← w2/m256 (variant of the shipped `adopt`)
 - [ ] [070 — Audit payment-method changes made in the Stripe-hosted portal](070.md) ← w2/067 follow-up
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first

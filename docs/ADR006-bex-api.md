@@ -162,7 +162,7 @@ Services, Postgres, Key Values and workspaces share one name rule, `appv1alpha1.
   - `GITHUB_UNAVAILABLE`: no GitHub App;
   - `SHELL_UNAVAILABLE`: no browser-shell transport.
 - The 404 `NOT_FOUND`. `core.ErrNotFound` and `core.NotFound(resource)` carry it, so every refusal that wraps the sentinel answers the code. A feature's own not-found, built with `core.NewNotFoundError`, keeps its `*_NOT_FOUND` code. The dashboard reads either one, never "not found" in the message. A transport 404 is not a missing resource: bex-api answers one with 200 and a coded error.
-- The 403 `FORBIDDEN`. `core.ErrForbidden` carries it, so every refusal that wraps the sentinel answers the code. A refusal with a more specific 403 code, such as `INSUFFICIENT_SCOPE` or `EMAIL_VERIFICATION_REQUIRED`, keeps its own.
+- The 403 `FORBIDDEN`. `core.ErrForbidden` carries it, so every refusal that wraps the sentinel answers the code. A refusal with a more specific 403 code, such as `insufficient_token_scope` (Render's spelling, w2/068) or `EMAIL_VERIFICATION_REQUIRED`, keeps its own.
 - The 400 `PROTECTED_ENVIRONMENT_CONFIRMATION_REQUIRED`, with params `confirm`, `verb` and `name`. `confirm` is the phrase a retry must send. Services, Postgres and Key Values refuse with it alike through one check, `core.RequireProtectedConfirmation`. The dashboard reads the phrase from `confirm` and the resource's name from `name`, never from the message.
 - The 400 `WORKSPACE_RESOURCE_LIMIT`, with param `limit`: a create past the workspace's count cap.
 - The 400 `LAST_ADMIN`: removing or demoting a workspace's last admin.
