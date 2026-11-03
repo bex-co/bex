@@ -407,6 +407,8 @@ func (rec *runtimeConfigRecord) launch(app *appv1alpha1.App) launchMode {
 			continue
 		}
 		switch {
+		case len(c.Command) == 0 && slices.Equal(c.Args, nativeStartArgs(rec.spec.StartCommand)):
+			return launchNativeArgs
 		case len(c.Command) == 0 && app.Spec.Repo == "" && c.Image == app.Spec.Image:
 			return launchUnknown
 		case len(c.Command) == 0:

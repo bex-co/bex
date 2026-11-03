@@ -29,6 +29,7 @@ import (
 
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 
+	"github.com/bex-co/bex/lego/operator/internal/build"
 	"github.com/bex-co/bex/lego/operator/internal/registry"
 )
 
@@ -101,12 +102,9 @@ type linkedImage struct {
 // therefore never reach another repository.
 func (r *AppReconciler) verifiedLinkedImage(ctx context.Context, app *appv1alpha1.App) (linkedImage, error) {
 	link := app.Spec.BuildSource
-	var carrier appv1alpha1.App
-	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: link.Name}, &carrier); err != nil {
-		return linkedImage{}, fmt.Errorf("read the build source: %w", err)
-	}
-	if carrier.Spec.Type != appv1alpha1.TypeBuildSource {
-		return linkedImage{}, fmt.Errorf("%s is not a build source", link.Name)
+	carrier, err := r.linkedCarrier(ctx, app)
+	if err != nil {
+		return linkedImage{}, err
 	}
 	repo, reference, platform := r.platformRepoReference(link.Image)
 	switch {
@@ -115,7 +113,7 @@ func (r *AppReconciler) verifiedLinkedImage(ctx context.Context, app *appv1alpha
 			return linkedImage{}, fmt.Errorf("image %s is not the build source's image", link.Image)
 		}
 		return linkedImage{ref: link.Image}, nil
-	case repo != appIdentity(&carrier).Repo():
+	case repo != appIdentity(carrier).Repo():
 		return linkedImage{}, fmt.Errorf("image %s is not in the build source's repository", link.Image)
 	case !registry.IsDigest(reference):
 		return linkedImage{}, fmt.Errorf("image %s is not pinned to a digest", link.Image)
@@ -142,3 +140,33 @@ func (r *AppReconciler) copyLinkedBuild(ctx context.Context, app *appv1alpha1.Ap
 // linkedBuildTagPrefix names the tag a copied build carries in a linked
 // service's repository.
 const linkedBuildTagPrefix = "build-"
+
+// linkedToNativeSource reports whether app deploys a native build of its
+// build source: that image carries native-init and no CMD, so the service's
+// start command runs as the entrypoint's arguments (launchNativeArgs). It
+// holds only for the carrier's current build made from its current spec — an
+// older digest, or one built before the source switched to native, may be a
+// Docker image, and keeps the shell launch that runs on any image.
+func (r *AppReconciler) linkedToNativeSource(ctx context.Context, app *appv1alpha1.App) bool {
+	if app.Spec.BuildSource == nil {
+		return false
+	}
+	carrier, err := r.linkedCarrier(ctx, app)
+	return err == nil && effectiveBuilder(carrier.Spec) == build.BuilderNative &&
+		app.Spec.BuildSource.Image != "" && app.Spec.BuildSource.Image == carrier.Status.ArtifactImage &&
+		carrier.Status.ArtifactFingerprint == desiredAppReleaseIdentity(carrier.Spec).artifact
+}
+
+// linkedCarrier reads the build source carrier linked app deploys from,
+// refusing anything that is not one.
+func (r *AppReconciler) linkedCarrier(ctx context.Context, app *appv1alpha1.App) (*appv1alpha1.App, error) {
+	name := app.Spec.BuildSource.Name
+	var carrier appv1alpha1.App
+	if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, &carrier); err != nil {
+		return nil, fmt.Errorf("read the build source: %w", err)
+	}
+	if carrier.Spec.Type != appv1alpha1.TypeBuildSource {
+		return nil, fmt.Errorf("%s is not a build source", name)
+	}
+	return &carrier, nil
+}

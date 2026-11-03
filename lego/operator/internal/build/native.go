@@ -415,6 +415,13 @@ func nativeRuntimeDefaults(o Options) string {
 	return ""
 }
 
+// NativeStartArgv is how a native image runs a Render command: its CMD, and
+// the arguments a service linked to a native build source passes to the same
+// entrypoint (w2/m254 t017).
+func NativeStartArgv(command string) []string {
+	return []string{"/bin/bash", "-c", command}
+}
+
 // shellJSON wraps a Render build/start command in a NON-login bash so the
 // toolchain image's own PATH survives. A login shell (`-lc`) sources Debian's
 // /etc/profile, which unconditionally overwrites PATH with the fixed system
@@ -427,7 +434,7 @@ func shellJSON(command string) string {
 	var out bytes.Buffer
 	encoder := json.NewEncoder(&out)
 	encoder.SetEscapeHTML(false)
-	_ = encoder.Encode([]string{"/bin/bash", "-c", command})
+	_ = encoder.Encode(NativeStartArgv(command))
 	return strings.TrimSpace(out.String())
 }
 

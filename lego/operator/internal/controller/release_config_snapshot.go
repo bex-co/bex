@@ -706,6 +706,9 @@ func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1al
 		return err
 	}
 	params.launch = launch
+	if launch == launchUnknown && r.linkedToNativeSource(ctx, app) {
+		params.launch = launchNativeArgs
+	}
 	// From the selected runtime, not app: a held, rolled-back or save-only
 	// release reads that release's env sources, and the default must yield to
 	// those. A restore replaces the template verbatim, so it needs no lookup.
