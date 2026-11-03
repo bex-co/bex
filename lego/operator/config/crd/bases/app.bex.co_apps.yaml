@@ -176,6 +176,26 @@ spec:
                     maxItems: 100
                     type: array
                 type: object
+              buildSource:
+                description: |-
+                  BuildSource links this service to a build_source carrier App in the same
+                  namespace (Render's buildSourceId, w2/m254, ADR097). The service builds
+                  nothing itself: it deploys a copy of BuildSource.Image in its own
+                  repository.
+                properties:
+                  image:
+                    description: |-
+                      Image is the carrier build to deploy: a digest reference in the
+                      carrier's repository. Empty until the source has a build to deploy;
+                      changing it is a new release.
+                    type: string
+                  name:
+                    description: Name is the build_source carrier App's name.
+                    minLength: 1
+                    type: string
+                required:
+                - name
+                type: object
               builder:
                 default: auto
                 description: |-
@@ -961,6 +981,7 @@ spec:
                 - background_worker
                 - cron_job
                 - static_site
+                - build_source
                 type: string
             type: object
             x-kubernetes-validations:
@@ -984,6 +1005,13 @@ spec:
             - message: a static_site builds from spec.repo; spec.image is not supported
               rule: '!has(self.image) || (has(self.type) ? self.type : ''web_service'')
                 != ''static_site'''
+            - message: a service linked to a build source takes its source from it;
+                spec.repo and spec.image must be empty
+              rule: '!has(self.buildSource) || (!has(self.repo) && !has(self.image))'
+            - message: spec.buildSource is supported only on web_service, private_service,
+                background_worker and cron_job
+              rule: '!has(self.buildSource) || (has(self.type) ? self.type : ''web_service'')
+                in [''web_service'',''private_service'',''background_worker'',''cron_job'']'
           status:
             description: status defines the observed state of App
             properties:
