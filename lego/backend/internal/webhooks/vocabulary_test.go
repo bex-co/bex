@@ -23,11 +23,13 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strings"
 	"testing"
 )
 
 type renderVocabularyFixture struct {
 	CapturedAt                          string            `json:"capturedAt"`
+	RenderDashboardCapturedAt           string            `json:"renderDashboardCapturedAt"`
 	RenderOpenAPI                       []string          `json:"renderOpenAPI"`
 	RenderDashboard                     []string          `json:"renderDashboard"`
 	APIOnly                             []string          `json:"apiOnly"`
@@ -38,6 +40,9 @@ type renderVocabularyFixture struct {
 	RenderAliasesUnsupported            map[string]string `json:"renderAliasesUnsupported"`
 	AntiGoalUnsupported                 []string          `json:"antiGoalUnsupported"`
 	SourceBoundUnsupported              []string          `json:"sourceBoundUnsupported"`
+	// PlannedUnsupported maps a Render value bex does not emit yet to the
+	// board item that will add it.
+	PlannedUnsupported map[string]string `json:"plannedUnsupported"`
 }
 
 func loadRenderVocabularyFixture(t *testing.T) renderVocabularyFixture {
@@ -46,7 +51,7 @@ func loadRenderVocabularyFixture(t *testing.T) renderVocabularyFixture {
 	if !ok {
 		t.Fatal("resolve vocabulary test source")
 	}
-	path := filepath.Join(filepath.Dir(source), "..", "..", "..", "..", "docs", "render-artifacts", "fixtures", "render-webhook-vocabulary-2026-08-17.json")
+	path := filepath.Join(filepath.Dir(source), "..", "..", "..", "..", "docs", "render-artifacts", "fixtures", "render-webhook-vocabulary-2026-11-02.json")
 	contents, err := os.ReadFile(path)
 	if err != nil {
 		t.Fatal(err)
@@ -85,8 +90,12 @@ func difference(left, right []string) []string {
 
 func TestRenderDashboardAndAPIVocabulariesStayDistinct(t *testing.T) {
 	fixture := loadRenderVocabularyFixture(t)
-	if fixture.CapturedAt != "2026-08-17" || len(fixture.RenderOpenAPI) != 67 || len(fixture.RenderDashboard) != 64 {
-		t.Fatalf("dated Render counts = %s API=%d dashboard=%d", fixture.CapturedAt, len(fixture.RenderOpenAPI), len(fixture.RenderDashboard))
+	// The public enum was re-captured by the round-5 drift (w2/m251); the
+	// dashboard picker needs an authenticated walk and keeps its 2026-08-17 set.
+	if fixture.CapturedAt != "2026-11-02" || fixture.RenderDashboardCapturedAt != "2026-08-17" ||
+		len(fixture.RenderOpenAPI) != 68 || len(fixture.RenderDashboard) != 64 {
+		t.Fatalf("dated Render counts = %s API=%d dashboard(%s)=%d", fixture.CapturedAt, len(fixture.RenderOpenAPI),
+			fixture.RenderDashboardCapturedAt, len(fixture.RenderDashboard))
 	}
 	if got, want := difference(fixture.RenderOpenAPI, fixture.RenderDashboard), sortedSet(fixture.APIOnly); !slices.Equal(got, want) {
 		t.Fatalf("API-only event types = %v, fixture says %v", got, want)
@@ -118,11 +127,17 @@ func TestBexWebhookVocabularyHasOneTruthfulDispositionPerValue(t *testing.T) {
 	}
 	renderUnion := sortedSet(fixture.RenderOpenAPI, fixture.RenderDashboard)
 	unsupported := difference(renderUnion, EventTypes)
-	dispositioned := sortedSet(aliasValues, fixture.AntiGoalUnsupported, fixture.SourceBoundUnsupported)
+	planned := slices.Collect(maps.Keys(fixture.PlannedUnsupported))
+	for value, item := range fixture.PlannedUnsupported {
+		if !strings.HasPrefix(item, "w") || !strings.Contains(item, "/") {
+			t.Fatalf("planned value %q names no board item: %q", value, item)
+		}
+	}
+	dispositioned := sortedSet(aliasValues, fixture.AntiGoalUnsupported, fixture.SourceBoundUnsupported, planned)
 	if !slices.Equal(unsupported, dispositioned) {
 		t.Fatalf("Render-only values = %v, disposition ledger = %v", unsupported, dispositioned)
 	}
-	if len(dispositioned) != len(aliasValues)+len(fixture.AntiGoalUnsupported)+len(fixture.SourceBoundUnsupported) {
+	if len(dispositioned) != len(aliasValues)+len(fixture.AntiGoalUnsupported)+len(fixture.SourceBoundUnsupported)+len(planned) {
 		t.Fatal("unsupported disposition categories overlap")
 	}
 }

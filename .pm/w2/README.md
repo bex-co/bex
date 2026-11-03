@@ -27,11 +27,17 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] [061 — Hobby workspaces cap services at 3 CPU; Render documents no such cap](done/061.md) — **DONE 2026-11-01** (`47d87b5db`): Hobby's services compute quota equals paid (58 CPU); verified with 8.5 CPU of services in a Hobby workspace
 - [x] [062 — Hobby workspaces cap service disks at 120 GiB / 8 PVCs; check Render](done/062.md) — **DONE 2026-11-01** (`40666d987`): Render has no per-workspace disk cap; Hobby now has the paid disk budget
 - [ ] **m250** — [Pro Plus, Pro Max and Pro Ultra services start, as on Render](m250/README.md) (9 tasks) ← promoted from `w2/063` 2026-11-02 (user decision: two autoscaled serving pools, cx53 and ccx43); Render parity included
-- [ ] **m251** — [Render drift check round 5: 208 → 252 operations, recorded and pinned](m251/README.md) (9 tasks) ← `/pm-brainstorm for w2` 2026-11-02 #1; Render parity omitted (the milestone is the parity audit)
+- [x] **m251** — [Render drift check round 5: 208 → 252 operations, recorded and pinned](done/m251/README.md) (9 tasks) — **DONE 2026-11-02**: pin refreshed to Render's live 252 operations (44 added: Build Sources, flows, sandboxes); the refresh's sandbox-id break caught and widened; Build Sources answer a named 404; the weekly drift job now also compares REST operations and passes against live Render; follow-ups m256, 064–068, m254/t013. ← `/pm-brainstorm for w2` 2026-11-02 #1; Render parity omitted (the milestone is the parity audit)
 - [ ] **m252** — [Failure alerts reach email, as on Render](m252/README.md) (10 tasks) ← `/pm-brainstorm for w2` 2026-11-02 #2; Render parity included
 - [ ] **m253** — [A service that crash-loops for 24 hours is suspended with `stuck_crashlooping`, as on Render](m253/README.md) (9 tasks) ← `/pm-brainstorm for w2` 2026-11-02 #3; Render parity included
-- [ ] **m254** — [Build Sources: one build feeding several services, as on Render](m254/README.md) (12 tasks) ← `/pm-brainstorm for w2` 2026-11-02 #4; Render parity included
+- [ ] **m254** — [Build Sources: one build feeding several services, as on Render](m254/README.md) (13 tasks) ← `/pm-brainstorm for w2` 2026-11-02 #4; Render parity included
 - [ ] **m255** — [Disk usage over 80% notifies, as on Render](m255/README.md) (8 tasks) ← `/pm-brainstorm for w2` 2026-11-02 #5; Render parity included
+- [ ] **m256** — [Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does](m256/README.md) (11 tasks) ← w2/m251 round-5 drift: Render CLI v2.35.0 `ea blueprints create|plan|approve|update`; Render parity included
+- [ ] [064 — Emit Render's `disk_snapshot_restored` instead of bex's `disk_restored`](064.md) ← w2/m251 round-5 drift
+- [ ] [065 — Blueprint responses carry `ownerId`; Blueprint PATCH accepts `branch`](065.md) ← w2/m251 round-5 drift
+- [ ] [066 — Render removed Postgres `parameterOverrides`; keep bex's or retire it?](066.md) ← w2/m251 round-5 drift (needs a user decision)
+- [ ] [067 — The audit log records a workspace payment-method change, as Render's does](067.md) ← w2/m251 round-5 drift
+- [ ] [068 — Scope refusals: Render now names `insufficient_token_scope`; bex answers `INSUFFICIENT_SCOPE`](068.md) ← w2/m251 round-5 drift
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
 

@@ -42,17 +42,17 @@ func TestRenderOpenAPIPinGuards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := len(renderOpenAPISource); got != 345074 {
-		t.Fatalf("snapshot size = %d, want 345074", got)
+	if got := len(renderOpenAPISource); got != 432906 {
+		t.Fatalf("snapshot size = %d, want 432906", got)
 	}
 	if got := contract.document.OpenAPI; got != "3.0.2" {
 		t.Fatalf("OpenAPI = %q, want 3.0.2", got)
 	}
-	if got := contract.document.Paths.Len(); got != 131 {
-		t.Fatalf("paths = %d, want 131", got)
+	if got := contract.document.Paths.Len(); got != 158 {
+		t.Fatalf("paths = %d, want 158", got)
 	}
-	if got := len(contract.document.Components.Schemas); got != 164 {
-		t.Fatalf("schemas = %d, want 164", got)
+	if got := len(contract.document.Components.Schemas); got != 169 {
+		t.Fatalf("schemas = %d, want 169", got)
 	}
 	operations, requestBodies := 0, 0
 	for _, item := range contract.document.Paths.Map() {
@@ -63,8 +63,8 @@ func TestRenderOpenAPIPinGuards(t *testing.T) {
 			}
 		}
 	}
-	if operations != 208 || requestBodies != 58 {
-		t.Fatalf("operations/request bodies = %d/%d, want 208/58", operations, requestBodies)
+	if operations != 252 || requestBodies != 70 {
+		t.Fatalf("operations/request bodies = %d/%d, want 252/70", operations, requestBodies)
 	}
 	if len(contract.document.Servers) != 0 {
 		t.Fatalf("runtime contract retained upstream servers: %#v", contract.document.Servers)
@@ -114,10 +114,20 @@ func TestRenderOpenAPIRefPolicyGuard(t *testing.T) {
 	}
 	walk(raw)
 	sort.Strings(siblings)
+	// Every sibling below is a description (plan also a default kin-openapi
+	// ignores) — documentation beside a $ref, never a constraint the
+	// validator would silently drop.
+	buildSourceID := "#/paths/~1build-sources~1{buildSourceId}/parameters/0/schema|description"
 	want := []string{
 		"#/components/schemas/DeployMode|description",
 		"#/components/schemas/plan|default,description",
-		"#/paths/~1events~1{eventId}/get/responses/200/content/application~1json/schema/properties/details/oneOf/0/oneOf/45/properties/newTrigger|description",
+		"#/components/schemas/servicePOST/properties/autoDeployTrigger|description",
+		"#/components/schemas/servicePOST/properties/autoDeployTrigger|description",
+		"#/components/schemas/serviceRuntime|description",
+		"#/components/schemas/serviceRuntime|description",
+		"#/components/schemas/serviceRuntime|description",
+		"#/components/schemas/serviceRuntime|description",
+		buildSourceID, buildSourceID, buildSourceID, buildSourceID, buildSourceID, buildSourceID,
 	}
 	if fmt.Sprint(siblings) != fmt.Sprint(want) {
 		t.Fatalf("non-extension $ref siblings = %v, want %v", siblings, want)
@@ -193,7 +203,9 @@ func TestRenderRouteIntersectionInventory(t *testing.T) {
 		for method, operation := range item.Operations() {
 			target := "/v1" + parameter.ReplaceAllString(path, "fixture")
 			req := httptest.NewRequest(strings.ToUpper(method), target, nil)
-			if _, pattern := mux.Handler(req); pattern != "" {
+			// A not-offered Build Sources route answers 404 by name; it is not
+			// an operation bex serves (w2/m251).
+			if _, pattern := mux.Handler(req); pattern != "" && !slices.Contains(buildSourceRoutes, pattern) {
 				operationIDs = append(operationIDs, operation.OperationID)
 			}
 		}

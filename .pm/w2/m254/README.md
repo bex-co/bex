@@ -14,7 +14,8 @@
 | t006 | Trigger a build and list builds | 1h | t004, t005 |
 | t007 | GraphQL and MCP equivalents | 1h | t006 |
 | t008 | Dashboard: Settings → Build → Source "Update source" dialog | 1.5h | t007 |
-| t009 | Render parity | 15m | t008 |
+| t013 | Deploys report buildId; deploy and rollback accept a build | 45m | t006 |
+| t009 | Render parity | 15m | t008, t013 |
 | t010 | Simplify | 15m | t009 |
 | t011 | Test coverage | 30m | t009 |
 | t012 | Closeout | 10m | t010, t011 |
@@ -24,6 +25,7 @@
 - On production, the pinned Render CLI or REST creates a git-backed build source, links two services to it, and one triggered build deploys both.
 - `buildSourceId` round-trips on `GET/POST/PATCH /v1/services`; create with `buildSourceId` plus `repo`/`branch`/`image`/`runtime` is rejected as Render does, and a region mismatch returns `build_source_region_mismatch`.
 - Build-time env vars, secret files and env-group links on a build source work through REST, GraphQL and MCP; the dashboard Settings → Build → Source dialog switches a service's build source.
+- Deploys report `buildId`, and `POST /v1/services/{id}/deploys` with `buildId` deploys that build (round-5 drift, w2/m251).
 - ADR018's Build Sources row is `✅` (or `◐` with each divergence signed off).
 
 ## Source + Goal linkage
