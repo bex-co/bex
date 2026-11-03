@@ -242,9 +242,9 @@ func TestMCPParityInventory(t *testing.T) {
 		mcpParity1to1:      10,  // +list_events (w1/m165); -list_logs -list_log_label_values (w4/m189); +update_environment_variables (w2/046)
 		mcpParitySuperset:  9,   // +get_metrics (w2/m91 Render arg names); +list_logs +list_log_label_values (w4/m189 textMode); +4 create tools (w8/152 region)
 		mcpParityDivergent: 2,   // -get_metrics (w2/m91); -create_web_service -create_cron_job -create_postgres -create_key_value (w8/152 region)
-		mcpParityExtension: 188, // +8 build source tools (w2/m254 t007); +upload_agent_attachment +get_agent_attachment +list_agent_session_attachments +delete_agent_attachment (ADR095 D11, w9/m171); +create_planned_blueprint +plan_blueprint_sync +approve_blueprint (w2/m256); +wait_agent_sessions (ADR094 D6, w21/m258); +create_agent_session +send_agent_session_message (ADR094 D2 canonical names; spawn_/steer_ stay as aliases, w21/m257); +get_agent_session_tool_output (w10/m18); +get_agent_environment +update_agent_environment (w10/m17); -pin_agent_session -unpin_agent_session (w10/m15); +leave_workspace (w5/m102); +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023); +list_postgres_parameters (w6/m133); +resume_keyvalue (w4/083)
+		mcpParityExtension: 189, // +link_service_to_build_source (w2/m254 t008); +8 build source tools (w2/m254 t007); +upload_agent_attachment +get_agent_attachment +list_agent_session_attachments +delete_agent_attachment (ADR095 D11, w9/m171); +create_planned_blueprint +plan_blueprint_sync +approve_blueprint (w2/m256); +wait_agent_sessions (ADR094 D6, w21/m258); +create_agent_session +send_agent_session_message (ADR094 D2 canonical names; spawn_/steer_ stay as aliases, w21/m257); +get_agent_session_tool_output (w10/m18); +get_agent_environment +update_agent_environment (w10/m17); -pin_agent_session -unpin_agent_session (w10/m15); +leave_workspace (w5/m102); +5 disk tools (ADR082 w1/m84) +2 snapshot tools (w1/m85); +list_git_connections (ADR075 w5/m74); +get_service_outbound_ips (w2/023); +list_postgres_parameters (w6/m133); +resume_keyvalue (w4/083)
 	}
-	const wantTotal = 209
+	const wantTotal = 210
 
 	if len(tools) != wantTotal {
 		t.Errorf("bex registers %d MCP tools, expected %d — update this test AND ADR018's MCP inventory together",

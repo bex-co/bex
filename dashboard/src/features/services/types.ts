@@ -136,6 +136,11 @@ export interface ServiceView {
    */
   imagePath?: string | null;
   /**
+   * The build source this service builds from (w2/m254), null when it has its
+   * own repo or image. Optional for fixtures, like imagePath.
+   */
+  buildSourceId?: string | null;
+  /**
    * Subdirectory of `repo` this App builds from (`spec.rootDir`, Render's Root
    * Directory setting, w1/m18); null when unset (builds from the repo root).
    * Only the detail `server` query selects it.

@@ -1,5 +1,5 @@
-import { useEffect, useMemo, useState } from "react";
-import { GitBranch, Box } from "lucide-react";
+import { useEffect, useMemo, useState, type ReactNode } from "react";
+import { GitBranch, Box, Layers } from "lucide-react";
 import { GithubIcon } from "@/common/components/github-icon";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { Badge } from "@/common/components/ui/badge";
@@ -22,8 +22,8 @@ import { useConnectGit } from "@/features/git/hooks/use-connect-git";
 import { GitCredentialsMenu } from "@/features/git/components/git-credentials-menu";
 import { RegistryCredentialSelect } from "@/features/services/components/registry-credential-select";
 
-/** Where a new service's code comes from. */
-export type SourceTab = "github" | "git" | "image";
+/** Where a service's code comes from. */
+export type SourceTab = "github" | "git" | "image" | "build-source";
 
 const TAB_TRIGGER_CLASS =
   "min-w-0 px-1 text-xs sm:gap-1.5 sm:px-3 sm:text-sm" as const;
@@ -60,7 +60,9 @@ const CONNECT_PROMPT_CLASS =
  *
  * `image` carries the third tab's state, so its presence is what decides
  * whether that tab exists — a caller that cannot deploy an image (Blueprints)
- * simply omits it rather than passing a flag plus unused handlers.
+ * simply omits it rather than passing a flag plus unused handlers. The same
+ * goes for `buildSource`, the Update Source dialog's build source tab
+ * (w2/m254), whose content the caller renders.
  */
 export function ServiceSourcePicker({
   tab,
@@ -70,6 +72,7 @@ export function ServiceSourcePicker({
   gitUrl,
   onGitUrlChange,
   image,
+  buildSource,
   titleKey = "services.createSourceTitle",
   idPrefix = "svc",
 }: {
@@ -80,6 +83,7 @@ export function ServiceSourcePicker({
   gitUrl: string;
   onGitUrlChange: (url: string) => void;
   image?: ImageSourceOption;
+  buildSource?: ReactNode;
   titleKey?: string;
   idPrefix?: string;
 }) {
@@ -150,7 +154,9 @@ export function ServiceSourcePicker({
         <TabsList
           className={cn(
             "grid h-auto w-full",
-            image ? "grid-cols-3" : "grid-cols-2",
+            ["grid-cols-2", "grid-cols-3", "grid-cols-4"][
+              Number(Boolean(image)) + Number(buildSource !== undefined)
+            ],
           )}
         >
           <TabsTrigger value="github" className={TAB_TRIGGER_CLASS}>
@@ -165,6 +171,12 @@ export function ServiceSourcePicker({
             <TabsTrigger value="image" className={TAB_TRIGGER_CLASS}>
               <Box className="hidden size-4 sm:block" />
               {t("services.createTabImage")}
+            </TabsTrigger>
+          )}
+          {buildSource !== undefined && (
+            <TabsTrigger value="build-source" className={TAB_TRIGGER_CLASS}>
+              <Layers className="hidden size-4 sm:block" />
+              {t("services.sourceTabBuildSource")}
             </TabsTrigger>
           )}
         </TabsList>
@@ -353,6 +365,11 @@ export function ServiceSourcePicker({
                 description={t("services.createRegistryCredentialDescription")}
               />
             </div>
+          </TabsContent>
+        )}
+        {buildSource !== undefined && (
+          <TabsContent value="build-source" className="mt-3">
+            {buildSource}
           </TabsContent>
         )}
       </Tabs>

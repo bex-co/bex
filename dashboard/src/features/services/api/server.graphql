@@ -69,6 +69,8 @@ query Server($id: String!) {
     # imagePath is the CONFIGURED prebuilt image (empty for a repo-backed App) —
     # the Source card shows/edits it and enables the repo↔image switch (w5/m76).
     imagePath
+    # The build source this service builds from (w2/m254), else null.
+    buildSourceId
     rootDir
     runtime
     builder

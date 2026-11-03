@@ -5,6 +5,23 @@ import { ServiceSourceCard } from "@/features/services/components/service-source
 
 const setImage = vi.fn(async () => true);
 const setRepo = vi.fn(async () => true);
+const linkBuildSource = vi.fn(async () => true);
+let buildSourcesError: Error | undefined;
+const buildSources = [
+  {
+    id: "bds-mono",
+    name: "Mono",
+    source: "https://github.com/acme/mono",
+    kind: "git",
+    nativeRuntime: "node",
+  },
+  {
+    id: "bds-docker",
+    name: "Docker",
+    source: "https://github.com/acme/d",
+    native: false,
+  },
+];
 
 const repos = [
   {
@@ -27,6 +44,25 @@ const repos = [
   },
 ];
 
+vi.mock(
+  "@/features/services/hooks/use-build-sources",
+  async (importOriginal) => ({
+    ...(await importOriginal<
+      typeof import("@/features/services/hooks/use-build-sources")
+    >()),
+    useBuildSources: () =>
+      buildSourcesError
+        ? { sources: [], loading: false, error: buildSourcesError }
+        : { sources: buildSources, loading: false },
+    useBuildSource: (id: string | null) => ({
+      source: buildSources.find((source) => source.id === id) ?? null,
+      loading: false,
+    }),
+  }),
+);
+vi.mock("@/features/services/hooks/use-link-build-source", () => ({
+  useLinkBuildSource: () => ({ linkBuildSource, busy: false }),
+}));
 vi.mock("@/features/services/hooks/use-set-image", () => ({
   useSetImage: () => ({ setImage, busy: false }),
 }));
@@ -89,6 +125,8 @@ vi.mock("@/features/services/components/registry-credential-select", () => ({
 beforeEach(() => {
   setImage.mockClear();
   setRepo.mockClear();
+  linkBuildSource.mockClear();
+  buildSourcesError = undefined;
 });
 
 describe("ServiceSourceCard", () => {
@@ -102,6 +140,8 @@ describe("ServiceSourceCard", () => {
         branch="main"
         imagePath={null}
         registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
       />,
     );
 
@@ -131,6 +171,8 @@ describe("ServiceSourceCard", () => {
         branch="main"
         imagePath={null}
         registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
       />,
     );
 
@@ -172,6 +214,8 @@ describe("ServiceSourceCard", () => {
         branch={null}
         imagePath="nginx:stable"
         registryCredentialId="rgc-1"
+        buildSourceId={null}
+        startCommand={null}
       />,
     );
 
@@ -196,6 +240,8 @@ describe("ServiceSourceCard", () => {
         branch={null}
         imagePath="nginx:stable"
         registryCredentialId={null}
+        buildSourceId={null}
+        startCommand={null}
       />,
     );
 
@@ -224,6 +270,8 @@ describe("ServiceSourceCard — unchanged image source (w4/275)", () => {
       branch={repo === null ? null : ""}
       imagePath="docker.io/library/busybox:1.37.0"
       registryCredentialId={null}
+      buildSourceId={null}
+      startCommand={null}
     />
   );
   const update = () => screen.getByRole("button", { name: "Update source" });
@@ -294,5 +342,106 @@ describe("ServiceSourceCard — unchanged image source (w4/275)", () => {
     await user.click(screen.getByRole("tab", { name: "GitHub" }));
     await user.click(screen.getByRole("button", { name: /acme\/api/i }));
     expect(update()).toBeEnabled();
+  });
+});
+
+// w2/m254 t008: Update Source links a service to a build source, as on Render.
+describe("ServiceSourceCard — build sources", () => {
+  const card = (buildSourceId: string | null) => (
+    <ServiceSourceCard
+      serviceId="srv-5"
+      repo={buildSourceId ? null : "https://github.com/acme/api"}
+      branch={buildSourceId ? null : "main"}
+      imagePath={null}
+      registryCredentialId={null}
+      buildSourceId={buildSourceId}
+      startCommand="node server.js"
+    />
+  );
+
+  it("shows the linked build source and what it builds from", () => {
+    render(card("bds-mono"));
+    expect(screen.getByText("Build source")).toBeInTheDocument();
+    expect(screen.getByText("Mono")).toBeInTheDocument();
+    expect(screen.getByText("github.com · acme / mono")).toBeInTheDocument();
+  });
+
+  it("links a native build source with the service's start command", async () => {
+    const user = userEvent.setup();
+    render(card(null));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: "Build source" }));
+    await user.click(screen.getByRole("combobox", { name: "Build source" }));
+    await user.click(screen.getByRole("option", { name: /Mono/ }));
+    const start = screen.getByLabelText("Start Command");
+    expect(start).toHaveValue("node server.js");
+    await user.clear(start);
+    const save = screen.getByRole("button", { name: "Update source" });
+    expect(save).toBeDisabled();
+    await user.type(start, "npm start");
+    await user.click(save);
+    await waitFor(() =>
+      expect(linkBuildSource).toHaveBeenCalledWith(
+        "srv-5",
+        "bds-mono",
+        "npm start",
+      ),
+    );
+  });
+
+  it("unlinks by switching to a public Git repository", async () => {
+    const user = userEvent.setup();
+    render(card("bds-mono"));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    expect(screen.getByRole("tab", { name: "Build source" })).toHaveAttribute(
+      "aria-selected",
+      "true",
+    );
+    const save = screen.getByRole("button", { name: "Update source" });
+    expect(save).toBeDisabled();
+    await user.click(screen.getByRole("tab", { name: /Public Git/ }));
+    await user.type(
+      screen.getByRole("textbox", {
+        name: /Git repository URL|Repository URL/,
+      }),
+      "https://github.com/acme/api",
+    );
+    await user.click(save);
+    await waitFor(() =>
+      expect(setRepo).toHaveBeenCalledWith("srv-5", {
+        repo: "https://github.com/acme/api",
+        branch: "main",
+      }),
+    );
+    expect(linkBuildSource).not.toHaveBeenCalled();
+  });
+
+  it("says the list failed rather than that there are no sources", async () => {
+    buildSourcesError = new Error("network");
+    const user = userEvent.setup();
+    render(card(null));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: "Build source" }));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't load this workspace's build sources",
+    );
+  });
+
+  it("links a Docker build source without a start command", async () => {
+    const user = userEvent.setup();
+    render(card(null));
+    await user.click(screen.getByRole("button", { name: "Edit" }));
+    await user.click(screen.getByRole("tab", { name: "Build source" }));
+    await user.click(screen.getByRole("combobox", { name: "Build source" }));
+    await user.click(screen.getByRole("option", { name: /Docker/ }));
+    expect(screen.queryByLabelText("Start Command")).not.toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Update source" }));
+    await waitFor(() =>
+      expect(linkBuildSource).toHaveBeenCalledWith(
+        "srv-5",
+        "bds-docker",
+        undefined,
+      ),
+    );
   });
 });

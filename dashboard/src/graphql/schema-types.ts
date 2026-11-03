@@ -1445,6 +1445,7 @@ export type Mutation = {
   finalizeWorkspaceCreation: Maybe<Workspace>;
   inviteWorkspaceMember: Maybe<WorkspaceInvite>;
   leaveWorkspace: Maybe<Scalars['Boolean']['output']>;
+  linkBuildSource: Maybe<Service>;
   linkEnvGroup: Maybe<Scalars['Boolean']['output']>;
   markPushNotificationRead: Scalars['Boolean']['output'];
   moveEnvGroup: Maybe<EnvGroup>;
@@ -2072,6 +2073,13 @@ export type MutationInviteWorkspaceMemberArgs = {
 
 export type MutationLeaveWorkspaceArgs = {
   workspaceId: Scalars['String']['input'];
+};
+
+
+export type MutationLinkBuildSourceArgs = {
+  buildSourceId: Scalars['String']['input'];
+  serviceId: Scalars['String']['input'];
+  startCommand?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -4127,6 +4135,7 @@ export type Service = {
   branch: Maybe<Scalars['String']['output']>;
   buildCommand: Maybe<Scalars['String']['output']>;
   buildFilter: Maybe<BuildFilter>;
+  buildSourceId: Maybe<Scalars['String']['output']>;
   builder: Maybe<Scalars['String']['output']>;
   cacheProfile: Maybe<Scalars['String']['output']>;
   command: Maybe<Scalars['String']['output']>;
