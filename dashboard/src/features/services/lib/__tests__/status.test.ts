@@ -103,6 +103,7 @@ function server(overrides: Partial<ServerNode> = {}): ServerNode {
     displayName: null,
     type: "web_service",
     suspended: "not_suspended",
+    suspenders: [],
     dashboardUrl: null,
     region: null,
     url: null,
