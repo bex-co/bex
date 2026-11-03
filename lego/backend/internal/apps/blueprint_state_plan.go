@@ -177,7 +177,7 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if !ok {
 			return BlueprintPlanAction{}, fmt.Errorf("compiled service is missing")
 		}
-		want, err := blueprintReadSpec(ctx, svc.req)
+		want, err := blueprintReadSpec(ctx, withCurrentTier(svc.req, r.services[resource.Name]))
 		if err != nil {
 			return BlueprintPlanAction{}, err
 		}

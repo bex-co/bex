@@ -90,8 +90,7 @@ export function useNewServiceForm(search: NewServiceSearch) {
   const set = useCallback(
     (
       patch:
-        | Partial<PlainFields>
-        | ((current: PlainFields) => Partial<PlainFields>),
+        Partial<PlainFields> | ((current: PlainFields) => Partial<PlainFields>),
     ) =>
       setFields((current) => ({
         ...current,
@@ -125,10 +124,13 @@ export function useNewServiceForm(search: NewServiceSearch) {
   // (cheapest paid) tier, and a Free selection made under another service type
   // never survives a switch into a paid-only-type submission — an override the current
   // type is not offered falls back to the default.
+  // A paused tier (w2/m250) stays in the grid, disabled, but is never the
+  // default nor a surviving override, so the form never submits it.
   const offeredTypes = offeredInstanceTypes(fields.serviceType, instanceTypes);
+  const selectableTypes = offeredTypes.filter((it) => it.available);
   const planOverride =
     fields.planOverride != null &&
-    offeredTypes.some((it) => it.id === fields.planOverride)
+    selectableTypes.some((it) => it.id === fields.planOverride)
       ? fields.planOverride
       : null;
 
@@ -139,7 +141,7 @@ export function useNewServiceForm(search: NewServiceSearch) {
     buildCommand: build.buildCommand,
     startCommand: build.startCommand,
     dockerfilePath: build.dockerfilePath,
-    plan: planOverride ?? offeredTypes[0]?.id ?? "",
+    plan: planOverride ?? selectableTypes[0]?.id ?? "",
   };
 
   // Switching source tab abandons whatever the previous tab had selected —

@@ -12,6 +12,14 @@ export interface InstanceTypeView {
   memory: string;
   /** Always-on 730-hour estimate from bex-api's canonical price sheet. */
   monthlyUsd: string;
+  /**
+   * False for a temporarily paused tier (w2/m250): still listed so a service
+   * already on it renders, but never offered as a new selection — bex-api
+   * refuses it with INSTANCE_TYPE_UNAVAILABLE.
+   */
+  available: boolean;
+  /** bex-api's customer-facing reason, "" when available. */
+  unavailableReason: string;
 }
 
 export interface UseInstanceTypesResult {
@@ -46,6 +54,9 @@ export function useInstanceTypes(): UseInstanceTypesResult {
           cpu: t.cpu ?? "",
           memory: t.memory ?? "",
           monthlyUsd: t.monthlyUsd ?? "",
+          // An older bex-api without the field lists every tier as selectable.
+          available: t.available ?? true,
+          unavailableReason: t.unavailableReason ?? "",
         })),
     [data],
   );

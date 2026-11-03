@@ -1369,7 +1369,7 @@ func stackHasPaidPlan(st parsedStack) bool {
 	for _, service := range st.services {
 		// Type-aware resolution: a plan-less background worker provisions at
 		// the paid default (w6/025), so it must trip the payment-method gate.
-		tier, err := normalizeTierForType(effectiveType(service.req.Type), service.req.Plan)
+		tier, err := resolveTierForType(effectiveType(service.req.Type), service.req.Plan)
 		if err == nil && core.PaidPlan(tier) {
 			return true
 		}
@@ -1591,7 +1591,7 @@ func copyRefusal(consumer *parsedService, c stateCopy, why string) blueprintReso
 }
 
 func (s *Service) validateBlueprintService(ctx context.Context, svc parsedService, appsByName map[string]*appv1alpha1.App) error {
-	desired, err := blueprintReadSpec(ctx, svc.req)
+	desired, err := blueprintReadSpec(ctx, withCurrentTier(svc.req, appsByName[svc.req.Name]))
 	if err != nil {
 		return fmt.Errorf("service %q: %w", svc.req.Name, err)
 	}
@@ -2231,7 +2231,7 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		idx.serviceTypes[req.Name] = req.Type
 		if req.Type == appv1alpha1.TypeWebService || req.Type == appv1alpha1.TypePrivateService {
 			idx.addressableServices[req.Name] = true
-			if tier, err := normalizeTierForType(effectiveType(req.Type), req.Plan); err == nil && !core.PaidPlan(tier) {
+			if tier, err := resolveTierForType(effectiveType(req.Type), req.Plan); err == nil && !core.PaidPlan(tier) {
 				idx.freeServices[req.Name] = true
 			}
 		}
@@ -3379,7 +3379,7 @@ func (s *Service) applyStackService(ctx context.Context, req CreateRequest, fiel
 	if err := s.claimBlueprintResourceName(ctx, store.BlueprintClaimService, req.Name); err != nil {
 		return AppView{}, nil, err
 	}
-	desired, err := specFromCreate(req)
+	desired, err := specFromCreate(withCurrentTier(req, appsByName[req.Name]))
 	if err != nil {
 		return AppView{}, nil, err
 	}

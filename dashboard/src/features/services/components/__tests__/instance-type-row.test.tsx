@@ -28,6 +28,8 @@ const STANDARD: InstanceTypeView = {
   cpu: "1",
   memory: "2Gi",
   monthlyUsd: "17.50",
+  available: true,
+  unavailableReason: "",
 };
 
 function renderRow(plan: string | null) {

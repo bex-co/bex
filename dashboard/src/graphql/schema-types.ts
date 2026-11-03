@@ -967,11 +967,13 @@ export type IpAllowListEntryInput = {
 
 export type InstanceType = {
   __typename: 'InstanceType';
+  available: Scalars['Boolean']['output'];
   cpu: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   memory: Maybe<Scalars['String']['output']>;
   monthlyUsd: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
+  unavailableReason: Scalars['String']['output'];
 };
 
 export type Job = {

@@ -152,6 +152,10 @@ Existing state is never silently removed: a Hobby workspace keeps its third envi
 - **Surfaces.** `freeInstanceHours {used, included}` on REST `GET /v1/usage`, GraphQL `usage` and MCP `get_usage`, and a "Monthly included usage" card on the dashboard Usage page.
 - **Unverified.** Whether Render resumes automatically at the month start or needs a manual resume (bex resumes automatically, the parity-sufficient reading), the exact emails, and Render's `billing` suspender mapping. `BEX_FREE_INSTANCE_HOURS` overrides the allowance for dev and tests.
 
+### 11. Pro Ultra is temporarily not sellable (w2/m250, 2026-11-02)
+
+**Decided 2026-11-02 (user, w2/m250).** Pro Ultra (8 CPU / 32 GB) runs only on a Hetzner `ccx43` node, and the Hetzner project's dedicated vCPU limit refuses to create one ("dedicated core limit exceeded"). Until that limit is raised, `pro-ultra` carries `paused: true` in `lego/types/tiers/tiers.yaml`. A new selection is refused with 400 `INSTANCE_TYPE_UNAVAILABLE` on every create and plan-change path. Services already on it keep running, and their own plan can be re-sent unchanged. Its `pricing.yaml` price stays, so those services are still estimated and billed. The dashboard lists it disabled, and no unknown-plan hint names it. This is a temporary divergence from Render, recorded in [ADR018](ADR018-render-parity.md). **Release:** once Hetzner raises the dedicated vCPU limit, delete the `paused` field.
+
 ## Consequences
 
 - **Backend:** `internal/pricing` is an operator-independent package. `internal/usage.Service.monthToDateAt` calls `pricing.Default.Estimate` and attaches the result to `Summary.EstimatedCost`; `storage_gb_seconds` contributes at the embedded per-GB-second rate for Postgres and Key Value rows.

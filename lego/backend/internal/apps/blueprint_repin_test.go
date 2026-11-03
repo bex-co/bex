@@ -81,7 +81,7 @@ databases:
 	st := parseBlueprintStackForTest(t, manifest)
 	wantTier := map[string]string{"web": "starter", "worker": "pro-max", "cron": "standard"}
 	for _, svc := range st.services {
-		tier, err := normalizeTierForType(effectiveType(svc.req.Type), svc.req.Plan)
+		tier, err := normalizeTierForType(effectiveType(svc.req.Type), svc.req.Plan, "")
 		if err != nil || tier != wantTier[svc.req.Name] {
 			t.Errorf("service %s plan %q => tier %q, %v; want %q", svc.req.Name, svc.req.Plan, tier, err, wantTier[svc.req.Name])
 		}
@@ -160,7 +160,7 @@ func TestBlueprintCronPlanFreeIsRefused(t *testing.T) {
 		}
 	}
 	st := parseBlueprintStackForTest(t, strings.Replace(manifest, "plan: free", "plan: starter", 1))
-	if tier, err := normalizeTierForType(effectiveType(st.services[0].req.Type), st.services[0].req.Plan); err != nil || tier != "starter" {
+	if tier, err := normalizeTierForType(effectiveType(st.services[0].req.Type), st.services[0].req.Plan, ""); err != nil || tier != "starter" {
 		t.Fatalf("cron plan: starter => tier %q, %v; want starter", tier, err)
 	}
 }

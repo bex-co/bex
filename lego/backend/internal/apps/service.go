@@ -1449,6 +1449,12 @@ type InstanceType struct {
 	CPU        string
 	Memory     string
 	MonthlyUSD string
+	// Available is false for a paused tier (w2/m250): listed so a service
+	// already on it still renders, but refused as a new selection.
+	Available bool
+	// UnavailableReason is the refusal's customer-facing message, "" when
+	// Available.
+	UnavailableReason string
 }
 
 // InstanceTypes lists every tier in the shared compute catalog, in ladder
@@ -1463,9 +1469,11 @@ func (s *Service) InstanceTypes(ctx context.Context) ([]InstanceType, error) {
 	for i, id := range ids {
 		t, _ := tiers.Compute.ByID(id)
 		monthlyUSD, _ := pricing.Default.InstanceMonthlyUSD(id, store.ResourceKindService)
+		reason := pausedTierMessage(id)
 		out[i] = InstanceType{
 			ID: t.RenderPlan, Name: tierDisplayName(id), CPU: t.CPU,
 			Memory: t.Memory, MonthlyUSD: monthlyUSD,
+			Available: reason == "", UnavailableReason: reason,
 		}
 	}
 	return out, nil
@@ -1837,6 +1845,10 @@ type CreateRequest struct {
 	// the enclosing one a read-only validation does not know
 	// (blueprintReadSpec); only that projection sets it.
 	implicitRepo bool
+	// currentTier is the tier the service already runs when a Blueprint sync
+	// re-applies this request to an existing App ("" for a new service), so a
+	// paused tier (w2/m250) stays accepted for the services already on it.
+	currentTier string
 	// Disk attaches a persistent volume at create time — the Blueprint path's
 	// only way in, since render.yaml declares a disk inline with its service.
 	// nil means no disk is being declared, which on a sync PRESERVES whatever
@@ -3010,7 +3022,7 @@ func specFromCreate(req CreateRequest) (appv1alpha1.AppSpec, error) {
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
-	tier, err := normalizeTierForType(svcType, req.Plan)
+	tier, err := normalizeTierForType(svcType, req.Plan, req.currentTier)
 	if err != nil {
 		return appv1alpha1.AppSpec{}, err
 	}
@@ -3597,7 +3609,78 @@ func normalizeTierOrPlan(v string) (string, error) {
 // decision 2026-10-15); a static site runs none and keeps the catalog default.
 // A paid-only type (w6/025, w1/111, w8/048) also refuses an explicit free plan,
 // and its hint for an unrecognized one never offers free (w4/352).
-func normalizeTierForType(svcType, plan string) (string, error) {
+//
+// A paused tier (tiers.ComputeTier.Paused, w2/m250) is refused with 400
+// INSTANCE_TYPE_UNAVAILABLE unless it is current — the tier the service
+// already runs ("" for a new service) — so a Blueprint sync re-declaring an
+// existing service's plan leaves that service alone.
+func normalizeTierForType(svcType, plan, current string) (string, error) {
+	tier, err := resolveTierForType(svcType, plan)
+	if err != nil {
+		return "", err
+	}
+	if tier != current {
+		if err := errPausedTier(tier); err != nil {
+			return "", err
+		}
+	}
+	return tier, nil
+}
+
+// InstanceTypeUnavailableCode is the stable code for a request selecting a
+// paused compute tier (w2/m250): REST `code`, GraphQL `extensions.code`, MCP
+// message prefix.
+const InstanceTypeUnavailableCode = "INSTANCE_TYPE_UNAVAILABLE"
+
+// pausedTierMessage is the one customer-facing sentence for a paused tier,
+// shared by every refusal and by InstanceTypes' unavailableReason; "" when the
+// tier is selectable.
+func pausedTierMessage(tierID string) string {
+	if !tiers.Compute.Paused(tierID) {
+		return ""
+	}
+	return fmt.Sprintf("%q is temporarily unavailable; choose %s or a smaller instance type.", tierDisplayName(tierID), tierDisplayName(largestSelectableTierID()))
+}
+
+// largestSelectableTierID is the top rung that is not paused — the catalog is
+// ordered smallest-first.
+func largestSelectableTierID() string {
+	ids := tiers.Compute.IDs()
+	for i := len(ids) - 1; i >= 0; i-- {
+		if !tiers.Compute.Paused(ids[i]) {
+			return ids[i]
+		}
+	}
+	return tiers.Compute.Default().ID
+}
+
+// errPausedTier refuses a new selection of a paused tier; nil otherwise.
+func errPausedTier(tierID string) error {
+	msg := pausedTierMessage(tierID)
+	if msg == "" {
+		return nil
+	}
+	t, _ := tiers.Compute.ByID(tierID)
+	return core.NewBadRequestError(InstanceTypeUnavailableCode, msg, map[string]any{"plan": t.RenderPlan})
+}
+
+// selectableRenderPlans filters plans (Render spellings) down to the ones a
+// caller may choose, so no hint advertises a paused tier.
+func selectableRenderPlans(plans []string) []string {
+	out := make([]string, 0, len(plans))
+	for _, plan := range plans {
+		if t, ok := tiers.Compute.ByRenderPlan(plan); ok && t.Paused {
+			continue
+		}
+		out = append(out, plan)
+	}
+	return out
+}
+
+// resolveTierForType is normalizeTierForType without the paused-tier gate:
+// what tier a declared plan resolves to, for classification (is the stack
+// paid, is the service free, what does it cost) rather than selection.
+func resolveTierForType(svcType, plan string) (string, error) {
 	if plan == "" && svcType != appv1alpha1.TypeStaticSite {
 		return defaultPaidTierID(), nil
 	}
@@ -3662,10 +3745,11 @@ func freePlanForTypeMessage(svcType string) string {
 	return fmt.Sprintf("a %s requires a paid plan; plan must be one of %s", svcType, strings.Join(paidRenderPlans(), "|"))
 }
 
-// paidRenderPlans is the compute ladder without free.
+// paidRenderPlans is the selectable compute ladder without free.
 func paidRenderPlans() []string {
-	paid := make([]string, 0, len(tiers.Compute.RenderPlans()))
-	for _, plan := range tiers.Compute.RenderPlans() {
+	plans := selectableRenderPlans(tiers.Compute.RenderPlans())
+	paid := make([]string, 0, len(plans))
+	for _, plan := range plans {
 		if core.PaidPlan(plan) {
 			paid = append(paid, plan)
 		}
@@ -3679,7 +3763,7 @@ func paidRenderPlans() []string {
 // other type, and a create whose type is not known yet, gets the full ladder.
 func errUnknownPlanForType(svcType, plan string) error {
 	if !paidOnlyServiceType(svcType) {
-		return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Compute.RenderPlans(), "|"))
+		return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(selectableRenderPlans(tiers.Compute.RenderPlans()), "|"))
 	}
 	if strings.EqualFold(strings.TrimSpace(plan), "free") {
 		return errFreePlanForType(svcType)

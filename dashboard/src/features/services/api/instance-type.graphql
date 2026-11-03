@@ -15,6 +15,8 @@ query InstanceTypes {
     cpu
     memory
     monthlyUsd
+    available
+    unavailableReason
   }
 }
 
