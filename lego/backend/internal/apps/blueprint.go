@@ -65,7 +65,7 @@ type BlueprintStore interface {
 	FailBlueprintAutoSyncIntent(ctx context.Context, id string, claimGeneration int64, errMsg string) error
 	AssertBlueprintAutoSyncIntent(ctx context.Context, id string, claimGeneration int64) error
 	AdmitBlueprintAutoSyncRun(ctx context.Context, intent store.BlueprintAutoSyncIntent, source store.Blueprint, run store.BlueprintSync) (store.Blueprint, store.BlueprintSync, error)
-	UpdateBlueprint(ctx context.Context, id, tenantID string, name *string, autoSync *bool, path *string, status *string, lastSyncAt *time.Time) (store.Blueprint, error)
+	UpdateBlueprint(ctx context.Context, id, tenantID string, name *string, autoSync *bool, path, branch *string, status *string, lastSyncAt *time.Time) (store.Blueprint, error)
 	DisconnectBlueprint(ctx context.Context, id, tenantID string) error
 	InsertBlueprintSync(ctx context.Context, run store.BlueprintSync) (store.BlueprintSync, error)
 	UpdateBlueprintSync(ctx context.Context, id, state string, completedAt *time.Time, errMsg *string) (store.BlueprintSync, error)
@@ -489,8 +489,11 @@ func isContainedRepositoryPath(filePath, clean string) bool {
 
 // BlueprintView is the API shape for a blueprint — all three surfaces return this.
 type BlueprintView struct {
-	ID        string              `json:"id"`
-	Name      string              `json:"name"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	// OwnerID is the Blueprint's workspace, required on Render's blueprint
+	// objects since the 2026-11 contract (w2/065).
+	OwnerID   string              `json:"ownerId"`
 	Repo      string              `json:"repo"`
 	Branch    string              `json:"branch"`
 	Path      string              `json:"path"`
@@ -638,6 +641,10 @@ type UpdateBlueprintRequest struct {
 	Name     *string
 	AutoSync *bool
 	Path     *string
+	// Branch moves the Blueprint to another branch of its repository (Render's
+	// update-blueprint branch, w2/065). The branch must hold the Blueprint file
+	// at the (new or current) path; changing it plans no sync.
+	Branch *string
 }
 
 // ValidateBlueprint parses a Render Blueprint and returns per-entry errors without
@@ -1673,8 +1680,15 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 	if err != nil {
 		return BlueprintView{}, err
 	}
-	if req.Name == nil && req.AutoSync == nil && req.Path == nil {
-		return BlueprintView{}, fmt.Errorf("%w: at least one of name/autoSync/path must be provided", core.ErrBadRequest)
+	if req.Name == nil && req.AutoSync == nil && req.Path == nil && req.Branch == nil {
+		return BlueprintView{}, fmt.Errorf("%w: at least one of name/autoSync/path/branch must be provided", core.ErrBadRequest)
+	}
+	if req.Branch != nil {
+		trimmed := strings.TrimSpace(*req.Branch)
+		if trimmed == "" {
+			return BlueprintView{}, fmt.Errorf("%w: branch cannot be empty", core.ErrBadRequest)
+		}
+		req.Branch = &trimmed
 	}
 	if req.Name != nil && *req.Name == "" {
 		return BlueprintView{}, fmt.Errorf("%w: name cannot be empty", core.ErrBadRequest)
@@ -1699,6 +1713,18 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 	if err != nil {
 		return BlueprintView{}, store.MapError(err)
 	}
+	if req.Branch != nil && *req.Branch != b.Branch {
+		if s.GitFetcher == nil {
+			return BlueprintView{}, ErrBlueprintFetchUnavailable
+		}
+		path := b.Path
+		if req.Path != nil {
+			path = *req.Path
+		}
+		if _, _, _, err := discoverBlueprintFile(ctx, s.GitFetcher, tenantID, b.Repo, *req.Branch, path); err != nil {
+			return BlueprintView{}, blueprintCreateFetchError(err, path, *req.Branch)
+		}
+	}
 	var newStatus *string
 	if req.AutoSync != nil && !*req.AutoSync && b.Status != store.BlueprintStatusPaused {
 		st := store.BlueprintStatusPaused
@@ -1708,7 +1734,7 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 		st := store.BlueprintStatusInSync
 		newStatus = &st
 	}
-	updated, err := s.Blueprints.UpdateBlueprint(ctx, bpID, tenantID, req.Name, req.AutoSync, req.Path, newStatus, nil)
+	updated, err := s.Blueprints.UpdateBlueprint(ctx, bpID, tenantID, req.Name, req.AutoSync, req.Path, req.Branch, newStatus, nil)
 	if err != nil {
 		return BlueprintView{}, store.MapError(err)
 	}
@@ -1898,7 +1924,7 @@ func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
 		StartedAt:   now,
 		CompletedAt: &now,
 	}); err == nil {
-		_, _ = s.Blueprints.UpdateBlueprint(ctx, b.ID, tenantID, nil, nil, nil, nil, &now)
+		_, _ = s.Blueprints.UpdateBlueprint(ctx, b.ID, tenantID, nil, nil, nil, nil, nil, &now)
 	}
 }
 
@@ -2203,6 +2229,7 @@ func toBlueprintView(b store.Blueprint) BlueprintView {
 	v := BlueprintView{
 		ID:        b.ID,
 		Name:      b.Name,
+		OwnerID:   b.TenantID,
 		Repo:      b.Repo,
 		Branch:    b.Branch,
 		Path:      b.Path,

@@ -136,7 +136,7 @@ func TestPGDisconnectedReadsAsAbsent(t *testing.T) {
 		t.Errorf("get-by-repo disconnected = %v, want not-found", err)
 	}
 	inSync := BlueprintStatusInSync
-	if _, err := st.UpdateBlueprint(ctx, bp.ID, tenant.ID, nil, nil, nil, &inSync, nil); !errors.Is(err, ErrNotFound) {
+	if _, err := st.UpdateBlueprint(ctx, bp.ID, tenant.ID, nil, nil, nil, nil, &inSync, nil); !errors.Is(err, ErrNotFound) {
 		t.Errorf("update disconnected = %v, want not-found", err)
 	}
 	if err := st.DisconnectBlueprint(ctx, bp.ID, tenant.ID); !errors.Is(err, ErrNotFound) {

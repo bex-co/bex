@@ -139,7 +139,7 @@ func TestPGBlueprintAutoSyncWorkerOrderingRecoveryAndPolicy(t *testing.T) {
 	git.headSHA = strings.Repeat("c", 40)
 	push(git.headSHA, "accepted-before-off")
 	off := false
-	if _, err := st.UpdateBlueprint(ctx, bp.ID, workspace.ID, nil, &off, nil, nil, nil); err != nil {
+	if _, err := st.UpdateBlueprint(ctx, bp.ID, workspace.ID, nil, &off, nil, nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	if err := restarted.tick(ctx); err != nil {
@@ -147,7 +147,7 @@ func TestPGBlueprintAutoSyncWorkerOrderingRecoveryAndPolicy(t *testing.T) {
 	}
 	assertImage("nginx:old")
 	on := true
-	if _, err := st.UpdateBlueprint(ctx, bp.ID, workspace.ID, nil, &on, nil, nil, nil); err != nil {
+	if _, err := st.UpdateBlueprint(ctx, bp.ID, workspace.ID, nil, &on, nil, nil, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	push(git.headSHA, "accepted-before-disconnect")
