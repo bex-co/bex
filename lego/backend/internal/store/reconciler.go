@@ -2318,6 +2318,7 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 	// all. The same contract helper apps.specFromCreate uses, so the create path
 	// and the projector cannot disagree about a service's exposure.
 	s.Expose = s.PubliclyRoutable()
+	s.BuildSource = projectBuildSource(d)
 	s.Disk = projectDisk(d.Disk)
 	s.Host = d.PrimaryHost
 	s.Hosts = slices.Clone(d.Hosts)
@@ -2352,6 +2353,15 @@ func projectSpec(d DesiredApp) appv1alpha1.AppSpec {
 // bump between a deploy row opening and the operator first stamping
 // status.releaseGeneration reads as a supersede, closing that deploy canceled
 // (w6/m46 t004 — the same overwrite caused both bugs).
+// projectBuildSource is a linked service's spec.buildSource: its carrier's CR
+// (named by the carrier's bds- id, ADR097) and the build it deploys.
+func projectBuildSource(d DesiredApp) *appv1alpha1.BuildSourceLink {
+	if d.BuildSourceID == "" {
+		return nil
+	}
+	return &appv1alpha1.BuildSourceLink{Name: CRName(d.TenantID, d.BuildSourceID), Image: d.BuildSourceImage}
+}
+
 func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 	changed := false
 	set := func(cur *string, want string) {
@@ -2376,6 +2386,9 @@ func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 		changed = true
 	}
 	set(&dst.Branch, want.Branch)
+	if !equalPtr(dst.BuildSource, want.BuildSource) {
+		dst.BuildSource, changed = want.BuildSource.DeepCopy(), true
+	}
 	set(&dst.Tier, want.Tier)
 	set(&dst.Host, want.Host)
 	set(&dst.Subdomain, want.Subdomain)
@@ -2410,7 +2423,7 @@ func applyOwnedSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpec) bool {
 	if wantDisk != nil && dst.Disk != nil {
 		wantDisk.RestoreSnapshot = dst.Disk.RestoreSnapshot
 	}
-	if !equalDiskSpecs(dst.Disk, wantDisk) {
+	if !equalPtr(dst.Disk, wantDisk) {
 		dst.Disk, changed = wantDisk, true
 	}
 	return changed
@@ -2423,7 +2436,8 @@ func projectDisk(d *Disk) *appv1alpha1.DiskSpec {
 	return &appv1alpha1.DiskSpec{Name: d.Name, MountPath: d.MountPath, SizeGB: d.SizeGB}
 }
 
-func equalDiskSpecs(a, b *appv1alpha1.DiskSpec) bool {
+// equalPtr reports whether two optional comparable values are equal.
+func equalPtr[T comparable](a, b *T) bool {
 	if a == nil || b == nil {
 		return a == b
 	}
