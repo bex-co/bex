@@ -211,6 +211,20 @@ func (s *Service) buildSourceGQLMutationFields() graphql.Fields {
 				return s.UpdateBuildSource(p.Context, p.Args["id"].(string), UpdateBuildSourceRequest{Name: gqlutil.StrPtr(p.Args, "name"), Git: git, Image: image})
 			},
 		},
+		// linkBuildSource is REST's PATCH buildSourceId: the service builds from
+		// the source from now on, saved without deploying; startCommand is the
+		// only setting that may ride along (Render).
+		"linkBuildSource": &graphql.Field{
+			Type: serviceGQLType,
+			Args: graphql.FieldConfigArgument{
+				"serviceId":     gqlutil.ReqArg(graphql.String),
+				"buildSourceId": gqlutil.ReqArg(graphql.String),
+				"startCommand":  gqlutil.Arg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.LinkBuildSource(p.Context, p.Args["serviceId"].(string), p.Args["buildSourceId"].(string), gqlutil.StrPtr(p.Args, "startCommand"), false)
+			},
+		},
 		"deleteBuildSource": &graphql.Field{
 			Type: graphql.Boolean,
 			Args: graphql.FieldConfigArgument{"id": gqlutil.ReqArg(graphql.String)},
@@ -247,6 +261,12 @@ type updateBuildSourceArgs struct {
 	Name          *string           `json:"name,omitempty" jsonschema:"a new name"`
 	Git           *BuildSourceGit   `json:"git,omitempty" jsonschema:"git settings to change (a git source only)"`
 	Image         *BuildSourceImage `json:"image,omitempty" jsonschema:"image settings to change (an image source only)"`
+}
+
+type linkBuildSourceArgs struct {
+	ServiceID     string  `json:"serviceId" jsonschema:"the service id, as returned by list_services"`
+	BuildSourceID string  `json:"buildSourceId" jsonschema:"the build source id (bds-…) the service builds from from now on"`
+	StartCommand  *string `json:"startCommand,omitempty" jsonschema:"the service's start command: required for a native-runtime source, refused for a Docker or image one"`
 }
 
 type deleteBuildSourceResult struct {
@@ -288,6 +308,12 @@ func (s *Service) registerBuildSourceTools(srv *mcp.Server) {
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateBuildSourceArgs) (*mcp.CallToolResult, BuildSourceView, error) {
 		v, err := s.UpdateBuildSource(ctx, in.BuildSourceID, UpdateBuildSourceRequest{Name: in.Name, Git: in.Git, Image: in.Image})
 		return nil, v, err
+	})
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "link_service_to_build_source",
+		Description: "Make a service build from a build source, as Render's update-service buildSourceId does: its own repo or image is cleared, and the link is saved without deploying (trigger a deploy to use it). bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in linkBuildSourceArgs) (*mcp.CallToolResult, renderService, error) {
+		return renderServiceResult(s.LinkBuildSource(ctx, in.ServiceID, in.BuildSourceID, in.StartCommand, false))
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_build_source",

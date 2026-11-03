@@ -80,6 +80,7 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     repo: "repo" in s ? (s.repo ?? null) : null,
     branch: "branch" in s ? (s.branch ?? null) : null,
     imagePath: "imagePath" in s ? (s.imagePath ?? null) : null,
+    buildSourceId: "buildSourceId" in s ? (s.buildSourceId ?? null) : null,
     rootDir: "rootDir" in s ? (s.rootDir ?? null) : null,
     runtime: "runtime" in s ? (s.runtime ?? null) : null,
     builder: "builder" in s ? (s.builder ?? null) : null,

@@ -2316,6 +2316,42 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "没有匹配的分支，请输入分支名称。",
     description: "Empty state for the Update Source branch picker",
   },
+  "services.sourceTabBuildSource": {
+    message: "构建源",
+    description: "Update Source tab: build the service from a build source",
+  },
+  "services.sourceBuildSourceDescription": {
+    message: "此服务部署的构建源。其构建由所有关联到它的服务共享。",
+    description:
+      "Source card description for a service linked to a build source",
+  },
+  "services.sourceBuildSourceLabel": {
+    message: "构建源",
+    description: "Source card and Update Source: build source field label",
+  },
+  "services.sourceBuildSourceBuildsFrom": {
+    message: "构建自",
+    description:
+      "Source card: the repository or image the linked build source builds from",
+  },
+  "services.sourceBuildSourceEmpty": {
+    message:
+      "此工作区还没有构建源。请先通过 API 或 MCP 创建，然后在此处关联服务。",
+    description: "Update Source build source tab: empty state",
+  },
+  "services.sourceBuildSourceLoadError": {
+    message: "无法加载此工作区的构建源。请关闭对话框后重试。",
+    description: "Update Source build source tab: the list failed to load",
+  },
+  "services.sourceBuildSourcePlaceholder": {
+    message: "选择构建源",
+    description: "Update Source build source picker placeholder",
+  },
+  "services.sourceBuildSourceStartHint": {
+    message: "此构建源使用原生运行时，因此服务需要自己的启动命令。",
+    description:
+      "Update Source: why a native-runtime build source needs a start command",
+  },
   "services.sourceUpdateSave": {
     message: "更新源",
     description: "Save button in the Update Source dialog",
