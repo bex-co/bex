@@ -27,19 +27,19 @@ import (
 )
 
 // TestRESTRefusesBuildSourceID: Render's buildSourceId (create:
-// serviceDetails, PATCH: top level) names a Build Source bex does not serve
-// yet (w2/m254). A value is refused by name and writes nothing; an empty or
-// null one is "no build source", which is already true.
+// serviceDetails, PATCH: top level) links a Build Source (w2/m254 t005). A
+// create that also names its own source, or a link to no build source, is
+// refused and writes nothing; an empty or null value is "no build source".
 func TestRESTRefusesBuildSourceID(t *testing.T) {
 	for _, tc := range []struct {
-		method, body string
-		refused      bool
+		method, body, want string
 	}{
-		{http.MethodPost, `{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"buildSourceId":"bs-1"}}`, true},
-		{http.MethodPost, `{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"buildSourceId":""}}`, false},
-		{http.MethodPatch, `{"buildSourceId":"bs-1"}`, true},
-		{http.MethodPatch, `{"buildSourceId":null}`, false},
-		{http.MethodPatch, `{"buildSourceId":""}`, false},
+		{http.MethodPost, `{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"buildSourceId":"bds-1"}}`, "image cannot be set with buildSourceId"},
+		{http.MethodPost, `{"name":"new","type":"web_service","serviceDetails":{"buildSourceId":"bds-missing","envSpecificDetails":{"startCommand":"x"}}}`, "names no build source"},
+		{http.MethodPost, `{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"buildSourceId":""}}`, ""},
+		{http.MethodPatch, `{"buildSourceId":"bds-missing","serviceDetails":{"envSpecificDetails":{"startCommand":"x"}}}`, "names no build source"},
+		{http.MethodPatch, `{"buildSourceId":null}`, ""},
+		{http.MethodPatch, `{"buildSourceId":""}`, ""},
 	} {
 		t.Run(tc.method+tc.body, func(t *testing.T) {
 			original := sampleApp("web")
@@ -52,14 +52,14 @@ func TestRESTRefusesBuildSourceID(t *testing.T) {
 			}
 			rec := httptest.NewRecorder()
 			mux.ServeHTTP(rec, httptest.NewRequest(tc.method, path, strings.NewReader(tc.body)))
-			if !tc.refused {
+			if tc.want == "" {
 				if rec.Code < 200 || rec.Code >= 300 {
 					t.Fatalf("status=%d body=%s", rec.Code, rec.Body)
 				}
 				return
 			}
-			if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "buildSourceId is not supported") {
-				t.Fatalf("status=%d body=%s, want 400 naming buildSourceId", rec.Code, rec.Body)
+			if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), tc.want) {
+				t.Fatalf("status=%d body=%s, want 400 %q", rec.Code, rec.Body, tc.want)
 			}
 			if tc.method == http.MethodPatch && !reflect.DeepEqual(original.Spec, getApp(t, cl, "web").Spec) {
 				t.Fatal("refused patch changed the service")

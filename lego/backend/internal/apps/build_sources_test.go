@@ -19,6 +19,8 @@ package apps
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 
@@ -35,6 +37,7 @@ type buildSourceStore struct {
 	*recordingStore
 	rows     map[string]store.App
 	links    map[string][]store.App
+	linked   []string
 	carriers int
 }
 
@@ -266,5 +269,158 @@ func TestBuildSourceCreateSeedsBuildTimeEnv(t *testing.T) {
 	}
 	if !found {
 		t.Fatalf("carrier %s env = %+v, want NODE_ENV=production", created.ID, crs.Items[0].Spec.Env)
+	}
+}
+
+// t005: a service created with buildSourceId takes all source and build
+// configuration from the build source; Render's refusals hold.
+func TestServiceCreateLinksABuildSource(t *testing.T) {
+	svc, st, ctx := newBuildSourceService(t)
+	source, err := svc.CreateBuildSource(ctx, monorepoSource) // node: a native runtime
+	if err != nil {
+		t.Fatal(err)
+	}
+	image, err := svc.CreateBuildSource(ctx, CreateBuildSourceRequest{OwnerID: "tea-a", Name: "Img", Image: &BuildSourceImage{ImageURL: "nginx:1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	web, err := svc.Create(ctx, CreateRequest{OwnerID: "tea-a", Name: "web", Type: appv1alpha1.TypeWebService,
+		BuildSourceID: source.ID, StartCommand: "node server.js"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if web.BuildSourceID != source.ID {
+		t.Fatalf("view buildSourceId = %q, want %s", web.BuildSourceID, source.ID)
+	}
+	var crs appv1alpha1.AppList
+	if err := svc.Client.List(ctx, &crs); err != nil {
+		t.Fatal(err)
+	}
+	var linked *appv1alpha1.App
+	for i := range crs.Items {
+		if crs.Items[i].Spec.BuildSource != nil {
+			linked = &crs.Items[i]
+		}
+	}
+	if linked == nil || linked.Spec.Repo != "" || linked.Spec.Image != "" || linked.Spec.BuildSource.Name != core.CRName("tea-a", source.ID) ||
+		linked.Spec.BuildSource.Image != "" {
+		t.Fatalf("linked service spec = %+v, want no source of its own and a link with no build yet", linked)
+	}
+	var row store.App
+	for _, r := range st.appCreates {
+		if r.BuildSourceID == source.ID {
+			row = r
+		}
+	}
+	if row.BuildSourceID != source.ID {
+		t.Fatalf("no service row records the link: %+v", st.appCreates)
+	}
+
+	for name, req := range map[string]CreateRequest{
+		"repo alongside":            {Name: "a", Type: appv1alpha1.TypeWebService, BuildSourceID: source.ID, StartCommand: "x", Repo: "https://github.com/acme/web"},
+		"runtime alongside":         {Name: "b", Type: appv1alpha1.TypeWebService, BuildSourceID: source.ID, StartCommand: "x", Runtime: "node"},
+		"native without start":      {Name: "c", Type: appv1alpha1.TypeWebService, BuildSourceID: source.ID},
+		"image source with start":   {Name: "d", Type: appv1alpha1.TypeWebService, BuildSourceID: image.ID, StartCommand: "x"},
+		"unknown build source":      {Name: "e", Type: appv1alpha1.TypeWebService, BuildSourceID: "bds-missing", StartCommand: "x"},
+		"a service as build source": {Name: "f", Type: appv1alpha1.TypeWebService, BuildSourceID: web.ID, StartCommand: "x"},
+	} {
+		req.OwnerID = "tea-a"
+		if _, err := svc.Create(ctx, req); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("%s: err = %v, want bad request", name, err)
+		}
+	}
+	if _, err := svc.Create(ctx, CreateRequest{OwnerID: "tea-a", Name: "g", Type: appv1alpha1.TypeBackgroundWorker, BuildSourceID: image.ID}); err != nil {
+		t.Errorf("image source, no start command: %v", err)
+	}
+}
+
+func (b *buildSourceStore) SetAppBuildSource(_ context.Context, id, carrierID, image string) error {
+	b.linked = append(b.linked, id+"→"+carrierID)
+	return nil
+}
+
+// t005: PATCH buildSourceId links an existing service — only startCommand may
+// ride along — and, like Render, is saved without deploying.
+func TestServicePatchLinksABuildSource(t *testing.T) {
+	svc, st, ctx := newBuildSourceService(t)
+	source, err := svc.CreateBuildSource(ctx, monorepoSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	web, err := svc.Create(ctx, CreateRequest{OwnerID: "tea-a", Name: "web", Type: appv1alpha1.TypeWebService, Image: "nginx:1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	patch := func(body string) *httptest.ResponseRecorder {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPatch, "/v1/services/"+web.ID, strings.NewReader(body)).WithContext(ctx)
+		req.ContentLength = int64(len(body))
+		mux.ServeHTTP(rec, req)
+		return rec
+	}
+	for name, body := range map[string]string{
+		"with name":            `{"buildSourceId":"` + source.ID + `","name":"renamed"}`,
+		"with plan":            `{"buildSourceId":"` + source.ID + `","serviceDetails":{"plan":"standard"}}`,
+		"native without start": `{"buildSourceId":"` + source.ID + `"}`,
+	} {
+		if rec := patch(body); rec.Code != http.StatusBadRequest {
+			t.Errorf("%s: %d %s, want 400", name, rec.Code, rec.Body.String())
+		}
+	}
+	before := getTenantApp(t, svc.Client, "tea-a", "web")
+	rec := patch(`{"buildSourceId":"` + source.ID + `","serviceDetails":{"envSpecificDetails":{"startCommand":"node server.js"}}}`)
+	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"buildSourceId":"`+source.ID+`"`) {
+		t.Fatalf("link = %d %s", rec.Code, rec.Body.String())
+	}
+	after := getTenantApp(t, svc.Client, "tea-a", "web")
+	if after.Spec.Image != "" || after.Spec.BuildSource == nil || after.Spec.StartCommand != "node server.js" ||
+		after.Spec.RestartedAt != before.Spec.RestartedAt || after.Annotations[appv1alpha1.AnnotationPendingSourceGeneration] == "" {
+		t.Fatalf("linked spec = %+v (annotations %v), want the link saved without deploying", after.Spec, after.Annotations)
+	}
+	if len(st.linked) != 1 {
+		t.Fatalf("store links = %v, want one", st.linked)
+	}
+}
+
+// Review fixes for t005: a static site cannot link; a dry run writes nothing;
+// linking to an image source drops the service's old start command; giving a
+// linked service its own image unlinks it.
+func TestBuildSourceLinkEdges(t *testing.T) {
+	svc, st, ctx := newBuildSourceService(t)
+	image, err := svc.CreateBuildSource(ctx, CreateBuildSourceRequest{OwnerID: "tea-a", Name: "Img", Image: &BuildSourceImage{ImageURL: "nginx:1"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.Create(ctx, CreateRequest{OwnerID: "tea-a", Name: "site", Type: appv1alpha1.TypeStaticSite, BuildSourceID: image.ID}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("static site create with buildSourceId: err = %v, want bad request", err)
+	}
+	web, err := svc.Create(ctx, CreateRequest{OwnerID: "tea-a", Name: "web", Type: appv1alpha1.TypeWebService,
+		Repo: "https://github.com/acme/web", Runtime: "node", BuildCommand: "npm ci", StartCommand: "node old.js"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := svc.LinkBuildSource(ctx, web.ID, image.ID, nil, true); err != nil {
+		t.Fatalf("dry run: %v", err)
+	}
+	if got := getTenantApp(t, svc.Client, "tea-a", "web"); got.Spec.BuildSource != nil || len(st.linked) != 0 {
+		t.Fatalf("a dry run linked the service: %+v / %v", got.Spec.BuildSource, st.linked)
+	}
+	linked, err := svc.LinkBuildSource(ctx, web.ID, image.ID, nil, false)
+	if err != nil {
+		t.Fatalf("link to an image source without naming startCommand: %v", err)
+	}
+	got := getTenantApp(t, svc.Client, "tea-a", "web")
+	if linked.BuildSourceID != image.ID || got.Spec.StartCommand != "" || got.Spec.Repo != "" {
+		t.Fatalf("linked spec = %+v, want the image source and no start command of its own", got.Spec)
+	}
+	ownImage := "nginx:2"
+	if _, err := svc.SetSourceAndRegistryCredential(ctx, web.ID, sourcePatch{Image: &ownImage}); err != nil {
+		t.Fatalf("own image on a linked service: %v", err)
+	}
+	if got := getTenantApp(t, svc.Client, "tea-a", "web"); got.Spec.BuildSource != nil || got.Spec.Image != ownImage {
+		t.Fatalf("after its own image: %+v, want unlinked", got.Spec)
 	}
 }

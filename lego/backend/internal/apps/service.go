@@ -614,6 +614,9 @@ type AppView struct {
 	// patterns gating git-push auto-deploys. nil when unset. The Settings → Build
 	// & Deploy section reads it and writes it via SetBuildFilter.
 	BuildFilter *BuildFilterView `json:"buildFilter,omitempty"`
+	// BuildSourceID is the Render Build Source the service builds and deploys
+	// from, if any (w2/m254 t005).
+	BuildSourceID string `json:"buildSourceId,omitempty"`
 	// Autoscaling is the current per-service autoscaling config (nil when
 	// spec.autoscaling is unset, i.e. disabled and unconfigured).
 	Autoscaling *AutoscalingView `json:"autoscaling,omitempty"`
@@ -1210,6 +1213,7 @@ func view(a *appv1alpha1.App) AppView {
 		// Same class as w9/068: never publish a value the write side rejects.
 		Branch:            imageBackedBranch(a),
 		BuildFilter:       buildFilterView(a.Spec.BuildFilter),
+		BuildSourceID:     buildSourceIDOf(a),
 		Autoscaling:       asView,
 		Disk:              serviceDiskView(a.Spec.Disk),
 		LinkedEnvGroupIDs: linkedEnvGroupIDs(a),
@@ -1840,6 +1844,9 @@ func readyCurrentAppPod(pod *corev1.Pod, activeImage, activeRevision string) boo
 // first canonical (spec.host); only a web_service is additionally exposed at the
 // platform hostname <name>.<BEX_BASE_DOMAIN>.
 type CreateRequest struct {
+	// BuildSourceID links the new service to a Render Build Source (w2/m254
+	// t005): the source provides all source and build configuration.
+	BuildSourceID string
 	// buildSource marks the create of a Render Build Source carrier
 	// (w2/m254); only CreateBuildSource sets it.
 	buildSource *buildSourceCreate
@@ -2116,6 +2123,17 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	tenantID, _ := s.Tenant(ctx)
 	if err := s.requireServiceInboundRules(ctx, tenantID, req.IPAllowList, nil); err != nil {
 		return AppView{}, err
+	}
+	if req.BuildSourceID != "" {
+		start := req.StartCommand
+		if desired.Type == appv1alpha1.TypeCronJob {
+			start = req.Command
+		}
+		link, _, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, desired.Type, &start, "")
+		if err != nil {
+			return AppView{}, err
+		}
+		desired.BuildSource = link
 	}
 	environment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, req.EnvironmentID, tenantID)
 	if err != nil {
@@ -2519,10 +2537,12 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 		// The branch tip this create will build, resolved best-effort.
 		firstCommit := s.resolveDeployCommit(ctx, tenantID, req.Repo, a.Spec.Branch)
 		row, err := s.Store.CreateApp(ctx, store.App{
-			ID:             req.buildSource.rowID(),
-			ScopeProjectID: req.buildSource.scope(),
-			TenantID:       tenantID,
-			Name:           req.Name,
+			ID:               req.buildSource.rowID(),
+			ScopeProjectID:   req.buildSource.scope(),
+			BuildSourceID:    req.BuildSourceID,
+			BuildSourceImage: buildSourceLinkImage(a.Spec.BuildSource),
+			TenantID:         tenantID,
+			Name:             req.Name,
 			// The service type the projector needs to derive spec.expose
 			// (w6/m46 t001). Recorded once here — spec.type is immutable, so
 			// no later write path revisits it.
@@ -3186,6 +3206,9 @@ func (req CreateRequest) repoBacked() bool { return req.Repo != "" || req.implic
 // BuildKit context string (w6/m6 t003) — the git inputs' shape. A bare image
 // deploy skips those (no build).
 func validateCreateSource(req CreateRequest) error {
+	if req.BuildSourceID != "" {
+		return validateBuildSourceLinkCreate(req)
+	}
 	if !req.repoBacked() && req.Image == "" {
 		return fmt.Errorf("%w: one of repo or image is required", core.ErrBadRequest)
 	}
@@ -3342,7 +3365,9 @@ func normalizeCreateDefaults(req CreateRequest) (port, replicas int32, branch st
 	// AutoDeploy: default on for a repo-backed service (a push should redeploy,
 	// Render's default), off for an image-backed one (no repo to rebuild from).
 	// An explicit request value wins.
-	autoDeploy = repoBacked
+	// A build source's builds are what a linked service deploys; Render's
+	// Auto-Deploy defaults on for it too (w2/m254 t005).
+	autoDeploy = repoBacked || req.BuildSourceID != ""
 	if req.AutoDeploy != nil {
 		autoDeploy = *req.AutoDeploy
 	}
@@ -4627,6 +4652,11 @@ func (f sourceFields) applySourceChange(a *appv1alpha1.App) {
 }
 
 func (f sourceFields) applyTo(a *appv1alpha1.App) {
+	// A service given its own repo or image no longer builds from a build
+	// source (w2/m254 t005).
+	if f.repo != "" || f.image != "" {
+		a.Spec.BuildSource = nil
+	}
 	a.Spec.Repo = f.repo
 	a.Spec.Image = f.image
 	a.Spec.Branch = f.branch

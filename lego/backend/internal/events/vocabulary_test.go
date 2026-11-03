@@ -59,6 +59,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"apps.CreateBuildSource":        "a build source is not a service and has no service feed; the write is in the workspace audit log (w2/m254)",
 		"apps.UpdateBuildSource":        "a build source is not a service and has no service feed; the write is in the workspace audit log (w2/m254)",
 		"apps.DeleteBuildSource":        "a build source is not a service and has no service feed; the write is in the workspace audit log (w2/m254)",
+		"apps.LinkBuildSource":          "the link records its effect as apps.SetSourceAndRegistryCredential, the source change it is, and shows as that event (w2/m254 t005)",
 		"apps.Deploy":                   "maintenance-only Blueprint apply emits its typed field effects; other changes open deploy rows",
 		"apps.DeployStack":              "maintenance-only Blueprint apply emits its typed field effects; other changes open deploy rows",
 		"apps.SyncBlueprint":            "Blueprint sync delegates to the same maintenance effects or changed-service deploy rows",
