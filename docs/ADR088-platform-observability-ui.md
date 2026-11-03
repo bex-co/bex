@@ -190,7 +190,7 @@ Configuration is split by secrecy, not convenience: the key is a repository **se
 | --- | --- | --- |
 | `BEX_CANARY_API_KEY` | secret | set (w5/m96) — `<key-id>:<key-secret>` from `POST /v1/api-keys` in the canary workspace; value only in `.env` / GitHub Actions secret |
 | `BEX_CANARY_WORKSPACE_ID` | variable | `tea-daif693dqjvc73e7as3g` (`bex-canary`, `billing_excluded`, product-analytics audience `canary`) |
-| `BEX_CANARY_SERVICE_ID` | variable | `srv-daif6dsmg29s73d1umvg` (`hello-go`, free) |
+| `BEX_CANARY_SERVICE_ID` | variable | `srv-dbkq3hdhhjfs73eiahe0` (`hello-go`, free; recreated 2026-11-03 after the original `srv-daif6dsmg29s73d1umvg` was deleted in a bex-canary cleanup) |
 | `BEX_CANARY_URL` | variable | `https://hello-go.onbex.co` |
 | `BEX_CANARY_STATIC_REPO` | variable | `https://github.com/bex-co/bex-canary-static` (set 2026-10-30, w3/m175 t004) — a public no-build static-site repo (root `index.html`, published at `.`); unset leaves the deploy canary's static leg skipped |
 
