@@ -430,7 +430,7 @@ func TestSpecFromCreateNormalizationErrors(t *testing.T) {
 }
 
 func joinRenderPlans() string {
-	return strings.Join(selectableRenderPlans(tiers.Compute.RenderPlans()), "|")
+	return strings.Join(selectableRenderPlans(), "|")
 }
 
 func strp(s string) *string { return &s }
