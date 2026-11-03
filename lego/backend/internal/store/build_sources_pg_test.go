@@ -136,6 +136,19 @@ func TestBuildSourceCarrierRowsPG(t *testing.T) {
 	if got, err := st.GetApp(ctx, api.ID); err != nil || got.BuildSourceID != carrier.ID || got.Image != "" || got.Repo != "" {
 		t.Fatalf("linked row = %+v err=%v, want the link and no source of its own", got, err)
 	}
+	// A deploy records the build it shipped, in its own insert; other
+	// deploys carry none.
+	buildID := ids.New(ids.Build)
+	shipped, err := st.CreateDeploy(ctx, web.ID, store.TriggerAPI, "", 2, store.CommitInfo{BuildID: buildID}, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if d, err := st.GetDeploy(ctx, web.ID, shipped.ID); err != nil || d.BuildID != buildID {
+		t.Fatalf("deploy build = %q, %v; want %s", d.BuildID, err, buildID)
+	}
+	if d, err := st.GetDeploy(ctx, web.ID, web.FirstDeployID); err != nil || d.BuildID != "" {
+		t.Fatalf("an unbuilt deploy's build = %q, %v; want none", d.BuildID, err)
+	}
 	// A deploy selects the source's next build on the linked row only.
 	if err := st.SetAppBuildSourceImage(ctx, api.ID, carrier.ID, "zot/src@sha256:next"); err != nil {
 		t.Fatal(err)

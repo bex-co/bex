@@ -216,6 +216,7 @@ type BuildFanout interface {
 type BuiltSource struct {
 	TenantID  string
 	CarrierID string // the carrier's apps row (its bds- id)
+	DeployID  string // the carrier deploy row that went live: the build
 	Namespace string
 	Carrier   string // the carrier's CR name
 	Image     string // the build that went live
@@ -999,7 +1000,7 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 	// linked service once. Backgrounded: it does API and store I/O per service.
 	if ok && status == DeployLive && d.Type == TypeBuildSource && r.BuildFanout != nil {
 		go r.BuildFanout.BuildSucceeded(context.WithoutCancel(ctx), BuiltSource{
-			TenantID: d.TenantID, CarrierID: d.ID, Namespace: cur.Namespace, Carrier: cur.Name, Image: cur.Status.Image,
+			TenantID: d.TenantID, CarrierID: d.ID, DeployID: open.ID, Namespace: cur.Namespace, Carrier: cur.Name, Image: cur.Status.Image,
 		})
 	}
 	// Notify only the pass that actually closed the row (ok) — a race with a

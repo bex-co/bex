@@ -112,15 +112,18 @@ type DeployStartedNotifier interface {
 // RollbackOf is a bex extra (w2/m10): empty for every deploy except one
 // Rollback created, naming the source deploy it restores.
 type DeployView struct {
-	ID             string
-	ServiceID      string
-	Status         string
-	Image          string
-	ImageSHA       string // Render's image.sha (w8/m122): see imageSHA
-	Trigger        string
-	RollbackOf     string
-	CommitID       string
-	CommitMessage  string
+	ID            string
+	ServiceID     string
+	Status        string
+	Image         string
+	ImageSHA      string // Render's image.sha (w8/m122): see imageSHA
+	Trigger       string
+	RollbackOf    string
+	CommitID      string
+	CommitMessage string
+	// BuildID is the build source build this deploy shipped (Render's
+	// deploy.buildId), "" for any other deploy.
+	BuildID        string
 	CommitAuthorAt *time.Time
 	CreatedAt      time.Time
 	UpdatedAt      time.Time
@@ -164,6 +167,7 @@ func view(d store.Deploy) DeployView {
 		RollbackOf:      d.RollbackOf,
 		CommitID:        d.Commit,
 		CommitMessage:   d.CommitMessage,
+		BuildID:         d.BuildID,
 		CommitAuthorAt:  d.CommitAuthorAt,
 		CreatedAt:       d.CreatedAt,
 		UpdatedAt:       d.UpdatedAt,
@@ -488,9 +492,12 @@ type TriggerParams struct {
 	// restart marks a Restart's trigger: CommitID is the live deploy's commit,
 	// not a caller-chosen ref. Unexported, so no surface can set it.
 	restart bool
-	// buildSource is the build a build-source fan-out ships, resolved once
-	// for every linked service; nil resolves the source's current build.
-	buildSource *appv1alpha1.BuildSourceLink
+	// BuildID deploys this build of the service's build source (Render's
+	// buildId) instead of the source's current build.
+	BuildID string
+	// build is the build a build-source fan-out ships, resolved once for
+	// every linked service; nil resolves it per deploy (BuildID or current).
+	build *sourceBuild
 }
 
 // Trigger starts a fresh deploy (Render's POST .../deploys): bumps
@@ -529,7 +536,7 @@ func (s *Service) trigger(ctx context.Context, service string, p TriggerParams, 
 	// build — so supplying either is create-like (developer and up). A
 	// parameter-free trigger redeploys the artifact the service is already
 	// configured for and stays lifecycle, available to contributors.
-	override := p.ImageURL != "" || p.CommitID != ""
+	override := p.ImageURL != "" || p.CommitID != "" || p.BuildID != ""
 	a, err := s.AuthorizeApp(ctx, core.LifecycleOrCreate(override), service)
 	if err != nil {
 		return DeployView{}, err
@@ -642,6 +649,14 @@ func (s *Service) validateTrigger(service string, a *appv1alpha1.App, p TriggerP
 	if appStoreID(a) == "" {
 		return fmt.Errorf("%w: service %q is not store-managed", core.ErrBadRequest, service)
 	}
+	if p.BuildID != "" {
+		if a.Spec.BuildSource == nil {
+			return fmt.Errorf("%w: buildId is only for a service linked to a build source; service %q is not", core.ErrBadRequest, service)
+		}
+		if p.CommitID != "" || p.ImageURL != "" || p.DeployMode != "" {
+			return fmt.Errorf("%w: buildId cannot be combined with commitId, imageUrl or deployMode", core.ErrBadRequest)
+		}
+	}
 	// deploy_only for a repo-backed service is rejected: this public trigger does
 	// not expose cached-artifact deployment. Operational spec changes reuse the
 	// active artifact, but a deploy trigger deliberately rebuilds from source.
@@ -745,10 +760,10 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 	// A service linked to a build source ships the source's current build
 	// (Render: a deploy picks up the latest build, ADR097); a restart re-runs
 	// the build it is serving.
-	link := p.buildSource
-	if link == nil && !p.restart {
+	build := p.build
+	if build == nil && !p.restart {
 		var err error
-		if link, err = s.linkedBuild(ctx, a); err != nil {
+		if build, err = s.linkedBuild(ctx, a, p.BuildID); err != nil {
 			return DeployView{}, err
 		}
 	}
@@ -797,8 +812,8 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 				return fmt.Errorf("clear rollback image override: %w", err)
 			}
 		}
-		if link != nil {
-			return s.selectLinkedBuild(ctx, appID, core.BuildSourceIDOf(a), link.Image)
+		if build != nil {
+			return s.selectLinkedBuild(ctx, appID, core.BuildSourceIDOf(a), build.link.Image)
 		}
 		return nil
 	}
@@ -818,8 +833,8 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 			a.Spec.CloneSecret = cloneSecret
 		}
 		a.Spec.ExternalRegistryPullSecret = pullSecret
-		if link != nil {
-			a.Spec.BuildSource = link
+		if build != nil {
+			a.Spec.BuildSource = build.link
 		}
 		// Always write BuildCommit — when the commit resolver succeeds the
 		// immutable SHA becomes the build input so the clone job can verify it
@@ -842,6 +857,9 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		image := a.Spec.Image
 		if p.ImageURL != "" {
 			image = p.ImageURL
+		}
+		if build != nil {
+			commit.BuildID = build.id
 		}
 		return s.Store.CreateDeploy(ctx, appID, trigger, image, release, commit, triggeredBy, p.ClearCache == "clear")
 	})
