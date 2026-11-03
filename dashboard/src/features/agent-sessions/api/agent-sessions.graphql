@@ -60,6 +60,11 @@ query AgentSessionCapabilities($ownerId: String) {
     github {
       connected
     }
+    attachments {
+      enabled
+      maxBytes
+      maxPerTurn
+    }
   }
 }
 
@@ -98,6 +103,7 @@ mutation CreateAgentSession(
   $branch: String!
   $agentConfig: AgentSessionConfigInput!
   $egressAllowlist: [String!]
+  $attachmentIds: [String!]
 ) {
   createAgentSession(
     ownerId: $ownerId
@@ -105,6 +111,7 @@ mutation CreateAgentSession(
     branch: $branch
     agentConfig: $agentConfig
     egressAllowlist: $egressAllowlist
+    attachmentIds: $attachmentIds
   ) {
     ...AgentSessionFields
     ...AgentSessionMintFields
@@ -115,11 +122,13 @@ mutation SteerAgentSession(
   $id: String!
   $prompt: String!
   $egressAllowlist: [String!]
+  $attachmentIds: [String!]
 ) {
   steerAgentSession(
     id: $id
     prompt: $prompt
     egressAllowlist: $egressAllowlist
+    attachmentIds: $attachmentIds
   ) {
     ...AgentSessionFields
     ...AgentSessionMintFields
@@ -183,5 +192,18 @@ query AgentSessionToolOutput($id: String!, $turn: Int!, $toolCallId: String!) {
       field
       text
     }
+  }
+}
+
+# One attachment with a fresh 15-minute downloadUrl on the storage origin
+# (ADR095 D7). The conversation reads this per rendered attachment and
+# refetches when an expired URL fails to load.
+query AgentAttachment($id: String!) {
+  agentAttachment(id: $id) {
+    id
+    name
+    mediaType
+    size
+    downloadUrl
   }
 }

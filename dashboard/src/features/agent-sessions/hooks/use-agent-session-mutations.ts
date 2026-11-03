@@ -37,8 +37,17 @@ export interface CreateAgentSessionInput {
   task: string;
   /** Platform-registered sandbox image; omitted ⇒ the default template. */
   template?: string;
+  /** Uploaded `att-` ids bound to the first turn (ADR095 D3). */
+  attachmentIds?: string[];
   // No model / egressAllowlist: the dashboard leaves both to the workspace's
   // agent environment (w10/m17). The API still accepts them for CLI/MCP.
+}
+
+/** Optional steer fields; the dashboard sends attachments, CLI/MCP may send egress. */
+export interface SteerOptions {
+  egressAllowlist?: string[];
+  /** Uploaded `att-` ids bound to the follow-up turn (ADR095 D3). */
+  attachmentIds?: string[];
 }
 
 export interface UseAgentSessionMutationsResult {
@@ -48,7 +57,7 @@ export interface UseAgentSessionMutationsResult {
   steer: (
     id: string,
     prompt: string,
-    egressAllowlist?: string[],
+    options?: SteerOptions,
   ) => Promise<AgentSessionTicket>;
   /** Resumes an idle session (re-mints its attach ticket). */
   resume: (id: string) => Promise<AgentSessionTicket>;
@@ -184,6 +193,9 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
                 task: input.task,
                 template: input.template || undefined,
               },
+              attachmentIds: input.attachmentIds?.length
+                ? input.attachmentIds
+                : undefined,
             },
             fetchPolicy: "no-cache",
           }),
@@ -204,7 +216,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
     async (
       id: string,
       prompt: string,
-      egressAllowlist?: string[],
+      options?: SteerOptions,
     ): Promise<AgentSessionTicket> => {
       try {
         const res = await paymentGate.run(() =>
@@ -212,8 +224,11 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
             variables: {
               id,
               prompt,
-              egressAllowlist: egressAllowlist?.length
-                ? egressAllowlist
+              egressAllowlist: options?.egressAllowlist?.length
+                ? options.egressAllowlist
+                : undefined,
+              attachmentIds: options?.attachmentIds?.length
+                ? options.attachmentIds
                 : undefined,
             },
             fetchPolicy: "no-cache",

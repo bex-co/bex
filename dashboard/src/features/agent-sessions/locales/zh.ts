@@ -850,6 +850,66 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "加载中…",
     description: "Load-more button while the next page is in flight",
   },
+  // --- Attachments (ADR095) ---
+  "agentSessions.attachFiles": {
+    message: "附加文件",
+    description:
+      "Paperclip button that opens the file picker in the agent composers",
+  },
+  "agentSessions.attachmentRemove": {
+    message: "移除 {name}",
+    description: "Accessible label of the remove button on an attachment chip",
+  },
+  "agentSessions.attachmentTooLarge": {
+    message: "超过 {max}",
+    description: "Attachment chip error when a file exceeds the per-file limit",
+  },
+  "agentSessions.attachmentTooMany": {
+    message: "每条消息最多 {max} 个文件",
+    description: "Attachment chip error when a message has too many files",
+  },
+  "agentSessions.attachmentDropHint": {
+    message: "拖放文件以附加",
+    description: "Overlay shown while dragging files over a composer",
+  },
+  "agentSessions.attachmentsBlockSend": {
+    message: "请先移除上传失败的文件再发送",
+    description: "Hint when failed attachment chips block sending",
+  },
+  "agentSessions.attachmentOpen": {
+    message: "打开 {name}",
+    description:
+      "Accessible label of an attachment thumbnail that opens the lightbox",
+  },
+  "agentSessions.attachmentDownload": {
+    message: "下载 {name}",
+    description: "Accessible label of an attachment download card",
+  },
+  "agentSessions.attachmentUnavailable": {
+    message: "不可用",
+    description:
+      "Shown on an attachment whose download link could not be loaded",
+  },
+  "agentSessions.attachmentUploading": {
+    message: "正在上传，{percent}%",
+    description: "Screen-reader status of an attachment chip while uploading",
+  },
+  "agentSessions.attachmentReady": {
+    message: "已上传",
+    description: "Screen-reader status of an attachment chip once its upload landed",
+  },
+  "agentSessions.attachmentHttpError": {
+    message: "上传失败（HTTP {status}）",
+    description: "Attachment chip error when the server answered without a message",
+  },
+  "agentSessions.attachmentNetworkError": {
+    message: "上传失败：网络错误",
+    description: "Attachment chip error when the upload could not reach the server",
+  },
+  "agentSessions.attachmentsUploading": {
+    message: "正在等待文件上传完成…",
+    description: "Composer hint while attachment uploads block sending",
+  },
 };
 
 export default zhAgentSessions;

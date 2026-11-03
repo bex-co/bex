@@ -12,6 +12,14 @@ import { Textarea } from "@/common/components/ui/textarea";
 import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
+import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
+import { useAttachmentUploads } from "@/features/agent-sessions/hooks/use-attachment-uploads";
+import {
+  AttachButton,
+  AttachmentChips,
+  DropOverlay,
+} from "@/features/agent-sessions/components/attachment-chips";
+import { useAttachmentDropTarget } from "@/features/agent-sessions/hooks/use-attachment-drop-target";
 import { agentSessionErrorMessage } from "@/features/agent-sessions/lib/errors";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
@@ -64,6 +72,11 @@ export function SteeringComposer({
 }: SteeringComposerProps) {
   const { t } = useTranslations();
   const { steer } = useAgentSessionMutations();
+  // Files belong to the session's own workspace, which may not be the one
+  // selected in the switcher; so do its limits.
+  const { capabilities } = useAgentSessionCapabilities(session.ownerId);
+  const limits = capabilities?.attachments ?? null;
+  const uploads = useAttachmentUploads(limits, session.ownerId);
   const [value, setValue] = useState("");
   const [pending, setPending] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -97,7 +110,23 @@ export function SteeringComposer({
 
   const hardDisabled = isCanceling || isCanceled || liveTurnUnavailable;
   const busy = pending || turnInFlight;
-  const submitDisabled = hardDisabled || busy || value.trim().length === 0;
+  // Attachments ride only the durable redispatch path (the live path is off),
+  // and not while a send is in flight: a file added then would miss it.
+  const canAttach = Boolean(limits?.enabled) && !hardDisabled && !pending;
+  const attachmentsBlock = uploads.uploading || uploads.hasErrors;
+  const submitDisabled =
+    hardDisabled || busy || attachmentsBlock || value.trim().length === 0;
+  const drop = useAttachmentDropTarget(uploads.add, canAttach);
+
+  const attachmentHint = uploads.hasErrors
+    ? t("agentSessions.attachmentsBlockSend")
+    : uploads.uploading
+      ? t("agentSessions.attachmentsUploading")
+      : null;
+  const routeHint =
+    route === "redispatch"
+      ? t("agentSessions.steerHintIdle")
+      : t("agentSessions.steerHintLive");
 
   function handleError(err: unknown) {
     setSubmitError(agentSessionErrorMessage(err, t));
@@ -106,7 +135,7 @@ export function SteeringComposer({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const prompt = value.trim();
-    if (!prompt || hardDisabled || busy) return;
+    if (!prompt || hardDisabled || busy || attachmentsBlock) return;
     setSubmitError(null);
     setPending(true);
     try {
@@ -115,7 +144,9 @@ export function SteeringComposer({
         // provisions in the background (w2/m64), so the message must appear
         // immediately rather than after the round trip.
         onOptimisticSteer?.(prompt);
-        await steer(session.id, prompt);
+        const sent = uploads.readyIds;
+        await steer(session.id, prompt, { attachmentIds: sent });
+        uploads.clear(sent);
         toast.success(t("agentSessions.steerSuccess"));
         onSteered?.();
       } else {
@@ -156,50 +187,56 @@ export function SteeringComposer({
 
         <form onSubmit={(e) => void onSubmit(e)}>
           <div
+            {...drop.handlers}
             className={cn(
-              "border-input bg-background focus-within:border-ring focus-within:ring-ring/40 flex items-end gap-2 rounded-xl border px-2.5 py-1.5 shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]",
+              "border-input bg-background focus-within:border-ring focus-within:ring-ring/40 relative rounded-xl border shadow-xs transition-[color,box-shadow] focus-within:ring-[3px]",
               hardDisabled && "opacity-70",
+              drop.dragging && "border-ring ring-ring/40 ring-[3px]",
             )}
           >
-            {/* `field-sizing-content` (base Textarea) auto-grows the input to
+            <DropOverlay visible={drop.dragging} />
+            <AttachmentChips uploads={uploads} limits={limits} />
+            <div className="flex items-end gap-2 px-2.5 py-1.5">
+              {canAttach ? (
+                <AttachButton onFiles={uploads.add} disabled={pending} />
+              ) : null}
+              {/* `field-sizing-content` (base Textarea) auto-grows the input to
                 fit; the max-height + overflow bound it for a long follow-up. */}
-            <Textarea
-              value={value}
-              onChange={(e) => setValue(e.target.value)}
-              onKeyDown={handleKeyDown}
-              rows={1}
-              disabled={hardDisabled}
-              placeholder={
-                route === "redispatch"
-                  ? t("agentSessions.steerPlaceholderIdle")
-                  : t("agentSessions.steerPlaceholderLive")
-              }
-              className="max-h-[200px] min-h-0 resize-none overflow-y-auto border-0 bg-transparent p-0 py-1.5 shadow-none focus-visible:ring-0 dark:bg-transparent"
-            />
-            <Button
-              type="submit"
-              size="sm"
-              disabled={submitDisabled}
-              className="shrink-0 rounded-xl"
-            >
-              {pending ? (
-                <>
-                  <Loader2 className="animate-spin" />
-                  {t("agentSessions.steerSending")}
-                </>
-              ) : (
-                <>
-                  <SendHorizonal />
-                  {t("agentSessions.steerSubmit")}
-                </>
-              )}
-            </Button>
+              <Textarea
+                value={value}
+                onChange={(e) => setValue(e.target.value)}
+                onKeyDown={handleKeyDown}
+                rows={1}
+                disabled={hardDisabled}
+                placeholder={
+                  route === "redispatch"
+                    ? t("agentSessions.steerPlaceholderIdle")
+                    : t("agentSessions.steerPlaceholderLive")
+                }
+                className="max-h-[200px] min-h-0 resize-none overflow-y-auto border-0 bg-transparent p-0 py-1.5 shadow-none focus-visible:ring-0 dark:bg-transparent"
+              />
+              <Button
+                type="submit"
+                size="sm"
+                disabled={submitDisabled}
+                className="shrink-0 rounded-xl"
+              >
+                {pending ? (
+                  <>
+                    <Loader2 className="animate-spin" />
+                    {t("agentSessions.steerSending")}
+                  </>
+                ) : (
+                  <>
+                    <SendHorizonal />
+                    {t("agentSessions.steerSubmit")}
+                  </>
+                )}
+              </Button>
+            </div>
           </div>
           <p className="text-muted-foreground mt-1 px-1 text-xs">
-            {disabledReason ??
-              (route === "redispatch"
-                ? t("agentSessions.steerHintIdle")
-                : t("agentSessions.steerHintLive"))}
+            {disabledReason ?? attachmentHint ?? routeHint}
           </p>
         </form>
       </div>

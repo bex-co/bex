@@ -10,6 +10,7 @@ import {
   AlertTitle,
 } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
+import { cn } from "@/common/lib/utils/utils";
 import {
   Select,
   SelectContent,
@@ -30,6 +31,13 @@ import { useConnectGit } from "@/features/git/hooks/use-connect-git";
 import { useAgentSessions } from "@/features/agent-sessions/hooks/use-agent-sessions";
 import { useAgentSessionCapabilities } from "@/features/agent-sessions/hooks/use-agent-session-capabilities";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
+import { useAttachmentUploads } from "@/features/agent-sessions/hooks/use-attachment-uploads";
+import {
+  AttachButton,
+  AttachmentChips,
+  DropOverlay,
+} from "@/features/agent-sessions/components/attachment-chips";
+import { useAttachmentDropTarget } from "@/features/agent-sessions/hooks/use-attachment-drop-target";
 import {
   AgentSessionError,
   agentSessionAvailabilityCopy,
@@ -75,6 +83,9 @@ export function NewSessionComposer() {
     error: capabilitiesError,
   } = useAgentSessionCapabilities();
 
+  const attachmentLimits = capabilities?.attachments ?? null;
+  const uploads = useAttachmentUploads(attachmentLimits);
+  const attachmentsBlock = uploads.uploading || uploads.hasErrors;
   const [composerDocument, setComposerDocument] = useState<ComposerDocument>({
     task: "",
     repo: null,
@@ -115,6 +126,11 @@ export function NewSessionComposer() {
   const {
     formState: { isSubmitting },
   } = form;
+  // No new files while a create is in flight: they would miss the send.
+  const drop = useAttachmentDropTarget(
+    uploads.add,
+    Boolean(attachmentLimits?.enabled) && !isSubmitting,
+  );
 
   const source = useMemo(() => ({ repos, sessions }), [repos, sessions]);
 
@@ -128,7 +144,8 @@ export function NewSessionComposer() {
       capabilitiesLoading ||
       platformUnavailable ||
       modelKeyMissing ||
-      (repo && githubMissing)
+      (repo && githubMissing) ||
+      attachmentsBlock
     ) {
       return;
     }
@@ -143,6 +160,7 @@ export function NewSessionComposer() {
       ...sessionIds.map((id) => `Context: agent session ${id}`),
     ].join("\n\n");
 
+    const sentAttachmentIds = uploads.readyIds;
     try {
       const ticket = await create({
         ownerId: currentWorkspaceId,
@@ -150,7 +168,9 @@ export function NewSessionComposer() {
         branch,
         agent: values.agent,
         task: prompt,
+        attachmentIds: sentAttachmentIds,
       });
+      uploads.clear(sentAttachmentIds);
       await navigate({
         to: "/agents/$agentSessionId",
         params: { agentSessionId: ticket.session.id },
@@ -217,7 +237,15 @@ export function NewSessionComposer() {
 
       <Form {...form}>
         <form onSubmit={onSubmit}>
-          <div className="bg-background focus-within:border-ring relative rounded-xl border shadow-sm">
+          <div
+            {...drop.handlers}
+            className={cn(
+              "bg-background focus-within:border-ring relative rounded-xl border shadow-sm",
+              drop.dragging && "border-ring ring-ring/40 ring-[3px]",
+            )}
+          >
+            <DropOverlay visible={drop.dragging} />
+            <AttachmentChips uploads={uploads} limits={attachmentLimits} />
             <InlineMentionEditor
               ref={editorRef}
               source={source}
@@ -228,7 +256,12 @@ export function NewSessionComposer() {
                 setComposerDocument(nextDocument);
               }}
               onSubmit={() => {
-                if (isSubmitting || task.trim().length === 0) return;
+                if (
+                  isSubmitting ||
+                  attachmentsBlock ||
+                  task.trim().length === 0
+                )
+                  return;
                 void onSubmit();
               }}
             />
@@ -263,6 +296,10 @@ export function NewSessionComposer() {
                 )}
               />
 
+              {attachmentLimits?.enabled ? (
+                <AttachButton onFiles={uploads.add} disabled={isSubmitting} />
+              ) : null}
+
               <Button
                 type="button"
                 variant={repo ? "secondary" : "ghost"}
@@ -291,6 +328,7 @@ export function NewSessionComposer() {
                   platformUnavailable ||
                   modelKeyMissing ||
                   (Boolean(repo) && githubMissing) ||
+                  attachmentsBlock ||
                   task.trim().length === 0
                 }
               >
@@ -307,7 +345,11 @@ export function NewSessionComposer() {
       </Form>
 
       <p className="text-muted-foreground px-1 text-xs">
-        {t("agentSessions.keyboardHint")}
+        {uploads.hasErrors
+          ? t("agentSessions.attachmentsBlockSend")
+          : uploads.uploading
+            ? t("agentSessions.attachmentsUploading")
+            : t("agentSessions.keyboardHint")}
       </p>
 
       {showExamples ? (

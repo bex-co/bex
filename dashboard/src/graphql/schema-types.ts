@@ -44,6 +44,30 @@ export type ActionDecision = {
   reason: Maybe<Scalars['String']['output']>;
 };
 
+export type AgentAttachment = {
+  __typename: 'AgentAttachment';
+  createdAt: Scalars['String']['output'];
+  direction: Scalars['String']['output'];
+  downloadUrl: Scalars['String']['output'];
+  expiresAt: Maybe<Scalars['String']['output']>;
+  id: Scalars['String']['output'];
+  mediaType: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  sessionId: Maybe<Scalars['String']['output']>;
+  sha256: Scalars['String']['output'];
+  size: Scalars['Float']['output'];
+  turn: Maybe<Scalars['Int']['output']>;
+};
+
+export type AgentAttachmentLimits = {
+  __typename: 'AgentAttachmentLimits';
+  enabled: Scalars['Boolean']['output'];
+  maxBytes: Scalars['Float']['output'];
+  maxPerSession: Scalars['Int']['output'];
+  maxPerTurn: Scalars['Int']['output'];
+  maxSessionBytes: Scalars['Float']['output'];
+};
+
 export type AgentEnvironment = {
   __typename: 'AgentEnvironment';
   customHosts: Array<Scalars['String']['output']>;
@@ -77,6 +101,7 @@ export type AgentSession = {
   archivedAt: Maybe<Scalars['String']['output']>;
   branch: Scalars['String']['output'];
   canceledAt: Maybe<Scalars['String']['output']>;
+  created: Maybe<Scalars['Boolean']['output']>;
   createdAt: Scalars['String']['output'];
   deliveryMode: Maybe<Scalars['String']['output']>;
   deliveryNote: Maybe<Scalars['String']['output']>;
@@ -97,7 +122,9 @@ export type AgentSession = {
   status: Scalars['String']['output'];
   steerable: Scalars['Boolean']['output'];
   streamUrl: Maybe<Scalars['String']['output']>;
+  tags: Maybe<Array<Scalars['String']['output']>>;
   ticket: Maybe<Scalars['String']['output']>;
+  title: Maybe<Scalars['String']['output']>;
   turns: Maybe<Scalars['Int']['output']>;
   updatedAt: Scalars['String']['output'];
   url: Maybe<Scalars['String']['output']>;
@@ -106,6 +133,7 @@ export type AgentSession = {
 export type AgentSessionCapabilities = {
   __typename: 'AgentSessionCapabilities';
   agents: Array<AgentSessionProfile>;
+  attachments: AgentAttachmentLimits;
   enabled: Scalars['Boolean']['output'];
   github: AgentSessionGitHubReadiness;
   modelKeyReady: Scalars['Boolean']['output'];
@@ -196,6 +224,8 @@ export type AgentSessionTranscriptPart = {
 
 export type AgentSessionTranscriptTurn = {
   __typename: 'AgentSessionTranscriptTurn';
+  /** The files this turn attached (ADR095), as recorded when it was accepted. */
+  attachments: Array<AgentSessionTurnAttachment>;
   completedAt: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['String']['output'];
   deliveryMode: Scalars['String']['output'];
@@ -204,6 +234,14 @@ export type AgentSessionTranscriptTurn = {
   transcriptTruncated: Scalars['Boolean']['output'];
   truncationReason: Scalars['String']['output'];
   turn: Scalars['Int']['output'];
+};
+
+export type AgentSessionTurnAttachment = {
+  __typename: 'AgentSessionTurnAttachment';
+  id: Scalars['String']['output'];
+  mediaType: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  size: Scalars['Float']['output'];
 };
 
 export type ApiKey = {
@@ -326,11 +364,22 @@ export type Blueprint = {
   lastSync: Maybe<Scalars['String']['output']>;
   manifest: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
+  ownerId: Maybe<Scalars['String']['output']>;
   path: Maybe<Scalars['String']['output']>;
   repo: Maybe<Scalars['String']['output']>;
   resources: Maybe<Array<Maybe<BlueprintResource>>>;
   status: Maybe<Scalars['String']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
+};
+
+export type BlueprintApprovedSync = {
+  __typename: 'BlueprintApprovedSync';
+  commitId: Maybe<Scalars['String']['output']>;
+  completedAt: Maybe<Scalars['String']['output']>;
+  dashboardUrl: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
+  startedAt: Maybe<Scalars['String']['output']>;
+  state: Maybe<Scalars['String']['output']>;
 };
 
 export type BlueprintEnvVarValueInput = {
@@ -343,6 +392,29 @@ export type BlueprintEstimatedPricing = {
   lines: Maybe<Array<Maybe<BlueprintPricingLine>>>;
   totalUsd: Maybe<Scalars['String']['output']>;
   variable: Maybe<Array<Maybe<BlueprintVariableCost>>>;
+};
+
+export type BlueprintManualEnvVar = {
+  __typename: 'BlueprintManualEnvVar';
+  key: Maybe<Scalars['String']['output']>;
+  serviceName: Maybe<Scalars['String']['output']>;
+  serviceType: Maybe<Scalars['String']['output']>;
+};
+
+export type BlueprintManualEnvVarInput = {
+  key: Scalars['String']['input'];
+  serviceName: Scalars['String']['input'];
+  serviceType: Scalars['String']['input'];
+  value?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type BlueprintNotice = {
+  __typename: 'BlueprintNotice';
+  column: Maybe<Scalars['Int']['output']>;
+  line: Maybe<Scalars['Int']['output']>;
+  message: Maybe<Scalars['String']['output']>;
+  path: Maybe<Scalars['String']['output']>;
+  severity: Maybe<Scalars['String']['output']>;
 };
 
 export type BlueprintPlanAction = {
@@ -359,6 +431,26 @@ export type BlueprintPlanAction = {
 export type BlueprintPlanFieldChange = {
   __typename: 'BlueprintPlanFieldChange';
   path: Maybe<Scalars['String']['output']>;
+};
+
+export type BlueprintPlanResult = {
+  __typename: 'BlueprintPlanResult';
+  blueprint: Maybe<Blueprint>;
+  notices: Maybe<Array<Maybe<BlueprintNotice>>>;
+  planningOutcome: Maybe<Scalars['String']['output']>;
+  sync: Maybe<BlueprintPlannedSync>;
+};
+
+export type BlueprintPlannedSync = {
+  __typename: 'BlueprintPlannedSync';
+  commitId: Maybe<Scalars['String']['output']>;
+  completedAt: Maybe<Scalars['String']['output']>;
+  dashboardUrl: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
+  rawPlan: Maybe<Scalars['String']['output']>;
+  requiredManualEnvVars: Maybe<Array<Maybe<BlueprintManualEnvVar>>>;
+  startedAt: Maybe<Scalars['String']['output']>;
+  state: Maybe<Scalars['String']['output']>;
 };
 
 export type BlueprintPreview = {
@@ -1194,6 +1286,7 @@ export type Mutation = {
   acceptWorkspaceInvite: Maybe<AcceptedWorkspaceInvite>;
   addCustomDomain: Maybe<CustomDomain>;
   addDisk: Maybe<Disk>;
+  approveBlueprint: Maybe<BlueprintApprovedSync>;
   archiveAgentSession: Maybe<AgentSession>;
   attachAgentSession: Maybe<AgentSession>;
   cancelAgentSession: Maybe<AgentSession>;
@@ -1218,6 +1311,7 @@ export type Mutation = {
   createEnvironment: Maybe<Environment>;
   createJob: Maybe<Job>;
   createKeyValue: Maybe<KeyValue>;
+  createPlannedBlueprint: Maybe<BlueprintPlanResult>;
   createProject: Maybe<Project>;
   createRegistryCredential: Maybe<RegistryCredential>;
   createRouterKey: Maybe<Scalars['Boolean']['output']>;
@@ -1228,6 +1322,8 @@ export type Mutation = {
   createWebhookEndpoint: Maybe<WebhookEndpoint>;
   createWorkspace: Maybe<Workspace>;
   deleteAccount: Maybe<AccountDeletion>;
+  /** Deletes your own upload that no turn has attached yet. */
+  deleteAgentAttachment: Maybe<Scalars['Boolean']['output']>;
   deleteAgentSession: Maybe<Scalars['Boolean']['output']>;
   deleteCustomDomain: Maybe<Scalars['Boolean']['output']>;
   deleteDatabase: Maybe<Scalars['Boolean']['output']>;
@@ -1261,6 +1357,7 @@ export type Mutation = {
   moveEnvGroup: Maybe<EnvGroup>;
   patchEnvGroupEnvironment: Maybe<EnvGroupEnvironmentPatchResult>;
   patchServiceEnvironment: EnvironmentPatchResult;
+  planBlueprintSync: Maybe<BlueprintPlanResult>;
   prepareWorkspaceCreation: Maybe<WorkspaceCreationAttempt>;
   purgeServiceCache: Maybe<Service>;
   recoverDatabase: Maybe<Database>;
@@ -1393,6 +1490,13 @@ export type MutationAddDiskArgs = {
 };
 
 
+export type MutationApproveBlueprintArgs = {
+  id: Scalars['String']['input'];
+  manualEnvVars?: InputMaybe<Array<InputMaybe<BlueprintManualEnvVarInput>>>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationArchiveAgentSessionArgs = {
   id: Scalars['String']['input'];
 };
@@ -1466,10 +1570,14 @@ export type MutationConnectGitArgs = {
 
 export type MutationCreateAgentSessionArgs = {
   agentConfig: AgentSessionConfigInput;
-  branch: Scalars['String']['input'];
+  attachmentIds?: InputMaybe<Array<Scalars['String']['input']>>;
+  branch?: InputMaybe<Scalars['String']['input']>;
   egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
+  idempotencyKey?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   repo: Scalars['String']['input'];
+  tags?: InputMaybe<Array<Scalars['String']['input']>>;
+  title?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -1579,6 +1687,17 @@ export type MutationCreateKeyValueArgs = {
 };
 
 
+export type MutationCreatePlannedBlueprintArgs = {
+  autoSync?: InputMaybe<Scalars['Boolean']['input']>;
+  branch?: InputMaybe<Scalars['String']['input']>;
+  existingResources?: InputMaybe<Scalars['String']['input']>;
+  name: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  path?: InputMaybe<Scalars['String']['input']>;
+  repo: Scalars['String']['input'];
+};
+
+
 export type MutationCreateProjectArgs = {
   name: Scalars['String']['input'];
   ownerId: Scalars['String']['input'];
@@ -1681,6 +1800,11 @@ export type MutationCreateWorkspaceArgs = {
 
 export type MutationDeleteAccountArgs = {
   confirmation: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteAgentAttachmentArgs = {
+  id: Scalars['String']['input'];
 };
 
 
@@ -1874,6 +1998,12 @@ export type MutationPatchServiceEnvironmentArgs = {
   saveMode: Scalars['String']['input'];
   secretFiles?: InputMaybe<Array<EnvironmentSecretFilePatchInput>>;
   serviceId: Scalars['String']['input'];
+};
+
+
+export type MutationPlanBlueprintSyncArgs = {
+  id: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2425,6 +2555,7 @@ export type MutationSetWebhookEndpointEnabledArgs = {
 
 
 export type MutationSteerAgentSessionArgs = {
+  attachmentIds?: InputMaybe<Array<Scalars['String']['input']>>;
   egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
   id: Scalars['String']['input'];
   prompt: Scalars['String']['input'];
@@ -2506,6 +2637,7 @@ export type MutationUpdateAgentEnvironmentArgs = {
 
 export type MutationUpdateBlueprintArgs = {
   autoSync?: InputMaybe<Scalars['Boolean']['input']>;
+  branch?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
   name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
@@ -2820,8 +2952,12 @@ export enum PushNotificationWeekday {
 export type Query = {
   __typename: 'Query';
   accountDeletionPreview: Maybe<AccountDeletionPreview>;
+  /** One agent attachment with a fresh 15-minute downloadUrl (ADR095). */
+  agentAttachment: Maybe<AgentAttachment>;
   agentEnvironment: AgentEnvironment;
   agentSession: Maybe<AgentSession>;
+  /** A session's attachments oldest first; cursor is the previous page's last id. */
+  agentSessionAttachments: Array<AgentAttachment>;
   agentSessionCapabilities: AgentSessionCapabilities;
   /** The complete output of one tool call whose transcript part is flagged fullOutput (w10/m18). Not found when no full copy was kept. */
   agentSessionToolOutput: AgentSessionToolOutput;
@@ -2943,6 +3079,11 @@ export type Query = {
 };
 
 
+export type QueryAgentAttachmentArgs = {
+  id: Scalars['String']['input'];
+};
+
+
 export type QueryAgentEnvironmentArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
@@ -2950,6 +3091,15 @@ export type QueryAgentEnvironmentArgs = {
 
 export type QueryAgentSessionArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type QueryAgentSessionAttachmentsArgs = {
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  direction?: InputMaybe<Scalars['String']['input']>;
+  id: Scalars['String']['input'];
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  turn?: InputMaybe<Scalars['Int']['input']>;
 };
 
 
@@ -2981,6 +3131,8 @@ export type QueryAgentSessionsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   phases?: InputMaybe<Array<Scalars['String']['input']>>;
   repo?: InputMaybe<Scalars['String']['input']>;
+  states?: InputMaybe<Array<Scalars['String']['input']>>;
+  tag?: InputMaybe<Scalars['String']['input']>;
 };
 
 
