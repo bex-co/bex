@@ -969,6 +969,40 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
+    "description": "Delete one of your unattached uploads. A file attached to a session cannot be deleted on its own; it is deleted with its session.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "delete_agent_attachment",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "deleted"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
     "description": "Permanently delete a finished cloud coding-agent session: its record and transcript are destroyed. Live sessions must be canceled first. Irreversible.",
     "inputSchema": {
       "additionalProperties": false,
@@ -992,6 +1026,79 @@
       },
       "required": [
         "deleted"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Read one agent attachment: its metadata and a downloadUrl valid for 15 minutes. A PNG, JPEG, GIF or WebP image up to 5 MiB is also returned as an image, and a text, JSON, YAML or CSV file up to 256 KiB as text, so you can look at it directly.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "get_agent_attachment",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "downloadUrl": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "mediaType": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        },
+        "turn": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "direction",
+        "name",
+        "mediaType",
+        "size",
+        "sha256",
+        "createdAt"
       ],
       "type": "object"
     }
@@ -1642,6 +1749,113 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
+    "description": "List a cloud coding-agent session's files, oldest first: inputs the users attached and outputs the agent shared, each with a downloadUrl valid for 15 minutes. Filter by direction (input or output) and turn; page with cursor (the previous page's last id) until a shorter page.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "description": "the previous page's last attachment id",
+          "type": "string"
+        },
+        "direction": {
+          "description": "input (uploaded by users) or output (shared by the agent); omit for both",
+          "type": "string"
+        },
+        "id": {
+          "description": "the agent session id",
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "turn": {
+          "description": "only the files of this turn",
+          "type": [
+            "null",
+            "integer"
+          ]
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "list_agent_session_attachments",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "attachments": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "type": "string"
+              },
+              "direction": {
+                "type": "string"
+              },
+              "downloadUrl": {
+                "type": "string"
+              },
+              "expiresAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "id": {
+                "type": "string"
+              },
+              "mediaType": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "sessionId": {
+                "type": "string"
+              },
+              "sha256": {
+                "type": "string"
+              },
+              "size": {
+                "type": "integer"
+              },
+              "turn": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "direction",
+              "name",
+              "mediaType",
+              "size",
+              "sha256",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "attachments"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
     "description": "List cloud coding-agent sessions in a workspace: one filtered page, newest first. Defaults to the unarchived working set; archived selects false|true|all; cursor is the prior page's last session id (a shorter/empty page is the end).",
     "inputSchema": {
       "additionalProperties": false,
@@ -2145,6 +2359,15 @@
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
+        "attachmentIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "egressAllowlist": {
           "items": {
             "type": "string"
@@ -2670,6 +2893,15 @@
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
+        "attachmentIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "egressAllowlist": {
           "items": {
             "type": "string"
@@ -3217,6 +3449,88 @@
         "pinnedModel",
         "registryHosts",
         "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Upload a file (a screenshot, log, dataset) for a cloud coding agent: pass its name and its bytes as standard base64, at most 4 MiB decoded (use REST POST /v1/agent-attachments for up to 25 MiB). Returns an unattached attachment; pass its id in attachmentIds to create_agent_session or send_agent_session_message within 24 hours. The type is detected from the bytes.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "contentBase64": {
+          "description": "the file's bytes, standard base64, at most 4 MiB decoded",
+          "type": "string"
+        },
+        "name": {
+          "description": "the file name the user and the agent see",
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "contentBase64"
+      ],
+      "type": "object"
+    },
+    "name": "upload_agent_attachment",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "createdAt": {
+          "type": "string"
+        },
+        "direction": {
+          "type": "string"
+        },
+        "downloadUrl": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "mediaType": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "sha256": {
+          "type": "string"
+        },
+        "size": {
+          "type": "integer"
+        },
+        "turn": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "direction",
+        "name",
+        "mediaType",
+        "size",
+        "sha256",
+        "createdAt"
       ],
       "type": "object"
     }

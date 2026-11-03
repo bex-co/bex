@@ -1,7 +1,12 @@
 package agentsessions
 
 import (
+	"bytes"
 	"context"
+	"encoding/base64"
+	"encoding/json"
+	"fmt"
+	"strings"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
@@ -24,6 +29,10 @@ var CloudAgentsTools = []string{
 	"get_agent_session_transcript",
 	"get_agent_session_tool_output",
 	"cancel_agent_session",
+	"upload_agent_attachment",
+	"get_agent_attachment",
+	"list_agent_session_attachments",
+	"delete_agent_attachment",
 }
 
 type listArgs struct {
@@ -83,6 +92,25 @@ type steerArgs struct {
 	ID              string   `json:"id"`
 	Prompt          string   `json:"prompt"`
 	EgressAllowlist []string `json:"egressAllowlist,omitempty"`
+	AttachmentIDs   []string `json:"attachmentIds,omitempty"`
+}
+
+type uploadAttachmentArgs struct {
+	OwnerID       string `json:"ownerId,omitempty"`
+	Name          string `json:"name" jsonschema:"the file name the user and the agent see"`
+	ContentBase64 string `json:"contentBase64" jsonschema:"the file's bytes, standard base64, at most 4 MiB decoded"`
+}
+
+type listAttachmentsArgs struct {
+	ID        string `json:"id" jsonschema:"the agent session id"`
+	Direction string `json:"direction,omitempty" jsonschema:"input (uploaded by users) or output (shared by the agent); omit for both"`
+	Turn      *int   `json:"turn,omitempty" jsonschema:"only the files of this turn"`
+	Cursor    string `json:"cursor,omitempty" jsonschema:"the previous page's last attachment id"`
+	Limit     int    `json:"limit,omitempty"`
+}
+
+type listAttachmentsResult struct {
+	Attachments []Attachment `json:"attachments"`
 }
 
 type listResult struct {
@@ -193,9 +221,87 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	// send_agent_session_message is the canonical name for a follow-up turn
 	// (ADR094 D2); steer_agent_session stays as an alias.
 	sendMessage := func(ctx context.Context, _ *mcp.CallToolRequest, in steerArgs) (*mcp.CallToolResult, View, error) {
-		out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist})
+		out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist, AttachmentIDs: in.AttachmentIDs})
 		return nil, out, err
 	}
 	mcputil.AddTool(server, &mcp.Tool{Name: "send_agent_session_message", Description: "Send a follow-up message to a cloud coding-agent session: it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. The session must be steerable (state succeeded or failed, not archived or canceled)."}, sendMessage)
 	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."}, sendMessage)
+	s.registerAttachmentMCP(server)
+}
+
+// registerAttachmentMCP adds the ADR095 D11 attachment tools. An upload is
+// unattached until its id is passed as attachmentIds to create_agent_session
+// or send_agent_session_message.
+func (s *Service) registerAttachmentMCP(server *mcp.Server) {
+	mcputil.AddTool(server, &mcp.Tool{
+		Name:        "upload_agent_attachment",
+		Description: "Upload a file (a screenshot, log, dataset) for a cloud coding agent: pass its name and its bytes as standard base64, at most 4 MiB decoded (use REST POST /v1/agent-attachments for up to 25 MiB). Returns an unattached attachment; pass its id in attachmentIds to create_agent_session or send_agent_session_message within 24 hours. The type is detected from the bytes.",
+		Annotations: mcputil.DefaultAnnotations("create_"),
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in uploadAttachmentArgs) (*mcp.CallToolResult, Attachment, error) {
+		data, err := decodeMCPUpload(in.ContentBase64)
+		if err != nil {
+			return nil, Attachment{}, err
+		}
+		out, err := s.UploadAttachment(ctx, UploadAttachmentRequest{OwnerID: in.OwnerID, Name: in.Name, Size: int64(len(data)), Body: bytes.NewReader(data)})
+		return nil, out, err
+	})
+	mcputil.AddTool(server, &mcp.Tool{
+		Name:        "get_agent_attachment",
+		Description: "Read one agent attachment: its metadata and a downloadUrl valid for 15 minutes. A PNG, JPEG, GIF or WebP image up to 5 MiB is also returned as an image, and a text, JSON, YAML or CSV file up to 256 KiB as text, so you can look at it directly.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, Attachment, error) {
+		out, data, err := s.AttachmentInline(ctx, in.ID)
+		if err != nil || data == nil {
+			return nil, out, err
+		}
+		return inlineAttachmentResult(out, data), out, nil
+	})
+	mcputil.AddTool(server, &mcp.Tool{
+		Name:        "list_agent_session_attachments",
+		Description: "List a cloud coding-agent session's files, oldest first: inputs the users attached and outputs the agent shared, each with a downloadUrl valid for 15 minutes. Filter by direction (input or output) and turn; page with cursor (the previous page's last id) until a shorter page.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listAttachmentsArgs) (*mcp.CallToolResult, listAttachmentsResult, error) {
+		list, err := s.ListAttachments(ctx, in.ID, AttachmentListQuery{Direction: in.Direction, Turn: in.Turn, Cursor: in.Cursor, Limit: in.Limit})
+		return nil, listAttachmentsResult{Attachments: list}, err
+	})
+	mcputil.AddTool(server, &mcp.Tool{
+		Name:        "delete_agent_attachment",
+		Description: "Delete one of your unattached uploads. A file attached to a session cannot be deleted on its own; it is deleted with its session.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, deleteResult, error) {
+		if err := s.DeleteAttachment(ctx, in.ID); err != nil {
+			return nil, deleteResult{}, err
+		}
+		return nil, deleteResult{Deleted: true}, nil
+	})
+}
+
+// decodeMCPUpload decodes an inline upload, refusing an oversized one before
+// decoding it.
+func decodeMCPUpload(encoded string) ([]byte, error) {
+	tooLarge := core.NewTooLargeError("AGENT_ATTACHMENT_TOO_LARGE",
+		fmt.Sprintf("an MCP upload is limited to %d MiB; use REST POST /v1/agent-attachments for up to %d MiB", maxMCPUploadBytes>>20, maxAttachmentBytes>>20),
+		map[string]any{"maxBytes": maxMCPUploadBytes})
+	if base64.StdEncoding.DecodedLen(len(encoded)) > maxMCPUploadBytes+2 {
+		return nil, tooLarge
+	}
+	data, err := base64.StdEncoding.DecodeString(encoded)
+	if err != nil {
+		return nil, core.NewBadRequestError("AGENT_ATTACHMENT_INVALID", "contentBase64 must be standard base64", map[string]any{"field": "contentBase64"})
+	}
+	if len(data) > maxMCPUploadBytes {
+		return nil, tooLarge
+	}
+	return data, nil
+}
+
+// inlineAttachmentResult is the JSON text block the SDK would generate for
+// out, followed by the file itself as an image or text block.
+func inlineAttachmentResult(out Attachment, data []byte) *mcp.CallToolResult {
+	body, err := json.Marshal(out)
+	if err != nil {
+		return nil
+	}
+	file := mcp.Content(&mcp.TextContent{Text: string(data)})
+	if strings.HasPrefix(out.MediaType, "image/") {
+		file = &mcp.ImageContent{Data: data, MIMEType: out.MediaType}
+	}
+	return &mcp.CallToolResult{Content: []mcp.Content{&mcp.TextContent{Text: string(body)}, file}}
 }
