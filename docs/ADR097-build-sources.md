@@ -1,0 +1,25 @@
+# ADR097 — Render Build Sources on bex: a build-only carrier App and per-service image copies
+
+**Status:** Accepted, 2026-11-03 (w2/m254 t001). Implementation tracked in `w2/m254`. Render parity: no divergence intended; any found during implementation is recorded in [ADR018](ADR018-render-parity.md).
+
+## Context
+
+Render's public API gained **Build Sources** (round-5 drift, w2/m251): a workspace object that builds once (git-backed) or names an external image (image-backed), owns its own build-time environment (env vars, secret files, linked env groups), keeps a build history, and is linked to any number of services. A linked service carries `buildSourceId`; it takes all source and build configuration from the build source (create omits `repo`, `branch`, `image`, `buildFilter`, `runtime` and build-time env), and a git source must be in the service's region (`build_source_region_mismatch`). Triggering a build (`POST /build-sources/{id}/builds`) builds the branch head even when an up-to-date build exists, and "services linked to the build source with autodeploy enabled are deployed with the result". Deploys gain `buildId`, and `POST /services/{id}/deploys` accepts a `buildId` to deploy a specific build (`build_not_found`, `build_not_succeeded`). The dashboard edits a service's source under Settings → Build → Source → "Update source".
+
+bex's build pipeline is App-shaped end to end (`lego/operator/internal/controller`, ~4,800 lines of build code): the build Job, its namespace, per-App registry credentials (one Zot htpasswd user and one ACL entry per App repository, ADR022/ADR074), build-time datastore reach, cancellation, failure classification and metrics are all keyed on an `App`. Zot only re-reads credential/ACL changes on a pod restart (`registry/verify.go`), so per-link ACL grants would bounce the registry on every link change.
+
+## Decision
+
+1. **A build source is a carrier App.** `POST /v1/build-sources` creates an App CR of the new type `build_source` in the workspace namespace (public id prefix `bsr-`, minted by `id.New`), carrying the git or image configuration and the build-time environment exactly as a service's App does. The operator runs the unchanged build pipeline for it and records the result (`status.image` digest, `status.buildRun`), but never creates a runtime for it: no Deployment, Service, Ingress, certificate, autoscaler or sleep. bex-api's service surfaces (lists, counts, plan quotas, metering, events of service kinds) exclude the type; `/v1/build-sources` is its only REST face.
+2. **Build history.** Each carrier build is a row in a new `build_source_builds` table (`bld-` ids): build run id, status, timing, commit and the resulting digest, or the image identity for image-backed sources. `POST …/builds` bumps the carrier's build trigger (the same field a manual deploy bumps) and opens a row.
+3. **Linking.** A service with `buildSourceId` is an App whose `spec.buildSource` names the carrier. Its own build is skipped; its desired image is the carrier's selected build. Linking, unlinking and creating with `buildSourceId` go through the normal service write paths with Render's refusals.
+4. **Image delivery without ACL changes.** On deploy the operator copies the carrier's built manifest into the linked service's own repository with the builder's admin credential — a cross-repository blob mount for the config and each layer, then a manifest PUT (a new `registry.CopyManifest` next to `TagManifest`) — and deploys the service from its own repository with its own pull credential. No per-link Zot ACL entry, no registry restart; a service can never read another repository. The digest is unchanged, so a deploy's image provenance stays exact.
+5. **Fan-out.** When a carrier build succeeds, bex-api opens a deploy row (with `buildId`) for every linked service whose auto-deploy is on and sets that service's desired build; a deploy request with `buildId` selects an older succeeded build. Services with auto-deploy off keep their current release until deployed by hand.
+6. **Surfaces.** REST serves the 20 Render operations (replacing w2/m251's named 404s); GraphQL and MCP expose the same verbs as bex extensions named after the REST verbs; the dashboard adds the Settings → Build → Source dialog. `buildSourceId` replaces the named refusal on service create/PATCH/GET.
+7. **Regions.** bex has one region per installation (`BEX_REGION`, ADR049 D7): any Render region on a build source normalizes to it, so `build_source_region_mismatch` never fires on a single-region installation; a multi-region installation would compare normalized regions.
+
+## Consequences
+
+- One build feeds many services with no registry restart and no cross-repository read grant.
+- Every place that enumerates Apps must exclude `build_source` carriers; the implementation adds a guard test over the service list, metering, quota and event projections so a new enumeration cannot silently include them.
+- Storage cost: each linked service holds a reference to the same blobs (blob mounts share storage), so copies are cheap.

@@ -19,6 +19,7 @@ Docs live here — one file per topic. Root [AGENTS.md](../AGENTS.md) points her
 - [ADR019-infra-credentials.md](ADR019-infra-credentials.md) — bootstrap credential inventory + trust chain
 - [ADR093-onbex-wildcard-tls.md](ADR093-onbex-wildcard-tls.md) — accepted (2026-10-30), implemented (2026-10-31) `*.onbex.co` fallback certificate renewed by cert-manager over DNS-01 with a Cloudflare token scoped to `onbex.co`; bex may call Cloudflare only to renew, never to serve; deploys stop carrying certificate PEMs (w4/441)
 - [ADR096-crashloop-suspension.md](ADR096-crashloop-suspension.md) — accepted (2026-11-03) a service whose Ready condition stays False for 24h on a start failure (CrashLoopBackOff / HealthCheckFailing) is suspended with Render's `stuck_crashlooping` suspender and its workspace emailed; resume clears it (w2/m253)
+- [ADR097-build-sources.md](ADR097-build-sources.md) — accepted (2026-11-03) Render Build Sources as a build-only carrier App (type `build_source`) whose image the operator copies into each linked service's own repository (blob mount, no Zot ACL change); bex-api fans a successful build out to auto-deploy services (w2/m254)
 - [ADR053-node-instance-types.md](ADR053-node-instance-types.md) — Hetzner cx33/cpx32 policy
 
 ### API, parity, Blueprint
