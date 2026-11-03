@@ -588,7 +588,7 @@ func (w *PushWorker) fanOutPage(ctx context.Context, rows []store.WebhookEventRo
 		// between the read and a resolve can no longer poison the whole pass.
 		serviceID := row.AppID
 		factStatus := ""
-		if row.Source == store.EventSourceFact && row.FactType == string(store.EventFactJobRunEnded) {
+		if row.Source == store.EventSourceFact && row.FactType == string(store.EventFactCronRunEnded) {
 			factStatus = row.Status
 		}
 		projected, ok := projectPushEvent(row, serviceID, factStatus)
@@ -698,7 +698,10 @@ func projectPushEvent(row store.WebhookEventRow, serviceID, factStatus string) (
 		// only for a real, user-initiated suspend or resume. Both remain visible
 		// in the Events feed and subscribable as webhooks.
 
-		case string(store.EventFactJobRunEnded):
+		// A cron run's failure is cron_job_run_ended (w7/m66). This used to read
+		// job_run_ended, the retired one-off jobs surface, so a real cron failure
+		// never pushed while a one-off job's did, titled "Cron job failed" (w2/m252).
+		case string(store.EventFactCronRunEnded):
 			if factStatus != store.EventStatusFailed {
 				return projectedPush{}, false
 			}

@@ -295,6 +295,8 @@ var accountDeletionDispositions = map[string]string{
 	"product_activity_events.actor_id":          "anonymize: CleanupAccountSubject clears the identifier",
 	"product_activity_events.actor_type":        "anonymize: CleanupAccountSubject sets the deleted actor's type to unknown",
 	"push_deliveries.subject":                   "cascade: membership deletion removes notifications and their deliveries",
+	"alert_email_events.subject":                "cascade: membership deletion removes failure-alert dedupe records",
+	"alert_email_streams.subject":               "cascade: membership deletion removes failure-alert state",
 	"push_notifications.subject":                "cascade: membership deletion removes personal notification state",
 	"registry_credentials.created_by":           "anonymize: CleanupAccountSubject replaces creator on surviving workspace resources",
 	"ssh_keys.subject":                          "delete: account credential cleanup removes SSH access before identity deletion",

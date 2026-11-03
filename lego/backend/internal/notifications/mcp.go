@@ -31,7 +31,7 @@ import (
 type updateSettingsArgs struct {
 	DeployStarted   bool `json:"deployStarted" jsonschema:"email me when one of my services' deploys starts"`
 	DeploySucceeded bool `json:"deploySucceeded" jsonschema:"email me when one of my services' deploys succeeds"`
-	DeployFailed    bool `json:"deployFailed" jsonschema:"email me when one of my services' deploys fails"`
+	DeployFailed    bool `json:"deployFailed" jsonschema:"email me about failures: a failed deploy, an unhealthy service, a failed cron run or image pull, or a failed Blueprint sync"`
 }
 
 // RegisterMCP adds the notification-settings tools to the shared MCP server.
