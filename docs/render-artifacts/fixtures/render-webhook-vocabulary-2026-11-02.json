@@ -1,5 +1,6 @@
 {
-  "capturedAt": "2026-08-17",
+  "capturedAt": "2026-11-02",
+  "renderDashboardCapturedAt": "2026-08-17",
   "renderOpenAPI": [
     "artifact_fetch_failed",
     "artifact_source_changed",
@@ -17,6 +18,7 @@
     "disk_created",
     "disk_updated",
     "disk_deleted",
+    "disk_snapshot_restored",
     "image_pull_failed",
     "instance_count_changed",
     "job_run_ended",
@@ -138,6 +140,7 @@
   "apiOnly": [
     "artifact_fetch_failed",
     "artifact_source_changed",
+    "disk_snapshot_restored",
     "edge_cache_disabled",
     "edge_cache_enabled",
     "edge_cache_purged",
@@ -239,5 +242,8 @@
     "pipeline_minutes_exhausted",
     "postgres_connection_pool_changed",
     "postgres_read_replica_stale"
-  ]
+  ],
+  "plannedUnsupported": {
+    "disk_snapshot_restored": "w2/064"
+  }
 }

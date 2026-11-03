@@ -24,6 +24,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"regexp"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -533,16 +534,24 @@ func TestRenderPathParameterOverridesOnlyWiden(t *testing.T) {
 	}
 }
 
-// renderPatternSamples builds ids that satisfy a Render `^<prefix>-<class>{20}$`
-// pattern, so a widening check has concrete strings to test with.
+var renderPatternLength = regexp.MustCompile(`\{(\d+)\}\$$`)
+
+// renderPatternSamples builds ids that satisfy a Render `^<prefix>-<class>{N}$`
+// pattern, so a widening check has concrete strings to test with. N is read
+// from the pattern: most Render ids carry 20 characters, sandboxes 25.
 func renderPatternSamples(pattern string) []string {
 	prefix, _, ok := strings.Cut(strings.TrimPrefix(pattern, "^"), "-")
 	if !ok {
 		return nil
 	}
+	n := 20
+	if m := renderPatternLength.FindStringSubmatch(pattern); m != nil {
+		n, _ = strconv.Atoi(m[1])
+	}
+	mixed := strings.Repeat("0123456789abcdefghij", n/20+1)[:n]
 	return []string{
-		prefix + "-" + strings.Repeat("a", 20),
-		prefix + "-" + strings.Repeat("0", 20),
-		prefix + "-" + "0123456789abcdefghij",
+		prefix + "-" + strings.Repeat("a", n),
+		prefix + "-" + strings.Repeat("0", n),
+		prefix + "-" + mixed,
 	}
 }

@@ -85,6 +85,9 @@ type patchServiceRequest struct {
 		// preDeployCommand.
 		Port *int32 `json:"port"`
 	} `json:"serviceDetails"`
+	// BuildSourceID is Render's top-level servicePATCH buildSourceId; bex
+	// serves no Build Sources yet (w2/m254), so a non-empty value is refused.
+	BuildSourceID *string `json:"buildSourceId"`
 	// Render calls the mutable human-facing label `name`; displayName remains a
 	// bex extension accepted for dashboard/backward compatibility.
 	Name *string `json:"name"`
@@ -315,6 +318,9 @@ type serviceDetailsReq struct {
 	// PullRequestPreviewsEnabled is refused by name like previews (PR previews
 	// are a recorded non-goal).
 	PullRequestPreviewsEnabled json.RawMessage `json:"pullRequestPreviewsEnabled"`
+	// BuildSourceID links Render's Build Sources, which bex does not serve
+	// yet (w2/m254); a non-empty value is refused by name.
+	BuildSourceID *string `json:"buildSourceId"`
 }
 
 // serviceDiskReq is Render's `serviceDisk` create schema.
@@ -357,15 +363,30 @@ func (r createServiceRequest) unsupportedField() string {
 	if r.ServiceDetails == nil {
 		return ""
 	}
+	if field := unsupportedBuildSourceField(r.ServiceDetails.BuildSourceID); field != "" {
+		return field
+	}
 	return unsupportedPreviewsField(r.ServiceDetails.Previews, r.ServiceDetails.PullRequestPreviewsEnabled)
 }
 
 func (r patchServiceRequest) unsupportedField() string {
+	if field := unsupportedBuildSourceField(r.BuildSourceID); field != "" {
+		return field
+	}
 	if r.ServiceDetails == nil {
 		return ""
 	}
 	if field := unsupportedPreviewsField(r.ServiceDetails.Previews, r.ServiceDetails.PullRequestPreviewsEnabled); field != "" {
 		return field
+	}
+	return ""
+}
+
+// unsupportedBuildSourceField refuses a Render Build Source link (w2/m254
+// serves them); empty or null means "none", which is already true.
+func unsupportedBuildSourceField(buildSourceID *string) string {
+	if buildSourceID != nil && *buildSourceID != "" {
+		return "buildSourceId"
 	}
 	return ""
 }

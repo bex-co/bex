@@ -9,10 +9,15 @@ pinned="$repo_root/lego/backend/internal/apps/schema/render.yaml.json"
 expected_sha256="8a3fb8da6b4f55fe686fbefa790e011d3dd7895f013f355953c572a21ab6494a"
 schema_url="${RENDER_BLUEPRINT_SCHEMA_URL:-https://render.com/schema/render.yaml.json}"
 openapi_url="${RENDER_OPENAPI_URL:-https://api-docs.render.com/openapi/render-public-api-1.json}"
-webhook_fixture="$repo_root/docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-08-17.json"
+webhook_fixture="$repo_root/docs/render-artifacts/fixtures/render-webhook-vocabulary-2026-11-02.json"
+pinned_openapi="$repo_root/lego/backend/internal/api/openapi/render-public-api-1.json"
 
 if [[ ! -f "$pinned" ]]; then
   echo "pinned Render Blueprint schema is missing: $pinned" >&2
+  exit 1
+fi
+if [[ ! -f "$pinned_openapi" ]]; then
+  echo "pinned Render OpenAPI is missing: $pinned_openapi" >&2
   exit 1
 fi
 if [[ ! -f "$webhook_fixture" ]]; then
@@ -24,7 +29,7 @@ fi
 # t001). It is owned by lego/backend/internal/webhooks/vocabulary_test.go, which
 # asserts strictly more, by value rather than by count:
 #
-#   TestRenderDashboardAndAPIVocabulariesStayDistinct  — capturedAt, the 67/64
+#   TestRenderDashboardAndAPIVocabulariesStayDistinct  — capturedAt, the dated
 #     dated Render counts, and both set differences against .apiOnly/.dashboardOnly
 #   TestBexWebhookVocabularyHasOneTruthfulDispositionPerValue — .bexSupported ==
 #     bex's real EventTypes, every non-OpenAPI value dispositioned, and the
@@ -109,10 +114,41 @@ if ! jq -e '.paths["/events/{eventId}"].get.responses["200"].content["applicatio
 elif diff -u \
   <(jq -r '.renderOpenAPI[]' "$webhook_fixture") \
   <(jq -r '.paths["/events/{eventId}"].get.responses["200"].content["application/json"].schema.properties.type.enum[]' "$temporary_openapi"); then
-  echo "Render webhook OpenAPI enum matches pinned 67-value fixture"
+  echo "Render webhook OpenAPI enum matches the pinned $(jq '.renderOpenAPI | length' "$webhook_fixture")-value fixture"
 else
   echo "::error title=Render webhook OpenAPI drift::$openapi_url's event type enum no longer matches .renderOpenAPI in $webhook_fixture (diff above: - pinned, + upstream)" >&2
   echo "Action: capture a new dated webhook vocabulary fixture, re-disposition every added value in lego/backend/internal/webhooks/vocabulary_test.go, and re-audit the authenticated dashboard picker separately." >&2
+  failed=1
+fi
+
+# REST operation surface (w2/m251): the Blueprint schema and webhook enum alone
+# missed 44 new operations. A method+path list says WHICH operations moved;
+# their schemas are re-reviewed at re-pin.
+operation_surface() {
+  jq -r '.paths | to_entries[] | .key as $path | .value | keys[]
+    | select(IN("get", "post", "put", "patch", "delete")) | ascii_upcase + " " + $path' "$1" | sort -u
+}
+pinned_operations="$(operation_surface "$pinned_openapi")"
+upstream_operations="$(operation_surface "$temporary_openapi")"
+added_operations="$(comm -13 <(echo "$pinned_operations") <(echo "$upstream_operations"))"
+removed_operations="$(comm -23 <(echo "$pinned_operations") <(echo "$upstream_operations"))"
+if [[ -z "$added_operations" && -z "$removed_operations" ]]; then
+  echo "Render REST operations match the pinned $(wc -l <<<"$pinned_operations" | tr -d ' ')-operation contract"
+else
+  echo "::error title=Render REST operation drift::$openapi_url's operations no longer match $pinned_openapi" >&2
+  {
+    echo "Added upstream:"
+    echo "${added_operations:-(none)}" | sed 's/^/  /'
+    echo "Removed upstream:"
+    echo "${removed_operations:-(none)}" | sed 's/^/  /'
+    cat <<MSG
+
+Action: run a drift round (docs/ADR018-render-parity.md, the round paragraphs at
+the top): re-pin the OpenAPI with renderOpenAPISHA256
+(lego/backend/internal/api/render_openapi.go), then mount, refuse by name or
+document every added operation in renderOperationOmissions with an owner.
+MSG
+  } >&2
   failed=1
 fi
 
