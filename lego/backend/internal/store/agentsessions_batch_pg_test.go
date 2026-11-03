@@ -239,3 +239,31 @@ func TestPGTranscriptFailedBatchRollsBackAndRetries(t *testing.T) {
 	}
 	assertBatchTranscript(t, s, sessionID, parts)
 }
+
+// AgentSessionTurnTail (ADR094 D7 outcome summary) returns only the named
+// turn's complete items, last part_index first: legacy chunks, partial items
+// and other turns never leak into a summary.
+func TestPGAgentSessionTurnTailReturnsCompleteItemsNewestFirst(t *testing.T) {
+	s, sessionID, _ := transcriptBatchPGFixture(t)
+	ctx := context.Background()
+	if err := s.AppendAgentSessionTranscript(ctx, sessionID, []AgentSessionTranscriptPart{
+		{Turn: 1, PartIndex: 0, Part: []byte(`{"type":"text","text":"turn one"}`), Item: true},
+		{Turn: 2, PartIndex: 0, Part: []byte(`{"type":"text","text":"first"}`), Item: true},
+		{Turn: 2, PartIndex: 1, Part: []byte(`{"type":"text-delta","delta":"legacy chunk"}`)},
+		{Turn: 2, PartIndex: 2, Part: []byte(`{"type":"text","text":"cut off"}`), Item: true, Partial: true},
+		{Turn: 2, PartIndex: 3, Part: []byte(`{"type":"text","text":"last"}`), Item: true},
+	}); err != nil {
+		t.Fatal(err)
+	}
+	got, err := s.AgentSessionTurnTail(ctx, sessionID, 2, 1<<20, 10)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(got) != 2 || string(got[0].Part) != `{"type":"text","text":"last"}` || string(got[1].Part) != `{"type":"text","text":"first"}` {
+		t.Fatalf("tail = %+v, want [last, first] of turn 2 only", got)
+	}
+	limited, err := s.AgentSessionTurnTail(ctx, sessionID, 2, 1<<20, 1)
+	if err != nil || len(limited) != 1 || limited[0].PartIndex != 3 {
+		t.Fatalf("limit 1 = %+v err=%v", limited, err)
+	}
+}

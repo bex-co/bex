@@ -1,0 +1,2906 @@
+[
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "archive_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Mint a fresh attach ticket for a started cloud coding-agent session to (re)connect to its live or replayed conversation stream, without changing its lifecycle. Action 'read' for transcript replay (GET), 'turn' for live prompt execution (POST). Requires can_create for 'turn'.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "action": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "attach_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Cancel a cloud coding-agent session and terminate its sandbox.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "cancel_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "egressAllowlist": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "resumeSessionId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "create_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Permanently delete a finished cloud coding-agent session: its record and transcript are destroyed. Live sessions must be canceled first. Irreversible.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "delete_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "deleted"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, and whether the model is pinned by the platform model route.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "get_agent_environment",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "customHosts": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "defaultModel": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "modelPinned": {
+          "type": "boolean"
+        },
+        "networkTier": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "pinnedModel": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "registryHosts": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "updatedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      },
+      "required": [
+        "ownerId",
+        "networkTier",
+        "customHosts",
+        "defaultModel",
+        "modelPinned",
+        "pinnedModel",
+        "registryHosts",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Inspect one cloud coding-agent session.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "get_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Report a workspace's selectable agent profiles and GitHub/model-key readiness for composing a cloud coding-agent session; never returns model endpoints, templates, egress, or credentials.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "get_agent_session_capabilities",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agents": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "id": {
+                "type": "string"
+              },
+              "label": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "label"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "github": {
+          "additionalProperties": false,
+          "properties": {
+            "accountLogin": {
+              "type": "string"
+            },
+            "connected": {
+              "type": "boolean"
+            },
+            "installUrl": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "connected"
+          ],
+          "type": "object"
+        },
+        "modelKeyReady": {
+          "type": "boolean"
+        },
+        "ready": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "enabled",
+        "github",
+        "modelKeyReady",
+        "agents",
+        "ready"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Read the complete output of one tool call in a cloud coding-agent session. A transcript tool part flagged fullOutput: true stores only the head and tail of a long output inline (around a [bex: N chars clipped] marker); this returns the full text by field (output, errorText, terminal:\u003cterminalId\u003e), each capped at 1 MiB. Pass the session id, the part's turn and its toolCallId. Not found when no full copy was kept.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "toolCallId": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "turn",
+        "toolCallId"
+      ],
+      "type": "object"
+    },
+    "name": "get_agent_session_tool_output",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "outputs": {
+          "additionalProperties": {
+            "type": "string"
+          },
+          "type": "object"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "toolCallId": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "sessionId",
+        "turn",
+        "toolCallId",
+        "outputs"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Read one page of a cloud coding-agent session's durable conversation transcript, seq-ordered: each part is a completed item (a UIMessage text, reasoning or dynamic-tool part; a data snapshot; or a start/finish chunk), partial when the live stream ended inside it (a later page may carry its complete copy under a new seq with the same turn and partIndex, which supersedes it; render parts in turn, partIndex order). Works for live, completed, and archived sessions; page by echoing nextAfterSeq as afterSeq until parts is empty.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "afterSeq": {
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "get_agent_session_transcript",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "nextAfterSeq": {
+          "type": "integer"
+        },
+        "parts": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "createdAt": {
+                "type": "string"
+              },
+              "part": {
+                "items": {
+                  "maximum": 255,
+                  "minimum": 0,
+                  "type": "integer"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "partIndex": {
+                "type": "integer"
+              },
+              "partial": {
+                "type": "boolean"
+              },
+              "seq": {
+                "type": "integer"
+              },
+              "turn": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "seq",
+              "partIndex",
+              "turn",
+              "part",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "turns": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "completedAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "deliveryMode": {
+                "type": "string"
+              },
+              "prompt": {
+                "type": "string"
+              },
+              "transcriptComplete": {
+                "type": "boolean"
+              },
+              "transcriptTruncated": {
+                "type": "boolean"
+              },
+              "truncationReason": {
+                "type": "string"
+              },
+              "turn": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "turn",
+              "prompt",
+              "deliveryMode",
+              "transcriptComplete",
+              "transcriptTruncated",
+              "createdAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "parts",
+        "turns",
+        "nextAfterSeq"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "List cloud coding-agent sessions in a workspace: one filtered page, newest first. Defaults to the unarchived working set; archived selects false|true|all; cursor is the prior page's last session id (a shorter/empty page is the end).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "archived": {
+          "type": "string"
+        },
+        "createdAfter": {
+          "type": "string"
+        },
+        "createdBefore": {
+          "type": "string"
+        },
+        "cursor": {
+          "type": "string"
+        },
+        "limit": {
+          "type": "integer"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phases": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "repo": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "list_agent_sessions",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentSessions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "agentConfig": {
+                "additionalProperties": false,
+                "properties": {
+                  "agent": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "modelEndpoint": {
+                    "type": "string"
+                  },
+                  "task": {
+                    "type": "string"
+                  },
+                  "template": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "agent",
+                  "task"
+                ],
+                "type": "object"
+              },
+              "archivedAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "branch": {
+                "type": "string"
+              },
+              "canceledAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "deliveryMode": {
+                "type": "string"
+              },
+              "deliveryNote": {
+                "type": "string"
+              },
+              "expiresAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "failureReason": {
+                "type": "string"
+              },
+              "failureReasonCode": {
+                "type": "string"
+              },
+              "headSha": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "outcome": {
+                "additionalProperties": false,
+                "properties": {
+                  "deliveryNote": {
+                    "type": "string"
+                  },
+                  "failureReasonCode": {
+                    "type": "string"
+                  },
+                  "pullRequest": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "headSha": {
+                        "type": "string"
+                      },
+                      "number": {
+                        "type": "integer"
+                      },
+                      "url": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "url"
+                    ],
+                    "type": [
+                      "null",
+                      "object"
+                    ]
+                  },
+                  "state": {
+                    "type": "string"
+                  },
+                  "steerable": {
+                    "type": "boolean"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "turn": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "state",
+                  "steerable",
+                  "turn"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "ownerId": {
+                "type": "string"
+              },
+              "phase": {
+                "type": "string"
+              },
+              "prNumber": {
+                "type": "integer"
+              },
+              "prUrl": {
+                "type": "string"
+              },
+              "repo": {
+                "type": "string"
+              },
+              "sandboxId": {
+                "type": "string"
+              },
+              "sshAddress": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "steerable": {
+                "type": "boolean"
+              },
+              "streamUrl": {
+                "type": "string"
+              },
+              "ticket": {
+                "type": "string"
+              },
+              "turns": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "ownerId",
+              "repo",
+              "branch",
+              "agentConfig",
+              "phase",
+              "state",
+              "steerable",
+              "status",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "agentSessions"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Resume a suspended cloud coding-agent session. Returns the session; it does not mint an attach ticket (call attach_agent_session for one).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "resume_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Send a follow-up message to a cloud coding-agent session: it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. The session must be steerable (state succeeded or failed, not archived or canceled).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "egressAllowlist": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "prompt"
+      ],
+      "type": "object"
+    },
+    "name": "send_agent_session_message",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Alias of create_agent_session. Start a cloud coding-agent session on a repository; it does not return an attach ticket (call attach_agent_session for one).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "branch": {
+          "type": "string"
+        },
+        "egressAllowlist": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "resumeSessionId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "spawn_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "egressAllowlist": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "id": {
+          "type": "string"
+        },
+        "prompt": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "prompt"
+      ],
+      "type": "object"
+    },
+    "name": "steer_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Return an archived cloud coding-agent session to the working set, re-enabling resume/steer.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "unarchive_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "agentConfig": {
+          "additionalProperties": false,
+          "properties": {
+            "agent": {
+              "type": "string"
+            },
+            "model": {
+              "type": "string"
+            },
+            "modelEndpoint": {
+              "type": "string"
+            },
+            "task": {
+              "type": "string"
+            },
+            "template": {
+              "type": "string"
+            }
+          },
+          "required": [
+            "agent",
+            "task"
+          ],
+          "type": "object"
+        },
+        "archivedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "branch": {
+          "type": "string"
+        },
+        "canceledAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "deliveryMode": {
+          "type": "string"
+        },
+        "deliveryNote": {
+          "type": "string"
+        },
+        "expiresAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "failureReason": {
+          "type": "string"
+        },
+        "failureReasonCode": {
+          "type": "string"
+        },
+        "headSha": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "outcome": {
+          "additionalProperties": false,
+          "properties": {
+            "deliveryNote": {
+              "type": "string"
+            },
+            "failureReasonCode": {
+              "type": "string"
+            },
+            "pullRequest": {
+              "additionalProperties": false,
+              "properties": {
+                "headSha": {
+                  "type": "string"
+                },
+                "number": {
+                  "type": "integer"
+                },
+                "url": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "url"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
+            "state": {
+              "type": "string"
+            },
+            "steerable": {
+              "type": "boolean"
+            },
+            "summary": {
+              "type": "string"
+            },
+            "turn": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "state",
+            "steerable",
+            "turn"
+          ],
+          "type": [
+            "null",
+            "object"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "phase": {
+          "type": "string"
+        },
+        "prNumber": {
+          "type": "integer"
+        },
+        "prUrl": {
+          "type": "string"
+        },
+        "repo": {
+          "type": "string"
+        },
+        "sandboxId": {
+          "type": "string"
+        },
+        "sshAddress": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "status": {
+          "type": "string"
+        },
+        "steerable": {
+          "type": "boolean"
+        },
+        "streamUrl": {
+          "type": "string"
+        },
+        "ticket": {
+          "type": "string"
+        },
+        "turns": {
+          "type": "integer"
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "url": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "repo",
+        "branch",
+        "agentConfig",
+        "phase",
+        "state",
+        "steerable",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. The network tier and hosts apply from each session's next turn; the default model applies to sessions created afterwards.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "customHosts": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "defaultModel": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "networkTier": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "update_agent_environment",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "customHosts": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "defaultModel": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "modelPinned": {
+          "type": "boolean"
+        },
+        "networkTier": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "pinnedModel": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "registryHosts": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "updatedAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        }
+      },
+      "required": [
+        "ownerId",
+        "networkTier",
+        "customHosts",
+        "defaultModel",
+        "modelPinned",
+        "pinnedModel",
+        "registryHosts",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  }
+]

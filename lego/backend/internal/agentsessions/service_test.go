@@ -1937,3 +1937,19 @@ func (f *fakeLifecycle) CleanupAgentDispatches(context.Context, []store.AgentDis
 	}
 	return nil
 }
+
+// AgentSessionTurnTail mirrors the PG read: complete (non-partial) items of one
+// turn, last part_index first, capped at limit.
+func (f *fakeStore) AgentSessionTurnTail(_ context.Context, id string, turn int, _ int64, limit int) ([]store.AgentSessionTranscriptPart, error) {
+	out := make([]store.AgentSessionTranscriptPart, 0)
+	for _, p := range f.transcript[id] {
+		if p.Turn == turn && p.Item && !p.Partial {
+			out = append(out, p)
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].PartIndex > out[j].PartIndex })
+	if limit > 0 && len(out) > limit {
+		out = out[:limit]
+	}
+	return out, nil
+}
