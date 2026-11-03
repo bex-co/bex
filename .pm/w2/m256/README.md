@@ -1,6 +1,6 @@
 # w2 · m256 — Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does
 
-**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** in progress — t001–t006, t008–t010 done; t007 (unmodified CLI v2.35 walk on production) next, then t011
+**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** in progress — t001–t006, t008–t010 done; t007 (unmodified CLI v2.35 walk on production) next; t012 (dashboard Approve, found live 2026-11-03), then t011
 
 ## Tasks (in order)
 
@@ -16,7 +16,8 @@
 | t008 | Render parity — **DONE** | 15m | t007 |
 | t009 | Simplify — **DONE** | 15m | t008 |
 | t010 | Test coverage — **DONE** | 30m | t008 |
-| t011 | Closeout | 10m | t009, t010 |
+| t012 | Dashboard: a created Blueprint shows its plan and an Approve action, and Sync cannot apply it past the plan | 1h | t006 |
+| t011 | Closeout | 10m | t009, t010, t012 |
 
 ## Definition of done
 
@@ -25,6 +26,7 @@
 - `POST /v1/blueprints/{id}/syncs` plans without applying; `POST /v1/blueprints/{id}/approve` applies only the planned sync, refuses a stale or already-applied one by name, and requires every manual env var the plan lists.
 - `existingResources: adopt` behaves as Render documents (matching resources come under the Blueprint); `create_new` is refused by name and tracked as w2/069.
 - GraphQL and MCP expose plan and approve with the same semantics; ADR049 and ADR018 record the contract.
+- The dashboard page at a planned Blueprint's `dashboardUrl` shows the planned actions and an **Approve** control (with required manual env var fields). While the Blueprint is `created`, no manual sync (dashboard Sync, REST `/sync`, GraphQL `syncBlueprint`, MCP) can apply it (t012).
 
 ## Source + Goal linkage
 
