@@ -10,12 +10,30 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 )
 
+// CloudAgentsTools is the `cloud-agents` toolset (ADR094 D2): the task-shaped
+// subset an orchestrator or CI bot needs to delegate coding work, served alone
+// at /mcp/cloud-agents. Admin, archive and ticket tools stay on /mcp only.
+
+var CloudAgentsTools = []string{
+	"get_agent_session_capabilities",
+	"create_agent_session",
+	"wait_agent_sessions",
+	"get_agent_session",
+	"list_agent_sessions",
+	"send_agent_session_message",
+	"get_agent_session_transcript",
+	"get_agent_session_tool_output",
+	"cancel_agent_session",
+}
+
 type listArgs struct {
 	OwnerID string `json:"ownerId,omitempty"`
 	// ADR065 D3 filters + keyset pagination (cursor = the prior page's last
 	// session id; a shorter/empty page signals the end).
 	Archived      string   `json:"archived,omitempty"`
 	Phases        []string `json:"phases,omitempty"`
+	States        []string `json:"states,omitempty"`
+	Tag           string   `json:"tag,omitempty"`
 	Repo          string   `json:"repo,omitempty"`
 	CreatedBefore string   `json:"createdBefore,omitempty"`
 	CreatedAfter  string   `json:"createdAfter,omitempty"`
@@ -84,6 +102,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	}
 	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_session", Description: "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one)."}, createSession)
 	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_agent_session", Description: "Alias of create_agent_session. Start a cloud coding-agent session on a repository; it does not return an attach ticket (call attach_agent_session for one)."}, createSession)
+	s.registerWaitMCP(server)
 	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_sessions", Description: "List cloud coding-agent sessions in a workspace: one filtered page, newest first. Defaults to the unarchived working set; archived selects false|true|all; cursor is the prior page's last session id (a shorter/empty page is the end)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listArgs) (*mcp.CallToolResult, listResult, error) {
 			before, err := core.ParseTime("createdBefore", in.CreatedBefore)
@@ -95,7 +114,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 				return nil, listResult{}, err
 			}
 			out, err := s.List(ctx, ListRequest{
-				OwnerID: in.OwnerID, Archived: in.Archived, Phases: in.Phases,
+				OwnerID: in.OwnerID, Archived: in.Archived, Phases: in.Phases, States: in.States, Tag: in.Tag,
 				Repo: in.Repo, CreatedBefore: before, CreatedAfter: after,
 				Cursor: in.Cursor, Limit: in.Limit,
 			})

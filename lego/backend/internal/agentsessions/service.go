@@ -25,6 +25,7 @@ import (
 	"net/url"
 	"slices"
 	"strings"
+	"sync"
 	"time"
 
 	"golang.org/x/sync/errgroup"
@@ -91,6 +92,9 @@ type Store interface {
 	// session+turn+item index; a partial tee item is replaced by its complete copy).
 	MergeAgentSessionTranscriptItems(ctx context.Context, sessionID string, m store.TranscriptItemMerge) (store.TranscriptMergeResult, error)
 	AgentSessionTurns(ctx context.Context, sessionID string) ([]store.AgentSessionTurn, error)
+	// The session bound to an idempotency key within its window, with the digest
+	// of the request it was created from (ADR094 D4); store.ErrNotFound when none.
+	FindAgentSessionByIdempotencyKey(ctx context.Context, workspaceID, key string) (store.AgentSession, string, error)
 	CompleteAgentSessionTurn(ctx context.Context, sessionID string, turn int, complete, truncated bool, reason string) error
 	AgentSessionTranscriptBytes(ctx context.Context, sessionID string) (int64, error)
 	// Last complete items of one turn, newest first (ADR094 D7 outcome summary).
@@ -139,6 +143,11 @@ func modelKeySecretPath(workspaceID string) string {
 
 type Service struct {
 	*core.Base
+	// WaitPoll is wait_agent_sessions' safety re-read interval (default 2 s);
+	// notifications wake waiters sooner. Tests shorten it.
+	WaitPoll     time.Duration
+	busOnce      sync.Once
+	stateBus     *stateBus
 	Store        Store
 	Tuples       TupleWriter
 	Sandbox      SandboxLifecycle
@@ -374,6 +383,9 @@ func validateCreate(req *CreateRequest) error {
 		return core.NewBadRequestError("AGENT_SESSION_AGENT_INVALID", "agentConfig.agent must name a supported agent profile", map[string]any{"field": "agentConfig.agent"})
 	}
 	req.AgentConfig.Agent = agent
+	if err := validateTitleAndTags(req); err != nil {
+		return err
+	}
 	if len(req.Repo) > 2048 || len(req.Branch) > 255 || len(req.AgentConfig.Agent) > 128 || len(req.AgentConfig.Model) > 255 || len(req.AgentConfig.ModelEndpoint) > 2048 || len(req.AgentConfig.Task) > 100_000 || len(req.AgentConfig.Template) > 128 {
 		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "agent session input exceeds its size limit", nil)
 	}
@@ -391,16 +403,16 @@ func validateCreate(req *CreateRequest) error {
 		req.Branch = ""
 		return nil
 	}
-	if strings.TrimSpace(req.Branch) == "" {
-		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "branch is required", map[string]any{"field": "branch"})
-	}
 	repository, err := agentsession.NormalizeRepository(req.Repo)
 	if err != nil {
 		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "repo must identify a GitHub owner/repository", map[string]any{"field": "repo"})
 	}
 	branch := strings.TrimSpace(req.Branch)
-	if err := agentsession.ValidateBranch(branch); err != nil {
-		return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "branch must start with bex-agent/", map[string]any{"field": "branch"})
+	// An omitted branch is picked by the store as bex-agent/<ags-id> (ADR094 D3).
+	if branch != "" {
+		if err := agentsession.ValidateBranch(branch); err != nil {
+			return core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "branch must start with bex-agent/", map[string]any{"field": "branch"})
+		}
 	}
 	req.Repo = repository
 	req.Branch = branch
@@ -442,6 +454,17 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if !ok {
 		return View{}, core.ErrForbidden
 	}
+	// Idempotent create (ADR094 D4): a retry with the same key replays the first
+	// session before anything is admitted, provisioned or billed.
+	idemKey, idemHash, err := idempotencyOf(workspaceID, req)
+	if err != nil {
+		return View{}, err
+	}
+	if idemKey != "" {
+		if view, found, err := s.replayCreate(ctx, workspaceID, idemKey, idemHash); err != nil || found {
+			return view, err
+		}
+	}
 	// The workspace agent environment (w10/m17) supplies the network tier's
 	// hosts and the default model; the request's explicit fields still win.
 	env, err := s.workspaceEnvironment(ctx, workspaceID)
@@ -469,7 +492,17 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		Branch:        req.Branch,
 		AgentConfig:   config,
 		InitialPrompt: strings.TrimSpace(req.AgentConfig.Task),
+		Title:         req.Title, Tags: req.Tags,
+		IdempotencyKey: idemKey, IdempotencyHash: idemHash,
 	})
+	if errors.Is(err, store.ErrAgentSessionIdempotencyKey) {
+		// Lost the race for the key to a concurrent identical create.
+		view, found, replayErr := s.replayCreate(ctx, workspaceID, idemKey, idemHash)
+		if replayErr != nil || found {
+			return view, replayErr
+		}
+		return View{}, core.NewConflictError("AGENT_SESSION_CONFLICT", "agent session conflicts with existing state", nil)
+	}
 	if err != nil {
 		return View{}, mapStoreError(record.ID, err)
 	}
@@ -490,7 +523,13 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		turn:          record.Turns,
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
-	return s.toView(record)
+	view, err := s.toView(record)
+	if err != nil {
+		return View{}, err
+	}
+	created := true
+	view.Created = &created
+	return view, nil
 }
 
 // dispatchSpec is the immutable provisioning input a background turn carries from
@@ -704,6 +743,25 @@ func (req *ListRequest) storeQuery() (store.AgentSessionListQuery, error) {
 		}
 	}
 	q.Phases = req.Phases
+	if len(req.States) > 0 {
+		fromStates := []string{}
+		for _, state := range req.States {
+			phases, ok := phasesOfState(state)
+			if !ok {
+				return store.AgentSessionListQuery{}, core.NewBadRequestError("AGENT_SESSION_FILTER_INVALID",
+					"unknown state filter", map[string]any{"state": state})
+			}
+			fromStates = append(fromStates, phases...)
+		}
+		if len(req.Phases) > 0 {
+			fromStates = slices.DeleteFunc(fromStates, func(p string) bool { return !slices.Contains(req.Phases, p) })
+		}
+		if len(fromStates) == 0 {
+			fromStates = []string{""} // matches no session: a state with no phase yet (needs_input) lists nothing
+		}
+		q.Phases = fromStates
+	}
+	q.Tag = strings.TrimSpace(req.Tag)
 	limit, err := normalizeLimit(req.Limit, defaultListLimit, maxListLimit)
 	if err != nil {
 		return store.AgentSessionListQuery{}, err
@@ -1543,7 +1601,7 @@ func viewOf(record store.AgentSession) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	return View{ID: record.ID, OwnerID: record.WorkspaceID, Repo: record.Repo, Branch: record.Branch,
+	return View{ID: record.ID, OwnerID: record.WorkspaceID, Repo: record.Repo, Branch: record.Branch, Title: record.Title, Tags: record.Tags,
 		AgentConfig: config, SandboxID: record.SandboxID, Phase: record.Phase, Status: record.Status,
 		State: stateOf(record.Phase), Steerable: steerable(record.Phase, record.ArchivedAt != nil),
 		Outcome: outcomeOf(record),

@@ -90,6 +90,9 @@ func (s *Server) requireScopeClass(ctx context.Context, op string) error {
 		class = core.OpClassWrite
 	}
 	err := id.RequireOpClass(class)
+	if err != nil && cloudAgentsScopeCovers(id, op, class) {
+		err = nil
+	}
 	if err != nil {
 		s.recordScopeClassDenial(ctx, op, class)
 		return err
@@ -393,4 +396,23 @@ func (s *Server) requireMCPScope(ctx context.Context, tool string) error {
 		return nil
 	}
 	return s.requireScopeClass(ctx, "MCP "+tool)
+}
+
+// cloudAgentsScopeCovers reports whether bex.cloud_agents (ADR094 D9) satisfies
+// op: only a read or write operation of the cloud-agents MCP toolset. It is a
+// capability narrowing, not a grant: OpenFGA still decides every verb, and a
+// sensitive or mint operation never rides this scope.
+func cloudAgentsScopeCovers(id core.Identity, op, class string) bool {
+	if class != core.OpClassRead && class != core.OpClassWrite {
+		return false
+	}
+	if !core.ContainsScope(id.CanonicalScopes, core.ScopeCloudAgents) {
+		return false
+	}
+	tool, isMCP := strings.CutPrefix(op, "MCP ")
+	if !isMCP {
+		return false
+	}
+	_, inToolset := mcpToolsets[ToolsetCloudAgents][tool]
+	return inToolset
 }

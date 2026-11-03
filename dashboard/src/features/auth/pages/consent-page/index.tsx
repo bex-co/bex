@@ -17,6 +17,7 @@ import { AuthPageShell } from "@/features/auth/components/auth-page-shell";
 import {
   SCOPE_DESCRIPTION_KEYS,
   SCOPE_SENSITIVE,
+  SCOPE_CLOUD_AGENTS,
   SCOPE_WRITE,
 } from "@/common/lib/oauth-scopes";
 import type { ConsentErrorCode } from "@/common/server-fn/hydra-consent";
@@ -169,7 +170,9 @@ export default function ConsentPage() {
                     {SCOPE_DESCRIPTION_KEYS[scope] && (
                       <span
                         className={
-                          scope === SCOPE_WRITE || scope === SCOPE_SENSITIVE
+                          scope === SCOPE_WRITE ||
+                          scope === SCOPE_SENSITIVE ||
+                          scope === SCOPE_CLOUD_AGENTS
                             ? "block text-amber-700 dark:text-amber-400"
                             : "block text-muted-foreground"
                         }

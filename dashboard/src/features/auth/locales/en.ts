@@ -358,6 +358,11 @@ const enAuth: Record<string, TranslationEntry> = {
       "Read secrets and connection strings (env vars, database URLs, files)",
     description: "Human description of the bex.sensitive OAuth capability",
   },
+  "auth.consentScopeCloudAgents": {
+    message:
+      "Run cloud coding agents on your behalf (starts tasks that use compute and model credit, and can push a branch)",
+    description: "Human description of the bex.cloud_agents OAuth capability",
+  },
   "auth.consentScopeApiCompat": {
     message: "Full control-plane access (legacy platform-client compatibility)",
     description: "Human description of the bex.api compatibility scope",

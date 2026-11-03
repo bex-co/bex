@@ -61,6 +61,24 @@ func stateOf(phase string) string {
 	}
 }
 
+// phasesOfState lists the phases a state covers (the inverse of stateOf);
+// ok is false for a name that is not a state. needs_input covers no phase yet.
+func phasesOfState(state string) ([]string, bool) {
+	switch state {
+	case StateWorking:
+		return []string{PhaseCreating, PhaseRunning, PhaseResuming, PhaseRedispatching, PhaseCanceling}, true
+	case StateNeedsInput:
+		return nil, true
+	case StateSucceeded:
+		return []string{PhaseCompleted}, true
+	case StateFailed:
+		return []string{PhaseFailed}, true
+	case StateCanceled:
+		return []string{PhaseCanceled}, true
+	}
+	return nil, false
+}
+
 // steerable reports whether a follow-up message is accepted now: the turn has
 // ended (completed or failed), the session is not canceled, and it is not
 // archived. It mirrors the refusals in Steer.
@@ -148,6 +166,14 @@ type CreateRequest struct {
 	Branch          string      `json:"branch,omitempty"`
 	AgentConfig     AgentConfig `json:"agentConfig,omitempty"`
 	EgressAllowlist []string    `json:"egressAllowlist,omitempty"`
+	// IdempotencyKey makes a create safe to retry (ADR094 D4): the same key and
+	// request within 24 h returns the first session (created=false); the same key
+	// with a different request is a 409. 1-128 printable ASCII.
+	IdempotencyKey string `json:"idempotencyKey,omitempty"`
+	// Title is the display title (default: the task's first line); Tags are up to
+	// 20 filter and cost-attribution labels, each [a-z0-9:_-]{1,64} (ADR094 D3).
+	Title string   `json:"title,omitempty"`
+	Tags  []string `json:"tags,omitempty"`
 }
 
 // SteerRequest is a follow-up prompt turn on an existing session (ADR047 D8
@@ -167,6 +193,8 @@ type View struct {
 	OwnerID     string      `json:"ownerId"`
 	Repo        string      `json:"repo"`
 	Branch      string      `json:"branch"`
+	Title       string      `json:"title,omitempty"`
+	Tags        []string    `json:"tags,omitempty"`
 	AgentConfig AgentConfig `json:"agentConfig"`
 	SandboxID   string      `json:"sandboxId,omitempty"`
 	Phase       string      `json:"phase"`
@@ -214,6 +242,9 @@ type View struct {
 	// ArchivedAt marks the session archived (ADR065 D1): out of the working set,
 	// mutation verbs refused, reads always allowed. Nil ⇒ in the working set.
 	ArchivedAt *time.Time `json:"archivedAt,omitempty"`
+	// Created is set on create responses only: true for a new session, false
+	// when an idempotent retry returned the session its key already named.
+	Created *bool `json:"created,omitempty"`
 	// Outcome is the compact result an LLM reads instead of the transcript
 	// (ADR094 D7). Summary is filled only by the single-session read.
 	Outcome *Outcome `json:"outcome,omitempty"`
@@ -264,9 +295,14 @@ const (
 // prior page's last item id; a shorter/empty page signals the end). It is
 // never wire-decoded — each adapter builds it field-by-field.
 type ListRequest struct {
-	OwnerID       string
-	Archived      string
-	Phases        []string
+	OwnerID  string
+	Archived string
+	Phases   []string
+	// States filters by the coarse derived state (ADR094 D7); it expands to the
+	// phases it covers and intersects with Phases when both are given. Tag keeps
+	// sessions carrying that tag (ADR094 D3).
+	States        []string
+	Tag           string
 	Repo          string
 	CreatedBefore time.Time
 	CreatedAfter  time.Time

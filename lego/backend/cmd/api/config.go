@@ -55,6 +55,9 @@ type Config struct {
 	// Mode: `api mcp-stdio` (or BEX_MCP_STDIO=1) serves only the MCP adapter
 	// over stdio for a local agent (DB-free).
 	MCPStdio bool
+	// MCPToolset narrows stdio MCP to one named toolset (`api mcp-stdio
+	// --toolset cloud-agents` or BEX_MCP_TOOLSET); empty serves every tool.
+	MCPToolset string
 
 	// Core surface.
 	APIAddr      string // BEX_API_ADDR, default ":8090"
@@ -286,6 +289,16 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	cfg := &Config{}
 
 	cfg.MCPStdio = getenv("BEX_MCP_STDIO") == "1" || (len(args) > 1 && args[1] == "mcp-stdio")
+	cfg.MCPToolset = getenv("BEX_MCP_TOOLSET")
+	for i := 2; i < len(args); i++ {
+		switch {
+		case args[i] == "--toolset" && i+1 < len(args):
+			cfg.MCPToolset = args[i+1]
+			i++
+		case strings.HasPrefix(args[i], "--toolset="):
+			cfg.MCPToolset = strings.TrimPrefix(args[i], "--toolset=")
+		}
+	}
 	cfg.CPDBURI = getenv("BEX_CP_DB_URI")
 	// The control plane runs only outside stdio mode; every CP-gated knob below
 	// follows this, matching the pre-Load inline reads.

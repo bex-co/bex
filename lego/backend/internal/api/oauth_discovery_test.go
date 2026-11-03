@@ -142,7 +142,7 @@ func TestProtectedResourceMetadataEndpoint(t *testing.T) {
 		// scopes. bex.api is a platform-client compatibility alias and is
 		// not advertised; there is no bex.api.read rename. OAUTH_API_SCOPE
 		// is not a derivation base for this list.
-		if got := body.ScopesSupported; len(got) != 3 || got[0] != core.ScopeRead || got[1] != core.ScopeWrite || got[2] != core.ScopeSensitive {
+		if got := body.ScopesSupported; len(got) != 4 || got[0] != core.ScopeRead || got[1] != core.ScopeWrite || got[2] != core.ScopeSensitive || got[3] != core.ScopeCloudAgents {
 			t.Fatalf("scopes_supported = %v, want %v", body.ScopesSupported, core.AdvertisedScopes())
 		}
 	})
