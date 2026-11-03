@@ -237,3 +237,25 @@ func TestBuildSourceCanceledBuildRunsNothing(t *testing.T) {
 		t.Fatalf("image after the canceled build = %q, want the previous build", got)
 	}
 }
+
+// w2/m254 t016: a native git build source has no start command of its own
+// (each linked service supplies one), and its build still dispatches instead
+// of failing with "native runtime requires startCommand".
+func TestNativeBuildSourceDispatchesWithoutAStartCommand(t *testing.T) {
+	carrier := carrierApp("")
+	carrier.Spec.Runtime, carrier.Spec.Builder = "node", "native"
+	carrier.Spec.BuildCommand, carrier.Spec.StartCommand = "yarn", ""
+	carrier.UID = "carrier-uid"
+	r, cl, nn := buildSourceReconciler(t, carrier)
+	reconcileTwice(t, r, nn)
+
+	live := liveApp(t, cl, nn)
+	for _, c := range live.Status.Conditions {
+		if strings.Contains(c.Message, "requires startCommand") {
+			t.Fatalf("carrier condition %s = %s: %s; a build source needs no start command", c.Type, c.Reason, c.Message)
+		}
+	}
+	if live.Status.Phase == appv1alpha1.PhaseFailed {
+		t.Fatalf("native carrier failed: %+v", live.Status.Conditions)
+	}
+}

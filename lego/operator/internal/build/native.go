@@ -196,8 +196,9 @@ func validateNativeOptions(o Options) error {
 		return fmt.Errorf("build: native runtime %s requires buildCommand", runtime)
 	}
 	// A static site's image is only the publish Job's extract source — it is
-	// never run, so no start command exists or is required.
-	if !o.StaticSite && strings.TrimSpace(o.StartCommand) == "" {
+	// never run, so no start command exists or is required. A build source's
+	// image runs only under each linked service's own start command.
+	if !o.StaticSite && !o.BuildOnly && strings.TrimSpace(o.StartCommand) == "" {
 		return fmt.Errorf("build: native runtime %s requires startCommand", runtime)
 	}
 	if rev := strings.TrimSpace(o.NativeEnvRevision); rev != "" && !nativeEnvRevisionPattern.MatchString(rev) {
@@ -340,10 +341,11 @@ RUN --mount=type=secret,id=render-env,target=%s%s %s
 		return base
 	}
 	// nativeEntrypoint replaces the toolchain image's ENTRYPOINT (w8/m61).
-	start := shellJSON(o.StartCommand)
-	return base + fmt.Sprintf(`%sENV PORT=10000
-%sCMD %s
-`, nativeRuntimeDefaults(o), nativeEntrypoint(o), start)
+	runtime := fmt.Sprintf("%sENV PORT=10000\n%s", nativeRuntimeDefaults(o), nativeEntrypoint(o))
+	if o.BuildOnly {
+		return base + runtime
+	}
+	return base + runtime + "CMD " + shellJSON(o.StartCommand) + "\n"
 }
 
 // nativeBuildDefaults is the environment Render gives a native runtime at
