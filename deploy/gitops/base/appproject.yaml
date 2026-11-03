@@ -47,3 +47,12 @@ spec:
     - { group: "*", kind: "*" }
   orphanedResources:
     warn: true
+    # Known out-of-band objects (w6/103), so the warning stays meaningful for
+    # anything new. Credentials are installed by deploy.yml and scripts from
+    # CI/.env custody and never live in git (ADR019); bex-ssh carries the
+    # public SSH host for bex-api; CNPG writes its own monitoring ConfigMap.
+    ignore:
+      - { kind: Secret, name: "bex-*" }
+      - { kind: Secret, name: webhook-server-cert }
+      - { kind: ConfigMap, name: bex-ssh }
+      - { kind: ConfigMap, name: cnpg-default-monitoring }
