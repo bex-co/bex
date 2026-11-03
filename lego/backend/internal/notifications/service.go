@@ -778,20 +778,12 @@ func (s *Service) NotifyDeploy(ctx context.Context, n store.DeployNotification) 
 	default:
 		return
 	}
-	policy := n.NotificationsToSend
-	if policy == "" {
-		// Preserve the old notifyOnFail contract for CRs and clients that have
-		// not written the richer policy: it only affects failed deploys.
-		policy = appv1alpha1.NotificationsToSendDefault
-		if kind == deployMailFailed {
-			switch n.NotifyOnFail {
-			case "notify":
-				policy = appv1alpha1.NotificationsToSendAll
-			case "ignore":
-				policy = appv1alpha1.NotificationsToSendNone
-			}
-		}
+	// The legacy notifyOnFail only affects failed deploys.
+	notifyOnFail := ""
+	if kind == deployMailFailed {
+		notifyOnFail = n.NotifyOnFail
 	}
+	policy := failureNotificationPolicy(n.NotificationsToSend, notifyOnFail)
 	s.notifyDeploy(ctx, n.TenantID, n.AppName, kind, policy, deployDetails{
 		deployID:      n.DeployID,
 		commitMessage: n.CommitMessage,

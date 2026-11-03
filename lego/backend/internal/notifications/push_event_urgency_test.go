@@ -89,7 +89,7 @@ func TestProjectedPushUrgencyIsPublished(t *testing.T) {
 		project(fact(string(store.EventFactServerAvailable)), ""),
 		project(fact(string(store.EventFactServiceSuspended)), ""),
 		project(fact(string(store.EventFactServiceResumed)), ""),
-		project(fact(string(store.EventFactJobRunEnded)), store.EventStatusFailed),
+		project(fact(string(store.EventFactCronRunEnded)), store.EventStatusFailed),
 		project(fact(string(store.DatastoreFactPostgresUnavailable)), ""),
 		project(fact(string(store.DatastoreFactPostgresAvailable)), ""),
 		project(fact(string(store.DatastoreFactKeyValueUnhealthy)), ""),
