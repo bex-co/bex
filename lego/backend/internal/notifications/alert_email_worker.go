@@ -412,6 +412,12 @@ func alertEmail(st store.AlertEmailStream, url string) (string, email.Message) {
 	case store.AlertEmailImagePullFailed:
 		title, cta = "Image pull failed", "View events"
 		lead = fmt.Sprintf("%q could not pull its Docker image, so the new version did not start.", name)
+	case store.AlertEmailServiceSuspended:
+		title, cta = "Service suspended", "View events"
+		lead = fmt.Sprintf("We suspended %q because it repeatedly failed to start and become healthy over %s. "+
+			"This is often caused by a configuration error, a bug in the application code, or an undersized instance type. "+
+			"Fix the cause, then resume the service from its Settings page.", name, st.Detail)
+		st.Detail = ""
 	default:
 		title, cta = "Blueprint sync failed", "View Blueprint"
 		lead = fmt.Sprintf("A sync of the Blueprint %q failed. Its resources may not match the Blueprint file.", name)
@@ -468,4 +474,71 @@ func AppNotificationPolicy(c client.Client) ServiceNotificationPolicy {
 		spec := apps.Items[0].Spec
 		return failureNotificationPolicy(spec.NotificationsToSend, spec.NotifyOnFail), nil
 	}
+}
+
+// CrashLoopAlertStore is what CrashLoopNotifier needs; *store.PGStore
+// satisfies it.
+type CrashLoopAlertStore interface {
+	ListAlertEmailRecipientsFor(context.Context, string) ([]store.AlertEmailRecipient, error)
+	EnqueueAlertEmails(context.Context, string, []store.AlertEmailItem, time.Duration, time.Time, string) error
+}
+
+// CrashLoopNotifier emails a workspace that the platform suspended one of its
+// services for a crash loop (w2/m253), through the failure-alert queue. The
+// suspension is a failure notification: a service's notificationsToSend and
+// each member's failure preference apply as for any other failure.
+type CrashLoopNotifier struct {
+	Store  CrashLoopAlertStore
+	Policy ServiceNotificationPolicy
+	// Window is the suspension window, named in the email.
+	Window time.Duration
+}
+
+// NotifyCrashLoopSuspended enqueues the alert. Its source key is the service
+// and the moment its window started, so a retried or raced suspension mails
+// once.
+func (n CrashLoopNotifier) NotifyCrashLoopSuspended(ctx context.Context, tenantID, serviceID, name string, failingSince, at time.Time) error {
+	if n.Store == nil {
+		return nil
+	}
+	policy := appv1alpha1.NotificationsToSendDefault
+	if n.Policy != nil {
+		var err error
+		if policy, err = n.Policy(ctx, tenantID, serviceID); err != nil {
+			return err
+		}
+	}
+	recipients, err := n.Store.ListAlertEmailRecipientsFor(ctx, tenantID)
+	if err != nil {
+		return err
+	}
+	var items []store.AlertEmailItem
+	for _, r := range recipients {
+		if !wantsFailureEmail(policy, r) {
+			continue
+		}
+		items = append(items, store.AlertEmailItem{
+			TenantID: tenantID, Subject: r.Subject,
+			SourceKey:  "crashloop:" + serviceID + ":" + failingSince.UTC().Format(time.RFC3339),
+			ResourceID: serviceID, Event: store.AlertEmailServiceSuspended, ResourceName: name,
+			Detail: windowWords(n.Window), OccurredAt: at,
+		})
+	}
+	if len(items) == 0 {
+		return nil
+	}
+	return n.Store.EnqueueAlertEmails(ctx, "", items, alertEmailWindow, time.Time{}, "")
+}
+
+// windowWords renders a suspension window for the email ("24 hours").
+func windowWords(d time.Duration) string {
+	switch {
+	case d <= 0:
+		return "24 hours"
+	case d == time.Hour:
+		return "1 hour"
+	case d%time.Hour == 0:
+		return fmt.Sprintf("%d hours", int(d/time.Hour))
+	}
+	return d.String()
 }

@@ -336,4 +336,19 @@ func TestAlertEmailStreamLifecycle(t *testing.T) {
 	if got := claim(next); len(got) != 1 || got[0].Attempts != 1 {
 		t.Fatalf("after sweep the pending stream = %+v, want it kept with attempts=1", got)
 	}
+
+	// A worker-raised alert (w2/m253 crash-loop suspension) enqueues without a
+	// cursor and is accepted by the event vocabulary.
+	suspended := item("crashloop", t0)
+	suspended.Event, suspended.ResourceID = store.AlertEmailServiceSuspended, "srv-looping"
+	if err := st.EnqueueAlertEmails(ctx, "", []store.AlertEmailItem{suspended}, window, time.Time{}, ""); err != nil {
+		t.Fatalf("cursor-less enqueue: %v", err)
+	}
+	var watermarkAfter time.Time
+	if err := pool.QueryRow(ctx, `SELECT at FROM alert_email_watermarks WHERE name = 'feed'`).Scan(&watermarkAfter); err != nil {
+		t.Fatal(err)
+	}
+	if !watermarkAfter.Equal(wmAt) {
+		t.Errorf("a cursor-less enqueue moved the feed watermark %v -> %v", wmAt, watermarkAfter)
+	}
 }

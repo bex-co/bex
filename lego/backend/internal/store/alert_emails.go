@@ -36,6 +36,7 @@ const (
 	AlertEmailCronFailed          = "cron_failed"
 	AlertEmailImagePullFailed     = "image_pull_failed"
 	AlertEmailBlueprintSyncFailed = "blueprint_sync_failed"
+	AlertEmailServiceSuspended    = "service_suspended"
 
 	// AlertEmailOccurrenceCap bounds the times a stream keeps (and a digest
 	// lists); pending_count stays exact beyond it.
@@ -91,7 +92,8 @@ type FailedBlueprintSync struct {
 
 func validAlertEmailEvent(event string) bool {
 	switch event {
-	case AlertEmailServerFailed, AlertEmailCronFailed, AlertEmailImagePullFailed, AlertEmailBlueprintSyncFailed:
+	case AlertEmailServerFailed, AlertEmailCronFailed, AlertEmailImagePullFailed, AlertEmailBlueprintSyncFailed,
+		AlertEmailServiceSuspended:
 		return true
 	}
 	return false
@@ -106,6 +108,29 @@ func (s *PGStore) ListAlertEmailRecipients(ctx context.Context) ([]AlertEmailRec
 		LEFT JOIN notification_settings n ON n.tenant_id = m.tenant_id AND n.subject = m.subject
 		WHERE m.kind = 'user'
 		ORDER BY m.tenant_id, m.subject`)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []AlertEmailRecipient
+	for rows.Next() {
+		var r AlertEmailRecipient
+		if err := rows.Scan(&r.TenantID, &r.Subject, &r.DeployFailed); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// ListAlertEmailRecipientsFor is ListAlertEmailRecipients for one workspace.
+func (s *PGStore) ListAlertEmailRecipientsFor(ctx context.Context, tenantID string) ([]AlertEmailRecipient, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT m.tenant_id, m.subject, COALESCE(n.deploy_failed, true)
+		FROM tenant_members m
+		LEFT JOIN notification_settings n ON n.tenant_id = m.tenant_id AND n.subject = m.subject
+		WHERE m.kind = 'user' AND m.tenant_id = $1
+		ORDER BY m.subject`, tenantID)
 	if err != nil {
 		return nil, err
 	}
@@ -138,10 +163,11 @@ func (s *PGStore) EnsureAlertEmailWatermark(ctx context.Context, name string, at
 
 // EnqueueAlertEmails records each failure once per recipient, folds it into
 // that recipient's stream, and advances the named watermark — in one
-// transaction. A first failure (or one after a quiet digest window) is due at
+// transaction. An empty watermark enqueues without moving any cursor (a
+// worker-raised alert, not a tailed source). A first failure (or one after a quiet digest window) is due at
 // once; a failure inside the window after the last mail is due when it closes.
 func (s *PGStore) EnqueueAlertEmails(ctx context.Context, watermark string, items []AlertEmailItem, window time.Duration, at time.Time, key string) error {
-	if at.IsZero() || window <= 0 {
+	if (watermark != "" && at.IsZero()) || window <= 0 {
 		return fmt.Errorf("alert email watermark: %w", ErrInvalid)
 	}
 	for _, item := range items {
@@ -183,9 +209,11 @@ func (s *PGStore) EnqueueAlertEmails(ctx context.Context, watermark string, item
 			item.TenantID, item.Subject, item.SourceKey, item.ResourceID, item.Event,
 			item.ResourceName, item.Detail, item.OccurredAt, AlertEmailOccurrenceCap, window)
 	}
-	// Never let a stale concurrent dispatcher move the durable cursor backward.
-	batch.Queue(`UPDATE alert_email_watermarks SET at = $2, key = $3 WHERE name = $1 AND (at, key) < ($2, $3)`,
-		watermark, at, key)
+	if watermark != "" {
+		// Never let a stale concurrent dispatcher move the durable cursor backward.
+		batch.Queue(`UPDATE alert_email_watermarks SET at = $2, key = $3 WHERE name = $1 AND (at, key) < ($2, $3)`,
+			watermark, at, key)
+	}
 	if err := tx.SendBatch(ctx, batch).Close(); err != nil {
 		return err
 	}

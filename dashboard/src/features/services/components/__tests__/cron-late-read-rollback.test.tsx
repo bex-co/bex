@@ -142,6 +142,7 @@ const link = new ApolloLink(
               displayName: "",
               type: "cron_job",
               suspended: "not_suspended",
+              suspenders: [],
               dashboardUrl: "",
               region: "fsn1",
               url: "",

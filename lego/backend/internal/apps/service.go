@@ -500,6 +500,9 @@ type AppView struct {
 	// FreeHoursSuspended: the suspension is the workspace's spent monthly Free
 	// instance hours (w8/m139), reported as the "billing" suspender.
 	FreeHoursSuspended bool `json:"-"`
+	// CrashLoopSuspended: the platform suspended the service after it failed
+	// to start and become healthy for a whole window (w2/m253).
+	CrashLoopSuspended bool `json:"-"`
 	// Schedule is the cron expression for a cron_job (spec.schedule), empty otherwise.
 	Schedule string `json:"schedule,omitempty"`
 	// Command overrides a cron_job's default entrypoint (spec.command), empty
@@ -1177,6 +1180,7 @@ func view(a *appv1alpha1.App) AppView {
 		Replicas:             a.Spec.Replicas,
 		Suspended:            a.Spec.Suspended,
 		FreeHoursSuspended:   a.Annotations[core.AnnotFreeHoursSuspended] != "",
+		CrashLoopSuspended:   a.Annotations[core.AnnotCrashLoopSuspended] != "",
 		Schedule:             a.Spec.Schedule,
 		Command:              cronCommand(a.Spec),
 		Runs:                 cronRunViews(a.Status.Runs),
@@ -5204,6 +5208,8 @@ func (s *Service) setSuspended(ctx context.Context, name string, suspended bool)
 			a.Spec.Suspended = suspended
 			if !suspended {
 				delete(a.Annotations, core.AnnotFreeHoursSuspended)
+				delete(a.Annotations, core.AnnotCrashLoopSuspended)
+				delete(a.Annotations, core.AnnotCrashLoopObserved)
 			}
 		})
 	if err != nil {

@@ -21,6 +21,9 @@ query Server($id: String!) {
     displayName
     type
     suspended
+    # Who suspended it (Render's suspenders): "user", "billing" (spent Free
+    # instance hours) or "stuck_crashlooping" (w2/m253).
+    suspenders
     dashboardUrl
     # region is the platform placement projected from BEX_REGION (w1/m53); shown
     # read-only in the Settings → General card, hidden when the install sets none.

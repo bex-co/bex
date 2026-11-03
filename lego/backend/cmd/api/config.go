@@ -235,6 +235,10 @@ type Config struct {
 	// FreeInstanceHours is the monthly Free instance-hours allowance per
 	// workspace (BEX_FREE_INSTANCE_HOURS, w8/m139); 0 means Render's 750.
 	FreeInstanceHours float64
+	// CrashLoopSuspendAfter is how long a service must fail to start and become
+	// healthy before it is suspended (BEX_CRASHLOOP_SUSPEND_AFTER, w2/m253);
+	// 0 means Render's 24h.
+	CrashLoopSuspendAfter time.Duration
 
 	AgentMaxLiveSandboxesPerWorkspace  int
 	MaxBlueprintGroupings              int
@@ -525,6 +529,9 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 	// 4h-hang bug this fixes).
 	if hours, err := strconv.ParseFloat(strings.TrimSpace(getenv("BEX_FREE_INSTANCE_HOURS")), 64); err == nil && hours > 0 {
 		cfg.FreeInstanceHours = hours
+	}
+	if after, err := time.ParseDuration(strings.TrimSpace(getenv("BEX_CRASHLOOP_SUSPEND_AFTER"))); err == nil && after > 0 {
+		cfg.CrashLoopSuspendAfter = after
 	}
 	cfg.AgentTurnTimeout = p.zeroableDuration("BEX_AGENT_TURN_TIMEOUT", 30*time.Minute)
 	cfg.AgentMaxLiveSandboxesPerWorkspace = p.zeroableInt("BEX_AGENT_MAX_LIVE_SANDBOXES_PER_WORKSPACE", 5)

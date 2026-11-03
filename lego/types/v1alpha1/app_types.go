@@ -328,6 +328,14 @@ const (
 	ReasonImageRegistryRateLimited = "ImageRegistryRateLimited"
 	ReasonImageRegistryUnavailable = "ImageRegistryUnavailable"
 
+	// ReasonCrashLoopBackOff is the kubelet's verdict for a container that keeps
+	// exiting, passed through as the Ready reason; ReasonHealthCheckFailing is a
+	// running container that never passes its health check. bex-api reads both
+	// as a service failing to start and become healthy (crash-loop suspension,
+	// w2/m253).
+	ReasonCrashLoopBackOff   = "CrashLoopBackOff"
+	ReasonHealthCheckFailing = "HealthCheckFailing"
+
 	// ReasonNodeLost is Ready=False because an instance was lost with its
 	// node — the node went NotReady or away, or Kubernetes evicted the pod for
 	// it — not because the service's own container failed. The control plane
