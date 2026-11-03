@@ -172,3 +172,34 @@ func TestRetiredRecordsPastTheCatchUpWindow(t *testing.T) {
 		t.Fatalf("retired = %+v after compaction, want the 72h-old record pruned", st.retired)
 	}
 }
+
+// w2/m254 t015: a deleted build source still owes its last builds, and only
+// those — a carrier never runs instances, so it records no instance usage.
+func TestRetiredBuildSourceMetersBuildsOnly(t *testing.T) {
+	carrier := store.RetiredUsageResource{ResourceKind: store.ResourceKindService, ResourceID: "bds-c185th5c2rvvnhbfiltg", WorkspaceID: "tea-short",
+		Name: "bds-c185th5c2rvvnhbfiltg", Tier: "starter", CreatedAt: retiredHour.Add(5 * time.Minute), RetiredAt: retiredHour.Add(40 * time.Minute)}
+	st := newMemUsageStore()
+	st.retired = []store.RetiredUsageResource{carrier}
+	prom := retiredProm(t, `pod=~"`+core.CRName(carrier.WorkspaceID, carrier.Name)+`-`)
+	defer prom.Close()
+	svc := &Service{Base: &core.Base{Client: appMeterClient(t, store.App{ID: "srv-live", TenantID: "tea-live", Name: "live"}), Namespace: "default"},
+		Store: st, PromBase: prom.URL}
+
+	svc.rollup(context.Background(), retiredHour.Add(time.Hour+5*time.Second))
+
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	sawBuild := false
+	for _, row := range st.rows {
+		if row.ServiceID != carrier.ResourceID {
+			continue
+		}
+		if row.Kind != store.UsageKindBuildSeconds {
+			t.Errorf("a deleted build source recorded %s usage; it runs builds only", row.Kind)
+		}
+		sawBuild = true
+	}
+	if !sawBuild {
+		t.Error("a deleted build source's last hour of builds was not metered")
+	}
+}

@@ -45,6 +45,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/egressquery"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -55,6 +56,8 @@ import (
 // read for the store's apps list (workspace attribution) and tenant lookup.
 type UsageStore interface {
 	ListApps(ctx context.Context) ([]store.App, error)
+	// Build source carriers (w2/m254): metered for their builds alone.
+	ListBuildSourceCarriers(ctx context.Context) ([]store.App, error)
 	// Deleted resources still owed their final hours (w4/m173).
 	ListRetiredUsageResources(ctx context.Context, since time.Time) ([]store.RetiredUsageResource, error)
 	PruneRetiredUsageResources(ctx context.Context, before time.Time) (int64, error)
@@ -334,7 +337,15 @@ func (s *Service) resolveServiceNames(ctx context.Context, tenantID string, svcs
 	live := map[string]bool{}
 	known := map[string]bool{}
 	if wanted[store.ResourceKindService] {
-		if apps, err := s.Store.ListApps(ctx); err != nil {
+		// A build source's builds bill under its own id (w2/m254), named
+		// like a service.
+		apps, err := s.Store.ListApps(ctx)
+		if err == nil {
+			var carriers []store.App
+			carriers, err = s.Store.ListBuildSourceCarriers(ctx)
+			apps = append(apps, carriers...)
+		}
+		if err != nil {
 			log.Printf("usage: resolve names: list apps: %v", err)
 		} else {
 			known[store.ResourceKindService] = true
@@ -811,6 +822,7 @@ func (s *Service) catchUp(ctx context.Context) {
 	for _, app := range apps {
 		s.catchUpAppThrough(ctx, app, last)
 	}
+	carriers := s.meterBuildSourcesThrough(ctx, last)
 	datastores, err := s.listDatastores(ctx)
 	if err != nil {
 		log.Printf("usage: catch-up: list datastores: %v", err)
@@ -818,7 +830,8 @@ func (s *Service) catchUp(ctx context.Context) {
 	}
 	s.meterDatastoresThrough(ctx, datastores, last)
 	s.meterRetiredThrough(ctx, apps, last)
-	s.reconcileSourceInventory(ctx, apps, datastores, last.Add(time.Hour))
+	// Carriers are metered resources too: their streams stay open.
+	s.reconcileSourceInventory(ctx, append(apps, carriers...), datastores, last.Add(time.Hour))
 }
 
 // rollup processes the window that just closed (the hour ending at t).
@@ -836,6 +849,7 @@ func (s *Service) rollup(ctx context.Context, t time.Time) {
 	for _, app := range apps {
 		s.catchUpAppThrough(ctx, app, window)
 	}
+	carriers := s.meterBuildSourcesThrough(ctx, window)
 	datastores, err := s.listDatastores(ctx)
 	if err != nil {
 		log.Printf("usage: rollup: list datastores: %v", err)
@@ -843,9 +857,25 @@ func (s *Service) rollup(ctx context.Context, t time.Time) {
 	}
 	s.meterDatastoresThrough(ctx, datastores, window)
 	s.meterRetiredThrough(ctx, apps, window)
-	s.reconcileSourceInventory(ctx, apps, datastores, window.Add(time.Hour))
+	s.reconcileSourceInventory(ctx, append(apps, carriers...), datastores, window.Add(time.Hour))
 	log.Printf("usage: rolled up window %s for %d services + %d datastores",
 		window.Format(time.RFC3339), len(apps), len(datastores))
+}
+
+// meterBuildSourcesThrough bills build source builds (w2/m254, ADR097) as
+// Render bills Build Source build minutes. A carrier runs builds only, so it
+// is metered for build_seconds alone; ListApps leaves carriers out.
+// It returns the carriers it metered.
+func (s *Service) meterBuildSourcesThrough(ctx context.Context, last time.Time) []store.App {
+	carriers, err := s.Store.ListBuildSourceCarriers(ctx)
+	if err != nil {
+		log.Printf("usage: list build sources: %v", err)
+		return nil
+	}
+	for _, carrier := range carriers {
+		s.catchUpAppMeterThrough(ctx, carrier, store.UsageKindBuildSeconds, last)
+	}
+	return carriers
 }
 
 // meterDatastoresThrough retains attribution before writing usage. A failed
@@ -927,7 +957,13 @@ func (s *Service) meterRetiredThrough(ctx context.Context, live []store.App, las
 			})
 		} else if !podIdentityReused(r, through, live, retired) {
 			app := store.App{ID: r.ResourceID, TenantID: r.WorkspaceID, Name: r.Name, Tier: r.Tier, CreatedAt: r.CreatedAt}
-			for _, kind := range retiredAppMeterKinds {
+			kinds := retiredAppMeterKinds[:]
+			// A deleted build source still owes its last builds, and only
+			// those: a carrier never runs instances (w2/m254).
+			if k, ok := ids.KindOf(r.ResourceID); ok && k == ids.BuildSource {
+				kinds = []string{store.UsageKindBuildSeconds}
+			}
+			for _, kind := range kinds {
 				s.catchUpAppMeter(ctx, app, kind, floor, through)
 			}
 		}

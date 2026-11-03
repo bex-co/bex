@@ -90,6 +90,18 @@ func TestBuildSourceCarrierRowsPG(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	carriers, err := st.ListBuildSourceCarriers(ctx)
+	if err != nil {
+		t.Fatal(err)
+	}
+	listedCarrier, listedService := false, false
+	for _, c := range carriers {
+		listedCarrier = listedCarrier || c.ID == carrier.ID
+		listedService = listedService || c.ID == web.ID
+	}
+	if !listedCarrier || listedService {
+		t.Errorf("ListBuildSourceCarriers carrier %v service %v, want only carriers", listedCarrier, listedService)
+	}
 	if n, err := st.CountBuildSourcesForTenant(ctx, ws.ID); err != nil || n != 1 {
 		t.Errorf("CountBuildSourcesForTenant = %d (err %v), want the one carrier", n, err)
 	}

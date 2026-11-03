@@ -1184,6 +1184,9 @@ const TypeBuildSource = appv1alpha1.TypeBuildSource
 // build source carrier never reads as a service.
 const serviceAppsOnly = `a.type <> '` + TypeBuildSource + `'`
 
+// buildSourcesOnly is serviceAppsOnly's complement: the carrier rows.
+const buildSourcesOnly = `a.type = '` + TypeBuildSource + `'`
+
 func scanApp(row pgx.Row) (App, error) {
 	var a App
 	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Slug, &a.Type, &a.Repo, &a.Image,
@@ -1259,8 +1262,18 @@ func (s *PGStore) GetEnvironmentProtectedStatus(ctx context.Context, environment
 }
 
 func (s *PGStore) ListApps(ctx context.Context) ([]App, error) {
+	return s.listAppsWhere(ctx, serviceAppsOnly)
+}
+
+// ListBuildSourceCarriers lists every build source carrier row (w2/m254):
+// the usage meter bills their builds, which ListApps leaves out.
+func (s *PGStore) ListBuildSourceCarriers(ctx context.Context) ([]App, error) {
+	return s.listAppsWhere(ctx, buildSourcesOnly)
+}
+
+func (s *PGStore) listAppsWhere(ctx context.Context, where string) ([]App, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+appColumns+` FROM apps a WHERE `+serviceAppsOnly+` ORDER BY a.created_at`)
+		`SELECT `+appColumns+` FROM apps a WHERE `+where+` ORDER BY a.created_at`)
 	if err != nil {
 		return nil, err
 	}
