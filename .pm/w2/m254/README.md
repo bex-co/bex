@@ -1,6 +1,6 @@
 # w2 · m254 — Build Sources: one build feeding several services, as on Render
 
-**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** in progress — t001 done (ADR097); implementation deferred to the end of this drain
+**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** in progress — t001–t006 done
 
 ## Tasks (in order)
 
@@ -11,12 +11,13 @@
 | t003 | REST CRUD for /v1/build-sources — **DONE** | 1.5h | t002 |
 | t004 | Build-time env vars, secret files and env-group links — **DONE** | 1.5h | t003 |
 | t005 | buildSourceId on service create and PATCH — **DONE** | 1h | t003 |
-| t006 | Trigger a build and list builds | 1h | t004, t005 |
+| t006 | Trigger a build and list builds — **DONE** | 1h | t004, t005 |
 | t007 | GraphQL and MCP equivalents | 1h | t006 |
 | t008 | Dashboard: Settings → Build → Source "Update source" dialog | 1.5h | t007 |
 | t013 | Deploys report buildId; deploy and rollback accept a build | 45m | t006 |
 | t014 | POST /v1/build-sources answers 500 after creating the source: PGStore.CreateApp overwrites the bds- id with a srv- id | 45m | t003 |
-| t009 | Render parity | 15m | t008, t013, t014 |
+| t015 | Meter build source build minutes | 1h | t006 |
+| t009 | Render parity | 15m | t008, t013, t014, t015 |
 | t010 | Simplify | 15m | t009 |
 | t011 | Test coverage | 30m | t009 |
 | t012 | Closeout | 10m | t010, t011 |
@@ -48,3 +49,4 @@
 - **t004 (build-time environment):** the twelve env-var / secret-file / env-group routes under `/v1/build-sources/{id}` mount the same handlers as the service routes (`secrets.registerEnvRoutes`, envgroups link/unlink) behind `Base.BuildSourceScope`, which refuses anything but a carrier. Writes are the staged, save-without-deploying ones; `autoDeployGated` keeps every group link or group change from rolling a carrier out. Create seeds `envVars` and `secretFiles`; `envGroupIds` and `serviceIds` on create wait for t005.
 - **t005 (service links):** `buildSourceId` on create (refuses `repo`/`branch`/`image`/`buildFilter`/`runtime`/build commands/`rootDir`/registry credential by name; a native-runtime source requires a `startCommand`, a Docker or image source refuses one; `region` cannot mismatch on a single-region installation), on PATCH (`LinkBuildSource`: only `serviceDetails.envSpecificDetails.startCommand` may ride along; the service's own source is cleared and the link saved source-pending, without deploying) and on the service object. The link stamps `spec.buildSource` with the source's current build, or none until it has built. The operator runs a linked service's `startCommand` through the shell (no repo/image ⇒ not a native-baked launch), which is what a native carrier image built without one needs.
 - **t005 review follow-ups:** (1) a web/private service linked to a Docker or image source does not get image-port detection (`configureNewImageCompatibility` keys on the service's own repo/image), so it falls back to port 10000 — revisit with t006 when the carrier's built image metadata is available; (2) a deploy of a linked service whose source has not built yet holds the prior release (`AwaitingBuildSource`/`holdPendingArtifact`) and its deploy row can stay pending until a build is selected — t006's fan-out selects the first build.
+- **t006 (builds and fan-out):** `POST/GET /v1/build-sources/{id}/builds` and `GET …/builds/{buildId}` replace the named 404s. A build is the carrier's deploy row, and its id is that row's xid under `bld-` (`id.Rekind`), so a get is one indexed lookup. Trigger builds git sources only (Render). When a carrier deploy closes live, the reconciler's `BuildFanout` hands the build to `deploys.BuildSucceeded`. That deploys it (`new_commit`) to each linked service that has auto-deploy on, plus any service still waiting for the source's first build. Every deploy of a linked service selects the source's current build, and a restart keeps the serving build. A deploy from an unbuilt source is refused (`409`), and the build is written only while the row still links that source. Follow-ups: fan-out deploy rows carry no commit or image yet (t013 adds `buildId`); carrier build metering moved to t015.

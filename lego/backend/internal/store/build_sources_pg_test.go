@@ -115,6 +115,19 @@ func TestBuildSourceCarrierRowsPG(t *testing.T) {
 	if got, err := st.GetApp(ctx, api.ID); err != nil || got.BuildSourceID != carrier.ID || got.Image != "" || got.Repo != "" {
 		t.Fatalf("linked row = %+v err=%v, want the link and no source of its own", got, err)
 	}
+	// A deploy selects the source's next build on the linked row only.
+	if err := st.SetAppBuildSourceImage(ctx, api.ID, carrier.ID, "zot/src@sha256:next"); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := st.GetApp(ctx, api.ID); err != nil || got.BuildSourceImage != "zot/src@sha256:next" || got.BuildSourceID != carrier.ID {
+		t.Fatalf("selected build = %+v err=%v", got, err)
+	}
+	if err := st.SetAppBuildSourceImage(ctx, carrier.ID, carrier.ID, "zot/src@sha256:next"); !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("selecting a build on an unlinked row = %v, want not found", err)
+	}
+	if err := st.SetAppBuildSourceImage(ctx, api.ID, "bds-other", "zot/src@sha256:stale"); !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("selecting a build of a source the row no longer links = %v, want not found", err)
+	}
 	if err := st.SetAppBuildSource(ctx, carrier.ID, carrier.ID, ""); !errors.Is(err, store.ErrNotFound) {
 		t.Errorf("linking a carrier = %v, want not found", err)
 	}
