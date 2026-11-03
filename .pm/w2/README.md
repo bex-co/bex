@@ -38,6 +38,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] [066 — Render removed Postgres `parameterOverrides`; keep bex's or retire it?](066.md) ← w2/m251 round-5 drift (needs a user decision)
 - [ ] [067 — The audit log records a workspace payment-method change, as Render's does](067.md) ← w2/m251 round-5 drift
 - [ ] [068 — Scope refusals: Render now names `insufficient_token_scope`; bex answers `INSUFFICIENT_SCOPE`](068.md) ← w2/m251 round-5 drift
+- [ ] [069 — Blueprint create with `existingResources: create_new`](069.md) ← w2/m256 (variant of the shipped `adopt`)
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
 

@@ -41,6 +41,11 @@ type Blueprint struct {
 	LastSyncAt *time.Time `json:"lastSyncAt"`
 	CreatedAt  time.Time  `json:"createdAt"`
 	UpdatedAt  time.Time  `json:"updatedAt"`
+	// ExistingResources is Render's existingResources mode (adopt | create_new)
+	// and ResourceSuffix the create_new suffix (w2/m256). Read by GetBlueprint;
+	// other readers leave them empty, which means adopt with no suffix.
+	ExistingResources string `json:"-"`
+	ResourceSuffix    string `json:"-"`
 	// ExecutionGeneration is the lifecycle fencing counter (w8/m37, migration
 	// 0111): bumped by every admission, disconnect, and explicit
 	// re-creation. Only the Admit/Complete paths populate it; the remaining
@@ -144,11 +149,12 @@ func (s *PGStore) GetBlueprint(ctx context.Context, id, tenantID string) (Bluepr
 	var out Blueprint
 	err := s.Pool.QueryRow(ctx,
 		`SELECT id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
-		        last_sync_at, created_at, updated_at
+		        last_sync_at, created_at, updated_at, existing_resources, resource_suffix
 		 FROM blueprints WHERE id = $1 AND tenant_id = $2 AND status != 'disconnected'`,
 		id, tenantID,
 	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
-		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt)
+		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt,
+		&out.ExistingResources, &out.ResourceSuffix)
 	if err != nil {
 		return Blueprint{}, classify("blueprint", err)
 	}

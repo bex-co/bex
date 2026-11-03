@@ -1979,14 +1979,16 @@ func validateBlueprintEnvVarValues(st parsedStack, values map[string]string) err
 	matched := make(map[string]bool, len(values))
 	for _, svc := range st.services {
 		for _, key := range svc.promptKeys {
-			if _, ok := values[key]; ok {
-				matched[key] = true
+			for _, candidate := range []string{key, BlueprintEnvVarValueKey(svc.req.Name, key)} {
+				if _, ok := values[candidate]; ok {
+					matched[candidate] = true
+				}
 			}
 		}
 	}
 	for key := range values {
 		if !matched[key] {
-			return fmt.Errorf("%w: envVarValues contains %q, which is not a sync:false Blueprint prompt", core.ErrBadRequest, key)
+			return fmt.Errorf("%w: envVarValues contains %q, which is not a sync:false Blueprint prompt", core.ErrBadRequest, strings.ReplaceAll(key, "\x00", "/"))
 		}
 	}
 	return nil
@@ -1997,6 +1999,20 @@ type blueprintParseOverrides struct {
 	branch       string
 	containing   bool // DeployRequest.ContainingSource
 	envVarValues map[string]string
+}
+
+// BlueprintEnvVarValueKey qualifies a sync:false value with the Blueprint
+// service it answers (Render's manual env vars are per service, w2/m256). A
+// qualified value wins over a bare key, which answers every service's prompt.
+func BlueprintEnvVarValueKey(service, key string) string { return service + "\x00" + key }
+
+// envVarValue is service's answer for a sync:false key, qualified first.
+func (o blueprintParseOverrides) envVarValue(service, key string) (string, bool) {
+	if v, ok := o.envVarValues[BlueprintEnvVarValueKey(service, key)]; ok {
+		return v, true
+	}
+	v, ok := o.envVarValues[key]
+	return v, ok
 }
 
 // serviceSource resolves one Git-built declaration's repo and branch. A
@@ -2977,7 +2993,7 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 		// sync:false key without one seeds.
 		value := e.Value
 		if e.Sync != nil && !*e.Sync && !e.hasValue() {
-			value = overrides.envVarValues[e.Key]
+			value, _ = overrides.envVarValue(a.Name, e.Key)
 		}
 		if !core.ValidEnvValue(value) {
 			return nil, serviceEnv{}, atEnvEntry(i, fmt.Errorf("%w: %s envVars[%q]: %s",
@@ -3002,7 +3018,7 @@ func classifyServiceEnv(overrides blueprintParseOverrides, a bexService) ([]appv
 				se.seedLiterals[e.Key] = e.Value
 			} else {
 				se.promptKeys = append(se.promptKeys, e.Key)
-				if value, ok := overrides.envVarValues[e.Key]; ok {
+				if value, ok := overrides.envVarValue(a.Name, e.Key); ok {
 					se.seedLiterals[e.Key] = value
 				}
 			}
