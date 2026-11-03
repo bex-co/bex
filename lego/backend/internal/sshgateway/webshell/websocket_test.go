@@ -24,6 +24,7 @@ import (
 	"net/netip"
 	"net/url"
 	"strings"
+	"sync/atomic"
 	"testing"
 	"time"
 
@@ -502,5 +503,48 @@ func TestWebSocketMidStreamRevocationEndsShell(t *testing.T) {
 	ended := waitEndedSessions(t, st, 1)
 	if len(ended) != 1 || !strings.HasSuffix(ended[0], ":revoked") {
 		t.Fatalf("session audit result = %v, want one entry ending :revoked", ended)
+	}
+}
+
+// w6/102: after the exit frame the server waits for the browser's close reply
+// before dropping the connection, so output still in flight is not reset
+// away (the native SSH twin is w6/096).
+func TestWebSocketWaitsForTheBrowserCloseReply(t *testing.T) {
+	st := &gatewaytest.FakeStore{}
+	srv := httptest.NewServer(newWSGateway(t, st, &gatewaytest.FakeResolver{}, &gatewaytest.FakeExecutor{}).Handler())
+	defer srv.Close()
+	token := mintWS(t, shellticket.Claims{Subject: "user-1", ServiceID: "srv-abcdeabcdeabcdeabcde"})
+	conn, _, err := dialWS(t, srv, token)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer conn.Close()
+	const replyDelay = 300 * time.Millisecond
+	closeSeen := make(chan struct{})
+	conn.SetCloseHandler(func(code int, _ string) error {
+		close(closeSeen)
+		time.Sleep(replyDelay)
+		return conn.WriteControl(websocket.CloseMessage, websocket.FormatCloseMessage(code, ""), time.Now().Add(time.Second))
+	})
+	_ = conn.WriteMessage(websocket.TextMessage, []byte(`{"type":"resize","cols":80,"rows":24}`))
+	var endedBeforeReply atomic.Int32
+	probed := make(chan struct{})
+	go func() {
+		defer close(probed)
+		<-closeSeen
+		time.Sleep(replyDelay / 2)
+		endedBeforeReply.Store(int32(len(st.EndedSessions())))
+	}()
+	for {
+		if _, _, err := conn.ReadMessage(); err != nil {
+			break
+		}
+	}
+	<-probed
+	if ended := waitEndedSessions(t, st, 1); len(ended) != 1 {
+		t.Fatalf("session did not end after the close reply: %v", ended)
+	}
+	if n := endedBeforeReply.Load(); n != 0 {
+		t.Fatalf("session ended (%d rows) before the browser answered the close", n)
 	}
 }
