@@ -4556,8 +4556,8 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Disk deleted",
     description: "Service activity type: persistent disk deleted",
   },
-  "services.eventsTypeDiskRestored": {
-    message: "Disk restored",
+  "services.eventsTypeDiskSnapshotRestored": {
+    message: "Disk snapshot restored",
     description:
       "Service activity type: persistent disk restored from a snapshot",
   },

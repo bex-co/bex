@@ -289,12 +289,14 @@ const (
 	TypeHeadersChanged          = "headers_changed"
 	// Disk lifecycle types match Render's eventTypeParam / webhook enum
 	// (w8/m34): disk_created/disk_deleted — not the earlier bex spellings
-	// disk_attached/disk_detached. TypeDiskRestored is a labeled bex extension
-	// (Render has no restore-from-snapshot event).
+	// disk_attached/disk_detached. A snapshot restore is Render's
+	// disk_snapshot_restored (w2/064; bex called it disk_restored until then —
+	// the type is derived from the verb on read, so older rows answer the new
+	// name too).
 	TypeDiskCreated               = "disk_created"
 	TypeDiskUpdated               = "disk_updated"
 	TypeDiskDeleted               = "disk_deleted"
-	TypeDiskRestored              = "disk_restored"
+	TypeDiskSnapshotRestored      = "disk_snapshot_restored"
 	TypeCustomDomainAdded         = "custom_domain_added"
 	TypeCustomDomainRemoved       = "custom_domain_removed"
 	TypeCustomDomainVerified      = "custom_domain_verified"
@@ -437,7 +439,7 @@ var eventTypes = map[string]string{
 	"apps.AddDisk":                          TypeDiskCreated,
 	"apps.UpdateDisk":                       TypeDiskUpdated,
 	"apps.DeleteDisk":                       TypeDiskDeleted,
-	"apps.RestoreDiskSnapshot":              TypeDiskRestored,
+	"apps.RestoreDiskSnapshot":              TypeDiskSnapshotRestored,
 	"apps.AddDomain":                        TypeCustomDomainAdded,
 	"apps.DeleteDomain":                     TypeCustomDomainRemoved,
 	"apps.VerifyDomain":                     TypeCustomDomainVerified,
@@ -798,7 +800,8 @@ type Details struct {
 	// postgres_cluster_leader_changed (w2/m171): the instance that became
 	// primary — Render's leaderId.
 	LeaderID string
-	// service_disk_usage_high / _recovered (w2/m255): Render's disk details.
+	// service_disk_usage_high / _recovered (w2/m255) and disk_snapshot_restored
+	// (w2/064): Render's disk details.
 	DiskID           string
 	DiskName         string
 	MountPath        string
@@ -1170,8 +1173,11 @@ func view(r store.ServiceEventRow, service string) Event {
 					ev.Details.ResumedByUser = &UserRef{ID: r.Caller}
 				}
 			}
-		case TypeServerRestarted:
+		case TypeServerRestarted, TypeDiskSnapshotRestored:
 			ev.Details.TriggeredByUser = r.Caller
+			if r.DiskID != nil {
+				ev.Details.DiskID = *r.DiskID
+			}
 		case TypePlanChanged:
 			ev.Details.PlanFrom = r.PlanFrom
 			ev.Details.PlanTo = r.PlanTo

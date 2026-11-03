@@ -50,7 +50,7 @@ const EVENT_ICONS: Record<string, LucideIcon> = {
   service_disk_usage_recovered: HardDrive,
   disk_updated: HardDrive,
   disk_deleted: Unplug,
-  disk_restored: History,
+  disk_snapshot_restored: History,
   instance_count_changed: Scale,
   autoscaling_config_changed: Scale,
   autoscaling_started: Scale,

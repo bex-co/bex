@@ -114,8 +114,15 @@ func TestRestoreRequestsTheSnapshotOnTheSpec(t *testing.T) {
 		t.Fatalf("list: %v", err)
 	}
 
+	sink := &captureAuditSink{}
+	svc.Audit = sink
 	if _, err := svc.RestoreDiskSnapshot(context.Background(), diskID, views[0].SnapshotKey); err != nil {
 		t.Fatalf("RestoreDiskSnapshot: %v", err)
+	}
+	// The audit row carries the restored disk: Render's disk_snapshot_restored
+	// requires diskId (w2/064).
+	if len(sink.events) != 1 || sink.events[0].Verb != core.AuditVerbRestoreDiskSnapshot || sink.events[0].DiskID != diskID {
+		t.Fatalf("audit events = %+v, want one %s naming %s", sink.events, core.AuditVerbRestoreDiskSnapshot, diskID)
 	}
 	stored := &appv1alpha1.App{}
 	if err := svc.Client.Get(context.Background(), client.ObjectKey{Namespace: "default", Name: "web"}, stored); err != nil {

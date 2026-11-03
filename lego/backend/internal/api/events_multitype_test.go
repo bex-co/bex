@@ -99,7 +99,7 @@ func TestEventsMultiTypeRESTStillValidatesEveryType(t *testing.T) {
 	for _, bad := range []string{
 		"deploy_ended," + events.TypeEnvVarsChanged, // bex-named, outside Render's enum
 		"deploy_ended,deploy_endd",                  // misspelled
-		events.TypeDiskRestored + ",deploy_ended",   // position does not matter
+		events.TypeServiceMoved + ",deploy_ended",   // position does not matter
 	} {
 		fake.gotFil = store.ServiceEventFilter{}
 		res := do(t, h, "GET", "/v1/services/web/events?type="+bad, testToken, "")
