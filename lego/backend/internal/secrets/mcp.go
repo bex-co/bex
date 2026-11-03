@@ -120,42 +120,42 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "patch_service_environment",
 		Description: "Apply one sparse env-var and secret-file patch without returning secret material; save_only causes no rollout and deploy rolls the service once.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in patchEnvironmentArgs) (*mcp.CallToolResult, EnvironmentPatchResult, error) {
+	}, mcputil.Scoped(s.envScope, func(in patchEnvironmentArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in patchEnvironmentArgs) (*mcp.CallToolResult, EnvironmentPatchResult, error) {
 		result, err := s.PatchEnvironment(ctx, in.ServiceID, EnvironmentPatch{EnvVars: in.EnvVars, SecretFiles: in.SecretFiles, SaveMode: in.SaveMode, ExpectedEnvRevision: in.ExpectedEnvRevision})
 		return nil, result, err
-	})
+	}))
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_env_vars",
 		Description: "List a service's environment variables (key/value), sorted by key.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceEnvArgs) (*mcp.CallToolResult, envVarsResult, error) {
+	}, mcputil.Scoped(s.envScope, func(in serviceEnvArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceEnvArgs) (*mcp.CallToolResult, envVarsResult, error) {
 		vars, err := s.ListEnvVarsPage(ctx, in.ServiceID, in.Cursor, in.Limit)
 		result := envVarsResult{EnvVars: vars}
 		if (in.Limit > 0 || in.Cursor != "") && len(vars) > 0 {
 			result.Cursor = vars[len(vars)-1].Key
 		}
 		return nil, result, err
-	})
+	}))
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_env_var",
 		Description: "Get one environment variable of a service by key (the bare key/value).",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envVarKeyArgs) (*mcp.CallToolResult, EnvVarView, error) {
+	}, mcputil.Scoped(s.envScope, func(in envVarKeyArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in envVarKeyArgs) (*mcp.CallToolResult, EnvVarView, error) {
 		v, err := s.GetEnvVar(ctx, in.ServiceID, in.Key)
 		return nil, v, err
-	})
+	}))
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "update_env_vars",
 		Description: "Replace a service's whole environment-variable set (Render's replace semantics) and return the new set; the service's pods roll to pick up the change.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvVarsArgs) (*mcp.CallToolResult, envVarsResult, error) {
+	}, mcputil.Scoped(s.envScope, func(in setEnvVarsArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvVarsArgs) (*mcp.CallToolResult, envVarsResult, error) {
 		writes := make([]EnvVarView, 0, len(in.EnvVars))
 		for _, v := range in.EnvVars {
 			writes = append(writes, EnvVarView{Key: v.Key, Value: v.Value, Generate: v.GenerateValue})
 		}
 		vars, err := s.SetEnvVars(ctx, in.ServiceID, writes)
 		return nil, envVarsResult{EnvVars: vars}, err
-	})
+	}))
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name: "update_environment_variables",
@@ -169,7 +169,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			DestructiveHint: new(true),
 			OpenWorldHint:   new(true),
 		},
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updateEnvironmentVariablesArgs) (*mcp.CallToolResult, any, error) {
+	}, mcputil.Scoped(s.envScope, func(in updateEnvironmentVariablesArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in updateEnvironmentVariablesArgs) (*mcp.CallToolResult, any, error) {
 		if in.EnvVars == nil { // an explicit null passes the schema's nullable array type
 			return nil, nil, fmt.Errorf("%w: Environment variables are required", core.ErrBadRequest)
 		}
@@ -193,59 +193,59 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 				"Use list_deploys to check on the service's deploys."
 		}
 		return &mcp.CallToolResult{IsError: isError, Content: []mcp.Content{&mcp.TextContent{Text: text}}}, nil, nil
-	})
+	}))
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "set_env_var",
 		Description: "Add or update one environment variable of a service (merged into the existing set, not a replace); the service's pods roll to pick up the change.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
+	}, mcputil.Scoped(s.envScope, func(in setEnvVarArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in setEnvVarArgs) (*mcp.CallToolResult, EnvVarView, error) {
 		v, err := s.SetEnvVar(ctx, in.ServiceID, in.Key, EnvVarWrite{Value: in.Value, GenerateValue: in.GenerateValue})
 		return nil, v, err
-	})
+	}))
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_env_var",
 		Description: "Remove one environment variable from a service by key; the service's pods roll to pick up the change.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in envVarKeyArgs) (*mcp.CallToolResult, deleteEnvVarResult, error) {
+	}, mcputil.Scoped(s.envScope, func(in envVarKeyArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in envVarKeyArgs) (*mcp.CallToolResult, deleteEnvVarResult, error) {
 		err := s.DeleteEnvVar(ctx, in.ServiceID, in.Key)
 		return nil, deleteEnvVarResult{Deleted: err == nil}, err
-	})
+	}))
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_secret_files",
 		Description: "List a service's secret files (names only), sorted by name. Files are mounted read-only at /etc/secrets/<name>.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceEnvArgs) (*mcp.CallToolResult, secretFilesResult, error) {
+	}, mcputil.Scoped(s.envScope, func(in serviceEnvArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in serviceEnvArgs) (*mcp.CallToolResult, secretFilesResult, error) {
 		files, err := s.ListSecretFilesPage(ctx, in.ServiceID, in.Cursor, in.Limit)
 		result := secretFilesResult{SecretFiles: files}
 		if (in.Limit > 0 || in.Cursor != "") && len(files) > 0 {
 			result.Cursor = files[len(files)-1].Name
 		}
 		return nil, result, err
-	})
+	}))
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "get_secret_file",
 		Description: "Get one secret file of a service by name, including its contents.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in secretFileNameArgs) (*mcp.CallToolResult, SecretFileView, error) {
+	}, mcputil.Scoped(s.envScope, func(in secretFileNameArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in secretFileNameArgs) (*mcp.CallToolResult, SecretFileView, error) {
 		f, err := s.GetSecretFile(ctx, in.ServiceID, in.Name)
 		return nil, f, err
-	})
+	}))
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "set_secret_file",
 		Description: "Add or update one secret file of a service (mounted at /etc/secrets/<name>); the service's pods roll to pick up the change.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in setSecretFileArgs) (*mcp.CallToolResult, SecretFileView, error) {
+	}, mcputil.Scoped(s.envScope, func(in setSecretFileArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in setSecretFileArgs) (*mcp.CallToolResult, SecretFileView, error) {
 		f, err := s.SetSecretFile(ctx, in.ServiceID, in.Name, in.Content)
 		return nil, f, err
-	})
+	}))
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_secret_file",
 		Description: "Remove one secret file from a service by name; the service's pods roll to pick up the change.",
-	}, func(ctx context.Context, _ *mcp.CallToolRequest, in secretFileNameArgs) (*mcp.CallToolResult, deleteSecretFileResult, error) {
+	}, mcputil.Scoped(s.envScope, func(in secretFileNameArgs) string { return in.ServiceID }, func(ctx context.Context, _ *mcp.CallToolRequest, in secretFileNameArgs) (*mcp.CallToolResult, deleteSecretFileResult, error) {
 		err := s.DeleteSecretFile(ctx, in.ServiceID, in.Name)
 		return nil, deleteSecretFileResult{Deleted: err == nil}, err
-	})
+	}))
 }
 
 // lastWins turns Render's envVars list into set operations, a later duplicate

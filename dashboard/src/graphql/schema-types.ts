@@ -532,6 +532,17 @@ export type BlueprintVariableCost = {
   reason: Maybe<Scalars['String']['output']>;
 };
 
+export type Build = {
+  __typename: 'Build';
+  buildRun: Maybe<BuildRun>;
+  buildSourceId: Maybe<Scalars['String']['output']>;
+  createdAt: Maybe<Scalars['String']['output']>;
+  cursor: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
+  image: Maybe<BuildImage>;
+  updatedAt: Maybe<Scalars['String']['output']>;
+};
+
 export type BuildDeployEndReason = {
   __typename: 'BuildDeployEndReason';
   buildFailed: Maybe<BuildDeployEndReasonId>;
@@ -554,6 +565,84 @@ export type BuildFilter = {
 export type BuildFilterInput = {
   ignoredPaths?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
   paths?: InputMaybe<Array<InputMaybe<Scalars['String']['input']>>>;
+};
+
+export type BuildImage = {
+  __typename: 'BuildImage';
+  imageUrl: Maybe<Scalars['String']['output']>;
+  ref: Maybe<Scalars['String']['output']>;
+  registryCredentialId: Maybe<Scalars['String']['output']>;
+  sha: Maybe<Scalars['String']['output']>;
+};
+
+export type BuildRun = {
+  __typename: 'BuildRun';
+  buildFinishedAt: Maybe<Scalars['String']['output']>;
+  buildStartedAt: Maybe<Scalars['String']['output']>;
+  commitId: Maybe<Scalars['String']['output']>;
+  id: Maybe<Scalars['String']['output']>;
+  runtime: Maybe<Scalars['String']['output']>;
+  status: Maybe<Scalars['String']['output']>;
+};
+
+export type BuildSource = {
+  __typename: 'BuildSource';
+  createdAt: Maybe<Scalars['String']['output']>;
+  cursor: Maybe<Scalars['String']['output']>;
+  git: Maybe<BuildSourceGit>;
+  id: Maybe<Scalars['String']['output']>;
+  image: Maybe<BuildSourceImage>;
+  name: Maybe<Scalars['String']['output']>;
+  ownerId: Maybe<Scalars['String']['output']>;
+  projectId: Maybe<Scalars['String']['output']>;
+  serviceLinks: Maybe<Array<Maybe<BuildSourceServiceLink>>>;
+  updatedAt: Maybe<Scalars['String']['output']>;
+};
+
+export type BuildSourceGit = {
+  __typename: 'BuildSourceGit';
+  branch: Maybe<Scalars['String']['output']>;
+  buildCommand: Maybe<Scalars['String']['output']>;
+  buildFilter: Maybe<BuildFilter>;
+  dockerContext: Maybe<Scalars['String']['output']>;
+  dockerfilePath: Maybe<Scalars['String']['output']>;
+  region: Maybe<Scalars['String']['output']>;
+  registryCredentialId: Maybe<Scalars['String']['output']>;
+  repoUrl: Maybe<Scalars['String']['output']>;
+  rootDir: Maybe<Scalars['String']['output']>;
+  runtime: Maybe<Scalars['String']['output']>;
+};
+
+export type BuildSourceGitInput = {
+  branch?: InputMaybe<Scalars['String']['input']>;
+  buildCommand?: InputMaybe<Scalars['String']['input']>;
+  buildFilter?: InputMaybe<BuildFilterInput>;
+  dockerContext?: InputMaybe<Scalars['String']['input']>;
+  dockerfilePath?: InputMaybe<Scalars['String']['input']>;
+  region?: InputMaybe<Scalars['String']['input']>;
+  registryCredentialId?: InputMaybe<Scalars['String']['input']>;
+  repoUrl?: InputMaybe<Scalars['String']['input']>;
+  rootDir?: InputMaybe<Scalars['String']['input']>;
+  runtime?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type BuildSourceImage = {
+  __typename: 'BuildSourceImage';
+  imageUrl: Maybe<Scalars['String']['output']>;
+  ownerId: Maybe<Scalars['String']['output']>;
+  registryCredentialId: Maybe<Scalars['String']['output']>;
+};
+
+export type BuildSourceImageInput = {
+  imageUrl?: InputMaybe<Scalars['String']['input']>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  registryCredentialId?: InputMaybe<Scalars['String']['input']>;
+};
+
+export type BuildSourceServiceLink = {
+  __typename: 'BuildSourceServiceLink';
+  id: Maybe<Scalars['String']['output']>;
+  name: Maybe<Scalars['String']['output']>;
 };
 
 export type CapabilityGrant = {
@@ -1306,6 +1395,7 @@ export type Mutation = {
   createBillingCheckoutSession: Maybe<BillingHostedSession>;
   createBillingPortalSession: Maybe<BillingHostedSession>;
   createBlueprint: Maybe<Blueprint>;
+  createBuildSource: Maybe<BuildSource>;
   createDatabase: Maybe<Database>;
   createDatabaseExport: Maybe<DatabaseExport>;
   createDatabaseUser: Maybe<DatabaseUserWithPassword>;
@@ -1327,6 +1417,7 @@ export type Mutation = {
   /** Deletes your own upload that no turn has attached yet. */
   deleteAgentAttachment: Maybe<Scalars['Boolean']['output']>;
   deleteAgentSession: Maybe<Scalars['Boolean']['output']>;
+  deleteBuildSource: Maybe<Scalars['Boolean']['output']>;
   deleteCustomDomain: Maybe<Scalars['Boolean']['output']>;
   deleteDatabase: Maybe<Scalars['Boolean']['output']>;
   /** Request revocation of an additional login role. true means the request was accepted; the role is retired (NOLOGIN, NULL password) on the next reconcile, keeping its grants and owned objects. */
@@ -1447,6 +1538,7 @@ export type Mutation = {
   suspendService: Maybe<Service>;
   syncBlueprint: Maybe<SyncBlueprintResult>;
   terminateSandbox: Scalars['Boolean']['output'];
+  triggerBuild: Maybe<Build>;
   triggerDeploy: Maybe<Deploy>;
   unarchiveAgentSession: Maybe<AgentSession>;
   unlinkEnvGroup: Maybe<Scalars['Boolean']['output']>;
@@ -1454,6 +1546,7 @@ export type Mutation = {
   unregisterNotificationWebPushSubscription: Maybe<Scalars['Boolean']['output']>;
   updateAgentEnvironment: AgentEnvironment;
   updateBlueprint: Maybe<Blueprint>;
+  updateBuildSource: Maybe<BuildSource>;
   updateCronJob: Maybe<Service>;
   updateDatabaseDiskAutoscaling: Maybe<Database>;
   updateDatabaseHighAvailability: Maybe<Database>;
@@ -1610,6 +1703,17 @@ export type MutationCreateBlueprintArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
   path?: InputMaybe<Scalars['String']['input']>;
   repo: Scalars['String']['input'];
+};
+
+
+export type MutationCreateBuildSourceArgs = {
+  envVars?: InputMaybe<Array<InputMaybe<EnvVarInput>>>;
+  git?: InputMaybe<BuildSourceGitInput>;
+  image?: InputMaybe<BuildSourceImageInput>;
+  name: Scalars['String']['input'];
+  ownerId: Scalars['String']['input'];
+  projectId?: InputMaybe<Scalars['String']['input']>;
+  secretFiles?: InputMaybe<Array<InputMaybe<SecretFileInput>>>;
 };
 
 
@@ -1811,6 +1915,11 @@ export type MutationDeleteAgentAttachmentArgs = {
 
 
 export type MutationDeleteAgentSessionArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteBuildSourceArgs = {
   id: Scalars['String']['input'];
 };
 
@@ -2599,6 +2708,11 @@ export type MutationTerminateSandboxArgs = {
 };
 
 
+export type MutationTriggerBuildArgs = {
+  buildSourceId: Scalars['String']['input'];
+};
+
+
 export type MutationTriggerDeployArgs = {
   buildId?: InputMaybe<Scalars['String']['input']>;
   clearCache?: InputMaybe<Scalars['String']['input']>;
@@ -2645,6 +2759,14 @@ export type MutationUpdateBlueprintArgs = {
   name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   path?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationUpdateBuildSourceArgs = {
+  git?: InputMaybe<BuildSourceGitInput>;
+  id: Scalars['String']['input'];
+  image?: InputMaybe<BuildSourceImageInput>;
+  name?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2974,6 +3096,10 @@ export type Query = {
   blueprintPreview: Maybe<BlueprintPreview>;
   blueprintSyncs: Maybe<Array<Maybe<BlueprintSync>>>;
   blueprints: Maybe<Array<Maybe<Blueprint>>>;
+  build: Maybe<Build>;
+  buildSource: Maybe<BuildSource>;
+  buildSources: Maybe<Array<Maybe<BuildSource>>>;
+  builds: Maybe<Array<Maybe<Build>>>;
   cronJobRun: Maybe<CronRun>;
   cronJobRuns: Maybe<Array<Maybe<CronRun>>>;
   customDomain: Maybe<CustomDomain>;
@@ -3191,6 +3317,37 @@ export type QueryBlueprintSyncsArgs = {
 
 export type QueryBlueprintsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryBuildArgs = {
+  buildSourceId: Scalars['String']['input'];
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryBuildSourceArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryBuildSourcesArgs = {
+  createdAfter?: InputMaybe<Scalars['String']['input']>;
+  createdBefore?: InputMaybe<Scalars['String']['input']>;
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
+  name?: InputMaybe<Array<Scalars['String']['input']>>;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  projectId?: InputMaybe<Scalars['String']['input']>;
+  updatedAfter?: InputMaybe<Scalars['String']['input']>;
+  updatedBefore?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryBuildsArgs = {
+  buildSourceId: Scalars['String']['input'];
+  cursor?: InputMaybe<Scalars['String']['input']>;
+  limit?: InputMaybe<Scalars['Int']['input']>;
 };
 
 

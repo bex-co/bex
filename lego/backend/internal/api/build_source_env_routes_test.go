@@ -17,13 +17,16 @@ limitations under the License.
 package api
 
 import (
+	"encoding/json"
 	"fmt"
 	"net/http"
+	"strings"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -59,5 +62,34 @@ func TestBuildSourceEnvironmentRoutesReachOnlyCarriers(t *testing.T) {
 				t.Errorf("%s %s = 404 for a build source: %s", route.method, fmt.Sprintf(route.path, id), res.Body.String())
 			}
 		}
+	}
+}
+
+// w2/m254 t007: GraphQL reaches a build source's build-time environment
+// through the service env verbs with its bds- id as serviceId, while REST's
+// /v1/services routes still never reach a carrier.
+func TestBuildSourceEnvironmentOverGraphQL(t *testing.T) {
+	id := ids.New(ids.BuildSource)
+	carrier := &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: id, Namespace: "default",
+			Labels: map[string]string{store.LabelAppID: id, core.LabelTenant: "tea-a"}},
+		Spec: appv1alpha1.AppSpec{Type: appv1alpha1.TypeBuildSource, Repo: "https://github.com/acme/mono"},
+	}
+	base := &core.Base{Client: fakeClient(eventsApp(), carrier), Namespace: "default", Authz: &fakeChecker{allow: true}}
+	h, _ := serverWith(t, base, Deps{})
+	query := func(serviceID string) string {
+		body, _ := json.Marshal(map[string]string{"query": `{ envVars(serviceId:"` + serviceID + `") { cursor } }`})
+		return do(t, h, "POST", "/graphql", testToken, string(body)).Body.String()
+	}
+	// The secrets store is off in this harness, so reaching the carrier
+	// answers its SECRETS_UNAVAILABLE, as REST's build-source route does.
+	if got := query(id); !strings.Contains(got, "SECRETS_UNAVAILABLE") {
+		t.Errorf("envVars(serviceId: %s) = %s; a build source id reaches its carrier", id, got)
+	}
+	if got := query(ids.New(ids.BuildSource)); !strings.Contains(got, "not found") {
+		t.Errorf("envVars of an unknown build source = %s, want not found", got)
+	}
+	if res := do(t, h, "GET", "/v1/services/"+id+"/env-vars", testToken, ""); res.Code != http.StatusNotFound {
+		t.Errorf("GET /v1/services/%s/env-vars = %d %s, want 404: a service route never reaches a build source", id, res.Code, res.Body.String())
 	}
 }

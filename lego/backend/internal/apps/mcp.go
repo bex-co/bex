@@ -677,6 +677,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	s.registerOnboardingMCP(srv)
 	s.registerDiskTools(srv)
 	s.registerDiskSnapshotTools(srv)
+	s.registerBuildSourceTools(srv)
 }
 
 func (s *Service) registerServiceTools(srv *mcp.Server) {

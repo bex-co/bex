@@ -213,4 +213,5 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		}
 		return nil, toRenderDeploy(d), nil
 	})
+	s.registerBuildTools(srv)
 }
