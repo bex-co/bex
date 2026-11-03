@@ -170,6 +170,7 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/viewer/capabilities":    true,
 	"GET /v1/owners":                 true,
 	"GET /v1/blueprints":             true,
+	"GET /v1/build-sources":          true, // ownerId-scoped list; its can_view gate denies a foreign ownerId (w2/m254)
 	"GET /v1/usage":                  true,
 	"GET /v1/users":                  true,
 	"GET /v1/users/deletion-preview": true, // caller's own identity and memberships only
@@ -227,6 +228,7 @@ var callerScopedRoutes = map[string]bool{
 	"POST /v1/notification-device-subscriptions":   true, // registers only the caller's own device capability
 	"POST /v1/notification-webpush-subscriptions":  true, // registers only the caller's own browser subscription
 	"POST /v1/blueprints":                          true, // creates a new git-connected blueprint; workspace from request context (w2/m62)
+	"POST /v1/build-sources":                       true, // creates in body ownerId's workspace; its can_create gate denies a foreign one (w2/m254)
 	"POST /v1/blueprints/validate":                 true, // validates a posted manifest, no resource
 	"POST /v1/blueprints/preview":                  true, // dry-run fetch+validate; workspace from request context, no resource
 	"POST /v1/blueprints/generate":                 true, // export manifest; each body-named resource is authorized through AuthorizeApp/Database/KeyValue against its own workspace (w8/m22)

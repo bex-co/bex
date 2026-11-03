@@ -69,6 +69,12 @@ func TestBuildSourceCarrierRowsPG(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	if n, err := st.CountBuildSourcesForTenant(ctx, ws.ID); err != nil || n != 1 {
+		t.Errorf("CountBuildSourcesForTenant = %d (err %v), want the one carrier", n, err)
+	}
+	if links, err := st.ListBuildSourceLinks(ctx, carrier.ID); err != nil || len(links) != 1 || links[0].ID != web.ID {
+		t.Errorf("ListBuildSourceLinks = %+v (err %v), want the linked service", links, err)
+	}
 	if n, err := st.CountAppsForTenant(ctx, ws.ID); err != nil || n != 1 {
 		t.Errorf("CountAppsForTenant = %d (err %v), want the one service", n, err)
 	}

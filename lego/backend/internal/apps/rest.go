@@ -777,6 +777,7 @@ const servicesBase = "/v1/services"
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	s.registerCronRunRoutes(mux)
 	s.registerBlueprintRoutes(mux)
+	s.registerBuildSourceRoutes(mux)
 	s.registerNotificationOverrideRoutes(mux)
 	s.registerServiceRoutes(mux)
 	s.registerDomainRoutes(mux)

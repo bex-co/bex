@@ -1559,11 +1559,6 @@ var objectStorageRoutes = []string{
 const buildSourcesNotOffered = "bex does not offer Render Build Sources yet"
 
 var buildSourceRoutes = []string{
-	"GET /v1/build-sources",
-	"POST /v1/build-sources",
-	"GET /v1/build-sources/{buildSourceId}",
-	"PATCH /v1/build-sources/{buildSourceId}",
-	"DELETE /v1/build-sources/{buildSourceId}",
 	"GET /v1/build-sources/{buildSourceId}/builds",
 	"POST /v1/build-sources/{buildSourceId}/builds",
 	"GET /v1/build-sources/{buildSourceId}/builds/{buildId}",
