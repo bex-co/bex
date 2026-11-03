@@ -17,7 +17,7 @@ fails=0
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-PINNED='actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1'
+PINNED='azure/setup-kubectl@829323503d1be3d00ca8346e5391ca0b07a9ab0d # v5.1.0'
 SHA40='3d3c42e5aac5ba805825da76410c181273ba90b1' # the 40-hex commit for v7.0.1
 
 # assert <label> <want-rc> <workflow-body> [expected-stderr-substring]
@@ -189,6 +189,22 @@ assert "main gate only in a comment fails" 1 "$(build_job "always()" "    # if: 
 assert "ANDed main gate on bex-build passes" 0 "$(build_job "github.ref == 'refs/heads/main' && needs.plan.outputs.ok == 'true'")"
 assert "caller passing secrets to a bex-build workflow fails" 1 "$(printf '%s\n  caller:\n    uses: ./.github/workflows/ci.yml\n    secrets: inherit\n' "$(build_job)")" \
   "which runs on bex-build"
+
+# Checkout size (w6/m157): skip /.pm/ or name why the job needs it.
+CHECKOUT='actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1'
+assert "full-tree checkout fails" 1 "$(job_body "bex-ci" "      - uses: $CHECKOUT")" \
+  "actions/checkout must use a sparse-checkout that skips /.pm/"
+assert "sparse checkout skipping .pm passes" 0 "$(job_body "bex-ci" "      - uses: $CHECKOUT
+        with:
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/")"
+assert "named full checkout passes" 0 "$(job_body "bex-ci" "      # full-checkout: gitleaks scans every tracked byte
+      - uses: $CHECKOUT")"
+assert "full-checkout without a reason fails" 1 "$(job_body "bex-ci" "      # full-checkout:
+      - uses: $CHECKOUT")" "actions/checkout must use a sparse-checkout"
 
 pr_job_body() {
   printf 'on:\n  pull_request:\njobs:\n  x:\n    %s\n    runs-on: [self-hosted, Linux, ARM64, %s]\n    steps:\n      - uses: %s' "$1" "${2:-bex-ci}" "$PINNED"

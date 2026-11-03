@@ -36,6 +36,13 @@ jobs:
       BEX_CI_RUN_LIMIT: "100"
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # w6/m157: .pm is 93% of the tree (board evidence); skip it.
+          filter: blob:none
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /*
+            !/.pm/
       - name: Self-test the streak arithmetic
         # The detector's own edge cases (never-passed, cancelled runs mid-streak)
         # are exactly where a naive implementation reports nothing. Prove it
