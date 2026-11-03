@@ -134,12 +134,13 @@ jobs:
       - name: install promtool # TestInstanceSecondsQueryOnPrometheus runs the billing query in Prometheus's engine (w5/m111); same 3.13 LTS line as the production server and gitops.yml
         run: |
           mkdir -p "$RUNNER_TEMP/bin"
-          # Bounded and retried: a stalled GitHub release download held this
-          # step 36 minutes before curl exit 92 (run 39524511518).
-          curl -fsSL --retry 5 --retry-all-errors --retry-delay 15 --connect-timeout 30 --max-time 300 \
-            -o "$RUNNER_TEMP/prometheus.tar.gz" \
-            https://github.com/prometheus/prometheus/releases/download/v3.13.5/prometheus-3.13.5.linux-arm64.tar.gz
-          echo "e705357ffa5b3189e98bf145d044364d75dd994470c706a07731292932b2ee0f  $RUNNER_TEMP/prometheus.tar.gz" | sha256sum -c -
+          # Bounded, resumed and checksum-verified: a stalled download held this
+          # step 36 minutes (run 39524511518), and six restarts from byte zero
+          # each timed out short of the 95 MB tarball (run 41585192817).
+          bash scripts/ci-fetch-verified.sh \
+            https://github.com/prometheus/prometheus/releases/download/v3.13.5/prometheus-3.13.5.linux-arm64.tar.gz \
+            e705357ffa5b3189e98bf145d044364d75dd994470c706a07731292932b2ee0f \
+            "$RUNNER_TEMP/prometheus.tar.gz"
           tar -xzf "$RUNNER_TEMP/prometheus.tar.gz" -C "$RUNNER_TEMP" prometheus-3.13.5.linux-arm64/promtool
           install -m755 -D "$RUNNER_TEMP/prometheus-3.13.5.linux-arm64/promtool" \
             "$RUNNER_TEMP/bin/promtool"

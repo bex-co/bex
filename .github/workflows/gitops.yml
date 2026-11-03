@@ -192,10 +192,12 @@ jobs:
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: install promtool # alerting-rule check + unit tests (w3/m6); matches the explicitly pinned server image
         run: |
-          curl -fsSL --retry 5 --retry-all-errors --connect-timeout 30 --max-time 300 \
-            -o "$RUNNER_TEMP/prometheus.tar.gz" \
-            https://github.com/prometheus/prometheus/releases/download/v3.13.5/prometheus-3.13.5.linux-arm64.tar.gz
-          echo "e705357ffa5b3189e98bf145d044364d75dd994470c706a07731292932b2ee0f  $RUNNER_TEMP/prometheus.tar.gz" | sha256sum -c -
+          # Resumed across attempts: the 95 MB tarball outlasts single attempts
+          # on a slow link (scripts/ci-fetch-verified.sh).
+          bash scripts/ci-fetch-verified.sh \
+            https://github.com/prometheus/prometheus/releases/download/v3.13.5/prometheus-3.13.5.linux-arm64.tar.gz \
+            e705357ffa5b3189e98bf145d044364d75dd994470c706a07731292932b2ee0f \
+            "$RUNNER_TEMP/prometheus.tar.gz"
           tar -xzf "$RUNNER_TEMP/prometheus.tar.gz" -C "$RUNNER_TEMP" prometheus-3.13.5.linux-arm64/promtool
           install -m755 -D "$RUNNER_TEMP/prometheus-3.13.5.linux-arm64/promtool" \
             "$RUNNER_TEMP/bin/promtool"
