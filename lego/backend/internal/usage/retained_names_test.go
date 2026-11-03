@@ -502,3 +502,18 @@ func TestSandboxOnlyNameResolutionSkipsUnrelatedInventory(t *testing.T) {
 		t.Fatalf("sandbox attribution=%+v", rows[0])
 	}
 }
+
+// w2/m254 t015: a build source's build minutes bill under its own name, not
+// as a deleted service.
+func TestBuildSourceUsageCarriesItsName(t *testing.T) {
+	const tenant = "tea-001"
+	carrier := store.App{ID: "bds-c185th5c2rvvnhbfiltg", TenantID: tenant, Name: "bds-c185th5c2rvvnhbfiltg", DisplayName: "Mono", Type: store.TypeBuildSource, Tier: "starter"}
+	st := meteredStore(t, tenant, []store.ResourceDisplayName{{Kind: store.ResourceKindService, ID: carrier.ID}})
+	st.carriers = []store.App{carrier}
+
+	got := namedByID(t, monthToDate(t, svcWithTenant(st, tenant)))
+
+	if svc := got[carrier.ID]; svc.ServiceName != "Mono" || svc.Deleted {
+		t.Errorf("build source usage = %q deleted=%v, want Mono and deleted=false", svc.ServiceName, svc.Deleted)
+	}
+}
