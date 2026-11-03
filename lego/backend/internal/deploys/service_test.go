@@ -98,6 +98,28 @@ type fakeStore struct {
 	facts    []store.ServiceEventFact // InsertServiceEventFact calls, for assertions
 	seenKeys map[string]bool          // source keys already inserted, for idempotency
 	mintIDs  bool                     // mint real dep- ids instead of dep-N, for id-shape callers
+	builds   map[string]string        // appID -> last SetAppBuildSourceImage call
+	links    []store.App              // ListBuildSourceLinks rows (all carriers)
+}
+
+func (f *fakeStore) SetAppBuildSourceImage(_ context.Context, id, _, image string) error {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.builds == nil {
+		f.builds = map[string]string{}
+	}
+	f.builds[id] = image
+	return nil
+}
+
+func (f *fakeStore) ListBuildSourceLinks(_ context.Context, carrierID string) ([]store.App, error) {
+	var out []store.App
+	for _, a := range f.links {
+		if a.BuildSourceID == carrierID {
+			out = append(out, a)
+		}
+	}
+	return out, nil
 }
 
 func newFakeStore() *fakeStore { return &fakeStore{byApp: map[string][]store.Deploy{}} }

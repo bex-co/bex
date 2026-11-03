@@ -18,6 +18,7 @@ package core
 
 import (
 	"context"
+	"strings"
 
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
@@ -102,4 +103,27 @@ func (b *Base) BuildSourceScope(ctx context.Context, id string) (context.Context
 		return ctx, err
 	}
 	return ctx, BuildSourceOrNotFound(app)
+}
+
+// CurrentBuild is a carrier's built image once it has built, else "".
+func CurrentBuild(carrier *appv1alpha1.App) string {
+	if carrier.Status.ActiveRevision == "" {
+		return ""
+	}
+	return carrier.Status.Image
+}
+
+// BuildSourceLinkTo is the link a service deploying from carrier carries: the
+// carrier and its current build.
+func BuildSourceLinkTo(carrier *appv1alpha1.App) *appv1alpha1.BuildSourceLink {
+	return &appv1alpha1.BuildSourceLink{Name: carrier.Name, Image: CurrentBuild(carrier)}
+}
+
+// BuildSourceIDOf is the public id of the build source a linked App deploys
+// from: its carrier is named CRName(tenant, id) (ADR097).
+func BuildSourceIDOf(a *appv1alpha1.App) string {
+	if a.Spec.BuildSource == nil {
+		return ""
+	}
+	return strings.TrimPrefix(a.Spec.BuildSource.Name, a.Labels[LabelTenant]+"-")
 }

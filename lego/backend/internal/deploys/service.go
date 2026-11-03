@@ -488,6 +488,9 @@ type TriggerParams struct {
 	// restart marks a Restart's trigger: CommitID is the live deploy's commit,
 	// not a caller-chosen ref. Unexported, so no surface can set it.
 	restart bool
+	// buildSource is the build a build-source fan-out ships, resolved once
+	// for every linked service; nil resolves the source's current build.
+	buildSource *appv1alpha1.BuildSourceLink
 }
 
 // Trigger starts a fresh deploy (Render's POST .../deploys): bumps
@@ -739,6 +742,16 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 		return DeployView{}, err
 	}
 	appID := appStoreID(a)
+	// A service linked to a build source ships the source's current build
+	// (Render: a deploy picks up the latest build, ADR097); a restart re-runs
+	// the build it is serving.
+	link := p.buildSource
+	if link == nil && !p.restart {
+		var err error
+		if link, err = s.linkedBuild(ctx, a); err != nil {
+			return DeployView{}, err
+		}
+	}
 	// Refresh the private-repo clone credential BEFORE the generation bump: the
 	// build this trigger starts must never run with the previous deploy's
 	// expired installation token. A mint failure fails the trigger loudly —
@@ -784,6 +797,9 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 				return fmt.Errorf("clear rollback image override: %w", err)
 			}
 		}
+		if link != nil {
+			return s.selectLinkedBuild(ctx, appID, core.BuildSourceIDOf(a), link.Image)
+		}
 		return nil
 	}
 	d, err := s.openRelease(ctx, a, appID, rowWrite, func(a *appv1alpha1.App, release int64) error {
@@ -802,6 +818,9 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 			a.Spec.CloneSecret = cloneSecret
 		}
 		a.Spec.ExternalRegistryPullSecret = pullSecret
+		if link != nil {
+			a.Spec.BuildSource = link
+		}
 		// Always write BuildCommit — when the commit resolver succeeds the
 		// immutable SHA becomes the build input so the clone job can verify it
 		// via EXPECTED_COMMIT (finding-1 TOCTOU). Otherwise the original ref

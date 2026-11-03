@@ -685,15 +685,7 @@ func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType str
 	case !native && command != "":
 		return nil, "", fmt.Errorf("%w: build source %s uses a Docker or image runtime, which takes no startCommand", core.ErrBadRequest, id)
 	}
-	return &appv1alpha1.BuildSourceLink{Name: carrier.Name, Image: currentBuild(carrier)}, command, nil
-}
-
-// currentBuild is the carrier's built image once it has built, else "".
-func currentBuild(carrier *appv1alpha1.App) string {
-	if carrier.Status.ActiveRevision == "" {
-		return ""
-	}
-	return carrier.Status.Image
+	return core.BuildSourceLinkTo(carrier), command, nil
 }
 
 func buildSourceLinkImage(link *appv1alpha1.BuildSourceLink) string {
@@ -701,15 +693,6 @@ func buildSourceLinkImage(link *appv1alpha1.BuildSourceLink) string {
 		return ""
 	}
 	return link.Image
-}
-
-// buildSourceIDOf is the public id of the build source a linked App deploys
-// from: its carrier is named CRName(tenant, id) (ADR097).
-func buildSourceIDOf(a *appv1alpha1.App) string {
-	if a.Spec.BuildSource == nil {
-		return ""
-	}
-	return strings.TrimPrefix(a.Spec.BuildSource.Name, a.Labels[core.LabelTenant]+"-")
 }
 
 // LinkBuildSource is Render's PATCH buildSourceId: the service now builds and

@@ -20,8 +20,12 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
 	"net/http"
 	"strings"
+
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -162,6 +166,109 @@ func buildView(carrier *appv1alpha1.App, sourceID string, d DeployView) BuildVie
 	v.BuildRun = &BuildRunView{ID: d.ID, Status: store.BuildRunStatus(d.Status), Runtime: core.EffectiveRuntime(carrier.Spec, carrier.Spec.Type), CommitID: d.CommitID,
 		BuildStartedAt: formatTimePtr(d.StartedAt), BuildFinishedAt: formatTimePtr(d.FinishedAt)}
 	return v
+}
+
+// linkedBuild is the build source link a deploy of linked service a ships:
+// the link with the source's current build selected. nil for a service with
+// no build source.
+func (s *Service) linkedBuild(ctx context.Context, a *appv1alpha1.App) (*appv1alpha1.BuildSourceLink, error) {
+	if a.Spec.BuildSource == nil {
+		return nil, nil
+	}
+	var carrier appv1alpha1.App
+	err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: a.Spec.BuildSource.Name}, &carrier)
+	if apierrors.IsNotFound(err) {
+		return nil, fmt.Errorf("%w: the build source of service %s no longer exists", core.ErrConflict, a.Name)
+	}
+	if err != nil {
+		return nil, fmt.Errorf("read build source of %s: %w", a.Name, err)
+	}
+	link := core.BuildSourceLinkTo(&carrier)
+	if link.Image == "" {
+		return nil, fmt.Errorf("%w: build source %s has not built yet; trigger a build first", core.ErrConflict, core.BuildSourceIDOf(a))
+	}
+	return link, nil
+}
+
+// buildSourceStore is the control-plane store surface linked services need.
+type buildSourceStore interface {
+	SetAppBuildSourceImage(ctx context.Context, id, carrierID, image string) error
+	ListBuildSourceLinks(ctx context.Context, carrierID string) ([]store.App, error)
+}
+
+func (s *Service) buildSourceStore() (buildSourceStore, error) {
+	st, ok := s.Store.(buildSourceStore)
+	if !ok {
+		return nil, fmt.Errorf("%w: build sources need the control plane", core.ErrUnavailable)
+	}
+	return st, nil
+}
+
+// selectLinkedBuild records image as the build linked service appID deploys,
+// in the row the projector owns spec.buildSource from. The write holds only
+// while the row still links carrierID, so a deploy racing a re-link can never
+// pair one source's build with another source.
+func (s *Service) selectLinkedBuild(ctx context.Context, appID, carrierID, image string) error {
+	st, err := s.buildSourceStore()
+	if err != nil {
+		return err
+	}
+	err = st.SetAppBuildSourceImage(ctx, appID, carrierID, image)
+	if errors.Is(err, store.ErrNotFound) {
+		return fmt.Errorf("%w: the service's build source changed during the deploy; deploy again", core.ErrConflict)
+	}
+	return err
+}
+
+// BuildSucceeded deploys a carrier's new build to every service linked to it
+// with auto-deploy on (Render: "services linked to the build source with
+// autodeploy enabled are deployed with the result"), and to any linked service
+// still waiting for the source's first build, whose first deploy this
+// completes. The reconciler calls it when a carrier deploy goes live, with no
+// caller identity; failures are logged per service, never returned. Every
+// service ships b.Image, even if a newer build lands mid fan-out (that build
+// fans out itself); a service already on b.Image is left alone.
+func (s *Service) BuildSucceeded(ctx context.Context, b store.BuiltSource) {
+	fail := func(target string, err error) {
+		log.Printf("deploys: fan out build of %s to %s: %v", b.Carrier, target, err)
+	}
+	if b.Image == "" {
+		return
+	}
+	st, err := s.buildSourceStore()
+	if err != nil {
+		fail("its services", err)
+		return
+	}
+	links, err := st.ListBuildSourceLinks(ctx, b.CarrierID)
+	if err != nil || len(links) == 0 {
+		if err != nil {
+			fail("its services", err)
+		}
+		return
+	}
+	if err := s.RequireBillingMutation(ctx, b.TenantID); err != nil {
+		fail("its services", err)
+		return
+	}
+	link := &appv1alpha1.BuildSourceLink{Name: b.Carrier, Image: b.Image}
+	for _, row := range links {
+		waiting := row.BuildSourceImage == ""
+		if row.Suspended || row.BuildSourceImage == b.Image {
+			continue
+		}
+		var a appv1alpha1.App
+		if err := s.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: store.CRName(row.TenantID, row.Name)}, &a); err != nil {
+			fail(row.ID, err)
+			continue
+		}
+		if (!a.Spec.AutoDeploy && !waiting) || a.Spec.Suspended || a.DeletionTimestamp != nil {
+			continue
+		}
+		if _, err := s.triggerFetched(ctx, core.AppPublicName(&a), &a, TriggerParams{buildSource: link}, store.TriggerNewCommit); err != nil {
+			fail(row.ID, err)
+		}
+	}
 }
 
 type buildWithCursor struct {
