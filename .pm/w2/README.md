@@ -33,12 +33,13 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] **m254** — [Build Sources: one build feeding several services, as on Render](m254/README.md) (13 tasks) ← `/pm-brainstorm for w2` 2026-11-02 #4; Render parity included
 - [ ] **m255** — [Disk usage over 80% notifies, as on Render](m255/README.md) (8 tasks) ← `/pm-brainstorm for w2` 2026-11-02 #5; Render parity included
 - [ ] **m256** — [Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does](m256/README.md) (11 tasks) ← w2/m251 round-5 drift: Render CLI v2.35.0 `ea blueprints create|plan|approve|update`; Render parity included
+- [ ] **m261** — [Blueprint create with `existingResources: create_new`](m261/README.md) (8 tasks) ← promoted from w2/069 2026-11-03; Render parity included (REST/GraphQL/MCP Blueprint create)
 - [x] [064 — Emit Render's `disk_snapshot_restored` instead of bex's `disk_restored`](done/064.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [065 — Blueprint responses carry `ownerId`; Blueprint PATCH accepts `branch`](done/065.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
-- [ ] [066 — Render removed Postgres `parameterOverrides`; keep bex's or retire it?](066.md) ← w2/m251 round-5 drift (needs a user decision)
+- [ ] [066 — Render removed Postgres `parameterOverrides`; keep bex's or retire it?](blocked/066.md) ← w2/m251 round-5 drift — **BLOCKED (user decision: keep it as a signed-off ADR018 extension, or retire it on every surface and say what happens to overrides already applied to running databases)**
 - [x] [067 — The audit log records a workspace payment-method change, as Render's does](done/067.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [068 — Scope refusals: Render now names `insufficient_token_scope`; bex answers `INSUFFICIENT_SCOPE`](done/068.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
-- [ ] [069 — Blueprint create with `existingResources: create_new`](069.md) ← w2/m256 (variant of the shipped `adopt`)
+- [x] [069 — Blueprint create with `existingResources: create_new`](done/069.md) ← w2/m256 (variant of the shipped `adopt`) — **PROMOTED 2026-11-03** to m261
 - [ ] [070 — Audit payment-method changes made in the Stripe-hosted portal](070.md) ← w2/067 follow-up
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
