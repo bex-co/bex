@@ -52,3 +52,10 @@
 
 - **xl node type:** "Wait for cx53 stock". Keep cx53 (€35); do not switch to cpx62 (€153). Until Hetzner restocks fsn1, Pro Plus and Pro Max services stay Pending with the stall reason "no node currently has room for this service's instance…". **Gate:** cx53 stock in fsn1. The worker re-probes (create stopped, delete at once) and, when it succeeds, re-runs t003 for pro-plus.
 - **Pro Ultra:** "Pause Pro Ultra for now". Refuse `pro_ultra` at create and plan change with a clear message (`INSTANCE_TYPE_UNAVAILABLE`), show it disabled in the dashboard picker, and record a temporary ADR018 divergence with the user's sign-off (new task t009). **Release condition:** the Hetzner dedicated vCPU limit is raised to ≥32 (account owner, Hetzner Console → Limits or a support ticket); then remove the pause and re-run t003 for pro-ultra.
+
+## t009 — 2026-11-02 (`bd33b3012`); production check after the deploy
+
+- `tiers.yaml` `paused: true` on pro-ultra (comment: w2/m250, user decision 2026-11-02, release condition). Service create, Blueprint validate/plan/apply and plan changes (REST PATCH/POST, GraphQL `createService`/`updateServicePlan`, MCP `create_web_service`/`update_service`, dry runs) refuse it with 400 `INSTANCE_TYPE_UNAVAILABLE`, params `{plan: "pro_ultra"}`: "\"Pro Ultra\" is temporarily unavailable; choose Pro Max or a smaller instance type." A service already on pro-ultra keeps running, stays priced, and may re-send its own plan. Unknown-plan hints no longer list it.
+- GraphQL `instanceTypes` gained `available` / `unavailableReason`; the dashboard picker and create form show the tier disabled ("Unavailable", reason in tooltip and screen-reader text), never select or submit it, and keep card geometry.
+- ADR018 ("Change instance plan / type" row) records the temporary divergence with the user's sign-off and release condition; ADR030 §11 notes it.
+- Tests: `paused_tier_test.go` (every path, existing-service exemption, pro-max still accepted), types and dashboard tests. Backend real-deps gate, operator `make test`, `make lint` (4 modules), dashboard 5748 tests green.
