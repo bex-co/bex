@@ -43,6 +43,10 @@ export function toServiceView(s: ServiceNode | ServerNode): ServiceView {
     displayName,
     type: s.type ?? "web_service",
     suspended: isSuspended(s.suspended),
+    crashLoopSuspended:
+      "suspenders" in s
+        ? (s.suspenders ?? []).includes("stuck_crashlooping")
+        : false,
     phase: s.phase ?? "",
     url: s.url ?? null,
     internalAddress: "internalAddress" in s ? s.internalAddress || null : null,

@@ -3163,6 +3163,12 @@ const enServices: Record<string, TranslationEntry> = {
       "Resuming your service will bring it back online and start serving traffic again.",
     description: "Settings tab resume section description",
   },
+  "services.resumeCardDescriptionCrashLoop": {
+    message:
+      "We suspended this service because it repeatedly failed to start and become healthy over 24 hours. This is often caused by a configuration error, a bug in the application code, or an undersized instance type. Fix the cause, then resume it to bring it back online.",
+    description:
+      "Settings tab resume section description for a service the platform suspended for a crash loop (stuck_crashlooping)",
+  },
   "services.resumeCardDescriptionCron": {
     message: "Resuming this cron job resumes scheduled runs.",
     description: "Settings tab resume section description for a cron job",

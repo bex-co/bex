@@ -320,9 +320,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"type":        gqlutil.StrField(func(a AppView) any { return a.Type }),
 		"suspended":   gqlutil.StrField(func(a AppView) any { return core.SuspendedEnum(a.Suspended) }),
 		// suspenders lists WHO suspended the service (Render's array; w4/014):
-		// ["user"] while suspended — the suspend verb is bex's only suspend
-		// path — and [] otherwise.
-		"suspenders":   gqlutil.StrsField(func(a AppView) any { return core.SuspendersFor(a.Suspended, a.FreeHoursSuspended) }),
+		// ["user"], ["billing"] (spent Free instance hours) or
+		// ["stuck_crashlooping"] (w2/m253) while suspended, and [] otherwise.
+		"suspenders":   gqlutil.StrsField(func(a AppView) any { return core.SuspendersFor(a.Suspended, a.FreeHoursSuspended, a.CrashLoopSuspended) }),
 		"dashboardUrl": gqlutil.StrField(func(a AppView) any { return a.DashboardURL }),
 		"url":          gqlutil.StrField(func(a AppView) any { return a.URL }),
 		// internalAddress is the private-network "<slug>:<port>" for web/private

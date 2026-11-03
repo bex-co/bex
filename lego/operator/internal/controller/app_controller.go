@@ -172,7 +172,7 @@ const createContainerConfigError = "CreateContainerConfigError"
 
 // crashLoopBackOff is the kubelet's Waiting reason for a container it keeps
 // restarting; stuckPodMessage reuses it as the Ready reason bex-api admits.
-const crashLoopBackOff = "CrashLoopBackOff"
+const crashLoopBackOff = appv1alpha1.ReasonCrashLoopBackOff
 
 // imagePullBackOff is the Ready reason for an image the kubelet cannot pull;
 // ErrImagePull is reported under it too.
@@ -6098,7 +6098,7 @@ func terminalStallMessage(reason, msg string) string {
 // reasonHealthCheckFailing is probeStallMessage's Ready-condition reason. It
 // is also the wire value the control plane projects and the dashboard renders,
 // so it is a contract, not a log string.
-const reasonHealthCheckFailing = "HealthCheckFailing"
+const reasonHealthCheckFailing = appv1alpha1.ReasonHealthCheckFailing
 
 // reasonInvalidImageName is kubelet's Waiting reason for an unparseable image
 // reference, passed through as the Ready-condition reason.

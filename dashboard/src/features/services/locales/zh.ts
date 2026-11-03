@@ -3099,6 +3099,12 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "恢复服务将使其重新上线并开始处理流量。",
     description: "Settings tab resume section description",
   },
+  "services.resumeCardDescriptionCrashLoop": {
+    message:
+      "该服务在 24 小时内反复启动失败、无法变为健康状态，因此已被暂停。常见原因是配置错误、应用代码缺陷或实例规格过小。请先修复问题，再恢复服务使其重新上线。",
+    description:
+      "Settings tab resume section description for a service the platform suspended for a crash loop (stuck_crashlooping)",
+  },
   "services.resumeCardDescriptionCron": {
     message: "恢复此定时任务会恢复计划运行。",
     description: "Settings tab resume section description for a cron job",

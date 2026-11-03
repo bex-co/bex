@@ -46,7 +46,7 @@ func TestFreeHoursSuspensionRules(t *testing.T) {
 
 	svc, _ := newService(nil, freeHoursSuspendedApp("capped", month))
 	v, err := svc.Get(ctx, "capped")
-	if err != nil || !v.Suspended || strings.Join(core.SuspendersFor(v.Suspended, v.FreeHoursSuspended), ",") != "billing" {
+	if err != nil || !v.Suspended || strings.Join(core.SuspendersFor(v.Suspended, v.FreeHoursSuspended, false), ",") != "billing" {
 		t.Fatalf("view = %+v err=%v, want suspended by billing", v, err)
 	}
 	if _, err := svc.Resume(ctx, "capped"); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "Free instance hours") {

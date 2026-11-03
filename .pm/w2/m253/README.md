@@ -1,19 +1,19 @@
 # w2 · m253 — A service that crash-loops for 24 hours is suspended with `stuck_crashlooping`, as on Render
 
-**Worker:** worker2 **Goal:** a service that repeatedly fails to start and become healthy over 24 hours is suspended with Render's `stuck_crashlooping` suspender, its owners are told, and a user resume brings it back. **Status:** todo
+**Worker:** worker2 **Goal:** a service that repeatedly fails to start and become healthy over 24 hours is suspended with Render's `stuck_crashlooping` suspender, its owners are told, and a user resume brings it back. **Status:** in progress — t001–t004, t006–t008 done; t005 (dev-2 walk with a short window) next, then t009
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Decide and record the detection rule | 45m | — |
-| t002 | Operator: detect and suspend with a recorded reason | 1.5h | t001 |
-| t003 | Surface stuck_crashlooping on REST, GraphQL, MCP, events, webhooks and the dashboard | 1h | t002 |
-| t004 | Suspension notice by email and push | 30m | t003, w2/m252/t005 |
+| t001 | Decide and record the detection rule — **DONE** | 45m | — |
+| t002 | Operator: detect and suspend with a recorded reason — **DONE** | 1.5h | t001 |
+| t003 | Surface stuck_crashlooping on REST, GraphQL, MCP, events, webhooks and the dashboard — **DONE** | 1h | t002 |
+| t004 | Suspension notice by email and push — **DONE** | 30m | t003, w2/m252/t005 |
 | t005 | dev-2 walk with a shortened window | 45m | t002 |
-| t006 | Render parity | 15m | t004, t005 |
-| t007 | Simplify | 15m | t006 |
-| t008 | Test coverage | 30m | t006 |
+| t006 | Render parity — **DONE** | 15m | t004, t005 |
+| t007 | Simplify — **DONE** | 15m | t006 |
+| t008 | Test coverage — **DONE** | 30m | t006 |
 | t009 | Closeout | 10m | t007, t008 |
 
 ## Definition of done
@@ -32,3 +32,12 @@
 - **Why now:** it is an unimplemented value of a pinned Render enum; w2/m252 provides the email path for the notice.
 - **Render parity included:** `suspenders`, events, webhooks and the dashboard banner are tenant-facing.
 - **Open design point:** Render does not publish the exact detection rule; t001 records bex's rule in an ADR.
+
+## Work log — 2026-11-03
+
+- **t001:** [ADR096](../../../docs/ADR096-crashloop-suspension.md) (ADR094/095 were taken by concurrent sessions). Rule: Ready `False` on `CrashLoopBackOff`/`HealthCheckFailing` for 24h, measured from the later of Ready's transition and the sweeper's first sighting at the current spec generation (`app.bex.co/crashloop-observed`); excluded: suspended (owner/Free hours/crash loop), Building/Deploying, cron jobs, static sites.
+- **t002 (placement changed):** detection runs in bex-api (`internal/crashloop.Sweeper`, every 5 min), not the operator — the same shape as the Free-hours suspension, because suspension is a `spec.suspended` write plus an annotation that bex-api owns and the operator never writes spec. `BEX_CRASHLOOP_SUSPEND_AFTER` overrides the window (env inventory updated).
+- **Review fixes:** the first draft measured from Ready's transition alone, so a resumed (still broken) service would have been re-suspended within minutes with no new email — the sighting-per-generation rule fixes it (`TestNewGenerationRestartsTheWindow`); the owners are now notified before the suspension is written, so a failed notification suspends nothing (`TestUnnotifiedServiceIsNotSuspended`).
+- **t003/t006:** `suspenders: ["stuck_crashlooping"]` on REST, GraphQL and MCP via `core.SuspendersFor`; a manual resume clears it; the dashboard Resume card explains the cause (en/zh); `CrashLoopBackOff`/`HealthCheckFailing` promoted to `lego/types` reason constants. ADR018 Suspend/Resume and Notifications rows updated.
+- **t004:** `CrashLoopNotifier` enqueues a `service_suspended` failure alert (migration 0178) through w2/m252's queue; push and webhooks get the observed `service_suspended` event as before.
+- **t008:** `internal/crashloop` (window boundary, exclusions, sighting, generation reset, recovery, notify-first), `apps/crash_loop_test.go` (suspenders + resume), notifier unit test, PG test for the cursor-less enqueue and the new event value, dashboard mapping test; full dashboard suite (5749) green.

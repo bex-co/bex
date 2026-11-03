@@ -465,6 +465,9 @@ func main() {
 	// Monthly Free instance hours (w8/m139): warn at 80%, suspend Free web
 	// services when spent, resume at the month boundary.
 	go srv.FreeHours.Run(ctx)
+	// Crash-loop suspension (w2/m253): a service failing to start and become
+	// healthy for 24h is suspended (stuck_crashlooping) and its owners emailed.
+	go srv.CrashLoop.Run(ctx)
 	// Durable Blueprint auto-sync worker (w8/m38): claims intents accepted at
 	// the signed git webhook. No-op unless Blueprints store is wired.
 	go srv.BlueprintAutoSync.Run(ctx)
@@ -1288,6 +1291,7 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	// this fixes).
 	deps.AgentTurnTimeout = cfg.AgentTurnTimeout
 	deps.FreeInstanceHours = cfg.FreeInstanceHours
+	deps.CrashLoopSuspendAfter = cfg.CrashLoopSuspendAfter
 	deps.AgentMaxLiveSandboxesPerWorkspace = cfg.AgentMaxLiveSandboxesPerWorkspace
 	deps.MaxBlueprintGroupings = cfg.MaxBlueprintGroupings
 	deps.ImageCompatibilityWorkspaces = cfg.ImageCompatibilityWorkspaces

@@ -333,11 +333,28 @@ func Suspenders(suspended bool) []string {
 // App leaves the free plan.
 const AnnotFreeHoursSuspended = "app.bex.co/free-hours-suspended"
 
-// SuspendersFor is Suspenders for an App that may be suspended by the Free
-// instance-hours budget rather than by its owner.
-func SuspendersFor(suspended, freeHours bool) []string {
-	if suspended && freeHours {
+// AnnotCrashLoopSuspended marks an App the platform suspended because it
+// failed to start and become healthy for a whole window (w2/m253, Render's
+// "stuck_crashlooping" suspender); its value is the RFC 3339 suspension time.
+// A manual resume clears it.
+const AnnotCrashLoopSuspended = "app.bex.co/crashloop-suspended"
+
+// AnnotCrashLoopObserved records when the crash-loop sweeper first saw an App
+// failing to start at its current spec generation: "<generation>@<RFC 3339>"
+// (w2/m253). A resume or deploy changes the generation and so restarts the
+// window, which the Ready condition alone cannot do (it stays False while a
+// service is suspended, keeping its old transition time).
+const AnnotCrashLoopObserved = "app.bex.co/crashloop-observed"
+
+// SuspendersFor is Suspenders for an App the platform may have suspended
+// rather than its owner: for the spent Free instance-hours budget, or for a
+// crash loop.
+func SuspendersFor(suspended, freeHours, crashLoop bool) []string {
+	switch {
+	case suspended && freeHours:
 		return []string{"billing"}
+	case suspended && crashLoop:
+		return []string{"stuck_crashlooping"}
 	}
 	return Suspenders(suspended)
 }
