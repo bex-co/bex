@@ -1562,18 +1562,6 @@ var buildSourceRoutes = []string{
 	"GET /v1/build-sources/{buildSourceId}/builds",
 	"POST /v1/build-sources/{buildSourceId}/builds",
 	"GET /v1/build-sources/{buildSourceId}/builds/{buildId}",
-	"GET /v1/build-sources/{buildSourceId}/env-vars",
-	"PUT /v1/build-sources/{buildSourceId}/env-vars",
-	"GET /v1/build-sources/{buildSourceId}/env-vars/{envVarKey}",
-	"PUT /v1/build-sources/{buildSourceId}/env-vars/{envVarKey}",
-	"DELETE /v1/build-sources/{buildSourceId}/env-vars/{envVarKey}",
-	"GET /v1/build-sources/{buildSourceId}/secret-files",
-	"PUT /v1/build-sources/{buildSourceId}/secret-files",
-	"GET /v1/build-sources/{buildSourceId}/secret-files/{envVarKey}",
-	"PUT /v1/build-sources/{buildSourceId}/secret-files/{envVarKey}",
-	"DELETE /v1/build-sources/{buildSourceId}/secret-files/{envVarKey}",
-	"POST /v1/build-sources/{buildSourceId}/env-groups/{envGroupId}",
-	"DELETE /v1/build-sources/{buildSourceId}/env-groups/{envGroupId}",
 }
 
 // newSchema merges every feature's GraphQL fragments into the single root Query

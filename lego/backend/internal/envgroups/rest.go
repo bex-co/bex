@@ -237,4 +237,25 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /v1/env-groups/{id}/services/{serviceId}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.UnlinkService(r.Context(), r.PathValue("id"), r.PathValue("serviceId"))
 	}))
+	// A build source's group links (Render's link-env-group-to-build-source,
+	// w2/m254 t004): the service link on the carrier, staged rather than
+	// rolled out (autoDeployGated), resolved through BuildSourceScope so the
+	// route never reaches a service.
+	mux.HandleFunc("POST /v1/build-sources/{buildSourceId}/env-groups/{envGroupId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		ctx, err := s.BuildSourceScope(r.Context(), r.PathValue("buildSourceId"))
+		if err != nil {
+			return nil, err
+		}
+		if err := s.LinkService(ctx, r.PathValue("envGroupId"), r.PathValue("buildSourceId")); err != nil {
+			return nil, err
+		}
+		return s.committedRevealed(ctx)(s.GetEnvGroup(ctx, r.PathValue("envGroupId")))
+	}))
+	mux.HandleFunc("DELETE /v1/build-sources/{buildSourceId}/env-groups/{envGroupId}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		ctx, err := s.BuildSourceScope(r.Context(), r.PathValue("buildSourceId"))
+		if err != nil {
+			return err
+		}
+		return s.UnlinkService(ctx, r.PathValue("envGroupId"), r.PathValue("buildSourceId"))
+	}))
 }

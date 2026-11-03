@@ -322,12 +322,19 @@ func (s *Service) saveContents(ctx context.Context, g store.EnvGroup, op store.E
 // rollLink rolls (or rebuilds) the service one link names. A service that is
 // gone, or no longer mounts the group, answers core.ErrNotFound.
 func (s *Service) rollLink(ctx context.Context, gid, serviceID string, saveMode SaveMode) (skipped bool, err error) {
-	a, err := s.GetApp(ctx, core.RelCanCreate, serviceID)
+	// The id comes from the group's own link set, which may name a build
+	// source (w2/m254).
+	a, err := s.GetApp(core.WithBuildSources(ctx), core.RelCanCreate, serviceID)
 	if err != nil {
 		return false, err
 	}
 	if !mountsGroup(a, gid) {
 		return false, core.ErrNotFound
+	}
+	// A build source reads the group at its next build, which is triggered
+	// separately: a group save (rebuild included) never builds it (Render).
+	if core.IsBuildSource(a) {
+		return true, nil
 	}
 	// A suspended service deploys nothing, so a deploying group save leaves it
 	// pending for its next deploy, like an Auto-Deploy-off service, instead of
