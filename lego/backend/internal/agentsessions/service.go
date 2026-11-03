@@ -1248,6 +1248,13 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[s
 		env["BEX_AGENT_PR_URL"] = record.PRURL
 		env["BEX_AGENT_PR_NUMBER"] = fmt.Sprintf("%d", record.PRNumber)
 	}
+	// ADR095 D6: every session may hand the user files through its Pod-bound
+	// share URL once the attachments store exists; repo-less sessions too.
+	if s.attachmentsEnabled() {
+		if url, err := agentsession.ShareFileURL(s.gitProxyURL(), namespace, record.ID); err == nil {
+			env["BEX_AGENT_SHARE_URL"] = url
+		}
+	}
 	argsJSON, childEnvJSON := agentRuntimeConfig(config.Agent)
 	if argsJSON != "" {
 		env["BEX_AGENT_ARGS"] = argsJSON

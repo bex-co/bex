@@ -252,7 +252,7 @@ func (p *PullRequester) Sync(ctx context.Context, req PullRequestRequest) (respo
 	}
 	// The same live-generation + phase gate as the Git and model mints: a
 	// retained, stale, or cross sandbox cannot open a PR after its turn ended.
-	if !currentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
+	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
 		return PullRequestResponse{}, NewPullRequestError(PullRequestForbidden, "this sandbox is not the session's live sandbox")
 	}
 	// The durable record is the authority; the Pod-label digests the gateway

@@ -26,6 +26,7 @@ import {
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu";
 import { CopyButton } from "@/common/components/copy-button";
+import { SessionFilesButton } from "@/features/agent-sessions/components/session-files-sheet";
 import {
   Tooltip,
   TooltipContent,
@@ -206,6 +207,8 @@ export function SessionDetailHeader({
       </div>
 
       <HeaderPrBadge session={session} />
+
+      <SessionFilesButton sessionId={session.id} />
 
       <OpenInZedButton session={session} />
 

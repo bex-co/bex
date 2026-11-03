@@ -283,6 +283,12 @@ func main() {
 			URL:    envOr("BEX_AGENT_PULL_REQUEST_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalPullRequestPath),
 			Secret: []byte(secret),
 		}
+		// ADR095 D6: the agent shares output files through its Pod-bound share
+		// URL; bex-api stores them as the session's output attachments.
+		credentials.Files = &agentsession.ShareFileClient{
+			URL:    envOr("BEX_AGENT_SHARE_FILE_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalShareFilePath),
+			Secret: []byte(secret),
+		}
 
 		modelAPIURL := envOr("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
 		model.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
@@ -418,6 +424,7 @@ func main() {
 		credentialMux := http.NewServeMux()
 		credentialMux.Handle("GET "+agentsession.GitProxyPath, credentials.Handler())
 		credentialMux.Handle("POST "+agentsession.GitProxyPath, credentials.Handler())
+		credentialMux.Handle("POST "+agentsession.ShareFileProxyPath, credentials.ShareFileHandler())
 		defer startAuxListener("agent git proxy", "agent git proxy", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop, metrics,
 			func(server *http.Server) {
 				server.ReadTimeout = durationEnv("BEX_AGENT_GIT_READ_TIMEOUT", 10*time.Minute)

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useApolloClient, useQuery } from "@apollo/client/react";
+import { useQuery } from "@apollo/client/react";
 import { Download, FileText, Loader2 } from "lucide-react";
 import {
   Dialog,
@@ -8,6 +8,8 @@ import {
   DialogTitle,
 } from "@/common/components/ui/dialog";
 import { formatBytes } from "@/common/lib/format";
+import { cn } from "@/common/lib/utils/utils";
+import { useFreshDownload } from "@/features/agent-sessions/hooks/use-fresh-download";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { AgentAttachmentDocument } from "@/graphql/definitions";
 import {
@@ -21,11 +23,21 @@ import {
  * download card, so no uploaded markup ever renders in the dashboard. Bytes
  * come from a presigned URL on the storage origin (D7).
  */
-export function TurnAttachments({ items }: { items: AttachmentView[] }) {
+export function TurnAttachments({
+  items,
+  align = "end",
+}: {
+  items: AttachmentView[];
+  /** "end" under the user's bubble; "start" for files the agent shared. */
+  align?: "start" | "end";
+}) {
   if (items.length === 0) return null;
   return (
     <ul
-      className="mt-1.5 flex flex-wrap justify-end gap-1.5"
+      className={cn(
+        "mt-1.5 flex flex-wrap gap-1.5",
+        align === "end" ? "justify-end" : "justify-start",
+      )}
       data-testid="turn-attachments"
     >
       {items.map((item) => (
@@ -121,31 +133,7 @@ function FileCard({
   unavailable?: boolean;
 }) {
   const { t } = useTranslations();
-  const client = useApolloClient();
-  const [busy, setBusy] = useState(false);
-  const [failed, setFailed] = useState(unavailable);
-
-  // Always a fresh link: the click may come long after the turn rendered.
-  async function download() {
-    setBusy(true);
-    try {
-      const res = await client.query({
-        query: AgentAttachmentDocument,
-        variables: { id: item.id },
-        fetchPolicy: "network-only",
-      });
-      const url = res.data?.agentAttachment?.downloadUrl;
-      if (!url) throw new Error("no download url");
-      setFailed(false);
-      // The storage origin answers with Content-Disposition: attachment, so
-      // this downloads without leaving the page.
-      window.location.assign(url);
-    } catch {
-      setFailed(true);
-    } finally {
-      setBusy(false);
-    }
-  }
+  const { download, busy, failed } = useFreshDownload(item.id, unavailable);
 
   return (
     <button

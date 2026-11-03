@@ -1186,6 +1186,15 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	if recv == reflect.TypeFor[*deploys.Service]() && m.Name == "PlatformRebuild" {
 		return false
 	}
+	// The agent's share verb (ADR095 D6) is reached only through the internal
+	// :8091 share handler, whose gateway HMAC envelope names a session the
+	// gateway verified from the sandbox Pod; it has no caller identity to
+	// authorize. Its envelope, replay and Pod-binding contracts live in
+	// agentsession/sharefile_test.go and sshgateway/agentcred/sharefile_test.go,
+	// its storage contract in agentsessions/sharefile_test.go.
+	if recv == reflect.TypeFor[*agentsessions.Service]() && m.Name == "ShareFile" {
+		return false
+	}
 	if !declaredMethodsOn(recv)[m.Name] {
 		return false
 	}

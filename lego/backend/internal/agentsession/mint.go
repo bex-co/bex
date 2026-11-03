@@ -59,13 +59,16 @@ var credentialMintPhases = map[string]bool{
 	"creating": true, "running": true, "resuming": true, "redispatching": true,
 }
 
-// currentSandboxCaller binds a gateway-resolved Pod to the exact durable
+// CurrentSandboxCaller binds a gateway-resolved Pod to the exact durable
 // sandbox generation. OpenSandbox names the session pod <sandbox_id>-0; a stale
 // pod from a failed teardown carries the same session labels but a different
 // immutable sandbox id after a redispatch. PodUID remains mandatory as the
 // gateway's Kubernetes-derived identity, while the durable generation match is
 // made through the current sandbox id.
-func currentSandboxCaller(session store.AgentSession, workspace, podName, podUID string) bool {
+//
+// Exported so the ADR095 share verb, served outside this package, applies the
+// same rule as every other gateway verb.
+func CurrentSandboxCaller(session store.AgentSession, workspace, podName, podUID string) bool {
 	return session.WorkspaceID == workspace &&
 		credentialMintPhases[session.Phase] &&
 		session.SandboxID != "" &&
@@ -133,7 +136,7 @@ func (m *Minter) Mint(ctx context.Context, req MintRequest) (response MintRespon
 		}
 		return MintResponse{}, sessErr
 	}
-	if !currentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
+	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
 		return MintResponse{}, ErrForbidden
 	}
 	if err := ValidateBranch(req.Branch); err != nil {

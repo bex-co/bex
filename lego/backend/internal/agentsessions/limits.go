@@ -16,12 +16,16 @@ limitations under the License.
 
 package agentsessions
 
-import "time"
+import (
+	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/agentsession"
+)
 
 // Attachment limits (ADR095 D8). The per-session caps live with the store
 // binding that enforces them (store.MaxAgentSessionAttachments*).
 const (
-	maxAttachmentBytes    = 25 << 20
+	maxAttachmentBytes    = agentsession.MaxShareFileBytes // one cap for uploads and agent shares
 	maxAttachmentsPerTurn = 10
 	attachmentUnboundTTL  = 24 * time.Hour
 	attachmentURLTTL      = 15 * time.Minute
@@ -31,7 +35,7 @@ const (
 	// An MCP upload carries the bytes base64 in the tool call, so it is bounded
 	// well below a streamed upload; reads inline a small image or text file so
 	// an LLM caller sees it without a second fetch (ADR095 D11).
-	maxMCPUploadBytes      = 4 << 20
-	maxInlineImageBytes    = 5 << 20
-	maxInlineTextBytes     = 256 << 10
+	maxMCPUploadBytes   = 4 << 20
+	maxInlineImageBytes = 5 << 20
+	maxInlineTextBytes  = 256 << 10
 )
