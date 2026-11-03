@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"testing"
 
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -66,7 +67,7 @@ func TestImageToGitSourceSaveReadsDockerRuntime(t *testing.T) {
 
 	// A record saved before the fix still reads as its Docker build.
 	legacy := appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Repo: repo, Runtime: "image", Builder: "auto"}
-	if got := effectiveRuntime(legacy, legacy.Type); got != "docker" || buildStrategy(legacy) != buildDockerfile {
+	if got := core.EffectiveRuntime(legacy, legacy.Type); got != "docker" || buildStrategy(legacy) != buildDockerfile {
 		t.Fatalf("legacy runtime = %q strategy %q, want docker", got, buildStrategy(legacy))
 	}
 	// A Dockerfile path is a Dockerfile-build setting, which the legacy record is.
@@ -75,10 +76,10 @@ func TestImageToGitSourceSaveReadsDockerRuntime(t *testing.T) {
 		t.Fatalf("dockerfilePath on the legacy record = %v, want accepted", err)
 	}
 	// Controls: a genuine image and an explicit native Git runtime keep theirs.
-	if got := effectiveRuntime(appv1alpha1.AppSpec{Image: "nginx:1", Runtime: "image"}, appv1alpha1.TypeWebService); got != "image" {
+	if got := core.EffectiveRuntime(appv1alpha1.AppSpec{Image: "nginx:1", Runtime: "image"}, appv1alpha1.TypeWebService); got != "image" {
 		t.Fatalf("genuine image runtime = %q", got)
 	}
-	if got := effectiveRuntime(appv1alpha1.AppSpec{Repo: repo, Runtime: "go", Builder: "native"}, appv1alpha1.TypeWebService); got != "go" {
+	if got := core.EffectiveRuntime(appv1alpha1.AppSpec{Repo: repo, Runtime: "go", Builder: "native"}, appv1alpha1.TypeWebService); got != "go" {
 		t.Fatalf("native runtime = %q", got)
 	}
 }

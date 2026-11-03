@@ -180,3 +180,22 @@ func TestWellFormedAndKindOfRejectJunk(t *testing.T) {
 		t.Error("a shaped id with an unregistered prefix should still be WellFormed")
 	}
 }
+
+func TestRekindKeepsTheXidAndRoundTrips(t *testing.T) {
+	dep := New(Deploy)
+	bld, ok := Rekind(Build, dep)
+	if !ok || !strings.HasPrefix(bld, "bld-") || bld[4:] != dep[4:] {
+		t.Fatalf("Rekind(Build, %s) = %q, %v", dep, bld, ok)
+	}
+	if k, ok := KindOf(bld); !ok || k != Build {
+		t.Errorf("KindOf(%s) = %v, %v; want Build", bld, k, ok)
+	}
+	if back, ok := Rekind(Deploy, bld); !ok || back != dep {
+		t.Errorf("Rekind(Deploy, %s) = %q, %v; want %s", bld, back, ok, dep)
+	}
+	for _, bad := range []string{"", "dep-short", "zzz-c185th5c2rvvnhbfiltg", "web"} {
+		if got, ok := Rekind(Build, bad); ok {
+			t.Errorf("Rekind(Build, %q) = %q, want refused", bad, got)
+		}
+	}
+}

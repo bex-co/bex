@@ -37,6 +37,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -96,6 +97,7 @@ type fakeStore struct {
 	setImage map[string]string        // appID -> last SetAppImage call, for assertions
 	facts    []store.ServiceEventFact // InsertServiceEventFact calls, for assertions
 	seenKeys map[string]bool          // source keys already inserted, for idempotency
+	mintIDs  bool                     // mint real dep- ids instead of dep-N, for id-shape callers
 }
 
 func newFakeStore() *fakeStore { return &fakeStore{byApp: map[string][]store.Deploy{}} }
@@ -130,7 +132,11 @@ func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string
 		}
 	}
 	f.nextID++
-	d := store.Deploy{ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, ClearCache: len(clearCache) > 0 && clearCache[0], Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now}
+	id := fmt.Sprintf("dep-%d", f.nextID)
+	if f.mintIDs {
+		id = ids.New(ids.Deploy)
+	}
+	d := store.Deploy{ID: id, AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, ClearCache: len(clearCache) > 0 && clearCache[0], Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == store.DeployCanceled {
 		d.FinishedAt = &now
 	}
