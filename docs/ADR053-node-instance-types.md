@@ -67,6 +67,20 @@ A fifth pool, **additive**: one always-on cx43 (8 vCPU / 16 GB, €18.49/mo gros
 
 The guard in `clusterapi-validate.sh` pins control-plane and tenant-burst to cx33 and deliberately does **not** constrain this pool's type, so the exception cannot silently spread to the pools whose cost profile the guard exists to protect.
 
+## Serving pools for large tiers — `bex-tenant-xl` and `bex-tenant-xxl` (added 2026-11-02, w2/m250)
+
+Every serving node is a cx33 (4 vCPU / ~7.47 GiB allocatable), so the compute tiers `pro-plus` (4 CPU / 8Gi), `pro-max` (4 CPU / 16Gi) and `pro-ultra` (8 CPU / 32Gi), all Guaranteed, could never schedule on any plan; a Scale customer's services had already failed. Render sells and starts all three. User decision 2026-11-02 ("A, two pools"):
+
+| pool | type | spec | fsn1 €/mo | autoscaler | tiers |
+| --- | --- | --- | --- | --- | --- |
+| `bex-tenant-xl` | cx53 | 16 shared vCPU / 32 GB | 34.99 | min 0 / max 4 | pro-plus, pro-max |
+| `bex-tenant-xxl` | ccx43 | 16 dedicated vCPU / 64 GB | 325.49 | min 0 / max 2 | pro-ultra (no 32 GB node can hold 32Gi after reservations) |
+
+- **Placement:** each pool registers `bex.co/serving-pool=<xl|xxl>:NoSchedule` and the matching label (nodes keep `bex.co/pool=tenant`). `lego/types/tiers/tiers.yaml` names the pool per tier (`servingPool`); the operator gives those tiers' serving, cron, one-off and pre-deploy pods the toleration plus a required node affinity, and admission allows the toleration only on App-owned workloads. Smaller tiers, builds and datastores never land there, so a pool node exists, and is billed, only while such a service runs.
+- **Placement group:** both pools share their own spread group `tenant-large`, because Hetzner caps a spread group at 10 servers and tenant-0's pools can already reach 11.
+- **Guards:** `clusterapi-validate.sh` fails when a tier no longer fits its pool (or `bex-tenant-0`), a pool loses its taint, label, min 0, max or placement group, or its bootstrap template drifts from `bex-tenant-0`. The cx53/ccx43 allocatable values in it are estimates until the first nodes join.
+- **Status (2026-11-02/03):** the autoscaler scales each pool from 0 on a pending pod, but Hetzner refuses both servers: **cx53 has no stock in fsn1** (`resource_unavailable`, as on 2026-08-11 above; cpx62 at €152.99 was creatable, the user chose to wait for cx53) and **ccx43 exceeds the project's dedicated-vCPU limit** (`resource_limit_exceeded`). Until the limit is raised to at least 32, `pro-ultra` is paused at create (ADR018). Until cx53 returns, pro-plus/pro-max services wait with the stall reason "no node currently has room…".
+
 ## Fallback (fsn1 cx stock-out)
 
 If cx33 becomes uncreatable in fsn1 again:
