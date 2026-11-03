@@ -1,6 +1,6 @@
 # w2 · m254 — Build Sources: one build feeding several services, as on Render
 
-**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** in progress — t001–t008, t013–t015 done
+**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** in progress — t001–t008, t013–t015, t017 done; t016 implemented
 
 ## Tasks (in order)
 
@@ -18,7 +18,7 @@
 | t014 | POST /v1/build-sources answers 500 after creating the source: PGStore.CreateApp overwrites the bds- id with a srv- id — **DONE** | 45m | t003 |
 | t015 | Meter build source build minutes — **DONE** | 1h | t006 |
 | t016 | A native-runtime git build source never builds: the operator requires a startCommand the carrier never has — implemented, awaiting production verification | 1h | t006 |
-| t017 | A service linked to a native build source starts like a native service: native-init and bash | 1h | t016 |
+| t017 | A service linked to a native build source starts like a native service: native-init and bash — **DONE** | 1h | t016 |
 | t009 | Render parity | 15m | t008, t013, t014, t015, t016, t017 |
 | t010 | Simplify | 15m | t009 |
 | t011 | Test coverage | 30m | t009 |

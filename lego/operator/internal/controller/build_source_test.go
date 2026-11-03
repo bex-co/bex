@@ -21,6 +21,7 @@ import (
 	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
@@ -257,5 +258,65 @@ func TestNativeBuildSourceDispatchesWithoutAStartCommand(t *testing.T) {
 	}
 	if live.Status.Phase == appv1alpha1.PhaseFailed {
 		t.Fatalf("native carrier failed: %+v", live.Status.Conditions)
+	}
+}
+
+// w2/m254 t017: a service linked to a native build source runs its start
+// command as bash arguments to the image's entrypoint (native-init), and the
+// recorded launch reads back the same way; otherwise it keeps the shell launch.
+func TestServiceLinkedToANativeSourceStartsLikeANativeService(t *testing.T) {
+	const start = "[[ -n $PORT ]] && npm start"
+	app := projectionApp(func(a *appv1alpha1.App) {
+		a.Spec = appv1alpha1.AppSpec{StartCommand: start, BuildSource: &appv1alpha1.BuildSourceLink{Name: "src", Image: "zot/src@sha256:a"}}
+	})
+	p := webParams()
+	p.image, p.launch = "zot/web@sha256:a", launchNativeArgs
+	c := appContainerOf(t, project(app, p))
+	if want := []string{"/bin/bash", "-c", "[[ -n $$PORT ]] && npm start"}; len(c.Command) != 0 || !slices.Equal(c.Args, want) {
+		t.Fatalf("container command %q args %q, want no command and args %q", c.Command, c.Args, want)
+	}
+	rec := m202Record(start, p.image, nil)
+	rec.template.Spec.Containers[0].Args = c.Args
+	if got := rec.launch(app); got != launchNativeArgs {
+		t.Fatalf("recorded launch = %q, want %q", got, launchNativeArgs)
+	}
+	p.launch = launchUnknown
+	if c := appContainerOf(t, project(app, p)); !slices.Equal(c.Command, shellCommand(start)) || len(c.Args) != 0 {
+		t.Fatalf("shell launch: command %q args %q, want the shell override", c.Command, c.Args)
+	}
+}
+
+// Native-args only for the carrier's current native build: a Docker source,
+// an older digest, or a build made before the source switched to native keeps
+// the shell launch, which runs on any image.
+func TestLinkedToNativeSourceOnlyForTheCurrentNativeBuild(t *testing.T) {
+	const current = "zot/src@sha256:new"
+	native := carrierApp("")
+	native.Spec.Runtime, native.Spec.Builder, native.Spec.BuildCommand = "node", "native", "yarn"
+	native.Status.ArtifactImage, native.Status.ArtifactFingerprint = current, desiredAppReleaseIdentity(native.Spec).artifact
+	switched := native.DeepCopy()
+	switched.Name, switched.Status.ArtifactFingerprint = "switched", "built-as-docker"
+	docker := carrierApp("")
+	docker.Name, docker.Spec.Runtime = "dsrc", "docker"
+	docker.Status.ArtifactImage, docker.Status.ArtifactFingerprint = current, desiredAppReleaseIdentity(docker.Spec).artifact
+	linkedTo := func(name, image string) *appv1alpha1.App {
+		a := workerLinkedTo(image)
+		a.Spec.BuildSource.Name = name
+		return a
+	}
+	r, _, _ := buildSourceReconciler(t, linkedTo("src", current), native, switched, docker)
+	for name, tc := range map[string]struct {
+		app  *appv1alpha1.App
+		want bool
+	}{
+		"current native build":             {linkedTo("src", current), true},
+		"an older digest":                  {linkedTo("src", "zot/src@sha256:old"), false},
+		"built before switching to native": {linkedTo("switched", current), false},
+		"a Docker source":                  {linkedTo("dsrc", current), false},
+		"a missing source":                 {linkedTo("gone", current), false},
+	} {
+		if got := r.linkedToNativeSource(context.Background(), tc.app); got != tc.want {
+			t.Errorf("%s: native-args = %v, want %v", name, got, tc.want)
+		}
 	}
 }
