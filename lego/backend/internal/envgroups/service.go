@@ -1142,6 +1142,11 @@ func autoDeployGated(a *appv1alpha1.App) bool {
 	if a == nil {
 		return false
 	}
+	// A build source never deploys from a group change: Render gives it the
+	// group "at build time", and a build is triggered separately (w2/m254).
+	if core.IsBuildSource(a) {
+		return true
+	}
 	return a.Spec.Repo != "" && !a.Spec.AutoDeploy
 }
 
@@ -1253,7 +1258,8 @@ func (s *Service) detach(ctx context.Context, gid, service string) error {
 }
 
 func (s *Service) detachOnce(ctx context.Context, gid, service string) error {
-	a, err := s.GetApp(ctx, core.RelCanCreate, service)
+	// A link may name a build source (w2/m254); its reference must go too.
+	a, err := s.GetApp(core.WithBuildSources(ctx), core.RelCanCreate, service)
 	if errors.Is(err, core.ErrNotFound) {
 		return nil // a since-deleted service just drops from the group
 	}
@@ -1337,7 +1343,9 @@ func (s *Service) validateLinkedServiceEnvironments(ctx context.Context, links [
 	}
 	var incompatible []string
 	for _, serviceID := range links {
-		a, err := s.GetApp(ctx, core.RelCanCreate, serviceID)
+		// Linked build sources (w2/m254) count too: one has no environment,
+		// so a group it links cannot move into one and strand its link.
+		a, err := s.GetApp(core.WithBuildSources(ctx), core.RelCanCreate, serviceID)
 		if errors.Is(err, core.ErrNotFound) {
 			continue
 		}

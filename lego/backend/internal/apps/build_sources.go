@@ -114,11 +114,13 @@ type CreateBuildSourceRequest struct {
 	ProjectID string            `json:"projectId,omitempty"`
 	Git       *BuildSourceGit   `json:"git,omitempty"`
 	Image     *BuildSourceImage `json:"image,omitempty"`
-	// ServiceIDs, EnvVars, SecretFiles and EnvGroupIDs are refused by name
-	// until w2/m254 t004/t005 serve them.
+	// EnvVars and SecretFiles seed the build-time environment, as a service
+	// create seeds its own (w2/m254 t004).
+	EnvVars     []envVarInput     `json:"envVars,omitempty"`
+	SecretFiles []secretFileInput `json:"secretFiles,omitempty"`
+	// ServiceIDs and EnvGroupIDs are refused by name until linking at create
+	// is served (w2/m254 t005); link afterwards.
 	ServiceIDs  []string `json:"serviceIds,omitempty"`
-	EnvVars     []any    `json:"envVars,omitempty"`
-	SecretFiles []any    `json:"secretFiles,omitempty"`
 	EnvGroupIDs []string `json:"envGroupIds,omitempty"`
 }
 
@@ -149,11 +151,18 @@ func (s *Service) CreateBuildSource(ctx context.Context, req CreateBuildSourceRe
 		return BuildSourceView{}, fmt.Errorf("%w: name is required", core.ErrBadRequest)
 	case (req.Git == nil) == (req.Image == nil):
 		return BuildSourceView{}, fmt.Errorf("%w: exactly one of git or image is required", core.ErrBadRequest)
-	case len(req.ServiceIDs) > 0 || len(req.EnvVars) > 0 || len(req.SecretFiles) > 0 || len(req.EnvGroupIDs) > 0:
+	case len(req.ServiceIDs) > 0 || len(req.EnvGroupIDs) > 0:
 		return BuildSourceView{}, core.NewBadRequestError("BUILD_SOURCE_FIELD_UNSUPPORTED",
-			"serviceIds, envVars, secretFiles and envGroupIds are not supported on create yet; create the build source, then link services and set its environment", nil)
+			"serviceIds and envGroupIds are not supported on create yet; create the build source, then link services and env groups", nil)
 	}
-	create := CreateRequest{OwnerID: req.OwnerID, Type: appv1alpha1.TypeBackgroundWorker}
+	env, err := toEnvVars(req.EnvVars)
+	if err != nil {
+		return BuildSourceView{}, err
+	}
+	create := CreateRequest{OwnerID: req.OwnerID, Type: appv1alpha1.TypeBackgroundWorker, Env: env}
+	for _, f := range req.SecretFiles {
+		create.SecretFiles = append(create.SecretFiles, core.SecretFile{Name: f.Name, Content: f.Content})
+	}
 	if g := req.Git; g != nil {
 		if !slices.Contains(buildSourceRuntimes, g.Runtime) {
 			return BuildSourceView{}, fmt.Errorf("%w: git.runtime must be one of %s", core.ErrBadRequest, strings.Join(buildSourceRuntimes, "|"))

@@ -84,29 +84,65 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return s.PatchEnvironment(r.Context(), r.PathValue("id"), in)
 	}))
 
-	mux.HandleFunc("GET "+base+"/{id}/env-vars", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		vars, err := listPaged(r, s.ListEnvVarsPage)
+	s.registerEnvRoutes(mux, envRoutes{base: base, idParam: "id", keyParam: "key", fileParam: "name"})
+	// A build source's build-time environment (Render's /v1/build-sources/{id}
+	// env-vars and secret-files, w2/m254 t004): the same staged writes — saved
+	// without building, as Render does — on the carrier, resolved through
+	// BuildSourceScope so these routes never reach a service.
+	s.registerEnvRoutes(mux, envRoutes{base: "/v1/build-sources", idParam: "buildSourceId", keyParam: "envVarKey", fileParam: "envVarKey",
+		scope: s.BuildSourceScope})
+}
+
+// envRoutes is one mount of the env-var and secret-file routes.
+type envRoutes struct {
+	base, idParam, keyParam, fileParam string
+	// scope, when set, is the context a route acts in on its id (the build
+	// source surface's); nil acts in the request's.
+	scope func(context.Context, string) (context.Context, error)
+}
+
+func (p envRoutes) id(r *http.Request) string { return r.PathValue(p.idParam) }
+
+// scoped wraps a handler so it runs in the mount's scope.
+func (p envRoutes) scoped(next http.HandlerFunc) http.HandlerFunc {
+	if p.scope == nil {
+		return next
+	}
+	return func(w http.ResponseWriter, r *http.Request) {
+		ctx, err := p.scope(r.Context(), p.id(r))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		next(w, r.WithContext(ctx))
+	}
+}
+
+func (s *Service) registerEnvRoutes(mux *http.ServeMux, p envRoutes) {
+	base := p.base
+	mux.HandleFunc("GET "+base+"/{"+p.idParam+"}/env-vars", p.scoped(core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		vars, err := listPaged(p, r, s.ListEnvVarsPage)
 		if err != nil {
 			return nil, err
 		}
 		return toEnvVarList(vars), nil
-	}))
-	mux.HandleFunc("PUT "+base+"/{id}/env-vars", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	})))
+	mux.HandleFunc("PUT "+base+"/{"+p.idParam+"}/env-vars", p.scoped(core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		in, err := core.DecodeBody[[]EnvVarView](r)
 		if err != nil {
 			return nil, err
 		}
-		vars, err := s.SetEnvVars(WithStagedWrite(r.Context()), r.PathValue("id"), in)
+		vars, err := s.SetEnvVars(WithStagedWrite(r.Context()), p.id(r), in)
 		if err != nil {
 			return nil, err
 		}
 		return toEnvVarList(vars), nil
-	}))
+	})))
 	// Render: bare {key,value}, no cursor envelope.
-	mux.HandleFunc("GET "+base+"/{id}/env-vars/{key}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		return s.GetEnvVar(r.Context(), r.PathValue("id"), r.PathValue("key"))
-	}))
-	mux.HandleFunc("PUT "+base+"/{id}/env-vars/{key}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("GET "+base+"/{"+p.idParam+"}/env-vars/{"+p.keyParam+"}", p.scoped(core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.GetEnvVar(r.Context(), p.id(r), r.PathValue(p.keyParam))
+	})))
+	mux.HandleFunc("PUT "+base+"/{"+p.idParam+"}/env-vars/{"+p.keyParam+"}", p.scoped(core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[struct {
 			Value         string `json:"value"`
 			GenerateValue bool   `json:"generateValue"`
@@ -114,17 +150,17 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		if err != nil {
 			return nil, err
 		}
-		return s.SetEnvVar(WithStagedWrite(r.Context()), r.PathValue("id"), r.PathValue("key"), EnvVarWrite{Value: req.Value, GenerateValue: req.GenerateValue})
-	}))
+		return s.SetEnvVar(WithStagedWrite(r.Context()), p.id(r), r.PathValue(p.keyParam), EnvVarWrite{Value: req.Value, GenerateValue: req.GenerateValue})
+	})))
 	// Render: delete => 204.
-	mux.HandleFunc("DELETE "+base+"/{id}/env-vars/{key}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
-		return s.DeleteEnvVar(WithStagedWrite(r.Context()), r.PathValue("id"), r.PathValue("key"))
-	}))
+	mux.HandleFunc("DELETE "+base+"/{"+p.idParam+"}/env-vars/{"+p.keyParam+"}", p.scoped(core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteEnvVar(WithStagedWrite(r.Context()), p.id(r), r.PathValue(p.keyParam))
+	})))
 
-	// Secret files (Render's /v1/services/{id}/secret-files) — names in the
+	// Secret files (Render's /v1/services/{id}/secret-files and /v1/build-sources/{id}/secret-files) — names in the
 	// list, contents on a single GET, same store + roll mechanism as env vars.
-	mux.HandleFunc("GET "+base+"/{id}/secret-files", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		files, err := listPaged(r, s.ListSecretFilesWithContentPage)
+	mux.HandleFunc("GET "+base+"/{"+p.idParam+"}/secret-files", p.scoped(core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		files, err := listPaged(p, r, s.ListSecretFilesWithContentPage)
 		if err != nil {
 			return nil, err
 		}
@@ -133,14 +169,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			out = append(out, secretFileContentWithCursor{SecretFile: f, Cursor: f.Name})
 		}
 		return out, nil
-	}))
+	})))
 	// Render's update-secret-files-for-service: replace the whole set.
-	mux.HandleFunc("PUT "+base+"/{id}/secret-files", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("PUT "+base+"/{"+p.idParam+"}/secret-files", p.scoped(core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		in, err := core.DecodeBody[[]SecretFileView](r)
 		if err != nil {
 			return nil, err
 		}
-		files, err := s.SetSecretFiles(WithStagedWrite(r.Context()), r.PathValue("id"), in)
+		files, err := s.SetSecretFiles(WithStagedWrite(r.Context()), p.id(r), in)
 		if err != nil {
 			return nil, err
 		}
@@ -149,32 +185,32 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			out = append(out, secretFileContentWithCursor{SecretFile: f, Cursor: f.Name})
 		}
 		return out, nil
-	}))
+	})))
 	// Bare {name, content}.
-	mux.HandleFunc("GET "+base+"/{id}/secret-files/{name}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		return s.GetSecretFile(r.Context(), r.PathValue("id"), r.PathValue("name"))
-	}))
+	mux.HandleFunc("GET "+base+"/{"+p.idParam+"}/secret-files/{"+p.fileParam+"}", p.scoped(core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.GetSecretFile(r.Context(), p.id(r), r.PathValue(p.fileParam))
+	})))
 	// Render's add-or-update-secret-file declares 201 as its only success, for
 	// an update too; the pinned client fills its typed result only on 201 (w8/074).
-	mux.HandleFunc("PUT "+base+"/{id}/secret-files/{name}", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+	mux.HandleFunc("PUT "+base+"/{"+p.idParam+"}/secret-files/{"+p.fileParam+"}", p.scoped(core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		req, err := core.DecodeBody[struct {
 			Content string `json:"content"`
 		}](r)
 		if err != nil {
 			return nil, err
 		}
-		return s.SetSecretFile(WithStagedWrite(r.Context()), r.PathValue("id"), r.PathValue("name"), req.Content)
-	}))
+		return s.SetSecretFile(WithStagedWrite(r.Context()), p.id(r), r.PathValue(p.fileParam), req.Content)
+	})))
 	// Render: delete => 204.
-	mux.HandleFunc("DELETE "+base+"/{id}/secret-files/{name}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
-		return s.DeleteSecretFile(WithStagedWrite(r.Context()), r.PathValue("id"), r.PathValue("name"))
-	}))
+	mux.HandleFunc("DELETE "+base+"/{"+p.idParam+"}/secret-files/{"+p.fileParam+"}", p.scoped(core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteSecretFile(WithStagedWrite(r.Context()), p.id(r), r.PathValue(p.fileParam))
+	})))
 }
 
 // listPaged reads one page of a list. Render pages by default (a limit of 20),
 // so an omitted cursor and limit is the first page, not the whole list
 // (w8/191).
-func listPaged[T any](r *http.Request, page func(context.Context, string, string, int) ([]T, error)) ([]T, error) {
+func listPaged[T any](p envRoutes, r *http.Request, page func(context.Context, string, string, int) ([]T, error)) ([]T, error) {
 	after, limit := core.PageParams(r.URL.Query())
-	return page(r.Context(), r.PathValue("id"), after, limit)
+	return page(r.Context(), p.id(r), after, limit)
 }
