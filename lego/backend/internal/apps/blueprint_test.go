@@ -368,7 +368,7 @@ func (f *fakeBlueprintStore) FailBlueprintAutoSyncIntent(_ context.Context, id s
 	return store.ErrNotFound
 }
 
-func (f *fakeBlueprintStore) UpdateBlueprint(_ context.Context, id, tenantID string, name *string, autoSync *bool, bpPath *string, status *string, lastSyncAt *time.Time) (store.Blueprint, error) {
+func (f *fakeBlueprintStore) UpdateBlueprint(_ context.Context, id, tenantID string, name *string, autoSync *bool, bpPath, branch *string, status *string, lastSyncAt *time.Time) (store.Blueprint, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	b, ok := f.blueprints[id]
@@ -383,6 +383,9 @@ func (f *fakeBlueprintStore) UpdateBlueprint(_ context.Context, id, tenantID str
 	}
 	if bpPath != nil {
 		b.Path = *bpPath
+	}
+	if branch != nil {
+		b.Branch = *branch
 	}
 	if status != nil {
 		b.Status = *status

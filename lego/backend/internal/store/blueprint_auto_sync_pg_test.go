@@ -289,10 +289,10 @@ func TestPGBlueprintAutoSyncAdmissionAndApplyRecheckPolicyAndSource(t *testing.T
 			switch change {
 			case "auto-sync":
 				disabled := false
-				_, err = st.UpdateBlueprint(ctx, bp.ID, bp.TenantID, nil, &disabled, nil, nil, nil)
+				_, err = st.UpdateBlueprint(ctx, bp.ID, bp.TenantID, nil, &disabled, nil, nil, nil, nil)
 			case "path":
 				path := "other.yaml"
-				_, err = st.UpdateBlueprint(ctx, bp.ID, bp.TenantID, nil, nil, &path, nil, nil)
+				_, err = st.UpdateBlueprint(ctx, bp.ID, bp.TenantID, nil, nil, &path, nil, nil, nil)
 			case "repository":
 				_, err = st.Pool.Exec(ctx, `UPDATE blueprints SET repo = 'https://github.com/acme/other' WHERE id = $1`, bp.ID)
 			case "branch":

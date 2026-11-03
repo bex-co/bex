@@ -62,7 +62,7 @@ func (f *blueprintFixtureStore) BlueprintWorkspace(_ context.Context, id string)
 	return b.TenantID, nil
 }
 
-func (f *blueprintFixtureStore) UpdateBlueprint(_ context.Context, id, tenantID string, name *string, autoSync *bool, path *string, _ *string, _ *time.Time) (store.Blueprint, error) {
+func (f *blueprintFixtureStore) UpdateBlueprint(_ context.Context, id, tenantID string, name *string, autoSync *bool, path, branch *string, _ *string, _ *time.Time) (store.Blueprint, error) {
 	b, ok := f.rows[id]
 	if !ok || b.TenantID != tenantID {
 		return store.Blueprint{}, fmt.Errorf("blueprint: %w", store.ErrNotFound)
@@ -75,6 +75,9 @@ func (f *blueprintFixtureStore) UpdateBlueprint(_ context.Context, id, tenantID 
 	}
 	if path != nil {
 		b.Path = *path
+	}
+	if branch != nil {
+		b.Branch = *branch
 	}
 	f.rows[id] = b
 	return b, nil
