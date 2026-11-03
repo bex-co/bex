@@ -158,7 +158,7 @@ func (f *fakeStore) CreateDeploy(_ context.Context, appID, trigger, image string
 	if f.mintIDs {
 		id = ids.New(ids.Deploy)
 	}
-	d := store.Deploy{ID: id, AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, ClearCache: len(clearCache) > 0 && clearCache[0], Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now}
+	d := store.Deploy{ID: id, AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, BuildID: commit.BuildID, TriggeredBy: triggeredBy, ClearCache: len(clearCache) > 0 && clearCache[0], Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now}
 	if status == store.DeployCanceled {
 		d.FinishedAt = &now
 	}
@@ -213,7 +213,7 @@ func (f *fakeStore) CreateRollbackDeploy(_ context.Context, appID, image, rollba
 	f.nextID++
 	d := store.Deploy{
 		ID: fmt.Sprintf("dep-%d", f.nextID), AppID: appID, Trigger: "rollback", Image: image, ResolvedImage: image,
-		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, TriggeredBy: triggeredBy, Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now,
+		RollbackOf: rollbackOf, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, BuildID: commit.BuildID, TriggeredBy: triggeredBy, Status: status, OverlapPending: status == store.DeployQueued, CreatedAt: now, UpdatedAt: now,
 	}
 	if status == store.DeployCanceled {
 		d.FinishedAt = &now

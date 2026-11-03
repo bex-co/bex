@@ -22,6 +22,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -207,14 +208,15 @@ func TestBuildSucceededDeploysLinkedAutoDeployServices(t *testing.T) {
 		linkedService(cr("current"), "srv-5", "bds-1", built, true),
 		linkedService(cr("first"), "srv-6", "bds-1", "", false))
 
-	svc.BuildSucceeded(context.Background(), store.BuiltSource{TenantID: tenant, CarrierID: "bds-1", Namespace: "default", Carrier: "bds-1", Image: built})
+	carrierDeploy := ids.New(ids.Deploy)
+	svc.BuildSucceeded(context.Background(), store.BuiltSource{TenantID: tenant, CarrierID: "bds-1", DeployID: carrierDeploy, Namespace: "default", Carrier: "bds-1", Image: built})
 
 	for _, id := range []string{"srv-1", "srv-6"} {
 		if n := len(ds.byApp[id]); n != 1 || ds.byApp[id][0].Trigger != store.TriggerNewCommit {
 			t.Fatalf("%s deploys = %+v, want one new_commit deploy", id, ds.byApp[id])
 		}
-		if ds.builds[id] != built {
-			t.Errorf("%s row build = %q, want %s", id, ds.builds[id], built)
+		if ds.builds[id] != built || ds.byApp[id][0].BuildID != BuildID(carrierDeploy) {
+			t.Errorf("%s row build = %q, deploy buildId %q; want %s from %s", id, ds.builds[id], ds.byApp[id][0].BuildID, built, BuildID(carrierDeploy))
 		}
 	}
 	if got := getApp(t, cl, cr("web")).Spec.BuildSource.Image; got != built {
@@ -224,5 +226,92 @@ func TestBuildSucceededDeploysLinkedAutoDeployServices(t *testing.T) {
 		if len(ds.byApp[id]) != 0 {
 			t.Errorf("%s was deployed: %+v", id, ds.byApp[id])
 		}
+	}
+}
+
+func codeOf(err error) string {
+	var coded *core.CodedError
+	if errors.As(err, &coded) {
+		return coded.Code
+	}
+	return ""
+}
+
+// A deploy of a linked service records the build it ships (Render's
+// deploy.buildId); buildId deploys an older succeeded build, and refuses an
+// unknown or unsucceeded one with Render's codes.
+func TestLinkedDeploysCarryAndAcceptABuildID(t *testing.T) {
+	ds := newFakeStore()
+	ds.mintIDs = true
+	ctx := context.Background()
+	old, _ := ds.CreateDeploy(ctx, "bds-1", store.TriggerAPI, "", 1, store.CommitInfo{}, "")
+	failed, _ := ds.CreateDeploy(ctx, "bds-1", store.TriggerAPI, "", 2, store.CommitInfo{}, "")
+	live, _ := ds.CreateDeploy(ctx, "bds-1", store.TriggerAPI, "", 3, store.CommitInfo{}, "")
+	for i, row := range ds.byApp["bds-1"] {
+		switch row.ID {
+		case old.ID:
+			row.Status, row.ResolvedImage = store.DeployDeactivated, "zot/src@sha256:old"
+		case failed.ID:
+			row.Status = store.DeployBuildFailed
+		case live.ID:
+			row.Status, row.ResolvedImage = store.DeployLive, "zot/src@sha256:new"
+		}
+		ds.byApp["bds-1"][i] = row
+	}
+	svc, cl := newService(ds, builtCarrier("bds-1", "zot/src@sha256:new"), linkedService("web", "srv-1", "bds-1", "", false), sampleApp("api", "srv-2"))
+
+	d, err := svc.Trigger(ctx, "web", TriggerParams{})
+	if err != nil || d.BuildID != BuildID(live.ID) || ds.byApp["srv-1"][0].BuildID != BuildID(live.ID) {
+		t.Fatalf("deploy = %+v, %v; want buildId %s on the view and the row", d, err, BuildID(live.ID))
+	}
+	d, err = svc.Trigger(ctx, "web", TriggerParams{BuildID: BuildID(old.ID)})
+	if err != nil || d.BuildID != BuildID(old.ID) || getApp(t, cl, "web").Spec.BuildSource.Image != "zot/src@sha256:old" {
+		t.Fatalf("deploy of the older build = %+v, %v (image %s)", d, err, getApp(t, cl, "web").Spec.BuildSource.Image)
+	}
+
+	for _, tc := range []struct {
+		name, service string
+		p             TriggerParams
+		code          string
+		sentinel      error
+	}{
+		{"unknown build", "web", TriggerParams{BuildID: BuildID(ids.New(ids.Deploy))}, buildNotFoundCode, core.ErrNotFound},
+		{"not a build id", "web", TriggerParams{BuildID: old.ID}, buildNotFoundCode, core.ErrNotFound},
+		{"failed build", "web", TriggerParams{BuildID: BuildID(failed.ID)}, buildNotSucceededCode, core.ErrConflict},
+		{"with commitId", "web", TriggerParams{BuildID: BuildID(old.ID), CommitID: "abc"}, "", core.ErrBadRequest},
+		{"with deployMode", "web", TriggerParams{BuildID: BuildID(old.ID), DeployMode: "build_and_deploy"}, "", core.ErrBadRequest},
+		{"unlinked service", "api", TriggerParams{BuildID: BuildID(old.ID)}, "", core.ErrBadRequest},
+	} {
+		_, err := svc.Trigger(ctx, tc.service, tc.p)
+		if !errors.Is(err, tc.sentinel) || codeOf(err) != tc.code {
+			t.Errorf("%s: err = %v (code %q), want %v with code %q", tc.name, err, codeOf(err), tc.sentinel, tc.code)
+		}
+	}
+	if n := len(ds.byApp["srv-1"]); n != 2 {
+		t.Errorf("web deploys = %d, want 2 (refusals open none)", n)
+	}
+}
+
+// A rollback to a deploy that shipped a build reports that build too.
+func TestRollbackCarriesTheRestoredBuildID(t *testing.T) {
+	ds := newFakeStore()
+	ctx := context.Background()
+	first, _ := ds.CreateDeploy(ctx, "srv-1", "create", "web:v1", 1, store.CommitInfo{}, "")
+	if won, err := ds.CloseDeploy(ctx, first.ID, store.DeployLive, "web:v1"); err != nil || !won {
+		t.Fatalf("close first live: won=%v err=%v", won, err)
+	}
+	buildID := BuildID(ids.New(ids.Deploy))
+	ds.byApp["srv-1"][0].BuildID = buildID
+	bad, _ := ds.CreateDeploy(ctx, "srv-1", "api", "web:bad", 2, store.CommitInfo{}, "")
+	if won, err := ds.CloseDeploy(ctx, bad.ID, store.DeployUpdateFailed, ""); err != nil || !won {
+		t.Fatalf("close bad failed: won=%v err=%v", won, err)
+	}
+	app := sampleApp("web", "srv-1")
+	app.Spec.Image = "web:bad"
+	svc, _ := newService(ds, app)
+
+	rolled, err := svc.Rollback(ctx, "web", first.ID)
+	if err != nil || rolled.BuildID != buildID || ds.byApp["srv-1"][0].BuildID != buildID {
+		t.Fatalf("rollback = %+v, %v; want buildId %s on the view and the row", rolled, err, buildID)
 	}
 }

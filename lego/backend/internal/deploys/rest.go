@@ -71,6 +71,7 @@ type renderDeploy struct {
 	BexTrigger string             `json:"bexTrigger,omitempty"` // bex extra (w8/058): store.Trigger*, finer than Render's enum
 	Image      *renderDeployImage `json:"image,omitempty"`      // Render's nested image object, not a bare string
 	RollbackOf string             `json:"rollbackOf,omitempty"` // bex extra (w2/m10): the deploy this one restores, if any
+	BuildID    string             `json:"buildId,omitempty"`    // the build source build this deploy shipped (w2/m254)
 	Commit     *renderCommit      `json:"commit,omitempty"`
 	CreatedAt  string             `json:"createdAt,omitempty"`
 	UpdatedAt  string             `json:"updatedAt,omitempty"`
@@ -123,6 +124,7 @@ func RenderJSON(d DeployView) (json.RawMessage, error) { return json.Marshal(toR
 
 func toRenderDeploy(d DeployView) renderDeploy {
 	out := renderDeploy{
+		BuildID:         d.BuildID,
 		ID:              d.ID,
 		ServiceID:       d.ServiceID,
 		Status:          d.Status,
@@ -259,6 +261,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			ClearCache string `json:"clearCache"`
 			DeployMode string `json:"deployMode"`
 			ImageURL   string `json:"imageUrl"`
+			BuildID    string `json:"buildId"`
 		}
 		if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
 			core.WriteErr(w, fmt.Errorf("%w: %v", core.ErrBadRequest, err))
@@ -271,6 +274,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			DeployMode: body.DeployMode,
 			ImageURL:   body.ImageURL,
 			ClearCache: body.ClearCache,
+			BuildID:    body.BuildID,
 		})
 		if err != nil {
 			core.WriteErr(w, err)

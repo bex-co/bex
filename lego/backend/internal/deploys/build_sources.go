@@ -84,6 +84,14 @@ func BuildID(deployID string) string {
 	return id
 }
 
+// buildDeployID is BuildID's inverse: the carrier deploy row buildID names.
+func buildDeployID(buildID string) (string, bool) {
+	if k, ok := ids.KindOf(buildID); !ok || k != ids.Build {
+		return "", false
+	}
+	return ids.Rekind(ids.Deploy, buildID)
+}
+
 // buildSourceApp authorizes relation on build source id. Unexported so the
 // audit verb walk names the exported verb calling it.
 func (s *Service) buildSourceApp(ctx context.Context, relation, id string) (context.Context, *appv1alpha1.App, error) {
@@ -141,11 +149,10 @@ func (s *Service) GetBuild(ctx context.Context, id, buildID string) (BuildView, 
 	if err != nil {
 		return BuildView{}, err
 	}
-	k, ok := ids.KindOf(buildID)
-	if !ok || k != ids.Build {
+	deployID, ok := buildDeployID(buildID)
+	if !ok {
 		return BuildView{}, core.NotFound("build")
 	}
-	deployID, _ := ids.Rekind(ids.Deploy, buildID)
 	d, err := s.getFetched(ctx, carrier, deployID)
 	if errors.Is(err, core.ErrNotFound) {
 		return BuildView{}, core.NotFound("build")
@@ -168,10 +175,23 @@ func buildView(carrier *appv1alpha1.App, sourceID string, d DeployView) BuildVie
 	return v
 }
 
-// linkedBuild is the build source link a deploy of linked service a ships:
-// the link with the source's current build selected. nil for a service with
-// no build source.
-func (s *Service) linkedBuild(ctx context.Context, a *appv1alpha1.App) (*appv1alpha1.BuildSourceLink, error) {
+// sourceBuild is the build source build a deploy of a linked service ships:
+// the link selecting its image, and its public bld- id ("" when unknown).
+type sourceBuild struct {
+	link *appv1alpha1.BuildSourceLink
+	id   string
+}
+
+// Render's create-deploy refusals for buildId.
+const (
+	buildNotFoundCode     = "build_not_found"
+	buildNotSucceededCode = "build_not_succeeded"
+)
+
+// linkedBuild is the build a deploy of linked service a ships: buildID when
+// the caller chose one (Render's create-deploy buildId), else the source's
+// current build. nil for a service with no build source.
+func (s *Service) linkedBuild(ctx context.Context, a *appv1alpha1.App, buildID string) (*sourceBuild, error) {
 	if a.Spec.BuildSource == nil {
 		return nil, nil
 	}
@@ -183,11 +203,42 @@ func (s *Service) linkedBuild(ctx context.Context, a *appv1alpha1.App) (*appv1al
 	if err != nil {
 		return nil, fmt.Errorf("read build source of %s: %w", a.Name, err)
 	}
+	if buildID != "" {
+		return s.chosenBuild(ctx, &carrier, buildID)
+	}
 	link := core.BuildSourceLinkTo(&carrier)
 	if link.Image == "" {
 		return nil, fmt.Errorf("%w: build source %s has not built yet; trigger a build first", core.ErrConflict, core.BuildSourceIDOf(a))
 	}
-	return link, nil
+	// The current build is the carrier deploy row serving it; the id is
+	// provenance only, so an unresolved row ships the build without one.
+	b := &sourceBuild{link: link}
+	if d, err := s.servingDeploy(ctx, carrier.Name, &carrier); err == nil && d.ID != "" {
+		b.id = BuildID(d.ID)
+	}
+	return b, nil
+}
+
+// chosenBuild resolves buildID as a succeeded build of carrier.
+func (s *Service) chosenBuild(ctx context.Context, carrier *appv1alpha1.App, buildID string) (*sourceBuild, error) {
+	notFound := core.NewNotFoundError(buildNotFoundCode, fmt.Sprintf("build %s not found in this service's build source", buildID), map[string]any{"buildId": buildID})
+	deployID, ok := buildDeployID(buildID)
+	if !ok {
+		return nil, notFound
+	}
+	d, err := s.Store.GetDeploy(ctx, appStoreID(carrier), deployID)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, notFound
+	}
+	if err != nil {
+		return nil, err
+	}
+	// A succeeded build is one a rollback could restore: it went live with
+	// a resolved image.
+	if !RollbackEligible(carrier, d) {
+		return nil, core.NewConflictError(buildNotSucceededCode, fmt.Sprintf("build %s has not succeeded", buildID), map[string]any{"buildId": buildID})
+	}
+	return &sourceBuild{link: &appv1alpha1.BuildSourceLink{Name: carrier.Name, Image: d.ResolvedImage}, id: buildID}, nil
 }
 
 // buildSourceStore is the control-plane store surface linked services need.
@@ -251,7 +302,7 @@ func (s *Service) BuildSucceeded(ctx context.Context, b store.BuiltSource) {
 		fail("its services", err)
 		return
 	}
-	link := &appv1alpha1.BuildSourceLink{Name: b.Carrier, Image: b.Image}
+	build := &sourceBuild{link: &appv1alpha1.BuildSourceLink{Name: b.Carrier, Image: b.Image}, id: BuildID(b.DeployID)}
 	for _, row := range links {
 		waiting := row.BuildSourceImage == ""
 		if row.Suspended || row.BuildSourceImage == b.Image {
@@ -265,7 +316,7 @@ func (s *Service) BuildSucceeded(ctx context.Context, b store.BuiltSource) {
 		if (!a.Spec.AutoDeploy && !waiting) || a.Spec.Suspended || a.DeletionTimestamp != nil {
 			continue
 		}
-		if _, err := s.triggerFetched(ctx, core.AppPublicName(&a), &a, TriggerParams{buildSource: link}, store.TriggerNewCommit); err != nil {
+		if _, err := s.triggerFetched(ctx, core.AppPublicName(&a), &a, TriggerParams{build: build}, store.TriggerNewCommit); err != nil {
 			fail(row.ID, err)
 		}
 	}
