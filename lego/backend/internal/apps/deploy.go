@@ -141,6 +141,9 @@ type DeployRequest struct {
 	// Blueprint create flow. They are never included in a validation plan or an
 	// App spec; apply seeds them once into the mutable env store.
 	EnvVarValues map[string]string
+	// resourceSuffix is the create_new suffix of the Blueprint the manifest
+	// belongs to (w2/m261); empty for adopt and for direct deploys.
+	resourceSuffix string
 	// Confirm, when set, arms a direct-deploy-override on an EXISTING member
 	// service of a protectedStatus=protected Environment (w6/m19,
 	// apps/protection.go's requireUnprotected) — the phrase
@@ -1955,7 +1958,7 @@ func parseStack(req DeployRequest) (parsedStack, error) {
 // returns both views so callers needing resource inventory never recompile a
 // manifest that has already passed the canonical compiler.
 func compileStack(req DeployRequest) (parsedStack, BlueprintIR, error) {
-	source, ir, problems := CompileBlueprintIR(req.Manifest)
+	source, ir, problems := compileBlueprintIRFor(req.Manifest, req.resourceSuffix)
 	if len(problems) > 0 {
 		return parsedStack{}, BlueprintIR{}, blueprintSourceProblemsError(problems)
 	}

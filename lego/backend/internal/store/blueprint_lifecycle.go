@@ -93,7 +93,8 @@ type AbandonedBlueprintSync struct {
 }
 
 const blueprintColumns = `id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
-	last_sync_at, created_at, updated_at, execution_generation, COALESCE(active_run_id, '')`
+	last_sync_at, created_at, updated_at, execution_generation, COALESCE(active_run_id, ''),
+	existing_resources, resource_suffix`
 
 const blueprintSyncColumns = `id, blueprint_id, commit_id, state, started_at, completed_at, created_at, error_message, execution_generation, note,
  COALESCE(auto_intent_id, ''), auto_claim_generation, auto_source_repo, auto_source_branch, auto_source_path`
@@ -132,7 +133,7 @@ func insertAdmittedRun(ctx context.Context, tx pgx.Tx, run BlueprintSync) (Bluep
 func scanBlueprint(out *Blueprint, active *string) []any {
 	return []any{&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
 		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt,
-		&out.ExecutionGeneration, active}
+		&out.ExecutionGeneration, active, &out.ExistingResources, &out.ResourceSuffix}
 }
 
 // AdmitBlueprintSyncRun atomically claims the active apply for an existing
@@ -262,6 +263,10 @@ func (s *PGStore) AdmitBlueprintCreate(ctx context.Context, b Blueprint, run Blu
 				status               = 'syncing',
 				execution_generation = blueprints.execution_generation + 1,
 				active_run_id        = EXCLUDED.active_run_id,
+				-- This create path compiles without a suffix and replaces
+				-- whatever was connected, so it is always adopt (w2/m261).
+				existing_resources   = 'adopt',
+				resource_suffix      = '',
 				-- w4/120: reviving a DISCONNECTED row is a new connection, so
 				-- it gets a new created_at. Re-applying a live row is not, and
 				-- keeps the one it has. created_at was simply absent from this

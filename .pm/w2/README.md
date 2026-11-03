@@ -33,7 +33,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] **m254** — [Build Sources: one build feeding several services, as on Render](m254/README.md) (13 tasks) ← `/pm-brainstorm for w2` 2026-11-02 #4; Render parity included
 - [ ] **m255** — [Disk usage over 80% notifies, as on Render](m255/README.md) (8 tasks) ← `/pm-brainstorm for w2` 2026-11-02 #5; Render parity included
 - [ ] **m256** — [Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does](m256/README.md) (11 tasks) ← w2/m251 round-5 drift: Render CLI v2.35.0 `ea blueprints create|plan|approve|update`; Render parity included
-- [ ] **m261** — [Blueprint create with `existingResources: create_new`](m261/README.md) (8 tasks) ← promoted from w2/069 2026-11-03; Render parity included (REST/GraphQL/MCP Blueprint create)
+- [x] **m261** — [Blueprint create with `existingResources: create_new`](done/m261/README.md) (8 tasks) — **DONE 2026-11-03** ← promoted from w2/069 2026-11-03; Render parity included (REST/GraphQL/MCP Blueprint create)
 - [x] [064 — Emit Render's `disk_snapshot_restored` instead of bex's `disk_restored`](done/064.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [065 — Blueprint responses carry `ownerId`; Blueprint PATCH accepts `branch`](done/065.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [ ] [066 — Render removed Postgres `parameterOverrides`; keep bex's or retire it?](blocked/066.md) ← w2/m251 round-5 drift — **BLOCKED (user decision: keep it as a signed-off ADR018 extension, or retire it on every surface and say what happens to overrides already applied to running databases)**

@@ -22,6 +22,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -146,5 +147,89 @@ func TestPlannedBlueprintSupersedeAndBusyPG(t *testing.T) {
 	_, _, err = st.AdmitBlueprintSyncRun(ctx, b.ID, ws.ID, store.BlueprintSync{ID: old.ID, CommitID: commit, State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()})
 	if !errors.Is(err, store.ErrBlueprintSyncBusy) {
 		t.Fatalf("admitting a superseded plan: err = %v, want ErrBlueprintSyncBusy", err)
+	}
+}
+
+// TestCreateNewBlueprintSuffixPG pins w2/m261's storage: a create_new
+// Blueprint gets one Render-shaped suffix at create, every read that feeds a
+// plan or a sync returns it (an empty suffix there would compile the
+// unsuffixed names and touch another Blueprint's resources), and the legacy
+// connect path — which always adopts — clears it.
+func TestCreateNewBlueprintSuffixPG(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := store.NewPGStore(pool)
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+	ws, err := st.CreateWorkspace(ctx, "bp-suffix-"+stamp, store.PlanHobby, "bp-suffix-"+stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
+	repo := "https://github.com/acme/suffix-" + stamp
+
+	b, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Copy", Repo: repo, Branch: "main", Path: "render.yaml", AutoSync: true,
+		ExistingResources: store.BlueprintExistingCreateNew})
+	if err != nil {
+		t.Fatal(err)
+	}
+	suffix := b.ResourceSuffix
+	if len(suffix) != 4 || strings.Trim(suffix, "0123456789abcdefghijklmnopqrstuvwxyz") != "" {
+		t.Fatalf("suffix = %q, want 4 lowercase base36 characters", suffix)
+	}
+	check := func(where string, got store.Blueprint) {
+		t.Helper()
+		if got.ResourceSuffix != suffix || got.ExistingResources != store.BlueprintExistingCreateNew {
+			t.Errorf("%s: mode %q suffix %q, want create_new %q", where, got.ExistingResources, got.ResourceSuffix, suffix)
+		}
+	}
+	got, err := st.GetBlueprint(ctx, b.ID, ws.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("GetBlueprint", got)
+	byRepo, err := st.GetBlueprintByRepo(ctx, ws.ID, repo, "main")
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("GetBlueprintByRepo", byRepo)
+	listed, err := st.ListBlueprints(ctx, ws.ID)
+	if err != nil || len(listed) != 1 {
+		t.Fatalf("ListBlueprints = %+v err=%v", listed, err)
+	}
+	check("ListBlueprints", listed[0])
+	admitted, _, err := st.AdmitBlueprintSyncRun(ctx, b.ID, ws.ID, store.BlueprintSync{CommitID: "0123456789abcdef0123456789abcdef01234567",
+		State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	check("AdmitBlueprintSyncRun", admitted)
+	if _, err := pool.Exec(ctx, `UPDATE blueprints SET active_run_id = NULL, status = 'in_sync' WHERE id = $1`, b.ID); err != nil {
+		t.Fatal(err)
+	}
+	auto, err := st.ListAutoSyncBlueprints(ctx, "main", ws.ID)
+	if err != nil || len(auto) != 1 {
+		t.Fatalf("ListAutoSyncBlueprints = %+v err=%v", auto, err)
+	}
+	check("ListAutoSyncBlueprints", auto[0])
+
+	// The legacy connect replaces the connection and always adopts.
+	replaced, _, _, err := st.AdmitBlueprintCreate(ctx, store.Blueprint{TenantID: ws.ID, Name: "Copy", Repo: repo, Branch: "main", Path: "render.yaml"},
+		store.BlueprintSync{CommitID: "0123456789abcdef0123456789abcdef01234567", State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if replaced.ResourceSuffix != "" || replaced.ExistingResources != store.BlueprintExistingAdopt {
+		t.Fatalf("legacy connect kept mode %q suffix %q, want adopt and no suffix", replaced.ExistingResources, replaced.ResourceSuffix)
 	}
 }
