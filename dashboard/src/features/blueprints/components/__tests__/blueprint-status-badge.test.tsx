@@ -22,9 +22,12 @@ describe("BlueprintStatusBadge", () => {
     "renders %s with a real label, not the raw backend value",
     (status) => {
       render(<BlueprintStatusBadge status={status} />);
-      const badge = screen.getByText((_, el) => el?.textContent?.trim() === el?.textContent && true, {
-        selector: '[data-slot="badge"]',
-      });
+      const badge = screen.getByText(
+        (_, el) => el?.textContent?.trim() === el?.textContent && true,
+        {
+          selector: '[data-slot="badge"]',
+        },
+      );
       const label = badge.textContent?.trim() ?? "";
 
       expect(label).not.toBe("");
@@ -46,7 +49,15 @@ describe("BlueprintStatusBadge", () => {
     render(<BlueprintStatusBadge status="success" />);
     // Success must not borrow the failure styling — the two sit in the same
     // column and are read at a glance.
-    expect(screen.getByText("Success").className).not.toContain("bg-destructive");
+    expect(screen.getByText("Success").className).not.toContain(
+      "bg-destructive",
+    );
+  });
+
+  it("labels a planned sync awaiting approval, never as a queued run (w2/m256 t013)", () => {
+    render(<BlueprintStatusBadge status="created" />);
+    expect(screen.getByText("Awaiting approval")).toBeInTheDocument();
+    expect(screen.queryByText("Queued")).not.toBeInTheDocument();
   });
 
   it("still renders something for an unknown value rather than blanking", () => {

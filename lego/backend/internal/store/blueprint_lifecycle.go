@@ -111,7 +111,10 @@ func insertAdmittedRun(ctx context.Context, tx pgx.Tx, run BlueprintSync) (Bluep
 		 auto_intent_id, auto_claim_generation, auto_source_repo, auto_source_branch, auto_source_path)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9, $10, $11, $12)
 		ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, started_at = EXCLUDED.started_at,
-			execution_generation = EXCLUDED.execution_generation, note = EXCLUDED.note
+			execution_generation = EXCLUDED.execution_generation,
+			-- The planned row's own note (a revived connection's boundary,
+			-- w4/120) survives an approval that brings none.
+			note = COALESCE(NULLIF(EXCLUDED.note, ''), blueprint_syncs.note)
 		WHERE blueprint_syncs.state = 'created' AND blueprint_syncs.blueprint_id = EXCLUDED.blueprint_id
 		  AND blueprint_syncs.commit_id = EXCLUDED.commit_id
 		RETURNING `+blueprintSyncColumns,

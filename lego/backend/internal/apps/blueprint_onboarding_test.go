@@ -38,12 +38,17 @@ import (
 
 // --- fakeBlueprintStore: blueprintPlanStore (w2/m256) ---
 
-func (f *fakeBlueprintStore) CreatePlannedBlueprint(_ context.Context, b store.Blueprint) (store.Blueprint, error) {
+func (f *fakeBlueprintStore) CreatePlannedBlueprint(_ context.Context, b store.Blueprint) (store.Blueprint, bool, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
+	revived := false
 	for _, existing := range f.blueprints {
-		if existing.TenantID == b.TenantID && existing.Repo == b.Repo && existing.Branch == b.Branch && existing.Status != "disconnected" {
-			return store.Blueprint{}, fmt.Errorf("blueprint: %w", store.ErrConflict)
+		if existing.TenantID == b.TenantID && existing.Repo == b.Repo && existing.Branch == b.Branch {
+			if existing.Status != "disconnected" {
+				return store.Blueprint{}, false, fmt.Errorf("blueprint: %w", store.ErrConflict)
+			}
+			// The PG store revives the disconnected row under its id.
+			b.ID, revived = existing.ID, true
 		}
 	}
 	if b.ID == "" {
@@ -54,7 +59,7 @@ func (f *fakeBlueprintStore) CreatePlannedBlueprint(_ context.Context, b store.B
 		b.ResourceSuffix = "t3st" // the PG store mints a random one
 	}
 	f.blueprints[b.ID] = b
-	return b, nil
+	return b, revived, nil
 }
 
 func (f *fakeBlueprintStore) BlueprintNameTaken(_ context.Context, tenantID, name, exceptID string) (bool, error) {
@@ -503,5 +508,36 @@ func TestBlueprintPlannedSyncIsReadableUntilApproved(t *testing.T) {
 	out = graphql.Do(graphql.Params{Schema: blueprintSchema(t, svc), Context: ctx, RequestString: query})
 	if len(out.Errors) != 0 || out.Data.(map[string]any)["blueprintPlannedSync"] != nil {
 		t.Fatalf("GraphQL after approval = %v %v, want null", out.Data, out.Errors)
+	}
+}
+
+// w2/m256 t013 (regression of w4/120): re-creating a disconnected Blueprint
+// through Render's create revives its row and history, and the new planned
+// sync says where this connection's history begins, as the legacy create does.
+func TestPlannedCreateMarksARevivedConnection(t *testing.T) {
+	svc, st, ctx := newOnboardingService(t, onboardingManifest)
+	req := RenderCreateBlueprintRequest{Name: "stack", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"}}
+	first, err := svc.CreatePlannedBlueprint(ctx, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if first.Sync == nil {
+		t.Fatal("a first create planned no sync")
+	}
+	if note := st.syncs[first.Sync.ID].Note; note != "" {
+		t.Fatalf("a first create's planned sync note = %q, want none", note)
+	}
+	if err := st.DisconnectBlueprint(ctx, first.Blueprint.ID, "tea-a"); err != nil {
+		t.Fatal(err)
+	}
+	again, err := svc.CreatePlannedBlueprint(ctx, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if again.Blueprint.ID != first.Blueprint.ID || again.Sync == nil {
+		t.Fatalf("re-create = %+v, want the revived row %s with a planned sync", again, first.Blueprint.ID)
+	}
+	if note := st.syncs[again.Sync.ID].Note; note != reconnectionNote("https://github.com/a/app", DefaultBlueprintBranch) {
+		t.Errorf("revived planned sync note = %q, want the reconnection note", note)
 	}
 }

@@ -59,11 +59,14 @@ func TestPlannedBlueprintSyncsPG(t *testing.T) {
 	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
 	repo := "https://github.com/acme/plans-" + stamp
 
-	b, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Stack", Repo: repo, Branch: "main", Path: "render.yaml", AutoSync: true})
+	b, revived, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Stack", Repo: repo, Branch: "main", Path: "render.yaml", AutoSync: true})
+	if revived {
+		t.Error("a first create reported a revived row")
+	}
 	if err != nil || b.Status != store.BlueprintStatusCreated || b.ExistingResources != store.BlueprintExistingAdopt {
 		t.Fatalf("create = %+v err=%v", b, err)
 	}
-	if _, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Again", Repo: repo, Branch: "main", Path: "render.yaml"}); !errors.Is(err, store.ErrConflict) {
+	if _, _, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Again", Repo: repo, Branch: "main", Path: "render.yaml"}); !errors.Is(err, store.ErrConflict) {
 		t.Fatalf("second live Blueprint on the same repo+branch: err = %v, want ErrConflict", err)
 	}
 	if taken, err := st.BlueprintNameTaken(ctx, ws.ID, "stack", ""); err != nil || taken {
@@ -124,7 +127,7 @@ func TestPlannedBlueprintSupersedeAndBusyPG(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
 	repo := "https://github.com/acme/supersede-" + stamp
-	b, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
+	b, _, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,8 +142,12 @@ func TestPlannedBlueprintSupersedeAndBusyPG(t *testing.T) {
 	if err := st.DisconnectBlueprint(ctx, b.ID, ws.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"}); err != nil {
+	again, revived, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
+	if err != nil {
 		t.Fatalf("reconnect: %v", err)
+	}
+	if !revived || again.ID != b.ID {
+		t.Fatalf("reconnect = %s revived=%v, want the disconnected row %s revived (w4/120)", again.ID, revived, b.ID)
 	}
 	stale, err := st.BlueprintPlannedSync(ctx, b.ID, old.ID)
 	if err != nil || stale.State != store.BlueprintSyncStateError {
@@ -149,6 +156,20 @@ func TestPlannedBlueprintSupersedeAndBusyPG(t *testing.T) {
 	_, _, err = st.AdmitBlueprintSyncRun(ctx, b.ID, ws.ID, store.BlueprintSync{ID: old.ID, CommitID: commit, State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()})
 	if !errors.Is(err, store.ErrBlueprintSyncBusy) {
 		t.Fatalf("admitting a superseded plan: err = %v, want ErrBlueprintSyncBusy", err)
+	}
+
+	// The revived connection's planned sync carries the reconnection note
+	// (w2/m256 t013), and approving it keeps the note on the run.
+	const note = "re-established a previously disconnected connection"
+	fresh, err := st.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
+		BlueprintSync: store.BlueprintSync{BlueprintID: b.ID, CommitID: commit, State: store.BlueprintSyncStateCreated, StartedAt: time.Now().UTC(), Note: note},
+		Path:          "render.yaml",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, run, err := st.AdmitBlueprintSyncRun(ctx, b.ID, ws.ID, store.BlueprintSync{ID: fresh.ID, CommitID: commit, State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()}); err != nil || run.Note != note {
+		t.Fatalf("approved run note = %q, err=%v; want the planned sync's note kept", run.Note, err)
 	}
 }
 
@@ -180,7 +201,7 @@ func TestCreateNewBlueprintSuffixPG(t *testing.T) {
 	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
 	repo := "https://github.com/acme/suffix-" + stamp
 
-	b, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Copy", Repo: repo, Branch: "main", Path: "render.yaml", AutoSync: true,
+	b, _, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "Copy", Repo: repo, Branch: "main", Path: "render.yaml", AutoSync: true,
 		ExistingResources: store.BlueprintExistingCreateNew})
 	if err != nil {
 		t.Fatal(err)
