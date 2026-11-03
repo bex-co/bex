@@ -107,6 +107,9 @@ type AuditEvent struct {
 	ProjectTo       *string
 	EnvironmentFrom *string
 	EnvironmentTo   *string
+	// DiskID is the dsk- id a disk snapshot restore replaced the contents of
+	// (w2/064, Render's DiskSnapshotRestored.diskId). Empty for every other verb.
+	DiskID string
 	// Relation is the RelCan… the decision was made against. Empty on typed
 	// system events that are not an authorization check (billing lifecycle).
 	Relation string
@@ -185,7 +188,8 @@ const (
 	// The disk verbs (w4/m122, secondary finding). These already deferred their
 	// allowed-write audit — but no recorder was ever written, so the deferral
 	// suppressed the row and nothing re-emitted it: disk_created, disk_updated,
-	// disk_deleted and disk_restored could never appear in any service's feed.
+	// disk_deleted and the restore event (then disk_restored) could never
+	// appear in any service's feed.
 	// The mirror image of this milestone's main defect, and true since the
 	// feature landed. Denials always recorded, so the workspace audit log was
 	// unaffected.
@@ -529,7 +533,6 @@ var appConfigVerbs = map[string]bool{
 	AuditVerbLinkService: true, AuditVerbUnlinkService: true, AuditVerbLinkEnvGroup: true,
 	AuditVerbJobCreate: true, AuditVerbJobCancel: true,
 	AuditVerbAddDisk: true, AuditVerbUpdateDisk: true, AuditVerbDeleteDisk: true,
-	AuditVerbRestoreDiskSnapshot: true,
 }
 
 // RecordAppConfigChanged records one service-configuration verb that actually
@@ -562,6 +565,20 @@ func (b *Base) RecordAppConfigChanged(ctx context.Context, app *appv1alpha1.App,
 		return
 	}
 	b.recordAudit(ctx, b.verbAuditEvent(ctx, verb, resource, canonicalAppTarget(app)))
+}
+
+// RecordDiskSnapshotRestored records a successful snapshot restore with the
+// restored disk's id — Render's disk_snapshot_restored detail (w2/064).
+// Paired with WithDeferredAllowedWriteAudit on the authorize call.
+func (b *Base) RecordDiskSnapshotRestored(ctx context.Context, app *appv1alpha1.App, diskID string) {
+	resource, err := b.resourceWorkspace(ctx, app.Labels)
+	if err != nil {
+		log.Printf("audit: resolve %s resource: %v", AuditVerbRestoreDiskSnapshot, err)
+		return
+	}
+	ev := b.verbAuditEvent(ctx, AuditVerbRestoreDiskSnapshot, resource, canonicalAppTarget(app))
+	ev.DiskID = diskID
+	b.recordAudit(ctx, ev)
 }
 
 // ServiceMove is one service's before/after project/environment placement —

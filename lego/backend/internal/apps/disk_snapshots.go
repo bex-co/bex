@@ -241,7 +241,7 @@ func (s *Service) RestoreDiskSnapshot(ctx context.Context, diskID, snapshotKey s
 	}); err != nil {
 		return DiskView{}, fmt.Errorf("request restore: %w", err)
 	}
-	s.RecordAppConfigChanged(ctx, a, core.AuditVerbRestoreDiskSnapshot)
+	s.RecordDiskSnapshotRestored(ctx, a, disk.ID)
 	return diskView(disk), nil
 }
 

@@ -636,7 +636,9 @@ func TestServiceEventSurfaceCarriesDiskAndBexNamedTypes(t *testing.T) {
 		{Key: "aud-domain-verified:", At: at, Source: store.EventSourceAudit, Verb: "apps.VerifyDomain", Caller: "user-x"},
 		{Key: "aud-disk-created:", At: at.Add(-time.Minute), Source: store.EventSourceAudit, Verb: "apps.AddDisk", Caller: "user-x"},
 		{Key: "aud-disk-deleted:", At: at.Add(-2 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.DeleteDisk", Caller: "user-x"},
-		{Key: "aud-disk-restored:", At: at.Add(-3 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.RestoreDiskSnapshot", Caller: "user-x"},
+		{Key: "aud-disk-restored:", At: at.Add(-3 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.RestoreDiskSnapshot", Caller: "user-x", DiskID: new("dsk-restored")},
+		// A restore recorded before audit rows carried disk_id (w2/064).
+		{Key: "aud-disk-restored-old:", At: at.Add(-4 * time.Minute), Source: store.EventSourceAudit, Verb: "apps.RestoreDiskSnapshot", Caller: "user-x"},
 	}}
 	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
 	h, srv := serverWith(t, base, Deps{EventStore: fake})
@@ -645,7 +647,8 @@ func TestServiceEventSurfaceCarriesDiskAndBexNamedTypes(t *testing.T) {
 		events.TypeCustomDomainVerified,
 		events.TypeDiskCreated,
 		events.TypeDiskDeleted,
-		events.TypeDiskRestored,
+		events.TypeDiskSnapshotRestored,
+		events.TypeDiskSnapshotRestored,
 	}
 
 	res := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z", testToken, "")
@@ -689,7 +692,15 @@ func TestServiceEventSurfaceCarriesDiskAndBexNamedTypes(t *testing.T) {
 	// handler must push the matching verb filter into the store query. The fake
 	// store does not narrow rows, so we assert the push-down rather than the
 	// response body shape (real-Postgres coverage lives in store tests).
-	for _, diskType := range []string{events.TypeDiskCreated, events.TypeDiskDeleted, events.TypeDiskUpdated} {
+	// Render's Disk Snapshot Restored details: diskId and triggeredByUser.
+	if d := rest[3].Event.Details; d["diskId"] != "dsk-restored" || d["triggeredByUser"] != "user-x" {
+		t.Errorf("disk_snapshot_restored details = %+v, want diskId dsk-restored triggeredByUser user-x", d)
+	}
+	if d := rest[4].Event.Details; d["diskId"] != nil || d["triggeredByUser"] != "user-x" {
+		t.Errorf("pre-064 restore details = %+v, want no diskId and triggeredByUser user-x", d)
+	}
+
+	for _, diskType := range []string{events.TypeDiskCreated, events.TypeDiskDeleted, events.TypeDiskUpdated, events.TypeDiskSnapshotRestored} {
 		fake.gotFil = store.ServiceEventFilter{}
 		filtered := do(t, h, "GET", "/v1/services/web/events?startTime=2026-08-01T00:00:00Z&type="+diskType, testToken, "")
 		if filtered.Code != 200 {
@@ -700,11 +711,11 @@ func TestServiceEventSurfaceCarriesDiskAndBexNamedTypes(t *testing.T) {
 		}
 	}
 
-	// disk_restored is a deliberate bex extension — unfilterable via the Render
-	// enum, same as every other bex-named type. The legacy bex spellings must
-	// also stay refused so a regression to disk_attached cannot silently return.
+	// bex-named types stay unfilterable via the Render enum. The legacy bex
+	// spellings must also stay refused so a regression to disk_attached or
+	// disk_restored cannot silently return.
 	for _, bexNamed := range []string{
-		events.TypeDiskRestored,
+		"disk_restored",
 		events.TypeCustomDomainVerified,
 		events.TypeCustomDomainAdded,
 		events.TypeEnvVarsChanged,
