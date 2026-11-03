@@ -1494,7 +1494,29 @@ func (s *Service) registerDomainRoutes(mux *http.ServeMux) {
 // POST /v1/blueprints/validate is registered before POST /v1/blueprints/{id}/sync
 // — Go 1.22+ ServeMux resolves the more specific (literal) path first.
 func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
-	mux.HandleFunc("POST /v1/blueprints", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+	createBlueprint := core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
+		raw, err := io.ReadAll(r.Body)
+		if err != nil {
+			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+		}
+		r.Body = io.NopCloser(bytes.NewReader(raw))
+		// Render's createBlueprintRequest names its repository under "source"
+		// (w2/m256): it plans the first sync. bex's earlier body (repo/branch at
+		// the top level) still creates and applies at once.
+		var probe map[string]json.RawMessage
+		if json.Unmarshal(raw, &probe) == nil {
+			render := false
+			for key := range probe {
+				render = render || strings.EqualFold(key, "source")
+			}
+			if render {
+				var req RenderCreateBlueprintRequest
+				if err := core.DecodeJSON(r, &req); err != nil {
+					return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+				}
+				return s.CreatePlannedBlueprint(r.Context(), req)
+			}
+		}
 		var body struct {
 			Repo         string            `json:"repo"`
 			Branch       string            `json:"branch"`
@@ -1515,6 +1537,39 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			EnvVarValues: body.EnvVarValues,
 			Confirm:      body.Confirm,
 		})
+	})
+	mux.HandleFunc("POST /v1/blueprints", func(w http.ResponseWriter, r *http.Request) {
+		// A JSON-escaped manifest can be several times its raw size; past this
+		// bound the body is refused, never silently cut short.
+		r.Body = http.MaxBytesReader(w, r.Body, 4*blueprintMaxManifestBytes)
+		if r.ContentLength > 4*blueprintMaxManifestBytes {
+			core.WriteErrStatus(w, http.StatusRequestEntityTooLarge, ErrBlueprintTooLarge.Error())
+			return
+		}
+		createBlueprint(w, r)
+	})
+	// Render's plan (w2/m256): 201 with the persisted sync, 200 when planning
+	// persisted none (no changes, or a failure before a sync was recorded).
+	mux.HandleFunc("POST /v1/blueprints/{id}/syncs", func(w http.ResponseWriter, r *http.Request) {
+		res, err := s.PlanBlueprint(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		status := http.StatusOK
+		if res.Sync != nil {
+			status = http.StatusCreated
+		}
+		core.WriteJSON(w, status, res)
+	})
+	mux.HandleFunc("POST /v1/blueprints/{id}/approve", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		var body struct {
+			ManualEnvVars []ManualEnvVar `json:"manualEnvVars"`
+		}
+		if err := core.DecodeJSON(r, &body); err != nil && !errors.Is(err, io.EOF) {
+			return nil, fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+		}
+		return s.ApproveBlueprint(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"), body.ManualEnvVars)
 	}))
 	mux.HandleFunc("GET /v1/blueprints/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.GetBlueprintByID(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"))

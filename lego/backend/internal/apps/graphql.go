@@ -2015,6 +2015,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 	}
 	maps.Copy(fields, s.diskGQLMutationFields())
 	maps.Copy(fields, s.diskSnapshotGQLMutationFields())
+	maps.Copy(fields, s.onboardingGraphQLMutations())
 	return fields
 }
 

@@ -674,6 +674,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	s.registerCustomDomainTools(srv)
 	s.registerStaticSiteTools(srv)
 	s.registerBlueprintTools(srv)
+	s.registerOnboardingMCP(srv)
 	s.registerDiskTools(srv)
 	s.registerDiskSnapshotTools(srv)
 }

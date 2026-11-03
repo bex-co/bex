@@ -150,6 +150,11 @@ type ReviewedBlueprintSource struct {
 	Repo     string // optional; CanonicalRepo-must-match the Blueprint row
 	Path     string // required with CommitID; must match the configured path
 	CommitID string // immutable SHA from preview.commitId
+	// PlannedRunID and EnvVarValues are set only by approving a planned sync
+	// (w2/m256): admission turns the planned row into the run, and the manual
+	// env var values approval supplied are seeded once by the apply.
+	PlannedRunID string
+	EnvVarValues map[string]string
 }
 
 // optionalReviewedBlueprintSource builds the pin from adapter fields; nil when
@@ -1355,8 +1360,8 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 // so a manifest that cannot be applied never becomes the stored one. Only the
 // manifest (the sync-owned field) is written: current name/path/autoSync
 // settings survive the sync (w8/m37 t005).
-func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, run store.BlueprintSync, manifest string, snap *workspaceSnapshot) (store.Blueprint, *parsedStack, error) {
-	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, ContainingSource: true, Manifest: manifest})
+func (s *Service) prepareSyncManifest(ctx context.Context, b store.Blueprint, run store.BlueprintSync, manifest string, envVarValues map[string]string, snap *workspaceSnapshot) (store.Blueprint, *parsedStack, error) {
+	parsed, ir, err := compileStack(DeployRequest{Repo: b.Repo, Branch: b.Branch, ContainingSource: true, Manifest: manifest, EnvVarValues: envVarValues})
 	if err != nil {
 		return store.Blueprint{}, nil, err
 	}
@@ -1511,6 +1516,10 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 	// live claim loses with the documented busy conflict (recorded in history);
 	// a disconnect that lands first fences here the same way.
 	run := store.BlueprintSync{CommitID: commitSHA, State: store.BlueprintSyncStateRunning, StartedAt: now}
+	var envVarValues map[string]string
+	if reviewed != nil {
+		run.ID, envVarValues = reviewed.PlannedRunID, reviewed.EnvVarValues
+	}
 	var admitted store.Blueprint
 	var err error
 	if auto != nil {
@@ -1572,7 +1581,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		}
 		b = staged
 	} else {
-		staged, parsed, err := s.prepareSyncManifest(ctx, b, run, manifest, snap)
+		staged, parsed, err := s.prepareSyncManifest(ctx, b, run, manifest, envVarValues, snap)
 		if err != nil {
 			return settleStage(err)
 		}
@@ -1588,6 +1597,7 @@ func (s *Service) runSync(ctx context.Context, b store.Blueprint, bexYAML, confi
 		ContainingSource:    true,
 		Manifest:            b.Manifest,
 		Confirm:             confirm,
+		EnvVarValues:        envVarValues,
 	}
 	var applyErr error
 	if prepared == nil {
