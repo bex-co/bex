@@ -186,6 +186,7 @@ describe("toServiceView", () => {
       displayName: null,
       type: "web_service",
       suspended: true,
+      crashLoopSuspended: false,
       phase: "Hibernated",
       url: "https://app.onbex.co",
       internalAddress: null,
@@ -263,6 +264,23 @@ describe("toServiceView", () => {
     expect(populated.region).toBe("fsn1");
     expect(populated.updatedAt).toBe("2026-07-02T00:00:00Z");
     expect(toServiceView(node({ region: "" })).region).toBeNull();
+  });
+
+  // w2/m253: only Render's stuck_crashlooping suspender marks a crash-loop
+  // suspension; a user or billing suspension keeps the ordinary copy.
+  it("flags a crash-loop suspension from the detail query's suspenders", () => {
+    expect(
+      toServiceView(
+        server({ suspended: "suspended", suspenders: ["stuck_crashlooping"] }),
+      ).crashLoopSuspended,
+    ).toBe(true);
+    expect(
+      toServiceView(server({ suspended: "suspended", suspenders: ["user"] }))
+        .crashLoopSuspended,
+    ).toBe(false);
+    expect(
+      toServiceView(node({ suspended: "suspended" })).crashLoopSuspended,
+    ).toBe(false);
   });
 
   it("carries a copy-ready SSH address only when the detail query selected it", () => {

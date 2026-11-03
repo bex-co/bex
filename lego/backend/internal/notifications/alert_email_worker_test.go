@@ -218,3 +218,61 @@ func TestAlertEmailSendOutcomes(t *testing.T) {
 		t.Errorf("unresolved address: retried=%v completed=%v", st.retried, st.completed)
 	}
 }
+
+type enqueueRecorder struct {
+	recipients []store.AlertEmailRecipient
+	watermark  string
+	items      []store.AlertEmailItem
+}
+
+func (r *enqueueRecorder) ListAlertEmailRecipientsFor(_ context.Context, tenantID string) ([]store.AlertEmailRecipient, error) {
+	var out []store.AlertEmailRecipient
+	for _, rec := range r.recipients {
+		if rec.TenantID == tenantID {
+			out = append(out, rec)
+		}
+	}
+	return out, nil
+}
+
+func (r *enqueueRecorder) EnqueueAlertEmails(_ context.Context, watermark string, items []store.AlertEmailItem, _ time.Duration, _ time.Time, _ string) error {
+	r.watermark = watermark
+	r.items = append(r.items, items...)
+	return nil
+}
+
+// w2/m253: a crash-loop suspension is a failure notification for the
+// suspended service's workspace only, keyed so replicas mail it once.
+func TestCrashLoopNotifierEnqueuesTheSuspension(t *testing.T) {
+	since := time.Date(2026, 11, 2, 12, 0, 0, 0, time.UTC)
+	rec := &enqueueRecorder{recipients: []store.AlertEmailRecipient{
+		{TenantID: "tea-a", Subject: "alice", DeployFailed: true},
+		{TenantID: "tea-a", Subject: "bob", DeployFailed: false},
+		{TenantID: "tea-b", Subject: "carol", DeployFailed: true},
+	}}
+	n := CrashLoopNotifier{Store: rec, Window: 24 * time.Hour,
+		Policy: func(context.Context, string, string) (string, error) {
+			return appv1alpha1.NotificationsToSendDefault, nil
+		}}
+	if err := n.NotifyCrashLoopSuspended(t.Context(), "tea-a", "srv-1", "api", since, since.Add(24*time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if rec.watermark != "" || len(rec.items) != 1 {
+		t.Fatalf("watermark=%q items=%+v, want one cursor-less item for alice", rec.watermark, rec.items)
+	}
+	item := rec.items[0]
+	if item.Subject != "alice" || item.Event != store.AlertEmailServiceSuspended || item.SourceKey != "crashloop:srv-1:2026-11-02T12:00:00Z" {
+		t.Errorf("item = %+v", item)
+	}
+	subject, msg := alertEmail(store.AlertEmailStream{Event: item.Event, ResourceName: item.ResourceName, Detail: item.Detail,
+		Occurrences: []time.Time{item.OccurredAt}, PendingCount: 1}, "")
+	if subject != "Service suspended: api" || !strings.Contains(msg.Text(), "over 24 hours") || strings.Contains(msg.Text(), "24h0m0s") {
+		t.Errorf("suspension mail = %q / %q", subject, msg.Text())
+	}
+
+	rec.items = nil
+	n.Policy = func(context.Context, string, string) (string, error) { return appv1alpha1.NotificationsToSendNone, nil }
+	if err := n.NotifyCrashLoopSuspended(t.Context(), "tea-a", "srv-1", "api", since, since); err != nil || len(rec.items) != 0 {
+		t.Errorf("policy none: err=%v items=%+v", err, rec.items)
+	}
+}

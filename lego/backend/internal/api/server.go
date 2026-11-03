@@ -52,6 +52,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/cliauth"
 	"github.com/bex-co/bex/lego/backend/internal/clitelemetry"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/crashloop"
 	"github.com/bex-co/bex/lego/backend/internal/datastorelogs"
 	"github.com/bex-co/bex/lego/backend/internal/deploys"
 	"github.com/bex-co/bex/lego/backend/internal/envgroups"
@@ -130,7 +131,10 @@ type Server struct {
 	// FreeHours suspends Free web services once a workspace has used its
 	// monthly Free instance hours (w8/m139). main.go starts it with the serve
 	// context.
-	FreeHours     *freehours.Sweeper
+	FreeHours *freehours.Sweeper
+	// CrashLoop suspends services that keep failing to start (w2/m253).
+	// main.go starts it with the serve context.
+	CrashLoop     *crashloop.Sweeper
 	KeyValue      *keyvalue.Service
 	Secrets       *secrets.Service
 	EnvGroups     *envgroups.Service
@@ -391,6 +395,9 @@ type Deps struct {
 	// FreeInstanceHours overrides the monthly Free instance-hours allowance
 	// (BEX_FREE_INSTANCE_HOURS, w8/m139); 0 means 750.
 	FreeInstanceHours float64
+	// CrashLoopSuspendAfter overrides the crash-loop suspension window
+	// (BEX_CRASHLOOP_SUSPEND_AFTER, w2/m253); 0 means 24h.
+	CrashLoopSuspendAfter time.Duration
 	// MaxBlueprintGroupings caps a workspace's durable Blueprint project and
 	// environment counts (BEX_MAX_BLUEPRINT_GROUPINGS, default 1000; 0
 	// disables) — the w1/049 #5 abuse bound, refused with
@@ -1011,6 +1018,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},
 		FreeHours:          newFreeHours(appsSvc, d, notificationsSvc),
+		CrashLoop:          newCrashLoop(appsSvc, d),
 		BlueprintAutoSync:  &apps.BlueprintAutoSyncWorker{Svc: appsSvc},
 		CheckedDeploys:     &apps.CheckedDeployWorker{Svc: appsSvc},
 		DomainVerification: &apps.DomainVerificationWorker{Svc: appsSvc},

@@ -155,7 +155,9 @@ export function SuspendServiceCard({
             isSuspended
               ? isCronJob
                 ? "services.resumeCardDescriptionCron"
-                : "services.resumeCardDescription"
+                : service.crashLoopSuspended
+                  ? "services.resumeCardDescriptionCrashLoop"
+                  : "services.resumeCardDescription"
               : isCronJob
                 ? "services.suspendCronDescription"
                 : hasUrl
