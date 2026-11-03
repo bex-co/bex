@@ -19,10 +19,11 @@
 | t015 | Meter build source build minutes — **DONE** | 1h | t006 |
 | t016 | A native-runtime git build source never builds: the operator requires a startCommand the carrier never has — implemented, awaiting production verification | 1h | t006 |
 | t017 | A service linked to a native build source starts like a native service: native-init and bash — **DONE** | 1h | t016 |
+| t018 | A service linked to a build source never deploys: the operator gates it on a pull credential it never mints | 45m | t016 |
 | t009 | Render parity — **DONE** | 15m | t008, t013, t014, t015, t016, t017 |
 | t010 | Simplify — **DONE** | 15m | t009 |
 | t011 | Test coverage — **DONE** | 30m | t009 |
-| t012 | Closeout | 10m | t010, t011 |
+| t012 | Closeout | 10m | t010, t011, t018 |
 
 ## Definition of done
 
@@ -55,4 +56,4 @@
 
 ## Blocked (2026-11-03)
 
-t001–t011, t013–t015, t017 done; t016 implemented 2026-11-03 (7991a0e57, 98ebc1367); t012 closeout open. Remaining gate: deploy + production walk: once a deploy carrying 7991a0e57/98ebc1367 is live (deploys were queued behind a >1h CI build on 2026-11-03), run t016's acceptance as the QA user — create a native git build source, trigger a build to `succeeded`, link a qa- Free web service, and see it go Live under its own start command — then close via t012. Run `/unblock w2` to decide. The milestone returns to the queue once the gate clears.
+t001–t011, t013–t015, t017 done; t016 implemented 2026-11-03 (7991a0e57, 98ebc1367); production walk 2026-11-03 22:16 UTC: native build succeeds, linked service never deploys (t018, open); t012 closeout open. Remaining gate: deploy + production walk: once a deploy carrying 7991a0e57/98ebc1367 is live (deploys were queued behind a >1h CI build on 2026-11-03), run t016's acceptance as the QA user — create a native git build source, trigger a build to `succeeded`, link a qa- Free web service, and see it go Live under its own start command — then close via t012. Run `/unblock w2` to decide. The milestone returns to the queue once the gate clears.
