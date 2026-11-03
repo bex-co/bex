@@ -1,0 +1,145 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1240" height="900" viewBox="0 0 1240 900" font-family="-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif">
+  <title>ADR095 — Cloud Agent attachments: upload, durable storage, per-dispatch copy into the sandbox, agent-shared files, presigned download</title>
+  <defs>
+    <marker id="arrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#1f2937"/>
+    </marker>
+    <marker id="arrow-grey" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="8" markerHeight="8" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#6b7280"/>
+    </marker>
+    <style>
+      .h { font-size: 15px; font-weight: 600; fill: #111827; }
+      .t { font-size: 12.5px; fill: #374151; }
+      .s { font-size: 11.5px; fill: #6b7280; }
+      .m { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 11.5px; fill: #111827; }
+      .flow { stroke: #1f2937; stroke-width: 1.8; fill: none; marker-end: url(#arrow); }
+      .back { stroke: #6b7280; stroke-width: 1.8; fill: none; stroke-dasharray: 6 5; marker-end: url(#arrow-grey); }
+      .badge circle { fill: #1f2937; }
+      .badge text { font-size: 12px; font-weight: 700; fill: #ffffff; text-anchor: middle; }
+    </style>
+  </defs>
+
+  <rect width="1240" height="900" fill="#ffffff"/>
+
+  <text x="30" y="40" font-size="20" font-weight="700" fill="#111827">ADR095 — Cloud Agent attachments</text>
+  <text x="30" y="64" class="t">Files live in object storage, never in the sandbox. Each dispatch copies the session's inputs into a fresh sandbox; the agent shares outputs back through the gateway.</text>
+
+  <!-- Clients -->
+  <rect x="30" y="100" width="270" height="150" rx="10" fill="#f5f3ff" stroke="#7c3aed" stroke-width="1.6"/>
+  <text x="48" y="128" class="h">Clients</text>
+  <text x="48" y="152" class="t">dashboard.bex.co/agents</text>
+  <text x="48" y="168" class="s">paperclip · drag-drop · paste screenshot</text>
+  <text x="48" y="192" class="t">MCP · /mcp/cloud-agents</text>
+  <text x="48" y="208" class="s">upload_agent_attachment (base64 ≤ 4 MiB)</text>
+  <text x="48" y="232" class="t">REST · CLI</text>
+
+  <!-- bex-api -->
+  <rect x="360" y="100" width="380" height="150" rx="10" fill="#eff6ff" stroke="#2563eb" stroke-width="1.6"/>
+  <text x="378" y="128" class="h">bex-api · agent attachments</text>
+  <text x="378" y="150" class="m">POST /v1/agent-attachments</text>
+  <text x="378" y="166" class="s">stream to bucket · sniff type · sha256 · caps</text>
+  <text x="378" y="188" class="m">create / message { attachmentIds }</text>
+  <text x="378" y="204" class="s">bind ready inputs to the turn (can_create)</text>
+  <text x="378" y="226" class="m">GET …/{att}/content → 302</text>
+  <text x="378" y="242" class="s">presigned GET, 15 min (can_operate)</text>
+
+  <!-- Object storage -->
+  <rect x="810" y="100" width="400" height="150" rx="10" fill="#ecfdf5" stroke="#059669" stroke-width="1.6"/>
+  <text x="828" y="128" class="h">Wasabi · bucket bex-agent-attachments</text>
+  <text x="828" y="152" class="m">&lt;ws&gt;/&lt;ags&gt;/&lt;att&gt;</text>
+  <text x="828" y="170" class="s">object key is the id, never the filename</text>
+  <text x="828" y="194" class="t">writer: bex-api only · reader: presign</text>
+  <text x="828" y="212" class="s">separate IAM user (ADR050 split)</text>
+  <text x="828" y="236" class="t">purged with the session (ADR065 delete)</text>
+
+  <!-- Postgres -->
+  <rect x="360" y="300" width="380" height="96" rx="10" fill="#f9fafb" stroke="#9ca3af" stroke-width="1.4"/>
+  <text x="378" y="326" class="h">control-plane Postgres</text>
+  <text x="378" y="348" class="m">agent_session_attachments</text>
+  <text x="378" y="366" class="s">att- id · session · turn · direction in / out · name</text>
+  <text x="378" y="382" class="s">media type · size · sha256 · state · created_by</text>
+
+  <!-- Gateway -->
+  <rect x="360" y="490" width="380" height="140" rx="10" fill="#fff7ed" stroke="#ea580c" stroke-width="1.6"/>
+  <text x="378" y="518" class="h">ssh-gateway (sole holder of pods/exec)</text>
+  <text x="378" y="542" class="m">sandbox-files upload</text>
+  <text x="378" y="558" class="s">existing path-bound ticket · stage + atomic mv</text>
+  <text x="378" y="582" class="m">POST &lt;proxy&gt;/attachments</text>
+  <text x="378" y="598" class="s">session-pod identity, as the ADR090 PR verb</text>
+  <text x="378" y="616" class="s">no credential ever enters the sandbox</text>
+
+  <!-- Sandbox -->
+  <rect x="810" y="440" width="400" height="400" rx="10" fill="#f8fafc" stroke="#334155" stroke-width="1.6"/>
+  <text x="828" y="468" class="h">&lt;ws&gt;-sandbox · fresh per dispatch</text>
+  <rect x="826" y="482" width="368" height="74" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="840" y="504" class="m">/attachments/&lt;turn&gt;/&lt;att&gt;-&lt;name&gt;</text>
+  <text x="840" y="522" class="s">read-only, outside /workspace, so never committed</text>
+  <text x="840" y="540" class="s">every input of the session, re-copied each dispatch</text>
+  <rect x="826" y="572" width="368" height="92" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="840" y="594" class="t">driver · ACP prompt</text>
+  <text x="840" y="614" class="m">text + resource_link (all agents)</text>
+  <text x="840" y="632" class="m">image (if promptCapabilities.image)</text>
+  <text x="840" y="652" class="s">attachments are quoted as untrusted input</text>
+  <rect x="826" y="680" width="368" height="64" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="840" y="702" class="t">agent (Claude Code / Codex / Gemini)</text>
+  <text x="840" y="722" class="s">reads files, works in /workspace</text>
+  <rect x="826" y="760" width="368" height="64" rx="6" fill="#ffffff" stroke="#cbd5e1"/>
+  <text x="840" y="782" class="t">bex stdio MCP</text>
+  <text x="840" y="802" class="m">share_file({path, name?})</text>
+  <text x="840" y="816" class="s">beside open_or_update_draft_pr</text>
+
+  <!-- Legend / limits -->
+  <rect x="30" y="490" width="300" height="350" rx="10" fill="#ffffff" stroke="#e5e7eb" stroke-width="1.4"/>
+  <text x="48" y="518" class="h">Limits (v1)</text>
+  <text x="48" y="542" class="t">25 MiB per file · 10 per turn</text>
+  <text x="48" y="562" class="t">50 files · 250 MiB per session</text>
+  <text x="48" y="582" class="t">MCP inline upload ≤ 4 MiB decoded</text>
+  <text x="48" y="602" class="t">unbound uploads expire after 24 h</text>
+  <text x="48" y="636" class="h">Safety</text>
+  <text x="48" y="660" class="t">type sniffed server-side, not trusted</text>
+  <text x="48" y="680" class="t">served only from the storage origin</text>
+  <text x="48" y="700" class="t">images inline · SVG / HTML download-only</text>
+  <text x="48" y="720" class="t">nosniff + attachment disposition</text>
+  <text x="48" y="754" class="h">Flows</text>
+  <text x="48" y="778" class="s">① upload  ② bind to a turn  ③ copy in</text>
+  <text x="48" y="796" class="s">④ prompt blocks  ⑤ agent shares a file</text>
+  <text x="48" y="814" class="s">⑥ download through a presigned URL</text>
+
+  <!-- ① upload -->
+  <path class="flow" d="M300,150 L358,150"/>
+  <path class="flow" d="M740,150 L808,150"/>
+  <g class="badge"><circle cx="329" cy="136" r="10"/><text x="329" y="140">1</text></g>
+  <text x="752" y="140" class="s">put object</text>
+
+  <!-- ② bind -->
+  <path class="flow" d="M300,195 L358,195"/>
+  <g class="badge"><circle cx="329" cy="212" r="10"/><text x="329" y="216">2</text></g>
+  <path class="flow" d="M550,250 L550,298"/>
+  <text x="560" y="294" class="s">rows + turn binding</text>
+
+  <!-- ③ copy in -->
+  <path class="flow" d="M500,396 L500,488"/>
+  <g class="badge"><circle cx="486" cy="456" r="10"/><text x="486" y="460">3</text></g>
+  <text x="514" y="452" class="s">bex-api dispatch: streams the</text>
+  <text x="514" y="468" class="s">session's inputs from the bucket</text>
+  <path class="flow" d="M740,540 L824,520"/>
+  <text x="746" y="508" class="s">exec</text>
+
+  <!-- ④ prompt -->
+  <path class="flow" d="M1010,556 L1010,570"/>
+  <path class="flow" d="M1010,664 L1010,678"/>
+  <g class="badge"><circle cx="1190" cy="618" r="10"/><text x="1190" y="622">4</text></g>
+
+  <!-- ⑤ share -->
+  <path class="flow" d="M824,792 L620,792 L620,632"/>
+  <g class="badge"><circle cx="720" cy="778" r="10"/><text x="720" y="782">5</text></g>
+  <text x="640" y="812" class="s">file bytes + name</text>
+  <path class="flow" d="M640,490 L640,398"/>
+  <text x="650" y="410" class="s">bex-api stores it</text>
+  <text x="650" y="424" class="s">as an output</text>
+
+  <!-- ⑥ download -->
+  <path class="back" d="M1010,250 L1010,272 L165,272 L165,252"/>
+  <g class="badge"><circle cx="760" cy="272" r="10"/><text x="760" y="276">6</text></g>
+  <text x="776" y="290" class="s">presigned GET on the storage origin, never api.bex.co or the dashboard</text>
+</svg>
