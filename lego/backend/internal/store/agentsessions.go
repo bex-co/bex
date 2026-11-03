@@ -106,6 +106,9 @@ type AgentSessionTurn struct {
 	CreatedAt           time.Time
 	StartedAt           *time.Time
 	CompletedAt         *time.Time
+	// Attachments are the uploads this turn attached (ADR095 D3), snapshotted
+	// at binding.
+	Attachments []TurnAttachment
 }
 
 // TerminalTurnFact is the immutable timing for a successful terminal CAS on the
@@ -164,6 +167,9 @@ type AgentSession struct {
 	// scanAgentSession; FindAgentSessionByIdempotencyKey reads the hash back.
 	IdempotencyKey  string
 	IdempotencyHash string
+	// InitialAttachments is create-only input bound to turn 1 in the same
+	// transaction (ADR095 D3); never scanned.
+	InitialAttachments AgentAttachmentBinding
 }
 
 // DefaultAgentBranchPrefix prefixes the branch a session gets when the caller
@@ -231,6 +237,9 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 			_, err = tx.Exec(ctx, `
 				INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode)
 				VALUES ($1, 1, $2, '')`, in.ID, in.InitialPrompt)
+			if err == nil {
+				err = bindAgentAttachments(ctx, tx, in.WorkspaceID, in.ID, 1, in.InitialAttachments)
+			}
 		}
 		if err != nil {
 			return err
@@ -241,6 +250,9 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 		return AgentSession{}, err
 	}
 	if err != nil {
+		if isAgentAttachmentRefusal(err) {
+			return AgentSession{}, err
+		}
 		return AgentSession{}, classify("agent session", err)
 	}
 	return row, nil
@@ -279,13 +291,13 @@ func (s *PGStore) GetAgentSession(ctx context.Context, id string) (AgentSession,
 // moves the session into its asynchronous dispatch phase. The public turn count
 // advances here, with prompt acceptance, so provisioning failure cannot erase
 // or renumber what the user submitted.
-func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliveryMode, phase, status string) (AgentSession, error) {
+func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding) (AgentSession, error) {
 	var out AgentSession
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var turns int
-		var currentPhase, previousSandboxID string
+		var currentPhase, previousSandboxID, workspaceID string
 		var archivedAt *time.Time
-		if err := tx.QueryRow(ctx, `SELECT turns, phase, archived_at, sandbox_id FROM agent_sessions WHERE id=$1 FOR UPDATE`, id).Scan(&turns, &currentPhase, &archivedAt, &previousSandboxID); err != nil {
+		if err := tx.QueryRow(ctx, `SELECT turns, phase, archived_at, sandbox_id, workspace_id FROM agent_sessions WHERE id=$1 FOR UPDATE`, id).Scan(&turns, &currentPhase, &archivedAt, &previousSandboxID, &workspaceID); err != nil {
 			return err
 		}
 		// Recheck after taking the row lock. Two concurrent Steers can both pass
@@ -299,6 +311,9 @@ func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliver
 		if _, err := tx.Exec(ctx, `
 			INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode)
 			VALUES ($1, $2, $3, $4)`, id, turns+1, prompt, deliveryMode); err != nil {
+			return err
+		}
+		if err := bindAgentAttachments(ctx, tx, workspaceID, id, turns+1, attachments); err != nil {
 			return err
 		}
 		var err error
@@ -317,7 +332,7 @@ func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliver
 		return nil
 	})
 	if err != nil {
-		if errors.Is(err, ErrAgentSessionPromptQuota) || errors.Is(err, ErrAgentSessionTurnState) {
+		if errors.Is(err, ErrAgentSessionPromptQuota) || errors.Is(err, ErrAgentSessionTurnState) || isAgentAttachmentRefusal(err) {
 			return AgentSession{}, err
 		}
 		return AgentSession{}, classify("agent session turn", err)
@@ -345,7 +360,7 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 	rows, err := s.Pool.Query(ctx, `
 		SELECT session_id, turn, prompt, delivery_mode,
 		       transcript_complete, transcript_truncated, truncation_reason,
-		       created_at, started_at, completed_at
+		       created_at, started_at, completed_at, attachments
 		FROM agent_session_turns WHERE session_id=$1 ORDER BY turn`, sessionID)
 	if err != nil {
 		return nil, err
@@ -356,7 +371,7 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		var turn AgentSessionTurn
 		if err := rows.Scan(&turn.SessionID, &turn.Turn, &turn.Prompt, &turn.DeliveryMode,
 			&turn.TranscriptComplete, &turn.TranscriptTruncated, &turn.TruncationReason,
-			&turn.CreatedAt, &turn.StartedAt, &turn.CompletedAt); err != nil {
+			&turn.CreatedAt, &turn.StartedAt, &turn.CompletedAt, &turn.Attachments); err != nil {
 			return nil, err
 		}
 		out = append(out, turn)
@@ -1074,14 +1089,20 @@ func (s *PGStore) AgentSessionTranscriptTurnMaxIndex(ctx context.Context, sessio
 // phase gate). Cancel still preserves the
 // audit/history row.
 func (s *PGStore) DeleteAgentSession(ctx context.Context, id string) error {
-	tag, err := s.Pool.Exec(ctx, `DELETE FROM agent_sessions WHERE id=$1`, id)
-	if err != nil {
-		return err
-	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("agent session: %w", ErrNotFound)
-	}
-	return nil
+	return s.withTx(ctx, func(tx pgx.Tx) error {
+		// The session's files go with it: retired here, purged by the sweep.
+		if err := retireSessionAttachments(ctx, tx, id); err != nil {
+			return err
+		}
+		tag, err := tx.Exec(ctx, `DELETE FROM agent_sessions WHERE id=$1`, id)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return fmt.Errorf("agent session: %w", ErrNotFound)
+		}
+		return nil
+	})
 }
 
 // StampAgentSessionFailureCode sets the stable failureReasonCode on a session

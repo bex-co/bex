@@ -15,7 +15,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m168** — [ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery](m168/README.md) (10 tasks) ← ADR095, user 2026-11-03 ("/pm ADR095 to w9"). Live DoD needs the production `bex-agent-attachments` Wasabi bucket + IAM users (user action).
+- [ ] **m168** — **BLOCKED (your action: create the production attachments bucket + IAM user — `bash scripts/agent-attachments-s3-credentials.sh provision && … install` with the Wasabi root keys in `.env`; then a deploy and `/loopx w9` runs the live check)** — [ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery](blocked/m168/README.md) (10 tasks; t001–t009 **DONE**: upload/read/list/delete/presign, binding on create/steer, per-dispatch copy into `/attachments`, ACP blocks, sweep; real-deps suite + lint + driver tests green; until the bucket exists every attachment verb answers 503 and sessions behave as before)
 - [ ] **m169** — [ADR095 phase 2 — attachments in the `/agents` dashboard](m169/README.md) (7 tasks) ← ADR095; depends on m168.
 - [ ] **m170** — [ADR095 phase 3 — agent-shared output files and the Files tab](m170/README.md) (7 tasks) ← ADR095; depends on m168.
 - [ ] **m171** — [ADR095 phase 4 — attachment tools on the MCP server](m171/README.md) (6 tasks) ← ADR095; depends on m168; coordinates with w21's ADR094 work.

@@ -24,11 +24,11 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/s3client"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -73,12 +73,12 @@ func (s *S3ExportSigner) Presign(
 	if accessKey == "" || secretKey == "" {
 		return "", fmt.Errorf("export credentials Secret must contain AWS_ACCESS_KEY_ID and AWS_SECRET_ACCESS_KEY")
 	}
-	region := firstNonEmpty(string(secret.Data["AWS_REGION"]), string(secret.Data["AWS_DEFAULT_REGION"]), "us-east-1")
-	provider := credentials.NewStaticCredentialsProvider(accessKey, secretKey, string(secret.Data["AWS_SESSION_TOKEN"]))
-	config := aws.Config{Region: region, Credentials: aws.NewCredentialsCache(provider)}
-	objectClient := s3.NewFromConfig(config, func(options *s3.Options) {
-		options.BaseEndpoint = aws.String(db.Status.BackupEndpointURL)
-		options.UsePathStyle = true
+	objectClient := s3client.New(s3client.Config{
+		Endpoint:     db.Status.BackupEndpointURL,
+		Region:       firstNonEmpty(string(secret.Data["AWS_REGION"]), string(secret.Data["AWS_DEFAULT_REGION"])),
+		AccessKey:    accessKey,
+		SecretKey:    secretKey,
+		SessionToken: string(secret.Data["AWS_SESSION_TOKEN"]),
 	})
 	presigner := s3.NewPresignClient(objectClient)
 	result, err := presigner.PresignGetObject(ctx, &s3.GetObjectInput{

@@ -159,6 +159,10 @@ var (
 	// 404, but the operation itself is off-roadmap and retrying cannot succeed
 	// (adapters map it to 410). Use NewGoneError so the refusal carries a code.
 	ErrGone = errors.New("gone")
+	// ErrTooLarge is the class of a request whose payload exceeds a verb's own
+	// byte limit, such as an agent attachment over its cap (ADR095 D8);
+	// adapters map it to 413. Use NewTooLargeError so the refusal is coded.
+	ErrTooLarge = errors.New("payload too large")
 	// ErrAuditUnavailable is returned by the audit-log read verb when the
 	// control-plane store isn't wired (BEX_CP_DB_URI unset); adapters surface it
 	// as 503 — omitted, not faked (the deploy-history/env-vars precedent).
@@ -515,6 +519,12 @@ func NewUnavailableError(code, msg string, params map[string]any) *CodedError {
 // honest.
 func NewGoneError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrGone, msg: msg}
+}
+
+// NewTooLargeError returns a machine-readable 413 for a payload over a verb's
+// byte limit.
+func NewTooLargeError(code, msg string, params map[string]any) *CodedError {
+	return &CodedError{Code: code, Params: params, sentinel: ErrTooLarge, msg: msg}
 }
 
 // Agent-session availability codes deliberately distinguish a platform that

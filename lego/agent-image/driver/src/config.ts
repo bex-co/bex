@@ -14,12 +14,19 @@
  * limitations under the License.
  */
 
+import {
+  parseAttachmentManifest,
+  type AttachmentManifest,
+} from "./attachments.js";
 import path from "node:path";
 import { describeError } from "./errors.js";
 import { loadAgentProfiles, lookupAgentProfile } from "./profiles.js";
 import { isDeepStrictEqual } from "node:util";
 
 export interface AgentDriverConfig {
+  // Files the user attached to the session (ADR095): what setup waits for and
+  // the turn presents to the agent. Undefined when none.
+  attachments?: AttachmentManifest;
   command: string;
   args: string[];
   // Release-profile id (agent-profiles.json): selects the overlay channel for
@@ -291,5 +298,6 @@ export function loadConfig(
     modelBaseUrl,
     modelBaseUrlEnvName,
     networkTier: networkTier(env.BEX_AGENT_NETWORK_TIER),
+    attachments: parseAttachmentManifest(env.BEX_AGENT_ATTACHMENTS),
   };
 }

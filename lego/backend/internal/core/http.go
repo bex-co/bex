@@ -306,6 +306,8 @@ func WriteErr(w http.ResponseWriter, err error) {
 		code = http.StatusPaymentRequired
 	case errors.Is(err, ErrGone):
 		code = http.StatusGone
+	case errors.Is(err, ErrTooLarge):
+		code = http.StatusRequestEntityTooLarge
 	}
 	msg := err.Error()
 	var ce *CodedError
@@ -349,7 +351,8 @@ func IsPublicError(err error) bool {
 		errors.Is(err, ErrConflict),
 		errors.Is(err, ErrBillingEnforced),
 		errors.Is(err, ErrPaymentRequired),
-		errors.Is(err, ErrGone):
+		errors.Is(err, ErrGone),
+		errors.Is(err, ErrTooLarge):
 		return true
 	}
 	return false

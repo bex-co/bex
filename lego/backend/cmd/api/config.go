@@ -20,6 +20,7 @@ import (
 	"errors"
 	"fmt"
 	"net/url"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -27,6 +28,7 @@ import (
 	"k8s.io/apimachinery/pkg/util/validation"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
+	"github.com/bex-co/bex/lego/backend/internal/agentsessions"
 	"github.com/bex-co/bex/lego/backend/internal/apps"
 	"github.com/bex-co/bex/lego/backend/internal/audit"
 	"github.com/bex-co/bex/lego/backend/internal/billing"
@@ -256,6 +258,9 @@ type Config struct {
 
 	// Disk snapshots (docs/ADR082-persistent-disks.md D5).
 	DiskSnapshot apps.S3DiskSnapshotConfig
+	// AgentAttachments is the ADR095 attachments bucket; unset ⇒ attachments
+	// are unavailable.
+	AgentAttachments agentsessions.S3AttachmentConfig
 
 	// Serving knobs (skipped entirely in stdio mode, like the inline reads
 	// they replaced — a local agent's leftover env must not fail a subprocess).
@@ -569,6 +574,22 @@ func loadConfig(getenv func(string) string, now time.Time, args []string) (*Conf
 		Region:    getenv("BEX_DISK_SNAPSHOT_REGION"),
 		AccessKey: getenv("BEX_DISK_SNAPSHOT_ACCESS_KEY"),
 		SecretKey: getenv("BEX_DISK_SNAPSHOT_SECRET_KEY"),
+	}
+
+	// Agent attachments (ADR095 D1).
+	cfg.AgentAttachments = agentsessions.S3AttachmentConfig{
+		Endpoint:  getenv("BEX_AGENT_ATTACHMENTS_S3_ENDPOINT"),
+		Bucket:    getenv("BEX_AGENT_ATTACHMENTS_S3_BUCKET"),
+		Region:    getenv("BEX_AGENT_ATTACHMENTS_S3_REGION"),
+		AccessKey: getenv("BEX_AGENT_ATTACHMENTS_S3_ACCESS_KEY"),
+		SecretKey: getenv("BEX_AGENT_ATTACHMENTS_S3_SECRET_KEY"),
+	}
+	// Half a configuration would silently disable attachments; refuse it.
+	if cfg.AgentAttachments.Configured() {
+		if missing := cfg.AgentAttachments.Missing(); len(missing) > 0 {
+			slices.Sort(missing)
+			p.errorf("agent attachments are partly configured; also set %s", strings.Join(missing, ", "))
+		}
 	}
 
 	// Serving knobs — skipped in stdio mode (the HTTP surface never starts).

@@ -41,7 +41,9 @@ func idempotencyOf(workspaceID string, req CreateRequest) (key, hash string, err
 		Egress    []string    `json:"e"`
 		Title     string      `json:"t"`
 		Tags      []string    `json:"g"`
-	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags})
+		// omitempty keeps every digest made before attachments existed (ADR095).
+		Attachments []string `json:"a,omitempty"`
+	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs})
 	if err != nil {
 		return "", "", err
 	}

@@ -29,6 +29,7 @@ import {
   PROTOCOL_VERSION,
   type McpServer,
   type NewSessionRequest,
+  type ContentBlock,
   type PromptResponse,
   type RequestPermissionRequest,
   type RequestPermissionResponse,
@@ -70,7 +71,9 @@ export interface SessionProvider {
   sessionId: string;
   resume: "new" | "loaded" | "unsupported" | "load-failed";
   overlayChannel: OverlayChannel;
-  prompt(text: string): Promise<PromptResponse>;
+  // imagePrompts: the agent accepts ACP image blocks (promptCapabilities.image).
+  imagePrompts: boolean;
+  prompt(text: string, attachments?: ContentBlock[]): Promise<PromptResponse>;
   cancel(): Promise<void>;
   cleanup(): Promise<void>;
 }
@@ -573,14 +576,16 @@ async function createSessionAttempt(
       sessionId,
       resume,
       overlayChannel,
-      async prompt(text: string) {
+      imagePrompts:
+        initialize.agentCapabilities?.promptCapabilities?.image === true,
+      async prompt(text: string, attachments: ContentBlock[] = []) {
         promptFailure = undefined;
         promptInFlight = true;
         try {
           const response = await raceTerminal(
             agent.request(methods.agent.session.prompt, {
               sessionId,
-              prompt: [{ type: "text", text }],
+              prompt: [{ type: "text", text }, ...attachments],
             }),
           );
           const failure = promptFailure ?? typedSessionFailure(response);

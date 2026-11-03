@@ -31,6 +31,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/hmacticket"
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -239,19 +240,9 @@ func (s *Service) ConnectFileHandler() http.Handler {
 			core.WriteErr(w, err)
 			return
 		}
-		now := s.Now()
-		ticket, err := sandboxfiles.Mint(s.Exec.Secret, sandboxfiles.Claims{
-			Subject: claims.Subject, Workspace: ws, SandboxID: raw.ID, Namespace: store.SandboxNamespace(ws),
-			AgentSessionID: raw.Metadata[metadataAgentSession], Operation: claims.Operation, Path: claims.Path,
-			IssuedAt: now.Unix(), ExpiresAt: now.Add(s.Exec.connectTTL()).Unix(),
-		})
+		ticket, gateway, err := s.gatewayFileTicket(claims.Subject, ws, raw, claims.Operation, claims.Path)
 		if err != nil {
 			core.WriteErr(w, err)
-			return
-		}
-		gateway, err := url.Parse(s.Exec.FileGatewayURL)
-		if err != nil || (gateway.Scheme != "http" && gateway.Scheme != "https") || gateway.Host == "" {
-			core.WriteErr(w, core.ErrSandboxesUnavailable)
 			return
 		}
 		proxy := &httputil.ReverseProxy{
@@ -274,9 +265,39 @@ func (s *Service) ConnectFileHandler() http.Handler {
 			},
 			FlushInterval: -1,
 		}
-		if s.Exec.Client != nil {
-			proxy.Transport = s.Exec.Client.Transport
-		}
+		proxy.Transport = s.gatewayClient().Transport
 		proxy.ServeHTTP(w, r.WithContext(ctx))
 	})
+}
+
+// gatewayFileTicket signs the gateway half of one file transfer and resolves
+// the gateway endpoint it is redeemed at.
+func (s *Service) gatewayFileTicket(subject, ws string, raw osSandbox, operation, path string) (string, *url.URL, error) {
+	gateway, err := url.Parse(s.Exec.FileGatewayURL)
+	if err != nil || (gateway.Scheme != "http" && gateway.Scheme != "https") || gateway.Host == "" {
+		return "", nil, core.ErrSandboxesUnavailable
+	}
+	now := s.Now()
+	claims := sandboxfiles.Claims{
+		Subject: subject, Workspace: ws, SandboxID: raw.ID, Namespace: store.SandboxNamespace(ws),
+		AgentSessionID: raw.Metadata[metadataAgentSession], Operation: operation, Path: path,
+		IssuedAt: now.Unix(), ExpiresAt: now.Add(s.Exec.connectTTL()).Unix(),
+	}
+	// The gateway enforces this too; refusing here keeps bex-api from ever
+	// signing a broader platform ticket.
+	if !claims.PlatformUploadAllowed(sandboxexec.SystemSubject) {
+		return "", nil, fmt.Errorf("%w: platform file tickets only copy agent attachments", core.ErrForbidden)
+	}
+	ticket, err := sandboxfiles.Mint(s.Exec.Secret, claims)
+	if err != nil {
+		return "", nil, err
+	}
+	return ticket, gateway, nil
+}
+
+func (s *Service) gatewayClient() *http.Client {
+	if s.Exec.Client != nil {
+		return s.Exec.Client
+	}
+	return http.DefaultClient
 }
