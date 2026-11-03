@@ -136,7 +136,7 @@ func (m *memStore) CountAppsForTenant(_ context.Context, tenantID string) (int, 
 	defer m.mu.Unlock()
 	n := 0
 	for _, a := range m.apps {
-		if a.TenantID == tenantID {
+		if a.TenantID == tenantID && a.Type != TypeBuildSource {
 			n++
 		}
 	}
@@ -293,7 +293,9 @@ func (m *memStore) ListApps(context.Context) ([]App, error) {
 	defer m.mu.Unlock()
 	out := make([]App, 0, len(m.apps))
 	for _, a := range m.apps {
-		out = append(out, a)
+		if a.Type != TypeBuildSource {
+			out = append(out, a)
+		}
 	}
 	return out, nil
 }

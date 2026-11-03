@@ -266,7 +266,7 @@ func (s *PGStore) CountWorkspacesForSubjectPlan(ctx context.Context, subject, pl
 func (s *PGStore) CountAppsForTenant(ctx context.Context, tenantID string) (int, error) {
 	var n int
 	err := s.Pool.QueryRow(ctx,
-		`SELECT count(*) FROM apps WHERE tenant_id = $1`, tenantID).Scan(&n)
+		`SELECT count(*) FROM apps a WHERE a.tenant_id = $1 AND `+serviceAppsOnly, tenantID).Scan(&n)
 	return n, err
 }
 

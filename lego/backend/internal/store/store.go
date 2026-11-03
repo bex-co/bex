@@ -166,6 +166,11 @@ type App struct {
 	// (SetAppDisplayName). Empty means never renamed; readers fall back to
 	// Name. Read-only here: CreateApp does not write it.
 	DisplayName string `json:"displayName,omitempty"`
+	// BuildSourceID links the service to a build_source carrier row (Render's
+	// buildSourceId, w2/m254); BuildSourceImage is the carrier build it
+	// deploys, empty until one is selected. Both empty for every other app.
+	BuildSourceID    string `json:"buildSourceId,omitempty"`
+	BuildSourceImage string `json:"-"`
 	// CreationPending prevents the projector from dispatching a Blueprint App
 	// before its initial environment-group composition has committed.
 	CreationPending bool `json:"-"`
@@ -1026,10 +1031,13 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 				return err
 			}
 			if err := tx.QueryRow(ctx,
-				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id, container_policy, port_mode, creation_pending)
-				 VALUES ($1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), $8, $9, $10, $11, $12, $13, $14, NULLIF($15,''), NULLIF($16,''), $17, $18, $19)
+				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id, container_policy, port_mode, creation_pending,
+				   build_source_id, build_source_image)
+				 VALUES ($1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), $8, $9, $10, $11, $12, $13, $14, NULLIF($15,''), NULLIF($16,''), $17, $18, $19,
+				   NULLIF($20,''), $21)
 				 RETURNING created_at`,
 				a.ID, a.TenantID, a.Name, a.Slug, a.Type, a.Repo, a.Image, a.RegistryCredentialID, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID, a.ContainerPolicy, a.PortMode, a.CreationPending,
+				a.BuildSourceID, a.BuildSourceImage,
 			).Scan(&a.CreatedAt); err != nil {
 				return err
 			}
@@ -1068,13 +1076,23 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 const appColumns = `a.id, a.tenant_id, a.name, a.slug, a.type, COALESCE(a.repo,''), COALESCE(a.image,''), a.registry_credential_id,
 	a.branch, a.port, a.replicas, a.tier, a.idle_ttl_seconds, a.suspended,
 	COALESCE(a.project_id::text,''), COALESCE(a.environment_id::text,''), a.created_at, a.container_policy, a.port_mode, a.creation_pending,
-	COALESCE(a.display_name,'')`
+	COALESCE(a.display_name,''), COALESCE(a.build_source_id,''), a.build_source_image`
+
+// TypeBuildSource is the apps.type of a Render Build Source carrier row
+// (w2/m254). Carriers are not services: every service listing excludes them
+// with serviceAppsOnly.
+const TypeBuildSource = appv1alpha1.TypeBuildSource
+
+// serviceAppsOnly is the predicate (over alias a) a service listing adds so a
+// build source carrier never reads as a service.
+const serviceAppsOnly = `a.type <> '` + TypeBuildSource + `'`
 
 func scanApp(row pgx.Row) (App, error) {
 	var a App
 	err := row.Scan(&a.ID, &a.TenantID, &a.Name, &a.Slug, &a.Type, &a.Repo, &a.Image,
 		&a.RegistryCredentialID, &a.Branch, &a.Port, &a.Replicas, &a.Tier, &a.IdleTTLSeconds, &a.Suspended,
-		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt, &a.ContainerPolicy, &a.PortMode, &a.CreationPending, &a.DisplayName)
+		&a.ProjectID, &a.EnvironmentID, &a.CreatedAt, &a.ContainerPolicy, &a.PortMode, &a.CreationPending, &a.DisplayName,
+		&a.BuildSourceID, &a.BuildSourceImage)
 	return a, err
 }
 
@@ -1145,7 +1163,7 @@ func (s *PGStore) GetEnvironmentProtectedStatus(ctx context.Context, environment
 
 func (s *PGStore) ListApps(ctx context.Context) ([]App, error) {
 	rows, err := s.Pool.Query(ctx,
-		`SELECT `+appColumns+` FROM apps a ORDER BY a.created_at`)
+		`SELECT `+appColumns+` FROM apps a WHERE `+serviceAppsOnly+` ORDER BY a.created_at`)
 	if err != nil {
 		return nil, err
 	}
@@ -1165,6 +1183,12 @@ func (s *PGStore) ListApps(ctx context.Context) ([]App, error) {
 // service removed before its last hourly rollup still owes that interval.
 func (s *PGStore) DeleteApp(ctx context.Context, id string) error {
 	tag, err := s.Pool.Exec(ctx, `DELETE FROM apps WHERE id = $1`, id)
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) && pgErr.ConstraintName == "apps_build_source_id_fkey" {
+		// A build source still linked by a service (w2/m254): the services
+		// must be unlinked first, which is a conflict, not a missing row.
+		return fmt.Errorf("build source %s has linked services: %w", id, ErrConflict)
+	}
 	if err != nil {
 		return classify("app", err)
 	}
@@ -1567,7 +1591,8 @@ func (s *PGStore) ListDesiredApps(ctx context.Context) ([]DesiredApp, error) {
 		var envRules []byte
 		err := rows.Scan(&d.ID, &d.TenantID, &d.Name, &d.Slug, &d.Type, &d.Repo, &d.Image,
 			&d.RegistryCredentialID, &d.Branch, &d.Port, &d.Replicas, &d.Tier, &d.IdleTTLSeconds, &d.Suspended,
-			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.CreationPending, &d.DisplayName, &d.TenantName, &envRules, &d.SourceRevision)
+			&d.ProjectID, &d.EnvironmentID, &d.CreatedAt, &d.ContainerPolicy, &d.PortMode, &d.CreationPending, &d.DisplayName,
+			&d.BuildSourceID, &d.BuildSourceImage, &d.TenantName, &envRules, &d.SourceRevision)
 		if err != nil {
 			return nil, err
 		}
