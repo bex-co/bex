@@ -51,3 +51,9 @@
 - **(c) Accept:** keep the invariant, and let t002's watchdog report each stall.
 
 t001/t002 do not depend on this and are shipped. t004–t006 follow the decision.
+
+## t002 live verification — 2026-11-03
+
+- The first dispatch (41590504168) was cancelled at the 15-min timeout inside a full checkout. The checkout was fixed in `b1732715a` (blobless + sparse) and later generalised by w6/m157.
+- With threshold 0, dispatch 41595534204 succeeded and opened issue #122 "main is not reaching production" at 08:04 UTC.
+- With threshold 1000, dispatch 41610903992 succeeded and closed #122 with `Recovered: queued 3.8h bd33b3012c49 run=41609029897 waiting for the bex-production-deploy slot …`. That is a real reading: a deployable commit had been waiting 3.8 h behind the deploy slot.
