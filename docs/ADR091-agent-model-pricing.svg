@@ -1,0 +1,187 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="990" viewBox="0 0 1440 990" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#1f2328">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#57606a"/>
+    </marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#cf222e"/>
+    </marker>
+    <style>
+      .t { font-weight: 600; font-size: 15px; }
+      .s { fill: #57606a; font-size: 12px; }
+      .m { font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+      .lane { font-weight: 700; font-size: 12px; letter-spacing: .08em; fill: #57606a; }
+      .ln { stroke: #57606a; stroke-width: 1.6; fill: none; marker-end: url(#a); }
+      .dash { stroke-dasharray: 6 4; }
+      .red { stroke: #cf222e; marker-end: url(#r); }
+      .req { fill: #ddf4ff; stroke: #54aeff; }
+      .met { fill: #dafbe1; stroke: #4ac26b; }
+      .bil { fill: #fff8c5; stroke: #d4a72c; }
+      .ui  { fill: #f6f8fa; stroke: #8c959f; }
+      .ext { fill: #fbefff; stroke: #c297ff; }
+      rect.b { stroke-width: 1.5; rx: 8; }
+    </style>
+  </defs>
+
+  <text x="20" y="34" font-size="20" font-weight="700">ADR091 — Agent model pricing and metering architecture</text>
+  <text x="20" y="56" class="s">customer price = upstream cost × 1.30 · one cost meter · USD spend caps · non-payment protection (D10)</text>
+
+  <!-- lanes -->
+  <rect x="10" y="72" width="1420" height="198" fill="#f6fbff" rx="10"/>
+  <text x="22" y="90" class="lane">1 · REQUEST PATH</text>
+  <rect x="10" y="282" width="1420" height="228" fill="#f7fdf8" rx="10"/>
+  <text x="22" y="300" class="lane">2 · METERING (bex-api)</text>
+  <rect x="10" y="522" width="1420" height="216" fill="#fffdf2" rx="10"/>
+  <text x="22" y="540" class="lane">3 · SPEND CONTROLS AND BILLING</text>
+  <rect x="10" y="750" width="1420" height="186" fill="#f9fafb" rx="10"/>
+  <text x="22" y="768" class="lane">4 · CUSTOMER SURFACES AND ACCOUNT LIFECYCLE</text>
+
+  <!-- row 1 -->
+  <rect class="b req" x="40" y="110" width="220" height="110"/>
+  <text x="56" y="136" class="t">Agent sandbox</text>
+  <text x="56" y="160">ACP agent (claude-agent-acp)</text>
+  <text x="56" y="180">holds a placeholder key only</text>
+  <text x="56" y="200" class="s">real key never enters (ADR062)</text>
+
+  <rect class="b req" x="330" y="100" width="330" height="150"/>
+  <text x="346" y="126" class="t">ssh-gateway model proxy :8084</text>
+  <text x="346" y="152">① mint: card on file (ADR075 D7) → 402</text>
+  <text x="346" y="174">② spend-cap check → 429 when reached</text>
+  <text x="346" y="196">③ inject platform key (or BYO key)</text>
+  <text x="346" y="218">④ tee-parse usage + <tspan class="m">usage.cost</tspan></text>
+  <text x="346" y="238" class="s">sshgateway/modelproxy/usage.go</text>
+
+  <rect class="b ext" x="740" y="100" width="250" height="78"/>
+  <text x="756" y="124" class="t">OpenRouter (platform key)</text>
+  <text x="756" y="146" class="m">deepseek-v4.1-flash-1017</text>
+  <text x="756" y="166" class="s">data_collection: deny · credit limit</text>
+
+  <rect class="b ext" x="740" y="192" width="250" height="62"/>
+  <text x="756" y="216" class="t">BYO provider key (D7)</text>
+  <text x="756" y="238" class="s">key in OpenBao · no token billing</text>
+
+  <rect class="b bil" x="1060" y="100" width="330" height="78"/>
+  <text x="1076" y="124" class="t">Ops backstop (D5)</text>
+  <text x="1076" y="146">OpenRouter key credit limit</text>
+  <text x="1076" y="166" class="s">alert when platform spend ≥ 80% of it</text>
+
+  <path class="ln" d="M260,165 L328,165"/>
+  <path class="ln" d="M660,139 L738,139"/>
+  <text x="668" y="131" class="s">platform</text>
+  <path class="ln dash" d="M660,223 L738,223"/>
+  <text x="680" y="215" class="s">BYO</text>
+  <path class="ln dash" d="M990,139 L1058,139"/>
+
+  <!-- row 2 -->
+  <path class="ln" d="M495,250 L495,318"/>
+  <text x="505" y="290" class="s">usage report per request (idempotent)</text>
+
+  <rect class="b met" x="40" y="320" width="220" height="170"/>
+  <text x="56" y="346" class="t">OpenRouter price cache</text>
+  <text x="56" y="370" class="m" xml:space="preserve">GET /api/v1/models</text>
+  <text x="56" y="392">+ time-of-day overrides</text>
+  <text x="56" y="414">(weekday 01–04, 06–10 UTC ×2)</text>
+  <text x="56" y="436">refreshed hourly</text>
+  <text x="56" y="458" class="s">keeps the last good copy</text>
+
+  <rect class="b met" x="330" y="320" width="330" height="170"/>
+  <text x="346" y="346" class="t">Price each request (D1, D2)</text>
+  <text x="346" y="370">cost = reported <tspan class="m">usage.cost</tspan></text>
+  <text x="346" y="390">   else computed from the price cache</text>
+  <text x="346" y="414">price = cost × <tspan class="m">markup</tspan> (1.30)</text>
+  <text x="346" y="436">µUSD, rounded half-up per request</text>
+  <text x="346" y="460" class="s">BYO requests: tokens only, no price</text>
+  <text x="346" y="478" class="s">agentsession/modelusage.go</text>
+
+  <rect class="b met" x="740" y="320" width="250" height="170"/>
+  <text x="756" y="346" class="t">agent_model_usage_events</text>
+  <text x="756" y="370">input / output / cache tokens</text>
+  <text x="756" y="390" class="m">upstream_cost_microusd</text>
+  <text x="756" y="410" class="m">cost_source reported|computed</text>
+  <text x="756" y="430" class="m">price_microusd</text>
+  <text x="756" y="458" class="s">every invoice line traces to</text>
+  <text x="756" y="476" class="s">a request</text>
+
+  <rect class="b met" x="1060" y="320" width="330" height="170"/>
+  <text x="1076" y="346" class="t">usage_hourly (ADR023)</text>
+  <text x="1076" y="372" class="m">agent_model_cost_microusd</text>
+  <text x="1076" y="390" class="s">  → billed (D3)</text>
+  <text x="1076" y="416" class="m">agent_model_*_tokens</text>
+  <text x="1076" y="434" class="s">  → breakdown display only</text>
+  <text x="1076" y="460" class="s">per workspace, per hour</text>
+
+  <path class="ln dash" d="M260,380 L328,380"/>
+  <text x="264" y="372" class="s">fallback</text>
+  <path class="ln" d="M660,405 L738,405"/>
+  <path class="ln" d="M990,405 L1058,405"/>
+
+  <!-- row 3 -->
+  <rect class="b bil" x="40" y="560" width="220" height="160"/>
+  <text x="56" y="586" class="t">pricing.yaml</text>
+  <text x="56" y="608" class="m" xml:space="preserve">agentModel:</text>
+  <text x="56" y="626" class="m" xml:space="preserve">  markup: 1.30</text>
+  <text x="56" y="644" class="m" xml:space="preserve">  monthlySpendCapUsd:</text>
+  <text x="56" y="662" class="m" xml:space="preserve">    20 / 200 / 2000</text>
+  <text x="56" y="680" class="m" xml:space="preserve">  trustTiers: T0…T4</text>
+  <text x="56" y="698" class="m" xml:space="preserve">    10/25/50/250/–</text>
+
+  <rect class="b bil" x="330" y="560" width="330" height="160"/>
+  <text x="346" y="586" class="t">Spend cap + trust tier (D5, D10.1)</text>
+  <text x="346" y="610">month-to-date cost vs effective cap</text>
+  <text x="346" y="632">plan default or admin override (≤10×)</text>
+  <text x="346" y="654">T0: $10 cap, 2 sessions; rises with paid bills</text>
+  <text x="346" y="678" fill="#cf222e">over → <tspan class="m">AGENT_MODEL_SPEND_CAP_REACHED</tspan></text>
+  <text x="346" y="702" class="s">reads usage_hourly MTD</text>
+
+  <rect class="b bil" x="740" y="560" width="250" height="160"/>
+  <text x="756" y="586" class="t">Billing outbox (ADR040)</text>
+  <text x="756" y="610">48h seal (compute only)</text>
+  <text x="756" y="632">1 Stripe meter, $0.000001/unit</text>
+  <text x="756" y="654">monthly invoice in arrears</text>
+  <text x="756" y="678">dunning → suspension (§7)</text>
+  <text x="756" y="702" class="s">billing/stripe.go</text>
+
+  <rect class="b bil" x="1060" y="560" width="330" height="160"/>
+  <text x="1076" y="586" class="t">Stripe Billing</text>
+  <text x="1076" y="610">meter <tspan class="m">agent_model_cost_microusd</tspan></text>
+  <text x="1076" y="632">item threshold by tier (D10.2):</text>
+  <text x="1076" y="652">  $10 → $25 → $50 → $250 → none</text>
+  <text x="1076" y="676">Radar · no prepaid · fingerprint (D10.5–6)</text>
+  <text x="1076" y="702" class="s">every plan pays per use (D4)</text>
+
+  <path class="ln" d="M260,640 L328,640"/>
+  <path class="ln red" d="M330,610 L318,610 L318,240 L328,240"/>
+  <text x="310" y="560" class="s" fill="#cf222e" text-anchor="middle" transform="rotate(-90 310 560)">cap check at mint</text>
+  <path class="ln" d="M1120,490 L1120,525 L865,525 L865,558"/>
+  <text x="880" y="518" class="s">compute: sealed hourly totals</text>
+  <path class="ln" d="M1330,490 L1330,558"/>
+  <text x="1322" y="530" class="s" text-anchor="end">model cost: real time, no seal</text>
+  <path class="ln" d="M990,640 L1058,640"/>
+
+  <!-- row 4 -->
+  <rect class="b ui" x="40" y="785" width="620" height="135"/>
+  <text x="56" y="811" class="t">Customer surfaces (D6) · REST · GraphQL · MCP · dashboard</text>
+  <text x="56" y="835">Usage / Billing: “Agent model” month-to-date USD + breakdown by model and token kind</text>
+  <text x="56" y="857">Settings → Agents: model source, “provider cost + 30%”, spend vs cap, admin cap edit, BYO key</text>
+  <text x="56" y="879">Composer: warning at ≥ 80% of cap, blocked at 100% (admins get “increase cap”)</text>
+  <text x="56" y="901">Session detail: cost per turn from usage events</text>
+
+  <rect class="b ui" x="740" y="785" width="650" height="135"/>
+  <text x="756" y="811" class="t">Settle before delete (D10.4, amends ADR086)</text>
+  <text x="756" y="835">workspace / account deletion flushes unbilled usage, bypassing the 48h seal</text>
+  <text x="756" y="857">→ invoice and charge now → then delete</text>
+  <text x="756" y="879" fill="#cf222e">charge fails → refuse with <tspan class="m">BILLING_BALANCE_DUE</tspan> + payment link</text>
+  <text x="756" y="901" class="s">identity is kept until the balance is settled</text>
+
+  <path class="ln" d="M1225,785 L1225,722"/>
+  <text x="1235" y="760" class="s">final charge</text>
+
+  <!-- legend -->
+  <line x1="20" y1="966" x2="60" y2="966" class="ln"/>
+  <text x="68" y="970" class="s">request / data flow</text>
+  <line x1="210" y1="966" x2="250" y2="966" class="ln dash"/>
+  <text x="258" y="970" class="s">alternative or fallback path</text>
+  <line x1="440" y1="966" x2="480" y2="966" class="ln red"/>
+  <text x="488" y="970" class="s">enforcement / refusal</text>
+  <text x="1420" y="970" class="s" text-anchor="end">docs/ADR091-agent-model-pricing.md</text>
+</svg>

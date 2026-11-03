@@ -1,6 +1,6 @@
 # ADR091 — Agent model pricing: provider cost × 1.3, spend caps, and non-payment protection
 
-**Status:** Accepted, 2026-10-30. Implementation is tracked in `w10/m14`. This ADR defines the pricing and spend controls that [ADR090](ADR090-agent-owned-delivery.md)'s 2026-10-23 platform model route left as follow-ups. It supersedes the per-model token-meter billing mechanism shipped in `952b9e8fa`; the token meters stay for display. It amends [ADR030](ADR030-pricing.md): the "Render price × 0.70" rule does not cover agent model tokens, because Render has no equivalent SKU.
+**Status:** Accepted, 2026-10-30; D10 amended 2026-10-31 (risk analysis, failed-charge stop, card checks, terms, prepaid trigger) and 2026-11-02 (trust tiers drive the charge threshold, cap and concurrency; real-time cost meter with Stripe item thresholds). Implementation is tracked in `w10/m14`. This ADR defines the pricing and spend controls that [ADR090](ADR090-agent-owned-delivery.md)'s 2026-10-23 platform model route left as follow-ups. It supersedes the per-model token-meter billing mechanism shipped in `952b9e8fa`; the token meters stay for display. It amends [ADR030](ADR030-pricing.md): the "Render price × 0.70" rule does not cover agent model tokens, because Render has no equivalent SKU.
 
 **Source:** user decisions 2026-10-30 (`/plan`):
 
@@ -19,6 +19,8 @@
 
 ## Decision
 
+![ADR091 pricing and metering architecture](ADR091-agent-model-pricing.svg)
+
 ### D1 — Price formula
 
 The customer price of each platform-route request is **upstream cost (USD) × `markup`**, with `markup = 1.30`. It is a single value in `pricing.yaml` (`agentModel.markup`) that applies to every platform-route model. There are no per-model price rows.
@@ -35,6 +37,7 @@ Gross margin is 30% on every request. That holds automatically across time-of-da
 
 - **New meter.** One new meter, `agent_model_cost_microusd`, carries the customer price per request in micro-USD, rounded half-up per request and summed in `usage_hourly`.
 - **Stripe.** It maps to **one model-agnostic Stripe meter** priced at $0.000001 per unit through the ADR040 outbox. `scripts/stripe-billing-setup.py` creates that one meter and price.
+- **Real time, no seal (2026-11-02).** The 48h seal exists because `usage_hourly` rows can still change during rollup catch-up. A request's agent-model cost is final when the request completes, so this meter skips the seal: each usage event is reported to Stripe as it is recorded, with the event `identifier` derived from the request id. Request ids are unique for good, so Stripe's 24h dedupe window is enough. This is what lets D10 charge at a threshold within minutes rather than days.
 - **Superseded.** The per-model token Stripe meters from `952b9e8fa` are no longer used for billing. The token meters remain the usage breakdown by model and token kind.
 
 ### D4 — Who pays
@@ -49,7 +52,7 @@ These replace the token quota mechanism, which shipped disabled in `952b9e8fa`.
 
 - **The cap.** Each workspace has a monthly spend cap in USD. Plan defaults live in `pricing.yaml` (`agentModel.monthlySpendCapUsd[]`): **Hobby $20, Pro $200, Scale $2,000** as initial values.
 - **Admin control.** Workspace admins can lower or raise the cap in Settings → Agents, up to 10× the plan default.
-- **Enforcement.** The model mint compares month-to-date `agent_model_cost_microusd` with the effective cap (D10.2 can lower it). Over the cap, it refuses with the typed code `AGENT_MODEL_SPEND_CAP_REACHED`. This reuses the shipped refusal path: HTTP 429 at the mint, an Anthropic-shaped 429 to the agent, and a readable session failure with `failureReasonCode`.
+- **Enforcement.** The model mint compares month-to-date `agent_model_cost_microusd` with the effective cap (the D10.1 trust tier can lower it). Over the cap, it refuses with the typed code `AGENT_MODEL_SPEND_CAP_REACHED`. This reuses the shipped refusal path: HTTP 429 at the mint, an Anthropic-shaped 429 to the agent, and a readable session failure with `failureReasonCode`.
 - **Overshoot bound.** A request is priced after it completes. So the cap can be exceeded by at most the requests already in flight, one per session.
 - **Global backstop.** The OpenRouter key carries a credit limit, set in the OpenRouter console as an ops step. An ops alert fires when platform spend passes 80% of it.
 
@@ -92,24 +95,71 @@ This absorbs `w10/009`.
 
 **The risk.** Usage is invoiced monthly in arrears and reaches Stripe only after the 48h seal. Account deletion does not settle unbilled usage. So a workspace can burn model spend and delete itself before the period invoice.
 
-**How the industry handles it:**
+**What actually loses money (amended 2026-10-31).** Deleting an account does not cancel a debt. ADR086 keeps the Stripe customer and its payment method, so bex can still charge off-session after deletion, as AWS and GCP do when they bill a closed account's final usage. Money is lost when the charge cannot be collected:
 
-- **Prepaid credits.** The OpenAI, Anthropic and OpenRouter APIs take money up front, and usage draws down a balance that stops at zero. This is the strongest option, and the most friction.
-- **Threshold billing.** Vercel, Twilio and Stripe `billing_thresholds.amount_gte` charge the card as soon as unbilled usage crosses an amount. Exposure is bounded by the threshold, not the month.
-- **Trust tiers.** OpenAI usage tiers and cloud quota ramps start new accounts with low limits, which rise after successful payments.
-- **Settle on close.** AWS requires a paid account before it can be closed. Heroku and Vercel issue a final invoice at deletion.
-- **Card hygiene.** Card verification (3DS, an authorization hold), Stripe Radar risk scoring, optionally refusing prepaid or virtual cards, and deduplicating repeat abusers by card fingerprint across accounts.
-- **Dunning and suspension.** A failed charge leads to a grace period, then suspension, then collections. bex already has this (ADR040 §7).
+- a one-time virtual or prepaid card that is exhausted or cancelled;
+- a stolen card, later disputed (the chargeback also costs a dispute fee);
+- insufficient funds, with an owner who never answers dunning;
+- many throwaway accounts that each use up a new-account allowance.
+
+Agent model spend needs tighter control than compute. Compute runs on bex-owned Hetzner capacity, so unpaid use is mostly opportunity cost. Model tokens are cash paid to OpenRouter on every request, and one unattended session can spend tens of dollars overnight.
+
+**How the industry handles it** (strongest first):
+
+| Practice | Examples | Exposure | Cost |
+| --- | --- | --- | --- |
+| Prepaid credits | OpenAI, Anthropic and OpenRouter APIs: usage draws down a balance and stops at zero | ≈ 0 | Most friction; needs a balance ledger and auto top-up |
+| Deposit or authorization hold | VPS hosts take a small prepayment or hold from new accounts; DigitalOcean lets a prepayment jump trust tiers | The deposit | Lower sign-up conversion |
+| Threshold billing | Stripe `billing_thresholds`; Vercel Pro partial invoices at an unpublished internal threshold or on anomalous usage, with deployments paused after several unpaid ones | One threshold | Several small charges per month |
+| Trust tiers | DigitalOcean: mid-month auto-charge at $25 for an account with no payment history, rising through $50 / $250 / $1,000 / $4,000 as successful non-zero invoices accrue, and a failed auto-charge can suspend the account at once. OpenAI (prepaid): monthly limits of $500 / $5,000 / $200,000 after $5 / $100 / $500 of cumulative credit purchases. Stripe's threshold guide suggests a temporary threshold for new customers | The low tier's limit | Good customers start limited |
+| Hard spend caps | GitHub Actions spending limits, cloud budget caps | The cap | Needs a good "cap reached" experience |
+| Settle on close | AWS bills final usage on a closed account; Heroku and Vercel invoice at deletion | Zero at deletion | Deletion can be held up |
+| Card and identity checks | 3DS, a $1 authorization, Stripe Radar, refusing prepaid/virtual cards, card-fingerprint dedupe, phone or disposable-email checks, KYC at the extreme (Hetzner sometimes asks for ID) | Fewer bad actors | False positives |
+| Dunning, suspension, collections | Every provider | After the fact | Low recovery rate |
+
+Mature platforms combine several. API products, where every request has a real cash cost, almost all use prepaid credits. Cloud platforms, whose cost is mostly owned infrastructure, use post-paid billing with trust tiers and thresholds. bex has both kinds of cost: compute is the second kind, and agent model tokens are closer to the first.
 
 **bex's decision** (the amounts are initial values in `pricing.yaml`):
 
-1. **Threshold billing.** bex charges immediately when a workspace's unbilled `agent_model_cost_microusd` reaches **$10 (Hobby) or $50 (Pro, Scale)**, using an early invoice for the meter or Stripe billing thresholds.
-2. **Trust ramp.** A new workspace's effective spend cap starts at **$10** until its first successful agent-model charge, then rises to the plan default (D5).
-3. **Settle before delete.** Workspace and account deletion (ADR086) first flushes all unbilled usage for that workspace, bypassing the seal horizon, then invoices and charges it. If the charge fails, deletion is refused with typed code `BILLING_BALANCE_DUE` and a payment link, and the identity is kept until the balance is settled.
-4. **Card fingerprint deduplication.** Binding a card whose Stripe fingerprint belongs to a workspace with unpaid, written-off agent-model debt is refused.
-5. **Unchanged.** The card requirement for every workspace (ADR075 D7) and dunning with suspension (ADR040 §7).
+1. **Trust tiers (amended 2026-11-02).** One tier per workspace sets three limits together: the agent-model charge threshold, a ceiling on the spend cap, and concurrent platform-model sessions. This is DigitalOcean's auto-charge ladder combined with OpenAI's tiered limits.
 
-**Exposure.** With these, the most an abusive account can cost bex is roughly one threshold, about $10 of customer price on Hobby, plus at most one in-flight request per session.
+   | Tier | Reached when (successful payments only) | Charge threshold | Spend cap | Concurrent sessions |
+   | --- | --- | --- | --- | --- |
+   | T0 new | no successful payment yet | $10 | $10 | 2 |
+   | T1 | lifetime paid ≥ $10 | $25 | plan (D5) | plan |
+   | T2 | lifetime paid ≥ $100 and ≥ 1 paid cycle invoice | $50 | plan | plan |
+   | T3 | lifetime paid ≥ $500 and ≥ 3 paid cycle invoices | $250 | plan | plan |
+   | T4 | lifetime paid ≥ $2,000 and ≥ 6 paid cycle invoices | none (month-end only) | plan | plan |
+
+   - **What counts.** Lifetime paid is the sum of `amount_paid` over every paid, non-zero bex invoice for the workspace, compute included, so a customer who has paid compute bills is trusted for model spend. Credits and unpaid usage do not count.
+   - **Only failure lowers a tier.** A failed charge or a dispute (`charge.dispute.created`) drops the workspace to T0 and holds it there for 30 days after the balance is settled. Nothing else lowers a tier.
+   - **The effective cap** is min(plan default or admin override, tier cap). On Hobby the plan cap ($20) is below the T1 threshold, so after T0 a Hobby workspace's exposure is bounded by its cap and it is charged at month end.
+   - **State.** A durable `billing_trust` record (lifetime paid, paid cycle invoices, tier, lock-until) is updated from the `invoice.paid`, `invoice.payment_failed` and dispute webhooks. The tier is a pure function of those counters and the `pricing.yaml` table. `stripe_billing_events` cannot serve, because it stores no amounts and is purged after 90 days.
+   - **Visible.** Settings → Billing shows the current tier, the next charge point and what reaches the next tier. The fee cost of small charges falls only on T0: Stripe's per-charge fee is about 6% of a $10 charge, 4% of $25 and 3.5% of $50.
+   - **Prepay to jump a tier** (DigitalOcean's model) comes later, with [ADR071](ADR071-tenant-billing-credits.md) credit grants.
+
+2. **Threshold billing mechanism.** Stripe charges the threshold, not bex.
+   - The subscription's agent-model item carries `billing_thresholds.usage_gte` set to the tier threshold in meter units ($10 = 10,000,000 µUSD). An item-level threshold means only model spend triggers it, never compute.
+   - bex updates the value whenever the tier changes, and removes it at T4.
+   - With the real-time meter (D3), Stripe invoices and charges the card within minutes of the crossing. The end-of-cycle invoice then carries only the remainder, so nothing is billed twice.
+   - The bex spend cap (D5), checked at every mint, covers the minutes between the crossing and Stripe's charge.
+   - **Verify first.** Stripe documents `usage_gte` on subscription items, but not explicitly for meter-backed prices on the pinned `2026-08-26.dahlia` API version (Stripe removed thresholds in `2025-03-31.basil` and restored them in `2025-05-28.basil`). The first implementation step tests it in Stripe test mode.
+   - **Fallback.** If it does not work, bex issues the threshold invoice itself (`InvoiceItems` + `Invoices.New` + pay, idempotency key `bex-threshold-{workspace}-{seq}`) and stops reporting that already-invoiced amount to the meter.
+3. **Failed threshold charge stops model spend at once.** When a threshold charge fails, the mint refuses new platform-model requests for that workspace (`BILLING_BALANCE_DUE`) until a charge succeeds, and the workspace drops to T0. The ADR040 §7 grace period still applies to compute, but not to model spend, which is cash out.
+4. **Settle before delete.** Workspace and account deletion (ADR086) first flushes all unbilled usage for that workspace, bypassing the seal horizon, then invoices and charges it. If the charge fails, deletion is refused with typed code `BILLING_BALANCE_DUE` and a payment link, and the identity is kept until the balance is settled.
+5. **Card checks at binding.** Stripe Radar rules are on for payment-method binding, and prepaid cards (Stripe `card.funding = prepaid`) are refused. Virtual cards are not refused yet; revisit with abuse data.
+6. **Card fingerprint deduplication.** Binding a card whose Stripe fingerprint belongs to a workspace with unpaid, written-off agent-model debt is refused.
+7. **Terms.** The terms authorize threshold charges, state that thresholds rise with payment history, authorize charging unpaid usage after deletion, and state that usage records are evidence in a dispute. `agent_model_usage_events` traces every charge to a request, which is the dispute evidence. The final wording is a user decision (with D8).
+8. **Unchanged.** The card requirement for every workspace (ADR075 D7) and dunning with suspension (ADR040 §7).
+
+**Exposure.** An abusive account never leaves T0, so the most it can cost bex is the T0 cap plus the requests in flight when it is reached: about **$10 + 2 sessions × the cost of one request**, on the order of $10–15 of customer price. A trusted workspace that later stops paying can cost at most one threshold of its tier (or its cap, if lower) before the failed charge stops model spend.
+
+**When to switch to prepaid credits.** Move Hobby to prepaid credits (for example a $10 initial top-up, built on [ADR071](ADR071-tenant-billing-credits.md) Stripe Credit Grants) if either holds:
+
+- agent-model bad debt exceeds **2%** of agent-model revenue in a calendar month;
+- a batch of throwaway workspaces is found abusing tier T0.
+
+Pro and Scale stay post-paid with tiered thresholds. Until then, threshold billing is preferred because it keeps sign-up friction at "bind a card", which bex already requires.
 
 ## Alternatives considered
 
@@ -119,12 +169,14 @@ This absorbs `w10/009`.
 | Peak list price × 1.3, fixed | Off-peak it is 2.6× cost, which is uncompetitive. |
 | Per-model token meters with list prices (the `952b9e8fa` mechanism) | Cannot express time-of-day prices, and every model change needs new Stripe meters and a new price table. |
 | A free Hobby allowance | The user chose pay-per-use for every plan. |
-| Prepaid credits | The strongest protection against unpaid usage, but it adds the most friction and needs a new balance ledger. Revisit if threshold billing shows losses. |
+| Prepaid credits for every plan | The strongest protection against unpaid usage, but it adds the most friction and needs a balance ledger. D10 sets the trigger for moving Hobby to prepaid credits. |
 
 ## Consequences
 
 - Invoices are cost-plus and cannot be predicted per token. They are made transparent instead: "provider cost + 30%", with a breakdown by model and token kind.
 - Billing depends on OpenRouter cost reporting, with a computed fallback from its price table, and each event records which source was used.
 - The rollout needs one new Stripe meter and price on test and live Stripe, plus an OpenRouter credit limit.
+- New customers see one or two small charges ($10, then $25) before their charges settle at month end; the tier and next charge point are shown in Settings → Billing.
 - Account deletion gains a payment step that can refuse deletion while a balance is due. ADR086 is amended accordingly in implementation.
 - There is no render.com equivalent, so this is a bex-native surface. [ADR018](ADR018-render-parity.md) records it as such, not as parity drift.
+  
