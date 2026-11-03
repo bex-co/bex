@@ -10,12 +10,12 @@
 | t002 | Production rollout: Secret, deploy, verify the allowlisted session runs — **DONE**                | 45m  | t001       |
 | t003 | Meter model tokens per workspace in the gateway model proxy → `usage_hourly` — **DONE**           | 2h   | t002       |
 | t004 | Cost-based price and bill: provider cost × 1.3 → `agent_model_cost_microusd` → one Stripe meter (ADR091 D1–D3) | 2h | t003 |
-| t005 | Monthly USD spend caps + trust ramp; OpenRouter credit limit 80% alert (ADR091 D5, D10.2) | 1.5h | t004 |
+| t005 | Monthly USD spend caps + trust tiers (threshold, cap ceiling, concurrency); OpenRouter credit limit 80% alert (ADR091 D5, D10.1) | 2h | t004 |
 | t006 | Data policy for platform-key traffic (OpenRouter provider routing, terms copy) — **DONE**         | 45m  | t002       |
 | t012 | BYO model key write path + model source precedence (ADR091 D7, absorbs w10/009) | 1.5h | t004 |
 | t013 | Customer UI: usage line, Settings → Agents spend, composer cap banners, per-turn cost (ADR091 D6) | 2h | t005, t012 |
-| t014 | Threshold billing: charge at $10 Hobby / $50 Pro+Scale (ADR091 D10.1) | 1.5h | t004 |
-| t015 | Settle before delete + card fingerprint dedupe (ADR091 D10.3–D10.4) | 1.5h | t014 |
+| t014 | Tiered threshold billing via a Stripe item threshold; a failed charge stops model spend (ADR091 D10.2–D10.3) | 1.5h | t004, t005 |
+| t015 | Settle before delete; Radar + prepaid-card refusal + card fingerprint dedupe (ADR091 D10.4–D10.6) | 1.5h | t014 |
 | t007 | Widen the platform route to every workspace — **due 2026-11-06** (gates: live Stripe meter, OpenRouter credit limit, terms copy) | 30m | t004–t006, t012–t015 |
 | t008 | Render parity (capabilities/model-key readiness across REST/GraphQL/MCP/dashboard)    | 20m  | t007       |
 | t009 | Simplify                                                                               | 20m  | t008       |
@@ -25,10 +25,10 @@
 ## Definition of done
 
 - A claude agent session in any workspace without a BYO model key runs on the platform OpenRouter route. The key lives only in the `bex-system` Secret → bex-api env → gateway mint hop and never in a sandbox, API response, log or audit event (tests).
-- Every platform-key request is priced at provider cost × 1.3 (ADR091), recorded with its cost source, metered as `agent_model_cost_microusd` in `usage_hourly`, billed through one Stripe meter, and capped by a monthly USD spend cap (with the $10 trust ramp) that returns `AGENT_MODEL_SPEND_CAP_REACHED` when reached.
+- Every platform-key request is priced at provider cost × 1.3 (ADR091), recorded with its cost source, metered as `agent_model_cost_microusd` in `usage_hourly`, billed through one Stripe meter, and capped by a monthly USD spend cap limited by the workspace's trust tier that returns `AGENT_MODEL_SPEND_CAP_REACHED` when reached.
 - Admins can set a write-only BYO model key; BYO workspaces are not billed for tokens.
 - Customers see agent model spend on Usage/Billing, Settings → Agents, the composer (80%/100% banners) and session detail.
-- Unbilled agent-model spend is charged at the plan threshold, and deletion settles the balance first or refuses with `BILLING_BALANCE_DUE`.
+- Agent-model spend is charged at the workspace's trust-tier threshold, and deletion settles the balance first or refuses with `BILLING_BALANCE_DUE`.
 - The production `BEX_AGENT_PLATFORM_MODEL_WORKSPACES` allowlist is removed (or replaced by "all") on or before 2026-11-06.
 
 ## Source + Goal linkage
