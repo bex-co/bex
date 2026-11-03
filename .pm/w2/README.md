@@ -41,6 +41,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] [068 — Scope refusals: Render now names `insufficient_token_scope`; bex answers `INSUFFICIENT_SCOPE`](done/068.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [069 — Blueprint create with `existingResources: create_new`](done/069.md) ← w2/m256 (variant of the shipped `adopt`) — **PROMOTED 2026-11-03** to m261
 - [ ] [070 — Audit payment-method changes made in the Stripe-hosted portal](blocked/070.md) ← w2/067 follow-up — **BLOCKED (user: add `customer.updated` to the live bex Stripe webhook endpoint's enabled events, or approve an agent doing it; the shared Stripe account makes it a production change)**
+- [ ] [071 — Build Sources follow-ups from the w2/m254 parity pass](071.md) ← w2/m254 t009
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
 
