@@ -456,6 +456,8 @@ func main() {
 	// driver's status file and the PR the agent already opened (ADR090). It is a
 	// no-op unless the store and OpenSandbox are wired.
 	go srv.AgentSessionCompleter.Run(ctx)
+	// ADR095 D2/D7: expire unbound uploads and purge deleted attachments.
+	go agentsessions.RunAttachmentSweep(ctx, srv.AgentSessions, time.Hour)
 	// The Blueprint recovery sweep settles sync runs abandoned by process
 	// loss (w8/m37 t004). No-op unless the control-plane store is wired.
 	go srv.BlueprintRecovery.Run(ctx)
@@ -766,19 +768,20 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	// Cancel (w2/m10) needs to compute a repo-backed App's in-flight build
 	// Job's identity — must match the operator's own BEX_BUILD_NAMESPACE.
 	deps.DeployBuildNamespace = cfg.BuildNamespace
-	deps.GitHubStore = st        // git connections (w2/m8): connect/disconnect/list read+write git_connections
-	deps.EventStore = st         // service events: deploy + audit + typed observed/Git facts
-	deps.EventFacts = st         // typed observed/Git event facts (w3/m19), written outside the operator
-	deps.NotificationsStore = st // deploy notifications (w3/m9): settings read/write + the reconciler's recipient fan-out
-	deps.ProjectsStore = st      // project groupings (w1/m31): project CRUD + service-assignment
-	deps.EnvironmentsStore = st  // environment groupings (layered on w1/m31): environment CRUD + service-assignment
-	deps.RegistryCredsStore = st // registry credentials (w2/m14): CRUD metadata rows; secrets live in OpenBao (deps.Secrets)
-	deps.EnvGroupsStore = st     // environment-group metadata (w8/m114); values stay in OpenBao
-	deps.CLITelemetryStore = st  // CLI telemetry ingest (w5/m92): one row per cli-telemetry-events delivery (nil-safe: *store.PGStore stays a comparable nil when the store is off)
-	deps.BlueprintsStore = st    // blueprint registry (w2/m15): auto-upserted on deploy, list+sync read it
-	deps.WebhookStore = st       // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
-	deps.JobStore = st           // one-off jobs (Render's /services/{id}/jobs): job CRUD + k8s Job tracking
-	deps.AgentSessionStore = st  // ADR047 D3: durable agent-session lifecycle
+	deps.GitHubStore = st          // git connections (w2/m8): connect/disconnect/list read+write git_connections
+	deps.EventStore = st           // service events: deploy + audit + typed observed/Git facts
+	deps.EventFacts = st           // typed observed/Git event facts (w3/m19), written outside the operator
+	deps.NotificationsStore = st   // deploy notifications (w3/m9): settings read/write + the reconciler's recipient fan-out
+	deps.ProjectsStore = st        // project groupings (w1/m31): project CRUD + service-assignment
+	deps.EnvironmentsStore = st    // environment groupings (layered on w1/m31): environment CRUD + service-assignment
+	deps.RegistryCredsStore = st   // registry credentials (w2/m14): CRUD metadata rows; secrets live in OpenBao (deps.Secrets)
+	deps.EnvGroupsStore = st       // environment-group metadata (w8/m114); values stay in OpenBao
+	deps.CLITelemetryStore = st    // CLI telemetry ingest (w5/m92): one row per cli-telemetry-events delivery (nil-safe: *store.PGStore stays a comparable nil when the store is off)
+	deps.BlueprintsStore = st      // blueprint registry (w2/m15): auto-upserted on deploy, list+sync read it
+	deps.WebhookStore = st         // outbound webhooks (w3/m11): endpoint CRUD + delivery history; the worker below delivers
+	deps.JobStore = st             // one-off jobs (Render's /services/{id}/jobs): job CRUD + k8s Job tracking
+	deps.AgentSessionStore = st    // ADR047 D3: durable agent-session lifecycle
+	deps.AgentAttachmentStore = st // ADR095: attachment metadata
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
 	if writer, ok := authzChecker.(agentsessions.TupleWriter); ok {
@@ -1287,6 +1290,8 @@ func wireAgentSessions(deps *api.Deps, cfg *Config) {
 	// Optional override of the in-cluster Git smart-HTTP proxy origin. The
 	// sandbox receives this non-secret URL, never a GitHub credential.
 	deps.AgentGitProxyURL = cfg.AgentGitProxyURL
+	// ADR095: nil when BEX_AGENT_ATTACHMENTS_S3_* is unset.
+	deps.AgentAttachments = agentsessions.NewS3AttachmentObjects(cfg.AgentAttachments)
 	// Sandbox lifecycle (w2/m67, w10/m15): idle grace before a finished
 	// session's sandbox is terminated (default 2h; 0 ⇒ ADR054 D6 immediate
 	// reap), and the per-workspace concurrent live-sandbox cap (default 5; 0 ⇒

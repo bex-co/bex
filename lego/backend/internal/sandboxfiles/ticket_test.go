@@ -81,3 +81,20 @@ func TestValidatePath(t *testing.T) {
 		}
 	}
 }
+
+func TestPlatformUploadAllowed(t *testing.T) {
+	const platform = "system:test"
+	copyIn := Claims{Subject: platform, Operation: OperationUpload, Path: AgentAttachmentsPath, AgentSessionID: "ags-a"}
+	if !copyIn.PlatformUploadAllowed(platform) {
+		t.Fatal("the attachments copy-in was refused")
+	}
+	user := Claims{Subject: "alice", Operation: OperationDownload, Path: "/workspace/x"}
+	if !user.PlatformUploadAllowed(platform) {
+		t.Fatal("the platform rule constrained a user's ticket")
+	}
+	elsewhere := copyIn
+	elsewhere.Path = AgentAttachmentsPath + "/x"
+	if elsewhere.PlatformUploadAllowed(platform) {
+		t.Fatal("a platform ticket reached a path other than the attachments directory")
+	}
+}

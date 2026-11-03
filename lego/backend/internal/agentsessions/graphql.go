@@ -36,6 +36,54 @@ var agentConfigGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 
 func gqlTime(t time.Time) string { return t.UTC().Format(time.RFC3339Nano) }
 
+var attachmentGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentAttachment",
+	Fields: graphql.Fields{
+		"id":        gqlutil.ReqStrField(func(v Attachment) any { return v.ID }),
+		"sessionId": gqlutil.OptionalStrField(func(v Attachment) any { return v.SessionID }),
+		"turn": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v Attachment) any {
+			if v.Turn == 0 {
+				return nil
+			}
+			return v.Turn
+		})},
+		"direction":   gqlutil.ReqStrField(func(v Attachment) any { return v.Direction }),
+		"name":        gqlutil.ReqStrField(func(v Attachment) any { return v.Name }),
+		"mediaType":   gqlutil.ReqStrField(func(v Attachment) any { return v.MediaType }),
+		"size":        &graphql.Field{Type: graphql.NewNonNull(graphql.Float), Resolve: gqlutil.Field(func(v Attachment) any { return float64(v.Size) })},
+		"sha256":      gqlutil.ReqStrField(func(v Attachment) any { return v.SHA256 }),
+		"downloadUrl": gqlutil.ReqStrField(func(v Attachment) any { return v.DownloadURL }),
+		"createdAt":   &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v Attachment) any { return gqlTime(v.CreatedAt) })},
+		"expiresAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Attachment) any {
+			if v.ExpiresAt == nil {
+				return nil
+			}
+			return gqlTime(*v.ExpiresAt)
+		})},
+	},
+})
+
+var turnAttachmentGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSessionTurnAttachment",
+	Fields: graphql.Fields{
+		"id":        gqlutil.ReqStrField(func(v TurnAttachment) any { return v.ID }),
+		"name":      gqlutil.ReqStrField(func(v TurnAttachment) any { return v.Name }),
+		"mediaType": gqlutil.ReqStrField(func(v TurnAttachment) any { return v.MediaType }),
+		"size":      &graphql.Field{Type: graphql.NewNonNull(graphql.Float), Resolve: gqlutil.Field(func(v TurnAttachment) any { return float64(v.Size) })},
+	},
+})
+
+var attachmentLimitsGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentAttachmentLimits",
+	Fields: graphql.Fields{
+		"enabled":         gqlutil.ReqBoolField(func(v AttachmentLimits) any { return v.Enabled }),
+		"maxBytes":        &graphql.Field{Type: graphql.NewNonNull(graphql.Float), Resolve: gqlutil.Field(func(v AttachmentLimits) any { return float64(v.MaxBytes) })},
+		"maxPerTurn":      &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v AttachmentLimits) any { return v.MaxPerTurn })},
+		"maxPerSession":   &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v AttachmentLimits) any { return v.MaxPerSession })},
+		"maxSessionBytes": &graphql.Field{Type: graphql.NewNonNull(graphql.Float), Resolve: gqlutil.Field(func(v AttachmentLimits) any { return float64(v.MaxSessionBytes) })},
+	},
+})
+
 var agentProfileGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionProfile",
 	Fields: graphql.Fields{
@@ -59,6 +107,7 @@ var agentCapabilitiesGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"enabled":       gqlutil.ReqBoolField(func(v Capabilities) any { return v.Enabled }),
 		"github":        gqlutil.Typed(graphql.NewNonNull(githubReadinessGQLType), func(v Capabilities) any { return v.GitHub }),
 		"modelKeyReady": gqlutil.ReqBoolField(func(v Capabilities) any { return v.ModelKeyReady }),
+		"attachments":   &graphql.Field{Type: graphql.NewNonNull(attachmentLimitsGQLType), Resolve: gqlutil.Field(func(v Capabilities) any { return v.Attachments })},
 		"agents":        gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentProfileGQLType))), func(v Capabilities) any { return v.Agents }),
 		"ready":         gqlutil.ReqBoolField(func(v Capabilities) any { return v.Ready }),
 	},
@@ -273,6 +322,9 @@ var toolOutputGQLType = graphql.NewObject(graphql.ObjectConfig{
 var transcriptTurnGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionTranscriptTurn",
 	Fields: graphql.Fields{
+		"attachments": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(turnAttachmentGQLType))),
+			Description: "The files this turn attached (ADR095), as recorded when it was accepted.",
+			Resolve:     gqlutil.Field(func(v TranscriptTurn) any { return v.Attachments })},
 		"turn":                &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.Turn })},
 		"prompt":              &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.Prompt })},
 		"deliveryMode":        &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.DeliveryMode })},
@@ -379,6 +431,37 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 		"agentSession": gqlutil.IDVerb(agentSessionGQLType, s.Get),
+		"agentAttachment": &graphql.Field{
+			Type:        attachmentGQLType,
+			Description: "One agent attachment with a fresh 15-minute downloadUrl (ADR095).",
+			Args:        graphql.FieldConfigArgument{"id": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetAttachment(p.Context, gqlutil.Str(p.Args, "id"))
+			},
+		},
+		"agentSessionAttachments": &graphql.Field{
+			Type:        graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(attachmentGQLType))),
+			Description: "A session's attachments oldest first; cursor is the previous page's last id.",
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{
+				"id":        gqlutil.ReqArg(graphql.String),
+				"direction": gqlutil.Arg(graphql.String),
+				"turn":      gqlutil.Arg(graphql.Int),
+			}),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				limit, err := gqlutil.PositiveLimit(p.Args)
+				if err != nil {
+					return nil, err
+				}
+				var turn *int
+				if _, ok := p.Args["turn"]; ok {
+					n := gqlutil.Int(p.Args, "turn")
+					turn = &n
+				}
+				return s.ListAttachments(p.Context, gqlutil.Str(p.Args, "id"), AttachmentListQuery{
+					Direction: gqlutil.Str(p.Args, "direction"), Turn: turn, Cursor: gqlutil.Str(p.Args, "cursor"), Limit: limit,
+				})
+			},
+		},
 		"agentEnvironment": &graphql.Field{
 			Type: graphql.NewNonNull(agentEnvironmentGQLType),
 			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
@@ -409,9 +492,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"agentConfig":     gqlutil.ReqArg(agentConfigGQLInput),
 				"egressAllowlist": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"idempotencyKey":  gqlutil.Arg(graphql.String),
+				"attachmentIds":   gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Create(p.Context, CreateRequest{OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"])})
+				return s.Create(p.Context, CreateRequest{OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"])})
 			},
 		},
 		"steerAgentSession": &graphql.Field{
@@ -420,9 +504,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"id":              gqlutil.ReqArg(graphql.String),
 				"prompt":          gqlutil.ReqArg(graphql.String),
 				"egressAllowlist": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"attachmentIds":   gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Steer(p.Context, SteerRequest{SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"])})
+				return s.Steer(p.Context, SteerRequest{SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"])})
 			},
 		},
 		"updateAgentEnvironment": &graphql.Field{
@@ -456,6 +541,17 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		"cancelAgentSession":    gqlutil.IDVerb(agentSessionGQLType, s.Cancel),
 		"archiveAgentSession":   gqlutil.IDVerb(agentSessionGQLType, s.Archive),
 		"unarchiveAgentSession": gqlutil.IDVerb(agentSessionGQLType, s.Unarchive),
+		"deleteAgentAttachment": &graphql.Field{
+			Type:        graphql.Boolean,
+			Description: "Deletes your own upload that no turn has attached yet.",
+			Args:        graphql.FieldConfigArgument{"id": gqlutil.ReqArg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				if err := s.DeleteAttachment(p.Context, gqlutil.Str(p.Args, "id")); err != nil {
+					return nil, err
+				}
+				return true, nil
+			},
+		},
 		// Delete returns a bare Boolean (nothing survives to project), so it
 		// can't ride the View-shaped IDVerb helper.
 		"deleteAgentSession": &graphql.Field{

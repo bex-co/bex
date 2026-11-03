@@ -404,6 +404,7 @@ func (s *PGStore) CleanupAccountSubject(ctx context.Context, subject, marker str
 			`UPDATE tenant_invites SET invited_by = $2 WHERE invited_by = $1`,
 			`UPDATE registry_credentials SET created_by = $2 WHERE created_by = $1`,
 			`UPDATE webhook_endpoints SET created_by = $2 WHERE created_by = $1`,
+			`UPDATE agent_session_attachments SET created_by = $2 WHERE created_by = $1`,
 			`UPDATE webhook_delivery_attempts SET requested_by = $2 WHERE requested_by = $1`,
 			`UPDATE deploys SET triggered_by = $2 WHERE triggered_by = $1`,
 			`UPDATE audit_events SET caller = $2 WHERE caller = $1`,

@@ -48,9 +48,15 @@ RUN chmod 0755 dist/main.js \
     && ln -s /opt/bex-agent-driver/dist/main.js /usr/local/bin/bex-agent-driver \
     && node dist/install-profiles.js
 
+# /attachments is where the agent finds the session's uploaded files
+# (ADR095 D4). bex-api extracts them through the gateway as one new directory,
+# /var/lib/bex-agent/attachments, which must not exist beforehand; the link
+# dangles until then. It sits outside /workspace so the files are never
+# committed.
 RUN useradd --create-home --home-dir /home/bex --uid 10001 --shell /bin/bash bex \
-    && mkdir -p /workspace /run/bex-agent /var/log/bex-agent /var/run/bex-agent \
-    && chown -R bex:bex /workspace /run/bex-agent /var/log/bex-agent /var/run/bex-agent /home/bex
+    && mkdir -p /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent \
+    && ln -s /var/lib/bex-agent/attachments /attachments \
+    && chown -R bex:bex /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /home/bex
 
 # Neither listener has an edge route. OpenSandbox supplies the remaining
 # non-secret BEX_AGENT_* session binding values per sandbox.

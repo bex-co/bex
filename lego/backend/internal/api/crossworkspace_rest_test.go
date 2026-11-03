@@ -209,6 +209,10 @@ var callerScopedRoutes = map[string]bool{
 	// that service's own workspace before any row is written.
 	"POST /v1/disks":     true,
 	"POST /v1/sandboxes": true,
+	// An attachment upload (ADR095) names its workspace by ownerId and is gated
+	// by can_create there; the new upload is the caller's own until a turn of
+	// a session they can steer attaches it.
+	"POST /v1/agent-attachments": true,
 	// CLI telemetry ingest (w5/m92): addresses no resource by path; the row's
 	// workspace AND subject both derive from the auth context (Record's
 	// RelCanView gate denies non-members), so a caller can only ever file

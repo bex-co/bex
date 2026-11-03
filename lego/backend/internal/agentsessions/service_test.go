@@ -474,7 +474,7 @@ func (f *fakeStore) CreateAgentSession(_ context.Context, in store.AgentSession)
 	return in, nil
 }
 
-func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, delivery, phase, status string) (store.AgentSession, error) {
+func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, delivery, phase, status string, _ store.AgentAttachmentBinding) (store.AgentSession, error) {
 	row, ok := f.rows[id]
 	if !ok {
 		return store.AgentSession{}, store.ErrNotFound

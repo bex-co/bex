@@ -38,6 +38,7 @@ import (
 	"k8s.io/client-go/tools/remotecommand"
 
 	"github.com/bex-co/bex/lego/backend/internal/apps"
+	"github.com/bex-co/bex/lego/backend/internal/sandboxexec"
 	files "github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway/gatewaytest"
@@ -556,4 +557,59 @@ func TestAnExecutorFailureAnswersWithoutItsText(t *testing.T) {
 		})
 		answers(t, s, requestFor(t, http.MethodGet, nil), http.StatusServiceUnavailable, failed, "invalid sandbox transfer response")
 	})
+}
+
+// A platform (SystemSubject) ticket is only ever an upload into an agent
+// session's attachments directory: bex-api's copy-in. Any other platform
+// transfer is refused at redeem, before the executor runs.
+func TestPlatformTicketsAreLimitedToTheAttachmentsCopy(t *testing.T) {
+	ran := false
+	server := serverFor(func(context.Context, []string, io.Reader, io.Writer) (int, error) {
+		ran = true
+		return 0, nil
+	})
+	for name, claims := range map[string]files.Claims{
+		"other path":    {Operation: files.OperationUpload, Path: "/workspace/x", AgentSessionID: "ags-a"},
+		"download":      {Operation: files.OperationDownload, Path: files.AgentAttachmentsPath, AgentSessionID: "ags-a"},
+		"plain sandbox": {Operation: files.OperationUpload, Path: files.AgentAttachmentsPath},
+	} {
+		t.Run(name, func(t *testing.T) {
+			claims.Subject, claims.Workspace, claims.SandboxID, claims.Namespace = sandboxexec.SystemSubject, "tea-a", "os-a", "tea-a-sandbox"
+			claims.IssuedAt, claims.ExpiresAt = time.Now().Unix(), time.Now().Add(time.Minute).Unix()
+			token, err := files.Mint(testSecret, claims)
+			if err != nil {
+				t.Fatal(err)
+			}
+			method := http.MethodPut
+			if claims.Operation == files.OperationDownload {
+				method = http.MethodGet
+			}
+			r := httptest.NewRequest(method, "http://gateway"+files.GatewayPath, bytes.NewReader(archive(t)))
+			r.Header.Set(files.TicketHeader, token)
+			r.Header.Set("Content-Type", "application/x-tar")
+			rec := httptest.NewRecorder()
+			server.Handler().ServeHTTP(rec, r)
+			if rec.Code != http.StatusForbidden || ran {
+				t.Fatalf("status %d, executor ran %v", rec.Code, ran)
+			}
+		})
+	}
+}
+
+// Platform copies queue per session, not behind one shared subject: the
+// per-subject cap must not let five busy sessions block a sixth's dispatch.
+func TestPlatformCopiesAreLimitedPerSession(t *testing.T) {
+	limits := sshgateway.NewSessionLimiter(0, 1)
+	a := files.Claims{Subject: sandboxexec.SystemSubject, AgentSessionID: "ags-a"}
+	b := files.Claims{Subject: sandboxexec.SystemSubject, AgentSessionID: "ags-b"}
+	if ok, _ := limits.Acquire(a.LimitKey(sandboxexec.SystemSubject)); !ok {
+		t.Fatal("first copy refused")
+	}
+	if ok, _ := limits.Acquire(b.LimitKey(sandboxexec.SystemSubject)); !ok {
+		t.Fatal("another session's copy queued behind the first")
+	}
+	user := files.Claims{Subject: "alice", AgentSessionID: "ags-a"}
+	if user.LimitKey(sandboxexec.SystemSubject) != "alice" {
+		t.Fatal("a user's transfers must stay limited per user")
+	}
 }

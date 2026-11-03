@@ -100,16 +100,21 @@ func (s *Server) serve(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "file operation does not match ticket", http.StatusForbidden)
 		return
 	}
+	if !c.PlatformUploadAllowed(sandboxexec.SystemSubject) {
+		http.Error(w, "file operation does not match ticket", http.StatusForbidden)
+		return
+	}
 	if !s.Nonces.Consume(r.Context(), c.Nonce, c.NonceExpiry(), time.Now()) {
 		http.Error(w, "file ticket already used", http.StatusConflict)
 		return
 	}
-	if acquired, scope := s.Limits.Acquire(c.Subject); !acquired {
+	limitKey := c.LimitKey(sandboxexec.SystemSubject)
+	if acquired, scope := s.Limits.Acquire(limitKey); !acquired {
 		s.Metrics.LimitRejected(scope)
 		http.Error(w, "session limit reached", http.StatusTooManyRequests)
 		return
 	}
-	defer s.Limits.Release(c.Subject)
+	defer s.Limits.Release(limitKey)
 	s.Metrics.SessionStarted()
 	started := time.Now()
 	result := "closed"

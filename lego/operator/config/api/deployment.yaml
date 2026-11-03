@@ -519,6 +519,39 @@ spec:
                   name: bex-disk-snapshot-read
                   key: BEX_DISK_SNAPSHOT_SECRET_KEY
                   optional: true
+            # ADR095 agent attachments: the out-of-band bex-agent-attachments
+            # Secret installed by scripts/agent-attachments-s3-credentials.sh.
+            # Optional: absent ⇒ every attachment verb answers 503.
+            - name: BEX_AGENT_ATTACHMENTS_S3_ENDPOINT
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-attachments
+                  key: BEX_AGENT_ATTACHMENTS_S3_ENDPOINT
+                  optional: true
+            - name: BEX_AGENT_ATTACHMENTS_S3_BUCKET
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-attachments
+                  key: BEX_AGENT_ATTACHMENTS_S3_BUCKET
+                  optional: true
+            - name: BEX_AGENT_ATTACHMENTS_S3_REGION
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-attachments
+                  key: BEX_AGENT_ATTACHMENTS_S3_REGION
+                  optional: true
+            - name: BEX_AGENT_ATTACHMENTS_S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-attachments
+                  key: BEX_AGENT_ATTACHMENTS_S3_ACCESS_KEY
+                  optional: true
+            - name: BEX_AGENT_ATTACHMENTS_S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: bex-agent-attachments
+                  key: BEX_AGENT_ATTACHMENTS_S3_SECRET_KEY
+                  optional: true
             # ADR090 platform model route (2026-10-23): the claude profile of
             # each allowlisted workspace runs on OpenRouter with a platform-owned
             # key, model pinned by the gateway. The key arrives from the

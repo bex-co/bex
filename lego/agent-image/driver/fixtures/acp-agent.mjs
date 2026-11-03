@@ -178,6 +178,9 @@ lines.on("line", async (line) => {
           ...(process.env.ACP_FIXTURE_SYSTEM_PROMPT === "1"
             ? { sessionCapabilities: { systemPrompt: {} } }
             : {}),
+          ...(process.env.ACP_FIXTURE_IMAGE_PROMPTS === "1"
+            ? { promptCapabilities: { image: true } }
+            : {}),
         },
         agentInfo: { name: "bex-test-acp-agent", version: "1" },
       });
