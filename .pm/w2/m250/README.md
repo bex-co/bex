@@ -10,10 +10,10 @@
 | t002 | Operator: App pods of the large tiers tolerate and prefer their pool (from `tiers.yaml`); admission and build-only rules still hold — **DONE** | 1h  | —          |
 | t003 | Production: pro-plus and pro-ultra services go live on new nodes and the pools scale back to 0 | 45m | t001, t002 |
 | t009 | Pause Pro Ultra at create and plan change until the Hetzner dedicated-core limit is raised | 1h | — |
-| t004 | Docs: ADR053/ADR060 pools, ADR018 instance-type row                                            | 20m | t003       |
-| t005 | Render parity                                                                                  | 15m | t004       |
-| t006 | Simplify                                                                                       | 15m | t005       |
-| t007 | Test coverage                                                                                  | 30m | t005       |
+| t004 | Docs: ADR053/ADR060 pools, ADR018 instance-type row — **DONE**                                            | 20m | t003       |
+| t005 | Render parity — **DONE**                                                                                  | 15m | t004       |
+| t006 | Simplify — **DONE**                                                                                       | 15m | t005       |
+| t007 | Test coverage — **DONE**                                                                                  | 30m | t005       |
 | t008 | Closeout                                                                                       | 10m | t006, t007 |
 
 ## Definition of done
@@ -59,3 +59,16 @@
 - GraphQL `instanceTypes` gained `available` / `unavailableReason`; the dashboard picker and create form show the tier disabled ("Unavailable", reason in tooltip and screen-reader text), never select or submit it, and keep card geometry.
 - ADR018 ("Change instance plan / type" row) records the temporary divergence with the user's sign-off and release condition; ADR030 §11 notes it.
 - Tests: `paused_tier_test.go` (every path, existing-service exemption, pro-max still accepted), types and dashboard tests. Backend real-deps gate, operator `make test`, `make lint` (4 modules), dashboard 5748 tests green.
+
+## t004 — 2026-11-03
+
+ADR053 gains § Serving pools for large tiers (types, specs, prices, autoscaler bounds, placement, placement group, guards, and the Hetzner stock/limit status); ADR060 D8 notes the two serving pools beside the build pools; ADR018's "Change instance plan / type" row records both the Pro Ultra pause (t009) and the Pro Plus/Pro Max capacity wait.
+
+## t005 — Render parity, 2026-11-03
+
+Render sells and starts Pro Plus, Pro Max and Pro Ultra on every plan. bex now routes all three to pools that can hold them (t001/t002) and treats every surface the same way: REST, GraphQL, MCP, the pinned CLI and Blueprint share `normalizeTierForType`/`checkPlan`, and the dashboard picker reads `instanceTypes`. Two temporary divergences remain, both recorded in ADR018 with their release conditions: Pro Ultra is refused at create (user sign-off, until the Hetzner dedicated-vCPU limit is raised), and Pro Plus/Pro Max services wait for capacity until cx53 returns to fsn1 (user decision to wait). No further drift found; nothing new to file.
+
+## t006 + t007 — 2026-11-03
+
+- **t006 (Simplify):** t001/t002 were simplified in `26bda22ed` (plain-string `ServingPool`, validator tidy). A review of t009 (`bd33b3012`) found no correctness bug; its two duplications were folded: the paused-tier gate is one `errPausedTier(tier, current)` used by `normalizeTierForType` and `checkPlan`, and `selectableRenderPlans` reads the catalog itself. Left as is: a shared dashboard "Unavailable" label component (two call sites, optional).
+- **t007 (Test coverage):** placement per tier (`serving_pool_test.go`), every validator guard proven red (`clusterapi-validate.test.sh`), the paused tier on every create/plan-change path with the existing-service exemption (`paused_tier_test.go`), catalog helpers (`tiers_test.go`) and the dashboard's disabled card. Each was mutation-checked when written. Not testable in CI: Hetzner creating the nodes, which t003 covers on production.
