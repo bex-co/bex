@@ -102,16 +102,27 @@ const blueprintSyncColumns = `id, blueprint_id, commit_id, state, started_at, co
 // transaction, so claim and run always commit together.
 func insertAdmittedRun(ctx context.Context, tx pgx.Tx, run BlueprintSync) (BlueprintSync, error) {
 	var out BlueprintSync
+	// An approved planned sync (w2/m256) already has its row, in the created
+	// state: admission turns that row into the run, so the sync Render
+	// reports as approved keeps its id. Any other existing id is a conflict.
 	err := tx.QueryRow(ctx, `
 		INSERT INTO blueprint_syncs (id, blueprint_id, commit_id, state, started_at, execution_generation, note,
 		 auto_intent_id, auto_claim_generation, auto_source_repo, auto_source_branch, auto_source_path)
 		VALUES ($1, $2, $3, $4, $5, $6, $7, NULLIF($8, ''), $9, $10, $11, $12)
+		ON CONFLICT (id) DO UPDATE SET state = EXCLUDED.state, started_at = EXCLUDED.started_at,
+			execution_generation = EXCLUDED.execution_generation, note = EXCLUDED.note
+		WHERE blueprint_syncs.state = 'created' AND blueprint_syncs.blueprint_id = EXCLUDED.blueprint_id
+		  AND blueprint_syncs.commit_id = EXCLUDED.commit_id
 		RETURNING `+blueprintSyncColumns,
 		run.ID, run.BlueprintID, run.CommitID, run.State, run.StartedAt, run.ExecutionGeneration, run.Note,
 		run.AutoIntentID, run.AutoClaimGeneration, run.AutoSourceRepo, run.AutoSourceBranch, run.AutoSourcePath,
 	).Scan(&out.ID, &out.BlueprintID, &out.CommitID, &out.State,
 		&out.StartedAt, &out.CompletedAt, &out.CreatedAt, &out.ErrorMessage, &out.ExecutionGeneration, &out.Note,
 		&out.AutoIntentID, &out.AutoClaimGeneration, &out.AutoSourceRepo, &out.AutoSourceBranch, &out.AutoSourcePath)
+	if errors.Is(err, pgx.ErrNoRows) {
+		// The planned row was already applied or no longer matches the plan.
+		return BlueprintSync{}, ErrBlueprintSyncBusy
+	}
 	if err != nil {
 		return BlueprintSync{}, err
 	}
@@ -157,7 +168,7 @@ func (s *PGStore) admitBlueprintSyncRun(ctx context.Context, blueprintID, tenant
 				}
 				return err
 			}
-			if !live.AutoSync || live.Status == "disconnected" || expectedSource.ID != live.ID || expectedSource.TenantID != live.TenantID ||
+			if !live.AutoSync || live.Status == "disconnected" || live.Status == BlueprintStatusCreated || expectedSource.ID != live.ID || expectedSource.TenantID != live.TenantID ||
 				live.Repo != expectedSource.Repo || live.Branch != expectedSource.Branch || live.Path != expectedSource.Path || intent.Path != live.Path {
 				return ErrBlueprintSyncBusy
 			}

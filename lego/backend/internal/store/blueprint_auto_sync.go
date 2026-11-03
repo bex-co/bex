@@ -80,7 +80,9 @@ func (s *PGStore) ListAutoSyncBlueprints(ctx context.Context, branch, tenantScop
 		       last_sync_at, created_at, updated_at
 		  FROM blueprints
 		 WHERE auto_sync = true
-		   AND status != 'disconnected'
+		   -- A created Blueprint has no approved sync yet; Render does not
+		   -- auto-sync it (w2/m256).
+		   AND status NOT IN ('disconnected', 'created')
 		   AND branch = $1
 		   AND ($2 = '' OR tenant_id = $2)
 		 ORDER BY created_at ASC`,

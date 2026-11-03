@@ -54,6 +54,8 @@ type fakeBlueprintStore struct {
 	mu         sync.Mutex
 	blueprints map[string]store.Blueprint // key: id
 	syncs      map[string]store.BlueprintSync
+	// planned carries a planned sync's plan-only fields (w2/m256).
+	planned map[string]store.PlannedBlueprintSync
 	// claims maps a workspace's claimed resource to its owning blueprint id
 	// (w8/m40).
 	claims map[fakeClaimKey]string
