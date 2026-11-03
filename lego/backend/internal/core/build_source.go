@@ -79,3 +79,20 @@ func notServiceAppFor(ctx context.Context, err error, app *appv1alpha1.App) erro
 	}
 	return err
 }
+
+// BuildSourceScope is the context the build-source surface acts in on id: it
+// resolves id under WithBuildSources and refuses anything that is not a build
+// source carrier, so a /v1/build-sources route can delegate to a service
+// write path (which then authorizes and audits as usual) without ever
+// reaching a service.
+func (b *Base) BuildSourceScope(ctx context.Context, id string) (context.Context, error) {
+	ctx = WithBuildSources(ctx)
+	app, err := b.GetApp(ctx, RelCanView, id)
+	if err != nil {
+		return ctx, err
+	}
+	if !IsBuildSource(app) {
+		return ctx, NotFound("build source")
+	}
+	return ctx, nil
+}

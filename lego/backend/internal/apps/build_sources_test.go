@@ -201,7 +201,7 @@ func TestBuildSourceSurfaceRefusesServicesAndBadInput(t *testing.T) {
 	badRuntime := monorepoSource
 	badRuntime.Git = &BuildSourceGit{RepoURL: "https://github.com/acme/mono", Runtime: "static"}
 	withServices := monorepoSource
-	withServices.ServiceIDs = []string{"srv-web"}
+	withServices.EnvGroupIDs = []string{"evg-1"}
 	for name, req := range map[string]CreateBuildSourceRequest{
 		"no name":     {OwnerID: "tea-a", Git: monorepoSource.Git},
 		"both":        both,
@@ -244,5 +244,27 @@ func TestBuildSourceProjectScope(t *testing.T) {
 	scoped.ProjectID = "prj-foreign"
 	if _, err := svc.CreateBuildSource(ctx, scoped); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("foreign project: err = %v, want bad request", err)
+	}
+}
+
+// t004: a create's envVars seed the build-time environment like a service's.
+func TestBuildSourceCreateSeedsBuildTimeEnv(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	req := monorepoSource
+	req.EnvVars = []envVarInput{{Key: "NODE_ENV", Value: "production", ValueSet: true}}
+	created, err := svc.CreateBuildSource(ctx, req)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var crs appv1alpha1.AppList
+	if err := svc.Client.List(ctx, &crs); err != nil || len(crs.Items) != 1 {
+		t.Fatalf("carriers = %d (err %v)", len(crs.Items), err)
+	}
+	found := false
+	for _, e := range crs.Items[0].Spec.Env {
+		found = found || (e.Name == "NODE_ENV" && e.Value == "production")
+	}
+	if !found {
+		t.Fatalf("carrier %s env = %+v, want NODE_ENV=production", created.ID, crs.Items[0].Spec.Env)
 	}
 }
