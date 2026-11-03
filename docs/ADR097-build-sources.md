@@ -20,7 +20,7 @@ bex's build pipeline is App-shaped end to end (`lego/operator/internal/controlle
 
 ## Implementation notes (2026-11-03)
 
-- **Ids.** `bsr` is already the Blueprint sync run prefix, so a build source is `bds-…` (minted by `id.New`); Render's contract publishes no pattern or example for either id. A build is the carrier's deploy row, and its public id is derived from that row (`bld-…`, `id.Derive`), so build history needs no separate table (§2 is satisfied by the carrier's deploys).
+- **Ids.** `bsr` is already the Blueprint sync run prefix, so a build source is `bds-…` (minted by `id.New`); Render's contract publishes no pattern or example for either id. A build is the carrier's deploy row, and its public id is that row's id under the `bld` prefix (`id.Rekind`, same xid), so build history needs no separate table (§2 is satisfied by the carrier's deploys) and `GET …/builds/{buildId}` is one indexed lookup. `buildRun.id` is the deploy id; the list cursor is too.
 - **Storage.** A carrier is an `apps` row of type `build_source` whose Kubernetes name is its `bds-` id, so it can never collide with a service name. A linked service carries `build_source_id` and the selected `build_source_image`, projected into `spec.buildSource`. Every service listing excludes carriers.
 - **Render semantics to keep** (api-docs.render.com, `update-service`, `trigger-build-source-build`): a PATCH that links cannot be combined with build-configuration changes (only `startCommand`); linking to a native-runtime source requires a start command, and a Docker/image source rejects one; a link does not deploy until the deploy API is called; only git sources can be built.
 

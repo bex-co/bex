@@ -379,6 +379,11 @@ func (s *Service) List(ctx context.Context, service string, filter ListFilter) (
 	if err != nil {
 		return nil, err
 	}
+	return s.listFetched(ctx, a, filter)
+}
+
+// listFetched is List for an App the caller already authorized.
+func (s *Service) listFetched(ctx context.Context, a *appv1alpha1.App, filter ListFilter) ([]DeployView, error) {
 	// A deleting service is absent from every by-id surface, its deploy history
 	// included (w3/m81): reads agree with List and Render's GET 404 rather than
 	// serving the history of a resource that is being torn down.
@@ -423,6 +428,11 @@ func (s *Service) Get(ctx context.Context, service, deployID string) (DeployView
 	if err != nil {
 		return DeployView{}, err
 	}
+	return s.getFetched(ctx, a, deployID)
+}
+
+// getFetched is Get for an App the caller already authorized.
+func (s *Service) getFetched(ctx context.Context, a *appv1alpha1.App, deployID string) (DeployView, error) {
 	// Absent once deletion is accepted, same by-id contract as the list (w3/m81).
 	if err := core.NotFoundIfDeleting(a); err != nil {
 		return DeployView{}, err

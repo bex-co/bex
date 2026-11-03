@@ -1515,12 +1515,10 @@ func (s *Server) restHandler(extra ...restRegistrar) *http.ServeMux {
 		w.Write([]byte("[]")) //nolint:errcheck
 	})
 	// Render's early-access object storage (`render ea objects`) is not
-	// offered on bex (ADR018, user decision 2026-10-29, w6/097), and Render
-	// Build Sources are not served yet (w2/m254). Each operation names that,
-	// not the router's bare 404, so a Render CLI pointed at bex shows why (it
-	// prints a 404's message).
+	// offered on bex (ADR018, user decision 2026-10-29, w6/097). Each
+	// operation names that, not the router's bare 404, so a Render CLI
+	// pointed at bex shows why (it prints a 404's message).
 	mountNotOffered(mux, objectStorageRoutes, objectStorageNotOffered)
-	mountNotOffered(mux, buildSourceRoutes, buildSourcesNotOffered)
 	return mux
 }
 
@@ -1536,7 +1534,7 @@ func mountNotOffered(mux *http.ServeMux, routes []string, message string) {
 // the gate would refuse must still get the named 404.
 var notOfferedRoutes = func() map[string]bool {
 	set := map[string]bool{}
-	for _, routes := range [][]string{objectStorageRoutes, buildSourceRoutes} {
+	for _, routes := range [][]string{objectStorageRoutes} {
 		for _, pattern := range routes {
 			set[pattern] = true
 		}
@@ -1552,16 +1550,6 @@ var objectStorageRoutes = []string{
 	"PUT /v1/objects/{ownerId}/{region}/{key...}",
 	"GET /v1/objects/{ownerId}/{region}/{key...}",
 	"DELETE /v1/objects/{ownerId}/{region}/{key...}",
-}
-
-// buildSourcesNotOffered answers every Render Build Sources operation until
-// w2/m254 mounts real handlers (and deletes these routes).
-const buildSourcesNotOffered = "bex does not offer Render Build Sources yet"
-
-var buildSourceRoutes = []string{
-	"GET /v1/build-sources/{buildSourceId}/builds",
-	"POST /v1/build-sources/{buildSourceId}/builds",
-	"GET /v1/build-sources/{buildSourceId}/builds/{buildId}",
 }
 
 // newSchema merges every feature's GraphQL fragments into the single root Query

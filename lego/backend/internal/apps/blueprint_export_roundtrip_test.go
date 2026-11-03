@@ -18,6 +18,7 @@ package apps
 
 import (
 	"context"
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"reflect"
 	"strconv"
 	"strings"
@@ -182,7 +183,7 @@ func exportSpelling(spec appv1alpha1.AppSpec) appv1alpha1.AppSpec {
 		if spec.Builder == "auto" {
 			spec.Builder = ""
 		}
-	case spec.Runtime == "" && effectiveRuntime(spec, effectiveType(spec.Type)) == "docker":
+	case spec.Runtime == "" && core.EffectiveRuntime(spec, effectiveType(spec.Type)) == "docker":
 		spec.Runtime, spec.Builder = "docker", "dockerfile"
 	}
 	if spec.Type == appv1alpha1.TypeCronJob && spec.Command != "" {

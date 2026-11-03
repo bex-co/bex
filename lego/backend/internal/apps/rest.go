@@ -86,8 +86,8 @@ type patchServiceRequest struct {
 		// preDeployCommand.
 		Port *int32 `json:"port"`
 	} `json:"serviceDetails"`
-	// BuildSourceID is Render's top-level servicePATCH buildSourceId; bex
-	// serves no Build Sources yet (w2/m254), so a non-empty value is refused.
+	// BuildSourceID is Render's top-level servicePATCH buildSourceId: a
+	// non-empty value links the service to that build source.
 	BuildSourceID *string `json:"buildSourceId"`
 	// Render calls the mutable human-facing label `name`; displayName remains a
 	// bex extension accepted for dashboard/backward compatibility.
