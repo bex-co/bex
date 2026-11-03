@@ -37,6 +37,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 - [x] **m151** — [`render-v1` runtime pods run in a pod user namespace (`hostUsers: false`)](done/m151/README.md) (7 tasks) ← promoted from w6/086 (2026-10-21) — **done 2026-10-21**, live in every workspace
 - [x] **m152** — [A disk owner sees when nightly snapshots are not running](done/m152/README.md) (6 tasks) ← promoted from 094 (w6/089 finding, 2026-10-22)
+- [ ] **m156** — [Deploy latency watchdog: a green main never waits half a day to deploy](m156/README.md) (6 tasks) ← `/pm-brainstorm for w6` 2026-11-02 #1 (4 pin gaps >10 h in 7 days, max 24.9 h with 29 commits waiting)
 - [x] **m155** — [Image builds run on their own runner pool, so production deploys never wait behind them](done/m155/README.md) (8 tasks) ← user decision D4 2026-11-01 — **done 2026-11-02**: `bex-build` pool live (block-eden-mono `aa911b0693`, bex `87f9e7b6a`); a deploy job started in 3 s while the common native build ran on bex-build
 - [x] **m153** — [Production cluster access survives a control-plane roll](done/m153/README.md) (9 tasks) ← 2026-10-24 diagnosis (w5/174 roll broke every kubeconfig fetch) — **done 2026-10-29**: stable CP host key via the KCP bootstrap (`192c2c442`), wildcard pin; a full roll fetched with no pin edit (runs 40844324975, 40848838767)
 - [x] **m154** — [A failed nightly disk backup says why](done/m154/README.md) (7 tasks) ← 2026-10-24 diagnosis of w6/089 (three nights of silent dskbak- failures)
@@ -195,6 +196,10 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **101** — [The SSH gateway's exec drain buffer has no metrics](101.md) — `/pm-brainstorm` 2026-11-02 #2.
+- [ ] **102** — [Web Shell closes before the browser's close reply, so the tail of its output can be lost](102.md) — #3 (Render parity, UI).
+- [ ] **103** — [Argo CD reports 27 orphaned resources on bex-operator](103.md) — #4.
+- [ ] **104** — [The runner host's Docker VM is far smaller than the 12 runners it serves](104.md) — #5.
 - [ ] **100** — **BLOCKED (user decision: move bulky `.pm` evidence out of the deploy repo (A), point Argo at a slim generated branch (B), or keep raising timeouts (C); interim 180 s timeout + 2 repo-servers shipped `7bc6a62aa`, deploys flowing again)** — [Argo CD comparisons time out on git](blocked/100.md) — root cause: `.pm` is 93% of the tracked bytes Argo checks out.
 - [x] **097** — [`bex ea objects` returns 404 in every region](done/097.md) — done 2026-10-29: not offered (signed ADR018 divergence, user decision); API says so live (`e8d1df424`), CLI refusal ships with the next bex-cli release.
 - [x] **098** — [A control-plane roll stalls on a Hetzner capacity error until someone deletes the Machine](done/098.md) — done 2026-10-29: CAPH already self-remediates a server-less CP Machine once the MHC marks it unhealthy; CP `nodeStartupTimeout` 15m → 8m bounds the stall (live recurrence not observed yet).
