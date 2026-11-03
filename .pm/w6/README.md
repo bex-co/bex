@@ -196,7 +196,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **101** — [The SSH gateway's exec drain buffer has no metrics](101.md) — `/pm-brainstorm` 2026-11-02 #2.
+- [x] **101** — [The SSH gateway's exec drain buffer has no metrics](done/101.md) — done 2026-11-03: buffered-bytes gauge, fallback counter, `SSHGatewayDrainBudgetExhausted` alert + panel.
 - [ ] **102** — [Web Shell closes before the browser's close reply, so the tail of its output can be lost](102.md) — #3 (Render parity, UI).
 - [ ] **103** — [Argo CD reports 27 orphaned resources on bex-operator](103.md) — #4.
 - [ ] **104** — [The runner host's Docker VM is far smaller than the 12 runners it serves](104.md) — #5.

@@ -39,6 +39,8 @@ type Metrics struct {
 	modelUsage      *prometheus.CounterVec
 	egressConns     *prometheus.CounterVec
 	egressBytes     *prometheus.CounterVec
+	drainBuffered   prometheus.Gauge
+	drainFallbacks  prometheus.Counter
 }
 
 func NewMetrics(registerer prometheus.Registerer) *Metrics {
@@ -106,8 +108,20 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Namespace: "bex", Subsystem: "ssh_gateway", Name: "egress_proxy_bytes_total",
 			Help: "Bytes relayed by the agent-session egress proxy, by direction (upstream = sandbox to internet, downstream = internet to sandbox).",
 		}, []string{"direction"}),
+		// w6/101: the exec drain buffer (w6/099) holding output read ahead of
+		// a slow SSH client, and the writes that went straight through because
+		// the process-wide budget was spent, which is when kube-apiserver's
+		// slow-reader tail loss can return.
+		drainBuffered: prometheus.NewGauge(prometheus.GaugeOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "drain_buffered_bytes",
+			Help: "Exec output bytes the gateway currently holds ahead of slow SSH clients, process-wide.",
+		}),
+		drainFallbacks: prometheus.NewCounter(prometheus.CounterOpts{
+			Namespace: "bex", Subsystem: "ssh_gateway", Name: "drain_fallback_writes_total",
+			Help: "Exec output writes forwarded unbuffered because the process-wide drain budget was spent.",
+		}),
 	}
-	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes)
+	registerer.MustRegister(m.handshakes, m.authentications, m.activeSessions, m.sessions, m.durations, m.limitRejections, m.channels, m.activeChannels, m.reauths, m.gitUpstream, m.modelUsage, m.egressConns, m.egressBytes, m.drainBuffered, m.drainFallbacks)
 	return m
 }
 
@@ -206,5 +220,20 @@ func (m *Metrics) EgressProxyConnection(result string) {
 func (m *Metrics) EgressProxyBytes(direction string, n int64) {
 	if m != nil && n > 0 {
 		m.egressBytes.WithLabelValues(direction).Add(float64(n))
+	}
+}
+
+// DrainBuffered moves the process-wide drain buffer gauge by delta bytes.
+func (m *Metrics) DrainBuffered(delta int64) {
+	if m != nil {
+		m.drainBuffered.Add(float64(delta))
+	}
+}
+
+// DrainFallback counts one write forwarded unbuffered because the drain
+// budget was spent.
+func (m *Metrics) DrainFallback() {
+	if m != nil {
+		m.drainFallbacks.Inc()
 	}
 }
