@@ -15,7 +15,8 @@
 | t007 | GraphQL and MCP equivalents | 1h | t006 |
 | t008 | Dashboard: Settings → Build → Source "Update source" dialog | 1.5h | t007 |
 | t013 | Deploys report buildId; deploy and rollback accept a build | 45m | t006 |
-| t009 | Render parity | 15m | t008, t013 |
+| t014 | POST /v1/build-sources answers 500 after creating the source: PGStore.CreateApp overwrites the bds- id with a srv- id | 45m | t003 |
+| t009 | Render parity | 15m | t008, t013, t014 |
 | t010 | Simplify | 15m | t009 |
 | t011 | Test coverage | 30m | t009 |
 | t012 | Closeout | 10m | t010, t011 |
