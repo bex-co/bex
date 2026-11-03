@@ -1,6 +1,6 @@
 # ADR094 — Cloud Agents MCP: the bex cloud coding agent as a task-shaped toolset at `/mcp/cloud-agents`
 
-**Status:** Proposed, 2026-10-30. No implementation milestone yet; the phasing in D10 is the proposed split. It amends [ADR025](ADR025-connect-an-agent.md) (a second, narrower MCP endpoint and one new scope) and builds on [ADR047](ADR047-cloud-coding-agent-sessions.md), [ADR051](ADR051-agent-session-transcript.md), [ADR065](ADR065-agent-session-archive.md), [ADR090](ADR090-agent-owned-delivery.md) and [ADR091](ADR091-agent-model-pricing.md). It does not change the session engine.
+**Status:** Proposed, 2026-10-30. Scheduled 2026-11-03 as `w21/m257`–`m260` (one milestone per D10 phase); nothing is implemented yet. It amends [ADR025](ADR025-connect-an-agent.md) (a second, narrower MCP endpoint and one new scope) and builds on [ADR047](ADR047-cloud-coding-agent-sessions.md), [ADR051](ADR051-agent-session-transcript.md), [ADR065](ADR065-agent-session-archive.md), [ADR090](ADR090-agent-owned-delivery.md) and [ADR091](ADR091-agent-model-pricing.md). It does not change the session engine.
 
 **Source:** user request 2026-10-30: deep-research Devin's MCP and our coding agent's APIs, then design a coding-agent MCP as part of our overall MCP offering. User decision 2026-11-02: the product line is **Cloud Agents**, at `/mcp/cloud-agents` (D1 § Naming).
 
