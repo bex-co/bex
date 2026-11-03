@@ -18,6 +18,11 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { ConversationSkeleton } from "@/features/agent-sessions/components/conversation-skeleton";
 import { MarkdownRenderer } from "@/common/components/markdown-renderer";
 import { cn } from "@/common/lib/utils/utils";
+import { TurnAttachments } from "@/features/agent-sessions/components/turn-attachments";
+import {
+  turnAttachmentsFrom,
+  type AttachmentView,
+} from "@/features/agent-sessions/lib/attachments";
 import { ActivityGroup } from "@/features/agent-sessions/components/activity-group";
 import {
   stepLabel,
@@ -632,6 +637,7 @@ type DisplayBlock =
       text: string;
       incomplete: boolean;
       reason: string;
+      attachments: AttachmentView[];
     }
   | {
       type: "activity";
@@ -684,6 +690,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
           data.truncated === true ||
           (data.settled === true && data.complete !== true),
         reason: str(data.reason),
+        attachments: turnAttachmentsFrom(data.attachments),
       });
       turn = Number.isSafeInteger(data.turn) ? (data.turn as number) : turn;
       // A new durable turn starts a new plan lifecycle. Without this reset, the
@@ -869,6 +876,7 @@ const MessageRow = memo(function MessageRow({
                 text={block.text}
                 incomplete={block.incomplete}
                 reason={block.reason}
+                attachments={block.attachments}
               />
             );
           }
@@ -968,10 +976,12 @@ function DurableUserTurn({
   text,
   incomplete,
   reason,
+  attachments,
 }: {
   text: string;
   incomplete: boolean;
   reason: string;
+  attachments: AttachmentView[];
 }) {
   const { t } = useTranslations();
   return (
@@ -980,6 +990,7 @@ function DurableUserTurn({
         <div className="border-border/70 bg-muted text-foreground rounded-xl rounded-br-md border px-3 py-1.5 shadow-xs dark:bg-muted/80">
           <MarkdownRenderer content={text} />
         </div>
+        <TurnAttachments items={attachments} />
         {incomplete ? (
           <p className="text-muted-foreground mt-1 text-right text-xs">
             {t("agentSessions.conversationIncomplete")}

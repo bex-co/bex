@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { useQuery } from "@apollo/client/react";
 import { AgentSessionCapabilitiesDocument } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -10,14 +11,20 @@ export interface UseAgentSessionCapabilitiesResult {
   refetch: () => Promise<unknown>;
 }
 
-/** Reads the existing secret-free readiness projection for the selected workspace. */
-export function useAgentSessionCapabilities(): UseAgentSessionCapabilitiesResult {
+/**
+ * Reads the existing secret-free readiness projection. `ownerId` names the
+ * workspace (an open session's own); omitted, the selected workspace.
+ */
+export function useAgentSessionCapabilities(
+  ownerId?: string | null,
+): UseAgentSessionCapabilitiesResult {
   const { currentWorkspaceId } = useWorkspace();
-  const resolved = currentWorkspaceId != null;
+  const workspaceId = ownerId || currentWorkspaceId;
+  const resolved = workspaceId != null;
   const { data, loading, error, refetch } = useQuery(
     AgentSessionCapabilitiesDocument,
     {
-      variables: { ownerId: currentWorkspaceId },
+      variables: { ownerId: workspaceId },
       skip: !resolved,
       fetchPolicy: "cache-first",
       errorPolicy: "all",
@@ -25,15 +32,26 @@ export function useAgentSessionCapabilities(): UseAgentSessionCapabilitiesResult
   );
 
   const value = data?.agentSessionCapabilities;
-  const capabilities: AgentSessionCapabilitiesView | null = value
-    ? {
-        enabled: value.enabled,
-        modelKeyReady: value.modelKeyReady,
-        github: {
-          connected: value.github.connected,
-        },
-      }
-    : null;
+  // Memoized on the query result so consumers (attachment limits) get a
+  // stable object between renders.
+  const capabilities = useMemo<AgentSessionCapabilitiesView | null>(
+    () =>
+      value
+        ? {
+            enabled: value.enabled,
+            modelKeyReady: value.modelKeyReady,
+            github: {
+              connected: value.github.connected,
+            },
+            attachments: {
+              enabled: value.attachments.enabled,
+              maxBytes: value.attachments.maxBytes,
+              maxPerTurn: value.attachments.maxPerTurn,
+            },
+          }
+        : null,
+    [value],
+  );
 
   return {
     capabilities,

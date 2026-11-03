@@ -15,6 +15,41 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   useAgentSessionMutations: () => ({ steer }),
 }));
 
+const capabilitiesState = {
+  capabilities: {
+    enabled: true,
+    modelKeyReady: true,
+    github: { connected: true },
+    attachments: { enabled: true, maxBytes: 25 * 1024 * 1024, maxPerTurn: 10 },
+  },
+  loading: false,
+  error: undefined,
+};
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-capabilities",
+  () => ({
+    useAgentSessionCapabilities: () => capabilitiesState,
+  }),
+);
+
+vi.mock("@/features/workspaces/context/hooks", () => ({
+  useWorkspace: () => ({ currentWorkspaceId: "tea-1" }),
+}));
+
+const uploadOwners = vi.hoisted(() => [] as (string | null)[]);
+vi.mock("@/features/agent-sessions/lib/attachments", async (orig) => ({
+  ...(await orig<typeof import("@/features/agent-sessions/lib/attachments")>()),
+  uploadAttachment: (file: File, opts: { ownerId: string | null }) => {
+    uploadOwners.push(opts.ownerId);
+    return Promise.resolve({
+      id: "att-7",
+      name: file.name,
+      mediaType: "image/png",
+      size: file.size,
+    });
+  },
+}));
+
 const toastSuccess = vi.fn();
 vi.mock("sonner", () => ({
   toast: { success: (m: string) => toastSuccess(m) },
@@ -52,7 +87,9 @@ describe("SteeringComposer state routing", () => {
     await user.click(screen.getByRole("button", { name: "Send" }));
 
     await waitFor(() =>
-      expect(steer).toHaveBeenCalledWith("as-1", "try again with tests"),
+      expect(steer).toHaveBeenCalledWith("as-1", "try again with tests", {
+        attachmentIds: [],
+      }),
     );
     expect(chat.sendMessage).not.toHaveBeenCalled();
     expect(toastSuccess).toHaveBeenCalled();
@@ -202,5 +239,48 @@ describe("SteeringComposer state routing", () => {
     expect(screen.getByRole("textbox")).toBeDisabled();
     expect(chat.sendMessage).not.toHaveBeenCalled();
     expect(onOptimisticSteer).not.toHaveBeenCalled();
+  });
+});
+
+describe("SteeringComposer attachments (ADR095)", () => {
+  it("sends uploaded files with the follow-up and clears the chips", async () => {
+    const user = userEvent.setup();
+    uploadOwners.length = 0;
+    // The session lives in another workspace than the one selected.
+    render(
+      <SteeringComposer
+        session={{ ...view("completed"), ownerId: "tea-other" }}
+        chat={null}
+      />,
+    );
+    await user.upload(
+      screen.getByTestId("attachment-input"),
+      new File(["png"], "after.png", { type: "image/png" }),
+    );
+    await waitFor(() =>
+      expect(screen.getByTestId("attachment-chip")).toHaveAttribute(
+        "data-status",
+        "ready",
+      ),
+    );
+    await user.type(screen.getByRole("textbox"), "does this look right?");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+
+    await waitFor(() =>
+      expect(steer).toHaveBeenCalledWith("as-1", "does this look right?", {
+        attachmentIds: ["att-7"],
+      }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByTestId("attachment-chip")).toBeNull(),
+    );
+    expect(uploadOwners).toEqual(["tea-other"]);
+  });
+
+  it("offers no attachments while the session cannot take a message", () => {
+    render(<SteeringComposer session={view("canceled")} chat={null} />);
+    expect(
+      screen.queryByRole("button", { name: "Attach files" }),
+    ).not.toBeInTheDocument();
   });
 });
