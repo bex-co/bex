@@ -17,6 +17,8 @@ limitations under the License.
 package core
 
 import (
+	"context"
+
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
@@ -44,10 +46,35 @@ func ServiceApps(items []appv1alpha1.App) []appv1alpha1.App {
 	return out
 }
 
-// notServiceApp turns a successful read of a build source carrier into the
-// not-found a service lookup answers, so a service verb never acts on one.
-func notServiceApp(err error, app *appv1alpha1.App) error {
-	if err == nil && IsBuildSource(app) {
+type buildSourcesKey struct{}
+
+// WithBuildSources lets the core App resolvers return build source carriers.
+// Only the build-source surface sets it, after checking that the id it
+// resolves names a carrier, so it can reuse the service write paths (a source
+// patch, a build setting) on the carrier; every other caller keeps resolving
+// services only.
+func WithBuildSources(ctx context.Context) context.Context {
+	return context.WithValue(ctx, buildSourcesKey{}, true)
+}
+
+func buildSourcesAllowed(ctx context.Context) bool {
+	allowed, _ := ctx.Value(buildSourcesKey{}).(bool)
+	return allowed
+}
+
+// serviceAppsFor is ServiceApps unless ctx is the build-source surface's.
+func serviceAppsFor(ctx context.Context, items []appv1alpha1.App) []appv1alpha1.App {
+	if buildSourcesAllowed(ctx) {
+		return items
+	}
+	return ServiceApps(items)
+}
+
+// notServiceAppFor turns a successful read of a build source carrier into the
+// not-found a service lookup answers, so a service verb never acts on one —
+// unless ctx is the build-source surface's.
+func notServiceAppFor(ctx context.Context, err error, app *appv1alpha1.App) error {
+	if err == nil && IsBuildSource(app) && !buildSourcesAllowed(ctx) {
 		return apierrors.NewNotFound(schema.GroupResource{Group: appv1alpha1.SchemeGroupVersion.Group, Resource: "apps"}, app.Name)
 	}
 	return err

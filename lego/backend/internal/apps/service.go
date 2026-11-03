@@ -1840,6 +1840,9 @@ func readyCurrentAppPod(pod *corev1.Pod, activeImage, activeRevision string) boo
 // first canonical (spec.host); only a web_service is additionally exposed at the
 // platform hostname <name>.<BEX_BASE_DOMAIN>.
 type CreateRequest struct {
+	// buildSource marks the create of a Render Build Source carrier
+	// (w2/m254); only CreateBuildSource sets it.
+	buildSource *buildSourceCreate
 	// Blueprint-only group names; never decoded from public create input.
 	initialEnvGroups []string
 	// storeEnvKeys are Blueprint-declared keys whose value lives in the env
@@ -2097,6 +2100,9 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if err != nil {
 		return AppView{}, err
 	}
+	if req.buildSource != nil {
+		req.buildSource.shape(&desired)
+	}
 	if err := s.configureNewImageCompatibility(ctx, &desired, req.Port > 0); err != nil {
 		return AppView{}, err
 	}
@@ -2123,8 +2129,11 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	// env key, an inaccessible repository, a registry credential that cannot
 	// apply, and the custom-domain gate (reserved/dashboard host, caps, a host
 	// another service owns). Only the writes after the return are skipped.
-	if err := s.RequirePlanBilling(ctx, tenantID, desired.Tier); err != nil {
-		return AppView{}, err
+	// A build source runs no instance, so no plan is billed for it.
+	if req.buildSource == nil {
+		if err := s.RequirePlanBilling(ctx, tenantID, desired.Tier); err != nil {
+			return AppView{}, err
+		}
 	}
 
 	// Duplicate check, scoped to exactly the target workspace (w4/m19) —
@@ -2273,6 +2282,11 @@ func (s *Service) planNewApp(ctx context.Context, req CreateRequest, a *appv1alp
 	stampAppIdentity(probe, tenantID, ids.New(ids.Service), managed)
 	stampReleaseGeneration(probe, store.FirstDeployGeneration)
 	resourcemeta.Touch(probe, s.Now())
+	if req.buildSource != nil {
+		// Its own ceiling; the App count quota gains room for it only once
+		// its row exists (roomForBuildSources), so no quota dry-run here.
+		return s.checkBuildSourceCeiling(ctx, tenantID)
+	}
 	if err := s.DryRunCreate(ctx, probe); err != nil {
 		return serviceCountCap.CreateError(err)
 	}
@@ -2505,8 +2519,10 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 		// The branch tip this create will build, resolved best-effort.
 		firstCommit := s.resolveDeployCommit(ctx, tenantID, req.Repo, a.Spec.Branch)
 		row, err := s.Store.CreateApp(ctx, store.App{
-			TenantID: tenantID,
-			Name:     req.Name,
+			ID:             req.buildSource.rowID(),
+			ScopeProjectID: req.buildSource.scope(),
+			TenantID:       tenantID,
+			Name:           req.Name,
 			// The service type the projector needs to derive spec.expose
 			// (w6/m46 t001). Recorded once here — spec.type is immutable, so
 			// no later write path revisits it.
@@ -2650,6 +2666,22 @@ func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *a
 		return AppView{}, err
 	}
 	createdRowID = rowID
+	if req.buildSource != nil && s.EnsureNamespaces != nil {
+		// Widen the App count quota for the carrier row just written, so its
+		// App fits beside the services (roomForBuildSources) — and narrow it
+		// again if the create rolls back.
+		rollbackRow := rollbackStoreRow
+		rollbackStoreRow = func(cause error) error {
+			cause = rollbackRow(cause)
+			if err := s.EnsureNamespaces(context.WithoutCancel(ctx), tenantID); err != nil {
+				cause = errors.Join(cause, fmt.Errorf("return the build source's quota room: %w", err))
+			}
+			return cause
+		}
+		if err := s.EnsureNamespaces(ctx, tenantID); err != nil {
+			return AppView{}, rollbackStoreRow(fmt.Errorf("make room for the build source: %w", err))
+		}
+	}
 	if err := s.ensureHostsClaimable(ctx, a); err != nil {
 		return AppView{}, rollbackStoreRow(err)
 	}
@@ -3354,8 +3386,15 @@ func resolveBuildStrategy(svcType string, req CreateRequest) (string, string, er
 		required, missing := "buildCommand and startCommand", strings.TrimSpace(req.BuildCommand) == "" || strings.TrimSpace(req.StartCommand) == ""
 		// A static site serves its build's files and runs no start command,
 		// which create refuses there (w5/090).
+		// A build source builds and runs nothing either: the start command
+		// belongs to each linked service (Render, w2/m254).
 		if svcType == appv1alpha1.TypeStaticSite {
 			required, missing = "buildCommand", strings.TrimSpace(req.BuildCommand) == ""
+		}
+		// A build source needs only its runtime (Render's schema): each
+		// linked service supplies the start command.
+		if req.buildSource != nil {
+			missing = false
 		}
 		if missing {
 			return "", "", fmt.Errorf("%w: native runtime %s requires %s", core.ErrBadRequest, runtime, required)

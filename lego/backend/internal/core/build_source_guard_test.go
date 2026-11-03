@@ -82,7 +82,7 @@ func TestEveryAppEnumerationDeclaresBuildSources(t *testing.T) {
 			}
 			key := rel + ":" + name
 			seen[key] = true
-			if mentions(body, "ServiceApps") || mentions(body, "IsBuildSource") || mentions(body, "notServiceApp") {
+			if mentions(body, "ServiceApps") || mentions(body, "IsBuildSource") || mentions(body, "notServiceAppFor") || mentions(body, "serviceAppsFor") {
 				return
 			}
 			if _, ok := appEnumerationsThatMayIncludeBuildSources[key]; !ok {
@@ -164,5 +164,13 @@ func TestServiceLookupsNeverResolveABuildSource(t *testing.T) {
 	}
 	if got, err := base.GetApp(ctx, RelCanView, "srv-a"); err != nil || got.Name != web.Name {
 		t.Fatalf("GetApp(srv-a) = (%v, %v), want the service", got, err)
+	}
+	// The build-source surface resolves its carrier through the same paths.
+	scoped := WithBuildSources(ctx)
+	if got, err := base.GetApp(scoped, RelCanView, "bds-1"); err != nil || got.Name != carrier.Name {
+		t.Fatalf("GetApp(bds-1) with WithBuildSources = (%v, %v), want the carrier", got, err)
+	}
+	if got, err := base.AuthorizeApp(scoped, RelCanOperate, "bds-1"); err != nil || got.Name != carrier.Name {
+		t.Fatalf("AuthorizeApp(bds-1) with WithBuildSources = (%v, %v), want the carrier", got, err)
 	}
 }
