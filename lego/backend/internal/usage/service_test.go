@@ -49,6 +49,7 @@ import (
 type memUsageStore struct {
 	mu          sync.Mutex
 	apps        []store.App
+	carriers    []store.App
 	rows        map[usageKey]store.HourlyRow
 	monthly     map[monthKey]monthlyVal
 	latestBy    map[string]time.Time // resourceKind/serviceID/kind -> latest window_start
@@ -254,6 +255,12 @@ func TestEgressQuerySourcesMatchPersistedVocabulary(t *testing.T) {
 			t.Errorf("egress source %q does not match persisted %q", tc.got, tc.want)
 		}
 	}
+}
+
+func (m *memUsageStore) ListBuildSourceCarriers(context.Context) ([]store.App, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	return m.carriers, nil
 }
 
 func (m *memUsageStore) ListApps(_ context.Context) ([]store.App, error) {
@@ -1996,5 +2003,46 @@ func TestPlatformRebuildRevisionsFailureIsAnUnavailableSource(t *testing.T) {
 	svc = &Service{Store: platformRevisionStore{revisions: map[string]bool{"gen-3": true}}}
 	if got, ok := svc.platformRebuildRevisions(context.Background(), "srv-1"); !ok || !got["gen-3"] {
 		t.Errorf("revisions = %v (ok=%v), want gen-3", got, ok)
+	}
+}
+
+// w2/m254 t015: a build source's builds are billed as build minutes under
+// its own id, and it records no other meter (a carrier runs nothing).
+func TestBuildSourceBuildsMeterBuildSecondsOnly(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := batchv1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	window := time.Date(2026, 7, 10, 10, 0, 0, 0, time.UTC)
+	carrier := store.App{ID: "bds-c185th5c2rvvnhbfiltg", TenantID: "tea-b", Name: "bds-c185th5c2rvvnhbfiltg", Type: store.TypeBuildSource, CreatedAt: window}
+	crName := core.CRName(carrier.TenantID, carrier.Name)
+	start := metav1.NewTime(window.Add(5 * time.Minute))
+	done := metav1.NewTime(window.Add(9 * time.Minute))
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{Name: "build-" + crName, Namespace: "bex-build", Labels: map[string]string{appv1alpha1.LabelBuild: crName}},
+		Status:     batchv1.JobStatus{StartTime: &start, CompletionTime: &done},
+	}
+	projected := &appv1alpha1.App{ObjectMeta: metav1.ObjectMeta{Name: crName, Namespace: "tea-b", Labels: map[string]string{store.LabelAppID: carrier.ID}}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(job, projected).Build()
+
+	mem := newMemUsageStore()
+	mem.carriers = []store.App{carrier}
+	svc := NewService(&core.Base{Client: cl, Namespace: "default"}, mem, "", nil)
+	svc.BuildNamespace = "bex-build"
+	svc.meterBuildSourcesThrough(context.Background(), window)
+
+	mem.mu.Lock()
+	defer mem.mu.Unlock()
+	row, ok := mem.rows[usageKey{store.ResourceKindService, carrier.ID, store.UsageKindBuildSeconds, "", window}]
+	if !ok || row.Quantity != 4*60 {
+		t.Fatalf("carrier build_seconds = %+v (found %v), want 240", row, ok)
+	}
+	for k := range mem.rows {
+		if k.kind != store.UsageKindBuildSeconds {
+			t.Errorf("a carrier recorded %s usage; it runs builds only", k.kind)
+		}
 	}
 }
