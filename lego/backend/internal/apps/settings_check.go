@@ -358,13 +358,8 @@ func (s *Service) checkPlan(ctx context.Context, a *appv1alpha1.App, plan string
 		return "", errUnknownPlanForType(a.Spec.Type, plan)
 	}
 	tier := t.ID
-	// A paused tier (w2/m250) is refused as a new selection — the create-time
-	// rule in normalizeTierForType — while a service already on it may re-send
-	// its own plan unchanged.
-	if tier != a.Spec.Tier {
-		if err := errPausedTier(tier); err != nil {
-			return "", err
-		}
+	if err := errPausedTier(tier, a.Spec.Tier); err != nil {
+		return "", err
 	}
 	// Paid-only types refuse a downgrade to free here, which is the SetPlan
 	// half (dry-run included) of the create-time rule in normalizeTierForType

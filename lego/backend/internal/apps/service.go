@@ -3619,10 +3619,8 @@ func normalizeTierForType(svcType, plan, current string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	if tier != current {
-		if err := errPausedTier(tier); err != nil {
-			return "", err
-		}
+	if err := errPausedTier(tier, current); err != nil {
+		return "", err
 	}
 	return tier, nil
 }
@@ -3654,8 +3652,13 @@ func largestSelectableTierID() string {
 	return tiers.Compute.Default().ID
 }
 
-// errPausedTier refuses a new selection of a paused tier; nil otherwise.
-func errPausedTier(tierID string) error {
+// errPausedTier refuses a new selection of a paused tier: nil when the tier is
+// not paused or is the one the service already runs (current; "" for a new
+// service), so an existing service may re-send its own plan.
+func errPausedTier(tierID, current string) error {
+	if tierID == current {
+		return nil
+	}
 	msg := pausedTierMessage(tierID)
 	if msg == "" {
 		return nil
@@ -3664,9 +3667,10 @@ func errPausedTier(tierID string) error {
 	return core.NewBadRequestError(InstanceTypeUnavailableCode, msg, map[string]any{"plan": t.RenderPlan})
 }
 
-// selectableRenderPlans filters plans (Render spellings) down to the ones a
-// caller may choose, so no hint advertises a paused tier.
-func selectableRenderPlans(plans []string) []string {
+// selectableRenderPlans is the catalog's Render plan spellings a caller may
+// choose, so no hint advertises a paused tier.
+func selectableRenderPlans() []string {
+	plans := tiers.Compute.RenderPlans()
 	out := make([]string, 0, len(plans))
 	for _, plan := range plans {
 		if t, ok := tiers.Compute.ByRenderPlan(plan); ok && t.Paused {
@@ -3747,7 +3751,7 @@ func freePlanForTypeMessage(svcType string) string {
 
 // paidRenderPlans is the selectable compute ladder without free.
 func paidRenderPlans() []string {
-	plans := selectableRenderPlans(tiers.Compute.RenderPlans())
+	plans := selectableRenderPlans()
 	paid := make([]string, 0, len(plans))
 	for _, plan := range plans {
 		if core.PaidPlan(plan) {
@@ -3763,7 +3767,7 @@ func paidRenderPlans() []string {
 // other type, and a create whose type is not known yet, gets the full ladder.
 func errUnknownPlanForType(svcType, plan string) error {
 	if !paidOnlyServiceType(svcType) {
-		return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(selectableRenderPlans(tiers.Compute.RenderPlans()), "|"))
+		return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(selectableRenderPlans(), "|"))
 	}
 	if strings.EqualFold(strings.TrimSpace(plan), "free") {
 		return errFreePlanForType(svcType)
