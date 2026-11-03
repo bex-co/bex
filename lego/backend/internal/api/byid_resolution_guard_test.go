@@ -64,6 +64,7 @@ var byIDResolutions = map[string]byIDResolution{
 	"registrycredentials":   {"registrycreds", "ScopeByID", "GetRegistryCredentialByID routing read", []string{"scopeCredential"}},
 	"sandboxes":             {"sandbox", "ScopeByVisibleID", "member-workspace probe of OpenSandbox", []string{"scopeSandbox"}},
 	"agent-sessions":        {"agentsessions", "sessionObject", "OpenFGA check on the session object itself", nil},
+	"agent-attachments":     {"agentsessions", "ScopeByID", "agent_session_attachments workspace routing read (ADR095)", []string{"scopeAttachment"}},
 	"git":                   {"github", "ScopeByVisibleID", "claim selection / installation routing reads (visible-only: GitHub ids are enumerable)", []string{"scopeSelection", "scopeInstallation"}},
 	"events":                {"events", "ScopeByID", "ServiceEventWorkspaces routing read", []string{"scopeEvent"}},
 	"notifications":         {"notifications", "ScopeByID", "PushNotificationWorkspaces routing read (caller's own rows)", []string{"scopeNotification"}},
@@ -255,6 +256,7 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.StaticRoute.Prefix():              {"", "a derived rule listed under its static site; no per-rule verb yet"},
 	ids.StaticHeader.Prefix():             {"", "a derived rule listed under its static site; no per-rule verb yet"},
 	ids.AgentModelRequest.Prefix():        {"", "gateway-internal usage-report idempotency key, no API"},
+	ids.AgentAttachment.Prefix():          {"agent-attachments", ""},
 }
 
 // TestEveryIDKindIsClassifiedForByIDRouting closes the gap the route walk

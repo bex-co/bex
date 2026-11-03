@@ -710,6 +710,15 @@
           ],
           "type": "object"
         },
+        "attachmentIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "branch": {
           "type": "string"
         },
@@ -1334,6 +1343,34 @@
             "array"
           ]
         },
+        "attachments": {
+          "additionalProperties": false,
+          "properties": {
+            "enabled": {
+              "type": "boolean"
+            },
+            "maxBytes": {
+              "type": "integer"
+            },
+            "maxPerSession": {
+              "type": "integer"
+            },
+            "maxPerTurn": {
+              "type": "integer"
+            },
+            "maxSessionBytes": {
+              "type": "integer"
+            }
+          },
+          "required": [
+            "enabled",
+            "maxBytes",
+            "maxPerTurn",
+            "maxPerSession",
+            "maxSessionBytes"
+          ],
+          "type": "object"
+        },
         "enabled": {
           "type": "boolean"
         },
@@ -1367,7 +1404,8 @@
         "github",
         "modelKeyReady",
         "agents",
-        "ready"
+        "ready",
+        "attachments"
       ],
       "type": "object"
     }
@@ -1514,6 +1552,36 @@
           "items": {
             "additionalProperties": false,
             "properties": {
+              "attachments": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "id": {
+                      "type": "string"
+                    },
+                    "mediaType": {
+                      "type": "string"
+                    },
+                    "name": {
+                      "type": "string"
+                    },
+                    "size": {
+                      "type": "integer"
+                    }
+                  },
+                  "required": [
+                    "id",
+                    "name",
+                    "mediaType",
+                    "size"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
               "completedAt": {
                 "type": [
                   "null",
@@ -1548,7 +1616,8 @@
               "deliveryMode",
               "transcriptComplete",
               "transcriptTruncated",
-              "createdAt"
+              "createdAt",
+              "attachments"
             ],
             "type": "object"
           },
@@ -2337,6 +2406,15 @@
             "task"
           ],
           "type": "object"
+        },
+        "attachmentIds": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "branch": {
           "type": "string"

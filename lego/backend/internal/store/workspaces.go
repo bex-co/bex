@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"time"
 
@@ -204,14 +205,25 @@ func (s *PGStore) UpdateTenantPlan(ctx context.Context, id, plan string) (Tenant
 // projector then prunes the orphaned App CRs on its next pass. Returns
 // ErrNotFound when the id doesn't exist.
 func (s *PGStore) DeleteTenant(ctx context.Context, id string) error {
-	tag, err := s.Pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, id)
-	if err != nil {
+	err := s.withTx(ctx, func(tx pgx.Tx) error {
+		// Agent attachments have no tenant FK: retiring them here leaves the
+		// sweep a row for every object to purge (ADR095).
+		if err := retireWorkspaceAttachments(ctx, tx, id); err != nil {
+			return err
+		}
+		tag, err := tx.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, id)
+		if err != nil {
+			return err
+		}
+		if tag.RowsAffected() == 0 {
+			return fmt.Errorf("workspace %s: %w", id, ErrNotFound)
+		}
+		return nil
+	})
+	if err != nil && !errors.Is(err, ErrNotFound) {
 		return classify("workspace", err)
 	}
-	if tag.RowsAffected() == 0 {
-		return fmt.Errorf("workspace %s: %w", id, ErrNotFound)
-	}
-	return nil
+	return err
 }
 
 // ListTenantsForSubject returns the workspaces the subject belongs to, oldest

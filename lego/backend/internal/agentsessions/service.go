@@ -61,7 +61,7 @@ type Store interface {
 	SetAgentSessionFailure(context.Context, string, string, string) (store.AgentSession, error)
 	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
-	BeginAgentSessionTurn(context.Context, string, string, string, string, string) (store.AgentSession, error)
+	BeginAgentSessionTurn(context.Context, string, string, string, string, string, store.AgentAttachmentBinding) (store.AgentSession, error)
 	RecordAgentSessionDispatch(context.Context, string, string, string, string, string, int) (store.AgentSession, error)
 	FinalizeAgentSession(ctx context.Context, id, phase, headSHA, deliveryNote, failureReason string) (store.AgentSession, store.TerminalTurnFact, error)
 	DeleteAgentSession(context.Context, string) error
@@ -214,6 +214,14 @@ type Service struct {
 	// (sessionegress.Manager.RegistryDomains), reported by the environment
 	// for display. Empty ⇒ the built-in catalog.
 	RegistryHosts []string
+	// Attachments and AttachmentRows are the ADR095 attachment bucket and
+	// table. Either nil ⇒ every attachment verb answers
+	// AGENT_ATTACHMENTS_UNAVAILABLE and turns cannot attach files.
+	Attachments    AttachmentObjects
+	AttachmentRows AttachmentStore
+	// AttachmentCopier puts a dispatch's input files into its sandbox; nil ⇒
+	// attachments are unavailable too.
+	AttachmentCopier AttachmentCopier
 	// dispatchRunner runs the slow background provisioning half of create/steer/
 	// resume (w2/m64). Left nil in production => a detached goroutine, so the
 	// mutation returns before the sandbox exists; tests inject a synchronous (or
@@ -450,6 +458,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := validateCreate(&req); err != nil {
 		return View{}, err
 	}
+	if err := s.validateAttachmentIDs(req.AttachmentIDs); err != nil {
+		return View{}, err
+	}
 	workspaceID, ok := s.Tenant(ctx)
 	if !ok {
 		return View{}, core.ErrForbidden
@@ -494,6 +505,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		InitialPrompt: strings.TrimSpace(req.AgentConfig.Task),
 		Title:         req.Title, Tags: req.Tags,
 		IdempotencyKey: idemKey, IdempotencyHash: idemHash,
+		InitialAttachments: store.AgentAttachmentBinding{
+			IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx),
+		},
 	})
 	if errors.Is(err, store.ErrAgentSessionIdempotencyKey) {
 		// Lost the race for the key to a concurrent identical create.
@@ -504,7 +518,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		return View{}, core.NewConflictError("AGENT_SESSION_CONFLICT", "agent session conflicts with existing state", nil)
 	}
 	if err != nil {
-		return View{}, mapStoreError(record.ID, err)
+		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
 	}
 	// The row is not a reachable resource until this edge exists. If OpenFGA is
 	// unavailable, compensate the row and refuse before any sandbox is started.
@@ -570,6 +584,17 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 	// CreateAgentSessionSandbox blocks until the pod is Running with an IP (or
 	// fails/times out), so its wall-clock is the provisioning latency the user
 	// waits through after the fast create-accept (w5/m81 t002).
+	// Every dispatch is a fresh sandbox (ADR059), so each one receives all of
+	// the session's input files (ADR095 D4). The driver waits for the manifest
+	// before its turn, so the copy below cannot race the agent.
+	inputs, current, err := s.dispatchAttachments(ctx, record.ID, spec.turn)
+	if err != nil {
+		log.Printf("agent-session dispatch: list attachments failed (session=%s): %v", record.ID, err)
+		return s.failDispatch(ctx, record, spec.turn, attachmentListFailure, err)
+	}
+	if len(inputs) > 0 {
+		spec.env = withAttachmentManifest(spec.env, current, inputs)
+	}
 	provisionStart := time.Now()
 	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, spec.template, record.ID, record.Repo, record.Branch, spec.modelEndpoint, spec.modelAPIKey, spec.egress, spec.env)
 	if err != nil {
@@ -591,6 +616,10 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		return store.AgentSession{}, err
 	}
 	s.Metrics.observeProvision(provisionRunning, time.Since(provisionStart))
+	if err := s.copyAttachments(ctx, ws, record.ID, sb.ID, inputs); err != nil {
+		log.Printf("agent-session dispatch: attachment copy failed (session=%s): %v", record.ID, err)
+		return s.failDispatch(ctx, record, spec.turn, attachmentCopyFailure, err)
+	}
 	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, spec.modelEndpoint, spec.egress); err != nil {
 		log.Printf("agent-session dispatch: egress phase transition failed (session=%s): %v", record.ID, err)
 		s.abandonDispatch(ctx, record, spec.turn, store.AgentSessionFailure{Reason: "egress phase transition failed"})
@@ -611,6 +640,14 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		return store.AgentSession{}, mapStoreError(record.ID, err)
 	}
 	return bound, nil
+}
+
+// failDispatch abandons a dispatch for failure and settles its turn with the
+// same reason.
+func (s *Service) failDispatch(ctx context.Context, record store.AgentSession, turn int, failure store.AgentSessionFailure, err error) (store.AgentSession, error) {
+	s.abandonDispatch(ctx, record, turn, failure)
+	s.settleDispatchTurn(ctx, record.ID, turn, failure.Reason)
+	return store.AgentSession{}, err
 }
 
 func (s *Service) settleDispatchTurn(ctx context.Context, sessionID string, turn int, reason string) {
@@ -636,7 +673,7 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	if err := s.Authorize(ctx, core.RelCanOperate); err != nil {
 		return Capabilities{}, err
 	}
-	caps := Capabilities{Enabled: s.enabled() && s.modelProxyEnabled() && s.ticketEnabled()}
+	caps := Capabilities{Enabled: s.enabled() && s.modelProxyEnabled() && s.ticketEnabled(), Attachments: s.attachmentLimits()}
 	if !caps.Enabled {
 		// An unwired deployment advertises NO profiles (the phone renders a
 		// configuration callout off Enabled:false) — but "none" is an empty
@@ -964,7 +1001,7 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 			TranscriptComplete:  turn.TranscriptComplete,
 			TranscriptTruncated: turn.TranscriptTruncated,
 			TruncationReason:    turn.TruncationReason, CreatedAt: turn.CreatedAt,
-			CompletedAt: turn.CompletedAt,
+			CompletedAt: turn.CompletedAt, Attachments: turnAttachments(turn.Attachments),
 		})
 	}
 	for _, p := range parts {
@@ -1346,6 +1383,9 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if prompt == "" || len(prompt) > 100_000 {
 		return View{}, core.NewBadRequestError("AGENT_SESSION_INPUT_INVALID", "prompt is required", map[string]any{"field": "prompt"})
 	}
+	if err := s.validateAttachmentIDs(req.AttachmentIDs); err != nil {
+		return View{}, err
+	}
 	record, err := s.Store.GetAgentSession(ctx, req.SessionID)
 	if err != nil {
 		return View{}, mapStoreError(req.SessionID, err)
@@ -1390,9 +1430,10 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 		return View{}, err
 	}
 	previousSandboxID := record.SandboxID
-	record, err = s.Store.BeginAgentSessionTurn(ctx, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching")
+	record, err = s.Store.BeginAgentSessionTurn(ctx, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching",
+		store.AgentAttachmentBinding{IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx)})
 	if err != nil {
-		return View{}, mapStoreError(record.ID, err)
+		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
 	}
 	env := s.withNetworkEnv(s.driverEnv(config, record), workspaceEnv.NetworkTier, record)
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task

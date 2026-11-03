@@ -378,6 +378,10 @@ type Deps struct {
 	// AgentEnvironmentStore persists each workspace's agent environment
 	// (w10/m17); nil ⇒ defaults only.
 	AgentEnvironmentStore agentsessions.EnvironmentStore
+	// AgentAttachments and AgentAttachmentStore are the ADR095 attachment
+	// bucket and table; either nil ⇒ attachments are unavailable.
+	AgentAttachments     agentsessions.AttachmentObjects
+	AgentAttachmentStore agentsessions.AttachmentStore
 	// AgentRegistryHosts is the session-egress package-registry catalog,
 	// reported by the agent environment for display.
 	AgentRegistryHosts       []string
@@ -920,8 +924,10 @@ func NewServer(base *core.Base, d Deps) *Server {
 	// Keep the agent-session lifecycle a genuine nil interface when OpenSandbox is
 	// off, so enabled() checks are honest instead of holding a typed-nil pointer.
 	var agentLifecycle agentsessions.SandboxLifecycle
+	var agentCopier agentsessions.AttachmentCopier
 	if sandboxSvc != nil {
-		agentLifecycle = sandbox.NewAgentSessionLifecycle(sandboxSvc)
+		lifecycle := sandbox.NewAgentSessionLifecycle(sandboxSvc)
+		agentLifecycle, agentCopier = lifecycle, lifecycle
 	}
 	deploysSvc := &deploys.Service{
 		Base:              base,
@@ -1023,6 +1029,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 			TurnTimeout:      d.AgentTurnTimeout,
 			Environments:     d.AgentEnvironmentStore,
 			RegistryHosts:    d.AgentRegistryHosts,
+			Attachments:      d.AgentAttachments,
+			AttachmentRows:   d.AgentAttachmentStore,
+			AttachmentCopier: agentCopier,
 		},
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},
@@ -1952,6 +1961,11 @@ func restBodyLimit(global func(http.Handler) http.Handler) func(http.Handler) ht
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if r.Method == http.MethodPost && r.URL.Path == apps.BlueprintValidationPath {
 				blueprint.ServeHTTP(w, r)
+				return
+			}
+			// The attachment upload streams and bounds its own body (ADR095 D2).
+			if r.Method == http.MethodPost && r.URL.Path == agentsessions.AttachmentUploadPath {
+				next.ServeHTTP(w, r)
 				return
 			}
 			narrow.ServeHTTP(w, r)

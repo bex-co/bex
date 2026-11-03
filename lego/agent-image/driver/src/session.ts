@@ -29,6 +29,7 @@ import { stampSourceTimestamp } from "./timestamp.js";
 import { describeError } from "./errors.js";
 import { writeJsonAtomic } from "./fs-util.js";
 import type { AgentDriverConfig } from "./config.js";
+import { attachmentBlocks } from "./attachments.js";
 import { platformOverlay } from "./overlay.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 import { TurnLogSink } from "./turn-log.js";
@@ -251,7 +252,14 @@ export async function runHeadlessTurn(
                 data: { rung: continuity.rung },
               });
             }
-            promptResponse = await provider.prompt(continuity.prompt);
+            // Attachments ride the dispatching turn only: later live turns
+            // reach a sandbox whose agent already has them in context.
+            promptResponse = await provider.prompt(
+              continuity.prompt,
+              turn === config.turn
+                ? await attachmentBlocks(config.attachments, provider.imagePrompts)
+                : [],
+            );
             if (config.deliver) {
               // Delivery check before the provider stops, so the one nudge
               // continues the same ACP session with the agent's full context.

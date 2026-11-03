@@ -17,6 +17,7 @@
 
 import { agentEnvironment } from "./credentials.js";
 import { loadConfig } from "./config.js";
+import { waitForAttachments } from "./attachments.js";
 import { ensureRepo } from "./git-setup.js";
 import { describeError } from "./errors.js";
 import { markTurnFailed, runHeadlessTurn } from "./session.js";
@@ -37,6 +38,9 @@ async function main(): Promise<void> {
   // Live POST /turn calls await the same setup promise.
   const setup = (async () => {
     if (config.deliver) await ensureRepo(config);
+    // bex-api copies the session's attachments in while the sandbox starts;
+    // the turn must not begin on a partial copy (ADR095 D4).
+    if (config.attachments) await waitForAttachments(config.attachments);
   })();
   // main awaits setup below; attaching immediately also prevents a fast setup
   // rejection from becoming an unhandled promise while the listener starts.

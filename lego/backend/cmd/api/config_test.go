@@ -141,6 +141,10 @@ func TestLoadConfigFatalKnobs(t *testing.T) {
 		{"dev model route on production", cpEnv(map[string]string{"BEX_AGENT_DEV_MODEL_ROUTE": "openrouter"}), "dev-only"},
 		{"dev model route on explicit production", cpEnv(map[string]string{"BEX_AGENT_DEV_MODEL_ROUTE": "openrouter", "BEX_CP_IDENTITY": "production"}), "dev-only"},
 		{"unknown dev model route", cpEnv(map[string]string{"BEX_AGENT_DEV_MODEL_ROUTE": "anthropic", "BEX_CP_IDENTITY": "dev-10"}), "not supported"},
+		{"partial agent attachments", map[string]string{
+			"BEX_AGENT_ATTACHMENTS_S3_ENDPOINT": "https://s3.example",
+			"BEX_AGENT_ATTACHMENTS_S3_BUCKET":   "bex-agent-attachments",
+		}, "also set BEX_AGENT_ATTACHMENTS_S3_ACCESS_KEY, BEX_AGENT_ATTACHMENTS_S3_SECRET_KEY"},
 		{"model proxy port", map[string]string{
 			"BEX_OPENSANDBOX_URL":       "http://sandbox",
 			"BEX_AGENT_MODEL_PROXY_URL": "http://gw:0",

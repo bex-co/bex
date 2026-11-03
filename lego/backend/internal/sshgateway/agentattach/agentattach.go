@@ -534,18 +534,20 @@ func (s *Server) streamAgentAttach(ctx context.Context, sse *agentSSE, podIP str
 	nextTurn := 0
 	emitPromptsThrough := func(lastTurn int) bool {
 		for nextTurn < len(turns) && turns[nextTurn].Turn <= lastTurn {
-			payload, _ := json.Marshal(map[string]any{
-				"type": "data-user-prompt",
-				"data": map[string]any{
-					"turn":         turns[nextTurn].Turn,
-					"text":         turns[nextTurn].Prompt,
-					"complete":     turns[nextTurn].TranscriptComplete,
-					"settled":      turns[nextTurn].CompletedAt != nil,
-					"truncated":    turns[nextTurn].TranscriptTruncated,
-					"reason":       turns[nextTurn].TruncationReason,
-					"deliveryMode": turns[nextTurn].DeliveryMode,
-				},
-			})
+			data := map[string]any{
+				"turn":         turns[nextTurn].Turn,
+				"text":         turns[nextTurn].Prompt,
+				"complete":     turns[nextTurn].TranscriptComplete,
+				"settled":      turns[nextTurn].CompletedAt != nil,
+				"truncated":    turns[nextTurn].TranscriptTruncated,
+				"reason":       turns[nextTurn].TruncationReason,
+				"deliveryMode": turns[nextTurn].DeliveryMode,
+			}
+			// The files the turn attached (ADR095 D3), as snapshotted at binding.
+			if len(turns[nextTurn].Attachments) > 0 {
+				data["attachments"] = turns[nextTurn].Attachments
+			}
+			payload, _ := json.Marshal(map[string]any{"type": "data-user-prompt", "data": data})
 			if err := sse.frame(string(payload)); err != nil {
 				return false
 			}

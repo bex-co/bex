@@ -194,4 +194,78 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, view)
 	})
+	s.registerAttachmentREST(mux)
+}
+
+// AttachmentUploadPath is the streaming upload route; the REST mount exempts
+// it from the buffered JSON body limit because the handler bounds its own
+// stream at maxAttachmentBytes (ADR095 D2).
+const AttachmentUploadPath = "/v1/agent-attachments"
+
+func (s *Service) registerAttachmentREST(mux *http.ServeMux) {
+	mux.HandleFunc("POST "+AttachmentUploadPath, func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		view, err := s.UploadAttachment(r.Context(), UploadAttachmentRequest{
+			OwnerID: q.Get("ownerId"),
+			Name:    q.Get("name"),
+			Size:    r.ContentLength,
+			Body:    http.MaxBytesReader(w, r.Body, maxAttachmentBytes+1),
+		})
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, view)
+	})
+	mux.HandleFunc("GET "+AttachmentUploadPath+"/{id}", func(w http.ResponseWriter, r *http.Request) {
+		view, err := s.GetAttachment(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, view)
+	})
+	// Bytes are served only from the storage origin (ADR095 D7): a redirect,
+	// never a proxy, so an uploaded HTML or SVG file cannot run on a bex origin.
+	mux.HandleFunc("GET "+AttachmentUploadPath+"/{id}/content", func(w http.ResponseWriter, r *http.Request) {
+		signed, err := s.AttachmentURL(r.Context(), r.PathValue("id"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.Header().Set("Cache-Control", "no-store")
+		http.Redirect(w, r, signed, http.StatusFound)
+	})
+	mux.HandleFunc("DELETE "+AttachmentUploadPath+"/{id}", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.DeleteAttachment(r.Context(), r.PathValue("id")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
+	mux.HandleFunc("GET /v1/agent-sessions/{id}/attachments", func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query()
+		limit, err := core.QueryLimit(q)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		var turn *int
+		if raw := q.Get("turn"); raw != "" {
+			n, err := strconv.Atoi(raw)
+			if err != nil {
+				core.WriteErrStatus(w, http.StatusBadRequest, "turn must be a positive integer")
+				return
+			}
+			turn = &n
+		}
+		list, err := s.ListAttachments(r.Context(), r.PathValue("id"), AttachmentListQuery{
+			Direction: q.Get("direction"), Turn: turn, Cursor: q.Get("cursor"), Limit: limit,
+		})
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, list)
+	})
 }

@@ -25,7 +25,6 @@ import (
 	"time"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
-	"github.com/aws/aws-sdk-go-v2/credentials"
 	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -34,6 +33,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
+	"github.com/bex-co/bex/lego/backend/internal/s3client"
 	"github.com/bex-co/bex/lego/backend/internal/snapshotticket"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -387,17 +387,7 @@ func NewS3DiskSnapshotLister(cfg S3DiskSnapshotConfig) *S3DiskSnapshotLister {
 	if strings.TrimSpace(cfg.Bucket) == "" || strings.TrimSpace(cfg.Endpoint) == "" {
 		return nil
 	}
-	region := cfg.Region
-	if region == "" {
-		region = "us-east-1"
-	}
-	provider := credentials.NewStaticCredentialsProvider(cfg.AccessKey, cfg.SecretKey, "")
-	client := s3.NewFromConfig(aws.Config{
-		Region: region, Credentials: aws.NewCredentialsCache(provider),
-	}, func(o *s3.Options) {
-		o.BaseEndpoint = aws.String(cfg.Endpoint)
-		o.UsePathStyle = true
-	})
+	client := s3client.New(s3client.Config{Endpoint: cfg.Endpoint, Region: cfg.Region, AccessKey: cfg.AccessKey, SecretKey: cfg.SecretKey})
 	return &S3DiskSnapshotLister{client: client, bucket: cfg.Bucket, prefix: strings.Trim(cfg.Prefix, "/")}
 }
 

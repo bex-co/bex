@@ -146,6 +146,7 @@ type Capabilities struct {
 	ModelKeyReady bool                `json:"modelKeyReady"`
 	Agents        []AgentProfile      `json:"agents"`
 	Ready         bool                `json:"ready"`
+	Attachments   AttachmentLimits    `json:"attachments"`
 }
 
 // agentProfiles is the fixed, secret-free presentation metadata for the
@@ -174,6 +175,8 @@ type CreateRequest struct {
 	// 20 filter and cost-attribution labels, each [a-z0-9:_-]{1,64} (ADR094 D3).
 	Title string   `json:"title,omitempty"`
 	Tags  []string `json:"tags,omitempty"`
+	// AttachmentIDs are uploads to attach to the first turn (ADR095 D3).
+	AttachmentIDs []string `json:"attachmentIds,omitempty"`
 }
 
 // SteerRequest is a follow-up prompt turn on an existing session (ADR047 D8
@@ -183,6 +186,8 @@ type SteerRequest struct {
 	SessionID       string   `json:"-"`
 	Prompt          string   `json:"prompt,omitempty"`
 	EgressAllowlist []string `json:"egressAllowlist,omitempty"`
+	// AttachmentIDs are uploads to attach to this turn (ADR095 D3).
+	AttachmentIDs []string `json:"attachmentIds,omitempty"`
 }
 
 // View is byte-for-byte the same domain shape projected by REST, GraphQL, and
@@ -354,6 +359,16 @@ type TranscriptTurn struct {
 	TruncationReason    string     `json:"truncationReason,omitempty"`
 	CreatedAt           time.Time  `json:"createdAt"`
 	CompletedAt         *time.Time `json:"completedAt,omitempty"`
+	// Attachments are the files this turn attached (ADR095 D3); never null.
+	Attachments []TurnAttachment `json:"attachments"`
+}
+
+// TurnAttachment is one file a turn attached, as recorded when it was accepted.
+type TurnAttachment struct {
+	ID        string `json:"id"`
+	Name      string `json:"name"`
+	MediaType string `json:"mediaType"`
+	Size      int64  `json:"size"`
 }
 
 // TranscriptPage is one seq-keyset page of a session's transcript. Clients page

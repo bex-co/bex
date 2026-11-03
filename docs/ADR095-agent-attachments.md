@@ -314,3 +314,35 @@ Each phase ships end to end on its surfaces. Phase 1 alone already lets REST cal
 - **Collect outputs by scanning the sandbox at turn end.** This would surface caches and build output, and decides on the agent's behalf what the deliverable is. It is inconsistent with agent-owned delivery (ADR090).
 - **Proxy downloads through bex-api.** That makes a user-uploaded HTML or SVG same-origin with the API. A presigned GET on the storage origin avoids the class entirely.
 - **Send every image to every agent as an `image` block.** An agent without `promptCapabilities.image` must reject it under ACP. The link-first, capability-gated design works for all agents.
+
+## Implementation notes (w9/m168, phase 1)
+
+Where phase 1 differs from the decisions above, and why:
+
+- **One archive per dispatch, through a platform ticket.** Dispatch streams every input as one tar of `<turn>/<att-id>-<name>` entries and extracts it at `/var/lib/bex-agent/attachments`. The image links `/attachments` to that directory, which must not exist before the copy, as the gateway's new-directory rule requires.
+  - **Ticket.** The `/sandbox-files` ticket carries `sandboxexec.SystemSubject`, the Completer's platform principal, whose authority is the HMAC only bex-api holds. A ticket in the submitter's name would fail for most users, because agent-session file transfer re-checks `can_view_sensitive`.
+  - **Scope.** Both bex-api (at mint) and the gateway (at redeem) refuse any platform ticket that is not an upload to exactly that path for an agent session.
+  - **Limits.** The gateway keys its concurrency limit for platform tickets by session, so concurrent dispatches never queue behind one shared subject. The copier retries a `429` up to four times.
+  - **Waiting.** The driver gets the manifest in `BEX_AGENT_ATTACHMENTS` and waits in setup, up to the manifest's `waitMs` (the gateway transfer bound plus two minutes), for every file at its recorded size. The copy therefore never races the turn.
+- **The inputs are not root-owned.** The gateway extracts as the sandbox user (uid 10001), the same user as the agent, so it cannot make a tree the agent cannot change. Files arrive mode `0444`, and the overlay tells the agent not to modify them. Every dispatch starts from a fresh copy, so a modified file never outlives its sandbox.
+- **Current files are marked per dispatch.** The manifest marks each file `current` when the dispatching turn attached it, including a file attached again from an earlier turn. The driver inlines images only for current files, up to 20 MiB per prompt, and labels the others with the turn that first attached them.
+- **Names fit a sandbox file name.** The sanitizer caps a name at 230 bytes, so `<att-id>-<name>` stays within the 255-byte file-name limit. It also drops Unicode format characters such as bidi overrides.
+- **Uploads are recorded before they are stored.** A row is written `pending` before the PUT and becomes `ready` after it. Any failure retires the row, and a row a crash leaves pending expires after an hour. Either way the sweep removes the object, so no object exists without a row. Object keys are `<workspace>/<att-id>`.
+- **Failures are classified.**
+  - A body that ends early or fails to read is `400 AGENT_ATTACHMENT_INVALID`.
+  - A storage failure is `503 AGENT_ATTACHMENTS_UNAVAILABLE`.
+  - Each uploader may hold at most 50 unattached files or 250 MiB per workspace (`409 AGENT_ATTACHMENT_UNBOUND_QUOTA`).
+  - A dispatch that cannot list its inputs fails without the `ATTACHMENT_COPY_FAILED` code, which is reserved for a failed copy.
+- **Deletes retire files in the same transaction.**
+  - `DeleteAgentSession` retires its session's files inside its own transaction, so a failed delete keeps them. The create path's OpenFGA rollback, which calls the same delete, is covered too.
+  - Attachment rows have no tenant foreign key, as with `agent_session_dispatches`. `DeleteTenant` retires the workspace's rows in its transaction instead of letting a cascade orphan their objects.
+  - The hourly sweep (`core.Poll`) deletes retired objects in bulk (`DeleteObjects`), then the rows. A row whose object fails to delete moves behind untried rows (`purge_attempted_at`), and a pass stops at a two-minute budget.
+- **Turns store an attachment snapshot.** `agent_session_turns.attachments` is a `jsonb` snapshot of `[{id, name, mediaType, size}]` taken at binding, so the gateway replays `data-user-prompt.attachments` without a new database grant. REST and GraphQL transcript turns always carry the list, empty or not.
+- **GraphQL lists attachments at the root.** The list is `agentSessionAttachments(id, direction, turn, cursor, limit)`. A given `turn` must be at least 1 on every surface. Every attachment view carries a fresh 15-minute `downloadUrl`.
+- **One IAM user, not a pair.** bex-api is the bucket's only reader and writer: `infra/wasabi/agent-attachments-s3-policy.json`, installed by `scripts/agent-attachments-s3-credentials.sh`. A partly set `BEX_AGENT_ATTACHMENTS_S3_*` stops bex-api at startup.
+- **Deleting an attached file returns `409 AGENT_ATTACHMENT_BOUND`.** Bound files go with their session; only the uploader's unbound upload can be deleted directly.
+- **Live-turn `file` parts are dropped.** The dashboard's live POST turn is disabled, and every client attaches files on create or steer.
+- **MCP create and send accept `attachmentIds` now.** The ids are bound exactly as on REST, and the agent MCP golden records the schema. Uploading through MCP (`upload_agent_attachment`) is phase 4 (w9/m171); until then MCP callers upload over REST.
+- **Idempotency covers attachments.** ADR094's create digest includes `attachmentIds` (omitted when empty, so earlier digests are unchanged), so a retry with different files is a key reuse, not a replay.
+- **Account deletion anonymizes the uploader.** `CleanupAccountSubject` anonymizes `agent_session_attachments.created_by` (ADR086 inventory).
+- **New `413` error class.** `core.ErrTooLarge` lets `AGENT_ATTACHMENT_TOO_LARGE` answer 413 on every surface.

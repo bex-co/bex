@@ -96,7 +96,30 @@ func Verify(secret []byte, token string, now time.Time) (Claims, error) {
 }
 
 func (c Claims) NonceExpiry() time.Time { return hmacticket.NonceExpiry(c.ExpiresAt) }
-func (c Claims) PodName() string        { return c.SandboxID + "-0" }
+
+// AgentAttachmentsPath is where dispatch extracts an agent session's attached
+// files (ADR095 D4); the sandbox image links /attachments to it. It is the one
+// destination a platform-initiated file ticket may name.
+const AgentAttachmentsPath = "/var/lib/bex-agent/attachments"
+
+// PlatformUploadAllowed reports whether a ticket minted for platformSubject (a
+// subject no user can hold) is the one transfer the platform makes: an upload
+// into an agent session's attachments directory.
+func (c Claims) PlatformUploadAllowed(platformSubject string) bool {
+	return c.Subject != platformSubject ||
+		(c.Operation == OperationUpload && c.AgentSessionID != "" && c.Path == AgentAttachmentsPath)
+}
+
+// LimitKey is the concurrency-limiter key: the user for a user's transfer,
+// the session for a platform one, so platform copies for different sessions
+// never queue behind each other.
+func (c Claims) LimitKey(platformSubject string) string {
+	if c.Subject == platformSubject {
+		return c.Subject + "/" + c.AgentSessionID
+	}
+	return c.Subject
+}
+func (c Claims) PodName() string { return c.SandboxID + "-0" }
 
 // ValidatePath requires one exact absolute sandbox path. Rejecting instead of
 // silently cleaning preserves the byte binding of the public connect token.
