@@ -17,6 +17,8 @@ const CATALOG = [
     cpu: "100m",
     memory: "512Mi",
     monthlyUsd: "0.00",
+    available: true,
+    unavailableReason: "",
   },
   {
     __typename: "InstanceType" as const,
@@ -25,6 +27,8 @@ const CATALOG = [
     cpu: "1",
     memory: "2Gi",
     monthlyUsd: "17.50",
+    available: false,
+    unavailableReason: "paused",
   },
 ];
 
@@ -45,6 +49,8 @@ describe("useInstanceTypes", () => {
         cpu: "100m",
         memory: "512Mi",
         monthlyUsd: "0.00",
+        available: true,
+        unavailableReason: "",
       },
       {
         id: "standard",
@@ -52,6 +58,8 @@ describe("useInstanceTypes", () => {
         cpu: "1",
         memory: "2Gi",
         monthlyUsd: "17.50",
+        available: false,
+        unavailableReason: "paused",
       },
     ]);
   });

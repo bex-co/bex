@@ -3,7 +3,9 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { RepoView } from "@/features/services/hooks/use-repos";
 import type { GitRuntime } from "@/features/services/lib/runtime";
 
-const instanceTypesState: { instanceTypes: { id: string; name: string }[] } = {
+const instanceTypesState: {
+  instanceTypes: { id: string; name: string; available: boolean }[];
+} = {
   instanceTypes: [],
 };
 vi.mock("@/features/services/hooks/use-instance-types", () => ({
@@ -141,9 +143,9 @@ describe("useNewServiceForm runtime detection", () => {
 describe("useNewServiceForm plan eligibility (w6/025 paid-only workers)", () => {
   beforeEach(() => {
     instanceTypesState.instanceTypes = [
-      { id: "free", name: "Free" },
-      { id: "starter", name: "Starter" },
-      { id: "standard", name: "Standard" },
+      { id: "free", name: "Free", available: true },
+      { id: "starter", name: "Starter", available: true },
+      { id: "standard", name: "Standard", available: true },
     ];
   });
 
@@ -168,6 +170,27 @@ describe("useNewServiceForm plan eligibility (w6/025 paid-only workers)", () => 
 
     act(() => result.current.setServiceType("web_service"));
     expect(result.current.form.plan).toBe("free");
+  });
+
+  // w2/m250: a paused tier stays in the grid but is never the default nor a
+  // surviving override, so the form never submits it.
+  it("never submits a paused tier", () => {
+    instanceTypesState.instanceTypes = [
+      { id: "free", name: "Free", available: true },
+      { id: "starter", name: "Starter", available: false },
+      { id: "standard", name: "Standard", available: true },
+    ];
+    const { result } = renderHook(() =>
+      useNewServiceForm({ type: "background_worker" }),
+    );
+    expect(result.current.form.plan).toBe("standard");
+    expect(result.current.instanceTypes.map((it) => it.id)).toEqual([
+      "starter",
+      "standard",
+    ]);
+
+    act(() => result.current.set({ planOverride: "starter" }));
+    expect(result.current.form.plan).toBe("standard");
   });
 });
 

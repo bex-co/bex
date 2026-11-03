@@ -83,7 +83,7 @@ type updateServiceArgs struct {
 	// workspace is charged at the new rate. Folded from update_service_plan
 	// (w1/m74) because REST carries it in the same PATCH body; the payment and
 	// plan-billing gates in the Service layer are unchanged by the fold.
-	Plan *string `json:"plan,omitempty" jsonschema:"the instance plan/size, e.g. starter, standard, pro, pro_plus, pro_max, pro_ultra. Changing it resizes the pod, rolls the service, and CHANGES WHAT THE WORKSPACE IS BILLED. Pass dryRun:true to preview it without any writes"`
+	Plan *string `json:"plan,omitempty" jsonschema:"the instance plan/size, e.g. starter, standard, pro, pro_plus, pro_max (pro_ultra is temporarily unavailable: INSTANCE_TYPE_UNAVAILABLE). Changing it resizes the pod, rolls the service, and CHANGES WHAT THE WORKSPACE IS BILLED. Pass dryRun:true to preview it without any writes"`
 	// DryRun mirrors PATCH /v1/services/{id}: the whole patch's checks with zero
 	// writes, answered with the service as the patch would leave it (w5/m116).
 	DryRun                  bool                     `json:"dryRun,omitempty" jsonschema:"if true, check the whole update and return the service as it would leave it, without any writes (zero side effects)"`
@@ -200,7 +200,7 @@ type createWebServiceArgs struct {
 	DockerCommand           string                  `json:"dockerCommand,omitempty" jsonschema:"overrides the image's startup command; omitted or empty uses the image's ENTRYPOINT and CMD. Applies to a Dockerfile build or a prebuilt image, not to a native runtime or buildpacks; do not combine with startCommand"`
 	Builder                 string                  `json:"builder,omitempty" jsonschema:"repo build strategy: auto (default), buildpack, or dockerfile"`
 	Region                  string                  `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the service is placed in the platform region (BEX_REGION); readback reports its public Render region alias. Any other value is refused"`
-	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max, pro_ultra (default starter, Render's 0.5c-512mb; a background_worker or private_service is paid-only, so free is rejected)"`
+	Plan                    string                  `json:"plan,omitempty" jsonschema:"instance plan, e.g. free, starter, standard, pro, pro_plus, pro_max (pro_ultra is temporarily unavailable: INSTANCE_TYPE_UNAVAILABLE; default starter, Render's 0.5c-512mb; a background_worker or private_service is paid-only, so free is rejected)"`
 	EnvVars                 []envVarInput           `json:"envVars,omitempty" jsonschema:"literal (non-secret) environment variables to set on the service"`
 	SecretFiles             []secretFileInput       `json:"secretFiles,omitempty" jsonschema:"secret files mounted under /etc/secrets from first boot"`
 	AutoDeploy              string                  `json:"autoDeploy,omitempty" jsonschema:"redeploy on a git push to the branch: yes or no (default yes for a repo)"`

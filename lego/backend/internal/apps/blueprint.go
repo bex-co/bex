@@ -681,6 +681,16 @@ func blueprintReadSpec(ctx context.Context, req CreateRequest) (appv1alpha1.AppS
 	return specFromCreate(req)
 }
 
+// withCurrentTier records the tier an existing service already runs on a
+// Blueprint request that re-applies it, so a paused tier (w2/m250) is refused
+// only as a new selection. existing nil (a create) leaves req unchanged.
+func withCurrentTier(req CreateRequest, existing *appv1alpha1.App) CreateRequest {
+	if existing != nil {
+		req.currentTier = existing.Spec.Tier
+	}
+	return req
+}
+
 // blueprintValidationFor is the read-only dry-run core shared by
 // ValidateBlueprint and PreviewBlueprint. repo/branch feed the same parse a
 // create would run; both empty for a manifest-only validate.

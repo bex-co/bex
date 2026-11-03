@@ -234,6 +234,21 @@ func TestComputeServingPool(t *testing.T) {
 	}
 }
 
+// TestComputePaused pins the temporary w2/m250 pause (user decision
+// 2026-11-02): only pro-ultra is refused for new selections, and an
+// empty/unknown id is never paused. Releasing the pause (deleting the field
+// from tiers.yaml) is expected to update this test.
+func TestComputePaused(t *testing.T) {
+	for _, id := range append(Compute.IDs(), "", "gold") {
+		if got, want := Compute.Paused(id), id == "pro-ultra"; got != want {
+			t.Errorf("Paused(%q) = %v, want %v", id, got, want)
+		}
+	}
+	if Compute.ServingPool("pro-ultra") != "xxl" {
+		t.Error("a paused tier keeps its servingPool so existing services still place")
+	}
+}
+
 // --- parse() validation: every malformed-catalog case fails loudly, never silently ---
 
 // valid is a minimal well-formed catalog the malformed cases below mutate from.
@@ -286,6 +301,16 @@ func TestParseRejectsMalformedCatalogs(t *testing.T) {
 compute:
   default: starter
   tiers: []
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+` + validValkey,
+			"paused default tier": `
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi, paused: true}
 postgres:
   default: free
   tiers:

@@ -75,6 +75,12 @@ type ComputeTier struct {
 	// affinity to, that pool; the CAPH overlay owns the pool itself, and
 	// scripts/clusterapi-validate.sh fails when the tier no longer fits it.
 	ServingPool string `json:"servingPool,omitempty"`
+	// Paused marks a tier temporarily refused for new selections (w2/m250):
+	// service create, Blueprint and plan change refuse it, while Apps already
+	// on it keep running and instance-type listings still show it (as
+	// unavailable). A temporary, ADR018-recorded divergence from Render —
+	// released by deleting the field from tiers.yaml.
+	Paused bool `json:"paused,omitempty"`
 }
 
 // PostgresTier is one rung of the managed-Postgres ladder (the Database
@@ -210,6 +216,12 @@ func (c ComputeCatalog) InstanceCap(id string) (int32, bool) {
 // today's placement.
 func (c ComputeCatalog) ServingPool(id string) string {
 	return c.byID[id].ServingPool
+}
+
+// Paused reports whether tier id is temporarily refused for new selections
+// (ComputeTier.Paused). An empty or unknown id is never paused.
+func (c ComputeCatalog) Paused(id string) bool {
+	return c.byID[id].Paused
 }
 
 // ServingPools returns every distinct dedicated serving pool the ladder
@@ -442,6 +454,9 @@ func parseCompute(entries []ComputeTier, defaultID string) (ComputeCatalog, erro
 	}
 	if err := validateDefault(defaultID, func(id string) bool { _, ok := byID[id]; return ok }); err != nil {
 		return ComputeCatalog{}, err
+	}
+	if byID[defaultID].Paused {
+		return ComputeCatalog{}, fmt.Errorf("default tier %q is paused", defaultID)
 	}
 	return ComputeCatalog{tiers: entries, byID: byID, byRender: byRender, defaultID: defaultID}, nil
 }

@@ -20,6 +20,11 @@
 #             pool (bex-tenant-xl: cx53, bex-tenant-xxl: ccx43), and
 #             scripts/clusterapi-validate.sh fails when a tier no longer fits
 #             the pool it names — or bex-tenant-0, when it names none.
+#             paused: true temporarily refuses a tier for new selections
+#             (service create, Blueprint, plan change) while services already
+#             on it keep running and instance-type listings still show it, as
+#             unavailable. Each use is an ADR018-recorded divergence from
+#             Render; deleting the field releases the tier.
 #
 #   postgres: managed-Postgres instance types (the Database CRD's spec.plan),
 #             named in Render's newer family-size style (their Postgres
@@ -86,6 +91,14 @@ compute:
       memory: 32Gi
       ephemeralStorage: 32Gi
       servingPool: xxl
+      # Temporarily paused (w2/m250, user decision 2026-11-02): Pro Ultra's
+      # only node, a Hetzner ccx43, cannot be created while the Hetzner
+      # project's dedicated vCPU limit refuses it ("dedicated core limit
+      # exceeded"). New selections (create, Blueprint, plan change) are
+      # refused with 400 INSTANCE_TYPE_UNAVAILABLE; services already on
+      # pro-ultra are left alone. Release condition: once Hetzner raises the
+      # dedicated vCPU limit, delete this field (and the ADR018 divergence).
+      paused: true
 
 postgres:
   # Unknown/empty Database plans resolve to free (the operator's prior

@@ -91,6 +91,11 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Monthly USD price shown on a resource plan card; price is an API-supplied decimal without the currency symbol",
   },
+  "common.planUnavailable": {
+    message: "Unavailable",
+    description:
+      "Shown in place of the price on a disabled plan card whose instance type is paused (it cannot be selected for now); the server's full reason is the card's tooltip",
+  },
   "common.protectedConfirmationRetry": {
     message: "Confirm and save",
     description:

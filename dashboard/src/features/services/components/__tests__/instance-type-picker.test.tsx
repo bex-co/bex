@@ -32,6 +32,8 @@ const FREE: InstanceTypeView = {
   cpu: "100m",
   memory: "512Mi",
   monthlyUsd: "0.00",
+  available: true,
+  unavailableReason: "",
 };
 const STANDARD: InstanceTypeView = {
   id: "standard",
@@ -39,6 +41,8 @@ const STANDARD: InstanceTypeView = {
   cpu: "1",
   memory: "2Gi",
   monthlyUsd: "17.50",
+  available: true,
+  unavailableReason: "",
 };
 const PRO: InstanceTypeView = {
   id: "pro",
@@ -46,6 +50,8 @@ const PRO: InstanceTypeView = {
   cpu: "2",
   memory: "4Gi",
   monthlyUsd: "59.50",
+  available: true,
+  unavailableReason: "",
 };
 
 function renderPicker(
@@ -231,9 +237,7 @@ describe("InstanceTypePicker", () => {
   });
 
   it("renders no price when the catalog omits one (w4/400)", async () => {
-    instanceTypesState.instanceTypes = [
-      { ...PRO, monthlyUsd: "" },
-    ];
+    instanceTypesState.instanceTypes = [{ ...PRO, monthlyUsd: "" }];
     renderPicker("standard");
     const card = await screen.findByRole("radio", { name: /Pro\b/ });
     expect(card).not.toHaveTextContent("$");
@@ -274,6 +278,58 @@ describe("InstanceTypePicker", () => {
 
     expect(updatePlan).toHaveBeenCalled();
     expect(screen.queryByText("settings page")).not.toBeInTheDocument();
+  });
+
+  // w2/m250: a paused tier stays listed, disabled with bex-api's reason, and
+  // can never be submitted — not by click, nor by arrowing past it.
+  const PAUSED_REASON =
+    '"Pro Ultra" is temporarily unavailable; choose Pro Max or a smaller instance type.';
+  const ULTRA: InstanceTypeView = {
+    id: "pro_ultra",
+    name: "Pro Ultra",
+    cpu: "8",
+    memory: "32Gi",
+    monthlyUsd: "450.00",
+    available: false,
+    unavailableReason: PAUSED_REASON,
+  };
+
+  it("shows a paused tier disabled with its reason and never submits it", async () => {
+    instanceTypesState.instanceTypes = [FREE, STANDARD, PRO, ULTRA];
+    const user = userEvent.setup();
+    renderPicker("pro");
+
+    const ultra = await screen.findByRole("radio", { name: /Pro Ultra/ });
+    expect(ultra).toBeDisabled();
+    expect(ultra).toHaveAttribute("title", PAUSED_REASON);
+    expect(ultra).toHaveTextContent("Unavailable");
+    expect(ultra).toHaveTextContent(PAUSED_REASON);
+    expect(ultra).not.toHaveTextContent("$450.00/month");
+
+    await user.click(ultra);
+    expect(ultra).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
+
+    // Arrowing on from the last available card wraps past the paused one.
+    const pro = screen.getByRole("radio", { name: /^Pro 4 GB/ });
+    pro.focus();
+    await user.keyboard("{ArrowRight}");
+    expect(ultra).toHaveAttribute("aria-checked", "false");
+    expect(screen.getByRole("radio", { name: /^Free/ })).toHaveAttribute(
+      "aria-checked",
+      "true",
+    );
+    expect(updatePlan).not.toHaveBeenCalled();
+  });
+
+  it("still shows a service already on a paused tier as its current plan", async () => {
+    instanceTypesState.instanceTypes = [FREE, STANDARD, PRO, ULTRA];
+    renderPicker("pro_ultra");
+
+    const ultra = await screen.findByRole("radio", { name: /Pro Ultra/ });
+    expect(ultra).toHaveAttribute("aria-checked", "true");
+    expect(ultra).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save Changes" })).toBeDisabled();
   });
 
   // The catalog-loading state is a structural preview of the ready picker —

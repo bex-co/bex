@@ -223,6 +223,8 @@ const FREE: InstanceTypeView = {
   cpu: "0.1",
   memory: "512Mi",
   monthlyUsd: "0.00",
+  available: true,
+  unavailableReason: "",
 };
 const STARTER: InstanceTypeView = {
   id: "starter",
@@ -230,6 +232,8 @@ const STARTER: InstanceTypeView = {
   cpu: "0.5",
   memory: "1Gi",
   monthlyUsd: "4.90",
+  available: true,
+  unavailableReason: "",
 };
 
 const REPO: RepoView = {
