@@ -19,6 +19,7 @@ package apps
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -617,4 +618,164 @@ func (s *Service) registerBuildSourceRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /v1/build-sources/{buildSourceId}", core.HandleJSON(http.StatusNoContent, func(r *http.Request) (any, error) {
 		return nil, s.DeleteBuildSource(r.Context(), r.PathValue("buildSourceId"))
 	}))
+}
+
+// --- Linking a service to a build source (w2/m254 t005) ---
+
+// buildSourceLinkOmitted are the create fields a build source provides, which
+// Render says to omit when buildSourceId is set.
+var buildSourceLinkOmitted = []struct {
+	name string
+	set  func(CreateRequest) bool
+}{
+	{"repo", func(r CreateRequest) bool { return r.Repo != "" }},
+	{"branch", func(r CreateRequest) bool { return r.Branch != "" }},
+	{"image", func(r CreateRequest) bool { return r.Image != "" }},
+	{"buildFilter", func(r CreateRequest) bool { return r.BuildFilter != nil }},
+	{"runtime", func(r CreateRequest) bool { return r.Runtime != "" }},
+	{"buildCommand", func(r CreateRequest) bool { return r.BuildCommand != "" }},
+	{"dockerfilePath", func(r CreateRequest) bool { return r.DockerfilePath != "" }},
+	{"dockerContext", func(r CreateRequest) bool { return r.DockerContext != "" }},
+	{"rootDir", func(r CreateRequest) bool { return r.RootDir != "" }},
+	{"registryCredentialId", func(r CreateRequest) bool { return r.RegistryCredentialID != nil }},
+}
+
+// validateBuildSourceLinkCreate refuses the source and build fields a linked
+// create must omit, by name.
+func validateBuildSourceLinkCreate(req CreateRequest) error {
+	for _, f := range buildSourceLinkOmitted {
+		if f.set(req) {
+			return fmt.Errorf("%w: %s cannot be set with buildSourceId; the build source provides it", core.ErrBadRequest, f.name)
+		}
+	}
+	return nil
+}
+
+// buildSourceLinkTypes are the service types Render links to a build source.
+var buildSourceLinkTypes = []string{"", appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService,
+	appv1alpha1.TypeBackgroundWorker, appv1alpha1.TypeCronJob}
+
+// buildSourceLink resolves a svcType service's link to build source id in
+// tenantID: the carrier, the build the service deploys (its current one, or
+// none until it has built) and the service's start command. start nil keeps
+// existing for a native source and drops it for a Docker or image one, which
+// takes none; a native source requires one (Render).
+func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType string, start *string, existing string) (*appv1alpha1.BuildSourceLink, string, error) {
+	if !slices.Contains(buildSourceLinkTypes, svcType) {
+		return nil, "", fmt.Errorf("%w: a %s cannot build from a build source", core.ErrBadRequest, svcType)
+	}
+	_, carrier, err := s.buildSourceApp(ctx, core.RelCanView, id)
+	if errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden) {
+		return nil, "", fmt.Errorf("%w: buildSourceId %s names no build source in this workspace", core.ErrBadRequest, id)
+	}
+	if err != nil {
+		return nil, "", err
+	}
+	if tenantID != "" && carrier.Labels[core.LabelTenant] != tenantID {
+		return nil, "", fmt.Errorf("%w: buildSourceId %s names no build source in this workspace", core.ErrBadRequest, id)
+	}
+	native := carrier.Spec.Image == "" && blueprintNativeRuntime(carrier.Spec.Runtime)
+	command := ""
+	switch {
+	case start != nil:
+		command = strings.TrimSpace(*start)
+	case native:
+		command = existing
+	}
+	switch {
+	case native && command == "":
+		return nil, "", fmt.Errorf("%w: build source %s builds with a native runtime, so the service needs a startCommand", core.ErrBadRequest, id)
+	case !native && command != "":
+		return nil, "", fmt.Errorf("%w: build source %s uses a Docker or image runtime, which takes no startCommand", core.ErrBadRequest, id)
+	}
+	return &appv1alpha1.BuildSourceLink{Name: carrier.Name, Image: currentBuild(carrier)}, command, nil
+}
+
+// currentBuild is the carrier's built image once it has built, else "".
+func currentBuild(carrier *appv1alpha1.App) string {
+	if carrier.Status.ActiveRevision == "" {
+		return ""
+	}
+	return carrier.Status.Image
+}
+
+func buildSourceLinkImage(link *appv1alpha1.BuildSourceLink) string {
+	if link == nil {
+		return ""
+	}
+	return link.Image
+}
+
+// buildSourceIDOf is the public id of the build source a linked App deploys
+// from: its carrier is named CRName(tenant, id) (ADR097).
+func buildSourceIDOf(a *appv1alpha1.App) string {
+	if a.Spec.BuildSource == nil {
+		return ""
+	}
+	return strings.TrimPrefix(a.Spec.BuildSource.Name, a.Labels[core.LabelTenant]+"-")
+}
+
+// LinkBuildSource is Render's PATCH buildSourceId: the service now builds and
+// deploys from build source buildSourceID, which provides all its source and
+// build configuration. startCommand (nil: Render's default — see
+// buildSourceLink) is the only other field Render accepts with it. Like Render,
+// the link is saved without deploying: a deploy picks it up. dryRun runs every
+// check and writes nothing.
+func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID string, startCommand *string, dryRun bool) (AppView, error) {
+	authCtx := core.WithDeferredAllowedWriteAudit(ctx)
+	a, err := s.AuthorizeApp(authCtx, core.RelCanCreate, name)
+	if err != nil {
+		return AppView{}, err
+	}
+	cron := a.Spec.Type == appv1alpha1.TypeCronJob
+	existing := a.Spec.StartCommand
+	if cron {
+		existing = a.Spec.Command
+	}
+	link, start, err := s.buildSourceLink(ctx, a.Labels[core.LabelTenant], buildSourceID, a.Spec.Type, startCommand, existing)
+	if err != nil {
+		return AppView{}, err
+	}
+	linker, ok := s.Store.(interface {
+		SetAppBuildSource(ctx context.Context, id, carrierID, image string) error
+	})
+	id := managedAppID(a)
+	if id != "" && !ok {
+		return AppView{}, fmt.Errorf("%w: build sources need the control plane", core.ErrUnavailable)
+	}
+	if dryRun || (a.Spec.BuildSource != nil && *a.Spec.BuildSource == *link && existing == start) {
+		return s.view(a), nil
+	}
+	if err := s.markSourcePending(ctx, a); err != nil {
+		return AppView{}, err
+	}
+	if id != "" {
+		if err := linker.SetAppBuildSource(ctx, id, buildSourceID, link.Image); err != nil {
+			return AppView{}, fmt.Errorf("update source of truth: %w", err)
+		}
+	}
+	oldCloneSecret := a.Spec.CloneSecret
+	updated, err := s.patchUntracked(ctx, a, func(app *appv1alpha1.App) {
+		spec := &app.Spec
+		spec.Repo, spec.Image, spec.Branch, spec.BuildCommit = "", "", "", ""
+		spec.CloneSecret, spec.ExternalRegistryPullSecret, spec.RegistryCredentialID = "", "", nil
+		spec.Runtime, spec.Builder, spec.BuildCommand, spec.BuildFilter = "", "", "", nil
+		spec.DockerfilePath, spec.DockerContext, spec.RootDir = "", "", ""
+		spec.BuildSource = link
+		if cron {
+			spec.Command = start
+		} else {
+			spec.StartCommand = start
+		}
+	})
+	if err != nil {
+		return AppView{}, err
+	}
+	if oldCloneSecret != "" {
+		if err := s.deleteCloneSecret(ctx, a.Namespace, a.Name); err != nil {
+			log.Printf("apps: clear clone secret for %s after linking a build source: %v", a.Name, err)
+		}
+	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetSourceAndRegistryCredential)
+	return updated, nil
 }

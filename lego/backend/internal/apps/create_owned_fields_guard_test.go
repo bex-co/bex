@@ -201,6 +201,15 @@ func createProbeRequests() []CreateRequest {
 			Replicas: 1,
 			Disk:     &ServiceDiskView{Name: "data", MountPath: "/var/data", SizeGB: 25},
 		},
+		{
+			// A build source link carries no source of its own (w2/m254
+			// t005); create stamps spec.buildSource from the resolved source.
+			Name:          "probe-linked",
+			Type:          appv1alpha1.TypeWebService,
+			BuildSourceID: "bds-probe",
+			StartCommand:  "node server.js",
+			Plan:          "starter",
+		},
 	}
 }
 

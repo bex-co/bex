@@ -104,6 +104,20 @@ func TestBuildSourceCarrierRowsPG(t *testing.T) {
 		t.Fatalf("ListDesiredApps carrier %v link %v, want both (a carrier still needs its CR)", sawCarrier, sawLink)
 	}
 
+	// Linking an existing service clears its own source in the same write.
+	api, err := st.CreateApp(ctx, store.App{TenantID: ws.ID, Name: "api-" + stamp, Type: "web_service", Image: "nginx:1", Port: 10000, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := st.SetAppBuildSource(ctx, api.ID, carrier.ID, ""); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := st.GetApp(ctx, api.ID); err != nil || got.BuildSourceID != carrier.ID || got.Image != "" || got.Repo != "" {
+		t.Fatalf("linked row = %+v err=%v, want the link and no source of its own", got, err)
+	}
+	if err := st.SetAppBuildSource(ctx, carrier.ID, carrier.ID, ""); !errors.Is(err, store.ErrNotFound) {
+		t.Errorf("linking a carrier = %v, want not found", err)
+	}
 	if err := st.DeleteApp(ctx, carrier.ID); !errors.Is(err, store.ErrConflict) {
 		t.Fatalf("deleting a carrier with a linked service = %v, want a conflict", err)
 	}
