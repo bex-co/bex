@@ -17,8 +17,9 @@
 | t013 | Deploys report buildId; deploy and rollback accept a build — **DONE** | 45m | t006 |
 | t014 | POST /v1/build-sources answers 500 after creating the source: PGStore.CreateApp overwrites the bds- id with a srv- id — **DONE** | 45m | t003 |
 | t015 | Meter build source build minutes — **DONE** | 1h | t006 |
-| t016 | A native-runtime git build source never builds: the operator requires a startCommand the carrier never has | 1h | t006 |
-| t009 | Render parity | 15m | t008, t013, t014, t015, t016 |
+| t016 | A native-runtime git build source never builds: the operator requires a startCommand the carrier never has — implemented, awaiting production verification | 1h | t006 |
+| t017 | A service linked to a native build source starts like a native service: native-init and bash | 1h | t016 |
+| t009 | Render parity | 15m | t008, t013, t014, t015, t016, t017 |
 | t010 | Simplify | 15m | t009 |
 | t011 | Test coverage | 30m | t009 |
 | t012 | Closeout | 10m | t010, t011 |

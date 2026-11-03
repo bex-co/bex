@@ -426,3 +426,21 @@ func TestBuildSourceLinkEdges(t *testing.T) {
 		t.Fatalf("after its own image: %+v, want unlinked", got.Spec)
 	}
 }
+
+// w2/m254 t016: a native git source needs a build command (the operator's
+// native build requires one); create refuses it by name instead of accepting
+// a source whose every build fails.
+func TestNativeBuildSourceRequiresABuildCommand(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	req := monorepoSource
+	git := *req.Git
+	git.BuildCommand = ""
+	req.Git = &git
+	if _, err := svc.CreateBuildSource(ctx, req); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "buildCommand") {
+		t.Fatalf("native source without buildCommand = %v, want a 400 naming buildCommand", err)
+	}
+	git.Runtime, git.DockerfilePath = "docker", "Dockerfile"
+	if _, err := svc.CreateBuildSource(ctx, req); err != nil {
+		t.Fatalf("a Docker source needs no buildCommand: %v", err)
+	}
+}
