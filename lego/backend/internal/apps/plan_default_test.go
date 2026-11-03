@@ -47,7 +47,7 @@ func TestAnOmittedPlanFollowsRendersPaidDefault(t *testing.T) {
 		{svcType: appv1alpha1.TypePrivateService, plan: "free", wantErr: "requires a paid plan"},
 	} {
 		t.Run(tc.svcType+"/"+tc.plan, func(t *testing.T) {
-			got, err := normalizeTierForType(tc.svcType, tc.plan)
+			got, err := normalizeTierForType(tc.svcType, tc.plan, "")
 			if tc.wantErr != "" {
 				if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 					t.Fatalf("normalizeTierForType = %q, %v; want a refusal of %q", got, err, tc.wantErr)

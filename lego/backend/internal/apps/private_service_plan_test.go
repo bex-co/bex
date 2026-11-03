@@ -119,7 +119,7 @@ func TestPaidOnlyServiceTypes(t *testing.T) {
 // not have.
 func TestFreeKeepingTypesStillAcceptFree(t *testing.T) {
 	for _, svcType := range []string{appv1alpha1.TypeWebService} {
-		tier, err := normalizeTierForType(svcType, "free")
+		tier, err := normalizeTierForType(svcType, "free", "")
 		if err != nil {
 			t.Errorf("normalizeTierForType(%q, free) = %v, want free to be accepted", svcType, err)
 			continue
@@ -170,7 +170,7 @@ func TestAMistypedPlanOnAPaidOnlyTypeIsNeverToldFree(t *testing.T) {
 				if plan == "nope" {
 					want = `plan "nope" is not a ` + svcType + " plan; plan must be one of starter|"
 				}
-				if _, err := normalizeTierForType(svcType, plan); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), want) || strings.Contains(err.Error(), "free|") {
+				if _, err := normalizeTierForType(svcType, plan, ""); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), want) || strings.Contains(err.Error(), "free|") {
 					t.Errorf("create with plan %q = %v, want %q and no free", plan, err, want)
 				}
 				svc, _ := newService(nil)
@@ -187,7 +187,7 @@ func TestAMistypedPlanOnAPaidOnlyTypeIsNeverToldFree(t *testing.T) {
 			})
 		}
 	}
-	if _, err := normalizeTierForType(appv1alpha1.TypeWebService, "nope"); err == nil || !strings.Contains(err.Error(), "plan must be one of free|") {
+	if _, err := normalizeTierForType(appv1alpha1.TypeWebService, "nope", ""); err == nil || !strings.Contains(err.Error(), "plan must be one of free|") {
 		t.Errorf("web service with plan nope = %v, want the full ladder including free", err)
 	}
 	svc, _ := newService(nil)

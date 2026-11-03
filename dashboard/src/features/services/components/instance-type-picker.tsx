@@ -64,9 +64,10 @@ export function InstanceTypePicker({
   const offered = offeredInstanceTypes(serviceType, instanceTypes);
   const free = offered.filter((it) => it.id === "free");
   const paid = offered.filter((it) => it.id !== "free");
-  // One radio group spanning both sections, in their visual order.
+  // One radio group spanning both sections, in their visual order; a paused
+  // tier (w2/m250) is shown disabled and is never a keyboard stop.
   const radio = useCardRadioGroup(
-    [...free, ...paid].map((it) => it.id),
+    [...free, ...paid].filter((it) => it.available).map((it) => it.id),
     selected ?? undefined,
     setSelected,
   );
@@ -88,11 +89,14 @@ export function InstanceTypePicker({
 
   const hasNotice = legacyFreeNotice(serviceType, currentPlan) !== null;
   const selectedType = offered.find((it) => it.id === selected);
-  const canSave = selected != null && selected !== currentPlan;
+  const canSave =
+    selected != null &&
+    selected !== currentPlan &&
+    selectedType?.available === true;
 
   async function handleConfirm() {
     setConfirming(false);
-    if (!selectedType) return;
+    if (!selectedType?.available) return;
     const ok = await updatePlan(serviceId, selectedType.id, selectedType.name);
     if (ok) {
       void navigate({
@@ -213,16 +217,24 @@ function InstanceTypeCard({
   radio: CardRadioProps;
 }) {
   const { t } = useTranslations();
+  // A paused tier (w2/m250) keeps its card — a service already on it still
+  // sees its plan — but disabled, its price row naming why.
+  const unavailable = !instanceType.available;
   return (
     <button
       {...radio}
       type="button"
       role="radio"
       aria-checked={selected}
+      disabled={unavailable}
+      title={unavailable ? instanceType.unavailableReason : undefined}
       onClick={onSelect}
       className={cn(
         INSTANCE_TYPE_CARD_FRAME,
-        "transition-colors hover:border-foreground/50",
+        "transition-colors",
+        unavailable
+          ? "cursor-not-allowed opacity-60"
+          : "hover:border-foreground/50",
         selected ? "border-primary ring-1 ring-primary" : "border-border",
       )}
     >
@@ -231,9 +243,18 @@ function InstanceTypeCard({
         memory={`${formatInstanceMemory(instanceType.memory)} (RAM)`}
         cpu={formatInstanceCPU(instanceType.cpu)}
         price={
-          instanceType.monthlyUsd
-            ? t("common.pricePerMonth", { price: instanceType.monthlyUsd })
-            : undefined
+          unavailable ? (
+            <>
+              {t("common.planUnavailable")}
+              {instanceType.unavailableReason ? (
+                <span className="sr-only">
+                  {instanceType.unavailableReason}
+                </span>
+              ) : null}
+            </>
+          ) : instanceType.monthlyUsd ? (
+            t("common.pricePerMonth", { price: instanceType.monthlyUsd })
+          ) : undefined
         }
       />
     </button>

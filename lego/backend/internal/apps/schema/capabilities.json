@@ -1373,7 +1373,7 @@
         "state": "translated",
         "handler": "parseCompiledStack",
         "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
-        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro-ultra' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro-ultra' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170); while pro-ultra is paused (w2/m250, user decision 2026-11-02) a new selection is refused with 400 INSTANCE_TYPE_UNAVAILABLE"
       },
       "\"8c-64g\"": {
         "state": "unsupported",
@@ -1421,7 +1421,7 @@
         "state": "translated",
         "handler": "parseCompiledStack",
         "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write; while pro-ultra is paused (w2/m250, user decision 2026-11-02) a new selection is refused with 400 INSTANCE_TYPE_UNAVAILABLE"
       },
       "\"256mb\"": {
         "state": "translated",
@@ -1767,7 +1767,7 @@
         "state": "translated",
         "handler": "parseCompiledStack",
         "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintValidYAML",
-        "reason": "the typed Blueprint adapter maps or rejects the value before any write"
+        "reason": "the typed Blueprint adapter maps or rejects the value before any write; while pro-ultra is paused (w2/m250, user decision 2026-11-02) a new selection is refused with 400 INSTANCE_TYPE_UNAVAILABLE"
       },
       "\"0.5c-512mb\"": {
         "state": "translated",
@@ -1819,7 +1819,7 @@
         "state": "translated",
         "handler": "parseCompiledStack",
         "fixture": "internal/apps/blueprint_repin_test.go:TestBlueprintRenderComputePlanIDsResolveToTheSameRung",
-        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro-ultra' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
+        "reason": "Render compute plan ID for the same CPU/RAM as bex's 'pro-ultra' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170); while pro-ultra is paused (w2/m250, user decision 2026-11-02) a new selection is refused with 400 INSTANCE_TYPE_UNAVAILABLE"
       },
       "\"8c-64g\"": {
         "state": "unsupported",

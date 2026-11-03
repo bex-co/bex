@@ -16,6 +16,13 @@ export interface PlanCardTier {
   cpu: string;
   memory: string;
   monthlyUsd?: string;
+  /**
+   * False for a temporarily paused tier (w2/m250): the card stays in place,
+   * disabled, so the grid's geometry never changes; omitted means available.
+   */
+  available?: boolean;
+  /** bex-api's reason a tier is unavailable — the disabled card's tooltip. */
+  unavailableReason?: string;
 }
 
 export interface PlanCardGridProps {
@@ -44,7 +51,7 @@ export function PlanCardGrid({
 }: PlanCardGridProps) {
   const { t } = useTranslations();
   const radio = useCardRadioGroup(
-    instanceTypes.map((it) => it.id),
+    instanceTypes.filter((it) => it.available !== false).map((it) => it.id),
     value,
     onChange,
     disabled,
@@ -58,6 +65,7 @@ export function PlanCardGrid({
     >
       {instanceTypes.map((it) => {
         const selected = it.id === value;
+        const unavailable = it.available === false;
         return (
           <button
             key={it.id}
@@ -65,18 +73,28 @@ export function PlanCardGrid({
             type="button"
             role="radio"
             aria-checked={selected}
-            disabled={disabled}
+            disabled={disabled || unavailable}
+            title={unavailable ? it.unavailableReason : undefined}
             onClick={() => onChange(it.id)}
             className={cn(
               "rounded-lg border p-3 text-left transition-colors",
               selected
                 ? "border-primary ring-1 ring-primary"
                 : "border-border hover:border-muted-foreground/50",
+              unavailable && "cursor-not-allowed opacity-60",
             )}
           >
             <div className="flex items-baseline justify-between gap-2">
               <div className="font-medium">{it.name}</div>
-              {it.monthlyUsd ? (
+              {unavailable ? (
+                // In the price's slot, so a paused card keeps its height.
+                <div className="shrink-0 text-sm text-muted-foreground">
+                  {t("common.planUnavailable")}
+                  {it.unavailableReason ? (
+                    <span className="sr-only">{it.unavailableReason}</span>
+                  ) : null}
+                </div>
+              ) : it.monthlyUsd ? (
                 <div className="shrink-0 text-sm font-semibold tabular-nums">
                   {t("common.pricePerMonth", { price: it.monthlyUsd })}
                 </div>

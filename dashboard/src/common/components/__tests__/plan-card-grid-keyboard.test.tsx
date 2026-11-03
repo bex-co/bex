@@ -44,11 +44,15 @@ describe("PlanCardGrid keyboard", () => {
   it("is one named group with a single Tab stop on the checked card", async () => {
     const user = userEvent.setup();
     render(<Harness initial="starter" />);
-    expect(screen.getByRole("radiogroup", { name: "Instance Type" })).toBeTruthy();
+    expect(
+      screen.getByRole("radiogroup", { name: "Instance Type" }),
+    ).toBeTruthy();
     await user.tab();
     expect(document.activeElement).toBe(radio(/Starter/));
     await user.tab();
-    expect(document.activeElement).toBe(screen.getByRole("button", { name: "after" }));
+    expect(document.activeElement).toBe(
+      screen.getByRole("button", { name: "after" }),
+    );
   });
 
   it("moves focus and selection with the arrows, wrapping, and Home/End", async () => {
@@ -69,7 +73,13 @@ describe("PlanCardGrid keyboard", () => {
     await user.keyboard("{End}{ArrowUp}");
     expect(radio(/Starter/).getAttribute("aria-checked")).toBe("true");
     expect(onChange.mock.calls.map(([id]) => id)).toEqual([
-      "starter", "standard", "free", "standard", "free", "standard", "starter",
+      "starter",
+      "standard",
+      "free",
+      "standard",
+      "free",
+      "standard",
+      "starter",
     ]);
   });
 
@@ -84,6 +94,35 @@ describe("PlanCardGrid keyboard", () => {
     expect(onChange).toHaveBeenLastCalledWith("free");
     await user.click(radio(/Standard/));
     expect(onChange).toHaveBeenLastCalledWith("standard");
+  });
+
+  // w2/m250: a paused tier keeps its card, disabled, with the reason as its
+  // tooltip; it is neither clickable nor an arrow-key stop.
+  it("disables a paused tier and skips it with the arrows", async () => {
+    const reason = '"Standard" is temporarily unavailable';
+    const onChange = vi.fn();
+    const user = userEvent.setup();
+    render(
+      <PlanCardGrid
+        instanceTypes={[
+          tiers[0],
+          tiers[1],
+          { ...tiers[2], available: false, unavailableReason: reason },
+        ]}
+        value="starter"
+        ariaLabel="Instance Type"
+        onChange={onChange}
+      />,
+    );
+    const paused = radio(/Standard/);
+    expect(paused).toBeDisabled();
+    expect(paused).toHaveAttribute("title", reason);
+    expect(paused).toHaveTextContent("Unavailable");
+    await user.click(paused);
+    expect(onChange).not.toHaveBeenCalled();
+    radio(/Starter/).focus();
+    await user.keyboard("{ArrowRight}");
+    expect(onChange).toHaveBeenLastCalledWith("free");
   });
 
   it("ignores the arrows when disabled", async () => {
