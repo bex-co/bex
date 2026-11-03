@@ -19,6 +19,7 @@ package billing
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -31,6 +32,7 @@ import (
 	stripe "github.com/stripe/stripe-go/v86"
 	"github.com/stripe/stripe-go/v86/webhook"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -788,7 +790,8 @@ func TestStripeCreateCheckoutSessionUsesExistingContractAndDynamicPaymentMethods
 	c.dashboardURL = "https://dashboard.bex.co"
 	c.storeCustomer("tea-a", "cus_1")
 
-	session, err := c.CreateCheckoutSession(context.Background(), "tea-a", CheckoutRequest{
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "usr-member", Method: "session"})
+	session, err := c.CreateCheckoutSession(ctx, "tea-a", CheckoutRequest{
 		SuccessURL: "https://dashboard.bex.co/usage?billing=success",
 		CancelURL:  "https://dashboard.bex.co/usage?billing=cancelled",
 	})
@@ -803,7 +806,9 @@ func TestStripeCreateCheckoutSessionUsesExistingContractAndDynamicPaymentMethods
 		t.Fatalf("Checkout create calls = %d, want 1", len(requests))
 	}
 	body := requests[0].body
-	for _, want := range []string{"mode=setup", "currency=usd", "customer=cus_1", "client_reference_id=tea-a", "metadata[bex_workspace]=tea-a", "setup_intent_data[metadata][bex_workspace]=tea-a"} {
+	for _, want := range []string{"mode=setup", "currency=usd", "customer=cus_1", "client_reference_id=tea-a", "metadata[bex_workspace]=tea-a", "setup_intent_data[metadata][bex_workspace]=tea-a",
+		// The opener, so completion can attribute the change (w2/067).
+		"metadata[bex_actor]=usr-member", "metadata[bex_actor_method]=session"} {
 		if !strings.Contains(body, want) {
 			t.Errorf("Checkout body missing %q: %s", want, body)
 		}
@@ -876,7 +881,7 @@ func TestStripeCompleteCheckoutSessionBindsDefaultsIdempotently(t *testing.T) {
 	c, stub := newStripeTest(t, func(method, path string) (int, string) {
 		switch {
 		case method == http.MethodGet && path == "/v1/checkout/sessions/cs_test_1":
-			return 200, `{"id":"cs_test_1","object":"checkout.session","mode":"setup","status":"complete","livemode":false,"customer":"cus_1","setup_intent":"seti_1","metadata":{"bex_workspace":"tea-a","bex_subscription":"sub_1"}}`
+			return 200, `{"id":"cs_test_1","object":"checkout.session","mode":"setup","status":"complete","livemode":false,"customer":"cus_1","setup_intent":"seti_1","metadata":{"bex_workspace":"tea-a","bex_subscription":"sub_1","bex_actor":"usr-member","bex_actor_method":"session"}}`
 		case method == http.MethodGet && path == "/v1/subscriptions":
 			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
 		case method == http.MethodGet && path == "/v1/setup_intents/seti_1":
@@ -896,6 +901,8 @@ func TestStripeCompleteCheckoutSessionBindsDefaultsIdempotently(t *testing.T) {
 	state := &billingStateStoreFake{}
 	_ = state.UpsertBillingProviderMapping(context.Background(), store.BillingProviderMapping{WorkspaceID: "tea-a", CustomerID: "cus_1"})
 	c.state = state
+	audit := &paymentMethodAuditFake{}
+	c.audit = audit
 	c.taxCode = "txcd_confirmed"
 	c.taxBehavior = "exclusive"
 	c.priceIDs = []string{"price_tax_ready"}
@@ -926,6 +933,55 @@ func TestStripeCompleteCheckoutSessionBindsDefaultsIdempotently(t *testing.T) {
 		if at.IsZero() {
 			t.Fatalf("payment marker stamp %d is zero", i)
 		}
+	}
+	// Each delivery hands the auditor the same session key — the store's
+	// conflict on it is what keeps the replay to one row (w2/067).
+	if len(audit.events) != 2 || audit.events[0].ID != audit.events[1].ID || audit.events[0].ID == "" {
+		t.Fatalf("payment-method audits = %+v, want two carrying one derived id", audit.events)
+	}
+	if ev := audit.events[0]; ev.Verb != core.AuditVerbUpdatePaymentMethod || ev.Caller != "usr-member" || ev.CallerMethod != "session" ||
+		ev.Resource != core.WorkspaceObject("tea-a") || ev.Outcome != core.AuditAllowed {
+		t.Fatalf("payment-method audit = %+v", ev)
+	}
+}
+
+type paymentMethodAuditFake struct {
+	events []core.AuditEvent
+	err    error
+}
+
+func (f *paymentMethodAuditFake) Record(_ context.Context, ev core.AuditEvent) error {
+	f.events = append(f.events, ev)
+	return f.err
+}
+
+// A failed audit write fails the webhook, so Stripe redelivers it rather than
+// the change going unrecorded.
+func TestStripeCompleteCheckoutSessionFailsWhenTheAuditCannotBeWritten(t *testing.T) {
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		switch {
+		case method == http.MethodGet && path == "/v1/checkout/sessions/cs_test_1":
+			return 200, `{"id":"cs_test_1","object":"checkout.session","mode":"setup","status":"complete","livemode":false,"customer":"cus_1","setup_intent":"seti_1","metadata":{"bex_workspace":"tea-a","bex_actor":"usr-member"}}`
+		case method == http.MethodGet && path == "/v1/subscriptions":
+			return 200, `{"object":"list","data":[{"id":"sub_1","object":"subscription","status":"active","metadata":{"bex_workspace":"tea-a","bex_billing_contract":"true"}}],"has_more":false,"url":"/v1/subscriptions"}`
+		case method == http.MethodGet && path == "/v1/setup_intents/seti_1":
+			return 200, `{"id":"seti_1","object":"setup_intent","status":"succeeded","customer":"cus_1","payment_method":"pm_1","metadata":{"bex_workspace":"tea-a"}}`
+		case method == http.MethodGet && path == "/v1/payment_methods/pm_1":
+			return 200, `{"id":"pm_1","object":"payment_method","customer":"cus_1","livemode":false,"type":"card"}`
+		case method == http.MethodGet && path == "/v1/tax/registrations":
+			return 200, `{"object":"list","data":[],"has_more":false,"url":"/v1/tax/registrations"}`
+		case method == http.MethodPost && path == "/v1/customers/cus_1":
+			return 200, `{"id":"cus_1","object":"customer","invoice_settings":{"default_payment_method":"pm_1"}}`
+		case method == http.MethodPost && path == "/v1/subscriptions/sub_1":
+			return 200, `{"id":"sub_1","object":"subscription","status":"active","default_payment_method":"pm_1"}`
+		default:
+			return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+		}
+	})
+	c.storeCustomer("tea-a", "cus_1")
+	c.audit = &paymentMethodAuditFake{err: errors.New("audit store down")}
+	if err := c.CompleteCheckoutSession(context.Background(), &stripe.CheckoutSession{ID: "cs_test_1"}); err == nil || !strings.Contains(err.Error(), "audit payment-method change") {
+		t.Fatalf("CompleteCheckoutSession = %v, want the audit failure", err)
 	}
 }
 

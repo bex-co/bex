@@ -70,3 +70,38 @@ func TestPGDiskSnapshotRestoreCarriesDiskID(t *testing.T) {
 		t.Fatalf("by-id DiskID = %v, want dsk-restored", got)
 	}
 }
+
+// TestPGAuditRecordWithDerivedIDRecordsOnce pins w2/067: Stripe redelivers
+// checkout.session.completed, and a row carrying a derived id must land once
+// however often it is recorded.
+func TestPGAuditRecordWithDerivedIDRecordsOnce(t *testing.T) {
+	ctx := context.Background()
+	st, pool := webhookPGStore(t, ctx)
+	t.Cleanup(pool.Close)
+	workspace := ids.New(ids.Workspace)
+	t.Cleanup(func() {
+		_, _ = pool.Exec(context.Background(), `DELETE FROM audit_events WHERE workspace_id = $1`, workspace)
+	})
+	event := func(session, caller string) core.AuditEvent {
+		return core.AuditEvent{
+			ID: ids.Derive(ids.Audit, "checkout", session), Caller: caller, CallerMethod: "session",
+			Verb: core.AuditVerbUpdatePaymentMethod, Resource: core.WorkspaceObject(workspace),
+			Outcome: core.AuditAllowed, At: time.Now().UTC(),
+		}
+	}
+	for _, ev := range []core.AuditEvent{event("cs_once", "usr-member"), event("cs_once", "usr-member"), event("cs_second", "usr-other")} {
+		if err := st.Record(ctx, ev); err != nil {
+			t.Fatal(err)
+		}
+	}
+	rows, err := st.ListAuditEvents(ctx, workspace, AuditFilter{OldestFirst: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(rows) != 2 {
+		t.Fatalf("audit rows = %+v, want one per session", rows)
+	}
+	if first := rows[0]; first.Verb != core.AuditVerbUpdatePaymentMethod || first.Caller != "usr-member" || first.CallerMethod != "session" {
+		t.Fatalf("payment-method row = %+v", first)
+	}
+}

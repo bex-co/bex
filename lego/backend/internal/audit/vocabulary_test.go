@@ -17,10 +17,13 @@ limitations under the License.
 package audit
 
 import (
+	"encoding/json"
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -38,6 +41,7 @@ func TestRenderEventVerbsExist(t *testing.T) {
 	synthetic := map[string]bool{
 		core.AuditVerbMaintenanceModeEnabled:    true,
 		core.AuditVerbMaintenanceModeURIUpdated: true,
+		core.AuditVerbUpdatePaymentMethod:       true,
 	}
 	methodsByPkg := map[string]map[string]bool{}
 	for verb := range renderEvents {
@@ -84,4 +88,40 @@ func serviceMethods(t *testing.T, dir string) map[string]bool {
 		}
 	}
 	return out
+}
+
+// TestRenderEventNamesAreInThePinnedEnum keeps renderEvents' values honest the
+// other way round: each must be a value of Render's pinned auditLog.event enum,
+// so a mapping is never a guessed Render name (w2/067 added
+// UpdateWorkspacePaymentMethodEvent this way).
+func TestRenderEventNamesAreInThePinnedEnum(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "api", "openapi", "render-public-api-1.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var spec struct {
+		Components struct {
+			Schemas struct {
+				AuditLog struct {
+					Properties struct {
+						Event struct {
+							Enum []string `json:"enum"`
+						} `json:"event"`
+					} `json:"properties"`
+				} `json:"auditLog"`
+			} `json:"schemas"`
+		} `json:"components"`
+	}
+	if err := json.Unmarshal(raw, &spec); err != nil {
+		t.Fatal(err)
+	}
+	enum := spec.Components.Schemas.AuditLog.Properties.Event.Enum
+	if len(enum) == 0 {
+		t.Fatal("pinned auditLog.event enum not found")
+	}
+	for verb, event := range renderEvents {
+		if !slices.Contains(enum, event) {
+			t.Errorf("renderEvents[%q] = %q, not in Render's pinned auditLog.event enum", verb, event)
+		}
+	}
 }
