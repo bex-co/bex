@@ -1,3 +1,4 @@
+import { formatBytes } from "@/common/lib/format/format-bytes";
 import type { MetricId } from "@/features/metrics/types";
 
 /** Formats a metric's value for its unit, matching bex-api's `unit` field. */
@@ -117,19 +118,6 @@ function toFixedNonzero(value: number, digits: number): string {
 /** Formats a monthToDateBandwidth MB figure using the same byte-unit scaling. */
 export function formatMegabytes(mb: number): string {
   return formatBytes(mb * 1024 * 1024);
-}
-
-function formatBytes(value: number, digits = 0): string {
-  const units = ["B", "KiB", "MiB", "GiB", "TiB"];
-  let v = value;
-  let i = 0;
-  while (Math.abs(v) >= 1024 && i < units.length - 1) {
-    v /= 1024;
-    i++;
-  }
-  // Whole bytes stay whole at the base precisions (digits ≤ 1); an axis
-  // asking for more (formatAxisTickLabels) gets decimals even in B (w4/381).
-  return `${v.toFixed(i === 0 && digits <= 1 ? 0 : digits)} ${units[i]}`;
 }
 
 function formatCount(value: number): string {

@@ -66,6 +66,14 @@ export interface AgentSessionCapabilitiesView {
   github: {
     connected: boolean;
   };
+  attachments: AttachmentLimitsView;
+}
+
+/** The API's attachment limits (ADR095 D8); `enabled` is false until storage exists. */
+export interface AttachmentLimitsView {
+  enabled: boolean;
+  maxBytes: number;
+  maxPerTurn: number;
 }
 
 /** The stable cross-surface per-session config (agent/model/task/template). */

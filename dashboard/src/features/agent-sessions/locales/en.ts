@@ -913,6 +913,66 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Loading…",
     description: "Load-more button while the next page is in flight",
   },
+  // --- Attachments (ADR095) ---
+  "agentSessions.attachFiles": {
+    message: "Attach files",
+    description:
+      "Paperclip button that opens the file picker in the agent composers",
+  },
+  "agentSessions.attachmentRemove": {
+    message: "Remove {name}",
+    description: "Accessible label of the remove button on an attachment chip",
+  },
+  "agentSessions.attachmentTooLarge": {
+    message: "Larger than {max}",
+    description: "Attachment chip error when a file exceeds the per-file limit",
+  },
+  "agentSessions.attachmentTooMany": {
+    message: "Up to {max} files per message",
+    description: "Attachment chip error when a message has too many files",
+  },
+  "agentSessions.attachmentDropHint": {
+    message: "Drop files to attach",
+    description: "Overlay shown while dragging files over a composer",
+  },
+  "agentSessions.attachmentsBlockSend": {
+    message: "Remove the files that failed to upload to send",
+    description: "Hint when failed attachment chips block sending",
+  },
+  "agentSessions.attachmentOpen": {
+    message: "Open {name}",
+    description:
+      "Accessible label of an attachment thumbnail that opens the lightbox",
+  },
+  "agentSessions.attachmentDownload": {
+    message: "Download {name}",
+    description: "Accessible label of an attachment download card",
+  },
+  "agentSessions.attachmentUnavailable": {
+    message: "Unavailable",
+    description:
+      "Shown on an attachment whose download link could not be loaded",
+  },
+  "agentSessions.attachmentUploading": {
+    message: "Uploading, {percent}%",
+    description: "Screen-reader status of an attachment chip while uploading",
+  },
+  "agentSessions.attachmentReady": {
+    message: "Uploaded",
+    description: "Screen-reader status of an attachment chip once its upload landed",
+  },
+  "agentSessions.attachmentHttpError": {
+    message: "Upload failed (HTTP {status})",
+    description: "Attachment chip error when the server answered without a message",
+  },
+  "agentSessions.attachmentNetworkError": {
+    message: "Upload failed: network error",
+    description: "Attachment chip error when the upload could not reach the server",
+  },
+  "agentSessions.attachmentsUploading": {
+    message: "Waiting for files to finish uploading…",
+    description: "Composer hint while attachment uploads block sending",
+  },
 };
 
 export default enAgentSessions;

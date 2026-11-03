@@ -1,5 +1,11 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, waitFor } from "@testing-library/react";
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { NewSessionComposer } from "@/features/agent-sessions/components/new-session-composer";
 import { AgentSessionError } from "@/features/agent-sessions/lib/errors";
@@ -59,6 +65,16 @@ vi.mock("@/features/services/hooks/use-repos", () => ({
   useRepos: () => reposState,
 }));
 
+// Uploads resolve only when a test settles them, so the in-flight state is
+// observable; tests that never attach are unaffected.
+const uploads: { resolve: (v: unknown) => void; file: File }[] = [];
+vi.mock("@/features/agent-sessions/lib/attachments", async (orig) => ({
+  ...(await orig<typeof import("@/features/agent-sessions/lib/attachments")>()),
+  uploadAttachment: (file: File) =>
+    new Promise((resolve) => uploads.push({ resolve, file })),
+  deleteUnboundAttachment: () => Promise.resolve(),
+}));
+
 let priorSessions: AgentSessionView[] = [];
 vi.mock("@/features/agent-sessions/hooks/use-agent-sessions", () => ({
   useAgentSessions: () => ({
@@ -76,6 +92,7 @@ const capabilitiesState = {
     github: {
       connected: true,
     },
+    attachments: { enabled: true, maxBytes: 25 * 1024 * 1024, maxPerTurn: 10 },
   },
   loading: false,
   error: undefined as Error | undefined,
@@ -88,6 +105,8 @@ vi.mock(
 );
 
 beforeEach(() => {
+  uploads.length = 0;
+  capabilitiesState.capabilities.attachments.enabled = true;
   priorSessions = [];
   reposState.repos = defaultRepos;
   reposState.loading = false;
@@ -432,8 +451,11 @@ describe("NewSessionComposer", () => {
     expect(screen.queryByRole("textbox", { name: /branch/i })).toBeNull();
     expect(screen.queryByRole("textbox", { name: /model/i })).toBeNull();
     expect(screen.queryByRole("textbox", { name: /egress|host/i })).toBeNull();
-    // The task box is the rich editor; no plain input or textarea remains.
-    expect(container.querySelectorAll("input, textarea")).toHaveLength(0);
+    // The task box is the rich editor; no plain input or textarea remains
+    // (the hidden file input behind the paperclip is not a text field).
+    expect(
+      container.querySelectorAll('input:not([type="file"]), textarea'),
+    ).toHaveLength(0);
     expect(screen.getByLabelText("Agent")).toBeInTheDocument();
     expect(attachmentControl()).toBeInTheDocument();
   });
@@ -694,3 +716,65 @@ describe("NewSessionComposer", () => {
 function agentSession(id: string, task: string): AgentSessionView {
   return agentSessionView({ id, task, phase: "completed" });
 }
+
+describe("NewSessionComposer attachments (ADR095)", () => {
+  it("uploads a picked file and sends its id with the first turn", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.upload(
+      screen.getByTestId("attachment-input"),
+      new File(["boom"], "crash.log", { type: "text/plain" }),
+    );
+
+    const send = screen.getByRole("button", { name: "Start session" });
+    // The chip is uploading: sending now would drop the file.
+    expect(screen.getByTestId("attachment-chip")).toHaveAttribute(
+      "data-status",
+      "uploading",
+    );
+    expect(send).toBeDisabled();
+
+    await act(async () =>
+      uploads[0].resolve({
+        id: "att-1",
+        name: "crash.log",
+        mediaType: "text/plain",
+        size: 4,
+      }),
+    );
+    expect(send).toBeEnabled();
+    await user.click(send);
+
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create).toHaveBeenCalledWith(
+      expect.objectContaining({ attachmentIds: ["att-1"] }),
+    );
+    // Sent chips leave the composer; the upload is now bound to the turn.
+    await waitFor(() =>
+      expect(screen.queryByTestId("attachment-chip")).toBeNull(),
+    );
+  });
+
+  it("attaches a pasted screenshot instead of pasting it as text", async () => {
+    render(<NewSessionComposer />);
+    const task = await screen.findByLabelText("Task", undefined, {
+      timeout: 5_000,
+    });
+    const screenshot = new File(["png"], "image.png", { type: "image/png" });
+    fireEvent.paste(task, {
+      clipboardData: { files: [screenshot], types: ["Files"] },
+    });
+    await waitFor(() => expect(uploads).toHaveLength(1));
+    expect(uploads[0].file).toBe(screenshot);
+  });
+
+  it("hides the paperclip until the platform has attachment storage", async () => {
+    capabilitiesState.capabilities.attachments.enabled = false;
+    render(<NewSessionComposer />);
+    await screen.findByLabelText("Task", undefined, { timeout: 5_000 });
+    expect(
+      screen.queryByRole("button", { name: "Attach files" }),
+    ).not.toBeInTheDocument();
+  });
+});
