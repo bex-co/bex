@@ -912,6 +912,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			TaxCode:               cfg.StripeTaxCode,
 			TaxBehavior:           cfg.StripeTaxBehavior,
 			State:                 st,
+			Audit:                 st,
 			Metrics:               billingMetrics,
 		})
 		usageSvc.Billing = stripeClient

@@ -153,6 +153,7 @@ var renderEvents = map[string]string{
 
 	core.AuditVerbMaintenanceModeEnabled:    "MaintenanceModeEnabledEvent",
 	core.AuditVerbMaintenanceModeURIUpdated: "MaintenanceModeURIUpdatedEvent",
+	core.AuditVerbUpdatePaymentMethod:       "UpdateWorkspacePaymentMethodEvent",
 }
 
 func renderEvent(verb string) string {
