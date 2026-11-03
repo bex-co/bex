@@ -380,7 +380,24 @@ const (
 	// Deployment/Service/Ingress for the served content. Redirects/rewrites
 	// (Spec.Routes) and custom response headers (Spec.Headers) apply at the edge.
 	TypeStaticSite = "static_site"
+	// TypeBuildSource is a Render Build Source (w2/m254, ADR097): a carrier the
+	// operator builds exactly as a service but never runs — no Deployment,
+	// Service, Ingress or URL. Linked services (Spec.BuildSource) deploy copies
+	// of its builds.
+	TypeBuildSource = "build_source"
 )
+
+// BuildSourceLink names the build a linked service deploys (ADR097).
+type BuildSourceLink struct {
+	// Name is the build_source carrier App's name.
+	// +kubebuilder:validation:MinLength=1
+	Name string `json:"name"`
+	// Image is the carrier build to deploy: a digest reference in the
+	// carrier's repository. Empty until the source has a build to deploy;
+	// changing it is a new release.
+	// +optional
+	Image string `json:"image,omitempty"`
+}
 
 // AppSpec is the desired state of a deploy-from-git App — the Render-like
 // unit from strategy 211.09. Mirrors the Node MVP's service spec (src/api.js).
@@ -391,6 +408,8 @@ const (
 // +kubebuilder:validation:XValidation:rule="!has(self.disk) || !has(self.autoscaling) || !self.autoscaling.enabled",message="a service with spec.disk cannot use autoscaling"
 // +kubebuilder:validation:XValidation:rule="!has(self.disk) || !has(oldSelf.disk) || self.disk.sizeGB >= oldSelf.disk.sizeGB",message="spec.disk.sizeGB can only grow; a disk is never shrunk"
 // +kubebuilder:validation:XValidation:rule="!has(self.image) || (has(self.type) ? self.type : 'web_service') != 'static_site'",message="a static_site builds from spec.repo; spec.image is not supported"
+// +kubebuilder:validation:XValidation:rule="!has(self.buildSource) || (!has(self.repo) && !has(self.image))",message="a service linked to a build source takes its source from it; spec.repo and spec.image must be empty"
+// +kubebuilder:validation:XValidation:rule="!has(self.buildSource) || (has(self.type) ? self.type : 'web_service') in ['web_service','private_service','background_worker','cron_job']",message="spec.buildSource is supported only on web_service, private_service, background_worker and cron_job"
 type AppSpec struct {
 	// ContainerPolicy is the persisted application-container execution policy.
 	// Omission retains the historical drop-all-capabilities policy. Only new
@@ -429,8 +448,15 @@ type AppSpec struct {
 	// PublishPath output from an object-store origin behind the shared
 	// static-server (no Deployment/Service for the served content).
 	// +optional
-	// +kubebuilder:validation:Enum=web_service;private_service;background_worker;cron_job;static_site
+	// +kubebuilder:validation:Enum=web_service;private_service;background_worker;cron_job;static_site;build_source
 	Type string `json:"type,omitempty"`
+
+	// BuildSource links this service to a build_source carrier App in the same
+	// namespace (Render's buildSourceId, w2/m254, ADR097). The service builds
+	// nothing itself: it deploys a copy of BuildSource.Image in its own
+	// repository.
+	// +optional
+	BuildSource *BuildSourceLink `json:"buildSource,omitempty"`
 
 	// Schedule is the cron expression (standard 5-field crontab) a cron_job runs
 	// on. Required when Type is cron_job; ignored for every other type.

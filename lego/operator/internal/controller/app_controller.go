@@ -694,6 +694,9 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 	if halted {
 		return res, err
 	}
+	if app.Spec.Type == appv1alpha1.TypeBuildSource {
+		return ctrl.Result{}, r.markBuilt(ctx, &app, image)
+	}
 	if app.Spec.HasImagePorts() {
 		image, port, err = r.resolveImageNetwork(ctx, &app, image)
 		if res, waiting := r.imageRegistryWait(ctx, &app, err); waiting {
@@ -794,6 +797,11 @@ func (r *AppReconciler) settleCanceledRelease(ctx context.Context, app *appv1alp
 	}
 	// Only a release that served can be reverted to; otherwise there is simply
 	// no release yet and the Canceled branch below is the truth (w1/m160).
+	// A build source runs nothing: a canceled build leaves its previous build
+	// current (ADR097), never a dispatched runtime.
+	if app.Spec.Type == appv1alpha1.TypeBuildSource && releaseHasServed(app) {
+		return ctrl.Result{RequeueAfter: poll}, r.markBuilt(ctx, app, app.Status.Image)
+	}
 	if releaseHasServed(app) {
 		// Revert the CONFIGURATION with the image (w1/m152 t002). Dispatching
 		// app.Status.Image alone rendered the prior image against the CURRENT spec,
@@ -957,6 +965,13 @@ func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1
 		if held, res, err := r.holdPendingArtifact(ctx, app, ctrl.Result{}); held {
 			return "", res, true, err
 		}
+	}
+	if image == "" && app.Spec.BuildSource != nil {
+		linked, res, linkHalted, err := r.linkedBuildImage(ctx, app)
+		if linkHalted {
+			return "", res, true, err
+		}
+		image, artifactResolved = linked, true
 	}
 	if image == "" {
 		r.routeFirstDeploy(ctx, app)
@@ -3322,24 +3337,31 @@ func (r *AppReconciler) hibernated(ctx context.Context, app *appv1alpha1.App, im
 // replica tally. URL/Image bookkeeping stays with each caller, as does the log
 // line, so the two paths keep their distinct messages.
 func (r *AppReconciler) markRunning(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, replicas int32, logMsg string, logKVs ...any) error {
+	written, err := r.settleReady(ctx, app, dep, "Deployed", fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas))
+	if written {
+		logf.FromContext(ctx).Info(logMsg, logKVs...)
+	}
+	return err
+}
+
+// settleReady is the Running terminal: the release revision active, its image
+// digest recorded and protected from retention, and Ready=True. dep is the
+// serving Deployment, nil for a build source (which runs none). A settled app
+// re-stamps identical status on every steady-state pass (childHealthRequeue),
+// so the no-op PUT is skipped; written reports whether status was written.
+func (r *AppReconciler) settleReady(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, reason, message string) (bool, error) {
 	app.Status.Phase = appv1alpha1.PhaseRunning
 	app.Status.ActiveRevision = releaseRevision(app)
 	r.recordImageDigest(ctx, app, dep)
 	r.protectServingImage(ctx, app)
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
-		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Deployed",
-		Message:            fmt.Sprintf("%d/%d replicas ready", dep.Status.ReadyReplicas, replicas),
-		ObservedGeneration: app.Generation,
+		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reason,
+		Message: message, ObservedGeneration: app.Generation,
 	})
-	// A settled Running app re-stamps identical status on every steady-state
-	// pass (childHealthRequeue): skip the no-op PUT and its log line.
-	if !statusUnchanged(ctx, r.Client, app) {
-		if err := r.writeAppStatus(ctx, app); err != nil {
-			return err
-		}
-		logf.FromContext(ctx).Info(logMsg, logKVs...)
+	if statusUnchanged(ctx, r.Client, app) {
+		return false, nil
 	}
-	return nil
+	return true, r.writeAppStatus(ctx, app)
 }
 
 // deleteStaleChildren removes leftover children a type change orphaned.
@@ -6866,7 +6888,11 @@ type replicaPlan struct {
 // can scale: web and private services and background workers. Cron jobs and
 // static sites have none.
 func scalableRuntime(app *appv1alpha1.App) bool {
-	return app.Spec.Type != appv1alpha1.TypeCronJob && app.Spec.Type != appv1alpha1.TypeStaticSite
+	switch app.Spec.Type {
+	case appv1alpha1.TypeCronJob, appv1alpha1.TypeStaticSite, appv1alpha1.TypeBuildSource:
+		return false
+	}
+	return true
 }
 
 // holdPendingArtifact is the pre-deploy hold one stage earlier (w1/m157). While a
@@ -7911,6 +7937,12 @@ func (r *AppReconciler) registryAuthHeader(ctx context.Context, app *appv1alpha1
 		return header, true, nil
 	}
 
+	return r.builderAuthHeader(ctx, app)
+}
+
+// builderAuthHeader is the platform builder's credential — the shared push
+// Secret in app's build namespace — or anonymous when none is configured.
+func (r *AppReconciler) builderAuthHeader(ctx context.Context, app *appv1alpha1.App) (string, bool, error) {
 	if r.RegistryPushSecret == "" {
 		return "", true, nil
 	}
