@@ -1,6 +1,6 @@
 # w2 · m250 — Pro Plus, Pro Max and Pro Ultra services start, as on Render
 
-**Worker:** worker2 **Goal:** a customer on any workspace plan who picks Pro Plus, Pro Max or Pro Ultra gets a running service, because autoscaled serving pools with nodes large enough for those tiers exist, and only those tiers use them. **Status:** todo — t001, t002 done (`1f42f9bcf`); t003 blocked on Hetzner (cx53 stock; dedicated-core limit); t009 (pause Pro Ultra) in progress
+**Worker:** worker2 **Goal:** a customer on any workspace plan who picks Pro Plus, Pro Max or Pro Ultra gets a running service, because autoscaled serving pools with nodes large enough for those tiers exist, and only those tiers use them. **Status:** blocked — t001, t002, t004–t007, t009 done; t003 waits on Hetzner (cx53 stock in fsn1; dedicated-vCPU limit ≥32), then t008
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | t001 | Two serving pools in the CAPI overlay (cx53 min 0/max 4, ccx43 min 0/max 2), each with its own taint, plus validator guards — **DONE** | 1h  | —          |
 | t002 | Operator: App pods of the large tiers tolerate and prefer their pool (from `tiers.yaml`); admission and build-only rules still hold — **DONE** | 1h  | —          |
 | t003 | Production: pro-plus and pro-ultra services go live on new nodes and the pools scale back to 0 | 45m | t001, t002 |
-| t009 | Pause Pro Ultra at create and plan change until the Hetzner dedicated-core limit is raised | 1h | — |
+| t009 | Pause Pro Ultra at create and plan change until the Hetzner dedicated-core limit is raised — **DONE** | 1h | — |
 | t004 | Docs: ADR053/ADR060 pools, ADR018 instance-type row — **DONE**                                            | 20m | t003       |
 | t005 | Render parity — **DONE**                                                                                  | 15m | t004       |
 | t006 | Simplify — **DONE**                                                                                       | 15m | t005       |
@@ -26,7 +26,7 @@
 ## Source + Goal linkage
 
 - **Source:** promoted from inbox note [w2/063](source-w2-063.md) (found in w2/061's production check, 2026-11-01); user decisions "A" (2026-11-01) and "Two pools" (2026-11-02).
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md) Render parity first: Render sells and starts these instance types on every plan.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md) Render parity first: Render sells and starts these instance types on every plan.
 - **Expected outcome:** every compute tier bex sells actually runs; nodes for them cost money only while such a service exists.
 - **Why now:** a Scale customer's pro-plus and pro-ultra services already fail, and w2/061 just let Hobby workspaces pick these tiers too.
 - **Render parity included:** the instance types on REST, GraphQL, MCP, CLI and the dashboard go from "never starts" to "starts".
@@ -72,3 +72,16 @@ Render sells and starts Pro Plus, Pro Max and Pro Ultra on every plan. bex now r
 
 - **t006 (Simplify):** t001/t002 were simplified in `26bda22ed` (plain-string `ServingPool`, validator tidy). A review of t009 (`bd33b3012`) found no correctness bug; its two duplications were folded: the paused-tier gate is one `errPausedTier(tier, current)` used by `normalizeTierForType` and `checkPlan`, and `selectableRenderPlans` reads the catalog itself. Left as is: a shared dashboard "Unavailable" label component (two call sites, optional).
 - **t007 (Test coverage):** placement per tier (`serving_pool_test.go`), every validator guard proven red (`clusterapi-validate.test.sh`), the paused tier on every create/plan-change path with the existing-service exemption (`paused_tier_test.go`), catalog helpers (`tiers_test.go`) and the dashboard's disabled card. Each was mutation-checked when written. Not testable in CI: Hetzner creating the nodes, which t003 covers on production.
+
+## t009 verified on production — 2026-11-03
+
+Pinned `549af492873d` (contains `bd33b3012`); bex-api on `…f32b7e87cb4e` from 12:29Z. In Hobby `tian-personal`: `POST /v1/services` with `plan: pro_ultra` → **400** `INSTANCE_TYPE_UNAVAILABLE`, "\"Pro Ultra\" is temporarily unavailable; choose Pro Max or a smaller instance type.", params `{plan: "pro_ultra"}`; GraphQL `instanceTypes` reports `pro_ultra` `available: false` with that reason and `pro_max` `available: true`; a `pro_max` create dry run → 200 (nothing created). The dashboard's New Web Service picker shows the Pro Ultra card disabled ("Unavailable", reason text). Note: a first probe at 12:28Z, before Argo had rolled the pin, still created a pro-ultra service on the old image; it was deleted at once (204).
+
+## Parked 2026-11-03 — waiting on Hetzner
+
+t001, t002, t004–t007 and t009 are done. What remains needs Hetzner:
+
+- **t003 (pro-plus / pro-max):** cx53 stock in fsn1 (user decision 2026-11-02: wait rather than use cpx62). Probes on 2026-11-02 and 2026-11-03 06:1xZ returned `resource_unavailable`. Release: a probe (create stopped, delete at once, label `purpose=w2-m250-stock-probe`) succeeds; then create a `pro_plus` service, confirm `live` on a `bex-tenant-xl` node, delete it, confirm the pool returns to 0, and replace the validator's cx53 allocatable estimate with the measured value.
+- **t003 (pro-ultra) and lifting the t009 pause:** the Hetzner project's dedicated-vCPU limit raised to at least 32 (account owner: Hetzner Console → Limits, or a support ticket). Release: the user says it is done; then remove `paused: true` from pro-ultra in `tiers.yaml`, ship, verify a `pro_ultra` service goes `live` on `bex-tenant-xxl` and the pool returns to 0, update ADR018.
+- **t008 Closeout** after t003.
+- Open question for the user, not a gate: whether to tell the owner of Scale workspace `tea-db9f0dkfcf2c73c2mq4g` (failed pro-plus/pro-ultra services) about the wait.
