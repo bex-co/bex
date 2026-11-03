@@ -80,6 +80,16 @@ func notServiceAppFor(ctx context.Context, err error, app *appv1alpha1.App) erro
 	return err
 }
 
+// BuildSourceOrNotFound refuses an App that is not a build source carrier
+// as a missing build source. Callers authorize first (AuthorizeApp under
+// WithBuildSources) so a denial stays a denial, audited under their own verb.
+func BuildSourceOrNotFound(a *appv1alpha1.App) error {
+	if !IsBuildSource(a) {
+		return NotFound("build source")
+	}
+	return nil
+}
+
 // BuildSourceScope is the context the build-source surface acts in on id: it
 // resolves id under WithBuildSources and refuses anything that is not a build
 // source carrier, so a /v1/build-sources route can delegate to a service
@@ -91,8 +101,5 @@ func (b *Base) BuildSourceScope(ctx context.Context, id string) (context.Context
 	if err != nil {
 		return ctx, err
 	}
-	if !IsBuildSource(app) {
-		return ctx, NotFound("build source")
-	}
-	return ctx, nil
+	return ctx, BuildSourceOrNotFound(app)
 }

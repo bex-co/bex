@@ -142,7 +142,7 @@ var (
 	// BuildSource is a Render Build Source (w2/m254, ADR097); Render's contract
 	// names no prefix, and bsr is the Blueprint sync run's.
 	BuildSource = Kind{prefix: "bds", desc: "build source"}
-	// Build is one build of a build source, derived from its carrier's deploy row.
+	// Build is one build of a build source: its carrier's deploy row, Rekind-ed.
 	Build = Kind{prefix: "bld", desc: "build source build"}
 )
 
@@ -195,6 +195,20 @@ func Derive(k Kind, parts ...string) string {
 		panic("id.Derive: unregistered kind " + k.prefix + " — use a package-declared Kind (id.Event, …)")
 	}
 	return k.prefix + "-" + deriveComponent(parts...)
+}
+
+// Rekind re-labels a well-formed id as kind k, keeping its xid: for a
+// resource that is a public view of exactly one row of another kind (a build
+// is its carrier's deploy row), so the view's id maps back to the row without
+// a lookup table. ok is false when src is not a registered-kind id.
+func Rekind(k Kind, src string) (string, bool) {
+	if !slices.Contains(kinds, k) {
+		panic("id.Rekind: unregistered kind " + k.prefix)
+	}
+	if _, ok := KindOf(src); !ok {
+		return "", false
+	}
+	return k.prefix + src[len(src)-xidLen-1:], true
 }
 
 // DeriveServiceInstance returns Render's compound service-instance id:

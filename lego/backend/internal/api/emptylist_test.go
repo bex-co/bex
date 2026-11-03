@@ -112,14 +112,6 @@ var emptyListCases = []emptyListCase{
 	{route: "GET /v1/agent-environment", path: "/v1/agent-environment", field: "customHosts"},
 }
 
-func init() {
-	for _, route := range buildSourceRoutes {
-		if strings.HasPrefix(route, "GET ") {
-			neverEmptyArrayRoutes[route] = "answers 404 not offered until w2/m254 (ADR018, w2/m251)"
-		}
-	}
-}
-
 // neverEmptyArrayRoutes are array routes whose contents are a build-time
 // constant, so there is no empty case to assert — they cannot regress to null.
 var neverEmptyArrayRoutes = map[string]string{
@@ -146,6 +138,7 @@ var unreachableArrayRoutes = map[string]string{
 	"GET /v1/blueprints":                                 "BEX_CP_DB_URI; make([]BlueprintView, len(bs)) (apps/blueprint.go)",
 	"GET /v1/build-sources/{buildSourceId}/env-vars":     "a build source carrier; the service route's toEnvVarList make (secrets/rest.go registerEnvRoutes)",
 	"GET /v1/build-sources/{buildSourceId}/secret-files": "a build source carrier; the service route's make([]secretFileContentWithCursor, 0, …) (secrets/rest.go registerEnvRoutes)",
+	"GET /v1/build-sources/{buildSourceId}/builds":       "BEX_CP_DB_URI deploy rows of a carrier; make([]buildWithCursor, len(page)) (deploys/build_sources.go)",
 	"GET /v1/blueprints/{id}/syncs":                      "BEX_CP_DB_URI; make([]BlueprintSyncView, len(runs)) (apps/blueprint.go)",
 	"GET /v1/disks":                                      "BEX_CP_DB_URI; toDiskList make (apps/disks.go)",
 	"GET /v1/usage":                                      "BEX_CP_DB_URI; toUsageResponse makes services (usage/rest.go)",
@@ -197,6 +190,7 @@ var scalarRoutes = map[string]bool{
 	"GET /v1/agent-attachments/{id}/content":                         true, // a redirect, no body
 	"GET /v1/services/{id}":                                          true,
 	"GET /v1/build-sources/{buildSourceId}":                          true,
+	"GET /v1/build-sources/{buildSourceId}/builds/{buildId}":         true,
 	"GET /v1/build-sources/{buildSourceId}/env-vars/{envVarKey}":     true,
 	"GET /v1/build-sources/{buildSourceId}/secret-files/{envVarKey}": true,
 	"GET /v1/services/{id}/autoscaling":                              true,

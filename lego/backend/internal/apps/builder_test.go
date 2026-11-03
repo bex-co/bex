@@ -252,19 +252,19 @@ func TestEffectiveRuntimeIsTotal(t *testing.T) {
 	noRuntime := map[string]bool{"buildpack": true, "native": true}
 	for _, ty := range runnable {
 		for _, b := range builders {
-			got := effectiveRuntime(appv1alpha1.AppSpec{Type: ty, Repo: "https://github.com/x/web", Builder: b}, ty)
+			got := core.EffectiveRuntime(appv1alpha1.AppSpec{Type: ty, Repo: "https://github.com/x/web", Builder: b}, ty)
 			if noRuntime[b] {
 				continue
 			}
 			if got == "" {
-				t.Errorf("effectiveRuntime(type=%s builder=%q repo) = empty; a runnable repo build must expose a runtime (w4/052)", ty, b)
+				t.Errorf("core.EffectiveRuntime(type=%s builder=%q repo) = empty; a runnable repo build must expose a runtime (w4/052)", ty, b)
 			}
 		}
-		if got := effectiveRuntime(appv1alpha1.AppSpec{Type: ty, Image: "nginx:alpine"}, ty); got != "image" {
-			t.Errorf("effectiveRuntime(type=%s image) = %q, want image", ty, got)
+		if got := core.EffectiveRuntime(appv1alpha1.AppSpec{Type: ty, Image: "nginx:alpine"}, ty); got != "image" {
+			t.Errorf("core.EffectiveRuntime(type=%s image) = %q, want image", ty, got)
 		}
 	}
-	if got := effectiveRuntime(appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/x/web"}, appv1alpha1.TypeStaticSite); got != "" {
+	if got := core.EffectiveRuntime(appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/x/web"}, appv1alpha1.TypeStaticSite); got != "" {
 		t.Errorf("static site effectiveRuntime = %q, want empty (bex has no static runtime)", got)
 	}
 }

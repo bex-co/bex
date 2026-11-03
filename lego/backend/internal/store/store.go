@@ -247,6 +247,29 @@ func RenderDeployStatus(status string) string {
 	}
 }
 
+// Render's buildRun status enum (Build Sources, w2/m254): a build is a build
+// source carrier's deploy row, so BuildRunStatus folds the deploy vocabulary
+// into it, terminal outcomes through RenderDeployStatus.
+const (
+	BuildRunCreated    = "created"
+	BuildRunInProgress = "inProgress"
+	BuildRunSucceeded  = "succeeded"
+	BuildRunFailed     = "failed"
+	BuildRunCanceled   = "canceled"
+)
+
+// BuildRunStatus is a carrier deploy status as Render's buildRun status.
+func BuildRunStatus(status string) string {
+	switch status {
+	case DeployCreated, DeployQueued:
+		return BuildRunCreated
+	}
+	if IsOpenDeployStatus(status) {
+		return BuildRunInProgress
+	}
+	return RenderDeployStatus(status)
+}
+
 // The deploy `trigger` vocabulary — what caused a rollout. One place, since
 // both the writers (CreateApp, deploys.Trigger/Rollback) and the readers (the
 // events feed's deploy_started trigger flags, internal/events) spell it.

@@ -199,6 +199,7 @@ func filterFromQuery(q url.Values) (ListFilter, error) {
 // unconfigured => the Service returns core.ErrDeploysUnavailable => 503 on
 // these routes only.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
+	s.registerBuildSourceRoutes(mux)
 	const base = "/v1/services"
 	// Deploy-hook management is authenticated like every other service setting.
 	// The URL itself is the credential, so prevent intermediary/browser caches

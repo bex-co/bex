@@ -248,18 +248,15 @@ func (s *Service) checkBuildSourceCeiling(ctx context.Context, tenantID string) 
 	return nil
 }
 
-// buildSourceApp resolves id as a build source the caller holds relation on;
-// a service id (or any other) is not found.
+// buildSourceApp authorizes relation on build source id. Unexported so the
+// audit verb walk names the exported verb calling it.
 func (s *Service) buildSourceApp(ctx context.Context, relation, id string) (context.Context, *appv1alpha1.App, error) {
 	ctx = core.WithBuildSources(ctx)
 	a, err := s.AuthorizeApp(ctx, relation, id)
 	if err != nil {
 		return ctx, nil, err
 	}
-	if !core.IsBuildSource(a) {
-		return ctx, nil, core.NotFound("build source")
-	}
-	return ctx, a, nil
+	return ctx, a, core.BuildSourceOrNotFound(a)
 }
 
 // GetBuildSource returns one build source.

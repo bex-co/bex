@@ -342,11 +342,11 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		entry["region"] = region
 	}
 
-	// The read surfaces' runtime (effectiveRuntime), not the raw spec field:
+	// The read surfaces' runtime (core.EffectiveRuntime), not the raw spec field:
 	// a Dockerfile build commonly leaves spec.runtime empty and says so through
 	// spec.builder, and render.yaml requires a runtime, so emitting only the
 	// raw field failed the self-check for an ordinary git service (w4/193).
-	runtime := effectiveRuntime(a.Spec, svcType)
+	runtime := core.EffectiveRuntime(a.Spec, svcType)
 	builder := exportedBuilder(a.Spec)
 	// A bound registry credential exports by name (w5/089): on image.creds for
 	// a prebuilt image, as Render spells it, else on registryCredential.
