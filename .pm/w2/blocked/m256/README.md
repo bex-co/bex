@@ -1,6 +1,6 @@
 # w2 · m256 — Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does
 
-**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** in progress — t001–t006, t008–t010 done; t007 (unmodified CLI v2.35 walk on production) next; t012 implemented 2026-11-03 (backend refusal + dashboard plan/Approve; its production check rides with t007's walk), then t011
+**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** blocked — t001–t006, t008–t010 done; t007 (unmodified CLI v2.35 walk on production) next; t012 implemented 2026-11-03 (backend refusal + dashboard plan/Approve; its production check rides with t007's walk), then t011
 
 ## Tasks (in order)
 
@@ -46,3 +46,7 @@
 - **t006:** GraphQL `createPlannedBlueprint` / `planBlueprintSync` / `approveBlueprint`, MCP `create_planned_blueprint` / `plan_blueprint_sync` / `approve_blueprint` (MCP inventory 197).
 - **Review fixes (t009):** structural plans answer 503 instead of a false `no_changes`; approve reads the applied run by id; name uniqueness re-checked at approval; oversized create bodies answer 413; empty approve body accepted.
 - **t010:** `blueprint_onboarding_test.go` (create → approve with seeded per-service value; failed plan refused; refusals; REST status codes; plan unavailable), `TestPlannedBlueprintSyncsPG`, `TestPlannedBlueprintSupersedeAndBusyPG`.
+
+## Blocked (2026-11-03)
+
+t001–t006, t008–t010, t013 done; t012 implemented (its production check rides with t007); t007 (unmodified Render CLI v2.35.0 walk) and t011 closeout open. Remaining gate: user: allow building/running the unmodified upstream Render CLI v2.35.0 (the auto-mode classifier denied cloning and building github.com/render-oss/cli in this session), or run `ea blueprints create → approve → plan → update --branch` against production as the QA user yourself; the walk also covers t012's production check. Run `/unblock w2` to decide. The milestone returns to the queue once the gate clears.
