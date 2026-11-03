@@ -351,7 +351,13 @@ func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, exe
 	pr, pw := io.Pipe()
 	sizes := sshgateway.NewSizeQueue(ctx, &remotecommand.TerminalSize{Width: 80, Height: 24})
 
-	go pumpBrowserInput(ws, pw, sizes, cancel)
+	// inputDone closes when the browser's frames stop: its close reply, a
+	// read error, or the read deadline.
+	inputDone := make(chan struct{})
+	go func() {
+		pumpBrowserInput(ws, pw, sizes, cancel)
+		close(inputDone)
+	}()
 
 	pingCtx, stopPing := context.WithCancel(ctx)
 	defer stopPing()
@@ -371,8 +377,18 @@ func bridgeShell(ctx context.Context, cancel context.CancelFunc, ws *wsConn, exe
 	}
 	_ = ws.control(serverControl{Type: "exit", Code: sshgateway.ClampExit(code)})
 	ws.close(websocket.CloseNormalClosure, "")
+	// Let the browser answer the close before the handler drops the TCP
+	// connection (w6/102): closing with its frames unread resets the
+	// connection and drops output still in flight, as native SSH did (w6/096).
+	select {
+	case <-inputDone:
+	case <-time.After(wsCloseGrace):
+	}
 	return true
 }
+
+// wsCloseGrace bounds the wait for the browser's close reply.
+const wsCloseGrace = time.Second
 
 // wsConn serializes all writes to one gorilla connection (stdout frames, control
 // frames, and keepalive pings can otherwise race).
