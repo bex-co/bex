@@ -701,14 +701,11 @@ func (r *AppReconciler) afterServingDeployment(ctx context.Context, app *appv1al
 // afterServingDeployment with whether the pod template actually changed — which is
 // the difference between a rollout and a no-op.
 func (r *AppReconciler) applyServingDeployment(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, params deploymentParams, restore *corev1.PodTemplateSpec) error {
-	runtime, launch, err := r.selectedRuntime(ctx, app)
+	runtime, launch, err := r.selectedLaunch(ctx, app)
 	if err != nil {
 		return err
 	}
 	params.launch = launch
-	if launch == launchUnknown && r.linkedToNativeSource(ctx, app) {
-		params.launch = launchNativeArgs
-	}
 	// From the selected runtime, not app: a held, rolled-back or save-only
 	// release reads that release's env sources, and the default must yield to
 	// those. A restore replaces the template verbatim, so it needs no lookup.

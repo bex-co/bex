@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useQuery } from "@apollo/client/react";
 import {
   BuildSourceDocument,
@@ -11,6 +11,9 @@ import {
   RUNTIME_COMMANDS,
   type NativeRuntime,
 } from "@/features/services/lib/runtime";
+
+/** The picker's page size: Render's page cap. */
+const BUILD_SOURCES_PAGE = 100;
 
 /** A build source as the Source card and Update Source dialog show it. */
 export interface BuildSourceOption {
@@ -52,13 +55,47 @@ export function defaultStartCommand(source: BuildSourceOption): string {
  */
 export function useBuildSources(enabled: boolean) {
   const { currentWorkspaceId } = useWorkspace();
-  const { data, loading, error } = useQuery(BuildSourcesDocument, {
+  const { data, loading, error, fetchMore } = useQuery(BuildSourcesDocument, {
     variables: { ownerId: currentWorkspaceId },
     skip: !enabled || currentWorkspaceId == null,
     fetchPolicy: "cache-and-network",
     nextFetchPolicy: "cache-first",
     errorPolicy: "all",
   });
+  // A full page means there may be more: fetch the next one and append it,
+  // until a short page ends the list. Each cursor is fetched once, and a page
+  // is merged by id, so a repeated cursor or a doubled effect cannot loop or
+  // duplicate.
+  const pages = data?.buildSources ?? [];
+  const lastCursor = pages.at(-1)?.cursor ?? null;
+  const more = pages.length > 0 && pages.length % BUILD_SOURCES_PAGE === 0;
+  const fetched = useRef(new Set<string>());
+  // The last cursor whose page has settled (arrived or failed).
+  const [settled, setSettled] = useState<string | null>(null);
+  useEffect(() => {
+    if (!more || !lastCursor || loading || fetched.current.has(lastCursor))
+      return;
+    fetched.current.add(lastCursor);
+    fetchMore({
+      variables: { cursor: lastCursor },
+      updateQuery: (prev, { fetchMoreResult }) => {
+        const seen = new Set((prev.buildSources ?? []).map((b) => b?.id));
+        return {
+          ...prev,
+          buildSources: [
+            ...(prev.buildSources ?? []),
+            ...(fetchMoreResult.buildSources ?? []).filter(
+              (b) => !seen.has(b?.id),
+            ),
+          ],
+        };
+      },
+    })
+      .catch(() => {
+        // A failed page ends the walk; the picker keeps what it has.
+      })
+      .finally(() => setSettled(lastCursor));
+  }, [more, lastCursor, loading, fetchMore]);
   const sources = useMemo(
     () =>
       (data?.buildSources ?? []).flatMap((b) => {
@@ -67,7 +104,9 @@ export function useBuildSources(enabled: boolean) {
       }),
     [data],
   );
-  return { sources, loading, error };
+  // Still loading while a full last page promises a page not yet settled.
+  const pending = more && lastCursor !== null && settled !== lastCursor;
+  return { sources, loading: loading || pending, error };
 }
 
 /** Reads the one build source a linked service builds from (null id skips). */

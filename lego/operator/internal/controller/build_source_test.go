@@ -320,3 +320,22 @@ func TestLinkedToNativeSourceOnlyForTheCurrentNativeBuild(t *testing.T) {
 		}
 	}
 }
+
+// w2/m262 t004: a cron job linked to a native build source runs its command
+// as bash arguments to the image's entrypoint, like a linked web service; any
+// other launch keeps the shell Command.
+func TestCronLinkedToANativeSourceRunsUnderItsEntrypoint(t *testing.T) {
+	const command = "[[ -n $PORT ]] && node job.js"
+	app := projectionApp(func(a *appv1alpha1.App) {
+		a.Spec = appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Command: command,
+			BuildSource: &appv1alpha1.BuildSourceLink{Name: "src", Image: "zot/src@sha256:a"}}
+	})
+	c := (&AppReconciler{}).cronPodSpec(app, "zot/cron@sha256:a", 0, nil, launchNativeArgs, "").Spec.Containers[0]
+	if want := []string{"/bin/bash", "-c", "[[ -n $$PORT ]] && node job.js"}; len(c.Command) != 0 || !slices.Equal(c.Args, want) {
+		t.Fatalf("cron command %q args %q, want no command and args %q", c.Command, c.Args, want)
+	}
+	c = (&AppReconciler{}).cronPodSpec(app, "zot/cron@sha256:a", 0, nil, launchUnknown, "").Spec.Containers[0]
+	if !slices.Equal(c.Command, shellCommand(command)) || len(c.Args) != 0 {
+		t.Fatalf("shell launch: command %q args %q, want the shell Command", c.Command, c.Args)
+	}
+}

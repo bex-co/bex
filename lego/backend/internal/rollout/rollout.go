@@ -318,7 +318,7 @@ func (t *Tracker) open(ctx context.Context, snapshot Snapshot, a *appv1alpha1.Ap
 	if ref := a.Spec.ReleaseConfig; ref != nil && ref.Generation == generation && ref.Image != "" {
 		image = ref.Image
 		if live, err := t.ServedRelease(ctx, a); err == nil && live != nil && live.ResolvedImage == ref.Image && live.Commit != "" {
-			commit = store.CommitInfo{Hash: live.Commit, Message: live.CommitMessage, AuthorAt: live.CommitAuthorAt}
+			commit = live.CommitInfo()
 		}
 	}
 	if _, err := t.Store.CreateDeploy(ctx, snapshot.appID, trigger, image, generation, commit, core.SubjectFrom(ctx), false); err != nil {

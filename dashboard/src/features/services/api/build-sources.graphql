@@ -11,10 +11,11 @@ fragment BuildSourceFields on BuildSource {
   }
 }
 
-# The picker lists up to 100 sources (Render's page cap).
-query BuildSources($ownerId: String) {
-  buildSources(ownerId: $ownerId, limit: 100) {
+# The picker walks every page, 100 sources (Render's page cap) at a time.
+query BuildSources($ownerId: String, $cursor: String) {
+  buildSources(ownerId: $ownerId, cursor: $cursor, limit: 100) {
     ...BuildSourceFields
+    cursor
   }
 }
 

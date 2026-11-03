@@ -64,9 +64,18 @@ vi.mock("@apollo/client/react", async (importOriginal) => {
   };
 });
 
+const linkedSourceState: {
+  source: {
+    id: string;
+    name: string;
+    source: string;
+    kind: "git" | "image";
+    nativeRuntime: "node" | null;
+  } | null;
+} = { source: null };
 vi.mock("@/features/services/hooks/use-build-sources", () => ({
   useBuildSources: () => ({ sources: [], loading: false }),
-  useBuildSource: () => ({ source: null, loading: false }),
+  useBuildSource: () => ({ source: linkedSourceState.source, loading: false }),
 }));
 vi.mock("@/features/services/hooks/use-link-build-source", () => ({
   useLinkBuildSource: () => ({ linkBuildSource: vi.fn(), busy: false }),
@@ -432,6 +441,7 @@ async function sectionHrefs(): Promise<Array<string | null>> {
 }
 
 beforeEach(() => {
+  linkedSourceState.source = null;
   serverState.service = null;
   serverState.loading = false;
   serverState.error = undefined;
@@ -915,6 +925,31 @@ describe("ServiceSettingsPage", () => {
       ).toBeInTheDocument();
     },
   );
+
+  // w2/m262 t003: a service linked to a build source builds nothing of its
+  // own: its Deploy card asks for a Start Command when the source is native,
+  // and the source, not the service, holds the registry credential.
+  it("gives a service linked to a native build source a Start Command and no registry section", async () => {
+    linkedSourceState.source = {
+      id: "bds-1",
+      name: "Mono",
+      source: "https://github.com/acme/mono",
+      kind: "git",
+      nativeRuntime: "node",
+    };
+    serverState.service = svc({
+      repo: null,
+      buildSourceId: "bds-1",
+      startCommand: "npm start",
+    });
+    renderSettings();
+
+    const hrefs = await sectionHrefs();
+    expect(hrefs).toContain("#deploy");
+    expect(hrefs).not.toContain("#registry-credential");
+    expect(await screen.findByText("Start Command")).toBeInTheDocument();
+    expect(screen.queryByText("Docker Command")).toBeNull();
+  });
 
   // w5/m124: an image service's one Deploy card holds the Pre-Deploy Command,
   // its Docker Command and the Deploy Hook, as a repo service's does, with no

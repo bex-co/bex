@@ -56,7 +56,7 @@ type fakeBuildFanout struct {
 
 func (f *fakeBuildFanout) BuildSucceeded(_ context.Context, b BuiltSource) {
 	f.mu.Lock()
-	f.calls = append(f.calls, b.Namespace+"/"+b.Carrier+"@"+b.Image)
+	f.calls = append(f.calls, b.Namespace+"/"+b.Carrier+"@"+b.Image+"#"+b.Commit.Hash)
 	f.mu.Unlock()
 	f.c <- struct{}{}
 }
@@ -84,7 +84,7 @@ func TestRecordDeployFansOutACarrierBuildOnce(t *testing.T) {
 		a.Status.Phase = appv1alpha1.PhaseRunning
 		if a.Spec.Type == appv1alpha1.TypeBuildSource {
 			a.Status.Image = "zot/src@sha256:built"
-			carrier = a.Namespace + "/" + a.Name + "@" + a.Status.Image
+			carrier = a.Namespace + "/" + a.Name + "@" + a.Status.Image + "#"
 		}
 		if err := cl.Status().Update(ctx, a); err != nil {
 			t.Fatal(err)
