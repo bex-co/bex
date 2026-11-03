@@ -24,11 +24,15 @@ import (
 	"net/http"
 	"strings"
 
+	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -346,4 +350,110 @@ func (s *Service) registerBuildSourceRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/build-sources/{buildSourceId}/builds/{buildId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.GetBuild(r.Context(), r.PathValue("buildSourceId"), r.PathValue("buildId"))
 	}))
+}
+
+var buildRunGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BuildRun",
+	Fields: graphql.Fields{
+		"id":              gqlutil.StrField(func(r *BuildRunView) any { return r.ID }),
+		"status":          gqlutil.StrField(func(r *BuildRunView) any { return r.Status }),
+		"buildStartedAt":  gqlutil.OptionalStrField(func(r *BuildRunView) any { return r.BuildStartedAt }),
+		"buildFinishedAt": gqlutil.OptionalStrField(func(r *BuildRunView) any { return r.BuildFinishedAt }),
+		"runtime":         gqlutil.OptionalStrField(func(r *BuildRunView) any { return r.Runtime }),
+		"commitId":        gqlutil.OptionalStrField(func(r *BuildRunView) any { return r.CommitID }),
+	},
+})
+
+var buildImageGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "BuildImage",
+	Fields: graphql.Fields{
+		"sha":                  gqlutil.OptionalStrField(func(i *BuildImageView) any { return i.SHA }),
+		"ref":                  gqlutil.OptionalStrField(func(i *BuildImageView) any { return i.Ref }),
+		"imageUrl":             gqlutil.OptionalStrField(func(i *BuildImageView) any { return i.ImageURL }),
+		"registryCredentialId": gqlutil.StrField(func(i *BuildImageView) any { return i.RegistryCredentialID }),
+	},
+})
+
+var buildGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "Build",
+	Fields: graphql.Fields{
+		"id":            gqlutil.StrField(func(b BuildView) any { return b.ID }),
+		"buildSourceId": gqlutil.StrField(func(b BuildView) any { return b.BuildSourceID }),
+		"buildRun":      gqlutil.Typed(buildRunGQLType, func(b BuildView) any { return b.BuildRun }),
+		"image":         gqlutil.Typed(buildImageGQLType, func(b BuildView) any { return b.Image }),
+		"cursor":        gqlutil.StrField(func(b BuildView) any { return b.deployID }),
+		"createdAt":     gqlutil.StrField(func(b BuildView) any { return b.CreatedAt }),
+		"updatedAt":     gqlutil.StrField(func(b BuildView) any { return b.UpdatedAt }),
+	},
+})
+
+func (s *Service) buildGQLQueryFields() graphql.Fields {
+	return graphql.Fields{
+		"builds": &graphql.Field{
+			Type: graphql.NewList(buildGQLType),
+			Args: gqlutil.PageArgs(graphql.FieldConfigArgument{"buildSourceId": gqlutil.ReqArg(graphql.String)}),
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.ListBuilds(p.Context, p.Args["buildSourceId"].(string), gqlutil.Str(p.Args, "cursor"), core.PageLimitOrDefault(gqlutil.Int(p.Args, "limit")))
+			},
+		},
+		"build": &graphql.Field{
+			Type: buildGQLType,
+			Args: graphql.FieldConfigArgument{
+				"buildSourceId": gqlutil.ReqArg(graphql.String),
+				"id":            gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetBuild(p.Context, p.Args["buildSourceId"].(string), p.Args["id"].(string))
+			},
+		},
+	}
+}
+
+func (s *Service) buildGQLMutationFields() graphql.Fields {
+	return graphql.Fields{
+		"triggerBuild": gqlutil.KeyVerb(buildGQLType, "buildSourceId", s.TriggerBuild),
+	}
+}
+
+type buildSourceArgs struct {
+	BuildSourceID string `json:"buildSourceId" jsonschema:"the build source id (bds-…)"`
+}
+
+type listBuildsArgs struct {
+	BuildSourceID string `json:"buildSourceId" jsonschema:"the build source id (bds-…)"`
+	Cursor        string `json:"cursor,omitempty" jsonschema:"the cursor of the previous page's last build"`
+	Limit         int    `json:"limit,omitempty" jsonschema:"page size, default 20, at most 100"`
+}
+
+type listBuildsResult struct {
+	Builds []buildWithCursor `json:"builds"`
+}
+
+type getBuildArgs struct {
+	BuildSourceID string `json:"buildSourceId" jsonschema:"the build source id (bds-…)"`
+	BuildID       string `json:"buildId" jsonschema:"the build id (bld-…)"`
+}
+
+func (s *Service) registerBuildTools(srv *mcp.Server) {
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "trigger_build_source_build",
+		Description: "Build a git build source's branch head, even when an up-to-date build exists. When it succeeds, services linked to the source with auto-deploy on deploy the result. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in buildSourceArgs) (*mcp.CallToolResult, BuildView, error) {
+		b, err := s.TriggerBuild(ctx, in.BuildSourceID)
+		return nil, b, err
+	})
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "list_build_source_builds",
+		Description: "List a build source's builds, newest first, with a cursor per build for paging. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in listBuildsArgs) (*mcp.CallToolResult, listBuildsResult, error) {
+		builds, err := s.ListBuilds(ctx, in.BuildSourceID, in.Cursor, core.PageLimitOrDefault(in.Limit))
+		return nil, listBuildsResult{Builds: toBuildList(builds)}, err
+	})
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "get_build_source_build",
+		Description: "Get one build of a build source: its run status, commit and timing, or the image for an image-backed source. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in getBuildArgs) (*mcp.CallToolResult, BuildView, error) {
+		b, err := s.GetBuild(ctx, in.BuildSourceID, in.BuildID)
+		return nil, b, err
+	})
 }

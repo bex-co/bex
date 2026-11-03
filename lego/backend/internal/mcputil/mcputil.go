@@ -199,3 +199,17 @@ func DefaultAnnotations(name string) *mcp.ToolAnnotations {
 }
 
 func boolPtr(b bool) *bool { return &b }
+
+// Scoped is gqlutil.ScopeArg for an MCP tool: h runs in scope(ctx, idOf(in)),
+// the context a feature resolves that id in (a build source's id scoped to
+// its carrier, ADR097), and a scope refusal is the tool's error.
+func Scoped[In, Out any](scope func(context.Context, string) (context.Context, error), idOf func(In) string, h mcp.ToolHandlerFor[In, Out]) mcp.ToolHandlerFor[In, Out] {
+	return func(ctx context.Context, req *mcp.CallToolRequest, in In) (*mcp.CallToolResult, Out, error) {
+		ctx, err := scope(ctx, idOf(in))
+		if err != nil {
+			var zero Out
+			return nil, zero, err
+		}
+		return h(ctx, req, in)
+	}
+}

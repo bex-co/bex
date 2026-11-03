@@ -23,6 +23,7 @@ import (
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime/schema"
 
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -97,12 +98,28 @@ func BuildSourceOrNotFound(a *appv1alpha1.App) error {
 // write path (which then authorizes and audits as usual) without ever
 // reaching a service.
 func (b *Base) BuildSourceScope(ctx context.Context, id string) (context.Context, error) {
-	ctx = WithBuildSources(ctx)
+	// Resolve the acting workspace onto the returned context, so the verb's
+	// own authorization reuses it instead of resolving it again.
+	ctx, _, err := b.resolveWorkspaceMemo(WithBuildSources(ctx))
+	if err != nil {
+		return ctx, err
+	}
 	app, err := b.GetApp(ctx, RelCanView, id)
 	if err != nil {
 		return ctx, err
 	}
 	return ctx, BuildSourceOrNotFound(app)
+}
+
+// ScopeBuildSourceID is BuildSourceScope for an id that names a build source
+// (bds-…) and ctx unchanged for any other id. GraphQL and MCP reach a build
+// source's build-time environment through the service verbs' serviceId
+// argument; REST keeps its own /v1/build-sources routes (ADR097).
+func (b *Base) ScopeBuildSourceID(ctx context.Context, id string) (context.Context, error) {
+	if k, ok := ids.KindOf(id); ok && k == ids.BuildSource {
+		return b.BuildSourceScope(ctx, id)
+	}
+	return ctx, nil
 }
 
 // CurrentBuild is a carrier's built image once it has built, else "".

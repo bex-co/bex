@@ -17,6 +17,8 @@ limitations under the License.
 package deploys
 
 import (
+	"maps"
+
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -86,7 +88,7 @@ var deployHookArgs = graphql.FieldConfigArgument{
 // through the same FilterOf translator, so the two surfaces cannot page
 // differently; all absent means the full history, the pre-m31 contract.
 func (s *Service) GraphQLQuery() graphql.Fields {
-	return graphql.Fields{
+	fields := graphql.Fields{
 		// deployHook is the sensitive settings read. It lazily mints the service's
 		// stable secret URL and returns the same {url} shape as REST/MCP.
 		"deployHook": &graphql.Field{
@@ -149,6 +151,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 	}
+	maps.Copy(fields, s.buildGQLQueryFields())
+	return fields
 }
 
 // filterFromArgs is the GraphQL twin of rest.go's filterFromQuery: it pulls
@@ -196,7 +200,7 @@ var deployMutationArgs = graphql.FieldConfigArgument{
 // deploys.Restart ensures every restart opens a deploy-history row.
 // cancelDeploy/rollbackService follow the suspendService/resumeService convention.
 func (s *Service) GraphQLMutation() graphql.Fields {
-	return graphql.Fields{
+	fields := graphql.Fields{
 		"regenerateDeployHook": &graphql.Field{
 			Type: deployHookGQLType,
 			Args: deployHookArgs,
@@ -272,4 +276,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 	}
+	maps.Copy(fields, s.buildGQLMutationFields())
+	return fields
 }

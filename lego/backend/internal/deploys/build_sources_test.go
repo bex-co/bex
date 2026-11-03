@@ -18,8 +18,13 @@ package deploys
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"strings"
 	"testing"
+
+	"github.com/graphql-go/graphql"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
@@ -313,5 +318,54 @@ func TestRollbackCarriesTheRestoredBuildID(t *testing.T) {
 	rolled, err := svc.Rollback(ctx, "web", first.ID)
 	if err != nil || rolled.BuildID != buildID || ds.byApp["srv-1"][0].BuildID != buildID {
 		t.Fatalf("rollback = %+v, %v; want buildId %s on the view and the row", rolled, err, buildID)
+	}
+}
+
+// GraphQL triggerBuild/builds/build and the MCP build tools reach the same
+// verbs as REST.
+func TestBuildGraphQLAndMCP(t *testing.T) {
+	ds := newFakeStore()
+	ds.mintIDs = true
+	svc, _ := newService(ds, sampleBuildSource("bds-git", "https://github.com/acme/web"))
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	res := graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: `mutation { triggerBuild(buildSourceId:"bds-git") { id buildSourceId buildRun { id status runtime } image { imageUrl } } }`})
+	if res.HasErrors() {
+		t.Fatal(res.Errors)
+	}
+	built := res.Data.(map[string]any)["triggerBuild"].(map[string]any)
+	run, _ := built["buildRun"].(map[string]any)
+	if built["buildSourceId"] != "bds-git" || run["status"] != store.BuildRunCreated || run["runtime"] != "node" || built["image"] != nil {
+		t.Fatalf("triggerBuild = %+v", built)
+	}
+	id := built["id"].(string)
+	res = graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: `{ builds(buildSourceId:"bds-git") { id cursor } build(buildSourceId:"bds-git", id:"` + id + `") { id } }`})
+	if res.HasErrors() {
+		t.Fatal(res.Errors)
+	}
+	data := res.Data.(map[string]any)
+	builds, _ := data["builds"].([]any)
+	if len(builds) != 1 || builds[0].(map[string]any)["cursor"] != run["id"] || data["build"].(map[string]any)["id"] != id {
+		t.Fatalf("builds = %+v, build = %+v", builds, data["build"])
+	}
+
+	session := newMCPSession(t, svc)
+	got, err := session.CallTool(ctx, &mcp.CallToolParams{Name: "list_build_source_builds", Arguments: map[string]any{"buildSourceId": "bds-git"}})
+	if err != nil || got.IsError {
+		t.Fatalf("list_build_source_builds = %+v, %v", got, err)
+	}
+	encoded, _ := json.Marshal(got.StructuredContent)
+	if !strings.Contains(string(encoded), id) {
+		t.Fatalf("list_build_source_builds = %s, want %s", encoded, id)
+	}
+	got, err = session.CallTool(ctx, &mcp.CallToolParams{Name: "trigger_build_source_build", Arguments: map[string]any{"buildSourceId": "web"}})
+	if err != nil || !got.IsError {
+		t.Fatalf("trigger_build_source_build on a non-source = %+v, %v; want a tool error", got, err)
 	}
 }

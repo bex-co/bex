@@ -20,6 +20,7 @@ import (
 	"context"
 	"crypto/rand"
 
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -29,7 +30,8 @@ import (
 // The REST adapters mark their context with WithStagedWrite, and the single-item
 // write paths then end in the same Save-only staging PatchEnvironment's
 // save_only mode uses instead of bumping spec.restartedAt. GraphQL and MCP keep
-// the immediate rollout their callers expect.
+// the immediate rollout their callers expect, except on a build source
+// (envScope), which never builds from an env write.
 
 type stagedWriteKey struct{}
 
@@ -88,4 +90,16 @@ func notifySavedConfig(a *appv1alpha1.App) {
 		a.Annotations = map[string]string{}
 	}
 	a.Annotations[appv1alpha1.AnnotationSavedConfigRevision] = rand.Text()
+}
+
+// envScope is the context an env verb acts in on id over GraphQL and MCP: a
+// build source's id (bds-…) is scoped to its carrier and its writes are
+// staged, saved without building as on REST's /v1/build-sources routes and
+// on Render (ADR097); any other id acts in ctx.
+func (s *Service) envScope(ctx context.Context, id string) (context.Context, error) {
+	if k, ok := ids.KindOf(id); !ok || k != ids.BuildSource {
+		return ctx, nil
+	}
+	ctx, err := s.BuildSourceScope(ctx, id)
+	return WithStagedWrite(ctx), err
 }

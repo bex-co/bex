@@ -18,9 +18,14 @@ package secrets
 
 import (
 	"context"
+	"strings"
 	"testing"
 
+	"github.com/graphql-go/graphql"
+
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -129,4 +134,50 @@ func ctxFor(staged bool) context.Context {
 		return WithStagedWrite(ctx)
 	}
 	return ctx
+}
+
+// w2/m254 t007: GraphQL reaches a build source's environment with its bds- id
+// as serviceId, and every write is staged — saved without building the carrier,
+// as REST's /v1/build-sources routes and Render do. A deploying save is
+// refused rather than building it.
+func TestBuildSourceEnvWritesOverGraphQLNeverBuild(t *testing.T) {
+	const running = "running-release"
+	id := ids.New(ids.BuildSource)
+	carrier := managedApp(id)
+	carrier.Labels[store.LabelAppID] = id
+	carrier.Spec.Type = appv1alpha1.TypeBuildSource
+	carrier.Spec.EnvFromSecret = id + "-env"
+	carrier.Spec.RestartedAt = running
+	carrier.Status = appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning, ActiveRevision: "rev-1"}
+	secretStore := newFakeSecretStore()
+	secretStore.m[envPath(id)] = map[string]string{}
+	svc := newService(secretStore, carrier)
+	deploys := &recordingDeploys{}
+	svc.Rollout = &rollout.Tracker{Store: deploys}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	do := func(q string) *graphql.Result {
+		return graphql.Do(graphql.Params{Schema: schema, Context: auditCtx(), RequestString: q})
+	}
+	if res := do(`mutation { setEnvVar(serviceId:"` + id + `", key:"NODE_ENV", value:"production") }`); res.HasErrors() {
+		t.Fatal(res.Errors)
+	}
+	if secretStore.m[envPath(id)]["NODE_ENV"] != "production" {
+		t.Fatalf("env not stored: %v", secretStore.m[envPath(id)])
+	}
+	if got := getApp(t, svc.Client, id).Spec.RestartedAt; got != running {
+		t.Fatalf("an env write rolled the build source (restartedAt %q)", got)
+	}
+	res := do(`mutation { patchServiceEnvironment(serviceId:"` + id + `", saveMode:"deploy", envVars:[{key:"A", value:"1"}]) { rolledOut } }`)
+	if !res.HasErrors() || !strings.Contains(res.Errors[0].Message, "without building") {
+		t.Fatalf("deploying save on a build source = %+v, want refused", res.Errors)
+	}
+	if got := getApp(t, svc.Client, id).Spec.RestartedAt; got != running {
+		t.Fatalf("a refused save rolled the build source (restartedAt %q)", got)
+	}
 }
