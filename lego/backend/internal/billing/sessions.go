@@ -27,6 +27,9 @@ import (
 	"time"
 
 	stripe "github.com/stripe/stripe-go/v86"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 const (
@@ -134,6 +137,10 @@ func (c *StripeClient) CreateCheckoutSession(ctx context.Context, workspaceID st
 		return HostedSession{}, fmt.Errorf("stripe: create Checkout request id: %w", err)
 	}
 	metadata := map[string]string{workspaceMetadataKey: workspaceID}
+	if actor, ok := core.IdentityFrom(ctx); ok && actor.Subject != "" {
+		metadata[actorMetadataKey] = actor.Subject
+		metadata[actorMethodMetadataKey] = actor.Method
+	}
 	params := &stripe.CheckoutSessionParams{
 		Mode:                  stripe.String(string(stripe.CheckoutSessionModeSetup)),
 		Currency:              stripe.String(string(stripe.CurrencyUSD)),
@@ -247,6 +254,22 @@ func (c *StripeClient) CompleteCheckoutSession(ctx context.Context, eventSession
 			return fmt.Errorf("stripe: persist payment-method binding for %s: %w", checkout.workspaceID, err)
 		}
 	}
+	// Render's audit log records who changed the workspace's payment method.
+	// Failing here fails the webhook so Stripe retries; the row id derives from
+	// the session, so the retry cannot record it twice. No card details.
+	if c.audit != nil {
+		if err := c.audit.Record(ctx, core.AuditEvent{
+			ID:           ids.Derive(ids.Audit, "checkout", checkout.sessionID),
+			Caller:       checkout.actor,
+			CallerMethod: checkout.actorMethod,
+			Verb:         core.AuditVerbUpdatePaymentMethod,
+			Resource:     core.WorkspaceObject(checkout.workspaceID),
+			Outcome:      core.AuditAllowed,
+			At:           time.Now().UTC(),
+		}); err != nil {
+			return fmt.Errorf("stripe: audit payment-method change for %s: %w", checkout.workspaceID, err)
+		}
+	}
 	return nil
 }
 
@@ -258,7 +281,11 @@ type verifiedCheckout struct {
 	setupIntentID string
 	workspaceID   string
 	customerID    string
-	subscription  *stripe.Subscription
+	// actor/actorMethod name the member who opened the session; empty for
+	// sessions opened before bex recorded them.
+	actor        string
+	actorMethod  string
+	subscription *stripe.Subscription
 	// checkoutCreatedCustomer is true when the session itself created the
 	// Customer; binding then also seeds its billing address. It derives from
 	// the session, not from whether this delivery adopted it, so a retried
@@ -339,6 +366,8 @@ func (c *StripeClient) verifiedCheckout(ctx context.Context, eventSession *strip
 		setupIntentID:           session.SetupIntent.ID,
 		workspaceID:             workspaceID,
 		customerID:              customerID,
+		actor:                   session.Metadata[actorMetadataKey],
+		actorMethod:             session.Metadata[actorMethodMetadataKey],
 		subscription:            subscription,
 		checkoutCreatedCustomer: createdBySession,
 	}, nil

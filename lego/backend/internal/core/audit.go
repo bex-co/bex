@@ -45,6 +45,10 @@ const (
 // required by Render's event contracts; there is no free-form path for a
 // secret to reach an event.
 type AuditEvent struct {
+	// ID is normally empty (the sink mints one). A writer that may deliver the
+	// same fact more than once — a redelivered webhook — sets a derived id so
+	// the repeat records nothing.
+	ID           string
 	Caller       string // core.Identity.Subject; empty for an unauthenticated caller
 	CallerMethod string // core.Identity.Method ("oauth2" | "session")
 	Verb         string // the verb's short name, e.g. "apps.Suspend" (derived, never hand-set)
@@ -197,6 +201,12 @@ const (
 	AuditVerbUpdateDisk          = "apps.UpdateDisk"
 	AuditVerbDeleteDisk          = "apps.DeleteDisk"
 	AuditVerbRestoreDiskSnapshot = "apps.RestoreDiskSnapshot"
+
+	// AuditVerbUpdatePaymentMethod is a completed payment-method setup
+	// (w2/067): written by the Stripe webhook that completes the Checkout
+	// Session, attributed to the member who opened it — Render's
+	// UpdateWorkspacePaymentMethodEvent.
+	AuditVerbUpdatePaymentMethod = "billing.UpdatePaymentMethod"
 
 	AuditVerbJobCreate = "jobs.Create"
 	AuditVerbJobCancel = "jobs.Cancel"

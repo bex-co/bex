@@ -30,6 +30,7 @@ import (
 	stripe "github.com/stripe/stripe-go/v86"
 	"github.com/stripe/stripe-go/v86/client"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -63,6 +64,13 @@ const (
 	// only that checkout was opened — never that a card was bound. Cleared once
 	// the binding is recorded.
 	pendingSetupMetadataKey = "bex_pending_setup"
+	// actorMetadataKey records the member who opened a Checkout Session, so the
+	// webhook that completes it can attribute the payment-method change in the
+	// audit log (w2/067). A subject id, never contact details.
+	actorMetadataKey = "bex_actor"
+	// actorMethodMetadataKey is that member's auth method ("session" |
+	// "oauth2"), which the audit log reads as Render's actor.type.
+	actorMethodMetadataKey = "bex_actor_method"
 )
 
 var billableMeterNames = func() map[string]struct{} {
@@ -109,6 +117,9 @@ type StripeConfig struct {
 	// State persists the provider mapping/lifecycle default used by webhook
 	// intake and polling. Nil is retained for isolated unit tests.
 	State BillingStateStore
+	// Audit records each completed payment-method change in the workspace audit
+	// log. Nil is retained for isolated unit tests.
+	Audit core.AuditSink
 	// Metrics is the process-local, low-cardinality operational sink. Nil keeps
 	// isolated tests and non-instrumented callers unchanged.
 	Metrics *Metrics
@@ -157,6 +168,7 @@ type StripeClient struct {
 	testMode              bool
 	publishableKey        string
 	state                 BillingStateStore
+	audit                 core.AuditSink
 	metrics               *Metrics
 }
 
@@ -195,6 +207,7 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 		testMode:              strings.Contains(cfg.SecretKey, "_test_"),
 		publishableKey:        cfg.PublishableKey,
 		state:                 cfg.State,
+		audit:                 cfg.Audit,
 		metrics:               cfg.Metrics,
 	}
 }
