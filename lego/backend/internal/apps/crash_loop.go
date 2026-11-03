@@ -146,5 +146,5 @@ func (w CrashLoopWorker) List(ctx context.Context) ([]appv1alpha1.App, error) {
 	if err := w.Svc.Client.List(ctx, &list); err != nil {
 		return nil, err
 	}
-	return list.Items, nil
+	return core.ServiceApps(list.Items), nil
 }

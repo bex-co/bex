@@ -21,6 +21,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/rollout"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -81,5 +82,7 @@ func (s *Service) dropLinks(ctx context.Context, gid string, entries ...string) 
 func (s *Service) linkCandidates(ctx context.Context, workspace string) ([]appv1alpha1.App, error) {
 	var apps appv1alpha1.AppList
 	err := s.ListByTenant(ctx, &apps, workspace)
-	return apps.Items, err
+	// Render reports a group's service links; a build source's links are
+	// its own (w2/m254 t004).
+	return core.ServiceApps(apps.Items), err
 }

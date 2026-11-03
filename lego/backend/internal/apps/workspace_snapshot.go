@@ -67,6 +67,7 @@ func (snap *workspaceSnapshot) apps(ctx context.Context) (*appv1alpha1.AppList, 
 		if err := snap.s.Client.List(ctx, list, snap.s.DatastoreListOptions(snap.tenantID)...); err != nil {
 			return nil, err
 		}
+		list.Items = core.ServiceApps(list.Items)
 		snap.appList = list
 	}
 	return snap.appList, nil

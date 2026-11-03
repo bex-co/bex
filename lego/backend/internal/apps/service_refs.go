@@ -177,6 +177,7 @@ func (p *ServiceRefPropagator) tick(ctx context.Context) error {
 	if err := p.Svc.Client.List(ctx, &consumers, client.HasLabels{serviceRefsLabel}); err != nil {
 		return err
 	}
+	consumers.Items = core.ServiceApps(consumers.Items)
 	// Resolve each target once per tick: several consumers often reference
 	// one private service, and a listed consumer may itself be a target.
 	cache := map[client.ObjectKey]*appv1alpha1.App{}
