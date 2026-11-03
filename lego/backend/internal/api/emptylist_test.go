@@ -67,6 +67,7 @@ var emptyListCases = []emptyListCase{
 	{route: "GET /v1/postgres", path: "/v1/postgres"},
 	{route: "GET /v1/key-value", path: "/v1/key-value"},
 	{route: "GET /v1/env-groups", path: "/v1/env-groups"},
+	{route: "GET /v1/build-sources", path: "/v1/build-sources"},
 	{route: "GET /v1/api-keys", path: "/v1/api-keys"},
 	{route: "GET /v1/registrycredentials", path: "/v1/registrycredentials"},
 	{route: "GET /v1/owners", path: "/v1/owners"},
@@ -193,6 +194,7 @@ var scalarRoutes = map[string]bool{
 	"GET /v1/agent-attachments/{id}":                        true,
 	"GET /v1/agent-attachments/{id}/content":                true, // a redirect, no body
 	"GET /v1/services/{id}":                                 true,
+	"GET /v1/build-sources/{buildSourceId}":                 true,
 	"GET /v1/services/{id}/autoscaling":                     true,
 	"GET /v1/services/{id}/deploy-hook":                     true,
 	"GET /v1/services/{id}/deploys/{deployId}":              true,

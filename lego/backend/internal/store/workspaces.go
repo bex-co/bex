@@ -270,6 +270,15 @@ func (s *PGStore) CountAppsForTenant(ctx context.Context, tenantID string) (int,
 	return n, err
 }
 
+// CountBuildSourcesForTenant counts a workspace's build source carriers, for
+// their own ceiling (QuotaCaps.BuildSources).
+func (s *PGStore) CountBuildSourcesForTenant(ctx context.Context, tenantID string) (int, error) {
+	var n int
+	err := s.Pool.QueryRow(ctx,
+		`SELECT count(*) FROM apps a WHERE a.tenant_id = $1 AND a.type = '`+TypeBuildSource+`'`, tenantID).Scan(&n)
+	return n, err
+}
+
 // queryRower is the package's transaction-aware single-row query shape. It is
 // satisfied by both *pgxpool.Pool and pgx.Tx, so shared query helpers can run
 // either standalone or inside an in-flight transaction.

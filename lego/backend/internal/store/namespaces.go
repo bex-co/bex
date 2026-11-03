@@ -184,6 +184,31 @@ func (r *NamespaceReconciler) EnsureWorkspace(ctx context.Context, workspaceID s
 	return nil
 }
 
+// roomForBuildSources widens the App count quota by the workspace's build
+// source carriers (w2/m254): a carrier is an App object but not a service, so
+// the API server keeps capping services at exactly the plan's ceiling. The
+// count comes from the carrier rows, which a carrier create inserts (and then
+// re-converges this) before its App is written.
+func (r *NamespaceReconciler) roomForBuildSources(ctx context.Context, workspaceID string, quotas []*corev1.ResourceQuota) error {
+	counter, ok := r.Store.(interface {
+		CountBuildSourcesForTenant(context.Context, string) (int, error)
+	})
+	if !ok {
+		return nil
+	}
+	carriers, err := counter.CountBuildSourcesForTenant(ctx, workspaceID)
+	if err != nil {
+		return fmt.Errorf("count build sources: %w", err)
+	}
+	for _, quota := range quotas {
+		if apps, ok := quota.Spec.Hard[AppsQuotaCountKey]; ok {
+			apps.Add(*resource.NewQuantity(int64(carriers), resource.DecimalSI))
+			quota.Spec.Hard[AppsQuotaCountKey] = apps
+		}
+	}
+	return nil
+}
+
 // namespaceName returns the namespace name for a workspace under a regime.
 func namespaceName(workspaceID, regime string) string {
 	if regime == RegimeSandbox {
@@ -199,7 +224,13 @@ func (r *NamespaceReconciler) ensureNamespace(ctx context.Context, t Tenant, reg
 	if err := r.applyObject(ctx, r.workspaceNamespaceObject(name, t, regime)); err != nil {
 		return fmt.Errorf("namespace: %w", err)
 	}
-	for _, quota := range r.baseResourceQuotas(name, t) {
+	quotas := r.baseResourceQuotas(name, t)
+	if regime == RegimeHosting {
+		if err := r.roomForBuildSources(ctx, t.ID, quotas); err != nil {
+			return err
+		}
+	}
+	for _, quota := range quotas {
 		if err := r.applyObject(ctx, quota); err != nil {
 			return fmt.Errorf("resourcequota %s: %w", quota.Name, err)
 		}

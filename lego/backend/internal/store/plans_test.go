@@ -32,12 +32,12 @@ func TestQuotaCapsForPlan(t *testing.T) {
 		plan string
 		want QuotaCaps
 	}{
-		{PlanHobby, QuotaCaps{Services: 25, Postgres: 25, KeyValues: 25}},
-		{"", QuotaCaps{Services: 25, Postgres: 25, KeyValues: 25}},
-		{"free", QuotaCaps{Services: 25, Postgres: 25, KeyValues: 25}},
-		{PlanPro, QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25}},
-		{PlanScale, QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25}},
-		{PlanEnterprise, QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25}},
+		{PlanHobby, QuotaCaps{Services: 25, Postgres: 25, KeyValues: 25, BuildSources: 25}},
+		{"", QuotaCaps{Services: 25, Postgres: 25, KeyValues: 25, BuildSources: 25}},
+		{"free", QuotaCaps{Services: 25, Postgres: 25, KeyValues: 25, BuildSources: 25}},
+		{PlanPro, QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25, BuildSources: 25}},
+		{PlanScale, QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25, BuildSources: 25}},
+		{PlanEnterprise, QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25, BuildSources: 25}},
 	} {
 		if got := QuotaCapsForPlan(tc.plan); got != tc.want {
 			t.Errorf("QuotaCapsForPlan(%q) = %+v, want %+v", tc.plan, got, tc.want)

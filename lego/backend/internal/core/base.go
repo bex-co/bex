@@ -1192,7 +1192,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 			client.MatchingLabels{LabelAppID: name}); err != nil {
 			return nil, err
 		}
-		byID.Items = ServiceApps(byID.Items)
+		byID.Items = serviceAppsFor(ctx, byID.Items)
 	}
 	preferOwnWorkspaceNamespace(byID.Items)
 	if len(byID.Items) > 0 {
@@ -1227,7 +1227,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		if len(pathvalidation.IsValidPathSegmentName(candidate)) != 0 {
 			continue // client-go rejects these names before reaching the apiserver
 		}
-		getErr := notServiceApp(b.Client.Get(ctx, client.ObjectKey{Namespace: b.AppNamespace(acting), Name: candidate}, &a), &a)
+		getErr := notServiceAppFor(ctx, b.Client.Get(ctx, client.ObjectKey{Namespace: b.AppNamespace(acting), Name: candidate}, &a), &a)
 		if getErr == nil {
 			object, resolveErr := b.resourceWorkspaceFor(ctx, acting, actingErr, a.Labels)
 			if err := b.authorizeAndAudit(ctx, relation, object, canonicalAppTarget(&a), verb, resolveErr); err != nil {
@@ -1251,7 +1251,7 @@ func (b *Base) AuthorizeApp(ctx context.Context, relation, name string) (*appv1a
 		if err := b.Client.List(ctx, &list, opts...); err != nil {
 			return nil, err
 		}
-		list.Items = ServiceApps(list.Items)
+		list.Items = serviceAppsFor(ctx, list.Items)
 		// Every colliding candidate is a distinct authorization decision, but
 		// individually auditing an unbounded number of them would let one GET
 		// against a common colliding name serialize one synchronous audit
@@ -1366,7 +1366,7 @@ func (b *Base) appByDisplayedName(ctx context.Context, acting, name string) (*ap
 	if err := b.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
 	}
-	list.Items = ServiceApps(list.Items)
+	list.Items = serviceAppsFor(ctx, list.Items)
 	candidates := list.Items[:0]
 	for _, a := range list.Items {
 		if DisplayedAppName(&a) == name {
@@ -1450,7 +1450,7 @@ func (b *Base) refuseAmbiguousName(ctx context.Context, name string, chosen *app
 	if err := b.Client.List(ctx, &list, client.MatchingLabels{LabelServiceName: name}); err != nil {
 		return err
 	}
-	list.Items = ServiceApps(list.Items)
+	list.Items = serviceAppsFor(ctx, list.Items)
 	ids := []string{AppPublicID(chosen)}
 	for i := range list.Items {
 		other := &list.Items[i]
@@ -1855,7 +1855,7 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 			client.MatchingLabels{LabelAppID: name}); err != nil {
 			return nil, err
 		}
-		byID.Items = ServiceApps(byID.Items)
+		byID.Items = serviceAppsFor(ctx, byID.Items)
 	}
 	preferOwnWorkspaceNamespace(byID.Items)
 	if len(byID.Items) > 0 {
@@ -1885,7 +1885,7 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 		if len(pathvalidation.IsValidPathSegmentName(candidate)) != 0 {
 			continue
 		}
-		err := notServiceApp(b.Client.Get(ctx, client.ObjectKey{Namespace: b.AppNamespace(acting), Name: candidate}, &a), &a)
+		err := notServiceAppFor(ctx, b.Client.Get(ctx, client.ObjectKey{Namespace: b.AppNamespace(acting), Name: candidate}, &a), &a)
 		if err == nil {
 			if err := b.AuthorizeLabeled(ctx, relation, a.Labels); err != nil {
 				return nil, err
@@ -1910,7 +1910,7 @@ func (b *Base) GetApp(ctx context.Context, relation, name string) (*appv1alpha1.
 	if err := b.Client.List(ctx, &list, opts...); err != nil {
 		return nil, err
 	}
-	list.Items = ServiceApps(list.Items)
+	list.Items = serviceAppsFor(ctx, list.Items)
 	lastErr := error(ErrNotFound)
 	for i := range list.Items {
 		if err := b.AuthorizeLabeled(ctx, relation, list.Items[i].Labels); err == nil {
@@ -2144,7 +2144,7 @@ func (b *Base) appNamespaceByName(ctx context.Context, app string) (string, erro
 	if err := b.Client.List(ctx, &list); err != nil {
 		return "", err
 	}
-	list.Items = ServiceApps(list.Items)
+	list.Items = serviceAppsFor(ctx, list.Items)
 	found := ""
 	for i := range list.Items {
 		if list.Items[i].Name != app {

@@ -92,6 +92,11 @@ type QuotaCaps struct {
 	Services  int64
 	Postgres  int64
 	KeyValues int64
+	// BuildSources is the build source ceiling (w2/m254), checked at create.
+	// Carriers are App objects, so the namespace's App count quota is widened
+	// by the carriers that exist (roomForBuildSources) and keeps capping
+	// services at exactly Services.
+	BuildSources int64
 }
 
 // QuotaCapsForPlan returns plan's object-count ceilings. Matches on PlanHobby
@@ -108,9 +113,9 @@ func QuotaCapsForPlan(plan string) QuotaCaps {
 		// rule (w4/m241) is enforced at admission by plan, not by counting
 		// every instance, so paid datastores must not consume a Hobby cap
 		// of 1. Services keeps the Hobby ceiling.
-		return QuotaCaps{Services: int64(LimitsFor(PlanHobby).MaxServices), Postgres: 25, KeyValues: 25}
+		return QuotaCaps{Services: int64(LimitsFor(PlanHobby).MaxServices), Postgres: 25, KeyValues: 25, BuildSources: 25}
 	default: // pro, scale, enterprise, and any future higher tier
-		return QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25}
+		return QuotaCaps{Services: 100, Postgres: 25, KeyValues: 25, BuildSources: 25}
 	}
 }
 

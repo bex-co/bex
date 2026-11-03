@@ -24,6 +24,9 @@ bex's build pipeline is App-shaped end to end (`lego/operator/internal/controlle
 - **Storage.** A carrier is an `apps` row of type `build_source` whose Kubernetes name is its `bds-` id, so it can never collide with a service name. A linked service carries `build_source_id` and the selected `build_source_image`, projected into `spec.buildSource`. Every service listing excludes carriers.
 - **Render semantics to keep** (api-docs.render.com, `update-service`, `trigger-build-source-build`): a PATCH that links cannot be combined with build-configuration changes (only `startCommand`); linking to a native-runtime source requires a start command, and a Docker/image source rejects one; a link does not deploy until the deploy API is called; only git sources can be built.
 
+- **Quota (t003).** ADR043 D3 makes the namespace's App count ResourceQuota the race-free service cap. A carrier is an App object, so the quota is widened by exactly the workspace's carrier rows (`roomForBuildSources`), re-converged when a carrier row is written (before its App) and after one is deleted; services stay capped at the plan's ceiling by the API server. Carriers have their own ceiling (`QuotaCaps.BuildSources`, 25 — Render publishes none), checked at create. Residual: a service create racing a carrier create between the quota widening and the carrier's App write could take that slot (one service over the cap, in that window only).
+- **Create and edit (t003).** A carrier goes through the service create path (validation, clone secret, registry credential, release stamping) shaped as a build-only App; no plan is billed and no start command is required (each linked service supplies its own). Edits reuse the service setters, resolved under `core.WithBuildSources` after the id is checked to name a carrier; like Render, an edit is saved without building.
+
 ## Consequences
 
 - One build feeds many services with no registry restart and no cross-repository read grant.
