@@ -21,6 +21,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -58,10 +59,30 @@ func TestBuildSourceCarrierRowsPG(t *testing.T) {
 	}
 
 	carrierID := ids.New(ids.BuildSource)
-	carrier, err := st.CreateApp(ctx, store.App{ID: carrierID, TenantID: ws.ID, Name: carrierID, Type: store.TypeBuildSource,
+	carrier, err := st.CreateApp(ctx, store.App{ID: carrierID, DisplayName: "Mono", TenantID: ws.ID, Name: carrierID, Type: store.TypeBuildSource,
 		Repo: "https://github.com/acme/mono", Branch: "main", Port: 10000, Replicas: 1, Tier: "starter"})
 	if err != nil {
 		t.Fatal(err)
+	}
+	// The carrier keeps the bds- id the API minted: the CR and every
+	// /v1/build-sources route name it by that id.
+	if got, err := st.GetApp(ctx, carrierID); err != nil || got.DisplayName != "Mono" {
+		t.Fatalf("carrier row = %+v, %v; want it under the minted %s, named Mono in the same create", got, err, carrierID)
+	}
+	svc, err := st.CreateApp(ctx, store.App{ID: carrierID + "x", DisplayName: "Svc", TenantID: ws.ID, Name: "svc-" + stamp, Type: "web_service", Image: "nginx:1", Port: 10000, Replicas: 1, Tier: "starter"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.HasPrefix(svc.ID, "srv-") || svc.DisplayName != "" {
+		t.Fatalf("service row id %q display name %q; want a fresh srv- id and no display name, whatever the caller passed", svc.ID, svc.DisplayName)
+	}
+	if err := st.DeleteApp(ctx, svc.ID); err != nil {
+		t.Fatal(err)
+	}
+	for _, id := range []string{"", ids.New(ids.Service)} {
+		if _, err := st.CreateApp(ctx, store.App{ID: id, TenantID: ws.ID, Name: "bad-" + stamp, Type: store.TypeBuildSource, Repo: "https://github.com/acme/mono", Port: 10000, Replicas: 1, Tier: "starter"}); err == nil {
+			t.Errorf("a carrier with id %q was created; it needs its minted bds- id", id)
+		}
 	}
 	web, err := st.CreateApp(ctx, store.App{TenantID: ws.ID, Name: "web-" + stamp, Type: "web_service", Port: 10000, Replicas: 1, Tier: "starter",
 		BuildSourceID: carrier.ID, BuildSourceImage: "zot.test/tea/src@sha256:abc"})

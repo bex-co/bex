@@ -2499,6 +2499,7 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 		firstCommit := s.resolveDeployCommit(ctx, tenantID, req.Repo, a.Spec.Branch)
 		row, err := s.Store.CreateApp(ctx, store.App{
 			ID:               req.buildSource.rowID(),
+			DisplayName:      req.buildSource.displayName(),
 			ScopeProjectID:   req.buildSource.scope(),
 			BuildSourceID:    req.BuildSourceID,
 			BuildSourceImage: buildSourceLinkImage(a.Spec.BuildSource),
@@ -2551,7 +2552,7 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 	// API create has no row, so persist an equally Render-shaped service id on
 	// the CR; all later reads and lifecycle verbs can resolve it by label.
 	if a.Labels[core.LabelAppID] == "" {
-		stampAppIdentity(a, tenantID, ids.New(ids.Service), false)
+		stampAppIdentity(a, tenantID, cmp.Or(req.buildSource.rowID(), ids.New(ids.Service)), false)
 	}
 	return createdRowID, firstDeployID, nil
 }

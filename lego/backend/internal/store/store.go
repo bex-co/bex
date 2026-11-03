@@ -17,6 +17,7 @@ limitations under the License.
 package store
 
 import (
+	"cmp"
 	"context"
 	"encoding/json"
 	"errors"
@@ -164,7 +165,7 @@ type App struct {
 	CreatedAt            time.Time `json:"createdAt"`
 	// DisplayName is the read projection of the CR's mutable spec.displayName
 	// (SetAppDisplayName). Empty means never renamed; readers fall back to
-	// Name. Read-only here: CreateApp does not write it.
+	// Name. CreateApp writes it only for a build source carrier.
 	DisplayName string `json:"displayName,omitempty"`
 	// BuildSourceID links the service to a build_source carrier row (Render's
 	// buildSourceId, w2/m254); BuildSourceImage is the carrier build it
@@ -1041,8 +1042,19 @@ func isSlugConflict(err error) bool {
 // Render's own onrender.com behavior. A tenant_id+name collision (the
 // caller's own workspace already has this name) is a real conflict and is
 // never retried — it classifies straight to ErrConflict.
+//
+// A build source carrier must arrive with its bds- id already minted (the CR
+// and the API name it before the row exists, ADR097) and its display name,
+// both written here so the create is one transaction; every other row gets a
+// new srv- id and no display name, whatever the caller passed.
 func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
-	a.ID = ids.New(ids.Service)
+	if a.Type == TypeBuildSource {
+		if k, ok := ids.KindOf(a.ID); !ok || k != ids.BuildSource {
+			return App{}, fmt.Errorf("app: a build source carrier needs its minted bds- id, got %q", a.ID)
+		}
+	} else {
+		a.ID, a.DisplayName = ids.New(ids.Service), ""
+	}
 	a.Slug = a.Name
 	for attempt := 0; ; attempt++ {
 		deployID := ids.New(ids.Deploy)
@@ -1058,12 +1070,12 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 			}
 			if err := tx.QueryRow(ctx,
 				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id, container_policy, port_mode, creation_pending,
-				   build_source_id, build_source_image, scope_project_id)
+				   build_source_id, build_source_image, scope_project_id, display_name)
 				 VALUES ($1, $2, $3, $4, $5, NULLIF($6,''), NULLIF($7,''), $8, $9, $10, $11, $12, $13, $14, NULLIF($15,''), NULLIF($16,''), $17, $18, $19,
-				   NULLIF($20,''), $21, NULLIF($22,''))
+				   NULLIF($20,''), $21, NULLIF($22,''), $23)
 				 RETURNING created_at`,
 				a.ID, a.TenantID, a.Name, a.Slug, a.Type, a.Repo, a.Image, a.RegistryCredentialID, a.Branch, a.Port, a.Replicas, a.Tier, a.IdleTTLSeconds, a.Suspended, a.ProjectID, a.EnvironmentID, a.ContainerPolicy, a.PortMode, a.CreationPending,
-				a.BuildSourceID, a.BuildSourceImage, a.ScopeProjectID,
+				a.BuildSourceID, a.BuildSourceImage, a.ScopeProjectID, a.DisplayName,
 			).Scan(&a.CreatedAt); err != nil {
 				return err
 			}
@@ -1084,7 +1096,7 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 				 VALUES ($1, $2, $3, $4)
 				 ON CONFLICT (tenant_id, resource_kind, resource_id)
 				 DO UPDATE SET display_name = EXCLUDED.display_name, updated_at = now()`,
-				a.TenantID, ResourceKindService, a.ID, a.Name)
+				a.TenantID, ResourceKindService, a.ID, cmp.Or(a.DisplayName, a.Name))
 			return err
 		})
 		if err == nil {
