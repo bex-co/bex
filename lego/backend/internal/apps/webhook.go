@@ -808,6 +808,8 @@ func (h *GitWebhook) repoCandidates(ctx context.Context, urls []string, scope st
 	if err := h.Svc.Client.List(ctx, &list); err != nil {
 		return nil, err
 	}
+	// A push does not reach build sources yet (w2/m254 t006 decides).
+	list.Items = core.ServiceApps(list.Items)
 	candidates := make([]appv1alpha1.App, 0)
 	for i := range list.Items {
 		a := &list.Items[i]

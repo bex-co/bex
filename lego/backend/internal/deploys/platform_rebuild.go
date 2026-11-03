@@ -117,7 +117,7 @@ func (s *Service) PlatformRebuild(ctx context.Context, req PlatformRebuildReques
 	if err := s.Client.List(ctx, &list, client.HasLabels{store.LabelAppID}); err != nil {
 		return res, err
 	}
-	apps := list.Items
+	apps := core.ServiceApps(list.Items)
 	sort.Slice(apps, func(i, j int) bool {
 		if apps[i].Namespace != apps[j].Namespace {
 			return apps[i].Namespace < apps[j].Namespace
