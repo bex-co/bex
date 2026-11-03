@@ -407,6 +407,8 @@ function EventSummary({
   const toCount = details?.toCount ?? null;
   const branchFrom = details?.branchFrom || null;
   const branchTo = details?.branchTo || null;
+  const usagePercent = details?.usagePercent ?? null;
+  const thresholdPercent = details?.thresholdPercent ?? null;
   const commitUrl = details?.commitUrl || null;
   // service_moved placement pair (w6/m134). A dimension renders only when it
   // actually changed; an absent side reads as the placement-none placeholder.
@@ -533,6 +535,16 @@ function EventSummary({
             {t("services.eventsReplicaChange", {
               from: fromCount,
               to: toCount,
+            })}
+          </p>
+        ) : null}
+        {usagePercent != null && thresholdPercent != null ? (
+          <p className="text-muted-foreground mt-2 text-xs">
+            {t("services.eventsDiskUsage", {
+              disk: details?.diskName ?? "",
+              mountPath: details?.mountPath ?? "",
+              usage: usagePercent.toFixed(1),
+              threshold: thresholdPercent.toFixed(0),
             })}
           </p>
         ) : null}

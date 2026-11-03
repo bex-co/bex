@@ -37,6 +37,8 @@ const (
 	AlertEmailImagePullFailed     = "image_pull_failed"
 	AlertEmailBlueprintSyncFailed = "blueprint_sync_failed"
 	AlertEmailServiceSuspended    = "service_suspended"
+	AlertEmailDiskUsageHigh       = "disk_usage_high"
+	AlertEmailDiskUsageRecovered  = "disk_usage_recovered"
 
 	// AlertEmailOccurrenceCap bounds the times a stream keeps (and a digest
 	// lists); pending_count stays exact beyond it.
@@ -93,7 +95,7 @@ type FailedBlueprintSync struct {
 func validAlertEmailEvent(event string) bool {
 	switch event {
 	case AlertEmailServerFailed, AlertEmailCronFailed, AlertEmailImagePullFailed, AlertEmailBlueprintSyncFailed,
-		AlertEmailServiceSuspended:
+		AlertEmailServiceSuspended, AlertEmailDiskUsageHigh, AlertEmailDiskUsageRecovered:
 		return true
 	}
 	return false

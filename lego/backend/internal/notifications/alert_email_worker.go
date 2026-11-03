@@ -237,14 +237,17 @@ func classifyAlertEmail(row store.WebhookEventRow) (event, detail string, ok boo
 
 // failureNotificationPolicy is the policy a service applies to its failure
 // notifications: notificationsToSend when set, otherwise the legacy
-// notifyOnFail (notify => all, ignore => none), otherwise default.
+// notifyOnFail (notify => failure, ignore => none), otherwise default. The
+// legacy field only ever spoke about failures, so "notify" is "failure", not
+// "all": the two send the same failure mail, but only "all" opts into
+// non-failure mail such as a disk back below its threshold.
 func failureNotificationPolicy(notificationsToSend, notifyOnFail string) string {
 	if notificationsToSend != "" {
 		return notificationsToSend
 	}
 	switch notifyOnFail {
 	case "notify":
-		return appv1alpha1.NotificationsToSendAll
+		return appv1alpha1.NotificationsToSendFailure
 	case "ignore":
 		return appv1alpha1.NotificationsToSendNone
 	}
@@ -412,6 +415,12 @@ func alertEmail(st store.AlertEmailStream, url string) (string, email.Message) {
 	case store.AlertEmailImagePullFailed:
 		title, cta = "Image pull failed", "View events"
 		lead = fmt.Sprintf("%q could not pull its Docker image, so the new version did not start.", name)
+	case store.AlertEmailDiskUsageHigh:
+		title, cta = "Disk usage high", "View events"
+		lead = fmt.Sprintf("A disk on %q crossed its usage threshold. Free up space or increase the disk size before it fills up.", name)
+	case store.AlertEmailDiskUsageRecovered:
+		title, cta = "Disk usage back to normal", "View events"
+		lead = fmt.Sprintf("A disk on %q is back below its usage threshold.", name)
 	case store.AlertEmailServiceSuspended:
 		title, cta = "Service suspended", "View events"
 		lead = fmt.Sprintf("We suspended %q because it repeatedly failed to start and become healthy over %s. "+
@@ -476,9 +485,9 @@ func AppNotificationPolicy(c client.Client) ServiceNotificationPolicy {
 	}
 }
 
-// CrashLoopAlertStore is what CrashLoopNotifier needs; *store.PGStore
-// satisfies it.
-type CrashLoopAlertStore interface {
+// ServiceAlertStore is what the worker-raised alerts (crash loop, disk
+// usage) need; *store.PGStore satisfies it.
+type ServiceAlertStore interface {
 	ListAlertEmailRecipientsFor(context.Context, string) ([]store.AlertEmailRecipient, error)
 	EnqueueAlertEmails(context.Context, string, []store.AlertEmailItem, time.Duration, time.Time, string) error
 }
@@ -488,7 +497,7 @@ type CrashLoopAlertStore interface {
 // suspension is a failure notification: a service's notificationsToSend and
 // each member's failure preference apply as for any other failure.
 type CrashLoopNotifier struct {
-	Store  CrashLoopAlertStore
+	Store  ServiceAlertStore
 	Policy ServiceNotificationPolicy
 	// Window is the suspension window, named in the email.
 	Window time.Duration
@@ -498,36 +507,78 @@ type CrashLoopNotifier struct {
 // and the moment its window started, so a retried or raced suspension mails
 // once.
 func (n CrashLoopNotifier) NotifyCrashLoopSuspended(ctx context.Context, tenantID, serviceID, name string, failingSince, at time.Time) error {
-	if n.Store == nil {
+	return enqueueServiceAlert(ctx, n.Store, n.Policy, tenantID, serviceID, wantsFailureEmail, store.AlertEmailItem{
+		SourceKey:  "crashloop:" + serviceID + ":" + failingSince.UTC().Format(time.RFC3339),
+		ResourceID: serviceID, Event: store.AlertEmailServiceSuspended, ResourceName: name,
+		Detail: windowWords(n.Window), OccurredAt: at,
+	})
+}
+
+// enqueueServiceAlert enqueues template for every member of tenantID whom the
+// service's notification policy and wants admit. A worker-raised alert has no
+// feed cursor; template.SourceKey makes a retry or a racing replica mail once.
+func enqueueServiceAlert(ctx context.Context, st ServiceAlertStore, policyOf ServiceNotificationPolicy,
+	tenantID, serviceID string, wants func(string, store.AlertEmailRecipient) bool, template store.AlertEmailItem) error {
+	if st == nil {
 		return nil
 	}
 	policy := appv1alpha1.NotificationsToSendDefault
-	if n.Policy != nil {
+	if policyOf != nil {
 		var err error
-		if policy, err = n.Policy(ctx, tenantID, serviceID); err != nil {
+		if policy, err = policyOf(ctx, tenantID, serviceID); err != nil {
 			return err
 		}
 	}
-	recipients, err := n.Store.ListAlertEmailRecipientsFor(ctx, tenantID)
+	recipients, err := st.ListAlertEmailRecipientsFor(ctx, tenantID)
 	if err != nil {
 		return err
 	}
 	var items []store.AlertEmailItem
 	for _, r := range recipients {
-		if !wantsFailureEmail(policy, r) {
+		if !wants(policy, r) {
 			continue
 		}
-		items = append(items, store.AlertEmailItem{
-			TenantID: tenantID, Subject: r.Subject,
-			SourceKey:  "crashloop:" + serviceID + ":" + failingSince.UTC().Format(time.RFC3339),
-			ResourceID: serviceID, Event: store.AlertEmailServiceSuspended, ResourceName: name,
-			Detail: windowWords(n.Window), OccurredAt: at,
-		})
+		item := template
+		item.TenantID, item.Subject = tenantID, r.Subject
+		items = append(items, item)
 	}
 	if len(items) == 0 {
 		return nil
 	}
-	return n.Store.EnqueueAlertEmails(ctx, "", items, alertEmailWindow, time.Time{}, "")
+	return st.EnqueueAlertEmails(ctx, "", items, alertEmailWindow, time.Time{}, "")
+}
+
+// DiskUsageNotifier emails a workspace that a service disk crossed 80% of its
+// size, or dropped back below (w2/m255). Render sends the first at the failure
+// notification level and the second at the "all notifications" level.
+type DiskUsageNotifier struct {
+	Store  ServiceAlertStore
+	Policy ServiceNotificationPolicy
+}
+
+// NotifyDiskUsage enqueues the alert under the crossing fact's source key.
+func (n DiskUsageNotifier) NotifyDiskUsage(ctx context.Context, tenantID, serviceID, name string, high bool,
+	d store.DiskUsageDetails, sourceKey string, at time.Time) error {
+	event, wants := store.AlertEmailDiskUsageHigh, wantsFailureEmail
+	if !high {
+		event, wants = store.AlertEmailDiskUsageRecovered, wantsAllEmail
+	}
+	return enqueueServiceAlert(ctx, n.Store, n.Policy, tenantID, serviceID, wants, store.AlertEmailItem{
+		SourceKey: sourceKey, ResourceID: serviceID, Event: event, ResourceName: name,
+		Detail:     diskUsageDetail(d),
+		OccurredAt: at,
+	})
+}
+
+// wantsAllEmail admits a member only to "all notifications": a service whose
+// notificationsToSend is all. Render's workspace default is failure-only.
+func wantsAllEmail(policy string, _ store.AlertEmailRecipient) bool {
+	return policy == appv1alpha1.NotificationsToSendAll
+}
+
+// diskUsageDetail is the disk sentence a disk-usage email carries.
+func diskUsageDetail(d store.DiskUsageDetails) string {
+	return fmt.Sprintf("The disk %q mounted at %s is %.1f%% full (threshold %.0f%%).", d.DiskName, d.MountPath, d.UsagePercent, d.ThresholdPercent)
 }
 
 // windowWords renders a suspension window for the email ("24 hours").

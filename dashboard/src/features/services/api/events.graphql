@@ -61,6 +61,11 @@ query ServiceEvents(
       # beside reasonCode non_zero_exit / oom_killed.
       exitCode
       instanceId
+      # service_disk_usage_high / _recovered (w2/m255): Render's disk details.
+      diskName
+      mountPath
+      usagePercent
+      thresholdPercent
       fromCount
       toCount
       branchFrom

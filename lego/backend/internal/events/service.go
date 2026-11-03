@@ -196,6 +196,10 @@ const (
 	TypeCommitIgnored         = "commit_ignored"
 	TypeAutoscalingStarted    = "autoscaling_started"
 	TypeAutoscalingEnded      = "autoscaling_ended"
+	// A service disk crossing 80% of its size, and dropping back below
+	// (w2/m255), Render's spellings.
+	TypeServiceDiskUsageHigh      = "service_disk_usage_high"
+	TypeServiceDiskUsageRecovered = "service_disk_usage_recovered"
 	// Deploy-lifecycle facts (w7/m66): the build, pre-deploy, and one-off-job
 	// beats Render shows as distinct timeline entries. The *_ended types carry a
 	// details.status (succeeded|failed|canceled); observed via the control-plane
@@ -492,6 +496,8 @@ var (
 		// reported it (w4/m118, live 2026-09-19).
 		TypeCronJobRunStarted,
 		TypeCronJobRunEnded,
+		TypeServiceDiskUsageHigh,
+		TypeServiceDiskUsageRecovered,
 	}
 )
 
@@ -540,7 +546,8 @@ func pushDownOne(eventType string) (verbs, phases, factTypes []string, autoDeplo
 		TypeServerFailed, TypeServerHardwareFailure, TypeServerAvailable, TypeBranchChanged, TypeBranchDeleted,
 		TypeCommitIgnored, TypeAutoscalingStarted, TypeAutoscalingEnded,
 		TypeBuildStarted, TypeBuildEnded, TypePreDeployStarted, TypePreDeployEnded,
-		TypeJobRunEnded, TypeCronJobRunStarted, TypeCronJobRunEnded:
+		TypeJobRunEnded, TypeCronJobRunStarted, TypeCronJobRunEnded,
+		TypeServiceDiskUsageHigh, TypeServiceDiskUsageRecovered:
 		return nil, nil, []string{eventType}, store.AutoDeployFilterNone
 	}
 	for _, verb := range allVerbs {
@@ -791,6 +798,8 @@ type Details struct {
 	// postgres_cluster_leader_changed (w2/m171): the instance that became
 	// primary — Render's leaderId.
 	LeaderID string
+	// service_disk_usage_high / _recovered (w2/m255): Render's disk details.
+	DiskUsage *store.DiskUsageDetails
 }
 
 // Event is the neutral projection every adapter renders. Cursor is the opaque
@@ -1222,6 +1231,7 @@ func view(r store.ServiceEventRow, service string) Event {
 		}
 		ev.Details.ExitCode = r.FactExitCode
 		ev.Details.LeaderID = r.LeaderID
+		ev.Details.DiskUsage = r.DiskUsage
 		if ev.Type == TypeBuildEnded {
 			ev.Details.EndReason = buildEndReason(r)
 		}
