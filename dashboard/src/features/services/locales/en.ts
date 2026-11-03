@@ -2363,6 +2363,45 @@ const enServices: Record<string, TranslationEntry> = {
     message: "No matching branches. Enter a branch name.",
     description: "Empty state for the Update Source branch picker",
   },
+  "services.sourceTabBuildSource": {
+    message: "Build source",
+    description: "Update Source tab: build the service from a build source",
+  },
+  "services.sourceBuildSourceDescription": {
+    message:
+      "The build source this service deploys. Its build is shared with every service linked to it.",
+    description:
+      "Source card description for a service linked to a build source",
+  },
+  "services.sourceBuildSourceLabel": {
+    message: "Build source",
+    description: "Source card and Update Source: build source field label",
+  },
+  "services.sourceBuildSourceBuildsFrom": {
+    message: "Builds from",
+    description:
+      "Source card: the repository or image the linked build source builds from",
+  },
+  "services.sourceBuildSourceEmpty": {
+    message:
+      "This workspace has no build sources yet. Create one with the API or MCP, then link services to it here.",
+    description: "Update Source build source tab: empty state",
+  },
+  "services.sourceBuildSourceLoadError": {
+    message:
+      "Couldn't load this workspace's build sources. Close the dialog and try again.",
+    description: "Update Source build source tab: the list failed to load",
+  },
+  "services.sourceBuildSourcePlaceholder": {
+    message: "Select a build source",
+    description: "Update Source build source picker placeholder",
+  },
+  "services.sourceBuildSourceStartHint": {
+    message:
+      "This build source uses a native runtime, so the service needs its own start command.",
+    description:
+      "Update Source: why a native-runtime build source needs a start command",
+  },
   "services.sourceUpdateSave": {
     message: "Update source",
     description: "Save button in the Update Source dialog",

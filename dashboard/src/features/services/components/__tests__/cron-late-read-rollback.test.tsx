@@ -164,6 +164,7 @@ const link = new ApolloLink(
               repo: "",
               branch: "",
               imagePath: "docker.io/library/busybox:1.37.0",
+              buildSourceId: null,
               rootDir: "",
               runtime: server.runtime,
               builder: "auto",

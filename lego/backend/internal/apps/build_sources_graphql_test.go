@@ -24,6 +24,8 @@ import (
 
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+
+	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // The GraphQL build source verbs reach the same service verbs as REST: a
@@ -127,5 +129,40 @@ func TestBuildSourceMCPTools(t *testing.T) {
 	}
 	if got, failed := call("delete_build_source", map[string]any{"buildSourceId": id}); failed || got["deleted"] != true {
 		t.Fatalf("delete_build_source = %+v (error %v)", got, failed)
+	}
+}
+
+// GraphQL linkBuildSource is REST's PATCH buildSourceId: a native source
+// needs a start command, and the service then reports its buildSourceId.
+func TestBuildSourceGraphQLLink(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	source, err := svc.CreateBuildSource(ctx, monorepoSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	web, err := svc.Create(ctx, CreateRequest{OwnerID: "tea-a", Name: "web", Type: appv1alpha1.TypeWebService, Image: "nginx:1"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{
+		Query:    graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
+		Mutation: graphql.NewObject(graphql.ObjectConfig{Name: "Mutation", Fields: svc.GraphQLMutation()}),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	link := func(args string) *graphql.Result {
+		return graphql.Do(graphql.Params{Schema: schema, Context: ctx, RequestString: `mutation { linkBuildSource(serviceId:"` + web.ID + `", buildSourceId:"` + source.ID + `"` + args + `) { buildSourceId repo imagePath } }`})
+	}
+	if res := link(""); !res.HasErrors() || !strings.Contains(res.Errors[0].Message, "startCommand") {
+		t.Fatalf("a native source without a start command = %+v, want REST's refusal", res.Errors)
+	}
+	res := link(`, startCommand:"node server.js"`)
+	if res.HasErrors() {
+		t.Fatal(res.Errors)
+	}
+	got := res.Data.(map[string]any)["linkBuildSource"].(map[string]any)
+	if got["buildSourceId"] != source.ID || got["imagePath"] != "" && got["imagePath"] != nil {
+		t.Fatalf("linked service = %+v, want buildSourceId %s and no image of its own", got, source.ID)
 	}
 }

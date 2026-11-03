@@ -20,6 +20,7 @@ mutation SetImage(
     repo
     branch
     imagePath
+    buildSourceId
     registryCredentialId
   }
 }

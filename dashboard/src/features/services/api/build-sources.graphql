@@ -1,0 +1,58 @@
+# Build sources (w2/m254, ADR097); siblings: REST /v1/build-sources and MCP.
+fragment BuildSourceFields on BuildSource {
+  id
+  name
+  git {
+    repoUrl
+    runtime
+  }
+  image {
+    imageUrl
+  }
+}
+
+# The picker lists up to 100 sources (Render's page cap).
+query BuildSources($ownerId: String) {
+  buildSources(ownerId: $ownerId, limit: 100) {
+    ...BuildSourceFields
+  }
+}
+
+# The one source a linked service's Source card names.
+query BuildSource($id: String!) {
+  buildSource(id: $id) {
+    ...BuildSourceFields
+  }
+}
+
+mutation LinkBuildSource(
+  $serviceId: String!
+  $buildSourceId: String!
+  $startCommand: String
+) {
+  linkBuildSource(
+    serviceId: $serviceId
+    buildSourceId: $buildSourceId
+    startCommand: $startCommand
+  ) {
+    # Linking clears the service's own source and build settings.
+    id
+    repo
+    branch
+    imagePath
+    buildSourceId
+    startCommand
+    command
+    runtime
+    builder
+    buildCommand
+    rootDir
+    dockerfilePath
+    dockerContext
+    registryCredentialId
+    buildFilter {
+      paths
+      ignoredPaths
+    }
+  }
+}

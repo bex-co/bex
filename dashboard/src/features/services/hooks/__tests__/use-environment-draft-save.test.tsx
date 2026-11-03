@@ -43,6 +43,7 @@ function service(undeployedChanges: boolean): ServerQuery["server"] {
     repo: null,
     branch: null,
     imagePath: null,
+    buildSourceId: null,
     rootDir: null,
     runtime: null,
     builder: null,

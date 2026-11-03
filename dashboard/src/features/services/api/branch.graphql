@@ -26,6 +26,7 @@ mutation SetRepo(
     repo
     branch
     imagePath
+    buildSourceId
     registryCredentialId
     phase
   }

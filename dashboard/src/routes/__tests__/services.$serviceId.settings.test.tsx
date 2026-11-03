@@ -28,9 +28,8 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } = await import(
-    "@/test/mocks/resource-actions"
-  );
+  const { mockAllowedResourceActions } =
+    await import("@/test/mocks/resource-actions");
   return mockAllowedResourceActions("app");
 });
 
@@ -65,6 +64,13 @@ vi.mock("@apollo/client/react", async (importOriginal) => {
   };
 });
 
+vi.mock("@/features/services/hooks/use-build-sources", () => ({
+  useBuildSources: () => ({ sources: [], loading: false }),
+  useBuildSource: () => ({ source: null, loading: false }),
+}));
+vi.mock("@/features/services/hooks/use-link-build-source", () => ({
+  useLinkBuildSource: () => ({ linkBuildSource: vi.fn(), busy: false }),
+}));
 vi.mock("@/features/services/hooks/use-custom-domains", () => ({
   useCustomDomains: () => ({
     domains: [],

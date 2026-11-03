@@ -425,6 +425,9 @@ var serviceGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// when nothing does (w4/m125). A bex extension — Render has no field
 		// for it because Render does not enforce Blueprint ownership.
 		"blueprintId": gqlutil.OptionalStrField(func(a AppView) any { return a.BlueprintID }),
+		// buildSourceId: the build source this service builds from (w2/m254),
+		// null for a service with its own repo or image.
+		"buildSourceId": gqlutil.OptionalStrField(func(a AppView) any { return a.BuildSourceID }),
 		// rootDir is the subdirectory of the repo this App builds from (Render's
 		// Root Directory setting, monorepo support); empty is the repo root.
 		"rootDir": gqlutil.StrField(func(a AppView) any { return a.RootDir }),

@@ -202,6 +202,10 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             branch={service.branch ?? null}
             imagePath={service.imagePath ?? null}
             registryCredentialId={service.registryCredentialId ?? null}
+            buildSourceId={service.buildSourceId ?? null}
+            startCommand={
+              (cron ? service.command : service.startCommand) ?? null
+            }
           />
         );
       case "runtime":

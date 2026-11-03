@@ -737,6 +737,12 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 	if cron {
 		existing = a.Spec.Command
 	}
+	// Linking repoints what the service runs: the same protected-environment
+	// rule as a repo or image change (w4/m126, w8/187), checked first as
+	// setSource does.
+	if err := s.requireUnprotected(ctx, a, "repoint"); err != nil {
+		return AppView{}, err
+	}
 	link, start, err := s.buildSourceLink(ctx, a.Labels[core.LabelTenant], buildSourceID, a.Spec.Type, startCommand, existing)
 	if err != nil {
 		return AppView{}, err
