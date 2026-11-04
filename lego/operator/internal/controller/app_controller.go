@@ -138,6 +138,10 @@ const (
 	// reasonPublishFailed is a static site's publication failure: on Ready for a
 	// first publish, on ConditionRollout over a served release (w4/m155).
 	reasonPublishFailed = "PublishFailed"
+
+	// reasonMiddlewareFailed is a Traefik middleware (IP allow-list, edge
+	// compression, websocket meter) the Ingress needs but could not apply.
+	reasonMiddlewareFailed = "MiddlewareFailed"
 )
 
 // generationOrDeletionPredicate adds App's explicit registry-credential rotation
@@ -3214,15 +3218,15 @@ func (r *AppReconciler) writeFirstRoute(ctx context.Context, app *appv1alpha1.Ap
 func (r *AppReconciler) reconcileIngressWithMiddlewares(ctx context.Context, app *appv1alpha1.App, hosts []string, svc string, port int32) (string, error) {
 	mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
 	if err != nil {
-		return "MiddlewareFailed", err
+		return reasonMiddlewareFailed, err
 	}
 	compression, err := r.reconcileEdgeCompressionMiddlewares(ctx, app, len(hosts) > 0)
 	if err != nil {
-		return "MiddlewareFailed", err
+		return reasonMiddlewareFailed, err
 	}
 	wsMeter, err := r.reconcileWebsocketMeterMiddleware(ctx, app, len(hosts) > 0)
 	if err != nil {
-		return "MiddlewareFailed", err
+		return reasonMiddlewareFailed, err
 	}
 	middlewareNames := append(mwNames, compression...)
 	if wsMeter != "" {
@@ -4595,10 +4599,10 @@ func (r *AppReconciler) convergeStaticRouting(ctx context.Context, app *appv1alp
 	}
 	mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
 	if err != nil {
-		return "MiddlewareFailed", err
+		return reasonMiddlewareFailed, err
 	}
 	if _, err := r.reconcileWebsocketMeterMiddleware(ctx, app, false); err != nil {
-		return "MiddlewareFailed", err
+		return reasonMiddlewareFailed, err
 	}
 	return r.reconcileStaticIngress(ctx, app, hosts, mwNames)
 }
