@@ -1,0 +1,15 @@
+{
+  "builder": "bex-nq-ec786babe99348d98d6dd195",
+  "case": "node-static",
+  "common_base": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "container_id": "74793067d27c6e9c46a9bdbbc37837265459e08eb011a48dbe70ae917aa54df0",
+  "image_config_id": "sha256:ac9d1adc7919c1617de3b617c5d7d549c586bdc84b5d0c1f9dc3180dfbe45590",
+  "image_platform": "linux/amd64",
+  "network": "none",
+  "owner": "bex-nq-ec786babe99348d98d6dd195",
+  "runtime_command_executed": false,
+  "runtime_environment": null,
+  "scope": "local generated image; recorded qualification overlays and optional generated exact-default SPDX; no hosted, Kubernetes pre-deploy or publication claim",
+  "static_artifacts_extracted": true,
+  "test_prerequisite_overlay": false
+}
