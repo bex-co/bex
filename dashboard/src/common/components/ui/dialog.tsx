@@ -7,10 +7,13 @@ import { XIcon } from "lucide-react";
 import { cn } from "@/common/lib/utils/utils.ts";
 import { useTranslations } from "@/common/hooks/use-translations";
 
-// lastOutsideFocus tracks the last element focused outside any dialog. A
-// dialog's content mounts only while open and Radix moves focus inside it, so
-// the opener has to be remembered while the dialog is closed.
-let lastFocusedOutside: HTMLElement | null = null;
+// recentOutsideFocus tracks the last few elements focused outside any dialog.
+// A dialog's content mounts only while open and Radix moves focus inside it, so
+// the opener has to be remembered while the dialog is closed. More than one is
+// kept because a dialog opened from a menu item (which unmounts with its menu)
+// should return to the menu's trigger, focused just before the item (w4/463).
+const RECENT_OUTSIDE_FOCUS = 8;
+const recentFocusedOutside: HTMLElement[] = [];
 if (typeof document !== "undefined") {
   document.addEventListener("focusin", (event) => {
     const target = event.target;
@@ -19,12 +22,17 @@ if (typeof document !== "undefined") {
       target !== document.body &&
       !target.closest('[role="dialog"], [role="alertdialog"]')
     ) {
-      lastFocusedOutside = target;
+      const at = recentFocusedOutside.indexOf(target);
+      if (at >= 0) recentFocusedOutside.splice(at, 1);
+      recentFocusedOutside.push(target);
+      if (recentFocusedOutside.length > RECENT_OUTSIDE_FOCUS) {
+        recentFocusedOutside.shift();
+      }
     }
   });
 }
-function lastOutsideFocus(): HTMLElement | null {
-  return lastFocusedOutside;
+function recentOutsideFocus(): HTMLElement[] {
+  return [...recentFocusedOutside];
 }
 
 function Dialog({
@@ -67,6 +75,19 @@ function DialogOverlay({
   );
 }
 
+// OpenerSnapshot runs when the dialog's content mounts, i.e. when it opens, and
+// records the elements focused outside any dialog at that moment.
+function OpenerSnapshot({
+  intoRef,
+}: {
+  intoRef: React.RefObject<HTMLElement[]>;
+}) {
+  React.useLayoutEffect(() => {
+    intoRef.current = recentOutsideFocus();
+  }, [intoRef]);
+  return null;
+}
+
 function DialogContent({
   className,
   children,
@@ -80,19 +101,21 @@ function DialogContent({
   const { t } = useTranslations();
   // The control that opened the dialog: most callers control `open` and
   // render no Trigger, so Radix has nothing to return focus to (w4/459).
-  const openerRef = React.useRef<HTMLElement | null>(null);
-  const handleOpenAutoFocus = (event: Event) => {
-    openerRef.current = lastOutsideFocus();
-    onOpenAutoFocus?.(event);
-  };
+  // Snapshotted when the content mounts (see OpenerSnapshot), not in Radix's
+  // open-autofocus event: that event is skipped when a child with `autoFocus`
+  // already holds focus (w4/463).
+  const openersRef = React.useRef<HTMLElement[]>([]);
   const handleCloseAutoFocus = (event: Event) => {
     onCloseAutoFocus?.(event);
     if (event.defaultPrevented) return;
-    // If the action removed the opener (create then navigate, delete), leave
-    // Radix's default alone.
-    const opener = openerRef.current;
-    openerRef.current = null;
-    if (!opener?.isConnected) return;
+    // The latest opener still in the page: a menu item that unmounted with its
+    // menu falls back to the menu's trigger. If the action removed every
+    // candidate (create then navigate, delete), leave Radix's default alone.
+    const opener = [...openersRef.current]
+      .reverse()
+      .find((el) => el.isConnected);
+    openersRef.current = [];
+    if (!opener) return;
     event.preventDefault();
     opener.focus();
   };
@@ -105,10 +128,11 @@ function DialogContent({
           "bg-background data-[state=open]:animate-in data-[state=closed]:animate-out data-[state=closed]:fade-out-0 data-[state=open]:fade-in-0 data-[state=closed]:zoom-out-95 data-[state=open]:zoom-in-95 fixed top-[50%] left-[50%] z-50 grid w-full max-w-[calc(100%-2rem)] max-h-[90vh] translate-x-[-50%] translate-y-[-50%] gap-4 rounded-lg border p-6 shadow-lg duration-200 overflow-y-auto sm:max-w-lg",
           className,
         )}
-        onOpenAutoFocus={handleOpenAutoFocus}
+        onOpenAutoFocus={onOpenAutoFocus}
         onCloseAutoFocus={handleCloseAutoFocus}
         {...props}
       >
+        <OpenerSnapshot intoRef={openersRef} />
         {children}
         {showCloseButton && (
           <DialogPrimitive.Close

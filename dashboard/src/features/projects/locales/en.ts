@@ -321,7 +321,13 @@ const enProjects: Record<string, TranslationEntry> = {
       "Its environments and their configuration are deleted. Its databases and key value stores become unassigned, not deleted.",
     description: "Delete-project confirmation dialog body",
   },
-  "projects.deleteConfirmBodyServices": {
+  "projects.deleteConfirmBodyServices_one": {
+    message:
+      "Deleting this project deletes all of its environments and its one service. Its databases and key value stores become unassigned, not deleted. This action cannot be undone.",
+    description:
+      "Delete-project confirmation body when services would be deleted (w4/m264, Render parity)",
+  },
+  "projects.deleteConfirmBodyServices_other": {
     message:
       "Deleting this project deletes all of its environments and its {count} services. Its databases and key value stores become unassigned, not deleted. This action cannot be undone.",
     description:
