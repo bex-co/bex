@@ -213,7 +213,7 @@ DELETE /v1/agent-attachments/{id}        → 204 (unbound, or by an admin on a t
 | File size | 25 MiB | `413 AGENT_ATTACHMENT_TOO_LARGE` |
 | Per turn | 10 | `400 AGENT_ATTACHMENT_LIMIT` |
 | Per session (inputs + outputs) | 50 files, 250 MiB | `409 AGENT_SESSION_ATTACHMENT_QUOTA` |
-| MCP inline upload (D11) | 4 MiB decoded | `413` |
+| MCP inline upload (D11) | 1 MiB decoded (w9/m171 note) | `413` |
 | Image sent as an ACP `image` block | 5 MiB | sent as a link only |
 | Unbound lifetime | 24 h | swept |
 | Upload rate | the caller's existing write budget, each upload counting as one write | `429` |
@@ -260,7 +260,7 @@ One core (`internal/agentsessions/attachments.go`), thin adapters (ADR006):
 
 | Verb | REST | GraphQL | MCP (`/mcp` and `/mcp/cloud-agents`) |
 | --- | --- | --- | --- |
-| Upload | `POST /v1/agent-attachments` (raw body) | none: no `Upload` scalar, clients use REST | `upload_agent_attachment {name, contentBase64, workspaceId}` ≤ 4 MiB |
+| Upload | `POST /v1/agent-attachments` (raw body) | none: no `Upload` scalar, clients use REST | `upload_agent_attachment {name, contentBase64, workspaceId}` ≤ 1 MiB |
 | Read one | `GET /v1/agent-attachments/{id}` | `agentAttachment(id)` with `downloadUrl` | `get_agent_attachment {id}` (see below) |
 | List | `GET /v1/agent-sessions/{id}/attachments` | `AgentSession.attachments(direction, turn)` | `list_agent_session_attachments` |
 | Content | `GET …/{id}/content` → 302 | `downloadUrl` field (presigned, 15 min) | included in `get_agent_attachment` |
@@ -307,7 +307,7 @@ Each phase ships end to end on its surfaces. Phase 1 alone already lets REST cal
 ## Alternatives considered
 
 - **Presigned PUT straight to the bucket.** It keeps bytes off bex-api, but needs bucket CORS, exposes the storage host to clients, cannot enforce type before the object exists, and needs a second "complete" call that clients can forget. Rejected for v1. It can return behind the same API if upload volume makes proxying expensive.
-- **Base64 in the GraphQL mutation or REST JSON.** That is 33% overhead, runs into the 2 MiB body limit, and buffers the whole file. Kept only for MCP's ≤ 4 MiB inline upload, where the protocol has no streaming file transfer.
+- **Base64 in the GraphQL mutation or REST JSON.** That is 33% overhead, runs into the 2 MiB body limit, and buffers the whole file. Kept only for MCP's ≤ 1 MiB inline upload, where the protocol has no streaming file transfer.
 - **Store bytes in Postgres.** This was rejected in ADR051 for exactly this size class. It bloats backups and the transcript budget.
 - **Copy only the current turn's files.** It breaks references to earlier attachments once the sandbox is replaced (ADR059).
 - **Write inputs into `/workspace`.** One `git add -A` would put a user's log or screenshot in a PR. `/attachments` outside the repo removes the possibility.
@@ -368,3 +368,11 @@ Where phase 3 differs from D6, D10 and D11, and why:
 - **Files open in a header sheet, not a tab.** The session detail page is one full-page conversation with no tabs (ADR047 D9, w5/m65), so the session header gains a **Files** button that opens a right-hand sheet. The sheet lists inputs and outputs oldest first, in keyset pages. Its loading state previews the same header and fixed-height rows. The list carries no URLs: a click signs a fresh one (`useFreshDownload`, shared with the conversation's file cards).
 - **Shared files are drawn from the stored attachment.** A tool call contributes only the `att-` id from its result. The card's name, type and size come from the stored attachment, shown only when it is an output of this session, so an agent cannot dress up a card. Cards render after the activity group that made them, so a share never splits a run of tool calls.
 - **`outcome.files` waits for ADR094's `outcome` block.** The `outcome` block (ADR094 D7) is not on main yet. Until it lands, an agent's outputs for a turn are listed with `GET /v1/agent-sessions/{id}/attachments?direction=output&turn=N`, GraphQL `agentSessionAttachments(direction: "output", turn: N)`, or MCP `list_agent_session_attachments`.
+
+## Implementation notes (w9/m171, phase 4)
+
+- **The MCP upload cap is 1 MiB decoded, not 4 MiB.** The production live check (2026-11-04) found the 4 MiB cap unreachable: `/mcp` sits behind the global request-body limit (`BEX_MAX_BODY_BYTES`, 2 MiB by default), and base64 adds a third, so a 1.6 MiB file failed with a transport `413 request body exceeds 2097152 bytes` before the tool ran.
+  - 1 MiB decoded is about 1.33 MiB encoded, which leaves room for the JSON-RPC envelope. So a caller over the cap gets the tool's own `AGENT_ATTACHMENT_TOO_LARGE`, not a transport error.
+  - Raising the body limit for all of `/mcp` was rejected: it would widen every tool's request size to serve one upload path.
+  - REST (`POST /v1/agent-attachments`) still takes up to 25 MiB, and the tool description says so; the description is built from the constants.
+  - `TestMCPUploadCapFitsTheMCPBodyLimit` pins that an at-cap request with the longest name fits under the default body limit.

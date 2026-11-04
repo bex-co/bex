@@ -3460,7 +3460,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Upload a file (a screenshot, log, dataset) for a cloud coding agent: pass its name and its bytes as standard base64, at most 4 MiB decoded (use REST POST /v1/agent-attachments for up to 25 MiB). Returns an unattached attachment; pass its id in attachmentIds to create_agent_session or send_agent_session_message within 24 hours. The type is detected from the bytes.",
+    "description": "Upload a file (a screenshot, log, dataset) for a cloud coding agent: pass its name and its bytes as standard base64, at most 1 MiB decoded (use REST POST /v1/agent-attachments for up to 25 MiB). Returns an unattached attachment; pass its id in attachmentIds to create_agent_session or send_agent_session_message within 24 hours. The type is detected from the bytes.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {

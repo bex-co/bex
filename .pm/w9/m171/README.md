@@ -11,7 +11,7 @@
 | t003 | Render parity (Devin reference) — **DONE** | 25m | t002 |
 | t004 | Simplify — **DONE** | 15m | t003 |
 | t005 | Test coverage — **DONE** | 45m | t003, t004 |
-| t007 | Align the MCP upload limit with the /mcp request body limit | 20m | t005 |
+| t007 | Align the MCP upload limit with the /mcp request body limit — **DONE** | 20m | t005 |
 | t006 | Closeout | 10m | t005 |
 
 ## Definition of done

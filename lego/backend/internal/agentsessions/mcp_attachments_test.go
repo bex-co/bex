@@ -187,3 +187,24 @@ func TestMCPUnboundUploadsBelongToTheirUploader(t *testing.T) {
 		t.Fatal("a deleted upload is still readable")
 	}
 }
+
+// An upload at the MCP cap, with the longest name, must fit in one /mcp
+// JSON-RPC request under the default BEX_MAX_BODY_BYTES (2 MiB,
+// cmd/api/config.go), so a caller at the cap reaches the tool rather than a
+// transport 413.
+func TestMCPUploadCapFitsTheMCPBodyLimit(t *testing.T) {
+	const defaultMaxBodyBytes = 2097152
+	body, err := json.Marshal(map[string]any{
+		"jsonrpc": "2.0", "id": 1, "method": "tools/call",
+		"params": map[string]any{"name": "upload_agent_attachment", "arguments": map[string]any{
+			"ownerId": "tea-" + strings.Repeat("a", 20), "name": strings.Repeat("n", 255),
+			"contentBase64": base64.StdEncoding.EncodeToString(make([]byte, maxMCPUploadBytes)),
+		}},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(body) > defaultMaxBodyBytes {
+		t.Fatalf("an at-cap upload request is %d bytes, over the %d-byte /mcp body limit", len(body), defaultMaxBodyBytes)
+	}
+}
