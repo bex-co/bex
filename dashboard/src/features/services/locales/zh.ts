@@ -3324,7 +3324,7 @@ const zhServices: Record<string, TranslationEntry> = {
   },
   "services.createImagePortHint": {
     message:
-      "如果镜像固定监听某个端口（例如 :80），请将下方端口设为该值——bex 会把流量路由到该端口并以 $PORT 注入。",
+      "bex 会使用镜像声明（EXPOSE）的端口。仅当镜像监听的端口未声明时，才需要在下方设置端口。",
     description:
       "Create-wizard Existing Image tab hint: set the port below to the one the image listens on (w9/011, w6/m149)",
   },
