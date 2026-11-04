@@ -258,8 +258,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Create-Key-Value name input placeholder",
   },
   "keyvalue.fieldNameError": {
-    message:
-      "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
+    message: "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
     description: "Create-Key-Value name validation message",
   },
   "keyvalue.fieldPlan": {
@@ -494,7 +493,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planDescription": {
     message:
-      "更改实例规格。操作员将在下次协调时调整资源——这是保留数据的滚动更新。",
+      "更改实例规格。更改会重启存储，期间约一到两分钟不可用。数据是否保留取决于持久化模式；持久化为“关闭”的存储会丢失所有键。",
     description: "Key Value detail plan-picker card description",
   },
   "keyvalue.planPickerSave": {
@@ -511,8 +510,13 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planPickerConfirmBody": {
     message:
-      "操作员将在下次协调时调整存储的计算资源，滚动重启期间连接会短暂中断。",
+      "存储将重启以应用新的实例规格，期间约一到两分钟不可用，连接会中断。",
     description: "Key Value plan-picker confirm dialog body",
+  },
+  "keyvalue.planPickerConfirmDataLoss": {
+    message: "持久化为“关闭”，重启会删除 {name} 中的所有键，且无法撤销。",
+    description:
+      "Plan-change confirm: a Persistence Off store loses all data on the restart (w4/m263)",
   },
   "keyvalue.planPickerConfirmPrice": {
     message: "新方案每月 ${price}。",
@@ -718,8 +722,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     description: "Toast when a Key Value rename collides with another name",
   },
   "keyvalue.nameInvalid": {
-    message:
-      "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
+    message: "请输入最多 100 个字符的名称，不能包含换行或控制字符。",
     description: "Key Value rename validation message",
   },
   // --- Tab navigation ---

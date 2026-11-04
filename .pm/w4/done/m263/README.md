@@ -1,6 +1,6 @@
 # w4 · m263 — A Key Value plan change warns that it restarts the store, and that a Persistence Off store loses its data, as Render does
 
-**Worker:** worker4 **Goal:** an owner who changes a Key Value's instance type is told first that the store restarts and is unavailable for a minute or two, and that a Persistence Off store loses every key. The dashboard stops promising "a rolling update that preserves data". **Status:** todo
+**Worker:** worker4 **Goal:** an owner who changes a Key Value's instance type is told first that the store restarts and is unavailable for a minute or two, and that a Persistence Off store loses every key. The dashboard stops promising "a rolling update that preserves data". **Status:** done 2026-11-04 (code, tests and copy shipped; the live production replay of the DoD follows the release that pins this build)
 
 ## Tasks (in order)
 
