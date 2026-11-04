@@ -129,10 +129,13 @@ run_case "generated agent digest only (excluded)" 1 advance lego/operator/config
   "  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:$(printf 'd%.0s' {1..64})"
 run_case "CLI plus generated agent digest only (excluded)" 1 advance_with_cli lego/operator/config/api/deployment.yaml \
   "  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:$(printf 'd%.0s' {1..64})"
-run_case "agent manifest drift beyond digest" 0 advance lego/operator/config/api/deployment.yaml \
+run_case "agent manifest drift beyond digest (w4/465)" 4 advance lego/operator/config/api/deployment.yaml \
   $'replicas: 2\n  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:'"$(printf 'd%.0s' {1..64})"
-run_case "CLI plus substantive agent manifest drift" 0 advance_with_cli lego/operator/config/api/deployment.yaml \
+run_case "CLI plus substantive agent manifest drift (w4/465)" 4 advance_with_cli lego/operator/config/api/deployment.yaml \
   $'replicas: 2\n  value: ghcr.io/bex-co/bex-agent-sandbox@sha256:'"$(printf 'd%.0s' {1..64})"
+# the generated field itself reshaped (a different image name) stays exit 0
+run_case "agent image field reshaped" 0 advance lego/operator/config/api/deployment.yaml \
+  "  value: ghcr.io/bex-co/other-image@sha256:$(printf 'd%.0s' {1..64})"
 # a non-deploy-triggering change (docs) → exit 1
 run_case "non-triggering (docs)" 1 advance docs/notes.md "hello"
 
