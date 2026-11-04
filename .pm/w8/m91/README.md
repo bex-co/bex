@@ -460,3 +460,9 @@ Run #97 (`3a15c2a`) passed but went stale before it was bound: w2/m254 and w5/17
 ## Required AMD64 family cases in progress — 2026-11-04 (loopx session)
 
 [The families packet](evidence/common-d3-families-20261104/README.md) retains every dispatch made against the run-100 candidate. So far native-init/all-launches, go-rust/go and ruby/ruby40 have passed. Fifteen early attempts failed on host-network starvation: this session dispatched too many cases at once on the single shared runner host. They are retained as infrastructure failures, not verdicts, and their cases are being re-dispatched one at a time. Remaining required cases, adoption and the original 28 hosted cases stay open.
+
+## Node backport lines qualify and adopt the published donor route — 2026-11-04 (loopx session)
+
+Run [41860429319](evidence/common-d3-families-20261104/README.md) (`node/node-20`, empty artifact map) was killed while it was still compiling Node 20.20.2 from source. The 392-second base pull plus the compile under AMD64 emulation on the ARM-only runner host did not fit the test's 45-minute build context. The single-Mac fleet is a hard constraint (`DO_NOT_DO.md` #RUNNER-HOSTS). Render does not compile Node on each build either: its native environment installs prebuilt runtime versions.
+
+**Decision (Render-parity rule, not a user gate):** production adopts the published, reviewed Node 14/16/18/20 and 14.21.2 runtime trees in `nativeRuntimeArtifacts`, the existing donor map in `commonNodeQualificationArtifacts`. The required `node/node-14|16|18|20|exact14212|ruby-node-exact14212` cases are therefore qualified through the existing `node-donors` profile. The node-addon common routes now use the same donor map. The source-fallback attempts stay recorded as dated evidence; they are not the production route. This changes a qualification input, so the run-100 baseline is superseded: a new utility requalification follows, and every required family case is rerun on it.

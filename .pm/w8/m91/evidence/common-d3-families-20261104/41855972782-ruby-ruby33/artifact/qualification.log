@@ -1,0 +1,8 @@
+=== RUN   TestCommonRubyGeneratedImages
+    nativecommon_ruby_test.go:111: Ruby qualification evidence: /home/docker/actions-runner/_work/_temp/bex-native-qualification-cwfp0hyx/generated/native-ruby-qualification-2294810782
+=== RUN   TestCommonRubyGeneratedImages/ruby33
+    nativecommon_ruby_test.go:117: ruby33 passed actual generated network-off commands; image sha256:0e8f53482d02ef5c2f6b8f9408017b7b99a75a255241f5e06ba4a18352262313
+--- PASS: TestCommonRubyGeneratedImages (839.64s)
+    --- PASS: TestCommonRubyGeneratedImages/ruby33 (839.63s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	839.644s

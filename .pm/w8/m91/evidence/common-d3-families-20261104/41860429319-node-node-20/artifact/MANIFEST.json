@@ -1,0 +1,75 @@
+{
+  "files": [
+    {
+      "path": "bootstrap-1.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bootstrap-1.stdout.log",
+      "bytes": 1352,
+      "sha256": "fb55c62dfb78009c9e2987a8a439b039949a4cc62c89598759d343df1bdb17af"
+    },
+    {
+      "path": "bootstrap.json",
+      "bytes": 2641,
+      "sha256": "e15739a08ac4e739fcb4c6331f9f37d37394f5fc7453e62ae40eebc74cef7d9c"
+    },
+    {
+      "path": "capacity-after-tests.json",
+      "bytes": 1317,
+      "sha256": "f7f47ccedb58cf681d93ce1c93ea946350252b10516be0b891ecb7f4d34ce7fe"
+    },
+    {
+      "path": "capacity-before-builder.json",
+      "bytes": 1320,
+      "sha256": "f96bbe0c688d1f9c4ce65704004851f9e25c48a0eb5a752f28899e5afde9dfb1"
+    },
+    {
+      "path": "cleanup.json",
+      "bytes": 494,
+      "sha256": "6546e155614b0c03093b324ca9fda36078545ef01428a09b91273c7f35adde3c"
+    },
+    {
+      "path": "generated/native-common-node-4029897956/node-20/Dockerfile",
+      "bytes": 4073,
+      "sha256": "95ce9a430942c7210ad0300e160afa3a634301cfb3e0447671ea0e1cce851cbc"
+    },
+    {
+      "path": "generated/native-common-node-4029897956/node-20/Dockerfile.canonical",
+      "bytes": 3980,
+      "sha256": "31b0bca32e8ff0734422a07872c81ed2510ee652ca406996591a52333007d979"
+    },
+    {
+      "path": "generated/native-common-node-4029897956/node-20/build.log",
+      "bytes": 121149,
+      "sha256": "ce733e9b84590e335a148e13ca0aedf7cf86738b9af359d03c0275a167e49a99"
+    },
+    {
+      "path": "generated/native-common-node-4029897956/node-20/expected-node.json",
+      "bytes": 310,
+      "sha256": "384b0e8ba7688af9d7fd751bdbd0be8cbf1c8b112607f049c7cbc41926babc6e"
+    },
+    {
+      "path": "generated/native-common-node-4029897956/node-20/source-custody.json",
+      "bytes": 1778,
+      "sha256": "8b39e89bbce9d408855cfb9eb28c27623aa6443a866d6088034a4cb36d6ef69a"
+    },
+    {
+      "path": "inputs.json",
+      "bytes": 2316,
+      "sha256": "74da2b70d431f8a77a0c16c63d74feb477478f4cf7242acbeb86bb9e72142703"
+    },
+    {
+      "path": "qualification-source.json",
+      "bytes": 75812,
+      "sha256": "3514fd0c79814db9af68af4397173365f0029ade9aa1856dd74ce39dd9b870a6"
+    },
+    {
+      "path": "qualification.log",
+      "bytes": 135512,
+      "sha256": "8d44c266771e66f0c3cd7398322d59f08d10b6223244a12c59826dba8b4b1301"
+    }
+  ],
+  "scope": "actual retained evidence, including failures; not an acceptance assertion"
+}

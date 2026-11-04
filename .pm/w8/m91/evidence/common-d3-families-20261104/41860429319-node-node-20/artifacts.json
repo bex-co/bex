@@ -1,0 +1,22 @@
+[
+ {
+  "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13343647040/zip",
+  "created_at": "2026-11-04T16:37:00Z",
+  "digest": "sha256:3d7a7edbd395f9ea749bdd3aee091d7ac4f322072f64d4d8e5b6e41e62355ac7",
+  "expired": false,
+  "expires_at": "2026-12-04T16:36:57Z",
+  "id": 13343647040,
+  "name": "common-pilot-node-node-20-reviewed-candidate-0958ce62f19dd97eb05d2040ec0b2147b25645dd1ee58932f73d821a243acf5b-amd64-1",
+  "node_id": "MDg6QXJ0aWZhY3QxMzM0MzY0NzA0MA==",
+  "size_in_bytes": 52235,
+  "updated_at": "2026-11-04T16:37:00Z",
+  "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13343647040",
+  "workflow_run": {
+   "head_branch": "main",
+   "head_repository_id": 793852040,
+   "head_sha": "c9b578823bc999475b863026ab694015922adbb4",
+   "id": 41860429319,
+   "repository_id": 793852040
+  }
+ }
+]
