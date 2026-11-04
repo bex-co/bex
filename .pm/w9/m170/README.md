@@ -1,6 +1,6 @@
 # w9 · m170 — ADR095 phase 3 — agent-shared output files and the Files tab
 
-**Worker:** worker9 **Goal:** the agent can share files back (`share_file`) and users download them from the conversation, the Files tab or the API. **Status:** blocked — t001–t006 done; t007 live check waits for the production attachments bucket (see Blocked)
+**Worker:** worker9 **Goal:** the agent can share files back (`share_file`) and users download them from the conversation, the Files tab or the API. **Status:** todo — t001–t006 done; t007 live share-a-CSV check once m168 has provisioned the bucket
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity (Devin reference) — **DONE** | 25m | t002, t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 45m | t004, t005 |
-| t007 | Closeout — **BLOCKED** (production bucket) | 10m | t006 |
+| t007 | Closeout | 10m | t006 |
 
 ## Definition of done
 
@@ -67,3 +67,20 @@ t001–t006 are done.
 The live DoD (a session writes a CSV, shares it, and it downloads from the dashboard) needs the production attachments bucket, the same user action as [m168](../m168/README.md).
 
 **To clear:** create the bucket and deploy, then `/loopx w9` runs the check.
+
+## Unblock decision, 2026-11-04 (user decision D1, via `/unblock w9`)
+
+- **Covers:** w9/m168, m169, m170, m171 (shared gate).
+- **Decision.** The user authorizes the worker to create the production attachments bucket and its IAM user. The worker runs the existing idempotent script from the repo root:
+
+  ```sh
+  BEX_ENV_FILE=../bex9.env bash scripts/agent-attachments-s3-credentials.sh provision
+  BEX_ENV_FILE=../bex9.env bash scripts/agent-attachments-s3-credentials.sh install
+  ```
+
+  - The root keys are `TF_STATE_ACCESS_KEY` / `TF_STATE_SECRET_KEY`, present by name in `../bex9.env`; never print their values.
+  - The script uses the `hetzner-prod` context.
+- **Reference.** Devin parity: upload, attach and returned files must work for real users.
+- **Done signal.** `bex-system` has the attachments Secret, a deploy rolls bex-api with `BEX_AGENT_ATTACHMENTS_S3_*`, and `GET /v1/agent-sessions/capabilities` reports `attachments.enabled: true`.
+- **Worker next step.** m168 runs the provisioning first. m169–m171 wait for that signal, then run their live checks as written in their definitions of done, signing in as the QA user (`scripts/qa-login.sh`).
+- **If provisioning fails** (keys missing or rejected, Wasabi denies the call): stop, keep the error message without any secret, and return the item to `blocked/` with the exact failure.
