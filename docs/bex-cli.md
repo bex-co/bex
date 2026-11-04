@@ -6,7 +6,7 @@ The current pin and its update procedure are recorded in [`lego/cli/UPSTREAM_REN
 
 ## Install
 
-One line — detects OS/arch, verifies the Sigstore-signed `checksums.txt`, installs to `~/.local/bin` (`BEX_VERSION` pins, `BEX_INSTALL_DIR` retargets). Requires [`cosign`](https://docs.sigstore.dev/cosign/system_config/installation/) on PATH so the installer shares the same release-workflow identity policy as `bex upgrade`:
+One line — detects OS/arch, verifies the Sigstore-signed `checksums.txt`, installs to `~/.local/bin` (`BEX_VERSION` pins, `BEX_INSTALL_DIR` retargets). Requires [`cosign`](https://docs.sigstore.dev/cosign/system_config/installation/) **v2.4.2 or newer** on PATH so the installer shares the same release-workflow identity policy as `bex upgrade` (releases are signed with cosign v3 as a Sigstore protobuf bundle, which older cosign cannot read; the installer checks the version and names the requirement):
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/bex-co/bex/main/scripts/install-bex.sh | sh
@@ -14,7 +14,7 @@ curl -fsSL https://raw.githubusercontent.com/bex-co/bex/main/scripts/install-bex
 
 Or via Homebrew: `brew install bex-co/tap/bex` — the formula in [bex-co/homebrew-tap](https://github.com/bex-co/homebrew-tap) is rendered by `scripts/bex-cli-formula.sh` and pushed automatically by the release workflow (gated on the `BEX_TAP_PUSH_KEY` secret: the private half of a write **deploy key** scoped to only the tap repo, custodied via `.env`'s `BEX_TAP_PUSH_KEY_FILE` + `scripts/gh-secrets.sh`).
 
-Both channels consume the `bex-cli/v*` GitHub releases: when such a tag is published, CI creates Linux and macOS archives, `checksums.txt`, and a keyless cosign signature bundle over the checksums (GitHub-OIDC signed; no key custody). To verify a download's provenance manually:
+Both channels consume the `bex-cli/v*` GitHub releases: when such a tag is published, CI creates Linux and macOS archives, `checksums.txt`, and a keyless cosign signature bundle over the checksums (GitHub-OIDC signed; no key custody). To verify a download's provenance manually (cosign v2.4.2 or newer):
 
 ```bash
 cosign verify-blob checksums.txt \

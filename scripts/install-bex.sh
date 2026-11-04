@@ -82,15 +82,31 @@ curl -fsSL -o "${workdir}/checksums.txt" "${asset_base}/checksums.txt" ||
 curl -fsSL -o "${workdir}/checksums.txt.sigstore.json" "${asset_base}/checksums.txt.sigstore.json" ||
   fail "download failed: ${asset_base}/checksums.txt.sigstore.json (unsigned releases are refused)"
 
+# Releases are signed by cosign v3 as a protobuf Sigstore bundle; cosign
+# older than 2.4.2 cannot read it ("bundle does not contain cert"), w32/001.
+cosign_min="2.4.2"
+cosign_install="https://docs.sigstore.dev/cosign/system_config/installation/"
 if ! command -v cosign >/dev/null; then
-  fail "cosign is required to verify the release signature (install from https://docs.sigstore.dev/cosign/system_config/installation/)"
+  fail "cosign >= ${cosign_min} is required to verify the release signature (install from ${cosign_install})"
 fi
+cosign_version="$(cosign version 2>/dev/null | awk '$1 == "GitVersion:" { sub(/^v/, "", $2); print $2; exit }')"
+case "$cosign_version" in
+  [0-9]*.[0-9]*.[0-9]*)
+    if ! awk -v have="$cosign_version" -v want="$cosign_min" 'BEGIN {
+      split(have, h, /[.+-]/); split(want, w, /[.]/)
+      for (i = 1; i <= 3; i++) { if (h[i] + 0 != w[i] + 0) exit !(h[i] + 0 > w[i] + 0) }
+      exit 0
+    }'; then
+      fail "cosign >= ${cosign_min} is required to verify the release signature, found ${cosign_version} — upgrade: ${cosign_install}"
+    fi
+    ;;
+esac
 cosign verify-blob \
   --bundle "${workdir}/checksums.txt.sigstore.json" \
   --certificate-identity-regexp '^https://github\.com/bex-co/bex/\.github/workflows/cli-release\.yml@refs/tags/bex-cli/v' \
   --certificate-oidc-issuer 'https://token.actions.githubusercontent.com' \
   "${workdir}/checksums.txt" >/dev/null ||
-  fail "checksums.txt signature verification failed — refusing to install"
+  fail "checksums.txt signature verification failed — refusing to install (cosign >= ${cosign_min} is required; found ${cosign_version:-an unknown version})"
 
 expected="$(awk -v f="${artifact}.tar.gz" '$2 == f { print $1; exit }' "${workdir}/checksums.txt")"
 [ -n "$expected" ] || fail "checksums.txt has no entry for ${artifact}.tar.gz"

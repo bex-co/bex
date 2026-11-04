@@ -6,7 +6,7 @@
 
 Pick either channel; both install the same signed release binaries for macOS and Linux (arm64 + amd64).
 
-**Install script** — detects OS/arch, verifies `checksums.txt`, installs atomically to `~/.local/bin`:
+**Install script** — detects OS/arch, verifies the Sigstore-signed `checksums.txt` (requires [`cosign`](https://docs.sigstore.dev/cosign/system_config/installation/) v2.4.2 or newer on PATH), installs atomically to `~/.local/bin`:
 
 ```bash
 curl -fsSL https://raw.githubusercontent.com/bex-co/bex/main/scripts/install-bex.sh | sh

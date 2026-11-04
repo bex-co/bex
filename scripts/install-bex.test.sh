@@ -50,7 +50,13 @@ printf '{}\n' > "$release_dir/checksums.txt.sigstore.json"
 mkdir -p "$tmp/bin"
 cat > "$tmp/bin/cosign" <<'EOF'
 #!/bin/sh
-# Fixture stub: accept verify-blob when a bundle path was supplied.
+# Fixture stub: report COSIGN_STUB_VERSION (default a current v3) and accept
+# verify-blob when a bundle path was supplied, unless COSIGN_STUB_VERIFY=fail.
+if [ "${1:-}" = version ]; then
+  printf 'GitVersion:    v%s\nGitTreeState:  clean\n' "${COSIGN_STUB_VERSION:-3.1.4}"
+  exit 0
+fi
+[ "${COSIGN_STUB_VERIFY:-}" = fail ] && { echo "Error: bundle does not contain cert for verification" >&2; exit 1; }
 for a in "$@"; do
   case "$a" in
     --bundle) exit 0 ;;
@@ -150,6 +156,21 @@ fi
 echo "$out" | grep -q "sigstore.json" || fail "missing-signature error not reported:\n$out"
 [ ! -e "$tmp/bin-nosig/bex" ] || fail "binary installed despite missing signature"
 printf '{}\n' > "$release_dir/checksums.txt.sigstore.json"
+
+# ── installer: cosign below the minimum fails with an actionable message (w32/001)
+if out="$(COSIGN_STUB_VERSION=2.4.1 BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin-oldcosign" sh "$INSTALL" 2>&1)"; then
+  fail "installer accepted cosign 2.4.1:\n$out"
+fi
+echo "$out" | grep -q "cosign >= 2.4.2 is required.*found 2.4.1" || fail "old-cosign error not actionable:\n$out"
+[ ! -e "$tmp/bin-oldcosign" ] || fail "install dir written despite old cosign"
+out="$(COSIGN_STUB_VERSION=2.4.2 BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin-mincosign" sh "$INSTALL" 2>&1)" ||
+  fail "installer refused cosign 2.4.2 (the minimum):\n$out"
+[ -x "$tmp/bin-mincosign/bex" ] || fail "installer with cosign 2.4.2 did not install bex"
+if out="$(COSIGN_STUB_VERIFY=fail BEX_VERSION="$version" BEX_API_URL="$base" BEX_DOWNLOAD_URL="$base/dl" BEX_INSTALL_DIR="$tmp/bin-badsig" sh "$INSTALL" 2>&1)"; then
+  fail "installer accepted a failed signature verification:\n$out"
+fi
+echo "$out" | grep -q "signature verification failed.*cosign >= 2.4.2 is required; found 3.1.4" || fail "verify failure does not name the cosign requirement:\n$out"
+[ ! -e "$tmp/bin-badsig/bex" ] || fail "binary installed despite failed signature"
 
 # ── installer: checksum mismatch must abort before installing ───────────────
 awk '{ replacement = substr($1, 1, 1) == "0" ? "1" : "0"; print replacement substr($1, 2) "  " $2 }' \
