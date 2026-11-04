@@ -211,6 +211,36 @@ if grep -Eq '^(PATCH|POST|DELETE) ' "$TEST_CF_TRACE"; then
   exit 1
 fi
 
+# A datastore edge publishes IPv4 only: with BEX_EDGE_DNS_FAMILIES=A a present
+# AAAA fails the check (the pre-fix state) and the reconcile deletes it.
+export BEX_EDGE_DNS_FAMILIES=A
+write_state '[
+  {"id":"kv-a","type":"A","name":"*.kv.example.test","content":"192.0.2.10","ttl":300,"proxied":false},
+  {"id":"kv-aaaa","type":"AAAA","name":"*.kv.example.test","content":"2001:db8::10","ttl":300,"proxied":false}
+]'
+if bash "$reconcile" --check >"$tmp/v4-only-check.out" 2>&1; then
+  echo 'expected a published AAAA to fail the IPv4-only check' >&2
+  exit 1
+fi
+assert_contains 'do not match the Terraform edge Load Balancer addresses' "$tmp/v4-only-check.out"
+output="$(bash "$reconcile")"
+[[ "$output" == "reconciled Cloudflare Key Value datastore DNS host=*.kv.example.test addresses=192.0.2.10" ]]
+assert_contains 'DELETE /zones/zone-test/dns_records/kv-aaaa' "$TEST_CF_TRACE"
+jq -e '
+  [.[] | select(.name == "*.kv.example.test")] |
+  length == 1 and .[0].type == "A" and .[0].content == "192.0.2.10"
+' "$TEST_CF_STATE" >/dev/null
+: >"$TEST_CF_TRACE"
+output="$(bash "$reconcile" --check)"
+[[ "$output" == "PASS Cloudflare Key Value datastore DNS host=*.kv.example.test addresses=192.0.2.10" ]]
+export BEX_EDGE_DNS_FAMILIES='A AAAA AAAA'
+if bash "$reconcile" --check >"$tmp/bad-families.out" 2>&1; then
+  echo 'expected an invalid family list to be refused' >&2
+  exit 1
+fi
+assert_contains 'BEX_EDGE_DNS_FAMILIES must be' "$tmp/bad-families.out"
+unset BEX_EDGE_DNS_FAMILIES
+
 # An exact-name CNAME/NS collision must fail before any mutation.
 write_state '[
   {"id":"kv-cname","type":"CNAME","name":"*.kv.example.test","content":"other.example.test","ttl":300,"proxied":false}

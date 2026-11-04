@@ -1,21 +1,20 @@
 # w9 · m164 — Dual-stack IP allow-list trap: a datastore denies the client's IPv6 with an opaque TLS EOF
 
-**Worker:** worker9 **Goal:** a tenant who allow-lists the IP address the product shows them can actually reach their Postgres and Key Value external endpoints — and a client that is genuinely refused is told so, never dropped with a bare TLS EOF **Status:** todo — t001, t002, t004 done; t003 implements the decision (drop AAAA)
+**Worker:** worker9 **Goal:** a tenant who allow-lists the IP address the product shows them can actually reach their Postgres and Key Value external endpoints — and a client that is genuinely refused is told so, never dropped with a bare TLS EOF **Status:** blocked — t001–t008 done; t009 waits for the bex.co DNS reconcile (user token, see Blocked)
 
 ## Tasks (in order)
 
 | id   | title                                                                  | est | depends_on |
 | ---- | ---------------------------------------------------------------------- | --- | ---------- |
-| t001 | Prove or disprove the Key Value half of the same trap, live             | 45m | —          | — **DONE** (proven affected) |
-| t002 | Decide the fix: drop AAAA, make the denial legible, or surface both     | 45m | t001       | — **DONE** (decision: drop AAAA, user 2026-11-04) |
-| t003 | Implement the decision across Postgres and Key Value                    | 90m | t002       |
-| t004 | Re-point `w4/m116/t004` at this cause and correct its "ruled out" line  | 30m | t001       | — **DONE** |
-| t005 | Give the verifiers a data-path deny leg they can actually fail on       | 60m | t003       |
-| t006 | Render parity across the touched surfaces                               | 45m | t003, t005 |
-| t007 | Simplify the code this milestone changed                                | 30m | t006       |
-| t008 | Test coverage for the shipped behavior                                  | 45m | t006       |
-| t009 | Closeout                                                                | 30m | t008       |
-
+| t001 | Prove or disprove the Key Value half of the same trap, live — **DONE** | 45m | — |
+| t002 | Decide the fix: drop AAAA, make the denial legible, or surface both — **DONE** | 45m | t001 |
+| t003 | Implement the decision across Postgres and Key Value — **DONE** | 90m | t002 |
+| t004 | Re-point `w4/m116/t004` at this cause and correct its "ruled out" line — **DONE** | 30m | t001 |
+| t005 | Give the verifiers a data-path deny leg they can actually fail on — **DONE** | 60m | t003 |
+| t006 | Render parity across the touched surfaces — **DONE** | 45m | t003, t005 |
+| t007 | Simplify the code this milestone changed — **DONE** | 30m | t006 |
+| t008 | Test coverage for the shipped behavior — **DONE** | 45m | t006 |
+| t009 | Closeout — **BLOCKED** (bex.co DNS token) | 30m | t008 |
 ## Definition of done
 
 - On a dual-stack client whose allow list contains **only** its IPv4 `/32`, `bex psql <free-pg> -c 'SELECT 1'` either returns the probe row or fails with a message that **names the IP allow list** — never a bare `SSL error: unexpected eof while reading`. The same holds for the Key Value external endpoint through its supported entrypoint.
@@ -210,3 +209,74 @@ The blocking decision (t002: drop AAAA, make the denial legible, or both) is sti
   2. t005: the verifier's deny leg runs first against the current (pre-fix) state so it is seen to fail, then passes after the fix.
   3. Continue with t006–t009.
 - **Remaining gates:** none.
+
+## Implementation notes — t003, t005, t006, t008 (2026-11-04, fork for `/loopx w9`)
+
+**t003 — code.** The shared reconciler `scripts/ssh-dns-cloudflare.sh` gains `BEX_EDGE_DNS_FAMILIES` (`"A AAAA"` by default, `"A"`, or `"AAAA"`; anything else is refused). Excluded families are left out of the desired set, so the existing stale-record pass deletes them. `scripts/datastore-dns-cloudflare.sh` passes `A` for both `*.db` and `*.kv`, and the SSH edge keeps both families. No proxy code changes: with no AAAA, the dual-stack client never reaches the IPv6 deny path, so the anti-enumeration property is untouched.
+
+**t003 — not yet live.** This reconcile is not run by CI; ADR009/ADR021 describe a manual run with an ephemeral `bex.co`-zone `CLOUDFLARE_API_TOKEN` plus `HCLOUD_TOKEN`. No `bex.co` token is available locally or in GitHub secrets. The only Cloudflare token, `BEX_CLOUDFLARE_DNS_TOKEN`, is limited to `onbex.co` by ADR093 D2, and `bex.co` is invisible to it.
+
+The one remaining production step:
+
+```sh
+BEX_DB_DOMAIN=db.bex.co BEX_KV_DOMAIN=kv.bex.co HCLOUD_TOKEN=… CLOUDFLARE_API_TOKEN=<ephemeral bex.co DNS:Edit> scripts/datastore-dns-cloudflare.sh
+scripts/datastore-dns-cloudflare.sh --check
+```
+
+**Pre-fix state, recorded 2026-11-04T10:20Z** with `dig @1.1.1.1`:
+
+- `probe-does-not-exist.db.bex.co`, `probe-pool.db.bex.co` and `probe.kv.bex.co` all answer `A 49.12.20.236` and `AAAA 2a01:4f8:c01e:3d1f::1`.
+- This runner has an IPv6 route (`curl -6 api64.ipify.org` succeeds).
+- Python `getaddrinfo(AF_INET6)` returns `2a01:4f8:c01e:3d1f::1`, so the new data-path leg's DNS half fails here today with `publishes AAAA (2a01:4f8:c01e:3d1f::1)`.
+
+**t005 — the data-path leg** in `scripts/psql-compat-verify.sh`:
+
+- On a runner with IPv6 (otherwise an honest SKIP), the endpoint host must publish no AAAA. This check runs before the retried probes, so the regression is named rather than retried into a generic probe failure.
+- After the probes converge, it connects once without forcing a family, then runs a forced-IPv4 control (`PGHOSTADDR=<A>`). A bare `unexpected eof` fails the connect by name.
+- `BEX_PSQL_DATA_PATH_FAMILIES` injects the resolved sets for the hermetic harness.
+- `scripts/keyvalue-cli-verify.sh` gains the same AAAA check under an IPv4 allow CIDR. Its probe already forces the family.
+- Live full-verifier runs (fixture plus CLI) are not done. Run them after the reconcile; the pre-fix DNS evidence above shows the leg failing today.
+
+**t008 — tests**, each with its pre-fix failure:
+
+- `ssh-dns-cloudflare.test.sh`: with `FAMILIES=A`, a present AAAA fails `--check` with no mutation; the reconcile deletes it; the re-check passes; a bad family list is refused.
+- `datastore-dns-cloudflare.test.sh`: both wildcards dispatch with `A`.
+- `psql-compat-verify.test.sh`: four psql calls in a pass; a host publishing AAAA fails by name with no psql spawned, and cleanup still runs. Mutation-checked: removing the guard fails the suite.
+- `keyvalue-cli-verify.test.sh`: AAAA under an IPv4 CIDR fails by name, with cleanup. Mutation-checked.
+- `shellcheck -x -S warning` is clean on all touched scripts, and `scripts/gitops-validate.sh` passes.
+
+**t006 — parity.**
+
+- **Render:** datastore hosts are IPv4-only (t002 evidence), and bex now matches.
+- **Surfaces:** the change touches DNS only. No REST, GraphQL, MCP or dashboard field changes; connection-info strings are unchanged (same hostnames).
+- **Docs:** ADR009 §Production DNS reconciliation, ADR021, the CLI checklist `psql` row, and the `manager.yaml` comment are updated.
+
+## Outcome (2026-11-04)
+
+t003, t005, t006, t007 and t008 are done in code. The live DNS change is pending.
+
+**Code changes**
+- **DNS reconcile:** `scripts/ssh-dns-cloudflare.sh` gains `BEX_EDGE_DNS_FAMILIES` (default `A AAAA`). Excluded record types are deleted by the reconcile. `scripts/datastore-dns-cloudflare.sh` passes `A` for `*.db` and `*.kv`.
+- **Verifiers:** `psql-compat-verify.sh` and `keyvalue-cli-verify.sh` gain a data-path leg. It fails by name when an IPv4-only allow-listed endpoint publishes AAAA. It has failed against production today: the pre-fix state at 2026-11-04T10:20Z answered `AAAA 2a01:4f8:c01e:3d1f::1` for `*.db` and `*.kv`.
+- **Docs:** ADR009, ADR021 and the `psql` row of the CLI compatibility checklist say IPv4-only.
+
+**Parity (t006).** Render's datastore hosts publish A only (t002 research). After the reconcile, bex matches.
+
+**Simplify (t007).** Reviewed directly: one family filter in the shared reconcile, no duplication. No findings.
+
+**Tests (t008).** All four script harnesses pass, and mutation checks show that removing the AAAA guard fails both verifier suites. `shellcheck` and `gitops-validate` are clean.
+
+## Blocked (2026-11-04): apply the reconcile on the bex.co zone
+
+**Gate.** The only Cloudflare token available to the worker (`BEX_CLOUDFLARE_DNS_TOKEN`) is scoped to `onbex.co` (ADR093). This reconcile is not run by CI or deploy.
+
+**User action.** Mint an ephemeral Cloudflare API token with DNS:Edit on the `bex.co` zone. Then either run the reconcile yourself, or provide the token to the worker through the environment (never chat):
+
+```sh
+BEX_DB_DOMAIN=db.bex.co BEX_KV_DOMAIN=kv.bex.co HCLOUD_TOKEN=… CLOUDFLARE_API_TOKEN=… scripts/datastore-dns-cloudflare.sh
+… scripts/datastore-dns-cloudflare.sh --check
+```
+
+**Done signal.** `dig +short AAAA probe.db.bex.co` and `dig +short AAAA probe.kv.bex.co` return nothing.
+
+**Worker next step (t009).** Re-run the t001 repros (the pasted `connection-info` command connects) and the new verifier legs, then close out.

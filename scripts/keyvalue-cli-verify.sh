@@ -145,6 +145,12 @@ connection_info=""
 external_host="${external_host#[}"
 external_host="${external_host%]}"
 [[ -n "$(dig +short "$external_host" | sed -n '1p')" ]] || fail "public Key Value DNS did not resolve"
+# Datastore hosts publish A only, as Render's do (w9/m164). An AAAA would send a
+# dual-stack client over IPv6, where an IPv4-only allow list refuses it with a
+# bare TLS EOF.
+if [[ "$address_family" == "-4" ]] && dig +short AAAA "$external_host" | grep -q ':'; then
+  fail "public Key Value host publishes AAAA; an IPv4-only allow list is refused over IPv6"
+fi
 nc -z -w 10 "$external_host" 6379 >/dev/null 2>&1 || fail "public Key Value TCP/6379 did not accept a connection"
 external_host=""
 echo "PASS public rediss endpoint ready"
