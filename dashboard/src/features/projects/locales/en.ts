@@ -222,12 +222,17 @@ const enProjects: Record<string, TranslationEntry> = {
   },
   "projects.createDescription": {
     message:
-      "Group existing services, databases, and key value stores together.",
+      "Group services, databases, and key value stores together. Every project starts with an environment.",
     description: "New-project dialog description",
   },
   "projects.fieldName": {
     message: "Name",
     description: "New-project dialog name field label",
+  },
+  "projects.fieldFirstEnvironment": {
+    message: "First environment name",
+    description:
+      "New-project dialog: name of the environment created with the project (w4/m264, Render parity)",
   },
   "projects.fieldNamePlaceholder": {
     message: "my-project",
@@ -313,8 +318,14 @@ const enProjects: Record<string, TranslationEntry> = {
   },
   "projects.deleteConfirmBody": {
     message:
-      "Its environments and their configuration are deleted. Its services, databases, and key value stores become unassigned, not deleted.",
+      "Its environments and their configuration are deleted. Its databases and key value stores become unassigned, not deleted.",
     description: "Delete-project confirmation dialog body",
+  },
+  "projects.deleteConfirmBodyServices": {
+    message:
+      "Deleting this project deletes all of its environments and its {count} services. Its databases and key value stores become unassigned, not deleted. This action cannot be undone.",
+    description:
+      "Delete-project confirmation body when services would be deleted (w4/m264, Render parity)",
   },
   "projects.deleteSuccess": {
     message: 'Project "{name}" deleted.',

@@ -76,7 +76,8 @@ describe("useCreateEnvironment", () => {
         data: null,
         errors: [
           {
-            message: 'an environment named "staging" already exists in this project',
+            message:
+              'an environment named "staging" already exists in this project',
             extensions: { code: "CONFLICT" },
           },
         ],

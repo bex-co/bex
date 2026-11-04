@@ -994,6 +994,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 		OAuth:      d.AccountOAuth, Kratos: d.AccountKratos,
 	}
 	appsSvc := &apps.Service{Base: base, ProxiedHosts: d.ProxiedHosts, ImageCompatibilityWorkspaces: d.ImageCompatibilityWorkspaces, PrivateImagePortsDisabled: d.PrivateImagePortsDisabled, Store: d.Store, Placements: d.AppPlacements, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), PlatformHosts: []string{hostOf(d.DeployHookBaseURL), sshHost}, ReservedDomains: d.ReservedDomains, MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), Checks: gh.DeployChecksSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvGroupLinks: &envgroups.WorkspacePurger{Service: envGroupsSvc}, EnvSeeder: envSeeder, EnvCopier: envCopier, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, ExitGuards: environments.ExitGuards(environmentsSvc), Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy}
+	// Environment deletes call the normal service delete (w4/m264); the apps
+	// service is built after environments, so the seam is closed here.
+	environmentsSvc.Services = appsSvc
 	srv := &Server{
 		Apps: appsSvc,
 		Logs: logSvc,
@@ -1063,6 +1066,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Databases:    pg,
 			KeyValues:    kv,
 			Environments: &environments.ProjectMemberClearer{Service: environmentsSvc},
+			Services:     appsSvc,
 			ExitGuards:   environments.ExitGuards(environmentsSvc),
 			Owners:       workspaceSvc,
 			// The direct-create grouping quota shares the Blueprint bound

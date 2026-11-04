@@ -37,6 +37,14 @@ type EnvironmentAssignment struct {
 
 // EnvironmentResolver validates that environmentID belongs to workspaceID and
 // returns the project/environment controls a newborn resource must inherit.
+// ServiceDeleter is the apps service's normal delete verb (authorization,
+// protected-service gate, env-group unlink, secrets purge, store row and CR),
+// which environment and project deletes call for each contained service
+// (w4/m264).
+type ServiceDeleter interface {
+	Delete(ctx context.Context, name string) error
+}
+
 // environments.Service is the single implementation wired by the composition
 // root. Unknown ids return ErrNotFound; ids in another workspace return
 // ErrForbidden.

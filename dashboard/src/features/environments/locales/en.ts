@@ -132,8 +132,14 @@ const enEnvironments: Record<string, TranslationEntry> = {
   },
   "environments.deleteConfirmBody": {
     message:
-      "Its services, databases, and key-value stores stay in the project and keep running — they just lose this environment label. This action cannot be undone.",
+      "Its databases, key-value stores, and environment groups stay in the project and keep running — they just lose this environment label. This action cannot be undone.",
     description: "Delete-environment confirmation dialog body",
+  },
+  "environments.deleteConfirmBodyServices": {
+    message:
+      "Deleting this environment deletes all of its services: {services}. Its databases, key-value stores, and environment groups stay in the project and keep running — they just lose this environment label. This action cannot be undone.",
+    description:
+      "Delete-environment confirmation body when services would be deleted (w4/m264, Render parity)",
   },
   "environments.deleteSuccess": {
     message: 'Environment "{name}" deleted.',

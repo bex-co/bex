@@ -123,6 +123,10 @@ type Service struct {
 	Databases DatabaseIndex
 	KeyValues KeyValueIndex
 	EnvGroups EnvGroupIndex
+	// Services deletes an environment's services when the environment is
+	// deleted, as Render's dashboard does (w4/m264). nil keeps the former
+	// detach-only behavior (test fakes).
+	Services core.ServiceDeleter
 	// MaxGroupings is the workspace's durable grouping quota
 	// (BEX_MAX_BLUEPRINT_GROUPINGS, default 1000) — the same abuse bound the
 	// Blueprint apply loop enforces, applied to DIRECT environment creates too
@@ -941,14 +945,17 @@ func (s *Service) clearMembersForProject(ctx context.Context, projectID string) 
 	return nil
 }
 
-// Delete clears members' environment membership and inherited rules before
-// removing the environment. Their project membership and own rules survive.
+// Delete deletes the environment's services (Render: "Deleting an environment
+// deletes all of its associated services", w4/m264), then clears the remaining
+// members' environment membership and inherited rules before removing the
+// environment. Databases, key-value stores and env groups are detached, not
+// deleted; their project membership and own rules survive.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	ctx, e, err := s.authorizedForDelete(ctx, id)
 	if err != nil {
 		return err
 	}
-	return s.deleteEnvironment(ctx, e)
+	return s.deleteEnvironment(ctx, e, true)
 }
 
 func (s *Service) authorizedForDelete(ctx context.Context, id string) (context.Context, store.Environment, error) {
@@ -963,9 +970,23 @@ func (s *Service) authorizedForDelete(ctx context.Context, id string) (context.C
 	return ctx, e, err
 }
 
-func (s *Service) deleteEnvironment(ctx context.Context, e store.Environment) error {
+func (s *Service) deleteEnvironment(ctx context.Context, e store.Environment, deleteServices bool) error {
+	var doomed []string
+	if deleteServices && s.Services != nil {
+		var err error
+		if doomed, err = s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID); err != nil {
+			return err
+		}
+	}
 	if err := s.clearEnvironmentMembers(ctx, e); err != nil {
 		return err
+	}
+	// The administrator gate above ran before the first irreversible delete.
+	// A failure leaves the environment row, so a retry finishes the teardown.
+	for _, name := range doomed {
+		if err := s.Services.Delete(ctx, name); err != nil && !errors.Is(err, core.ErrNotFound) {
+			return err
+		}
 	}
 	return store.MapError(s.Store.DeleteEnvironment(ctx, e.ID))
 }
@@ -985,7 +1006,7 @@ func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
 	if EnvironmentOccupied(v) {
 		return NotEmptyError("environment", v.ID)
 	}
-	return s.deleteEnvironment(ctx, e)
+	return s.deleteEnvironment(ctx, e, false)
 }
 
 // aclBearing reports whether an environment carries protected-environment ACL
