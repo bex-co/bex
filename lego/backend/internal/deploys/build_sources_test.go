@@ -378,3 +378,20 @@ func TestBuildGraphQLAndMCP(t *testing.T) {
 		t.Fatalf("trigger_build_source_build on a non-source = %+v, %v; want a tool error", got, err)
 	}
 }
+
+// w4/472: Render's buildRun carries commitUrl next to commitId.
+func TestBuildViewCarriesTheCommitURL(t *testing.T) {
+	carrier := sampleBuildSource("bds-git", "https://github.com/acme/web.git")
+	got := buildView(carrier, "bds-git", DeployView{ID: "dep-1", CommitID: "abc123"})
+	if got.BuildRun == nil || got.BuildRun.CommitURL != "https://github.com/acme/web/commit/abc123" {
+		t.Fatalf("buildRun = %+v, want commitUrl https://github.com/acme/web/commit/abc123", got.BuildRun)
+	}
+	none := buildView(carrier, "bds-git", DeployView{ID: "dep-2"})
+	if none.BuildRun.CommitURL != "" {
+		t.Fatalf("a build with no commit has commitUrl %q", none.BuildRun.CommitURL)
+	}
+	image := buildView(sampleBuildSource("bds-img", ""), "bds-img", DeployView{ID: "dep-3", CommitID: "abc123"})
+	if image.BuildRun != nil {
+		t.Fatalf("an image-source build has a buildRun: %+v", image.BuildRun)
+	}
+}

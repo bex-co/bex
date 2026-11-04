@@ -580,6 +580,7 @@ export type BuildRun = {
   buildFinishedAt: Maybe<Scalars['String']['output']>;
   buildStartedAt: Maybe<Scalars['String']['output']>;
   commitId: Maybe<Scalars['String']['output']>;
+  commitUrl: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   runtime: Maybe<Scalars['String']['output']>;
   status: Maybe<Scalars['String']['output']>;
