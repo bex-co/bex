@@ -924,6 +924,16 @@ func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1
 	if decision.sourcePending && app.Status.Image == "" {
 		return "", ctrl.Result{}, true, nil
 	}
+	// A static site whose latest build failed still names that failed release
+	// generation. Dispatching the serving image would publish it again under the
+	// failed generation's revision and leave the site Deploying, which pins the
+	// release, so the deploy that follows never builds (w32/003). Keep the
+	// active revision serving and its routing converging until that deploy.
+	if decision.sourcePending && app.Spec.Type == appv1alpha1.TypeStaticSite && releaseRevision(app) != app.Status.ActiveRevision {
+		if held, res, err := r.holdPendingStaticArtifact(ctx, app, ctrl.Result{}); held {
+			return "", res, true, err
+		}
+	}
 	// A static rollback restores the target's retained publication (w4/m197):
 	// nothing to build, and no image to extract through today's settings. The
 	// selection is static-only; any other type refuses it rather than running
@@ -961,7 +971,7 @@ func (r *AppReconciler) resolveDeployImage(ctx context.Context, app *appv1alpha1
 	// App reuses that release's image instead of building, and a build that halts
 	// has nothing to roll. Hold the prior release's replicas and routing rather than
 	// writing the unbuilt release onto its template (w1/m157).
-	if app.Spec.Suspended && image != "" && !artifactResolved {
+	if app.Spec.Suspended && image != "" && !artifactResolved && app.Spec.Type != appv1alpha1.TypeStaticSite {
 		if held, res, err := r.holdPendingArtifact(ctx, app, ctrl.Result{}); held {
 			return "", res, true, err
 		}
@@ -4506,18 +4516,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	// stays in the object store, and resume points the Ingress back at the
 	// static-server on the next reconcile.
 	if app.Spec.Suspended {
-		if _, err := r.reconcileWebsocketMeterMiddleware(ctx, app, false); err != nil {
-			return r.fail(ctx, app, "MiddlewareCleanupFailed", err)
-		}
-		if r.suspendedRoutable(app) {
-			activatorSvc, err := r.reconcileActivatorAlias(ctx, app)
-			if err != nil {
-				return r.fail(ctx, app, "ActivatorAliasFailed", err)
-			}
-			if err := r.reconcileIngress(ctx, app, hosts, activatorSvc, int32(r.ActivatorPort), nil); err != nil {
-				return r.fail(ctx, app, "IngressFailed", err)
-			}
-		} else if reason, err := r.reconcileStaticIngress(ctx, app, hosts, nil); err != nil {
+		if reason, err := r.convergeStaticRouting(ctx, app, hosts); err != nil {
 			return r.fail(ctx, app, reason, err)
 		}
 		recordStaticRevision(app, rev, published)
@@ -4539,14 +4538,7 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 		return ctrl.Result{RequeueAfter: staticHandoverDelay}, nil
 	}
 
-	staticMWNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
-	if err != nil {
-		return r.fail(ctx, app, "MiddlewareFailed", err)
-	}
-	if _, err := r.reconcileWebsocketMeterMiddleware(ctx, app, false); err != nil {
-		return r.fail(ctx, app, "MiddlewareFailed", err)
-	}
-	if reason, err := r.reconcileStaticIngress(ctx, app, hosts, staticMWNames); err != nil {
+	if reason, err := r.convergeStaticRouting(ctx, app, hosts); err != nil {
 		return r.fail(ctx, app, reason, err)
 	}
 
@@ -4577,6 +4569,38 @@ func (r *AppReconciler) reconcileStaticSite(ctx context.Context, app *appv1alpha
 	}
 	logf.FromContext(ctx).Info("static site running", "name", app.Name, "revision", rev, "image", image)
 	return next, nil
+}
+
+// convergeStaticRouting points a static site's hosts at the shared
+// static-server, behind its IP allow-list, or, while suspended, at the
+// activator's suspended responder. It serves whichever revision is active, so
+// it also runs while a newer build is pending or failed (holdPendingArtifact).
+// On error it returns the r.fail reason for the caller.
+func (r *AppReconciler) convergeStaticRouting(ctx context.Context, app *appv1alpha1.App, hosts []string) (string, error) {
+	if app.Spec.Suspended {
+		if _, err := r.reconcileWebsocketMeterMiddleware(ctx, app, false); err != nil {
+			return "MiddlewareCleanupFailed", err
+		}
+		if !r.suspendedRoutable(app) {
+			return r.reconcileStaticIngress(ctx, app, hosts, nil)
+		}
+		activatorSvc, err := r.reconcileActivatorAlias(ctx, app)
+		if err != nil {
+			return "ActivatorAliasFailed", err
+		}
+		if err := r.reconcileIngress(ctx, app, hosts, activatorSvc, int32(r.ActivatorPort), nil); err != nil {
+			return "IngressFailed", err
+		}
+		return "", nil
+	}
+	mwNames, err := r.reconcileIPAllowListMiddleware(ctx, app)
+	if err != nil {
+		return "MiddlewareFailed", err
+	}
+	if _, err := r.reconcileWebsocketMeterMiddleware(ctx, app, false); err != nil {
+		return "MiddlewareFailed", err
+	}
+	return r.reconcileStaticIngress(ctx, app, hosts, mwNames)
 }
 
 // staticServerPort is the static-server Service port, defaulting to 8080.
@@ -6913,8 +6937,9 @@ func scalableRuntime(app *appv1alpha1.App) bool {
 // Building keeps it: that phase pins the release to its build (releaseInFlight), so
 // the hold neither parks over it nor records a failure in its place.
 //
-// held=false keeps the pass on its halt: a static site, the
-// opensandbox runtime, no serving prior release, or a build failure recorded
+// A static site holds only its routing (holdPendingStaticArtifact).
+//
+// held=false keeps the pass on its halt: the opensandbox runtime, no serving prior release, or a build failure recorded
 // only in the legacy Ready marker, which a held pass's status write would
 // erase. A background worker is held too (w1/m158): only its replicas move.
 func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha1.App, buildHalt ctrl.Result) (bool, ctrl.Result, error) {
@@ -6923,6 +6948,9 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 	}
 	if app.Spec.Type == appv1alpha1.TypeCronJob {
 		return r.holdPendingCronArtifact(ctx, app, buildHalt)
+	}
+	if app.Spec.Type == appv1alpha1.TypeStaticSite {
+		return r.holdPendingStaticArtifact(ctx, app, buildHalt)
 	}
 	if !scalableRuntime(app) {
 		return false, ctrl.Result{}, nil
@@ -6977,6 +7005,21 @@ func (r *AppReconciler) holdPendingArtifact(ctx context.Context, app *appv1alpha
 		failed = "the latest build failed"
 	}
 	return held(r.settleHeldRuntime(ctx, app, plan, failed, buildHalt.RequeueAfter))
+}
+
+// holdPendingStaticArtifact keeps a served static site's routing (hosts, IP
+// allow-list, suspended responder) following the App while its newer build is
+// pending or failed (w32/003). The active revision keeps serving unpublished-
+// over; status is the build's to write, so it is left as the halt left it.
+func (r *AppReconciler) holdPendingStaticArtifact(ctx context.Context, app *appv1alpha1.App, buildHalt ctrl.Result) (bool, ctrl.Result, error) {
+	hosts := effectiveHosts(app, r.BaseDomain)
+	if !releaseHasServed(app) || len(hosts) == 0 {
+		return false, ctrl.Result{}, nil
+	}
+	if _, err := r.convergeStaticRouting(ctx, app, hosts); err != nil {
+		return true, ctrl.Result{}, err
+	}
+	return true, buildHalt, nil
 }
 
 // holdPendingCronArtifact keeps operational controls and run history converging
