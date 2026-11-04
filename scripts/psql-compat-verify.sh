@@ -39,6 +39,10 @@ set -euo pipefail
 #   BEX_PSQL_DATABASE_NAME           name for the created fixture
 #   BEX_PSQL_REAL_BIN                path to the psql binary (default: PATH `psql`)
 #   BEX_PSQL_SKIP_DENY=1             skip the allow-list-deny negative leg
+#                                      and the allow-list-data-path leg
+#   BEX_PSQL_DATA_PATH_FAMILIES      "<A list>\t<AAAA list>" for the endpoint
+#                                      host, replacing the live IPv6-route probe
+#                                      and DNS lookup (hermetic tests)
 #   BEX_PSQL_READY_TIMEOUT_SECONDS   fixture-ready deadline (default 600)
 #   BEX_PSQL_COMMAND_TIMEOUT_SECONDS per-CLI-invocation deadline (default 60)
 #   BEX_PSQL_PROBE_ATTEMPTS          endpoint-convergence attempts (default 15)
@@ -398,8 +402,75 @@ run_probe() {
   echo "PASS psql probe-$label"
 }
 
+# Data-path allow-list leg (w9/m164). The fixture's allow list holds only the
+# caller's IPv4 (api.ipify.org answers IPv4), which the CLI's client-side gate
+# accepts. A dual-stack client then reaches the data path over whichever family
+# the host name resolves to first. Datastore hosts publish A only, as Render's
+# do; an AAAA sends the connection over IPv6, where the IPv4-only list denies it
+# with a bare TLS EOF. The DNS half runs before the retried probes so that
+# regression is named rather than retried into a generic probe failure.
+data_path_v4=""
+data_path_families() {
+  local resolved v4 v6
+  if [[ "${BEX_PSQL_SKIP_DENY:-0}" == "1" ]]; then
+    echo "SKIP psql allow-list-data-path (BEX_PSQL_SKIP_DENY=1)"
+    return
+  fi
+  if [[ -n "${BEX_PSQL_DATA_PATH_FAMILIES:-}" ]]; then
+    resolved="$BEX_PSQL_DATA_PATH_FAMILIES"
+  elif ! curl -6 -fsS --max-time 10 -o /dev/null https://api64.ipify.org 2>/dev/null; then
+    echo "SKIP psql allow-list-data-path (this runner has no IPv6 route; the family trap cannot occur here)"
+    return
+  else
+    resolved="$(python3 - "$expected_host" <<'PY'
+import socket, sys
+def family(f):
+    try:
+        return sorted({a[4][0] for a in socket.getaddrinfo(sys.argv[1], 5432, f, socket.SOCK_STREAM)})
+    except socket.gaierror:
+        return []
+print(",".join(family(socket.AF_INET)) + "\t" + ",".join(family(socket.AF_INET6)))
+PY
+)" || fail "allow-list-data-path: resolve $expected_host"
+  fi
+  IFS=$'\t' read -r v4 v6 <<<"$resolved"
+  [[ -n "$v4" ]] || fail "allow-list-data-path: $expected_host has no A record"
+  [[ -z "$v6" ]] || fail "allow-list-data-path: $expected_host publishes AAAA ($v6); an IPv4-only allow list is refused over IPv6"
+  data_path_v4="${v4%%,*}"
+  echo "PASS psql allow-list-data-path dns ipv4-only host=$expected_host"
+}
+
+# After the probes have converged the endpoint: one unforced-family connect,
+# then a forced-IPv4 control that localizes a future failure to the family.
+data_path_connect() {
+  local out rc
+  [[ -n "$data_path_v4" ]] || return 0
+  set +e
+  out="$(RENDER_CLI_CONFIG_PATH="$tmp/data-path-cli.yaml" run_bounded "${BEX_PSQL_COMMAND_TIMEOUT_SECONDS:-60}" \
+    "$RENDER_BIN" psql "$database_id" -c "$probe_sql" -o text 2>&1)"
+  rc=$?
+  set -e
+  if [[ "$rc" != "0" ]]; then
+    grep -Fqi 'unexpected eof' <<<"$out" &&
+      fail "allow-list-data-path: an allow-listed IPv4 caller was refused with a bare TLS EOF"
+    printf '%s\n' "$out" | sed 's/:[^@/]*@/:[redacted]@/g' >&2
+    fail "allow-list-data-path: unforced-family connect exited $rc"
+  fi
+  grep -Fq 'bex_psql_probe' <<<"$out" || fail "allow-list-data-path lost the probe column"
+  set +e
+  out="$(PGHOSTADDR="$data_path_v4" RENDER_CLI_CONFIG_PATH="$tmp/data-path-v4-cli.yaml" run_bounded "${BEX_PSQL_COMMAND_TIMEOUT_SECONDS:-60}" \
+    "$RENDER_BIN" psql "$database_id" -c "$probe_sql" -o text 2>&1)"
+  rc=$?
+  set -e
+  [[ "$rc" == "0" ]] || fail "allow-list-data-path: forced-IPv4 control exited $rc"
+  out=""
+  echo "PASS psql allow-list-data-path ipv4-only-list connects (forced-IPv4 control ok)"
+}
+
+data_path_families
 run_probe id "$database_id"
 run_probe name "$database_name"
+data_path_connect
 
 # Unknown name/id: the CLI's resolver refuses before any connection.
 unknown_name="psql-missing-${database_id#dpg-}"
