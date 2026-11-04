@@ -27,7 +27,8 @@ User decision 2026-10-20: all five items of the fifth `/pm-brainstorm for w5` pr
 - [x] **171** — [Images from any public registry deploy, as on Render](done/171.md) ← found by w5/m149's corpus run
 - [x] **174** — [Widen public image registries to every workspace once the node pools carry the containerd deny](done/174.md) ← w5/171's production gate
 - [x] **175** — [A WAL archive that hangs, instead of failing, is never reported](done/175.md) (~1–2h, may promote) ← found by w5/m141's live walk
-- [ ] **176** — [Docker Hub's anonymous pull limit fails tenant image deploys](176.md) (~1h+, may promote) ← found by w5/m114's live replay
+- [x] **176** — [Docker Hub's anonymous pull limit fails tenant image deploys](done/176.md) (~1h+, may promote) ← found by w5/m114's live replay; already fixed by `e3e0f9eea` (429 retried, not failed)
+- [ ] **177** — [Authenticate anonymous Docker Hub reads with a platform account](blocked/177.md) ← w5/176 residual — **BLOCKED (user: a platform Docker Hub account + access token, and pull-secret vs authenticated Zot mirror; parity behavior already live)**
 - [x] **172** — [A Blueprint `dockerContext: /` means the repository root, as on Render](done/172.md) (~30m) ← found by w5/m149's corpus run
 
 ## Approved queue — 2026-10-20 (parity-only set)
