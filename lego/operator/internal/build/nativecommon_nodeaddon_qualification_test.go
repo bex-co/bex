@@ -156,7 +156,12 @@ func legacyNodeAddonGeneratedCase(t *testing.T, docker nativeUtilityDocker, comm
 	t.Helper()
 	nativeCommonBase, nativeSuppliedBases, nativeRuntimeArtifacts = "", nil, nil
 	if tc.common {
-		nativeCommonBase = common
+		// Common routes qualify the published Node14/16 trees production
+		// adopts: compiling Node from source under AMD64 emulation cannot
+		// finish inside the 45-minute build context (w8/m91, 2026-11-04).
+		donors, err := commonNodeQualificationArtifacts("1")
+		must(t, err)
+		nativeCommonBase, nativeRuntimeArtifacts = common, donors
 	}
 	o, env, files := legacyNodeAddonFixture(t, tc)
 	bundle, path, source := writeResolveFixture(t, o, env, files)
