@@ -32,6 +32,9 @@ vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
 vi.mock("@/features/keyvalue/hooks/use-update-key-value-plan", () => ({
   useUpdateKeyValuePlan: () => ({ updatePlan, busy: false }),
 }));
+vi.mock("@/features/keyvalue/hooks/use-set-key-value-persistence-mode", () => ({
+  useSetKeyValuePersistenceMode: () => ({ mode: "snapshot", loading: false }),
+}));
 vi.mock("@/features/databases/hooks/use-update-database-plan", () => ({
   useUpdateDatabasePlan: () => ({ updatePlan, busy: false }),
 }));

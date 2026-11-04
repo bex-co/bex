@@ -1271,7 +1271,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planDescription": {
     message:
-      "Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.",
+      "Change the instance type. A database without a standby restarts to apply it and is unavailable for a minute or two. Your data is kept.",
     description: "Database detail plan-picker card description",
   },
   "databases.planPickerSave": {
@@ -1288,7 +1288,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planPickerConfirmBody": {
     message:
-      "The operator will resize the database's compute resources on the next reconcile. Connections drop briefly during the rolling restart.",
+      "The database restarts to apply the new instance type and is unavailable for a minute or two. Connections drop. Your data is kept.",
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerConfirmPrice": {

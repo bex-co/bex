@@ -1227,7 +1227,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planDescription": {
     message:
-      "更改实例规格。操作员将在下次协调时调整资源——这是保留数据的滚动更新。",
+      "更改实例规格。没有备用实例的数据库会重启以应用更改，期间约一到两分钟不可用。数据会保留。",
     description: "Database detail plan-picker card description",
   },
   "databases.planPickerSave": {
@@ -1244,7 +1244,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   "databases.planPickerConfirmBody": {
     message:
-      "操作员将在下次协调时调整数据库的计算资源，滚动重启期间连接会短暂中断。",
+      "数据库将重启以应用新的实例规格，期间约一到两分钟不可用，连接会中断。数据会保留。",
     description: "Database plan-picker confirm dialog body",
   },
   "databases.planPickerConfirmPrice": {
