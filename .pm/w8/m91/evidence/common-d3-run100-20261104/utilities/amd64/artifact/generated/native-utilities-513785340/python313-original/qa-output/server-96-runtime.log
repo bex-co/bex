@@ -1,0 +1,3 @@
+QA_GETTEXT_HTTP {"marker":"QA416_b52a4f_bex","path":"/translations?qa416=b52a4f-1","catalog_sha256":"641f0dd75324b4a70b206ea3fdb2b0820bf4ea15f70b758ccedb88aa1f2ce9ce"}
+QA_GETTEXT_HTTP {"marker":"QA416_b52a4f_bex","path":"/?qa416=b52a4f-2","catalog_sha256":"641f0dd75324b4a70b206ea3fdb2b0820bf4ea15f70b758ccedb88aa1f2ce9ce"}
+QA_GETTEXT_HTTP {"marker":"QA416_b52a4f_bex","path":"/catalog.mo?qa416=b52a4f-3","catalog_sha256":"641f0dd75324b4a70b206ea3fdb2b0820bf4ea15f70b758ccedb88aa1f2ce9ce"}

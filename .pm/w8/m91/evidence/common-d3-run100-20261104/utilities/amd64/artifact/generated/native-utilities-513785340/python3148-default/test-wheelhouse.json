@@ -1,0 +1,250 @@
+{
+  "files": [
+    {
+      "bytes": 134521,
+      "filename": "anyio-4.16.0-py3-none-any.whl",
+      "sha256": "c66ae634e0b8228396b801741beb3294326d4b6102f7bba4041c0dfb58c29026"
+    },
+    {
+      "bytes": 27593,
+      "filename": "asgiref-3.13.0-py3-none-any.whl",
+      "sha256": "f9596a2434512686473d50f96ff6207fbba49ae1a785dfac614df4aeb085674d"
+    },
+    {
+      "bytes": 31179,
+      "filename": "build-1.6.1-py3-none-any.whl",
+      "sha256": "ecd351a4be9d35a9eaaba244a7687143c9c7d4aea6ac964e7e7ddab20cbcf4e7"
+    },
+    {
+      "bytes": 22247,
+      "filename": "cachecontrol-0.14.4-py3-none-any.whl",
+      "sha256": "b7ac014ff72ee199b5f8af1de29d60239954f223e948196fa3d84adaffc71d2b"
+    },
+    {
+      "bytes": 135082,
+      "filename": "certifi-2026.10.23-py3-none-any.whl",
+      "sha256": "e9b54de76e530bb6cf0ccd036787103acb58fd42ba930ea8bf948ddbaa2f61d1"
+    },
+    {
+      "bytes": 221525,
+      "filename": "cffi-2.1.1-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.whl",
+      "sha256": "b0431303acaea1089ad4b3e9ce4e6518193def1118d4073ca848635ee4ea2e96"
+    },
+    {
+      "bytes": 255056,
+      "filename": "charset_normalizer-3.5.2-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "34276fd796040bf0993ab33a369aa572e6979c7aab225a88893667ad8eac8f7a"
+    },
+    {
+      "bytes": 78711,
+      "filename": "cleo-2.1.0-py3-none-any.whl",
+      "sha256": "4a31bd4dd45695a64ee3c4758f583f134267c2bc518d8ae9a29cf237d009b07e"
+    },
+    {
+      "bytes": 7558,
+      "filename": "crashtest-0.4.1-py3-none-any.whl",
+      "sha256": "8d23eac5fa660409f57472e3851dab7ac18aba459a8d19cbbba86d3d5aecd2a5"
+    },
+    {
+      "bytes": 4752576,
+      "filename": "cryptography-50.0.2-cp311-abi3-manylinux_2_34_x86_64.whl",
+      "sha256": "9dab55f57c74c3cad24c323bacbbd04be4705ba6eb0d92e920b1fc4837ed5079"
+    },
+    {
+      "bytes": 472099,
+      "filename": "distlib-0.4.4-py2.py3-none-any.whl",
+      "sha256": "cf09d55b1e85a89576b036aeb71550bfd68320f3f21761ca329eadadad918638"
+    },
+    {
+      "bytes": 8316071,
+      "filename": "django-5.2.18-py3-none-any.whl",
+      "sha256": "92ed81d500be6408ecd704d7bd1366c534f30427bffcc63c5fefb129561aec7c"
+    },
+    {
+      "bytes": 273071,
+      "filename": "dulwich-0.22.8-py3-none-any.whl",
+      "sha256": "ffc7a02e62b72884de58baaa3b898b7f6427893e79b1289ffa075092efe59181"
+    },
+    {
+      "bytes": 28442,
+      "filename": "fastjsonschema-2.22.3-py3-none-any.whl",
+      "sha256": "f670b443830b75aca3f00b75949efa20f4b2a80302ec7a21505c28dd54cffd43"
+    },
+    {
+      "bytes": 100157,
+      "filename": "filelock-3.32.7-py3-none-any.whl",
+      "sha256": "65ff0d0190ea42038b32bda4b77834fb05be2cad4c5b9b01aa4dfb3614536e52"
+    },
+    {
+      "bytes": 20564,
+      "filename": "findpython-0.6.3-py3-none-any.whl",
+      "sha256": "a85bb589b559cdf1b87227cc233736eb7cad894b9e68021ee498850611939ebc"
+    },
+    {
+      "bytes": 37515,
+      "filename": "h11-0.16.0-py3-none-any.whl",
+      "sha256": "63cf8bbe7522de3bf65932fda1d9c2772064ffb3dae62d55932da54b31cb6c86"
+    },
+    {
+      "bytes": 78784,
+      "filename": "httpcore-1.0.9-py3-none-any.whl",
+      "sha256": "2d400746a40668fc9dec9810239072b40b4484b640a8c38fd654a024c7a1bf55"
+    },
+    {
+      "bytes": 73517,
+      "filename": "httpx-0.28.1-py3-none-any.whl",
+      "sha256": "d909fcccc110f8c7faf814ca82a9a4d816bc5a6dbfea25d6591d6985b8ba59ad"
+    },
+    {
+      "bytes": 69583,
+      "filename": "idna-3.20-py3-none-any.whl",
+      "sha256": "ab7ae7122974553370f0bdb919e1a960b2cd1bc1ef0276416d896db81c14582c"
+    },
+    {
+      "bytes": 453838,
+      "filename": "installer-0.7.0-py3-none-any.whl",
+      "sha256": "05d1933f0a5ba7d8d6296bb6d5018e7c94fa473ceb10cf198a92ccea19c27b53"
+    },
+    {
+      "bytes": 6777,
+      "filename": "jaraco.classes-3.4.0-py3-none-any.whl",
+      "sha256": "f662826b6bed8cace05e7ff873ce0f9283b5c924470fe664fff1c2f00f581790"
+    },
+    {
+      "bytes": 7871,
+      "filename": "jaraco_context-6.1.2-py3-none-any.whl",
+      "sha256": "bf8150b79a2d5d91ae48629d8b427a8f7ba0e1097dd6202a9059f29a36379535"
+    },
+    {
+      "bytes": 11677,
+      "filename": "jaraco_functools-4.6.0-py3-none-any.whl",
+      "sha256": "99e3dc0060c5cbe8fcd1cdb36258e2a65ca40f1566b2033b12abb1bb44dd3c30"
+    },
+    {
+      "bytes": 49010,
+      "filename": "jeepney-0.9.0-py3-none-any.whl",
+      "sha256": "97e5714520c16fc0a45695e5365a2e11b81ea79bba796e26f9f1d178cb182683"
+    },
+    {
+      "bytes": 39160,
+      "filename": "keyring-25.7.0-py3-none-any.whl",
+      "sha256": "be4a0b195f149690c166e850609a477c532ddbfbaed96a404d4e43f8d5e2689f"
+    },
+    {
+      "bytes": 74405,
+      "filename": "more_itertools-11.2.1-py3-none-any.whl",
+      "sha256": "35a7377edd1dd6608dcb2cdf534ded55ea32d49448875ad042cd3f879fb1ded0"
+    },
+    {
+      "bytes": 465078,
+      "filename": "msgpack-1.2.4-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "5d65b791ce4283e02b6267742ad540899155e1b32887b9cbdda47f38f5a076b5"
+    },
+    {
+      "bytes": 129956,
+      "filename": "packaging-26.3-py3-none-any.whl",
+      "sha256": "d7193f7c8e4e93f444fde0262bf90af30e16fa0ad0ad44cb553c87339b23cd1c"
+    },
+    {
+      "bytes": 68726,
+      "filename": "pbs_installer-2025.12.17-py3-none-any.whl",
+      "sha256": "1a899ac5af9ca4c59a7a7944ec3fcf7ad7e40d5684b12eadcfbeee7c59d44123"
+    },
+    {
+      "bytes": 35615,
+      "filename": "pkginfo-1.13.3-py3-none-any.whl",
+      "sha256": "66520cd19fddf3faa9554d68dcc0e6801944275bf612e8b581dfba968a9b4cc9"
+    },
+    {
+      "bytes": 35357,
+      "filename": "platformdirs-4.14.4-py3-none-any.whl",
+      "sha256": "89c1bfa30434b2dcc08655bcfb1789e1a6f97602c11ff990615d09a4b823d6be"
+    },
+    {
+      "bytes": 278572,
+      "filename": "poetry-2.1.3-py3-none-any.whl",
+      "sha256": "7054d3f97ccce7f31961ead16250407c4577bfe57e2037a190ae2913fc40a20c"
+    },
+    {
+      "bytes": 332607,
+      "filename": "poetry_core-2.1.3-py3-none-any.whl",
+      "sha256": "2c704f05016698a54ca1d327f46ce2426d72eaca6ff614132c8477c292266771"
+    },
+    {
+      "bytes": 62600,
+      "filename": "pycparser-3.12-py3-none-any.whl",
+      "sha256": "a076f3f489b39b43ed13563a1dafe42447445bec2e294154ec5c57fcdda4c85e"
+    },
+    {
+      "bytes": 10724,
+      "filename": "pyproject_hooks-1.3.3-py3-none-any.whl",
+      "sha256": "5fc53fdac9f7bd63fbcdc868fb5f90b4784d78a53a3d3388cd738b807441a20b"
+    },
+    {
+      "bytes": 201056,
+      "filename": "pyvips-3.2.0-cp314-cp314-linux_x86_64.whl",
+      "sha256": "cdf9dc1e570a9e469902fba2e5a73e77cb59e1a7623c1c0314e333acc56d75b7"
+    },
+    {
+      "bytes": 3167618,
+      "filename": "rapidfuzz-3.14.6-cp314-cp314-manylinux_2_27_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "08bc63b88048376114d1e66cf8fa6926495d03bb873eb87854fa74cf6848a70b"
+    },
+    {
+      "bytes": 73075,
+      "filename": "requests-2.34.2-py3-none-any.whl",
+      "sha256": "2a0d60c172f83ac6ab31e4554906c0f3b3588d37b5cb939b1c061f4907e278e0"
+    },
+    {
+      "bytes": 54481,
+      "filename": "requests_toolbelt-1.0.0-py2.py3-none-any.whl",
+      "sha256": "cccfdd665f0a24fcf4726e690f65639d272bb0637b9b92dfd91a5568ccf6bd06"
+    },
+    {
+      "bytes": 15554,
+      "filename": "secretstorage-3.5.0-py3-none-any.whl",
+      "sha256": "0ce65888c0725fcb2c5bc0fdb8e5438eece02c523557ea40ce0703c266248137"
+    },
+    {
+      "bytes": 9755,
+      "filename": "shellingham-1.5.4-py2.py3-none-any.whl",
+      "sha256": "7ecfff8f2fd72616f7481040475a65b2bf8af90a56c89140852d1120324e8686"
+    },
+    {
+      "bytes": 51200,
+      "filename": "sqlparse-0.6.1-py3-none-any.whl",
+      "sha256": "3be5a72d04c873d690d7c6dedd33d6fae2ef82759881ceec02fc2efd0cba564f"
+    },
+    {
+      "bytes": 52225,
+      "filename": "tomlkit-0.15.2-py3-none-any.whl",
+      "sha256": "05562412163a3037b94497385fb7f9204c637bc605af7a48199e41cf2272f437"
+    },
+    {
+      "bytes": 14232,
+      "filename": "trove_classifiers-2026.9.21.13-py3-none-any.whl",
+      "sha256": "8b1ff4f9c191b1040b71c37f1e445ab99732911e3cd91de52838453a854d7a17"
+    },
+    {
+      "bytes": 45571,
+      "filename": "typing_extensions-4.16.0-py3-none-any.whl",
+      "sha256": "481caa481374e813c1b176ada14e97f1f67a4539ce9cfeb3f350d78d6370c2e8"
+    },
+    {
+      "bytes": 135717,
+      "filename": "urllib3-2.8.0-py3-none-any.whl",
+      "sha256": "0cf3cae568d36aa9576b28dfb35f11328f1cb974ca7647d9475ebb86c75ac6e3"
+    },
+    {
+      "bytes": 5839941,
+      "filename": "virtualenv-20.39.1-py3-none-any.whl",
+      "sha256": "a00332e0b089ba64edefbf94ef34e6db33f45fe5184df0652cf0b754dcd36190"
+    },
+    {
+      "bytes": 5560402,
+      "filename": "zstandard-0.25.0-cp314-cp314-manylinux2014_x86_64.manylinux_2_17_x86_64.manylinux_2_28_x86_64.whl",
+      "sha256": "e09bb6252b6476d8d56100e8147b803befa9a12cea144bbe629dd508800d1ad0"
+    }
+  ],
+  "scope": "test-only offline prerequisites; no production common-image payload"
+}
