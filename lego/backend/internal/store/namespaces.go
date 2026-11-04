@@ -512,6 +512,15 @@ func splitComputeQuota(caps corev1.ResourceList) (compute, rest corev1.ResourceL
 	return compute, rest
 }
 
+// SandboxComputeLimits is the aggregate CPU and memory limit a workspace's
+// namespaces (its `<ws>-sandbox` one included) allow under plan: the limits
+// side of the tenant compute quota. A sandbox create that times out can only
+// be the quota's doing when the workspace's sandboxes already fill it.
+func SandboxComputeLimits(plan string) (cpu, memory resource.Quantity) {
+	quota := quotaForPlan(plan)
+	return quota[corev1.ResourceLimitsCPU], quota[corev1.ResourceLimitsMemory]
+}
+
 // quotaForPlan maps a workspace plan to aggregate resource caps: compute/pod
 // ceilings, per-resource object counts, and the storage/PVC/LoadBalancer axis
 // (ADR045 Finding 4, w7/m59). The count/<resource> caps (QuotaCapsForPlan) are

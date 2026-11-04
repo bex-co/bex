@@ -225,18 +225,22 @@ spec:
       # against upstream's published digests:
       #   https://storage.googleapis.com/gvisor/releases/release/20260622.0/x86_64/runsc.sha512
       #   https://storage.googleapis.com/gvisor/releases/release/20260622.0/x86_64/containerd-shim-runsc-v1.sha512
-      # x86_64 is the only architecture this pool runs (cpx32/cx33); any other
-      # arch, a download failure, or a digest mismatch fails the bootstrap.
+      # x86_64 is the only architecture this pool runs (cpx32/cx33). The
+      # download retries a few times; the gate after the containerd config
+      # below is what makes a wrong arch, a failed download or a digest
+      # mismatch fatal (w9/074).
       # When bumping the gVisor release, fetch the new .sha512 files from the
       # versioned URL above, verify the binaries against them, and update the
       # two pinned digests in the same commit.
-      - ARCH=$(uname -m); test "$ARCH" = x86_64; GVURL="https://storage.googleapis.com/gvisor/releases/release/20260622.0/${ARCH}";
+      - ARCH=$(uname -m); GVURL="https://storage.googleapis.com/gvisor/releases/release/20260622.0/${ARCH}";
         RUNSC_SHA512=6df95d09363dbd9ee5d5c889c1549b457e1783b039ff60a8f9f16f8c94c774a2ca2eef5b1c370e36b863f6b0407b53ba3c69051c6ef051253843dabf89a6de4e;
         SHIM_SHA512=87c63197836574b7a2c057d2c0647d2badb679187f0b9175ecf78ac52207cdaa3f101629d3e5d165c95930ca35fe81bc26bb90fcf08e09b99c2ee047b6235ce2;
-        cd /tmp && wget -q ${GVURL}/runsc ${GVURL}/containerd-shim-runsc-v1 &&
-        echo "$RUNSC_SHA512  runsc" | sha512sum -c - && echo "$SHIM_SHA512  containerd-shim-runsc-v1"
-        | sha512sum -c - && chmod a+rx runsc containerd-shim-runsc-v1 && cp runsc
-        containerd-shim-runsc-v1 /usr/local/bin/
+        for attempt in 1 2 3 4 5; do cd /tmp && rm -f runsc containerd-shim-runsc-v1 &&
+        wget -q -T 60 "${GVURL}/runsc" "${GVURL}/containerd-shim-runsc-v1" && break;
+        sleep $((attempt * 10)); done;
+        test "$ARCH" = x86_64 && echo "$RUNSC_SHA512  runsc" | sha512sum -c - &&
+        echo "$SHIM_SHA512  containerd-shim-runsc-v1" | sha512sum -c - &&
+        chmod a+rx runsc containerd-shim-runsc-v1 && cp runsc containerd-shim-runsc-v1 /usr/local/bin/
       # w3/m42 (ADR042 D5): disable runsc's default memory-backed rootfs
       # overlay. With the overlay on, tenant filesystem writes live only inside
       # the gVisor sandbox and never reach the host containerd rw layer, so the
@@ -248,8 +252,19 @@ spec:
         = '"'"'io.containerd.runsc.v1'"'"'\n[plugins.'"'"'io.containerd.cri.v1.runtime'"'"'.containerd.runtimes.runsc.options]\n  TypeUrl
         = '"'"'io.containerd.runsc.v1.options'"'"'\n  ConfigPath = '"'"'/etc/containerd/runsc.toml'"'"'\n'
         >> /etc/containerd/config.toml
-      - grep -q runtimes.runsc /etc/containerd/config.toml
-      - grep -q runsc.toml /etc/containerd/config.toml
+      # w9/074 gVisor gate. cloud-init runs every runcmd item from one /bin/sh
+      # script without -e, and CAPI appends `kubeadm join` as the next item
+      # (bootstrap/kubeadm/pkg/cloudinit/node.go), so a failing check above
+      # does NOT stop the join: a node once joined with no runsc and every
+      # agent sandbox failed (2026-11-04). This item exits the script before
+      # the join unless both binaries are installed with their pinned digests
+      # and containerd is configured for them; the bex-sandbox
+      # MachineHealthCheck then replaces the machine.
+      - test -x /usr/local/bin/runsc && test -x /usr/local/bin/containerd-shim-runsc-v1 &&
+        echo "$RUNSC_SHA512  /usr/local/bin/runsc" | sha512sum -c - &&
+        echo "$SHIM_SHA512  /usr/local/bin/containerd-shim-runsc-v1" | sha512sum -c - &&
+        grep -q runtimes.runsc /etc/containerd/config.toml && grep -q runsc.toml /etc/containerd/config.toml ||
+        { echo "bex gVisor bootstrap gate failed, not joining the cluster" >&2; exit 1; }
       - mkdir -p /etc/containerd/certs.d/zot.bex-registry.svc:5000 /etc/containerd/certs.d/zot.local:5000
       - printf 'server = "http://127.0.0.1:30500"\n[host."http://127.0.0.1:30500"]\n  skip_verify
         = true\n  capabilities = ["pull", "resolve"]\n' > /etc/containerd/certs.d/zot.bex-registry.svc:5000/hosts.toml
@@ -307,3 +322,27 @@ spec:
         apiVersion: infrastructure.cluster.x-k8s.io/v1beta1
         kind: HCloudMachineTemplate
         name: bex-sandbox-cx33
+---
+# w9/074: a sandbox machine whose bootstrap gate refused to join (or whose
+# node goes NotReady) is deleted and recreated from the current template.
+# No remediationTemplate on purpose: the HCloud remediation reboots the
+# server, and cloud-init runcmd does not run again after a reboot.
+apiVersion: cluster.x-k8s.io/v1beta1
+kind: MachineHealthCheck
+metadata:
+  name: bex-sandbox-unhealthy
+  namespace: bex-capi
+spec:
+  clusterName: bex
+  maxUnhealthy: 100%
+  nodeStartupTimeout: 20m
+  selector:
+    matchLabels:
+      nodepool: bex-sandbox
+  unhealthyConditions:
+    - status: Unknown
+      timeout: 600s
+      type: Ready
+    - status: "False"
+      timeout: 600s
+      type: Ready

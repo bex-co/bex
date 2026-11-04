@@ -31,6 +31,7 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
+	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/apimachinery/pkg/util/validation"
 )
 
@@ -299,6 +300,65 @@ func IsCapacityLimit(err error) bool {
 	return errors.As(err, &coded) && coded.Code == CodeSandboxCapacityLimit
 }
 
+// CodeSandboxStartFailed is the code for a sandbox that did not become ready
+// while the workspace still had sandbox capacity: the cause is on the platform
+// side (a node without the sandbox runtime, a stuck controller), so a client
+// must not offer a plan upgrade for it (w9/074).
+const CodeSandboxStartFailed = "SANDBOX_START_FAILED"
+
+// StartFailureReason is the session failure sentence recorded beside
+// CodeSandboxStartFailed.
+const StartFailureReason = "sandbox did not start (platform issue)"
+
+func sandboxStartError() error {
+	return core.NewUnavailableError(CodeSandboxStartFailed,
+		"the sandbox did not become ready within the platform's wait, and this workspace's sandbox capacity is not exhausted, so the cause is on bex's side, not your plan; retry in a few minutes and contact support if it keeps failing",
+		nil)
+}
+
+// IsStartFailure reports whether err is (or wraps) the platform-side start
+// failure.
+func IsStartFailure(err error) bool {
+	var coded *core.CodedError
+	return errors.As(err, &coded) && coded.Code == CodeSandboxStartFailed
+}
+
+// podReadyTimeoutError names the cause of the server's pod-ready timeout as far
+// as bex-api can defend it. bex-api cannot see the pod, but it knows the
+// workspace's plan limits and its live sandboxes: when they leave room for this
+// sandbox, the quota did not refuse it and blaming the plan would send the
+// customer to an upgrade that fixes nothing (w9/074: a node without gVisor
+// failed every session as "capacity reached"). Anything bex-api cannot read
+// keeps the capacity answer it gave before.
+func (s *Service) podReadyTimeoutError(ctx context.Context, key, workspace, cpu, mem string) error {
+	if s.capacityExhausted(ctx, key, workspace, cpu, mem) {
+		return sandboxCapacityError()
+	}
+	return sandboxStartError()
+}
+
+func (s *Service) capacityExhausted(ctx context.Context, key, workspace, cpu, mem string) bool {
+	plan, _, err := s.WorkspacePlanOf(ctx, workspace)
+	if err != nil {
+		log.Printf("sandbox create: pod-ready timeout: plan lookup failed (workspace=%s): %v", workspace, err)
+		return true
+	}
+	perCPU, cpuErr := resource.ParseQuantity(cpu)
+	perMem, memErr := resource.ParseQuantity(mem)
+	if cpuErr != nil || memErr != nil {
+		return true
+	}
+	live, err := s.Client.List(ctx, key)
+	if err != nil {
+		log.Printf("sandbox create: pod-ready timeout: list sandboxes failed (workspace=%s): %v", workspace, err)
+		return true
+	}
+	// The timed-out sandbox may or may not be listed yet; count at least it.
+	n := max(int64(len(live)), 1)
+	limCPU, limMem := store.SandboxComputeLimits(plan)
+	return perCPU.MilliValue()*n > limCPU.MilliValue() || perMem.Value()*n > limMem.Value()
+}
+
 // isWorkspaceAdmin answers the cross-owner admin override with an authoritative
 // (uncached) decision whenever the wired checker supports core.FreshChecker
 // (round-11 #5): the override gates exec-ticket minting and lifecycle mutation
@@ -530,7 +590,7 @@ func (s *Service) createResolved(ctx context.Context, workspace, template string
 	raw, err := s.Client.Create(ctx, key, tmpl.Image, entry, cpu, mem, timeout, env, metadata)
 	if err != nil {
 		if errors.Is(err, errPodReadyTimeout) {
-			return Sandbox{}, sandboxCapacityError()
+			return Sandbox{}, s.podReadyTimeoutError(ctx, key, workspace, cpu, mem)
 		}
 		return Sandbox{}, err
 	}
