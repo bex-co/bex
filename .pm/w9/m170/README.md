@@ -84,3 +84,11 @@ The live DoD (a session writes a CSV, shares it, and it downloads from the dashb
 - **Done signal.** `bex-system` has the attachments Secret, a deploy rolls bex-api with `BEX_AGENT_ATTACHMENTS_S3_*`, and `GET /v1/agent-sessions/capabilities` reports `attachments.enabled: true`.
 - **Worker next step.** m168 runs the provisioning first. m169–m171 wait for that signal, then run their live checks as written in their definitions of done, signing in as the QA user (`scripts/qa-login.sh`).
 - **If provisioning fails** (keys missing or rejected, Wasabi denies the call): stop, keep the error message without any secret, and return the item to `blocked/` with the exact failure.
+
+## Live acceptance evidence (2026-11-04, production)
+
+**Files sheet.** On a session it lists the two inputs as "You · turn 1 · 178 B" ([screenshot](evidence/m170-files-sheet-desktop.png)).
+
+**Not run: `share_file`.** No agent sandbox can start on production right now (`containerd-shim-runsc-v1` missing on `bex-sandbox-cgqq6-vlvqv`; see m168's evidence). Re-run "write a CSV and share it" once sandboxes start.
+
+Note: shared-image cards will also hit the dashboard CSP `img-src` gap recorded in m169.
