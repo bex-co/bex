@@ -11,7 +11,7 @@ description: >-
 license: MIT
 compatibility: >-
   Git repository on GitHub, GitLab, or Bitbucket for Blueprint sync. bex CLI
-  v2.7.0+ recommended for `bex blueprints validate`. IDEs can validate
+  recommended for `bex blueprints validate`. IDEs can validate
   against the public JSON Schema URL below.
 metadata:
   author: bex

@@ -102,6 +102,6 @@ Symptoms, causes, and fixes for frequent `render.yaml` errors.
 
 ## Quick prevention
 
-1. `bex blueprints validate` (CLI v2.7.0+).
+1. `bex blueprints validate`.
 2. JSON Schema in the IDE: `https://render.com/schema/render.yaml.json`.
 3. Diff previews against production wiring before merging.

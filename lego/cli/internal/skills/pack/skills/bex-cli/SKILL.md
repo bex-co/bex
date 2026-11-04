@@ -9,7 +9,7 @@ description: >-
   bex ssh, bex psql, bex blueprints validate, bex skills,
   BEX_ACCESS_TOKEN, non-interactive, CI/CD deploy.
 license: MIT
-compatibility: bex CLI v2.7.0+ (Homebrew, Linux/macOS, direct download)
+compatibility: bex CLI (Homebrew, Linux/macOS, direct download)
 metadata:
   author: bex
   version: "1.0.0"

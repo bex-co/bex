@@ -35,6 +35,10 @@ import (
 // linked as the behavior reference, so render.com/docs itself is allowed.
 var userDirecting = regexp.MustCompile(`mcp\.render\.com|dashboard\.render\.com|api\.render\.com|onrender\.com|render\.com/(pricing|contact)|status\.render\.com|renderdns\.com|render\.com/docs/(cli|cli-reference|mcp-server)\b|RENDER_API_KEY|~/\.render/|brew install render\b|(^|[\s\x60$(|;&"'/])render (blueprints|deploys|docs|ea|environments|help|jobs|keyvalues|kv-cli|login|logout|logs|pgcli|postgres|projects|psql|restart|resume|services|skills|ssh|suspend|whoami|workspaces?|workflows|sandboxes|--version)\b|\brender-[a-z]+|bex-oss`)
 
+// renderVersionFloor is the pinned Render CLI's version line (v2.x), which
+// reads as "your bex v0.x is too old" to an agent (w8/233).
+var renderVersionFloor = regexp.MustCompile(`\bv2\.\d+\.\d+`)
+
 func TestPackOperatesBexOnly(t *testing.T) {
 	skills := 0
 	err := fs.WalkDir(pack, "pack/skills", func(path string, d fs.DirEntry, err error) error {
@@ -53,6 +57,9 @@ func TestPackOperatesBexOnly(t *testing.T) {
 		for n, line := range strings.Split(string(data), "\n") {
 			if m := userDirecting.FindString(strings.ReplaceAll(line, "render-oss/skills", "")); m != "" {
 				t.Errorf("%s:%d: user-directing Render reference %q", rel, n+1, m)
+			}
+			if m := renderVersionFloor.FindString(line); m != "" {
+				t.Errorf("%s:%d: Render CLI version floor %q in the bex pack", rel, n+1, m)
 			}
 		}
 		if strings.HasSuffix(rel, "/SKILL.md") {

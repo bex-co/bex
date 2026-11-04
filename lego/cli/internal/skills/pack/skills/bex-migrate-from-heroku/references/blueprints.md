@@ -17,7 +17,7 @@ Use the public JSON Schema for editor or programmatic validation:
 https://render.com/schema/render.yaml.json
 ```
 
-When bex CLI v2.7.0 or later is available, validate the finished file:
+When the bex CLI is available, validate the finished file:
 
 ```bash
 bex blueprints validate render.yaml
