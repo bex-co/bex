@@ -801,8 +801,12 @@ spec:
                   - source_labels: [__meta_kubernetes_pod_label_cnpg_io_cluster]
                     target_label: cnpg_io_cluster
                 metric_relabel_configs:
+                  # The archiver pair backs the operator's stalled-archive
+                  # probe (w5/175): segments waiting in archive_status/*.ready
+                  # with nothing archived, which CNPG still reports as
+                  # ContinuousArchiving=True.
                   - source_labels: [__name__]
-                    regex: cnpg_backends_total|cnpg_pg_replication_.*
+                    regex: cnpg_backends_total|cnpg_pg_replication_.*|cnpg_collector_pg_wal_archive_status|cnpg_pg_stat_archiver_seconds_since_last_archival
                     action: keep
               # Managed Key Value (Valkey) instances: the redis_exporter sidecar
               # the operator attaches to every KeyValue StatefulSet pod (w5/011),

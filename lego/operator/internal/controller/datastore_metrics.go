@@ -21,6 +21,7 @@ import (
 	"time"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"k8s.io/apimachinery/pkg/api/meta"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
@@ -65,7 +66,7 @@ var (
 	// so its absence deserves its own series rather than being inferred.
 	datastoreArchivingDesc = prometheus.NewDesc(
 		"bex_datastore_wal_archiving",
-		"1 when a backup-enabled Database's CNPG cluster reports ContinuousArchiving=True, 0 otherwise. Absent when the cluster does not exist yet.",
+		"1 when a backup-enabled Database's CNPG cluster reports ContinuousArchiving=True and the operator has not detected a stalled archive, 0 otherwise. Absent when the cluster does not exist yet.",
 		[]string{"namespace", "name"}, nil,
 	)
 	datastoreObserveErrorsDesc = prometheus.NewDesc(
@@ -152,6 +153,10 @@ func (c *datastoreCollector) Collect(ch chan<- prometheus.Metric) {
 				continue
 			}
 			if ok, found := archiving[db.Namespace+"/"+db.Name]; found {
+				// A hang CNPG still reports as True (w5/175) reads as not archiving.
+				if cond := meta.FindStatusCondition(db.Status.Conditions, appv1alpha1.ConditionWALArchiving); cond != nil && cond.Reason == reasonWALArchiveStalled {
+					ok = false
+				}
 				value := float64(0)
 				if ok {
 					value = 1
