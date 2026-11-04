@@ -23,3 +23,24 @@ kubectl apply -f cluster.yaml
 ```
 
 Not applied here (no Hetzner account); the manifest is structurally complete.
+
+## Changing a machine template (production)
+
+CAPI reads a machine template only when it creates a machine, and nothing applies these files automatically. An edit merged here changes nothing until it is applied. The sandbox pool kept downloading gVisor from a dead `latest` URL for months after the pinned, digest-checked install was committed, and on 2026-11-04 a replacement node joined without the runtime (w9/074).
+
+1. Check drift (read-only, server-side dry run):
+
+   ```sh
+   BEX_KUBE_CONTEXT=hetzner-prod scripts/capi-template-drift.sh
+   ```
+
+2. Apply only the changed template (`KubeadmConfigTemplate` / `HCloudMachineTemplate`), never the `MachineDeployment`, whose live replica count can differ from this file:
+
+   ```sh
+   python3 -c 'import sys,yaml; d=[x for x in yaml.safe_load_all(open("sandbox-pool.yaml")) if x and x["kind"]=="KubeadmConfigTemplate"]; print(yaml.safe_dump(d[0]))' \
+     | kubectl --context hetzner-prod apply -f -
+   ```
+
+3. Existing machines keep their old bootstrap. Replace them **surge-first** (user rule, 2026-11-04): scale the MachineDeployment up by one, wait for the new node to be Ready and verify it (for the sandbox pool, a `runtimeClassName: gvisor` pod reports a `-gvisor` kernel), then annotate the old Machine `cluster.x-k8s.io/delete-machine=yes` and scale back down. Never delete the old machine first. Machine types are not always in stock; if no new machine can be created, find another way (another type from the pool's fallback template, another location) rather than removing capacity.
+
+The sandbox pool's bootstrap refuses to join a node whose gVisor install did not verify (`scripts/capi-sandbox-bootstrap.test.sh` runs those exact commands), and the `bex-sandbox-unhealthy` MachineHealthCheck replaces a machine that never becomes Ready.
