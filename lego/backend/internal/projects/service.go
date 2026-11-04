@@ -111,6 +111,9 @@ type Service struct {
 	Databases    DatabaseIndex
 	KeyValues    KeyValueIndex
 	Environments EnvironmentIndex
+	// Services deletes the project's services when the project is deleted, as
+	// Render does (w4/m264). nil keeps the former detach-only behavior.
+	Services core.ServiceDeleter
 	// ExitGuards authorizes taking resources out of the environments a write
 	// leaves: each ACL-bearing one needs a fresh can_manage (w4/m232). The
 	// composition root wires environments.ExitGuards; nil (environments
@@ -573,21 +576,38 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 	return s.view(ctx, p)
 }
 
-// Delete clears inherited environment rules and datastore placement before
-// removing the project. The store cascade clears service membership and child
-// environments; surviving datastores retain their own rules and remain unassigned.
+// Delete deletes the project's services (Render: "Deleting a project deletes
+// all of its associated environments and services", w4/m264), clears inherited
+// environment rules and datastore placement, then removes the project. The
+// store cascade removes child environments; datastores retain their own rules
+// and remain unassigned.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
 	if err != nil {
 		return err
 	}
-	return s.deleteProject(ctx, p)
+	return s.deleteProject(ctx, p, true)
 }
 
-func (s *Service) deleteProject(ctx context.Context, p store.Project) error {
+func (s *Service) deleteProject(ctx context.Context, p store.Project, deleteServices bool) error {
 	id := p.ID
+	var doomed []string
+	if deleteServices && s.Services != nil {
+		byProject, err := s.Store.ListServicesForProjects(ctx, []string{p.ID})
+		if err != nil {
+			return err
+		}
+		doomed = byProject[p.ID]
+	}
 	if s.Environments != nil {
+		// Preflights every child environment's administrator gate before the
+		// first write, so a refusal lands before any service is deleted.
 		if err := s.Environments.ClearMembersForProject(ctx, p.ID); err != nil {
+			return err
+		}
+	}
+	for _, svc := range doomed {
+		if err := s.Services.Delete(ctx, svc); err != nil && !errors.Is(err, core.ErrNotFound) {
 			return err
 		}
 	}
@@ -632,7 +652,7 @@ func (s *Service) DeleteIfEmpty(ctx context.Context, id string) error {
 				map[string]any{"id": p.ID})
 		}
 	}
-	return s.deleteProject(ctx, p)
+	return s.deleteProject(ctx, p, false)
 }
 
 // SetServices replaces the full list of services in a project.

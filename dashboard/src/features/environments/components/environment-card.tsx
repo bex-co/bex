@@ -165,6 +165,12 @@ export function EnvironmentCard({
     items: StrandedGroupPromptItem[];
   } | null>(null);
 
+  // Deleting an environment deletes its services, as Render does (w4/m264).
+  const doomedServiceNames = useMemo(() => {
+    const byId = new Map(services.map((s) => [s.id, s.name]));
+    return environment.serviceIds.map((id) => byId.get(id) ?? id);
+  }, [environment.serviceIds, services]);
+
   const rows = useMemo((): ResourceRow[] => {
     const serviceById = new Map(services.map((s) => [s.id, s]));
     const databaseById = new Map(databases.map((d) => [d.id, d]));
@@ -508,7 +514,18 @@ export function EnvironmentCard({
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title={t("environments.deleteConfirmTitle", { name: environment.name })}
-        description={t("environments.deleteConfirmBody")}
+        description={
+          doomedServiceNames.length > 0
+            ? t("environments.deleteConfirmBodyServices", {
+                services: doomedServiceNames.join(", "),
+              })
+            : t("environments.deleteConfirmBody")
+        }
+        phrase={
+          doomedServiceNames.length > 0
+            ? `sudo delete environment ${environment.name}`
+            : undefined
+        }
         cancelLabel={t("environments.cancel")}
         confirmLabel={
           <>

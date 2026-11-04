@@ -1,6 +1,6 @@
 # w4 · m264 — Projects and environments follow Render's lifecycle: a new project comes with its first environment, and deleting an environment or project deletes its services
 
-**Worker:** worker4 **Goal:** creating a project in the dashboard asks for its first environment and creates it, as Render does. Deleting an environment or a project deletes the services inside it after a confirmation that names them, instead of silently leaving them running and unassigned. **Status:** todo
+**Worker:** worker4 **Goal:** creating a project in the dashboard asks for its first environment and creates it, as Render does. Deleting an environment or a project deletes the services inside it after a confirmation that names them, instead of silently leaving them running and unassigned. **Status:** done 2026-11-04 (shipped: first environment on create, service cascade on environment/project delete behind a typed-phrase confirmation, ADR032 updated; the project confirmation shows a service count, not names; live replay follows the release)
 
 ## Tasks (in order)
 
