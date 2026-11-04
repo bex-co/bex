@@ -75,6 +75,12 @@ var filePatches = map[string][]rule{
 				"            -d \"grant_type=client_credentials&client_id=$$BEX_KEY_ID&client_secret=$$BEX_KEY_SECRET\" | jq -r .access_token)\"\n"+
 				"          bex deploys create ${{ secrets.BEX_SERVICE_ID }}"),
 		r(`sudo sh /tmp/install-bex-cli\.sh`, "sudo BEX_INSTALL_DIR=/usr/local/bin sh /tmp/install-bex-cli.sh"),
+		// install-bex.sh verifies the release signature with cosign >= 2.4.2,
+		// which GitHub-hosted runners do not ship (w32/004). Pinned as
+		// .github/workflows/cli-release.yml pins it.
+		r(`(?m)^      - name: Install bex CLI\n`, "      - name: Install cosign (install-bex.sh verifies the release signature)\n"+
+			"        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2\n"+
+			"      - name: Install bex CLI\n"),
 	},
 	"render-migrate-from-heroku/references/service-mapping.md": {
 		r(`- \*\*Heroku Pipelines\*\* → [^\n]*`, "- **Heroku Pipelines** → separate bex services or projects per stage, promoted manually (bex has no preview environments)"),

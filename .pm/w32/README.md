@@ -11,4 +11,4 @@ _None yet._
 - [ ] [001](blocked/001.md) — CLI installer fails with old cosign — **BLOCKED (user: approve editing `bex-co/eden-cms-v2` `docs/cli.md` → "cosign v2.4.2 or newer")**; installer version gate, tests and in-repo docs done
 - [x] [002](done/002.md) — Blueprint validate: unknown service type also reports a spurious `missing property 'ipAllowList'` — DONE
 - [003](003.md) — Static site wedges after a failed build: next deploy stays "Build queued", ipAllowList changes never apply
-- [004](004.md) — CLI skill's GitHub Actions example runs the installer on ubuntu-latest, which has no cosign
+- [x] [004](done/004.md) — CLI skill's GitHub Actions example runs the installer on ubuntu-latest, which has no cosign — DONE
