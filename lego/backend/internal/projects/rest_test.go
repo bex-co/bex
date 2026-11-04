@@ -88,33 +88,22 @@ func TestToRenderProjectOmitsUnresolvedOwner(t *testing.T) {
 	}
 }
 
-func TestProjectsRESTListNamesMissingOwnerID(t *testing.T) {
-	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: newFakeProjectStore()}
+// w4/475: Render marks ownerId optional on GET /projects, so an unfiltered list
+// answers 200 with the caller's workspace instead of a 400.
+func TestProjectsRESTListWithoutOwnerIDResolvesTheCallersWorkspace(t *testing.T) {
+	created := time.Date(2026, 7, 14, 12, 0, 0, 0, time.UTC)
+	st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: core.DefaultTenant, Name: "a", CreatedAt: created, UpdatedAt: created})
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodGet, "/v1/projects", nil)
-	mux.ServeHTTP(rec, req.WithContext(ctxAs("user-a")))
-
-	if rec.Code != http.StatusBadRequest {
-		t.Fatalf("GET /v1/projects without ownerId = %d, want 400: %s", rec.Code, rec.Body.String())
-	}
-	var body struct {
-		Error   string `json:"error"`
-		Message string `json:"message"`
-		ID      string `json:"id"`
-	}
-	if err := json.Unmarshal(rec.Body.Bytes(), &body); err != nil {
-		t.Fatalf("decode error body: %v", err)
-	}
-	// The opaque "bad request" the bug reported must be replaced by a body that
-	// names ownerId, matching the validator-gated siblings (w4/038).
-	if !strings.Contains(body.Error, "ownerId") {
-		t.Fatalf("error body %q does not name the missing ownerId parameter", body.Error)
-	}
-	if body.Message != body.Error {
-		t.Fatalf("message %q and error %q disagree", body.Message, body.Error)
+	for _, target := range []string{"/v1/projects", "/v1/projects?limit=5", "/v1/projects?ownerId="} {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodGet, target, nil)
+		mux.ServeHTTP(rec, req.WithContext(ctxAs("user-a")))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s = %d, want 200: %s", target, rec.Code, rec.Body.String())
+		}
 	}
 }
 

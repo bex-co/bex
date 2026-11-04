@@ -118,14 +118,9 @@ func (s *Service) renderProjects(ctx context.Context, ps []ProjectView) ([]rende
 // milestone closes.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET /v1/projects", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		// ownerId is optional, as in Render's spec (w4/475): an empty value
+		// resolves to the caller's current workspace, as every sibling list does.
 		ownerID := r.URL.Query().Get("ownerId")
-		if ownerID == "" {
-			// Render marks ownerId optional here; bex requires it (the w6/m126
-			// parity rework owns that divergence). Name the param so the caller
-			// gets the same actionable 400 the validator-gated siblings emit,
-			// rather than a bare "bad request" (w4/038).
-			return nil, fmt.Errorf("%w: invalid query parameter %q", core.ErrBadRequest, "ownerId")
-		}
 		// Render's project shape carries no membership, so the page is filtered
 		// and rendered from bare rows without reading any (w5/155).
 		_, ps, err := s.listBare(r.Context(), ownerID)
