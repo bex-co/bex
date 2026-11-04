@@ -1,0 +1,22 @@
+[
+ {
+  "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13337935426/zip",
+  "created_at": "2026-11-04T15:14:41Z",
+  "digest": "sha256:988dec2b9416c65b06f1623df2c0fce61975f1587c2fade734afa7f5bc9e31c4",
+  "expired": false,
+  "expires_at": "2026-12-04T15:14:35Z",
+  "id": 13337935426,
+  "name": "common-pilot-ruby-ruby30-reviewed-candidate-0958ce62f19dd97eb05d2040ec0b2147b25645dd1ee58932f73d821a243acf5b-amd64-1",
+  "node_id": "MDg6QXJ0aWZhY3QxMzMzNzkzNTQyNg==",
+  "size_in_bytes": 38123,
+  "updated_at": "2026-11-04T15:14:41Z",
+  "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13337935426",
+  "workflow_run": {
+   "head_branch": "main",
+   "head_repository_id": 793852040,
+   "head_sha": "c9b578823bc999475b863026ab694015922adbb4",
+   "id": 41851952550,
+   "repository_id": 793852040
+  }
+ }
+]

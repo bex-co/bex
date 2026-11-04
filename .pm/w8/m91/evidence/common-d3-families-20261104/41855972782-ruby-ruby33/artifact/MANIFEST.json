@@ -1,0 +1,85 @@
+{
+  "files": [
+    {
+      "path": "bootstrap-1.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bootstrap-1.stdout.log",
+      "bytes": 1385,
+      "sha256": "736494c943e57cad57f60bdd55daad05ea2cd064d77171f76027947fa57e12f3"
+    },
+    {
+      "path": "bootstrap.json",
+      "bytes": 2640,
+      "sha256": "81bba1d02bdf380cb581ff2ce3cccdd6d47ae838c90c2bf1a18499ec5f698e31"
+    },
+    {
+      "path": "capacity-after-tests.json",
+      "bytes": 1317,
+      "sha256": "744add93fa314a181a282936a73fb850136e1b60a55aa508fb0d08847e7eb38d"
+    },
+    {
+      "path": "capacity-before-builder.json",
+      "bytes": 1320,
+      "sha256": "2c5544305d858fa5a82fd144ca53b43954115fa5e3ef810a530a41dcd9c5b61f"
+    },
+    {
+      "path": "cleanup.json",
+      "bytes": 494,
+      "sha256": "0a8056299cb35ba8a3f74b6a3c160ff532abed4479b407ac0386f1c690ffa080"
+    },
+    {
+      "path": "generated/native-ruby-qualification-2294810782/ruby33/Dockerfile.canonical",
+      "bytes": 4707,
+      "sha256": "ab715afdc7d454f5a10f1aaf9944ec70fa90bdb510a6d14a8abdbc3fd2896d78"
+    },
+    {
+      "path": "generated/native-ruby-qualification-2294810782/ruby33/build.log",
+      "bytes": 71160,
+      "sha256": "aab79e8e2292f8cc8b5e567c045f681e2de8bd836e0b9d34d766885436a2afff"
+    },
+    {
+      "path": "generated/native-ruby-qualification-2294810782/ruby33/qa-output/build.json",
+      "bytes": 731,
+      "sha256": "13b05c4da89bce95a1ed2029cfa87bc768f4412ef7f97295f58333c15a1c80bc"
+    },
+    {
+      "path": "generated/native-ruby-qualification-2294810782/ruby33/qa-output/runtime.json",
+      "bytes": 733,
+      "sha256": "72109bb0f7d0fa1f00848ed11501ea4828ec0e4357a15b40851c1029a986df8a"
+    },
+    {
+      "path": "generated/native-ruby-qualification-2294810782/ruby33/receipt.json",
+      "bytes": 783,
+      "sha256": "41057528dae77b8f17e099a817dd6712f8ccb85c21d53f25c07c9bdd5b75d559"
+    },
+    {
+      "path": "generated/native-ruby-qualification-2294810782/ruby33/runtime.log",
+      "bytes": 734,
+      "sha256": "053221be605fb4b4abde5b7ac9bd3150739d871748629c4f2504398084973e3b"
+    },
+    {
+      "path": "generated/native-ruby-qualification-2294810782/ruby33/selection.json",
+      "bytes": 404,
+      "sha256": "f28a4fd96e7b420f569d6a3769f8e67006a1bb76abb4cc00507d7120081eef62"
+    },
+    {
+      "path": "inputs.json",
+      "bytes": 2312,
+      "sha256": "5c2f8510b10951473ccac2fce34af5c6af8a136aef364d7c4042b89939b3558e"
+    },
+    {
+      "path": "qualification-source.json",
+      "bytes": 75812,
+      "sha256": "3514fd0c79814db9af68af4397173365f0029ade9aa1856dd74ce39dd9b870a6"
+    },
+    {
+      "path": "qualification.log",
+      "bytes": 619,
+      "sha256": "6301d279509b3ce993a513bbef73f61114527ec74e69a0b773cafe4ea9957383"
+    }
+  ],
+  "scope": "actual retained evidence, including failures; not an acceptance assertion"
+}

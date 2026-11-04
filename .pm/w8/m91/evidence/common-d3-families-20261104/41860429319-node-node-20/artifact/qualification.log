@@ -1,0 +1,1733 @@
+=== RUN   TestCommonNodeGeneratedImages
+    nativecommon_node_qualification_test.go:208: retained Node profile evidence: /home/docker/actions-runner/_work/_temp/bex-native-qualification-1js_xj_u/generated/native-common-node-4029897956
+=== RUN   TestCommonNodeGeneratedImages/node-20
+    nativecommon_node_qualification_test.go:214: actual common Node offline build: signal: killed
+        #0 building with "bex-nq-aeea9b7cff234872bca2cd81" instance using docker-container driver
+        
+        #1 [internal] load build definition from Dockerfile
+        #1 transferring dockerfile: 4.11kB done
+        #1 DONE 0.0s
+        
+        #2 resolve image config for docker-image://docker.io/docker/dockerfile:1.7
+        #2 DONE 8.2s
+        
+        #3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+        #3 resolve docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e done
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 0B / 11.24MB 0.2s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 1.05MB / 11.24MB 1.1s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 2.10MB / 11.24MB 2.1s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 3.15MB / 11.24MB 2.9s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 4.19MB / 11.24MB 3.9s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 5.24MB / 11.24MB 4.5s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 6.29MB / 11.24MB 5.4s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 7.34MB / 11.24MB 6.2s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 8.39MB / 11.24MB 7.2s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 9.44MB / 11.24MB 8.0s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 10.49MB / 11.24MB 8.4s
+        #3 sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 11.24MB / 11.24MB 8.9s done
+        #3 DONE 9.0s
+        
+        #3 docker-image://docker.io/docker/dockerfile:1.7@sha256:a57df69d0ea827fb7266491f2813635de6f17269be881f696fbfdf2d83dda33e
+        #3 extracting sha256:6e230fe0035dc5b9d8d5e65513d1f11ae3b25d14362031fb540a4c23bf862933 0.1s done
+        #3 DONE 9.0s
+        
+        #4 [internal] load metadata for docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #4 ...
+        
+        #5 [internal] load metadata for docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #5 DONE 1.3s
+        
+        #6 [internal] load metadata for docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #6 DONE 1.4s
+        
+        #4 [internal] load metadata for docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #4 DONE 1.4s
+        
+        #7 [internal] load metadata for ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #7 ...
+        
+        #8 [internal] load metadata for docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #8 DONE 1.5s
+        
+        #7 [internal] load metadata for ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #7 DONE 2.2s
+        
+        #9 [internal] load .dockerignore
+        #9 transferring context: 2B done
+        #9 DONE 0.0s
+        
+        #10 [internal] preparing inline document
+        #10 DONE 0.0s
+        
+        #11 [internal] load build context
+        #11 transferring context: 22.67kB done
+        #11 DONE 0.0s
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 resolve docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285 0.0s done
+        #12 DONE 0.1s
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 resolve docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822 0.0s done
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 0B / 126.26MB 0.2s
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 1.05MB / 126.26MB 5.3s
+        #13 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 resolve ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0 0.0s done
+        #14 sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 32B / 32B 0.4s done
+        #14 sha256:8131424c631aa0bf019000ccab71756c7ef061604d64df1be568536f67bc88d9 2.59kB / 2.59kB 1.1s done
+        #14 sha256:6a5c6cd12731a280ab02ef9bde9891b5b8e9a8fc89e482826676ce33b2fa15c9 913B / 913B 1.5s done
+        #14 sha256:62122c7c60374712a515c86a84f9b636e9d653455a839485c5928623c8ff4447 1.50kB / 1.50kB 2.4s done
+        #14 sha256:02589dd0e52f4f051a6eb8662355038da5850d7b172f58f02ec93876ca962dd9 1.40kB / 1.40kB 1.5s done
+        #14 sha256:432edba67d4e4fb37341aea3157c2c2e9c2b6ef21d324ec89a74e969f79b234e 1.29kB / 1.29kB 1.3s done
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 0B / 352.37MB 4.1s
+        #14 sha256:da338be950ed063c81ac638d9a4aeabeed67e11476895d54dacbeaec4c4056b8 263B / 263B 0.9s done
+        #14 sha256:3e60963474a962cd684d37632e3a7d46838ca9b952144d9faa8adc41f23a8f72 1.40kB / 1.40kB 0.8s done
+        #14 sha256:684b81beca4e9190a8d2d23006853a8c6b1f11cc7292289dd59cc0b8b42e6b6c 408B / 408B 0.8s done
+        #14 sha256:469c7b84220c2d929fdabf387498f46641a1cf1c8eb91e53ef9274ab607fd9f8 1.43kB / 1.43kB 1.2s done
+        #14 sha256:9b94dbbb7447773d37a9e0a0ea84c95562583c28f4e6a790236afc99e6926d4d 359B / 359B 0.9s done
+        #14 sha256:2bf30fd0932846f53e2874b0227350e9b274af8cbde60022e69b029cce885144 263B / 263B 1.1s done
+        #14 sha256:35e8a39389b0dba9fd03e035f28a26e521fa43b2bf998109f0d2ac2b5f3f5013 3.24kB / 3.24kB 0.8s done
+        #14 sha256:2e969d93998abdbce83607beb15cbaff40568dffb6aefb6c61c8285ed15cf9f3 1.05kB / 1.05kB 0.7s done
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 0B / 62.63MB 1.2s
+        #14 ...
+        
+        #15 [stage-2 11/18] ADD --link --checksum=sha256:c729f6538e005d234889910466fd1c4c44affb0b28ea86d93fcf88aa1aefa694 https://registry.npmjs.org/pnpm/-/pnpm-10.34.7.tgz /opt/bex/pnpm.tgz
+        #15 DONE 9.4s
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:bcfa2a68de0d82f82001a18571d45620e553a4ebb28b6ce4a673a2e149f4bc16 251B / 251B 0.6s done
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 5.24MB / 211.45MB 9.3s
+        #12 sha256:8545270ee8a6ea36d3dc517aaf625bf37b2fdb252d0f331912cf28d7da3774b9 2.10MB / 6.16MB 9.3s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 1.05MB / 20.38MB 8.7s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 resolve docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5 0.0s done
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 resolve docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea 0.0s done
+        #17 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 2.10MB / 20.38MB 10.1s
+        #12 sha256:8545270ee8a6ea36d3dc517aaf625bf37b2fdb252d0f331912cf28d7da3774b9 3.15MB / 6.16MB 12.5s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 3.15MB / 20.38MB 13.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 7.34MB / 211.45MB 14.4s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 3.15MB / 126.26MB 15.9s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 4.19MB / 20.38MB 16.7s
+        #12 sha256:8545270ee8a6ea36d3dc517aaf625bf37b2fdb252d0f331912cf28d7da3774b9 4.19MB / 6.16MB 17.4s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 5.24MB / 20.38MB 18.8s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 9.44MB / 211.45MB 19.5s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 5.24MB / 352.37MB 18.3s
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 4.19MB / 62.63MB 15.6s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 6.29MB / 20.38MB 21.2s
+        #12 sha256:8545270ee8a6ea36d3dc517aaf625bf37b2fdb252d0f331912cf28d7da3774b9 5.24MB / 6.16MB 22.4s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 7.34MB / 20.38MB 23.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 12.58MB / 211.45MB 24.6s
+        #12 sha256:8545270ee8a6ea36d3dc517aaf625bf37b2fdb252d0f331912cf28d7da3774b9 6.16MB / 6.16MB 25.4s done
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 0B / 64.40MB 0.2s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 5.24MB / 126.26MB 26.1s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 8.39MB / 20.38MB 25.7s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 9.44MB / 20.38MB 28.1s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 14.68MB / 211.45MB 29.7s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 10.49MB / 20.38MB 29.6s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 7.34MB / 352.37MB 28.5s
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 7.34MB / 62.63MB 25.8s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 1.05MB / 64.40MB 5.3s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 11.53MB / 20.38MB 31.8s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 12.58MB / 20.38MB 33.8s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 16.78MB / 211.45MB 34.8s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 2.10MB / 64.40MB 10.4s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 7.34MB / 126.26MB 36.2s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 13.63MB / 20.38MB 36.6s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 17.83MB / 211.45MB 39.9s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 13.63MB / 352.37MB 38.7s
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 11.53MB / 62.63MB 35.9s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 2.10MB / 64.40MB 15.5s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 14.68MB / 20.38MB 41.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 18.87MB / 211.45MB 45.0s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 3.15MB / 64.40MB 20.6s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 9.44MB / 126.26MB 46.5s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 14.68MB / 20.38MB 46.4s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 15.73MB / 20.38MB 47.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 19.92MB / 211.45MB 50.1s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 22.02MB / 352.37MB 48.9s
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 15.73MB / 62.63MB 46.2s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 3.15MB / 64.40MB 25.7s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 15.73MB / 20.38MB 52.4s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 19.92MB / 211.45MB 55.2s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 3.15MB / 64.40MB 30.8s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 10.49MB / 126.26MB 56.6s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 15.73MB / 20.38MB 57.5s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 16.78MB / 20.38MB 59.0s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 20.97MB / 211.45MB 60.3s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 33.55MB / 352.37MB 59.3s
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 20.97MB / 62.63MB 56.4s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 3.15MB / 64.40MB 35.9s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 16.78MB / 20.38MB 64.1s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 20.97MB / 211.45MB 65.4s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 3.15MB / 64.40MB 41.0s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 11.53MB / 126.26MB 66.9s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 16.78MB / 20.38MB 69.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 22.02MB / 211.45MB 70.5s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 40.89MB / 352.37MB 69.3s
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 25.17MB / 62.63MB 66.6s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 4.19MB / 64.40MB 46.1s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 16.78MB / 20.38MB 74.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 23.07MB / 211.45MB 75.6s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 4.19MB / 64.40MB 51.2s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 13.63MB / 126.26MB 77.0s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 16.78MB / 20.38MB 79.4s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 17.83MB / 20.38MB 79.5s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 24.12MB / 211.45MB 80.7s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 49.28MB / 352.37MB 79.7s
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 30.41MB / 62.63MB 76.8s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 4.19MB / 64.40MB 56.3s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 17.83MB / 20.38MB 84.6s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 26.21MB / 211.45MB 85.8s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 4.19MB / 64.40MB 61.4s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 16.78MB / 126.26MB 87.3s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 18.87MB / 20.38MB 89.6s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 27.26MB / 211.45MB 90.9s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 56.62MB / 352.37MB 89.7s
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 41.94MB / 62.63MB 87.0s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 5.24MB / 64.40MB 66.5s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 18.87MB / 20.38MB 94.7s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 28.31MB / 211.45MB 96.0s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 5.24MB / 64.40MB 71.6s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 25.17MB / 126.26MB 97.4s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 18.87MB / 20.38MB 99.8s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 19.92MB / 20.38MB 100.1s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 29.36MB / 211.45MB 101.1s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 59.77MB / 352.37MB 100.1s
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 48.23MB / 62.63MB 97.2s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 5.24MB / 64.40MB 76.7s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 19.92MB / 20.38MB 105.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 30.41MB / 211.45MB 106.2s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 5.24MB / 64.40MB 81.8s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 28.31MB / 126.26MB 107.6s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 19.92MB / 20.38MB 110.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 30.41MB / 211.45MB 111.3s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 62.91MB / 352.37MB 110.3s
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 57.67MB / 62.63MB 107.4s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 5.24MB / 64.40MB 86.9s
+        #12 sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 20.38MB / 20.38MB 115.0s done
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 0B / 48.48MB 0.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 31.46MB / 211.45MB 116.4s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 6.29MB / 64.40MB 92.0s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 29.36MB / 126.26MB 117.9s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 0B / 48.48MB 5.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 31.46MB / 211.45MB 121.5s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 71.30MB / 352.37MB 120.5s
+        #14 sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 62.63MB / 62.63MB 110.9s done
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 6.29MB / 64.40MB 97.1s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 0B / 48.48MB 10.4s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 31.46MB / 211.45MB 126.6s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 6.29MB / 64.40MB 102.2s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 30.41MB / 126.26MB 128.3s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 0B / 48.48MB 15.5s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 32.51MB / 211.45MB 131.7s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 81.79MB / 352.37MB 130.7s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 6.29MB / 64.40MB 107.3s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 1.05MB / 48.48MB 20.6s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 32.51MB / 211.45MB 136.8s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 6.29MB / 64.40MB 112.4s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 31.46MB / 126.26MB 138.6s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 1.05MB / 48.48MB 25.7s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 32.51MB / 211.45MB 141.9s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 92.27MB / 352.37MB 141.0s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 6.29MB / 64.40MB 117.5s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 2.10MB / 48.48MB 30.8s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 32.51MB / 211.45MB 147.0s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 7.34MB / 64.40MB 122.6s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 33.55MB / 126.26MB 149.0s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 2.10MB / 48.48MB 35.9s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 33.55MB / 211.45MB 152.1s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 104.86MB / 352.37MB 151.2s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 7.34MB / 64.40MB 127.7s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 3.15MB / 48.48MB 41.0s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 33.55MB / 211.45MB 157.2s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 7.34MB / 64.40MB 132.8s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 34.60MB / 126.26MB 159.3s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 3.15MB / 48.48MB 46.1s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 33.55MB / 211.45MB 162.3s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 119.54MB / 352.37MB 161.6s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 7.34MB / 64.40MB 137.9s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 3.15MB / 48.48MB 51.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 33.55MB / 211.45MB 167.4s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 7.34MB / 64.40MB 143.0s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 35.65MB / 126.26MB 169.7s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 4.19MB / 48.48MB 56.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 33.55MB / 211.45MB 172.5s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 7.34MB / 64.40MB 148.1s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 131.07MB / 352.37MB 171.9s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 4.19MB / 48.48MB 61.4s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 34.60MB / 211.45MB 177.6s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 7.34MB / 64.40MB 153.2s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 36.70MB / 126.26MB 180.0s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 4.19MB / 48.48MB 66.5s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 34.60MB / 211.45MB 182.7s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 8.39MB / 64.40MB 158.3s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 150.99MB / 352.37MB 182.3s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 4.19MB / 48.48MB 71.6s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 34.60MB / 211.45MB 187.8s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 8.39MB / 64.40MB 163.4s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 37.75MB / 126.26MB 190.4s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 5.24MB / 48.48MB 76.7s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 34.60MB / 211.45MB 192.9s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 8.39MB / 64.40MB 168.5s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 173.02MB / 352.37MB 192.6s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 5.24MB / 48.48MB 81.8s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 34.60MB / 211.45MB 198.0s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 8.39MB / 64.40MB 173.6s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 37.75MB / 126.26MB 200.7s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 5.24MB / 48.48MB 86.9s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 34.60MB / 211.45MB 203.1s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 8.39MB / 64.40MB 178.7s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 192.94MB / 352.37MB 203.0s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 5.24MB / 48.48MB 92.0s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 34.60MB / 211.45MB 208.2s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 8.39MB / 64.40MB 183.8s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 37.75MB / 126.26MB 211.1s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 5.24MB / 48.48MB 97.1s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 34.60MB / 211.45MB 213.3s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 8.39MB / 64.40MB 188.9s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 207.62MB / 352.37MB 213.3s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 5.24MB / 48.48MB 102.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 34.60MB / 211.45MB 218.4s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 8.39MB / 64.40MB 194.0s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 38.80MB / 126.26MB 221.4s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 5.24MB / 48.48MB 107.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 34.60MB / 211.45MB 223.5s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 8.39MB / 64.40MB 199.1s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 220.20MB / 352.37MB 223.7s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 5.24MB / 48.48MB 112.4s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 35.65MB / 211.45MB 228.6s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 8.39MB / 64.40MB 204.2s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 39.85MB / 126.26MB 231.8s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 6.29MB / 48.48MB 117.5s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 35.65MB / 211.45MB 233.7s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 8.39MB / 64.40MB 209.3s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 230.69MB / 352.37MB 234.0s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 6.29MB / 48.48MB 122.6s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 35.65MB / 211.45MB 238.8s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 9.44MB / 64.40MB 214.4s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 40.89MB / 126.26MB 242.1s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 6.29MB / 48.48MB 127.7s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 36.70MB / 211.45MB 243.9s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 9.44MB / 64.40MB 219.5s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 242.22MB / 352.37MB 244.4s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 6.29MB / 48.48MB 132.8s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 36.70MB / 211.45MB 249.0s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 9.44MB / 64.40MB 224.6s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 40.89MB / 126.26MB 252.5s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 7.34MB / 48.48MB 137.9s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 36.70MB / 211.45MB 254.1s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 9.44MB / 64.40MB 229.7s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 250.61MB / 352.37MB 254.7s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 7.34MB / 48.48MB 143.0s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 36.70MB / 211.45MB 259.2s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 9.44MB / 64.40MB 234.8s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 41.94MB / 126.26MB 262.8s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 7.34MB / 48.48MB 148.1s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 37.75MB / 211.45MB 264.3s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 9.44MB / 64.40MB 239.9s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 261.10MB / 352.37MB 265.1s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 7.34MB / 48.48MB 153.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 37.75MB / 211.45MB 269.4s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 10.49MB / 64.40MB 245.0s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 41.94MB / 126.26MB 273.2s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 7.34MB / 48.48MB 158.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 37.75MB / 211.45MB 274.5s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 10.49MB / 64.40MB 250.1s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 271.58MB / 352.37MB 275.4s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 8.39MB / 48.48MB 163.4s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 37.75MB / 211.45MB 279.6s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 10.49MB / 64.40MB 255.2s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 42.99MB / 126.26MB 283.5s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 8.39MB / 48.48MB 168.5s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 37.75MB / 211.45MB 284.7s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 10.49MB / 64.40MB 260.3s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 283.12MB / 352.37MB 285.6s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 8.39MB / 48.48MB 173.6s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 37.75MB / 211.45MB 289.8s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 10.49MB / 64.40MB 265.4s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 42.99MB / 126.26MB 293.7s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 8.39MB / 48.48MB 178.7s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 37.75MB / 211.45MB 294.9s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 10.49MB / 64.40MB 270.5s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 290.46MB / 352.37MB 296.0s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 8.39MB / 48.48MB 183.8s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 37.75MB / 211.45MB 300.0s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 10.49MB / 64.40MB 275.6s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 42.99MB / 126.26MB 304.1s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 8.39MB / 48.48MB 188.9s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 38.80MB / 211.45MB 305.1s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 11.53MB / 64.40MB 280.7s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 295.70MB / 352.37MB 306.2s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 9.44MB / 48.48MB 194.0s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 38.80MB / 211.45MB 310.2s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 11.53MB / 64.40MB 285.8s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 42.99MB / 126.26MB 314.3s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 9.44MB / 48.48MB 199.1s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 38.80MB / 211.45MB 315.3s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 11.53MB / 64.40MB 290.9s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 305.14MB / 352.37MB 316.5s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 10.49MB / 48.48MB 204.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 38.80MB / 211.45MB 320.4s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 12.58MB / 64.40MB 296.0s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 44.04MB / 126.26MB 324.6s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 11.53MB / 48.48MB 209.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 38.80MB / 211.45MB 325.5s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 12.58MB / 64.40MB 301.1s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 316.67MB / 352.37MB 326.9s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 13.63MB / 48.48MB 214.4s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 39.85MB / 211.45MB 330.6s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 13.63MB / 64.40MB 306.2s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 45.09MB / 126.26MB 335.0s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 14.68MB / 48.48MB 219.5s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 39.85MB / 211.45MB 335.7s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 14.68MB / 64.40MB 311.3s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 320.86MB / 352.37MB 337.2s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 17.83MB / 48.48MB 224.4s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 41.94MB / 211.45MB 340.8s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 16.78MB / 64.40MB 316.4s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 19.92MB / 48.48MB 229.5s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 48.23MB / 126.26MB 345.3s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 44.04MB / 211.45MB 345.9s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 17.83MB / 64.40MB 321.5s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 327.16MB / 352.37MB 347.6s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 20.97MB / 48.48MB 234.6s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 45.09MB / 211.45MB 351.0s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 19.92MB / 64.40MB 326.6s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 22.02MB / 48.48MB 239.7s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 50.33MB / 126.26MB 355.7s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 47.19MB / 211.45MB 356.1s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 23.07MB / 64.40MB 331.7s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 333.45MB / 352.37MB 357.9s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 22.02MB / 48.48MB 244.8s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 49.28MB / 211.45MB 361.2s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 25.17MB / 64.40MB 336.8s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 23.07MB / 48.48MB 249.9s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 52.43MB / 126.26MB 366.0s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 50.33MB / 211.45MB 366.3s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 26.21MB / 64.40MB 341.9s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 338.69MB / 352.37MB 368.3s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 24.12MB / 48.48MB 255.0s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 52.43MB / 211.45MB 371.4s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 27.26MB / 64.40MB 347.0s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 24.12MB / 48.48MB 260.1s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 53.48MB / 126.26MB 376.4s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 53.48MB / 211.45MB 376.5s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 30.41MB / 64.40MB 352.1s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 346.03MB / 352.37MB 378.6s
+        #14 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 25.17MB / 48.48MB 265.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 54.53MB / 211.45MB 381.6s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 31.46MB / 64.40MB 357.2s
+        #12 ...
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 352.37MB / 352.37MB 382.0s done
+        #14 DONE 383.7s
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 26.21MB / 48.48MB 270.3s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 35.65MB / 64.40MB 361.1s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 56.62MB / 126.26MB 386.7s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 56.62MB / 211.45MB 386.7s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 29.36MB / 48.48MB 275.1s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 38.80MB / 64.40MB 366.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 60.82MB / 211.45MB 391.8s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 31.46MB / 48.48MB 280.2s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 41.94MB / 64.40MB 371.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 62.91MB / 211.45MB 396.9s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 61.87MB / 126.26MB 397.1s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 34.60MB / 48.48MB 284.6s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 44.04MB / 64.40MB 376.4s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 66.06MB / 211.45MB 402.0s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 35.65MB / 48.48MB 289.7s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 46.14MB / 64.40MB 381.5s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 68.16MB / 211.45MB 407.1s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 66.06MB / 126.26MB 407.4s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 38.80MB / 48.48MB 294.6s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 49.28MB / 64.40MB 386.6s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 70.25MB / 211.45MB 412.2s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 41.94MB / 48.48MB 299.3s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 51.38MB / 64.40MB 391.7s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 74.45MB / 211.45MB 417.3s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 72.35MB / 126.26MB 417.8s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 45.09MB / 48.48MB 304.2s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 53.48MB / 64.40MB 396.8s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 76.55MB / 211.45MB 422.4s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 47.19MB / 48.48MB 309.3s
+        #12 sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 48.48MB / 48.48MB 310.6s done
+        #12 extracting sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 0B / 24.03MB 0.2s
+        #12 extracting sha256:cd01849e3cbdfc6993640303768edbb56372cf9f1ae101d516334c8d462341af 0.8s done
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 54.53MB / 64.40MB 401.9s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 79.69MB / 211.45MB 427.5s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 78.64MB / 126.26MB 428.1s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 2.10MB / 24.03MB 3.8s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 56.62MB / 64.40MB 407.0s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 82.84MB / 211.45MB 432.6s
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 4.19MB / 24.03MB 7.4s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 58.72MB / 64.40MB 412.1s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 85.98MB / 211.45MB 437.7s
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 6.29MB / 24.03MB 11.6s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 85.98MB / 126.26MB 438.5s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 8.39MB / 24.03MB 16.2s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 61.87MB / 64.40MB 417.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 90.18MB / 211.45MB 442.8s
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 10.49MB / 24.03MB 20.9s
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 62.91MB / 64.40MB 422.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 94.37MB / 211.45MB 447.9s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 92.27MB / 126.26MB 448.8s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 64.40MB / 64.40MB 424.1s done
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 12.58MB / 24.03MB 25.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 97.52MB / 211.45MB 453.0s
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 14.68MB / 24.03MB 30.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 100.66MB / 211.45MB 458.1s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 97.52MB / 126.26MB 459.2s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:0b22ec2d9b1a1a0e906e301b5ef08efe7774d5fc001b9cfa08e4e980152a0357 448B / 448B 0.8s done
+        #16 sha256:2f2ab6e4eb4619f7b8506c38dc79c8adf77acffb7622bc15ceeabb0fbc73b8a1 1.25MB / 1.25MB 3.2s done
+        #16 sha256:c83419f4430962505175b565eb8a24aafeaa4d441c0b22234e94c6e8160848ba 3.32kB / 3.32kB 0.3s done
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 2.10MB / 48.62MB 5.9s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 16.78MB / 24.03MB 34.2s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 103.81MB / 211.45MB 463.2s
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 17.83MB / 24.03MB 39.3s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 104.86MB / 211.45MB 468.3s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 101.71MB / 126.26MB 469.5s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 5.24MB / 48.62MB 16.2s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 19.92MB / 24.03MB 44.0s
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 108.00MB / 211.45MB 473.4s
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 22.02MB / 24.03MB 48.0s
+        #12 sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 24.03MB / 24.03MB 50.4s done
+        #12 extracting sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7
+        #12 extracting sha256:f279d33abc52c7384e0cbbb666ea22064ea29b50a968ec29ae3ad817f62e16e7 0.3s done
+        #12 extracting sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c
+        #12 extracting sha256:5daa5a418829f3daa90a80438cd84706b5f7fa0c795eb7936874864ef1ab7b0c 1.0s done
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 112.20MB / 211.45MB 478.5s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 108.00MB / 126.26MB 479.9s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 8.39MB / 48.62MB 26.4s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 1.05MB / 211.55MB 3.6s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 114.29MB / 211.45MB 483.6s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 12.58MB / 48.62MB 33.3s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 4.19MB / 211.55MB 10.5s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 117.44MB / 211.45MB 488.7s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 113.25MB / 126.26MB 490.2s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 120.59MB / 211.45MB 493.8s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 16.78MB / 48.62MB 43.2s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 9.44MB / 211.55MB 20.4s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 123.73MB / 211.45MB 498.9s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 117.44MB / 126.26MB 500.6s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 125.83MB / 211.45MB 504.0s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 22.02MB / 48.62MB 53.4s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 13.63MB / 211.55MB 30.6s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 127.93MB / 211.45MB 509.1s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 122.68MB / 126.26MB 510.9s
+        #13 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 128.97MB / 211.45MB 514.2s
+        #12 ...
+        
+        #13 FROM docker.io/mwader/static-ffmpeg:9.0.2-1@sha256:f5d100184884eb3e82b0eb14bb5ebf98da99826ac824989720297fb9ef21c822
+        #13 sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 126.26MB / 126.26MB 515.8s done
+        #13 extracting sha256:0d86bdb699b112cbb34d970b18ab9bfa26b4114d18cda969fda2f6aa5d059d7d 1.1s done
+        #13 DONE 517.0s
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 27.26MB / 48.62MB 63.0s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 18.87MB / 211.55MB 40.2s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 0B / 64.40MB 1.1s
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 30.41MB / 48.62MB 68.0s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 22.02MB / 211.55MB 45.3s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 3.15MB / 64.40MB 6.2s
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 31.46MB / 48.62MB 73.1s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 136.31MB / 211.45MB 527.0s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 24.12MB / 211.55MB 50.4s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 6.29MB / 64.40MB 11.3s
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 34.60MB / 48.62MB 77.9s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 27.26MB / 211.55MB 55.5s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 9.44MB / 64.40MB 16.4s
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 36.70MB / 48.62MB 83.0s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 31.46MB / 211.55MB 60.6s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 12.58MB / 64.40MB 21.5s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 142.61MB / 211.45MB 537.3s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 39.85MB / 48.62MB 87.8s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 34.60MB / 211.55MB 65.7s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 15.73MB / 64.40MB 26.6s
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 42.99MB / 48.62MB 92.1s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 19.92MB / 64.40MB 31.5s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 38.80MB / 211.55MB 70.8s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 147.85MB / 211.45MB 547.7s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 45.09MB / 48.62MB 97.2s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 22.02MB / 64.40MB 36.6s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 41.94MB / 211.55MB 75.9s
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 47.19MB / 48.62MB 102.3s
+        #16 sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 48.62MB / 48.62MB 103.1s done
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 0B / 24.04MB 0.2s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 24.12MB / 64.40MB 41.7s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 45.09MB / 211.55MB 81.0s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 153.09MB / 211.45MB 557.9s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 2.10MB / 24.04MB 4.7s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 27.26MB / 64.40MB 46.8s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 48.23MB / 211.55MB 86.1s
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 4.19MB / 24.04MB 9.3s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 31.46MB / 64.40MB 51.9s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 51.38MB / 211.55MB 91.2s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 160.43MB / 211.45MB 568.1s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 6.29MB / 24.04MB 13.5s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 34.60MB / 64.40MB 57.0s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 54.53MB / 211.55MB 96.3s
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 8.39MB / 24.04MB 17.3s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 37.75MB / 64.40MB 62.1s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 57.67MB / 211.55MB 101.4s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 165.68MB / 211.45MB 578.3s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 10.49MB / 24.04MB 22.1s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 41.94MB / 64.40MB 66.6s
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 12.58MB / 24.04MB 25.7s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 60.82MB / 211.55MB 106.5s
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 14.68MB / 24.04MB 29.6s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 44.04MB / 64.40MB 71.7s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 62.91MB / 211.55MB 111.6s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 170.92MB / 211.45MB 588.5s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 15.73MB / 24.04MB 34.7s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 45.09MB / 64.40MB 76.8s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 63.96MB / 211.55MB 116.7s
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 17.83MB / 24.04MB 38.4s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 47.19MB / 64.40MB 81.9s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 66.06MB / 211.55MB 121.8s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 176.16MB / 211.45MB 598.7s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 19.92MB / 24.04MB 42.9s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 49.28MB / 64.40MB 87.0s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 69.21MB / 211.55MB 126.9s
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 22.02MB / 24.04MB 47.1s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 51.38MB / 64.40MB 92.1s
+        #16 sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 24.04MB / 24.04MB 51.1s done
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 0B / 48.49MB 0.2s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 71.30MB / 211.55MB 132.0s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 183.50MB / 211.45MB 609.0s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 54.53MB / 64.40MB 97.2s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 2.10MB / 48.49MB 5.3s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 74.45MB / 211.55MB 137.1s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 56.62MB / 64.40MB 102.3s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 4.19MB / 48.49MB 10.4s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 78.64MB / 211.55MB 142.2s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 189.79MB / 211.45MB 619.4s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 7.34MB / 48.49MB 14.0s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 60.82MB / 64.40MB 106.7s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 82.84MB / 211.55MB 147.3s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 9.44MB / 48.49MB 19.1s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 62.91MB / 64.40MB 111.8s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 87.03MB / 211.55MB 152.4s
+        #16 sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 64.40MB / 64.40MB 113.4s done
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 195.04MB / 211.45MB 629.7s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 10.49MB / 48.49MB 24.2s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 90.18MB / 211.55MB 157.5s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 12.58MB / 48.49MB 29.3s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 93.32MB / 211.55MB 162.6s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:2d5c7653879635dfef69f3b864d5a53e937507b1a6d4b3634f8636f2dd0d0626 448B / 448B 0.3s done
+        #17 sha256:17110b031ffba487d7c86f79f9e6149f648fb23fe89036d660065e5afe5608dc 1.25MB / 1.25MB 2.8s done
+        #17 sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 3.15MB / 60.04MB 7.1s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 200.28MB / 211.45MB 640.1s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 14.68MB / 48.49MB 34.4s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 95.42MB / 211.55MB 167.7s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 15.73MB / 48.49MB 39.5s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 97.52MB / 211.55MB 172.8s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 9.44MB / 60.04MB 17.3s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 207.62MB / 211.45MB 650.4s
+        #12 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 16.78MB / 48.49MB 44.6s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 99.61MB / 211.55MB 177.9s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 17.83MB / 48.49MB 49.7s
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 211.45MB / 211.45MB 656.2s done
+        #12 extracting sha256:da3556d62e9bd977c17e315ad64979017739fd90fc5a2a89ec07cf82348133f3 2.5s done
+        #12 extracting sha256:8545270ee8a6ea36d3dc517aaf625bf37b2fdb252d0f331912cf28d7da3774b9 0.1s done
+        #12 DONE 658.9s
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 15.73MB / 60.04MB 26.4s
+        #17 sha256:4c32d53bc5f6ba8d133118f0184b96b44addea0bc86986f399cc859a2d0a7e51 3.33kB / 3.33kB 0.5s done
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 1.05MB / 211.82MB 2.0s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 ...
+        
+        #12 FROM docker.io/library/python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285
+        #12 extracting sha256:52d313a5a3dae9b1b2e387d5f470d7ffef45ef184e9e60dd3eae7239264da800 0.3s done
+        #12 extracting sha256:bcfa2a68de0d82f82001a18571d45620e553a4ebb28b6ce4a673a2e149f4bc16 done
+        #12 DONE 659.2s
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 100.66MB / 211.55MB 183.0s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 18.87MB / 48.49MB 54.8s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 102.76MB / 211.55MB 188.1s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 20.97MB / 48.49MB 59.9s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 22.02MB / 60.04MB 36.6s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 6.29MB / 211.82MB 12.3s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 103.81MB / 211.55MB 193.2s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 23.07MB / 48.49MB 65.0s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 105.91MB / 211.55MB 198.3s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 24.12MB / 48.49MB 70.1s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 27.26MB / 60.04MB 46.8s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 10.49MB / 211.82MB 22.5s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 106.95MB / 211.55MB 203.4s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 26.21MB / 48.49MB 75.2s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 108.00MB / 211.55MB 208.5s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 28.31MB / 48.49MB 80.3s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 33.55MB / 60.04MB 57.0s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 16.78MB / 211.82MB 32.7s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 110.10MB / 211.55MB 213.6s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 30.41MB / 48.49MB 85.4s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 111.15MB / 211.55MB 218.7s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 32.51MB / 48.49MB 90.5s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 39.85MB / 60.04MB 67.2s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 22.02MB / 211.82MB 42.9s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 113.25MB / 211.55MB 223.8s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 34.60MB / 48.49MB 95.6s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 114.29MB / 211.55MB 228.9s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 35.65MB / 48.49MB 100.7s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 45.09MB / 60.04MB 77.4s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 26.21MB / 211.82MB 53.1s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 116.39MB / 211.55MB 234.0s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 36.70MB / 48.49MB 105.8s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 119.54MB / 211.55MB 239.1s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 36.70MB / 48.49MB 110.9s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 50.33MB / 60.04MB 87.6s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 29.36MB / 211.82MB 63.3s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 121.63MB / 211.55MB 244.2s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 37.75MB / 48.49MB 116.0s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 123.73MB / 211.55MB 249.3s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 37.75MB / 48.49MB 121.1s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 55.57MB / 60.04MB 97.8s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 33.55MB / 211.82MB 73.5s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 125.83MB / 211.55MB 254.4s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 38.80MB / 48.49MB 126.2s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 127.93MB / 211.55MB 259.5s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 39.85MB / 48.49MB 131.3s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 60.04MB / 60.04MB 104.2s done
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 40.89MB / 211.82MB 83.7s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 1.05MB / 64.43MB 3.9s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 131.07MB / 211.55MB 264.6s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 39.85MB / 48.49MB 136.4s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 133.17MB / 211.55MB 269.7s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 40.89MB / 48.49MB 141.5s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 47.19MB / 211.82MB 93.8s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 6.29MB / 64.43MB 14.0s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 135.27MB / 211.55MB 274.8s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 41.94MB / 48.49MB 146.6s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 137.36MB / 211.55MB 279.9s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 41.94MB / 48.49MB 151.7s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 52.43MB / 211.82MB 103.8s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 11.53MB / 64.43MB 24.0s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 139.46MB / 211.55MB 285.0s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 42.99MB / 48.49MB 156.8s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 141.56MB / 211.55MB 290.1s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 44.04MB / 48.49MB 161.9s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 57.67MB / 211.82MB 113.9s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 15.73MB / 64.43MB 34.1s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 143.65MB / 211.55MB 295.2s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 44.04MB / 48.49MB 167.0s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 145.75MB / 211.55MB 300.3s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 44.04MB / 48.49MB 172.1s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 62.91MB / 211.82MB 123.9s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 18.87MB / 64.43MB 44.1s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 147.85MB / 211.55MB 305.4s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 45.09MB / 48.49MB 177.2s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 150.99MB / 211.55MB 310.5s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 45.09MB / 48.49MB 182.3s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 67.11MB / 211.82MB 134.1s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 22.02MB / 64.43MB 54.3s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 153.09MB / 211.55MB 315.6s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 47.19MB / 48.49MB 187.4s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 155.19MB / 211.55MB 320.7s
+        #16 sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 48.49MB / 48.49MB 191.4s done
+        #16 extracting sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00
+        #16 extracting sha256:db53381ee51f9e43304e236099ba097ae1b33ae41a8007e0b6319992eb55fd00 0.8s done
+        #16 extracting sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e
+        #16 extracting sha256:e5203b2bfeff92b72e816dc6cbb1f16856f0cd592e521e3c0cfa195a78fe180e 0.3s done
+        #16 extracting sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 70.25MB / 211.82MB 143.9s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 24.12MB / 64.43MB 64.1s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 0B / 23.87MB 1.1s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 extracting sha256:8fcda2b4d7993820b00c5488d173051e76d01ba6b85620617ba77001b0f9e2fa 1.0s done
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 157.29MB / 211.55MB 325.8s
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 160.43MB / 211.55MB 330.9s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 72.35MB / 211.82MB 150.8s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 26.21MB / 64.43MB 71.0s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 3.15MB / 23.87MB 8.1s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 162.53MB / 211.55MB 336.0s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 74.45MB / 211.82MB 157.7s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 27.26MB / 64.43MB 77.9s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 6.29MB / 23.87MB 14.9s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 8.39MB / 23.87MB 16.7s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 29.36MB / 64.43MB 83.0s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 75.50MB / 211.82MB 162.8s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 10.49MB / 23.87MB 20.3s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 12.58MB / 23.87MB 24.6s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 171.97MB / 211.55MB 347.7s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 30.41MB / 64.43MB 88.1s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 76.55MB / 211.82MB 167.9s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 13.63MB / 23.87MB 29.7s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 31.46MB / 64.43MB 93.2s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 76.55MB / 211.82MB 173.0s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 15.73MB / 23.87MB 34.4s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 178.26MB / 211.55MB 358.1s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 77.59MB / 211.82MB 178.1s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 32.51MB / 64.43MB 98.3s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 16.78MB / 23.87MB 39.5s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 78.64MB / 211.82MB 183.2s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 34.60MB / 64.43MB 103.4s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 18.87MB / 23.87MB 43.5s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 187.70MB / 211.55MB 368.1s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 36.70MB / 64.43MB 108.5s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 79.69MB / 211.82MB 188.3s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 20.97MB / 23.87MB 47.7s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 37.75MB / 64.43MB 113.6s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 81.79MB / 211.82MB 193.4s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 23.07MB / 23.87MB 52.2s
+        #17 sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 23.87MB / 23.87MB 54.6s done
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 0B / 48.52MB 0.2s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 196.08MB / 211.55MB 378.3s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 39.85MB / 64.43MB 118.7s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 82.84MB / 211.82MB 198.5s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 1.05MB / 48.52MB 5.3s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 83.89MB / 211.82MB 203.6s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 41.94MB / 64.43MB 123.8s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 3.15MB / 48.52MB 10.4s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 202.38MB / 211.55MB 388.7s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 85.98MB / 211.82MB 208.7s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 44.04MB / 64.43MB 128.9s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 4.19MB / 48.52MB 15.5s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 87.03MB / 211.82MB 213.8s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 46.14MB / 64.43MB 134.0s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 6.29MB / 48.52MB 20.6s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 89.13MB / 211.82MB 218.9s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 47.19MB / 64.43MB 139.1s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 208.67MB / 211.55MB 398.9s
+        #16 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 8.39MB / 48.52MB 25.7s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 90.18MB / 211.82MB 224.0s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 49.28MB / 64.43MB 144.2s
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 211.55MB / 211.55MB 403.2s done
+        #16 extracting sha256:2933ecab0f11302fd71f29aa83ad2904683246f7a8320ad0dc3a60b23f05fee9 2.5s done
+        #16 extracting sha256:c83419f4430962505175b565eb8a24aafeaa4d441c0b22234e94c6e8160848ba done
+        #16 extracting sha256:76e6b8204a89d20e7915fdc9a98ff33cb65fd7ce44ecf5a84b6cfca4bdb3d6d0 0.9s done
+        #16 extracting sha256:2f2ab6e4eb4619f7b8506c38dc79c8adf77acffb7622bc15ceeabb0fbc73b8a1 0.0s done
+        #16 DONE 883.4s
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 ...
+        
+        #16 FROM docker.io/library/node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5
+        #16 extracting sha256:0b22ec2d9b1a1a0e906e301b5ef08efe7774d5fc001b9cfa08e4e980152a0357 done
+        #16 DONE 883.4s
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 11.53MB / 48.52MB 30.0s
+        #17 ...
+        
+        #18 [bex-node-build 2/4] COPY --link --from=node:20-bookworm@sha256:8f693eaa7e0a8e71560c9a82b55fd54c2ae920a2ba5d2cde28bac7d1c01c9ba5 /usr/local/ /usr/local/
+        #18 DONE 0.5s
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 ...
+        
+        #19 [bex-node-build 3/4] COPY --link --from=python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285 /usr/local/ /usr/local/
+        #19 DONE 0.2s
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 92.27MB / 211.82MB 229.1s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 51.38MB / 64.43MB 149.3s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 13.63MB / 48.52MB 35.1s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 94.37MB / 211.82MB 234.2s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 53.48MB / 64.43MB 154.4s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 15.73MB / 48.52MB 40.2s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 96.47MB / 211.82MB 239.3s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 55.57MB / 64.43MB 159.5s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 18.87MB / 48.52MB 44.7s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 98.57MB / 211.82MB 244.4s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 58.72MB / 64.43MB 164.6s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 20.97MB / 48.52MB 49.8s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 102.76MB / 211.82MB 249.5s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 61.87MB / 64.43MB 169.7s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 22.02MB / 48.52MB 54.9s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 104.86MB / 211.82MB 254.6s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 63.96MB / 64.43MB 174.8s
+        #17 sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 64.43MB / 64.43MB 175.1s done
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 24.12MB / 48.52MB 60.0s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 109.05MB / 211.82MB 259.7s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 26.21MB / 48.52MB 65.1s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 115.34MB / 211.82MB 264.8s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 29.36MB / 48.52MB 68.4s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 121.63MB / 211.82MB 269.9s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 32.51MB / 48.52MB 73.1s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 35.65MB / 48.52MB 77.1s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 127.93MB / 211.82MB 275.0s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 38.80MB / 48.52MB 81.9s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 134.22MB / 211.82MB 280.1s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 40.89MB / 48.52MB 87.0s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 139.46MB / 211.82MB 285.2s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 44.04MB / 48.52MB 89.4s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 47.19MB / 48.52MB 92.4s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 141.56MB / 211.82MB 290.3s
+        #17 sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 48.52MB / 48.52MB 94.1s done
+        #17 extracting sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506
+        #17 extracting sha256:a4aa977c0d0eb2336dad68941e458308ebf32a717c19ea72e475b9eda8035506 0.8s done
+        #17 extracting sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395
+        #17 extracting sha256:49dd0ae7831394e9635b737d684810716dadcb662b5b9b80eefd89cee1d65395 0.3s done
+        #17 extracting sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038
+        #17 extracting sha256:661ef7e1e7b1a9919ab256de1deb5be9107b28a15fea74b39921bec95b713038 1.0s done
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 146.80MB / 211.82MB 295.4s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 158.33MB / 211.82MB 300.0s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 165.68MB / 211.82MB 305.1s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 174.06MB / 211.82MB 310.2s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 185.60MB / 211.82MB 314.7s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 197.13MB / 211.82MB 319.7s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 208.67MB / 211.82MB 324.5s
+        #17 sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 211.82MB / 211.82MB 325.6s done
+        #17 extracting sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe
+        #17 extracting sha256:c28c2f6c340d2f618d807e99ea6dd05b7cdc0cb80f44a32ef2511370286752fe 2.5s done
+        #17 DONE 984.9s
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 extracting sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce
+        #14 extracting sha256:58a450112376408e8d779bb65c0242cf6f628b7530c2216b74330b801fb307ce 3.2s done
+        #14 extracting sha256:2e969d93998abdbce83607beb15cbaff40568dffb6aefb6c61c8285ed15cf9f3
+        #14 extracting sha256:2e969d93998abdbce83607beb15cbaff40568dffb6aefb6c61c8285ed15cf9f3 done
+        #14 extracting sha256:2bf30fd0932846f53e2874b0227350e9b274af8cbde60022e69b029cce885144 done
+        #14 extracting sha256:35e8a39389b0dba9fd03e035f28a26e521fa43b2bf998109f0d2ac2b5f3f5013 done
+        #14 extracting sha256:9b94dbbb7447773d37a9e0a0ea84c95562583c28f4e6a790236afc99e6926d4d done
+        #14 extracting sha256:469c7b84220c2d929fdabf387498f46641a1cf1c8eb91e53ef9274ab607fd9f8 done
+        #14 extracting sha256:3e60963474a962cd684d37632e3a7d46838ca9b952144d9faa8adc41f23a8f72 done
+        #14 extracting sha256:684b81beca4e9190a8d2d23006853a8c6b1f11cc7292289dd59cc0b8b42e6b6c done
+        #14 extracting sha256:da338be950ed063c81ac638d9a4aeabeed67e11476895d54dacbeaec4c4056b8 done
+        #14 extracting sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e
+        #14 ...
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 extracting sha256:4c32d53bc5f6ba8d133118f0184b96b44addea0bc86986f399cc859a2d0a7e51 done
+        #17 extracting sha256:32321da9b5bae16da3ff55f9262b606c15abd172349c40babd6b0d78bfc59b70 3.5s done
+        #17 DONE 988.5s
+        
+        #17 FROM docker.io/library/node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea
+        #17 extracting sha256:17110b031ffba487d7c86f79f9e6149f648fb23fe89036d660065e5afe5608dc 0.0s done
+        #17 extracting sha256:2d5c7653879635dfef69f3b864d5a53e937507b1a6d4b3634f8636f2dd0d0626 done
+        #17 DONE 988.5s
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 extracting sha256:3ab69d8c1d9b5b5445260448dbc1c6485dc25b774bf5ae5ae41ae66bc620c39e 5.7s done
+        #14 DONE 392.7s
+        
+        #14 FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0
+        #14 extracting sha256:02589dd0e52f4f051a6eb8662355038da5850d7b172f58f02ec93876ca962dd9 done
+        #14 extracting sha256:432edba67d4e4fb37341aea3157c2c2e9c2b6ef21d324ec89a74e969f79b234e done
+        #14 extracting sha256:6a5c6cd12731a280ab02ef9bde9891b5b8e9a8fc89e482826676ce33b2fa15c9 done
+        #14 extracting sha256:62122c7c60374712a515c86a84f9b636e9d653455a839485c5928623c8ff4447 done
+        #14 extracting sha256:8131424c631aa0bf019000ccab71756c7ef061604d64df1be568536f67bc88d9 done
+        #14 extracting sha256:4f4fb700ef54461cfa02571ae0db9a0dc1e0cdb5577484a6d75e68dc38e8acc1 done
+        #14 DONE 392.7s
+        
+        #19 [bex-node-build 3/4] COPY --link --from=python:3.9-bookworm@sha256:ff12c273af1e1814efcd8dfdefe16a70a4d901afe94dce721ffed8a34176f285 /usr/local/ /usr/local/
+        #19 merging
+        #19 merging 0.6s done
+        #19 DONE 0.8s
+        
+        #20 [bex-node-build 4/4] RUN --network=default /sbin/ldconfig && /usr/local/bin/python3.9 -c 'import sys; assert sys.version_info[:2] == (3, 9)' && /usr/libexec/bex-native/build-node --common-bookworm 20.20.2 7aeeacdb858299e09a3e0510d4bb8b266923894a9e3ac0058ba89d4ecf4a4cca
+        #20 0.517   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+        #20 0.517                                  Dload  Upload   Total   Spent    Left  Speed
+        #20 0.518   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0  6 40.6M    6 2607k    0     0  2478k      0  0:00:16  0:00:01  0:00:15 2483k 13 40.6M   13 5471k    0     0  2608k      0  0:00:15  0:00:02  0:00:13 2611k 20 40.6M   20 8447k    0     0  2769k      0  0:00:15  0:00:03  0:00:12 2771k 26 40.6M   26 10.6M    0     0  2675k      0  0:00:15  0:00:04  0:00:11 2677k 32 40.6M   32 13.0M    0     0  2630k      0  0:00:15  0:00:05  0:00:10 2658k 38 40.6M   38 15.6M    0     0  2630k      0  0:00:15  0:00:06  0:00:09 2662k 43 40.6M   43 17.4M    0     0  2527k      0  0:00:16  0:00:07  0:00:09 2492k 45 40.6M   45 18.5M    0     0  2355k      0  0:00:17  0:00:08  0:00:09 2103k 50 40.6M   50 20.4M    0     0  2312k      0  0:00:18  0:00:09  0:00:09 2016k 55 40.6M   55 22.6M    0     0  2309k      0  0:00:18  0:00:10  0:00:08 1978k 59 40.6M   59 24.1M    0     0  2224k      0  0:00:18  0:00:11  0:00:07 1732k 63 40.6M   63 26.0M    0     0  2211k      0  0:00:18  0:00:12  0:00:06 1759k 68 40.6M   68 27.8M    0     0  2183k      0  0:00:19  0:00:13  0:00:06 1907k 72 40.6M   72 29.5M    0     0  2151k      0  0:00:19  0:00:14  0:00:05 1859k 78 40.6M   78 31.9M    0     0  2172k      0  0:00:19  0:00:15  0:00:04 1897k 84 40.6M   84 34.3M    0     0  2192k      0  0:00:19  0:00:16  0:00:03 2119k 90 40.6M   90 36.7M    0     0  2210k      0  0:00:18  0:00:17  0:00:01 2207k 96 40.6M   96 39.1M    0     0  2222k      0  0:00:18  0:00:18 --:--:-- 2322k100 40.6M  100 40.6M    0     0  2201k      0  0:00:18  0:00:18 --:--:-- 2346k
+        #20 19.60 node.tar.xz: OK
+        #20 19.63   % Total    % Received % Xferd  Average Speed   Time    Time     Time  Current
+        #20 19.63                                  Dload  Upload   Total   Spent    Left  Speed
+        #20 19.63   0     0    0     0    0     0      0      0 --:--:-- --:--:-- --:--:--     0100  500k    0  500k    0     0   697k      0 --:--:-- --:--:-- --:--:--  700k
+        #20 20.38 brotli.tar.gz: OK
+        #20 26.76 Node.js configure: Found Python 3.9.25...
+        #20 26.76 INFO: configure completed successfully
+        #20 CANCELED
+        ERROR: failed to build: failed to solve: Canceled: context canceled
+--- FAIL: TestCommonNodeGeneratedImages (2702.62s)
+    --- FAIL: TestCommonNodeGeneratedImages/node-20 (2702.62s)
+FAIL
+FAIL	github.com/bex-co/bex/lego/operator/internal/build	2702.634s
+FAIL

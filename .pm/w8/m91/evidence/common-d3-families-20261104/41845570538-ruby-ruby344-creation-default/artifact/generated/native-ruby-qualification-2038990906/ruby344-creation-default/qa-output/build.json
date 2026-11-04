@@ -1,0 +1,29 @@
+{
+  "pass": true,
+  "ruby": "3.4.4",
+  "node": "24.22.1",
+  "mode": "primary",
+  "phase": "build",
+  "compiled_api": [
+    3,
+    4
+  ],
+  "openssl": "OpenSSL 3.0.16 11 Feb 2025",
+  "openssl_library": "OpenSSL 3.0.22 25 Aug 2026",
+  "bundler": "2.6.7",
+  "env": {
+    "LANG": "C.UTF-8",
+    "BUNDLE_PATH": "/opt/render/project/.gems",
+    "BUNDLE_BIN": "/opt/render/project/.gems/bin",
+    "RUBY_VERSION": "3.4.4",
+    "RAILS_ENV": "production",
+    "RAILS_SERVE_STATIC_FILES": "true",
+    "RAILS_LOG_TO_STDOUT": "true",
+    "BUNDLE_DEPLOYMENT": "true",
+    "BUNDLE_APP_CONFIG": "/opt/render/project/.gems"
+  },
+  "arch": "x86_64-linux",
+  "native_extension": true,
+  "stdlib": true,
+  "source_root": "/opt/render/project/src"
+}
