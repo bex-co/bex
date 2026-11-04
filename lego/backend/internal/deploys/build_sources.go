@@ -49,6 +49,7 @@ type BuildRunView struct {
 	BuildFinishedAt string `json:"buildFinishedAt,omitempty"`
 	Runtime         string `json:"runtime,omitempty"`
 	CommitID        string `json:"commitId,omitempty"`
+	CommitURL       string `json:"commitUrl,omitempty"`
 }
 
 // BuildImageView is Render's image: an image-backed build's identity.
@@ -174,7 +175,7 @@ func buildView(carrier *appv1alpha1.App, sourceID string, d DeployView) BuildVie
 		v.Image = &BuildImageView{ImageURL: d.Image, SHA: d.ImageSHA, Ref: imageRef(d.Image), RegistryCredentialID: carrier.Spec.RegistryCredentialID}
 		return v
 	}
-	v.BuildRun = &BuildRunView{ID: d.ID, Status: store.BuildRunStatus(d.Status), Runtime: core.EffectiveRuntime(carrier.Spec, carrier.Spec.Type), CommitID: d.CommitID,
+	v.BuildRun = &BuildRunView{ID: d.ID, Status: store.BuildRunStatus(d.Status), Runtime: core.EffectiveRuntime(carrier.Spec, carrier.Spec.Type), CommitID: d.CommitID, CommitURL: core.CommitURL(carrier.Spec.Repo, d.CommitID),
 		BuildStartedAt: formatTimePtr(d.StartedAt), BuildFinishedAt: formatTimePtr(d.FinishedAt)}
 	return v
 }
@@ -364,6 +365,7 @@ var buildRunGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"buildFinishedAt": gqlutil.OptionalStrField(func(r *BuildRunView) any { return r.BuildFinishedAt }),
 		"runtime":         gqlutil.OptionalStrField(func(r *BuildRunView) any { return r.Runtime }),
 		"commitId":        gqlutil.OptionalStrField(func(r *BuildRunView) any { return r.CommitID }),
+		"commitUrl":       gqlutil.OptionalStrField(func(r *BuildRunView) any { return r.CommitURL }),
 	},
 })
 

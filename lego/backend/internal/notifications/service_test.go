@@ -746,8 +746,8 @@ func TestCommitURL(t *testing.T) {
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			if got := commitURL(tc.repo, tc.sha); got != tc.want {
-				t.Errorf("commitURL(%q, %q) = %q, want %q", tc.repo, tc.sha, got, tc.want)
+			if got := core.CommitURL(tc.repo, tc.sha); got != tc.want {
+				t.Errorf("CommitURL(%q, %q) = %q, want %q", tc.repo, tc.sha, got, tc.want)
 			}
 		})
 	}
