@@ -222,3 +222,76 @@ describe("Dialog focus return", () => {
     expect(document.body).toHaveFocus();
   });
 });
+
+// w4/463: Radix skips its open-autofocus event when a child with `autoFocus`
+// already holds focus, which used to leave the opener unrecorded.
+describe("Dialog focus return with an autofocused field", () => {
+  it("returns focus to the opener when the first field autofocuses", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setOpen(true)}>opener</button>
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Title</DialogTitle>
+                <DialogDescription>Body</DialogDescription>
+              </DialogHeader>
+              <input aria-label="field" autoFocus />
+            </DialogContent>
+          </Dialog>
+        </>
+      );
+    }
+    render(<Harness />);
+    const opener = screen.getByRole("button", { name: "opener" });
+    opener.focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByLabelText("field")).toHaveFocus();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(opener).toHaveFocus());
+  });
+
+  it("returns to the menu's trigger when the opening menu item unmounts", async () => {
+    const user = userEvent.setup();
+    function Harness() {
+      const [menu, setMenu] = useState(false);
+      const [open, setOpen] = useState(false);
+      return (
+        <>
+          <button onClick={() => setMenu(true)}>menu trigger</button>
+          {menu && (
+            <button
+              onClick={() => {
+                setMenu(false);
+                setOpen(true);
+              }}
+            >
+              menu item
+            </button>
+          )}
+          <Dialog open={open} onOpenChange={setOpen}>
+            <DialogContent>
+              <DialogHeader>
+                <DialogTitle>Title</DialogTitle>
+                <DialogDescription>Body</DialogDescription>
+              </DialogHeader>
+              <input aria-label="field" autoFocus />
+            </DialogContent>
+          </Dialog>
+        </>
+      );
+    }
+    render(<Harness />);
+    const trigger = screen.getByRole("button", { name: "menu trigger" });
+    trigger.focus();
+    await user.keyboard("{Enter}");
+    screen.getByRole("button", { name: "menu item" }).focus();
+    await user.keyboard("{Enter}");
+    expect(screen.getByLabelText("field")).toHaveFocus();
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(trigger).toHaveFocus());
+  });
+});

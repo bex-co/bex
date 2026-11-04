@@ -311,7 +311,7 @@ const zhProjects: Record<string, TranslationEntry> = {
       "项目下的环境及其配置将被删除。其数据库和键值存储将变为未分组状态，不会被删除。",
     description: "Delete-project confirmation dialog body",
   },
-  "projects.deleteConfirmBodyServices": {
+  "projects.deleteConfirmBodyServices_other": {
     message:
       "删除此项目会同时删除其所有环境和 {count} 个服务。其数据库和键值存储将变为未分组状态，不会被删除。此操作无法撤销。",
     description:
