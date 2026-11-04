@@ -1254,7 +1254,7 @@ describe("NewServicePage", () => {
   describe("Existing Image port hint", () => {
     // w4/m121/t003 reworded the hint: the port is now a field on this form, so
     // the hint names it instead of claiming a fixed default.
-    const PORT_HINT = /set the port below to it/i;
+    const PORT_HINT = /uses the port the image declares/i;
 
     async function selectTypeThenImageTab(label: RegExp) {
       const user = userEvent.setup();
