@@ -444,3 +444,35 @@ func TestNativeBuildSourceRequiresABuildCommand(t *testing.T) {
 		t.Fatalf("a Docker source needs no buildCommand: %v", err)
 	}
 }
+
+// w4/473: a build source whose delete is accepted reads as gone while its
+// finalizer still runs, in Get and List alike, as a deleting service does.
+func TestDeletingBuildSourceReadsAsGone(t *testing.T) {
+	svc, _, ctx := newBuildSourceService(t)
+	created, err := svc.CreateBuildSource(ctx, monorepoSource)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var crs appv1alpha1.AppList
+	if err := svc.Client.List(ctx, &crs); err != nil || len(crs.Items) != 1 {
+		t.Fatalf("carrier CRs = %+v (err %v)", crs.Items, err)
+	}
+	carrier := crs.Items[0]
+	carrier.Finalizers = []string{"test/hold"}
+	if err := svc.Client.Update(ctx, &carrier); err != nil {
+		t.Fatal(err)
+	}
+	if err := svc.DeleteBuildSource(ctx, created.ID); err != nil {
+		t.Fatalf("delete: %v", err)
+	}
+	var held appv1alpha1.App
+	if err := svc.Client.Get(ctx, client.ObjectKeyFromObject(&carrier), &held); err != nil || held.DeletionTimestamp == nil {
+		t.Fatalf("carrier = %+v (err %v), want it held by its finalizer", held.ObjectMeta, err)
+	}
+	if _, err := svc.GetBuildSource(ctx, created.ID); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("get while deleting = %v, want not found", err)
+	}
+	if listed, err := svc.ListBuildSources(ctx, "tea-a", BuildSourceFilter{}); err != nil || len(listed) != 0 {
+		t.Fatalf("list while deleting = %+v err=%v, want none", listed, err)
+	}
+}
