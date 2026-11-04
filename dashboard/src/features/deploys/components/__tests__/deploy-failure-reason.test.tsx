@@ -16,10 +16,7 @@ describe("DeployFailureReason", () => {
 
   it("renders a supersede cancel with the neutral treatment", () => {
     render(
-      <DeployFailureReason
-        reason="Superseded by dep-abc"
-        tone="neutral"
-      />,
+      <DeployFailureReason reason="Superseded by dep-abc" tone="neutral" />,
     );
 
     const el = screen.getByText("Superseded by dep-abc");
