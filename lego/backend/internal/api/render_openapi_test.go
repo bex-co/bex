@@ -995,3 +995,33 @@ func TestRegistryCredentialRESTWritesPassTheRenderValidator(t *testing.T) {
 		}
 	}
 }
+
+// w4/470: every retired alias answers the same JSON 404 as any other miss,
+// not Go's plain-text "404 page not found", and says nothing about a
+// replacement or the resource.
+func TestRetiredPublicRESTAliasesAnswerJSONNotFound(t *testing.T) {
+	h, err := newRenderRequestValidator(http.NewServeMux())
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ method, path string }{
+		{http.MethodGet, "/v1/apps"},
+		{http.MethodGet, "/v1/apps/srv-x"},
+		{http.MethodGet, "/v1/databases"},
+		{http.MethodGet, "/v1/registry-credentials"},
+		{http.MethodGet, "/v1/webhooks/endpoints"},
+		{http.MethodGet, "/v1/postgres/dpg-x/exports"},
+		{http.MethodGet, "/v1/postgres/dpg-x/recovery-info"},
+	} {
+		w := requestOpenAPITest(t, h, tc.method, tc.path, "", "")
+		if w.Code != http.StatusNotFound {
+			t.Errorf("%s %s status=%d, want 404", tc.method, tc.path, w.Code)
+		}
+		if ct := w.Header().Get("Content-Type"); !strings.HasPrefix(ct, "application/json") {
+			t.Errorf("%s %s content-type=%q, want application/json", tc.method, tc.path, ct)
+		}
+		if !strings.Contains(w.Body.String(), `"id":"not_found"`) {
+			t.Errorf("%s %s body=%q, want the shared not_found error", tc.method, tc.path, w.Body.String())
+		}
+	}
+}
