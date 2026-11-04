@@ -89,6 +89,11 @@ func BuildSourceOrNotFound(a *appv1alpha1.App) error {
 	if !IsBuildSource(a) {
 		return NotFound("build source")
 	}
+	// A deleting carrier reads as gone the moment its delete is accepted, as a
+	// service does, instead of lingering until its finalizer ends (w4/473).
+	if NotFoundIfDeleting(a) != nil {
+		return NotFound("build source")
+	}
 	return nil
 }
 

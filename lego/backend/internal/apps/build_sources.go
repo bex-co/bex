@@ -326,7 +326,7 @@ func (s *Service) ListBuildSources(ctx context.Context, ownerID string, f BuildS
 	var views []BuildSourceView
 	for i := range list.Items {
 		a := &list.Items[i]
-		if !core.IsBuildSource(a) {
+		if !core.IsBuildSource(a) || core.NotFoundIfDeleting(a) != nil {
 			continue
 		}
 		v, err := s.buildSourceView(ctx, a)
