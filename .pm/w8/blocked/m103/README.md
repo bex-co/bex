@@ -6,7 +6,7 @@
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Supply compatible native Python setuptools and metadata tools](t001.md) | 50m | [w8/m91/t007](../../m91/t007.md) |
+| t001 | [Supply compatible native Python setuptools and metadata tools](t001.md) | 50m | [w8/m91/t007](../m91/t007.md) |
 | t002 | [Supply compatible native pip and target wheel installation](t002.md) | 60m | t001 |
 | t003 | [Supply matching Python development headers and compiler inputs](t003.md) | 65m | t002 |
 | t004 | [Audit all three prerequisites across shared native bases and phases](t004.md) | 40m | t001, t002, t003 |
@@ -40,11 +40,11 @@ Reviewed immutable multiarch setuptools, pip and matching development-header/con
 
 ## Shared foundation decision applied — 2026-10-31
 
-The explicit2026-10-29 user choice of one common Bookworm tools foundation overrides the earlier worker-derived C design. [m91/t007](../../m91/t007.md) supplies the foundation and exact runtime installation. This milestone retains its original programs/data/commands and functional/hosted DoD. There is no remaining user architecture decision. Already-started C publications may finish as retained evidence; no new automatic C matrix or catalog adoption.
+The explicit2026-10-29 user choice of one common Bookworm tools foundation overrides the earlier worker-derived C design. [m91/t007](../m91/t007.md) supplies the foundation and exact runtime installation. This milestone retains its original programs/data/commands and functional/hosted DoD. There is no remaining user architecture decision. Already-started C publications may finish as retained evidence; no new automatic C matrix or catalog adoption.
 
 
 ## Drain disposition — 2026-11-01
 
-**Blocked on w8/m91/t007, owned by the native build worker.** The common supplier and meaningful generated behavior/error harnesses are implemented. The current source audit and historical simplify/utility evidence are mapped in [the shared evidence-to-task record](../../m91/evidence/original28-free-contract-20261102/capsule/EVIDENCE-TO-TASK-MAP.json); [ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md#d7-addendum--shared-native-utility-versions-and-limits-w8m91-2026-11-01) now records chosen versions, phase/ABI and feature limits. This finishes the independent source/documentation preparation, not this milestone's acceptance.
+**Blocked on w8/m91/t007, owned by the native build worker.** The common supplier and meaningful generated behavior/error harnesses are implemented. The current source audit and historical simplify/utility evidence are mapped in [the shared evidence-to-task record](../m91/evidence/original28-free-contract-20261102/capsule/EVIDENCE-TO-TASK-MAP.json); [ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md#d7-addendum--shared-native-utility-versions-and-limits-w8m91-2026-11-01) now records chosen versions, phase/ABI and feature limits. This finishes the independent source/documentation preparation, not this milestone's acceptance.
 
 Release this dependency after complete current-source common qualification on both architectures, the remaining runtime/companion/legacy/exact-donor cases, actual pre-deploy/required phase checks and reviewed production adoption. Then the same worker must run this milestone's unchanged original two-client hosted cases, shared readbacks, logs and exact cleanup/baseline/quota checks. The new e6a2386 AMD64 cohort passes; ARM64 is still running at this disposition. No original DoD or task acceptance is removed, and no task is marked done merely because supplier code or a test harness exists. No new architecture decision or user permission is needed.

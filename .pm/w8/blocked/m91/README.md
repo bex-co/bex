@@ -23,7 +23,7 @@ After publication, both native clients' fresh first original Free backup-process
 ## Source + Goal linkage
 
 - **Source:** Authorized functional CLI sweep402,2026-10-17: two unchanged POST201/native0 first builds fail missing pg_restore after exact source/backup proofs; both one-line install controls reach Live and six real runtime archive checks pass.
-- **Goal linkage:** [ADR008](../../../docs/ADR008-vision.md), [ADR018](../../../docs/ADR018-render-parity.md) and [reviewed native assembly ADR060](../../../docs/ADR060-build-worker-reliability-and-performance.md): ordinary hosting build/start commands should work with named runtime utilities.
+- **Goal linkage:** [ADR008](../../../../docs/ADR008-vision.md), [ADR018](../../../../docs/ADR018-render-parity.md) and [reviewed native assembly ADR060](../../../../docs/ADR060-build-worker-reliability-and-performance.md): ordinary hosting build/start commands should work with named runtime utilities.
 - **Expected outcome:** A native service can inspect/process PostgreSQL archives with supplied client programs, without bootstrapping them in app code or rewriting CLI requests.
 - **Why now:** Both independent native clients reproduce the same missing program while primary tooling and exact input data work; the shared image path has no supplier or newer repair. Existing FFmpeg completion explicitly did not certify this tool family.
 - **Render parity:** Included because one native image change affects tenant build/runtime behavior across REST/GraphQL/MCP/Blueprint/dashboard; no new schema field, CLI fork or product toggle.
@@ -160,7 +160,7 @@ Seven of 27 suppliers remain verified; the production catalog is empty. Twenty r
 
 ## Concurrent fixed-profile CI queue handoff — 2026-10-30
 
-Concurrent `w1/m188` is rolling ten unstarted modern99f requests forward to the already-fixed83c/39b2 publication profile after the repeated old scan/Syft failures. All ten replacement requests are bound to83c/main/attempt1, with the factory, official bases and27-line matrix unchanged; each target had a fresh all-source duplicate check. The [w1 board](../../w1/README.md) links the immutable plan, explicit approval and21:13 request-phase receipts.
+Concurrent `w1/m188` is rolling ten unstarted modern99f requests forward to the already-fixed83c/39b2 publication profile after the repeated old scan/Syft failures. All ten replacement requests are bound to83c/main/attempt1, with the factory, official bases and27-line matrix unchanged; each target had a fresh all-source duplicate check. The [w1 board](../../../w1/README.md) links the immutable plan, explicit approval and21:13 request-phase receipts.
 
 Each old request retires only after its correct replacement native job exists and a fresh old-job read still shows queued/runner0/zero steps. Started Node24/Go1.27/Elixir1.20 work and the three legacy requests are preserved; modern obligations are retained. Supplier review, full27 adoption and original hosted DoDs remain owned byw8/m91. Dispatch and queue handoff add no supplier approval or task closure.
 
@@ -170,13 +170,13 @@ Each old request retires only after its correct replacement native job exists an
 
 The preserved old99f Go1.27 build completed, but the ARM64 real offline tool gate failed because `unzip` was absent; AMD64 verification was canceled. Concurrent w1 shipped `8af93065a`, adding only explicit `unzip` to the shared `--no-install-recommends` package list, with all other non-PM files identical to the reviewed83c profile. The real archive gate remains unchanged. The old Go index is not eligible recovery or supplier approval.
 
-The fix's own automatic full push request41142599053 was canceled once before any native build started and is confirmed terminal. One Go-only normal rebuild is bound to8af/main/attempt1, run41142870861/job124361678277; build/runtime/scan/sign success is still pending. Existing modern requests and three legacy requests are preserved. The [w1 board](../../w1/README.md) links immutable failure, source, scheduling and exact historical-recipe compatibility evidence. Existing successfully gated images retain their exact old producer/verifier identity; this CI repair adds no supplier approval, production catalog adoption or hosted/task closure.
+The fix's own automatic full push request41142599053 was canceled once before any native build started and is confirmed terminal. One Go-only normal rebuild is bound to8af/main/attempt1, run41142870861/job124361678277; build/runtime/scan/sign success is still pending. Existing modern requests and three legacy requests are preserved. The [w1 board](../../../w1/README.md) links immutable failure, source, scheduling and exact historical-recipe compatibility evidence. Existing successfully gated images retain their exact old producer/verifier identity; this CI repair adds no supplier approval, production catalog adoption or hosted/task closure.
 
 ## Concurrent Elixir1.20 normal rebuild — 2026-10-30 23:33Z
 
 Preserved old99f Elixir1.20 passed its build, both runtime gates and full scans, then failed during ARM64 registry Syft layer download with HTTP2 PROTOCOL_ERROR. Log order supports three completed signing/attestation commands; it is not a complete independent five-proof acceptance. The existing workflow fixes this transport path, but the explicit-unzip installer change makes the old index ineligible for same-recipe recovery.
 
-Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed the PM-only9cb update against8af, checked all recent and known nonterminal requests, and submitted exactly one normal build. Actual native binding is9cb/main/attempt1, run41144656779/job124367871533, queued at first observation. No old-index authorization, cancellation, supplier approval or hosted/task closure is claimed. The [w1 board](../../w1/README.md) links frozen logs, dedupe, literal source predicate and actual run/jobs; independent Elixir supplier review remains w8/m91's work.
+Concurrent w1 retained the first exact800 preflight with zero POSTs, reviewed the PM-only9cb update against8af, checked all recent and known nonterminal requests, and submitted exactly one normal build. Actual native binding is9cb/main/attempt1, run41144656779/job124367871533, queued at first observation. No old-index authorization, cancellation, supplier approval or hosted/task closure is claimed. The [w1 board](../../../w1/README.md) links frozen logs, dedupe, literal source predicate and actual run/jobs; independent Elixir supplier review remains w8/m91's work.
 
 ## 用户决定（2026-10-29，`/unblock w8` 主题 1）——单一 Bookworm 公共底优先
 
@@ -391,7 +391,7 @@ The exact one-file implementation is applied. Focused/full host Go checks pass i
   1. 调整 `native-base-image.yml` / `native-common-image.yml`：每个镜像的 `platforms` 和逐架构的检查、扫描、签名都改为 amd64。公共底额外出一个 arm64 变体，只做轻量检查。同步更新相关 `test_native_oci_*` 测试与 README。
   2. 已经在跑的双架构 run 可以收尾，不必为了改架构而取消；新的精确版本触发（例如 node-14.21.2）应在第 1 步合入后再启动，避免白跑 arm64。
   3. 验收条件改为：同一固定公共底在 amd64 上完成完整 utilities 与实际运行时/companion 资格，arm64 公共底通过轻量检查。其余 DoD 不变。
-- **相关：** D4（为镜像构建拆出 `bex-build` runner 池）在 [w6/m155](../../w6/m155/README.md) 跟进。不阻塞本项，但上线后这些构建不再与生产部署抢 runner。
+- **相关：** D4（为镜像构建拆出 `bex-build` runner 池）在 [w6/m155](../../../w6/m155/README.md) 跟进。不阻塞本项，但上线后这些构建不再与生产部署抢 runner。
 
 ## Complete utility evidence for 0b7 and D3 scope — 2026-11-02
 
@@ -466,3 +466,19 @@ Run #97 (`3a15c2a`) passed but went stale before it was bound: w2/m254 and w5/17
 Run [41860429319](evidence/common-d3-families-20261104/README.md) (`node/node-20`, empty artifact map) was killed while it was still compiling Node 20.20.2 from source. The 392-second base pull plus the compile under AMD64 emulation on the ARM-only runner host did not fit the test's 45-minute build context. The single-Mac fleet is a hard constraint (`DO_NOT_DO.md` #RUNNER-HOSTS). Render does not compile Node on each build either: its native environment installs prebuilt runtime versions.
 
 **Decision (Render-parity rule, not a user gate):** production adopts the published, reviewed Node 14/16/18/20 and 14.21.2 runtime trees in `nativeRuntimeArtifacts`, the existing donor map in `commonNodeQualificationArtifacts`. The required `node/node-14|16|18|20|exact14212|ruby-node-exact14212` cases are therefore qualified through the existing `node-donors` profile. The node-addon common routes now use the same donor map. The source-fallback attempts stay recorded as dated evidence; they are not the production route. This changes a qualification input, so the run-100 baseline is superseded: a new utility requalification follows, and every required family case is rerun on it.
+
+## Blocked on the evidence store — 2026-11-04 (loopx session)
+
+On 2026-11-04 main was rewritten to purge `.pm` evidence blobs (w6/100 D7/D10, `DO_NOT_DO.md` #NO-ARTIFACTS-IN-GIT). The reviewed-candidate custody chain in `.github/scripts/native-common-qualify.py` still requires its approval and utility evidence in the repository. `validate_test_candidate()` on new main (`9db09c94d`) now fails before any family case can be admitted: `missing retained source/evidence: .pm/w8/m91/evidence/common-current0941-20261101/actual/bundles/0033448f….bundle.json.gz`. Skipping missing files would weaken the gate, so it is not done.
+
+**Gate:** w6/100's remaining-work item 2 must give `.pm` evidence an object-storage home and CI read access, with sha256 + link in the markdown. After that, the custody checks are rewritten to verify against it, the 0941 approval and a fresh utility baseline are re-recorded as sha256 + link, and the 27 required AMD64 family cases are rerun. No user decision is needed for m91 itself.
+
+**Already done in this run, recorded above:**
+
+- The run-100 utility baseline was bound.
+- Seven family cases passed on it (native-init, go, ruby40, ruby344-creation-default, ruby30, ruby33; the utilities baseline is the seventh).
+- Node backport lines adopt the published donor route, a Render-parity decision. The node-addon harness change has shipped.
+- Adoption is a dry run so far. Pinning `nativeCommonBase` to the 0941 digest fails 29 build-package unit tests whose fakes lack image env (`NODE_VERSION`) or OTP checksums. The adoption commit must give them an explicit empty base, or supply env in the fakes, alongside populating `nativeRuntimeArtifacts` with the donor map.
+- Operational lesson: the runner fleet is one host with a link that fell as low as 0.02–2 MB/s this evening. Family cases must run strictly one at a time, and only when the link is healthy. Most of this run's 20+ failures came from network starvation, not from the product.
+
+Tasks t001–t007 stay open. Original DoD unchanged.

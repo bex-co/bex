@@ -31,7 +31,7 @@ gh workflow run native-base-image.yml --repo bex-co/bex --ref main -f runtime=no
 
 ## 已确认的公共底决定及后续分工 — 2026-10-31
 
-- **依据：** 当前主线62a9c2500包含c5ee618ce公共底准备；[w8/m91记录的用户决定](../../../w8/m91/README.md)明确选择一个Bookworm公共底，覆盖较早worker推断的逐语言方案。已开始的逐语言发布允许收尾并保留证据，最终生产采用等待[公共底与生成镜像资格](../../../w8/m91/t007.md)。D1=A继续要求平台维护补丁、保持同版本；它没有授权临时绕过公共底。
+- **依据：** 当前主线62a9c2500包含c5ee618ce公共底准备；[w8/m91记录的用户决定](../../../w8/blocked/m91/README.md)明确选择一个Bookworm公共底，覆盖较早worker推断的逐语言方案。已开始的逐语言发布允许收尾并保留证据，最终生产采用等待[公共底与生成镜像资格](../../../w8/blocked/m91/t007.md)。D1=A继续要求平台维护补丁、保持同版本；它没有授权临时绕过公共底。
 - **当前处理：** 完成11个旧版本的发布与独立证据，供安全审阅和后续候选runtime donor复用；不在公共底为空时将逐语言C镜像设为租户基础镜像。较早记录中的直接11-pin接入计划已被本段取代，原始证明与失败历史保留。
 - **尚需谁完成什么：** worker8在w8/m91/t007提供已审核的公共底固定digest，以及本项旧11条线的同版本运行时、库/头文件/扩展与companion的真实双架构兼容性证据。仅发布公共镜像、任务勾选或复制旧运行时目录不足以清除此条件。
 - **worker1下一步：** 独立发布、清理和[具体交接](common-integration-handoff.md)已完成；仅验证产物的工具已全局移除旧逐语言接入写入能力。合格集成后才执行六项真实build/HTTP、最终operator Ready及新鲜全量服务清单/明确目标重建。
@@ -41,7 +41,7 @@ gh workflow run native-base-image.yml --repo bex-co/bex --ref main -f runtime=no
 ## 用户决定 — D2=A，2026-11-01（当前分工）
 
 - **来源：** 用户在本轮 `$unblock w1` 的D2分工题明确回复 `A`：让w1协同w8完成公共底发布与旧版本真实验证，减少跨队列等待。适用w1/m188/t003–t008及新增协作任务t009；w8/m91/t007继续是共享实现与证据入口，不另建公共底发布体系，也不修改w8的任务状态。
-- **当前复核：** 主线 `ac528319cbbd28e275c16068e894d32e43d9193a` 已有[实际公共底产物审阅](../../../w8/m91/evidence/common-artifact-review-20261101/README.md)。不可变测试候选 `ghcr.io/bex-co/bex-cnb-run@sha256:56c58abb41abd6becfa1810834c6cba46b742703e2beffdb3a88387772b3b986` 已通过发布、双架构runtime/scan/sign与独立审阅；producer/verifier为 `99cdc5c5a5b53629e2a98963d43d373511a91c1f`，不是当前主线的别名。portable记录的qualification-source与utility-baseline仍为空，不能直接用于全家族资格或生产采用。现有 `native-common-image.yml` 工作流可只读访问且为active；本轮未启动run。
+- **当前复核：** 主线 `ac528319cbbd28e275c16068e894d32e43d9193a` 已有[实际公共底产物审阅](../../../w8/blocked/m91/evidence/common-artifact-review-20261101/README.md)。不可变测试候选 `ghcr.io/bex-co/bex-cnb-run@sha256:56c58abb41abd6becfa1810834c6cba46b742703e2beffdb3a88387772b3b986` 已通过发布、双架构runtime/scan/sign与独立审阅；producer/verifier为 `99cdc5c5a5b53629e2a98963d43d373511a91c1f`，不是当前主线的别名。portable记录的qualification-source与utility-baseline仍为空，不能直接用于全家族资格或生产采用。现有 `native-common-image.yml` 工作流可只读访问且为active；本轮未启动run。
 - **解除的限制：** w1不再只等另一个队列的任务关闭；已有共同候选、资格流水线和可访问入口，协作工作可执行。新增t009将尚未完成的技术资格列为w1可推进的实施内容；t003改为依赖t009，不以w8整个t007的完成标记代替实际资格检查。因调度阻塞解除，将本里程碑恢复为todo；这不是公共底兼容性或生产DoD通过。
 - **分工与第一步：** w1先读w8最新候选、receipt和活动run，避免对同一输入重复启动；按现有固定计划完成同一候选两架构的完整utility baseline，再与w8分担旧11条线、主运行时及companion的实际生成镜像资格。共享源修复和其余受支持版本资格继续沿用t007；正式填生产pin前，所有已要求的受支持选择资格必须齐全，不能只验旧11条线就采用。
 - **成本与边界：** 用户接受增加w1协作投入与共享实现协调；沿用D1=A的平台预制同版本补丁及统一Bookworm，保留库/头文件/native extension、私有Node、Poetry、精确版本/default/fallback和双架构验收。任何缺口仍是未完成工作；不启用逐租户Node安全补丁编译、不临时采用逐语言C基础镜像、不新增资源、不删原程序/命令或未满足DoD。

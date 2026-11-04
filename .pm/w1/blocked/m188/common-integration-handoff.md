@@ -4,7 +4,7 @@
 
 **当前需要用户帮助（2026-11-01）：** 协作代码1feba939b已发布，m188因worker缺少可用的新CI触发入口停放；从可用GitHub终端运行 `gh workflow run native-base-image.yml --repo bex-co/bex --ref main -f runtime=node-14.21.2-bullseye`，或恢复worker现有dispatch入口。实际run可读取后先去重/审阅；D1/D2无需再选。公共底41341287851正在正常执行，不取消也不把等待当成阻塞。详细范围与全部尚未完成的验收见[当前记录](README.md#当前阻塞与用户最小动作--2026-11-01-1938-utc)。
 
-按2026-11-01用户 **D2=A**，当前由 **worker1 与 worker8 协同推进 [w8/m91/t007](../../../w8/m91/t007.md)**；w1的下一项为t009。已有[只供测试的公共底候选审阅](../../../w8/m91/evidence/common-artifact-review-20261101/README.md)，仍需补齐同一固定公共底的完整两架构utility baseline和运行时/companion资格，再评审生产接入。系统库、运行时自带 Brotli、私有 Node、库/头文件/扩展、Poetry 和 Node20 companion 均需各自证明；保留所有原始扫描发现。复制旧 `/usr/local` 不代表发行版或运行时闭包已经兼容。
+按2026-11-01用户 **D2=A**，当前由 **worker1 与 worker8 协同推进 [w8/m91/t007](../../../w8/blocked/m91/t007.md)**；w1的下一项为t009。已有[只供测试的公共底候选审阅](../../../w8/blocked/m91/evidence/common-artifact-review-20261101/README.md)，仍需补齐同一固定公共底的完整两架构utility baseline和运行时/companion资格，再评审生产接入。系统库、运行时自带 Brotli、私有 Node、库/头文件/扩展、Poetry 和 Node20 companion 均需各自证明；保留所有原始扫描发现。复制旧 `/usr/local` 不代表发行版或运行时闭包已经兼容。
 
 用户已完成分工选择，无需重新选型、交付手动证书或新建资源。下一步 `$loopx w1` 从t009开始：先对接现有候选/活动run，复用共享流水线取得完整utility baseline并协作补齐旧版本资格，避免重复发布。采用所需全部资格齐备后，再继续联合接入、六项真实构建/HTTP、签名部署Ready、新鲜全量服务清单与按需精确重建；不单凭11份donor或同意协作就采用。
 
