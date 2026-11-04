@@ -11,6 +11,8 @@ import {
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuLabel,
+  DropdownMenuRadioGroup,
+  DropdownMenuRadioItem,
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/common/components/ui/dropdown-menu.tsx";
@@ -132,33 +134,40 @@ export function WorkspaceSwitcher() {
             <DropdownMenuLabel className="text-muted-foreground text-xs">
               {t("workspaces.switcherLabel")}
             </DropdownMenuLabel>
-            {workspaces.map((w) => {
-              const planKey = workspacePlanNameKey(w.plan);
-              return (
-                <DropdownMenuItem
-                  key={w.id}
-                  onSelect={() => switchTo(w.id)}
-                  className="gap-2"
-                >
-                  <WorkspaceInitial name={w.name} className="size-5 shrink-0" />
-                  <span className="flex min-w-0 flex-1 flex-col">
-                    <span className="truncate">{w.name}</span>
-                    {planKey ? (
-                      <span className="text-muted-foreground truncate text-xs">
-                        {t(planKey)}
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground truncate text-xs">
-                        {w.plan}
-                      </span>
+            <DropdownMenuRadioGroup value={currentWorkspace?.id ?? ""}>
+              {workspaces.map((w) => {
+                const planKey = workspacePlanNameKey(w.plan);
+                return (
+                  <DropdownMenuRadioItem
+                    key={w.id}
+                    value={w.id}
+                    onSelect={() => switchTo(w.id)}
+                    // The radio dot is replaced by the visible check below (w4/471).
+                    className="gap-2 pl-2 [&>span:first-child]:hidden"
+                  >
+                    <WorkspaceInitial
+                      name={w.name}
+                      className="size-5 shrink-0"
+                    />
+                    <span className="flex min-w-0 flex-1 flex-col">
+                      <span className="truncate">{w.name}</span>
+                      {planKey ? (
+                        <span className="text-muted-foreground truncate text-xs">
+                          {t(planKey)}
+                        </span>
+                      ) : (
+                        <span className="text-muted-foreground truncate text-xs">
+                          {w.plan}
+                        </span>
+                      )}
+                    </span>
+                    {w.id === currentWorkspace?.id && (
+                      <Check className="size-4 shrink-0" />
                     )}
-                  </span>
-                  {w.id === currentWorkspace?.id && (
-                    <Check className="size-4 shrink-0" />
-                  )}
-                </DropdownMenuItem>
-              );
-            })}
+                  </DropdownMenuRadioItem>
+                );
+              })}
+            </DropdownMenuRadioGroup>
             <DropdownMenuSeparator />
             <DropdownMenuItem
               onSelect={() =>
