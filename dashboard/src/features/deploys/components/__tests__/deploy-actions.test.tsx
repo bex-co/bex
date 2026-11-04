@@ -188,7 +188,7 @@ describe("DeployActions", () => {
     const router = renderActions("deactivated");
 
     await user.click(
-      await screen.findByRole("button", { name: /^Roll back to / }),
+      await screen.findByRole("button", { name: /^Rollback to / }),
     );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
@@ -223,7 +223,7 @@ describe("DeployActions", () => {
     const router = renderActions("deactivated");
 
     await user.click(
-      await screen.findByRole("button", { name: /^Roll back to / }),
+      await screen.findByRole("button", { name: /^Rollback to / }),
     );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
@@ -255,7 +255,7 @@ describe("DeployActions", () => {
     renderActions("deactivated");
 
     await user.click(
-      await screen.findByRole("button", { name: /^Roll back to / }),
+      await screen.findByRole("button", { name: /^Rollback to / }),
     );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
@@ -273,7 +273,7 @@ describe("DeployActions", () => {
     const router = renderActions("deactivated");
 
     await user.click(
-      await screen.findByRole("button", { name: /^Roll back to / }),
+      await screen.findByRole("button", { name: /^Rollback to / }),
     );
     await user.click(
       within(await screen.findByRole("alertdialog")).getByRole("button", {
@@ -289,7 +289,7 @@ describe("DeployActions", () => {
     renderActions("deactivated");
 
     expect(
-      await screen.findByRole("button", { name: /^Roll back to / }),
+      await screen.findByRole("button", { name: /^Rollback to / }),
     ).toBeInTheDocument();
   });
 
@@ -297,7 +297,7 @@ describe("DeployActions", () => {
     renderActions("live");
 
     expect(
-      screen.queryByRole("button", { name: /^Roll back to / }),
+      screen.queryByRole("button", { name: /^Rollback to / }),
     ).not.toBeInTheDocument();
   });
 
@@ -317,7 +317,7 @@ describe("DeployActions", () => {
     renderActions("build_failed");
 
     expect(
-      screen.queryByRole("button", { name: /^Roll back to / }),
+      screen.queryByRole("button", { name: /^Rollback to / }),
     ).not.toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: /^Cancel deploy / }),
@@ -333,7 +333,7 @@ describe("DeployActions", () => {
     const user = userEvent.setup();
     renderActions("deactivated");
 
-    const btn = await screen.findByRole("button", { name: /^Roll back to / });
+    const btn = await screen.findByRole("button", { name: /^Rollback to / });
     expect(btn).toBeDisabled();
     await user.click(btn);
     expect(screen.queryByRole("alertdialog")).not.toBeInTheDocument();
@@ -382,7 +382,7 @@ describe("DeployActions", () => {
     });
 
     await user.click(
-      await screen.findByRole("button", { name: /^Roll back to / }),
+      await screen.findByRole("button", { name: /^Rollback to / }),
     );
     const dialog = await screen.findByRole("alertdialog");
     expect(dialog).toHaveTextContent(
@@ -399,7 +399,7 @@ describe("DeployActions", () => {
     renderActions("deactivated", { commitId: null, commitMessage: null });
 
     await user.click(
-      await screen.findByRole("button", { name: /^Roll back to / }),
+      await screen.findByRole("button", { name: /^Rollback to / }),
     );
     const dialog = await screen.findByRole("alertdialog");
     // Runtime restoration must not imply overwriting saved settings. Disclose
@@ -525,7 +525,7 @@ describe("DeployActions dispatch recheck (w4/m141)", () => {
     renderActions("deactivated");
 
     await user.click(
-      await screen.findByRole("button", { name: /^Roll back to / }),
+      await screen.findByRole("button", { name: /^Rollback to / }),
     );
     await user.click(await screen.findByRole("button", { name: "Proceed" }));
 
@@ -550,7 +550,7 @@ describe("DeployActions dispatch recheck (w4/m141)", () => {
     renderActions("deactivated");
 
     await user.click(
-      await screen.findByRole("button", { name: /^Roll back to / }),
+      await screen.findByRole("button", { name: /^Rollback to / }),
     );
     await user.click(await screen.findByRole("button", { name: "Proceed" }));
 
@@ -566,8 +566,16 @@ describe("DeployActions dispatch recheck (w4/m141)", () => {
     });
     expect(
       await screen.findByRole("button", {
-        name: "Roll back to 80b423b (dep-1)",
+        name: "Rollback to 80b423b (dep-1)",
       }),
     ).toBeInTheDocument();
+  });
+
+  // WCAG 2.5.3 Label in Name (w4/466): "click Rollback" must reach the button.
+  it("starts the Rollback control's accessible name with its visible label", async () => {
+    renderActions("deactivated", { commitId: "80b423bc1234" });
+    const button = await screen.findByRole("button", { name: /^Rollback/ });
+    expect(button).toHaveTextContent("Rollback");
+    expect(button.getAttribute("aria-label")).toMatch(/^Rollback/);
   });
 });

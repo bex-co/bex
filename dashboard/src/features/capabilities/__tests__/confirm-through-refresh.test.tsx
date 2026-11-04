@@ -378,7 +378,7 @@ const consumers: Consumer[] = [
     },
     open: async () => {
       fireEvent.click(
-        screen.getByRole("button", { name: "Roll back to dep-old" }),
+        screen.getByRole("button", { name: "Rollback to dep-old" }),
       );
     },
   },

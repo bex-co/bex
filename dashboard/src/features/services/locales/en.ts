@@ -4803,7 +4803,7 @@ const enServices: Record<string, TranslationEntry> = {
       "Static-site rollback confirm dialog body naming the commit being re-published (w4/m141)",
   },
   "services.eventsRollbackAria": {
-    message: "Roll back to {target}",
+    message: "Rollback to {target}",
     description:
       "Accessible name of a deploy row's Rollback control, naming the deploy it restores (w4/m141)",
   },

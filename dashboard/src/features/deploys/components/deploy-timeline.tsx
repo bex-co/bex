@@ -53,34 +53,38 @@ export function DeployTimeline({ serviceId, deploy }: DeployTimelineProps) {
       </CardHeader>
       <CardContent>
         {!deploy ? (
-          <div className="space-y-3" role="status" aria-label={t("common.loading")}>
+          <div
+            className="space-y-3"
+            role="status"
+            aria-label={t("common.loading")}
+          >
             <Skeleton className="h-4 w-40" />
             <Skeleton className="h-4 w-28" />
             <Skeleton className="h-4 w-36" />
           </div>
         ) : (
           <ol className="ml-2 border-l">
-          {buildDeployTimeline(deploy, events).map((step) => (
-            <li key={step.id} className="relative pb-5 pl-6 last:pb-0">
-              <span
-                className={`absolute -left-1.5 top-1 h-3 w-3 rounded-full border-2 border-background ${dotClass(step.kind)}`}
-              />
-              <p className="text-sm font-medium">
-                {t(
-                  (step.status
-                    ? deployStatusKey(step.status)
-                    : STEP_KEYS[step.kind]) as Parameters<typeof t>[0],
-                )}
-              </p>
-              {step.timestamp ? (
-                <LocalDateTime
-                  value={step.timestamp}
-                  className="text-xs text-muted-foreground"
+            {buildDeployTimeline(deploy, events).map((step) => (
+              <li key={step.id} className="relative pb-5 pl-6 last:pb-0">
+                <span
+                  className={`absolute -left-1.5 top-1 h-3 w-3 rounded-full border-2 border-background ${dotClass(step.kind)}`}
                 />
-              ) : null}
-            </li>
-          ))}
-        </ol>
+                <p className="text-sm font-medium">
+                  {t(
+                    (step.status
+                      ? deployStatusKey(step.status)
+                      : STEP_KEYS[step.kind]) as Parameters<typeof t>[0],
+                  )}
+                </p>
+                {step.timestamp ? (
+                  <LocalDateTime
+                    value={step.timestamp}
+                    className="text-xs text-muted-foreground"
+                  />
+                ) : null}
+              </li>
+            ))}
+          </ol>
         )}
         {error ? (
           <p className="mt-4 flex items-center gap-2 text-xs text-muted-foreground">

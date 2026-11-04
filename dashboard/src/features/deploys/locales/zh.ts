@@ -135,7 +135,8 @@ const zhDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.triggerManual": {
     message: "手动部署",
-    description: "Deploy header: trigger=manual label (a dashboard click, w4/413)",
+    description:
+      "Deploy header: trigger=manual label (a dashboard click, w4/413)",
   },
   "deploys.triggerRollback": {
     message: "回滚至 {deployId}",

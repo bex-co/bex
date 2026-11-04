@@ -135,7 +135,8 @@ const enDeploys: Record<string, TranslationEntry> = {
   },
   "deploys.triggerManual": {
     message: "Manual Deploy",
-    description: "Deploy header: trigger=manual label (a dashboard click, w4/413)",
+    description:
+      "Deploy header: trigger=manual label (a dashboard click, w4/413)",
   },
   "deploys.triggerRollback": {
     message: "Rollback to {deployId}",
