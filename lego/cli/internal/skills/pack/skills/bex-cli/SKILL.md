@@ -70,6 +70,8 @@ jobs:
   deploy:
     runs-on: ubuntu-latest
     steps:
+      - name: Install cosign (install-bex.sh verifies the release signature)
+        uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
       - name: Install bex CLI
         run: |
           curl --fail-with-body --silent --show-error --location \
