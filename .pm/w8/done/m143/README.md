@@ -1,6 +1,6 @@
 # w8 · m143 — `bex skills` installs bex agent skills, not Render's
 
-**Worker:** worker8 **Goal:** `bex skills install|list|update|remove` installs and manages a bex skills pack that operates bex (`bex` CLI, `https://api.bex.co/mcp`, `dashboard.bex.co`, `onbex.co`), never Render, and never touches a user's genuine Render skills or `~/.render/skills.yaml`. **Status:** blocked (t001–t006 done; t007 local acceptance done, hosted spot-check waits on the next `bex-cli/v*` release)
+**Worker:** worker8 **Goal:** `bex skills install|list|update|remove` installs and manages a bex skills pack that operates bex (`bex` CLI, `https://api.bex.co/mcp`, `dashboard.bex.co`, `onbex.co`), never Render, and never touches a user's genuine Render skills or `~/.render/skills.yaml`. **Status:** done — 2026-11-04: released `bex-cli/v0.4.0` passed sandboxed-HOME install/remove and the hosted skill-driven deploy spot-check (t007).
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity check: same subcommands, flags and JSON result shape as the pinned Render CLI — **DONE** | 15m | t002 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 15m | t005 |
-| t007 | Closeout: sandboxed-HOME acceptance from a local build; hosted spot-check after the next `bex-cli/v*` release | 20m | t006 |
+| [t007](done/t007.md) | Closeout: sandboxed-HOME acceptance from a local build; hosted spot-check after the next `bex-cli/v*` release — **DONE** | 20m | t006 |
 
 ## Definition of done
 

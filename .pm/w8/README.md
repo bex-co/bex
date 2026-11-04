@@ -21,7 +21,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [ ] **m144** — [Enforce persistent disk capacity below the provider floor](blocked/m144/README.md) (7 tasks; t001/t002/t005 done) — **BLOCKED (platform/QA execution owner: fresh bounded live fixture window with ready observer/exact ownership and independent cleanup evidence; original paid case ended, full growth/restore/billing/surface DoDs remain)**
 
-- [ ] **m143** — [`bex skills` installs bex agent skills, not Render's](blocked/m143/README.md) (7 tasks) ← promoted from w8/212, 2026-10-28 — **BLOCKED（2026-10-29 复核）：** t001–t006 / local acceptance done；等用户发起 `$release cli`，再验安装技能引导真实 deploy 并清理。
+- [x] **m143** — [`bex skills` installs bex agent skills, not Render's](done/m143/README.md) (7 tasks) ← promoted from w8/212, 2026-10-28 — **DONE 2026-11-04** (released `bex-cli/v0.4.0`: 20 bex skills, Render files untouched, skill-driven `deploys create --wait` reached live)
 
 - [x] **m142** — [Clear image-network choices when PORT intent changes](done/m142/README.md) (8 tasks) ← from w8/210 — **IN PROGRESS（2026-10-29：t006/t011/t012/t013 done — Hobby all-types logs exclude request lines, coded plan refusals, Blueprint validate reports plan limits, audit logs + latency metrics gated at Pro, inventory recorded; next: deploy, then t010 live DoD replay）** — **DONE 2026-10-29** (PORT removal and rollback with zero errors, on production)
 
@@ -412,6 +412,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 - [ ] **227** — [Lift the three signed-off edge-compression differences once Traefik can](blocked/227.md) — **BLOCKED (upstream Traefik: a release whose Brotli writer skips 206 bodies, or `compress` options for no-transform/ETag, or a Flusher-preserving Yaegi writer; an upstream issue/PR needs user authorization)**
 - [ ] **230** — [A web service whose name contains `--` deploys `live` but its URL answers 503 `no-server` forever](230.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-02: reproduced twice, single-hyphen control serves 200; major, ~60m.
 - [ ] **231** — [A Blueprint naming the paused Pro Ultra plan points its error at `type` (line 2), not `plan`](231.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-03: `blueprintErrorField` maps "instance type" to `.type`; minor, ~15m.
+- [ ] **233** — [The bex skills pack tells agents to require "bex CLI v2.7.0+", a version that does not exist](233.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-04: Render CLI floor carried into the bex pack (bex is v0.4.0); minor, ~20m.
 - [x] **232** — [`POST /v1/build-sources` answers 500 `internal error` but creates the build source anyway](done/232.md) — **DONE 2026-11-03** (201 with a `bds-` id on pin `f81152fbde11`, fixed by `480bf71d1`)
 
 - [x] **226** — [Native Node 14/16 builds carry a pnpm that refuses to run on them](done/226.md) (>1h, minor) ← w8/m91 t007 source review 2026-10-31: pnpm 10.34.7's JS entrypoint exits 1 below Node 18.12; proposal retained in m91 evidence — **DONE 2026-10-31** (pnpm standalone on Node 14/16, primary + companion; real builds pass on both architectures)
@@ -420,7 +421,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 - [x] **223** — [A rollout refused by workspace memory quota shows its reason](done/223.md) — **DONE 2026-10-29:** already fixed by `885d61317`; newest-ReplicaSet quota regressions pass. Prior live-check limits retained.
 
-- [ ] **224** — [`bex login` names the wrong dashboard](blocked/224.md) — **BLOCKED (user-authorized CLI release, then published login/logout replay):** launcher fix and full CLI suite complete; original overwritten 223 recovered from `7fd6c9c4f`.
+- [x] **224** — [`bex login` tells the user to complete login in the "Render Dashboard"](done/224.md) — **DONE 2026-11-04** (released `bex-cli/v0.4.0` prints "Complete login in the Bex dashboard" in text and interactive modes)
 - [ ] [222 — Preserve exact Python3.14.8 with repaired Brotli](blocked/222.md) — **BLOCKED (native build worker: m91 common qualification/adoption and original default hosted acceptance); option3 is already chosen.**
 
 - [x] **221** — [Small disks: preserve requested-size billing and enforce actual capacity](done/221.md) — promoted to **m144** 2026-10-29; implementation remains open.
