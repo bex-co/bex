@@ -36,10 +36,19 @@ import (
 // long keeps its start plus a short hash of the whole, so the mapping is
 // stable across syncs and distinct long names stay distinct (w5/m150).
 func blueprintResourceSlug(name string) string {
-	if appv1alpha1.ValidResourceName(name) {
+	if slugKeepsName(name) {
 		return name
 	}
 	return capResourceSlug(name, foldedSlug(name), true)
+}
+
+// slugKeepsName reports whether a service name is kept unchanged as its
+// resource name: a valid resource name with no run of hyphens. The resource
+// name is the platform hostname's label, and a label with a hyphen run never
+// routed in production (w8/230); such a name is slugified like any other
+// free-form name, and the name as typed stays the label.
+func slugKeepsName(name string) bool {
+	return appv1alpha1.ValidResourceName(name) && !strings.Contains(name, "--")
 }
 
 // legacyBlueprintResourceSlug is the mapping before w4/385, which dropped
@@ -107,7 +116,7 @@ func capResourceSlug(name, slug string, hashEmpty bool) string {
 // missing name, never with the resource-name rule it was never held to
 // (w4/417).
 func serviceNameLabel(name string) (string, error) {
-	if appv1alpha1.ValidResourceName(name) {
+	if slugKeepsName(name) {
 		return "", nil
 	}
 	label, err := core.CheckLabel(name)

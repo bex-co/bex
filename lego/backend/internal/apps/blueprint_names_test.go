@@ -35,6 +35,8 @@ func TestBlueprintResourceSlugIsStableValidAndKeepsResourceNames(t *testing.T) {
 		"AlphaClaw": "alphaclaw",
 		"My App!":   "my-app",
 		"Ünï Form!": "uni-form",
+		"my--app":   "my-app",
+		"a---b--c":  "a-b-c",
 	} {
 		if got := blueprintResourceSlug(in); got != want {
 			t.Errorf("blueprintResourceSlug(%q) = %q, want %q", in, got, want)
@@ -138,6 +140,21 @@ func TestCreateMapsAFreeFormNameOntoASlugAndKeepsItAsTheLabel(t *testing.T) {
 	}
 }
 
+// A hyphen run never becomes a platform hostname label (w8/230).
+func TestCreateCollapsesAHyphenRunAndKeepsTheTypedName(t *testing.T) {
+	svc, cl := newService(nil)
+	v, err := svc.Create(context.Background(), CreateRequest{Name: "qa-20261102--3093dh", Image: "nginx:1"})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if v.Name != "qa-20261102-3093dh" || v.DisplayName != "qa-20261102--3093dh" {
+		t.Errorf("view = %q labeled %q, want qa-20261102-3093dh labeled qa-20261102--3093dh", v.Name, v.DisplayName)
+	}
+	if a := getApp(t, cl, "qa-20261102-3093dh"); a.Spec.DisplayName != "qa-20261102--3093dh" {
+		t.Errorf("spec.displayName = %q", a.Spec.DisplayName)
+	}
+}
+
 // w4/385: a name with nothing in a–z or 0–9 no longer collapses onto one fixed
 // resource name, so a workspace can hold several.
 func TestBlueprintResourceSlugGivesNonLatinNamesDistinctStableNames(t *testing.T) {
@@ -167,12 +184,18 @@ func TestSnapshotFindsAServiceCreatedUnderTheLegacyName(t *testing.T) {
 	legacy := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{DisplayName: "中文名"}}
 	accent := &appv1alpha1.App{Spec: appv1alpha1.AppSpec{DisplayName: "Ünï Form"}}
 	other := &appv1alpha1.App{}
-	byName := map[string]*appv1alpha1.App{"resource": legacy, "n-form": accent, "api": other}
+	hyphenRun := &appv1alpha1.App{}
+	byName := map[string]*appv1alpha1.App{"resource": legacy, "n-form": accent, "api": other, "my--app": hyphenRun}
 	aliasLegacyResourceNames(byName)
 	if byName[blueprintResourceSlug("中文名")] != legacy || byName[blueprintResourceSlug("Ünï Form")] != accent {
 		t.Fatalf("legacy services are not reachable under their new names: %v", byName)
 	}
-	if byName["api"] != other || len(byName) != 5 {
+	// An unlabelled service kept as "my--app" before w8/230 is found under the
+	// name a Blueprint "my--app" now maps to.
+	if byName["my-app"] != hyphenRun || byName["my--app"] != hyphenRun {
+		t.Fatalf("hyphen-run service is not reachable under its new name: %v", byName)
+	}
+	if byName["api"] != other || len(byName) != 7 {
 		t.Fatalf("unrelated entries changed: %v", byName)
 	}
 }

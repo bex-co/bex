@@ -113,3 +113,15 @@ func TestNameAvailable_NeverReflectsAnotherWorkspace(t *testing.T) {
 		t.Errorf("tenant B's check reflected tenant A's name: %+v", got)
 	}
 }
+
+// A hyphen-run name is answered for the resource name Create makes (w8/230).
+func TestNameAvailable_AnswersForTheCollapsedHyphenRun(t *testing.T) {
+	svc, _ := newTenantService(fakeWorkspace{"identity-a": "tea-a"}, tenantApp("my-app", "tea-a"))
+	got, err := svc.NameAvailable(ctxAs("identity-a"), "my--app")
+	if err != nil {
+		t.Fatalf("NameAvailable: %v", err)
+	}
+	if got.Available || got.Suggestion != "my-app-1" {
+		t.Errorf("my--app = %+v, want unavailable with suggestion my-app-1", got)
+	}
+}

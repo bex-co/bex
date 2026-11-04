@@ -49,6 +49,8 @@ func (s *Service) NameAvailable(ctx context.Context, name string) (NameAvailabil
 	if err := core.CheckResourceName("name", name); err != nil {
 		return NameAvailability{}, err
 	}
+	// Answer for the resource name Create would make, not the one typed.
+	name = blueprintResourceSlug(name)
 	taken, err := s.tenantNames(ctx)
 	if err != nil {
 		return NameAvailability{}, err

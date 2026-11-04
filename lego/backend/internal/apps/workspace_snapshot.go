@@ -17,6 +17,7 @@ limitations under the License.
 package apps
 
 import (
+	"cmp"
 	"context"
 	"fmt"
 	"maps"
@@ -158,12 +159,14 @@ func (snap *workspaceSnapshot) keyValues(ctx context.Context) (*appv1alpha1.KeyV
 // before w4/385 changed the name mapping: it is labelled with the old name
 // ("resource" for a name with no Latin letters, accents dropped otherwise),
 // while its display name now maps to a different one. Without the alias the
-// plan would create a second service and orphan the first. A name the new
-// mapping already owns is never displaced.
+// plan would create a second service and orphan the first. An unlabelled
+// service is its own typed name: one kept unchanged before w8/230 ("my--app")
+// now maps elsewhere ("my-app"). A name the new mapping already owns is never
+// displaced.
 func aliasLegacyResourceNames(byName map[string]*appv1alpha1.App) {
 	for name, app := range maps.Clone(byName) {
-		label := app.Spec.DisplayName
-		if label == "" || legacyBlueprintResourceSlug(label) != name {
+		label := cmp.Or(app.Spec.DisplayName, name)
+		if legacyBlueprintResourceSlug(label) != name {
 			continue
 		}
 		if current := blueprintResourceSlug(label); current != name && byName[current] == nil {
