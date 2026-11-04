@@ -1,0 +1,19 @@
+{
+  "owner": "bex-nq-944f922389ae472393d22f7d",
+  "operations": [
+    {
+      "resource": "builder",
+      "identity": "bex-nq-944f922389ae472393d22f7d",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "bex-nq-944f922389ae472393d22f7d removed\n"
+    },
+    {
+      "resource": "docker-auth",
+      "identity": "/home/docker/actions-runner/_work/_temp/bex-nq-944f922389ae472393d22f7d-docker-config",
+      "logout_exit_code": 0,
+      "exit_code": 0,
+      "removed": true
+    }
+  ]
+}

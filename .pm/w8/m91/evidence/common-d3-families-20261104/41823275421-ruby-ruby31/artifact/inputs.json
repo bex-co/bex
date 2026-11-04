@@ -1,0 +1,51 @@
+{
+  "owner": "bex-nq-3dff1a94a8f24c13be4510a7",
+  "common_image": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "producer": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "verification": "1feba939b4697894e800ed0abb4f25a0bf415641",
+  "platform": "linux/amd64",
+  "generator_source": "e07c7176dffd0286424ac3beb48be2eaf093eb19",
+  "selection": {
+    "profile": "ruby",
+    "case": "ruby31",
+    "flag": "BEX_NATIVE_TEST_RUBY_PROFILE",
+    "selector": "^TestCommonRubyGeneratedImages$/^ruby31$",
+    "go_timeout": "75m",
+    "job_minutes": "105",
+    "scope": "single-case pilot measurement only; not full-family acceptance or a capacity guarantee"
+  },
+  "image_source": "reviewed-candidate",
+  "candidate_receipt_sha256": "0958ce62f19dd97eb05d2040ec0b2147b25645dd1ee58932f73d821a243acf5b",
+  "baseline_status": "current-complete",
+  "image_approval_inputs_sha256": "822f75fe0b44129c5b4fefa9ec0f30fd5f6e325aaf3674f6234f24f540a20797",
+  "utility_baseline_source": "2ee5d257395c126fde2cc6b974be89883a032544",
+  "utility_jobs": {
+    "amd64": {
+      "run_id": 41816417411,
+      "run_attempt": 1,
+      "job_id": 126534478405,
+      "artifact_id": 13316831667,
+      "artifact_metadata": {
+        "path": ".pm/w8/m91/evidence/common-d3-run100-20261104/utility-metadata/amd64-artifact.json",
+        "bytes": 714,
+        "sha256": "0e36ff5d9d5b8e363ec49a15a5e06da0edc9075ed706812392316803bd16418d"
+      },
+      "metadata": {
+        "path": ".pm/w8/m91/evidence/common-d3-run100-20261104/metadata/jobs-final.json",
+        "bytes": 11193,
+        "sha256": "742dd7d7f14c38ffa7e9db71e027cc74599812d40feaadf85979276390f443fe"
+      },
+      "root": ".pm/w8/m91/evidence/common-d3-run100-20261104/utilities/amd64/artifact",
+      "manifest": {
+        "path": ".pm/w8/m91/evidence/common-d3-run100-20261104/utilities/amd64/artifact/MANIFEST.json",
+        "bytes": 79264,
+        "sha256": "3b99560205bcf21e1ba3bf87009af985ede07c6888581cc238eff460ebe08c93"
+      }
+    }
+  },
+  "previous_baseline_state": null,
+  "docker_config": "/home/docker/actions-runner/_work/_temp/bex-nq-3dff1a94a8f24c13be4510a7-docker-config",
+  "run_id": "41823275421",
+  "run_attempt": "1",
+  "scope": "ephemeral generated-image qualification; no catalog adoption or hosted claim"
+}

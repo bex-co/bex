@@ -1,0 +1,1 @@
+{"python": "3.11.2", "base_prefix": "/usr", "prefix": "/opt/bex/poetry", "executable": "/opt/bex/poetry/bin/python", "os": "Linux", "machine": "x86_64", "poetry": "2.1.3", "virtualenv": "20.32.0", "virtualenv_cap_satisfied": true}

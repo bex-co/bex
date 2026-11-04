@@ -1,0 +1,22 @@
+[
+ {
+  "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13325942955/zip",
+  "created_at": "2026-11-04T13:23:41Z",
+  "digest": "sha256:2e1b06e0262b1de07f3af9ba09aa82af7835de09834e49e79a42b6fd1a3a2fa7",
+  "expired": false,
+  "expires_at": "2026-12-04T13:23:36Z",
+  "id": 13325942955,
+  "name": "common-pilot-legacy-python-3.8-reviewed-candidate-0958ce62f19dd97eb05d2040ec0b2147b25645dd1ee58932f73d821a243acf5b-amd64-1",
+  "node_id": "MDg6QXJ0aWZhY3QxMzMyNTk0Mjk1NQ==",
+  "size_in_bytes": 21720,
+  "updated_at": "2026-11-04T13:23:41Z",
+  "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13325942955",
+  "workflow_run": {
+   "head_branch": "main",
+   "head_repository_id": 793852040,
+   "head_sha": "a9d569642b1513a05296e2532f2eac4b27587790",
+   "id": 41833330036,
+   "repository_id": 793852040
+  }
+ }
+]

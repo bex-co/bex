@@ -1,0 +1,10 @@
+# syntax=docker/dockerfile:1.7
+FROM ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0 AS bex-test-prerequisites
+RUN --network=default /usr/bin/python3 -m venv /opt/bex/test-wheel-builder && /opt/bex/test-wheel-builder/bin/pip wheel --disable-pip-version-check --only-binary=:all: --wheel-dir /opt/bex-test-wheels poetry==2.1.3 'virtualenv<20.33.0'
+ENV PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/bex-test-wheels
+RUN --network=none /usr/bin/python3 -m venv /opt/bex/poetry && /opt/bex/poetry/bin/pip install --no-cache-dir --disable-pip-version-check --no-input poetry==2.1.3 'virtualenv<20.33.0' && ln -s /opt/bex/poetry/bin/poetry /usr/local/bin/poetry
+COPY check-tool.py /opt/bex-test-check-tool.py
+RUN --network=none /opt/bex/poetry/bin/python -I /opt/bex-test-check-tool.py > /opt/bex-test-tool-python.json
+FROM scratch
+COPY --from=bex-test-prerequisites /opt/bex-test-wheels/ /wheels/
+COPY --from=bex-test-prerequisites /opt/bex-test-tool-python.json /tool-python.json

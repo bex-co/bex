@@ -1,0 +1,8 @@
+=== RUN   TestNativeGoRustGeneratedImages
+    nativecommon_gorust_test.go:140: retained Go/Rust profile evidence: /home/docker/actions-runner/_work/_temp/bex-native-qualification-_iz2emlv/generated/native-common-gorust-726933101
+=== RUN   TestNativeGoRustGeneratedImages/go
+    nativecommon_gorust_test.go:142: common-go passed actual generated network-off commands; image sha256:24001f336cb2087a6a50162884147dfaed9e5adf7b1b1765dc57f3e58b590f21
+--- PASS: TestNativeGoRustGeneratedImages (1525.60s)
+    --- PASS: TestNativeGoRustGeneratedImages/go (1525.60s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	1525.613s

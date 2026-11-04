@@ -1,0 +1,45 @@
+{
+  "actual_shared_wheel_export": "/home/docker/actions-runner/_work/_temp/bex-native-qualification-x44x2jno/generated/native-legacy-python-2424257928/3.8.20/prepared-wheels",
+  "builder": "bex-nq-bd04227430344d389325099f",
+  "canonical_sha256": "c282cb78c93b02c622cf396af61889df504f58480078f7695311016db79d3310",
+  "choices": [
+    {
+      "Label": "Python",
+      "Line": "3.8",
+      "Image": "python:3.8-bookworm@sha256:d411270700143fa2683cc8264d9fa5d3279fd3b6afff62ae81ea2f9d070e390c",
+      "Source": "PYTHON_VERSION=3.8.20",
+      "Exact": ""
+    },
+    {
+      "Label": "Poetry",
+      "Line": "2.1.3",
+      "Image": "",
+      "Source": "",
+      "Exact": ""
+    },
+    {
+      "Label": "Node",
+      "Line": "24",
+      "Image": "node:24-bookworm@sha256:d862bb5d082c5ae0210ac07e8c0344cb8cf7bef6d78e9b8c50c179da923108ea",
+      "Source": "",
+      "Exact": ""
+    }
+  ],
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "executed_sha256": "0a6ba4deb937637e29a745217f74a6537f13d8cfe2addee4478e475c6fac1279",
+  "fixture_sha256": {
+    "check-tool.py": "3a2df48cb70504940390dc8f6945a1dd6b8873499597dee361758e2ecc55652d",
+    "check.py": "afbc081f5d59208ef02e1ef077dd860e203a58a10e7577ca47508b1afc30c45b",
+    "legacy_probe.c": "942aaeb9a03e7ea2ccec4ca4a085550746198f12080f7e5b3415d83a67e696fa",
+    "pyproject.toml": "8ca946516b5c01592726fa74f06c863cb85a044588910f84eba739b018a8c14d",
+    "setup.py": "196100598999d18c7509d3356c1f46088d8298067ebcba12364e2e9fd6a3ed5e"
+  },
+  "overlay": "COPY .bex-test-wheels/ /opt/bex-test-wheels/\nENV PIP_NO_INDEX=1 PIP_FIND_LINKS=/opt/bex-test-wheels\n",
+  "owner": "bex-nq-bd04227430344d389325099f",
+  "platform": "linux/amd64",
+  "prerequisite_recipe_sha256": "66767fd33817b28f01241c983754a20421b8227962990c3696cd202fa97b1be8",
+  "scope": "separate common legacy Python family gate; original13/28 unchanged; no native-init/Kubernetes/hosted claim",
+  "tool_metadata_sha256": "a791dc0c8baad3137f213d6f5492f7833134abd5c936003c9d718179e8bca558",
+  "wheel_manifest_sha256": "6bf4d6f381625c924f04235c57c5d64e3f34b52198e124405ae9e05e3f0613aa",
+  "wheel_solve": "poetry==2.1.3 'virtualenv\u003c20.33.0'"
+}

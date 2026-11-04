@@ -1,0 +1,65 @@
+{
+  "phase": "runtime",
+  "run": "bex-init-1665-1793792686986018757",
+  "identity": {
+    "node": "24.22.1",
+    "executable": "/usr/local/bin/node",
+    "env": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    },
+    "baseEnv": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    },
+    "launch": "direct",
+    "init": {
+      "sha256": "8b66f4755abd06d0ae12fc6a3ce247fc1e703ddcb5c95631c8f28f90e5914f79",
+      "machine": 62,
+      "executable": true,
+      "device": "0:2f3",
+      "inode": "10733717",
+      "pid1": "/run/rosetta/rosetta",
+      "pid1Machine": 183,
+      "argv": [
+        "/native-init",
+        "/bin/bash",
+        "-c",
+        "node capture-env.js direct && exec node server.js"
+      ],
+      "mappings": [
+        {
+          "permissions": "r-xp",
+          "device": "0:2f3",
+          "inode": "10733717",
+          "path": "/native-init"
+        },
+        {
+          "permissions": "r--p",
+          "device": "0:2f3",
+          "inode": "10733717",
+          "path": "/native-init"
+        },
+        {
+          "permissions": "rw-p",
+          "device": "0:2f3",
+          "inode": "10733717",
+          "path": "/native-init"
+        }
+      ]
+    }
+  },
+  "events": [
+    "listening",
+    "hold_begin",
+    "SIGTERM",
+    "hold_end",
+    "closed"
+  ],
+  "holds": 1,
+  "completed": 1,
+  "signals": 1,
+  "pass": true
+}

@@ -1,0 +1,13 @@
+=== RUN   TestCommonNativeInitQualification
+    nativequalification_init_test.go:229: retained native-init evidence: /home/docker/actions-runner/_work/_temp/bex-native-qualification-9_rqwwa2/generated/native-common-init-289590789
+=== RUN   TestCommonNativeInitQualification/npm
+=== RUN   TestCommonNativeInitQualification/yarn
+=== RUN   TestCommonNativeInitQualification/pnpm
+=== RUN   TestCommonNativeInitQualification/direct
+--- PASS: TestCommonNativeInitQualification (1395.49s)
+    --- PASS: TestCommonNativeInitQualification/npm (13.88s)
+    --- PASS: TestCommonNativeInitQualification/yarn (12.32s)
+    --- PASS: TestCommonNativeInitQualification/pnpm (12.91s)
+    --- PASS: TestCommonNativeInitQualification/direct (11.48s)
+PASS
+ok  	github.com/bex-co/bex/lego/operator/internal/build	1395.504s

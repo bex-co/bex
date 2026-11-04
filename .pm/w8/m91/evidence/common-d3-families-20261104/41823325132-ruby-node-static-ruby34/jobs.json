@@ -1,0 +1,344 @@
+{
+ "jobs": [
+  {
+   "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/126551676420",
+   "completed_at": "2026-11-04T12:28:06Z",
+   "conclusion": "success",
+   "created_at": "2026-11-04T11:44:09Z",
+   "head_branch": "main",
+   "head_sha": "e07c7176dffd0286424ac3beb48be2eaf093eb19",
+   "html_url": "https://github.com/bex-co/bex/actions/runs/41823325132/job/126551676420",
+   "id": 126551676420,
+   "labels": [
+    "self-hosted",
+    "Linux",
+    "ARM64",
+    "bex-ci"
+   ],
+   "name": "plan",
+   "node_id": "CR_kwDOL1E4iM8AAAAddxFWBA",
+   "run_attempt": 1,
+   "run_id": 41823325132,
+   "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41823325132",
+   "runner_group_id": 3,
+   "runner_group_name": "bex-ci",
+   "runner_id": 23870,
+   "runner_name": "29a1c6052e23",
+   "started_at": "2026-11-04T12:22:48Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completed_at": "2026-11-04T12:22:56Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "started_at": "2026-11-04T12:22:52Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:22:56Z",
+     "conclusion": "success",
+     "name": "Set up runner",
+     "number": 2,
+     "started_at": "2026-11-04T12:22:56Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:23:07Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+     "number": 3,
+     "started_at": "2026-11-04T12:22:56Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:27:07Z",
+     "conclusion": "success",
+     "name": "materialize only complete candidate evidence packets",
+     "number": 4,
+     "started_at": "2026-11-04T12:23:07Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:27:07Z",
+     "conclusion": "success",
+     "name": "validate the fixed profile and case before publication resources",
+     "number": 5,
+     "started_at": "2026-11-04T12:27:07Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:27:07Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+     "number": 10,
+     "started_at": "2026-11-04T12:27:07Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:27:07Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 11,
+     "started_at": "2026-11-04T12:27:07Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/126551676420",
+   "workflow_name": "common Bookworm native image (build + verify)"
+  },
+  {
+   "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/126572780522",
+   "completed_at": "2026-11-04T12:53:07Z",
+   "conclusion": "failure",
+   "created_at": "2026-11-04T12:28:07Z",
+   "head_branch": "main",
+   "head_sha": "e07c7176dffd0286424ac3beb48be2eaf093eb19",
+   "html_url": "https://github.com/bex-co/bex/actions/runs/41823325132/job/126572780522",
+   "id": 126572780522,
+   "labels": [
+    "self-hosted",
+    "Linux",
+    "ARM64",
+    "bex-ci"
+   ],
+   "name": "qualify-profile (amd64)",
+   "node_id": "CR_kwDOL1E4iM8AAAAdeFNb6g",
+   "run_attempt": 1,
+   "run_id": 41823325132,
+   "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41823325132",
+   "runner_group_id": 3,
+   "runner_group_name": "bex-ci",
+   "runner_id": 23876,
+   "runner_name": "4559c3b2ea8c",
+   "started_at": "2026-11-04T12:29:43Z",
+   "status": "completed",
+   "steps": [
+    {
+     "completed_at": "2026-11-04T12:30:55Z",
+     "conclusion": "success",
+     "name": "Set up job",
+     "number": 1,
+     "started_at": "2026-11-04T12:29:48Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:30:55Z",
+     "conclusion": "success",
+     "name": "Set up runner",
+     "number": 2,
+     "started_at": "2026-11-04T12:30:55Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:31:17Z",
+     "conclusion": "success",
+     "name": "Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+     "number": 3,
+     "started_at": "2026-11-04T12:30:55Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:39:40Z",
+     "conclusion": "success",
+     "name": "materialize only complete candidate evidence packets",
+     "number": 4,
+     "started_at": "2026-11-04T12:31:17Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:42:50Z",
+     "conclusion": "success",
+     "name": "Run actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+     "number": 5,
+     "started_at": "2026-11-04T12:39:40Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:42:50Z",
+     "conclusion": "success",
+     "name": "export only the validated single-case profile environment",
+     "number": 6,
+     "started_at": "2026-11-04T12:42:50Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:42:50Z",
+     "conclusion": "success",
+     "name": "record gated inputs and assign ownership before creating resources",
+     "number": 7,
+     "started_at": "2026-11-04T12:42:50Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:52:03Z",
+     "conclusion": "failure",
+     "name": "pre-pull the pinned BuildKit image with bounded retries",
+     "number": 8,
+     "started_at": "2026-11-04T12:42:50Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:52:03Z",
+     "conclusion": "skipped",
+     "name": "Run docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e",
+     "number": 9,
+     "started_at": "2026-11-04T12:52:03Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:52:03Z",
+     "conclusion": "skipped",
+     "name": "measure the selected family case without claiming full-family acceptance",
+     "number": 10,
+     "started_at": "2026-11-04T12:52:03Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:52:03Z",
+     "conclusion": "success",
+     "name": "record capacity observations before owned cleanup",
+     "number": 11,
+     "started_at": "2026-11-04T12:52:03Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:52:03Z",
+     "conclusion": "success",
+     "name": "remove only this job's labeled resources, exact builder and credentials",
+     "number": 12,
+     "started_at": "2026-11-04T12:52:03Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:52:03Z",
+     "conclusion": "success",
+     "name": "hash retained successes and failures",
+     "number": 13,
+     "started_at": "2026-11-04T12:52:03Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:52:40Z",
+     "conclusion": "success",
+     "name": "Run actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9",
+     "number": 14,
+     "started_at": "2026-11-04T12:52:03Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:52:40Z",
+     "conclusion": "skipped",
+     "name": "Post Run actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e",
+     "number": 27,
+     "started_at": "2026-11-04T12:52:40Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:52:40Z",
+     "conclusion": "success",
+     "name": "Post Run actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1",
+     "number": 28,
+     "started_at": "2026-11-04T12:52:40Z",
+     "status": "completed"
+    },
+    {
+     "completed_at": "2026-11-04T12:52:40Z",
+     "conclusion": "success",
+     "name": "Complete job",
+     "number": 29,
+     "started_at": "2026-11-04T12:52:40Z",
+     "status": "completed"
+    }
+   ],
+   "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/126572780522",
+   "workflow_name": "common Bookworm native image (build + verify)"
+  },
+  {
+   "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/126572780562",
+   "completed_at": "2026-11-04T12:28:07Z",
+   "conclusion": "skipped",
+   "created_at": "2026-11-04T12:28:07Z",
+   "head_branch": "main",
+   "head_sha": "e07c7176dffd0286424ac3beb48be2eaf093eb19",
+   "html_url": "https://github.com/bex-co/bex/actions/runs/41823325132/job/126572780562",
+   "id": 126572780562,
+   "labels": [],
+   "name": "publish",
+   "node_id": "CR_kwDOL1E4iM8AAAAdeFNcEg",
+   "run_attempt": 1,
+   "run_id": 41823325132,
+   "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41823325132",
+   "runner_group_id": null,
+   "runner_group_name": null,
+   "runner_id": null,
+   "runner_name": null,
+   "started_at": "2026-11-04T12:28:07Z",
+   "status": "completed",
+   "steps": [],
+   "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/126572780562",
+   "workflow_name": "common Bookworm native image (build + verify)"
+  },
+  {
+   "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/126572780745",
+   "completed_at": "2026-11-04T12:28:07Z",
+   "conclusion": "skipped",
+   "created_at": "2026-11-04T12:28:07Z",
+   "head_branch": "main",
+   "head_sha": "e07c7176dffd0286424ac3beb48be2eaf093eb19",
+   "html_url": "https://github.com/bex-co/bex/actions/runs/41823325132/job/126572780745",
+   "id": 126572780745,
+   "labels": [
+    "self-hosted",
+    "Linux",
+    "ARM64",
+    "bex-build"
+   ],
+   "name": "common-arm64-local",
+   "node_id": "CR_kwDOL1E4iM8AAAAdeFNcyQ",
+   "run_attempt": 1,
+   "run_id": 41823325132,
+   "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41823325132",
+   "runner_group_id": null,
+   "runner_group_name": null,
+   "runner_id": null,
+   "runner_name": null,
+   "started_at": "2026-11-04T12:28:07Z",
+   "status": "completed",
+   "steps": [],
+   "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/126572780745",
+   "workflow_name": "common Bookworm native image (build + verify)"
+  },
+  {
+   "check_run_url": "https://api.github.com/repos/bex-co/bex/check-runs/126572781272",
+   "completed_at": "2026-11-04T12:28:07Z",
+   "conclusion": "skipped",
+   "created_at": "2026-11-04T12:28:07Z",
+   "head_branch": "main",
+   "head_sha": "e07c7176dffd0286424ac3beb48be2eaf093eb19",
+   "html_url": "https://github.com/bex-co/bex/actions/runs/41823325132/job/126572781272",
+   "id": 126572781272,
+   "labels": [
+    "self-hosted",
+    "Linux",
+    "ARM64",
+    "bex-ci"
+   ],
+   "name": "qualify",
+   "node_id": "CR_kwDOL1E4iM8AAAAdeFNe2A",
+   "run_attempt": 1,
+   "run_id": 41823325132,
+   "run_url": "https://api.github.com/repos/bex-co/bex/actions/runs/41823325132",
+   "runner_group_id": null,
+   "runner_group_name": null,
+   "runner_id": null,
+   "runner_name": null,
+   "started_at": "2026-11-04T12:28:07Z",
+   "status": "completed",
+   "steps": [],
+   "url": "https://api.github.com/repos/bex-co/bex/actions/jobs/126572781272",
+   "workflow_name": "common Bookworm native image (build + verify)"
+  }
+ ],
+ "total_count": 5
+}

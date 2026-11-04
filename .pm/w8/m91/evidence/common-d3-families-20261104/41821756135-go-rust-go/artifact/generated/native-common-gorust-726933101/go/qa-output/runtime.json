@@ -1,0 +1,30 @@
+{
+  "phase": "runtime",
+  "runtime": "go",
+  "primary": {
+    "env": {
+      "PATH": "/go/bin:/usr/local/go/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "GOLANG_VERSION": "1.27.3",
+      "GOTOOLCHAIN": "local",
+      "GOPATH": "/go"
+    },
+    "executable": "/usr/local/go/bin/go",
+    "GOTOOLDIR": "/usr/local/go/pkg/tool/linux_amd64",
+    "version": "go1.27.3",
+    "goroot": "/usr/local/go",
+    "gopath": "/go",
+    "toolchain": "local",
+    "critical_sha256": {
+      "/usr/local/go/bin/go": "5f5eb6d0b2fb6aa0bb5d5f8c5f1c944e0de955c925f0111af92a9d8f79680b5b",
+      "/usr/local/go/pkg/tool/linux_amd64/compile": "c331d8fc6c4ae9dbe20e8198435db0455f2a5ca55d2d02fc6d7337c906be8283",
+      "/usr/local/go/pkg/include/textflag.h": "a9d761d03aecdcc117691b6a55eacd43eb7d47d9ad9ca7510b8669ac403b380e"
+    }
+  },
+  "outputs": {
+    "pure": "go-pure|8|14|33153|Bex \u96ea \u03bb\ud83d\ude42",
+    "native": "go-cgo|345407c1|5346|1.2.13|1.2.13"
+  },
+  "native_ldd": "libz.so.1 => /lib/x86_64-linux-gnu/libz.so.1 (0x00007fffff79c000)\n\tlibc.so.6 => /lib/x86_64-linux-gnu/libc.so.6 (0x00007fffff5ba000)\n\t/lib64/ld-linux-x86-64.so.2 (0x00007ffffffcb000)",
+  "compiled_offline_in_this_phase": false,
+  "pass": true
+}

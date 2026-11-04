@@ -1,0 +1,9 @@
+{
+  "builder": "bex-nq-bd04227430344d389325099f",
+  "common": "ghcr.io/bex-co/bex-cnb-run@sha256:0941c204f87643c2faad308e72acdf584976e67d8fb980a0646c5ab662dcc5d0",
+  "owner": "bex-nq-bd04227430344d389325099f",
+  "platform": "linux/amd64",
+  "profile": "legacy-python37-python38",
+  "scope": "opt-in generated images only; original13/28 and first-cohort selector unchanged",
+  "tool_solve": "poetry==2.1.3 'virtualenv\u003c20.33.0'"
+}

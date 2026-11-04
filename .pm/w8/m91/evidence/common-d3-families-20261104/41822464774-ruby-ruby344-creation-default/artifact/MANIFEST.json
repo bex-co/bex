@@ -1,0 +1,65 @@
+{
+  "files": [
+    {
+      "path": "bootstrap-1.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bootstrap-1.stdout.log",
+      "bytes": 1253,
+      "sha256": "8a59971f0af6e05e18a5d499053a98013fd46185ba063593b03e1f3e280542ba"
+    },
+    {
+      "path": "bootstrap.json",
+      "bytes": 2642,
+      "sha256": "c3d351a14e726e40aa7ad74e9abd3ac79178266cb4e294547e76543b9500dad0"
+    },
+    {
+      "path": "capacity-after-tests.json",
+      "bytes": 1317,
+      "sha256": "49e1f614d99c2d6f54e80021bba37efe093d42ec2ceb11b81b335d6a47c80358"
+    },
+    {
+      "path": "capacity-before-builder.json",
+      "bytes": 1320,
+      "sha256": "7601f79fce3021b64cdb2608dee5626250db3b1e3803d26d02994b1fb5b148d3"
+    },
+    {
+      "path": "cleanup.json",
+      "bytes": 494,
+      "sha256": "c10ce0f8c3caf644272a6ba2c8021a8110d1889dfe4a36d3833465e0e438345c"
+    },
+    {
+      "path": "generated/native-ruby-qualification-1697899195/ruby344-creation-default/Dockerfile.canonical",
+      "bytes": 4706,
+      "sha256": "1a9748b0f709bfd51d62d770b1c8d9dea8ee7ec12117d95e2e9cf2891a6ad9b8"
+    },
+    {
+      "path": "generated/native-ruby-qualification-1697899195/ruby344-creation-default/build.log",
+      "bytes": 157024,
+      "sha256": "06d82ea07ebe0381bdf9c670531a6ec986f1562aeaed58143a59d2654fb7bed8"
+    },
+    {
+      "path": "generated/native-ruby-qualification-1697899195/ruby344-creation-default/selection.json",
+      "bytes": 400,
+      "sha256": "7068890d72c3946507d6096254ca9fa17a29d71f106ad9a55f4abbc4471eca0a"
+    },
+    {
+      "path": "inputs.json",
+      "bytes": 2352,
+      "sha256": "134b7c662398e5d2d2c0e2a78a318ee319e4a3a58cf44b594460474a5382fd5d"
+    },
+    {
+      "path": "qualification-source.json",
+      "bytes": 75812,
+      "sha256": "dea302043402f15f483ff072806fbfa9a06eb1445c7967dd447326ecce325550"
+    },
+    {
+      "path": "qualification.log",
+      "bytes": 174129,
+      "sha256": "3029a79adc49e1bd65db5952d0ccc7ee1bb1512cc8e046d400168f6ac32d3be4"
+    }
+  ],
+  "scope": "actual retained evidence, including failures; not an acceptance assertion"
+}

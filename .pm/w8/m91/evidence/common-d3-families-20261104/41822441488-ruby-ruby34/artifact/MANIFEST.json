@@ -1,0 +1,65 @@
+{
+  "files": [
+    {
+      "path": "bootstrap-1.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bootstrap-1.stdout.log",
+      "bytes": 1330,
+      "sha256": "03f53ecfeb6b5e4ed6f36d2eb14d00ec2aba4f29c567cab92760948dee18e90e"
+    },
+    {
+      "path": "bootstrap.json",
+      "bytes": 2639,
+      "sha256": "7e58df3a172e72c63fa725b658ffd510d9280f52554b08381a54d530b4251469"
+    },
+    {
+      "path": "capacity-after-tests.json",
+      "bytes": 1320,
+      "sha256": "0d9d9cad68dd3e503b5d902562fddddd6a6e3e487f22aed2a7650711b1f29020"
+    },
+    {
+      "path": "capacity-before-builder.json",
+      "bytes": 1323,
+      "sha256": "ff23868374171ba84d3e190b735d18611519541ff4f935fc027bcf3fda9981e7"
+    },
+    {
+      "path": "cleanup.json",
+      "bytes": 494,
+      "sha256": "979a0a7feab672f032fd624b87b69bb7581b1246f4bd1e41af6f047f1f382fd7"
+    },
+    {
+      "path": "generated/native-ruby-qualification-1948747572/ruby34/Dockerfile.canonical",
+      "bytes": 4707,
+      "sha256": "994a29c8d8fa86ed97db466ad0dd271c4c3e728491d4ab70c0421d56991e2015"
+    },
+    {
+      "path": "generated/native-ruby-qualification-1948747572/ruby34/build.log",
+      "bytes": 147919,
+      "sha256": "2d6e8e6792443638f2ca62dfee708f5e255138f29d1e5c96e94d0b4e91af6b26"
+    },
+    {
+      "path": "generated/native-ruby-qualification-1948747572/ruby34/selection.json",
+      "bytes": 404,
+      "sha256": "09feee5f6b16bc5b32228fc3895de0578e6f738159599178fc09e0e33142e407"
+    },
+    {
+      "path": "inputs.json",
+      "bytes": 2312,
+      "sha256": "69f3c72a43eb64ad20a1291c57f51a98651f14ca9fab21493ea04474ce193168"
+    },
+    {
+      "path": "qualification-source.json",
+      "bytes": 75812,
+      "sha256": "dea302043402f15f483ff072806fbfa9a06eb1445c7967dd447326ecce325550"
+    },
+    {
+      "path": "qualification.log",
+      "bytes": 166148,
+      "sha256": "087996c0dc513fedffc27395c094f71998d1e7cb2f869cb172db22fe1c7e15ec"
+    }
+  ],
+  "scope": "actual retained evidence, including failures; not an acceptance assertion"
+}
