@@ -1,20 +1,20 @@
 # w9 · m164 — Dual-stack IP allow-list trap: a datastore denies the client's IPv6 with an opaque TLS EOF
 
-**Worker:** worker9 **Goal:** a tenant who allow-lists the IP address the product shows them can actually reach their Postgres and Key Value external endpoints — and a client that is genuinely refused is told so, never dropped with a bare TLS EOF **Status:** blocked (the AAAA decision; t001/t002/t004 done — Key Value proven affected 2026-09-21)
+**Worker:** worker9 **Goal:** a tenant who allow-lists the IP address the product shows them can actually reach their Postgres and Key Value external endpoints — and a client that is genuinely refused is told so, never dropped with a bare TLS EOF **Status:** todo — t001, t002, t004 done; t003 implements the decision (drop AAAA)
 
 ## Tasks (in order)
 
 | id   | title                                                                  | est | depends_on |
 | ---- | ---------------------------------------------------------------------- | --- | ---------- |
 | t001 | Prove or disprove the Key Value half of the same trap, live             | 45m | —          | — **DONE** (proven affected) |
-| t002 | Decide the fix: drop AAAA, make the denial legible, or surface both     | 45m | t001       | — research **DONE**; decision yours |
-| t003 | Implement the decision across Postgres and Key Value                    | 90m | t002       | — **BLOCKED** (decision + live) |
+| t002 | Decide the fix: drop AAAA, make the denial legible, or surface both     | 45m | t001       | — **DONE** (decision: drop AAAA, user 2026-11-04) |
+| t003 | Implement the decision across Postgres and Key Value                    | 90m | t002       |
 | t004 | Re-point `w4/m116/t004` at this cause and correct its "ruled out" line  | 30m | t001       | — **DONE** |
-| t005 | Give the verifiers a data-path deny leg they can actually fail on       | 60m | t003       | — **BLOCKED** (needs a pre-fix failing run) |
-| t006 | Render parity across the touched surfaces                               | 45m | t003, t005 | — **BLOCKED** (follows t003) |
-| t007 | Simplify the code this milestone changed                                | 30m | t006       | — **BLOCKED** (no code changed yet) |
-| t008 | Test coverage for the shipped behavior                                  | 45m | t006       | — **BLOCKED** (follows t003) |
-| t009 | Closeout                                                                | 30m | t008       | — **BLOCKED** |
+| t005 | Give the verifiers a data-path deny leg they can actually fail on       | 60m | t003       |
+| t006 | Render parity across the touched surfaces                               | 45m | t003, t005 |
+| t007 | Simplify the code this milestone changed                                | 30m | t006       |
+| t008 | Test coverage for the shipped behavior                                  | 45m | t006       |
+| t009 | Closeout                                                                | 30m | t008       |
 
 ## Definition of done
 
@@ -197,3 +197,16 @@ Still reproduces unchanged. Free Postgres 17 `qa-20261101-1612-pg` (`dpg-dbjma1j
 - Control: `PATCH /v1/postgres/<id>` with `[<IPv4>/32, <IPv6>/128]`, then the plain copied string → connects (`t|42`).
 
 The blocking decision (t002: drop AAAA, make the denial legible, or both) is still the user's.
+
+## Unblock decision, 2026-11-04 (user decision D2, via `/unblock w9`)
+
+- **Covers:** w9/m164, t002 → t003.
+- **Decision.** Stop publishing AAAA for the datastore wildcards (`*.db.bex.co`, `*-pool.db.bex.co`, `*.kv.bex.co`). Datastore external endpoints become IPv4-only.
+- **Reference.** Render parity, verified in this milestone's t002 research: Render's datastore hosts publish A records only, no AAAA (oregon/frankfurt/singapore-postgres.render.com).
+- **What changes for the customer.** A tenant who allow-lists the IPv4 address the product shows them always connects, including when they paste the product's own connection string or CLI command.
+- **Accepted cost.** IPv6-only clients cannot reach datastore external endpoints, the same as on Render. A clearer denial message is a separate optional enhancement and must not block this.
+- **Worker next steps.**
+  1. t003: change `scripts/datastore-dns-cloudflare.sh`, and whatever reconciles the wildcard, to publish A only and remove existing AAAA. Confirm with `dig AAAA` against a live host. Re-run the t001 repros: the IPv6 literal is no longer reachable by name, and the copy-pasted `connection-info` command connects.
+  2. t005: the verifier's deny leg runs first against the current (pre-fix) state so it is seen to fail, then passes after the fix.
+  3. Continue with t006–t009.
+- **Remaining gates:** none.
