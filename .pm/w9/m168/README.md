@@ -100,3 +100,21 @@ Until then, every attachment verb answers `503 AGENT_ATTACHMENTS_UNAVAILABLE` an
 - **Done signal.** `bex-system` has the attachments Secret, a deploy rolls bex-api with `BEX_AGENT_ATTACHMENTS_S3_*`, and `GET /v1/agent-sessions/capabilities` reports `attachments.enabled: true`.
 - **Worker next step.** m168 runs the provisioning first. m169–m171 wait for that signal, then run their live checks as written in their definitions of done, signing in as the QA user (`scripts/qa-login.sh`).
 - **If provisioning fails** (keys missing or rejected, Wasabi denies the call): stop, keep the error message without any secret, and return the item to `blocked/` with the exact failure.
+
+## Live acceptance evidence (2026-11-04, production, QA user)
+
+The production bucket `bex-agent-attachments` was provisioned and verified (put/get/delete allowed, `bex-tfstate` denied). The Secret was installed and bex-api was rollout-restarted at deployed SHA `fb6098dd2`.
+
+**Passed**
+- **Capabilities.** `GET /v1/agent-sessions/capabilities` reports `attachments.enabled: true` (25 MiB per file, 10 per turn, 50 / 250 MiB per session).
+- **Uploads (bex-canary).** `build.log` → `text/plain`, `red-square.png` → `image/png`. HTML uploaded as `fake.png` was sniffed as `text/html`.
+- **Size cap.** 25 MiB + 1 byte → `413 AGENT_ATTACHMENT_TOO_LARGE`, and no row was left behind.
+- **Download.** `GET …/content` → 302 to `s3.eu-central-2.wasabisys.com`, and the bytes are identical for all three files.
+  - The PNG is served `inline`; the log and the HTML are served `attachment`.
+- **Binding (workspace `bex`).** A repo-less session created with 2 `attachmentIds` has both inputs bound to turn 1, and the transcript turn snapshot lists both. A dashboard follow-up bound a new file to turn 2.
+
+**Not proven: the agent reading the files.** No sandbox could start. Every dispatch failed with `FailedCreatePodSandBox … runtime "io.containerd.runsc.v1" binary not installed "containerd-shim-runsc-v1"` on sandbox node `bex-sandbox-cgqq6-vlvqv` (created about 2 days ago). This breaks every agent session on production and is unrelated to attachments. The copy into `/attachments` and the ACP blocks therefore still need a working sandbox.
+
+**Separate bug.** That runtime failure is reported to the customer as `SANDBOX_CAPACITY_LIMIT`, "the likely cause is this workspace's sandbox capacity (plan limit)". The node was nearly idle (3% CPU requested).
+
+**Cleanup.** Fixtures were deleted and their absence verified: sessions → 404, attachments → 404, no BatchSandbox or pods left.
