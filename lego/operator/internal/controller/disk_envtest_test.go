@@ -481,9 +481,9 @@ var _ = Describe("Persistent disk snapshots", func() {
 		Expect(env).To(HaveKeyWithValue("BEX_DISK_SNAPSHOT_RETAIN", "7"), "Render keeps at least seven days")
 
 		// The ReadWriteOnce volume can only be co-mounted on the node that has
-		// it attached, so the snapshot pod prefers the service's own node.
+		// it attached, so a running service's snapshot pod must sit there.
 		Expect(pod.Affinity).NotTo(BeNil())
-		Expect(pod.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution).To(HaveLen(1))
+		Expect(pod.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution).To(HaveLen(1))
 	})
 
 	It("takes no snapshot at all when the store is not configured", func() {

@@ -578,3 +578,61 @@ func TestDiskCreateRefusedByQuotaPublishesNoFilesystemIntent(t *testing.T) {
 		t.Fatal("unadmitted disk create authorized a node filesystem")
 	}
 }
+
+// A running service holds its ReadWriteOnce volume on one node, so a backup
+// scheduled anywhere else can only fail with Multi-Attach: there it must be
+// required beside the service. A suspended service's volume attaches anywhere,
+// and restore runs after the service is scaled down, so those only prefer it.
+func TestDiskSnapshotAffinityRequiresTheServiceNodeOnlyWhileItRuns(t *testing.T) {
+	r := &AppReconciler{BackupHelperImage: "test-operator"}
+	for _, tc := range []struct {
+		name      string
+		command   string
+		suspended bool
+		replicas  int32
+		required  bool
+	}{
+		{name: "running backup", command: "backup", replicas: 1, required: true},
+		// An omitted replica count means one instance, not zero.
+		{name: "running backup with defaulted replicas", command: "backup", replicas: 0, required: true},
+		{name: "suspended backup", command: "backup", suspended: true, replicas: 1},
+		{name: "restore", command: "restore", replicas: 1},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			app := diskApp("svc", &appv1alpha1.DiskSpec{})
+			app.Spec.Suspended = tc.suspended
+			app.Spec.Replicas = tc.replicas
+			pod := r.diskSnapshotJobSpec(app, nil, tc.command, nil).Template.Spec
+			affinity := pod.Affinity.PodAffinity
+			required, preferred := affinity.RequiredDuringSchedulingIgnoredDuringExecution, affinity.PreferredDuringSchedulingIgnoredDuringExecution
+			if tc.required {
+				if len(required) != 1 || len(preferred) != 0 {
+					t.Fatalf("want one required term and no preference, got required=%v preferred=%v", required, preferred)
+				}
+				if got := required[0].LabelSelector.MatchLabels[labelApp]; got != app.Name || required[0].TopologyKey != "kubernetes.io/hostname" {
+					t.Fatalf("required term must pin to the service's node, got %+v", required[0])
+				}
+				return
+			}
+			if len(required) != 0 || len(preferred) != 1 {
+				t.Fatalf("want only a preference, got required=%v preferred=%v", required, preferred)
+			}
+		})
+	}
+}
+
+// The pod must fit on a bin-packed node beside the service, so it requests a
+// sliver of CPU, while the 100m limit still lets the stream run at speed.
+func TestDiskSnapshotRequestsLittleCPUButKeepsItsLimit(t *testing.T) {
+	r := &AppReconciler{BackupHelperImage: "test-operator"}
+	res := r.diskSnapshotJobSpec(diskApp("svc", &appv1alpha1.DiskSpec{}), nil, "backup", nil).Template.Spec.Containers[0].Resources
+	if got := res.Requests.Cpu().String(); got != "10m" {
+		t.Fatalf("cpu request = %s, want 10m", got)
+	}
+	if got := res.Limits.Cpu().String(); got != "100m" {
+		t.Fatalf("cpu limit = %s, want 100m", got)
+	}
+	if !res.Requests.Memory().Equal(*res.Limits.Memory()) {
+		t.Fatalf("memory request %s must equal its limit %s", res.Requests.Memory(), res.Limits.Memory())
+	}
+}

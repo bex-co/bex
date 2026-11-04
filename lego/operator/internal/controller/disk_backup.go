@@ -285,7 +285,7 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 		// staged, so this needs working memory for the gzip/age buffers only —
 		// not a budget derived from the volume's size the way the KeyValue
 		// pipeline's EmptyDir must be.
-		Resources:       backupResources("100m", "256Mi", diskSnapshotEphemeralBudget()),
+		Resources:       diskSnapshotResources(),
 		SecurityContext: tenantSecCtx(),
 	}
 	podSpec := corev1.PodSpec{
@@ -338,20 +338,29 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 			},
 		}}
 		// The volume is ReadWriteOnce. A second pod may mount it only on the
-		// node that already has it attached, so the snapshot pod is pinned to
-		// wherever the service's own pod is running. Preferred rather than
-		// required: a suspended or scaled-to-zero service has no pod to sit
-		// beside, and its volume is free to attach anywhere — refusing to back
-		// that up would leave parked services silently unprotected.
-		podSpec.Affinity = &corev1.Affinity{PodAffinity: &corev1.PodAffinity{
-			PreferredDuringSchedulingIgnoredDuringExecution: []corev1.WeightedPodAffinityTerm{{
-				Weight: 100,
-				PodAffinityTerm: corev1.PodAffinityTerm{
-					LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name}},
-					TopologyKey:   "kubernetes.io/hostname",
-				},
-			}},
-		}}
+		// node that already has it attached, so the snapshot pod sits beside the
+		// service's own pod. While the service runs, that is required: on any
+		// other node the mount fails with Multi-Attach until the Job's deadline,
+		// and MostAllocated packing routinely leaves the service's node too full
+		// for a preference to win (the 2026-11 node roll stranded nightly
+		// backups exactly that way). A suspended or scaled-to-zero service has
+		// no pod to sit beside and its volume attaches anywhere, and restore
+		// runs after the service is scaled down, so those only prefer it.
+		// The snapshot pod carries the same app label, so when no service pod
+		// exists yet (a first release still failing) the required term matches
+		// the pod itself and it schedules anywhere rather than hanging.
+		beside := corev1.PodAffinityTerm{
+			LabelSelector: &metav1.LabelSelector{MatchLabels: map[string]string{labelApp: app.Name}},
+			TopologyKey:   "kubernetes.io/hostname",
+		}
+		podSpec.Affinity = &corev1.Affinity{PodAffinity: &corev1.PodAffinity{}}
+		if command == "backup" && effectiveReplicas(app) > 0 {
+			podSpec.Affinity.PodAffinity.RequiredDuringSchedulingIgnoredDuringExecution = []corev1.PodAffinityTerm{beside}
+		} else {
+			podSpec.Affinity.PodAffinity.PreferredDuringSchedulingIgnoredDuringExecution = []corev1.WeightedPodAffinityTerm{{
+				Weight: 100, PodAffinityTerm: beside,
+			}}
+		}
 		// That node may be one of the App's dedicated serving pool (a large
 		// tier, w2/m250), whose taint would otherwise strand the snapshot
 		// beside a volume it can never reach.
@@ -369,6 +378,16 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 	}
 	applyPodSpecServerDefaults(&spec.Template.Spec)
 	return spec
+}
+
+// diskSnapshotResources requests a sliver of CPU but keeps the 100m limit:
+// the pod must fit on the service's node, which bin-packing keeps nearly full
+// of CPU requests, while the stream still gets real CPU once it is running.
+func diskSnapshotResources() corev1.ResourceRequirements {
+	res := backupResources("100m", "256Mi", diskSnapshotEphemeralBudget())
+	res.Requests = res.Requests.DeepCopy()
+	res.Requests[corev1.ResourceCPU] = resource.MustParse("10m")
+	return res
 }
 
 // diskSnapshotEphemeralBudget bounds the Job's writable layer. The pipeline
