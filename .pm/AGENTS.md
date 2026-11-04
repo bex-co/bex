@@ -2,6 +2,10 @@
 
 Internal PM board — see [README.md](README.md). `/pm` is the only skill that writes here; its conventions live in [.claude/skills/pm/SKILL.md](../.claude/skills/pm/SKILL.md).
 
+## Evidence lives outside git
+
+The board is markdown and small text (user decision 2026-11-04, w6/100 D10). Never commit build artifacts or bulk evidence here: no file over 1 MiB and no `whl`/`gz`/`tar`/`zip`/`bin`/image/`pdf`/database file under `.pm/`. Upload them to object storage and record the sha256 and link in the item. `scripts/repo-artifact-guard.sh` rejects violations at ship time and in CI.
+
 ## Done items move to `done/` folders
 
 When work is completed, do not leave it in place — move it:
