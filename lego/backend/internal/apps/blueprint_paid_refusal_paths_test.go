@@ -34,6 +34,7 @@ func TestBlueprintPaidRefusalsPointAtTheFieldToChange(t *testing.T) {
 		{"second free Key Value", "services:\n  - type: keyvalue\n    name: kv1\n    plan: free\n    ipAllowList: []\n  - type: keyvalue\n    name: kv2\n    plan: free\n    ipAllowList: []\n", "services[1].plan", 8},
 		{"second free Postgres", "databases:\n  - name: db1\n    plan: free\n  - name: db2\n    plan: free\n", "databases[1].plan", 5},
 		{"free autoscaling", "services:\n  - type: web\n    name: auto\n    runtime: image\n    image:\n      url: docker.io/traefik/whoami:v1.10.3\n    plan: free\n    scaling:\n      minInstances: 1\n      maxInstances: 3\n      targetCPUPercent: 60\n", "services[0].scaling", 9},
+		{"paused tier", "services:\n  - type: web\n    name: qa-bpu\n    runtime: node\n    plan: pro ultra\n    repo: https://github.com/render-examples/express-hello-world\n    buildCommand: yarn\n    startCommand: node app.js\n", "services[0].plan", 5},
 		{"free disk", "services:\n  - type: web\n    name: withdisk\n    runtime: image\n    image:\n      url: docker.io/traefik/whoami:v1.10.3\n    plan: free\n    disk:\n      name: data\n      mountPath: /data\n      sizeGB: 1\n", "services[0].disk", 9},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

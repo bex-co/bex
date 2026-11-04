@@ -3690,7 +3690,9 @@ func errPausedTier(tierID, current string) error {
 		return nil
 	}
 	t, _ := tiers.Compute.ByID(tierID)
-	return core.NewBadRequestError(InstanceTypeUnavailableCode, msg, map[string]any{"plan": t.RenderPlan})
+	// field locates a Blueprint refusal at plan: the message names "instance
+	// type", which is not the type field (w8/231).
+	return core.NewBadRequestError(InstanceTypeUnavailableCode, msg, map[string]any{"plan": t.RenderPlan, "field": "plan"})
 }
 
 // selectableRenderPlans is the catalog's Render plan spellings a caller may
