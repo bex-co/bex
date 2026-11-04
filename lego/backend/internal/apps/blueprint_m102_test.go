@@ -464,3 +464,25 @@ func problemErrors(v BlueprintValidation) string {
 	}
 	return b.String()
 }
+
+// An unknown service type reports only the type, never a sibling leaf of the
+// arbitrary closest branch such as redisServer's ipAllowList (w32/002).
+func TestBlueprintUnknownServiceTypeReportsOnlyTheType(t *testing.T) {
+	for _, typ := range []string{"nonsense", "wbe"} {
+		t.Run(typ, func(t *testing.T) {
+			_, _, problems := CompileBlueprintIR("services:\n  - type: " + typ + "\n    name: qa-x\n")
+			if len(problems) != 1 {
+				t.Fatalf("problems = %+v, want exactly the type problem", problems)
+			}
+			p := problems[0]
+			if p.Path != "#/services/0/type" || !strings.HasSuffix(p.Message, "value must be one of 'web', 'worker', 'pserv', 'cron', 'keyvalue', 'redis'") {
+				t.Fatalf("problem = %+v, want the services[0].type enum", p)
+			}
+		})
+	}
+	// Control: a real keyvalue without ipAllowList still reports it.
+	_, _, problems := CompileBlueprintIR("services:\n  - type: keyvalue\n    name: kv\n")
+	if !strings.Contains(problemText(problems), "missing property 'ipAllowList'") {
+		t.Fatalf("keyvalue problems = %+v, want missing ipAllowList", problems)
+	}
+}
