@@ -722,6 +722,10 @@ type DatabaseReconciler struct {
 	// DiskUsageReader reads the fullest CNPG PVC's kubelet usage sample. Nil
 	// leaves the field round-trippable but disables the automatic control loop.
 	DiskUsageReader DatabaseDiskUsageReader
+	// WALArchiveStallReader detects a WAL archive that hangs instead of
+	// failing, which CNPG still reports as ContinuousArchiving=True (w5/175).
+	// Nil mirrors CNPG's condition alone.
+	WALArchiveStallReader WALArchiveStallReader
 	// DBDomain is the wildcard base for external endpoints, e.g. "db.bex.co".
 	// Empty => Public databases get no external route.
 	DBDomain string
@@ -948,7 +952,7 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// accepted intent so readiness cannot use a different capacity calculation.
 	desiredInstances, _, _ := unstructured.NestedInt64(cluster.Object, "spec", "instances")
 
-	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backups.enabled, backups.targetServerName, soonerRequeue(soonerRequeue(exportRequeue, diskRequeue), tlsRequeue))
+	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backups.enabled, backups.targetServerName, soonerRequeue(soonerRequeue(soonerRequeue(exportRequeue, diskRequeue), tlsRequeue), r.walArchiveStallRequeue(backups.enabled)))
 }
 
 // databaseServerAltDNSNames returns every public SNI name that can terminate
@@ -1819,7 +1823,7 @@ func (r *DatabaseReconciler) readClusterStatus(
 		db.Status.HighAvailabilityEnabled = false
 		return cnpgClusterState{}
 	}
-	stampWALArchivingCondition(db, cluster, backupEnabled)
+	r.stampWALArchiving(ctx, db, cluster, backupEnabled)
 	ready, _, _ := unstructured.NestedInt64(cluster.Object, "status", "readyInstances")
 	phase, _, _ := unstructured.NestedString(cluster.Object, "status", "phase")
 	major, _, _ := unstructured.NestedInt64(cluster.Object, "status", "pgDataImageInfo", "majorVersion")

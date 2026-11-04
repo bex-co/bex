@@ -168,8 +168,10 @@ const ConditionDiskReady = "DiskReady"
 // ConditionWALArchiving mirrors CNPG's ContinuousArchiving on a backup-enabled
 // Database: True while WAL reaches the object store, False (with CNPG's reason
 // and message) when archiving fails — which silently stops point-in-time
-// recovery from advancing. Absent when backups are off or CNPG has not
-// reported yet.
+// recovery from advancing. The operator also sets False with reason
+// WALArchiveStalled when segments wait with nothing archived for 15 minutes:
+// an archive command that hangs instead of failing, which CNPG still reports
+// as True (w5/175). Absent when backups are off or CNPG has not reported yet.
 const ConditionWALArchiving = "WALArchiving"
 
 // ConditionBuild is the durable record of a source build's terminal outcome,
