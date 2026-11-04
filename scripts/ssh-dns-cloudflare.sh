@@ -64,6 +64,18 @@ if ! bex_ssh_public_ingress_addresses |
   echo "the Terraform edge reported an invalid public LoadBalancer address" >&2
   exit 1
 fi
+# BEX_EDGE_DNS_FAMILIES limits which record types the host publishes. Records
+# of an excluded type are not desired, so the reconcile below deletes them.
+families="${BEX_EDGE_DNS_FAMILIES:-A AAAA}"
+case "$families" in
+  "A AAAA" | "A" | "AAAA") ;;
+  *)
+    echo "BEX_EDGE_DNS_FAMILIES must be \"A AAAA\", \"A\" or \"AAAA\"" >&2
+    exit 1
+    ;;
+esac
+awk -F '\t' -v families=" $families " 'index(families, " " $1 " ")' "$desired" >"$desired.filtered"
+mv "$desired.filtered" "$desired"
 if [[ ! -s "$desired" ]]; then
   echo "the Terraform edge has no public LoadBalancer addresses" >&2
   exit 1

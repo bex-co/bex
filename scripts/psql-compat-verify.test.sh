@@ -267,6 +267,7 @@ common_env=(
   "BEX_PSQL_PROBE_ATTEMPTS=1"
   "BEX_PSQL_CLEANUP_TIMEOUT_SECONDS=5"
   "BEX_FAKE_PSQL_RECORD=$tmp/fake-psql-record"
+  "BEX_PSQL_DATA_PATH_FAMILIES=127.0.0.1	"
 )
 : >"$tmp/fake-psql-record"
 
@@ -318,9 +319,11 @@ fi
 for marker in \
   'PASS psql official-CLI disposable-database-created' \
   'PASS psql external-connection-precondition' \
+  'PASS psql allow-list-data-path dns ipv4-only host=' \
   'PASS psql probe-id' \
   'PASS psql probe-name' \
   'PASS psql unknown-name rejected' \
+  'PASS psql allow-list-data-path ipv4-only-list connects' \
   'PASS psql cleanup disposable-database' \
   'PASS psql cleanup local-artifacts' \
   'PASS psql compatibility verification complete'; do
@@ -331,9 +334,10 @@ done
 if ! grep -Eq '^(PASS psql allow-list-deny rejected-before-connect|SKIP psql allow-list-deny)' "$tmp/full.out"; then
   fail "allow-list-deny leg neither passed nor honestly skipped"
 fi
-# The fake psql runs exactly twice (id + name); the deny leg must never reach it.
-[[ "$(grep -c invoked "$tmp/fake-psql-record")" == "2" ]] ||
-  fail "fake psql invocation count != 2 (deny leg reached the client, or a probe was skipped)"
+# The fake psql runs exactly four times (id + name probes, then the data-path
+# connect and its forced-IPv4 control); the deny leg must never reach it.
+[[ "$(grep -c invoked "$tmp/fake-psql-record")" == "4" ]] ||
+  fail "fake psql invocation count != 4 (deny leg reached the client, or a probe was skipped)"
 assert_safe "$tmp/full.out"
 assert_safe "$tmp/requests.log"
 assert_safe "$tmp/fake-psql-record"
@@ -350,8 +354,8 @@ fi
 rm -f "$tmp/public-trust"
 grep -Fq 'PASS psql external-connection-precondition host=db.nonprod.invalid database=psql_test tls=system-roots ca=none' "$tmp/public-trust.out" ||
   fail "publicly trusted precondition marker missing"
-[[ "$(grep -c invoked "$tmp/fake-psql-record")" == "2" ]] ||
-  fail "publicly trusted run did not probe by id and name"
+[[ "$(grep -c invoked "$tmp/fake-psql-record")" == "4" ]] ||
+  fail "publicly trusted run did not probe by id and name and run the data-path leg"
 assert_safe "$tmp/public-trust.out"
 
 # 4) a non-zero psql exit is surfaced, not swallowed. The render CLI reports the
@@ -368,6 +372,22 @@ grep -Fq 'FAIL psql-compat psql probe-id exited 1' "$tmp/nonzero.out" ||
 grep -Fq 'exit status 42' "$tmp/nonzero.out" ||
   fail "underlying psql exit code was swallowed"
 assert_safe "$tmp/nonzero.out"
+
+# 5) data-path leg, pre-fix shape (w9/m164): the endpoint host publishes AAAA, so
+#    an IPv4-only allow list would be refused over IPv6 with a bare TLS EOF. The
+#    verifier must fail and name it before any psql is spawned.
+: >"$tmp/fake-psql-record"
+set +e
+env "${common_env[@]}" "BEX_PSQL_DATA_PATH_FAMILIES=127.0.0.1	::1" \
+  bash "$verifier" >"$tmp/aaaa.out" 2>&1
+aaaa_rc=$?
+set -e
+[[ "$aaaa_rc" != "0" ]] || fail "a host publishing AAAA passed the data-path leg"
+grep -Fq 'allow-list-data-path: db.nonprod.invalid publishes AAAA (::1)' "$tmp/aaaa.out" ||
+  fail "the AAAA regression was not named"
+[[ ! -s "$tmp/fake-psql-record" ]] || fail "the AAAA regression still spawned psql"
+grep -Fq 'PASS psql cleanup disposable-database' "$tmp/aaaa.out" ||
+  fail "the AAAA failure skipped fixture cleanup"
 
 for output in "$tmp"/*.out; do
   assert_safe "$output"

@@ -33,6 +33,7 @@ write_fakes() {
 
   printf '%s\n' \
     '#!/usr/bin/env bash' \
+    'if [[ "${1:-}" == "+short" && "${2:-}" == "AAAA" ]]; then [[ -z "${KV_VERIFY_AAAA:-}" ]] || echo "$KV_VERIFY_AAAA"; exit 0; fi' \
     'echo 192.0.2.10' >"$fake_bin/dig"
 
   printf '%s\n' \
@@ -240,6 +241,24 @@ assert_interrupt_cleanup="$(<"$tmp/interrupt.out")"
 }
 [[ "$(grep -c '^DELETE /key-value/red-fixture$' "$KV_VERIFY_CALLS")" == "1" ]] || {
   echo 'interrupt did not delete the exact fixture once' >&2
+  exit 1
+}
+
+# The endpoint publishing AAAA under an IPv4 allow list is the w9/m164 trap:
+# fail with the named reason, and still delete the fixture.
+rm -f "$KV_VERIFY_DELETED"
+: >"$KV_VERIFY_CALLS"
+unset KV_VERIFY_GO_FAIL
+set +e
+aaaa_output="$(KV_VERIFY_AAAA=2001:db8::10 bash "$verify" 2>&1)"
+aaaa_status=$?
+set -e
+[[ "$aaaa_status" != "0" && "$aaaa_output" == *'public Key Value host publishes AAAA'* ]] || {
+  echo 'a Key Value host publishing AAAA was not refused by name' >&2
+  exit 1
+}
+[[ "$aaaa_output" == *'PASS disposable Key Value cleanup'* ]] || {
+  echo 'the AAAA failure skipped fixture cleanup' >&2
   exit 1
 }
 

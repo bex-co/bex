@@ -1,6 +1,10 @@
 #!/usr/bin/env bash
 # Reconcile the DNS-only wildcard records for the shared PostgreSQL and Valkey
 # raw-TCP edge. App/API/custom-domain records remain Cloudflare-proxied.
+#
+# The datastore wildcards publish A only, as Render's datastore hosts do.
+# A published AAAA made dual-stack clients connect over IPv6, where an
+# IPv4-only allow list denied them with a bare TLS EOF.
 set -euo pipefail
 
 mode="${1:-}"
@@ -22,6 +26,7 @@ reconcile_domain() {
   BEX_EDGE_DNS_HOST="*.$domain" \
     BEX_EDGE_DNS_ZONE="$zone" \
     BEX_EDGE_DNS_LABEL="$label datastore" \
+    BEX_EDGE_DNS_FAMILIES=A \
     bash "$reconciler" "$mode"
 }
 

@@ -11,7 +11,7 @@ trace="$tmp/trace"
 printf '%s\n' \
   '#!/usr/bin/env bash' \
   'set -euo pipefail' \
-  'printf "%s|%s|%s|%s\n" "$BEX_EDGE_DNS_HOST" "$BEX_EDGE_DNS_ZONE" "$BEX_EDGE_DNS_LABEL" "${1:-}" >>"$BEX_EDGE_TEST_TRACE"' \
+  'printf "%s|%s|%s|%s|%s\n" "$BEX_EDGE_DNS_HOST" "$BEX_EDGE_DNS_ZONE" "$BEX_EDGE_DNS_LABEL" "${BEX_EDGE_DNS_FAMILIES:-}" "${1:-}" >>"$BEX_EDGE_TEST_TRACE"' \
   >"$fake"
 chmod +x "$fake"
 
@@ -21,8 +21,9 @@ export BEX_DB_DOMAIN=db.example.test
 export BEX_KV_DOMAIN=kv.example.test
 
 bash "$wrapper" --check
-grep -Fxq '*.db.example.test|example.test|Postgres datastore|--check' "$trace"
-grep -Fxq '*.kv.example.test|example.test|Key Value datastore|--check' "$trace"
+# Both datastore wildcards publish IPv4 only, as Render's datastore hosts do.
+grep -Fxq '*.db.example.test|example.test|Postgres datastore|A|--check' "$trace"
+grep -Fxq '*.kv.example.test|example.test|Key Value datastore|A|--check' "$trace"
 [[ "$(wc -l <"$trace" | tr -d ' ')" == "2" ]]
 
 : >"$trace"
