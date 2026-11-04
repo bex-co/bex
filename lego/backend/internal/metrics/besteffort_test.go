@@ -116,9 +116,10 @@ func TestMonthToDateBandwidthSourceBestEffortOnUnhealthySource(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	now := time.Now()
+	// Inside one UTC hour: a single increase() per source, whatever the clock says.
+	now := time.Date(2026, 11, 4, 10, 40, 0, 0, time.UTC)
 	value, degraded, err := NewMonthToDateBandwidthSource(ts.URL, ts.Client())(
-		context.Background(), "srv-web", []string{"default-web-web-onbex-co@kubernetes"}, true, now.Add(-time.Hour), now)
+		context.Background(), "srv-web", []string{"default-web-web-onbex-co@kubernetes"}, true, now.Add(-30*time.Minute), now)
 	if err != nil {
 		t.Fatalf("degraded source must not error month-to-date: %v", err)
 	}

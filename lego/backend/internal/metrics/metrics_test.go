@@ -1131,9 +1131,10 @@ func TestMonthToDateBandwidthSourceUsesExactRouterCounter(t *testing.T) {
 		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"value":[0,%q]}]}}`, value)
 	}))
 	defer ts.Close()
-	now := time.Now()
+	// Inside one UTC hour, so the read is the single increase() whatever the clock says.
+	now := time.Date(2026, 11, 4, 10, 40, 0, 0, time.UTC)
 	value, degraded, err := NewMonthToDateBandwidthSource(ts.URL, ts.Client())(
-		context.Background(), "srv-web", []string{"default-web-web-onbex-co@kubernetes"}, true, now.Add(-time.Hour), now)
+		context.Background(), "srv-web", []string{"default-web-web-onbex-co@kubernetes"}, true, now.Add(-30*time.Minute), now)
 	if err != nil || value.HTTP != 1048576 || value.WebSocket != 2097152 || value.NAT != 3145728 {
 		t.Fatalf("month source: value=%v err=%v", value, err)
 	}
@@ -1147,6 +1148,61 @@ func TestMonthToDateBandwidthSourceUsesExactRouterCounter(t *testing.T) {
 		!strings.Contains(gotQuery, `router=~"^(default-web-web-onbex-co@kubernetes)$"`) ||
 		strings.Contains(gotQuery, "traefik_service_responses_bytes_total") {
 		t.Fatalf("month source query is not exact-router based: %q", gotQuery)
+	}
+}
+
+// w4/468: the month-to-date figure is whole ended hours (fixed windows,
+// evaluated on the hour so a later read returns the same terms) plus the
+// current partial hour, so a flat counter never reads lower than before.
+func TestMonthToDateBandwidthSourceSplitsEndedHoursFromTheCurrentHour(t *testing.T) {
+	type read struct {
+		query string
+		at    string
+	}
+	var mu sync.Mutex
+	var reads []read
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		q := r.URL.Query().Get("query")
+		mu.Lock()
+		reads = append(reads, read{q, r.URL.Query().Get("time")})
+		mu.Unlock()
+		value := "100"
+		if strings.Contains(q, "[3600s:3600s]") || strings.Contains(q, "sum_over_time") {
+			value = "5000"
+		}
+		_, _ = fmt.Fprintf(w, `{"status":"success","data":{"resultType":"vector","result":[{"value":[0,%q]}]}}`, value)
+	}))
+	defer ts.Close()
+	since := time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)
+	at := time.Date(2026, 11, 4, 10, 40, 0, 0, time.UTC)
+	hourStart := time.Date(2026, 11, 4, 10, 0, 0, 0, time.UTC)
+
+	value, _, err := NewMonthToDateBandwidthSource(ts.URL, ts.Client())(
+		context.Background(), "srv-web", []string{"default-web-web-onbex-co@kubernetes"}, false, since, at)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// One HTTP source: ended hours (5000) + the current partial hour (100).
+	if value.HTTP != 5100 {
+		t.Fatalf("HTTP bytes = %v, want 5000 + 100", value.HTTP)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	hours := int64(hourStart.Sub(since) / time.Hour)
+	var sawCompleted, sawPartial bool
+	for _, r := range reads {
+		switch {
+		case strings.Contains(r.query, "sum_over_time"):
+			sawCompleted = true
+			if !strings.Contains(r.query, fmt.Sprintf("[%ds:3600s]", hours*3600)) || r.at != fmt.Sprint(hourStart.Unix()) {
+				t.Errorf("ended-hours read %q at %s, want %d hours evaluated on the hour %d", r.query, r.at, hours, hourStart.Unix())
+			}
+		case strings.Contains(r.query, "increase(") && strings.Contains(r.query, "[2400s]"):
+			sawPartial = true
+		}
+	}
+	if !sawCompleted || !sawPartial {
+		t.Fatalf("reads = %+v, want an ended-hours read and a 2400s current-hour read", reads)
 	}
 }
 

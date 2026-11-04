@@ -165,6 +165,17 @@ func Increase(spec Spec, seconds int64) string {
 	return fmt.Sprintf(`sum(increase(%s{%s}[%ds]))`, spec.Counter, spec.Matchers, seconds)
 }
 
+// CompletedHoursIncrease is the sum of Increase over each whole UTC hour in
+// the window ending at the hour-aligned instant it is evaluated at: the
+// subquery steps on absolute hour boundaries, so every hour's term is a fixed
+// window whose value no longer changes once the hour has ended. Reading a long
+// window as one increase() instead extrapolates over a span that grows with
+// each read, so a flat counter's total shrinks between reads (w4/468). A
+// source with no samples yet contributes 0.
+func CompletedHoursIncrease(spec Spec, hours int64) string {
+	return fmt.Sprintf(`(sum_over_time(sum(increase(%s{%s}[3600s]))[%ds:3600s]) or vector(0))`, spec.Counter, spec.Matchers, hours*3600)
+}
+
 // IncreaseOrZero is the chart-grade sibling of Increase: a missing source
 // contributes 0 instead of nulling the composed sum.
 func IncreaseOrZero(spec Spec, seconds int64) string {
