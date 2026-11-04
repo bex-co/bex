@@ -1541,7 +1541,7 @@ git init -q .
 git remote add origin "$REPO"
 set -- ` + execution.GitHTTPSTransport + `
 if [ -n "${GIT_AUTH_TOKEN:-}" ]; then set -- "$@" -c ` + execution.GitHubCredentialHelper + `; fi
-bex_run git "$@" fetch --depth 1 origin -- "$REF"
+bex_run git "$@" fetch -q --depth 1 origin -- "$REF"
 git checkout -q FETCH_HEAD
 if [ -n "${EXPECTED_COMMIT:-}" ]; then
   actual_commit="$(git rev-parse HEAD)"

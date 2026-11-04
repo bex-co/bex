@@ -93,3 +93,14 @@ func TestCloneRefusesMissingSourcePaths(t *testing.T) {
 		}
 	}
 }
+
+// w4/467: the clone fetch is quiet, so git's "From …" and "* branch … ->
+// FETCH_HEAD" lines never lead a build failure's reason; errors still reach
+// stderr and the classifier.
+func TestCloneFetchIsQuiet(t *testing.T) {
+	c := buildCloneContainer(Options{Repo: "https://example.invalid/r.git", Ref: "main"}, "git-image")
+	script := strings.Join(c.Args, "\n")
+	if !strings.Contains(script, `fetch -q --depth 1 origin -- "$REF"`) {
+		t.Fatalf("clone fetch is not quiet:\n%s", script)
+	}
+}
