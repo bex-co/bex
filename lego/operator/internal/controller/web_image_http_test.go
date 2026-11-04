@@ -19,6 +19,7 @@ package controller
 import (
 	"bufio"
 	"context"
+	"fmt"
 	"io"
 	"net"
 	"net/http"
@@ -30,6 +31,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
@@ -332,5 +334,33 @@ func TestWebHTTPSelectionNamesCrashLoopBeforeDiscovery(t *testing.T) {
 				t.Fatalf("Ready = %+v, phase %q; want %s %q while deploying", ready, app.Status.Phase, tc.reason, tc.text)
 			}
 		})
+	}
+}
+
+type partialScanner struct{ open []int }
+
+func (s *partialScanner) Scan(context.Context, string) ([]int, error) {
+	return s.open, fmt.Errorf("%w: %w", portscan.ErrPartial, context.DeadlineExceeded)
+}
+
+// An image declares a port nothing listens on and the process serves HTTP on
+// another (whoami on WHOAMI_PORT_NUMBER=3000). When closed ports drop probes
+// the full sweep runs out of time, but what it found is still used (w9/072).
+func TestWebImageHTTPUsesTheListenerAPartialScanFound(t *testing.T) {
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { w.WriteHeader(http.StatusOK) }))
+	defer server.Close()
+	_, portText, _ := net.SplitHostPort(strings.TrimPrefix(server.URL, "http://"))
+	httpPort, _ := strconv.Atoi(portText)
+	r, app, dep := detectFixture(t, time.Minute, &partialScanner{open: []int{httpPort}}, func(a *appv1alpha1.App, pod *corev1.Pod) {
+		a.Spec.Type = appv1alpha1.TypeWebService
+		a.Spec.PortMode = appv1alpha1.PortModeWebImageV1
+		// Port 1 stands in for the declared EXPOSE 80 that nothing serves.
+		a.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: "image", PrimaryPort: 1, Ports: []int32{1}}
+		pod.Status.PodIP = "127.0.0.1"
+	})
+	r.selectWebImageHTTP(t.Context(), app, dep)
+	network := app.Status.ImageNetwork
+	if network.PrimaryPort != int32(httpPort) || network.HTTPSelection != appv1alpha1.HTTPSelectionDetected {
+		t.Fatalf("network = %+v, want the partial scan's HTTP listener %d detected", network, httpPort)
 	}
 }

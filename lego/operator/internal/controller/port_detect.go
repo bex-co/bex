@@ -18,6 +18,7 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strconv"
 	"strings"
@@ -151,7 +152,7 @@ func (r *AppReconciler) detectBoundPort(ctx context.Context, app *appv1alpha1.Ap
 // commonHTTPPorts are probed first (w4/393): with dropped packets a full
 // 65k sweep cannot finish inside portDetectTimeout, but a verdict on the
 // ports HTTP servers actually bind lands in well under a second.
-var commonHTTPPorts = []int{80, 443, 3000, 4000, 5000, 5173, 8000, 8080, 8443, 9000, 10000}
+var commonHTTPPorts = portscan.LikelyHTTPPorts
 
 // portsScanner is the optional bounded scan a Scanner may offer.
 type portsScanner interface {
@@ -170,7 +171,14 @@ func scanBoundPort(ctx context.Context, scanner portscan.Scanner, ip string) ([]
 			return open, nil
 		}
 	}
-	return scanner.Scan(ctx, ip)
+	open, err := scanner.Scan(ctx, ip)
+	if errors.Is(err, portscan.ErrPartial) {
+		// Likely ports went first, so what the sweep found before its
+		// deadline is the answer to use, not a failure (w9/072).
+		logf.FromContext(ctx).Info("port detection scan ran out of time; using the ports found so far", "open", open)
+		return open, nil
+	}
+	return open, err
 }
 
 // unreadyPodIP is the address of the rollout's current-revision pod whose app
