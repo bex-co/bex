@@ -674,7 +674,7 @@ func NewMonthToDateBandwidthSource(base string, hc *http.Client) MonthToDateBand
 			if health < 1 {
 				degraded = append(degraded, string(spec.Source))
 			}
-			value, err := egressquery.Instant(ctx, hc, base, egressquery.Increase(spec, int64(elapsed/time.Second)), at)
+			value, err := monthToDateIncrease(ctx, hc, base, spec, since, at)
 			if err != nil {
 				return BandwidthBytes{}, nil, err
 			}
@@ -960,4 +960,32 @@ func parsePromMatrix(pr promRangeResponse) ([]MetricSeries, error) {
 		out = append(out, MetricSeries{Labels: labels, Points: points})
 	}
 	return out, nil
+}
+
+// monthToDateIncrease reads one source's bytes over [since, at] as the whole
+// UTC hours that have ended (each a fixed window, so their sum never shrinks
+// between reads) plus the current partial hour. One increase() over the whole
+// window extrapolates across a span that grows with every read, which made a
+// flat counter's month-to-date figure go down for an App created this month
+// (w4/468). A window inside a single hour is just the one increase().
+func monthToDateIncrease(ctx context.Context, hc *http.Client, base string, spec egressquery.Spec, since, at time.Time) (float64, error) {
+	hourStart := at.Truncate(time.Hour)
+	firstHour := since.Truncate(time.Hour)
+	if !hourStart.After(firstHour) {
+		return egressquery.Instant(ctx, hc, base, egressquery.Increase(spec, int64(at.Sub(since)/time.Second)), at)
+	}
+	hours := int64(hourStart.Sub(firstHour) / time.Hour)
+	completed, err := egressquery.Instant(ctx, hc, base, egressquery.CompletedHoursIncrease(spec, hours), hourStart)
+	if err != nil {
+		return 0, err
+	}
+	partial := int64(at.Sub(hourStart) / time.Second)
+	if partial <= 0 {
+		return completed, nil
+	}
+	current, err := egressquery.Instant(ctx, hc, base, egressquery.IncreaseOrZero(spec, partial), at)
+	if err != nil {
+		return 0, err
+	}
+	return completed + current, nil
 }
