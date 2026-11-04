@@ -628,7 +628,9 @@ func isBexNativeShortRoute(contract *renderOpenAPIContract, pattern, template st
 
 func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if retiredPublicRESTAlias(r) {
-		http.NotFound(w, r)
+		// The same JSON 404 every other miss answers (w4/470); generic on purpose,
+		// since this runs before authentication.
+		core.WriteErrStatus(w, http.StatusNotFound, "not found")
 		return
 	}
 	// A route that exists only in Render's much larger spec must retain bex's
