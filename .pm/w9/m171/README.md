@@ -11,6 +11,7 @@
 | t003 | Render parity (Devin reference) — **DONE** | 25m | t002 |
 | t004 | Simplify — **DONE** | 15m | t003 |
 | t005 | Test coverage — **DONE** | 45m | t003, t004 |
+| t007 | Align the MCP upload limit with the /mcp request body limit | 20m | t005 |
 | t006 | Closeout | 10m | t005 |
 
 ## Definition of done
@@ -81,3 +82,19 @@ The DoD asks for a run with a real MCP client against a live stack. That needs t
 - **Done signal.** `bex-system` has the attachments Secret, a deploy rolls bex-api with `BEX_AGENT_ATTACHMENTS_S3_*`, and `GET /v1/agent-sessions/capabilities` reports `attachments.enabled: true`.
 - **Worker next step.** m168 runs the provisioning first. m169–m171 wait for that signal, then run their live checks as written in their definitions of done, signing in as the QA user (`scripts/qa-login.sh`).
 - **If provisioning fails** (keys missing or rejected, Wasabi denies the call): stop, keep the error message without any secret, and return the item to `blocked/` with the exact failure.
+
+## Live acceptance evidence (2026-11-04, production, real MCP client)
+
+The client was the official `@modelcontextprotocol/sdk` 1.32.2 `StreamableHTTPClientTransport` against `https://api.bex.co/mcp/cloud-agents`, with a QA bearer.
+
+**Passed**
+- The four attachment tools are listed.
+- `upload_agent_attachment` of a PNG returned an `att-` id, `image/png`.
+- `get_agent_attachment` returned `text`+`image` blocks, and the image bytes are identical to the upload.
+- For a log it returned `text`+`text`, with the marker line present.
+- `list_agent_session_attachments` on a session in another of the caller's workspaces listed both inputs as `input`, turn 1.
+
+**FAILED: the advertised 4 MiB upload cap is unreachable.**
+- An upload of 1.4 MiB decoded succeeds; 1.6 MiB fails with a transport-level `413 request body exceeds 2097152 bytes`.
+- **Cause:** `/mcp` sits under the global `BEX_MAX_BODY_BYTES` (2 MiB) body limit, and base64 inflates the payload by about 4/3.
+- **Fix:** either exempt or raise the `/mcp` limit (about 6 MiB, enough for 4 MiB of base64 plus the JSON envelope), or lower `maxMCPUploadBytes` to about 1.5 MiB and update the tool description. Add a test at the real HTTP boundary.
