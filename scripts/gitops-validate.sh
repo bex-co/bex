@@ -218,6 +218,10 @@ bash scripts/ssh-dns-cloudflare.test.sh || { echo "FAIL: SSH Cloudflare DNS reco
 echo "==> datastore Cloudflare DNS reconciliation safety gates"
 bash scripts/datastore-dns-cloudflare.test.sh || { echo "FAIL: datastore Cloudflare DNS reconciliation safety gates" >&2; fail=1; }
 
+bash scripts/capi-sandbox-bootstrap.test.sh || { echo "FAIL: sandbox pool gVisor bootstrap gate" >&2; fail=1; }
+
+bash scripts/capi-template-drift.test.sh || { echo "FAIL: CAPI template drift guard" >&2; fail=1; }
+
 echo "==> SSH verifier CLI safety gates"
 bash scripts/ssh-verify.test.sh || { echo "FAIL: SSH verifier CLI safety gates" >&2; fail=1; }
 

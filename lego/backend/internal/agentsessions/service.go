@@ -608,8 +608,11 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 		// upgrade action instead of a dead-end retry (the common local / free-tier
 		// failure: too many live sandboxes for the workspace's quota).
 		failure := store.AgentSessionFailure{Reason: "sandbox create failed"}
-		if sandbox.IsCapacityLimit(err) {
+		switch {
+		case sandbox.IsCapacityLimit(err):
 			failure = store.AgentSessionFailure{Reason: sandbox.CapacityFailureReason, Code: sandbox.CodeSandboxCapacityLimit}
+		case sandbox.IsStartFailure(err):
+			failure = store.AgentSessionFailure{Reason: sandbox.StartFailureReason, Code: sandbox.CodeSandboxStartFailed}
 		}
 		s.abandonDispatch(ctx, record, spec.turn, failure)
 		s.settleDispatchTurn(ctx, record.ID, spec.turn, "sandbox provisioning failed")
