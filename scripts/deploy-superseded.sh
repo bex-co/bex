@@ -123,36 +123,47 @@ generated = {
 }
 
 
-def normalized(revision, path, pattern):
+def generated_field(revision, path, pattern):
+    """Return (prefix, rest): the field's captured prefix and the file with
+    only the digest replaced."""
     try:
         text = subprocess.check_output(
             ["git", "show", f"{revision}:{path}"], text=True, stderr=subprocess.DEVNULL
         )
     except subprocess.CalledProcessError as error:
         raise RuntimeError(f"could not read {path} at {revision}") from error
-    rendered, count = re.subn(pattern, r"\g<1><generated>", text)
-    if count != 1:
-        raise RuntimeError(f"expected exactly one generated digest field in {path}")
-    return rendered
+    matches = list(re.finditer(pattern, text))
+    if len(matches) != 1:
+        return None, text  # the field is gone or duplicated: reshaped
+    return matches[0].group(1), re.sub(pattern, r"\g<1><generated>", text)
 
 
+# Exit codes: 0 = only digests differ; 1 = a generated field was reshaped (the
+# image name or tag shape changed, so a write-back would target the wrong
+# shape); 5 = the rest of a generated file differs, which is an ordinary
+# manifest change (w4/465).
+reshaped = False
+moved = False
 try:
-    changed = any(
-        normalized(revisions[0], path, pattern)
-        != normalized(revisions[1], path, pattern)
-        for path, pattern in generated.items()
-    )
+    for path, pattern in generated.items():
+        old_prefix, old_rest = generated_field(revisions[0], path, pattern)
+        new_prefix, new_rest = generated_field(revisions[1], path, pattern)
+        if old_prefix is None or new_prefix is None or old_prefix != new_prefix:
+            reshaped = True
+        elif old_rest != new_rest:
+            moved = True
 except RuntimeError as error:
     print(f"deploy-superseded: {error}", file=sys.stderr)
     raise SystemExit(2)
 
-raise SystemExit(1 if changed else 0)
+raise SystemExit(1 if reshaped else 5 if moved else 0)
 PY
 generated_rc=$?
 case "$generated_rc" in
   0) ;; # no manifest drift beyond the five generated digest fields
+  5) manifests_moved=true ;; # an ordinary edit elsewhere in a generated file: same as any manifest path
   1)
-    echo "superseded by a substantive generated-file change on origin/main (changed by: $(superseders "${MANIFEST_PATHS[@]}")); this run's images will not be built/pinned"
+    echo "superseded by a generated-field reshape on origin/main (changed by: $(superseders "${MANIFEST_PATHS[@]}")); this run's images will not be built/pinned"
     exit 0
     ;;
   *)
