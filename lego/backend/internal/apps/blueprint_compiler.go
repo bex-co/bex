@@ -1359,7 +1359,16 @@ func appendBlueprintSchemaProblems(validation *jsonschema.ValidationError, locat
 		// key is present). Leaf count is last resort: it prefers the
 		// shallowest failure and otherwise names an unrelated kind.
 		if _, isAnyOf := validation.ErrorKind.(*kind.AnyOf); isAnyOf && len(validation.Causes) > 1 {
-			appendBlueprintSchemaProblems(selectBlueprintAnyOfCause(validation.Causes, blueprintInstanceAt(instance, validation.InstanceLocation)), locations, instance, problems)
+			branchInstance := blueprintInstanceAt(instance, validation.InstanceLocation)
+			cause := selectBlueprintAnyOfCause(validation.Causes, branchInstance)
+			// An unknown service type matches no branch, so the closest one
+			// is arbitrary; its other leaves (redisServer's required
+			// ipAllowList) would point at the wrong fix. Report only the
+			// type, as Render does (w32/002).
+			if typeLeaf := blueprintUnknownServiceTypeLeaf(cause, validation.InstanceLocation, branchInstance); typeLeaf != nil {
+				cause = typeLeaf
+			}
+			appendBlueprintSchemaProblems(cause, locations, instance, problems)
 			return
 		}
 		for _, cause := range validation.Causes {
@@ -1472,6 +1481,34 @@ func blueprintKnownServiceType(value string) bool {
 	default:
 		return false
 	}
+}
+
+// blueprintUnknownServiceTypeLeaf returns the leaf of cause that rejects the
+// object's own `type` when that type is a string no services[] branch knows;
+// otherwise nil.
+func blueprintUnknownServiceTypeLeaf(cause *jsonschema.ValidationError, objectLocation []string, instance any) *jsonschema.ValidationError {
+	object, _ := instance.(map[string]any)
+	declared, ok := object["type"].(string)
+	if !ok || blueprintKnownServiceType(declared) {
+		return nil
+	}
+	want := renderSchemaPointer(append(append([]string(nil), objectLocation...), "type"))
+	var find func(*jsonschema.ValidationError) *jsonschema.ValidationError
+	find = func(v *jsonschema.ValidationError) *jsonschema.ValidationError {
+		if len(v.Causes) == 0 {
+			if renderSchemaPointer(v.InstanceLocation) == want {
+				return v
+			}
+			return nil
+		}
+		for _, c := range v.Causes {
+			if leaf := find(c); leaf != nil {
+				return leaf
+			}
+		}
+		return nil
+	}
+	return find(cause)
 }
 
 func selectBlueprintAnyOfCause(causes []*jsonschema.ValidationError, instance any) *jsonschema.ValidationError {
