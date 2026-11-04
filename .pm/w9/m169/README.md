@@ -19,7 +19,7 @@
 
 - Both composers accept picker, drag-and-drop and pasted clipboard images; chips show progress, errors in the server's words and removal; send is disabled while uploading; limits are read from capabilities.
 - User turns show raster thumbnails (lightbox) and download cards for every other type; SVG/HTML/PDF never render inline.
-- Verified live at desktop and narrow-mobile widths with screenshots in `evidence/`.
+- Verified live at desktop and narrow-mobile widths, recorded as text in this README (screenshots, if any, go to object storage with sha256 + link — never into git, `.pm/AGENTS.md`).
 - Dashboard `yarn test`, typecheck and lint green.
 
 ## Source + Goal linkage
@@ -88,14 +88,14 @@ Not done: moving chip state below the composer (typing still re-renders the chip
 
 ## Live acceptance evidence (2026-11-04, production dashboard, QA user)
 
-Screenshots are in [evidence/](evidence/).
+Screenshots were removed from git in the 2026-11-04 history rewrite; the text above is the record.
 
 **Passed**
 - **Composer.** The paperclip appears once capabilities load.
-  - Choosing two files shows chips with name and size, and Start session is enabled ([desktop](evidence/m169-new-session-composer-desktop.png)).
-  - At 390 px wide, a pasted clipboard PNG becomes a chip ([mobile](evidence/m169-paste-composer-mobile.png)). Removing it sends `DELETE` → 204, and the chip disappears.
-- **Follow-up composer.** It attaches a file, and the file binds to turn 2 ([desktop](evidence/m169-followup-composer-desktop.png)).
-- **User turns.** Desktop and mobile both render the attachment row, with a download card for the log and no horizontal overflow ([desktop](evidence/m169-user-turn-rendered-desktop.png), [mobile](evidence/m169-user-turn-mobile.png)).
+  - Choosing two files shows chips with name and size, and Start session is enabled (desktop screenshot (removed from git in the 2026-11-04 history rewrite; text above is the record)).
+  - At 390 px wide, a pasted clipboard PNG becomes a chip (mobile screenshot (removed from git in the 2026-11-04 history rewrite; text above is the record)). Removing it sends `DELETE` → 204, and the chip disappears.
+- **Follow-up composer.** It attaches a file, and the file binds to turn 2 (desktop screenshot (removed from git in the 2026-11-04 history rewrite; text above is the record)).
+- **User turns.** Desktop and mobile both render the attachment row, with a download card for the log and no horizontal overflow (desktop screenshot (removed from git in the 2026-11-04 history rewrite; text above is the record), mobile screenshot (removed from git in the 2026-11-04 history rewrite; text above is the record)).
 
 **FAILED: raster thumbnails do not load in production.** The dashboard CSP is `img-src 'self' data: https://*.stripe.com` (`dashboard/vite.config.ts:356`). The browser blocks the presigned `https://s3.eu-central-2.wasabisys.com/...` URL, so the thumbnail and lightbox show a broken image. Downloads still work, because they navigate.
 

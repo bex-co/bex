@@ -87,7 +87,7 @@ The live DoD (a session writes a CSV, shares it, and it downloads from the dashb
 
 ## Live acceptance evidence (2026-11-04, production)
 
-**Files sheet.** On a session it lists the two inputs as "You · turn 1 · 178 B" ([screenshot](evidence/m170-files-sheet-desktop.png)).
+**Files sheet.** On a session it lists the two inputs as "You · turn 1 · 178 B" (screenshot screenshot (removed from git in the 2026-11-04 history rewrite; text above is the record)).
 
 **Not run: `share_file`.** No agent sandbox can start on production right now (`containerd-shim-runsc-v1` missing on `bex-sandbox-cgqq6-vlvqv`; see m168's evidence). Re-run "write a CSV and share it" once sandboxes start.
 
