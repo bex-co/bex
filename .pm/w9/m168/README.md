@@ -1,6 +1,6 @@
 # w9 · m168 — ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery
 
-**Worker:** worker9 **Goal:** a REST or GraphQL caller can upload a file, attach it to a new session or a follow-up, and the agent sees it in a fresh sandbox under `/attachments`. **Status:** blocked — t001–t009 done; t010 live acceptance waits for the production attachments bucket (see Blocked)
+**Worker:** worker9 **Goal:** a REST or GraphQL caller can upload a file, attach it to a new session or a follow-up, and the agent sees it in a fresh sandbox under `/attachments`. **Status:** todo — t001–t009 done; t010: provision the bucket (D1, 2026-11-04), then the live check
 
 ## Tasks (in order)
 
@@ -15,7 +15,7 @@
 | t007 | Render parity (Devin reference) — **DONE** | 25m | t004, t006 |
 | t008 | Simplify — **DONE** | 15m | t007 |
 | t009 | Test coverage — **DONE** | 45m | t007, t008 |
-| t010 | Closeout — **BLOCKED** (production bucket) | 10m | t009 |
+| t010 | Closeout | 10m | t009 |
 
 ## Definition of done
 
@@ -83,3 +83,20 @@ This uses the Wasabi root credentials in `.env`, as the other bucket scripts do.
 Until then, every attachment verb answers `503 AGENT_ATTACHMENTS_UNAVAILABLE` and sessions behave exactly as before.
 
 **To clear:** run those two commands, wait for a deploy, then `/loopx w9` runs the live check in the definition of done: a session given a log and a screenshot reads both, and the download works.
+
+## Unblock decision, 2026-11-04 (user decision D1, via `/unblock w9`)
+
+- **Covers:** w9/m168, m169, m170, m171 (shared gate).
+- **Decision.** The user authorizes the worker to create the production attachments bucket and its IAM user. The worker runs the existing idempotent script from the repo root:
+
+  ```sh
+  BEX_ENV_FILE=../bex9.env bash scripts/agent-attachments-s3-credentials.sh provision
+  BEX_ENV_FILE=../bex9.env bash scripts/agent-attachments-s3-credentials.sh install
+  ```
+
+  - The root keys are `TF_STATE_ACCESS_KEY` / `TF_STATE_SECRET_KEY`, present by name in `../bex9.env`; never print their values.
+  - The script uses the `hetzner-prod` context.
+- **Reference.** Devin parity: upload, attach and returned files must work for real users.
+- **Done signal.** `bex-system` has the attachments Secret, a deploy rolls bex-api with `BEX_AGENT_ATTACHMENTS_S3_*`, and `GET /v1/agent-sessions/capabilities` reports `attachments.enabled: true`.
+- **Worker next step.** m168 runs the provisioning first. m169–m171 wait for that signal, then run their live checks as written in their definitions of done, signing in as the QA user (`scripts/qa-login.sh`).
+- **If provisioning fails** (keys missing or rejected, Wasabi denies the call): stop, keep the error message without any secret, and return the item to `blocked/` with the exact failure.
