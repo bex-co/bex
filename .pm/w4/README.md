@@ -353,6 +353,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **472** — [A build's `buildRun` omits Render's `commitUrl`](472.md) (~20m) ← live `/qa-find-bugs w4` loop round 9, 2026-11-04 UTC (pin `9d4e3a138783`; minor, API parity). `deploys/build_sources.go:45-52` `BuildRunView` lacks it; events already compute commit URLs.
 - [ ] **471** — [The workspace switcher marks the current workspace with an icon only; no `aria-checked`/`aria-current`](471.md) (~25m) ← live `/qa-find-bugs w4` loop round 7, 2026-11-04 UTC (pin `fb6098dd2e37`; minor, a11y). `workspace-switcher.tsx:135-159` uses plain `DropdownMenuItem`s; fix with `DropdownMenuRadioItem`.
 - [ ] **470** — [Retired REST aliases answer `text/plain` "404 page not found" while every other miss answers Render's JSON error](470.md) (~20m) ← live `/qa-find-bugs w4` loop round 7, 2026-11-04 UTC (pin `fb6098dd2e37`; minor, API contract). `api/render_openapi.go:629-632` uses `http.NotFound` for the six `retiredPublicRESTAlias` families; 7 of 7 probes are plain text, while 16 of 16 controls return JSON.
 - [ ] **469** — [The New Web Service "Existing Image" hint still says to set the port to the image's fixed port, contradicting the Port field](469.md) (~15m) ← live `/qa-find-bugs w4` loop round 6, 2026-11-04 UTC (pin `fb6098dd2e37`; minor, copy). `services.createImagePortHint` (`en.ts:3396-3401`, `zh.ts:3325`) predates w4/m243's port detection.
