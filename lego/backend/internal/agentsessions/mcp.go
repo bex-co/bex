@@ -235,7 +235,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 func (s *Service) registerAttachmentMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{
 		Name:        "upload_agent_attachment",
-		Description: "Upload a file (a screenshot, log, dataset) for a cloud coding agent: pass its name and its bytes as standard base64, at most 4 MiB decoded (use REST POST /v1/agent-attachments for up to 25 MiB). Returns an unattached attachment; pass its id in attachmentIds to create_agent_session or send_agent_session_message within 24 hours. The type is detected from the bytes.",
+		Description: fmt.Sprintf("Upload a file (a screenshot, log, dataset) for a cloud coding agent: pass its name and its bytes as standard base64, at most %d MiB decoded (use REST POST /v1/agent-attachments for up to %d MiB). Returns an unattached attachment; pass its id in attachmentIds to create_agent_session or send_agent_session_message within 24 hours. The type is detected from the bytes.", maxMCPUploadBytes>>20, maxAttachmentBytes>>20),
 		Annotations: mcputil.DefaultAnnotations("create_"),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in uploadAttachmentArgs) (*mcp.CallToolResult, Attachment, error) {
 		data, err := decodeMCPUpload(in.ContentBase64)

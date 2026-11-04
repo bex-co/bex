@@ -10,6 +10,7 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 import { visualizer } from "rollup-plugin-visualizer";
+import { buildSecurityHeaders } from "./server/security-headers";
 
 // Peel stable, rarely-changing vendor libraries into their own chunks so a
 // tenant/app source change doesn't invalidate the (large) React/Radix/Apollo
@@ -317,58 +318,6 @@ function apiDevProxy(target = "https://api.bex.co/graphql"): Plugin {
   };
 }
 
-function buildSecurityHeaders(
-  kratosPublicURL: string,
-  kratosProxyTarget: string,
-): Record<string, string> {
-  // Kratos's settings/login flows return a UiNodeScriptAttributes node
-  // (`<script src="{KRATOS_PUBLIC_URL}/.well-known/ory/webauthn.js">`) that Ory
-  // Elements injects to drive WebAuthn. A local same-origin proxy still receives
-  // node URLs built from Kratos's upstream base URL, so dev must allow both
-  // origins while production only exposes the browser-facing one.
-  const scriptOrigins = new Set([new URL(kratosPublicURL).origin]);
-  // Cloudflare Web Analytics injects its beacon <script> into the HTML at the
-  // edge (the zone proxies dashboard.bex.co); without this origin the browser
-  // logs a CSP violation on every full document load.
-  scriptOrigins.add("https://static.cloudflareinsights.com");
-  if (process.env.NODE_ENV !== "production") {
-    scriptOrigins.add(new URL(kratosProxyTarget).origin);
-  }
-
-  // Standard hardening headers for every SSR response. HSTS only in production
-  // (NODE_ENV=production) — the dashboard runs over plain HTTP in dev, so setting
-  // HSTS there would break the dev server.
-  const headers: Record<string, string> = {
-    "X-Content-Type-Options": "nosniff",
-    "X-Frame-Options": "DENY",
-    // TanStack Start SSR injects inline hydration scripts; inline styles come from
-    // Tailwind and shadcn/Radix. connect-src https:/wss: covers the API, auth,
-    // and Browser Web Shell origins without hard-coding their values here.
-    // Outside production, also allow plain-http localhost: `yarn dev:local`
-    // (dashboard/AGENTS.md's fast frontend loop) points VITE_API_URL straight at
-    // local-bex.mjs's wide-open-CORS stub on a different port (:8099) rather than
-    // through apiDevProxy's same-origin tunnel — without this the CSP silently
-    // blocks that fetch and every page hangs on "Select a workspace".
-    "Content-Security-Policy": [
-      "default-src 'self'",
-      `script-src 'self' 'unsafe-inline' https://js.stripe.com ${[...scriptOrigins].join(" ")}`,
-      "style-src 'self' 'unsafe-inline'",
-      "img-src 'self' data: https://*.stripe.com",
-      "font-src 'self'",
-      process.env.NODE_ENV === "production"
-        ? "connect-src 'self' https: wss:"
-        : "connect-src 'self' https: wss: http://localhost:* http://127.0.0.1:* ws://localhost:* ws://127.0.0.1:*",
-      "frame-src https://js.stripe.com https://hooks.stripe.com",
-      "frame-ancestors 'none'",
-    ].join("; "),
-  };
-  if (process.env.NODE_ENV === "production") {
-    headers["Strict-Transport-Security"] =
-      "max-age=63072000; includeSubDomains";
-  }
-  return headers;
-}
-
 // Strip translator/dev `description:` fields from the locale catalogs in the
 // PRODUCTION bundle (w9/m60 t002). Every `**/locales/{en,zh}.ts` entry is
 // `{ message, description }`; `extractMessages()` (src/i18n/index.ts) keeps only
@@ -405,6 +354,7 @@ export default defineConfig(({ mode }) => {
   const securityHeaders = buildSecurityHeaders(
     kratosPublicURL,
     kratosProxyTarget,
+    env.VITE_AGENT_ATTACHMENTS_ORIGIN || undefined,
   );
 
   return {

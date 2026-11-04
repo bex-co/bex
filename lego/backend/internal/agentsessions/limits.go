@@ -32,10 +32,13 @@ const (
 	attachmentSweepBatch  = 200
 	attachmentSweepBudget = 2 * time.Minute
 
-	// An MCP upload carries the bytes base64 in the tool call, so it is bounded
-	// well below a streamed upload; reads inline a small image or text file so
-	// an LLM caller sees it without a second fetch (ADR095 D11).
-	maxMCPUploadBytes   = 4 << 20
+	// An MCP upload carries the bytes base64 in the tool call, inside one
+	// JSON-RPC request that /mcp's request-body limit (BEX_MAX_BODY_BYTES,
+	// 2 MiB by default) bounds. 1 MiB decoded is ~1.33 MiB encoded, leaving
+	// room for the envelope, so the tool's own refusal is what a caller over
+	// the cap sees rather than a transport 413. Reads inline a small image or
+	// text file so an LLM caller sees it without a second fetch (ADR095 D11).
+	maxMCPUploadBytes   = 1 << 20
 	maxInlineImageBytes = 5 << 20
 	maxInlineTextBytes  = 256 << 10
 )
