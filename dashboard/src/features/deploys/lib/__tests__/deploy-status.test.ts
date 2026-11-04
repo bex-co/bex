@@ -28,9 +28,7 @@ describe("deployEndedStatus (w1/m138)", () => {
 
   it("maps Render's 3-value status when the extra is absent (older events)", () => {
     expect(deployEndedStatus({ deployStatus: "succeeded" })).toBe("live");
-    expect(deployEndedStatus({ deployStatus: "failed" })).toBe(
-      "update_failed",
-    );
+    expect(deployEndedStatus({ deployStatus: "failed" })).toBe("update_failed");
     expect(deployEndedStatus({ deployStatus: "canceled" })).toBe("canceled");
     expect(deployEndedStatus(null)).toBe("");
     expect(deployEndedStatus(undefined)).toBe("");

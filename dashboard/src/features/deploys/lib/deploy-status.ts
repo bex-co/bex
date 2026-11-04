@@ -100,10 +100,15 @@ export function deployStatusKey(status: string): string {
 // deploy object's own status on failures (fullDeployStatus) — badge that
 // directly, so a build failure reads build_failed, not update_failed. Older
 // events carry only Render's 3-value deployStatus, mapped as before.
-export function deployEndedStatus(details: {
-  fullDeployStatus?: string | null;
-  deployStatus?: string | null;
-} | null | undefined): string {
+export function deployEndedStatus(
+  details:
+    | {
+        fullDeployStatus?: string | null;
+        deployStatus?: string | null;
+      }
+    | null
+    | undefined,
+): string {
   if (details?.fullDeployStatus) return details.fullDeployStatus;
   if (details?.deployStatus === "succeeded") return "live";
   if (details?.deployStatus === "failed") return "update_failed";

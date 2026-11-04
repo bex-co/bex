@@ -223,7 +223,7 @@ describe("resource action projection freshness", () => {
     );
     await waitFor(() => {
       const buttons = screen.getAllByRole("button", {
-        name: /^Roll back to dep-/,
+        name: /^Rollback to dep-/,
       });
       expect(buttons).toHaveLength(20);
       for (const button of buttons) expect(button).toBeEnabled();

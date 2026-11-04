@@ -267,7 +267,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     const { router } = renderEvents("app");
 
     await user.click(
-      await screen.findByRole("button", { name: /^Roll back to / }),
+      await screen.findByRole("button", { name: /^Rollback to / }),
     );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
@@ -294,7 +294,7 @@ describe("ServiceEventsPage — deploy rows link to the deploy page (w9/m1/t004)
     const { router } = renderEvents("app");
 
     await user.click(
-      await screen.findByRole("button", { name: /^Roll back to / }),
+      await screen.findByRole("button", { name: /^Rollback to / }),
     );
     const dialog = await screen.findByRole("alertdialog");
     await user.click(within(dialog).getByRole("button", { name: "Proceed" }));
