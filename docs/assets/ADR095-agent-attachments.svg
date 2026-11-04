@@ -30,7 +30,7 @@
   <text x="48" y="152" class="t">dashboard.bex.co/agents</text>
   <text x="48" y="168" class="s">paperclip · drag-drop · paste screenshot</text>
   <text x="48" y="192" class="t">MCP · /mcp/cloud-agents</text>
-  <text x="48" y="208" class="s">upload_agent_attachment (base64 ≤ 4 MiB)</text>
+  <text x="48" y="208" class="s">upload_agent_attachment (base64 ≤ 1 MiB)</text>
   <text x="48" y="232" class="t">REST · CLI</text>
 
   <!-- bex-api -->
@@ -93,7 +93,7 @@
   <text x="48" y="518" class="h">Limits (v1)</text>
   <text x="48" y="542" class="t">25 MiB per file · 10 per turn</text>
   <text x="48" y="562" class="t">50 files · 250 MiB per session</text>
-  <text x="48" y="582" class="t">MCP inline upload ≤ 4 MiB decoded</text>
+  <text x="48" y="582" class="t">MCP inline upload ≤ 1 MiB decoded</text>
   <text x="48" y="602" class="t">unbound uploads expire after 24 h</text>
   <text x="48" y="636" class="h">Safety</text>
   <text x="48" y="660" class="t">type sniffed server-side, not trusted</text>

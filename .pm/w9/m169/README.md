@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | Upload client and attachment chips in both composers — **DONE** | 90m | — |
 | t002 | Render user-turn attachments: thumbnails, file cards, lightbox — **DONE** | 60m | t001 |
-| t008 | Allow the attachments storage origin in the dashboard CSP img-src | 20m | t006 |
+| t008 | Allow the attachments storage origin in the dashboard CSP img-src — **DONE** | 20m | t006 |
 | t003 | Live dashboard verification at desktop and narrow mobile | 40m | t002 |
 | t004 | Render parity (Devin reference) — **DONE** | 25m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
