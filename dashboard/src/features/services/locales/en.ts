@@ -3395,7 +3395,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.createImagePortHint": {
     message:
-      "If the image listens on a fixed port (for example :80), set the port below to it — bex routes there and injects it as $PORT.",
+      "bex uses the port the image declares (EXPOSE). Set the port below only if the image listens on a port it doesn't declare.",
     description:
       "Create-wizard Existing Image tab hint: set the port below to the one the image listens on (w9/011, w6/m149)",
   },
