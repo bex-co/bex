@@ -505,7 +505,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planDescription": {
     message:
-      "Change the instance type. The operator resizes resources on the next reconcile — a rolling update that preserves data.",
+      "Change the instance type. Changing it restarts the store, which is unavailable for a minute or two. Data survives according to the persistence mode; a store with Persistence Off loses every key.",
     description: "Key Value detail plan-picker card description",
   },
   "keyvalue.planPickerSave": {
@@ -522,8 +522,14 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   "keyvalue.planPickerConfirmBody": {
     message:
-      "The operator will resize the store's compute resources on the next reconcile. Connections drop briefly during the rolling restart.",
+      "The store restarts to apply the new instance type and is unavailable for a minute or two. Connections drop.",
     description: "Key Value plan-picker confirm dialog body",
+  },
+  "keyvalue.planPickerConfirmDataLoss": {
+    message:
+      "Persistence is Off, so the restart deletes every key in {name}. This cannot be undone.",
+    description:
+      "Plan-change confirm: a Persistence Off store loses all data on the restart (w4/m263)",
   },
   "keyvalue.planPickerConfirmPrice": {
     message: "The new plan costs ${price}/month.",

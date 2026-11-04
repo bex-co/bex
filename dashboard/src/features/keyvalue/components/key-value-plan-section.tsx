@@ -13,6 +13,7 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-value-instance-types";
+import { useSetKeyValuePersistenceMode } from "@/features/keyvalue/hooks/use-set-key-value-persistence-mode";
 import { useUpdateKeyValuePlan } from "@/features/keyvalue/hooks/use-update-key-value-plan";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
 import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
@@ -36,6 +37,13 @@ export function KeyValuePlanSection({
   const { instanceTypes, loading, retry, retrying } =
     useKeyValueInstanceTypes();
   const { updatePlan, busy } = useUpdateKeyValuePlan();
+  const { mode: persistenceMode } = useSetKeyValuePersistenceMode(keyValue.id);
+  // A plan change restarts the only pod; with Persistence Off nothing is on
+  // disk to reload, so every key is lost (w4/m263). Anything but a known
+  // persisted mode asks for the typed phrase, the persistence card's gate.
+  const losesData =
+    !keyValue.suspended &&
+    !["journal-snapshot", "snapshot"].includes(persistenceMode);
   const [selected, setSelected] = useState<string>(keyValue.plan ?? "free");
   const [confirming, setConfirming] = useState(false);
 
@@ -115,15 +123,24 @@ export function KeyValuePlanSection({
             ? t("keyvalue.planPickerConfirmTitle", { name: selectedType.name })
             : ""
         }
-        description={
+        description={[
+          t("keyvalue.planPickerConfirmBody"),
+          losesData
+            ? t("keyvalue.planPickerConfirmDataLoss", { name: keyValue.name })
+            : "",
           selectedType?.monthlyUsd
-            ? `${t("keyvalue.planPickerConfirmBody")} ${t("keyvalue.planPickerConfirmPrice", { price: selectedType.monthlyUsd })}`
-            : t("keyvalue.planPickerConfirmBody")
-        }
+            ? t("keyvalue.planPickerConfirmPrice", {
+                price: selectedType.monthlyUsd,
+              })
+            : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
+        phrase={losesData ? `sudo clear key value ${keyValue.name}` : undefined}
         cancelLabel={t("keyvalue.planPickerCancel")}
         confirmLabel={t("keyvalue.planPickerSave")}
-        // Changing plan is the primary action, not a destructive one.
-        destructive={false}
+        // Destructive only when the restart empties a Persistence Off store.
+        destructive={losesData}
         onConfirm={() => void handleConfirm()}
       />
     </Card>

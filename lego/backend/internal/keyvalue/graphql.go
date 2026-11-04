@@ -228,7 +228,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				return err == nil, err
 			},
 		},
-		"updateKeyValuePlan": gqlutil.PlanMutation(keyValueGQLType, s.SetPlan, s.SetPlanDryRun),
+		"updateKeyValuePlan": withDescription(gqlutil.PlanMutation(keyValueGQLType, s.SetPlan, s.SetPlanDryRun), updateKeyValuePlanDescription),
 		// setKeyValueMaxmemoryPolicy is the GraphQL/MCP mirror of the REST PATCH's
 		// maxmemoryPolicy field (w7/m45): the per-field verb pattern updateKeyValuePlan
 		// / setKeyValueIpAllowList already follow, routed through the shared
@@ -289,4 +289,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 	}
+}
+
+// updateKeyValuePlanDescription tells API callers what the dashboard's confirm
+// tells its users: the plan change is accepted as Render accepts it, with no
+// confirmation, and it restarts the store (w4/m263).
+const updateKeyValuePlanDescription = "Change the store's instance plan. The change restarts the store, which is unavailable for a minute or two, and it changes what the workspace is billed. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data."
+
+func withDescription(f *graphql.Field, description string) *graphql.Field {
+	f.Description = description
+	return f
 }

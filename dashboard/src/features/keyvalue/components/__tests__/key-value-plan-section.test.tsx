@@ -34,11 +34,26 @@ vi.mock("@/features/keyvalue/hooks/use-key-value-instance-types", () => ({
   useKeyValueInstanceTypes: () =>
     catalog.loading
       ? { instanceTypes: [], loading: true, error: undefined }
-      : { instanceTypes: catalog.instanceTypes, loading: false, error: undefined },
+      : {
+          instanceTypes: catalog.instanceTypes,
+          loading: false,
+          error: undefined,
+        },
 }));
 
 vi.mock("@/features/keyvalue/hooks/use-update-key-value-plan", () => ({
   useUpdateKeyValuePlan: () => ({ updatePlan, busy: false }),
+}));
+
+const persistence = vi.hoisted(() => ({ mode: "journal-snapshot" }));
+
+vi.mock("@/features/keyvalue/hooks/use-set-key-value-persistence-mode", () => ({
+  useSetKeyValuePersistenceMode: () => ({
+    mode: persistence.mode,
+    loading: false,
+    saving: false,
+    save: vi.fn(),
+  }),
 }));
 
 const KEY_VALUE: KeyValueView = {
@@ -55,6 +70,7 @@ const KEY_VALUE: KeyValueView = {
 
 beforeEach(() => {
   catalog.loading = false;
+  persistence.mode = "journal-snapshot";
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   updatePlan.mockReset().mockResolvedValue(true);
 });
@@ -131,5 +147,56 @@ describe("KeyValuePlanSection", () => {
     );
     render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
     expect(screen.getByRole("radio", { name: /Starter/ })).toBeDisabled();
+  });
+
+  // w4/m263: the restart is real, and it empties a Persistence Off store.
+  it("warns of the restart without a phrase on a persisted store", async () => {
+    const user = userEvent.setup();
+    render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
+    expect(document.body).not.toHaveTextContent(
+      /operator|reconcile|preserves data/i,
+    );
+
+    await user.click(screen.getByRole("radio", { name: /Starter/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("restarts");
+    expect(dialog).not.toHaveTextContent("deletes every key");
+    expect(within(dialog).queryByRole("textbox")).toBeNull();
+  });
+
+  it("requires the typed phrase before a Persistence Off store restarts", async () => {
+    persistence.mode = "off";
+    const user = userEvent.setup();
+    render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
+
+    await user.click(screen.getByRole("radio", { name: /Starter/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent("deletes every key in sessions");
+    const confirm = within(dialog).getByRole("button", { name: "Save" });
+    expect(confirm).toBeDisabled();
+    await user.type(
+      within(dialog).getByRole("textbox"),
+      "sudo clear key value sessions",
+    );
+    expect(confirm).toBeEnabled();
+    await user.click(confirm);
+    expect(updatePlan).toHaveBeenCalledWith(
+      "red-sessions",
+      "starter",
+      "Starter",
+    );
+  });
+
+  it("sends nothing when the Off confirmation is cancelled", async () => {
+    persistence.mode = "off";
+    const user = userEvent.setup();
+    render(<KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />);
+    await user.click(screen.getByRole("radio", { name: /Starter/ }));
+    await user.click(screen.getByRole("button", { name: "Save" }));
+    const dialog = await screen.findByRole("alertdialog");
+    await user.click(within(dialog).getByRole("button", { name: "Cancel" }));
+    expect(updatePlan).not.toHaveBeenCalled();
   });
 });

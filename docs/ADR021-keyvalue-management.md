@@ -128,6 +128,8 @@ In production, `bex-kv-sni-proxy-public` is a fixed `NodePort` (`31892`) with `e
 
 Only bytes copied from the TLS backend to the public client increment `bex_kv_proxy_egress_bytes_total{resource_id,resource_kind="key_value"}`. Requests, denied/unrouted handshakes, and internal clients contribute zero. The operator deletes pre-m15 Traefik `IngressRouteTCP`/`MiddlewareTCP` objects during reconcile so no unmetered bypass remains.
 
+**A plan change restarts the store (w4/m263).** `setPlan` puts the plan into the Valkey container's resources, a StatefulSet pod-template change, so the only pod is replaced and the store is unavailable for a minute or two. Render documents the same: upgrading requires a restart, and data loss depends on the persistence mode. With Persistence Off nothing is on disk to reload, so every key is lost; Journal + Snapshot and Snapshot only keep what they persisted. The dashboard says so on the Instance type card and, for an Off store, requires the typed `sudo clear key value <name>` phrase. REST `PATCH`, GraphQL `updateKeyValuePlan`, MCP `update_key_value` and Blueprints accept the change without a confirmation, as Render's API does, and describe the consequence in their descriptions; a `confirm`-gated refusal would break the pinned CLI's `keyvalues update --plan` and is a separate follow-up. Blueprint sync therefore also just restarts the store, matching Render's Blueprint behavior for a plan change.
+
 ### 4. Plans — Render's Key Value vocabulary
 
 The `valkey` tier family uses Render's **Key Value** plan vocabulary (`free` / `starter` / `standard` / `pro` / `pro_plus` / …) — the same names Render's Key Value product shares with its web-service ladder, _not_ the Postgres `basic-*` names. MVP ships the first three:
