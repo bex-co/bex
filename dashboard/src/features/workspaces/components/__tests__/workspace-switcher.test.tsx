@@ -98,13 +98,32 @@ describe("WorkspaceSwitcher", () => {
     expect(screen.getByRole("button", { name: /acme-hq/ })).toBeInTheDocument();
   });
 
+  // w4/471: assistive technology must be able to tell which workspace is current.
+  it("marks exactly the current workspace as checked", async () => {
+    const user = userEvent.setup();
+    renderSwitcher();
+
+    await user.click(screen.getByRole("button", { name: /acme-hq/ }));
+    const current = await screen.findByRole("menuitemradio", {
+      name: /acme-hq/,
+    });
+    expect(current).toHaveAttribute("aria-checked", "true");
+    const checked = screen
+      .getAllByRole("menuitemradio")
+      .filter((item) => item.getAttribute("aria-checked") === "true");
+    expect(checked).toEqual([current]);
+    expect(
+      screen.getByRole("menuitemradio", { name: /acme-staging/ }),
+    ).toHaveAttribute("aria-checked", "false");
+  });
+
   it("lists every workspace and switches on click", async () => {
     const user = userEvent.setup();
     renderSwitcher();
 
     await user.click(screen.getByRole("button", { name: /acme-hq/ }));
     await user.click(
-      await screen.findByRole("menuitem", { name: /acme-staging/ }),
+      await screen.findByRole("menuitemradio", { name: /acme-staging/ }),
     );
 
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
@@ -157,7 +176,7 @@ describe("WorkspaceSwitcher", () => {
 
       await user.click(screen.getByRole("button", { name: /acme-hq/ }));
       await user.click(
-        await screen.findByRole("menuitem", { name: /acme-staging/ }),
+        await screen.findByRole("menuitemradio", { name: /acme-staging/ }),
       );
 
       expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
@@ -171,7 +190,7 @@ describe("WorkspaceSwitcher", () => {
 
     await user.click(screen.getByRole("button", { name: /acme-hq/ }));
     await user.click(
-      await screen.findByRole("menuitem", { name: /acme-staging/ }),
+      await screen.findByRole("menuitemradio", { name: /acme-staging/ }),
     );
 
     expect(setCurrentWorkspaceId).toHaveBeenCalledWith("tea-2");
@@ -184,7 +203,9 @@ describe("WorkspaceSwitcher", () => {
     renderSwitcher();
 
     await user.click(screen.getByRole("button", { name: /acme-hq/ }));
-    await user.click(await screen.findByRole("menuitem", { name: /acme-hq/ }));
+    await user.click(
+      await screen.findByRole("menuitemradio", { name: /acme-hq/ }),
+    );
 
     expect(setCurrentWorkspaceId).not.toHaveBeenCalled();
     expect(mockNavigate).not.toHaveBeenCalled();
