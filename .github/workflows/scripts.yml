@@ -112,6 +112,8 @@ jobs:
       # gh, no network.
       - name: ship gates self-test
         run: bash scripts/ship-gates.test.sh
+      - name: Repo artifact guard self-test
+        run: bash scripts/repo-artifact-guard.test.sh
       # w3/042. Its sibling for a probe that is green but late. Two things are
       # proven on every push rather than only when the daily job runs: every
       # scheduled workflow declares a drift window (a new probe without one

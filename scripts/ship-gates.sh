@@ -14,6 +14,10 @@
 #      (scripts/backend-test-deps.sh), which local `go test` otherwise skips.
 #      This one blocks: a failure here is the push's own defect, fixed before
 #      it ships.
+#   3. A commit in the push adds a build artifact or evidence dump: a blob over
+#      1 MiB or a binary/archive under .pm/ (scripts/repo-artifact-guard.sh,
+#      w6/100 D10). Blocks; this is also what stops a stale checkout from
+#      replaying pre-rewrite history.
 #
 #   bash scripts/ship-gates.sh [--fixes-red-main] <base-ref>   # e.g. origin/main
 set -euo pipefail
@@ -62,6 +66,8 @@ if runs=$(gh run list --workflow deploy.yml --limit 20 \
 else
   echo "ship-gates: warning: could not read main's deploy status (gh unavailable?)" >&2
 fi
+
+bash scripts/repo-artifact-guard.sh "$base"
 
 # Captured, not piped into grep: under pipefail an early-exiting grep can
 # SIGPIPE git and make a large change look like no change. A bad base fails

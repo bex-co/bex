@@ -1,0 +1,51 @@
+name: repo artifact guard
+
+# Build artifacts and evidence dumps never enter git (user decision 2026-11-04,
+# w6/100 D10): no blob over 1 MiB, no binary/archive under .pm/. Every push and
+# PR, no path filter: a wheel dropped into .pm/ must fail here too.
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: repo-artifact-guard-${{ github.ref }}
+  # A cancelled main run would leave its commits out of the next run's range.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  guard:
+    # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
+    if: github.event_name != 'pull_request' || github.event.pull_request.head.repo.full_name == github.repository
+    runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    defaults:
+      run:
+        working-directory: artifact-guard
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Full history, but blobs over 1 MiB stay on the server: the guard
+          # reports them as missing without fetching them.
+          fetch-depth: 0
+          filter: blob:limit=1m
+          # Its own clone: a workspace another job filled with blob:none would
+          # make every small blob look missing, i.e. oversized.
+          path: artifact-guard
+          sparse-checkout-cone-mode: false
+          sparse-checkout: |
+            /scripts/repo-artifact-guard.sh
+      - name: HEAD tree carries no artifacts
+        run: bash scripts/repo-artifact-guard.sh
+      - name: No pushed commit adds an artifact
+        env:
+          BASE: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          # A new branch has no before; a pre-rewrite before is not in history.
+          if GIT_NO_LAZY_FETCH=1 git cat-file -e "${BASE}^{commit}" 2>/dev/null; then
+            bash scripts/repo-artifact-guard.sh "$BASE"
+          else
+            echo "no base commit in history (${BASE:-none}); the HEAD-tree check covers this push"
+          fi
