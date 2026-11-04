@@ -567,6 +567,7 @@ func setupDatastoreReconcilers(mgr ctrl.Manager, uncachedClient client.Client, a
 	}
 	if promURL := os.Getenv("BEX_PROM_URL"); promURL != "" {
 		databaseReconciler.DiskUsageReader = controller.NewPrometheusDatabaseDiskUsageReader(promURL, nil)
+		databaseReconciler.WALArchiveStallReader = controller.NewPrometheusWALArchiveStallReader(promURL, nil)
 	}
 	if err := databaseReconciler.SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Failed to create controller", "controller", "database")

@@ -450,7 +450,7 @@ groups:
           severity: critical
         annotations:
           summary: "Database {{ $labels.namespace }}/{{ $labels.name }} has not archived WAL for 15 minutes"
-          description: "Backups are enabled but the CNPG cluster reports ContinuousArchiving=False, so this database has no advancing restore point and its WAL is accumulating on the volume. Read the reason from the cluster: kubectl -n {{ $labels.namespace }} get cluster.postgresql.cnpg.io {{ $labels.name }} -o jsonpath='{.status.conditions}'. 'Expected empty archive' means the archive prefix collides with another cluster's — see .pm/w7/040.md and docs/runbooks/datastore-namespace-cutover.md Step 5."
+          description: "Backups are enabled but the CNPG cluster reports ContinuousArchiving=False, or the operator found WAL segments waiting with nothing archived for 15 minutes (Database condition WALArchiving reason WALArchiveStalled — an archive command that hangs instead of failing, w5/175), so this database has no advancing restore point and its WAL is accumulating on the volume. Read the reason from the cluster: kubectl -n {{ $labels.namespace }} get cluster.postgresql.cnpg.io {{ $labels.name }} -o jsonpath='{.status.conditions}'. 'Expected empty archive' means the archive prefix collides with another cluster's — see .pm/w7/040.md and docs/runbooks/datastore-namespace-cutover.md Step 5."
       # Observation must not fail silently: if the listing breaks, the
       # readiness series simply vanish, and an alert on == 0 would go
       # quiet exactly when it is blind.
