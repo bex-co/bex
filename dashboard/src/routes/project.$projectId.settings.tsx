@@ -63,6 +63,8 @@ export function ProjectSettingsPage() {
   const { remove, deleting } = useDeleteProject();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deletingThis = deleting === projectId;
+  // Deleting a project deletes its services, as Render does (w4/m264).
+  const doomedServiceCount = project?.serviceIds.length ?? 0;
 
   function startEdit() {
     setDraft(project?.name ?? "");
@@ -195,7 +197,18 @@ export function ProjectSettingsPage() {
         open={deleteOpen}
         onOpenChange={setDeleteOpen}
         title={t("projects.deleteConfirmTitle", { name: project?.name ?? "" })}
-        description={t("projects.deleteConfirmBody")}
+        description={
+          doomedServiceCount > 0
+            ? t("projects.deleteConfirmBodyServices", {
+                count: doomedServiceCount,
+              })
+            : t("projects.deleteConfirmBody")
+        }
+        phrase={
+          doomedServiceCount > 0
+            ? `sudo delete project ${project?.name ?? ""}`
+            : undefined
+        }
         cancelLabel={t("projects.createCancel")}
         confirmLabel={
           <>

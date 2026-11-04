@@ -212,12 +212,17 @@ const zhProjects: Record<string, TranslationEntry> = {
     description: "New-project dialog title",
   },
   "projects.createDescription": {
-    message: "将现有的服务、数据库和键值存储归类到一起。",
+    message: "将服务、数据库和键值存储归类到一起。每个项目都从一个环境开始。",
     description: "New-project dialog description",
   },
   "projects.fieldName": {
     message: "名称",
     description: "New-project dialog name field label",
+  },
+  "projects.fieldFirstEnvironment": {
+    message: "首个环境名称",
+    description:
+      "New-project dialog: name of the environment created with the project (w4/m264, Render parity)",
   },
   "projects.fieldNamePlaceholder": {
     message: "my-project",
@@ -303,8 +308,14 @@ const zhProjects: Record<string, TranslationEntry> = {
   },
   "projects.deleteConfirmBody": {
     message:
-      "项目下的环境及其配置将被删除。其服务、数据库和键值存储将变为未分组状态，不会被删除。",
+      "项目下的环境及其配置将被删除。其数据库和键值存储将变为未分组状态，不会被删除。",
     description: "Delete-project confirmation dialog body",
+  },
+  "projects.deleteConfirmBodyServices": {
+    message:
+      "删除此项目会同时删除其所有环境和 {count} 个服务。其数据库和键值存储将变为未分组状态，不会被删除。此操作无法撤销。",
+    description:
+      "Delete-project confirmation body when services would be deleted (w4/m264, Render parity)",
   },
   "projects.deleteSuccess": {
     message: "项目「{name}」已删除。",

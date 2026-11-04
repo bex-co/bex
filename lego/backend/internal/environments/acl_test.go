@@ -798,3 +798,75 @@ func TestACLBearingIgnoresTheAllowAllDefaultAndCountsDenyAll(t *testing.T) {
 		}
 	}
 }
+
+// recordingServiceDeleter stands in for the apps service's delete verb.
+type recordingServiceDeleter struct {
+	deleted []string
+	err     error
+}
+
+func (r *recordingServiceDeleter) Delete(_ context.Context, name string) error {
+	if r.err != nil {
+		return r.err
+	}
+	r.deleted = append(r.deleted, name)
+	return nil
+}
+
+// w4/m264: Render's "Deleting an environment deletes all of its associated
+// services". REST's DeleteIfEmpty stays the 409-on-occupied contract.
+func TestDeleteEnvironmentDeletesItsServices(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, _ := newServiceWithClient(st, sampleApp("web"))
+	del := &recordingServiceDeleter{}
+	svc.Services = del
+	e, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	if _, err := svc.SetServices(ctxAs("user-a"), e.ID, []string{"web"}); err != nil {
+		t.Fatalf("SetServices: %v", err)
+	}
+
+	if err := svc.Delete(ctxAs("user-a"), e.ID); err != nil {
+		t.Fatalf("Delete: %v", err)
+	}
+	if len(del.deleted) != 1 || del.deleted[0] != "web" {
+		t.Fatalf("deleted services = %v, want [web]", del.deleted)
+	}
+	if _, err := svc.Get(ctxAs("user-a"), e.ID); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("environment still readable: %v", err)
+	}
+}
+
+func TestDeleteEnvironmentKeepsTheRowWhenAServiceDeleteFails(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, _ := newServiceWithClient(st, sampleApp("web"))
+	boom := errors.New("injected service delete failure")
+	svc.Services = &recordingServiceDeleter{err: boom}
+	e, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	svc.SetServices(ctxAs("user-a"), e.ID, []string{"web"})
+
+	if err := svc.Delete(ctxAs("user-a"), e.ID); !errors.Is(err, boom) {
+		t.Fatalf("Delete = %v, want the service delete failure", err)
+	}
+	if _, err := svc.Get(ctxAs("user-a"), e.ID); err != nil {
+		t.Fatalf("a failed teardown must leave the environment for retry: %v", err)
+	}
+}
+
+func TestDeleteIfEmptyNeverDeletesServices(t *testing.T) {
+	st := newFakeStore()
+	st.addProject(store.Project{ID: "prj-1", TenantID: "tea-a", Name: "web-stack"})
+	svc, _ := newServiceWithClient(st, sampleApp("web"))
+	del := &recordingServiceDeleter{}
+	svc.Services = del
+	e, _ := svc.Create(ctxAs("user-a"), "prj-1", "staging")
+	svc.SetServices(ctxAs("user-a"), e.ID, []string{"web"})
+
+	if err := svc.DeleteIfEmpty(ctxAs("user-a"), e.ID); err == nil {
+		t.Fatal("DeleteIfEmpty of an occupied environment succeeded")
+	}
+	if len(del.deleted) != 0 {
+		t.Fatalf("REST delete removed services: %v", del.deleted)
+	}
+}

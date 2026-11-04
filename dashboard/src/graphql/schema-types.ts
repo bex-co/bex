@@ -1555,6 +1555,7 @@ export type Mutation = {
   updateDatabaseVersion: Maybe<Database>;
   updateDisk: Maybe<Disk>;
   updateEnvironment: Maybe<Environment>;
+  /** Change the store's instance plan. The change restarts the store, which is unavailable for a minute or two, and it changes what the workspace is billed. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data. */
   updateKeyValuePlan: Maybe<KeyValue>;
   updateNotificationSettings: Maybe<NotificationSettings>;
   updatePushNotificationSettings: Maybe<PushNotificationSettings>;
@@ -1806,6 +1807,7 @@ export type MutationCreatePlannedBlueprintArgs = {
 
 
 export type MutationCreateProjectArgs = {
+  environments?: InputMaybe<Array<ProjectEnvironmentInput>>;
   name: Scalars['String']['input'];
   ownerId: Scalars['String']['input'];
 };
@@ -2971,6 +2973,10 @@ export type Project = {
   ownerId: Maybe<Scalars['String']['output']>;
   serviceIds: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   updatedAt: Maybe<Scalars['String']['output']>;
+};
+
+export type ProjectEnvironmentInput = {
+  name: Scalars['String']['input'];
 };
 
 export type PushEventUrgency = {

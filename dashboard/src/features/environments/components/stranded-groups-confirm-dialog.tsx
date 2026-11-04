@@ -42,8 +42,7 @@ export function StrandedGroupsConfirmDialog({
           <li key={item.id} className="flex flex-wrap items-baseline gap-x-2">
             <span className="font-medium break-all">{item.name}</span>
             <span className="text-muted-foreground">
-              {item.scopeLabel ??
-                t("environments.strandedScopeWorkspace")}
+              {item.scopeLabel ?? t("environments.strandedScopeWorkspace")}
             </span>
           </li>
         ))}

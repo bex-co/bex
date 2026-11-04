@@ -38,7 +38,8 @@ type projectIDArgs struct {
 }
 
 type createProjectArgs struct {
-	Name string `json:"name" jsonschema:"the project name (unique within the workspace)"`
+	Name            string `json:"name" jsonschema:"the project name (unique within the workspace)"`
+	EnvironmentName string `json:"environmentName,omitempty" jsonschema:"the name of the project's first environment, created in the same transaction (Render requires one, e.g. Production). Omit it for an empty project"`
 }
 
 // updateProjectArgs is update_project's input: the patch-shaped fold of
@@ -93,9 +94,13 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_project",
-		Description: "Create a named project in a workspace to group services. bex extension.",
+		Description: "Create a named project in a workspace to group services. Pass environmentName (e.g. Production) to create its first environment in the same transaction, as Render's create-project does. bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createProjectArgs) (*mcp.CallToolResult, ProjectView, error) {
-		p, err := s.Create(ctx, core.NamedWorkspace(ctx), in.Name)
+		var envs []EnvironmentInput
+		if in.EnvironmentName != "" {
+			envs = []EnvironmentInput{{Name: in.EnvironmentName}}
+		}
+		p, err := s.CreateWithEnvironments(ctx, core.NamedWorkspace(ctx), in.Name, envs)
 		return nil, p, err
 	})
 
@@ -109,7 +114,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_project",
-		Description: "Delete a project; its services become unassigned. bex extension.",
+		Description: "Delete a project and all of its services, as Render does (databases and key-value stores become unassigned, not deleted). bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in projectIDArgs) (*mcp.CallToolResult, struct {
 		ID string `json:"id"`
 	}, error) {

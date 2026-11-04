@@ -29,8 +29,12 @@ query Project($id: String!) {
   }
 }
 
-mutation CreateProject($name: String!, $ownerId: String!) {
-  createProject(name: $name, ownerId: $ownerId) {
+mutation CreateProject(
+  $name: String!
+  $ownerId: String!
+  $environments: [ProjectEnvironmentInput!]
+) {
+  createProject(name: $name, ownerId: $ownerId, environments: $environments) {
     ...ProjectFields
   }
 }

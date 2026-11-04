@@ -28,10 +28,13 @@ export interface NewProjectDialogProps {
   onOpenChange?: (open: boolean) => void | Promise<void>;
 }
 
+/** Render's own default for a new project's first environment. */
+const DEFAULT_ENVIRONMENT = "Production";
+
 /**
  * "New Project" on the unified Projects page (Render parity — w1/m31). A
  * project only groups existing resources (assigned from their own row's
- * "Move to project" menu), so this dialog just collects a name. Self-contained
+ * "Move to project" menu), so this dialog collects a name and the first environment's name, as Render does. Self-contained
  * by default (owns its trigger button and resets on close); pass
  * `open`/`onOpenChange` to drive it externally instead — mirrors
  * CreateDatabaseDialog's controlled-variant shape.
@@ -47,18 +50,23 @@ export function NewProjectDialog({
   const [openState, setOpenState] = useState(false);
   const open = controlled ? openProp : openState;
   const [name, setName] = useState("");
+  const [environmentName, setEnvironmentName] = useState(DEFAULT_ENVIRONMENT);
 
-  const canSubmit = name.trim().length > 0 && !busy;
+  const canSubmit =
+    name.trim().length > 0 && environmentName.trim().length > 0 && !busy;
 
   async function handleOpenChange(next: boolean) {
     if (controlled) await onOpenChangeProp?.(next);
     else setOpenState(next);
-    if (!next) setName("");
+    if (!next) {
+      setName("");
+      setEnvironmentName(DEFAULT_ENVIRONMENT);
+    }
   }
 
   async function handleSubmit() {
     if (!canSubmit) return;
-    const id = await create(name.trim());
+    const id = await create(name.trim(), environmentName.trim());
     if (id) {
       // The controlled overview dialog closes by replacing its URL search.
       // Await that replace before the project-detail navigation to prevent the
@@ -93,6 +101,22 @@ export function NewProjectDialog({
             value={name}
             onChange={(e) => setName(e.target.value)}
             placeholder={t("projects.fieldNamePlaceholder")}
+            autoComplete="off"
+            onKeyDown={(e) => {
+              if (e.key === "Enter") void handleSubmit();
+            }}
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="project-environment-name">
+            {t("projects.fieldFirstEnvironment")}
+          </Label>
+          <Input
+            id="project-environment-name"
+            value={environmentName}
+            onChange={(e) => setEnvironmentName(e.target.value)}
+            placeholder={DEFAULT_ENVIRONMENT}
             autoComplete="off"
             onKeyDown={(e) => {
               if (e.key === "Enter") void handleSubmit();

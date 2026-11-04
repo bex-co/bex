@@ -17,6 +17,7 @@ limitations under the License.
 package projects
 
 import (
+	"context"
 	"errors"
 	"testing"
 
@@ -93,5 +94,45 @@ func TestDeleteDatastoreCleanupPreservesReassignmentAfterList(t *testing.T) {
 				t.Errorf("cleanup erased concurrent membership: %q", got)
 			}
 		})
+	}
+}
+
+type recordingServiceDeleter struct{ deleted []string }
+
+func (r *recordingServiceDeleter) Delete(_ context.Context, name string) error {
+	r.deleted = append(r.deleted, name)
+	return nil
+}
+
+// w4/m264: Render's "Deleting a project deletes all of its associated
+// environments and services". REST's DeleteIfEmpty never has services to delete.
+func TestDeleteProjectDeletesItsServices(t *testing.T) {
+	st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a"})
+	st.services["prj-1"] = []string{"srv-a", "srv-b"}
+	del := &recordingServiceDeleter{}
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st, Services: del}
+
+	if err := svc.Delete(ctxAs("user-a"), "prj-1"); err != nil {
+		t.Fatal(err)
+	}
+	if got := join(del.deleted); got != "srv-a,srv-b" {
+		t.Errorf("deleted services = %q, want srv-a,srv-b", got)
+	}
+	if _, err := st.GetProject(t.Context(), "prj-1"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("project still exists: %v", err)
+	}
+}
+
+func TestDeleteIfEmptyProjectLeavesServicesAlone(t *testing.T) {
+	st := newFakeProjectStore(store.Project{ID: "prj-1", TenantID: "tea-a"})
+	st.services["prj-1"] = []string{"srv-a"}
+	del := &recordingServiceDeleter{}
+	svc := &Service{Base: &core.Base{Authz: allowChecker{}}, Store: st, Services: del}
+
+	if err := svc.DeleteIfEmpty(ctxAs("user-a"), "prj-1"); err != nil {
+		t.Fatal(err)
+	}
+	if len(del.deleted) != 0 {
+		t.Errorf("DeleteIfEmpty deleted services: %v", del.deleted)
 	}
 }

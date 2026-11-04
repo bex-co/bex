@@ -8,13 +8,14 @@ import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
 export interface UseCreateProjectResult {
   /** Fires createProject; resolves the new id on success, null on failure. */
-  create: (name: string) => Promise<string | null>;
+  create: (name: string, environmentName: string) => Promise<string | null>;
   busy: boolean;
 }
 
 /**
  * Wires the "New Project" dialog to bex-api's `createProject` (w1/m31, bex
- * extension). Scoped to the switcher's selected workspace, mirroring
+ * extension). Creates the first environment in the same transaction, as
+ * Render does (w4/m264). Scoped to the switcher's selected workspace, mirroring
  * useCreateDatabase/useCreateKeyValue.
  */
 export function useCreateProject(): UseCreateProjectResult {
@@ -24,7 +25,7 @@ export function useCreateProject(): UseCreateProjectResult {
   const [busy, setBusy] = useState(false);
 
   const create = useCallback(
-    async (name: string) => {
+    async (name: string, environmentName: string) => {
       if (currentWorkspaceId == null) {
         toast.error(t("projects.createError", { name }));
         return null;
@@ -32,7 +33,11 @@ export function useCreateProject(): UseCreateProjectResult {
       setBusy(true);
       try {
         const res = await mutate({
-          variables: { name, ownerId: currentWorkspaceId },
+          variables: {
+            name,
+            ownerId: currentWorkspaceId,
+            environments: [{ name: environmentName }],
+          },
         });
         const id = res.data?.createProject?.id;
         if (!id) throw new Error("createProject returned no id");

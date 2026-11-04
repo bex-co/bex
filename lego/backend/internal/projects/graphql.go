@@ -72,9 +72,21 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Args: graphql.FieldConfigArgument{
 				"name":    gqlutil.ReqArg(graphql.String),
 				"ownerId": gqlutil.ReqArg(graphql.String),
+				// environments creates the project's first environments in the
+				// same transaction, as Render's create-project does (w4/m264).
+				// Optional so older clients keep the empty-project shim REST has.
+				"environments": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(projectEnvironmentInput))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Create(p.Context, p.Args["ownerId"].(string), p.Args["name"].(string))
+				var envs []EnvironmentInput
+				if raw, ok := p.Args["environments"].([]any); ok {
+					for _, e := range raw {
+						m, _ := e.(map[string]any)
+						name, _ := m["name"].(string)
+						envs = append(envs, EnvironmentInput{Name: name})
+					}
+				}
+				return s.CreateWithEnvironments(p.Context, p.Args["ownerId"].(string), p.Args["name"].(string), envs)
 			},
 		},
 		"renameProject": gqlutil.ArgMutation(projectGQLType, "name", s.Rename),
@@ -123,3 +135,11 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 	}
 }
+
+// projectEnvironmentInput is the environment createProject makes with its project.
+var projectEnvironmentInput = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "ProjectEnvironmentInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"name": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+	},
+})

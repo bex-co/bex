@@ -37,12 +37,16 @@ describe("useCreateProject", () => {
 
     let id: string | null | undefined;
     await act(async () => {
-      id = await result.current.create("friendly-name");
+      id = await result.current.create("friendly-name", "Production");
     });
 
     expect(id).toBe("prj-returned");
     expect(mutate).toHaveBeenCalledWith({
-      variables: { name: "friendly-name", ownerId: "tea-owner" },
+      variables: {
+        name: "friendly-name",
+        ownerId: "tea-owner",
+        environments: [{ name: "Production" }],
+      },
     });
     expect(toastSuccess).toHaveBeenCalled();
   });
@@ -53,7 +57,7 @@ describe("useCreateProject", () => {
 
     let id: string | null | undefined;
     await act(async () => {
-      id = await result.current.create("friendly-name");
+      id = await result.current.create("friendly-name", "Production");
     });
 
     expect(id).toBeNull();
@@ -71,7 +75,8 @@ describe("useCreateProject", () => {
         data: null,
         errors: [
           {
-            message: 'a project named "friendly-name" already exists in this workspace',
+            message:
+              'a project named "friendly-name" already exists in this workspace',
             extensions: { code: "CONFLICT" },
           },
         ],
@@ -80,7 +85,7 @@ describe("useCreateProject", () => {
     const { result } = renderHook(() => useCreateProject());
 
     await act(async () => {
-      await result.current.create("friendly-name");
+      await result.current.create("friendly-name", "Production");
     });
 
     expect(toastError).toHaveBeenCalledWith(
@@ -93,7 +98,7 @@ describe("useCreateProject", () => {
     const { result } = renderHook(() => useCreateProject());
 
     await act(async () => {
-      await result.current.create("friendly-name");
+      await result.current.create("friendly-name", "Production");
     });
 
     expect(toastError).toHaveBeenCalledWith(
