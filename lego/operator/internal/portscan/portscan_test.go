@@ -18,8 +18,12 @@ package portscan
 
 import (
 	"context"
+	"errors"
 	"net"
 	"slices"
+	"strconv"
+	"sync"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -74,5 +78,60 @@ func TestScanReportsAnUnreachableAddress(t *testing.T) {
 	// TEST-NET-1 (192.0.2.0/24) is reserved and never routed: connects time out.
 	if _, err := (Dialer{Low: 1, High: 40}).Scan(ctx, "192.0.2.1"); err == nil {
 		t.Skip("the sandbox routed TEST-NET-1; cannot exercise the unreachable path")
+	}
+}
+
+// droppingDial answers on the open ports and, like a path that drops probes
+// to closed ports, never answers anywhere else until the dial's own timeout.
+func droppingDial(open ...int) func(context.Context, string) (net.Conn, error) {
+	return func(ctx context.Context, address string) (net.Conn, error) {
+		_, portText, _ := net.SplitHostPort(address)
+		port, _ := strconv.Atoi(portText)
+		if slices.Contains(open, port) {
+			client, server := net.Pipe()
+			_ = server.Close()
+			return client, nil
+		}
+		<-ctx.Done()
+		return nil, ctx.Err()
+	}
+}
+
+// Closed ports that drop probes make a full sweep far longer than any
+// detection budget. The listener on a likely HTTP port is still found, and
+// the ports found before the deadline are returned, not discarded (w9/072).
+func TestScanReturnsWhatItFoundWhenTheDeadlineHits(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 600*time.Millisecond)
+	defer cancel()
+	got, err := Dialer{dial: droppingDial(3000, 60000)}.Scan(ctx, "10.0.0.1")
+	if !errors.Is(err, ErrPartial) || !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("err = %v, want ErrPartial wrapping the deadline", err)
+	}
+	if !slices.Equal(got, []int{3000}) {
+		t.Fatalf("got %v, want [3000]: the likely port answers, the late one is never reached", got)
+	}
+}
+
+func TestScanTriesLikelyHTTPPortsFirst(t *testing.T) {
+	var mu sync.Mutex
+	var order []int
+	dial := func(_ context.Context, address string) (net.Conn, error) {
+		_, portText, _ := net.SplitHostPort(address)
+		port, _ := strconv.Atoi(portText)
+		mu.Lock()
+		order = append(order, port)
+		mu.Unlock()
+		return nil, syscall.ECONNREFUSED
+	}
+	// One worker makes the dial order the feed order.
+	if _, err := scan(context.Background(), "10.0.0.1", 1, Dialer{Low: 1, High: 12000}.order(), dial); err != nil {
+		t.Fatal(err)
+	}
+	want := []int{80, 8080, 3000, 5000, 8000, 8888, 10000, 4000, 9000, 443, 5173, 8443, 1, 2}
+	if !slices.Equal(order[:len(want)], want) {
+		t.Fatalf("first dials = %v, want %v", order[:len(want)], want)
+	}
+	if len(order) != 12000 {
+		t.Fatalf("dialed %d ports, want every port in range exactly once", len(order))
 	}
 }

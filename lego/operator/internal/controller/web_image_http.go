@@ -18,11 +18,13 @@ package controller
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"slices"
 	"time"
 
 	"github.com/bex-co/bex/lego/operator/internal/httpport"
+	"github.com/bex-co/bex/lego/operator/internal/portscan"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -111,6 +113,9 @@ func (r *AppReconciler) selectWebImageHTTP(ctx context.Context, app *appv1alpha1
 		scanCtx, cancel := context.WithTimeout(ctx, portDetectTimeout)
 		open, scanErr := r.PortScanner.Scan(scanCtx, ip)
 		cancel()
+		if errors.Is(scanErr, portscan.ErrPartial) {
+			logf.FromContext(ctx).Info("HTTP port scan ran out of time; probing the ports found so far", "app", app.Name, "open", open)
+		}
 		if scanErr == nil || len(open) > 0 {
 			ports := make([]int32, 0, len(open))
 			for _, p := range open {
