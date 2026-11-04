@@ -456,3 +456,7 @@ Both old-helper regressions fail as expected. The first full 161 run's two harne
 ## Current D3 AMD64 utility baseline bound — 2026-11-04 (loopx session)
 
 Run #97 (`3a15c2a`) passed but went stale before it was bound: w2/m254 and w5/175 later changed qualification inputs. [Run #100](evidence/common-d3-run100-20261104/README.md) requalified the same `0941` image on `2ee5d25` and passed. All 356 artifact members are retained, and the candidate's `source`/`utilities` now bind it; `validate_test_candidate()` returns `current-complete`. Next step: the 27 `REQUIRED-ORIGINAL-AMD64` family cases, dispatched in small batches against this candidate. Family results, adoption and the original 28 hosted cases remain open; m91/t007 stay in progress.
+
+## Required AMD64 family cases in progress — 2026-11-04 (loopx session)
+
+[The families packet](evidence/common-d3-families-20261104/README.md) retains every dispatch made against the run-100 candidate. So far native-init/all-launches, go-rust/go and ruby/ruby40 have passed. Fifteen early attempts failed on host-network starvation: this session dispatched too many cases at once on the single shared runner host. They are retained as infrastructure failures, not verdicts, and their cases are being re-dispatched one at a time. Remaining required cases, adoption and the original 28 hosted cases stay open.

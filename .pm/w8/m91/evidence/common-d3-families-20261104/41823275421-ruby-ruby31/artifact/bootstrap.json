@@ -1,0 +1,71 @@
+{
+  "owner": "bex-nq-3dff1a94a8f24c13be4510a7",
+  "image": "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f",
+  "policy_path": "lego/operator/internal/build/toolchain-freshness.json",
+  "policy_sha256": "be63de042bcff1899db87f36d4c3a093bb3b31282079e478603b10e7359d94fc",
+  "command": [
+    "timeout",
+    "--kill-after=10s",
+    "553s",
+    "docker",
+    "pull",
+    "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
+  ],
+  "maximum_attempts": 3,
+  "retry_delay_seconds": 15,
+  "whole_timeout_seconds": 570,
+  "cleanup_reserve_seconds": 16,
+  "started_monotonic": 707013.040779439,
+  "deadline_monotonic": 707583.040779439,
+  "whole_budget_stop": "insufficient-budget-for-retry-delay-and-pull",
+  "output_drain_seconds": 0,
+  "output_drain_policy": "EOF under shared deadline minus direct/group cleanup6s; no unbounded drain",
+  "direct_child_wait_seconds": 1,
+  "group_absence_wait_seconds": 5,
+  "attempts": [
+    {
+      "number": 1,
+      "started_at": "2026-11-04T12:42:44.965892+00:00",
+      "finished_at": "2026-11-04T12:51:57.944773+00:00",
+      "exit_code": 124,
+      "bound": null,
+      "cancel_signal": null,
+      "direct_child_reaped": true,
+      "process_group_absent": true,
+      "output_limit_bytes": 4194304,
+      "captured_output_bytes": 750,
+      "output_capture_complete": true,
+      "timeout_exit": true,
+      "command": [
+        "timeout",
+        "--kill-after=10s",
+        "553s",
+        "docker",
+        "pull",
+        "moby/buildkit:v0.30.0@sha256:0168606be2315b7c807a03b3d8aa79beefdb31c98740cebdffdfeebf31190c9f"
+      ],
+      "command_timeout_seconds": 553,
+      "whole_remaining_before_seconds": 569.9998236250831,
+      "python_deadline_monotonic": 707577.040779439,
+      "whole_elapsed_after_seconds": 553.007608045009,
+      "stdout": {
+        "path": "bootstrap-1.stdout.log",
+        "bytes": 750,
+        "sha256": "9270e95019e3fa384a81b3811738bdc407c900fdbd77b316184c3f8cae281278"
+      },
+      "stderr": {
+        "path": "bootstrap-1.stderr.log",
+        "bytes": 0,
+        "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+      }
+    }
+  ],
+  "image_output_emitted": false,
+  "combined_output_limit_bytes": 4194304,
+  "output_limit_scope": "all bootstrap attempts combined; at most limit+1 captured bytes",
+  "incomplete_capture_means": "all captured bytes retained; unread bytes after stop are not captured",
+  "captured_output_bytes": 750,
+  "output_budget_exhausted": false,
+  "scope": "bounded setup input only; no generated-runtime or acceptance claim",
+  "elapsed_seconds": 553.0087019619532
+}

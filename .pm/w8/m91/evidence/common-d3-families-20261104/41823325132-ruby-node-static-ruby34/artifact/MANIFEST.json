@@ -1,0 +1,45 @@
+{
+  "files": [
+    {
+      "path": "bootstrap-1.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bootstrap-1.stdout.log",
+      "bytes": 749,
+      "sha256": "de36a09cfea7a9debddfc410d99624b961193a3843d904e8432316cf380734b1"
+    },
+    {
+      "path": "bootstrap.json",
+      "bytes": 2681,
+      "sha256": "0e5f918afd7d6a028835edc6dedfa9bbff8bc52465f9f55936a3577c0ef4caab"
+    },
+    {
+      "path": "capacity-after-tests.json",
+      "bytes": 1317,
+      "sha256": "5542d6855e4a94a6e9da5dd386cbece59e82c0f67e7e00c645b6cacddd57f139"
+    },
+    {
+      "path": "capacity-before-builder.json",
+      "bytes": 1320,
+      "sha256": "b862e5a0d0db442ebbf5ff6602715c2cbf4882956069b82d6573b36286ab60ca"
+    },
+    {
+      "path": "cleanup.json",
+      "bytes": 1703,
+      "sha256": "e00fca9756cb82e7c9337a918cb4f6e0bf5009ca53e2956a0ff4096db90d11cf"
+    },
+    {
+      "path": "inputs.json",
+      "bytes": 2340,
+      "sha256": "c35f1c83d7c8bdbf2ed3ee4d658aea4eeb3ad83601881d1e675dfd324a53d492"
+    },
+    {
+      "path": "qualification-source.json",
+      "bytes": 75812,
+      "sha256": "dea302043402f15f483ff072806fbfa9a06eb1445c7967dd447326ecce325550"
+    }
+  ],
+  "scope": "actual retained evidence, including failures; not an acceptance assertion"
+}

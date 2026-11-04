@@ -1,0 +1,55 @@
+{
+  "owner": "bex-nq-3dff1a94a8f24c13be4510a7",
+  "operations": [
+    {
+      "resource": "builder",
+      "identity": "bex-nq-3dff1a94a8f24c13be4510a7",
+      "exit_code": 0,
+      "stdout": "",
+      "stderr": "",
+      "removal": "not-invoked",
+      "state": "daemon-confirmed-absent-before-setup",
+      "state_probes": [
+        {
+          "resource": "container",
+          "identity": "buildx_buildkit_bex-nq-3dff1a94a8f24c13be4510a70",
+          "command": [
+            "docker",
+            "container",
+            "inspect",
+            "--format",
+            "{{json .Name}}",
+            "buildx_buildkit_bex-nq-3dff1a94a8f24c13be4510a70"
+          ],
+          "exit_code": 1,
+          "stdout": "\n",
+          "stderr": "Error response from daemon: No such container: buildx_buildkit_bex-nq-3dff1a94a8f24c13be4510a70\n",
+          "absence_proved": true
+        },
+        {
+          "resource": "volume",
+          "identity": "buildx_buildkit_bex-nq-3dff1a94a8f24c13be4510a70_state",
+          "command": [
+            "docker",
+            "volume",
+            "inspect",
+            "--format",
+            "{{json .Name}}",
+            "buildx_buildkit_bex-nq-3dff1a94a8f24c13be4510a70_state"
+          ],
+          "exit_code": 1,
+          "stdout": "\n",
+          "stderr": "Error response from daemon: get buildx_buildkit_bex-nq-3dff1a94a8f24c13be4510a70_state: no such volume\n",
+          "absence_proved": true
+        }
+      ]
+    },
+    {
+      "resource": "docker-auth",
+      "identity": "/home/docker/actions-runner/_work/_temp/bex-nq-3dff1a94a8f24c13be4510a7-docker-config",
+      "logout_exit_code": 0,
+      "exit_code": 0,
+      "removed": true
+    }
+  ]
+}

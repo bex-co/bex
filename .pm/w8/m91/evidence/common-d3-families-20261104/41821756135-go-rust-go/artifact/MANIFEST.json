@@ -1,0 +1,95 @@
+{
+  "files": [
+    {
+      "path": "bootstrap-1.stderr.log",
+      "bytes": 0,
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "path": "bootstrap-1.stdout.log",
+      "bytes": 1385,
+      "sha256": "500a198038f06d4e4ab8ea2a4857fed9e626df0aad1bb70a1d7f3c9925466bd4"
+    },
+    {
+      "path": "bootstrap.json",
+      "bytes": 2642,
+      "sha256": "2aa623246df0cd5588876cd7ed00260191fae0342cc5383075128699b9b1a7af"
+    },
+    {
+      "path": "capacity-after-tests.json",
+      "bytes": 1317,
+      "sha256": "b2a941a3726e3f20725e7b5cf114fe3480cd97ab602ae74a1f19f6b69fc51b22"
+    },
+    {
+      "path": "capacity-before-builder.json",
+      "bytes": 1320,
+      "sha256": "d72225511b9d2a7aa6fdd8e0f51532da50bad64343bc8eeedcd98026128b565c"
+    },
+    {
+      "path": "cleanup.json",
+      "bytes": 494,
+      "sha256": "7718a33a7c66176fe439e44833974e834f2144f37bea0255c2c0425cc3a505d7"
+    },
+    {
+      "path": "generated/native-common-gorust-726933101/go/Dockerfile",
+      "bytes": 4222,
+      "sha256": "f425b2cea1d0b816919f35a602b7bedbfa3d54b16af5bf5fca9380fdce69adfa"
+    },
+    {
+      "path": "generated/native-common-gorust-726933101/go/Dockerfile.canonical",
+      "bytes": 3975,
+      "sha256": "05f8a632a14d74d56271e518b59627410ddf4518368761e93b79ad14973ff3fd"
+    },
+    {
+      "path": "generated/native-common-gorust-726933101/go/build.log",
+      "bytes": 98657,
+      "sha256": "3edce3304b52d4c8bc7438415b4f76b66dbed30f929fdb2e79c596859d79902d"
+    },
+    {
+      "path": "generated/native-common-gorust-726933101/go/qa-output/build.json",
+      "bytes": 1235,
+      "sha256": "83ec93740d40f25ed31f0766d8caf9e0c336addbb1b18351429a40977d884218"
+    },
+    {
+      "path": "generated/native-common-gorust-726933101/go/qa-output/primary-tree.json",
+      "bytes": 3498016,
+      "sha256": "d1894bab493123e2dcd8731e24dfecb448bb56bc75dca587bd69771946d2381b"
+    },
+    {
+      "path": "generated/native-common-gorust-726933101/go/qa-output/runtime.json",
+      "bytes": 1238,
+      "sha256": "cbf72b4d14077cdfdfe199fb2c9d8119eb0027c6d76698d42f2e476e168fe9e4"
+    },
+    {
+      "path": "generated/native-common-gorust-726933101/go/receipt.json",
+      "bytes": 785,
+      "sha256": "6b2eb67fa6fd2dd973c722dfe0b1a6b50f071c34475f183915196119c166e9db"
+    },
+    {
+      "path": "generated/native-common-gorust-726933101/go/runtime.log",
+      "bytes": 1238,
+      "sha256": "cbf72b4d14077cdfdfe199fb2c9d8119eb0027c6d76698d42f2e476e168fe9e4"
+    },
+    {
+      "path": "generated/native-common-gorust-726933101/go/source-custody.json",
+      "bytes": 2690,
+      "sha256": "3c600dc83cb205adeb5469da7c611f59abdc92a42c5e6caee2c6b6e20df87b30"
+    },
+    {
+      "path": "inputs.json",
+      "bytes": 2311,
+      "sha256": "90d858c1ab3cb4e1d2071f86c1823672c4e1ebead79922f74469f67141d60bd4"
+    },
+    {
+      "path": "qualification-source.json",
+      "bytes": 75812,
+      "sha256": "dea302043402f15f483ff072806fbfa9a06eb1445c7967dd447326ecce325550"
+    },
+    {
+      "path": "qualification.log",
+      "bytes": 629,
+      "sha256": "85c68898381447fec7759a6fb6212a60806ac347df6940898128ffbdc3051de4"
+    }
+  ],
+  "scope": "actual retained evidence, including failures; not an acceptance assertion"
+}

@@ -1,0 +1,77 @@
+
+> bex-common-native-init-qualification@0.0.0 start /opt/render/project/src
+> node server.js
+
+{"nativeInitIdentityObservation":{"errors":[],"pid1ExeSHA256":"e743f8a5dcdf8255c507e41e4085d8a7c6cc5efda8585265f6c1603f2cbe1ab6","pid1ExeHeader":"7f454c460201010000000000000000000200b700010000000060020000800000400000000000000028521a000000000000000000400038000700400018001700","pid1ArgvBase64":"L25hdGl2ZS1pbml0AC9iaW4vYmFzaAAtYwBub2RlIGNhcHR1cmUtZW52LmpzIHBucG0gJiYgZXhlYyBwbnBtIHN0YXJ0AA==","maps":"00400000-004b6000 r-xp 00000000 00:2f3 10733717                          /native-init\n004b6000-005a1000 r--p 000b6000 00:2f3 10733717                          /native-init\n005a1000-005ac000 rw-p 001a1000 00:2f3 10733717                          /native-init\n005ac000-005e2000 rw-p 00000000 00:00 0 \n95708000000-95709000000 ---p 00000000 00:00 0 \n95709000000-95709400000 rw-p 00000000 00:00 0 \n95709400000-9570c000000 ---p 00000000 00:00 0 \n7fffb8b8d000-7fffb8d8d000 rw-p 00000000 00:00 0 \n7fffb8d8d000-7fffb8e8d000 rw-p 00000000 00:00 0 \n7fffb8e8d000-7fffb8e9f000 rw-p 00000000 00:00 0 \n7fffb8e9f000-7fffbae9f000 rw-p 00000000 00:00 0 \n7fffbae9f000-7fffcc14d000 ---p 00000000 00:00 0 \n7fffcc14d000-7fffcc14e000 rw-p 00000000 00:00 0 \n7fffcc14e000-7fffec14d000 ---p 00000000 00:00 0 \n7fffec14d000-7fffec14e000 rw-p 00000000 00:00 0 \n7fffec14e000-7ffffd0f4000 ---p 00000000 00:00 0 \n7ffffd0f4000-7ffffd0f5000 rw-p 00000000 00:00 0 \n7ffffd0f5000-7fffff2e9000 ---p 00000000 00:00 0 \n7fffff2e9000-7fffff2ea000 rw-p 00000000 00:00 0 \n7fffff2ea000-7fffff728000 ---p 00000000 00:00 0 \n7fffff728000-7fffff729000 rw-p 00000000 00:00 0 \n7fffff729000-7fffff79f000 ---p 00000000 00:00 0 \n7fffff79f000-7fffff7ff000 rw-p 00000000 00:00 0 \n7fffff7ff000-7fffff800000 ---p 00000000 00:00 0 \n7fffff800000-800000000000 rw-p 00000000 00:00 0 \n800000000000-800000026000 r--p 00000000 00:32 2                          /run/rosetta/rosetta\n800000026000-800000098000 r-xp 00026000 00:32 2                          /run/rosetta/rosetta\n8000000a0000-8000001a6000 rw-p 000a0000 00:32 2                          /run/rosetta/rosetta\neffff7d71000-effff7d76000 rw-p 00000000 00:00 0 \neffff7d76000-effff7d77000 ---p 00000000 00:00 0 \neffff7d77000-effff7d7b000 rw-p 00000000 00:00 0 \neffff7d7b000-effff7d7c000 ---p 00000000 00:00 0 \neffff7d7c000-effff7d85000 rw-p 00000000 00:00 0 \neffff7d85000-effff7d86000 ---p 00000000 00:00 0 \neffff7d86000-effff7d8a000 rw-p 00000000 00:00 0 \neffff7d8a000-effff7d8b000 ---p 00000000 00:00 0 \neffff7d8b000-effff7d9f000 rw-p 00000000 00:00 0 \neffff7d9f000-effff7da0000 ---p 00000000 00:00 0 \neffff7da0000-effff7da4000 rw-p 00000000 00:00 0 \neffff7da4000-effff7da5000 ---p 00000000 00:00 0 \neffff7da5000-effff7daf000 rw-p 00000000 00:00 0 \neffff7daf000-effff7db0000 rw-p 00000000 00:00 0 \neffff7db0000-effff7db1000 ---p 00000000 00:00 0 \neffff7db1000-effff7db5000 rw-p 00000000 00:00 0 \neffff7db5000-effff7db6000 ---p 00000000 00:00 0 \neffff7db6000-effff7dc0000 rw-p 00000000 00:00 0 \neffff7dc0000-effff7dc1000 ---p 00000000 00:00 0 \neffff7dc1000-effff7dc5000 rw-p 00000000 00:00 0 \neffff7dc5000-effff7dc6000 ---p 00000000 00:00 0 \neffff7dc6000-effff7de7000 rw-p 00000000 00:00 0 \neffff7de7000-effff7de8000 ---p 00000000 00:00 0 \neffff7de8000-effff7dec000 rw-p 00000000 00:00 0 \neffff7dec000-effff7ded000 ---p 00000000 00:00 0 \neffff7ded000-effff7ff8000 rw-p 00000000 00:00 0 \neffff7ff8000-efffffff8000 rwxp 00000000 00:00 0 \nefffffff8000-f00031b30000 rw-p 00000000 00:00 0 \nffff92732000-ffff92736000 r--p 00000000 00:00 0                          [vvar]\nffff92736000-ffff92738000 r-xp 00000000 00:00 0                          [vdso]\nffffea9f8000-ffffeaa19000 rw-p 00000000 00:00 0                          [stack]\n","init":{"sha256":"8b66f4755abd06d0ae12fc6a3ce247fc1e703ddcb5c95631c8f28f90e5914f79","machine":62,"executable":true,"device":"0:2f3","inode":"10733717","pid1":"/run/rosetta/rosetta","pid1Machine":183,"argv":["/native-init","/bin/bash","-c","node capture-env.js pnpm && exec pnpm start"],"mappings":[{"permissions":"r-xp","device":"0:2f3","inode":"10733717","path":"/native-init"},{"permissions":"r--p","device":"0:2f3","inode":"10733717","path":"/native-init"},{"permissions":"rw-p","device":"0:2f3","inode":"10733717","path":"/native-init"}]}}}
+{"run":"bex-init-1665-1793792686986018757","event":"listening"}
+{"run":"bex-init-1665-1793792686986018757","event":"hold_begin"}
+ ELIFECYCLE  Command failed.
+ WARN   Local package.json exists, but node_modules missing, did you mean to install?
+{"run":"bex-init-1665-1793792686986018757","event":"SIGTERM"}
+{"run":"bex-init-1665-1793792686986018757","event":"hold_end"}
+{"run":"bex-init-1665-1793792686986018757","event":"closed"}
+{
+  "phase": "runtime",
+  "run": "bex-init-1665-1793792686986018757",
+  "identity": {
+    "node": "24.22.1",
+    "executable": "/usr/local/bin/node",
+    "env": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/opt/render/project/src/node_modules/.bin:/usr/local/lib/node_modules/pnpm/dist/node-gyp-bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    },
+    "baseEnv": {
+      "NODE_VERSION": "24.22.1",
+      "PATH": "/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+      "YARN_VERSION": "1.22.22"
+    },
+    "launch": "pnpm",
+    "init": {
+      "sha256": "8b66f4755abd06d0ae12fc6a3ce247fc1e703ddcb5c95631c8f28f90e5914f79",
+      "machine": 62,
+      "executable": true,
+      "device": "0:2f3",
+      "inode": "10733717",
+      "pid1": "/run/rosetta/rosetta",
+      "pid1Machine": 183,
+      "argv": [
+        "/native-init",
+        "/bin/bash",
+        "-c",
+        "node capture-env.js pnpm && exec pnpm start"
+      ],
+      "mappings": [
+        {
+          "permissions": "r-xp",
+          "device": "0:2f3",
+          "inode": "10733717",
+          "path": "/native-init"
+        },
+        {
+          "permissions": "r--p",
+          "device": "0:2f3",
+          "inode": "10733717",
+          "path": "/native-init"
+        },
+        {
+          "permissions": "rw-p",
+          "device": "0:2f3",
+          "inode": "10733717",
+          "path": "/native-init"
+        }
+      ]
+    }
+  },
+  "events": [
+    "listening",
+    "hold_begin",
+    "SIGTERM",
+    "hold_end",
+    "closed"
+  ],
+  "holds": 1,
+  "completed": 1,
+  "signals": 1,
+  "pass": true
+}

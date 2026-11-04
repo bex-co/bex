@@ -1,0 +1,22 @@
+[
+ {
+  "archive_download_url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13317657630/zip",
+  "created_at": "2026-11-04T11:41:46Z",
+  "digest": "sha256:c2b23209fa85b4509f50eb79de203676e9e0aae2890f1345ca924ab2ea97b8c4",
+  "expired": false,
+  "expires_at": "2026-12-04T11:41:41Z",
+  "id": 13317657630,
+  "name": "common-pilot-go-rust-rust-reviewed-candidate-0958ce62f19dd97eb05d2040ec0b2147b25645dd1ee58932f73d821a243acf5b-amd64-1",
+  "node_id": "MDg6QXJ0aWZhY3QxMzMxNzY1NzYzMA==",
+  "size_in_bytes": 22101,
+  "updated_at": "2026-11-04T11:41:46Z",
+  "url": "https://api.github.com/repos/bex-co/bex/actions/artifacts/13317657630",
+  "workflow_run": {
+   "head_branch": "main",
+   "head_repository_id": 793852040,
+   "head_sha": "e07c7176dffd0286424ac3beb48be2eaf093eb19",
+   "id": 41821767314,
+   "repository_id": 793852040
+  }
+ }
+]
