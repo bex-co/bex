@@ -223,7 +223,7 @@ assert "xxl pool without an ephemeral-disk hint" 1 "$d" "tier pro-ultra requests
 # runsc is the kernel boundary for hostile tenant sandboxes. These cases prove
 # the guard turns red on every path back to trusting the release origin.
 d="$(fixture gvisor-cofetch)"
-sed -i.bak 's|wget -q ${GVURL}/runsc ${GVURL}/containerd-shim-runsc-v1|wget -q ${GVURL}/runsc ${GVURL}/runsc.sha512 ${GVURL}/containerd-shim-runsc-v1|' "$d/sandbox-pool.yaml" && rm "$d/sandbox-pool.yaml.bak"
+sed -i.bak 's|"${GVURL}/runsc" "${GVURL}/containerd-shim-runsc-v1"|"${GVURL}/runsc" "${GVURL}/runsc.sha512" "${GVURL}/containerd-shim-runsc-v1"|' "$d/sandbox-pool.yaml" && rm "$d/sandbox-pool.yaml.bak"
 assert "gVisor checksum co-fetched from the release origin" 1 "$d" "must not co-fetch gVisor checksum"
 
 d="$(fixture gvisor-unpinned)"
@@ -231,7 +231,7 @@ sed -i.bak 's|RUNSC_SHA512=[0-9a-f]\{128\};|RUNSC_SHA512=;|' "$d/sandbox-pool.ya
 assert "gVisor pinned digest removed" 1 "$d" "must pin exactly two gVisor SHA-512 digests"
 
 d="$(fixture gvisor-arch-fail-open)"
-sed -i.bak 's|test "$ARCH" = x86_64; ||' "$d/sandbox-pool.yaml" && rm "$d/sandbox-pool.yaml.bak"
+sed -i.bak 's|test "$ARCH" = x86_64 \&\& ||' "$d/sandbox-pool.yaml" && rm "$d/sandbox-pool.yaml.bak"
 assert "gVisor non-x86_64 bootstrap no longer fails closed" 1 "$d" "fail closed on a non-x86_64 architecture"
 
 d="$(fixture gvisor-latest)"
