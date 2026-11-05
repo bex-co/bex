@@ -31,7 +31,12 @@ describe("agent-session filter search contracts", () => {
       view: undefined,
       archived: undefined,
       phase: undefined,
+      tag: undefined,
     });
+    // w21/002: a tag filter is kept; an empty or non-string one is dropped.
+    expect(validateList({ tag: "release" })).toMatchObject({ tag: "release" });
+    expect(validateList({ tag: "" })).toMatchObject({ tag: undefined });
+    expect(validateList({ tag: 5 })).toMatchObject({ tag: undefined });
   });
 
   it("does not wire a phase-filter dropdown on /agents", async () => {

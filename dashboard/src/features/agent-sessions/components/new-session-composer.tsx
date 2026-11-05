@@ -141,6 +141,8 @@ export function NewSessionComposer() {
 
   const source = useMemo(() => ({ repos, sessions }), [repos, sessions]);
 
+  const submitKey = useRef<{ fingerprint: string; key: string } | null>(null);
+
   const onSubmit = form.handleSubmit(async (values) => {
     setAvailabilityError(null);
     setSubmitError(null);
@@ -169,8 +171,23 @@ export function NewSessionComposer() {
     ].join("\n\n");
 
     const sentAttachmentIds = uploads.readyIds;
+    // One key per distinct submit: a retry of the same content after a failure
+    // reuses it (the server hands back the session it already created, `created:
+    // false`, which is success here), edited content gets a fresh one.
+    const fingerprint = JSON.stringify([
+      currentWorkspaceId,
+      repo ?? "",
+      branch,
+      values.agent,
+      prompt,
+      sentAttachmentIds,
+    ]);
+    if (submitKey.current?.fingerprint !== fingerprint) {
+      submitKey.current = { fingerprint, key: crypto.randomUUID() };
+    }
     try {
       const ticket = await create({
+        idempotencyKey: submitKey.current.key,
         ownerId: currentWorkspaceId,
         repo: repo ?? "",
         branch,
@@ -179,6 +196,7 @@ export function NewSessionComposer() {
         attachmentIds: sentAttachmentIds,
       });
       uploads.clear(sentAttachmentIds);
+      submitKey.current = null;
       await navigate({
         to: "/agents/$agentSessionId",
         params: { agentSessionId: ticket.session.id },

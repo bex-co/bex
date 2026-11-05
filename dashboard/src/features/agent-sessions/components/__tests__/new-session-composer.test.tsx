@@ -208,6 +208,9 @@ describe("NewSessionComposer", () => {
     // The model and sandbox network come from the workspace's agent
     // environment (w10/m17); the composer never sends either.
     const input = create.mock.calls[0][0];
+    // w21/002: every submit carries a retry-safe idempotency key.
+    expect(input.idempotencyKey).toEqual(expect.any(String));
+    expect(input.idempotencyKey).not.toBe("");
     expect(input).not.toHaveProperty("model");
     expect(input).not.toHaveProperty("egressAllowlist");
     await waitFor(() =>

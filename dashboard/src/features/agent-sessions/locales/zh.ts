@@ -779,6 +779,19 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "会话已取消",
     description: "Terminal transcript status line — canceled session",
   },
+  "agentSessions.tagsLabel": {
+    message: "标签",
+    description: "Accessible label for a session row's tag list (w21/002)",
+  },
+  "agentSessions.filterByTag": {
+    message: "显示带有标签 {tag} 的会话",
+    description:
+      "Accessible label of a tag chip that filters the session list to that tag",
+  },
+  "agentSessions.filterTagged": {
+    message: "标签：{tag}",
+    description: "Session list heading while narrowed to one tag",
+  },
   "agentSessions.archive": {
     message: "归档",
     description: "Action putting a session out of the working set (ADR065)",

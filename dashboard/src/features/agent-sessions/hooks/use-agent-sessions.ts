@@ -42,6 +42,8 @@ export interface UseAgentSessionsOptions {
   phases?: string[];
   /** Exact owner/repository filter; omitted ⇒ every repo. */
   repo?: string;
+  /** Tag filter (w21/m258 `tag`); omitted ⇒ every session. */
+  tag?: string;
   /** Page size; omitted ⇒ the backend default (50, max 200). */
   limit?: number;
 }
@@ -83,6 +85,7 @@ export function useAgentSessions({
   archived,
   phases,
   repo,
+  tag,
   limit,
 }: UseAgentSessionsOptions = {}): UseAgentSessionsResult {
   const { currentWorkspaceId } = useWorkspace();
@@ -97,6 +100,7 @@ export function useAgentSessions({
         archived: backendArchived,
         phases: phases?.length ? phases : null,
         repo: repo || null,
+        tag: tag || null,
         limit: effectiveLimit,
       },
       skip: !resolved,
@@ -122,6 +126,7 @@ export function useAgentSessions({
     archived ?? "",
     phases ?? [],
     repo ?? "",
+    tag ?? "",
     limit ?? 0,
   ]);
   const [loadingMore, setLoadingMore] = useState(false);

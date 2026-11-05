@@ -64,6 +64,8 @@ export function agentSessionArchivedQueryValue(
 export interface AgentSessionListSearch {
   archived?: AgentSessionArchivedFilter;
   phase?: AgentSessionPhase;
+  /** Show only sessions carrying this tag (w21/002). */
+  tag?: string;
 }
 
 /** How a turn's sandbox was obtained (backend Delivery* constants). */
@@ -117,6 +119,10 @@ export interface AgentSessionView {
    * presence gates the button.
    */
   sshAddress: string | null;
+  /** The title the caller gave the session (REST/GraphQL/MCP create); null if none. */
+  title: string | null;
+  /** The caller's tags, for the list's tag filter. */
+  tags: string[];
   /** The lifecycle enum the whole UI keys off. */
   phase: AgentSessionPhase;
   /** Free-text human status line; display-only, never branched on. */

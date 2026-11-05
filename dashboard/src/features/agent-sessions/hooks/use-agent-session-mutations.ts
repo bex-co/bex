@@ -39,6 +39,12 @@ export interface CreateAgentSessionInput {
   template?: string;
   /** Uploaded `att-` ids bound to the first turn (ADR095 D3). */
   attachmentIds?: string[];
+  /**
+   * A per-submit key (w21/m258): the server returns the session an earlier
+   * attempt with the same key created, so a retry after a flaky network does
+   * not start a second sandbox. Reuse it for a retry of the same submit.
+   */
+  idempotencyKey?: string;
   // No model / egressAllowlist: the dashboard leaves both to the workspace's
   // agent environment (w10/m17). The API still accepts them for CLI/MCP.
 }
@@ -196,6 +202,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
               attachmentIds: input.attachmentIds?.length
                 ? input.attachmentIds
                 : undefined,
+              idempotencyKey: input.idempotencyKey || undefined,
             },
             fetchPolicy: "no-cache",
           }),

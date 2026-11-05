@@ -53,6 +53,8 @@ export function toAgentSessionView(
     ownerId: wire.ownerId,
     repo: wire.repo,
     branch: wire.branch,
+    title: wire.title?.trim() || null,
+    tags: wire.tags ?? [],
     agentConfig: {
       agent: config?.agent ?? "",
       model: config?.model ?? null,
@@ -163,14 +165,21 @@ export type NamedAgentSession = Pick<AgentSessionView, "repo"> & {
 /** A session's row/mention name — its task prompt, falling back to the raw id. */
 export function sessionTitle(
   view: Pick<AgentSessionView, "id"> & {
+    /** The caller-supplied title (w21/m258); absent on a legacy session. */
+    title?: string | null;
     agentConfig: Pick<AgentSessionConfigView, "task">;
   },
 ): string {
-  return view.agentConfig.task.trim() || view.id;
+  const title = view.title?.trim();
+  if (title) return title;
+  // No title: the first line of the task, not the whole prompt.
+  const firstLine = view.agentConfig.task.trim().split("\n", 1)[0]?.trim();
+  return firstLine || view.id;
 }
 
 export function sessionTitleShort(
   view: Pick<AgentSessionView, "id"> & {
+    title?: string | null;
     agentConfig: Pick<AgentSessionConfigView, "task">;
   },
   maxLen: number = SESSION_TITLE_MAX,

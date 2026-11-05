@@ -13,6 +13,8 @@ fragment AgentSessionFields on AgentSession {
   ownerId
   repo
   branch
+  title
+  tags
   agentConfig {
     agent
     model
@@ -91,6 +93,7 @@ query AgentSessions(
   $archived: String
   $phases: [String!]
   $repo: String
+  $tag: String
   $cursor: String
   $limit: Int
 ) {
@@ -99,6 +102,7 @@ query AgentSessions(
     archived: $archived
     phases: $phases
     repo: $repo
+    tag: $tag
     cursor: $cursor
     limit: $limit
   ) {
@@ -119,6 +123,7 @@ mutation CreateAgentSession(
   $agentConfig: AgentSessionConfigInput!
   $egressAllowlist: [String!]
   $attachmentIds: [String!]
+  $idempotencyKey: String
 ) {
   createAgentSession(
     ownerId: $ownerId
@@ -127,9 +132,11 @@ mutation CreateAgentSession(
     agentConfig: $agentConfig
     egressAllowlist: $egressAllowlist
     attachmentIds: $attachmentIds
+    idempotencyKey: $idempotencyKey
   ) {
     ...AgentSessionFields
     ...AgentSessionMintFields
+    created
   }
 }
 

@@ -842,6 +842,19 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Session was canceled",
     description: "Terminal transcript status line — canceled session",
   },
+  "agentSessions.tagsLabel": {
+    message: "Tags",
+    description: "Accessible label for a session row's tag list (w21/002)",
+  },
+  "agentSessions.filterByTag": {
+    message: "Show sessions tagged {tag}",
+    description:
+      "Accessible label of a tag chip that filters the session list to that tag",
+  },
+  "agentSessions.filterTagged": {
+    message: "Tagged {tag}",
+    description: "Session list heading while narrowed to one tag",
+  },
   "agentSessions.archive": {
     message: "Archive",
     description: "Action putting a session out of the working set (ADR065)",

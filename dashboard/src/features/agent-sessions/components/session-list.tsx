@@ -150,6 +150,44 @@ export interface SessionListProps {
   onClearFilters?: () => void;
   archiveFilter?: AgentSessionArchivedFilter;
   phase?: AgentSessionPhase;
+  /** The active tag filter, when the list is narrowed to one tag (w21/002). */
+  tag?: string;
+}
+
+/**
+ * A session's tags as filter links (`/agents?tag=…`). Kept outside the row's own
+ * link so a chip is a real control, not a link nested in a link.
+ */
+function SessionTags({
+  tags,
+  activeTag,
+}: {
+  tags: string[];
+  activeTag?: string;
+}) {
+  const { t } = useTranslations();
+  if (tags.length === 0) return null;
+  return (
+    <ul
+      className="flex flex-wrap gap-1 px-2 pb-2"
+      aria-label={t("agentSessions.tagsLabel")}
+    >
+      {tags.map((tag) => (
+        <li key={tag}>
+          <Link
+            to="/agents"
+            search={{ tag }}
+            aria-label={t("agentSessions.filterByTag", { tag })}
+            aria-current={tag === activeTag ? "true" : undefined}
+          >
+            <Badge variant={tag === activeTag ? "secondary" : "outline"}>
+              {tag}
+            </Badge>
+          </Link>
+        </li>
+      ))}
+    </ul>
+  );
 }
 
 function ArchiveRowAction({
@@ -215,6 +253,7 @@ export function SessionList({
   onClearFilters,
   archiveFilter,
   phase,
+  tag,
 }: SessionListProps) {
   const { t } = useTranslations();
   const { toggle, busyId } = useArchiveToggle(onChanged);
@@ -243,7 +282,7 @@ export function SessionList({
     return (
       <AgentSessionsEmptyState
         mode={
-          phase
+          phase || tag
             ? "filtered"
             : archiveFilter === "archived"
               ? "archived"
@@ -258,36 +297,39 @@ export function SessionList({
     return (
       <ul className="divide-y" data-testid="agent-sessions-recents">
         {sessions.map((s) => (
-          <li key={s.id} className="group flex items-start gap-1">
-            <Link
-              to="/agents/$agentSessionId"
-              params={{ agentSessionId: s.id }}
-              search={{
-                fromArchived: archiveFilter,
-                fromPhase: phase,
-              }}
-              className="hover:bg-muted/40 min-w-0 flex-1 rounded-md px-2 py-3"
-              title={sessionTitleShort(s)}
-            >
-              <span className="block truncate font-medium">
-                {sessionTitleShort(s)}
-              </span>
-              <MetaLine
-                parts={[
-                  t(agentSessionStatusPhraseKey(s)),
-                  s.repo,
-                  <RelativeAge value={s.createdAt} />,
-                ]}
-              />
-            </Link>
-            <div className="flex shrink-0 items-center gap-1 py-3 pr-1">
-              <PrBadge session={s} hideEmpty />
-              <ArchiveRowAction
-                session={s}
-                busy={busyId === s.id}
-                onToggle={(session) => void toggle(session)}
-              />
+          <li key={s.id} className="group">
+            <div className="flex items-start gap-1">
+              <Link
+                to="/agents/$agentSessionId"
+                params={{ agentSessionId: s.id }}
+                search={{
+                  fromArchived: archiveFilter,
+                  fromPhase: phase,
+                }}
+                className="hover:bg-muted/40 min-w-0 flex-1 rounded-md px-2 py-3"
+                title={sessionTitleShort(s)}
+              >
+                <span className="block truncate font-medium">
+                  {sessionTitleShort(s)}
+                </span>
+                <MetaLine
+                  parts={[
+                    t(agentSessionStatusPhraseKey(s)),
+                    s.repo,
+                    <RelativeAge value={s.createdAt} />,
+                  ]}
+                />
+              </Link>
+              <div className="flex shrink-0 items-center gap-1 py-3 pr-1">
+                <PrBadge session={s} hideEmpty />
+                <ArchiveRowAction
+                  session={s}
+                  busy={busyId === s.id}
+                  onToggle={(session) => void toggle(session)}
+                />
+              </div>
             </div>
+            <SessionTags tags={s.tags} activeTag={tag} />
           </li>
         ))}
       </ul>
@@ -344,6 +386,7 @@ export function SessionList({
                       ),
                     ]}
                   />
+                  <SessionTags tags={s.tags} activeTag={tag} />
                 </TableCell>
                 <TableCell>
                   <span className="inline-flex items-center gap-1.5">

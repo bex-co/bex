@@ -46,6 +46,7 @@ export const Route = createFileRoute("/agents")({
   loaderDeps: ({ search }) => ({
     archived: search.archived,
     phase: search.phase,
+    tag: search.tag,
   }),
   loader: ({ context, cause, deps }) => {
     const ownerId = context.workspaceId;
@@ -59,6 +60,7 @@ export const Route = createFileRoute("/agents")({
             archived: agentSessionArchivedQueryValue(deps.archived),
             phases: deps.phase ? [deps.phase] : null,
             repo: null,
+            tag: deps.tag ?? null,
             limit: AGENT_SESSION_PAGE_SIZE,
           },
           fetchPolicy: titleLoaderFetchPolicy(cause),
@@ -77,6 +79,7 @@ export const Route = createFileRoute("/agents")({
     view: search.view === "list" ? "list" : undefined,
     archived: parseAgentSessionArchivedFilter(search.archived),
     phase: parseAgentSessionPhase(search.phase),
+    tag: typeof search.tag === "string" && search.tag ? search.tag : undefined,
   }),
   head: ({ match }) => translatedTitleHead("agentSessions.pageTitle", match),
 });
@@ -88,8 +91,10 @@ export const Route = createFileRoute("/agents")({
  * history view. This page renders no sidebar of its own.
  */
 function AgentSessionsPage() {
-  const { archived, phase } = Route.useSearch();
-  return <AgentSessionsPageContent archived={archived} phase={phase} />;
+  const { archived, phase, tag } = Route.useSearch();
+  return (
+    <AgentSessionsPageContent archived={archived} phase={phase} tag={tag} />
+  );
 }
 
 function AgentSessionsPendingPage() {
@@ -100,15 +105,17 @@ function AgentSessionsPendingPage() {
 function agentSessionsPageMode({
   archived,
   phase,
-}: Pick<AgentsSearch, "archived" | "phase">): "composer" | "list" {
-  return archived != null || phase != null ? "list" : "composer";
+  tag,
+}: Pick<AgentsSearch, "archived" | "phase" | "tag">): "composer" | "list" {
+  return archived != null || phase != null || tag != null ? "list" : "composer";
 }
 
 export function AgentSessionsPageContent({
   archived,
   phase,
-}: Pick<AgentsSearch, "archived" | "phase">) {
-  const listMode = agentSessionsPageMode({ archived, phase }) === "list";
+  tag,
+}: Pick<AgentsSearch, "archived" | "phase" | "tag">) {
+  const listMode = agentSessionsPageMode({ archived, phase, tag }) === "list";
 
   return (
     <DashboardLayout>
@@ -117,7 +124,7 @@ export function AgentSessionsPageContent({
           {listMode ? (
             <>
               <PageHeader />
-              <SessionListSection archived={archived} phase={phase} />
+              <SessionListSection archived={archived} phase={phase} tag={tag} />
             </>
           ) : (
             <ComposerSection />
@@ -155,9 +162,11 @@ function ComposerSection() {
 function SessionListSection({
   archived,
   phase,
+  tag,
 }: {
   archived?: AgentSessionArchivedFilter;
   phase?: AgentSessionPhase;
+  tag?: string;
 }) {
   const { t } = useTranslations();
   const navigate = useNavigate();
@@ -166,10 +175,12 @@ function SessionListSection({
       poll: false,
       archived,
       phases: phase ? [phase] : undefined,
+      tag,
     });
 
-  const heading =
-    archived === "archived"
+  const heading = tag
+    ? t("agentSessions.filterTagged", { tag })
+    : archived === "archived"
       ? t("agentSessions.filterArchived")
       : archived === "all"
         ? t("agentSessions.filterAll")
@@ -189,6 +200,7 @@ function SessionListSection({
         error={error}
         archiveFilter={archived}
         phase={phase}
+        tag={tag}
         onChanged={() => refetch()}
         onRetry={() => void refetch()}
         onClearFilters={() => void navigate({ to: "/agents", search: {} })}

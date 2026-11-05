@@ -25,6 +25,10 @@ export function agentSessionView({
     ownerId: "tea-1",
     repo: "acme/widgets",
     branch: "bex-agent/fix",
+    title: null,
+    tags: [],
+    state: null,
+    outcome: null,
     agentConfig: agentConfig ?? {
       agent: "claude",
       model: null,

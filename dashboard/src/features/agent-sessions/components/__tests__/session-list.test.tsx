@@ -17,16 +17,21 @@ vi.mock("@tanstack/react-router", () => ({
     title,
     search,
     className,
+    ...rest
   }: {
     children: React.ReactNode;
     title?: string;
     search?: unknown;
     className?: string;
+    "aria-label"?: string;
+    "aria-current"?: string;
   }) => (
     <a
       href="#session"
       title={title}
       className={className}
+      aria-label={rest["aria-label"]}
+      aria-current={rest["aria-current"] as "true" | undefined}
       data-search={JSON.stringify(search)}
     >
       {children}
@@ -74,6 +79,32 @@ describe("SessionList", () => {
     archiveMock.mockClear();
     unarchiveMock.mockClear();
     toastSuccess.mockClear();
+  });
+
+  // w21/002: the caller's title names the row, its tags filter the list.
+  it("names a row by its title and links its tags to the tag filter", () => {
+    render(
+      <SessionList
+        sessions={[
+          view({
+            title: "Fix flaky login test",
+            tags: ["ci", "login"],
+            task: "line one of the prompt\nline two",
+          }),
+          view({ id: "as-2", task: "first line wins\nnot this" }),
+        ]}
+        loading={false}
+        tag="ci"
+      />,
+    );
+    expect(screen.getByText("Fix flaky login test")).toBeInTheDocument();
+    expect(screen.getByText("first line wins")).toBeInTheDocument();
+    const ci = screen.getByRole("link", { name: "Show sessions tagged ci" });
+    expect(ci).toHaveAttribute("aria-current", "true");
+    expect(ci).toHaveAttribute("data-search", JSON.stringify({ tag: "ci" }));
+    expect(
+      screen.getByRole("link", { name: "Show sessions tagged login" }),
+    ).not.toHaveAttribute("aria-current");
   });
 
   it("renders a quiet empty line (not the dashed Bot card or table)", () => {
