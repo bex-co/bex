@@ -1,6 +1,6 @@
 # w9 · m168 — ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery
 
-**Worker:** worker9 **Goal:** a REST or GraphQL caller can upload a file, attach it to a new session or a follow-up, and the agent sees it in a fresh sandbox under `/attachments`. **Status:** todo — t001–t009, t011 done; t010: re-run the agent-reads-attachments live check once the t011 fix deploys
+**Worker:** worker9 **Goal:** a REST or GraphQL caller can upload a file, attach it to a new session or a follow-up, and the agent sees it in a fresh sandbox under `/attachments`. **Status:** done — live acceptance passed 2026-11-05 after t011 (agent read inputs, follow-up file, byte-exact downloads)
 
 ## Tasks (in order)
 
@@ -16,7 +16,7 @@
 | t008 | Simplify — **DONE** | 15m | t007 |
 | t009 | Test coverage — **DONE** | 45m | t007, t008 |
 | t011 | Dispatch archive writes each `<turn>/` directory before its files — **DONE** | 20m | t009 |
-| t010 | Closeout | 10m | t009 |
+| t010 | Closeout — **DONE** | 10m | t009 |
 
 ## Definition of done
 
@@ -142,3 +142,26 @@ The production bucket `bex-agent-attachments` was provisioned and verified (put/
 **Fix.** Each `<turn>/` directory is written once, before its first file. A new `sandboxfiles.ValidateArchive` exposes the gateway's real extraction rules, and `TestAttachmentTarIsAcceptedByTheGatewayExtractor` builds the archive for interleaved turns and checks it against them. Mutation-checked: without the fix, the test fails with the production error.
 
 **Next (t010).** After deploy, re-run the agent-reads-attachments check: a log and a PNG on create, plus a follow-up file, the agent quotes and describes them, and content downloads byte-exact.
+
+## Live acceptance (2026-11-05, after t011)
+
+**Result:** PASS. Run on production after deploy `0505f4532` (contains t011), as the QA user in workspace `bex` (`tea-d98210cbbpdc73dcrkvg`, capabilities `ready`, `modelKeyReady`, attachments enabled). Agent profile: `claude`.
+
+**Uploads.** REST `POST /v1/agent-attachments` accepted a log containing `ERROR qa-ddd872: widget overflow at line 42` (`text/plain`, 64 B) and an 8×8 solid-red PNG (`image/png`, 75 B). Each server sha256 matched the local file.
+
+**Turn 1.** A repo-less session was created with both `attachmentIds`. It reached `completed`, outcome `succeeded`, with no `ATTACHMENT_COPY_FAILED`.
+- The agent quoted the ERROR line exactly.
+- It described the image as "8 × 8 pixels, 8-bit RGB … every pixel is pure red, #FF0000".
+- It noted the image was also "displayed inline", so the capability-gated ACP `image` block reached it as well as the `/attachments` file.
+
+**Turn 2.** A steer with a new `notes.txt` attached was redispatched into a fresh sandbox and reached `completed`, outcome `succeeded`.
+- The agent quoted 7319 from the new file.
+- `ls -R /attachments` showed `/attachments/1` holding the log and PNG, and `/attachments/2` holding `notes.txt`. Earlier inputs are re-copied into every dispatch, as D4 requires.
+
+**Downloads.** `GET /v1/agent-attachments/{id}/content` returned 302 to `s3.eu-central-2.wasabisys.com` for all three files, and every download was byte-identical to the uploaded file.
+
+**Cleanup.**
+- The session was deleted (204, then GET 404).
+- All three attachments return 404, and no sandbox pods remain.
+- CLI logged out, and both QA Kratos sessions revoked (`logged-out` / `already-signed-out`).
+- The private run directory was removed.

@@ -16,7 +16,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 ## Milestones
 
 - [x] **075** — [`outcome.files`: the files the agent shared, in the session outcome](done/075.md) — **DONE 2026-11-05** (ADR095 D11 follow-up once ADR094 `outcome` shipped)
-- [ ] **m168** — [ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery](m168/README.md) (11 tasks; t001–t009, t011 **DONE**) — **next:** after the dispatch-archive fix deploys, re-run the agent-reads-attachments live check (t010)
+- [x] **m168** — [ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery](done/m168/README.md) — **DONE 2026-11-05:** live acceptance passed after the dispatch-archive fix (t011): the agent read the attached log and PNG, a follow-up file reached turn 2, downloads byte-exact
 - [x] **m169** — [ADR095 phase 2 — attachments in the `/agents` dashboard](done/m169/README.md) — **DONE 2026-11-05:** live acceptance passed on production
 - [x] **m170** — [ADR095 phase 3 — agent-shared output files and the Files tab](done/m170/README.md) — **DONE 2026-11-05:** live acceptance passed on production
 - [x] **m171** — [ADR095 phase 4 — attachment tools on the MCP server](done/m171/README.md) — **DONE 2026-11-05:** live acceptance passed on production
