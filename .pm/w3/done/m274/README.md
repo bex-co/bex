@@ -1,18 +1,18 @@
 # w3 · m274 — Legacy /redis routes alias Key Value, as on Render
 
-**Worker:** worker3 **Goal:** Render clients still using the deprecated `/redis` API family work against bex **Status:** todo
+**Worker:** worker3 **Goal:** Render clients still using the deprecated `/redis` API family work against bex **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Mount /v1/redis aliases over the Key Value handlers with Render's redis shapes | 1.5h | — |
-| t002 | Conformance coverage and remove the /redis omissions | 1h | t001 |
-| t003 | Update ADR018 and the CLI compatibility checklist | 30m | t002 |
-| t004 | Render parity | 30m | t003 |
-| t005 | Simplify | 20m | t004 |
-| t006 | Test coverage | 40m | t004 |
-| t007 | Closeout | 10m | t005, t006 |
+| t001 | Mount /v1/redis aliases over the Key Value handlers with Render's redis shapes — **DONE** | 1.5h | — |
+| t002 | Conformance coverage and remove the /redis omissions — **DONE** | 1h | t001 |
+| t003 | Update ADR018 and the CLI compatibility checklist — **DONE** | 30m | t002 |
+| t004 | Render parity — **DONE** | 30m | t003 |
+| t005 | Simplify — **DONE** | 20m | t004 |
+| t006 | Test coverage — **DONE** | 40m | t004 |
+| t007 | Closeout — **DONE** | 10m | t005, t006 |
 
 ## Definition of done
 

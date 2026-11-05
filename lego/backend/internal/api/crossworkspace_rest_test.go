@@ -141,6 +141,7 @@ var callerScopedRoutes = map[string]bool{
 	"GET /v1/services":             true,
 	"GET /v1/postgres":             true,
 	"GET /v1/key-value":            true,
+	"GET /v1/redis":                true, // Render's deprecated spelling of GET /v1/key-value (w3/m274)
 	"GET /v1/env-groups":           true,
 	"GET /v1/environments":         true,
 	"GET /v1/projects":             true,
@@ -199,6 +200,7 @@ var callerScopedRoutes = map[string]bool{
 	"POST /v1/services":            true,
 	"POST /v1/postgres":            true,
 	"POST /v1/key-value":           true,
+	"POST /v1/redis":               true, // Render's deprecated spelling of POST /v1/key-value (w3/m274)
 	"POST /v1/env-groups":          true,
 	"POST /v1/environments":        true,
 	"POST /v1/projects":            true,

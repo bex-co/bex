@@ -91,14 +91,36 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		`/region: property "region" is missing`,
 		`/version: property "version" is missing`,
 	),
-	"retrieve-redis": knownConformanceDivergences(
-		// `version` was dropped from this list once the Key Value read began
-		// reporting the effective provider version; the guard test fails an
-		// allowlist entry that no longer matches a real divergence.
+	// `version` was dropped from the Key Value lists once the read began
+	// reporting the effective provider version; the guard test fails an
+	// allowlist entry that no longer matches a real divergence. The /redis
+	// rows are the same store under Render's deprecated spelling (w3/m274); a
+	// list item also requires dashboardUrl, which the detail schemas do not.
+	"retrieve-key-value": knownConformanceDivergences(
 		"ADR018 §Managed Key Value / §Resource metadata contract: omitted unknown metadata",
 		`/updatedAt: property "updatedAt" is missing`,
 		`/region: property "region" is missing`,
 		`/owner: property "owner" is missing`,
+	),
+	"retrieve-redis": knownConformanceDivergences(
+		"ADR018 §Managed Key Value / §Resource metadata contract: omitted unknown metadata",
+		`/updatedAt: property "updatedAt" is missing`,
+		`/region: property "region" is missing`,
+		`/owner: property "owner" is missing`,
+	),
+	"list-key-value": knownConformanceDivergences(
+		"ADR018 §Managed Key Value / §Resource metadata contract: omitted unknown metadata",
+		`/0/keyValue/updatedAt: property "updatedAt" is missing`,
+		`/0/keyValue/region: property "region" is missing`,
+		`/0/keyValue/owner: property "owner" is missing`,
+		`/0/keyValue/dashboardUrl: property "dashboardUrl" is missing`,
+	),
+	"list-redis": knownConformanceDivergences(
+		"ADR018 §Managed Key Value / §Resource metadata contract: omitted unknown metadata",
+		`/0/redis/updatedAt: property "updatedAt" is missing`,
+		`/0/redis/region: property "region" is missing`,
+		`/0/redis/owner: property "owner" is missing`,
+		`/0/redis/dashboardUrl: property "dashboardUrl" is missing`,
 	),
 
 	// Event details are a documented partial activity-feed projection. Custom
@@ -113,23 +135,6 @@ var conformanceAllowlist = map[string][]conformanceDivergence{
 		"ADR018 §Services & lifecycle — Service events / activity feed: deliberate partial event-detail dialect",
 		`details: does not match the documented union`,
 	),
-
-	// bex's GET /v1/key-value wraps each item as {keyValue:{…}, cursor:"…"},
-	// matching the field name the OFFICIAL render CLI's generated client
-	// expects (render-oss/cli pkg/client: KeyValueWithCursor.KeyValue,
-	// json:"keyValue") — verified by driving the real CLI (v2.21.0) against a
-	// live bex-api. Render's current public OpenAPI document still carries the
-	// product's pre-rename schema name ("redis"); the
-	// CLI's own generated types are the ones actually exercised at runtime, so
-	// bex follows them over the stale spec. Revisit if a refreshed OpenAPI
-	// snapshot confirms Render renamed the wire field too.
-	// ADR018 §Key Value — REST column: "list envelope key is keyValue, not redis (CLI-verified; spec snapshot predates the rename)".
-	"list-redis": {
-		{
-			contains: `/0/redis: property "redis" is missing`,
-			adr018:   "ADR018 §Key Value REST: bex list-key-value wraps items as {keyValue:{}, cursor} (CLI-verified); the vendored spec's stale schema name is \"redis\"",
-		},
-	},
 }
 
 func knownConformanceDivergences(adr018 string, contains ...string) []conformanceDivergence {

@@ -240,7 +240,7 @@ func TestKeyValueListPaginationAcrossRESTAndGraphQL(t *testing.T) {
 	// Render pages by default: omitted params are the first page of 20 in the
 	// stable id order every page continues (w8/191), not the whole list.
 	slices.SortFunc(all, func(a, b KeyValueView) int { return strings.Compare(a.ID, b.ID) })
-	wantBody, _ := json.Marshal(svc.toKeyValueList(ctx, all[:core.DefaultPageLimit]))
+	wantBody, _ := json.Marshal(svc.toKeyValueList(ctx, keyValueDialect, all[:core.DefaultPageLimit]))
 	wantBody = append(wantBody, '\n')
 	omitted := serveREST(svc, http.MethodGet, "/v1/key-value", "")
 	if !bytes.Equal(omitted.Body.Bytes(), wantBody) {

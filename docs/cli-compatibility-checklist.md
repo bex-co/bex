@@ -112,6 +112,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
     - [-] `--plan-id <id>` — refused with the command (above)
   - [x] `jobs cancel <serviceID> <jobID>` — cancels a pending/running pre-gate job; an already-terminal job is a `409`
 - [x] **`keyvalues`** (alias `kv`) — manage Render Key Value instances
+  - Every `keyvalues` command calls `/v1/key-value`. The pinned CLI's generated client also carries Render's deprecated `/v1/redis` operations, but no command calls them. bex serves those routes as aliases of the same handlers since w3/m274 ([ADR018 § Render operation omissions](ADR018-render-parity.md#render-operation-omissions), "Legacy Redis spelling"), so older SDKs and scripts work too.
   - [x] `keyvalues create` — nested owner/options, opaque `red-<xid>` id, underscore `maxmemoryPolicy`; a nonempty CLI `--ip-allow-list` creates public intent without a bex-only flag
     - [x] payment-required failures remain an ordinary Render API error (HTTP 402 with `id`/`message`); the actionable message names `create_billing_checkout_session`, so the unmodified client does not receive an undecodable body
     - [x] `--name`

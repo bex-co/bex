@@ -57,6 +57,7 @@ var byIDResolutions = map[string]byIDResolution{
 	"blueprints":            {"apps", "ScopeByID", "BlueprintWorkspace routing read (w4/m169, w5/m115)", []string{"blueprintScope"}},
 	"postgres":              {"postgres", "AuthorizeDatabase", "cluster-wide CR lookup, authorized on the Database's tenant label", nil},
 	"key-value":             {"keyvalue", "AuthorizeKeyValue", "cluster-wide CR lookup, authorized on the KeyValue's tenant label", nil},
+	"redis":                 {"keyvalue", "AuthorizeKeyValue", "Render's deprecated spelling of key-value (w3/m274): the same verbs", nil},
 	"env-groups":            {"envgroups", "ScopeByID", "meta/locator workspace routing read, then fetchGroup", []string{"authorizeGroup"}},
 	"environments":          {"environments", "ScopeByID", "GetEnvironment routing read, then requireEnvironment", []string{"scopeEnvironment"}},
 	"projects":              {"projects", "authorizedProject", "GetProject, authorized on the project's tenant", nil},

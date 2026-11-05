@@ -140,12 +140,57 @@ type keyValueWithCursor struct {
 	Cursor   string         `json:"cursor"`
 }
 
-func (s *Service) toKeyValueList(ctx context.Context, kvs []KeyValueView) []keyValueWithCursor {
+// redisWithCursor is components.schemas.redisWithCursor — the same list item
+// under Render's deprecated /v1/redis family, keyed "redis" (w3/m274).
+type redisWithCursor struct {
+	Redis  renderKeyValue `json:"redis"`
+	Cursor string         `json:"cursor"`
+}
+
+// redisConnectionInfo is components.schemas.redisConnectionInfo: Render's
+// keyValueConnectionInfo with the CLI command spelled redisCLICommand.
+type redisConnectionInfo struct {
+	InternalConnectionString string `json:"internalConnectionString"`
+	ExternalConnectionString string `json:"externalConnectionString"`
+	RedisCLICommand          string `json:"redisCLICommand"`
+}
+
+// restDialect tells Render's two spellings of one Key Value API apart:
+// /v1/key-value and the deprecated /v1/redis (Render's blueprint spec: "redis"
+// is a deprecated alias for "keyvalue"). Both run the same verbs, so authz,
+// errors and every other body are identical; only the list envelope key and
+// the connection-info CLI field differ.
+type restDialect struct {
+	base       string
+	listItem   func(kv renderKeyValue, cursor string) any
+	connection func(KeyValueConnectionInfo) any
+}
+
+var (
+	keyValueDialect = restDialect{
+		base:       "/v1/key-value",
+		listItem:   func(kv renderKeyValue, cursor string) any { return keyValueWithCursor{KeyValue: kv, Cursor: cursor} },
+		connection: func(info KeyValueConnectionInfo) any { return info },
+	}
+	redisDialect = restDialect{
+		base:     "/v1/redis",
+		listItem: func(kv renderKeyValue, cursor string) any { return redisWithCursor{Redis: kv, Cursor: cursor} },
+		connection: func(info KeyValueConnectionInfo) any {
+			return redisConnectionInfo{
+				InternalConnectionString: info.InternalConnectionString,
+				ExternalConnectionString: info.ExternalConnectionString,
+				RedisCLICommand:          info.CLICommand,
+			}
+		},
+	}
+)
+
+func (s *Service) toKeyValueList(ctx context.Context, d restDialect, kvs []KeyValueView) []any {
 	rendered := s.renderKeyValues(ctx, kvs)
-	out := make([]keyValueWithCursor, 0, len(kvs))
+	out := make([]any, 0, len(kvs))
 	for i, kv := range kvs {
 		// cursor is opaque in Render; the KeyValue name/id is a stable, valid cursor.
-		out = append(out, keyValueWithCursor{KeyValue: rendered[i], Cursor: kv.ID})
+		out = append(out, d.listItem(rendered[i], kv.ID))
 	}
 	return out
 }
@@ -171,44 +216,18 @@ func (s *Service) respondKeyValue(w http.ResponseWriter, r *http.Request, status
 }
 
 // RegisterREST adds the managed key-value endpoints, Render-shaped
-// (/v1/key-value), mirroring the postgres feature's /v1/postgres surface.
-// delete => 204, create => 201 (Render conventions).
+// (/v1/key-value), mirroring the postgres feature's /v1/postgres surface, plus
+// Render's deprecated /v1/redis spelling of the same eight operations
+// (w3/m274). delete => 204, create => 201 (Render conventions).
 func (s *Service) RegisterREST(mux *http.ServeMux) {
-	base := "/v1/key-value"
-
-	mux.HandleFunc("GET "+base, s.handleListKeyValues)
-	mux.HandleFunc("POST "+base, s.handleCreateKeyValue)
-	mux.HandleFunc("GET "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
-		kv, err := s.GetKeyValue(r.Context(), r.PathValue("id"))
-		s.respondKeyValue(w, r, http.StatusOK, kv, err)
-	})
-	mux.HandleFunc("PATCH "+base+"/{id}", s.handleUpdateKeyValue)
-	mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
-		ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
-		if err := s.DeleteKeyValue(ctx, r.PathValue("id")); err != nil {
-			core.WriteErr(w, err)
-			return
-		}
-		w.WriteHeader(http.StatusNoContent) // Render: delete => 204
-	})
-	mux.HandleFunc("GET "+base+"/{id}/connection-info", core.HandleByID(s.KeyValueConnectionInfo))
-
-	// Lifecycle verbs return the updated object with 202 Accepted (the operator
-	// converges asynchronously) — matching the App suspend/resume surface.
-	lifecycle := func(path string, verb func(context.Context, string) (KeyValueView, error)) {
-		mux.HandleFunc("POST "+base+"/{id}"+path, func(w http.ResponseWriter, r *http.Request) {
-			ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
-			kv, err := verb(ctx, r.PathValue("id"))
-			s.respondKeyValue(w, r, http.StatusAccepted, kv, err)
-		})
-	}
-	lifecycle("/suspend", s.Suspend)
-	lifecycle("/resume", s.Resume)
+	s.registerDialectREST(mux, keyValueDialect)
+	s.registerDialectREST(mux, redisDialect)
+	base := keyValueDialect.base
 
 	// IP allowlist (Render's Networking control) — same GET/PUT pair the
 	// postgres feature exposes at /v1/postgres/{id}/ip-allow-list. The official
 	// CLI's `keyvalues update --ip-allow-list` / `--clear-ip-allow-list` goes
-	// through the PATCH route above instead (KeyValuePatch.IPAllowList, w7/m45),
+	// through the PATCH route instead (KeyValuePatch.IPAllowList, w7/m45),
 	// which writes the same kv.Spec.IPAllowList this PUT does — both converge.
 	// This GET/PUT pair stays for parity with postgres; {"cidrs": [...]} stays
 	// bex-native-plain in the response since nothing
@@ -229,9 +248,46 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+base+"/{id}/logs", s.handleKeyValueLogs)
 }
 
-// handleListKeyValues is GET /v1/key-value — Render's filtered, cursor-paged
-// list. Extracted for the same reason handleUpdateKeyValue below is.
-func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request) {
+// registerDialectREST mounts Render's eight Key Value operations (list, create,
+// get, patch, delete, connection-info, suspend, resume) under one dialect's
+// base path. The bex-native extras above stay on /v1/key-value alone.
+func (s *Service) registerDialectREST(mux *http.ServeMux, d restDialect) {
+	base := d.base
+	mux.HandleFunc("GET "+base, func(w http.ResponseWriter, r *http.Request) { s.handleListKeyValues(w, r, d) })
+	mux.HandleFunc("POST "+base, s.handleCreateKeyValue)
+	mux.HandleFunc("GET "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
+		kv, err := s.GetKeyValue(r.Context(), r.PathValue("id"))
+		s.respondKeyValue(w, r, http.StatusOK, kv, err)
+	})
+	mux.HandleFunc("PATCH "+base+"/{id}", s.handleUpdateKeyValue)
+	mux.HandleFunc("DELETE "+base+"/{id}", func(w http.ResponseWriter, r *http.Request) {
+		ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
+		if err := s.DeleteKeyValue(ctx, r.PathValue("id")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent) // Render: delete => 204
+	})
+	mux.HandleFunc("GET "+base+"/{id}/connection-info", core.HandleMapped(http.StatusOK, func(r *http.Request) (KeyValueConnectionInfo, error) {
+		return s.KeyValueConnectionInfo(r.Context(), r.PathValue("id"))
+	}, d.connection))
+
+	// Lifecycle verbs return the updated object with 202 Accepted (the operator
+	// converges asynchronously) — matching the App suspend/resume surface.
+	lifecycle := func(path string, verb func(context.Context, string) (KeyValueView, error)) {
+		mux.HandleFunc("POST "+base+"/{id}"+path, func(w http.ResponseWriter, r *http.Request) {
+			ctx := core.WithConfirm(r.Context(), r.URL.Query().Get("confirm"))
+			kv, err := verb(ctx, r.PathValue("id"))
+			s.respondKeyValue(w, r, http.StatusAccepted, kv, err)
+		})
+	}
+	lifecycle("/suspend", s.Suspend)
+	lifecycle("/resume", s.Resume)
+}
+
+// handleListKeyValues is GET /v1/key-value (and /v1/redis) — Render's
+// filtered, cursor-paged list in the dialect's envelope.
+func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request, d restDialect) {
 	q := r.URL.Query()
 	out, err := core.ListOwners(r.Context(), core.QueryList(q, "ownerId"), s.ListKeyValues)
 	if err != nil {
@@ -276,7 +332,7 @@ func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request) {
 	// stable id order so a full walk has no gaps or duplicates.
 	after, limit := core.PageParams(q)
 	page := core.StablePage(out, after, limit, true, func(kv KeyValueView) string { return kv.ID })
-	core.WriteJSON(w, http.StatusOK, s.toKeyValueList(r.Context(), page)) // [{keyValue, cursor}, ...]
+	core.WriteJSON(w, http.StatusOK, s.toKeyValueList(r.Context(), d, page)) // [{keyValue|redis, cursor}, ...]
 }
 
 // handleCreateKeyValue is POST /v1/key-value.

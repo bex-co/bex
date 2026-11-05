@@ -277,6 +277,7 @@ func TestDeadIDRESTReturns404(t *testing.T) {
 		{"/v1/services/", "web"},
 		{"/v1/postgres/", "pg"},
 		{"/v1/key-value/", "kv"},
+		{"/v1/redis/", "kv"},
 	} {
 		t.Run(tc.path, func(t *testing.T) {
 			req := httptest.NewRequest("GET", tc.path+"does-not-exist", nil).WithContext(deadIDIdentity())

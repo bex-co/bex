@@ -35,6 +35,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -337,13 +338,70 @@ func TestRenderConformance(t *testing.T) {
 	})
 
 	t.Run("keyvalue/list", func(t *testing.T) {
-		// bex returns a flat []KeyValueView; Render expects [{redis:{},cursor}].
-		// The mismatch is in the allowlist (ADR018 §Key Value REST).
-		check(t, "/v1/key-value", "list-redis")
+		check(t, "/v1/key-value", "list-key-value")
 	})
 
 	t.Run("keyvalue/get", func(t *testing.T) {
-		check(t, "/v1/key-value/"+kvName, "retrieve-redis")
+		check(t, "/v1/key-value/"+kvName, "retrieve-key-value")
+	})
+
+	// Render's deprecated /redis spelling of the same Key Value (w3/m274):
+	// the list envelope is keyed "redis" and connection info names its CLI
+	// command redisCLICommand, each validated against the redis* schemas.
+	t.Run("redis/list", func(t *testing.T) {
+		check(t, "/v1/redis", "list-redis")
+	})
+
+	t.Run("redis/get", func(t *testing.T) {
+		check(t, "/v1/redis/"+kvName, "retrieve-redis")
+	})
+
+	t.Run("redis/connection-info", func(t *testing.T) {
+		check(t, "/v1/redis/"+kvName+"/connection-info", "retrieve-redis-connection-info")
+	})
+
+	// The write half of the /redis family, on a store it creates: create
+	// answers 201 and patch 200 in redisDetail, suspend/resume 202 and delete
+	// 204, as the pinned spec documents.
+	t.Run("redis/writes", func(t *testing.T) {
+		// create and update answer redisDetail, retrieve-redis's own schema, so
+		// its allowlist entries are the ones that apply. The fake client never
+		// stamps creationTimestamp (the API server does), so a missing
+		// createdAt here is the fixture's, not bex's.
+		validate := func(operationID string, status int, body []byte) {
+			t.Helper()
+			errs := slices.DeleteFunc(filterAllowed("retrieve-redis", spec.validateStatus(operationID, status, body)), func(e string) bool {
+				return e == `/createdAt: property "createdAt" is missing`
+			})
+			if len(errs) > 0 {
+				t.Errorf("%s diverges from Render's schema:\n  %s", operationID, strings.Join(errs, "\n  "))
+			}
+		}
+		w := do(t, h, "POST", "/v1/redis", testToken, `{"name":"legacy","ownerId":"`+core.DefaultTenant+`","plan":"starter"}`)
+		if w.Code != http.StatusCreated {
+			t.Fatalf("POST /v1/redis = %d (want 201): %s", w.Code, w.Body.String())
+		}
+		validate("create-redis", http.StatusCreated, w.Body.Bytes())
+		var created struct{ ID string }
+		if err := json.Unmarshal(w.Body.Bytes(), &created); err != nil || created.ID == "" {
+			t.Fatalf("create-redis body has no id: %s", w.Body.String())
+		}
+		item := "/v1/redis/" + created.ID
+
+		w = do(t, h, "PATCH", item, testToken, `{"maxmemoryPolicy":"noeviction"}`)
+		if w.Code != http.StatusOK {
+			t.Fatalf("PATCH %s = %d (want 200): %s", item, w.Code, w.Body.String())
+		}
+		validate("update-redis", http.StatusOK, w.Body.Bytes())
+
+		for _, verb := range []string{"suspend", "resume"} {
+			if w = do(t, h, "POST", item+"/"+verb, testToken, ""); w.Code != http.StatusAccepted {
+				t.Fatalf("POST %s/%s = %d (want 202): %s", item, verb, w.Code, w.Body.String())
+			}
+		}
+		if w = do(t, h, "DELETE", item, testToken, ""); w.Code != http.StatusNoContent {
+			t.Fatalf("DELETE %s = %d (want 204): %s", item, w.Code, w.Body.String())
+		}
 	})
 
 	// The connection-info endpoints are separate schemas behind separate
@@ -460,12 +518,14 @@ func TestConformanceAllowlistEntries(t *testing.T) {
 		"retrieve-service":              "/v1/services/" + appName,
 		"list-postgres":                 "/v1/postgres",
 		"retrieve-postgres":             "/v1/postgres/" + dbName,
-		"retrieve-redis":                "/v1/key-value/" + kvName,
+		"retrieve-key-value":            "/v1/key-value/" + kvName,
+		"retrieve-redis":                "/v1/redis/" + kvName,
+		"list-key-value":                "/v1/key-value",
 		"list-secret-files-for-service": "/v1/services/" + appName + "/secret-files",
 		"list-custom-domains":           "/v1/services/web-cd/custom-domains",
 		"list-events":                   "/v1/services/" + appName + "/events",
 		"retrieve-event":                "/v1/events/" + eventID,
-		"list-redis":                    "/v1/key-value",
+		"list-redis":                    "/v1/redis",
 	}
 
 	for opID, divergences := range conformanceAllowlist {

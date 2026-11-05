@@ -277,6 +277,30 @@ var renderBodyPropertyExtensions = map[string]map[string]*openapi3.SchemaRef{
 	"update-registry-credential": {"expiresAt": {Value: openapi3.NewStringSchema()}},
 }
 
+// legacyRedisOperations maps each of Render's deprecated /redis operations to
+// its Key Value twin (w3/m274). bex serves both spellings from the same
+// handlers, so every per-operation concession above applies to the pair
+// through compatOperationID rather than a second, drift-prone set of entries.
+var legacyRedisOperations = map[string]string{
+	"list-redis":                     "list-key-value",
+	"create-redis":                   "create-key-value",
+	"retrieve-redis":                 "retrieve-key-value",
+	"update-redis":                   "update-key-value",
+	"delete-redis":                   "delete-key-value",
+	"retrieve-redis-connection-info": "retrieve-key-value-connection-info",
+	"suspend-redis":                  "suspend-key-value",
+	"resume-redis":                   "resume-key-value",
+}
+
+// compatOperationID is the operation id the compatibility tables are keyed
+// by: the Key Value twin for a legacy /redis operation, else the id itself.
+func compatOperationID(operationID string) string {
+	if twin, ok := legacyRedisOperations[operationID]; ok {
+		return twin
+	}
+	return operationID
+}
+
 func loadRenderOpenAPIContract() (*renderOpenAPIContract, error) {
 	return loadRenderOpenAPIContractData(renderOpenAPISource, renderOpenAPISHA256)
 }
@@ -335,7 +359,7 @@ func buildAllowedQueryNames(doc *openapi3.T) map[*openapi3.Operation]map[string]
 					}
 				}
 			}
-			maps.Copy(allowed, renderQueryExtensions[operation.OperationID])
+			maps.Copy(allowed, renderQueryExtensions[compatOperationID(operation.OperationID)])
 			index[operation] = allowed
 		}
 	}
@@ -345,9 +369,10 @@ func buildAllowedQueryNames(doc *openapi3.T) map[*openapi3.Operation]map[string]
 func applyRenderCompatibility(doc *openapi3.T) {
 	for _, item := range doc.Paths.Map() {
 		for _, operation := range item.Operations() {
-			optional := renderOptionalParameterCompatibility[operation.OperationID]
-			patterns := renderPathParameterPatternCompatibility[operation.OperationID]
-			commaLists := renderCommaListQueryCompatibility[operation.OperationID]
+			operationID := compatOperationID(operation.OperationID)
+			optional := renderOptionalParameterCompatibility[operationID]
+			patterns := renderPathParameterPatternCompatibility[operationID]
+			commaLists := renderCommaListQueryCompatibility[operationID]
 			for _, parameters := range []openapi3.Parameters{item.Parameters, operation.Parameters} {
 				for i, ref := range parameters {
 					if ref == nil || ref.Value == nil {
@@ -368,7 +393,7 @@ func applyRenderCompatibility(doc *openapi3.T) {
 				}
 			}
 
-			remove := renderRequiredCompatibility[operation.OperationID]
+			remove := renderRequiredCompatibility[operationID]
 			if operation.RequestBody == nil || operation.RequestBody.Value == nil {
 				continue
 			}
@@ -390,13 +415,13 @@ func applyRenderCompatibility(doc *openapi3.T) {
 			if media == nil || media.Schema == nil || media.Schema.Value == nil {
 				continue
 			}
-			maps.Copy(media.Schema.Value.Properties, renderBodyPropertyExtensions[operation.OperationID])
+			maps.Copy(media.Schema.Value.Properties, renderBodyPropertyExtensions[operationID])
 			if len(remove) > 0 {
 				media.Schema.Value.Required = slices.DeleteFunc(media.Schema.Value.Required, func(name string) bool {
 					return slices.Contains(remove, name)
 				})
 			}
-			applyRenderSchemaCompatibility(operation.OperationID, media.Schema.Value)
+			applyRenderSchemaCompatibility(operationID, media.Schema.Value)
 		}
 	}
 }
@@ -683,7 +708,7 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	// Datastore region filters accept repeated keys as well as comma lists.
 	// kin's explode=false decoder validates only the first repeated value, so
 	// combine them on the clone to check every region against the pinned enum.
-	if route.Operation.OperationID == "list-postgres" || route.Operation.OperationID == "list-key-value" {
+	if operationID := compatOperationID(route.Operation.OperationID); operationID == "list-postgres" || operationID == "list-key-value" {
 		query := validationRequest.URL.Query()
 		if regions := query["region"]; len(regions) > 1 {
 			query.Set("region", strings.Join(regions, ","))

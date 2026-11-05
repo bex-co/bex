@@ -91,6 +91,7 @@ var scopeClassOverrides = map[string]string{
 	"REST GET /v1/postgres/{id}/top-queries":       core.OpClassSensitive,
 	"REST GET /v1/postgres/{id}/query/top-queries": core.OpClassSensitive,
 	"REST GET /v1/key-value/{id}/connection-info":  core.OpClassSensitive,
+	"REST GET /v1/redis/{id}/connection-info":      core.OpClassSensitive,
 	"GQL Query.databaseConnectionInfo":             core.OpClassSensitive,
 	"GQL Query.databaseExports":                    core.OpClassSensitive,
 	"GQL Query.databaseProcesses":                  core.OpClassSensitive,
