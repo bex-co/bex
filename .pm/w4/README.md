@@ -353,6 +353,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **481** — [A project's resource table lists a static site's Runtime as "Not available —"](481.md) — todo (~15m) ← live `/qa-find-bugs w4` loop round 48, 2026-11-05 UTC (pin `dcdc774c1a6b`; minor). `use-grouped-resources.ts:29` maps only `s.runtime`, which is empty for static sites by design, so the `static: "Static"` label at `:86` is never used.
 - [ ] **480** — [A linked env group marks overridden keys with strikethrough and a hover title only](480.md) — todo (~20m) ← live `/qa-find-bugs w4` loop round 47, 2026-11-05 UTC (pin `dcdc774c1a6b`; minor, a11y). `env-groups-panel.tsx:541-551`, `:560-570` render `<Badge title><s>key</s></Badge>`.
 - [ ] **479** — [A static-site rule refusal reads "Row 6: … which routes[5].source does not declare"](479.md) — todo (~20m) ← live `/qa-find-bugs w4` loop round 44, 2026-11-05 UTC (pin `dcdc774c1a6b`; minor). `apps/service.go:5558` names the index twice; `static-rule-validation.ts:165-173` humanizes only the first.
 - [ ] **478** — [A missing Dockerfile still fails "in the clone step", though the clone succeeded](478.md) — todo (~20m) ← live `/qa-find-bugs w4` loop round 43, 2026-11-05 UTC (pin `dcdc774c1a6b`; minor). Residual of w4/467: source checks run in the `clone` container (`build/build.go:1526`) and `build_failure.go:97-98` names it.
