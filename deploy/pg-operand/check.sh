@@ -71,7 +71,11 @@ expect() { # want sql
   [ "$got" = "$1" ] || fail "'$2' = '$got', want '$1'"
 }
 
-for ext in ${allowlist//,/ }; do
+# TimescaleDB first: pg_duckdb defines public.time_bucket only when no
+# conflicting function exists (duckdb/pg_duckdb#934), so the reverse order makes
+# TimescaleDB's install fail with "function time_bucket already exists".
+create_order="$(has timescaledb && echo timescaledb; for e in ${allowlist//,/ }; do [ "$e" = timescaledb ] || echo "$e"; done)"
+for ext in $create_order; do
   as app appdb "CREATE EXTENSION ${ext} CASCADE" >/dev/null
   echo "created ${ext}"
 done
