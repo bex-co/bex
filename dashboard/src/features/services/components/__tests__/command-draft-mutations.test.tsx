@@ -102,8 +102,6 @@ function renderBuildCommand(buildCommand: string | null) {
   render(
     <BuildDeploySection
       serviceId="app"
-      repo="https://github.com/x/site"
-      branch="main"
       rootDir={null}
       buildCommand={buildCommand}
       autoDeploy={false}
@@ -111,7 +109,6 @@ function renderBuildCommand(buildCommand: string | null) {
       showPreDeployCommand={false}
       showBuildCommand
       showDeployCard={false}
-      showSourceFields={false}
     />,
   );
 }

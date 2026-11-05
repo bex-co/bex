@@ -244,8 +244,6 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
         return (
           <BuildDeploySection
             serviceId={serviceId}
-            repo={service.repo}
-            branch={service.branch}
             rootDir={service.rootDir}
             runtime={service.runtime}
             builder={service.builder}
@@ -261,10 +259,10 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             // A cron job runs its own Command and keeps its deploy concerns in
             // its Deploy (Schedule/Command) section: no Deploy card, so
             // Auto-Deploy folds into Build and its hook stands alone (w5/m52),
-            // and its source stays inline (w2/m9, w5/010). A static site runs
-            // no container, so no Pre-Deploy or start command (w1/m33).
+            // and its source lives in the Source card like every other type
+            // (w4/498). A static site runs no container, so no Pre-Deploy or
+            // start command (w1/m33).
             showDeployCard={!cron}
-            showSourceFields={cron}
             showPreDeployCommand={!cron && !staticSite}
             freePlan={service.plan === "free"}
             showStartCommand={!cron && !staticSite}

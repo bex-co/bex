@@ -129,8 +129,6 @@ describe("BuildDeploySection", () => {
       render(
         <BuildDeploySection
           serviceId="app"
-          repo="https://github.com/x/mono"
-          branch="main"
           rootDir={null}
           autoDeploy={false}
           preDeployCommand={command}
@@ -159,8 +157,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand={null}
@@ -181,85 +177,10 @@ describe("BuildDeploySection", () => {
     ).toBeInTheDocument();
   });
 
-  it("shows the repo read-only and the current branch inside a disabled input", () => {
-    render(
-      <BuildDeploySection
-        serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
-        rootDir={null}
-        autoDeploy={false}
-        preDeployCommand={null}
-        showPreDeployCommand={false}
-      />,
-    );
-    const source = screen.getByRole("combobox", { name: "Source" });
-    expect(source).toHaveValue("https://github.com/x/mono");
-    expect(source).toBeDisabled();
-    const branch = screen.getByRole("combobox", { name: "Branch" });
-    expect(branch).toHaveValue("main");
-    expect(branch).toBeDisabled();
-  });
-
-  it("edits the Source repo through the confirm dialog via setRepo (w5/m54)", async () => {
-    const user = userEvent.setup();
-    render(
-      <BuildDeploySection
-        serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
-        rootDir={null}
-        autoDeploy={false}
-        preDeployCommand={null}
-        showPreDeployCommand={false}
-      />,
-    );
-
-    await user.click(screen.getByRole("button", { name: "Edit Source" }));
-    const source = screen.getByRole("combobox", { name: "Source" });
-    await user.clear(source);
-    await user.type(source, "https://github.com/x/next");
-    // Switching the repo rebuilds, so it confirms first.
-    await user.click(screen.getByRole("button", { name: "Save changes" }));
-    await user.click(
-      within(screen.getByRole("alertdialog")).getByRole("button", {
-        name: "Save changes",
-      }),
-    );
-
-    expect(setRepo).toHaveBeenCalledWith("app", {
-      repo: "https://github.com/x/next",
-    });
-  });
-
-  it("edits the branch through the confirm dialog via setBranch (w5/m48)", async () => {
-    const user = userEvent.setup();
-    render(
-      <BuildDeploySection
-        serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
-        rootDir={null}
-        autoDeploy={false}
-        preDeployCommand={null}
-        showPreDeployCommand={false}
-      />,
-    );
-    await user.click(screen.getByRole("button", { name: "Edit branch" }));
-    const input = screen.getByRole("combobox", { name: "Branch" });
-    await user.clear(input);
-    await user.type(input, "release");
-    // The pencil flow confirms before saving (a branch change redeploys).
-    await confirmSave(user);
-    expect(setBranch).toHaveBeenCalledWith("app", "release");
-  });
-
   it("shows an empty Root Directory input when rootDir is unset", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand={null}
@@ -275,8 +196,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir="backend"
         autoDeploy={false}
         preDeployCommand={null}
@@ -293,8 +212,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand={null}
@@ -324,8 +241,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir="backend"
         autoDeploy={false}
         preDeployCommand={null}
@@ -350,8 +265,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir="backend"
         autoDeploy={false}
         preDeployCommand={null}
@@ -370,8 +283,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand={null}
@@ -396,8 +307,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         runtime="node"
         startCommand="npm start"
@@ -425,8 +334,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         runtime="node"
         startCommand="npm start"
@@ -451,8 +358,6 @@ describe("BuildDeploySection", () => {
     const { rerender } = render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         runtime="node"
         dockerfilePath="stale/Dockerfile"
@@ -466,8 +371,6 @@ describe("BuildDeploySection", () => {
     rerender(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         runtime={null}
         builder="dockerfile"
@@ -481,8 +384,6 @@ describe("BuildDeploySection", () => {
     rerender(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         runtime="docker"
         startCommand={null}
@@ -515,8 +416,6 @@ describe("BuildDeploySection", () => {
     const { rerender } = render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir="backend"
         runtime="node"
         dockerContext="stale"
@@ -532,8 +431,6 @@ describe("BuildDeploySection", () => {
     rerender(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir="backend"
         runtime="docker"
         dockerfilePath="./Dockerfile"
@@ -551,8 +448,6 @@ describe("BuildDeploySection", () => {
     rerender(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir="backend"
         runtime="docker"
         dockerfilePath="./Dockerfile"
@@ -589,8 +484,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         runtime="docker"
         dockerfilePath="Dockerfile"
@@ -616,8 +509,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand={null}
@@ -643,8 +534,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={true}
         autoDeployTrigger="commit"
@@ -670,8 +559,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={true}
         autoDeployTrigger="checksPass"
@@ -690,8 +577,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={true}
         preDeployCommand={null}
@@ -733,8 +618,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/acme/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={true}
         pushDeliveryMethod="github_app"
@@ -755,8 +638,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/someone-else/side-project"
-        branch="main"
         rootDir={null}
         autoDeploy={true}
         pushDeliveryMethod="manual_webhook"
@@ -772,8 +653,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={true}
         pushDeliveryMethod="manual_webhook"
@@ -790,8 +669,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/someone-else/side-project"
-        branch="main"
         rootDir={null}
         autoDeploy={true}
         pushDeliveryMethod="unavailable"
@@ -815,8 +692,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/acme/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={true}
         pushDeliveryMethod={method}
@@ -836,8 +711,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand="npm run migrate"
@@ -854,8 +727,6 @@ describe("BuildDeploySection", () => {
     const { unmount } = render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand="npm run migrate"
@@ -871,8 +742,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand={null}
@@ -889,8 +758,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand={null}
@@ -919,8 +786,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand={null}
@@ -939,8 +804,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         buildFilter={{ paths: ["src/**"], ignoredPaths: ["docs/**"] }}
         autoDeploy={false}
@@ -957,8 +820,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand={null}
@@ -980,8 +841,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         buildFilter={{ paths: ["src/**"], ignoredPaths: ["docs/**"] }}
         autoDeploy={false}
@@ -1013,8 +872,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand={null}
@@ -1043,8 +900,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         autoDeploy={false}
         preDeployCommand={null}
@@ -1064,8 +919,6 @@ describe("BuildDeploySection", () => {
     const { rerender } = render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/site"
-        branch="main"
         rootDir={null}
         buildCommand={null}
         autoDeploy={false}
@@ -1078,8 +931,6 @@ describe("BuildDeploySection", () => {
     rerender(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/site"
-        branch="main"
         rootDir={null}
         buildCommand="npm run build"
         autoDeploy={false}
@@ -1109,8 +960,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/site"
-        branch="main"
         rootDir={null}
         buildCommand="npm run build"
         autoDeploy={false}
@@ -1148,8 +997,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir="backend"
         runtime="node"
         buildCommand="yarn build"
@@ -1169,8 +1016,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir={null}
         runtime="node"
         buildCommand="yarn build"
@@ -1198,8 +1043,6 @@ describe("BuildDeploySection", () => {
       render(
         <BuildDeploySection
           serviceId="app"
-          repo="https://github.com/x/mono"
-          branch="main"
           rootDir={null}
           runtime={runtime}
           startCommand="bin/run"
@@ -1217,8 +1060,6 @@ describe("BuildDeploySection", () => {
     render(
       <BuildDeploySection
         serviceId="app"
-        repo="https://github.com/x/mono"
-        branch="main"
         rootDir="backend"
         runtime="docker"
         startCommand="bin/run"
@@ -1241,8 +1082,6 @@ describe("Auto-Deploy — saved value refresh (w4/281)", () => {
   const section = (autoDeploy: boolean, rootDir: string | null = null) => (
     <BuildDeploySection
       serviceId="app"
-      repo="https://github.com/x/mono"
-      branch="main"
       rootDir={rootDir}
       autoDeploy={autoDeploy}
       preDeployCommand={null}
@@ -1308,8 +1147,6 @@ describe("BuildFilterEditor — saved filter refresh (w4/274)", () => {
   const section = (buildFilter: Filter) => (
     <BuildDeploySection
       serviceId="app"
-      repo="https://github.com/x/mono"
-      branch="main"
       rootDir={null}
       buildFilter={buildFilter}
       autoDeploy={false}

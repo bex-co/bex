@@ -65,9 +65,11 @@ export function serviceSettingsSections(
   const runtime = Boolean(repo) && !staticSite && service.runtime !== "image";
   const sections: ServiceSettingsSectionId[] = ["general"];
   if (cron) {
-    // Its Deploy section holds the schedule and command. A git-sourced cron job
-    // still builds, so it keeps Build (w2/m9, w5/010).
-    sections.push("deploy");
+    // Source holds the image or repo like any other type, so an image cron's
+    // image can be seen and changed (w4/498). Its Deploy section holds the
+    // schedule and command. A git-sourced cron job still builds, so it keeps
+    // Build (w2/m9, w5/010).
+    sections.push("source", "deploy");
     if (runtime) sections.push("runtime");
     if (repo) sections.push("build");
   } else {

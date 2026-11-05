@@ -14,7 +14,6 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { EditableFieldRow } from "@/features/services/components/editable-field-row";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { DeployCard } from "@/features/services/components/deploy-card";
-import { useBranch } from "@/features/services/hooks/use-branch";
 import { useRootDir } from "@/features/services/hooks/use-root-dir";
 import { useBuildCommand } from "@/features/services/hooks/use-build-command";
 import { useDockerfilePath } from "@/features/services/hooks/use-dockerfile-path";
@@ -24,9 +23,6 @@ import {
   type AutoDeployTrigger,
 } from "@/features/services/hooks/use-auto-deploy";
 import { useBuildFilter } from "@/features/services/hooks/use-build-filter";
-import { useRepoBranches } from "@/features/services/hooks/use-repo-branches";
-import { useSetRepo } from "@/features/services/hooks/use-set-repo";
-import { useRepos } from "@/features/services/hooks/use-repos";
 import { commandText } from "@/features/services/lib/command-text";
 import { commandPromptPrefix } from "@/features/services/lib/format";
 import { isDockerBuild } from "@/features/services/lib/service-type";
@@ -34,10 +30,6 @@ import type { BuildFilterView } from "@/features/services/types";
 
 export interface BuildDeploySectionProps {
   serviceId: string;
-  /** spec.repo — always set for a build-from-git App (this section only renders then). */
-  repo: string;
-  /** spec.branch, or null while loading. */
-  branch: string | null;
   /** spec.rootDir; empty/null builds from the repo root. */
   rootDir: string | null;
   /** Render runtime; docker enables Dockerfile Path and uses Docker Command. */
@@ -96,11 +88,6 @@ export interface BuildDeploySectionProps {
    * the Deploy Hook stays a standalone card.
    */
   showDeployCard?: boolean;
-  /**
-   * Keep the legacy inline Source/Branch rows for source-specialized variants
-   * (cron/static). Ordinary services render the unified ServiceSourceCard.
-   */
-  showSourceFields?: boolean;
 }
 
 /**
@@ -131,14 +118,12 @@ function autoDeployHintKey(pushDeliveryMethod: string | null) {
 
 /**
  * The Settings tab's Build and Deploy cards (w5/m13). Ordinary services put
- * source in the unified ServiceSourceCard; cron/static variants retain the
- * legacy inline Source/Branch fields here. Source changes are saved for the
+ * source in the unified ServiceSourceCard (every non-static type, cron
+ * included, w4/498). Source changes are saved for the
  * next deploy rather than triggering one immediately.
  */
 export function BuildDeploySection({
   serviceId,
-  repo,
-  branch,
   rootDir,
   runtime = null,
   builder = null,
@@ -158,7 +143,6 @@ export function BuildDeploySection({
   showBuildCommand = false,
   staticSite = false,
   showDeployCard = true,
-  showSourceFields = true,
 }: BuildDeploySectionProps) {
   const { t } = useTranslations();
   // Choosing what a service builds and runs (source, branch, root dir, commands,
@@ -220,15 +204,6 @@ export function BuildDeploySection({
           <CardDescription>{t("services.buildDescription")}</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-          {showSourceFields && (
-            <LegacySourceFields
-              serviceId={serviceId}
-              repo={repo}
-              branch={branch}
-              disabled={createDisabled}
-              disabledReason={createReason}
-            />
-          )}
           <EditableFieldRow
             label={t("services.buildDeployRootDirLabel")}
             hint={t("services.buildDeployRootDirHint")}
@@ -351,81 +326,6 @@ export function BuildDeploySection({
           autoDeploy={autoDeployRow}
         />
       )}
-    </>
-  );
-}
-
-/** Legacy source rows retained only by cron/static settings variants. */
-function LegacySourceFields({
-  serviceId,
-  repo,
-  branch,
-  disabled,
-  disabledReason,
-}: {
-  serviceId: string;
-  repo: string;
-  branch: string | null;
-  disabled: boolean;
-  disabledReason?: string;
-}) {
-  const { t } = useTranslations();
-  const { setBranch, busy: branchBusy } = useBranch();
-  const { branches } = useRepoBranches(repo);
-  const branchOptions = useMemo(
-    () => branches.map((value) => ({ value, label: value })),
-    [branches],
-  );
-  const { setRepo, busy: repoBusy } = useSetRepo();
-  const { repos } = useRepos();
-  const repoOptions = useMemo(
-    () =>
-      repos.map((candidate) => ({
-        value: candidate.htmlUrl,
-        label: candidate.fullName,
-      })),
-    [repos],
-  );
-
-  return (
-    <>
-      <EditableFieldRow
-        label={t("services.buildDeploySourceLabel")}
-        hint={t("services.buildDeploySourceHint")}
-        value={repo}
-        placeholder={t("services.buildDeploySourcePlaceholder")}
-        editLabel={t("services.buildDeploySourceEdit")}
-        mono
-        busy={repoBusy}
-        comboboxOptions={repoOptions}
-        confirm={{
-          title: (value) =>
-            t("services.buildDeploySourceConfirmTitle", { value }),
-          body: t("services.sourceNoAutoDeploy"),
-        }}
-        disabled={disabled}
-        disabledReason={disabledReason}
-        onSave={(value) => setRepo(serviceId, { repo: value })}
-      />
-      <EditableFieldRow
-        label={t("services.buildDeployBranchLabel")}
-        hint={t("services.buildDeployBranchHint")}
-        value={branch ?? ""}
-        placeholder={t("services.buildDeployBranchPlaceholder")}
-        editLabel={t("services.buildDeployBranchEdit")}
-        mono
-        busy={branchBusy}
-        comboboxOptions={branchOptions}
-        confirm={{
-          title: (value) =>
-            t("services.buildDeployBranchConfirmTitle", { value }),
-          body: t("services.sourceNoAutoDeploy"),
-          emptyValue: t("services.buildDeployBranchEmpty"),
-        }}
-        disabled={disabled}
-        disabledReason={disabledReason}
-        onSave={(value) => setBranch(serviceId, value)}
-      />
     </>
   );
 }

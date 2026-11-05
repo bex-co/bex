@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -28,8 +28,9 @@ vi.mock("@/features/services/hooks/use-server", () => ({
 }));
 
 vi.mock("@/features/capabilities/hooks/use-resource-actions", async () => {
-  const { mockAllowedResourceActions } =
-    await import("@/test/mocks/resource-actions");
+  const { mockAllowedResourceActions } = await import(
+    "@/test/mocks/resource-actions"
+  );
   return mockAllowedResourceActions("app");
 });
 
@@ -549,6 +550,7 @@ describe("settings skeleton parity", () => {
       "repo",
       [
         "general",
+        "source",
         "deploy",
         "runtime",
         "build",
@@ -562,6 +564,7 @@ describe("settings skeleton parity", () => {
       "image",
       [
         "general",
+        "source",
         "deploy",
         "registry-credential",
         "notifications",
@@ -791,6 +794,7 @@ describe("ServiceSettingsPage", () => {
 
     expect(hrefs).toEqual([
       "#general",
+      "#source",
       "#deploy",
       "#registry-credential",
       "#notifications",
@@ -1157,9 +1161,11 @@ describe("ServiceSettingsPage", () => {
       screen.getByText("Build", { selector: ":not(a)" }),
     ).toBeInTheDocument();
     expect(screen.getByText("Auto-Deploy")).toBeInTheDocument();
-    expect(screen.getByRole("combobox", { name: "Source" })).toHaveValue(
-      "https://github.com/acme/reports",
-    );
+    // The repo lives in the Source card like any other type (w4/498).
+    const sourceCard = document.getElementById("source")!;
+    expect(
+      await within(sourceCard).findByText(/acme \/ reports/),
+    ).toBeInTheDocument();
     expect(screen.queryByText("Docker Command")).not.toBeInTheDocument();
     expect(screen.queryByText("Dockerfile Path")).not.toBeInTheDocument();
     expect(
@@ -1283,6 +1289,31 @@ describe("ServiceSettingsPage", () => {
     // The editors themselves moved off Settings.
     expect(screen.queryByText("Add rule")).not.toBeInTheDocument();
     expect(screen.queryByText("Add header")).not.toBeInTheDocument();
+  });
+
+  // w4/498: an image cron's image was nowhere on the page.
+  it("names an image-backed cron job's image in the Source card", async () => {
+    serverState.service = svc({
+      type: "cron_job",
+      url: null,
+      repo: null,
+      imagePath: "docker.io/library/busybox:1.37",
+      schedule: "*/30 * * * *",
+      command: "sh -c date",
+    });
+    renderSettings();
+
+    const sourceCard = await waitFor(() => {
+      const el = document.getElementById("source");
+      expect(el).not.toBeNull();
+      return el!;
+    });
+    expect(
+      within(sourceCard).getByText("docker.io/library/busybox:1.37"),
+    ).toBeInTheDocument();
+    expect(
+      within(sourceCard).getByRole("button", { name: /edit/i }),
+    ).toBeInTheDocument();
   });
 
   it("hides Build & Deploy for an image-backed cron job (nothing to build)", async () => {
