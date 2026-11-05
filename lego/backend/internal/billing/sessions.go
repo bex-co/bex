@@ -247,8 +247,20 @@ func (c *StripeClient) CompleteCheckoutSession(ctx context.Context, eventSession
 		return err
 	}
 	paymentMethod, err := c.verifiedSetupPaymentMethod(ctx, checkout)
+	if errors.Is(err, errDetachedPaymentMethod) {
+		return nil
+	}
 	if err != nil {
 		return err
+	}
+	// ADR091 D10.5–D10.6: a refused card is detached and never bound; the
+	// event is acknowledged, since a retry could never bind it.
+	reason, err := c.cardRejection(ctx, paymentMethod)
+	if err != nil {
+		return err
+	}
+	if reason != "" {
+		return c.refuseCard(ctx, checkout.workspaceID, paymentMethod, reason)
 	}
 	if err := c.bindDefaultPaymentMethod(ctx, checkout, paymentMethod); err != nil {
 		return err
@@ -402,6 +414,10 @@ func (c *StripeClient) discardCheckoutCustomer(ctx context.Context, workspaceID,
 	}
 }
 
+// errDetachedPaymentMethod reports a session whose payment method is no
+// longer attached to any Customer; the event is acknowledged.
+var errDetachedPaymentMethod = errors.New("checkout payment method is detached")
+
 // verifiedSetupPaymentMethod returns the payment method the session's
 // SetupIntent succeeded on, once both the intent and the method are re-read and
 // proven to belong to the verified Customer.
@@ -423,7 +439,12 @@ func (c *StripeClient) verifiedSetupPaymentMethod(ctx context.Context, checkout 
 	if err != nil {
 		return nil, fmt.Errorf("stripe: retrieve PaymentMethod %s: %w", paymentMethodID, err)
 	}
-	if paymentMethod.Customer == nil || paymentMethod.Customer.ID != checkout.customerID {
+	if paymentMethod.Customer == nil {
+		// Detached since: refused at binding by an earlier delivery of this
+		// event (or removed by the customer). It can never bind.
+		return nil, errDetachedPaymentMethod
+	}
+	if paymentMethod.Customer.ID != checkout.customerID {
 		return nil, &inputError{message: "payment method is not attached to the workspace Customer"}
 	}
 	return paymentMethod, nil

@@ -19,6 +19,7 @@ package accounts
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -225,6 +226,49 @@ func TestRequestReturnsTypedBlockersAndWritesNoIntent(t *testing.T) {
 	}
 }
 
+type settlerFake struct {
+	settled []string
+	due     map[string]bool
+}
+
+func (f *settlerFake) SettleWorkspace(_ context.Context, workspaceID string) error {
+	f.settled = append(f.settled, workspaceID)
+	if f.due[workspaceID] {
+		return core.NewBillingBalanceDueError(core.BalanceDue{WorkspaceID: workspaceID, HostedInvoiceURL: "https://invoice.stripe.test/in_1", AmountDueCents: 300, Currency: "usd"})
+	}
+	return nil
+}
+
+// ADR091 D10.4: every workspace the deletion would delete is settled before
+// the intent commits; a balance due refuses the request with
+// BILLING_BALANCE_DUE and writes no intent, so the account can still pay.
+// Workspaces the account only leaves are not settled.
+func TestRequestSettlesDeletedWorkspacesBeforeIntent(t *testing.T) {
+	preview := []store.AccountWorkspaceDisposition{
+		{ID: "tea-own", Name: "mine", Action: store.AccountWorkspaceDelete},
+		{ID: "tea-shared", Name: "team", Action: store.AccountWorkspaceLeave},
+	}
+	st := &fakeStore{preview: preview}
+	settler := &settlerFake{due: map[string]bool{"tea-own": true}}
+	svc := newService(st, &recorder{})
+	svc.Settler = settler
+	_, err := svc.Request(accountContext("session", true), Confirmation)
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || coded.Code != core.CodeBillingBalanceDue || coded.Params["hostedInvoiceUrl"] != "https://invoice.stripe.test/in_1" {
+		t.Fatalf("request with a balance due = %v, want BILLING_BALANCE_DUE with the invoice link", err)
+	}
+	if st.beginCalls != 0 {
+		t.Fatalf("a refused request wrote %d intent(s)", st.beginCalls)
+	}
+	settler.due = nil
+	if _, err := svc.Request(accountContext("session", true), Confirmation); err != nil {
+		t.Fatalf("request after paying: %v", err)
+	}
+	if st.beginCalls != 1 || len(settler.settled) != 2 || settler.settled[0] != "tea-own" || settler.settled[1] != "tea-own" {
+		t.Fatalf("begin=%d settled=%v, want one intent and only the deleted workspace settled", st.beginCalls, settler.settled)
+	}
+}
+
 func TestWorkerDeletesIdentityOnlyAfterCredentialAndWorkspaceCleanup(t *testing.T) {
 	plan := []store.AccountWorkspaceDisposition{
 		{ID: "tea-personal", Action: "delete"},
@@ -362,5 +406,82 @@ func TestCompletedDeletionIsIdempotent(t *testing.T) {
 	}
 	if len(rec.events) != 0 || len(st.advances) != 0 || st.cleaned {
 		t.Fatalf("completed retry performed work: events=%v advances=%v cleaned=%v", rec.events, st.advances, st.cleaned)
+	}
+}
+
+type balanceDueTeardown struct {
+	due     bool
+	settled []bool
+}
+
+func (b *balanceDueTeardown) Delete(ctx context.Context, id string) error {
+	b.settled = append(b.settled, core.SettledBalance(ctx))
+	if b.due {
+		return core.NewBillingBalanceDueError(core.BalanceDue{WorkspaceID: id, InvoiceID: "in_1",
+			HostedInvoiceURL: "https://invoice.stripe.com/i/acct_1/in_1", AmountDueCents: 312, Currency: "usd"})
+	}
+	return nil
+}
+
+type mailFake struct{ to, text, html []string }
+
+func (m *mailFake) Send(_ context.Context, to, _, text, html string) error {
+	m.to, m.text, m.html = append(m.to, to), append(m.text, text), append(m.html, html)
+	return nil
+}
+
+type emailsFake map[string]string
+
+func (e emailsFake) LookupEmails(context.Context, []string) (map[string]string, error) { return e, nil }
+
+// ADR091 D10.4: a worker teardown refused for an unpaid balance stores the
+// error code only (never the payment link), and emails the hosted invoice
+// link to the account once, since the account can no longer sign in.
+func TestWorkerBalanceDueEmailsInvoiceLinkAndStoresCode(t *testing.T) {
+	row := store.AccountDeletion{Subject: "identity-a", DeletedMarker: "deleted:own-a", State: store.AccountDeletionCleaning,
+		CreatedAt: time.Now().Add(-time.Hour), Workspaces: []store.AccountWorkspaceDisposition{{ID: "tea-own", Action: store.AccountWorkspaceDelete}}}
+	st := &fakeStore{claimed: []store.AccountDeletion{row}}
+	svc := newService(st, &recorder{})
+	teardown := &balanceDueTeardown{due: true}
+	mail := &mailFake{}
+	svc.Workspaces, svc.Mailer, svc.Emails = teardown, mail, emailsFake{"identity-a": "a@example.com"}
+	if err := svc.processPending(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if len(st.failed) != 1 || st.failed[0] != core.CodeBillingBalanceDue {
+		t.Fatalf("last_error = %v, want only the code", st.failed)
+	}
+	if len(mail.to) != 1 || mail.to[0] != "a@example.com" || !strings.Contains(mail.text[0], "https://invoice.stripe.com/i/acct_1/in_1") ||
+		!strings.Contains(mail.text[0], "3.12 USD") || !strings.Contains(mail.html[0], `href="https://invoice.stripe.com/i/acct_1/in_1"`) {
+		t.Fatalf("mail = %+v, want the invoice link sent to the account", mail)
+	}
+	if len(teardown.settled) != 1 || teardown.settled[0] {
+		t.Fatalf("an hour-old intent skipped the teardown settle: %v", teardown.settled)
+	}
+	// The retry with the code already stored does not email again.
+	row.LastError = core.CodeBillingBalanceDue
+	st.claimed = []store.AccountDeletion{row}
+	if err := svc.processPending(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if len(mail.to) != 1 || len(st.failed) != 2 {
+		t.Fatalf("retry mailed %d times, failures %v", len(mail.to), st.failed)
+	}
+}
+
+// The teardown right after a request does not settle a second time: Request
+// settled every deleted workspace moments before the intent committed.
+func TestWorkerSkipsSettleRightAfterRequest(t *testing.T) {
+	row := store.AccountDeletion{Subject: "identity-a", DeletedMarker: "deleted:own-a", State: store.AccountDeletionCleaning,
+		CreatedAt: time.Now(), Workspaces: []store.AccountWorkspaceDisposition{{ID: "tea-own", Action: store.AccountWorkspaceDelete}}}
+	st := &fakeStore{claimed: []store.AccountDeletion{row}}
+	svc := newService(st, &recorder{})
+	teardown := &balanceDueTeardown{}
+	svc.Workspaces = teardown
+	if err := svc.processPending(context.Background(), 1); err != nil {
+		t.Fatal(err)
+	}
+	if len(teardown.settled) != 1 || !teardown.settled[0] {
+		t.Fatalf("teardown settled flags = %v, want the request's settle reused", teardown.settled)
 	}
 }

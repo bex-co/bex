@@ -37,6 +37,7 @@ import (
 	"net/http"
 	"net/url"
 	"regexp"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -519,6 +520,13 @@ type Deps struct {
 	// workspaces.WorkspacePurger.
 	WorkspacePreCascadePurgers  []workspaces.WorkspacePurger
 	WorkspacePostCascadePurgers []workspaces.WorkspacePurger
+	// WorkspaceBillingPurger cancels the Stripe Subscription; NewServer runs it
+	// after every other pre-cascade purger (ADR091 D10.4: a retry after it has
+	// run settles nothing). Nil when Stripe is disabled.
+	WorkspaceBillingPurger workspaces.WorkspacePurger
+	// WorkspaceSettler charges a workspace's unbilled usage before workspace
+	// or account deletion (ADR091 D10.4); nil when Stripe is disabled.
+	WorkspaceSettler workspaces.WorkspaceSettler
 	// Workspace members & roles (w4/m12): the same control-plane store + OpenFGA
 	// role grant/revoke sides, plus the invite Mailer and the dashboard origin the
 	// invite email links to. Store nil (BEX_CP_DB_URI unset) => the member verbs
@@ -545,6 +553,10 @@ type Deps struct {
 	// disabled, instead of making the schema depend on process environment.
 	Billing      billing.HostedProvider
 	BillingState billing.LifecycleReader
+	// BillingEligibility is the payment-eligibility read billing readiness
+	// takes the card refusal at binding from (ADR091 D10.5–D10.6); nil
+	// reports none.
+	BillingEligibility billing.PaymentEligibilityStore
 	// Identities resolves owner/member email + MFA for the owners/members read
 	// API (w6/m2) — Kratos' admin API (BEX_KRATOS_ADMIN_URL). Nil omits those
 	// fields (honest subset) rather than failing the request.
@@ -719,8 +731,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 		EnterpriseEntitlement: d.EnterpriseEntitlement,
 		OpsWorkspaceID:        d.OpsWorkspaceID,
 		Kick:                  d.WorkspaceKick,
-		PreCascadePurgers:     d.WorkspacePreCascadePurgers,
+		PreCascadePurgers:     preCascadePurgers(d),
 		PostCascadePurgers:    d.WorkspacePostCascadePurgers,
+		Settler:               d.WorkspaceSettler,
 		Identities:            d.Identities,
 		// APIKeys satisfies workspaces.KeyOwnerReader structurally (KeyOwner has
 		// the identical signature) — no adapter, and no cache: the lookup runs at
@@ -866,7 +879,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		envGroupApplier = envGroupsSvc
 		envGroupExport = envGroupsSvc
 	}
-	billingSvc := &billing.Service{Base: base, Provider: d.Billing, State: d.BillingState}
+	billingSvc := &billing.Service{Base: base, Provider: d.Billing, State: d.BillingState, Eligibility: d.BillingEligibility}
 	var environmentEnvGroups environments.EnvGroupIndex
 	if d.Secrets != nil {
 		environmentEnvGroups = envGroupsSvc
@@ -1001,6 +1014,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Members:    members.AccountOffboarder{Store: d.AccountStore, Revoker: d.MembersRevoker, Workspace: workspaceResolver},
 		APIKeys:    accountKeys,
 		OAuth:      d.AccountOAuth, Kratos: d.AccountKratos,
+		Settler: d.WorkspaceSettler, Mailer: d.Mailer, Emails: identityEmailLookup{d.Identities},
 	}
 	appsSvc := &apps.Service{Base: base, ProxiedHosts: d.ProxiedHosts, ImageCompatibilityWorkspaces: d.ImageCompatibilityWorkspaces, PrivateImagePortsDisabled: d.PrivateImagePortsDisabled, Store: d.Store, Placements: d.AppPlacements, EventFacts: d.EventFacts, BaseDomain: d.BaseDomain, DashboardHost: hostOf(d.DashboardURL), PlatformHosts: []string{hostOf(d.DeployHookBaseURL), sshHost}, ReservedDomains: d.ReservedDomains, MaxCustomDomainsPerService: d.MaxCustomDomainsPerService, MaxCustomDomainsPerWorkspace: d.MaxCustomDomainsPerWorkspace, SSHHost: sshHost, ShellTicketSecret: d.ShellTicketSecret, ShellWSURL: d.ShellWSURL, DiskSnapshots: d.DiskSnapshots, SnapshotSecret: d.DiskSnapshotSecret, GitHub: gh.DeployTokenSource(), Commits: gh.DeployCommitSource(), Checks: gh.DeployChecksSource(), RegistryCreds: rc.DeployPullSecretSource(), Blueprints: d.BlueprintsStore, GitFetcher: gh.BlueprintFileFetcher(), BlueprintGroups: blueprintGroups, BlueprintGroupsTx: blueprintGroupsTx, MaxGroupings: d.MaxBlueprintGroupings, GroupingReclaim: groupingReclaim, EnvGroups: envGroupApplier, EnvGroupLinks: &envgroups.WorkspacePurger{Service: envGroupsSvc}, EnvSeeder: envSeeder, EnvCopier: envCopier, EnvNames: envNames, EnvGroupExport: envGroupExport, CreateSecrets: createSecrets, Environments: environmentCreateResolver, ExitGuards: environments.ExitGuards(environmentsSvc), Owners: workspaceSvc, Metadata: resourceMetadata, RestartDeploy: restartDeploy}
 	// Environment deletes call the normal service delete (w4/m264); the apps
@@ -1112,6 +1126,16 @@ func NewServer(base *core.Base, d Deps) *Server {
 	secretsSvc.Protection = srv.Apps.ProtectionGuard()
 	srv.Deploys.PullSecrets = srv.Apps.DeployPullSecretPreparer()
 	return srv
+}
+
+// preCascadePurgers is the workspace teardown's pre-cascade order: the Stripe
+// purger last, so nothing can fail after the Subscription is cancelled.
+func preCascadePurgers(d Deps) []workspaces.WorkspacePurger {
+	purgers := slices.Clone(d.WorkspacePreCascadePurgers)
+	if d.WorkspaceBillingPurger != nil {
+		purgers = append(purgers, d.WorkspaceBillingPurger)
+	}
+	return purgers
 }
 
 // identityEmailLookup adapts workspaces.IdentityReader to

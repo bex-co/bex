@@ -182,9 +182,7 @@ func (c *StripeClient) retireCustomer(ctx context.Context, tenantID, customerID 
 		return fmt.Errorf("stripe: list payment methods for %s: %w", tenantID, err)
 	}
 	for _, id := range attached {
-		detachParams := &stripe.PaymentMethodDetachParams{}
-		detachParams.Context = ctx
-		if _, err := c.sc.PaymentMethods.Detach(id, detachParams); err != nil {
+		if err := c.detachPaymentMethod(ctx, id); err != nil {
 			return fmt.Errorf("stripe: detach payment method %s for %s: %w", id, tenantID, err)
 		}
 	}

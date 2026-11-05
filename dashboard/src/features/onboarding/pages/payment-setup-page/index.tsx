@@ -34,6 +34,7 @@ import { useBillingOnboarding } from "@/features/usage/hooks/use-billing-onboard
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { paymentSetupPath, paymentSetupState } from "../../lib/payment-setup";
 import { SelfHostExit } from "./self-host-exit";
+import { PaymentMethodRejectionAlert } from "@/features/usage/components/payment-method-rejection-alert";
 
 /**
  * The sign-up payment wall (`/setup/payment`, ADR075 D7 revised 2026-08-29):
@@ -109,7 +110,11 @@ export default function PaymentSetupPage() {
                   })}
                 </p>
               ) : null}
-              {search.billing === "success" ? (
+              {readiness?.paymentMethodRejection ? (
+                <PaymentMethodRejectionAlert
+                  reason={readiness.paymentMethodRejection}
+                />
+              ) : search.billing === "success" ? (
                 <p
                   className="flex items-center gap-2 text-sm text-muted-foreground"
                   role="status"

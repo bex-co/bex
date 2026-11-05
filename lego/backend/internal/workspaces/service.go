@@ -100,6 +100,11 @@ type Service struct {
 	// purger failure — unlike a pre-cascade one — is still eventually reconciled
 	// even though the Delete call itself can't be retried past the vanished row.
 	PostCascadePurgers []WorkspacePurger
+	// Settler charges the workspace's unbilled usage before anything is torn
+	// down (ADR091 D10.4, ADR086): a declined charge refuses the delete with
+	// BILLING_BALANCE_DUE and leaves the workspace, its members and its
+	// Stripe Subscription intact. Nil (Stripe disabled) skips it.
+	Settler WorkspaceSettler
 	// Identities looks up owner/member email + name + MFA from Kratos (the store
 	// carries only subjects). Nil => those fields omitted from the owners/members
 	// responses (honest subset; BEX_KRATOS_ADMIN_URL unset).
@@ -244,6 +249,12 @@ type TenantResolutionInvalidator interface {
 // by the composition root, so this feature imports none of those packages.
 type WorkspacePurger interface {
 	PurgeWorkspace(ctx context.Context, tenantID string) error
+}
+
+// WorkspaceSettler settles a workspace's balance before it is deleted;
+// *billing.Settler satisfies it.
+type WorkspaceSettler interface {
+	SettleWorkspace(ctx context.Context, workspaceID string) error
 }
 
 // ErrWorkspacesUnavailable lives in core (core.WriteErr maps it to 503, alongside
@@ -516,6 +527,9 @@ func (s *Service) FinalizeWorkspaceCreation(ctx context.Context, attemptID strin
 		}
 		verified, verifyErr := s.CreationBilling.VerifyWorkspaceSetup(ctx, attempt.ID, attempt.WorkspaceID, attempt.ProviderCustomerID, attempt.ProviderSetupIntentID)
 		if verifyErr != nil {
+			if billing.IsPaymentMethodRejected(verifyErr) {
+				return WorkspaceView{}, verifyErr
+			}
 			if billing.IsInputError(verifyErr) {
 				return WorkspaceView{}, core.NewPaymentRequiredError()
 			}
@@ -1335,6 +1349,13 @@ func (s *Service) deleteWorkspace(ctx context.Context, id string) error {
 	// as not-found at AccountTeardown's boundary.
 	if _, err := s.Store.GetTenant(ctx, id); err != nil {
 		return mapStoreErr(err)
+	}
+	// Settle before delete (ADR091 D10.4): first, before any member loses
+	// access, so a declined charge leaves the workspace exactly as it was.
+	if s.Settler != nil {
+		if err := s.Settler.SettleWorkspace(ctx, id); err != nil {
+			return err
+		}
 	}
 	// Revoke authz tuples before dropping the rows: the tenant_members rows name
 	// exactly the subjects to revoke, and reading them after the cascade would be

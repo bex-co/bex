@@ -11,6 +11,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
 import type { BillingReadiness } from "@/features/usage/hooks/use-billing-onboarding";
+import { PaymentMethodRejection } from "@/graphql/schema-types";
 import PaymentSetupPage from "..";
 
 const billing = vi.hoisted(() => ({
@@ -74,6 +75,7 @@ function readiness(
     paymentMethodLast4: "",
     paymentMethodRequired: true,
     paymentMethodOnboardingRequired: true,
+    paymentMethodRejection: "",
     lifecycle: {
       status: "healthy",
       reason: "",
@@ -224,6 +226,24 @@ describe("PaymentSetupPage", () => {
     expect(await screen.findByRole("status")).toHaveTextContent(
       "Payment method received — confirming with Stripe…",
     );
+  });
+
+  it("says why a refused card did not bind instead of confirming forever (ADR091 D10.5)", async () => {
+    billing.readiness = readiness({
+      paymentMethodRejection: PaymentMethodRejection.PrepaidCard,
+    });
+    renderWall("/setup/payment?billing=success");
+    expect(
+      await screen.findByText(
+        "Prepaid cards aren't accepted; add a credit or debit card.",
+      ),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText("Payment method received — confirming with Stripe…"),
+    ).not.toBeInTheDocument();
+    expect(
+      screen.getByRole("button", { name: "Add test payment method" }),
+    ).toBeInTheDocument();
   });
 
   it("continues to the deep link the moment the server says the gate is open", async () => {

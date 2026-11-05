@@ -12,7 +12,11 @@ import {
   type WorkspaceCreationAttemptQuery,
 } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  mutationErrorMessage,
+  paymentMethodRejected,
+} from "@/common/lib/graphql-error";
+import { paymentMethodRejectionKey } from "@/features/usage/lib/payment-method-rejection";
 import type {
   WorkspacePlanId,
   WorkspaceView,
@@ -191,7 +195,16 @@ export function useWorkspaceCreationBilling(
           createdAt: workspace.createdAt,
         } satisfies WorkspaceView;
       } catch (error) {
-        setLocalError(mutationErrorMessage(error, t("workspaces.createError")));
+        // ADR091 D10.5–D10.6: a refused card (prepaid, or linked to an
+        // unpaid balance) reads in the user's language, not the API's.
+        const rejection = paymentMethodRejectionKey(
+          paymentMethodRejected(error),
+        );
+        setLocalError(
+          rejection
+            ? t(rejection)
+            : mutationErrorMessage(error, t("workspaces.createError")),
+        );
         return null;
       } finally {
         setBusy(false);

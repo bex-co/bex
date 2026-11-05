@@ -14,6 +14,7 @@
 
 import { fireEvent, render, screen } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
+import { PaymentMethodRejection } from "@/graphql/schema-types";
 import { BillingOnboardingView } from "../billing-onboarding";
 
 const baseReadiness = {
@@ -26,6 +27,7 @@ const baseReadiness = {
   paymentMethodLast4: "",
   paymentMethodRequired: false,
   paymentMethodOnboardingRequired: false,
+  paymentMethodRejection: "" as const,
   lifecycle: {
     status: "healthy",
     reason: "",
@@ -216,5 +218,24 @@ describe("BillingOnboardingView", () => {
       screen.getByText(/unavailable or you do not have billing access/),
     ).toBeInTheDocument();
     expect(screen.queryByRole("button")).not.toBeInTheDocument();
+  });
+
+  it("shows a card refused at binding beside the lifecycle alert (ADR091 D10.5)", () => {
+    render(
+      <BillingOnboardingView
+        readiness={{
+          ...baseReadiness,
+          paymentMethodRejection: PaymentMethodRejection.PrepaidCard,
+        }}
+        loading={false}
+        checkoutBusy={false}
+        portalBusy={false}
+        onCheckout={() => undefined}
+        onPortal={() => undefined}
+      />,
+    );
+    expect(screen.getByTestId("payment-method-rejection")).toHaveTextContent(
+      "Prepaid cards aren't accepted; add a credit or debit card.",
+    );
   });
 });

@@ -1,12 +1,14 @@
 import { describe, it, expect } from "vitest";
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import {
+  billingBalanceDue,
   classifyRefusal,
   hasGraphQLErrorCode,
   isForbiddenError,
   isNameConflictError,
   isThrottledError,
   mutationErrorMessage,
+  paymentMethodRejected,
   planLimitExtensions,
   refusalReason,
   relayableReason,
@@ -303,5 +305,81 @@ describe("refusalReason with a later INTERNAL error", () => {
       ],
     });
     expect(refusalReason(err)).toBe("Name is taken");
+  });
+});
+
+describe("billingBalanceDue (ADR091 D10.4)", () => {
+  it("reads the balance and pay link from BILLING_BALANCE_DUE", () => {
+    expect(
+      billingBalanceDue(
+        codedGraphQLError("BILLING_BALANCE_DUE", {
+          workspaceId: "tea-1",
+          amountDueCents: 300,
+          currency: "usd",
+          hostedInvoiceUrl: "https://invoice.stripe.com/i/in_1",
+        }),
+      ),
+    ).toEqual({
+      workspaceId: "tea-1",
+      amountDueCents: 300,
+      currency: "usd",
+      hostedInvoiceUrl: "https://invoice.stripe.com/i/in_1",
+    });
+  });
+
+  it("drops a non-https link and a missing amount; other codes are null", () => {
+    expect(
+      billingBalanceDue(
+        codedGraphQLError("BILLING_BALANCE_DUE", {
+          hostedInvoiceUrl: "javascript:alert(1)",
+        }),
+      ),
+    ).toEqual({
+      workspaceId: "",
+      amountDueCents: null,
+      currency: "usd",
+      hostedInvoiceUrl: null,
+    });
+    expect(billingBalanceDue(codedGraphQLError("CONFLICT"))).toBeNull();
+    expect(billingBalanceDue(new Error("boom"))).toBeNull();
+  });
+});
+
+describe("billingBalanceDue pay-link safety", () => {
+  it.each([
+    "http://invoice.stripe.com/i/in_1",
+    "https://invoice.stripe.com.evil.example/i/in_1",
+    "https://evilstripe.com/i/in_1",
+    "https://user@invoice.stripe.com/i/in_1",
+    "not a url",
+  ])("drops %s", (hostedInvoiceUrl) => {
+    expect(
+      billingBalanceDue(
+        codedGraphQLError("BILLING_BALANCE_DUE", { hostedInvoiceUrl }),
+      )?.hostedInvoiceUrl,
+    ).toBeNull();
+  });
+
+  it("keeps an https Stripe-hosted page", () => {
+    expect(
+      billingBalanceDue(
+        codedGraphQLError("BILLING_BALANCE_DUE", {
+          hostedInvoiceUrl: "https://pay.stripe.com/invoice/acct_1/in_1",
+        }),
+      )?.hostedInvoiceUrl,
+    ).toBe("https://pay.stripe.com/invoice/acct_1/in_1");
+  });
+});
+
+describe("paymentMethodRejected (ADR091 D10.5–D10.6)", () => {
+  it("reads the refusal reason as the GraphQL enum", () => {
+    expect(
+      paymentMethodRejected(
+        codedGraphQLError("PAYMENT_METHOD_REJECTED", {
+          reason: "prepaid_card",
+        }),
+      ),
+    ).toBe("PREPAID_CARD");
+    expect(paymentMethodRejected(codedGraphQLError("CONFLICT"))).toBeNull();
   });
 });

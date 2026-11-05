@@ -22,6 +22,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"html"
+	"log"
+	"strings"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/apikeys"
@@ -85,6 +88,45 @@ type Service struct {
 	APIKeys    MachineCredentials
 	OAuth      SubjectCleaner
 	Kratos     IdentityCleaner
+	// Settler charges each workspace the deletion will delete before the
+	// intent commits (ADR091 D10.4): a declined charge refuses the request
+	// with BILLING_BALANCE_DUE while the account can still act on it. The
+	// worker's teardown settles again, for usage in between, unless the
+	// intent is younger than settledReuseWindow. Nil (Stripe disabled) skips
+	// it.
+	Settler WorkspaceSettler
+	// Mailer and Emails send the hosted invoice link to the account's email
+	// when the worker's teardown is refused for an unpaid balance: by then
+	// the account can no longer sign in. Either nil logs instead.
+	Mailer Mailer
+	Emails EmailLookup
+}
+
+// Mailer sends one email; mailer.SMTP satisfies it.
+type Mailer interface {
+	Send(ctx context.Context, to, subject, text, html string) error
+}
+
+// EmailLookup resolves subjects' emails from the identity provider, which
+// still holds the identity until the deletion's last step.
+type EmailLookup interface {
+	LookupEmails(ctx context.Context, subjects []string) (map[string]string, error)
+}
+
+const (
+	// requestSettleTimeout bounds the synchronous settle in Request inside
+	// bex-api's 30-second HTTP write timeout; the settle answers the
+	// retryable BILLING_SETTLING before it rather than timing out.
+	requestSettleTimeout = 25 * time.Second
+	// settledReuseWindow is how long after the request's own settle the
+	// worker's teardown skips settling again.
+	settledReuseWindow = 5 * time.Minute
+)
+
+// WorkspaceSettler settles a workspace's balance; *billing.Settler satisfies
+// it.
+type WorkspaceSettler interface {
+	SettleWorkspace(ctx context.Context, workspaceID string) error
 }
 
 func directSession(ctx context.Context) (core.Identity, error) {
@@ -184,6 +226,9 @@ func (s *Service) Request(ctx context.Context, confirmation string) (DeletionVie
 	if len(preview.Blocked) > 0 {
 		return DeletionView{}, blockedError(preview.Blocked)
 	}
+	if err := s.settle(ctx, preview.Delete); err != nil {
+		return DeletionView{}, err
+	}
 	d, err := s.Store.BeginAccountDeletion(ctx, id.Subject, id.Email, machineSubjects)
 	var blocked *store.AccountDeletionBlockedError
 	if errors.As(err, &blocked) {
@@ -193,6 +238,22 @@ func (s *Service) Request(ctx context.Context, confirmation string) (DeletionVie
 		return DeletionView{}, err
 	}
 	return DeletionView{State: d.State}, nil
+}
+
+// settle charges each workspace the deletion will delete, within
+// requestSettleTimeout.
+func (s *Service) settle(ctx context.Context, workspaces []store.AccountWorkspaceDisposition) error {
+	if s.Settler == nil || len(workspaces) == 0 {
+		return nil
+	}
+	ctx, cancel := context.WithTimeout(ctx, requestSettleTimeout)
+	defer cancel()
+	for _, workspace := range workspaces {
+		if err := s.Settler.SettleWorkspace(ctx, workspace.ID); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func (s *Service) process(ctx context.Context, d store.AccountDeletion) error {
@@ -219,10 +280,16 @@ func (s *Service) process(ctx context.Context, d store.AccountDeletion) error {
 			if s.Workspaces == nil || s.Members == nil {
 				return core.NewUnavailableError(CodeUnavailable, "workspace cleanup is not configured", nil)
 			}
+			// Request settled every deleted workspace just before the intent
+			// committed; a teardown moments later does not charge again.
+			teardownCtx := ctx
+			if !d.CreatedAt.IsZero() && s.now().Sub(d.CreatedAt) < settledReuseWindow {
+				teardownCtx = core.WithSettledBalance(ctx)
+			}
 			for _, workspace := range d.Workspaces {
 				switch workspace.Action {
 				case store.AccountWorkspaceDelete:
-					if err := s.Workspaces.Delete(ctx, workspace.ID); err != nil {
+					if err := s.Workspaces.Delete(teardownCtx, workspace.ID); err != nil {
 						return err
 					}
 				case store.AccountWorkspaceLeave:
@@ -267,13 +334,63 @@ func (s *Service) processPending(ctx context.Context, limit int) error {
 	}
 	for _, row := range rows {
 		if err := s.process(ctx, row); err != nil {
-			_ = s.Store.FailAccountDeletion(ctx, row.Subject, err.Error())
+			_ = s.Store.FailAccountDeletion(ctx, row.Subject, s.failure(ctx, row, err))
 			if errors.Is(err, context.Canceled) {
 				return err
 			}
 		}
 	}
 	return nil
+}
+
+// failure is the bounded last_error of a failed worker pass. A billing
+// refusal is stored as its code only (never the payment link), and the
+// first BILLING_BALANCE_DUE of a deletion emails the hosted invoice link to
+// the account, which can no longer sign in to see it.
+func (s *Service) failure(ctx context.Context, d store.AccountDeletion, err error) string {
+	var coded *core.CodedError
+	if !errors.As(err, &coded) || (coded.Code != core.CodeBillingBalanceDue && coded.Code != core.CodeBillingSettling) {
+		return err.Error()
+	}
+	if coded.Code == core.CodeBillingBalanceDue && d.LastError != core.CodeBillingBalanceDue {
+		s.notifyBalanceDue(ctx, d.Subject, coded)
+	}
+	return coded.Code
+}
+
+// notifyBalanceDue emails the hosted invoice link of a refused teardown.
+// Best effort: a failure is logged, and the deletion retries regardless.
+func (s *Service) notifyBalanceDue(ctx context.Context, subject string, refusal *core.CodedError) {
+	link, _ := refusal.Params["hostedInvoiceUrl"].(string)
+	if s.Mailer == nil || s.Emails == nil || link == "" {
+		log.Printf("accounts: deletion of %s is waiting for an unpaid balance; no email sent", subject)
+		return
+	}
+	emails, err := s.Emails.LookupEmails(ctx, []string{subject})
+	to := emails[subject]
+	if err != nil || to == "" {
+		log.Printf("accounts: deletion of %s is waiting for an unpaid balance; email lookup failed", subject)
+		return
+	}
+	amount := ""
+	if cents, ok := refusal.Params["amountDueCents"].(int64); ok {
+		currency, _ := refusal.Params["currency"].(string)
+		amount = fmt.Sprintf(" of %d.%02d %s", cents/100, cents%100, strings.ToUpper(currency))
+	}
+	text := "Your bex account deletion is paused: a workspace has an unpaid balance" + amount + ".\n\n" +
+		"Pay the invoice here, and the deletion finishes automatically:\n" + link + "\n"
+	body := "<p>Your bex account deletion is paused: a workspace has an unpaid balance" + html.EscapeString(amount) + ".</p>" +
+		`<p><a href="` + html.EscapeString(link) + `">Pay the invoice</a>, and the deletion finishes automatically.</p>`
+	if err := s.Mailer.Send(ctx, to, "Pay your balance to finish deleting your bex account", text, body); err != nil {
+		log.Printf("accounts: send balance-due notice for the deletion of %s: %v", subject, err)
+	}
+}
+
+func (s *Service) now() time.Time {
+	if s.Base != nil {
+		return s.Base.Now()
+	}
+	return time.Now()
 }
 
 func (s *Service) Run(ctx context.Context) {

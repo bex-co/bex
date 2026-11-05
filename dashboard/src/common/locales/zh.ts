@@ -478,6 +478,34 @@ const zhCommon: Record<string, TranslationEntry> = {
     description:
       "Link from a plan notice (a Pro-and-higher feature on Hobby) to the Billing page (w8/m138)",
   },
+  "common.balanceDueTitle": {
+    message: "存在未付余额",
+    description:
+      "Title of the alert when a deletion is refused because the workspace has an unpaid balance (BILLING_BALANCE_DUE)",
+  },
+  "common.balanceDueAmount": {
+    message: "此工作区有 {amount} 的未付余额。请先支付账单，然后重新删除。",
+    description: "Balance-due deletion refusal with the amount",
+  },
+  "common.balanceDue": {
+    message: "此工作区有未付余额。请先支付账单，然后重新删除。",
+    description: "Balance-due deletion refusal without an amount",
+  },
+  "common.balanceDueNamedAmount": {
+    message:
+      "工作区 {name} 有 {amount} 的未付余额。请先支付账单，然后重新删除账户。",
+    description:
+      "Account-deletion refusal naming the workspace with the unpaid balance and its amount",
+  },
+  "common.balanceDueNamed": {
+    message: "工作区 {name} 有未付余额。请先支付账单，然后重新删除账户。",
+    description:
+      "Account-deletion refusal naming the workspace with the unpaid balance",
+  },
+  "common.balanceDuePay": {
+    message: "支付账单",
+    description: "Link to Stripe's hosted invoice page, opens in a new tab",
+  },
 };
 
 export default zhCommon;

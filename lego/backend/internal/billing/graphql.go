@@ -20,6 +20,7 @@ import (
 	"github.com/graphql-go/graphql"
 
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 var taxReadinessGQLType = graphql.NewObject(graphql.ObjectConfig{
@@ -31,6 +32,17 @@ var taxReadinessGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"productTaxCode":    gqlutil.StrField(func(t TaxReadiness) any { return t.ProductTaxCode }),
 		"taxBehavior":       gqlutil.StrField(func(t TaxReadiness) any { return t.TaxBehavior }),
 		"registrationCount": gqlutil.IntField(func(t TaxReadiness) any { return t.RegistrationCount }),
+	},
+})
+
+// paymentMethodRejectionGQLEnum is why the last card offered was refused at
+// binding (ADR091 D10.5–D10.6); null when none is pending.
+var paymentMethodRejectionGQLEnum = graphql.NewEnum(graphql.EnumConfig{
+	Name:        "PaymentMethodRejection",
+	Description: "Why the last card offered was refused at binding: PREPAID_CARD (prepaid cards aren't accepted) or UNPAID_BALANCE (the card is linked to an unpaid balance).",
+	Values: graphql.EnumValueConfigMap{
+		"PREPAID_CARD":   &graphql.EnumValueConfig{Value: store.PaymentMethodRejectedPrepaid},
+		"UNPAID_BALANCE": &graphql.EnumValueConfig{Value: store.PaymentMethodRejectedUnpaidBalance},
 	},
 })
 
@@ -47,6 +59,12 @@ var billingReadinessGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"paymentMethodRequired": gqlutil.BoolField(func(r Readiness) any { return r.PaymentMethodRequired }),
 		"paymentMethodOnboardingRequired": gqlutil.BoolField(func(r Readiness) any {
 			return r.PaymentMethodOnboardingRequired
+		}),
+		"paymentMethodRejection": gqlutil.Typed(paymentMethodRejectionGQLEnum, func(r Readiness) any {
+			if r.PaymentMethodRejection == "" {
+				return nil
+			}
+			return r.PaymentMethodRejection
 		}),
 		"tax":       gqlutil.Typed(taxReadinessGQLType, func(r Readiness) any { return r.Tax }),
 		"lifecycle": gqlutil.Typed(billingLifecycleGQLType, func(r Readiness) any { return r.Lifecycle }),

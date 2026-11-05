@@ -3,7 +3,11 @@ import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeleteWorkspaceDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  billingBalanceDue,
+  mutationErrorMessage,
+  type BillingBalanceDue,
+} from "@/common/lib/graphql-error";
 
 export interface UseDeleteWorkspaceResult {
   /** Fires deleteWorkspace; resolves true on success. */
@@ -11,6 +15,9 @@ export interface UseDeleteWorkspaceResult {
   busy: boolean;
   /** The backend's rejection message (e.g. a mismatched confirmation). */
   error: string | null;
+  /** Set instead of `error` when the delete was refused because settling the
+   *  workspace's unbilled usage failed to charge (BILLING_BALANCE_DUE). */
+  balanceDue: BillingBalanceDue | null;
 }
 
 /**
@@ -26,17 +33,21 @@ export function useDeleteWorkspace(): UseDeleteWorkspaceResult {
   const [mutate] = useMutation(DeleteWorkspaceDocument);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [balanceDue, setBalanceDue] = useState<BillingBalanceDue | null>(null);
 
   const remove = useCallback(
     async (id: string, name: string, confirmation: string) => {
       setBusy(true);
       setError(null);
+      setBalanceDue(null);
       try {
         await mutate({ variables: { id, confirmation } });
         toast.success(t("workspaces.deleteSuccess", { name }));
         return true;
       } catch (err) {
-        setError(mutationErrorMessage(err, t("workspaces.deleteError")));
+        const due = billingBalanceDue(err);
+        if (due) setBalanceDue(due);
+        else setError(mutationErrorMessage(err, t("workspaces.deleteError")));
         return false;
       } finally {
         setBusy(false);
@@ -45,5 +56,5 @@ export function useDeleteWorkspace(): UseDeleteWorkspaceResult {
     [mutate, t],
   );
 
-  return { remove, busy, error };
+  return { remove, busy, error, balanceDue };
 }

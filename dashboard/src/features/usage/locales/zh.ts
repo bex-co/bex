@@ -465,7 +465,7 @@ const zhUsage: Record<string, TranslationEntry> = {
     description: "Invoice-history card description",
   },
   "usage.creditsAppliedLine": {
-    message: "已抵扣 \u2212${applied} \u2192 应付 ${due}",
+    message: "已抵扣 −${applied} → 应付 ${due}",
     description:
       "Credit applied to the current period and the remaining amount due",
   },
@@ -473,6 +473,16 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "本期累计用量，按 bex 价目表计价。",
     description:
       "Charges card description while the invoiced total is still loading; deliberately states only what is already true, without claiming the figure is or is not a Stripe invoice.",
+  },
+  "usage.paymentMethodRejectedPrepaid": {
+    message: "不接受预付卡；请添加信用卡或借记卡。",
+    description:
+      "Shown when the last card offered was refused at binding because it is prepaid (ADR091 D10.5)",
+  },
+  "usage.paymentMethodRejectedUnpaidBalance": {
+    message: "此卡关联了一笔未付余额；请添加另一张卡。",
+    description:
+      "Shown when the last card offered was refused because it carries an unpaid written-off balance (ADR091 D10.6)",
   },
 };
 

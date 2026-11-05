@@ -945,6 +945,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			TaxCode:               cfg.StripeTaxCode,
 			TaxBehavior:           cfg.StripeTaxBehavior,
 			State:                 st,
+			Cards:                 st,
 			Audit:                 st,
 			Metrics:               billingMetrics,
 			HeldMeters:            heldMeters,
@@ -955,6 +956,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		usageSvc.Billing = stripeClient
 		deps.Billing = stripeClient
 		deps.BillingState = st
+		deps.BillingEligibility = st
 		if publishableKey != "" {
 			deps.WorkspaceCreationBilling = stripeClient
 			go (&billing.WorkspaceCreationCleaner{Store: st, Provider: stripeClient, Metrics: billingMetrics}).Run(ctx)
@@ -972,10 +974,12 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		// Workspace-delete Stripe teardown (w1/m61): cancel the workspace's
 		// metered Subscription when its workspace is deleted (keeping the Customer
 		// for invoice history). Pre-cascade, so the billing_provider_mappings row
-		// still resolves the subscription id. Only wired when Stripe is enabled —
-		// byte-identical to before m61 otherwise.
-		deps.WorkspacePreCascadePurgers = append(deps.WorkspacePreCascadePurgers,
-			&billing.WorkspacePurger{Canceller: stripeClient})
+		// still resolves the subscription id, and LAST among them (NewServer
+		// appends it after every other pre-cascade purger): once it has run, a
+		// retried delete finds no live Subscription and its settle is a no-op
+		// (ADR091 D10.4), so no other purger may fail after it. Only wired when
+		// Stripe is enabled — byte-identical to before m61 otherwise.
+		deps.WorkspaceBillingPurger = &billing.WorkspacePurger{Canceller: stripeClient}
 
 		emitter := billing.NewEmitter(st, stripeClient)
 		emitter.Metrics = billingMetrics
@@ -995,6 +999,9 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			log.Printf("BEX_STRIPE_SEAL_HOURS=%s is below the usage catch-up window; raising the seal horizon to %s so exported rows are final", emitter.SealHours, clamped)
 			emitter.SealHours = clamped
 		}
+		// ADR091 D10.4: workspace and account deletion settle the workspace's
+		// unbilled usage first and refuse on a declined charge.
+		deps.WorkspaceSettler = &billing.Settler{Emitter: emitter, Usage: st, Invoices: stripeClient}
 		var lifecycle *billing.Lifecycle
 		if cfg.StripeDunningEnabled {
 			// The mode threads through so webhook events from the other mode

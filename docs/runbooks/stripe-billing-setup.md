@@ -79,25 +79,35 @@ Use a separate setup/admin credential for the script. For bex-api, create a Stri
 | Stripe resource | Runtime access | Why |
 | --- | --- | --- |
 | Customers | Write | search, create, and recover `bex_workspace=tea-…` Customers |
-| Subscriptions | Write | list/create the complete metered contract, bind its default payment method, enable gated automatic tax, and apply the comp coupon |
+| Subscriptions | Write | list/create the complete metered contract, bind its default payment method, enable gated automatic tax, apply the comp coupon, and reset the billing cycle anchor to invoice usage before a workspace is deleted (ADR091 D10.4) |
 | Prices | Read | validate/resolve all active lookup keys before subscription creation |
 | Products | Read | verify the operator-confirmed Product tax code when the Tax gate is configured |
-| Billing meters | Read | reconcile event names to meter ids and read bounded event summaries |
+| Billing meters | Read | reconcile event names to meter ids and read bounded event summaries, including the per-Customer summaries settle before delete waits on (ADR091 D10.4) |
 | Billing meter events | Write | export sealed usage |
-| Invoices | Read | current invoice preview and finalized invoice history |
+| Invoices | Write | invoice preview and history; finalize threshold invoices (ADR091 D10.2); preview, finalize and pay (`off_session`) the settle-before-delete invoice and any unpaid one when a workspace or account is deleted (D10.4); list a written-off invoice's payments (D10.6) |
 | Checkout Sessions | Write | create setup-mode hosted sessions and retrieve completed sessions |
 | Payment Intents | Read | allow Checkout to resolve account-enabled dynamic payment methods for setup mode |
+| Charges | Read | read the failed charge's card fingerprint when an invoice is written off (ADR091 D10.6, expanded from the invoice's payments) |
 | Setup Intents | Read | verify the succeeded setup and owned payment method after the webhook |
-| Payment Methods | Read | verify Customer ownership before binding defaults |
+| Payment Methods | Write | verify Customer ownership and read `card.funding`/`card.fingerprint` before binding defaults; detach a card refused at binding (prepaid, or linked to an unpaid write-off, D10.5–D10.6) and a deleted workspace's cards |
 | Customer Portal | Write | create a short-lived session for the resolved Customer |
 | Tax Settings, Registrations | Read | verify an active same-mode registration when the Tax gate is configured (`tax_settings_read` in Stripe's restricted-key error) |
 | Billing credit grants / credit balance | Read | read the remaining credit balance + active grants for the usage surface's `credits` block (w5/m70); a key without it degrades to credits-omitted, everything else unaffected |
 
-No runtime write access is needed for Products, Prices, meters, Coupons, Setup Intents, payment methods, Tax settings/registrations, payouts, balances, disputes, account settings, or **credit grants** (granting/voiding credit stays operator-side per ADR071's future dedicated credit key; the runtime key only reads balances). Portal **configuration** is setup/admin work; runtime only creates sessions against its `bpc_*` id. If Stripe's permission UI groups a read operation with a broader Billing category, choose the narrowest category that makes the documented calls succeed and record that exception in the credential inventory.
+No runtime write access is needed for Products, Prices, meters, Coupons, Setup Intents, Tax settings/registrations, payouts, balances, disputes, account settings, or **credit grants** (granting/voiding credit stays operator-side per ADR071's future dedicated credit key; the runtime key only reads balances). Portal **configuration** is setup/admin work; runtime only creates sessions against its `bpc_*` id. If Stripe's permission UI groups a read operation with a broader Billing category, choose the narrowest category that makes the documented calls succeed and record that exception in the credential inventory.
 
 Verify the two operational reads by inspecting the returned JSON, not only the Stripe CLI process status: the CLI can exit zero while the body contains `error.code=more_permissions_required`. `/v1/billing/meters` must succeed with **Billing Meters Read** (`billing_meter_read`), and `/v1/tax/registrations` must succeed with **Tax Settings, Registrations Read** (`tax_settings_read`). Keep the complete error body out of evidence because it identifies the account and restricted key.
 
 Store the value out of band as `BEX_STRIPE_SECRET_KEY` using the same custody pattern as [ADR019](../ADR019-infra-credentials.md). Never commit or log it. The installer accepts only `rk_*`; `rk_live_*` is additionally refused unless `BEX_STRIPE_ALLOW_LIVE=1` records a separate go-live decision. Rotate by adding a new restricted key, deploying it, verifying successful calls, then revoking the old key.
+
+### Radar rules for card binding (ADR091 D10.5)
+
+bex refuses prepaid cards (`card.funding = prepaid`) and cards whose fingerprint is on an unpaid agent-model write-off in code, at Checkout completion and workspace creation: the card is detached, never bound, and the workspace's billing readiness reports `paymentMethodRejection` (`prepaid_card` or `unpaid_balance`). Stripe Radar rules are configured in the Stripe Dashboard, not by the runtime or the setup script. Once per mode (test, then live), under **Radar → Rules**:
+
+1. Keep Stripe's default rules on (block if CVC or postal-code verification fails, block highest-risk payments).
+2. Enable **Request 3D Secure** for `:risk_level: = 'elevated'` and for SetupIntents when 3DS is recommended, so a card saved for off-session charges is authenticated at binding.
+3. Add `Block if :card_funding: = 'prepaid'`. It duplicates the bex check earlier, so a prepaid card fails inside Checkout with Stripe's own message instead of after it. Rules on setup attempts need Radar for Fraud Teams; without it, the bex check alone applies.
+4. Record the rule set (names and conditions, no account ids) in the credential inventory with the date and operator. Virtual cards stay allowed until abuse data says otherwise (D10.5).
 
 ## 3. Create and custody the webhook
 

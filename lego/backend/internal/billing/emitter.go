@@ -271,7 +271,7 @@ func (e *Emitter) emitOnce(ctx context.Context, fastOnly bool) {
 		if len(rows) == 0 {
 			return
 		}
-		emitted := e.emitRows(ctx, rows, now)
+		emitted := e.emitRows(ctx, rows, now, map[string]bool{})
 		// emitted == 0 means this pass made no progress (transient ingest failure
 		// or every customer's provisioning failed) — stop rather than hot-loop;
 		// the next tick retries. A short batch means the backlog is drained.
@@ -284,8 +284,9 @@ func (e *Emitter) emitOnce(ctx context.Context, fastOnly bool) {
 // emitRows ensures each distinct workspace's Stripe customer exists, maps the
 // rows whose customer is ready into events, ingests them, and stamps emitted_at
 // only on a fully successful ingest. Returns how many rows were durably emitted.
-func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time.Time) int {
-	customerReady := map[string]bool{}
+// customerReady pre-seeds workspaces already provisioned by the caller (the
+// settle export); every other workspace is provisioned once per call.
+func (e *Emitter) emitRows(ctx context.Context, rows []store.HourlyRow, now time.Time, customerReady map[string]bool) int {
 	attempts := make([]store.UsageExportAttempt, 0, len(rows))
 	events := make([]Event, 0, len(rows))
 	for _, r := range rows {

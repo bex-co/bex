@@ -15,7 +15,7 @@ vi.mock("sonner", () => ({
   },
 }));
 
-import { uncodedGraphQLError } from "@/test/mocks/apollo";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import { useDeleteWorkspace } from "@/features/workspaces/hooks/use-delete-workspace";
 
 beforeEach(() => {
@@ -68,5 +68,36 @@ describe("useDeleteWorkspace", () => {
     expect(result.current.error).toBe(
       'Confirmation must be "sudo delete workspace acme-hq"',
     );
+  });
+
+  it("reports BILLING_BALANCE_DUE as a balance with its pay link, not an error", async () => {
+    const mutate = vi.fn().mockRejectedValue(
+      codedGraphQLError("BILLING_BALANCE_DUE", {
+        workspaceId: "tea-1",
+        amountDueCents: 300,
+        currency: "usd",
+        hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_1/in_1",
+      }),
+    );
+    mockUseMutation.mockReturnValue([mutate]);
+
+    const { result } = renderHook(() => useDeleteWorkspace());
+    let ok;
+    await act(async () => {
+      ok = await result.current.remove(
+        "tea-1",
+        "acme-hq",
+        "sudo delete workspace acme-hq",
+      );
+    });
+
+    expect(ok).toBe(false);
+    expect(result.current.error).toBeNull();
+    expect(result.current.balanceDue).toEqual({
+      workspaceId: "tea-1",
+      amountDueCents: 300,
+      currency: "usd",
+      hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_1/in_1",
+    });
   });
 });

@@ -493,6 +493,37 @@ const enCommon: Record<string, TranslationEntry> = {
     description:
       "Link from a plan notice (a Pro-and-higher feature on Hobby) to the Billing page (w8/m138)",
   },
+  "common.balanceDueTitle": {
+    message: "Unpaid balance",
+    description:
+      "Title of the alert when a deletion is refused because the workspace has an unpaid balance (BILLING_BALANCE_DUE)",
+  },
+  "common.balanceDueAmount": {
+    message:
+      "This workspace has an unpaid balance of {amount}. Pay the invoice, then delete it again.",
+    description: "Balance-due deletion refusal with the amount",
+  },
+  "common.balanceDue": {
+    message:
+      "This workspace has an unpaid balance. Pay the invoice, then delete it again.",
+    description: "Balance-due deletion refusal without an amount",
+  },
+  "common.balanceDueNamedAmount": {
+    message:
+      "The workspace {name} has an unpaid balance of {amount}. Pay the invoice, then delete your account again.",
+    description:
+      "Account-deletion refusal naming the workspace with the unpaid balance and its amount",
+  },
+  "common.balanceDueNamed": {
+    message:
+      "The workspace {name} has an unpaid balance. Pay the invoice, then delete your account again.",
+    description:
+      "Account-deletion refusal naming the workspace with the unpaid balance",
+  },
+  "common.balanceDuePay": {
+    message: "Pay invoice",
+    description: "Link to Stripe's hosted invoice page, opens in a new tab",
+  },
 };
 
 export default enCommon;

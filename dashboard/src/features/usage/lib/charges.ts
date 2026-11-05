@@ -12,6 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+import { formatMinorUnits } from "@/common/lib/format";
 import type { ResourceEstimate } from "../hooks/use-usage";
 
 /** The arithmetic behind the billing page's charge tree, kept out of the view. */
@@ -37,8 +38,9 @@ export function usd(amount: string): number {
   return Number.isFinite(n) ? n : 0;
 }
 
-export function money(value: number): string {
-  return `$${value.toFixed(2)}`;
+/** A USD amount in dollars, formatted for the active locale ("$1.23"). */
+export function money(value: number, locale: string): string {
+  return formatMinorUnits(Math.round(value * 100), "usd", locale);
 }
 
 /** "YYYY-MM" for a given instant — the period the charge tree treats as live. */

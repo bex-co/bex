@@ -64,6 +64,10 @@ type WriteOffStore interface {
 type TrustInvoices interface {
 	AgentModelInvoiceLines(ctx context.Context, invoiceID string) (AgentModelInvoice, error)
 	FinalizeThresholdInvoice(ctx context.Context, invoiceID string) error
+	// WrittenOffCardFingerprint is the fingerprint of the card whose charge
+	// of the invoice failed, else the Customer's default card ("" ⇒ none),
+	// kept on the write-off for D10.6.
+	WrittenOffCardFingerprint(ctx context.Context, invoiceID, customerID string) (string, error)
 }
 
 // TierChangedFunc is told a workspace's trust tier changed through a
@@ -238,9 +242,16 @@ func (t *Trust) recordWriteOff(ctx context.Context, workspaceID string, invoice 
 	if month.IsZero() {
 		month = time.Unix(invoice.PeriodStart, 0).UTC()
 	}
+	// The card that owes the debt (ADR091 D10.6): binding it again, in any
+	// workspace, is refused while the write-off stands.
+	fingerprint, err := t.Invoices.WrittenOffCardFingerprint(ctx, invoice.ID, invoice.Customer.ID)
+	if err != nil {
+		return err
+	}
 	recorded, err := t.WriteOffs.RecordAgentModelWriteOff(ctx, store.AgentModelWriteOff{
 		InvoiceID: invoice.ID, WorkspaceID: workspaceID, CustomerID: invoice.Customer.ID, UsageMonth: month,
 		AgentModelNetMicroUSD: lines.NetCents * microUSDPerCent, AmountMicroUSD: writtenOff * microUSDPerCent, WrittenOffAt: at,
+		CardFingerprint: fingerprint,
 	})
 	if errors.Is(err, store.ErrInvalidAgentModelWriteOff) {
 		log.Printf("billing: invoice %s of workspace %s: %v; acknowledged", invoice.ID, workspaceID, err)

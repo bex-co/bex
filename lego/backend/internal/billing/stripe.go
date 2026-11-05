@@ -135,6 +135,13 @@ type StripeConfig struct {
 	// created and reconciled when an existing Subscription is synced. Nil
 	// leaves every item without a threshold.
 	AgentModelThreshold func(ctx context.Context, workspaceID string) (*int64, error)
+	// SettleWait bounds how long settle before delete waits for Stripe to
+	// aggregate exported usage (ADR091 D10.4); zero is DefaultSettleWait.
+	SettleWait time.Duration
+	// Cards screens a payment method at binding against unpaid write-offs and
+	// records why one was refused (ADR091 D10.5–D10.6). Nil still refuses
+	// prepaid cards, but checks no fingerprint and records nothing.
+	Cards CardScreenStore
 }
 
 // BillingStateStore is the narrow persistence seam the Stripe client needs.
@@ -184,6 +191,8 @@ type StripeClient struct {
 	testMode              bool
 	publishableKey        string
 	state                 BillingStateStore
+	cards                 CardScreenStore
+	settleWait            time.Duration
 	audit                 core.AuditSink
 	metrics               *Metrics
 }
@@ -225,6 +234,8 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 		testMode:              strings.Contains(cfg.SecretKey, "_test_"),
 		publishableKey:        cfg.PublishableKey,
 		state:                 cfg.State,
+		cards:                 cfg.Cards,
+		settleWait:            cfg.SettleWait,
 		audit:                 cfg.Audit,
 		metrics:               cfg.Metrics,
 	}

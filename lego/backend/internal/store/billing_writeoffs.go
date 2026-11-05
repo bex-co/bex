@@ -67,6 +67,10 @@ type AgentModelWriteOff struct {
 	AgentModelNetMicroUSD int64
 	AmountMicroUSD        int64
 	WrittenOffAt          time.Time
+	// CardFingerprint is the Stripe fingerprint of the card whose charge of
+	// the invoice failed, else the Customer's default card ("" ⇒ none): binding a card with the same fingerprint
+	// is refused while the debt is unpaid (D10.6). Never logged.
+	CardFingerprint string
 }
 
 // RecordAgentModelWriteOff records w once per invoice (a redelivered
@@ -79,15 +83,30 @@ func (s *PGStore) RecordAgentModelWriteOff(ctx context.Context, w AgentModelWrit
 	}
 	tag, err := s.Pool.Exec(ctx, `
 		INSERT INTO billing_agent_model_writeoffs
-		  (invoice_id, workspace_id, customer_id, usage_month, agent_model_net_microusd, amount_microusd, written_off_at)
-		SELECT $1, $2, $3, $4, $5, $6, $7
+		  (invoice_id, workspace_id, customer_id, usage_month, agent_model_net_microusd, amount_microusd, written_off_at, card_fingerprint)
+		SELECT $1, $2, $3, $4, $5, $6, $7, NULLIF($8, '')
 		WHERE NOT EXISTS (SELECT 1 FROM billing_trust_invoices WHERE invoice_id = $1)
 		ON CONFLICT (invoice_id) DO NOTHING`,
-		w.InvoiceID, w.WorkspaceID, w.CustomerID, MonthStartUTC(w.UsageMonth), w.AgentModelNetMicroUSD, w.AmountMicroUSD, w.WrittenOffAt.UTC())
+		w.InvoiceID, w.WorkspaceID, w.CustomerID, MonthStartUTC(w.UsageMonth), w.AgentModelNetMicroUSD, w.AmountMicroUSD, w.WrittenOffAt.UTC(), w.CardFingerprint)
 	if err != nil {
 		return false, err
 	}
 	return tag.RowsAffected() == 1, nil
+}
+
+// UnpaidWriteOffForCardFingerprint reports whether any unpaid agent-model
+// write-off, in any workspace including a deleted one, was recorded against a
+// card with this Stripe fingerprint (ADR091 D10.6). A paid invoice deletes its
+// write-off, so every row is unpaid. An empty fingerprint never matches.
+func (s *PGStore) UnpaidWriteOffForCardFingerprint(ctx context.Context, fingerprint string) (bool, error) {
+	if fingerprint == "" {
+		return false, nil
+	}
+	var found bool
+	err := s.Pool.QueryRow(ctx, `
+		SELECT EXISTS (SELECT 1 FROM billing_agent_model_writeoffs WHERE card_fingerprint = $1)`,
+		fingerprint).Scan(&found)
+	return found, err
 }
 
 // AgentModelWriteOffRetention is how long a write-off is kept as a debt

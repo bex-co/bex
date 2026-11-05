@@ -15,6 +15,7 @@ import {
   AlertTitle,
   AlertDescription,
 } from "@/common/components/ui/alert";
+import { BalanceDueAlert } from "@/common/components/balance-due-alert";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDeleteWorkspace } from "@/features/workspaces/hooks/use-delete-workspace";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
@@ -39,7 +40,7 @@ export interface DeleteWorkspaceCardProps {
 export function DeleteWorkspaceCard({ workspace }: DeleteWorkspaceCardProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
-  const { remove, busy, error } = useDeleteWorkspace();
+  const { remove, busy, error, balanceDue } = useDeleteWorkspace();
   const { workspaces, setCurrentWorkspaceId, refetch } = useWorkspace();
 
   const confirmPhrase = workspaceDeleteConfirmation(workspace.name);
@@ -83,6 +84,8 @@ export function DeleteWorkspaceCard({ workspace }: DeleteWorkspaceCardProps) {
           onValueChange={setConfirmation}
           inputClassName="max-w-sm"
         />
+
+        {balanceDue ? <BalanceDueAlert due={balanceDue} /> : null}
 
         {error ? (
           <Alert variant="destructive">

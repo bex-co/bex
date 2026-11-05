@@ -131,6 +131,66 @@ export function graphQLErrorExtensions(
   );
 }
 
+/** The unpaid balance a BILLING_BALANCE_DUE deletion refusal names. */
+export interface BillingBalanceDue {
+  workspaceId: string;
+  /** Amount still due in the currency's minor unit; null when not reported. */
+  amountDueCents: number | null;
+  currency: string;
+  /** Stripe's hosted payment page for the invoice; an https URL on
+   *  invoice.stripe.com (or another stripe.com host) only, else null. */
+  hostedInvoiceUrl: string | null;
+}
+
+/** `url` when it is an https link to a Stripe-hosted page, else null: the
+ *  pay link opens in a new tab, so nothing else may ride in the refusal. */
+function stripeHostedUrl(url: unknown): string | null {
+  if (typeof url !== "string") return null;
+  try {
+    const parsed = new URL(url);
+    const host = parsed.hostname;
+    const stripeHost = host === "stripe.com" || host.endsWith(".stripe.com");
+    return parsed.protocol === "https:" && stripeHost && !parsed.username
+      ? parsed.toString()
+      : null;
+  } catch {
+    return null;
+  }
+}
+
+/**
+ * The unpaid balance when bex-api refused a workspace or account deletion
+ * because settling its unbilled usage failed to charge (BILLING_BALANCE_DUE,
+ * ADR091 D10.4), or null for any other error.
+ */
+export function billingBalanceDue(err: unknown): BillingBalanceDue | null {
+  const ext = graphQLErrorExtensions(err, "BILLING_BALANCE_DUE");
+  if (!ext) return null;
+  const url = ext["hostedInvoiceUrl"];
+  const amount = ext["amountDueCents"];
+  return {
+    workspaceId:
+      typeof ext["workspaceId"] === "string" ? ext["workspaceId"] : "",
+    amountDueCents:
+      typeof amount === "number" && Number.isFinite(amount) && amount > 0
+        ? amount
+        : null,
+    currency: typeof ext["currency"] === "string" ? ext["currency"] : "usd",
+    hostedInvoiceUrl: stripeHostedUrl(url),
+  };
+}
+
+/**
+ * The reason bex-api refused a card at binding (PAYMENT_METHOD_REJECTED,
+ * ADR091 D10.5–D10.6), upper-cased to the GraphQL PaymentMethodRejection
+ * enum ("PREPAID_CARD", "UNPAID_BALANCE"), or null for any other error.
+ */
+export function paymentMethodRejected(err: unknown): string | null {
+  const ext = graphQLErrorExtensions(err, "PAYMENT_METHOD_REJECTED");
+  if (!ext) return null;
+  return typeof ext["reason"] === "string" ? ext["reason"].toUpperCase() : "";
+}
+
 /**
  * True when the server shed the request for throttling — either the per-caller
  * rate budget (`RATE_LIMITED`) or auth-admission overload (`AUTH_OVERLOADED`,

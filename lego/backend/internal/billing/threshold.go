@@ -266,27 +266,12 @@ func (c *StripeClient) AgentModelInvoiceLines(ctx context.Context, invoiceID str
 // auto_advance, so Stripe collects it now instead of after its one-hour draft
 // window (probe 2026-11-05). An invoice no longer in draft is a no-op.
 func (c *StripeClient) FinalizeThresholdInvoice(ctx context.Context, invoiceID string) error {
-	params := &stripe.InvoiceFinalizeInvoiceParams{AutoAdvance: stripe.Bool(true)}
-	params.Context = ctx
-	params.SetIdempotencyKey("bex-finalize-threshold-" + invoiceID)
-	if _, err := c.sc.Invoices.FinalizeInvoice(invoiceID, params); err == nil {
-		c.metrics.Operation("threshold_invoice_finalize", "success")
-		return nil
-	} else if resourceMissing(err) {
-		return nil
-	} else {
-		// Finalized already (Stripe's own auto-finalization, or a redelivery
-		// after a lost response): re-read rather than parse the error.
-		getParams := &stripe.InvoiceParams{}
-		getParams.Context = ctx
-		invoice, gerr := c.sc.Invoices.Get(invoiceID, getParams)
-		if gerr == nil && invoice.Status != stripe.InvoiceStatusDraft {
-			return nil
-		}
+	if _, err := c.finalizeDraftInvoice(ctx, invoiceID, "bex-finalize-threshold-"+invoiceID, stripe.Bool(true)); err != nil {
 		c.metrics.Operation("threshold_invoice_finalize", "error")
-		code, _ := safeStripeError(err)
-		return fmt.Errorf("stripe: finalize threshold invoice %s: %s", invoiceID, code)
+		return fmt.Errorf("stripe: finalize threshold invoice %s: %w", invoiceID, err)
 	}
+	c.metrics.Operation("threshold_invoice_finalize", "success")
+	return nil
 }
 
 // ThresholdStore is AgentModelThresholds' store surface; *store.PGStore

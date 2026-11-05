@@ -3,6 +3,7 @@ import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { DeleteWorkspaceCard } from "@/features/workspaces/components/delete-workspace-card";
 import type { WorkspaceView } from "@/features/workspaces/types";
+import type { BillingBalanceDue } from "@/common/lib/graphql-error";
 
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -10,8 +11,16 @@ vi.mock("@tanstack/react-router", () => ({
 }));
 
 const remove = vi.fn();
+const deleteState: { balanceDue: BillingBalanceDue | null } = {
+  balanceDue: null,
+};
 vi.mock("@/features/workspaces/hooks/use-delete-workspace", () => ({
-  useDeleteWorkspace: () => ({ remove, busy: false, error: null }),
+  useDeleteWorkspace: () => ({
+    remove,
+    busy: false,
+    error: null,
+    balanceDue: deleteState.balanceDue,
+  }),
 }));
 
 const setCurrentWorkspaceId = vi.fn();
@@ -45,6 +54,7 @@ beforeEach(() => {
   setCurrentWorkspaceId.mockReset();
   refetch.mockReset();
   workspaceState.workspaces = [WORKSPACE, OTHER];
+  deleteState.balanceDue = null;
 });
 
 // Render's live guard: the full "sudo delete workspace <name>" phrase, not the
@@ -110,5 +120,49 @@ describe("DeleteWorkspaceCard — sudo-phrase confirm guard (w6/m3/t004, w6/m5/t
       replace: true,
       search: { attempt: undefined },
     });
+  });
+});
+
+describe("DeleteWorkspaceCard — unpaid balance (ADR091 D10.4)", () => {
+  it("shows the balance and a Pay invoice link instead of a generic error", () => {
+    deleteState.balanceDue = {
+      workspaceId: "tea-1",
+      amountDueCents: 300,
+      currency: "usd",
+      hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_1/in_1",
+    };
+    render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
+
+    expect(screen.getByText("Unpaid balance")).toBeInTheDocument();
+    expect(
+      screen.getByText(
+        "This workspace has an unpaid balance of $3.00. Pay the invoice, then delete it again.",
+      ),
+    ).toBeInTheDocument();
+    const pay = screen.getByRole("link", { name: /Pay invoice/ });
+    expect(pay).toHaveAttribute(
+      "href",
+      "https://invoice.stripe.com/i/acct_1/in_1",
+    );
+    expect(pay).toHaveAttribute("target", "_blank");
+    expect(pay.getAttribute("rel")).toContain("noopener");
+    expect(screen.queryByText("Couldn't delete workspace")).toBeNull();
+  });
+
+  it("words the balance without an amount and omits the link without a URL", () => {
+    deleteState.balanceDue = {
+      workspaceId: "tea-1",
+      amountDueCents: null,
+      currency: "usd",
+      hostedInvoiceUrl: null,
+    };
+    render(<DeleteWorkspaceCard workspace={WORKSPACE} />);
+
+    expect(
+      screen.getByText(
+        "This workspace has an unpaid balance. Pay the invoice, then delete it again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.queryByRole("link", { name: /Pay invoice/ })).toBeNull();
   });
 });

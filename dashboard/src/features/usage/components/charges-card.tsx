@@ -93,7 +93,7 @@ function chargeRate(charge: ChargeLine, t: (key: string) => string): string {
 }
 
 function ChargeRow({ charge }: { charge: ChargeLine }) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const labelKey = CHARGE_LABEL_KEYS[charge.kind];
   return (
     <div className="grid gap-x-4 gap-y-1 py-2 sm:grid-cols-[minmax(0,1fr)_auto_auto_auto] sm:items-baseline">
@@ -114,14 +114,14 @@ function ChargeRow({ charge }: { charge: ChargeLine }) {
         {charge.quantity} {charge.unit}
       </span>
       <span className="font-mono text-sm tabular-nums sm:w-20 sm:text-right">
-        {money(usd(charge.costUsd))}
+        {money(usd(charge.costUsd), i18n.language)}
       </span>
     </div>
   );
 }
 
 function ResourceRow({ resource }: { resource: ResourceEstimate }) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const [open, setOpen] = useState(false);
   // A charge outlives its resource. Show the name bex retained, marked as
   // deleted; fall back to the bare id only when no name was ever recorded
@@ -158,7 +158,7 @@ function ResourceRow({ resource }: { resource: ResourceEstimate }) {
           ) : null}
         </span>
         <span className="font-mono text-sm tabular-nums">
-          {money(usd(resource.costUsd))}
+          {money(usd(resource.costUsd), i18n.language)}
         </span>
       </button>
       {open && (
@@ -179,7 +179,7 @@ function CategoryRow({
   category: ChargeCategory;
   expandAll: boolean;
 }) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const [open, setOpen] = useState(false);
   const labelKey = CATEGORY_LABEL_KEYS[category.key];
   const expanded = open || expandAll;
@@ -202,7 +202,7 @@ function CategoryRow({
           {labelKey ? t(labelKey) : category.key}
         </span>
         <span className="font-mono tabular-nums">
-          {money(category.totalUsd)}
+          {money(category.totalUsd, i18n.language)}
         </span>
       </button>
       {expanded && (
@@ -450,7 +450,7 @@ export function ChargesCard({
                   : t("usage.totalForPeriod")}
             </dt>
             <dd className="font-mono text-lg font-semibold tabular-nums">
-              {money(total)} USD
+              {money(total, i18n.language)} USD
             </dd>
           </div>
           {rated != null && categories.length > 0 && (
@@ -462,14 +462,16 @@ export function ChargesCard({
                   month: periodLabel(currentPeriod(now)).split(" ")[0] ?? "",
                 })}
               </dt>
-              <dd className="font-mono tabular-nums">{money(treeTotal)} USD</dd>
+              <dd className="font-mono tabular-nums">
+                {money(treeTotal, i18n.language)} USD
+              </dd>
             </div>
           )}
           {dueAfterCredit != null && (
             <div className="flex items-baseline justify-between gap-4 text-sm text-muted-foreground">
               <dt>{t("usage.amountDueAfterCredits")}</dt>
               <dd className="font-mono tabular-nums">
-                {money(dueAfterCredit)} USD
+                {money(dueAfterCredit, i18n.language)} USD
               </dd>
             </div>
           )}
@@ -486,7 +488,9 @@ export function ChargesCard({
                         periodLabel(currentPeriod(now)).split(" ")[0] ?? "",
                     })}
               </dt>
-              <dd className="font-mono tabular-nums">{money(projected)} USD</dd>
+              <dd className="font-mono tabular-nums">
+                {money(projected, i18n.language)} USD
+              </dd>
             </div>
           )}
         </dl>

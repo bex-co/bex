@@ -160,6 +160,18 @@ func (c *StripeClient) VerifyWorkspaceSetup(ctx context.Context, attemptID, work
 	if method.Customer == nil || method.Customer.ID != customerID {
 		return VerifiedWorkspaceSetup{}, &inputError{message: "workspace PaymentMethod is not attached to its Customer"}
 	}
+	// ADR091 D10.5–D10.6: a refused card is detached and the creation refused
+	// with the reason; no workspace exists yet to record it on.
+	reason, err := c.cardRejection(ctx, method)
+	if err != nil {
+		return VerifiedWorkspaceSetup{}, err
+	}
+	if reason != "" {
+		if err := c.refuseCard(ctx, workspaceID, method, reason); err != nil {
+			return VerifiedWorkspaceSetup{}, err
+		}
+		return VerifiedWorkspaceSetup{}, NewPaymentMethodRejectedError(reason)
+	}
 	return VerifiedWorkspaceSetup{PaymentMethodID: method.ID}, nil
 }
 

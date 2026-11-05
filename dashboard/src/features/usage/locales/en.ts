@@ -473,7 +473,7 @@ const enUsage: Record<string, TranslationEntry> = {
     description: "Invoice-history card description",
   },
   "usage.creditsAppliedLine": {
-    message: "Credits applied \u2212${applied} \u2192 amount due ${due}",
+    message: "Credits applied −${applied} → amount due ${due}",
     description:
       "Credit applied to the current period and the remaining amount due",
   },
@@ -481,6 +481,16 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Accrued so far this period, priced from the bex rate sheet.",
     description:
       "Charges card description while the invoiced total is still loading; deliberately states only what is already true, without claiming the figure is or is not a Stripe invoice.",
+  },
+  "usage.paymentMethodRejectedPrepaid": {
+    message: "Prepaid cards aren't accepted; add a credit or debit card.",
+    description:
+      "Shown when the last card offered was refused at binding because it is prepaid (ADR091 D10.5)",
+  },
+  "usage.paymentMethodRejectedUnpaidBalance": {
+    message: "This card is linked to an unpaid balance; add a different card.",
+    description:
+      "Shown when the last card offered was refused because it carries an unpaid written-off balance (ADR091 D10.6)",
   },
 };
 

@@ -32,6 +32,10 @@ type PaymentEligibility struct {
 	Bound    bool
 	Excluded bool
 	Comped   bool
+	// Rejection is why the last card offered was refused at binding (ADR091
+	// D10.5–D10.6), "" when none is pending. It never affects AllowsPaidIntent:
+	// a workspace that already holds a card keeps it.
+	Rejection PaymentMethodRejection
 }
 
 func (p PaymentEligibility) AllowsPaidIntent() bool {
@@ -45,6 +49,7 @@ func (s *PGStore) SetPaymentMethodBound(ctx context.Context, workspaceID string,
 	tag, err := s.Pool.Exec(ctx, `
 		UPDATE billing_provider_mappings
 		SET payment_method_bound_at = COALESCE(payment_method_bound_at, $2),
+		    payment_method_rejection = NULL,
 		    updated_at = now()
 		WHERE workspace_id = $1`, workspaceID, at.UTC())
 	if err != nil {
@@ -90,16 +95,46 @@ func (s *PGStore) PaymentMethodBound(ctx context.Context, workspaceID string) (b
 // entered Checkout yet still returns an unstamped (not missing) snapshot.
 func (s *PGStore) PaymentEligibility(ctx context.Context, workspaceID string) (PaymentEligibility, error) {
 	var eligibility PaymentEligibility
+	var rejection *string
 	err := s.Pool.QueryRow(ctx, `
 		SELECT m.payment_method_bound_at IS NOT NULL,
-		       t.billing_excluded, t.billing_comped
+		       t.billing_excluded, t.billing_comped, m.payment_method_rejection
 		FROM tenants t
 		LEFT JOIN billing_provider_mappings m ON m.workspace_id = t.id
-		WHERE t.id = $1`, workspaceID).Scan(&eligibility.Bound, &eligibility.Excluded, &eligibility.Comped)
+		WHERE t.id = $1`, workspaceID).Scan(&eligibility.Bound, &eligibility.Excluded, &eligibility.Comped, &rejection)
 	if errors.Is(err, pgx.ErrNoRows) {
 		return PaymentEligibility{}, ErrNotFound
 	}
+	if rejection != nil {
+		eligibility.Rejection = PaymentMethodRejection(*rejection)
+	}
 	return eligibility, err
+}
+
+// PaymentMethodRejection is why a payment method was refused at binding
+// (ADR091 D10.5–D10.6). It is stored on the workspace's provider mapping until
+// a method binds, and is a column CHECK-constrained to these values.
+type PaymentMethodRejection string
+
+const (
+	// PaymentMethodRejectedPrepaid is a prepaid card (card.funding=prepaid).
+	PaymentMethodRejectedPrepaid PaymentMethodRejection = "prepaid_card"
+	// PaymentMethodRejectedUnpaidBalance is a card whose fingerprint matches an
+	// unpaid agent-model write-off.
+	PaymentMethodRejectedUnpaidBalance PaymentMethodRejection = "unpaid_balance"
+)
+
+// RecordPaymentMethodRejection stores why the last payment method offered for
+// the workspace was refused at binding. The bind marker is untouched: a
+// workspace that already has a card keeps it. A workspace with no mapping row
+// has nothing to annotate. SetPaymentMethodBound clears it, so a later
+// successful binding never shows a stale refusal.
+func (s *PGStore) RecordPaymentMethodRejection(ctx context.Context, workspaceID string, reason PaymentMethodRejection) error {
+	_, err := s.Pool.Exec(ctx, `
+		UPDATE billing_provider_mappings
+		SET payment_method_rejection = $2, updated_at = now()
+		WHERE workspace_id = $1`, workspaceID, string(reason))
+	return err
 }
 
 // UsageSeal is the outbox's finality horizon. A row is sealed when
@@ -145,17 +180,36 @@ const sealedPendingUsage = `u.billing_export_state = 'pending'
 // the loop makes forward progress. The JOIN filters excluded tenants at the
 // source: an excluded workspace's rows are never even considered for export.
 func (s *PGStore) SelectUnemittedUsage(ctx context.Context, floor time.Time, seal UsageSeal, limit int, requirePaymentMethod bool) ([]HourlyRow, error) {
+	return s.selectPendingUsage(ctx, "", floor, seal, limit, requirePaymentMethod)
+}
+
+// SelectWorkspaceUnemittedUsage is SelectUnemittedUsage for one workspace:
+// the settle-before-delete export (ADR091 D10.4), which passes a seal at the
+// present instead of the rollup horizon. Floor, held kinds, exclusion and the
+// payment-method withholding apply exactly as in the outbox read.
+// usage_hourly_workspace_pending_idx (migration 0198) serves it.
+func (s *PGStore) SelectWorkspaceUnemittedUsage(ctx context.Context, workspaceID string, floor time.Time, seal UsageSeal, limit int, requirePaymentMethod bool) ([]HourlyRow, error) {
+	if workspaceID == "" {
+		return nil, fmt.Errorf("%w: workspace id required", ErrInvalid)
+	}
+	return s.selectPendingUsage(ctx, workspaceID, floor, seal, limit, requirePaymentMethod)
+}
+
+// selectPendingUsage is the one outbox read; workspaceID "" reads every
+// workspace.
+func (s *PGStore) selectPendingUsage(ctx context.Context, workspaceID string, floor time.Time, seal UsageSeal, limit int, requirePaymentMethod bool) ([]HourlyRow, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT u.workspace_id, u.service_id, u.kind, u.tier, u.resource_kind, u.window_start, u.quantity
 		FROM usage_hourly u
 		JOIN tenants t ON t.id = u.workspace_id
 		LEFT JOIN billing_provider_mappings m ON m.workspace_id = u.workspace_id
 		WHERE `+sealedPendingUsage+`
+		  AND ($8 = '' OR u.workspace_id = $8)
 		  AND t.billing_excluded = false
 		  AND ($4 = false OR t.billing_comped OR m.payment_method_bound_at IS NOT NULL)
 		ORDER BY u.window_start
 		LIMIT $3`,
-		floor, seal.Before, limit, requirePaymentMethod, nonNil(seal.FastKinds), seal.FastBefore, nonNil(seal.HoldKinds))
+		floor, seal.Before, limit, requirePaymentMethod, nonNil(seal.FastKinds), seal.FastBefore, nonNil(seal.HoldKinds), workspaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -167,6 +221,45 @@ func (s *PGStore) SelectUnemittedUsage(ctx context.Context, floor time.Time, sea
 			return nil, err
 		}
 		out = append(out, r)
+	}
+	return out, rows.Err()
+}
+
+// ExportedUsageTotal is one workspace's exported quantity of one meter
+// dimension (kind, tier, resource kind) over a window: Quantity counts every
+// row Stripe accepted, Recent only those accepted at or after a cutoff.
+type ExportedUsageTotal struct {
+	Kind         string
+	Tier         string
+	ResourceKind string
+	Quantity     int64
+	Recent       int64
+}
+
+// ExportedUsageTotals sums the workspace's usage rows stamped emitted whose
+// window starts in [from, to), per meter dimension. Settle before delete
+// (ADR091 D10.4) compares it with Stripe's meter event summaries before it
+// invoices. Served by the (workspace_id, window_start) index.
+func (s *PGStore) ExportedUsageTotals(ctx context.Context, workspaceID string, from, to, recentSince time.Time) ([]ExportedUsageTotal, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT kind, tier, resource_kind, sum(quantity)::bigint,
+		       COALESCE(sum(quantity) FILTER (WHERE emitted_at >= $4), 0)::bigint
+		FROM usage_hourly
+		WHERE workspace_id = $1 AND window_start >= $2 AND window_start < $3
+		  AND billing_export_state = 'emitted'
+		GROUP BY kind, tier, resource_kind`,
+		workspaceID, from.UTC(), to.UTC(), recentSince.UTC())
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []ExportedUsageTotal
+	for rows.Next() {
+		var t ExportedUsageTotal
+		if err := rows.Scan(&t.Kind, &t.Tier, &t.ResourceKind, &t.Quantity, &t.Recent); err != nil {
+			return nil, err
+		}
+		out = append(out, t)
 	}
 	return out, rows.Err()
 }

@@ -30,6 +30,7 @@ import {
   useBillingOnboarding,
   type BillingReadiness,
 } from "../hooks/use-billing-onboarding";
+import { BillingStatusAlerts } from "./billing-lifecycle-alert";
 
 /**
  * The payment method on file, plus the two hosted actions that change it.
@@ -62,30 +63,6 @@ function brandLabel(brand: string): string {
     BRAND_LABELS[brand] ??
     // Unknown brand: title-case the slug rather than print "cartes_bancaires".
     brand.replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase())
-  );
-}
-
-function LifecycleAlert({ readiness }: { readiness: BillingReadiness }) {
-  const { t } = useTranslations();
-  const state = readiness.lifecycle;
-  if (state.status === "healthy") return null;
-  let key = "usage.billingLifecycleUnknown";
-  if (state.status === "grace") key = "usage.billingLifecycleGrace";
-  if (state.status === "enforcing" || state.status === "enforced")
-    key = "usage.billingLifecycleEnforced";
-  if (state.status === "recovering") key = "usage.billingLifecycleRecovering";
-  if (state.status === "excluded") key = "usage.billingLifecycleExcluded";
-  if (state.status === "comped") key = "usage.billingLifecycleComped";
-  return (
-    <Alert variant={state.enforcementOwned ? "destructive" : "default"}>
-      <TriangleAlert aria-hidden="true" />
-      <AlertDescription>
-        {t(key, {
-          deadline: state.graceDeadline || t("usage.billingNoDeadline"),
-          reason: state.reason || state.status,
-        })}
-      </AlertDescription>
-    </Alert>
   );
 }
 
@@ -158,7 +135,7 @@ export function PaymentMethodCardView({
                 <span>{t("usage.paymentMethodOnFile")}</span>
               )}
             </div>
-            <LifecycleAlert readiness={readiness} />
+            <BillingStatusAlerts readiness={readiness} />
             <div className="flex flex-wrap gap-2">
               <PermissionTooltip reason={reason}>
                 <Button

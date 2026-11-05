@@ -588,6 +588,66 @@ func NewPaymentRequiredError() *CodedError {
 	}
 }
 
+// CodeBillingBalanceDue refuses an operation while the workspace owes an
+// unpaid balance (ADR091 D10.3–D10.4): the agent-model mint, and workspace and
+// account deletion when settling the unbilled usage failed to charge.
+const CodeBillingBalanceDue = "BILLING_BALANCE_DUE"
+
+// BalanceDue describes the unpaid invoice a BILLING_BALANCE_DUE deletion
+// refusal points at. HostedInvoiceURL is Stripe's hosted payment page for it.
+type BalanceDue struct {
+	WorkspaceID      string
+	InvoiceID        string
+	HostedInvoiceURL string
+	AmountDueCents   int64
+	Currency         string
+}
+
+// NewBillingBalanceDueError is the one deletion refusal for an unpaid balance
+// (ADR091 D10.4, ADR086): a 409, because deleting is valid but the workspace's
+// unpaid balance makes it unsafe. REST carries the params in its body, GraphQL
+// in extensions, and MCP reads the payment link in the message.
+func NewBillingBalanceDueError(due BalanceDue) *CodedError {
+	params := map[string]any{"workspaceId": due.WorkspaceID, "amountDueCents": due.AmountDueCents, "currency": due.Currency}
+	if due.InvoiceID != "" {
+		params["invoiceId"] = due.InvoiceID
+	}
+	msg := "this workspace has an unpaid balance; pay the outstanding invoice, then retry the deletion"
+	if due.HostedInvoiceURL != "" {
+		params["hostedInvoiceUrl"] = due.HostedInvoiceURL
+		msg = "this workspace has an unpaid balance; pay the outstanding invoice at " + due.HostedInvoiceURL + ", then retry the deletion"
+	}
+	return NewConflictError(CodeBillingBalanceDue, msg, params)
+}
+
+// CodeBillingSettling refuses a deletion whose final usage Stripe has not
+// finished aggregating yet (ADR091 D10.4): retryable, nothing was charged or
+// torn down.
+const CodeBillingSettling = "BILLING_SETTLING"
+
+// NewBillingSettlingError is the retryable 503 a deletion returns while the
+// usage it just exported is still being aggregated by Stripe.
+func NewBillingSettlingError(workspaceID string) *CodedError {
+	return NewUnavailableError(CodeBillingSettling,
+		"Final usage is still being processed; try deleting again in a minute",
+		map[string]any{"workspaceId": workspaceID})
+}
+
+type settledBalanceKey struct{}
+
+// WithSettledBalance marks ctx as running a deletion whose workspaces were
+// settled moments ago (account deletion settles before its intent commits),
+// so the teardown does not settle them a second time.
+func WithSettledBalance(ctx context.Context) context.Context {
+	return context.WithValue(ctx, settledBalanceKey{}, true)
+}
+
+// SettledBalance reports whether WithSettledBalance marked ctx.
+func SettledBalance(ctx context.Context) bool {
+	settled, _ := ctx.Value(settledBalanceKey{}).(bool)
+	return settled
+}
+
 // InsufficientScopeCode is the one machine-readable refusal when a third-party
 // human OAuth token lacks the capability a relation requires. REST, GraphQL,
 // and MCP all project it; the required capability is the only parameter so the

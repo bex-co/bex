@@ -23,6 +23,7 @@ import {
 } from "@/graphql/definitions";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useTranslations } from "@/common/hooks/use-translations";
+import type { PaymentMethodRejection } from "@/graphql/schema-types";
 
 export interface BillingTaxReadiness {
   configured: boolean;
@@ -49,6 +50,10 @@ export interface BillingReadiness {
    *  comped). Server-derived from the create gate itself (ADR075 D7), so the
    *  sign-up wall (`/setup/payment`) mirrors exactly what the API enforces. */
   paymentMethodOnboardingRequired: boolean;
+  /** Why the last card offered was refused at binding (ADR091 D10.5–D10.6):
+   *  a PaymentMethodRejection ("PREPAID_CARD", "UNPAID_BALANCE"), or "" when
+   *  none is pending. */
+  paymentMethodRejection: PaymentMethodRejection | "";
   lifecycle: BillingLifecycle;
   tax: BillingTaxReadiness;
 }
@@ -138,6 +143,7 @@ export function useBillingOnboarding({
       paymentMethodRequired: raw.paymentMethodRequired ?? false,
       paymentMethodOnboardingRequired:
         raw.paymentMethodOnboardingRequired ?? false,
+      paymentMethodRejection: raw.paymentMethodRejection ?? "",
       lifecycle: {
         status: raw.lifecycle?.status ?? "healthy",
         reason: raw.lifecycle?.reason ?? "",

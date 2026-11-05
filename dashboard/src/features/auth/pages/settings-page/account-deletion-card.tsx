@@ -16,7 +16,12 @@ import {
 } from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
 import { SudoCommandField } from "@/common/components/sudo-command-field";
-import { mutationErrorMessage } from "@/common/lib/graphql-error";
+import {
+  billingBalanceDue,
+  mutationErrorMessage,
+  type BillingBalanceDue,
+} from "@/common/lib/graphql-error";
+import { BalanceDueAlert } from "@/common/components/balance-due-alert";
 import {
   clearBrowserAccountState,
   endBrowserSession,
@@ -108,6 +113,7 @@ export function AccountDeletionCard() {
   const [remove, { loading: deleting }] = useMutation(DeleteAccountDocument);
   const [confirmation, setConfirmation] = useState("");
   const [error, setError] = useState<string | null>(null);
+  const [balanceDue, setBalanceDue] = useState<BillingBalanceDue | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const submitGuard = useRef(false);
 
@@ -154,12 +160,15 @@ export function AccountDeletionCard() {
     submitGuard.current = true;
     setSubmitting(true);
     setError(null);
+    setBalanceDue(null);
     try {
       await remove({ variables: { confirmation } });
     } catch (cause) {
       submitGuard.current = false;
       setSubmitting(false);
-      setError(mutationErrorMessage(cause, t("auth.deleteAccountError")));
+      const due = billingBalanceDue(cause);
+      if (due) setBalanceDue(due);
+      else setError(mutationErrorMessage(cause, t("auth.deleteAccountError")));
       return;
     }
 
@@ -225,6 +234,17 @@ export function AccountDeletionCard() {
           onValueChange={setConfirmation}
           inputClassName="max-w-sm"
         />
+
+        {balanceDue ? (
+          <BalanceDueAlert
+            due={balanceDue}
+            workspaceName={
+              preview.delete.find(
+                (workspace) => workspace.id === balanceDue.workspaceId,
+              )?.name ?? balanceDue.workspaceId
+            }
+          />
+        ) : null}
 
         {error ? (
           <Alert variant="destructive">

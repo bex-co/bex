@@ -3026,6 +3026,12 @@ export type OwnerNotificationSettingsInput = {
   previewNotificationsEnabled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
+/** Why the last card offered was refused at binding: PREPAID_CARD (prepaid cards aren't accepted) or UNPAID_BALANCE (the card is linked to an unpaid balance). */
+export enum PaymentMethodRejection {
+  PrepaidCard = 'PREPAID_CARD',
+  UnpaidBalance = 'UNPAID_BALANCE'
+}
+
 export type PostgresConnectionInfo = {
   __typename: 'PostgresConnectionInfo';
   externalConnectionPoolString: Maybe<Scalars['String']['output']>;
@@ -4543,6 +4549,7 @@ export type WorkspaceBillingReadiness = {
   paymentMethodLast4: Maybe<Scalars['String']['output']>;
   paymentMethodOnboardingRequired: Maybe<Scalars['Boolean']['output']>;
   paymentMethodReady: Maybe<Scalars['Boolean']['output']>;
+  paymentMethodRejection: Maybe<PaymentMethodRejection>;
   paymentMethodRequired: Maybe<Scalars['Boolean']['output']>;
   subscriptionReady: Maybe<Scalars['Boolean']['output']>;
   tax: Maybe<BillingTaxReadiness>;

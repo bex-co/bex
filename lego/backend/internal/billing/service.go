@@ -55,9 +55,13 @@ type Readiness struct {
 	// right now (not bound, not Mode-A excluded, not comped). Derived from the
 	// gate itself rather than from PaymentMethodReady so the dashboard's wall
 	// and the API's 402 cannot disagree; false whenever a create would pass.
-	PaymentMethodOnboardingRequired bool          `json:"paymentMethodOnboardingRequired"`
-	Tax                             TaxReadiness  `json:"tax"`
-	Lifecycle                       LifecycleView `json:"lifecycle"`
+	PaymentMethodOnboardingRequired bool `json:"paymentMethodOnboardingRequired"`
+	// PaymentMethodRejection is why the last card offered was refused at
+	// binding (ADR091 D10.5–D10.6): "prepaid_card" or "unpaid_balance"; empty
+	// when none is pending. Cleared once a card binds.
+	PaymentMethodRejection store.PaymentMethodRejection `json:"paymentMethodRejection,omitempty"`
+	Tax                    TaxReadiness                 `json:"tax"`
+	Lifecycle              LifecycleView                `json:"lifecycle"`
 }
 
 type LifecycleView struct {
@@ -116,6 +120,9 @@ type Service struct {
 	*core.Base
 	Provider HostedProvider
 	State    LifecycleReader
+	// Eligibility is the payment-eligibility read, which also carries the
+	// card refusal at binding (ADR091 D10.5–D10.6); nil reports none.
+	Eligibility PaymentEligibilityStore
 }
 
 type LifecycleReader interface {
@@ -143,6 +150,13 @@ func (s *Service) Status(ctx context.Context, workspaceID string) (Readiness, er
 	status.Lifecycle, err = s.lifecycle(ctx, tenantID)
 	if err != nil {
 		return Readiness{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("lifecycle: %w", err))
+	}
+	if s.Eligibility != nil {
+		eligibility, err := s.Eligibility.PaymentEligibility(ctx, tenantID)
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			return Readiness{}, core.HideCause(core.ErrBillingUnavailable, fmt.Errorf("payment eligibility: %w", err))
+		}
+		status.PaymentMethodRejection = eligibility.Rejection
 	}
 	return status, nil
 }

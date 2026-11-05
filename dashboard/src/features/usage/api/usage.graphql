@@ -144,6 +144,9 @@ query BillingReadiness($workspaceId: String!) {
     # gate runs in `all` mode AND the marker read every create consults refuses
     # this workspace — so the wall and the API's 402 cannot disagree.
     paymentMethodOnboardingRequired
+    # Why the last card offered was refused at binding (ADR091 D10.5–D10.6):
+    # PREPAID_CARD or UNPAID_BALANCE; null when none is pending.
+    paymentMethodRejection
     lifecycle {
       status
       reason

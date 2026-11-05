@@ -18,6 +18,7 @@ function readiness(onboardingRequired: boolean): BillingReadiness {
     paymentMethodLast4: "",
     paymentMethodRequired: true,
     paymentMethodOnboardingRequired: onboardingRequired,
+    paymentMethodRejection: "",
     lifecycle: {
       status: "healthy",
       reason: "",

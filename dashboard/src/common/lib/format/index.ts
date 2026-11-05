@@ -8,3 +8,4 @@ export {
   type InstantDetails,
   type TimeAgoOptions,
 } from "./format-instant";
+export { formatMinorUnits } from "./format-minor-units";

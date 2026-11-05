@@ -17,6 +17,7 @@ vi.mock("@/common/lib/ory/logout", () => ({
 
 import { useMutation, useQuery } from "@apollo/client/react";
 import { endBrowserSession } from "@/common/lib/ory/logout";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import {
   AccountDeletionCard,
   accountDeletionConfirmation,
@@ -184,5 +185,43 @@ describe("AccountDeletionCard", () => {
     expect(submit).toBeEnabled();
     await userEvent.click(submit);
     expect(mutate).toHaveBeenCalledTimes(2);
+  });
+
+  it("names the workspace with an unpaid balance and links its invoice", async () => {
+    preview({
+      delete: [{ id: "tea-personal", name: "personal", action: "delete" }],
+    });
+    mutate.mockRejectedValue(
+      codedGraphQLError("BILLING_BALANCE_DUE", {
+        workspaceId: "tea-personal",
+        amountDueCents: 1250,
+        currency: "usd",
+        hostedInvoiceUrl: "https://invoice.stripe.com/i/acct_1/in_2",
+      }),
+    );
+    render(<AccountDeletionCard />);
+
+    await userEvent.type(
+      screen.getByLabelText("Sudo Command"),
+      accountDeletionConfirmation,
+    );
+    await userEvent.click(
+      screen.getByRole("button", { name: "Delete my account" }),
+    );
+
+    expect(
+      screen.getByText(
+        "The workspace personal has an unpaid balance of $12.50. Pay the invoice, then delete your account again.",
+      ),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: /Pay invoice/ })).toHaveAttribute(
+      "href",
+      "https://invoice.stripe.com/i/acct_1/in_2",
+    );
+    expect(screen.queryByText("Account deletion could not start")).toBeNull();
+    expect(window.location.assign).not.toHaveBeenCalled();
+    expect(
+      screen.getByRole("button", { name: "Delete my account" }),
+    ).toBeEnabled();
   });
 });

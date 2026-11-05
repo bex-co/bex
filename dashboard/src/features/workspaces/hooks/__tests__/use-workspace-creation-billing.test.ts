@@ -19,7 +19,7 @@ vi.mock("@apollo/client/react", () => ({
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
 import i18n from "@/i18n/init";
-import { uncodedGraphQLError } from "@/test/mocks/apollo";
+import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import { useWorkspaceCreationBilling } from "@/features/workspaces/hooks/use-workspace-creation-billing";
 
 function attemptRow(overrides: Record<string, unknown> = {}) {
@@ -192,6 +192,44 @@ describe("useWorkspaceCreationBilling", () => {
       ws = await result.current.finalize(result.current.attempt!, "Acme Corp");
     });
     expect(ws).toMatchObject({ id: "tea-new", name: "acme" });
+  });
+
+  // ADR091 D10.5–D10.6: a card refused at finalize reads in the user's
+  // language from the typed reason, not the API's English sentence.
+  it("explains a refused card in the user's language", async () => {
+    resumeRead = {
+      data: {
+        workspaceCreationAttempt: attemptRow({ state: "setup_succeeded" }),
+      },
+      loading: false,
+    };
+    finalizeMutation.mockRejectedValue(
+      codedGraphQLError("PAYMENT_METHOD_REJECTED", { reason: "prepaid_card" }),
+    );
+    const { result } = renderHook(() =>
+      useWorkspaceCreationBilling("pro", "wca-1"),
+    );
+    await act(async () => {
+      await result.current.finalize(result.current.attempt!);
+    });
+    expect(result.current.error).toBe(
+      "Prepaid cards aren't accepted; add a credit or debit card.",
+    );
+
+    await i18n.changeLanguage("zh");
+    try {
+      finalizeMutation.mockRejectedValue(
+        codedGraphQLError("PAYMENT_METHOD_REJECTED", {
+          reason: "unpaid_balance",
+        }),
+      );
+      await act(async () => {
+        await result.current.finalize(result.current.attempt!);
+      });
+      expect(result.current.error).toMatch(/未付余额/);
+    } finally {
+      await i18n.changeLanguage("en");
+    }
   });
 
   it("drops the previous plan's error as soon as the plan changes", async () => {
