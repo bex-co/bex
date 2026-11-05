@@ -95,17 +95,24 @@ func TestRenderServiceDetailsOpenPorts(t *testing.T) {
 			a.Status.RuntimePorts = &appv1alpha1.RuntimePortsStatus{Revision: "rev-2", Ports: []int32{9187, 5432, 19099}, Retained: []int32{7000}}
 			return a
 		}(), []any{5432, 7000, 9187}},
+		// w3/m276: once the serving release is scanned, openPorts names what
+		// listens: the declared 9000 and 9009 nothing binds drop out.
 		{"image serving with a runtime listener", image(func(a *appv1alpha1.App) {
 			a.Status.ServingNetwork = serving
 			a.Status.RuntimePorts = &appv1alpha1.RuntimePortsStatus{Revision: "r1", Ports: []int32{8123, 9363}}
-		}), []any{8123, 9000, 9009, 9363}},
-		// A web service's private 10000 is a route to its primary, not a listener.
-		{"configured web lists no 10000 alias", func() *appv1alpha1.App {
+		}), []any{8123, 9363}},
+		{"image serving scanned at another revision lists what it declares", image(func(a *appv1alpha1.App) {
+			a.Status.ServingNetwork = serving
+			a.Status.RuntimePorts = &appv1alpha1.RuntimePortsStatus{Revision: "r0", Ports: []int32{8123}}
+		}), []any{8123, 9000, 9009}},
+		// A web service's extra listeners are open ports (w3/m276); its private
+		// 10000 is a route to its primary, not a listener, even when it binds it.
+		{"configured web lists its listeners but no 10000 alias", func() *appv1alpha1.App {
 			a := sampleApp("web")
 			a.Spec.Port = 8080
-			a.Status.RuntimePorts = &appv1alpha1.RuntimePortsStatus{Revision: "r1", Ports: []int32{8080, 9000}}
+			a.Status.RuntimePorts = &appv1alpha1.RuntimePortsStatus{Revision: "r1", Ports: []int32{8080, 9000, 10000}}
 			return a
-		}(), []any{8080}},
+		}(), []any{8080, 9000}},
 		{"image pending", image(nil), []any{}},
 		{"image serving", image(func(a *appv1alpha1.App) { a.Status.ServingNetwork = serving }), []any{8123, 9000, 9009}},
 		{"image replacing keeps the serving set", image(func(a *appv1alpha1.App) {

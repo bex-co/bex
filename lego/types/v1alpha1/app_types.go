@@ -1651,11 +1651,12 @@ type AppStatus struct {
 	// +kubebuilder:validation:Maximum=65535
 	DetectedPort int32 `json:"detectedPort,omitempty"`
 
-	// RuntimePorts is the TCP listeners a private service's instances were
-	// found accepting connections on, from outside the pod (Render publishes
-	// any port a private service binds; w3/m273). The ones its configured or
-	// declared ports lack are published on its stable Services and in
-	// openPorts (App.RuntimeOnlyPorts).
+	// RuntimePorts is the TCP listeners a web or private service's instances
+	// were found accepting connections on, from outside the pod (Render
+	// publishes any port a service binds on its private network; w3/m273,
+	// w3/m276). The ones its configured or declared ports lack are published
+	// on its stable Services and in openPorts (App.RuntimeOnlyPorts); once its
+	// release is scanned, openPorts leaves out a declared port nothing binds.
 	// +optional
 	RuntimePorts *RuntimePortsStatus `json:"runtimePorts,omitempty"`
 

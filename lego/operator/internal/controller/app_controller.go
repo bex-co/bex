@@ -302,7 +302,7 @@ type AppReconciler struct {
 	// detection.
 	PortScanner portscan.Scanner
 	portScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
-	// privatePortScanned spaces a private service's listener scans the same way.
+	// privatePortScanned spaces a web or private service's listener scans the same way.
 	privatePortScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
 	// portCandidate remembers the lone port a scan found until a second scan agrees.
 	portCandidate sync.Map // "<ns>/<name>" -> int
@@ -3270,7 +3270,7 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 		}
 	}
 	rolloutDone := deploymentRolloutReady(dep, replicas) && r.deploymentPodsReady(ctx, dep, replicas)
-	// A private service publishes every port its instances bind; a rollout
+	// A web or private service publishes every port its instances bind; a rollout
 	// keeps the old instances' ports until it completes (w3/m273).
 	if err := r.discoverPrivatePorts(ctx, app, dep, port, rolloutDone); err != nil {
 		res, err := r.fail(ctx, app, "ServiceFailed", err)

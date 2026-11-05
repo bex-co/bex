@@ -136,11 +136,13 @@ func TestDetectedPortOverridesTheDefaultAcrossReaders(t *testing.T) {
 	}
 }
 
-// A private service's openPorts adds the listeners its instances bind, retained
-// ones included, without reserved ports and within Render's 75 (w3/m273). A
-// web service publishes none, and a pending image network stays [].
+// A web or private service's openPorts adds the listeners its instances bind,
+// retained ones included, without reserved ports and within Render's 75
+// (w3/m273, w3/m276); a web service's 10000 stays a route to its primary, not
+// a listener, and a pending image network stays [].
 func TestOpenPortsAddRuntimeListeners(t *testing.T) {
 	found := &RuntimePortsStatus{Revision: "rev-2", Ports: []int32{5432, 9187, 18012}, Retained: []int32{7000}}
+	webFound := &RuntimePortsStatus{Revision: "rev-2", Ports: []int32{8080, 9000, 10000, 18014}}
 	for _, tc := range []struct {
 		name string
 		app  App
@@ -150,7 +152,10 @@ func TestOpenPortsAddRuntimeListeners(t *testing.T) {
 		{"image private", App{Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1},
 			Status: AppStatus{RuntimePorts: found, ServingNetwork: &ImageNetworkStatus{Revision: "rev-1", PrimaryPort: 8123, Ports: []int32{8123, 9000}}}}, []int32{5432, 7000, 8123, 9000, 9187}},
 		{"image pending", App{Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1}, Status: AppStatus{RuntimePorts: found}}, []int32{}},
-		{"web", App{Spec: AppSpec{Type: TypeWebService, Port: 8080}, Status: AppStatus{RuntimePorts: found}}, []int32{8080}},
+		{"web", App{Spec: AppSpec{Type: TypeWebService, Port: 8080}, Status: AppStatus{RuntimePorts: webFound}}, []int32{8080, 9000}},
+		{"web on 10000", App{Spec: AppSpec{Type: TypeWebService}, Status: AppStatus{RuntimePorts: webFound}}, []int32{8080, 9000, 10000}},
+		{"untyped web", App{Spec: AppSpec{Port: 3000}, Status: AppStatus{RuntimePorts: webFound}}, []int32{3000, 8080, 9000}},
+		{"worker", App{Spec: AppSpec{Type: TypeBackgroundWorker}, Status: AppStatus{RuntimePorts: found}}, nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			if got := tc.app.OpenPorts(); !reflect.DeepEqual(got, tc.want) {
@@ -166,5 +171,48 @@ func TestOpenPortsAddRuntimeListeners(t *testing.T) {
 	app := App{Spec: AppSpec{Type: TypePrivateService, Port: 5432}, Status: AppStatus{RuntimePorts: many}}
 	if got := app.OpenPorts(); len(got) != MaxImagePorts || got[0] != 5432 || got[MaxImagePorts-1] != 20074 {
 		t.Fatalf("OpenPorts = %d ports, want the primary plus the 74 lowest discovered", len(got))
+	}
+}
+
+// Once the listed image network's release has been scanned, openPorts names
+// what its instances bind: a declared port nothing listens on drops out, the
+// primary never does, and before any scan (or after a scan of an unrelated
+// revision) the declared set stands, so a fresh service is never empty
+// (w3/m276).
+func TestOpenPortsListOnlyScannedListeners(t *testing.T) {
+	serving := &ImageNetworkStatus{Revision: "rev-1", PrimaryPort: 8123, Ports: []int32{8123, 9000, 9009}}
+	candidate := &ImageNetworkStatus{Revision: "rev-2", PrimaryPort: 8123, Ports: []int32{8123, 9000, 9009}}
+	private := func(found *RuntimePortsStatus, networks ...*ImageNetworkStatus) App {
+		app := App{Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1}, Status: AppStatus{RuntimePorts: found}}
+		app.Status.ServingNetwork = networks[0]
+		if len(networks) > 1 {
+			app.Status.ImageNetwork = networks[1]
+		}
+		return app
+	}
+	for _, tc := range []struct {
+		name string
+		app  App
+		want []int32
+	}{
+		{"never scanned", private(nil, serving), []int32{8123, 9000, 9009}},
+		{"scanned: the unbound declared port drops", private(&RuntimePortsStatus{Revision: "rev-1", Ports: []int32{8123, 9000}}, serving), []int32{8123, 9000}},
+		{"scanned: an unbound primary stays", private(&RuntimePortsStatus{Revision: "rev-1", Ports: []int32{9000}}, serving), []int32{8123, 9000}},
+		{"scanned: undeclared listeners join", private(&RuntimePortsStatus{Revision: "rev-1", Ports: []int32{8123, 9363}}, serving), []int32{8123, 9363}},
+		{"a stale revision's scan proves nothing", private(&RuntimePortsStatus{Revision: "rev-0", Ports: []int32{8123}}, serving), []int32{8123, 9000, 9009}},
+		{"the candidate's scan keeps what the old instances serve",
+			private(&RuntimePortsStatus{Revision: "rev-2", Ports: []int32{8123}, Retained: []int32{9009}}, serving, candidate), []int32{8123, 9009}},
+		{"web image ports", App{Spec: AppSpec{Type: TypeWebService, PortMode: PortModeWebImageV1}, Status: AppStatus{
+			ServingNetwork: &ImageNetworkStatus{Revision: "rev-1", PrimaryPort: 80, Ports: []int32{80, 443}},
+			RuntimePorts:   &RuntimePortsStatus{Revision: "rev-1", Ports: []int32{80, 10000}},
+		}}, []int32{80}},
+		{"configured private keeps its port", App{Spec: AppSpec{Type: TypePrivateService, Port: 5432},
+			Status: AppStatus{RuntimePorts: &RuntimePortsStatus{Revision: "rev-1", Ports: []int32{9187}}}}, []int32{5432, 9187}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.app.OpenPorts(); !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("OpenPorts = %#v, want %#v", got, tc.want)
+			}
+		})
 	}
 }

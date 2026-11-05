@@ -96,8 +96,8 @@ type ImageNetworkStatus struct {
 // (render.com/docs/private-network; w3/m273).
 const PrivateHTTPPort int32 = 10000
 
-// RuntimePortsStatus is what the operator's listener scan of a private
-// service's running instance found (w3/m273, ADR089 D3 phase 2).
+// RuntimePortsStatus is what the operator's listener scan of a web or private
+// service's running instance found (w3/m273, w3/m276; ADR089 D3 phase 2).
 type RuntimePortsStatus struct {
 	// Revision is the pod revision whose Ready instance was scanned.
 	Revision string `json:"revision"`
@@ -112,28 +112,51 @@ type RuntimePortsStatus struct {
 	Retained []int32 `json:"retained,omitempty"`
 }
 
-// RuntimeOnlyPorts is the discovered listeners of a private service that the
-// published set lacks, ascending: reserved ports are left out, and the result
-// stops where published plus discovered would pass Render's 75 open ports.
-// Other types publish none (a stale record from a type change included).
+// RuntimeOnlyPorts is the discovered listeners of a web or private service
+// that the published set lacks, ascending: reserved ports are left out, a web
+// service's 10000 (a route to its primary HTTP server, whatever binds it) too,
+// and the result stops where published plus discovered would pass Render's 75
+// open ports. Other types publish none (a stale record from a type change
+// included).
 func (a *App) RuntimeOnlyPorts(published []int32) []int32 {
 	found := a.Status.RuntimePorts
-	if a.Spec.Type != TypePrivateService || found == nil {
+	if !a.Spec.InternallyAddressable() || found == nil {
 		return nil
 	}
-	candidates := slices.Concat(found.Ports, found.Retained)
-	slices.Sort(candidates)
+	web := a.Spec.Type != TypePrivateService
 	var out []int32
-	for _, port := range slices.Compact(candidates) {
+	for _, port := range found.listening() {
 		if len(published)+len(out) >= MaxImagePorts {
 			break
 		}
-		if port < 1 || port > 65535 || IsReservedImagePort(port) || slices.Contains(published, port) {
+		if port < 1 || port > 65535 || IsReservedImagePort(port) || web && port == PrivateHTTPPort || slices.Contains(published, port) {
 			continue
 		}
 		out = append(out, port)
 	}
 	return out
+}
+
+// listening is every port an instance of either revision accepts, ascending.
+func (s *RuntimePortsStatus) listening() []int32 {
+	ports := slices.Concat(s.Ports, s.Retained)
+	slices.Sort(ports)
+	return slices.Compact(ports)
+}
+
+// scannedListeners is what the instances serving the listed image network
+// bind, once a scan has run for its revision or for the candidate rolling out
+// beside it (whose record retains the serving instances' ports). ok is false
+// before then: an unscanned release lists what its image declares.
+func (a *App) scannedListeners() (ports []int32, ok bool) {
+	found, network := a.Status.RuntimePorts, a.ActiveImageNetwork()
+	if found == nil || network == nil {
+		return nil, false
+	}
+	if found.Revision != network.Revision && (a.Status.ImageNetwork == nil || found.Revision != a.Status.ImageNetwork.Revision) {
+		return nil, false
+	}
+	return found.listening(), true
 }
 
 // UsesImagePorts never expands the public routing contract or legacy services.
@@ -216,19 +239,24 @@ func (a *App) ServicePort() int32 {
 // OpenPorts is the TCP port set the stable hostnames serve: Render's
 // serviceDetails.openPorts (w6/m148). It is nil for types without a network
 // address, the effective port for a configured service, and the serving (else
-// first candidate) image network's ports for an image-port private service.
-// While that service's discovery is pending it is empty, never an invented 3000.
-// A private service adds the undeclared listeners found on its instances
-// (w3/m273). A web service's port-10000 alias is a route, not a listener, and
-// is not listed.
+// first candidate) image network's ports for an image-port service. While that
+// service's discovery is pending it is empty, never an invented 3000. A web or
+// private service adds the undeclared listeners found on its instances
+// (w3/m273, w3/m276), and once its release has been scanned an image-declared
+// port nothing listens on is left out (the Services still route it while the
+// image declares it); the primary always stays. A web service's port-10000
+// alias is a route, not a listener, and is not listed.
 func (a *App) OpenPorts() []int32 {
 	ports := a.ownPorts()
 	if len(ports) == 0 {
 		return ports
 	}
-	// A private service also serves every listener its instances bind
-	// (w3/m273).
-	if extra := a.RuntimeOnlyPorts(ports); len(extra) > 0 {
+	extra := a.RuntimeOnlyPorts(ports)
+	if listening, ok := a.scannedListeners(); ok {
+		primary := a.ServicePort()
+		ports = slices.DeleteFunc(ports, func(p int32) bool { return p != primary && !slices.Contains(listening, p) })
+	}
+	if len(extra) > 0 {
 		ports = slices.Concat(ports, extra)
 		slices.Sort(ports)
 	}

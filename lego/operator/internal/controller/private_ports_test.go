@@ -68,6 +68,7 @@ func TestScanPrivatePorts(t *testing.T) {
 		scanner *cannedScanner
 		ready   bool
 		prev    *appv1alpha1.RuntimePortsStatus
+		network *appv1alpha1.ImageNetworkStatus // the release's image network
 		want    *appv1alpha1.RuntimePortsStatus // nil: no new record, the last one stands
 	}{
 		"a Ready instance's listeners, reserved ports and duplicates dropped": {
@@ -88,6 +89,17 @@ func TestScanPrivatePorts(t *testing.T) {
 			scanner: &cannedScanner{open: []int{5432}}, ready: true, prev: prev,
 			want: &appv1alpha1.RuntimePortsStatus{Revision: "rev-2", Ports: []int32{5432}},
 		},
+		"a new release's unfinished first sweep keeps its declared ports": {
+			scanner: &cannedScanner{open: []int{8123}, err: fmt.Errorf("%w: %w", portscan.ErrPartial, context.DeadlineExceeded)}, ready: true,
+			network: &appv1alpha1.ImageNetworkStatus{Revision: "rev-2", PrimaryPort: 8123, Ports: []int32{8123, 9000, 9009}},
+			prev:    &appv1alpha1.RuntimePortsStatus{Revision: "rev-1", Ports: []int32{8123, 9009, 9363}},
+			want:    &appv1alpha1.RuntimePortsStatus{Revision: "rev-2", Ports: []int32{8123, 9000, 9009}, Retained: []int32{9363}},
+		},
+		"another revision's network adds nothing to an unfinished sweep": {
+			scanner: &cannedScanner{open: []int{8123}, err: fmt.Errorf("%w: %w", portscan.ErrPartial, context.DeadlineExceeded)}, ready: true,
+			network: &appv1alpha1.ImageNetworkStatus{Revision: "rev-1", PrimaryPort: 8123, Ports: []int32{8123, 9000}},
+			want:    &appv1alpha1.RuntimePortsStatus{Revision: "rev-2", Ports: []int32{8123}},
+		},
 		"a new revision retains what only the old one serves": {
 			scanner: &cannedScanner{open: []int{5432, 9200}}, ready: true,
 			prev: &appv1alpha1.RuntimePortsStatus{Revision: "rev-1", Ports: []int32{5432, 9187}, Retained: []int32{7000}},
@@ -96,7 +108,7 @@ func TestScanPrivatePorts(t *testing.T) {
 	} {
 		t.Run(name, func(t *testing.T) {
 			r, app, dep := privateScanFixture(tc.scanner, tc.ready, time.Nanosecond)
-			app.Status.RuntimePorts = tc.prev
+			app.Status.RuntimePorts, app.Status.ImageNetwork = tc.prev, tc.network
 			got := r.scanPrivatePorts(context.Background(), app, dep)
 			if tc.want == nil {
 				if got != nil {
@@ -131,7 +143,7 @@ func TestScanPrivatePortsSpacing(t *testing.T) {
 	}
 }
 
-// A failed scan or a non-private service publishes nothing new, and a
+// A failed scan or a type without a network address publishes nothing new, and a
 // complete rollout drops the retained set without a scan.
 func TestDiscoverPrivatePortsSettles(t *testing.T) {
 	r, app, dep := privateScanFixture(&cannedScanner{err: errors.New("boom")}, true, time.Nanosecond)
@@ -148,10 +160,39 @@ func TestDiscoverPrivatePortsSettles(t *testing.T) {
 	if err := r.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: "db"}, svc); err != nil || len(svc.Spec.Ports) != 1 || svc.Spec.Ports[0].Port != 5432 {
 		t.Fatalf("Service = %+v (%v), want only 5432", svc.Spec.Ports, err)
 	}
-	web := app.DeepCopy()
-	web.Spec.Type = appv1alpha1.TypeWebService
-	if err := r.discoverPrivatePorts(context.Background(), web, dep, 5432, true); err != nil || web.Status.RuntimePorts != nil {
-		t.Fatalf("a web service keeps no runtime ports: %+v", web.Status.RuntimePorts)
+	worker := app.DeepCopy()
+	worker.Spec.Type = appv1alpha1.TypeBackgroundWorker
+	if err := r.discoverPrivatePorts(context.Background(), worker, dep, 5432, true); err != nil || worker.Status.RuntimePorts != nil {
+		t.Fatalf("a background worker keeps no runtime ports: %+v", worker.Status.RuntimePorts)
+	}
+}
+
+// A web service's listeners beyond its primary HTTP port are published on its
+// Service and in openPorts, as a private service's are (w3/m276); the app's
+// own 10000 and the edge cache's reserved 18014 are not, since 10000 stays
+// the route to the primary HTTP server.
+func TestDiscoverWebServiceListeners(t *testing.T) {
+	r, app, dep := privateScanFixture(&cannedScanner{open: []int{8080, 9000, 10000, 18014}}, true, time.Nanosecond)
+	app.Spec.Type, app.Spec.Port = appv1alpha1.TypeWebService, 8080
+	if err := r.discoverPrivatePorts(context.Background(), app, dep, 8080, true); err != nil {
+		t.Fatal(err)
+	}
+	if got := app.Status.RuntimePorts; got == nil || !slices.Equal(got.Ports, []int32{8080, 9000, 10000}) {
+		t.Fatalf("runtime ports = %+v, want the scanned 8080 9000 10000", got)
+	}
+	if got := app.OpenPorts(); !slices.Equal(got, []int32{8080, 9000}) {
+		t.Fatalf("openPorts = %v, want the primary and the extra 9000", got)
+	}
+	svc := &corev1.Service{}
+	if err := r.Get(context.Background(), client.ObjectKey{Namespace: "tea-a", Name: "db"}, svc); err != nil {
+		t.Fatal(err)
+	}
+	targets := map[int32]intstr.IntOrString{}
+	for _, p := range svc.Spec.Ports {
+		targets[p.Port] = p.TargetPort
+	}
+	if len(targets) != 3 || targets[9000] != intstr.FromInt32(9000) || targets[10000] != targets[8080] {
+		t.Fatalf("Service ports = %v, want 8080, 10000 on the primary's target, and 9000", targets)
 	}
 }
 
@@ -184,6 +225,14 @@ func TestWithPrivateNetworkPorts(t *testing.T) {
 			},
 			ports: []corev1.ServicePort{{Name: "tcp-80", Port: 80, TargetPort: intstr.FromInt32(80)}, {Name: "tcp-10000", Port: 10000, TargetPort: intstr.FromInt32(10000)}},
 			want:  map[int32]intstr.IntOrString{80: intstr.FromInt32(80), 10000: intstr.FromInt32(80)},
+		},
+		"a web service adds its undeclared listeners, its own 10000 still the alias": {
+			app: appv1alpha1.App{
+				Spec:   appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Port: 8080},
+				Status: appv1alpha1.AppStatus{RuntimePorts: &appv1alpha1.RuntimePortsStatus{Revision: "rev-1", Ports: []int32{8080, 9000, 10000}}},
+			},
+			ports: []corev1.ServicePort{{Name: servingPortName, Port: 8080, TargetPort: named}},
+			want:  map[int32]intstr.IntOrString{8080: named, 9000: intstr.FromInt32(9000), 10000: named},
 		},
 		"a private service adds its undeclared listeners and no 10000": {
 			app: appv1alpha1.App{

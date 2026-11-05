@@ -172,6 +172,85 @@ var _ = Describe("Private network ports (w3/m273)", func() {
 		Expect(envtestApp(nn).ResourceVersion).To(Equal(before))
 	})
 
+	It("publishes a web service's listeners beyond its primary and 10000 (w3/m276)", func() {
+		nn := types.NamespacedName{Name: "web-runtime-ports", Namespace: "default"}
+		slug := "web-runtime-ports-slug"
+		scanner := &ipScanner{open: map[string][]int{}}
+		r := &AppReconciler{
+			Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
+			PortScanner: scanner, portDetectEvery: time.Nanosecond,
+		}
+		run := func() (ctrl.Result, error) { return r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}) }
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+			Spec: appv1alpha1.AppSpec{
+				Image: "docker.io/library/nginx:1", Type: appv1alpha1.TypeWebService,
+				Port: 8080, Replicas: 1, Subdomain: slug,
+			},
+		})).To(Succeed())
+		DeferCleanup(func() { deleteOwner(ctx, envtestApp(nn), run) })
+		reconcileToFixedPoint(run)
+		Expect(portKeys(servicePortTargets(nn.Name))).To(ConsistOf(int32(8080), appv1alpha1.PrivateHTTPPort))
+
+		By("adding a Ready instance's metrics listener; its own 10000 stays the primary's alias")
+		scanner.set("10.2.0.1", 8080, 9091, 10000, 18013)
+		readyEnvtestPod(nn, nn.Name+"-a", "10.2.0.1")
+		markEnvtestDeploymentReady(nn)
+		reconcileToFixedPoint(run)
+		Expect(envtestApp(nn).OpenPorts()).To(Equal([]int32{8080, 9091}))
+		for _, name := range []string{nn.Name, slug} {
+			targets := servicePortTargets(name)
+			Expect(portKeys(targets)).To(ConsistOf(int32(8080), int32(9091), appv1alpha1.PrivateHTTPPort), name)
+			Expect(targets[9091]).To(Equal(intstr.FromInt32(9091)), name)
+			Expect(targets[appv1alpha1.PrivateHTTPPort]).To(Equal(targets[8080]), "%s: 10000 reaches the primary", name)
+		}
+
+		By("dropping the listener once a full rescan no longer finds it")
+		scanner.set("10.2.0.1", 8080)
+		reconcileToFixedPoint(run)
+		Expect(envtestApp(nn).OpenPorts()).To(Equal([]int32{8080}))
+		Expect(portKeys(servicePortTargets(slug))).To(ConsistOf(int32(8080), appv1alpha1.PrivateHTTPPort))
+	})
+
+	It("lists only the image-declared ports a scanned instance binds, keeping every one routable (w3/m276)", func() {
+		nn := types.NamespacedName{Name: "private-declared-listeners", Namespace: "default"}
+		scanner := &ipScanner{open: map[string][]int{}}
+		r := &AppReconciler{
+			Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes,
+			PortScanner: scanner, portDetectEvery: time.Nanosecond,
+			HTTPClient: imageConfigRegistry(GinkgoT(), clickhouseExposed),
+		}
+		run := func() (ctrl.Result, error) { return r.Reconcile(ctx, reconcile.Request{NamespacedName: nn}) }
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: nn.Name, Namespace: nn.Namespace},
+			Spec: appv1alpha1.AppSpec{
+				Image: "docker.io/clickhouse/clickhouse-server:23.8", Type: appv1alpha1.TypePrivateService,
+				PortMode: appv1alpha1.PortModeImageV1, Replicas: 1,
+			},
+		})).To(Succeed())
+		DeferCleanup(func() { deleteOwner(ctx, envtestApp(nn), run) })
+
+		By("listing every declared port before any scan")
+		reconcileToFixedPoint(run)
+		Expect(envtestApp(nn).OpenPorts()).To(Equal([]int32{8123, 9000, 9009}))
+
+		By("leaving out the declared 9009 nothing binds, and adding the undeclared 9363")
+		scanner.set("10.3.0.1", 8123, 9000, 9363)
+		readyEnvtestPod(nn, nn.Name+"-a", "10.3.0.1")
+		markEnvtestDeploymentReady(nn)
+		reconcileToFixedPoint(run)
+		app := envtestApp(nn)
+		Expect(app.Status.RuntimePorts.Revision).To(Equal(app.Status.ServingNetwork.Revision))
+		Expect(app.OpenPorts()).To(Equal([]int32{8123, 9000, 9363}))
+		Expect(portKeys(servicePortTargets(nn.Name))).To(ConsistOf(int32(8123), int32(9000), int32(9009), int32(9363)),
+			"the image still declares 9009, so the Service keeps routing it")
+
+		By("listing 9009 again once the instance binds it")
+		scanner.set("10.3.0.1", 8123, 9000, 9009, 9363)
+		reconcileToFixedPoint(run)
+		Expect(envtestApp(nn).OpenPorts()).To(Equal([]int32{8123, 9000, 9009, 9363}))
+	})
+
 	It("answers a web service's private port 10000 with its primary listener", func() {
 		nn := types.NamespacedName{Name: "web-private-10000", Namespace: "default"}
 		r := &AppReconciler{Client: k8sClient, Scheme: k8sClient.Scheme(), Mode: ModeKubernetes}

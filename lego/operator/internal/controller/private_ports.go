@@ -35,24 +35,25 @@ import (
 )
 
 // Render's private network (render.com/docs/private-network; ADR089 D3 phase
-// 2, w3/m273): a private service receives private traffic on any port it binds,
-// up to 75, and a web service's port 10000 always reaches its primary HTTP
-// server. bex publishes both on the stable ClusterIP Services. The listeners
-// come from the w8/177 scanner: a TCP connect from the operator to a Ready
-// instance's pod IP on every port, so a loopback-only listener is never found.
+// 2, w3/m273, w3/m276): a web or private service receives private traffic on
+// any port it binds, up to 75, and a web service's port 10000 always reaches
+// its primary HTTP server. bex publishes both on the stable ClusterIP Services
+// and lists the listeners in openPorts. The listeners come from the w8/177
+// scanner: a TCP connect from the operator to a Ready instance's pod IP on
+// every port, so a loopback-only listener is never found.
 
-// privatePortScanInterval spaces the scans of one private service once its
-// current revision has been scanned, so a listener opened after readiness is
-// published within one interval.
+// privatePortScanInterval spaces the scans of one service once its current
+// revision has been scanned, so a listener opened after readiness is published
+// within one interval.
 const privatePortScanInterval = 2 * time.Minute
 
-// discoverPrivatePorts scans a private service's current revision when a scan
-// is due and records what it binds in status.runtimePorts. rolloutDone clears
-// the previous revision's retained ports: no instance serving them remains. A
-// changed set is written to both stable Services before status records it, so
-// openPorts never names a port the hostname does not serve.
+// discoverPrivatePorts scans a web or private service's current revision when
+// a scan is due and records what it binds in status.runtimePorts. rolloutDone
+// clears the previous revision's retained ports: no instance serving them
+// remains. A changed set is written to both stable Services before status
+// records it, so openPorts never names a port the hostname does not serve.
 func (r *AppReconciler) discoverPrivatePorts(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment, port int, rolloutDone bool) error {
-	if app.Spec.Type != appv1alpha1.TypePrivateService {
+	if !app.Spec.InternallyAddressable() {
 		app.Status.RuntimePorts = nil
 		return nil
 	}
@@ -75,7 +76,7 @@ func (r *AppReconciler) discoverPrivatePorts(ctx context.Context, app *appv1alph
 		if err := r.reconcileSlugService(ctx, projected, port); err != nil {
 			return err
 		}
-		logf.FromContext(ctx).Info("private service listeners changed", "app", app.Name,
+		logf.FromContext(ctx).Info("private network listeners changed", "app", app.Name,
 			"openPorts", projected.OpenPorts(), "was", app.OpenPorts())
 	}
 	app.Status.RuntimePorts = next
@@ -110,23 +111,30 @@ func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.A
 	open, err := r.PortScanner.Scan(scanCtx, ip)
 	partial := errors.Is(err, portscan.ErrPartial)
 	if err != nil && !partial {
-		logf.FromContext(ctx).Info("private port scan failed; keeping the last listeners", "app", app.Name, "error", err.Error())
+		logf.FromContext(ctx).Info("private network port scan failed; keeping the last listeners", "app", app.Name, "error", err.Error())
 		return nil
 	}
 	found := listenerSet(open)
 	next := &appv1alpha1.RuntimePortsStatus{Revision: revision, Ports: found}
-	switch {
-	case sameRevision:
+	if sameRevision {
 		next.Retained = prev.Retained
 		if partial {
 			// The sweep did not reach every port: it may add, never remove.
 			next.Ports = capPorts(mergePorts(prev.Ports, found))
 		}
-	case prev != nil:
+		return next
+	}
+	if network := app.Status.ImageNetwork; partial && network != nil && network.Revision == revision {
+		// A new release's first sweep did not finish: a declared port it did
+		// not reach is unproven, so it stays listed (openPorts leaves out a
+		// declared port only once a scan shows nothing binds it).
+		next.Ports = capPorts(mergePorts(found, network.Ports))
+	}
+	if prev != nil {
 		// A new revision: the old instances still serve what they bound until
 		// the rollout replacing them completes.
 		next.Retained = capPorts(slices.DeleteFunc(mergePorts(prev.Ports, prev.Retained),
-			func(p int32) bool { return slices.Contains(found, p) }))
+			func(p int32) bool { return slices.Contains(next.Ports, p) }))
 	}
 	return next
 }
@@ -181,10 +189,10 @@ func (r *AppReconciler) readyPodIP(ctx context.Context, dep *appsv1.Deployment, 
 }
 
 // withPrivateNetworkPorts adds what a stable Service serves on the private
-// network beyond the service's own ports: a private service's discovered
-// listeners, each targeting itself, and a web service's port 10000 targeting
-// its primary port's own target (the serving listener, the edge cache, or the
-// image network's primary). An image that declares 10000 beside another
+// network beyond the service's own ports: a web or private service's
+// discovered listeners, each targeting itself, and a web service's port 10000
+// targeting its primary port's own target (the serving listener, the edge
+// cache, or the image network's primary). An image that declares 10000 beside another
 // primary has it retargeted, as Render routes 10000 to the primary HTTP server.
 // Appended entries keep the first port, which release planning reads, first.
 func withPrivateNetworkPorts(app *appv1alpha1.App, ports []corev1.ServicePort) []corev1.ServicePort {
