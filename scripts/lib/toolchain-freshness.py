@@ -11,6 +11,7 @@ import json
 import os
 import re
 import sys
+import time
 import urllib.error
 import urllib.parse
 import urllib.request
@@ -241,10 +242,32 @@ def fixture_digests() -> dict[str, str] | None:
     return data
 
 
+def urlopen_retrying(req: urllib.request.Request, timeout: float):
+    """urlopen with up to three attempts on a transport error or a 5xx.
+
+    Registry and release hosts answer the occasional 502/504 (run 42046392479:
+    GitHub releases 504 on the hugo asset); a 4xx is a real answer and is not
+    retried.
+    """
+    delay = float(os.environ.get("FRESHNESS_RETRY_DELAY", "5"))
+    for attempt in range(3):
+        try:
+            return urllib.request.urlopen(req, timeout=timeout)
+        except urllib.error.HTTPError as err:
+            if err.code < 500 or attempt == 2:
+                raise
+            err.close()
+        except OSError:  # URLError, timeouts, resets
+            if attempt == 2:
+                raise
+        time.sleep(delay * (attempt + 1))
+    raise AssertionError("unreachable")
+
+
 def http_json(url: str, headers: dict[str, str] | None = None) -> dict:
     req = urllib.request.Request(url, headers=headers or {})
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urlopen_retrying(req, timeout=30) as resp:
             return json.loads(resp.read().decode("utf-8"))
     except (urllib.error.URLError, json.JSONDecodeError, TimeoutError) as err:
         raise RuntimeError(f"{url}: {err}") from err
@@ -253,7 +276,7 @@ def http_json(url: str, headers: dict[str, str] | None = None) -> dict:
 def http_digest(url: str, headers: dict[str, str]) -> str:
     req = urllib.request.Request(url, headers=headers, method="GET")
     try:
-        with urllib.request.urlopen(req, timeout=30) as resp:
+        with urlopen_retrying(req, timeout=30) as resp:
             digest = resp.headers.get("Docker-Content-Digest", "")
     except urllib.error.URLError as err:
         raise RuntimeError(f"{url}: {err}") from err
@@ -265,7 +288,7 @@ def http_digest(url: str, headers: dict[str, str]) -> str:
 def http_sha256(url: str) -> str:
     digest = hashlib.sha256()
     try:
-        with urllib.request.urlopen(urllib.request.Request(url), timeout=120) as resp:
+        with urlopen_retrying(urllib.request.Request(url), timeout=120) as resp:
             for chunk in iter(lambda: resp.read(1 << 16), b""):
                 digest.update(chunk)
     except (urllib.error.URLError, TimeoutError) as err:
