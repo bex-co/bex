@@ -407,8 +407,10 @@ func TestConfiguredPortServiceTargetsEachPodsOwnListener(t *testing.T) {
 				t.Fatal(err)
 			}
 			p := svc.Spec.Ports
-			if len(p) != 1 || p[0].Name != servingPortName || p[0].Port != 3001 || p[0].TargetPort != tc.want {
-				t.Fatalf("service ports = %+v, want %q port 3001 → %v", p, servingPortName, tc.want)
+			// The web service's private 10000 follows the same target (w3/m273).
+			if len(p) != 2 || p[0].Name != servingPortName || p[0].Port != 3001 || p[0].TargetPort != tc.want ||
+				p[1].Port != appv1alpha1.PrivateHTTPPort || p[1].TargetPort != tc.want {
+				t.Fatalf("service ports = %+v, want %q port 3001 and 10000 → %v", p, servingPortName, tc.want)
 			}
 		})
 	}

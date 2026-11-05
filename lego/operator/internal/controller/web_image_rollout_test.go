@@ -334,8 +334,9 @@ func TestPortChangeRoutesEarlyWhileTheOldPodsAreHeld(t *testing.T) {
 	for _, p := range svc.Spec.Ports {
 		targets[p.Port] = p.TargetPort.IntVal
 	}
-	if !reflect.DeepEqual(targets, map[int32]int32{8080: 9090, 9090: 9090}) {
-		t.Fatalf("Service ports written at early promotion = %v, want 8080→9090 and 9090→9090", targets)
+	// The private 10000 follows the new primary too (w3/m273).
+	if !reflect.DeepEqual(targets, map[int32]int32{8080: 9090, 9090: 9090, 10000: 9090}) {
+		t.Fatalf("Service ports written at early promotion = %v, want 8080, 9090 and 10000 → 9090", targets)
 	}
 	// Completion clears the prior network: the route names 9090 and the alias goes.
 	done := app.DeepCopy()

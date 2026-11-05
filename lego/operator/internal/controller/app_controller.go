@@ -297,10 +297,13 @@ const (
 type AppReconciler struct {
 	client.Client
 	// PortScanner finds the port a web service's process listens on when its
-	// health check keeps failing on the default port (w8/177); nil disables
+	// health check keeps failing on the default port (w8/177), and every
+	// listener a private service's instances bind (w3/m273); nil disables
 	// detection.
 	PortScanner portscan.Scanner
 	portScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
+	// privatePortScanned spaces a private service's listener scans the same way.
+	privatePortScanned sync.Map // "<ns>/<name>" -> time.Time of the last scan
 	// portCandidate remembers the lone port a scan found until a second scan agrees.
 	portCandidate sync.Map // "<ns>/<name>" -> int
 	// portDetectEvery overrides the scan spacing (tests); zero uses the default.
@@ -3266,7 +3269,14 @@ func (r *AppReconciler) reportKubernetesRunning(ctx context.Context, app *appv1a
 			return res, true, err
 		}
 	}
-	if !deploymentRolloutReady(dep, replicas) || !r.deploymentPodsReady(ctx, dep, replicas) {
+	rolloutDone := deploymentRolloutReady(dep, replicas) && r.deploymentPodsReady(ctx, dep, replicas)
+	// A private service publishes every port its instances bind; a rollout
+	// keeps the old instances' ports until it completes (w3/m273).
+	if err := r.discoverPrivatePorts(ctx, app, dep, port, rolloutDone); err != nil {
+		res, err := r.fail(ctx, app, "ServiceFailed", err)
+		return res, true, err
+	}
+	if !rolloutDone {
 		app.Status.Image = image
 		res, err := r.reportRolloutProgress(ctx, app, dep, replicas, port,
 			"waiting for the current Deployment revision and pods to become ready")
@@ -3418,6 +3428,7 @@ func (r *AppReconciler) applyClusterIPService(ctx context.Context, app *appv1alp
 		}
 		ports[0].Name, ports[0].TargetPort = servingPortName, target
 	}
+	ports = withPrivateNetworkPorts(app, ports)
 	svc := &corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: app.Namespace}}
 	_, err = controllerutil.CreateOrUpdate(ctx, r.Client, svc, func() error {
 		svc.Spec.Selector = selector

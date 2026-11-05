@@ -1651,6 +1651,14 @@ type AppStatus struct {
 	// +kubebuilder:validation:Maximum=65535
 	DetectedPort int32 `json:"detectedPort,omitempty"`
 
+	// RuntimePorts is the TCP listeners a private service's instances were
+	// found accepting connections on, from outside the pod (Render publishes
+	// any port a private service binds; w3/m273). The ones its configured or
+	// declared ports lack are published on its stable Services and in
+	// openPorts (App.RuntimeOnlyPorts).
+	// +optional
+	RuntimePorts *RuntimePortsStatus `json:"runtimePorts,omitempty"`
+
 	// ImageRevision caches the commit the serving image was built from, read
 	// once per image from its OCI revision label, so the projection can set
 	// Render's RENDER_GIT_COMMIT without a registry read every pass (w5/m148).

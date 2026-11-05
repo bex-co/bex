@@ -843,11 +843,18 @@ describe("ServiceSettingsPage", () => {
     );
 
     // w6/m148: the page tells the row when a private service's ports come
-    // from its image — pending discovery, or ports besides the primary.
+    // from its image (bex-api's imagePorts). w3/m273: a configured service
+    // that binds more ports lists them too, but keeps the configured copy.
     it.each([
       ["whose image adds ports", 8123, [8123, 9000, 9009], true],
       ["whose image is not read yet", null, [], true],
       ["with one configured port", 8080, [8080], false],
+      [
+        "with a configured port and runtime listeners",
+        5432,
+        [5432, 9187],
+        false,
+      ],
     ] as const)(
       "picks the port hint for a private service %s",
       async (_name, port, open, imageHint) => {
@@ -856,6 +863,7 @@ describe("ServiceSettingsPage", () => {
           url: null,
           port,
           openPorts: open.map((p) => ({ port: p, protocol: "TCP" })),
+          imagePorts: imageHint,
         });
         renderSettings();
 

@@ -37,8 +37,9 @@ export function parsePort(draft: string): number | null {
  *   familiar `<slug>:<port>` look);
  * - `pending` — an image-port private service whose image has not been read
  *   yet (`openPorts: []`), so no port is known and none is invented;
- * - `list` — the image's declared TCP ports in bex-api's order, the primary
- *   (`port`, the `<slug>:<port>` suffix) flagged.
+ * - `list` — the TCP ports the hostname serves in bex-api's order (the
+ *   image's declared ports plus the listeners found on its instances, w3/m273),
+ *   the primary (`port`, the `<slug>:<port>` suffix) flagged.
  */
 /** The service facts the open-ports helpers read. */
 export type PortFacts = Pick<ServiceView, "type" | "port" | "openPorts">;
@@ -57,16 +58,6 @@ export function openPortsDisplay(s: PortFacts): OpenPortsDisplay {
   }));
   if (ports.length === 1 && ports[0].primary) return { kind: "none" };
   return { kind: "list", ports };
-}
-
-/**
- * True when a private service's open ports come from its image (w6/m148):
- * discovery is pending, or the image publishes ports besides the primary. A
- * single-port image reads exactly like a configured port — and has no other
- * declared port to explain — so it keeps the configured-port copy.
- */
-export function publishesImagePorts(s: PortFacts): boolean {
-  return openPortsDisplay(s).kind !== "none";
 }
 
 /**

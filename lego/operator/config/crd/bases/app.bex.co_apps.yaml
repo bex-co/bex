@@ -1594,6 +1594,38 @@ spec:
                   - status
                   type: object
                 type: array
+              runtimePorts:
+                description: |-
+                  RuntimePorts is the TCP listeners a private service's instances were
+                  found accepting connections on, from outside the pod (Render publishes
+                  any port a private service binds; w3/m273). The ones its configured or
+                  declared ports lack are published on its stable Services and in
+                  openPorts (App.RuntimeOnlyPorts).
+                properties:
+                  ports:
+                    description: Ports are the TCP ports that instance accepted connections
+                      on.
+                    items:
+                      format: int32
+                      type: integer
+                    maxItems: 75
+                    type: array
+                  retained:
+                    description: |-
+                      Retained are the previous revision's listeners that Revision does not
+                      serve, kept published until the rollout replacing it completes.
+                    items:
+                      format: int32
+                      type: integer
+                    maxItems: 75
+                    type: array
+                  revision:
+                    description: Revision is the pod revision whose Ready instance
+                      was scanned.
+                    type: string
+                required:
+                - revision
+                type: object
               sandboxID:
                 description: SandboxID is the runtime handle of the active revision
                   (OpenSandbox sandbox id).

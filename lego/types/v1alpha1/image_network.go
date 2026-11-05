@@ -91,6 +91,51 @@ type ImageNetworkStatus struct {
 	Ports []int32 `json:"ports"`
 }
 
+// PrivateHTTPPort is the private-network port on which every web service
+// answers with its primary HTTP server, whatever port that server binds
+// (render.com/docs/private-network; w3/m273).
+const PrivateHTTPPort int32 = 10000
+
+// RuntimePortsStatus is what the operator's listener scan of a private
+// service's running instance found (w3/m273, ADR089 D3 phase 2).
+type RuntimePortsStatus struct {
+	// Revision is the pod revision whose Ready instance was scanned.
+	Revision string `json:"revision"`
+	// Ports are the TCP ports that instance accepted connections on.
+	// +optional
+	// +kubebuilder:validation:MaxItems=75
+	Ports []int32 `json:"ports,omitempty"`
+	// Retained are the previous revision's listeners that Revision does not
+	// serve, kept published until the rollout replacing it completes.
+	// +optional
+	// +kubebuilder:validation:MaxItems=75
+	Retained []int32 `json:"retained,omitempty"`
+}
+
+// RuntimeOnlyPorts is the discovered listeners of a private service that the
+// published set lacks, ascending: reserved ports are left out, and the result
+// stops where published plus discovered would pass Render's 75 open ports.
+// Other types publish none (a stale record from a type change included).
+func (a *App) RuntimeOnlyPorts(published []int32) []int32 {
+	found := a.Status.RuntimePorts
+	if a.Spec.Type != TypePrivateService || found == nil {
+		return nil
+	}
+	candidates := slices.Concat(found.Ports, found.Retained)
+	slices.Sort(candidates)
+	var out []int32
+	for _, port := range slices.Compact(candidates) {
+		if len(published)+len(out) >= MaxImagePorts {
+			break
+		}
+		if port < 1 || port > 65535 || IsReservedImagePort(port) || slices.Contains(published, port) {
+			continue
+		}
+		out = append(out, port)
+	}
+	return out
+}
+
 // UsesImagePorts never expands the public routing contract or legacy services.
 func (s AppSpec) UsesImagePorts() bool {
 	return s.Type == TypePrivateService && (s.PortMode == PortModeImageV1 || s.PortMode == PortModeImageConfiguredV1)
@@ -173,7 +218,26 @@ func (a *App) ServicePort() int32 {
 // address, the effective port for a configured service, and the serving (else
 // first candidate) image network's ports for an image-port private service.
 // While that service's discovery is pending it is empty, never an invented 3000.
+// A private service adds the undeclared listeners found on its instances
+// (w3/m273). A web service's port-10000 alias is a route, not a listener, and
+// is not listed.
 func (a *App) OpenPorts() []int32 {
+	ports := a.ownPorts()
+	if len(ports) == 0 {
+		return ports
+	}
+	// A private service also serves every listener its instances bind
+	// (w3/m273).
+	if extra := a.RuntimeOnlyPorts(ports); len(extra) > 0 {
+		ports = slices.Concat(ports, extra)
+		slices.Sort(ports)
+	}
+	return ports
+}
+
+// ownPorts is OpenPorts before runtime discovery: what the service's
+// configuration or image declares.
+func (a *App) ownPorts() []int32 {
 	if !a.Spec.InternallyAddressable() {
 		return nil
 	}

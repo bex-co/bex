@@ -135,3 +135,36 @@ func TestDetectedPortOverridesTheDefaultAcrossReaders(t *testing.T) {
 		}
 	}
 }
+
+// A private service's openPorts adds the listeners its instances bind, retained
+// ones included, without reserved ports and within Render's 75 (w3/m273). A
+// web service publishes none, and a pending image network stays [].
+func TestOpenPortsAddRuntimeListeners(t *testing.T) {
+	found := &RuntimePortsStatus{Revision: "rev-2", Ports: []int32{5432, 9187, 18012}, Retained: []int32{7000}}
+	for _, tc := range []struct {
+		name string
+		app  App
+		want []int32
+	}{
+		{"configured private", App{Spec: AppSpec{Type: TypePrivateService, Port: 5432}, Status: AppStatus{RuntimePorts: found}}, []int32{5432, 7000, 9187}},
+		{"image private", App{Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1},
+			Status: AppStatus{RuntimePorts: found, ServingNetwork: &ImageNetworkStatus{Revision: "rev-1", PrimaryPort: 8123, Ports: []int32{8123, 9000}}}}, []int32{5432, 7000, 8123, 9000, 9187}},
+		{"image pending", App{Spec: AppSpec{Type: TypePrivateService, PortMode: PortModeImageV1}, Status: AppStatus{RuntimePorts: found}}, []int32{}},
+		{"web", App{Spec: AppSpec{Type: TypeWebService, Port: 8080}, Status: AppStatus{RuntimePorts: found}}, []int32{8080}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := tc.app.OpenPorts(); !reflect.DeepEqual(got, tc.want) {
+				t.Fatalf("OpenPorts = %#v, want %#v", got, tc.want)
+			}
+		})
+	}
+
+	many := &RuntimePortsStatus{Revision: "rev-1"}
+	for p := int32(20001); p <= 20100; p++ {
+		many.Ports = append(many.Ports, p)
+	}
+	app := App{Spec: AppSpec{Type: TypePrivateService, Port: 5432}, Status: AppStatus{RuntimePorts: many}}
+	if got := app.OpenPorts(); len(got) != MaxImagePorts || got[0] != 5432 || got[MaxImagePorts-1] != 20074 {
+		t.Fatalf("OpenPorts = %d ports, want the primary plus the 74 lowest discovered", len(got))
+	}
+}

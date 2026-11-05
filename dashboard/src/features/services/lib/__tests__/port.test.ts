@@ -1,7 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   openPortsDisplay,
-  publishesImagePorts,
   settingsPort,
   type PortFacts,
 } from "@/features/services/lib/port";
@@ -47,6 +46,22 @@ describe("openPortsDisplay", () => {
     ).toEqual({ kind: "none" });
   });
 
+  // w3/m273: a configured (or native) private service also serves the
+  // listeners its instances bind.
+  it("lists a configured private service's runtime listeners beside its port", () => {
+    expect(
+      openPortsDisplay(
+        privateService({ port: 5432, openPorts: tcp(5432, 9187) }),
+      ),
+    ).toEqual({
+      kind: "list",
+      ports: [
+        { port: 5432, primary: true },
+        { port: 9187, primary: false },
+      ],
+    });
+  });
+
   it("still lists a lone port that is not the primary", () => {
     expect(
       openPortsDisplay(privateService({ port: 8080, openPorts: tcp(9000) })),
@@ -69,37 +84,6 @@ describe("openPortsDisplay", () => {
     ],
   ] satisfies [string, PortFacts][])("adds nothing for %s", (_name, facts) => {
     expect(openPortsDisplay(facts)).toEqual({ kind: "none" });
-  });
-});
-
-describe("publishesImagePorts", () => {
-  it("is true while discovery is pending and when the image adds ports", () => {
-    expect(publishesImagePorts(privateService({ openPorts: [] }))).toBe(true);
-    expect(
-      publishesImagePorts(
-        privateService({ port: 8123, openPorts: tcp(8123, 9000) }),
-      ),
-    ).toBe(true);
-  });
-
-  it("is false for a configured port and for other service types", () => {
-    expect(
-      publishesImagePorts(privateService({ port: 8080, openPorts: tcp(8080) })),
-    ).toBe(false);
-    expect(
-      publishesImagePorts({
-        type: "web_service",
-        port: 3000,
-        openPorts: tcp(3000),
-      }),
-    ).toBe(false);
-    expect(
-      publishesImagePorts({
-        type: "cron_job",
-        port: null,
-        openPorts: null,
-      }),
-    ).toBe(false);
   });
 });
 

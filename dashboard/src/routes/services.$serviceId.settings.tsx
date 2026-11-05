@@ -50,10 +50,7 @@ import {
   serviceSettingsSections,
   type ServiceSettingsSectionId,
 } from "@/features/services/lib/settings-sections";
-import {
-  publishesImagePorts,
-  settingsPort,
-} from "@/features/services/lib/port";
+import { settingsPort } from "@/features/services/lib/port";
 import { toServiceView } from "@/features/services/lib/status";
 import {
   ServiceSettingsSkeleton,
@@ -355,12 +352,10 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
               <ServicePortRow
                 serviceId={serviceId}
                 port={service ? settingsPort(service) : undefined}
-                imagePorts={
-                  service
-                    ? service.imagePorts === true ||
-                      publishesImagePorts(service)
-                    : false
-                }
+                // bex-api's imagePorts, not the open-port count: a configured
+                // private service also lists the listeners it binds (w3/m273)
+                // and must keep the configured-port copy.
+                imagePorts={service?.imagePorts === true}
               />
             </CardContent>
           </Card>

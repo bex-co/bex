@@ -285,7 +285,10 @@ var _ = Describe("Removing PORT while HTTP discovery runs (w8/m142)", func() {
 			Expect(k8sClient.Get(ctx, nn, svc)).To(Succeed())
 			Expect(svc.Spec.Selector).To(HaveKeyWithValue(labelRevision, served),
 				"the routed Service must keep the serving release's pods only while discovery runs")
-			Expect(svc.Spec.Ports).To(ConsistOf(And(HaveField("Port", int32(8080)), HaveField("TargetPort.IntVal", int32(8080)))))
+			Expect(svc.Spec.Ports).To(ConsistOf(
+				And(HaveField("Port", int32(8080)), HaveField("TargetPort.IntVal", int32(8080))),
+				// The private 10000 reaches the same serving listener (w3/m273).
+				And(HaveField("Port", appv1alpha1.PrivateHTTPPort), HaveField("TargetPort.IntVal", int32(8080)))))
 		}
 		Expect(candidateTemplates).To(BeNumerically(">", 0), "the candidate template must be written")
 

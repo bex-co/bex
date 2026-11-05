@@ -87,6 +87,25 @@ func TestRenderServiceDetailsOpenPorts(t *testing.T) {
 	}{
 		{"configured web", func() *appv1alpha1.App { a := sampleApp("web"); a.Spec.Port = 8080; return a }(), []any{8080}},
 		{"configured private", func() *appv1alpha1.App { a := sampleApp("p"); a.Spec.Type = appv1alpha1.TypePrivateService; return a }(), []any{10000}},
+		// w3/m273: the listeners a private service binds beyond its own port
+		// (native or image), the previous revision's while a rollout drains it.
+		{"configured private with runtime listeners", func() *appv1alpha1.App {
+			a := sampleApp("p")
+			a.Spec.Type, a.Spec.Port = appv1alpha1.TypePrivateService, 5432
+			a.Status.RuntimePorts = &appv1alpha1.RuntimePortsStatus{Revision: "rev-2", Ports: []int32{9187, 5432, 19099}, Retained: []int32{7000}}
+			return a
+		}(), []any{5432, 7000, 9187}},
+		{"image serving with a runtime listener", image(func(a *appv1alpha1.App) {
+			a.Status.ServingNetwork = serving
+			a.Status.RuntimePorts = &appv1alpha1.RuntimePortsStatus{Revision: "r1", Ports: []int32{8123, 9363}}
+		}), []any{8123, 9000, 9009, 9363}},
+		// A web service's private 10000 is a route to its primary, not a listener.
+		{"configured web lists no 10000 alias", func() *appv1alpha1.App {
+			a := sampleApp("web")
+			a.Spec.Port = 8080
+			a.Status.RuntimePorts = &appv1alpha1.RuntimePortsStatus{Revision: "r1", Ports: []int32{8080, 9000}}
+			return a
+		}(), []any{8080}},
 		{"image pending", image(nil), []any{}},
 		{"image serving", image(func(a *appv1alpha1.App) { a.Status.ServingNetwork = serving }), []any{8123, 9000, 9009}},
 		{"image replacing keeps the serving set", image(func(a *appv1alpha1.App) {
@@ -160,7 +179,10 @@ func TestGraphQLOpenPortsNullVersusPending(t *testing.T) {
 	serving := sampleApp("multi")
 	serving.Spec.Type, serving.Spec.PortMode = appv1alpha1.TypePrivateService, appv1alpha1.PortModeImageV1
 	serving.Status.ServingNetwork = &appv1alpha1.ImageNetworkStatus{Image: "i", Revision: "r", PrimaryPort: 8123, Ports: []int32{8123, 9000}}
-	svc, _ := newService(nil, worker, pending, serving)
+	native := sampleApp("native")
+	native.Spec.Type, native.Spec.Port = appv1alpha1.TypePrivateService, 5432
+	native.Status.RuntimePorts = &appv1alpha1.RuntimePortsStatus{Revision: "rev-1", Ports: []int32{5432, 9187}}
+	svc, _ := newService(nil, worker, pending, serving, native)
 	schema, err := graphql.NewSchema(graphql.SchemaConfig{
 		Query: graphql.NewObject(graphql.ObjectConfig{Name: "Query", Fields: svc.GraphQLQuery()}),
 	})
@@ -171,6 +193,7 @@ func TestGraphQLOpenPortsNullVersusPending(t *testing.T) {
 		"worker": `null`,
 		"ch":     `[]`,
 		"multi":  `[{"port":8123,"protocol":"TCP"},{"port":9000,"protocol":"TCP"}]`,
+		"native": `[{"port":5432,"protocol":"TCP"},{"port":9187,"protocol":"TCP"}]`,
 	} {
 		res := graphql.Do(graphql.Params{Schema: schema, Context: context.Background(), RequestString: `{ service(id: "` + name + `") { openPorts { port protocol } } }`})
 		if len(res.Errors) > 0 {
