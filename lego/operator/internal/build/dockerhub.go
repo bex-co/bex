@@ -70,12 +70,14 @@ const (
 	hexpmElixirRepo = "hexpm/elixir"
 	// hexpmErlangRepo supplies exact OTP builds for the common Bookworm base.
 	hexpmErlangRepo = "hexpm/erlang"
+	// bunRepo is Bun's official image, the one canary is resolved from.
+	bunRepo = "oven/bun"
 )
 
 // exactRepos are the repositories an exact version may name: the official
 // toolchain repositories, the official erlang images and hexpm's Elixir.
 var exactRepos = map[string]bool{nativePythonRuntime: true, nativeNodeRuntime: true, nativeRubyRuntime: true, nativeElixirRuntime: true,
-	erlangRepo: true, hexpmElixirRepo: true, hexpmErlangRepo: true}
+	erlangRepo: true, hexpmElixirRepo: true, hexpmErlangRepo: true, bunRepo: true}
 
 // repoPath is a repo's Docker Hub path: official images live under library/.
 func repoPath(repo string) string {

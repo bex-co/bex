@@ -224,6 +224,10 @@ func ResolveNativeBun(env map[string]string, readFile func(string) ([]byte, bool
 	return r.firstFound(r.fromEnv("BUN_VERSION", r.bunRequest), r.fromFile(".bun-version", r.bunRequest), r.fromLockfile(nativeBunLockfiles...))
 }
 
+// nativeBunCanary is Render's BUN_VERSION / .bun-version value for Bun's
+// canary build (Render changelog 2026-10-16).
+const nativeBunCanary = "canary"
+
 // nativeBunLockfiles are Bun's lockfiles, which opt a build into Bun and mark
 // a project as Bun's rather than npm's (w8/m86).
 var nativeBunLockfiles = []string{"bun.lock", "bun.lockb"}
@@ -296,12 +300,14 @@ func boundedRequest(what string) string {
 	return what
 }
 
-// bunRequest maps a Bun version request: `latest`, a plain version onto its
+// bunRequest maps a Bun version request: `canary`, `latest`, a plain version onto its
 // major.minor line (a bare major onto that major's newest line), otherwise a
 // semver range.
 func (r resolver) bunRequest(request string) (string, bool) {
 	lower := strings.TrimPrefix(strings.TrimPrefix(strings.ToLower(strings.TrimSpace(request)), "bun-"), "v")
 	switch {
+	case lower == r.t.floating:
+		return lower, true
 	case lower == "latest":
 		return r.t.lines[len(r.t.lines)-1].line, true
 	case plainVersion.MatchString(lower) && !strings.Contains(lower, "."):
@@ -357,6 +363,11 @@ func (r resolver) firstFound(signals ...signal) (NativeChoice, bool, error) {
 }
 
 func (r resolver) choice(line, source string) (NativeChoice, error) {
+	if line != "" && line == r.t.floating {
+		c, err := r.choice(r.t.defaultLine, source)
+		c.Exact = line
+		return c, err
+	}
 	l, ok := r.t.find(line)
 	if !ok {
 		return NativeChoice{}, fmt.Errorf("no %s line %q", r.t.label, line)
@@ -372,8 +383,12 @@ func (r resolver) unsupported(what string) error {
 	for i, l := range r.t.lines {
 		lines[i] = l.line
 	}
+	supported := strings.Join(lines, ", ")
+	if r.t.floating != "" {
+		supported += " or " + r.t.floating
+	}
 	return &UnsupportedVersionError{msg: fmt.Sprintf("%s is not a supported %s version; supported %s lines are %s",
-		what, r.t.label, r.t.label, strings.Join(lines, ", "))}
+		what, r.t.label, r.t.label, supported)}
 }
 
 // fromEnv reads one env var; source names it with its value, as Render's docs do.

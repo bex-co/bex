@@ -139,7 +139,7 @@ var nativeToolchains = map[string]nativeToolchain{
 // primary toolchain when the service opts in (BUN_VERSION, .bun-version or a
 // Bun lockfile; Render's Bun version contract, w8/m71). Its binary is copied
 // out of the pinned image, so build, pre-deploy and start all run with it.
-var nativeBun = nativeToolchain{label: "Bun", defaultLine: "1.4", lines: []nativeLine{
+var nativeBun = nativeToolchain{label: "Bun", defaultLine: "1.4", floating: nativeBunCanary, lines: []nativeLine{
 	{line: "1.2", version: "1.2.23", image: "oven/bun:1.2@sha256:6ebf306367da43ad75c4d5119563e24de9b66372929ad4fa31546be053a16f74"},
 	{line: "1.3", version: "1.3.14", image: "oven/bun:1.3@sha256:e10577f0db68676a7024391c6e5cb4b879ebd17188ab750cf10024a6d700e5c4"},
 	{line: "1.4", version: "1.4.4", image: "oven/bun:1.4@sha256:1d22548f177f4ff38e0c15baa3c2c46c6c2060ba2d1bc573bb4720b407548f1d"},
@@ -149,7 +149,11 @@ var nativeBun = nativeToolchain{label: "Bun", defaultLine: "1.4", lines: []nativ
 type nativeToolchain struct {
 	label       string
 	defaultLine string
-	lines       []nativeLine
+	// floating is an upstream tag a service may request that is no reviewed
+	// line (Bun's canary): it resolves to the default line's pinned image with
+	// Exact set to the tag, which the build then pins to that tag's digest.
+	floating string
+	lines    []nativeLine
 }
 
 // nativeLine is one pinned toolchain line. version is the exact toolchain the

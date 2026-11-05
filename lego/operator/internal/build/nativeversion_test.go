@@ -404,8 +404,10 @@ func TestResolveNativeBun(t *testing.T) {
 		{"text lockfile", nil, map[string]string{"bun.lock": "{}"}, "1.4", "bun.lock", ""},
 		{"binary lockfile", nil, map[string]string{"bun.lockb": "\x00"}, "1.4", "bun.lockb", ""},
 		{"file wins over a lockfile", nil, map[string]string{".bun-version": "1.2", "bun.lock": "{}"}, "1.2", ".bun-version", ""},
+		{"canary (Render 2026-10-16) starts on the default line", map[string]string{"BUN_VERSION": "canary"}, nil, "1.4", "BUN_VERSION=canary", ""},
+		{".bun-version canary", nil, map[string]string{".bun-version": "Canary\n"}, "1.4", ".bun-version", ""},
 		{"no opt-in", map[string]string{"NODE_VERSION": "22"}, map[string]string{"package.json": "{}"}, "", "", ""},
-		{"unsupported", map[string]string{"BUN_VERSION": "0.8.1"}, nil, "", "", "BUN_VERSION=0.8.1 is not a supported Bun version; supported Bun lines are 1.2, 1.3, 1.4"},
+		{"unsupported", map[string]string{"BUN_VERSION": "0.8.1"}, nil, "", "", "BUN_VERSION=0.8.1 is not a supported Bun version; supported Bun lines are 1.2, 1.3, 1.4 or canary"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			readFile := func(name string) ([]byte, bool) {
@@ -424,6 +426,12 @@ func TestResolveNativeBun(t *testing.T) {
 				t.Fatalf("= %+v, %v, %v; want line %q from %q", choice, found, err, tc.line, tc.source)
 			}
 		})
+	}
+	// Canary resolves to the reviewed default image plus the tag to pin, so no
+	// choice ever carries an unpinned image.
+	canary, _, _ := ResolveNativeBun(map[string]string{"BUN_VERSION": "canary"}, func(string) ([]byte, bool) { return nil, false })
+	if reviewed, _ := nativeBun.find(nativeBun.defaultLine); canary.Image != reviewed.image || canary.Exact != "canary" {
+		t.Errorf("canary choice = %+v, want the reviewed default image with Exact canary", canary)
 	}
 	choice, _, _ := ResolveNativeBun(map[string]string{"BUN_VERSION": "1.3.4"}, func(string) ([]byte, bool) { return nil, false })
 	if got := choice.Narration(); got != "==> Using Bun 1.3 (from BUN_VERSION=1.3.4)" {
@@ -472,6 +480,44 @@ func TestResolveNativeBuildAddsAnOptedInBun(t *testing.T) {
 	want := strings.Replace(string(before), "FROM "+defaultImage+"\n", "FROM "+expectedNativeBase(defaultImage)+"\n", 1)
 	if after, _ := os.ReadFile(dockerfile); string(after) != want {
 		t.Fatalf("no opt-in changed the Dockerfile:\n%s", after)
+	}
+}
+
+// BUN_VERSION=canary builds with the canary digest current at build time,
+// pinned and narrated; an unreachable registry keeps the reviewed default
+// line and says so (w5/178).
+func TestResolveNativeBuildPinsBunCanary(t *testing.T) {
+	o := nativeOptions()
+	o.Runtime = "node"
+	exact := &fakeExact{digests: map[string]string{bunRepo + ":canary": exactDigest}}
+	bundle, dockerfile, src := writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "canary"}, map[string]string{".nvmrc": "22\n"})
+	choices, err := ResolveNativeBuildExact(t.Context(), exact, time.Time{}, "node", bundle, dockerfile, src)
+	if err != nil || len(choices) != 2 || choices[1].Line != "canary" || choices[1].Image != "oven/bun:canary@"+exactDigest {
+		t.Fatalf("choices = %+v, %v; want Bun canary pinned to its digest", choices, err)
+	}
+	if !strings.Contains(choices[1].Narration(), "==> Bun canary is oven/bun:canary@"+exactDigest) {
+		t.Errorf("narration = %q, want the pinned digest", choices[1].Narration())
+	}
+	if df, _ := os.ReadFile(dockerfile); !strings.Contains(string(df), "COPY --link --from=oven/bun:canary@"+exactDigest+" /usr/local/bin/bun") {
+		t.Fatalf("Dockerfile does not copy the pinned canary:\n%s", df)
+	}
+
+	offline := &fakeExact{err: errors.New("registry down")}
+	bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "canary"}, nil)
+	choices, err = ResolveNativeBuildExact(t.Context(), offline, time.Time{}, "node", bundle, dockerfile, src)
+	reviewed, _ := nativeBun.find(nativeBun.defaultLine)
+	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image {
+		t.Fatalf("offline choices = %+v, %v; want the reviewed default Bun", choices, err)
+	}
+	if !strings.Contains(choices[1].Narration(), "Could not look up oven/bun:canary") {
+		t.Errorf("offline narration = %q", choices[1].Narration())
+	}
+
+	missing := &fakeExact{}
+	bundle, dockerfile, src = writeResolveFixture(t, o, map[string]string{"BUN_VERSION": "canary"}, nil)
+	choices, err = ResolveNativeBuildExact(t.Context(), missing, time.Time{}, "node", bundle, dockerfile, src)
+	if err != nil || len(choices) != 2 || choices[1].Image != reviewed.image || !strings.Contains(choices[1].Narration(), "No official image oven/bun:canary") {
+		t.Fatalf("missing tag choices = %+v, %v", choices, err)
 	}
 }
 
