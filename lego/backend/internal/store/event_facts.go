@@ -543,9 +543,21 @@ func heldAvailability(previousPhase, previousAvailability string, obs ObservedSe
 // transient startup phases, the reason it hibernated must be held with it —
 // otherwise the eventual Running observation (spec.suspended already back to
 // false) reads every user Resume as an idle wake.
+//
+// The same holds while the phase stays Hibernated (w4/508): a Resume clears
+// spec.suspended before the phase moves, so a pass that lands between the flag
+// flip and the wake sees Hibernated -> Hibernated with suspended=false. Writing
+// that down erased the reason, and the following Hibernated -> Running pass
+// read a user Resume as an idle wake (service_woken, no resume push). While
+// the phase is Hibernated the recorded reason may therefore rise (suspending
+// an already-sleeping App) but never fall; the wake edge consumes it.
 func checkpointServiceSuspended(previousPhase, observedPhase string, previousSuspended, observedSuspended bool) bool {
 	if checkpointServicePhase(previousPhase, observedPhase) != observedPhase {
 		return previousSuspended
+	}
+	hibernated := string(appv1alpha1.PhaseHibernated)
+	if previousPhase == hibernated && observedPhase == hibernated {
+		return previousSuspended || observedSuspended
 	}
 	return observedSuspended
 }

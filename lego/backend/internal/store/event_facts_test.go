@@ -172,6 +172,29 @@ func TestAutoHibernateFactsStayApartFromSuspend(t *testing.T) {
 		}
 		onlyFact(record(st, "srv-both", 3*time.Minute, "Running", false), EventFactServiceResumed)
 	})
+
+	// w4/508: a Resume clears spec.suspended before the phase leaves Hibernated.
+	// A pass in that window must not erase the recorded reason, or the wake
+	// reads as an idle service_woken and the resume push is lost.
+	t.Run("a pass between the Resume flag flip and the wake keeps it a resume", func(t *testing.T) {
+		st := newMemStore()
+		record(st, "srv-race", 0, "Running", false)
+		onlyFact(record(st, "srv-race", time.Minute, "Hibernated", true), EventFactServiceSuspended)
+		if facts := record(st, "srv-race", 2*time.Minute, "Hibernated", false); len(facts) != 0 {
+			t.Fatalf("Hibernated with suspended cleared emitted %+v", facts)
+		}
+		onlyFact(record(st, "srv-race", 3*time.Minute, "Running", false), EventFactServiceResumed)
+	})
+
+	t.Run("an idle sleep stays an idle wake across repeated Hibernated passes", func(t *testing.T) {
+		st := newMemStore()
+		record(st, "srv-idle", 0, "Running", false)
+		onlyFact(record(st, "srv-idle", time.Minute, "Hibernated", false), EventFactServiceHibernated)
+		if facts := record(st, "srv-idle", 2*time.Minute, "Hibernated", false); len(facts) != 0 {
+			t.Fatalf("steady Hibernated emitted %+v", facts)
+		}
+		onlyFact(record(st, "srv-idle", 3*time.Minute, "Running", false), EventFactServiceWoken)
+	})
 }
 
 // TestDebouncedUnhealthySightingIsConfirmedPromptly is w4/207: a ~50s outage
