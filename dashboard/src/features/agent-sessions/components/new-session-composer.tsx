@@ -148,7 +148,7 @@ export function NewSessionComposer() {
 
   const submitKey = useRef<{ fingerprint: string; key: string } | null>(null);
 
-  const onSubmit = form.handleSubmit(async (values) => {
+  const submit = async (values: ComposerValues) => {
     setAvailabilityError(null);
     setSubmitError(null);
 
@@ -212,7 +212,11 @@ export function NewSessionComposer() {
     } catch (err) {
       handleCreateError(err);
     }
-  });
+  };
+  // handleSubmit runs per submit event, not during render, because the
+  // callback writes submitKey (react-hooks/refs).
+  const onSubmit = (event?: React.BaseSyntheticEvent) =>
+    form.handleSubmit(submit)(event);
 
   function handleCreateError(err: unknown) {
     // The user closed the ADR075 D7 payment dialog — their own choice, not an
