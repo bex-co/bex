@@ -192,6 +192,11 @@ func TestPlatformRouteMetersStreamingUsage(t *testing.T) {
 	if !strings.HasPrefix(u.RequestID, "amr-") {
 		t.Fatalf("request id = %q, want an amr- id", u.RequestID)
 	}
+	// No usage.cost on the stream and no price table in this harness: the
+	// exchange is recorded unpriced at zero (ADR091 D2).
+	if u.CostSource != store.AgentModelCostUnpriced || u.PriceMicroUSD != 0 {
+		t.Fatalf("cost = %s/%d, want unpriced at 0", u.CostSource, u.PriceMicroUSD)
+	}
 }
 
 func TestPlatformRouteMetersJSONUsage(t *testing.T) {
@@ -203,6 +208,11 @@ func TestPlatformRouteMetersJSONUsage(t *testing.T) {
 	got, _ := st.snapshot()
 	if u := got[0]; u.InputTokens != 6 || u.OutputTokens != 5 || u.CacheWriteTokens != 7 || u.CacheReadTokens != 0 {
 		t.Fatalf("recorded usage = %+v", u)
+	}
+	// usage.cost $3.23e-06 travels to bex-api: upstream 3 µUSD, priced at
+	// the shipped 1.30 markup → 4.199 → 4 µUSD (half-up).
+	if u := got[0]; u.CostSource != store.AgentModelCostReported || u.UpstreamCostMicroUSD != 3 || u.PriceMicroUSD != 4 {
+		t.Fatalf("recorded cost = %s upstream=%d price=%d, want reported 3/4", u.CostSource, u.UpstreamCostMicroUSD, u.PriceMicroUSD)
 	}
 }
 

@@ -102,28 +102,60 @@ func (s *PGStore) PaymentEligibility(ctx context.Context, workspaceID string) (P
 	return eligibility, err
 }
 
+// UsageSeal is the outbox's finality horizon. A row is sealed when
+// window_start < Before (the rollup rewrite horizon, ADR040 §3) or, for a
+// kind in FastKinds, when window_start < FastBefore. A fast kind's hourly row
+// is written only while its hour is open and never rewritten by the rollup
+// (agent_model_cost_microusd, ADR091 D3), so it is final once the hour has
+// closed and needs no 48h wait.
+type UsageSeal struct {
+	Before     time.Time
+	FastKinds  []string
+	FastBefore time.Time
+	// HoldKinds are kinds never selected for export: their rows stay pending
+	// until the kind is released (ADR091 D3: the agent model cost meter waits
+	// for its Stripe catalog Price), so nothing is dropped while held.
+	HoldKinds []string
+}
+
+// SealsAbove reports whether any window at or above floor can be sealed, so
+// the emitter can skip a pass that cannot export anything.
+func (u UsageSeal) SealsAbove(floor time.Time) bool {
+	return floor.Before(u.Before) || (len(u.FastKinds) > 0 && floor.Before(u.FastBefore))
+}
+
+// sealedPendingUsage is the outbox's "sealed, pending, above the floor, not
+// held" predicate over usage_hourly u, shared by the outbox read and its
+// metrics so the two never disagree. Parameters: $1 floor, $2 UsageSeal.Before,
+// $5 FastKinds, $6 FastBefore, $7 HoldKinds. The GREATEST upper bound is
+// implied by the OR below it; it is stated so the window_start index range
+// is bounded on both ends.
+const sealedPendingUsage = `u.billing_export_state = 'pending'
+		  AND u.window_start >= $1
+		  AND u.window_start < GREATEST($2::timestamptz, $6::timestamptz)
+		  AND (u.window_start < $2 OR (u.kind = ANY($5) AND u.window_start < $6))
+		  AND NOT (u.kind = ANY($7))`
+
 // SelectUnemittedUsage returns up to limit sealed usage_hourly rows that have
 // not yet shipped to Stripe — the billing outbox read
 // (docs/ADR040-billing-metronome.md §4). A row qualifies when its window is
-// final (window_start < sealBefore, i.e. past the rewrite horizon), not below
+// final (sealed per UsageSeal, i.e. past the rewrite horizon), not below
 // the billing floor (window_start >= floor), still un-emitted, and its
 // workspace is not billing_excluded. Oldest first, so batches ship in order and
 // the loop makes forward progress. The JOIN filters excluded tenants at the
 // source: an excluded workspace's rows are never even considered for export.
-func (s *PGStore) SelectUnemittedUsage(ctx context.Context, floor, sealBefore time.Time, limit int, requirePaymentMethod bool) ([]HourlyRow, error) {
+func (s *PGStore) SelectUnemittedUsage(ctx context.Context, floor time.Time, seal UsageSeal, limit int, requirePaymentMethod bool) ([]HourlyRow, error) {
 	rows, err := s.Pool.Query(ctx, `
 		SELECT u.workspace_id, u.service_id, u.kind, u.tier, u.resource_kind, u.window_start, u.quantity
 		FROM usage_hourly u
 		JOIN tenants t ON t.id = u.workspace_id
 		LEFT JOIN billing_provider_mappings m ON m.workspace_id = u.workspace_id
-		WHERE u.billing_export_state = 'pending'
-		  AND u.window_start >= $1
-		  AND u.window_start <  $2
+		WHERE `+sealedPendingUsage+`
 		  AND t.billing_excluded = false
 		  AND ($4 = false OR t.billing_comped OR m.payment_method_bound_at IS NOT NULL)
 		ORDER BY u.window_start
 		LIMIT $3`,
-		floor, sealBefore, limit, requirePaymentMethod)
+		floor, seal.Before, limit, requirePaymentMethod, nonNil(seal.FastKinds), seal.FastBefore, nonNil(seal.HoldKinds))
 	if err != nil {
 		return nil, err
 	}
@@ -302,24 +334,23 @@ func (s *PGStore) QuarantineOldUsageAttempts(ctx context.Context, before, at tim
 	return tag.RowsAffected(), nil
 }
 
-func (s *PGStore) BillingExportStats(ctx context.Context, floor, sealBefore, now time.Time, requirePaymentMethod bool) (BillingExportStats, error) {
+func (s *PGStore) BillingExportStats(ctx context.Context, floor time.Time, seal UsageSeal, now time.Time, requirePaymentMethod bool) (BillingExportStats, error) {
 	var stats BillingExportStats
 	var ageSeconds float64
 	err := s.Pool.QueryRow(ctx, `
-		SELECT count(*) FILTER (WHERE u.billing_export_state='pending' AND u.window_start >= $2 AND u.window_start < $3 AND NOT t.billing_excluded),
-		       COALESCE(EXTRACT(EPOCH FROM ($1 - (min(u.window_start) FILTER (
-		           WHERE u.billing_export_state='pending' AND u.window_start >= $2 AND u.window_start < $3 AND NOT t.billing_excluded)))), 0),
+		SELECT count(*) FILTER (WHERE `+sealedPendingUsage+` AND NOT t.billing_excluded),
+		       COALESCE(EXTRACT(EPOCH FROM ($3 - (min(u.window_start) FILTER (
+		           WHERE `+sealedPendingUsage+` AND NOT t.billing_excluded)))), 0),
 		       (SELECT count(*) FROM billing_export_issues WHERE resolved_at IS NULL AND issue_kind='permanent_reject'),
 		       (SELECT count(*) FROM billing_export_issues WHERE resolved_at IS NULL AND issue_kind='stamp_ambiguity'),
 		       count(DISTINCT u.workspace_id) FILTER (
-		           WHERE $4 AND u.billing_export_state='pending'
-		             AND u.window_start >= $2 AND u.window_start < $3
+		           WHERE $4 AND `+sealedPendingUsage+`
 		             AND NOT t.billing_excluded AND NOT t.billing_comped
 		             AND m.payment_method_bound_at IS NULL)
 		FROM usage_hourly u
 		JOIN tenants t ON t.id=u.workspace_id
 		LEFT JOIN billing_provider_mappings m ON m.workspace_id=u.workspace_id`,
-		now.UTC(), floor.UTC(), sealBefore.UTC(), requirePaymentMethod).Scan(
+		floor.UTC(), seal.Before.UTC(), now.UTC(), requirePaymentMethod, nonNil(seal.FastKinds), seal.FastBefore.UTC(), nonNil(seal.HoldKinds)).Scan(
 		&stats.PendingRows, &ageSeconds, &stats.RejectedRows, &stats.AmbiguousRows, &stats.WithheldWorkspaces)
 	stats.OldestPendingAge = time.Duration(ageSeconds * float64(time.Second))
 	return stats, err

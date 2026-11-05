@@ -1,6 +1,6 @@
 # w10 · m14 — Platform model key: OpenRouter for an allowlisted workspace now, metered rollout to every workspace
 
-**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** todo (t001–t003, t006 done; pricing decided in [ADR091](../../../docs/ADR091-agent-model-pricing.md) 2026-10-30; t007 widen due 2026-11-13, rescheduled 2026-11-05 to ship all of ADR091 first)
+**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** todo (t001–t004, t006 done; pricing decided in [ADR091](../../../docs/ADR091-agent-model-pricing.md) 2026-10-30; t007 widen due 2026-11-13, rescheduled 2026-11-05 to ship all of ADR091 first)
 
 ## Tasks (in order)
 
@@ -9,7 +9,7 @@
 | t001 | Workspace-allowlisted platform OpenRouter route (platform key, model pin, never in sandbox) — **DONE** | 2h   | —          |
 | t002 | Production rollout: Secret, deploy, verify the allowlisted session runs — **DONE**                | 45m  | t001       |
 | t003 | Meter model tokens per workspace in the gateway model proxy → `usage_hourly` — **DONE**           | 2h   | t002       |
-| t004 | Cost-based price and bill: provider cost × 1.3 → `agent_model_cost_microusd` → one Stripe meter (ADR091 D1–D3) | 2h | t003 |
+| t004 | Cost-based price and bill: provider cost × 1.3 → `agent_model_cost_microusd` → one Stripe meter (ADR091 D1–D3) — **DONE** | 2h | t003 |
 | t005 | Monthly USD spend caps + trust tiers (threshold, cap ceiling, concurrency); OpenRouter credit limit 80% alert (ADR091 D5, D10.1) | 2h | t004 |
 | t006 | Data policy for platform-key traffic (OpenRouter provider routing, terms copy) — **DONE**         | 45m  | t002       |
 | t012 | BYO model key write path + model source precedence (ADR091 D7, absorbs w10/009) | 1.5h | t004 |

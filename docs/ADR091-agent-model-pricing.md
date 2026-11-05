@@ -1,6 +1,6 @@
 # ADR091 — Agent model pricing: provider cost × 1.3, spend caps, and non-payment protection
 
-**Status:** Accepted, 2026-10-30; D10 amended 2026-10-31 (risk analysis, failed-charge stop, card checks, terms, prepaid trigger) and 2026-11-02 (trust tiers drive the charge threshold, cap and concurrency; real-time cost meter with Stripe item thresholds). Implementation is tracked in `w10/m14`. This ADR defines the pricing and spend controls that [ADR090](ADR090-agent-owned-delivery.md)'s 2026-10-23 platform model route left as follow-ups. It supersedes the per-model token-meter billing mechanism shipped in `952b9e8fa`; the token meters stay for display. It amends [ADR030](ADR030-pricing.md): the "Render price × 0.70" rule does not cover agent model tokens, because Render has no equivalent SKU.
+**Status:** Accepted, 2026-10-30; D10 amended 2026-10-31 (risk analysis, failed-charge stop, card checks, terms, prepaid trigger) and 2026-11-02 (trust tiers drive the charge threshold, cap and concurrency; real-time cost meter with Stripe item thresholds); D3 amended 2026-11-05 (the cost meter exports its hourly row right after the hour, not per request). Implementation is tracked in `w10/m14`. This ADR defines the pricing and spend controls that [ADR090](ADR090-agent-owned-delivery.md)'s 2026-10-23 platform model route left as follow-ups. It supersedes the per-model token-meter billing mechanism shipped in `952b9e8fa`; the token meters stay for display. It amends [ADR030](ADR030-pricing.md): the "Render price × 0.70" rule does not cover agent model tokens, because Render has no equivalent SKU.
 
 **Source:** user decisions 2026-10-30 (`/plan`):
 
@@ -37,7 +37,7 @@ Gross margin is 30% on every request. That holds automatically across time-of-da
 
 - **New meter.** One new meter, `agent_model_cost_microusd`, carries the customer price per request in micro-USD, rounded half-up per request and summed in `usage_hourly`.
 - **Stripe.** It maps to **one model-agnostic Stripe meter** priced at $0.000001 per unit through the ADR040 outbox. `scripts/stripe-billing-setup.py` creates that one meter and price.
-- **Real time, no seal (2026-11-02).** The 48h seal exists because `usage_hourly` rows can still change during rollup catch-up. A request's agent-model cost is final when the request completes, so this meter skips the seal: each usage event is reported to Stripe as it is recorded, with the event `identifier` derived from the request id. Request ids are unique for good, so Stripe's 24h dedupe window is enough. This is what lets D10 charge at a threshold within minutes rather than days.
+- **Near real time, no seal (2026-11-02, amended 2026-11-05).** The 48h seal exists because `usage_hourly` rows can still change during rollup catch-up. The cost meter's hourly row cannot: it is written only at record time, while its hour is open, and the rollup never rewrites it. So this meter skips the seal: the billing outbox exports a cost row 5 to 10 minutes after its hour closes (sealed at `window_start` + 65 minutes, exported by a pass that runs every 5 minutes) instead of after 48h. It keeps the outbox's existing deterministic row identifier, so a resend is deduplicated within Stripe's 24h window. This is what lets D10 charge at a threshold within about an hour rather than days.
 - **Superseded.** The per-model token Stripe meters from `952b9e8fa` are no longer used for billing. The token meters remain the usage breakdown by model and token kind.
 
 ### D4 — Who pays
@@ -141,8 +141,8 @@ Mature platforms combine several. API products, where every request has a real c
 2. **Threshold billing mechanism.** Stripe charges the threshold, not bex.
    - The subscription's agent-model item carries `billing_thresholds.usage_gte` set to the tier threshold in meter units ($10 = 10,000,000 µUSD). An item-level threshold means only model spend triggers it, never compute.
    - bex updates the value whenever the tier changes, and removes it at T4.
-   - With the real-time meter (D3), Stripe invoices and charges the card within minutes of the crossing. The end-of-cycle invoice then carries only the remainder, so nothing is billed twice.
-   - The bex spend cap (D5), checked at every mint, covers the minutes between the crossing and Stripe's charge.
+   - With the near-real-time meter (D3), Stripe invoices and charges the card within about an hour of the crossing. The end-of-cycle invoice then carries only the remainder, so nothing is billed twice.
+   - The bex spend cap (D5), checked at every mint, covers the time between the crossing and Stripe's charge.
    - **Verify first.** Stripe documents `usage_gte` on subscription items, but not explicitly for meter-backed prices on the pinned `2026-08-26.dahlia` API version (Stripe removed thresholds in `2025-03-31.basil` and restored them in `2025-05-28.basil`). The first implementation step tests it in Stripe test mode.
    - **Fallback.** If it does not work, bex issues the threshold invoice itself (`InvoiceItems` + `Invoices.New` + pay, idempotency key `bex-threshold-{workspace}-{seq}`) and stops reporting that already-invoiced amount to the meter.
 3. **Failed threshold charge stops model spend at once.** When a threshold charge fails, the mint refuses new platform-model requests for that workspace (`BILLING_BALANCE_DUE`) until a charge succeeds, and the workspace drops to T0. The ADR040 §7 grace period still applies to compute, but not to model spend, which is cash out.

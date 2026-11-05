@@ -28,10 +28,11 @@
 #                      different rate, not used bytes (docs/ADR082 D8/D9)
 #   sandbox_compute_seconds → milli-vCPU-equivalent sec  event=sandbox_compute_seconds
 #                      value = weighted seconds, price = usdPerWeightedSecond×100
-#   agent_model_<kind>_tokens → per (kind × model)       event=agent_model_<kind>_tokens.<model>
-#                      (model folded: [^a-z0-9._-] → _), value = tokens,
-#                      price = usdPerMillion<Kind>Tokens/1e6×100 (priced models only;
-#                      w10/m14 — pricing.yaml ships with no model priced)
+#   agent_model_cost_microusd → one model-agnostic meter  event=agent_model_cost_microusd
+#                      value = customer price in micro-USD (upstream cost × agentModel.markup,
+#                      half-up per request), price = 0.0001 cents/unit ($0.000001);
+#                      created while agentModel.markup > 0 (ADR091 D1–D3). The four
+#                      agent_model_*_tokens meters are display only: no Stripe meter.
 #
 # The billing client (internal/billing/stripe.go) composes the identical
 # event_names + re-bases the same way — the two must agree.
@@ -91,27 +92,16 @@ def plain(d):
     return s
 
 
-AGENT_MODEL_KEYS = {
-    "usdPerMillionInputTokens": "agent_model_input_tokens",
-    "usdPerMillionOutputTokens": "agent_model_output_tokens",
-    "usdPerMillionCacheReadTokens": "agent_model_cache_read_tokens",
-    "usdPerMillionCacheWriteTokens": "agent_model_cache_write_tokens",
-}
-TOKENS_PER_MILLION = Decimal(1000000)
-
-
-def agent_model_meter_name(kind, model):
-    """Mirror of pricing.AgentModelMeterName (internal/pricing/pricing.go)."""
-    folded = "".join(c if (c.isascii() and (c.isdigit() or c.islower()) or c in "._-") else "_"
-                     for c in model.lower())
-    return f"{kind}.{folded}"
+# ADR091 D3: the one agent-model meter; a unit is one micro-USD of customer
+# price, so it rates at $0.000001 = 0.0001 cents.
+AGENT_MODEL_COST_METER = "agent_model_cost_microusd"
+AGENT_MODEL_COST_CENTS = Decimal("0.0001")
 
 
 def parse_pricing(text=None):
     """Minimal parser for pricing.yaml → list of (event_name, display, cents_per_unit)."""
     section = None
     tier = None
-    model = None
     dims = []
     for raw in (PRICING.read_text() if text is None else text).splitlines():
         line = raw.split("#", 1)[0].rstrip()
@@ -124,16 +114,10 @@ def parse_pricing(text=None):
         stripped = line.strip()
         if stripped.startswith("- tier:"):
             tier = stripped.split(":", 1)[1].strip()
-        elif section == "agentModel" and stripped.startswith("- model:"):
-            model = stripped.split(":", 1)[1].strip().strip('"').strip("'")
-        elif section == "agentModel" and model and stripped.split(":", 1)[0] in AGENT_MODEL_KEYS:
-            key, val = (x.strip() for x in stripped.split(":", 1))
-            rate = dec(val)
-            if rate > 0:
-                kind = AGENT_MODEL_KEYS[key]
-                dims.append((agent_model_meter_name(kind, model),
-                             f"bex {kind} {model}",
-                             q12(rate / TOKENS_PER_MILLION * 100)))
+        elif section == "agentModel" and stripped.startswith("markup:"):
+            if dec(stripped.split(":", 1)[1]) > 0:
+                dims.append((AGENT_MODEL_COST_METER, "bex agent model usage (micro-USD)",
+                             q12(AGENT_MODEL_COST_CENTS)))
         elif ":" in stripped:
             key, val = (x.strip() for x in stripped.split(":", 1))
             if key == "tier":

@@ -37,7 +37,7 @@ class StripeBillingSetupTest(TestCase):
     def test_pricing_catalog_has_expected_paid_dimensions(self):
         dimensions = SETUP.parse_pricing()
         names = {name for name, _, _ in dimensions}
-        self.assertEqual(18, len(dimensions))
+        self.assertEqual(19, len(dimensions))
         self.assertIn("instance_seconds.service.starter", names)
         self.assertIn("instance_seconds.postgres.basic-1gb", names)
         for tier in ("1c-2g", "pro-4gb", "basic-4gb"):  # w2/m171 HA-eligible plans
@@ -50,26 +50,18 @@ class StripeBillingSetupTest(TestCase):
         self.assertIn("sandbox_compute_seconds", names)
         self.assertFalse(any(name.endswith(".free") for name in names))
 
-    def test_agent_model_tokens_are_unpriced_until_set(self):
-        sheet = SETUP.PRICING.read_text()
-        self.assertFalse(any(name.startswith("agent_model_") for name, _, _ in SETUP.parse_pricing()))
-        priced = sheet.replace(
-            "agentModel:\n  models: []\n",
-            "agentModel:\n  models:\n    - model: deepseek/deepseek-v4.1-flash-1017\n"
-            "      usdPerMillionInputTokens: 0.30\n      usdPerMillionOutputTokens: 1.20\n"
-            "      usdPerMillionCacheWriteTokens: 0\n",
-        )
-        self.assertNotEqual(sheet, priced)
-        dims = {name: cents for name, _, cents in SETUP.parse_pricing(priced)
+    def test_agent_model_bills_through_one_cost_meter(self):
+        dims = {name: cents for name, _, cents in SETUP.parse_pricing()
                 if name.startswith("agent_model_")}
-        self.assertEqual({
-            "agent_model_input_tokens.deepseek_deepseek-v4.1-flash-1017": Decimal("0.000030000000"),
-            "agent_model_output_tokens.deepseek_deepseek-v4.1-flash-1017": Decimal("0.000120000000"),
-        }, dims)
+        self.assertEqual({"agent_model_cost_microusd": Decimal("0.000100000000")}, dims)
+        sheet = SETUP.PRICING.read_text()
+        self.assertIn("  markup: 1.30\n", sheet)
+        unpriced = sheet.replace("  markup: 1.30\n", "  markup: 0\n")
+        self.assertFalse(any(name.startswith("agent_model_") for name, _, _ in SETUP.parse_pricing(unpriced)))
 
     def test_workspace_plan_fees_are_not_usage_meters(self):
         names = {name for name, _, _ in SETUP.parse_pricing()}
-        self.assertEqual(18, len(names))
+        self.assertEqual(19, len(names))
         self.assertTrue(all("workspace" not in name for name in names))
         sheet = SETUP.PRICING.read_text()
         self.assertIn("usdPerMonth: 17.50", sheet)

@@ -39,7 +39,8 @@ The lookup/event names are:
 - `instance_seconds.service.{starter,standard,pro,pro-plus,pro-max,pro-ultra}`;
 - `instance_seconds.postgres.{basic-256mb,basic-1gb,1c-2g,pro-4gb,basic-4gb}` (a high-availability database reports two instances' seconds against its plan's meter, so the standby bills like the primary, as on Render);
 - `instance_seconds.key_value.{starter,standard}`;
-- `egress_gib`, `build_seconds`, `storage_gb_hours`, `disk_gb_hours`, and `sandbox_compute_seconds` (one unit is one milli-vCPU-equivalent second; memory is folded into the quantity at ADR047's AgentCore reference ratio).
+- `egress_gib`, `build_seconds`, `storage_gb_hours`, `disk_gb_hours`, and `sandbox_compute_seconds` (one unit is one milli-vCPU-equivalent second; memory is folded into the quantity at ADR047's AgentCore reference ratio);
+- `agent_model_cost_microusd` — the one platform model meter (ADR091 D1–D3): one unit is one micro-USD of customer price (upstream cost × `agentModel.markup`), priced at $0.000001 (`unit_amount_decimal` 0.0001 cents). Its rows export about 5 minutes after their hour closes rather than after the 48h seal. The per-model token meters are display only and have no Stripe meter. bex-api holds this meter (left off every Subscription, its rows kept pending in the outbox) until `BEX_STRIPE_AGENT_MODEL_METER=1` in `lego/operator/config/api/deployment.yaml`. Set it in the change that follows a run that created the Price on that account, test and live alike. Releasing the hold ships the held backlog within the 34-day backfill horizon.
 
 Free tiers have no paid meter. Bytes are rebased to GiB and storage GB-seconds to GB-hours so the decimal Price fits Stripe's supported precision.
 

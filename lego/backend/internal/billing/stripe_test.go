@@ -437,6 +437,36 @@ func TestStripeEnsureContractRejectsIncompleteCatalog(t *testing.T) {
 	}
 }
 
+// ADR091 D3: until the Stripe catalog carries the agent model cost Price, a
+// held meter is left out of the catalog bex resolves, so Subscriptions keep
+// working against a catalog that lacks it (instead of failing "is missing").
+func TestStripeResolvePriceIDsSkipsHeldMeters(t *testing.T) {
+	var unheld []string
+	for _, name := range pricing.Default.BillableMeterNames() {
+		if name != store.UsageKindAgentModelCostMicroUSD {
+			unheld = append(unheld, name)
+		}
+	}
+	if len(unheld) == len(pricing.Default.BillableMeterNames()) {
+		t.Fatal("the sheet must bill agent_model_cost_microusd for this test to mean anything")
+	}
+	catalog := stripePriceCatalogJSON(t, unheld)
+	c, _ := newStripeTest(t, func(method, path string) (int, string) {
+		if method == http.MethodGet && strings.Contains(path, "/prices") {
+			return 200, catalog
+		}
+		return 500, `{"error":{"type":"api_error","message":"unexpected route"}}`
+	})
+	if _, err := c.resolvePriceIDs(context.Background()); err == nil || !strings.Contains(err.Error(), "is missing") {
+		t.Fatalf("unheld resolve against a catalog without the cost Price = %v, want missing-price error", err)
+	}
+	c.heldMeters = []string{store.UsageKindAgentModelCostMicroUSD}
+	ids, err := c.resolvePriceIDs(context.Background())
+	if err != nil || len(ids) != len(unheld) {
+		t.Fatalf("held resolve = %d ids, %v; want %d ids", len(ids), err, len(unheld))
+	}
+}
+
 func TestStripeCompCustomerAppliesCouponIdempotently(t *testing.T) {
 	names := pricing.Default.BillableMeterNames()
 	catalog := stripePriceCatalogJSON(t, names)

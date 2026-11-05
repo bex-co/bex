@@ -248,6 +248,7 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 		request.Header.Set("Accept-Encoding", "identity")
 	}
 
+	started := time.Now().UTC()
 	response, err := b.httpClient().Do(request)
 	if err != nil {
 		http.Error(w, "model upstream unavailable", http.StatusBadGateway)
@@ -282,14 +283,14 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 	flushingCopy(w, src)
 	b.Metrics.Authentication("accepted")
 	if meter != nil {
-		b.reportUsage(verified, credential.PinnedModel, meter)
+		b.reportUsage(verified, credential.PinnedModel, started, meter)
 	}
 }
 
 // reportUsage queues the exchange's usage for bex-api. The response is
 // already relayed, so nothing here can delay or fail it.
-func (b *Broker) reportUsage(req agentsession.ModelMintRequest, model string, meter *usageMeter) {
-	tokens, ok, unparsed := meter.result()
+func (b *Broker) reportUsage(req agentsession.ModelMintRequest, model string, started time.Time, meter *usageMeter) {
+	tokens, cost, ok, unparsed := meter.result()
 	if !ok {
 		if unparsed {
 			b.Metrics.ModelUsageReport("unparsed")
@@ -300,6 +301,7 @@ func (b *Broker) reportUsage(req agentsession.ModelMintRequest, model string, me
 	b.usageReporter().enqueue(agentsession.ModelUsageReport{
 		RequestID: id.New(id.AgentModelRequest), SessionID: req.SessionID, Workspace: req.Workspace, Model: model,
 		InputTokens: tokens[0], OutputTokens: tokens[1], CacheReadTokens: tokens[2], CacheWriteTokens: tokens[3],
+		UpstreamCostUSD: cost, StartedAt: started,
 	})
 }
 

@@ -100,7 +100,7 @@ func TestStripeSandboxEndToEnd(t *testing.T) {
 	emitter.Epoch = window.Add(-time.Hour)
 	emitter.SealHours = 2 * time.Hour
 	emitter.now = func() time.Time { return now }
-	emitter.emitOnce(ctx)
+	emitter.emitOnce(ctx, false)
 
 	customerID, ok := client.lookupCustomer(tenant.ID)
 	if !ok {
@@ -152,7 +152,7 @@ func TestStripeSandboxEndToEnd(t *testing.T) {
 		portalVerified = true
 	}
 
-	remaining, err := st.SelectUnemittedUsage(ctx, emitter.floor(now), now.Add(-emitter.SealHours), 10, false)
+	remaining, err := st.SelectUnemittedUsage(ctx, emitter.floor(now), emitter.seal(now, false), 10, false)
 	if err != nil {
 		t.Fatalf("read sandbox outbox after emit: %v", err)
 	}

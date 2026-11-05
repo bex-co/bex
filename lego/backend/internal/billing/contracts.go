@@ -255,7 +255,9 @@ func (c *StripeClient) resolvePriceIDs(ctx context.Context) ([]string, error) {
 	}
 	c.mu.Unlock()
 
-	lookupKeys := pricing.Default.BillableMeterNames()
+	lookupKeys := slices.DeleteFunc(pricing.Default.BillableMeterNames(), func(name string) bool {
+		return slices.Contains(c.heldMeters, name)
+	})
 	found := make(map[string]string, len(lookupKeys))
 	meters := make(map[string]string, len(lookupKeys))
 	for chunk := range slices.Chunk(lookupKeys, stripeLookupKeyLimit) {

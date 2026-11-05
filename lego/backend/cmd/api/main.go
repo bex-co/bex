@@ -905,6 +905,13 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 	if stripeEnabled {
 		publishableKey := cfg.StripePublishableKey
 		billingMetrics.SetEnabled(true)
+		// ADR091 D3: until the Stripe catalog carries the agent model cost
+		// Price, hold that meter so neither Subscriptions nor the outbox
+		// reference a Price that does not exist; held rows ship once released.
+		var heldMeters []string
+		if !cfg.StripeAgentModelMeter {
+			heldMeters = []string{store.UsageKindAgentModelCostMicroUSD}
+		}
 		stripeClient := billing.NewStripe(billing.StripeConfig{
 			SecretKey:             stripeSecretKey,
 			PublishableKey:        publishableKey,
@@ -918,6 +925,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			State:                 st,
 			Audit:                 st,
 			Metrics:               billingMetrics,
+			HeldMeters:            heldMeters,
 		})
 		usageSvc.Billing = stripeClient
 		deps.Billing = stripeClient
@@ -948,6 +956,11 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		emitter.Metrics = billingMetrics
 		emitter.Epoch = billingEpoch
 		emitter.RequirePaymentMethod = requirePaymentMethod != paymentMethodOff
+		// ADR091 D3: the agent model cost meter's hourly row is final once its
+		// hour closes, so it ships ~5 min after the hour instead of after the
+		// 48h seal — what lets a Stripe usage threshold charge promptly.
+		emitter.FastKinds = []string{store.UsageKindAgentModelCostMicroUSD}
+		emitter.HoldKinds = heldMeters
 		if cfg.StripeSealHoursSet {
 			emitter.SealHours = time.Duration(cfg.StripeSealHours) * time.Hour
 		}
@@ -1054,12 +1067,17 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 				Minter: &agentsession.ModelMinter{Keys: modelKeys, Sessions: st, Audit: st, Quota: st},
 				Nonce:  st,
 			})
-			// w10/m14 t003: the gateway reports each platform-route exchange's
-			// token usage here; it lands in usage_hourly (ADR023) once per
-			// request id. Same gateway-only HMAC + internal-only listener.
+			// The gateway reports each platform-route exchange's token usage
+			// and OpenRouter cost here; it lands in usage_hourly (ADR023) once
+			// per request id, priced at cost × agentModel.markup (ADR091 D1).
+			// An exchange without a reported cost is priced from OpenRouter's
+			// cached model list (D2.2), fetched in the background from startup.
+			// Same gateway-only HMAC + internal-only listener.
+			prices := &agentsession.OpenRouterPriceTable{}
+			prices.Start(ctx)
 			internalRoot.Handle(agentsession.InternalModelUsagePath, &agentsession.ModelUsageHandler{
 				Secret:   []byte(cfg.SandboxExecSecret),
-				Recorder: &agentsession.ModelUsageRecorder{Store: st},
+				Recorder: &agentsession.ModelUsageRecorder{Store: st, Prices: prices},
 				Nonce:    st,
 			})
 			// w5/m80 t003: the gateway reports a vendor auth rejection (401/403 on the

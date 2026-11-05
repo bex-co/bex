@@ -23,6 +23,7 @@ import (
 	"log"
 	"math/big"
 	"net/http"
+	"slices"
 	"strings"
 	"sync"
 	"time"
@@ -123,6 +124,11 @@ type StripeConfig struct {
 	// Metrics is the process-local, low-cardinality operational sink. Nil keeps
 	// isolated tests and non-instrumented callers unchanged.
 	Metrics *Metrics
+	// HeldMeters are catalog lookup keys left out of every Subscription until
+	// their Stripe Price is provisioned: the agent model cost meter while
+	// BEX_STRIPE_AGENT_MODEL_METER is unset (ADR091 D3). The emitter holds the
+	// same kinds pending, so a held meter is never billed against a missing Price.
+	HeldMeters []string
 }
 
 // BillingStateStore is the narrow persistence seam the Stripe client needs.
@@ -164,6 +170,7 @@ type StripeClient struct {
 	dashboardURL          string
 	portalConfigurationID string
 	taxCode               string
+	heldMeters            []string
 	taxBehavior           string
 	testMode              bool
 	publishableKey        string
@@ -203,6 +210,7 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 		dashboardURL:          strings.TrimRight(cfg.DashboardURL, "/"),
 		portalConfigurationID: cfg.PortalConfigurationID,
 		taxCode:               cfg.TaxCode,
+		heldMeters:            slices.Clone(cfg.HeldMeters),
 		taxBehavior:           cfg.TaxBehavior,
 		testMode:              strings.Contains(cfg.SecretKey, "_test_"),
 		publishableKey:        cfg.PublishableKey,
@@ -475,15 +483,13 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 		return store.UsageKindSandboxComputeSeconds, e.Properties["value"], false
 	case store.UsageKindAgentModelInputTokens, store.UsageKindAgentModelOutputTokens,
 		store.UsageKindAgentModelCacheReadTokens, store.UsageKindAgentModelCacheWriteTokens:
-		// Platform-route tokens (w10/m14 t004) carry the model id as tier and
-		// bill per (kind × model). An unpriced model — every model while
-		// pricing.yaml's agentModel.models is empty — has no meter and is
-		// accounted locally at zero, the same policy as the estimate.
-		name := pricing.AgentModelMeterName(e.EventType, e.Properties["tier"])
-		if _, ok := billableMeterNames[name]; !ok {
-			return "", "", true
-		}
-		return name, e.Properties["value"], false
+		// Platform-route tokens are the per-model usage breakdown only
+		// (ADR091 D3): accounted locally at zero, never a Stripe meter.
+		return "", "", true
+	case store.UsageKindAgentModelCostMicroUSD:
+		// The customer price in micro-USD (cost × markup, ADR091 D1), on one
+		// model-agnostic meter priced at $0.000001 per unit.
+		return store.UsageKindAgentModelCostMicroUSD, e.Properties["value"], false
 	default:
 		return e.EventType, e.Properties["value"], false
 	}

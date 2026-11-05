@@ -20,8 +20,11 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"log"
+	"math"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/id"
@@ -67,6 +70,15 @@ var ErrModelQuotaExceeded = errors.New("agent model quota exceeded")
 // provider response comes near it, so a larger value is a bug, not usage.
 const maxReportedTokens = 1 << 32
 
+// maxReportedCostUSD bounds one exchange's reported upstream cost. No single
+// Messages exchange comes near $100, so a larger value is a bug, not spend:
+// it is ignored and the exchange priced from the table instead.
+const maxReportedCostUSD = 100
+
+// startedAtSkew bounds how far a report's StartedAt may sit from the record
+// time before the record time is used to pick the price instead.
+const startedAtSkew = 2 * time.Hour
+
 // ModelUsageReport is one metered platform-route exchange. It carries no
 // credential. RequestID is the gateway-minted idempotency key (an `amr-` id);
 // Nonce is the per-attempt replay guard, so a retry signs a fresh nonce but
@@ -80,7 +92,13 @@ type ModelUsageReport struct {
 	OutputTokens     int64  `json:"outputTokens"`
 	CacheReadTokens  int64  `json:"cacheReadTokens"`
 	CacheWriteTokens int64  `json:"cacheWriteTokens"`
-	Nonce            string `json:"nonce,omitempty"`
+	// UpstreamCostUSD is OpenRouter's reported usage.cost for the exchange
+	// (ADR091 D2.1); nil when the response carried none.
+	UpstreamCostUSD *float64 `json:"upstreamCostUsd,omitempty"`
+	// StartedAt is when the gateway sent the exchange upstream: the instant
+	// whose time-of-day price applies to a computed cost (ADR091 D2.2).
+	StartedAt time.Time `json:"startedAt,omitzero"`
+	Nonce     string    `json:"nonce,omitempty"`
 }
 
 // ModelUsageResponse acknowledges a report; Duplicate is true when the
@@ -104,6 +122,85 @@ type ModelUsageStore interface {
 type ModelUsageRecorder struct {
 	Store ModelUsageStore
 	Now   func() time.Time
+	// Prices computes the upstream cost of an exchange that reported none
+	// (ADR091 D2.2); nil ⇒ such an exchange is recorded unpriced.
+	Prices ModelPricer
+	// Markup is the customer price multiplier on upstream cost (ADR091 D1);
+	// 0 ⇒ pricing.Default's agentModel.markup.
+	Markup float64
+
+	unpricedMu sync.Mutex
+	// unpricedLogged is when each model's UNPRICED line was last logged.
+	unpricedLogged map[string]time.Time
+}
+
+// unpricedLogEvery rate-limits the UNPRICED log line per model.
+const unpricedLogEvery = time.Hour
+
+// ModelPricer prices one exchange from a price table; *OpenRouterPriceTable
+// satisfies it. ok is false when the model is not in the table.
+type ModelPricer interface {
+	Cost(model string, at time.Time, in, out, cacheRead, cacheWrite int64) (usd float64, ok bool)
+}
+
+// microUSD converts USD to micro-USD, rounded half-up.
+func microUSD(usd float64) int64 {
+	return int64(math.Floor(usd*1e6 + 0.5))
+}
+
+// price resolves an exchange's upstream cost, its source and the customer
+// price (ADR091 D1/D2): OpenRouter's reported cost first, else a cost
+// computed from the price table at the request's start, else unpriced at
+// zero — logged loudly, because it is spend bex cannot bill.
+func (r *ModelUsageRecorder) price(rep ModelUsageReport, now time.Time) (upstream int64, source string, price int64) {
+	var cost float64
+	reported := rep.UpstreamCostUSD
+	if c := reported; c != nil && (math.IsNaN(*c) || math.IsInf(*c, 0) || *c < 0 || *c > maxReportedCostUSD) {
+		log.Printf("agent model usage: reported cost %v out of range, pricing from the table instead (workspace=%s session=%s request=%s)",
+			*c, rep.Workspace, rep.SessionID, rep.RequestID)
+		reported = nil
+	}
+	switch {
+	case reported != nil:
+		cost, source = *reported, store.AgentModelCostReported
+	default:
+		at := rep.StartedAt.UTC()
+		if at.IsZero() || at.After(now.Add(time.Minute)) || at.Before(now.Add(-startedAtSkew)) {
+			at = now
+		}
+		computed, ok := 0.0, false
+		if r.Prices != nil {
+			computed, ok = r.Prices.Cost(rep.Model, at, rep.InputTokens, rep.OutputTokens, rep.CacheReadTokens, rep.CacheWriteTokens)
+		}
+		if !ok || math.IsNaN(computed) || math.IsInf(computed, 0) || computed < 0 {
+			if r.shouldLogUnpriced(rep.Model, now) {
+				log.Printf("agent model usage: UNPRICED platform-route exchange recorded at $0 — no reported cost and no price for model %q (workspace=%s session=%s request=%s; logged once per model per hour)",
+					rep.Model, rep.Workspace, rep.SessionID, rep.RequestID)
+			}
+			return 0, store.AgentModelCostUnpriced, 0
+		}
+		cost, source = computed, store.AgentModelCostComputed
+	}
+	markup := r.Markup
+	if markup == 0 {
+		markup = pricing.Default.AgentModelMarkup()
+	}
+	return microUSD(cost), source, microUSD(cost * markup)
+}
+
+// shouldLogUnpriced reports whether model's UNPRICED line is due: at most
+// once per model per unpricedLogEvery, so a burst stays one loud line.
+func (r *ModelUsageRecorder) shouldLogUnpriced(model string, now time.Time) bool {
+	r.unpricedMu.Lock()
+	defer r.unpricedMu.Unlock()
+	if last, ok := r.unpricedLogged[model]; ok && now.Sub(last) < unpricedLogEvery {
+		return false
+	}
+	if r.unpricedLogged == nil {
+		r.unpricedLogged = map[string]time.Time{}
+	}
+	r.unpricedLogged[model] = now
+	return true
 }
 
 func (r *ModelUsageRecorder) Record(ctx context.Context, rep ModelUsageReport) (ModelUsageResponse, error) {
@@ -129,11 +226,17 @@ func (r *ModelUsageRecorder) Record(ctx context.Context, rep ModelUsageReport) (
 	if session.WorkspaceID != rep.Workspace {
 		return ModelUsageResponse{}, ErrForbidden
 	}
+	// At is the record time, never the report's StartedAt: the cost meter's
+	// hourly row must only change while its hour is open, which is what lets
+	// the billing outbox export it right after the hour (ADR091 D3).
+	now := r.now()
+	upstream, source, price := r.price(rep, now)
 	recorded, err := r.Store.RecordAgentModelUsage(ctx, store.AgentModelUsage{
 		RequestID: rep.RequestID, WorkspaceID: rep.Workspace, SessionID: rep.SessionID,
-		Model: rep.Model, At: r.now(),
+		Model: rep.Model, At: now,
 		InputTokens: rep.InputTokens, OutputTokens: rep.OutputTokens,
 		CacheReadTokens: rep.CacheReadTokens, CacheWriteTokens: rep.CacheWriteTokens,
+		UpstreamCostMicroUSD: upstream, CostSource: source, PriceMicroUSD: price,
 	})
 	if err != nil {
 		return ModelUsageResponse{}, err

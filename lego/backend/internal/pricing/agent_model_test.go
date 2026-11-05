@@ -26,56 +26,65 @@ import (
 
 const testModel = "deepseek/deepseek-v4.1-flash-1017"
 
-// pricedSheet is the shipped sheet plus one priced model and a Hobby quota,
-// i.e. what pricing.yaml becomes once the user sets numbers.
-func pricedSheet(t *testing.T) *Sheet {
+// emptyAgentModelBlock is the shipped agentModel block the sheet tests rewrite.
+const emptyAgentModelBlock = "agentModel:\n  markup: 1.30\n  monthlyTokenQuota: []\n"
+
+// sheetWithAgentModel is the shipped sheet with its agentModel block replaced.
+func sheetWithAgentModel(t *testing.T, block string) (*Sheet, error) {
 	t.Helper()
-	raw := strings.Replace(string(sheetYAML), "agentModel:\n  models: []\n  monthlyTokenQuota: []\n", `agentModel:
-  models:
-    - model: `+testModel+`
-      usdPerMillionInputTokens: 0.30
-      usdPerMillionOutputTokens: 1.20
-      usdPerMillionCacheReadTokens: 0.006
-      usdPerMillionCacheWriteTokens: 0
-  monthlyTokenQuota:
-    - plan: hobby
-      tokens: 1000
-`, 1)
+	raw := strings.Replace(string(sheetYAML), emptyAgentModelBlock, "agentModel:\n"+block, 1)
 	if raw == string(sheetYAML) {
-		t.Fatal("pricing.yaml no longer ends with the empty agentModel block this test rewrites")
+		t.Fatal("pricing.yaml no longer ends with the agentModel block this test rewrites")
 	}
-	s, err := parseSheet([]byte(raw))
-	if err != nil {
-		t.Fatalf("parse priced sheet: %v", err)
-	}
-	return s
+	return parseSheet([]byte(raw))
 }
 
-func tokenRows(model string) []store.UsageSummaryRow {
+func agentSessionRows(model string) []store.UsageSummaryRow {
 	row := func(kind string, total int64) store.UsageSummaryRow {
 		return store.UsageSummaryRow{ServiceID: "ags-x", Kind: kind, Tier: model, ResourceKind: store.ResourceKindAgentSession, Total: total}
 	}
 	return []store.UsageSummaryRow{
-		row(store.UsageKindAgentModelInputTokens, 10_000_000),     // $3.00
-		row(store.UsageKindAgentModelOutputTokens, 2_000_000),     // $2.40
-		row(store.UsageKindAgentModelCacheReadTokens, 50_000_000), // $0.30
-		row(store.UsageKindAgentModelCacheWriteTokens, 1_000_000), // $0 (unpriced kind)
+		row(store.UsageKindAgentModelInputTokens, 10_000_000),
+		row(store.UsageKindAgentModelOutputTokens, 2_000_000),
+		row(store.UsageKindAgentModelCacheReadTokens, 50_000_000),
+		row(store.UsageKindAgentModelCacheWriteTokens, 1_000_000),
+		row(store.UsageKindAgentModelCostMicroUSD, 4_567_890), // $4.57 already marked up
 	}
 }
 
-// The shipped sheet meters but never charges: no model priced, no Stripe
-// lookup key, no plan quota.
-func TestAgentModelTokensAreUnbilledByDefault(t *testing.T) {
-	est := Default.Estimate(tokenRows(testModel))
-	if est.TotalUSD != "0.00" || len(est.Meters) != 0 {
-		t.Fatalf("default estimate = %+v, want $0.00 with no meter lines", est)
+// ADR091 D1/D3: the shipped sheet prices agent models by cost × 1.30 through
+// the one cost meter. Token lines stay visible at $0; the cost line reads
+// rate 1 × quantity USD.
+func TestAgentModelCostMeterIsTheOnlyBilledLine(t *testing.T) {
+	if got := Default.AgentModelMarkup(); got != 1.30 {
+		t.Fatalf("shipped markup = %v, want 1.30", got)
 	}
-	if len(est.Resources) != 1 || len(est.Resources[0].Charges) != 4 || est.Resources[0].Charges[0].Unit != "1M tokens" {
-		t.Fatalf("default estimate must still show the metered token lines: %+v", est.Resources)
+	est := Default.Estimate(agentSessionRows(testModel))
+	if est.TotalUSD != "4.57" {
+		t.Fatalf("estimate total = %s, want 4.57 (%+v)", est.TotalUSD, est)
 	}
-	for _, name := range Default.BillableMeterNames() {
-		if strings.HasPrefix(name, "agent_model_") {
-			t.Fatalf("default sheet exposes billable token meter %s", name)
+	if len(est.Meters) != 1 || est.Meters[0].Kind != store.UsageKindAgentModelCostMicroUSD {
+		t.Fatalf("estimate meters = %+v, want only the cost meter", est.Meters)
+	}
+	charges := est.Resources[0].Charges
+	if len(charges) != 5 {
+		t.Fatalf("charge lines = %+v, want 4 token lines + the cost line", charges)
+	}
+	for _, line := range charges[:4] {
+		if line.Unit != "1M tokens" || line.RateUSD != "0" || line.CostUSD != "0.00" {
+			t.Fatalf("token line = %+v, want a $0 display line", line)
+		}
+	}
+	if line := charges[4]; line.Unit != "USD" || line.RateUSD != "1.00" || line.Quantity != "4.57" || line.CostUSD != "4.57" {
+		t.Fatalf("cost line = %+v, want $1.00 × 4.57 USD = $4.57", line)
+	}
+	names := Default.BillableMeterNames()
+	if !slices.Contains(names, store.UsageKindAgentModelCostMicroUSD) {
+		t.Fatalf("BillableMeterNames missing %s: %v", store.UsageKindAgentModelCostMicroUSD, names)
+	}
+	for _, name := range names {
+		if strings.HasPrefix(name, "agent_model_") && name != store.UsageKindAgentModelCostMicroUSD {
+			t.Fatalf("token meter %s must not be billable (ADR091 D3)", name)
 		}
 	}
 	for _, plan := range store.WorkspacePlans {
@@ -85,35 +94,13 @@ func TestAgentModelTokensAreUnbilledByDefault(t *testing.T) {
 	}
 }
 
-func TestPricedAgentModelEstimatesAndExportsMeters(t *testing.T) {
-	s := pricedSheet(t)
-	est := s.Estimate(tokenRows(testModel))
-	if est.TotalUSD != "5.70" {
-		t.Fatalf("priced estimate total = %s, want 5.70 (%+v)", est.TotalUSD, est)
+func TestAgentModelQuotaStillParses(t *testing.T) {
+	s, err := sheetWithAgentModel(t, "  markup: 1.5\n  monthlyTokenQuota:\n    - plan: hobby\n      tokens: 1000\n")
+	if err != nil {
+		t.Fatalf("parse: %v", err)
 	}
-	if len(est.Meters) != 3 {
-		t.Fatalf("priced estimate meters = %+v, want input/output/cache-read lines", est.Meters)
-	}
-	line := est.Resources[0].Charges[0]
-	if line.RateUSD != "0.30" || line.Quantity != "10.00" || line.CostUSD != "3.00" {
-		t.Fatalf("input charge line = %+v, want $0.30 × 10.00 (1M tokens) = $3.00", line)
-	}
-	// Another model's tokens on the same sheet stay $0.
-	if other := s.Estimate(tokenRows("openai/gpt-x")); other.TotalUSD != "0.00" {
-		t.Fatalf("unpriced model billed: %+v", other)
-	}
-	names := s.BillableMeterNames()
-	for _, want := range []string{
-		"agent_model_input_tokens.deepseek_deepseek-v4.1-flash-1017",
-		"agent_model_output_tokens.deepseek_deepseek-v4.1-flash-1017",
-		"agent_model_cache_read_tokens.deepseek_deepseek-v4.1-flash-1017",
-	} {
-		if !slices.Contains(names, want) {
-			t.Errorf("BillableMeterNames missing %s: %v", want, names)
-		}
-	}
-	if slices.Contains(names, "agent_model_cache_write_tokens.deepseek_deepseek-v4.1-flash-1017") {
-		t.Error("a zero-priced token kind must not get a Stripe meter")
+	if s.AgentModelMarkup() != 1.5 {
+		t.Fatalf("markup = %v, want 1.5", s.AgentModelMarkup())
 	}
 	if quota, limited := s.AgentModelMonthlyTokenQuota(store.PlanHobby); !limited || quota != 1000 {
 		t.Fatalf("hobby quota = %d/%v, want 1000", quota, limited)
@@ -125,21 +112,15 @@ func TestPricedAgentModelEstimatesAndExportsMeters(t *testing.T) {
 
 func TestAgentModelSheetValidation(t *testing.T) {
 	for name, block := range map[string]string{
-		"empty model":    "  models:\n    - model: \"\"\n",
-		"negative price": "  models:\n    - model: m\n      usdPerMillionInputTokens: -1\n",
-		"duplicate":      "  models:\n    - model: m\n    - model: m\n",
-		"unknown plan":   "  monthlyTokenQuota:\n    - plan: gold\n      tokens: 5\n",
-		"zero quota":     "  monthlyTokenQuota:\n    - plan: pro\n      tokens: 0\n",
+		"missing markup":    "  monthlyTokenQuota: []\n",
+		"markup below cost": "  markup: 0.9\n",
+		"markup typo":       "  markup: 13\n",
+		"per-model prices":  "  markup: 1.3\n  models:\n    - model: m\n",
+		"unknown plan":      "  markup: 1.3\n  monthlyTokenQuota:\n    - plan: gold\n      tokens: 5\n",
+		"zero quota":        "  markup: 1.3\n  monthlyTokenQuota:\n    - plan: pro\n      tokens: 0\n",
 	} {
-		raw := strings.Replace(string(sheetYAML), "agentModel:\n  models: []\n  monthlyTokenQuota: []\n", "agentModel:\n"+block, 1)
-		if _, err := parseSheet([]byte(raw)); err == nil {
+		if _, err := sheetWithAgentModel(t, block); err == nil {
 			t.Errorf("%s: parse accepted an invalid agentModel block", name)
 		}
-	}
-}
-
-func TestAgentModelMeterNameFoldsModelPunctuation(t *testing.T) {
-	if got := AgentModelMeterName(store.UsageKindAgentModelInputTokens, "Vendor/Model:free~x"); got != "agent_model_input_tokens.vendor_model_free_x" {
-		t.Fatalf("meter name = %s", got)
 	}
 }

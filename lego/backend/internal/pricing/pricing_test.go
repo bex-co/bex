@@ -97,6 +97,7 @@ workspace:
 // so the catalog gains the price before the new code deploys.
 func TestBillableMeterNamesArePinned(t *testing.T) {
 	want := []string{
+		"agent_model_cost_microusd",
 		"build_seconds",
 		"disk_gb_hours",
 		"egress_gib",

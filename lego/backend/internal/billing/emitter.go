@@ -21,6 +21,7 @@ import (
 	"crypto/sha256"
 	"encoding/hex"
 	"log"
+	"slices"
 	"strconv"
 	"sync"
 	"time"
@@ -53,6 +54,17 @@ const (
 	// the backlog drains, so this only bounds memory + one ingest fan-out.
 	DefaultBatchLimit = 1000
 
+	// DefaultFastSeal is how long after its window starts a fast-kind row is
+	// sealed: the hour itself plus five minutes for an in-flight record
+	// transaction to commit. A fast kind is written only while its hour is
+	// open and never rewritten (ADR091 D3), so it is final once the hour ends.
+	DefaultFastSeal = time.Hour + 5*time.Minute
+
+	// DefaultFastInterval is how often the emitter exports fast-kind rows, so
+	// the agent model cost meter reaches Stripe about five minutes after its
+	// hour closes (ADR091 D3/D10.2) rather than after the 48h seal.
+	DefaultFastInterval = 5 * time.Minute
+
 	// ProviderDedupWindow is Stripe v1 meter events' documented rolling
 	// identifier uniqueness window. Attempts older than this are quarantined for
 	// reconciliation rather than replayed.
@@ -78,11 +90,11 @@ func ClampSealHours(configured, catchupWindow time.Duration) time.Duration {
 // EmitterStore is the slice of internal/store the emitter needs: the billing
 // outbox read + stamp. *store.PGStore satisfies it.
 type EmitterStore interface {
-	SelectUnemittedUsage(ctx context.Context, floor, sealBefore time.Time, limit int, requirePaymentMethod bool) ([]store.HourlyRow, error)
+	SelectUnemittedUsage(ctx context.Context, floor time.Time, seal store.UsageSeal, limit int, requirePaymentMethod bool) ([]store.HourlyRow, error)
 	MarkUsageAttempted(ctx context.Context, attempts []store.UsageExportAttempt, at time.Time) error
 	RecordUsageExportResult(ctx context.Context, accepted []store.UsageExportAttempt, rejected []store.UsageExportReject, at time.Time) error
 	QuarantineOldUsageAttempts(ctx context.Context, before, at time.Time) (int64, error)
-	BillingExportStats(ctx context.Context, floor, sealBefore, now time.Time, requirePaymentMethod bool) (store.BillingExportStats, error)
+	BillingExportStats(ctx context.Context, floor time.Time, seal store.UsageSeal, now time.Time, requirePaymentMethod bool) (store.BillingExportStats, error)
 }
 
 // Emitter is the seal-then-emit loop (ADR040 §3–5): it ships each sealed,
@@ -103,9 +115,24 @@ type Emitter struct {
 	// RequirePaymentMethod withholds card-less, non-comped workspaces at the
 	// durable outbox read. False preserves the pre-ADR046 export path exactly.
 	RequirePaymentMethod bool
+	// FastKinds are meter kinds whose hourly row is final once its hour has
+	// closed (written only while the hour is open, never rewritten by the
+	// rollup): agent_model_cost_microusd (ADR091 D3). They seal FastSeal after
+	// their window starts and are exported every FastInterval, instead of
+	// waiting for SealHours. Empty ⇒ every kind waits for SealHours.
+	FastKinds    []string
+	FastSeal     time.Duration
+	FastInterval time.Duration
+	// HoldKinds are kinds kept pending in the outbox and never exported: a
+	// meter whose Stripe catalog Price is not provisioned yet
+	// (BEX_STRIPE_AGENT_MODEL_METER unset). Releasing the hold ships the
+	// backlog, so held usage is delayed, never dropped.
+	HoldKinds []string
 
-	now     func() time.Time
-	gapOnce sync.Once
+	now       func() time.Time
+	gapOnce   sync.Once
+	fastOnce  sync.Once
+	fastKinds []string
 }
 
 // NewEmitter builds an Emitter with production defaults and a real clock. The
@@ -113,28 +140,74 @@ type Emitter struct {
 // Run; main.go sets SealHours/Epoch from env.
 func NewEmitter(st EmitterStore, client Ingester) *Emitter {
 	return &Emitter{
-		Store:      st,
-		Client:     client,
-		SealHours:  DefaultSealHours,
-		Interval:   DefaultInterval,
-		BatchLimit: DefaultBatchLimit,
-		now:        time.Now,
+		Store:        st,
+		Client:       client,
+		SealHours:    DefaultSealHours,
+		Interval:     DefaultInterval,
+		BatchLimit:   DefaultBatchLimit,
+		FastSeal:     DefaultFastSeal,
+		FastInterval: DefaultFastInterval,
+		now:          time.Now,
 	}
 }
 
-// Run drains the outbox at startup and every Interval until ctx is cancelled.
+// Run drains the outbox at startup and every Interval until ctx is cancelled;
+// with active fast kinds it also drains just those kinds every FastInterval.
+// Both passes run on this one goroutine, so they never race each other.
 func (e *Emitter) Run(ctx context.Context) {
-	e.emitOnce(ctx)
+	e.emitOnce(ctx, false)
 	t := time.NewTicker(e.Interval)
 	defer t.Stop()
+	var fast <-chan time.Time
+	if len(e.activeFastKinds()) > 0 && e.FastInterval > 0 {
+		ft := time.NewTicker(e.FastInterval)
+		defer ft.Stop()
+		fast = ft.C
+	}
 	for {
 		select {
 		case <-ctx.Done():
 			return
 		case <-t.C:
-			e.emitOnce(ctx)
+			e.emitOnce(ctx, false)
+		case <-fast:
+			e.emitOnce(ctx, true)
 		}
 	}
+}
+
+// activeFastKinds is FastKinds minus HoldKinds: a held kind is never exported,
+// so it gets no fast pass. Computed on first use; the fields are set before Run.
+func (e *Emitter) activeFastKinds() []string {
+	e.fastOnce.Do(func() {
+		for _, kind := range e.FastKinds {
+			if !slices.Contains(e.HoldKinds, kind) {
+				e.fastKinds = append(e.fastKinds, kind)
+			}
+		}
+	})
+	return e.fastKinds
+}
+
+// fastSeal is FastSeal, or DefaultFastSeal when unset.
+func (e *Emitter) fastSeal() time.Duration {
+	if e.FastSeal <= 0 {
+		return DefaultFastSeal
+	}
+	return e.FastSeal
+}
+
+// seal is the outbox finality horizon at now. fastOnly leaves Before at the
+// zero time, so only the fast kinds can qualify.
+func (e *Emitter) seal(now time.Time, fastOnly bool) store.UsageSeal {
+	seal := store.UsageSeal{FastKinds: e.activeFastKinds(), HoldKinds: e.HoldKinds}
+	if !fastOnly {
+		seal.Before = now.Add(-e.SealHours)
+	}
+	if len(seal.FastKinds) > 0 {
+		seal.FastBefore = now.Add(-e.fastSeal())
+	}
+	return seal
 }
 
 // floor is the lowest window_start the emitter will ever export:
@@ -149,35 +222,48 @@ func (e *Emitter) floor(now time.Time) time.Time {
 }
 
 // emitOnce exports every currently sealed, above-floor, non-excluded un-emitted
-// row, draining in batches. The deterministic identifier deduplicates a row
-// re-sent after a crash within Stripe's documented rolling uniqueness window.
-func (e *Emitter) emitOnce(ctx context.Context) {
+// row (only FastKinds rows when fastOnly), draining in batches. The
+// deterministic identifier deduplicates a row re-sent after a crash within
+// Stripe's documented rolling uniqueness window.
+//
+// Quarantine and the metrics snapshot run on the full pass only; a fast pass
+// just ships the fast kinds' newly sealed rows.
+func (e *Emitter) emitOnce(ctx context.Context, fastOnly bool) {
 	now := e.now().UTC()
-	defer e.refreshMetrics(ctx, now)
-	sealBefore := now.Add(-e.SealHours)
+	if !fastOnly {
+		defer e.refreshMetrics(ctx, now)
+	}
+	seal := e.seal(now, fastOnly)
 	floor := e.floor(now)
 	e.gapOnce.Do(func() {
+		if fast := e.activeFastKinds(); len(fast) > 0 {
+			log.Printf("billing: Stripe export active — floor %s (windows before it are never emitted), seal horizon %s; fast kinds %v seal %s after their window starts",
+				floor.Format(time.RFC3339), e.SealHours, fast, e.fastSeal())
+			return
+		}
 		log.Printf("billing: Stripe export active — floor %s (windows before it are never emitted), seal horizon %s",
 			floor.Format(time.RFC3339), e.SealHours)
 	})
-	// With the floor at or after the seal horizon, no row is both sealed and
-	// above the floor — nothing to do until more rows age past the horizon.
-	if !floor.Before(sealBefore) {
+	// With the floor at or after every seal horizon, no row is both sealed
+	// and above the floor — nothing to do until more rows age past one.
+	if !seal.SealsAbove(floor) {
 		return
 	}
-	quarantined, err := e.Store.QuarantineOldUsageAttempts(ctx, now.Add(-ProviderDedupWindow), now)
-	if err != nil {
-		log.Printf("billing: quarantine expired export attempts: %v", err)
-		return
-	}
-	if quarantined > 0 {
-		log.Printf("billing: quarantined %d export attempts beyond provider deduplication window", quarantined)
+	if !fastOnly {
+		quarantined, err := e.Store.QuarantineOldUsageAttempts(ctx, now.Add(-ProviderDedupWindow), now)
+		if err != nil {
+			log.Printf("billing: quarantine expired export attempts: %v", err)
+			return
+		}
+		if quarantined > 0 {
+			log.Printf("billing: quarantined %d export attempts beyond provider deduplication window", quarantined)
+		}
 	}
 	for {
 		if ctx.Err() != nil {
 			return
 		}
-		rows, err := e.Store.SelectUnemittedUsage(ctx, floor, sealBefore, e.BatchLimit, e.RequirePaymentMethod)
+		rows, err := e.Store.SelectUnemittedUsage(ctx, floor, seal, e.BatchLimit, e.RequirePaymentMethod)
 		if err != nil {
 			log.Printf("billing: select unemitted usage: %v", err)
 			return
@@ -284,7 +370,7 @@ func (e *Emitter) refreshMetrics(ctx context.Context, now time.Time) {
 	if e.Metrics == nil {
 		return
 	}
-	stats, err := e.Store.BillingExportStats(ctx, e.floor(now), now.Add(-e.SealHours), now, e.RequirePaymentMethod)
+	stats, err := e.Store.BillingExportStats(ctx, e.floor(now), e.seal(now, false), now, e.RequirePaymentMethod)
 	if err != nil {
 		e.Metrics.Operation("outbox_snapshot", "error")
 		return

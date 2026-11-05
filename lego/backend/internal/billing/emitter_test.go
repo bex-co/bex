@@ -35,6 +35,7 @@ import (
 
 type selCall struct {
 	floor, sealBefore    time.Time
+	seal                 store.UsageSeal
 	limit                int
 	requirePaymentMethod bool
 }
@@ -50,8 +51,8 @@ type fakeEmitterStore struct {
 	quarantineErr   error
 }
 
-func (f *fakeEmitterStore) SelectUnemittedUsage(_ context.Context, floor, sealBefore time.Time, limit int, requirePaymentMethod bool) ([]store.HourlyRow, error) {
-	f.selCalls = append(f.selCalls, selCall{floor, sealBefore, limit, requirePaymentMethod})
+func (f *fakeEmitterStore) SelectUnemittedUsage(_ context.Context, floor time.Time, seal store.UsageSeal, limit int, requirePaymentMethod bool) ([]store.HourlyRow, error) {
+	f.selCalls = append(f.selCalls, selCall{floor, seal.Before, seal, limit, requirePaymentMethod})
 	if len(f.queue) == 0 {
 		return nil, nil
 	}
@@ -82,7 +83,7 @@ func (f *fakeEmitterStore) QuarantineOldUsageAttempts(_ context.Context, _, _ ti
 	return f.quarantineCount, f.quarantineErr
 }
 
-func (f *fakeEmitterStore) BillingExportStats(_ context.Context, _, _, _ time.Time, _ bool) (store.BillingExportStats, error) {
+func (f *fakeEmitterStore) BillingExportStats(_ context.Context, _ time.Time, _ store.UsageSeal, _ time.Time, _ bool) (store.BillingExportStats, error) {
 	return store.BillingExportStats{}, nil
 }
 
@@ -144,7 +145,7 @@ func TestEmitOnceAccountsAcceptedAndPermanentRejectSeparately(t *testing.T) {
 		Accepted: []string{acceptedID},
 		Failed:   []IngestFailure{{TransactionID: rejectedID, Code: "invalid_value", Message: "bad value", Permanent: true}},
 	}}
-	newEmitter(st, ing, now).emitOnce(context.Background())
+	newEmitter(st, ing, now).emitOnce(context.Background(), false)
 
 	if st.stampedCount() != 1 || len(st.rejected) != 1 {
 		t.Fatalf("accepted=%d rejected=%d, want 1/1", st.stampedCount(), len(st.rejected))
@@ -222,7 +223,7 @@ func TestEmitOnceHappyPathStampsAfterIngest(t *testing.T) {
 		row("tea-a", "srv-1", "egress_bytes", "", "service", 2048, w),
 	}}}
 	ing := &fakeIngester{}
-	newEmitter(st, ing, now).emitOnce(context.Background())
+	newEmitter(st, ing, now).emitOnce(context.Background(), false)
 
 	if got := len(ing.allEvents()); got != 2 {
 		t.Fatalf("ingested events = %d, want 2", got)
@@ -240,7 +241,7 @@ func TestEmitOnceFloorAndSealHorizon(t *testing.T) {
 	st := &fakeEmitterStore{}
 	ing := &fakeIngester{}
 	e := newEmitter(st, ing, now) // Epoch unset ⇒ floor = now − 34d
-	e.emitOnce(context.Background())
+	e.emitOnce(context.Background(), false)
 
 	if len(st.selCalls) != 1 {
 		t.Fatalf("SelectUnemittedUsage calls = %d, want 1", len(st.selCalls))
@@ -262,7 +263,7 @@ func TestEmitOnceThreadsPaymentMethodGateToDurableOutboxRead(t *testing.T) {
 	st := &fakeEmitterStore{}
 	e := newEmitter(st, &fakeIngester{}, now)
 	e.RequirePaymentMethod = true
-	e.emitOnce(context.Background())
+	e.emitOnce(context.Background(), false)
 	if len(st.selCalls) != 1 || !st.selCalls[0].requirePaymentMethod {
 		t.Fatalf("SelectUnemittedUsage calls = %+v, want gated read", st.selCalls)
 	}
@@ -280,12 +281,12 @@ func TestEmitOnceWithheldWorkspaceMakesNoStripeCallsThenShipsAfterBinding(t *tes
 	e := newEmitter(st, ing, now)
 	e.RequirePaymentMethod = true
 
-	e.emitOnce(context.Background())
+	e.emitOnce(context.Background(), false)
 	if len(ing.ensured) != 0 || len(ing.contracted) != 0 || len(ing.allEvents()) != 0 || st.stampedCount() != 0 {
 		t.Fatalf("withheld pass reached Stripe: customers=%v contracts=%v events=%v stamped=%d", ing.ensured, ing.contracted, ing.allEvents(), st.stampedCount())
 	}
 
-	e.emitOnce(context.Background())
+	e.emitOnce(context.Background(), false)
 	if len(ing.ensured) != 1 || len(ing.contracted) != 1 || len(ing.allEvents()) != 1 || st.stampedCount() != 1 {
 		t.Fatalf("post-bind pass did not ship once: customers=%v contracts=%v events=%v stamped=%d", ing.ensured, ing.contracted, ing.allEvents(), st.stampedCount())
 	}
@@ -300,7 +301,7 @@ func TestEmitOnceEpochOverridesBackfillFloor(t *testing.T) {
 	st := &fakeEmitterStore{}
 	e := newEmitter(st, &fakeIngester{}, now)
 	e.Epoch = epoch
-	e.emitOnce(context.Background())
+	e.emitOnce(context.Background(), false)
 
 	if !st.selCalls[0].floor.Equal(epoch) {
 		t.Fatalf("floor = %s, want the epoch %s (max(epoch, now−34d))", st.selCalls[0].floor, epoch)
@@ -312,7 +313,7 @@ func TestEmitOnceSkipsWhenFloorAtOrAfterSealHorizon(t *testing.T) {
 	st := &fakeEmitterStore{}
 	e := newEmitter(st, &fakeIngester{}, now)
 	e.Epoch = now // floor = now, which is after the seal horizon (now − 48h)
-	e.emitOnce(context.Background())
+	e.emitOnce(context.Background(), false)
 	if len(st.selCalls) != 0 {
 		t.Fatalf("SelectUnemittedUsage called %d times, want 0 (nothing sealed above the floor)", len(st.selCalls))
 	}
@@ -325,8 +326,8 @@ func TestEmitOnceGapWarningLoggedOnce(t *testing.T) {
 
 	now := time.Date(2026, 7, 19, 12, 0, 0, 0, time.UTC)
 	e := newEmitter(&fakeEmitterStore{}, &fakeIngester{}, now)
-	e.emitOnce(context.Background())
-	e.emitOnce(context.Background())
+	e.emitOnce(context.Background(), false)
+	e.emitOnce(context.Background(), false)
 	if n := strings.Count(buf.String(), "Stripe export active"); n != 1 {
 		t.Fatalf("gap warning logged %d times, want exactly 1", n)
 	}
@@ -339,7 +340,7 @@ func TestEmitOnceLeavesRowsUnstampedOnIngestFailure(t *testing.T) {
 		row("tea-a", "srv-1", "instance_seconds", "starter", "service", 3600, w),
 	}}}
 	ing := &fakeIngester{ingestErr: errors.New("stripe down")}
-	newEmitter(st, ing, now).emitOnce(context.Background())
+	newEmitter(st, ing, now).emitOnce(context.Background(), false)
 
 	if st.stampedCount() != 0 {
 		t.Fatalf("stamped %d rows, want 0 (ingest failed → nothing marked emitted)", st.stampedCount())
@@ -354,7 +355,7 @@ func TestEmitOnceSkipsWorkspaceWhoseCustomerFails(t *testing.T) {
 		row("tea-ok", "srv-2", "instance_seconds", "starter", "service", 2, w),
 	}}}
 	ing := &fakeIngester{ensureErr: map[string]error{"tea-bad": errors.New("provision failed")}}
-	newEmitter(st, ing, now).emitOnce(context.Background())
+	newEmitter(st, ing, now).emitOnce(context.Background(), false)
 
 	events := ing.allEvents()
 	if len(events) != 1 || events[0].CustomerID != "tea-ok" {
@@ -378,7 +379,7 @@ func TestEmitOnceDrainsMultipleBatches(t *testing.T) {
 	st := &fakeEmitterStore{queue: [][]store.HourlyRow{full, short}}
 	e := newEmitter(st, &fakeIngester{}, now)
 	e.BatchLimit = 2 // full batch == limit triggers another drain pass
-	e.emitOnce(context.Background())
+	e.emitOnce(context.Background(), false)
 
 	if len(st.selCalls) != 2 {
 		t.Fatalf("SelectUnemittedUsage calls = %d, want 2 (drain until a short batch)", len(st.selCalls))

@@ -65,12 +65,15 @@ const (
 
 // anthropicUsage is the Messages API usage object. Pointers, because
 // OpenRouter sends null for absent cache counts and a message_delta carries
-// only the counts that changed.
+// only the counts that changed. Cost is OpenRouter's own USD cost of the
+// exchange (ADR091 D2.1): returned by default on /api/v1/messages, top-level
+// usage.cost on a JSON response and on the message_delta event of a stream.
 type anthropicUsage struct {
-	InputTokens              *int64 `json:"input_tokens"`
-	OutputTokens             *int64 `json:"output_tokens"`
-	CacheCreationInputTokens *int64 `json:"cache_creation_input_tokens"`
-	CacheReadInputTokens     *int64 `json:"cache_read_input_tokens"`
+	InputTokens              *int64   `json:"input_tokens"`
+	OutputTokens             *int64   `json:"output_tokens"`
+	CacheCreationInputTokens *int64   `json:"cache_creation_input_tokens"`
+	CacheReadInputTokens     *int64   `json:"cache_read_input_tokens"`
+	Cost                     *float64 `json:"cost"`
 }
 
 // usageMeter is the tee side of a relayed platform-route response: it reads
@@ -85,6 +88,7 @@ type usageMeter struct {
 	skipping bool
 	seen     bool
 	tokens   [4]int64 // input, output, cache read, cache write
+	cost     *float64 // last reported non-negative usage.cost, USD
 }
 
 func newUsageMeter(contentType string) *usageMeter {
@@ -166,28 +170,32 @@ func (m *usageMeter) merge(u *anthropicUsage) {
 			m.seen = true
 		}
 	}
+	if u.Cost != nil && *u.Cost >= 0 {
+		cost := *u.Cost
+		m.cost = &cost
+	}
 }
 
 // result is the exchange's usage once the relay is done; ok is false when
 // none was found (unparsed is true when that is a loss, not a usage-free
-// response).
-func (m *usageMeter) result() (tokens [4]int64, ok, unparsed bool) {
+// response). cost is the reported USD cost, nil when the provider sent none.
+func (m *usageMeter) result() (tokens [4]int64, cost *float64, ok, unparsed bool) {
 	if !m.sse {
 		if m.overflow {
-			return tokens, false, true
+			return tokens, nil, false, true
 		}
 		var body struct {
 			Usage *anthropicUsage `json:"usage"`
 		}
 		if json.Unmarshal(m.jsonBuf.Bytes(), &body) != nil {
-			return tokens, false, true
+			return tokens, nil, false, true
 		}
 		m.merge(body.Usage)
 	}
 	if !m.seen {
-		return tokens, false, true
+		return tokens, nil, false, true
 	}
-	return m.tokens, true, false
+	return m.tokens, m.cost, true, false
 }
 
 // usageAPI is the bex-api usage verb; *agentsession.ModelClient satisfies it.

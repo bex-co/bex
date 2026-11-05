@@ -258,6 +258,11 @@ spec:
                   name: bex-stripe
                   key: BEX_STRIPE_SEAL_HOURS
                   optional: true
+            # ADR091 D3: set to "1" in the same change that follows a
+            # stripe-billing-setup.py run creating the agent_model_cost_microusd
+            # Price (test and live). Until then the meter is held, not dropped.
+            - name: BEX_STRIPE_AGENT_MODEL_METER
+              value: "0"
             - name: BEX_STRIPE_COMP_COUPON_ID
               valueFrom:
                 secretKeyRef:

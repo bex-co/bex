@@ -38,9 +38,39 @@ func TestUsageMeterSurvivesByteAtATimeSSE(t *testing.T) {
 			t.Fatalf("Write = %d, %v", n, err)
 		}
 	}
-	tokens, ok, _ := m.result()
+	tokens, cost, ok, _ := m.result()
 	if !ok || tokens != [4]int64{10, 7, 4, 3} {
 		t.Fatalf("tokens = %v ok=%v", tokens, ok)
+	}
+	if cost != nil {
+		t.Fatalf("cost = %v, want nil when the stream reports none", *cost)
+	}
+}
+
+// OpenRouter reports its cost on the stream's message_delta usage;
+// message_start carries none.
+func TestUsageMeterReadsSSECostFromMessageDelta(t *testing.T) {
+	m := newUsageMeter("text/event-stream")
+	_, _ = m.Write([]byte(`data: {"type":"message_start","message":{"usage":{"input_tokens":10}}}` + "\n\n" +
+		`data: {"type":"message_delta","usage":{"output_tokens":7,"cost":1.415e-05,"is_byok":false}}` + "\n\n"))
+	tokens, cost, ok, _ := m.result()
+	if !ok || tokens != [4]int64{10, 7, 0, 0} || cost == nil || *cost != 1.415e-05 {
+		t.Fatalf("tokens = %v cost = %v ok=%v, want cost 1.415e-05", tokens, cost, ok)
+	}
+}
+
+// A non-streaming response carries cost as top-level usage.cost; a negative
+// cost is ignored like a negative count.
+func TestUsageMeterReadsJSONCost(t *testing.T) {
+	m := newUsageMeter("application/json")
+	_, _ = m.Write([]byte(`{"id":"x","usage":{"input_tokens":3,"output_tokens":5,"cost":0.001,"cost_details":{"upstream_inference_cost":0.001},"is_byok":false}}`))
+	if _, cost, ok, _ := m.result(); !ok || cost == nil || *cost != 0.001 {
+		t.Fatalf("cost = %v ok=%v, want 0.001", cost, ok)
+	}
+	n := newUsageMeter("application/json")
+	_, _ = n.Write([]byte(`{"usage":{"input_tokens":3,"output_tokens":5,"cost":-1}}`))
+	if _, cost, ok, _ := n.result(); !ok || cost != nil {
+		t.Fatalf("negative cost = %v ok=%v, want nil", cost, ok)
 	}
 }
 
@@ -51,15 +81,15 @@ func TestUsageMeterSkipsOverlongLinesAndReportsLoss(t *testing.T) {
 		t.Fatalf("Write reported %d of %d bytes", n, len(huge))
 	}
 	_, _ = m.Write([]byte(`data: {"type":"message_delta","usage":{"output_tokens":2}}` + "\n"))
-	if tokens, ok, _ := m.result(); !ok || tokens[1] != 2 {
+	if tokens, _, ok, _ := m.result(); !ok || tokens[1] != 2 {
 		t.Fatalf("usage after an overlong line = %v ok=%v", tokens, ok)
 	}
-	if _, ok, unparsed := newUsageMeter("text/event-stream").result(); ok || !unparsed {
+	if _, _, ok, unparsed := newUsageMeter("text/event-stream").result(); ok || !unparsed {
 		t.Fatal("a stream with no usage must count as an unparsed loss")
 	}
 	j := newUsageMeter("application/json")
 	_, _ = j.Write([]byte(strings.Repeat(" ", maxMeteredJSONBytes+1)))
-	if _, ok, unparsed := j.result(); ok || !unparsed {
+	if _, _, ok, unparsed := j.result(); ok || !unparsed {
 		t.Fatal("an oversized JSON body must count as an unparsed loss")
 	}
 }
