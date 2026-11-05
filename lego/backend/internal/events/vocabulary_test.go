@@ -159,6 +159,10 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	} {
 		excusedVerbs[verb] = "w6/m17 seam collapse newly targets it; not yet given an event type"
 	}
+	// w5/m265: Render's credential verbs share CreateUser/DeleteUser's write
+	// path and record the same database credentials effect.
+	excusedVerbs["postgres.CreateCredential"] = "records CreateUser's credentials effect"
+	excusedVerbs["postgres.DeleteCredential"] = "records DeleteUser's credentials effect"
 	// w5/m116: a dry-run is its verb's plan step stopped before the first write.
 	// It authorizes only can_view and writes nothing, so its audit row is a read
 	// that never becomes an event. The walk cannot see that: the dry-run branch's
