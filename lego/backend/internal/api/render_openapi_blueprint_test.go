@@ -282,8 +282,27 @@ func TestBlueprintIDRoutesPassTheRenderOpenAPIGate(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &view); err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		if view.ID != mine || view.Name != "app" {
-			t.Errorf("body = %+v, want the real blueprint row — a 200 with the wrong body is not a fix", view)
+		if view.ID != ids.BlueprintPublicID(mine) || view.Name != "app" {
+			t.Errorf("body = %+v, want the real blueprint row under its exs- id — a 200 with the wrong body is not a fix", view)
+		}
+	})
+
+	// w2/m269: the exs- public alias the API returns and the durable blp- key
+	// address the same Blueprint on every gated route.
+	t.Run("the exs- alias and the blp- key address the same blueprint", func(t *testing.T) {
+		public := ids.BlueprintPublicID(mine)
+		for _, path := range []string{"/v1/blueprints/" + public, "/v1/blueprints/" + public + "/syncs"} {
+			rec := blueprintRequest(t, h, http.MethodGet, path+"?ownerId=tea-a", "")
+			if rec.Code != http.StatusOK {
+				t.Fatalf("GET %s = %d %s, want 200", path, rec.Code, rec.Body)
+			}
+		}
+		rec := blueprintRequest(t, h, http.MethodPatch, "/v1/blueprints/"+public, `{"name":"via-alias","ownerId":"tea-a"}`)
+		if rec.Code != http.StatusOK || fixture.rows[mine].Name != "via-alias" {
+			t.Fatalf("PATCH by exs- = %d %s (stored name %q), want the blp- row updated", rec.Code, rec.Body, fixture.rows[mine].Name)
+		}
+		if strings.Contains(rec.Body.String(), mine) {
+			t.Fatalf("PATCH body = %s leaks the durable blp- key", rec.Body)
 		}
 	})
 
@@ -423,6 +442,16 @@ var renderIDPathParameters = map[string]ids.Kind{
 	"blueprintId": ids.Blueprint,
 }
 
+// bexIDSpellings is every spelling bex accepts for a minted id. A Blueprint
+// answers as its exs- public alias and still resolves by its durable blp- key
+// (w2/m269), so both must clear the gate.
+func bexIDSpellings(kind ids.Kind, minted string) []string {
+	if kind == ids.Blueprint {
+		return []string{minted, ids.BlueprintPublicID(minted)}
+	}
+	return []string{minted}
+}
+
 // TestEveryConstrainedIDPathParameterAcceptsItsBexID is the guard that turns
 // "blueprint was the only mismatch" from a one-time grep into a checked fact.
 // For every pattern-constrained id path parameter reachable through a bex REST
@@ -478,10 +507,12 @@ func TestEveryConstrainedIDPathParameterAcceptsItsBexID(t *testing.T) {
 		// length. Several, because xid's suffix varies per call.
 		for range 8 {
 			minted := ids.New(kind)
-			if !re.MatchString(minted) {
-				t.Errorf("bex %s id %q does not satisfy Render's %q pattern %q — every REST call to this route 400s "+
-					"at the OpenAPI gate before authz or lookup runs", kind.Prefix(), minted, name, pattern)
-				break
+			for _, spelling := range bexIDSpellings(kind, minted) {
+				if !re.MatchString(spelling) {
+					t.Errorf("bex %s id %q does not satisfy Render's %q pattern %q — every REST call to this route 400s "+
+						"at the OpenAPI gate before authz or lookup runs", kind.Prefix(), spelling, name, pattern)
+					break
+				}
 			}
 		}
 	}

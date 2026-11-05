@@ -30,6 +30,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/gqlutil"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/mcputil"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -241,7 +242,7 @@ const DefaultBlueprintBranch = "main"
 
 // PlanBlueprint plans a sync of an existing Blueprint at its branch head.
 func (s *Service) PlanBlueprint(ctx context.Context, bpID, ownerID string) (BlueprintPlanResult, error) {
-	ctx, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
+	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
 	if err != nil {
 		return BlueprintPlanResult{}, err
 	}
@@ -393,7 +394,7 @@ func (s *Service) syncWithPlan(b store.Blueprint, p store.PlannedBlueprintSync, 
 	return &SyncWithPlan{
 		ID: p.ID, Commit: BlueprintCommitRef{ID: p.CommitID}, CommitID: p.CommitID, RawPlanJSON: rawPlanJSON(rawPlan), State: p.State,
 		StartedAt: &started, CompletedAt: p.CompletedAt,
-		DashboardURL: s.Metadata.DashboardURL("blueprints", b.ID),
+		DashboardURL: s.Metadata.DashboardURL("blueprints", ids.BlueprintPublicID(b.ID)),
 		RawPlan:      rawPlan, RequiredManualEnvVars: required, Actions: actions,
 	}
 }
@@ -403,7 +404,7 @@ func (s *Service) syncWithPlan(b store.Blueprint, p store.PlannedBlueprintSync, 
 // nil when there is nothing to approve (w2/m256 t012: the dashboard shows it
 // with its Approve control).
 func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncWithPlan, error) {
-	ctx, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
+	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -444,7 +445,7 @@ func (s *Service) PlannedSync(ctx context.Context, bpID, ownerID string) (*SyncW
 // sync:false values it requires. A newest sync that failed planning, or that
 // was already applied, cannot be approved.
 func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID string, supplied []ManualEnvVar) (ApprovedSync, error) {
-	ctx, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
+	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
 	if err != nil {
 		return ApprovedSync{}, err
 	}
@@ -495,7 +496,7 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID string, su
 	started := applied.StartedAt
 	return ApprovedSync{
 		ID: applied.ID, Commit: BlueprintCommitRef{ID: applied.CommitID}, CommitID: applied.CommitID, State: applied.State,
-		DashboardURL: s.Metadata.DashboardURL("blueprints", b.ID), StartedAt: &started, CompletedAt: applied.CompletedAt,
+		DashboardURL: s.Metadata.DashboardURL("blueprints", ids.BlueprintPublicID(b.ID)), StartedAt: &started, CompletedAt: applied.CompletedAt,
 	}, nil
 }
 
@@ -720,11 +721,11 @@ type createPlannedBlueprintArgs struct {
 }
 
 type planBlueprintArgs struct {
-	ID string `json:"id" jsonschema:"blueprint id (blp-…)"`
+	ID string `json:"id" jsonschema:"blueprint id (exs-…, or the legacy blp-…)"`
 }
 
 type approveBlueprintArgs struct {
-	ID            string         `json:"id" jsonschema:"blueprint id (blp-…)"`
+	ID            string         `json:"id" jsonschema:"blueprint id (exs-…, or the legacy blp-…)"`
 	ManualEnvVars []ManualEnvVar `json:"manualEnvVars,omitempty" jsonschema:"values for the planned sync's requiredManualEnvVars"`
 }
 

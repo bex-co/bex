@@ -35,6 +35,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/github"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -225,11 +226,12 @@ func matchReviewedBlueprintSource(b store.Blueprint, reviewed *ReviewedBlueprint
 // what a caller attempting a second connect usually wants.
 func errBlueprintAlreadyConnected(existing store.Blueprint) error {
 	phrase := BlueprintTakeoverConfirmation(existing.ID)
+	public := ids.BlueprintPublicID(existing.ID)
 	return core.NewConflictError("BLUEPRINT_CONNECTION_CONFLICT",
 		fmt.Sprintf("blueprint %s (%q) already tracks %s@%s from %q; update it with updateBlueprint to change its path, or retry with confirm=%q to replace it",
-			existing.ID, existing.Name, existing.Repo, existing.Branch, existing.Path, phrase),
+			public, existing.Name, existing.Repo, existing.Branch, existing.Path, phrase),
 		map[string]any{
-			"blueprintId":   existing.ID,
+			"blueprintId":   public,
 			"blueprintName": existing.Name,
 			"repo":          existing.Repo,
 			"branch":        existing.Branch,
@@ -656,7 +658,7 @@ type UpdateBlueprintRequest struct {
 // applying anything. An optional blueprint ID includes owned-resource detachments.
 // Reads current state when available and requires can_view.
 func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML, blueprintID string) (BlueprintValidation, error) {
-	ctx, err := s.blueprintRequestScope(ctx, core.RelCanView, blueprintID, ownerID)
+	ctx, blueprintID, err := s.blueprintRequestScope(ctx, core.RelCanView, blueprintID, ownerID)
 	if err != nil {
 		return BlueprintValidation{}, err
 	}
@@ -666,14 +668,15 @@ func (s *Service) ValidateBlueprint(ctx context.Context, ownerID, bexYAML, bluep
 // blueprintRequestScope authorizes a validate/preview: on behalf of an existing
 // Blueprint it acts in that Blueprint's own workspace (blueprintScope, w4/m172)
 // unless ownerID names one; for a new manifest, in the named or default one.
-func (s *Service) blueprintRequestScope(ctx context.Context, relation, bpID, ownerID string) (context.Context, error) {
+// Like blueprintScope it returns the storage (blp-) form of bpID.
+func (s *Service) blueprintRequestScope(ctx context.Context, relation, bpID, ownerID string) (context.Context, string, error) {
 	if bpID != "" {
 		return s.blueprintScope(ctx, relation, bpID, ownerID)
 	}
 	if ownerID != "" {
 		ctx = core.WithWorkspace(ctx, ownerID)
 	}
-	return ctx, s.Authorize(ctx, relation)
+	return ctx, bpID, s.Authorize(ctx, relation)
 }
 
 // unresolvedRepoKey marks a read-only Blueprint validation that does not know
@@ -1071,7 +1074,7 @@ func blueprintDisplayPath(pointer string) string {
 // itself (w4/m125), exactly as previewOwnershipConflicts already resolves self
 // for resources.
 func (s *Service) PreviewBlueprint(ctx context.Context, ownerID, repo, branch, filePath, forBlueprintID string) (BlueprintPreview, error) {
-	ctx, err := s.blueprintRequestScope(ctx, core.RelCanViewSensitive, forBlueprintID, ownerID)
+	ctx, forBlueprintID, err := s.blueprintRequestScope(ctx, core.RelCanViewSensitive, forBlueprintID, ownerID)
 	if err != nil {
 		return BlueprintPreview{}, err
 	}
@@ -1155,10 +1158,10 @@ func (s *Service) CreateBlueprint(ctx context.Context, ownerID string, req Creat
 	}
 	var takeoverNote string
 	if existing.ID != "" {
-		if req.Confirm != BlueprintTakeoverConfirmation(existing.ID) {
+		if takeoverExpectedOwner(req.Confirm) != existing.ID {
 			return BlueprintView{}, errBlueprintAlreadyConnected(existing)
 		}
-		takeoverNote = fmt.Sprintf("replaced blueprint %s (%q), which tracked %s@%s from %q", existing.ID, existing.Name, existing.Repo, existing.Branch, existing.Path)
+		takeoverNote = fmt.Sprintf("replaced blueprint %s (%q), which tracked %s@%s from %q", ids.BlueprintPublicID(existing.ID), existing.Name, existing.Repo, existing.Branch, existing.Path)
 	}
 
 	prepareReq := DeployRequest{Repo: req.Repo, Branch: req.Branch, ContainingSource: true, Manifest: contents, EnvVarValues: req.EnvVarValues}
@@ -1276,7 +1279,7 @@ func (s *Service) completeAdmittedSync(ctx context.Context, b store.Blueprint, r
 
 // GetBlueprintByID returns a single blueprint by its opaque id.
 func (s *Service) GetBlueprintByID(ctx context.Context, bpID, ownerID string) (BlueprintView, error) {
-	ctx, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
+	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
 	if err != nil {
 		return BlueprintView{}, err
 	}
@@ -1341,7 +1344,7 @@ func (s *Service) canReadManifest(ctx context.Context) bool {
 // when non-nil with CommitID set, the apply pins that revision and never
 // re-resolves the branch tip; omit for HEAD-resolve (auto-sync / old clients).
 func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, confirm string, reviewed *ReviewedBlueprintSource) (SyncBlueprintResult, error) {
-	ctx, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
+	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
 	if err != nil {
 		return SyncBlueprintResult{}, err
 	}
@@ -1356,7 +1359,7 @@ func (s *Service) SyncBlueprint(ctx context.Context, bpID, ownerID, bexYAML, con
 	if b.Status == store.BlueprintStatusCreated {
 		return SyncBlueprintResult{}, core.NewConflictError(BlueprintAwaitingApprovalCode,
 			"this Blueprint is waiting for its planned sync to be approved; approve it (or plan a new sync) instead of syncing",
-			map[string]any{"blueprintId": b.ID})
+			map[string]any{"blueprintId": ids.BlueprintPublicID(b.ID)})
 	}
 	return s.runSync(ctx, b, bexYAML, confirm, reviewed, nil)
 }
@@ -1681,7 +1684,7 @@ func (s *Service) triggerBlueprintSync(ctx context.Context, tenantID, repo, bran
 
 // ListBlueprintSyncs returns recorded sync runs for a blueprint, newest first.
 func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor string, limit int) ([]BlueprintSyncView, error) {
-	ctx, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
+	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
 	if err != nil {
 		return nil, err
 	}
@@ -1702,7 +1705,7 @@ func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor 
 
 // UpdateBlueprint applies a partial update to name/autoSync/path.
 func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req UpdateBlueprintRequest) (BlueprintView, error) {
-	ctx, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
+	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
 	if err != nil {
 		return BlueprintView{}, err
 	}
@@ -1778,7 +1781,7 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 // discarded: the row stays disconnected either way, and the error names the
 // failed sweep for the operator.
 func (s *Service) DisconnectBlueprint(ctx context.Context, bpID, ownerID string) error {
-	ctx, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
+	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanCreate, bpID, ownerID)
 	if err != nil {
 		return err
 	}
@@ -1961,7 +1964,12 @@ func (s *Service) upsertBlueprint(ctx context.Context, req DeployRequest) {
 // belongs to several needs no ownerId, as Render's owner-less
 // GET /blueprints/{id} implies (w4/m169). A caller outside that workspace gets
 // the typed-id 403, audited once like any refusal (w5/m115).
-func (s *Service) blueprintScope(ctx context.Context, relation, bpID, ownerID string) (context.Context, error) {
+//
+// bpID may be the public exs- alias or the durable blp- key (w2/m269); the
+// returned id is always the storage form, which callers use for every lookup,
+// comparison and write downstream.
+func (s *Service) blueprintScope(ctx context.Context, relation, bpID, ownerID string) (context.Context, string, error) {
+	bpID = ids.BlueprintStorageID(bpID)
 	var owner core.ResourceOwner
 	if s.Blueprints != nil {
 		owner = func(ctx context.Context) ([]string, error) {
@@ -1970,15 +1978,15 @@ func (s *Service) blueprintScope(ctx context.Context, relation, bpID, ownerID st
 	}
 	ctx, err := s.ScopeByID(ctx, ownerID, owner)
 	if err != nil {
-		return ctx, store.MapError(err)
+		return ctx, bpID, store.MapError(err)
 	}
 	if err := s.Authorize(ctx, relation); err != nil {
-		return ctx, err
+		return ctx, bpID, err
 	}
 	if s.Blueprints == nil {
-		return ctx, ErrBlueprintsUnavailable
+		return ctx, bpID, ErrBlueprintsUnavailable
 	}
-	return ctx, nil
+	return ctx, bpID, nil
 }
 
 // resolveTenantID returns the effective tenant id.
@@ -2253,7 +2261,7 @@ func toBlueprintView(b store.Blueprint) BlueprintView {
 		status = store.BlueprintStatusCreated
 	}
 	v := BlueprintView{
-		ID:        b.ID,
+		ID:        ids.BlueprintPublicID(b.ID),
 		Name:      b.Name,
 		OwnerID:   b.TenantID,
 		Repo:      b.Repo,

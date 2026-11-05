@@ -145,13 +145,16 @@ func (s *PGStore) UpsertBlueprint(ctx context.Context, b Blueprint) (Blueprint, 
 // GetBlueprint fetches an active blueprint by id, scoped to tenantID (returns
 // ErrNotFound if the id belongs to a different workspace — or names a
 // disconnected row, which ordinary reads treat as absent, w8/m37 t001).
+// The id is normalized to its blp- storage form as a deliberate backstop:
+// apps' blueprintScope already canonicalizes, but a caller that reaches the
+// store with the public exs- alias still finds the row (w2/m269).
 func (s *PGStore) GetBlueprint(ctx context.Context, id, tenantID string) (Blueprint, error) {
 	var out Blueprint
 	err := s.Pool.QueryRow(ctx,
 		`SELECT id, tenant_id, name, repo, branch, path, auto_sync, manifest, status,
 		        last_sync_at, created_at, updated_at, existing_resources, resource_suffix
 		 FROM blueprints WHERE id = $1 AND tenant_id = $2 AND status != 'disconnected'`,
-		id, tenantID,
+		ids.BlueprintStorageID(id), tenantID,
 	).Scan(&out.ID, &out.TenantID, &out.Name, &out.Repo, &out.Branch, &out.Path,
 		&out.AutoSync, &out.Manifest, &out.Status, &out.LastSyncAt, &out.CreatedAt, &out.UpdatedAt,
 		&out.ExistingResources, &out.ResourceSuffix)
@@ -165,10 +168,11 @@ func (s *PGStore) GetBlueprint(ctx context.Context, id, tenantID string) (Bluepr
 // Blueprint id, or ErrNotFound. It is a routing read only: the caller must
 // still authorize against the returned workspace before revealing anything,
 // exactly as a service or env-group id resolves to its own workspace (w4/m169).
+// Like GetBlueprint it normalizes an exs- alias to blp- as a backstop.
 func (s *PGStore) BlueprintWorkspace(ctx context.Context, id string) (string, error) {
 	var tenantID string
 	err := s.Pool.QueryRow(ctx,
-		`SELECT tenant_id FROM blueprints WHERE id = $1 AND status != 'disconnected'`, id,
+		`SELECT tenant_id FROM blueprints WHERE id = $1 AND status != 'disconnected'`, ids.BlueprintStorageID(id),
 	).Scan(&tenantID)
 	if err != nil {
 		return "", classify("blueprint", err)

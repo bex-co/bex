@@ -147,7 +147,8 @@ export function takeoverCopy(
     // bex-api names the owner by id, or says "another blueprint" when the
     // claim has no readable owner: that is copy, not an id, so it is ours to
     // translate.
-    description: takeover.owningBlueprintId.startsWith("blp-")
+    // exs- is the public spelling (w2/m269); blp- the durable one.
+    description: /^(?:exs|blp)-/.test(takeover.owningBlueprintId)
       ? t("blueprints.takeoverResourceBody", {
           kind,
           name: takeover.resource,

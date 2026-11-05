@@ -431,12 +431,12 @@ type listBlueprintsResult struct {
 
 // getBlueprintArgs is get_blueprint's input (w2/m41).
 type getBlueprintArgs struct {
-	ID string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
+	ID string `json:"id" jsonschema:"the blueprint id (exs-…, or the legacy blp-…), as returned by list_blueprints or a prior deploy call"`
 }
 
 // syncBlueprintArgs is sync_blueprint's input (w2/m15 + w8/m41 reviewed pin).
 type syncBlueprintArgs struct {
-	ID       string `json:"id" jsonschema:"the blueprint id (blp-…), as returned by list_blueprints or a prior deploy call"`
+	ID       string `json:"id" jsonschema:"the blueprint id (exs-…, or the legacy blp-…), as returned by list_blueprints or a prior deploy call"`
 	BexYAML  string `json:"bexYaml,omitempty" jsonschema:"optional updated render.yaml content to store and apply; omit to pull from Git (or re-apply the stored manifest when the Blueprint has no repo). Mutually exclusive with commitId"`
 	Confirm  string `json:"confirm,omitempty" jsonschema:"exact confirmation phrase returned by a protected-environment error when the sync overrides an existing service"`
 	CommitID string `json:"commitId,omitempty" jsonschema:"optional immutable commit SHA from preview_blueprint.commitId — when set, sync applies that revision and never re-resolves the branch tip; omit to resolve HEAD (default / auto-sync semantics)"`
@@ -451,7 +451,7 @@ type previewBlueprintArgs struct {
 	Path   string `json:"path,omitempty" jsonschema:"path to a Blueprint within the repo (default render.yaml)"`
 	// blueprintId previews on behalf of an existing blueprint, so its own
 	// repo+branch is not reported as a connection conflict (w4/m125).
-	BlueprintID string `json:"blueprintId,omitempty" jsonschema:"preview on behalf of this existing blueprint (blp-…); omit when previewing before a create"`
+	BlueprintID string `json:"blueprintId,omitempty" jsonschema:"preview on behalf of this existing blueprint (exs-…, or the legacy blp-…); omit when previewing before a create"`
 }
 
 // generateBlueprintArgs is generate_blueprint's input (w8/m22 + w4/040).
@@ -474,7 +474,7 @@ type createBlueprintArgs struct {
 
 // listBlueprintSyncsArgs is list_blueprint_syncs's input (w2/m62).
 type listBlueprintSyncsArgs struct {
-	ID     string `json:"id" jsonschema:"blueprint id (blp-…)"`
+	ID     string `json:"id" jsonschema:"blueprint id (exs-…, or the legacy blp-…)"`
 	Cursor string `json:"cursor,omitempty" jsonschema:"opaque cursor from a prior call for pagination"`
 	Limit  int    `json:"limit,omitempty" jsonschema:"max runs to return (1–100, default 20)"`
 }
@@ -486,7 +486,7 @@ type listBlueprintSyncsResult struct {
 
 // updateBlueprintArgs is update_blueprint's input (w2/m62).
 type updateBlueprintArgs struct {
-	ID       string  `json:"id" jsonschema:"blueprint id (blp-…)"`
+	ID       string  `json:"id" jsonschema:"blueprint id (exs-…, or the legacy blp-…)"`
 	Name     *string `json:"name,omitempty" jsonschema:"new display name"`
 	AutoSync *bool   `json:"autoSync,omitempty" jsonschema:"enable or disable auto-sync on push"`
 	Path     *string `json:"path,omitempty" jsonschema:"new Blueprint path within the repo"`
@@ -500,7 +500,7 @@ type disconnectedBlueprintResult struct {
 
 // disconnectBlueprintArgs is disconnect_blueprint's input (w2/m62).
 type disconnectBlueprintArgs struct {
-	ID string `json:"id" jsonschema:"blueprint id (blp-…) to disconnect"`
+	ID string `json:"id" jsonschema:"blueprint id (exs-…, or the legacy blp-…) to disconnect"`
 }
 
 // domainArgs is the shared custom-domain argument (serviceId + domain name).

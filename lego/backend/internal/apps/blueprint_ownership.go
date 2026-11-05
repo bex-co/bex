@@ -38,6 +38,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -45,9 +46,13 @@ import (
 // BlueprintTakeoverConfirmation is the server-issued phrase that authorizes
 // transferring a resource's blueprint ownership. Computed from the OWNING
 // blueprint id so the caller confirms exactly what they are taking over from.
+// The phrase names the public exs- id (w2/m269); takeoverExpectedOwner reads
+// it, or a phrase naming the durable blp- id, back to the stored id.
 func BlueprintTakeoverConfirmation(owningBlueprintID string) string {
-	return "takeover blueprint " + owningBlueprintID
+	return takeoverPhrasePrefix + ids.BlueprintPublicID(owningBlueprintID)
 }
+
+const takeoverPhrasePrefix = "takeover blueprint "
 
 // blueprintOwnershipConflict is one resource owned by another blueprint.
 type blueprintOwnershipConflict struct {
@@ -176,8 +181,7 @@ func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployReq
 		return nil
 	}
 	first := conflicts[0]
-	phrase := BlueprintTakeoverConfirmation(first.owner)
-	if req.Confirm == phrase {
+	if takeoverExpectedOwner(req.Confirm) == first.owner {
 		// Explicit takeover of first.owner's resources: proceed — but only
 		// for THAT owner. A stack conflicting with two different blueprints
 		// resolves one owner per confirmation.
@@ -197,6 +201,7 @@ func (s *Service) preflightBlueprintOwnership(ctx context.Context, req DeployReq
 // message keeps the wording it has always had.
 func blueprintOwnershipError(c blueprintOwnershipConflict) error {
 	phrase := BlueprintTakeoverConfirmation(c.owner)
+	public := ids.BlueprintPublicID(c.owner)
 	kind := blueprintClaimResourceKind(c.kind)
 	wording := string(kind)
 	switch kind {
@@ -206,16 +211,16 @@ func blueprintOwnershipError(c blueprintOwnershipConflict) error {
 		wording = "key value"
 	}
 	return core.NewConflictError("BLUEPRINT_RESOURCE_CONFLICT",
-		fmt.Sprintf("%s %q is managed by blueprint %s; retry with confirm=%q to transfer ownership to this blueprint", wording, c.name, c.owner, phrase),
-		map[string]any{"resource": c.name, "kind": string(kind), "owningBlueprintId": c.owner, "confirm": phrase})
+		fmt.Sprintf("%s %q is managed by blueprint %s; retry with confirm=%q to transfer ownership to this blueprint", wording, c.name, public, phrase),
+		map[string]any{"resource": c.name, "kind": string(kind), "owningBlueprintId": public, "confirm": phrase})
 }
 
-// takeoverExpectedOwner returns the owning blueprint id encoded in Confirm, or
-// "" when Confirm is not a takeover phrase.
+// takeoverExpectedOwner returns the owning blueprint's durable (blp-) id
+// encoded in Confirm, or "" when Confirm is not a takeover phrase. Either
+// spelling of the id confirms the same owner.
 func takeoverExpectedOwner(confirm string) string {
-	const prefix = "takeover blueprint "
-	if strings.HasPrefix(confirm, prefix) {
-		return strings.TrimPrefix(confirm, prefix)
+	if strings.HasPrefix(confirm, takeoverPhrasePrefix) {
+		return ids.BlueprintStorageID(strings.TrimPrefix(confirm, takeoverPhrasePrefix))
 	}
 	return ""
 }

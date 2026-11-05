@@ -1744,7 +1744,9 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 			return nil, err
 		}
 		after, limit := core.PageParams(q)
-		page := core.StablePage(views, after, limit, true, func(v BlueprintView) string { return v.ID })
+		// Cursors are the public exs- ids the rows carry; a cursor saved
+		// before w2/m269 names the same Blueprint as blp-.
+		page := core.StablePage(views, ids.BlueprintPublicID(after), limit, true, func(v BlueprintView) string { return v.ID })
 		return renderBlueprintsWithCursor(page), nil
 	}))
 	mux.HandleFunc("POST /v1/blueprints/{id}/sync", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {

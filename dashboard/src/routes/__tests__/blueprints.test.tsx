@@ -136,7 +136,7 @@ vi.mock("@/features/blueprints/hooks/use-blueprint-syncs", () => ({
 
 function bp(overrides: Partial<BlueprintView> = {}): BlueprintView {
   return {
-    id: "blp-abc123",
+    id: "exs-abc123",
     name: "hello-go",
     repo: "https://github.com/example/hello-go",
     branch: "main",
@@ -225,7 +225,7 @@ function renderBlueprintsPage() {
   return router;
 }
 
-function renderDetailPage(blueprintId = "blp-abc123") {
+function renderDetailPage(blueprintId = "exs-abc123") {
   const rootRoute = createRootRoute();
   const homeRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -534,8 +534,26 @@ describe("BlueprintDetailPage", () => {
     await userEvent.click(await screen.findByRole("button", { name: /sync/i }));
     await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
 
-    expect(sync).toHaveBeenCalledWith("blp-abc123", reviewedFrom(blueprint));
+    expect(sync).toHaveBeenCalledWith("exs-abc123", reviewedFrom(blueprint));
     expect(blueprintDetailState.refetch).not.toHaveBeenCalled();
+  });
+
+  // w2/m269: links carry the API's exs- id; a bookmarked blp- URL still
+  // opens and addresses the same Blueprint by its exs- id.
+  it.each([
+    ["exs-db136288mmqc73d4hpug", "exs-db136288mmqc73d4hpug"],
+    ["blp-db136288mmqc73d4hpug", "exs-db136288mmqc73d4hpug"],
+  ])("opens /blueprints/%s and acts on %s", async (urlId, apiId) => {
+    const blueprint = bp({ id: apiId });
+    blueprintDetailState.blueprint = blueprint;
+    syncPreviewState.preview = validPreview();
+    const router = renderDetailPage(urlId);
+
+    await userEvent.click(await screen.findByRole("button", { name: /sync/i }));
+    await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
+
+    expect(sync).toHaveBeenCalledWith(apiId, reviewedFrom(blueprint));
+    expect(router.state.location.pathname).toBe(`/blueprints/${urlId}`);
   });
 
   it("keeps the reviewed pin when a later preview arrives (w8/m41)", async () => {
@@ -552,7 +570,7 @@ describe("BlueprintDetailPage", () => {
     syncPreviewState.preview = validPreview("f00dcafe");
     await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
 
-    expect(sync).toHaveBeenCalledWith("blp-abc123", reviewedFrom(blueprint));
+    expect(sync).toHaveBeenCalledWith("exs-abc123", reviewedFrom(blueprint));
   });
 
   it("shows the computed sync plan in the dialog before applying (w8/m21)", async () => {
@@ -567,7 +585,7 @@ describe("BlueprintDetailPage", () => {
     ).toBeInTheDocument();
     expect(screen.getByText("(Standard) $17.50 / month")).toBeInTheDocument();
     await userEvent.click(screen.getByRole("button", { name: /^sync$/i }));
-    expect(sync).toHaveBeenCalledWith("blp-abc123", reviewedFrom(blueprint));
+    expect(sync).toHaveBeenCalledWith("exs-abc123", reviewedFrom(blueprint));
   });
 
   it("blocks sync when the preview is unavailable (w8/m41)", async () => {
@@ -618,7 +636,7 @@ describe("BlueprintDetailPage", () => {
     await user.click(
       screen.getByRole("button", { name: /save manifest path/i }),
     );
-    expect(update).toHaveBeenCalledWith("blp-abc123", {
+    expect(update).toHaveBeenCalledWith("exs-abc123", {
       path: "infra/bex/stack.yaml",
     });
 
@@ -632,7 +650,7 @@ describe("BlueprintDetailPage", () => {
     await user.click(
       screen.getByRole("button", { name: /save blueprint name/i }),
     );
-    expect(update).toHaveBeenCalledWith("blp-abc123", { name: "renamed" });
+    expect(update).toHaveBeenCalledWith("exs-abc123", { name: "renamed" });
 
     // Branch has no edit affordance.
     expect(
@@ -670,7 +688,7 @@ describe("BlueprintDetailPage", () => {
     await user.type(input, "i");
     await user.click(retry);
 
-    expect(sync).toHaveBeenNthCalledWith(2, "blp-abc123", {
+    expect(sync).toHaveBeenNthCalledWith(2, "exs-abc123", {
       ...reviewedFrom(blueprint),
       confirmation: "sudo deploy service api",
     });

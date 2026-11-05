@@ -1157,7 +1157,7 @@ func view(a *appv1alpha1.App) AppView {
 		OwnerID:              a.Labels[core.LabelTenant],
 		ProjectID:            a.Labels[core.LabelProject],
 		EnvironmentID:        ids.EnvironmentPublicID(a.Labels[core.LabelEnvironment]),
-		BlueprintID:          a.Labels[core.LabelBlueprint],
+		BlueprintID:          ids.BlueprintPublicID(a.Labels[core.LabelBlueprint]),
 		RootDir:              a.Spec.RootDir,
 		DockerfilePath:       a.Spec.DockerfilePath,
 		DockerContext:        viewDockerContext(a.Spec),

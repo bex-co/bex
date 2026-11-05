@@ -323,7 +323,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 		OwnerID:                kv.Labels[core.LabelTenant],
 		ProjectID:              kv.Labels[core.LabelProject],
 		EnvironmentID:          id.EnvironmentPublicID(kv.Labels[core.LabelEnvironment]),
-		BlueprintID:            kv.Labels[core.LabelBlueprint],
+		BlueprintID:            id.BlueprintPublicID(kv.Labels[core.LabelBlueprint]),
 	}
 }
 

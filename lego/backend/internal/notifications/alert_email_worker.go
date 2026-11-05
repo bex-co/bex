@@ -29,6 +29,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/email"
+	"github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -295,7 +296,7 @@ func (w *AlertEmailWorker) dispatchBlueprints(ctx context.Context, byTenant map[
 		for _, f := range failed {
 			name := f.BlueprintName
 			if name == "" {
-				name = f.BlueprintID
+				name = id.BlueprintPublicID(f.BlueprintID)
 			}
 			for _, r := range byTenant[f.TenantID] {
 				if !r.DeployFailed {
@@ -395,7 +396,9 @@ func (w *AlertEmailWorker) dashboardURL(st store.AlertEmailStream) string {
 	}
 	cfg := resourcemeta.Config{DashboardBaseURL: w.DashboardBaseURL}
 	if st.Event == store.AlertEmailBlueprintSyncFailed {
-		return cfg.DashboardURL("blueprints", st.ResourceID)
+		// ResourceID holds the durable blp- id; the page is addressed by the
+		// public exs- id the dashboard and API show (w2/m269).
+		return cfg.DashboardURL("blueprints", id.BlueprintPublicID(st.ResourceID))
 	}
 	return cfg.DashboardURL(path.Join("services", st.ResourceID), "events")
 }

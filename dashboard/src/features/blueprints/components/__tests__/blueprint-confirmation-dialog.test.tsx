@@ -5,7 +5,7 @@ import i18n from "@/i18n/init";
 import { BlueprintConfirmationDialog } from "../blueprint-confirmation-dialog";
 import type { BlueprintConfirmationRequired } from "@/features/blueprints/lib/takeover";
 
-const PHRASE = "takeover blueprint blp-db136288mmqc73d4hpug";
+const PHRASE = "takeover blueprint exs-db136288mmqc73d4hpug";
 
 // What blueprintConfirmationFromError returns for bex-api's refusals.
 const resourceTakeover: BlueprintConfirmationRequired = {
@@ -16,7 +16,7 @@ const resourceTakeover: BlueprintConfirmationRequired = {
     phrase: PHRASE,
     resource: "docs",
     resourceKind: "key_value",
-    owningBlueprintId: "blp-db136288mmqc73d4hpug",
+    owningBlueprintId: "exs-db136288mmqc73d4hpug",
   },
 };
 const protectedEnvironment: BlueprintConfirmationRequired = {
@@ -53,7 +53,7 @@ describe("BlueprintConfirmationDialog", () => {
     const { onConfirm } = renderDialog(resourceTakeover);
     const dialog = screen.getByRole("dialog");
     expect(dialog).toHaveTextContent(
-      "Key Value “docs” is managed by Blueprint blp-db136288mmqc73d4hpug.",
+      "Key Value “docs” is managed by Blueprint exs-db136288mmqc73d4hpug.",
     );
     const action = screen.getByRole("button", { name: "Deploy Blueprint" });
     expect(action).toBeDisabled();
@@ -70,7 +70,7 @@ describe("BlueprintConfirmationDialog", () => {
     renderDialog(resourceTakeover);
     const text = screen.getByRole("dialog").textContent ?? "";
     expect(text).toContain(
-      "Key Value “docs” 由 Blueprint blp-db136288mmqc73d4hpug 管理。",
+      "Key Value “docs” 由 Blueprint exs-db136288mmqc73d4hpug 管理。",
     );
     expect(text).not.toMatch(
       /key[ _]value|managed by|Continuing|Type the command/,

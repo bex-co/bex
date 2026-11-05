@@ -35,6 +35,7 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import { BlueprintStatusBadge } from "@/features/blueprints/components/blueprint-status-badge";
 import { blueprintResourceHref } from "@/features/blueprints/lib/resource-href";
+import { canonicalBlueprintLinkId } from "@/features/blueprints/lib/link-id";
 import { ValidatePanel } from "@/features/blueprints/components/validate-panel";
 import { useBlueprint } from "@/features/blueprints/hooks/use-blueprint";
 import { useBlueprintPreview } from "@/features/blueprints/hooks/use-blueprint-preview";
@@ -71,7 +72,7 @@ export const Route = createFileRoute("/blueprints/$blueprintId")({
         context.client.query({
           query: BlueprintDocument,
           variables: {
-            id: params.blueprintId,
+            id: canonicalBlueprintLinkId(params.blueprintId),
           },
           fetchPolicy: titleLoaderFetchPolicy(cause),
           errorPolicy: "all",
@@ -190,7 +191,9 @@ function InlineEdit({
 }
 
 export function BlueprintDetailPage() {
-  const { blueprintId } = Route.useParams();
+  // A bookmarked /blueprints/blp-… still opens: the page addresses the
+  // Blueprint by the exs- id the API returns (w2/m269).
+  const blueprintId = canonicalBlueprintLinkId(Route.useParams().blueprintId);
   const { t } = useTranslations();
   const router = useRouter();
   const { blueprint, loading, error, refetch } = useBlueprint(blueprintId);

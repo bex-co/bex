@@ -18,15 +18,16 @@ package id
 
 import "strings"
 
+// environmentStoragePrefix is the durable namespace behind Environment's public
+// evm- prefix: SQL rows, CR labels and secret metadata keep the original env-.
+const environmentStoragePrefix = "env"
+
 // EnvironmentPublicID exposes the Render-compatible alias of an environment's
 // durable env- key. The suffix never changes, so old API links and existing
 // memberships keep addressing the same identity. Only minted shapes are
 // aliases; names and malformed inputs must not acquire ID semantics.
 func EnvironmentPublicID(value string) string {
-	if strings.HasPrefix(value, "env-") && WellFormed(value) {
-		return "evm-" + value[4:]
-	}
-	return value
+	return respell(value, environmentStoragePrefix, Environment.prefix)
 }
 
 // EnvironmentStorageID resolves the public alias to the sole durable key
@@ -34,8 +35,15 @@ func EnvironmentPublicID(value string) string {
 // an alias from ever shadowing another environment. Use this before lookup or
 // persistence, then apply the ordinary authorization and project/workspace gates.
 func EnvironmentStorageID(value string) string {
-	if strings.HasPrefix(value, "evm-") && WellFormed(value) {
-		return "env-" + value[4:]
+	return respell(value, Environment.prefix, environmentStoragePrefix)
+}
+
+// respell moves a well-formed id from one prefix namespace to another, keeping
+// its suffix. Anything else (names, malformed or differently prefixed input)
+// is returned unchanged so it never acquires ID semantics.
+func respell(value, from, to string) string {
+	if strings.HasPrefix(value, from+"-") && WellFormed(value) {
+		return to + "-" + value[len(from)+1:]
 	}
 	return value
 }

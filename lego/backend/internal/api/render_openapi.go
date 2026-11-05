@@ -120,9 +120,11 @@ var renderOptionalParameterCompatibility = map[string][]string{
 // (docs/ADR020-identifiers.md). Blueprint is the one exception: it predates
 // this gate and was minted blp- against Render's exs-, which meant the
 // validator rejected every REST call to a blueprint-id route with
-// `invalid path parameter "blueprintId"` BEFORE authz or lookup ever ran. No
-// bex id has ever matched exs- and none can: id.Kind is a closed compile-time
-// registry.
+// `invalid path parameter "blueprintId"` BEFORE authz or lookup ever ran.
+// Since w2/m269 every surface shows a Blueprint as its exs- public alias
+// (id.BlueprintPublicID), which Render's own pattern accepts; the durable blp-
+// key stays in storage and in links saved earlier, so the widening keeps it
+// addressable.
 //
 // Every override here must be a strict SUPERSET of the pattern it replaces —
 // enforced by TestRenderPathParameterOverridesOnlyWiden. That is the invariant
@@ -150,7 +152,8 @@ var renderPathParameterPatternCompatibility = map[string]map[string]string{
 // Render's 25-character ones.
 const renderSandboxIDPattern = `^sbx-[0-9a-v]{20}(?:[0-9a-v]{5})?$`
 
-// renderBlueprintIDPattern accepts bex's blp- alongside Render's exs-. The
+// renderBlueprintIDPattern accepts bex's durable blp- alongside Render's exs-
+// (the public alias bex returns, w2/m269). The
 // character class stays Render's [0-9a-z] rather than narrowing to xid's own
 // base32-hex [0-9a-v]: a real bex id satisfies both, and widening is the only
 // direction this layer is allowed to move.

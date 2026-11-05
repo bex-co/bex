@@ -31,6 +31,8 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -154,6 +156,7 @@ func coded(t *testing.T, err error) string {
 // nothing is not saved.
 func TestBlueprintOnboardingCreatePlanApprove(t *testing.T) {
 	svc, st, ctx := newOnboardingService(t, onboardingManifest)
+	svc.Metadata = resourcemeta.Config{DashboardBaseURL: "https://dashboard.example"}
 
 	res, err := svc.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{
 		Name: "stack", OwnerID: "tea-a", Source: RenderBlueprintSource{Repo: "https://github.com/a/app"},
@@ -176,12 +179,18 @@ func TestBlueprintOnboardingCreatePlanApprove(t *testing.T) {
 		t.Fatalf("create applied resources: %d Apps, err %v", len(apps.Items), err)
 	}
 	bpID := res.Blueprint.ID
+	// w2/m269: the create answers with Render's exs- spelling (the pinned CLI
+	// refuses anything else) and links the dashboard page by it.
+	if !strings.HasPrefix(bpID, "exs-") || !strings.HasSuffix(res.Sync.DashboardURL, "/blueprints/"+bpID) {
+		t.Fatalf("blueprint id %q / dashboardUrl %q, want the exs- public id", bpID, res.Sync.DashboardURL)
+	}
 
 	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", nil); err == nil || coded(t, err) != "BLUEPRINT_MANUAL_ENV_VARS_MISSING" {
 		t.Fatalf("approve without the prompt value: err = %v", err)
 	}
 	unknown := "x"
-	if _, err := svc.ApproveBlueprint(ctx, bpID, "tea-a", []ManualEnvVar{{ServiceType: "web", ServiceName: "other", Key: "API_TOKEN", Value: &unknown}}); err == nil || coded(t, err) != "BLUEPRINT_MANUAL_ENV_VAR_UNKNOWN" {
+	// The durable blp- key addresses the same Blueprint as its exs- alias.
+	if _, err := svc.ApproveBlueprint(ctx, ids.BlueprintStorageID(bpID), "tea-a", []ManualEnvVar{{ServiceType: "web", ServiceName: "other", Key: "API_TOKEN", Value: &unknown}}); err == nil || coded(t, err) != "BLUEPRINT_MANUAL_ENV_VAR_UNKNOWN" {
 		t.Fatalf("approve with an unknown value: err = %v", err)
 	}
 
@@ -196,7 +205,7 @@ func TestBlueprintOnboardingCreatePlanApprove(t *testing.T) {
 	if err := svc.Client.List(ctx, &apps); err != nil || len(apps.Items) != 1 {
 		t.Fatalf("approve created %d Apps (err %v), want 1", len(apps.Items), err)
 	}
-	if b := st.blueprints[bpID]; b.Status != store.BlueprintStatusInSync {
+	if b := st.blueprints[ids.BlueprintStorageID(bpID)]; b.Status != store.BlueprintStatusInSync {
 		t.Errorf("status after approval = %q, want in_sync", b.Status)
 	}
 	seeds := svc.EnvSeeder.(*fakeSeeder).seeds
@@ -241,7 +250,7 @@ func TestBlueprintOnboardingCreateNewManagesASuffixedCopy(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b := st.blueprints[res.Blueprint.ID]
+	b := st.blueprints[ids.BlueprintStorageID(res.Blueprint.ID)]
 	if b.ExistingResources != store.BlueprintExistingCreateNew || b.ResourceSuffix == "" {
 		t.Fatalf("stored blueprint = %+v, want create_new with a suffix", b)
 	}
@@ -289,7 +298,7 @@ func TestBlueprintOnboardingFailedPlanCannotBeApproved(t *testing.T) {
 	if _, err := svc.ApproveBlueprint(ctx, res.Blueprint.ID, "tea-a", nil); err == nil || coded(t, err) != "BLUEPRINT_SYNC_PLANNING_FAILED" {
 		t.Fatalf("approve after a failed plan: err = %v", err)
 	}
-	if b := st.blueprints[res.Blueprint.ID]; b.Status != store.BlueprintStatusCreated {
+	if b := st.blueprints[ids.BlueprintStorageID(res.Blueprint.ID)]; b.Status != store.BlueprintStatusCreated {
 		t.Errorf("a refused approval changed the status to %q", b.Status)
 	}
 }
@@ -454,7 +463,7 @@ func TestBlueprintManualSyncRefusesACreatedBlueprint(t *testing.T) {
 			if err := svc.Client.List(ctx, &apps); err != nil || len(apps.Items) != 0 {
 				t.Fatalf("the refused sync created %d Apps (err %v)", len(apps.Items), err)
 			}
-			if b := st.blueprints[id]; b.Status != store.BlueprintStatusCreated {
+			if b := st.blueprints[ids.BlueprintStorageID(id)]; b.Status != store.BlueprintStatusCreated {
 				t.Errorf("status after the refusal = %q, want created", b.Status)
 			}
 		})
@@ -527,7 +536,7 @@ func TestPlannedCreateMarksARevivedConnection(t *testing.T) {
 	if note := st.syncs[first.Sync.ID].Note; note != "" {
 		t.Fatalf("a first create's planned sync note = %q, want none", note)
 	}
-	if err := st.DisconnectBlueprint(ctx, first.Blueprint.ID, "tea-a"); err != nil {
+	if err := st.DisconnectBlueprint(ctx, ids.BlueprintStorageID(first.Blueprint.ID), "tea-a"); err != nil {
 		t.Fatal(err)
 	}
 	again, err := svc.CreatePlannedBlueprint(ctx, req)

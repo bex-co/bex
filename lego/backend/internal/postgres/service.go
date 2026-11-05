@@ -604,7 +604,7 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		OwnerID:                   d.Labels[core.LabelTenant],
 		ProjectID:                 d.Labels[core.LabelProject],
 		EnvironmentID:             id.EnvironmentPublicID(d.Labels[core.LabelEnvironment]),
-		BlueprintID:               d.Labels[core.LabelBlueprint],
+		BlueprintID:               id.BlueprintPublicID(d.Labels[core.LabelBlueprint]),
 	}
 }
 
