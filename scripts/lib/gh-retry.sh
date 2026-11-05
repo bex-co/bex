@@ -3,11 +3,12 @@
 # timeouts from the runner host are transient, and a probe's issue
 # bookkeeping must not turn a healthy run red (isolation-matrix run
 # 42019120521). Usage: . scripts/lib/gh-retry.sh; gh_retry gh issue list ...
+# GH_RETRY_DELAY (seconds, default 10) scales the backoff; tests set it to 0.
 gh_retry() {
   local attempt
   for attempt in 1 2 3; do
     "$@" && return 0
-    [ "$attempt" = 3 ] || sleep $((attempt * 10))
+    [ "$attempt" = 3 ] || sleep $((attempt * ${GH_RETRY_DELAY:-10}))
   done
   return 1
 }

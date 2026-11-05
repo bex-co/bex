@@ -203,6 +203,32 @@ else
   echo "ok   [interleaved deploy streak]"
 fi
 
+# (k) One transient `gh run list` failure is retried, not reported unusable
+# (run 42065334477: "could not list workflow runs").
+flaky="$tmp/flaky"
+mkdir -p "$flaky"
+cat >"$flaky/gh" <<STUB
+#!/usr/bin/env bash
+if [ "\$1 \$2" = "run list" ] && [ ! -e "$flaky/failed-once" ]; then
+  touch "$flaky/failed-once"
+  echo "Post https://api.github.com/graphql: net/http: TLS handshake timeout" >&2
+  exit 1
+fi
+exec "$stub/gh" "\$@"
+STUB
+chmod +x "$flaky/gh"
+set +e
+out="$(PATH="$flaky:$stub:$PATH" GH_RETRY_DELAY=0 BEX_CI_RUN_LIMIT=15 bash "$SCRIPT" 2>&1)"
+rc=$?
+set -e
+if [ "$rc" != 1 ] || [ ! -e "$flaky/failed-once" ] || ! printf '%s' "$out" | grep -qF "**deploy** — 3 consecutive failures"; then
+  echo "FAIL [transient gh failure retried]: exit=$rc want=1 naming deploy's streak" >&2
+  echo "$out" | sed 's/^/    /' >&2
+  fails=$((fails + 1))
+else
+  echo "ok   [transient gh failure retried]"
+fi
+
 if [ "$fails" -ne 0 ]; then
   echo "ci-red-streak self-test FAILED ($fails)" >&2
   exit 1

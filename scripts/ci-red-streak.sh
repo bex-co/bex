@@ -44,6 +44,10 @@ if [ -n "${BEX_CI_RUNS_JSON:-}" ]; then
   runs="$(cat "$BEX_CI_RUNS_JSON")"
 else
   command -v gh >/dev/null || unusable "missing required command: gh"
+  # One failed list call among ~45 made the whole check unusable (run
+  # 42065334477, "could not list workflow runs"); retry each.
+  # shellcheck source=lib/gh-retry.sh
+  . "$(dirname "${BASH_SOURCE[0]}")/lib/gh-retry.sh"
   # Fetch per workflow, not one global window. A global `--limit 100` is the
   # newest 100 runs across every workflow — about six hours on a busy main —
   # so a deploy.yml streak whose failures were spread among supersession
@@ -57,11 +61,11 @@ else
   # branches were at most 2 of any workflow's newest 30 (measured 2026-10-06).
   # GitHub's own dynamic workflows (Copilot, Dependabot, CodeQL) never run a
   # push or schedule event, so they are not listed.
-  workflows="$(gh workflow list --limit 200 --json id,path \
+  workflows="$(gh_retry gh workflow list --limit 200 --json id,path \
       --jq '.[] | select(.path | startswith(".github/")) | .id' 2>/dev/null)" \
     || unusable "could not list workflows"
   runs="$(for wf in $workflows; do
-      gh run list --workflow "$wf" --limit "$LIMIT" \
+      gh_retry gh run list --workflow "$wf" --limit "$LIMIT" \
         --json name,conclusion,status,event,headBranch,headSha,createdAt,url 2>/dev/null || exit 1
     done | jq -s 'add // []')" \
     || unusable "could not list workflow runs"
