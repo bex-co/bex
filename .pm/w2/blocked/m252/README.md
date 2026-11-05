@@ -64,3 +64,23 @@ All implementation is done (t001–t005 and t007–t009 done; t006 (live walk) b
   3. 用 `scripts/dev-env.sh 2 up` 起 dev-2，执行本里程碑剩余的 dev-2 验收。
 - **验收：** `clusterapi-validate.sh` 通过；dev-2 起来；本里程碑的 dev-2 证据写入对应任务。
 - **仍待决定（生产部分）：** DoD 要求在生产上验证，而这需要付费资源（付费 cron 的失败运行，以及一个 worker 能读到告警邮件的收件箱），用户这次没有批准（选了 A 而不是 C）。worker 完成 dev-2 部分后，如果仍缺生产条件，就重新 blocked 并把这个问题交回用户：是否接受 dev-2 证据加 envtest 作为验收，或者批准付费金丝雀。
+
+## dev-2 walk — 2026-11-05 (`/loopx w2`)
+
+Local CAPD mock (reprovisioned with the D1 rule), `bex-operator:dev` from main, dev-2 bex-api, dev-only identity `m252-walk@bex.test`. Email evidence from Mailpit; facts from bex-db.
+
+| DoD point | Result |
+| --- | --- |
+| Unhealthy service emails | **Proven**: `server_failed` 12:09:50Z → "Service unavailable: m252-flapper" 12:10:12Z |
+| Failed image pull emails | **Proven**: `image_pull_failed` 12:19:04Z → "Image pull failed: m252-pull2" 12:20:02Z |
+| Failed Blueprint sync emails | **Proven**: sync `bsr-dbm76p9jg4r9e0s3ojm0` error 12:15:33Z → "Blueprint sync failed: m252-bp" 12:25:37Z, with the error text and an `/blueprints/exs-…` link. The ~10 min gap is the designed `alertEmailBlueprintLag`. |
+| Failed cron run emails | Not walked on dev-2: cron deploys failed on a missing `bex-tenant-operator` ClusterRole. Fixed in `dev-env.sh up` (`33ad3ad5f`). |
+| 20× flap → one digest, nothing dropped | **Proven with real pods**: 20 `server_failed` + 20 `server_available` facts from 12:09:50Z to 12:38:34Z produced two emails. The first came at 12:10:12Z; then "Service unavailable: m252-flapper (19 times)" at 13:10:12Z listed all 19 later timestamps. |
+| `none` suppresses / `failure` sends | **Failed on that build**: the policy was looked up by CR name. Already fixed on main (`c2f9a3c38`, `27099feda`). `8a7ccafd9` adds migration 0195, which carries open digests across the rekey, plus realistic-id tests. Re-check on production. |
+| Recovery not emailed | **Proven**: more than 20 `server_available` facts, zero recovery emails. |
+
+A missing tag (`busybox:no-such-tag`) never reaches `image_pull_failed`. The operator's image-metadata pre-check fails the deploy first, so the member gets "Deploy failed".
+
+## Blocked (2026-11-05)
+
+Every implementable task is done and dev-2 evidence is above. t006's production half needs paid resources (a paid cron's failing run) and a member inbox the worker can read, which D1=A did not approve. **User decision:** accept dev-2 + unit/envtest evidence as acceptance (then t006 and t010 close), or approve a paid production canary. Run `/unblock w2`.

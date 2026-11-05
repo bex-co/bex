@@ -65,3 +65,21 @@ All implementation is done (t001–t004 and t006–t008 done; t005 (dev-2 walk w
   2. 用 `scripts/mock-cluster.sh` 重建本地集群，确认节点上 containerd 为 `active`、拦截表已加载。
   3. 用 `scripts/dev-env.sh 2 up` 起 dev-2，执行本里程碑剩余的 dev-2 验收。
 - **验收：** `clusterapi-validate.sh` 通过；dev-2 起来；本里程碑的 dev-2 证据写入对应任务。
+
+## dev-2 walk — 2026-11-05 (`/loopx w2`)
+
+dev-2 ran with `BEX_CRASHLOOP_SUSPEND_AFTER=5m`, since restored to the default.
+
+- **Suspension surfaces, proven:** `m253-crash` was suspended at 12:44:33Z. REST, GraphQL and MCP all show `suspended` + `["stuck_crashlooping"]`, and a `service_suspended` event was recorded.
+- **Email, proven:** "Service suspended: m253-crash … over 5m0s" with a correct `/services/srv-…/events` link.
+- **Exclusions:** a user-suspended service keeps only `["user"]`.
+- **Resume:** clears the suspender (`suspender_removed`).
+- **Findings, fixed in `fd5a3fd2d`:**
+  - **(A)** A first release that never served, already parked at 0 replicas, was suspended and re-suspended with no restarts.
+  - **(B)** A once-healthy service that later crash-loops reports `Deploying` and was never sighted. That is the main real-world case.
+- **Rule now:** the status must show a served or settled release with no rollout in progress, and the pods must show no Ready instance with app containers restarting (ADR096 § Rule).
+- **Not shown on dev-2:** "starts again after resume". The test service never served (finding A), so the operator kept it at 0.
+
+## Blocked (2026-11-05)
+
+Implementable tasks are done. What remains is production-only: real 24 h timing and push delivery. These need a paid canary under the D1 note. **User decision:** accept dev-2 + envtest (then t005 and t009 close), or approve a production canary. Run `/unblock w2`.

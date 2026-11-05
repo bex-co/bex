@@ -62,3 +62,17 @@ All implementation is done (t001–t003 and t005–t007 done; t004 (disk-fill wa
   3. 用 `scripts/dev-env.sh 2 up` 起 dev-2，执行本里程碑剩余的 dev-2 验收。
 - **验收：** `clusterapi-validate.sh` 通过；dev-2 起来；本里程碑的 dev-2 证据写入对应任务。
 - **仍待决定（生产部分）：** DoD 要求在生产上验证，而这需要付费资源（带磁盘的付费服务），用户这次没有批准（选了 A 而不是 C）。worker 完成 dev-2 部分后，如果仍缺生产条件，就重新 blocked 并把这个问题交回用户：是否接受 dev-2 证据加 envtest 作为验收，或者批准付费金丝雀。
+
+## dev-2 walk — 2026-11-05 (`/loopx w2`): blocked locally
+
+The disk service could not provision on a fresh mock: the `bex-tenant-operator` ClusterRole was missing, which is now fixed in `dev-env.sh up` (`33ad3ad5f`). Even with that fixed, dev-2 runs no Prometheus and has no `BEX_PROM_URL`, so the disk-usage sweeper never starts. It is also unverified whether local-path volumes publish `kubelet_volume_stats_used_bytes`. So no DoD point can be shown on dev-2.
+
+## Blocked (2026-11-05)
+
+The production walk needs a paid disk-bearing canary, which D1=A did not approve, and dev-2 cannot exercise the sweeper. **User decision:**
+
+- approve a paid production canary (a Starter service with a 1 GB disk, filled past 80% and then freed, then deleted), or
+- approve adding Prometheus with `BEX_PROM_URL` to dev-env so the sweeper runs locally, or
+- accept the unit/envtest coverage.
+
+Run `/unblock w2`.
