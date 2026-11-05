@@ -392,10 +392,14 @@ jobs:
       # and a blocking CRITICAL-only gate (exit-code 1 if any CRITICAL is found).
       # `ignore-unfixed: true` suppresses findings where no fix is yet available
       # (noise without an actionable path — revisit when vendor ships a patch).
+      # skip-setup-trivy: reuse the binary setup-trivy installed above. Without
+      # it every scan re-downloaded Trivy from GitHub (~1 min each), and one
+      # TLS reset there failed a fully built run (41966431280, curl exit 35).
       - uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
         name: CVE scan — operator image HIGH+CRITICAL (report)
         with:
           cache: false
+          skip-setup-trivy: true
           image-ref: '${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}'
           format: table
           exit-code: '0'
@@ -406,6 +410,7 @@ jobs:
         name: CVE scan — operator image CRITICAL (gate)
         with:
           cache: false
+          skip-setup-trivy: true
           image-ref: '${{ env.IMAGE }}@${{ steps.build_operator.outputs.digest }}'
           format: table
           exit-code: '1'
@@ -416,6 +421,7 @@ jobs:
         name: CVE scan — dashboard image HIGH+CRITICAL (report)
         with:
           cache: false
+          skip-setup-trivy: true
           image-ref: '${{ env.DASHBOARD_IMAGE }}@${{ steps.build_dashboard.outputs.digest }}'
           format: table
           exit-code: '0'
@@ -426,6 +432,7 @@ jobs:
         name: CVE scan — dashboard image CRITICAL (gate)
         with:
           cache: false
+          skip-setup-trivy: true
           image-ref: '${{ env.DASHBOARD_IMAGE }}@${{ steps.build_dashboard.outputs.digest }}'
           format: table
           exit-code: '1'
@@ -436,6 +443,7 @@ jobs:
         name: CVE scan — OpenSandbox server HIGH+CRITICAL (report)
         with:
           cache: false
+          skip-setup-trivy: true
           image-ref: '${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}'
           format: table
           exit-code: '0'
@@ -446,6 +454,7 @@ jobs:
         name: CVE scan — OpenSandbox server CRITICAL (gate)
         with:
           cache: false
+          skip-setup-trivy: true
           image-ref: '${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}'
           format: table
           exit-code: '1'
@@ -456,6 +465,7 @@ jobs:
         name: CVE scan — OpenSandbox controller HIGH+CRITICAL (report)
         with:
           cache: false
+          skip-setup-trivy: true
           image-ref: '${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}'
           format: table
           exit-code: '0'
@@ -466,6 +476,7 @@ jobs:
         name: CVE scan — OpenSandbox controller CRITICAL (gate)
         with:
           cache: false
+          skip-setup-trivy: true
           image-ref: '${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}'
           format: table
           exit-code: '1'
@@ -476,6 +487,7 @@ jobs:
         name: CVE scan — agent sandbox image HIGH+CRITICAL (report)
         with:
           cache: false
+          skip-setup-trivy: true
           image-ref: '${{ env.AGENT_SANDBOX_IMAGE }}@${{ steps.build_agent_sandbox.outputs.digest }}'
           format: table
           exit-code: '0'
@@ -486,6 +498,7 @@ jobs:
         name: CVE scan — agent sandbox image CRITICAL (gate)
         with:
           cache: false
+          skip-setup-trivy: true
           image-ref: '${{ env.AGENT_SANDBOX_IMAGE }}@${{ steps.build_agent_sandbox.outputs.digest }}'
           format: table
           exit-code: '1'
