@@ -27,7 +27,13 @@ RUN cd backend  && n=0; until go mod download; do n=$((n+1)); [ "$n" -ge 3 ] && 
 COPY operator/ ./operator/
 COPY backend/  ./backend/
 
-# Build. GOARCH left unset so the binary matches the build host / BUILDPLATFORM.
+# The CI runner caps CPU (4) and PIDs (512) but exposes every host CPU, and Go
+# sizes both build parallelism (-p) and per-process threads from that count;
+# uncapped, `go build` exhausted the PID cap ("failed to create new OS thread",
+# run 41987595478). Go's cgroup-aware default cannot see the runner's limit
+# from inside a BuildKit step.
+ENV GOMAXPROCS=4
+# Build for TARGETARCH (amd64 in deploy.yml).
 # Each module builds in its own dir; the `replace …/lego/types => ../types` in
 # each go.mod resolves the shared contract without a workspace file.
 RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/manager ./cmd/manager
