@@ -160,6 +160,16 @@ jobs:
       #     "Allowlisted response-schema divergences" table.
       #  4. A full run fails any allowlist entry no response reproduces any
       #     more (bex now conforms there): remove it and lower allowlistSize.
+      # Fill the module cache first, with retries: a single proxy.golang.org
+      # fetch failure otherwise fails the suite (operator run 42069264215).
+      - name: download Go modules (with retries)
+        working-directory: lego/backend
+        run: |
+          for i in 1 2 3; do
+            go mod download && break
+            [ "$i" -lt 3 ] || exit 1
+            echo "go mod download attempt $i failed, retrying in $((i * 15))s..."; sleep $((i * 15))
+          done
       - name: go test ./... (backend)
         working-directory: lego/backend
         env:

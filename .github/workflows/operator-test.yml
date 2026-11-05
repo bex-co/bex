@@ -59,6 +59,17 @@ jobs:
               echo "pull $image attempt $i failed, retrying in $((i * 20))s..."; sleep $((i * 20))
             done
           done
+      # One proxy.golang.org fetch failure inside `make vet` failed a deploy's
+      # test stage (run 42069264215, gomega). Fill the module cache first, with
+      # retries, so make test reads it.
+      - name: download Go modules (with retries)
+        working-directory: lego/operator
+        run: |
+          for i in 1 2 3; do
+            go mod download && break
+            [ "$i" -lt 3 ] || exit 1
+            echo "go mod download attempt $i failed, retrying in $((i * 15))s..."; sleep $((i * 15))
+          done
       - name: make test (operator + envtest)
         working-directory: lego/operator
         run: make test
