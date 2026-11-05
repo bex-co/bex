@@ -13,6 +13,16 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 
 `up` prints the dashboard command to point at it once bex-api is running. One shared implementation serves every workstream since `w1/m72`; `.pm/w5/dev-5/` keeps only `ports.env` (a generated record of the derivation), this README, and `.gitignore`.
 
+## Approved queue — 2026-11-05 (brainstorm round 6)
+
+User decision 2026-11-05: all five items of the sixth `/pm-brainstorm w5` proposal, in priority order, followed by `/loopx w5`. Render parity is included for m265–m268. The m266 interim refusal for 20g/40g is **not** signed; m266 t006 records the outcome.
+
+- [ ] **m265** — [Postgres credential rotation: a new user becomes the default, as on Render](m265/README.md) (10 tasks; 8h20m total) ← round 6 item 1; ADR018 unsigned `—` omission row
+- [ ] **m266** — [Key Value Pro, Pro Plus and size-named plans create, as on Render](m266/README.md) (10 tasks; 7h30m total) ← round 6 item 2; valkey tiers stop at standard
+- [ ] **m267** — [Render's workspace member mutations: PATCH and DELETE /owners/{ownerId}/members/{userId}](m267/README.md) (8 tasks; 4h45m total) ← round 6 item 3; ADR018 unsigned `—` omission row
+- [ ] **m268** — [Key Value "Enable Internal Authentication", as on Render](m268/README.md) (9 tasks; 6h45m total) ← round 6 item 4; w8/204 follow-up
+- [ ] **178** — [`BUN_VERSION=canary` builds, as on Render](178.md) (~1h, may promote) ← round 6 item 5; Render changelog 2026-10-16
+
 ## Approved queue — 2026-10-20 (brainstorm round 5, parity-first)
 
 User decision 2026-10-20: all five items of the fifth `/pm-brainstorm for w5` proposal, in priority order, followed by `/loopx w5`. They follow `2163b27c7` (Render parity is the top principle; a divergence stands only with ADR018-recorded user sign-off). Render parity is included for m149–m152 and omitted for m148 (runtime/build environment only). w5/169 is promoted into m150.
