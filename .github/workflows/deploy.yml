@@ -323,6 +323,10 @@ jobs:
         timeout-minutes: 15
         run: python3 scripts/install-syft.py
       - name: sign images + attest SBOM
+        # Five images × (sign + SBOM + attest) finish in minutes; without a
+        # bound one stalled sigstore/registry call held the production deploy
+        # group for the 6 h job default (run 41942865946, 2026-11-05).
+        timeout-minutes: 30
         env:
           # One content-addressed ref per line. The loop signs each image keyless
           # and records an SPDX SBOM as an in-toto attestation (cosign attest —
@@ -343,7 +347,8 @@ jobs:
           retry() {
             local attempt
             for attempt in 1 2 3; do
-              "$@" && return 0
+              # A hung call is a failed attempt, not a wait for the job timeout.
+              timeout 300 "$@" && return 0
               echo "::warning::attempt $attempt failed: $*"
               [ "$attempt" -lt 3 ] && sleep $((attempt * 15))
             done
@@ -351,7 +356,7 @@ jobs:
           }
           for ref in $REFS; do
             retry cosign sign --yes --oidc-provider=github-actions "$ref"
-            syft "$ref" -o spdx-json > /tmp/sbom.spdx.json
+            retry syft "$ref" -o spdx-json=/tmp/sbom.spdx.json
             retry cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate /tmp/sbom.spdx.json "$ref"
           done
 
