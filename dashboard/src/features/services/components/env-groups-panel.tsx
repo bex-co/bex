@@ -547,6 +547,7 @@ function EnvGroupItem({
                     title={reason}
                   >
                     <s>{key}</s>
+                    <span className="sr-only"> ({reason})</span>
                   </Badge>
                 ) : (
                   <Badge
@@ -568,6 +569,7 @@ function EnvGroupItem({
                     title={reason}
                   >
                     <s>{name}</s>
+                    <span className="sr-only"> ({reason})</span>
                   </Badge>
                 ) : (
                   <Badge

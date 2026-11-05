@@ -460,6 +460,20 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
     ).toHaveLength(2);
     // The winner is not marked.
     expect(strikeText).toHaveLength(2);
+    // w4/480: the strikethrough and the hover title are visual only, so the
+    // reason is also text a screen reader reads next to the key.
+    for (const node of Array.from(struck)) {
+      expect(node.parentElement?.textContent).toContain(
+        "(Overridden by alpha, which is linked later)",
+      );
+    }
+    for (const badge of Array.from(
+      document.querySelectorAll('[data-slot="badge"]'),
+    )) {
+      if (!badge.querySelector("s")) {
+        expect(badge.textContent).not.toMatch(/Overridden/);
+      }
+    }
   });
 
   it("claims no precedence when the API does not report link order", () => {
@@ -555,9 +569,7 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
         { id: "evm-prod", name: "Production" },
         { id: "evm-staging", name: "Staging" },
       ];
-      scopeState.byId = new Map(
-        scopeState.environments.map((e) => [e.id, e]),
-      );
+      scopeState.byId = new Map(scopeState.environments.map((e) => [e.id, e]));
       scopeState.serviceEnvironmentById = new Map([["web", "evm-staging"]]);
       mockServiceEnvironmentId = "evm-staging";
       mockUseEnvGroups.mockReturnValue(
@@ -589,9 +601,7 @@ describe("EnvGroupsPanel group-vs-group precedence", () => {
     it("shows no out-of-scope notice while the scope read is pending (w4/m238)", async () => {
       scopeState.ready = false;
       scopeState.environments = [{ id: "evm-prod", name: "Production" }];
-      scopeState.byId = new Map(
-        scopeState.environments.map((e) => [e.id, e]),
-      );
+      scopeState.byId = new Map(scopeState.environments.map((e) => [e.id, e]));
       mockServiceEnvironmentId = "evm-staging";
       mockUseEnvGroups.mockReturnValue(
         groupsResult([
