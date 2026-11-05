@@ -98,12 +98,12 @@ describe("static-site rule validation", () => {
     expect(headerErrors({ path: "/*", name: "Bad Name", value: "x" })).toEqual({
       name: "services.staticRuleHeaderNameInvalid",
     });
-    expect(
-      headerErrors({ path: "/*", name: "X-Test", value: "a\nb" }),
-    ).toEqual({ value: "services.staticRuleHeaderValueInvalid" });
-    expect(
-      headerErrors({ path: "/*", name: "X-Test", value: "a\tb" }),
-    ).toEqual({});
+    expect(headerErrors({ path: "/*", name: "X-Test", value: "a\nb" })).toEqual(
+      { value: "services.staticRuleHeaderValueInvalid" },
+    );
+    expect(headerErrors({ path: "/*", name: "X-Test", value: "a\tb" })).toEqual(
+      {},
+    );
   });
 
   it("marks Set-Cookie with a Domain, and accepts one without", () => {
@@ -145,6 +145,14 @@ describe("static-site rule validation", () => {
     ).toBe("Row 2: destination must be a path starting with /");
     expect(humanizeRuleError("headers[0].name is required", row)).toBe(
       "Row 1: name is required",
+    );
+    expect(
+      humanizeRuleError(
+        "Routes[5].destination references :nobody, which the rule's source does not declare",
+        row,
+      ),
+    ).toBe(
+      "Row 6: destination references :nobody, which the rule's source does not declare",
     );
     expect(humanizeRuleError("Could not save routes. Try again.", row)).toBe(
       "Could not save routes. Try again.",

@@ -19,6 +19,7 @@ package apps
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
@@ -27,6 +28,8 @@ import (
 	"testing"
 
 	"github.com/graphql-go/graphql"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 func TestStaticRouteDestinationPersistenceAcrossAdapters(t *testing.T) {
@@ -147,4 +150,25 @@ func unwrapRESTRules(t *testing.T, method string, got any, key string) any {
 		out[i] = rule
 	}
 	return out
+}
+
+// w4/479: the undeclared-:name refusal names the rule once. A second wire index
+// in the same message made the dashboard toast call one rule both "Row 6" and
+// "routes[5]".
+func TestUndeclaredPlaceholderRefusalNamesTheRuleOnce(t *testing.T) {
+	routes := make([]StaticRouteView, 6)
+	for i := range routes {
+		routes[i] = StaticRouteView{Type: "redirect", Source: fmt.Sprintf("/r%d", i), Destination: "/x"}
+	}
+	routes[5] = StaticRouteView{Type: "redirect", Source: "/u/:user", Destination: "/people/:nobody"}
+	err := validateRoutes(routes)
+	if !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("err = %v, want a bad request", err)
+	}
+	if got := strings.Count(err.Error(), "routes["); got != 1 {
+		t.Fatalf("message %q names a wire index %d times, want once", err, got)
+	}
+	if !strings.Contains(err.Error(), "routes[5].destination references :nobody, which the rule's source does not declare") {
+		t.Fatalf("message = %q", err)
+	}
 }

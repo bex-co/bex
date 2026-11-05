@@ -5570,7 +5570,7 @@ func validateRoutePlaceholders(i int, source, dest string) error {
 		}
 		name := path[j+1 : k]
 		if _, ok := routePlaceholderName(":" + name); ok && name != "splat" && !declared[name] {
-			return fmt.Errorf("%w: routes[%d].destination references :%s, which routes[%d].source does not declare", core.ErrBadRequest, i, name, i)
+			return fmt.Errorf("%w: routes[%d].destination references :%s, which the rule's source does not declare", core.ErrBadRequest, i, name)
 		}
 		if k == j {
 			j++
