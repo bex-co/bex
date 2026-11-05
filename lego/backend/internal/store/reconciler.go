@@ -1133,7 +1133,8 @@ func recordedPreDeployFailure(app *appv1alpha1.App, generation int64) string {
 func (r *Reconciler) recordLifecycleFacts(ctx context.Context, d DesiredApp, open Deploy, cur *appv1alpha1.App, newStatus string) {
 	var facts []ServiceEventFact
 	if d.Repo != "" {
-		facts = append(facts, buildLifecycleFacts(open, newStatus, buildRunStart(cur, open))...)
+		build := buildLifecycleFacts(open, newStatus, buildRunStart(cur, open))
+		facts = append(facts, withholdBuildEndedWhilePublishing(build, d.Type == appv1alpha1.TypeStaticSite, open, newStatus)...)
 	}
 	facts = append(facts, preDeployLifecycleFacts(open, cur)...)
 	for _, fact := range facts {
@@ -1186,6 +1187,31 @@ func buildLifecycleFacts(open Deploy, newStatus string, observedStart *time.Time
 		})
 	}
 	return facts
+}
+
+// withholdBuildEndedWhilePublishing keeps a static site's build_ended back while
+// its deploy is in update_in_progress. A static site's publish step (staging the
+// publish directory and uploading it) runs in that window and is part of the
+// build as Render counts it: a missing publish directory fails the build
+// (w4/493). build_ended's source key is fixed, so emitting it `succeeded` on
+// entering the window could never be corrected to `failed`; it is emitted once
+// the publish outcome is known (live, update_failed, build_failed, canceled)
+// (w4/505).
+func withholdBuildEndedWhilePublishing(facts []ServiceEventFact, staticSite bool, open Deploy, newStatus string) []ServiceEventFact {
+	eff := newStatus
+	if eff == "" {
+		eff = open.Status
+	}
+	if !staticSite || eff != DeployUpdateInProgress {
+		return facts
+	}
+	kept := make([]ServiceEventFact, 0, len(facts))
+	for _, fact := range facts {
+		if fact.Type != EventFactBuildEnded {
+			kept = append(kept, fact)
+		}
+	}
+	return kept
 }
 
 // CanceledBuildLifecycleFacts derives the build_started/build_ended pair (if

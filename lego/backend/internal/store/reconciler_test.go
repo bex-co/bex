@@ -3133,3 +3133,46 @@ func TestFailedReplacementDoesNotEmitOutage(t *testing.T) {
 		t.Fatalf("missing failure: %+v", facts)
 	}
 }
+
+// w4/505: a static site's build_ended waits for the publish outcome, so a
+// missing publish directory (build_failed after update_in_progress) reads
+// `failed`, while every other service keeps its earlier `succeeded`.
+func TestStaticSiteBuildEndedWaitsForThePublish(t *testing.T) {
+	started := time.Date(2026, 7, 31, 10, 0, 5, 0, time.UTC)
+	open := Deploy{ID: "dep-1", AppID: "srv-1", Status: DeployBuildInProgress, CreatedAt: time.Date(2026, 7, 31, 10, 0, 0, 0, time.UTC), StartedAt: &started}
+	endedOf := func(facts []ServiceEventFact) []string {
+		var out []string
+		for _, f := range facts {
+			if f.Type == EventFactBuildEnded {
+				out = append(out, f.Status)
+			}
+		}
+		return out
+	}
+	facts := func(static bool, current, next string) []string {
+		o := open
+		o.Status = current
+		return endedOf(withholdBuildEndedWhilePublishing(buildLifecycleFacts(o, next, nil), static, o, next))
+	}
+	// Entering and staying in the publish window: nothing yet for a static site.
+	if got := facts(true, DeployBuildInProgress, DeployUpdateInProgress); len(got) != 0 {
+		t.Errorf("static, entering update = %v, want no build_ended", got)
+	}
+	if got := facts(true, DeployUpdateInProgress, ""); len(got) != 0 {
+		t.Errorf("static, still publishing = %v, want no build_ended", got)
+	}
+	// The publish outcome decides it.
+	for next, want := range map[string]string{
+		DeployLive:         EventStatusSucceeded,
+		DeployUpdateFailed: EventStatusSucceeded,
+		DeployBuildFailed:  EventStatusFailed,
+	} {
+		if got := facts(true, DeployUpdateInProgress, next); len(got) != 1 || got[0] != want {
+			t.Errorf("static, update_in_progress -> %s = %v, want [%s]", next, got, want)
+		}
+	}
+	// Every other service type keeps the earlier answer.
+	if got := facts(false, DeployBuildInProgress, DeployUpdateInProgress); len(got) != 1 || got[0] != EventStatusSucceeded {
+		t.Errorf("non-static, entering update = %v, want [succeeded]", got)
+	}
+}
