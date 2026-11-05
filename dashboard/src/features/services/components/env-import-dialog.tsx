@@ -160,7 +160,7 @@ function EnvImportForm({
       ) : null}
       <input
         ref={inputRef}
-        className="sr-only"
+        hidden
         type="file"
         accept=".env,text/plain"
         onChange={(event) => {

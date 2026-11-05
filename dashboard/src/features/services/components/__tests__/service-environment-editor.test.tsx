@@ -587,6 +587,8 @@ describe("ServiceEnvironmentEditor", () => {
       'input[type="file"][multiple]',
     );
     expect(upload).not.toBeNull();
+    // w4/497: the native input is not a second focusable control.
+    expect(upload).not.toBeVisible();
     const certificate = new File(["certificate"], "cert.pem", {
       type: "text/plain",
     });

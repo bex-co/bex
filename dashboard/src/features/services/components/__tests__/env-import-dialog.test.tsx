@@ -17,6 +17,18 @@ function paste(text: string) {
 // w4/159: the import accepts a literal multi-line quoted value (a PEM key),
 // and a refusal names what is wrong instead of "not a valid assignment".
 describe("EnvImportDialog", () => {
+  // w4/497: the real file input is not a second, focusable "Choose File"
+  // control beside the visible button.
+  it("hides the native file input from the tab order and the accessibility tree", () => {
+    render(<EnvImportDialog open onOpenChange={vi.fn()} onImport={vi.fn()} />);
+    const input =
+      document.querySelector<HTMLInputElement>('input[type="file"]')!;
+    expect(input).not.toBeVisible();
+    expect(
+      screen.getAllByRole("button", { name: /choose a file/i }),
+    ).toHaveLength(1);
+  });
+
   it("imports a PEM block pasted as a multi-line quoted value", async () => {
     const onImport = vi.fn();
     render(<EnvImportDialog open onOpenChange={vi.fn()} onImport={onImport} />);

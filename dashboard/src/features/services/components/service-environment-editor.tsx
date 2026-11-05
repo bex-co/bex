@@ -895,7 +895,7 @@ export function EnvironmentEditor({
               </PermissionTooltip>
               <input
                 ref={fileInput}
-                className="sr-only"
+                hidden
                 type="file"
                 multiple
                 disabled={createDenied}
