@@ -27,6 +27,7 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/sshgateway"
@@ -52,6 +53,12 @@ type fakeStore struct {
 	session store.AgentSession
 	mu      sync.Mutex
 	calls   int
+}
+
+// AgentSpendInputs is a Pro workspace with no spend and no BYO key flag: the
+// platform-route mint's required store read.
+func (f *fakeStore) AgentSpendInputs(context.Context, string, time.Time) (store.AgentSpendInputs, error) {
+	return store.AgentSpendInputs{Plan: store.PlanPro}, nil
 }
 
 func (f *fakeStore) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {
@@ -128,6 +135,7 @@ func harness(t *testing.T, pods fakePods, sess store.AgentSession, key string) (
 	minter := &agentsession.ModelMinter{
 		Keys:     fakeKV{data: map[string]map[string]string{agentsession.ModelKeySecretPath("tea-a"): {agentsession.ModelKeyField: key}}},
 		Sessions: st,
+		Spend:    st,
 	}
 	api := httptest.NewServer(&agentsession.ModelHandler{Secret: secret, Minter: minter})
 	t.Cleanup(api.Close)

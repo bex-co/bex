@@ -353,7 +353,8 @@ export const zh = {
       noRepos: "没有已连接的代码仓库。",
       setupTitle: "请在桌面端完成设置",
       needGithub: "请在桌面端连接 GitHub 以便创建拉取请求。",
-      needModelKey: "请在桌面端添加智能体模型密钥以运行会话。",
+      needModelKey:
+        "需要工作区管理员在网页版控制台的工作区“设置 → 智能体”中添加模型提供方密钥，才能运行会话。",
       needDesktop: "智能体会话需要在桌面端配置。",
       connectGithub: "连接 GitHub",
     },

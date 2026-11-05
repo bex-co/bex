@@ -245,8 +245,14 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.modelKeyMissingBody": {
     message:
-      "此工作区需要模型提供方密钥才能启动智能体会话。请在工作区设置中添加后返回此处。",
-    description: "Composer pre-flight body when the workspace has no model key",
+      "此工作区还没有可用的模型。工作区管理员可以在“设置 → 智能体”中添加工作区自己的模型提供方密钥，然后返回此处。",
+    description:
+      "Composer pre-flight body when the workspace has neither its own model key nor the bex-provided model (ADR091 D7)",
+  },
+  "agentSessions.modelKeyMissingAction": {
+    message: "打开“设置 → 智能体”",
+    description:
+      "Composer pre-flight link to the Settings → Agents model key field (/workspace/settings#agents)",
   },
   "agentSessions.createErrorTitle": {
     message: "无法开始会话",

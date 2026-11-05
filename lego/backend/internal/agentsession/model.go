@@ -68,22 +68,27 @@ const (
 // workspaceID and rejects caller-supplied endpoint overrides. It is shared by
 // create/steer and the credential minter, so legacy rows cannot bypass the
 // registration boundary after a new-create check is deployed. The result is
-// decided by the workspace's model route NOW, not by the requested (stored)
-// endpoint.
-func RegisteredModelEndpoint(workspaceID, agent, requested string) (string, error) {
+// decided by the workspace's model route NOW (byoKey: the workspace set its
+// own model key, which takes it off the platform route), not by the requested
+// (stored) endpoint.
+func RegisteredModelEndpoint(workspaceID, agent, requested string, byoKey bool) (string, error) {
 	profile, ok := LookupAgentProfile(agent)
 	if !ok {
 		return "", core.NewBadRequestError(
 			"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
 			"agentConfig.agent has no registered model provider", nil)
 	}
-	expected := registeredEndpoint(workspaceID, profile)
+	expected := registeredEndpoint(workspaceID, profile, byoKey)
 	requested = strings.TrimRight(strings.TrimSpace(requested), "/")
 	// The release endpoint stays accepted while a route overrides it, so a
 	// session created before the route covered its workspace keeps steering; it
 	// then resolves to the route's endpoint like every other session. A route
-	// endpoint is accepted only while a route covers the workspace.
-	if requested != "" && requested != expected && requested != profile.ModelEndpoint {
+	// endpoint is accepted only while a route covers the workspace, ignoring
+	// the BYO key, so a session created on the platform route keeps steering
+	// after its workspace sets its own key (it then resolves to the release
+	// endpoint).
+	routeEndpoint := requested == openRouterEndpoint && routeFor(workspaceID, profile.ID, false) != nil
+	if requested != "" && requested != expected && requested != profile.ModelEndpoint && !routeEndpoint {
 		return "", core.NewBadRequestError(
 			"AGENT_SESSION_MODEL_ENDPOINT_INVALID",
 			"agentConfig.modelEndpoint must match the selected agent's registered provider", nil)
@@ -113,7 +118,9 @@ func IsModelKeyPlaceholder(value, sessionID string) bool {
 // model key is stored at (ADR047 D7). workspaceID (tea-<xid>) is opaque and
 // unguessable, so folding it into the path achieves per-workspace isolation
 // without the store's tenant-context mechanism (the agentsessions feature and
-// the ModelMinter both read through this one definition).
+// the ModelMinter both read through this one definition). Workspace admins
+// write and clear it through the agent environment's write-only modelApiKey
+// (ADR091 D7); nothing ever reads it back to a client.
 func ModelKeySecretPath(workspaceID string) string {
 	return "agent-sessions/" + workspaceID + "/model-key"
 }
@@ -285,9 +292,10 @@ type ModelMinter struct {
 	Sessions SessionStore
 	Audit    core.AuditSink
 	Now      func() time.Time
-	// Spend, when wired, enforces the platform route's monthly spend cap at
-	// mint time (ADR091 D5) from Sheet (nil ⇒ pricing.Default), through a
-	// short per-workspace cache.
+	// Spend is required for a workspace the platform route covers: it reads
+	// the monthly spend cap (ADR091 D5, from Sheet; nil ⇒ pricing.Default)
+	// and the BYO key flag (D7) through a short per-workspace cache. Nil
+	// fails those mints closed.
 	Spend SpendStore
 	Sheet *pricing.Sheet
 	spend spendCache
@@ -329,7 +337,21 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	if !CurrentSandboxCaller(session, req.Workspace, req.PodName, req.PodUID) {
 		return ModelMintResponse{}, ErrForbidden
 	}
-	agent, host, err := modelEndpointHostOf(req.Workspace, session.AgentConfig)
+	agent, stored, err := decodeModelConfig(session.AgentConfig)
+	if err != nil {
+		return ModelMintResponse{}, err
+	}
+	// A workspace's own key wins over the platform route. Only a
+	// workspace the platform route covers needs the flag, read with its spend
+	// position in one cached store read; every other workspace reads its BYO
+	// key below regardless.
+	var status SpendStatus
+	if platformRouteCovers(req.Workspace, agent) {
+		if status, err = m.platformStatus(ctx, req.Workspace); err != nil {
+			return ModelMintResponse{}, err
+		}
+	}
+	host, err := modelEndpointHost(req.Workspace, agent, stored, status.ModelKeySet)
 	if err != nil {
 		return ModelMintResponse{}, err
 	}
@@ -339,12 +361,13 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 		pathPrefix = openRouterPathPrefix
 	}
 	// The platform route (ADR090) injects its own key for an allowlisted
-	// workspace: the workspace's BYO key is not read, and the model is pinned.
-	// The route is resolved for the workspace now, the same decision
-	// modelEndpointHostOf just made, so the host is OpenRouter here.
-	if route := routeFor(req.Workspace, agent); route != nil && route.platformKey != "" && host == OpenRouterHost {
-		if err := m.checkSpendCap(ctx, req.Workspace); err != nil {
-			return ModelMintResponse{}, err
+	// workspace without its own key: the workspace's BYO key is not read, and
+	// the model is pinned (which also meters and spend-caps the exchange). The
+	// route is resolved for the workspace now, the same decision
+	// modelEndpointHost just made, so the host is OpenRouter here.
+	if route := routeFor(req.Workspace, agent, status.ModelKeySet); route != nil && route.platformKey != "" && host == OpenRouterHost {
+		if status.Reached() {
+			return ModelMintResponse{}, ErrModelSpendCapReached
 		}
 		return ModelMintResponse{
 			Credential: route.platformKey, EndpointHost: host, Scheme: AuthSchemeBearer,
@@ -482,13 +505,9 @@ func (f *ModelAuthFailer) now() time.Time {
 	return time.Now().UTC()
 }
 
-// modelEndpointHostOf extracts the agent and re-validates the vendor host for
-// a session's stored AgentConfig in workspaceID. The host comes from the
-// workspace's current route (RegisteredModelEndpoint), the stored endpoint only
-// has to be one the profile accepts; ModelEndpointHost re-applies the SSRF
-// guards (no IP literals, no private/cluster-local names) as defense in depth
-// at credential-release time.
-func modelEndpointHostOf(workspaceID string, config json.RawMessage) (agent, host string, err error) {
+// decodeModelConfig extracts the agent and stored endpoint from a session's
+// AgentConfig.
+func decodeModelConfig(config json.RawMessage) (agent, endpoint string, err error) {
 	var decoded struct {
 		Agent         string `json:"agent"`
 		ModelEndpoint string `json:"modelEndpoint"`
@@ -498,15 +517,21 @@ func modelEndpointHostOf(workspaceID string, config json.RawMessage) (agent, hos
 			return "", "", fmt.Errorf("%w: decode agent config", ErrInvalidRequest)
 		}
 	}
-	endpoint, err := RegisteredModelEndpoint(workspaceID, decoded.Agent, decoded.ModelEndpoint)
+	return decoded.Agent, decoded.ModelEndpoint, nil
+}
+
+// modelEndpointHost re-validates the vendor host for a session's agent and
+// stored endpoint in workspaceID. The host comes from the workspace's current
+// route (RegisteredModelEndpoint), the stored endpoint only has to be one the
+// profile accepts; ModelEndpointHost re-applies the SSRF guards (no IP
+// literals, no private/cluster-local names) as defense in depth at
+// credential-release time.
+func modelEndpointHost(workspaceID, agent, stored string, byoKey bool) (string, error) {
+	endpoint, err := RegisteredModelEndpoint(workspaceID, agent, stored, byoKey)
 	if err != nil {
-		return "", "", err
+		return "", err
 	}
-	host, err = sessionegress.ModelEndpointHost(endpoint)
-	if err != nil {
-		return "", "", err
-	}
-	return decoded.Agent, host, nil
+	return sessionegress.ModelEndpointHost(endpoint)
 }
 
 // ResolveAuthScheme picks the injection scheme from the credential shape and the

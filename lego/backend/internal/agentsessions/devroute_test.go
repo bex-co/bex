@@ -57,7 +57,7 @@ func TestCreateUnderDevModelRouteTargetsOpenRouter(t *testing.T) {
 // it reaches a sandbox.
 func TestDriverEnvCarriesNoDevModelRouteByDefault(t *testing.T) {
 	_ = agentsession.EnableDevModelRoute("", "", "")
-	env := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Turns: 1})
+	env := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Turns: 1}, false)
 	for _, name := range []string{"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL"} {
 		if _, ok := env[name]; ok {
 			t.Fatalf("%s set with the dev route off", name)

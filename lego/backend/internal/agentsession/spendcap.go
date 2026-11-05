@@ -87,6 +87,9 @@ type SpendStatus struct {
 	EffectiveCap int64
 	TierLimited  bool
 	MonthToDate  int64
+	// ModelKeySet: the workspace set its own model key, so the platform route
+	// (and this cap) does not apply to it.
+	ModelKeySet bool
 }
 
 // Reached reports whether month-to-date spend is at or over the cap.
@@ -119,6 +122,7 @@ func SpendStatusOf(sheet *pricing.Sheet, in store.AgentSpendInputs, now time.Tim
 		PlanCap:     sheet.AgentModelPlanSpendCapMicroUSD(in.Plan),
 		MaxCap:      sheet.AgentModelMaxCapMicroUSD(in.Plan),
 		MonthToDate: in.MonthToDateMicroUSD,
+		ModelKeySet: in.ModelKeySet,
 	}
 	return status.WithOverride(in.OverrideMicroUSD)
 }
@@ -188,26 +192,39 @@ func (c *spendCache) put(workspaceID string, status SpendStatus, now time.Time) 
 	c.entries[workspaceID] = cachedSpend{status: status, at: now}
 }
 
-// checkSpendCap refuses with ErrModelSpendCapReached once workspaceID's
-// month-to-date agent-model spend reaches its effective cap. Unwired (nil
-// Spend) checks nothing.
-func (m *ModelMinter) checkSpendCap(ctx context.Context, workspaceID string) error {
+// errSpendStoreUnwired fails a platform-route mint closed when the minter has
+// no spend store: without it the mint can neither enforce the cap nor tell
+// whether the workspace set its own key.
+var errSpendStoreUnwired = errors.New("agent model spend store unavailable")
+
+// platformStatus is the mint's one store read for a workspace the platform
+// route covers, through the per-workspace cache: the spend position (ADR091
+// D5) and whether the workspace set its own model key (D7). A workspace admin
+// writing or clearing the key on this replica drops the entry (ForgetSpend);
+// other replicas see the change within spendStatusTTL. Unwired (nil Spend)
+// fails closed.
+func (m *ModelMinter) platformStatus(ctx context.Context, workspaceID string) (SpendStatus, error) {
 	if m.Spend == nil {
-		return nil
+		return SpendStatus{}, errSpendStoreUnwired
 	}
 	now := m.now()
-	status, ok := m.spend.get(workspaceID, now)
-	if !ok {
-		var err error
-		if status, err = ReadSpendStatus(ctx, m.Spend, m.Sheet, workspaceID, now); err != nil {
-			return err
-		}
-		m.spend.put(workspaceID, status, now)
+	if status, ok := m.spend.get(workspaceID, now); ok {
+		return status, nil
 	}
-	if status.Reached() {
-		return ErrModelSpendCapReached
+	status, err := ReadSpendStatus(ctx, m.Spend, m.Sheet, workspaceID, now)
+	if err != nil {
+		return SpendStatus{}, err
 	}
-	return nil
+	m.spend.put(workspaceID, status, now)
+	return status, nil
+}
+
+// ForgetSpend drops workspaceID's cached mint status, so this replica's next
+// mint re-reads it: wired to the agent environment's model key writes.
+func (m *ModelMinter) ForgetSpend(workspaceID string) {
+	m.spend.mu.Lock()
+	defer m.spend.mu.Unlock()
+	delete(m.spend.entries, workspaceID)
 }
 
 // ReportSpendCapReached tells bex-api to fail the session whose platform-route

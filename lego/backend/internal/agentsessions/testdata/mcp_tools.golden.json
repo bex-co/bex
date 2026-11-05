@@ -1230,7 +1230,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, whether the model is pinned by the platform model route, and the agent-model spend controls: the effective monthly spend cap in USD (min of the admin override or plan default and the billing trust tier's ceiling), the plan default, the override, month-to-date spend, the trust tier (T0..T4) and the next charge threshold.",
+    "description": "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, whether the model is pinned by the platform model route, the model source (byo = the workspace's own model provider key, platform = bex-provided and billed at the provider's cost + 30%, none) with modelKeySet (the key itself is never returned), and the agent-model spend controls: the effective monthly spend cap in USD (min of the admin override or plan default and the billing trust tier's ceiling), the plan default, the override, month-to-date spend, the trust tier (T0..T4) and the next charge threshold.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1289,8 +1289,14 @@
             "string"
           ]
         },
+        "modelKeySet": {
+          "type": "boolean"
+        },
         "modelPinned": {
           "type": "boolean"
+        },
+        "modelSource": {
+          "type": "string"
         },
         "networkTier": {
           "type": "string"
@@ -1339,6 +1345,8 @@
         "defaultModel",
         "modelPinned",
         "pinnedModel",
+        "modelKeySet",
+        "modelSource",
         "registryHosts",
         "updatedAt",
         "agentModelMonthlySpendCapUsd",
@@ -3738,7 +3746,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. agentModelMonthlySpendCapUsd sets the monthly agent-model spend cap in USD (more than 0, at most 10x the plan default; null or resetAgentModelMonthlySpendCap: true returns to the plan default). The network tier and hosts apply from each session's next turn; the default model applies to sessions created afterwards; the spend cap applies within 20 seconds.",
+    "description": "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. agentModelMonthlySpendCapUsd sets the monthly agent-model spend cap in USD (more than 0, at most 10x the plan default; null or resetAgentModelMonthlySpendCap: true returns to the plan default). modelApiKey (write-only) sets or rotates the workspace's own model provider key, which then wins over the bex-provided model (no token billing, no spend cap); clearModelApiKey: true removes it. The network tier and hosts apply from each session's next turn; the default model applies to sessions created afterwards; the spend cap applies within 20 seconds.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -3748,6 +3756,10 @@
             "null",
             "number"
           ]
+        },
+        "clearModelApiKey": {
+          "description": "true removes the workspace's own model provider key",
+          "type": "boolean"
         },
         "customHosts": {
           "items": {
@@ -3759,6 +3771,13 @@
           ]
         },
         "defaultModel": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "modelApiKey": {
+          "description": "write-only: sets or rotates the workspace's own model provider key (admins only); it is never returned, and sessions then use it instead of the bex-provided model",
           "type": [
             "null",
             "string"
@@ -3829,8 +3848,14 @@
             "string"
           ]
         },
+        "modelKeySet": {
+          "type": "boolean"
+        },
         "modelPinned": {
           "type": "boolean"
+        },
+        "modelSource": {
+          "type": "string"
         },
         "networkTier": {
           "type": "string"
@@ -3879,6 +3904,8 @@
         "defaultModel",
         "modelPinned",
         "pinnedModel",
+        "modelKeySet",
+        "modelSource",
         "registryHosts",
         "updatedAt",
         "agentModelMonthlySpendCapUsd",

@@ -247,8 +247,14 @@ const enAgentSessions: Record<string, TranslationEntry> = {
   },
   "agentSessions.modelKeyMissingBody": {
     message:
-      "This workspace needs a model provider key before it can start an agent session. Add one in workspace settings, then return here.",
-    description: "Composer pre-flight body when the workspace has no model key",
+      "This workspace has no model access yet. A workspace admin can add the workspace's own model provider key under Settings → Agents, then return here.",
+    description:
+      "Composer pre-flight body when the workspace has neither its own model key nor the bex-provided model (ADR091 D7)",
+  },
+  "agentSessions.modelKeyMissingAction": {
+    message: "Open Settings → Agents",
+    description:
+      "Composer pre-flight link to the Settings → Agents model key field (/workspace/settings#agents)",
   },
   "agentSessions.createErrorTitle": {
     message: "Couldn't start the session",

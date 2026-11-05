@@ -89,12 +89,14 @@ type spendLedger struct {
 	trust    store.BillingTrust
 	override *int64
 	used     int64
+	byo      bool
+	err      error
 	reads    int
 }
 
 func (q *spendLedger) AgentSpendInputs(_ context.Context, ws string, _ time.Time) (store.AgentSpendInputs, error) {
 	q.reads++
-	return store.AgentSpendInputs{Plan: q.plan, Trust: q.trust, OverrideMicroUSD: q.override, MonthToDateMicroUSD: q.used}, nil
+	return store.AgentSpendInputs{Plan: q.plan, Trust: q.trust, OverrideMicroUSD: q.override, MonthToDateMicroUSD: q.used, ModelKeySet: q.byo}, q.err
 }
 
 // ADR091 D5/D10.1: the effective cap is min(override clamped to the plan's
@@ -128,21 +130,21 @@ func TestSpendCapEffectiveCap(t *testing.T) {
 	clock := now
 	q := &spendLedger{plan: store.PlanHobby, trust: t1, used: 19_999_999}
 	m := &ModelMinter{Spend: q, Now: func() time.Time { return clock }}
-	if err := m.checkSpendCap(context.Background(), "tea-a"); err != nil {
+	if status, err := m.platformStatus(context.Background(), "tea-a"); err != nil || status.Reached() {
 		t.Fatalf("under the cap: %v", err)
 	}
 	// The mint's view is cached per workspace for spendStatusTTL.
 	q.used = 20_000_000
 	clock = now.Add(spendStatusTTL - time.Second)
-	if err := m.checkSpendCap(context.Background(), "tea-a"); err != nil || q.reads != 1 {
+	if status, err := m.platformStatus(context.Background(), "tea-a"); err != nil || status.Reached() || q.reads != 1 {
 		t.Fatalf("within the cache TTL: %v after %d reads, want the cached allow", err, q.reads)
 	}
 	clock = now.Add(spendStatusTTL)
-	if err := m.checkSpendCap(context.Background(), "tea-a"); !errors.Is(err, ErrModelSpendCapReached) || errors.Is(err, ErrForbidden) || q.reads != 2 {
-		t.Fatalf("at the cap: %v, want ErrModelSpendCapReached (not a retried ErrForbidden)", err)
+	if status, err := m.platformStatus(context.Background(), "tea-a"); err != nil || !status.Reached() || q.reads != 2 {
+		t.Fatalf("at the cap: %v after %d reads, want the re-read cap reached", err, q.reads)
 	}
-	if err := (&ModelMinter{}).checkSpendCap(context.Background(), "tea-a"); err != nil {
-		t.Fatalf("unwired spend store must check nothing: %v", err)
+	if _, err := (&ModelMinter{}).platformStatus(context.Background(), "tea-a"); !errors.Is(err, errSpendStoreUnwired) {
+		t.Fatalf("unwired spend store = %v, want the mint failed closed", err)
 	}
 }
 

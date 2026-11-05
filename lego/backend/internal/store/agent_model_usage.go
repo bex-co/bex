@@ -194,10 +194,14 @@ type AgentSpendInputs struct {
 	// MonthToDateMicroUSD is agent_model_cost_microusd over the calendar month
 	// (UTC) containing now.
 	MonthToDateMicroUSD int64
+	// ModelKeySet reports whether the workspace set its own model key, which
+	// takes it off the platform route (AgentEnvironment.ModelKeySet).
+	ModelKeySet bool
 }
 
-// AgentSpendInputs reads workspaceID's plan, trust record, cap override and
-// month-to-date agent-model cost in one round trip (the mint's hot path).
+// AgentSpendInputs reads workspaceID's plan, trust record, cap override,
+// month-to-date agent-model cost and BYO model key flag in one round trip (the
+// mint's hot path).
 // ErrNotFound when the workspace does not exist.
 func (s *PGStore) AgentSpendInputs(ctx context.Context, workspaceID string, now time.Time) (AgentSpendInputs, error) {
 	now = now.UTC()
@@ -208,12 +212,12 @@ func (s *PGStore) AgentSpendInputs(ctx context.Context, workspaceID string, now 
 	err := s.Pool.QueryRow(ctx, `
 		SELECT t.plan, bt.lifetime_paid_cents, bt.paid_cycle_invoices, bt.locked_until, bt.failed_invoice_id,
 		       bt.last_failure_at, bt.dispute_id, ae.agent_model_spend_cap_override_microusd,
-		       `+agentSessionMonthToDateSQL+`
+		       `+agentSessionMonthToDateSQL+`, ae.model_key_set_at IS NOT NULL
 		FROM tenants t
 		LEFT JOIN billing_trust bt ON bt.workspace_id = t.id
 		LEFT JOIN agent_environments ae ON ae.workspace_id = t.id
 		WHERE t.id = $1`, workspaceID, monthStart, []string{UsageKindAgentModelCostMicroUSD},
-	).Scan(append(append([]any{&in.Plan}, trust.dest()...), &in.OverrideMicroUSD, &in.MonthToDateMicroUSD)...)
+	).Scan(append(append([]any{&in.Plan}, trust.dest()...), &in.OverrideMicroUSD, &in.MonthToDateMicroUSD, &in.ModelKeySet)...)
 	if err != nil {
 		return AgentSpendInputs{}, classify("workspace", err)
 	}

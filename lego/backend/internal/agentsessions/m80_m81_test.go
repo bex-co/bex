@@ -39,13 +39,13 @@ func TestDriverEnvInjectsTurnTimeout(t *testing.T) {
 	rec := store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Turns: 1}
 
 	// Default: the Service injects the 30m default so an unset knob is never 4h.
-	def := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, rec)
+	def := (&Service{}).driverEnv(AgentConfig{Agent: "claude"}, rec, false)
 	if got := def["BEX_AGENT_TURN_TIMEOUT_MS"]; got != strconv.Itoa(int((30 * time.Minute).Milliseconds())) {
 		t.Fatalf("default turn timeout = %q, want 1800000ms", got)
 	}
 
 	// A configured value flows through verbatim (in ms).
-	set := (&Service{TurnTimeout: 12 * time.Minute}).driverEnv(AgentConfig{Agent: "claude"}, rec)
+	set := (&Service{TurnTimeout: 12 * time.Minute}).driverEnv(AgentConfig{Agent: "claude"}, rec, false)
 	if got := set["BEX_AGENT_TURN_TIMEOUT_MS"]; got != strconv.Itoa(int((12 * time.Minute).Milliseconds())) {
 		t.Fatalf("configured turn timeout = %q, want 720000ms", got)
 	}
@@ -58,15 +58,15 @@ func TestDriverEnvInjectsTurnTimeout(t *testing.T) {
 // opened; turn 1 and repo-less sessions carry none.
 func TestDriverEnvNamesTheExistingPullRequest(t *testing.T) {
 	svc := &Service{}
-	fresh := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Repo: "acme/widgets", Branch: "bex-agent/ags-x", Turns: 1})
+	fresh := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Repo: "acme/widgets", Branch: "bex-agent/ags-x", Turns: 1}, false)
 	if _, ok := fresh["BEX_AGENT_PR_URL"]; ok {
 		t.Fatal("turn 1 must not name a pull request")
 	}
-	steer := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Repo: "acme/widgets", Branch: "bex-agent/ags-x", Turns: 2, PRURL: "https://github.com/acme/widgets/pull/7", PRNumber: 7})
+	steer := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-x", WorkspaceID: "tea-a", Repo: "acme/widgets", Branch: "bex-agent/ags-x", Turns: 2, PRURL: "https://github.com/acme/widgets/pull/7", PRNumber: 7}, false)
 	if steer["BEX_AGENT_PR_URL"] != "https://github.com/acme/widgets/pull/7" || steer["BEX_AGENT_PR_NUMBER"] != "7" {
 		t.Fatalf("steering env = %q #%q, want the recorded PR", steer["BEX_AGENT_PR_URL"], steer["BEX_AGENT_PR_NUMBER"])
 	}
-	chat := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-y", WorkspaceID: "tea-a", Turns: 2, PRURL: "https://github.com/acme/widgets/pull/7", PRNumber: 7})
+	chat := svc.driverEnv(AgentConfig{Agent: "claude"}, store.AgentSession{ID: "ags-y", WorkspaceID: "tea-a", Turns: 2, PRURL: "https://github.com/acme/widgets/pull/7", PRNumber: 7}, false)
 	if _, ok := chat["BEX_AGENT_PR_URL"]; ok {
 		t.Fatal("a repo-less session must not name a pull request")
 	}

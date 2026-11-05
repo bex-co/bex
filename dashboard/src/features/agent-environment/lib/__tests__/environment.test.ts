@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { AgentNetworkTier } from "@/graphql/definitions";
+import { AgentModelSource, AgentNetworkTier } from "@/graphql/definitions";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import {
   buildPatch,
   draftFrom,
+  modelKeyErrorKey,
+  normalizeModelKey,
   parseHostLines,
   saveErrorFrom,
   validModel,
@@ -19,6 +21,8 @@ const SAVED: AgentEnvironmentView = {
   defaultModel: "claude-sonnet-4-5",
   modelPinned: false,
   pinnedModel: null,
+  modelKeySet: false,
+  modelSource: AgentModelSource.Platform,
   registryHosts: ["registry.npmjs.org"],
   updatedAt: null,
 };
@@ -136,5 +140,33 @@ describe("saveErrorFrom", () => {
       field: "form",
       key: "agentEnvironment.saveFailed",
     });
+  });
+});
+
+describe("normalizeModelKey", () => {
+  it("trims a pasted key and refuses what the server refuses", () => {
+    expect(normalizeModelKey("  sk-ant-api03-x\n")).toBe("sk-ant-api03-x");
+    expect(normalizeModelKey("")).toBeNull();
+    expect(normalizeModelKey(" \t ")).toBeNull();
+    expect(normalizeModelKey("sk ant")).toBeNull();
+    expect(normalizeModelKey("sk\u0000ant")).toBeNull();
+    expect(normalizeModelKey("k".repeat(4096))).toHaveLength(4096);
+    expect(normalizeModelKey("k".repeat(4097))).toBeNull();
+  });
+});
+
+describe("modelKeyErrorKey", () => {
+  it("maps by code and never surfaces the server message", () => {
+    expect(
+      modelKeyErrorKey(
+        codedGraphQLError("AGENT_ENVIRONMENT_MODEL_KEY_INVALID"),
+      ),
+    ).toBe("agentEnvironment.modelKeyInvalid");
+    expect(modelKeyErrorKey(codedGraphQLError("FORBIDDEN"))).toBe(
+      "agentEnvironment.forbidden",
+    );
+    expect(modelKeyErrorKey(uncodedGraphQLError("boom"))).toBe(
+      "agentEnvironment.modelKeySaveFailed",
+    );
   });
 });

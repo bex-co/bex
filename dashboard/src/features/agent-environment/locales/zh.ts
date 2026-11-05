@@ -159,6 +159,89 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "智能体设置已保存",
     description: "Success toast after saving",
   },
+  "agentEnvironment.modelKeyTitle": {
+    message: "模型提供方",
+    description: "Heading of the model source / provider key section",
+  },
+  "agentEnvironment.modelKeyDescription": {
+    message:
+      "除非工作区添加了自己的提供方密钥，否则智能体会话使用 bex 提供的模型。使用你自己的密钥时，会话直接调用你的提供方，bex 只收取沙箱计算费用。",
+    description: "Explains the model source choice (ADR091 D7)",
+  },
+  "agentEnvironment.modelSourceLabel": {
+    message: "模型来源：",
+    description: "Label before the current model source",
+  },
+  "agentEnvironment.modelSourcePlatform": {
+    message: "bex 提供（按模型提供方成价 + 30% 计费）",
+    description: "Model source: the platform model",
+  },
+  "agentEnvironment.modelSourceByo": {
+    message: "你自己的密钥（bex 不收取 token 费用）",
+    description: "Model source: the workspace's own key",
+  },
+  "agentEnvironment.modelSourceNone": {
+    message: "无：添加提供方密钥后才能启动智能体会话",
+    description: "Model source: no key available",
+  },
+  "agentEnvironment.modelKeyLabel": {
+    message: "提供方 API 密钥",
+    description: "Label of the write-only key field when none is set",
+  },
+  "agentEnvironment.modelKeyReplaceLabel": {
+    message: "替换提供方 API 密钥",
+    description: "Label of the write-only key field when a key is set",
+  },
+  "agentEnvironment.modelKeyPlaceholder": {
+    message: "sk-ant-…",
+    description: "Placeholder of the key field when none is set",
+  },
+  "agentEnvironment.modelKeyPlaceholderSet": {
+    message: "已保存密钥；输入新密钥以替换",
+    description:
+      "Placeholder of the key field when a key is set (the key is never shown)",
+  },
+  "agentEnvironment.modelKeyHelp": {
+    message: "仅可写入：密钥会被安全存储，之后不会再显示。",
+    description: "Help under the key field",
+  },
+  "agentEnvironment.modelKeySave": {
+    message: "保存密钥",
+    description: "Button that saves the model key",
+  },
+  "agentEnvironment.modelKeyClear": {
+    message: "移除密钥",
+    description: "Button that opens the remove-key confirmation",
+  },
+  "agentEnvironment.modelKeyClearTitle": {
+    message: "移除模型提供方密钥？",
+    description: "Remove-key confirmation title",
+  },
+  "agentEnvironment.modelKeyClearBody": {
+    message:
+      "智能体会话将从下一次模型请求起停止使用此密钥。密钥无法再次显示，如需恢复，需要重新粘贴。",
+    description: "Remove-key confirmation body",
+  },
+  "agentEnvironment.modelKeyClearConfirm": {
+    message: "移除密钥",
+    description: "Remove-key confirmation button",
+  },
+  "agentEnvironment.modelKeySaved": {
+    message: "模型密钥已保存",
+    description: "Toast after saving the key",
+  },
+  "agentEnvironment.modelKeyCleared": {
+    message: "模型密钥已移除",
+    description: "Toast after removing the key",
+  },
+  "agentEnvironment.modelKeyInvalid": {
+    message: "请输入不含空格的密钥（最多 4,096 个字符）。",
+    description: "Client/server refusal of a malformed key",
+  },
+  "agentEnvironment.modelKeySaveFailed": {
+    message: "无法保存模型密钥，请重试。",
+    description: "Generic model key write failure",
+  },
 };
 
 export default zhAgentEnvironment;

@@ -51,7 +51,7 @@ func mintFor(t *testing.T, workspace, endpoint string, keys *recordingKV) (Model
 	t.Helper()
 	config, _ := json.Marshal(map[string]string{"agent": "claude", "modelEndpoint": endpoint})
 	session := store.AgentSession{ID: "ags-one", WorkspaceID: workspace, SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
-	minter := &ModelMinter{Keys: keys, Sessions: fakeSessions{session: session}}
+	minter := &ModelMinter{Keys: keys, Sessions: fakeSessions{session: session}, Spend: &spendLedger{plan: store.PlanPro}}
 	return minter.Mint(context.Background(), ModelMintRequest{SessionID: "ags-one", Workspace: workspace, PodName: "sbx-1-0", PodUID: "uid-one"})
 }
 
@@ -74,7 +74,7 @@ func TestPlatformModelRouteConfigRefusals(t *testing.T) {
 			t.Fatalf("%s: err = %v, want it to name %q", tc.name, err, tc.want)
 		}
 	}
-	if PlatformModelKeyReady("tea-a") || ModelRouteEnv("tea-a", "claude") != nil {
+	if PlatformModelKeyReady("tea-a", false) || ModelRouteEnv("tea-a", "claude", false) != nil {
 		t.Fatal("a refused configuration left a route installed")
 	}
 	// Production identity is irrelevant to the platform route (it has none).
@@ -107,20 +107,20 @@ func TestPlatformModelRouteMintsThePlatformKeyForAllowlistedWorkspace(t *testing
 	if _, err := mintFor(t, "tea-allow", "", &recordingKV{memoryKV: memoryKV{}}); err != nil {
 		t.Fatalf("allowlisted workspace without a BYO key: %v", err)
 	}
-	if !PlatformModelKeyReady("tea-allow") {
+	if !PlatformModelKeyReady("tea-allow", false) {
 		t.Fatal("allowlisted workspace not model-key ready")
 	}
-	env := ModelRouteEnv("tea-allow", "claude")
+	env := ModelRouteEnv("tea-allow", "claude", false)
 	for _, name := range []string{"ANTHROPIC_MODEL", "ANTHROPIC_DEFAULT_OPUS_MODEL", "ANTHROPIC_DEFAULT_SONNET_MODEL", "ANTHROPIC_DEFAULT_HAIKU_MODEL"} {
 		if env[name] != DefaultDevModel {
 			t.Fatalf("%s = %q", name, env[name])
 		}
 	}
 	// Other profiles in the allowlisted workspace are untouched.
-	if got, err := RegisteredModelEndpoint("tea-allow", "codex", ""); err != nil || got != "https://api.openai.com/v1" {
+	if got, err := RegisteredModelEndpoint("tea-allow", "codex", "", false); err != nil || got != "https://api.openai.com/v1" {
 		t.Fatalf("codex endpoint = %q err=%v", got, err)
 	}
-	if ModelRouteEnv("tea-allow", "codex") != nil {
+	if ModelRouteEnv("tea-allow", "codex", false) != nil {
 		t.Fatal("route env leaked to codex")
 	}
 }
@@ -130,13 +130,13 @@ func TestPlatformModelRouteMintsThePlatformKeyForAllowlistedWorkspace(t *testing
 // names the OpenRouter endpoint explicitly.
 func TestPlatformModelRouteNeverReachesOtherWorkspaces(t *testing.T) {
 	enablePlatformRoute(t, "tea-allow")
-	if got, err := RegisteredModelEndpoint("tea-other", "claude", ""); err != nil || got != "https://api.anthropic.com/v1" {
+	if got, err := RegisteredModelEndpoint("tea-other", "claude", "", false); err != nil || got != "https://api.anthropic.com/v1" {
 		t.Fatalf("endpoint = %q err=%v", got, err)
 	}
-	if _, err := RegisteredModelEndpoint("tea-other", "claude", openRouterEndpoint); err == nil {
+	if _, err := RegisteredModelEndpoint("tea-other", "claude", openRouterEndpoint, false); err == nil {
 		t.Fatal("non-allowlisted workspace accepted the OpenRouter endpoint")
 	}
-	if ModelRouteEnv("tea-other", "claude") != nil || PlatformModelKeyReady("tea-other") {
+	if ModelRouteEnv("tea-other", "claude", false) != nil || PlatformModelKeyReady("tea-other", false) {
 		t.Fatal("route env or readiness leaked to a non-allowlisted workspace")
 	}
 	keys := &recordingKV{memoryKV: memoryKV{ModelKeySecretPath("tea-other"): {ModelKeyField: "sk-ant-api03-BYO"}}}
@@ -174,11 +174,102 @@ func TestPlatformRouteTakesPrecedenceOverDevRoute(t *testing.T) {
 	if got.Credential != "sk-or-v1-BYO" || got.EndpointHost != OpenRouterHost || got.PinnedModel != "" {
 		t.Fatalf("dev-route mint = host %q pin %q platformKey=%v", got.EndpointHost, got.PinnedModel, got.Credential == testPlatformKey)
 	}
-	if ModelRouteEnv("tea-other", "claude")["ANTHROPIC_MODEL"] != "deepseek/dev-model" ||
-		ModelRouteEnv("tea-allow", "claude")["ANTHROPIC_MODEL"] != DefaultDevModel {
+	if ModelRouteEnv("tea-other", "claude", false)["ANTHROPIC_MODEL"] != "deepseek/dev-model" ||
+		ModelRouteEnv("tea-allow", "claude", false)["ANTHROPIC_MODEL"] != DefaultDevModel {
 		t.Fatal("route env did not follow the per-workspace route")
 	}
 	if got, err := mintFor(t, "tea-allow", "", &recordingKV{memoryKV: memoryKV{}}); err != nil || got.Credential != testPlatformKey {
 		t.Fatalf("allowlisted mint under both routes: err=%v platformKey=%v", err, got.Credential == testPlatformKey)
+	}
+}
+
+func mintWithSpend(t *testing.T, workspace, endpoint string, keys *recordingKV, spend SpendStore) (ModelMintResponse, error) {
+	t.Helper()
+	config, _ := json.Marshal(map[string]string{"agent": "claude", "modelEndpoint": endpoint})
+	session := store.AgentSession{ID: "ags-one", WorkspaceID: workspace, SandboxID: "sbx-1", Phase: "running", AgentConfig: config}
+	minter := &ModelMinter{Keys: keys, Sessions: fakeSessions{session: session}, Spend: spend}
+	return minter.Mint(context.Background(), ModelMintRequest{SessionID: "ags-one", Workspace: workspace, PodName: "sbx-1-0", PodUID: "uid-one"})
+}
+
+// ADR091 D7: an allowlisted workspace that set its own key mints that key
+// against the provider directly — no pinned model, so the gateway neither
+// meters nor reports usage — and is never spend-capped, whatever endpoint
+// the session stored (one created on the platform route keeps working).
+func TestBYOKeyWinsOverThePlatformRouteAtMint(t *testing.T) {
+	enablePlatformRoute(t, "tea-allow")
+	overCap := &spendLedger{plan: store.PlanPro, used: 1 << 40, byo: true}
+	for _, stored := range []string{"https://api.anthropic.com/v1", openRouterEndpoint, ""} {
+		keys := &recordingKV{memoryKV: memoryKV{ModelKeySecretPath("tea-allow"): {ModelKeyField: "sk-ant-api03-BYO"}}}
+		got, err := mintWithSpend(t, "tea-allow", stored, keys, overCap)
+		if err != nil {
+			t.Fatalf("stored %q: %v (a BYO workspace over the cap is never capped)", stored, err)
+		}
+		if got.Credential != "sk-ant-api03-BYO" || got.EndpointHost != "api.anthropic.com" || got.Scheme != AuthSchemeAnthropicKey ||
+			got.PinnedModel != "" || got.PathPrefix != "" {
+			t.Fatalf("stored %q: BYO mint = host %q scheme %q pin %q prefix %q byo=%v",
+				stored, got.EndpointHost, got.Scheme, got.PinnedModel, got.PathPrefix, got.Credential == "sk-ant-api03-BYO")
+		}
+	}
+	if PlatformModelKeyReady("tea-allow", true) || ModelRouteEnv("tea-allow", "claude", true) != nil {
+		t.Fatal("a BYO workspace is still on the platform route")
+	}
+	if _, ok := PlatformPinnedModel("tea-allow", true); ok {
+		t.Fatal("a BYO workspace is still pinned")
+	}
+
+	// Without the flag the same workspace is back on the platform key — and
+	// its spend cap applies.
+	overCap.byo = false
+	keys := &recordingKV{memoryKV: memoryKV{ModelKeySecretPath("tea-allow"): {ModelKeyField: "sk-ant-api03-BYO"}}}
+	if _, err := mintWithSpend(t, "tea-allow", "", keys, overCap); !errors.Is(err, ErrModelSpendCapReached) {
+		t.Fatalf("platform mint over the cap = %v", err)
+	}
+	got, err := mintWithSpend(t, "tea-allow", "", keys, &spendLedger{plan: store.PlanPro})
+	if err != nil || got.Credential != testPlatformKey || got.PinnedModel != DefaultDevModel || len(keys.reads) != 0 {
+		t.Fatalf("platform mint = pin %q platformKey=%v err=%v BYO reads=%v", got.PinnedModel, got.Credential == testPlatformKey, err, keys.reads)
+	}
+}
+
+// The flag is read only where it can change the answer (a workspace the
+// platform route covers), from the same one cached spend read; a minter
+// without that store, or a failed read, fails the mint closed rather than
+// guessing which key to release. ForgetSpend makes this replica's next mint
+// see a key write at once.
+func TestMintKeyFlagLookup(t *testing.T) {
+	enablePlatformRoute(t, "tea-allow")
+	ledger := &spendLedger{plan: store.PlanPro}
+	keys := &recordingKV{memoryKV: memoryKV{ModelKeySecretPath("tea-other"): {ModelKeyField: "sk-ant-api03-OTHER"}}}
+	if got, err := mintWithSpend(t, "tea-other", "", keys, ledger); err != nil || got.Credential != "sk-ant-api03-OTHER" {
+		t.Fatalf("off-route BYO mint = %v", err)
+	}
+	if ledger.reads != 0 {
+		t.Fatal("an off-route workspace read the spend store")
+	}
+	if _, err := mintWithSpend(t, "tea-allow", "", &recordingKV{memoryKV: memoryKV{}}, nil); !errors.Is(err, errSpendStoreUnwired) {
+		t.Fatalf("platform-route mint without a spend store = %v, want it refused", err)
+	}
+	ledger.err = errors.New("db down")
+	if _, err := mintWithSpend(t, "tea-allow", "", &recordingKV{memoryKV: memoryKV{}}, ledger); err == nil {
+		t.Fatal("an unreadable BYO flag minted a credential")
+	}
+
+	ledger.err = nil
+	config, _ := json.Marshal(map[string]string{"agent": "claude"})
+	minter := &ModelMinter{
+		Keys:     &recordingKV{memoryKV: memoryKV{ModelKeySecretPath("tea-allow"): {ModelKeyField: "sk-ant-api03-BYO"}}},
+		Sessions: fakeSessions{session: store.AgentSession{ID: "ags-one", WorkspaceID: "tea-allow", SandboxID: "sbx-1", Phase: "running", AgentConfig: config}},
+		Spend:    ledger,
+	}
+	req := ModelMintRequest{SessionID: "ags-one", Workspace: "tea-allow", PodName: "sbx-1-0", PodUID: "uid-one"}
+	if got, err := minter.Mint(context.Background(), req); err != nil || got.Credential != testPlatformKey {
+		t.Fatalf("platform mint = %v", err)
+	}
+	ledger.byo = true
+	if got, _ := minter.Mint(context.Background(), req); got.Credential != testPlatformKey {
+		t.Fatal("the cached status was not used within its TTL")
+	}
+	minter.ForgetSpend("tea-allow")
+	if got, err := minter.Mint(context.Background(), req); err != nil || got.Credential != "sk-ant-api03-BYO" {
+		t.Fatalf("mint after ForgetSpend = %v, want the BYO key", err)
 	}
 }

@@ -15,9 +15,15 @@ import { agentSessionView } from "@/test/mocks/agent-session";
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
   useNavigate: () => mockNavigate,
-  Link: ({ to, children }: { to: string; children: React.ReactNode }) => (
-    <a href={to}>{children}</a>
-  ),
+  Link: ({
+    to,
+    hash,
+    children,
+  }: {
+    to: string;
+    hash?: string;
+    children: React.ReactNode;
+  }) => <a href={hash ? `${to}#${hash}` : to}>{children}</a>,
 }));
 
 const connectGit = vi.fn();
@@ -529,6 +535,11 @@ describe("NewSessionComposer", () => {
     expect(
       screen.getByText("Add a model provider key first"),
     ).toBeInTheDocument();
+    // The copy names the field that exists: Settings → Agents (ADR091 D7).
+    expect(screen.getByText(/under Settings → Agents/)).toBeInTheDocument();
+    expect(
+      screen.getByRole("link", { name: "Open Settings → Agents" }),
+    ).toHaveAttribute("href", "/workspace/settings#agents");
     await typeTask(user);
     expect(
       screen.getByRole("button", { name: "Start session" }),

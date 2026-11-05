@@ -5,6 +5,10 @@
 
 import { CombinedGraphQLErrors } from "@apollo/client/errors";
 import {
+  hasGraphQLErrorCode,
+  isForbiddenError,
+} from "@/common/lib/graphql-error";
+import {
   AgentNetworkTier,
   type AgentEnvironmentFieldsFragment,
   type AgentEnvironmentInput,
@@ -203,4 +207,38 @@ export function hostsProblemMessage(problem: HostsProblem): {
     key: `agentEnvironment.hostsError.${reason}`,
     params: { entry: problem.entry ?? "", max: MAX_CUSTOM_HOSTS },
   };
+}
+
+/** The model-key bound the backend enforces (agentsessions maxModelKeyBytes). */
+export const MAX_MODEL_KEY_LENGTH = 4096;
+
+/**
+ * The model provider key as it will be sent (ADR091 D7): surrounding
+ * whitespace from a paste trimmed. Null when the server would refuse it with
+ * AGENT_ENVIRONMENT_MODEL_KEY_INVALID — empty, too long, or containing
+ * spaces or control characters.
+ */
+export function normalizeModelKey(text: string): string | null {
+  const key = text.trim();
+  if (
+    key === "" ||
+    new TextEncoder().encode(key).length > MAX_MODEL_KEY_LENGTH
+  ) {
+    return null;
+  }
+  // eslint-disable-next-line no-control-regex
+  return /[\s\u0000-\u001f\u007f-\u009f]/.test(key) ? null : key;
+}
+
+/**
+ * The locale key for a failed model-key write, by the server's stable code.
+ * The key itself is never part of any message.
+ */
+export function modelKeyErrorKey(err: unknown): string {
+  if (hasGraphQLErrorCode(err, "AGENT_ENVIRONMENT_MODEL_KEY_INVALID")) {
+    return "agentEnvironment.modelKeyInvalid";
+  }
+  return isForbiddenError(err)
+    ? "agentEnvironment.forbidden"
+    : "agentEnvironment.modelKeySaveFailed";
 }

@@ -7,6 +7,9 @@ import {
 } from "@/graphql/definitions";
 import type { AgentEnvironmentView } from "@/features/agent-environment/lib/environment";
 
+/** The composer's readiness query (agent-sessions.graphql). */
+const CAPABILITIES_QUERY = "AgentSessionCapabilities";
+
 export interface UseAgentEnvironmentResult {
   environment: AgentEnvironmentView | null;
   /** Loading with no data yet — the skeleton gate (dashboard/AGENTS.md). */
@@ -37,7 +40,14 @@ export function useAgentEnvironment(
   const update = useCallback(
     async (input: AgentEnvironmentInput) => {
       if (ownerId == null) throw new Error("no workspace selected");
-      const result = await mutate({ variables: { ownerId, input } });
+      // Setting or clearing the model key changes the composer's
+      // modelKeyReady, which the capabilities query carries.
+      const keyChange =
+        input.modelApiKey != null || input.clearModelApiKey === true;
+      const result = await mutate({
+        variables: { ownerId, input },
+        refetchQueries: keyChange ? [CAPABILITIES_QUERY] : undefined,
+      });
       const saved = result.data?.updateAgentEnvironment;
       if (!saved) throw new Error("updateAgentEnvironment returned no data");
       return saved;

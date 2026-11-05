@@ -24,16 +24,17 @@ import (
 )
 
 // createEgress resolves the session's model endpoint for workspaceID (whose
-// model route, if any, decides it now) and the session's tenant widening: the
-// hosts the workspace network tier contributes (workspaceHosts, already
-// validated when the environment was saved) merged with the request's explicit
-// egressAllowlist. The request list is validated on its own first, so its
-// errors keep naming the caller's entry; the merged list is capped at the same
-// 32 destinations. The package-registry catalog is not part of the widening:
-// sessionegress renders it for the registries and custom tiers, in both
-// phases (the full tier renders no FQDN rule at all).
-func createEgress(workspaceID string, config AgentConfig, workspaceHosts, requested []string) (string, []string, error) {
-	endpoint, err := agentsession.RegisteredModelEndpoint(workspaceID, config.Agent, config.ModelEndpoint)
+// model route, if any, decides it now; byoKey takes it off the platform
+// route) and the session's tenant widening: the hosts the workspace network
+// tier contributes (workspaceHosts, already validated when the environment
+// was saved) merged with the request's explicit egressAllowlist. The
+// request list is validated on its own first, so its errors keep naming the
+// caller's entry; the merged list is capped at the same 32 destinations. The
+// package-registry catalog is not part of the widening: sessionegress renders
+// it for the registries and custom tiers, in both phases (the full tier
+// renders no FQDN rule at all).
+func createEgress(workspaceID string, config AgentConfig, workspaceHosts, requested []string, byoKey bool) (string, []string, error) {
+	endpoint, err := agentsession.RegisteredModelEndpoint(workspaceID, config.Agent, config.ModelEndpoint, byoKey)
 	if err != nil {
 		return "", nil, err
 	}

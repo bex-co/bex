@@ -36,6 +36,7 @@ import (
 	"maps"
 	"net/http"
 	"net/url"
+	"regexp"
 	"strings"
 	"sync"
 	"time"
@@ -382,6 +383,9 @@ type Deps struct {
 	// D10.1): the trust tier's session limit and the environment's spend
 	// fields; nil ⇒ neither.
 	AgentSpendStore agentsessions.SpendStore
+	// AgentModelKeyChanged is told when a workspace's own model key is set or
+	// cleared (agentsessions.Service.ModelKeyChanged); nil ⇒ nobody listens.
+	AgentModelKeyChanged func(workspaceID string)
 	// AgentAttachments and AgentAttachmentStore are the ADR095 attachment
 	// bucket and table; either nil ⇒ attachments are unavailable.
 	AgentAttachments     agentsessions.AttachmentObjects
@@ -1037,6 +1041,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			TurnTimeout:      d.AgentTurnTimeout,
 			Environments:     d.AgentEnvironmentStore,
 			Spend:            d.AgentSpendStore,
+			ModelKeyChanged:  d.AgentModelKeyChanged,
 			RegistryHosts:    d.AgentRegistryHosts,
 			Attachments:      d.AgentAttachments,
 			AttachmentRows:   d.AgentAttachmentStore,
@@ -1793,8 +1798,10 @@ const writeOutcomeUnknownMessage = "the change ran out of time and may have been
 func sanitizeGraphQLErrors(errs []gqlerrors.FormattedError, mutation bool) []gqlerrors.FormattedError {
 	for i := range errs {
 		resolverErr := resolverError(errs[i].OriginalError())
-		// nil → a parse/validation error that wraps no resolver error: keep it.
+		// nil → a parse/validation error that wraps no resolver error: keep it,
+		// minus any variable value it echoes.
 		if resolverErr == nil {
+			errs[i].Message = redactInvalidValue(errs[i].Message)
 			continue
 		}
 		// graphql-go's operation selection fails with plain errors (no path, no
@@ -1830,6 +1837,44 @@ func sanitizeGraphQLErrors(errs []gqlerrors.FormattedError, mutation bool) []gql
 		errs[i].Extensions = map[string]any{"code": core.CodeInternal}
 	}
 	return errs
+}
+
+// invalidValuePrefix matches the head of graphql-go's two value-echoing
+// errors: variable coercion (`Variable "$name" got invalid value <JSON>.`)
+// and an inline argument literal (`Argument "name" has invalid value
+// <literal>.`), each followed by one reason per line.
+var invalidValuePrefix = regexp.MustCompile(`^(Variable "\$|Argument ")([_A-Za-z][_0-9A-Za-z]*)" (?:got|has) invalid value `)
+
+// The reason lines graphql-go's value checks produce, behind any number of
+// `In field "x": ` / `In element #n: ` prefixes: kept whole, or kept up to
+// the `, found <value>.` tail that echoes the value.
+var (
+	invalidValueReasonPath  = `^((?:In (?:field "[_A-Za-z][_0-9A-Za-z]*"|element #[0-9]+): )*)`
+	invalidValueReasonWhole = regexp.MustCompile(invalidValueReasonPath + `(?:Unknown field\.|Expected "[_A-Za-z][_0-9A-Za-z]*!", found null\.|Expected "[_A-Za-z][_0-9A-Za-z]*", found not an object\.)$`)
+	invalidValueReasonTyped = regexp.MustCompile(invalidValueReasonPath + `(Expected type "[_A-Za-z][_0-9A-Za-z]*"), found `)
+)
+
+// redactInvalidValue drops the value from a graphql-go variable or argument
+// value error, keeping the variable or argument name and each reason: the
+// value may be a write-only secret (an agent environment's modelApiKey) and
+// a client never needs it echoed. A reason line in any other shape —
+// including a fragment of a multi-line value — is dropped. Every other
+// message is returned as is.
+func redactInvalidValue(msg string) string {
+	head := invalidValuePrefix.FindStringSubmatch(msg)
+	if head == nil {
+		return msg
+	}
+	out := head[1] + head[2] + `" has an invalid value.`
+	_, reasons, _ := strings.Cut(msg, "\n")
+	for _, line := range strings.Split(reasons, "\n") {
+		if invalidValueReasonWhole.MatchString(line) {
+			out += "\n" + line
+		} else if m := invalidValueReasonTyped.FindStringSubmatch(line); m != nil {
+			out += "\n" + m[1] + m[2] + "."
+		}
+	}
+	return out
 }
 
 // isOperationSelectionError matches the two errors graphql-go raises before
@@ -1888,6 +1933,7 @@ func (s *Server) buildMCPServerFor(toolset map[string]struct{}) *mcp.Server {
 	if s.Apps != nil {
 		base = s.Apps.Base
 	}
+	srv.AddReceivingMiddleware(mcpArgumentValueRedaction)
 	srv.AddReceivingMiddleware(mcpWorkspaceMiddleware(base, s.requireMCPScope))
 	// Added last => outermost (the SDK wraps the current handler), so a call the
 	// workspace/scope gate above refuses is still timed, as denied.
@@ -1900,6 +1946,47 @@ func (s *Server) buildMCPServerFor(toolset map[string]struct{}) *mcp.Server {
 		srv.AddReceivingMiddleware(mcpToolsetMiddleware(toolset))
 	}
 	return srv
+}
+
+// mcpArgumentValueRedaction drops the argument value the SDK's input schema
+// check echoes ("validating \"arguments\": … type: <value> has type …"),
+// the MCP side of redactInvalidValue: the value may be a write-only secret
+// (an agent environment's modelApiKey) put in the wrong field.
+func mcpArgumentValueRedaction(next mcp.MethodHandler) mcp.MethodHandler {
+	return func(ctx context.Context, method string, req mcp.Request) (mcp.Result, error) {
+		result, err := next(ctx, method, req)
+		if res, ok := result.(*mcp.CallToolResult); ok && res != nil && res.IsError {
+			for _, c := range res.Content {
+				if text, ok := c.(*mcp.TextContent); ok {
+					text.Text = redactArgumentValue(text.Text)
+				}
+			}
+		}
+		return result, err
+	}
+}
+
+// argumentValueKeyword matches the first jsonschema keyword whose message
+// prints the instance; argumentTypeTail keeps a type refusal's expectation.
+var (
+	argumentValueKeyword = regexp.MustCompile(`(?s)\b(type|enum|const|multipleOf|minimum|maximum|exclusiveMinimum|exclusiveMaximum|minLength|maxLength|pattern|contains): .*$`)
+	argumentTypeTail     = regexp.MustCompile(`(?s) (has type "[^"]*", want [^\n]*)$`)
+)
+
+// redactArgumentValue rewrites an SDK argument-validation message so it keeps
+// the path and the keyword but never the value; any other text is returned
+// as is.
+func redactArgumentValue(text string) string {
+	if !strings.HasPrefix(text, `validating "arguments": `) {
+		return text
+	}
+	return argumentValueKeyword.ReplaceAllStringFunc(text, func(tail string) string {
+		keyword, _, _ := strings.Cut(tail, ":")
+		if m := argumentTypeTail.FindStringSubmatch(tail); keyword == "type" && m != nil {
+			return "type: the value " + m[1]
+		}
+		return keyword + ": the value is not allowed"
+	})
 }
 
 // MCPToolsetServer returns the narrow MCP server for a named toolset, or nil

@@ -49,16 +49,16 @@ func (s *Service) sheet() *pricing.Sheet {
 // of agent in workspaceID: zero when none applies (no spend store, a BYO-key
 // session, a workspace off the platform route, or a tier without a limit).
 // Only sessions whose credential is the platform route's key count: the
-// route's agent profile in a workspace the route covers. A store error fails
-// closed.
+// route's agent profile in a workspace the route covers that has not set its
+// own model key (byoKey). A store error fails closed.
 type trustAdmission struct {
 	limit  int
 	status agentsession.SpendStatus
 	count  store.AgentSessionCount
 }
 
-func (s *Service) trustAdmissionFor(ctx context.Context, workspaceID, agent string) (trustAdmission, error) {
-	if s.Spend == nil || !agentsession.PlatformModelKeyReady(workspaceID) || !agentsession.PinnedAgent(agent) {
+func (s *Service) trustAdmissionFor(ctx context.Context, workspaceID, agent string, byoKey bool) (trustAdmission, error) {
+	if byoKey || !s.platformCounted(workspaceID, agent) {
 		return trustAdmission{}, nil
 	}
 	status, err := agentsession.ReadSpendStatus(ctx, s.Spend, s.sheet(), workspaceID, s.Now().UTC())
@@ -89,8 +89,8 @@ func (a trustAdmission) refusal(live int) error {
 // put the workspace over its trust tier's concurrent platform-model
 // sessions. The session itself never counts. Unlike create (which takes the
 // count and insert atomically), this is a best-effort pre-check.
-func (s *Service) enforceTrustConcurrency(ctx context.Context, workspaceID, sessionID, agent string) error {
-	admission, err := s.trustAdmissionFor(ctx, workspaceID, agent)
+func (s *Service) enforceTrustConcurrency(ctx context.Context, workspaceID, sessionID, agent string, byoKey bool) error {
+	admission, err := s.trustAdmissionFor(ctx, workspaceID, agent, byoKey)
 	if err != nil || admission.limit == 0 {
 		return err
 	}
@@ -169,4 +169,11 @@ func withSpend(view Environment, status agentsession.SpendStatus) Environment {
 		view.NextChargeThresholdUSD = &threshold
 	}
 	return view
+}
+
+// platformCounted reports whether agent's sessions in workspaceID count
+// toward the trust tier unless the workspace set its own model key: the
+// platform route covers it and the spend store is wired.
+func (s *Service) platformCounted(workspaceID, agent string) bool {
+	return s.Spend != nil && agentsession.PlatformModelKeyReady(workspaceID, false) && agentsession.PinnedAgent(agent)
 }

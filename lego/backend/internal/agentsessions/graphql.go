@@ -123,6 +123,18 @@ var agentNetworkTierGQLEnum = graphql.NewEnum(graphql.EnumConfig{
 	},
 })
 
+// agentModelSourceGQLEnum is the model source, upper-cased like
+// AgentNetworkTier.
+var agentModelSourceGQLEnum = graphql.NewEnum(graphql.EnumConfig{
+	Name:        "AgentModelSource",
+	Description: "The model credential a workspace's claude sessions use: BYO (the workspace's own key), PLATFORM (bex-provided, billed at the model provider's cost + 30%) or NONE.",
+	Values: graphql.EnumValueConfigMap{
+		"BYO":      &graphql.EnumValueConfig{Value: ModelSourceBYO},
+		"PLATFORM": &graphql.EnumValueConfig{Value: ModelSourcePlatform},
+		"NONE":     &graphql.EnumValueConfig{Value: ModelSourceNone},
+	},
+})
+
 var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentEnvironment",
 	Fields: graphql.Fields{
@@ -132,6 +144,8 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"defaultModel":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.DefaultModel) })},
 		"modelPinned":   gqlutil.ReqBoolField(func(v Environment) any { return v.ModelPinned }),
 		"pinnedModel":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.PinnedModel) })},
+		"modelKeySet":   gqlutil.ReqBoolField(func(v Environment) any { return v.ModelKeySet }),
+		"modelSource":   gqlutil.Typed(graphql.NewNonNull(agentModelSourceGQLEnum), func(v Environment) any { return v.ModelSource }),
 		"registryHosts": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.RegistryHosts }),
 		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any {
 			if v.UpdatedAt == nil {
@@ -166,6 +180,8 @@ var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"defaultModel":                   &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "\"\" returns to the provider default."},
 		spendCapField:                    &graphql.InputObjectFieldConfig{Type: graphql.Float, Description: "Monthly agent-model spend cap in USD (more than 0, at most 10x the plan default)."},
 		"resetAgentModelMonthlySpendCap": &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true returns the spend cap to the plan default."},
+		"modelApiKey":                    &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet."},
+		"clearModelApiKey":               &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true removes the workspace's own model provider key."},
 	},
 })
 
@@ -190,6 +206,10 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 	}
 	if model, ok := raw["defaultModel"].(string); ok {
 		input.DefaultModel = &model
+	}
+	input.ModelAPIKey = gqlutil.StrPtr(raw, "modelApiKey")
+	if clear := gqlutil.BoolPtr(raw, "clearModelApiKey"); clear != nil {
+		input.ClearModelAPIKey = *clear
 	}
 	if reset, ok := raw["resetAgentModelMonthlySpendCap"].(bool); ok {
 		input.ResetAgentModelMonthlySpendCap = reset

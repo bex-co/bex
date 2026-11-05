@@ -166,6 +166,89 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     message: "Agent settings saved",
     description: "Success toast after saving",
   },
+  "agentEnvironment.modelKeyTitle": {
+    message: "Model provider",
+    description: "Heading of the model source / provider key section",
+  },
+  "agentEnvironment.modelKeyDescription": {
+    message:
+      "Agent sessions use the bex-provided model unless the workspace adds its own provider key. With your own key, sessions call your provider directly and bex bills only sandbox compute.",
+    description: "Explains the model source choice (ADR091 D7)",
+  },
+  "agentEnvironment.modelSourceLabel": {
+    message: "Model source:",
+    description: "Label before the current model source",
+  },
+  "agentEnvironment.modelSourcePlatform": {
+    message: "bex-provided (billed at the model provider's cost + 30%)",
+    description: "Model source: the platform model",
+  },
+  "agentEnvironment.modelSourceByo": {
+    message: "Your own key (no token charges from bex)",
+    description: "Model source: the workspace's own key",
+  },
+  "agentEnvironment.modelSourceNone": {
+    message: "None: add a provider key to start agent sessions",
+    description: "Model source: no key available",
+  },
+  "agentEnvironment.modelKeyLabel": {
+    message: "Provider API key",
+    description: "Label of the write-only key field when none is set",
+  },
+  "agentEnvironment.modelKeyReplaceLabel": {
+    message: "Replace provider API key",
+    description: "Label of the write-only key field when a key is set",
+  },
+  "agentEnvironment.modelKeyPlaceholder": {
+    message: "sk-ant-…",
+    description: "Placeholder of the key field when none is set",
+  },
+  "agentEnvironment.modelKeyPlaceholderSet": {
+    message: "A key is saved; enter a new one to replace it",
+    description:
+      "Placeholder of the key field when a key is set (the key is never shown)",
+  },
+  "agentEnvironment.modelKeyHelp": {
+    message: "Write-only: the key is stored securely and never shown again.",
+    description: "Help under the key field",
+  },
+  "agentEnvironment.modelKeySave": {
+    message: "Save key",
+    description: "Button that saves the model key",
+  },
+  "agentEnvironment.modelKeyClear": {
+    message: "Remove key",
+    description: "Button that opens the remove-key confirmation",
+  },
+  "agentEnvironment.modelKeyClearTitle": {
+    message: "Remove the model provider key?",
+    description: "Remove-key confirmation title",
+  },
+  "agentEnvironment.modelKeyClearBody": {
+    message:
+      "Agent sessions stop using this key from their next model request. The key can't be shown again, so you would need to paste it to restore it.",
+    description: "Remove-key confirmation body",
+  },
+  "agentEnvironment.modelKeyClearConfirm": {
+    message: "Remove key",
+    description: "Remove-key confirmation button",
+  },
+  "agentEnvironment.modelKeySaved": {
+    message: "Model key saved",
+    description: "Toast after saving the key",
+  },
+  "agentEnvironment.modelKeyCleared": {
+    message: "Model key removed",
+    description: "Toast after removing the key",
+  },
+  "agentEnvironment.modelKeyInvalid": {
+    message: "Enter the key without spaces (at most 4,096 characters).",
+    description: "Client/server refusal of a malformed key",
+  },
+  "agentEnvironment.modelKeySaveFailed": {
+    message: "Couldn't save the model key. Try again.",
+    description: "Generic model key write failure",
+  },
 };
 
 export default enAgentEnvironment;

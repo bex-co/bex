@@ -137,8 +137,10 @@ type SandboxLifecycle interface {
 // so they cannot drift on where the BYO key lives. workspaceID (tea-<xid>) is
 // opaque and unguessable, so
 // folding it into the OpenBao path achieves per-workspace isolation without the
-// store's tenant-context mechanism. v1 provisioning stays operator/manual
-// (`bao kv put`); there is no self-serve REST/GraphQL/MCP surface yet.
+// store's tenant-context mechanism. Workspace admins set and clear it through
+// the agent environment's write-only modelApiKey / clearModelApiKey
+// (writeModelKey), which also records the model_key_set_at flag that route
+// decisions read.
 func modelKeySecretPath(workspaceID string) string {
 	return agentsession.ModelKeySecretPath(workspaceID)
 }
@@ -182,6 +184,11 @@ type Service struct {
 	// ModelMinter reads the same store lazily for each provider exchange; session
 	// creation never reads or receives the reusable credential.
 	ModelKeys core.SecretKV
+	// ModelKeyChanged, when set, is told after this process sets or clears a
+	// workspace's model key: it drops the model mint's cached route status
+	// (ModelMinter.ForgetSpend), so this replica's next mint follows the new
+	// key at once; other replicas follow within the cache's 20s TTL.
+	ModelKeyChanged func(workspaceID string)
 	// GitHub, when set, supplies the workspace's GitHub App connection readiness
 	// for the mobile Capabilities projection (w11/m6 t001). nil => GitHub is
 	// reported not-connected with no install URL (the projection never fabricates
@@ -488,7 +495,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if req.AgentConfig.Model, err = sessionModel(workspaceID, req.AgentConfig, env, true); err != nil {
 		return View{}, err
 	}
-	modelEndpoint, egressAllowlist, err := createEgress(workspaceID, req.AgentConfig, effectiveHosts(env), req.EgressAllowlist)
+	modelEndpoint, egressAllowlist, err := createEgress(workspaceID, req.AgentConfig, effectiveHosts(env), req.EgressAllowlist, env.ModelKeySet())
 	if err != nil {
 		return View{}, err
 	}
@@ -496,7 +503,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := s.admitDispatch(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
-	admission, err := s.trustAdmissionFor(ctx, workspaceID, req.AgentConfig.Agent)
+	admission, err := s.trustAdmissionFor(ctx, workspaceID, req.AgentConfig.Agent, env.ModelKeySet())
 	if err != nil {
 		return View{}, err
 	}
@@ -544,7 +551,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		modelEndpoint: modelEndpoint,
 		modelAPIKey:   modelAPIKey,
 		egress:        sessionEgress(env, egressAllowlist),
-		env:           s.withNetworkEnv(s.driverEnv(req.AgentConfig, record), env.NetworkTier, record),
+		env:           s.withNetworkEnv(s.driverEnv(req.AgentConfig, record, env.ModelKeySet()), env.NetworkTier, record),
 		turn:          record.Turns,
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
@@ -703,16 +710,24 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	}
 	caps.Agents = agentProfiles()
 
-	var key string
+	// A workspace on the platform model route (ADR090) is ready through the
+	// platform key or, once it set its own, through that. Any other workspace
+	// is ready through its recorded key flag, else its key in OpenBao, read
+	// alongside the GitHub readiness.
+	var keyReady bool
 	var connection github.Connection
 	var group errgroup.Group
-	// A workspace on the platform model route (ADR090) is ready through the
-	// platform key; its BYO key is not consulted.
-	platformKey := agentsession.PlatformModelKeyReady(workspaceID)
-	if !platformKey {
+	if agentsession.PlatformModelKeyReady(workspaceID, false) {
+		keyReady = true
+	} else {
 		group.Go(func() error {
-			var err error
-			key, err = s.modelAPIKey(ctx, workspaceID)
+			env, err := s.workspaceEnvironment(ctx, workspaceID)
+			if err != nil || env.ModelKeySet() {
+				keyReady = err == nil
+				return err
+			}
+			key, err := s.modelAPIKey(ctx, workspaceID)
+			keyReady = key != ""
 			return err
 		})
 	}
@@ -730,7 +745,7 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	if err := group.Wait(); err != nil {
 		return Capabilities{}, err
 	}
-	caps.ModelKeyReady = platformKey || key != ""
+	caps.ModelKeyReady = keyReady
 	if s.GitHub != nil {
 		caps.GitHub = GitHubReadinessView{
 			Connected:    connection.Connected,
@@ -1133,9 +1148,21 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	if err := s.enforceLiveSandboxCap(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
 	}
-	if config, err := decodeAgentConfig(record); err != nil {
+	config, err := decodeAgentConfig(record)
+	if err != nil {
 		return View{}, err
-	} else if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent); err != nil {
+	}
+	// The BYO flag only matters where the trust tier counts platform-route
+	// sessions; read the environment for it there alone.
+	byoKey := false
+	if s.platformCounted(record.WorkspaceID, config.Agent) {
+		workspaceEnv, err := s.workspaceEnvironment(ctx, record.WorkspaceID)
+		if err != nil {
+			return View{}, err
+		}
+		byoKey = workspaceEnv.ModelKeySet()
+	}
+	if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent, byoKey); err != nil {
 		return View{}, err
 	}
 	if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
@@ -1235,7 +1262,7 @@ func (s *Service) gitProxyURL() string {
 // mandatory gateway base URL. The Git remote is a non-secret, Pod-bound proxy URL;
 // the raw GitHub token is minted and consumed only by the gateway. The
 // driver-grant value is likewise only an Ed25519 public verification key.
-func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[string]string {
+func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKey bool) map[string]string {
 	namespace := store.SandboxNamespace(record.WorkspaceID)
 	// Repo-less (chat-only) sessions carry no clone URL and never deliver: the
 	// driver runs the agent against the prompt in an empty /workspace and the
@@ -1302,7 +1329,7 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession) map[s
 	// Model route (ADR090, dev or workspace-allowlisted platform): the model id
 	// Claude Code must ask the OpenRouter endpoint for. It overrides the line
 	// above, so a platform-route sandbox always carries the pinned model.
-	for name, value := range agentsession.ModelRouteEnv(record.WorkspaceID, config.Agent) {
+	for name, value := range agentsession.ModelRouteEnv(record.WorkspaceID, config.Agent, byoKey) {
 		env[name] = value
 	}
 	return env
@@ -1432,21 +1459,22 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent); err != nil {
-		return View{}, err
-	}
 	// Every dispatch re-resolves the workspace environment, so a tier or host
-	// change applies from the session's next turn. The default model does not:
-	// create stored the resolved model in the session's config, so only new
-	// sessions pick up a changed default (the platform pin still wins here).
+	// change, and the model source (sessionModel, createEgress), applies from
+	// the session's next turn. The default model does not: create stored the
+	// resolved model in the session's config, so only new sessions pick up a
+	// changed default.
 	workspaceEnv, err := s.workspaceEnvironment(ctx, record.WorkspaceID)
 	if err != nil {
+		return View{}, err
+	}
+	if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent, workspaceEnv.ModelKeySet()); err != nil {
 		return View{}, err
 	}
 	if config.Model, err = sessionModel(record.WorkspaceID, config, workspaceEnv, false); err != nil {
 		return View{}, err
 	}
-	modelEndpoint, egressAllowlist, err := createEgress(record.WorkspaceID, config, effectiveHosts(workspaceEnv), req.EgressAllowlist)
+	modelEndpoint, egressAllowlist, err := createEgress(record.WorkspaceID, config, effectiveHosts(workspaceEnv), req.EgressAllowlist, workspaceEnv.ModelKeySet())
 	if err != nil {
 		return View{}, err
 	}
@@ -1464,7 +1492,7 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
 	}
-	env := s.withNetworkEnv(s.driverEnv(config, record), workspaceEnv.NetworkTier, record)
+	env := s.withNetworkEnv(s.driverEnv(config, record, workspaceEnv.ModelKeySet()), workspaceEnv.NetworkTier, record)
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
 	spec := dispatchSpec{
 		template:          strings.TrimSpace(config.Template),

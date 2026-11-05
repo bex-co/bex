@@ -222,7 +222,14 @@ export function NewSessionComposer() {
         <Alert>
           <AlertTitle>{t("agentSessions.modelKeyMissingTitle")}</AlertTitle>
           <AlertDescription>
-            {t("agentSessions.modelKeyMissingBody")}
+            <p>{t("agentSessions.modelKeyMissingBody")}</p>
+            <Link
+              to="/workspace/settings"
+              hash="agents"
+              className="font-medium underline underline-offset-4"
+            >
+              {t("agentSessions.modelKeyMissingAction")}
+            </Link>
           </AlertDescription>
         </Alert>
       ) : null}

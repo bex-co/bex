@@ -70,23 +70,54 @@ export type AgentAttachmentLimits = {
 
 export type AgentEnvironment = {
   __typename: 'AgentEnvironment';
+  /** The highest override an admin may set (10x the plan default). */
+  agentModelMaxSpendCapUsd: Maybe<Scalars['Float']['output']>;
+  /** Effective monthly agent-model spend cap in USD: min(the admin override or the plan default, the trust tier's ceiling). */
+  agentModelMonthlySpendCapUsd: Maybe<Scalars['Float']['output']>;
+  /** The plan's default monthly agent-model spend cap in USD. */
+  agentModelPlanSpendCapUsd: Maybe<Scalars['Float']['output']>;
+  /** The admin's spend cap override in USD; null means the plan default. */
+  agentModelSpendCapOverrideUsd: Maybe<Scalars['Float']['output']>;
+  /** Month-to-date agent-model spend in USD (UTC calendar month). */
+  agentModelSpendMonthToDateUsd: Maybe<Scalars['Float']['output']>;
   customHosts: Array<Scalars['String']['output']>;
   defaultModel: Maybe<Scalars['String']['output']>;
+  modelKeySet: Scalars['Boolean']['output'];
   modelPinned: Scalars['Boolean']['output'];
+  modelSource: AgentModelSource;
   networkTier: AgentNetworkTier;
+  /** The agent-model spend at which the card is charged mid-cycle; null at the top tier (month-end only). */
+  nextChargeThresholdUsd: Maybe<Scalars['Float']['output']>;
   ownerId: Scalars['String']['output'];
   pinnedModel: Maybe<Scalars['String']['output']>;
   registryHosts: Array<Scalars['String']['output']>;
+  /** The workspace's billing trust tier (T0 new .. T4). */
+  trustTier: Maybe<Scalars['String']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
 };
 
 export type AgentEnvironmentInput = {
+  /** Monthly agent-model spend cap in USD (more than 0, at most 10x the plan default). */
+  agentModelMonthlySpendCapUsd?: InputMaybe<Scalars['Float']['input']>;
+  /** true removes the workspace's own model provider key. */
+  clearModelApiKey?: InputMaybe<Scalars['Boolean']['input']>;
   /** Replaces the whole list; [] clears it. Opened only by the CUSTOM tier. */
   customHosts?: InputMaybe<Array<Scalars['String']['input']>>;
   /** "" returns to the provider default. */
   defaultModel?: InputMaybe<Scalars['String']['input']>;
+  /** Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet. */
+  modelApiKey?: InputMaybe<Scalars['String']['input']>;
   networkTier?: InputMaybe<AgentNetworkTier>;
+  /** true returns the spend cap to the plan default. */
+  resetAgentModelMonthlySpendCap?: InputMaybe<Scalars['Boolean']['input']>;
 };
+
+/** The model credential a workspace's claude sessions use: BYO (the workspace's own key), PLATFORM (bex-provided, billed at the model provider's cost + 30%) or NONE. */
+export enum AgentModelSource {
+  Byo = 'BYO',
+  None = 'NONE',
+  Platform = 'PLATFORM'
+}
 
 /** Sandbox network access for a workspace's agent sessions. FULL reaches any public host over HTTP(S) through the bex egress proxy (model providers stay blocked; no raw TCP or SSH). */
 export enum AgentNetworkTier {

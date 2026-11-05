@@ -653,7 +653,7 @@ func TestLoadConfigPlatformModelRoute(t *testing.T) {
 	if err := agentsession.EnablePlatformModelRoute(cfg.AgentPlatformModelRoute, cfg.AgentPlatformModel, cfg.AgentPlatformModelWorkspaces, cfg.AgentPlatformModelKey); err != nil {
 		t.Fatalf("enable after a disabled route: %v", err)
 	}
-	if agentsession.PlatformModelKeyReady("tea-d98210cbbpdc73dcrkvg") {
+	if agentsession.PlatformModelKeyReady("tea-d98210cbbpdc73dcrkvg", false) {
 		t.Fatal("route active without a key")
 	}
 

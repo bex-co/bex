@@ -371,7 +371,8 @@ export const en = {
       noRepos: "No connected repositories.",
       setupTitle: "Finish setup on desktop",
       needGithub: "Connect GitHub on desktop to open pull requests.",
-      needModelKey: "Add an agent model key on desktop to run sessions.",
+      needModelKey:
+        "A workspace admin needs to add a model provider key in workspace Settings → Agents on the web dashboard to run sessions.",
       needDesktop: "Sessions could not be loaded. Try again.",
       connectGithub: "Connect GitHub",
     },

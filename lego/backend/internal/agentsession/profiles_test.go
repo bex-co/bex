@@ -47,7 +47,7 @@ func TestAgentProfilesManifestCoversLegacyAdapters(t *testing.T) {
 				t.Fatalf("gemini runtime = %#v", profile)
 			}
 		}
-		endpoint, err := RegisteredModelEndpoint("tea-a", id, "")
+		endpoint, err := RegisteredModelEndpoint("tea-a", id, "", false)
 		if err != nil {
 			t.Fatalf("RegisteredModelEndpoint(%q) = %v", id, err)
 		}

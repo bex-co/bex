@@ -23,6 +23,7 @@ import {
   type AgentEnvironmentInput,
 } from "@/graphql/definitions";
 import { useAgentEnvironment } from "@/features/agent-environment/hooks/use-agent-environment";
+import { ModelKeySection } from "@/features/agent-environment/components/model-key-section";
 import {
   AgentEnvironmentCardSkeleton,
   TIER_OPTION_CLASS,
@@ -62,8 +63,9 @@ const TIER_VALUES = TIERS.map(({ tier }) => tier);
 
 /**
  * Settings → Agents (w10/m17/t005): the workspace agent environment — the
- * sandbox network tier, the Custom tier's extra hostnames and the default
- * model. Any member sees it; only admins (can_manage) can change it.
+ * sandbox network tier, the Custom tier's extra hostnames, the default model
+ * and the model source with the write-only provider key (ADR091 D7). Any
+ * member sees it; only admins (can_manage) can change it.
  */
 export function AgentEnvironmentCard({ ownerId }: { ownerId: string }) {
   const { t } = useTranslations();
@@ -343,6 +345,8 @@ function AgentEnvironmentForm({
             </p>
           ) : null}
         </div>
+
+        <ModelKeySection saved={saved} update={update} canManage={canManage} />
 
         {serverError?.field === "form" ? (
           <Alert variant="destructive">

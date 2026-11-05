@@ -378,7 +378,20 @@ func main() {
 		deps.Audit = auditSvc
 		go auditSvc.Run(ctx)
 
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, deps.Secrets, opsRole, identityClaims, platformRebuild, shareFiles, ready)
+		// ADR062: the model-credential mint, wired only when OpenBao is
+		// reachable. Spend: the platform route's monthly agent-model spend
+		// cap (ADR091 D5: min(admin override or pricing.yaml plan default,
+		// the trust tier's ceiling) on month-to-date cost) and the BYO key
+		// flag (D7), read through one cache that this process's key writes
+		// invalidate.
+		var modelMinter *agentsession.ModelMinter
+		if deps.Secrets != nil {
+			modelMinter = &agentsession.ModelMinter{Keys: deps.Secrets, Sessions: st, Audit: st, Spend: st}
+			deps.AgentModelKeyChanged = modelMinter.ForgetSpend
+			go backfillModelKeyFlags(ctx, deps.Secrets, st)
+		}
+
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, opsRole, identityClaims, platformRebuild, shareFiles, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
@@ -1020,7 +1033,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelKeys core.SecretKV, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, platformRebuild, shareFiles http.Handler, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, platformRebuild, shareFiles http.Handler, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -1074,15 +1087,12 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 		})
 		// ADR062: the model-credential mint. Same gateway-only HMAC + internal-only
 		// listener as the Git mint, path-domain-separated. Wired only when OpenBao is
-		// reachable (modelKeys non-nil), so a deployment without the BYO key store
+		// reachable (modelMinter non-nil), so a deployment without the BYO key store
 		// simply 503s the model proxy and never falls back to sandbox key injection.
-		if modelKeys != nil {
+		if modelMinter != nil {
 			internalRoot.Handle(agentsession.InternalModelMintPath, &agentsession.ModelHandler{
 				Secret: []byte(cfg.SandboxExecSecret),
-				// Spend: the platform route's monthly agent-model spend cap
-				// (ADR091 D5): min(admin override or pricing.yaml plan
-				// default, the trust tier's ceiling) on month-to-date cost.
-				Minter: &agentsession.ModelMinter{Keys: modelKeys, Sessions: st, Audit: st, Spend: st},
+				Minter: modelMinter,
 				Nonce:  st,
 			})
 			// The gateway reports each platform-route exchange's token usage
@@ -1685,4 +1695,16 @@ func compactAgentTranscripts(ctx context.Context, st *store.PGStore) {
 		log.Printf("bex-api: agent transcript compaction stopped (retrying next start): %v", err)
 	}
 	report("applied", done)
+}
+
+// backfillModelKeyFlags is the one-shot startup reconcile that records the
+// flag for model keys put in OpenBao by hand before the write-only key field
+// existed (agentsessions.BackfillModelKeyFlags). It runs in the background
+// and logs counts only; a failure is retried on the next start.
+func backfillModelKeyFlags(ctx context.Context, keys core.SecretKV, st *store.PGStore) {
+	r, err := agentsessions.BackfillModelKeyFlags(ctx, keys, st)
+	if err != nil {
+		log.Printf("bex-api: agent model key flag backfill failed (retrying next start): %v", err)
+	}
+	log.Printf("bex-api: agent model key flag backfill: workspaces=%d keys=%d flags_set=%d failed=%d", r.Workspaces, r.Keys, r.Marked, r.Failed)
 }

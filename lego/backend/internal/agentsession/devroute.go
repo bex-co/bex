@@ -37,13 +37,18 @@ import (
 //     dev control plane, uses the workspace's own BYO key, and is refused on a
 //     production control plane (EnableDevModelRoute);
 //   - the PLATFORM route (BEX_AGENT_PLATFORM_MODEL_ROUTE) is production-capable
-//     but covers only an explicit workspace allowlist, injects a platform-owned
-//     key (the workspace BYO key is never read) and pins the model: the gateway
-//     refuses any request body whose top-level "model" differs.
+//     but covers only an explicit workspace allowlist, minus every workspace
+//     that set its own model key; it injects a platform-owned key and pins the
+//     model: the gateway refuses any request body whose top-level "model"
+//     differs.
 //
-// The platform route wins for its allowlisted workspaces; the dev route covers
-// everything else on a dev control plane; with neither, behaviour is the
-// release profile's.
+// A workspace's own model key (BYO, ADR091 D7) wins over the platform route:
+// a workspace whose admin set one is never on the platform route, so it is
+// neither metered, billed nor spend-capped for tokens. Otherwise the platform
+// route wins for its allowlisted workspaces; the dev route covers everything
+// else on a dev control plane; with neither, behaviour is the release
+// profile's. Every route decision takes byoKey, the workspace's recorded
+// model_key_set_at flag (store.AgentEnvironment.ModelKeySet).
 
 const (
 	// DevModelRouteOpenRouter is the one supported route value for both
@@ -187,12 +192,14 @@ func routeModel(env, model string) (string, error) {
 	return model, nil
 }
 
-// routeFor is the route that applies to agent in workspaceID, or nil.
-func routeFor(workspaceID, agent string) *modelRoute {
-	if strings.ToLower(strings.TrimSpace(agent)) != openRouterAgent {
+// routeFor is the route that applies to agent in workspaceID, or nil. byoKey
+// (the workspace set its own model key) takes the workspace off the platform
+// route.
+func routeFor(workspaceID, agent string, byoKey bool) *modelRoute {
+	if !PinnedAgent(agent) {
 		return nil
 	}
-	if route := activePlatformModelRoute.Load(); route.covers(workspaceID) {
+	if route := activePlatformModelRoute.Load(); !byoKey && route.covers(workspaceID) {
 		return route
 	}
 	if route := activeDevModelRoute.Load(); route.covers(workspaceID) {
@@ -201,21 +208,30 @@ func routeFor(workspaceID, agent string) *modelRoute {
 	return nil
 }
 
+// platformRouteCovers reports whether the platform route's allowlist names
+// workspaceID's agent profile, BEFORE the BYO precedence: the only case in
+// which the mint must look up whether the workspace set its own key.
+func platformRouteCovers(workspaceID, agent string) bool {
+	return PinnedAgent(agent) && activePlatformModelRoute.Load().covers(workspaceID)
+}
+
 // PlatformModelKeyReady reports whether workspaceID's model credential is the
 // platform route's key, so readiness need not (and must not) consult the
-// workspace's BYO key. The platform route only serves the claude profile.
-func PlatformModelKeyReady(workspaceID string) bool {
-	return activePlatformModelRoute.Load().covers(workspaceID)
+// workspace's BYO key. The platform route only serves the claude profile, and
+// never a workspace with its own key (byoKey).
+func PlatformModelKeyReady(workspaceID string, byoKey bool) bool {
+	return !byoKey && activePlatformModelRoute.Load().covers(workspaceID)
 }
 
 // PlatformPinnedModel is the model the platform route pins for workspaceID's
 // claude sessions — the gateway refuses any other request model with a 403 —
-// and whether the workspace is on that route at all. Session create refuses a
-// different explicit model up front (AGENT_SESSION_MODEL_PINNED) and the
-// workspace agent environment reports it as read-only (w10/m17).
-func PlatformPinnedModel(workspaceID string) (string, bool) {
+// and whether the workspace is on that route at all (never with its own key,
+// byoKey). Session create refuses a different explicit model up front
+// (AGENT_SESSION_MODEL_PINNED) and the workspace agent environment reports it
+// as read-only (w10/m17).
+func PlatformPinnedModel(workspaceID string, byoKey bool) (string, bool) {
 	route := activePlatformModelRoute.Load()
-	if !route.covers(workspaceID) {
+	if byoKey || !route.covers(workspaceID) {
 		return "", false
 	}
 	return route.model, true
@@ -229,8 +245,8 @@ func PinnedAgent(agent string) bool {
 
 // registeredEndpoint is the endpoint a profile resolves to for workspaceID:
 // the release manifest's, unless a route covers that workspace and profile.
-func registeredEndpoint(workspaceID string, profile AgentProfile) string {
-	if routeFor(workspaceID, profile.ID) != nil {
+func registeredEndpoint(workspaceID string, profile AgentProfile, byoKey bool) string {
+	if routeFor(workspaceID, profile.ID, byoKey) != nil {
 		return openRouterEndpoint
 	}
 	return profile.ModelEndpoint
@@ -238,9 +254,9 @@ func registeredEndpoint(workspaceID string, profile AgentProfile) string {
 
 // ModelRouteEnv is the extra sandbox environment a route needs for agent in
 // workspaceID: the model id under every name Claude Code reads. Nil when no
-// route applies.
-func ModelRouteEnv(workspaceID, agent string) map[string]string {
-	route := routeFor(workspaceID, agent)
+// route applies (byoKey: see routeFor).
+func ModelRouteEnv(workspaceID, agent string, byoKey bool) map[string]string {
+	route := routeFor(workspaceID, agent, byoKey)
 	if route == nil {
 		return nil
 	}

@@ -18,6 +18,7 @@ package api
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"net/url"
@@ -27,6 +28,7 @@ import (
 
 	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/gqlerrors"
+	"github.com/modelcontextprotocol/go-sdk/mcp"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -173,5 +175,77 @@ func TestOperationSelectionErrorsAreRequestErrors(t *testing.T) {
 	}
 	if errs := run(`{ boom }`, ""); len(errs) != 1 || errs[0].Message != "internal error" {
 		t.Errorf("resolver failure = %+v, want redacted", errs)
+	}
+}
+
+// An invalid AgentEnvironmentInput never echoes the write-only model key:
+// graphql-go's variable coercion and argument literal errors print the
+// offending value, so the sanitizer keeps only the name and the reasons.
+func TestGraphQLValueErrorsNeverEchoTheModelKey(t *testing.T) {
+	const secret = "sk-ant-api03-NEVER-ECHOED"
+	srv := NewServer(&core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	schema, err := srv.newSchema()
+	if err != nil {
+		t.Fatal(err)
+	}
+	srv.schema = schema
+	mutation := `mutation($input: AgentEnvironmentInput!) { updateAgentEnvironment(ownerId: "tea-a", input: $input) { modelKeySet } }`
+	for name, tc := range map[string]struct {
+		query  string
+		input  any
+		reason string
+	}{
+		"unknown field":      {mutation, map[string]any{"modelApiKey": secret, "bogus": 1}, `In field "bogus": Unknown field.`},
+		"key in wrong field": {mutation, map[string]any{"agentModelMonthlySpendCapUsd": secret}, `In field "agentModelMonthlySpendCapUsd": Expected type "Float".`},
+		"multi-line value":   {mutation, map[string]any{"agentModelMonthlySpendCapUsd": secret + "\nIn field \"x\": " + secret}, `Expected type "Float".`},
+		"not an object":      {mutation, secret, `Expected "AgentEnvironmentInput", found not an object.`},
+		"inline literal": {`mutation { updateAgentEnvironment(ownerId: "tea-a", input: {modelApiKey: "` + secret + `", clearModelApiKey: "` + secret + `"}) { modelKeySet } }`,
+			nil, `In field "clearModelApiKey": Expected type "Boolean".`},
+	} {
+		body := graphqlRequestBody{Query: tc.query}
+		if tc.input != nil {
+			body.Variables = map[string]any{"input": tc.input}
+		}
+		_, _, _, result := srv.executeGraphQL(context.Background(), body)
+		if len(result.Errors) == 0 {
+			t.Errorf("%s: no error", name)
+			continue
+		}
+		msg := result.Errors[0].Message
+		if strings.Contains(fmt.Sprint(result.Errors), "NEVER-ECHOED") {
+			t.Errorf("%s: the error echoes the key: %q", name, msg)
+		}
+		if !strings.Contains(msg, "input") || !strings.Contains(msg, tc.reason) {
+			t.Errorf("%s: message %q lost the name or the reason %q", name, msg, tc.reason)
+		}
+	}
+}
+
+// MCP's input schema check echoes a mistyped argument's value; the server
+// keeps the path and the expectation but never the value (a model key put in
+// the wrong field), while the redaction leaves other tool errors alone.
+func TestMCPArgumentErrorsNeverEchoTheValue(t *testing.T) {
+	const secret = "sk-ant-api03-NEVER-ECHOED"
+	srv := NewServer(&core.Base{Client: fakeClient(), Namespace: "default"}, Deps{})
+	cs := mcpSessionAs(t, srv, "alice")
+	for name, args := range map[string]map[string]any{
+		"wrong type":  {"agentModelMonthlySpendCapUsd": secret},
+		"key as bool": {"clearModelApiKey": secret + "\nhas type \"x\", want y"},
+		"non-string":  {"modelApiKey": []any{secret}},
+	} {
+		res, err := cs.CallTool(context.Background(), &mcp.CallToolParams{Name: "update_agent_environment", Arguments: args})
+		if err != nil {
+			t.Fatalf("%s: %v", name, err)
+		}
+		out, _ := json.Marshal(res.Content)
+		if !res.IsError || strings.Contains(string(out), "NEVER-ECHOED") || !strings.Contains(string(out), "has type") {
+			t.Errorf("%s: result = %s", name, out)
+		}
+	}
+	if got := redactArgumentValue("AGENT_ENVIRONMENT_TIER_INVALID: networkTier must be registries"); got != "AGENT_ENVIRONMENT_TIER_INVALID: networkTier must be registries" {
+		t.Errorf("a non-validation error was rewritten: %q", got)
+	}
+	if got := redactArgumentValue(`validating "arguments": validating root: validating /properties/x: pattern: "` + secret + `" does not match regular expression "^a$"`); strings.Contains(got, "NEVER") || !strings.Contains(got, "/properties/x: pattern:") {
+		t.Errorf("pattern refusal = %q", got)
 	}
 }

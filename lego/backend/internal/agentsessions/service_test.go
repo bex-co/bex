@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"reflect"
@@ -114,10 +115,10 @@ func TestAgentSelectorIsClosedAndResolvesOnlyAbsoluteImagePaths(t *testing.T) {
 }
 
 func TestAgentProfileRejectsProviderEndpointOverride(t *testing.T) {
-	if endpoint, _, err := createEgress("tea-a", AgentConfig{Agent: "claude"}, nil, nil); err != nil || endpoint != "https://api.anthropic.com/v1" {
+	if endpoint, _, err := createEgress("tea-a", AgentConfig{Agent: "claude"}, nil, nil, false); err != nil || endpoint != "https://api.anthropic.com/v1" {
 		t.Fatalf("registered claude endpoint = %q, err=%v", endpoint, err)
 	}
-	if _, _, err := createEgress("tea-a", AgentConfig{Agent: "claude", ModelEndpoint: "https://models.attacker.example/v1"}, nil, nil); !errors.Is(err, core.ErrBadRequest) {
+	if _, _, err := createEgress("tea-a", AgentConfig{Agent: "claude", ModelEndpoint: "https://models.attacker.example/v1"}, nil, nil, false); !errors.Is(err, core.ErrBadRequest) {
 		t.Fatalf("custom provider endpoint error = %v, want bad request", err)
 	}
 }
@@ -958,9 +959,42 @@ func (f *fakeModelKeys) Get(_ context.Context, path string) (map[string]string, 
 	}
 	return f.data[path], nil
 }
-func (f *fakeModelKeys) Put(context.Context, string, map[string]string) error { return nil }
-func (f *fakeModelKeys) Delete(context.Context, string) error                 { return nil }
-func (f *fakeModelKeys) List(context.Context, string) ([]string, error)       { return nil, nil }
+func (f *fakeModelKeys) Put(_ context.Context, path string, data map[string]string) error {
+	if f.err != nil {
+		return f.err
+	}
+	if f.data == nil {
+		f.data = map[string]map[string]string{}
+	}
+	f.data[path] = maps.Clone(data)
+	return nil
+}
+
+func (f *fakeModelKeys) Delete(_ context.Context, path string) error {
+	if f.err != nil {
+		return f.err
+	}
+	delete(f.data, path)
+	return nil
+}
+
+// List returns the immediate child names under path, like OpenBao's.
+func (f *fakeModelKeys) List(_ context.Context, path string) ([]string, error) {
+	if f.err != nil {
+		return nil, f.err
+	}
+	var out []string
+	for key := range f.data {
+		if rest, ok := strings.CutPrefix(key, path+"/"); ok {
+			child, _, _ := strings.Cut(rest, "/")
+			if !slices.Contains(out, child) {
+				out = append(out, child)
+			}
+		}
+	}
+	slices.Sort(out)
+	return out, nil
+}
 
 func createInput() CreateRequest {
 	return CreateRequest{OwnerID: "tea-a", Repo: "bex-co/example", Branch: "bex-agent/session-test", AgentConfig: AgentConfig{Agent: "codex", Model: "gpt-5", ModelEndpoint: "https://api.openai.com/v1", Task: "fix the tests"}, EgressAllowlist: []string{"docs.example.com"}}

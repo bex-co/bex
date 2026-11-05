@@ -2,7 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
-import { AgentNetworkTier } from "@/graphql/definitions";
+import { AgentModelSource, AgentNetworkTier } from "@/graphql/definitions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
 import { codedGraphQLError } from "@/test/mocks/apollo";
@@ -28,6 +28,8 @@ const ENV: AgentEnvironmentView = {
   defaultModel: null,
   modelPinned: false,
   pinnedModel: null,
+  modelKeySet: false,
+  modelSource: AgentModelSource.Platform,
   registryHosts: ["registry.npmjs.org", "pypi.org", "proxy.golang.org"],
   updatedAt: null,
 };
@@ -187,5 +189,105 @@ describe("AgentEnvironmentCard", () => {
     );
     expect(screen.getByLabelText("Default model")).toHaveAttribute("readonly");
     expect(save()).toBeDisabled();
+  });
+
+  describe("model provider key", () => {
+    const keyField = () => screen.getByLabelText(/provider API key/i);
+    const saveKey = () => screen.getByRole("button", { name: "Save key" });
+
+    it("shows the bex-provided source and a write-only key field", async () => {
+      const { user, update } = setup();
+      expect(screen.getByTestId("model-source")).toHaveTextContent(
+        "bex-provided (billed at the model provider's cost + 30%)",
+      );
+      expect(keyField()).toHaveAttribute("type", "password");
+      // Not a login password: browsers and password managers keep out.
+      expect(keyField()).toHaveAttribute("autocomplete", "new-password");
+      expect(keyField()).toHaveAttribute("data-1p-ignore");
+      expect(keyField()).toHaveAttribute("data-lpignore", "true");
+      expect(keyField()).toHaveAttribute("data-bwignore");
+      expect(keyField()).toHaveValue("");
+      expect(saveKey()).toBeDisabled();
+      expect(screen.queryByRole("button", { name: "Remove key" })).toBeNull();
+
+      await user.type(keyField(), "  sk-ant-api03-secret  ");
+      await user.click(saveKey());
+      expect(update).toHaveBeenCalledWith({
+        modelApiKey: "sk-ant-api03-secret",
+      });
+      // Write-only: the field is emptied once saved, never refilled.
+      expect(keyField()).toHaveValue("");
+      expect(toast.success).toHaveBeenCalledWith("Model key saved");
+    });
+
+    it("never prefills a saved key and offers replace and remove", async () => {
+      const { user, update } = setup({
+        ...ENV,
+        modelKeySet: true,
+        modelSource: AgentModelSource.Byo,
+      });
+      expect(screen.getByTestId("model-source")).toHaveTextContent(
+        "Your own key",
+      );
+      expect(screen.getByLabelText("Replace provider API key")).toHaveValue("");
+      await user.click(screen.getByRole("button", { name: "Remove key" }));
+      expect(
+        screen.getByText("Remove the model provider key?"),
+      ).toBeInTheDocument();
+      const confirm = screen
+        .getAllByRole("button", { name: "Remove key" })
+        .at(-1)!;
+      await user.click(confirm);
+      expect(update).toHaveBeenCalledWith({ clearModelApiKey: true });
+    });
+
+    it("refuses a key with inner spaces before sending it", async () => {
+      const { user, update } = setup();
+      await user.type(keyField(), "sk-ant two");
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Enter the key without spaces",
+      );
+      expect(saveKey()).toBeDisabled();
+      expect(update).not.toHaveBeenCalled();
+    });
+
+    it("maps a server key refusal without echoing the key", async () => {
+      const { user, update } = setup();
+      update.mockRejectedValueOnce(
+        codedGraphQLError("AGENT_ENVIRONMENT_MODEL_KEY_INVALID", {
+          field: "modelApiKey",
+        }),
+      );
+      await user.type(keyField(), "sk-ant-rejected");
+      await user.click(saveKey());
+      expect(screen.getByRole("alert")).toHaveTextContent(
+        "Enter the key without spaces",
+      );
+      expect(screen.getByRole("alert")).not.toHaveTextContent(
+        "sk-ant-rejected",
+      );
+    });
+
+    // Non-admins see the same layout disabled, so the ready card keeps the
+    // skeleton's geometry (dashboard AGENTS.md skeleton rule).
+    it("shows non-admins the status with every key control disabled", () => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ role: "DEVELOPER", canManage: false }),
+      );
+      setup({ ...ENV, modelKeySet: true, modelSource: AgentModelSource.Byo });
+      expect(screen.getByTestId("model-source")).toHaveTextContent(
+        "Your own key",
+      );
+      expect(screen.getByLabelText(/provider API key/i)).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Save key" })).toBeDisabled();
+      expect(screen.getByRole("button", { name: "Remove key" })).toBeDisabled();
+    });
+
+    it("keeps the skeleton's model-key section in step with the ready card", () => {
+      setup(null, true);
+      expect(
+        screen.getByTestId("model-key-section-skeleton"),
+      ).toBeInTheDocument();
+    });
   });
 });

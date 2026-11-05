@@ -41,8 +41,9 @@ import (
 // fakeEnvironments is the in-memory EnvironmentStore: it applies a patch the
 // way the PG upsert does (nil keeps, first write fills the column defaults).
 type fakeEnvironments struct {
-	rows    map[string]store.AgentEnvironment
-	readErr error
+	rows     map[string]store.AgentEnvironment
+	readErr  error
+	writeErr error // fails the locked upsert after its write succeeded
 }
 
 func newFakeEnvironments() *fakeEnvironments {
@@ -80,9 +81,33 @@ func (f *fakeEnvironments) UpsertAgentEnvironment(_ context.Context, ws string, 
 	if patch.ClearSpendCapOverride {
 		row.SpendCapOverrideMicroUSD = nil
 	}
+	if patch.ModelKeySet != nil {
+		row.ModelKeySetAt = nil
+		if *patch.ModelKeySet {
+			at := time.Date(2026, 11, 5, 12, 0, 0, 0, time.UTC)
+			row.ModelKeySetAt = &at
+		}
+	}
 	row.UpdatedAt = time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
 	f.rows[ws] = row
 	return row, nil
+}
+
+// UpsertAgentEnvironmentLocked runs write against the current row (the
+// defaults when there is none) and applies patch only when it succeeded, like
+// the PG transaction.
+func (f *fakeEnvironments) UpsertAgentEnvironmentLocked(ctx context.Context, ws string, patch store.AgentEnvironmentPatch, write func(context.Context, store.AgentEnvironment) error) (store.AgentEnvironment, error) {
+	current, ok := f.rows[ws]
+	if !ok {
+		current = store.AgentEnvironment{WorkspaceID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}}
+	}
+	if err := write(ctx, current); err != nil {
+		return store.AgentEnvironment{}, err
+	}
+	if f.writeErr != nil {
+		return store.AgentEnvironment{}, f.writeErr
+	}
+	return f.UpsertAgentEnvironment(ctx, ws, patch)
 }
 
 // roleChecker models one workspace's roles: admin holds every relation,
@@ -131,7 +156,7 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 	if err != nil {
 		t.Fatalf("Environment: %v", err)
 	}
-	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, RegistryHosts: sessionegress.DefaultRegistryDomains()}
+	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains()}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("defaults = %+v, want %+v", got, want)
 	}

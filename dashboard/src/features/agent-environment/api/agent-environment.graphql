@@ -1,6 +1,9 @@
 # The workspace agent environment (w10/m17, ADR047 D5): the sandbox network
 # tier, the custom hostnames the CUSTOM tier opens, and the default model.
-# Any member reads it; only admins (can_manage) write it.
+# Any member reads it; only admins (can_manage) write it. The workspace's own
+# model provider key (ADR091 D7) is write-only: input.modelApiKey sets it,
+# input.clearModelApiKey removes it, and reads see only modelKeySet and
+# modelSource.
 fragment AgentEnvironmentFields on AgentEnvironment {
   ownerId
   networkTier
@@ -8,6 +11,8 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   defaultModel
   modelPinned
   pinnedModel
+  modelKeySet
+  modelSource
   registryHosts
   updatedAt
 }
