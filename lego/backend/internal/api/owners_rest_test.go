@@ -129,6 +129,17 @@ func (f *fakeWSStore) CountWorkspacesForSubjectPlan(context.Context, string, str
 	return 0, nil
 }
 
+func (f *fakeWSStore) SubjectForOwnerID(_ context.Context, ownID string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for subject, id := range f.ownerIDs {
+		if id == ownID {
+			return subject, nil
+		}
+	}
+	return "", store.ErrNotFound
+}
+
 // OwnerIDsForSubjects mints a stable, well-formed own- id per subject (the
 // PGStore's get-or-create semantics, for tests).
 func (f *fakeWSStore) OwnerIDsForSubjects(_ context.Context, subjects []string) (map[string]string, error) {

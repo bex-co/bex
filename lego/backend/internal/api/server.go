@@ -978,6 +978,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 	if keyTeardown != nil {
 		membersSvc.Keys = keyTeardown
 	}
+	workspaceSvc.Members = memberMutator{membersSvc}
 	var workspaceResolver core.WorkspaceResolver
 	if base != nil {
 		workspaceResolver = base.Workspace
@@ -1971,4 +1972,17 @@ func restBodyLimit(global func(http.Handler) http.Handler) func(http.Handler) ht
 			narrow.ServeHTTP(w, r)
 		})
 	}
+}
+
+// memberMutator drops members.MemberView: the Render member routes answer
+// workspaces' teamMember shape.
+type memberMutator struct{ svc *members.Service }
+
+func (m memberMutator) ChangeRole(ctx context.Context, workspaceID, subject, role string) error {
+	_, err := m.svc.ChangeRole(ctx, workspaceID, subject, role)
+	return err
+}
+
+func (m memberMutator) Remove(ctx context.Context, workspaceID, subject string) error {
+	return m.svc.Remove(ctx, workspaceID, subject)
 }

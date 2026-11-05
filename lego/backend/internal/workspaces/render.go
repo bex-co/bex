@@ -94,6 +94,27 @@ func renderTeamMemberRole(role string) string {
 	}
 }
 
+// memberRoles is bex's role ladder (deploy/gitops/authz/model.fga).
+var memberRoles = []string{"admin", "developer", "contributor", "billing", "viewer"}
+
+// bexMemberRole inverts renderTeamMemberRole for a Render request.
+func bexMemberRole(role string) (string, bool) {
+	for _, r := range memberRoles {
+		if renderTeamMemberRole(r) == role {
+			return r, true
+		}
+	}
+	return "", false
+}
+
+func renderMemberRoles() []string {
+	out := make([]string, len(memberRoles))
+	for i, r := range memberRoles {
+		out[i] = renderTeamMemberRole(r)
+	}
+	return out
+}
+
 // renderTeamMember mirrors components.schemas.teamMember. Name is the member's
 // optional Kratos `name` trait (w4/m25); the key is always present (required in
 // the pinned spec) and "" for an identity that never set the trait — an honest

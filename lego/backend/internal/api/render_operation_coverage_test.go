@@ -66,7 +66,6 @@ var renderOperationOmissions = map[string]string{
 	"listTasks":                    "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"listWorkflowVersions":         "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"preview-service":              "ADR018 \u00a7 Render operation omissions \u2014 PR previews",
-	"remove-workspace-member":      "ADR018 \u00a7 Render operation omissions \u2014 Render member mutation paths",
 	"retrieve-dedicated-ip":        "ADR018 \u00a7 Render operation omissions \u2014 Dedicated outbound IPs",
 	"retrieve-maintenance":         "ADR018 \u00a7 Render operation omissions \u2014 Maintenance scheduling",
 	"retrieve-sandbox-execution":   "ADR018 \u00a7 Render operation omissions \u2014 Render sandbox groups, snapshots and executions",
@@ -80,7 +79,6 @@ var renderOperationOmissions = map[string]string{
 	"update-owner-log-stream":      "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
 	"update-resource-log-stream":   "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
 	"update-sandbox-group":         "ADR018 \u00a7 Render operation omissions \u2014 Render sandbox groups, snapshots and executions",
-	"update-workspace-member":      "ADR018 \u00a7 Render operation omissions \u2014 Render member mutation paths",
 	"updateWorkflow":               "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"upsertOwnerMetricsStream":     "ADR018 \u00a7 Render operation omissions \u2014 External telemetry streams",
 }

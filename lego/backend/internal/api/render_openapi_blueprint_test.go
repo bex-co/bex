@@ -440,6 +440,7 @@ var renderIDPathParameters = map[string]ids.Kind{
 	"eventId":     ids.Event,
 	"jobId":       ids.Job,
 	"blueprintId": ids.Blueprint,
+	"userId":      ids.Owner,
 }
 
 // bexIDSpellings is every spelling bex accepts for a minted id. A Blueprint

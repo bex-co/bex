@@ -270,3 +270,74 @@ func TestOwnIDPrefix(t *testing.T) {
 		t.Fatalf("ownIDPrefix = %q", ownIDPrefix)
 	}
 }
+
+// --- Render member mutations (w5/m267) ----------------------------------------
+
+type fakeMembers struct {
+	roles   map[string]string
+	removed []string
+	err     error
+}
+
+func (f *fakeMembers) ChangeRole(_ context.Context, _, subject, role string) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.roles[subject] = role
+	return nil
+}
+
+func (f *fakeMembers) Remove(_ context.Context, _, subject string) error {
+	if f.err != nil {
+		return f.err
+	}
+	f.removed = append(f.removed, subject)
+	return nil
+}
+
+// The userId the members list answers is what the mutations accept; Render's
+// role enum maps onto bex's roles; the members service's refusals (the owner
+// safeguards) pass through unchanged.
+func TestRenderMemberMutationsResolveTheListedUserID(t *testing.T) {
+	st := newFakeStore()
+	members := &fakeMembers{roles: map[string]string{}}
+	svc := &Service{Base: &core.Base{Authz: &fakeChecker{allow: true}}, Store: st, Members: members}
+	w, err := svc.Create(ctxAs("user-a"), "acme", "hobby")
+	if err != nil {
+		t.Fatal(err)
+	}
+	listed, err := svc.ListMembers(ctxAs("user-a"), w.ID)
+	if err != nil || len(listed) != 1 {
+		t.Fatalf("list: %+v %v", listed, err)
+	}
+	userID := listed[0].OwnerID
+
+	for render, bex := range map[string]string{
+		"ADMIN": "admin", "DEVELOPER": "developer", "WORKSPACE_CONTRIBUTOR": "contributor",
+		"WORKSPACE_BILLING": "billing", "WORKSPACE_VIEWER": "viewer",
+	} {
+		m, err := svc.UpdateMember(ctxAs("user-a"), w.ID, userID, render)
+		if err != nil || members.roles["user-a"] != bex || renderTeamMemberRole(m.Role) != render {
+			t.Fatalf("%s: member %+v err %v changed %q", render, m, err, members.roles["user-a"])
+		}
+	}
+	if _, err := svc.UpdateMember(ctxAs("user-a"), w.ID, userID, "admin"); !errors.Is(err, core.ErrBadRequest) {
+		t.Fatalf("lowercase role: %v, want ErrBadRequest", err)
+	}
+	if _, err := svc.UpdateMember(ctxAs("user-a"), w.ID, "own-00000000000000000099", "ADMIN"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("unknown userId: %v, want ErrNotFound", err)
+	}
+	// A raw subject is not a userId.
+	if err := svc.RemoveMember(ctxAs("user-a"), w.ID, "user-a"); !errors.Is(err, core.ErrNotFound) {
+		t.Fatalf("subject as userId: %v, want ErrNotFound", err)
+	}
+
+	members.err = core.ErrForbidden
+	if err := svc.RemoveMember(ctxAs("user-a"), w.ID, userID); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("members refusal: %v, want it passed through", err)
+	}
+	members.err = nil
+	if err := svc.RemoveMember(ctxAs("user-a"), w.ID, userID); err != nil || len(members.removed) != 1 || members.removed[0] != "user-a" {
+		t.Fatalf("remove: %v %v", err, members.removed)
+	}
+}

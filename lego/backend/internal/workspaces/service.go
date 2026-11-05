@@ -115,6 +115,16 @@ type Service struct {
 	// destroying it would lock every operator out at once. Empty (unset) leaves
 	// every workspace deletable — zero behavior change.
 	OpsWorkspaceID string
+	// Members runs Render's member mutations through the members service
+	// (authorization, owner safeguards, audit); nil → ErrWorkspacesUnavailable.
+	Members MemberMutator
+}
+
+// MemberMutator is the members service's role change and removal, keyed by
+// the member's identity subject.
+type MemberMutator interface {
+	ChangeRole(ctx context.Context, workspaceID, subject, role string) error
+	Remove(ctx context.Context, workspaceID, subject string) error
 }
 
 type WorkspaceCreationStore interface {
@@ -185,6 +195,8 @@ type WorkspaceStore interface {
 	// (minted on first sight) — the Render userId the members surface reports
 	// instead of the raw subject (w6/m7).
 	OwnerIDsForSubjects(ctx context.Context, subjects []string) (map[string]string, error)
+	// SubjectForOwnerID is its inverse, for the Render member mutations.
+	SubjectForOwnerID(ctx context.Context, ownID string) (string, error)
 }
 
 // WorkspaceGranter writes a subject's OpenFGA membership on a workspace (the
@@ -867,6 +879,56 @@ type MemberView struct {
 	Email      string
 	Name       string
 	MFAEnabled bool
+}
+
+// UpdateMember is Render's update-workspace-member: userId is the member's
+// own- id and role is Render's teamMemberRole.
+func (s *Service) UpdateMember(ctx context.Context, ownerID, userID, role string) (MemberView, error) {
+	ownerID, subject, err := s.memberSubject(ctx, ownerID, userID)
+	if err != nil {
+		return MemberView{}, err
+	}
+	bexRole, ok := bexMemberRole(role)
+	if !ok {
+		return MemberView{}, fmt.Errorf("%w: role must be one of %s", core.ErrBadRequest, strings.Join(renderMemberRoles(), ", "))
+	}
+	if err := s.Members.ChangeRole(ctx, ownerID, subject, bexRole); err != nil {
+		return MemberView{}, err
+	}
+	m := MemberView{Subject: subject, OwnerID: userID, Role: bexRole}
+	if s.Identities != nil {
+		if attrs, ok := s.Identities.LookupMany(ctx, []string{subject})[subject]; ok {
+			m.Email, m.Name, m.MFAEnabled = attrs.Email, attrs.Name, attrs.MFAEnabled
+		}
+	}
+	return m, nil
+}
+
+// RemoveMember is Render's remove-workspace-member; userId is the own- id.
+func (s *Service) RemoveMember(ctx context.Context, ownerID, userID string) error {
+	ownerID, subject, err := s.memberSubject(ctx, ownerID, userID)
+	if err != nil {
+		return err
+	}
+	return s.Members.Remove(ctx, ownerID, subject)
+}
+
+// memberSubject authorizes a member mutation, then resolves userId to the
+// identity subject. Whether the subject belongs to this workspace is the
+// members service's check.
+func (s *Service) memberSubject(ctx context.Context, ownerID, userID string) (string, string, error) {
+	ownerID, err := s.AuthorizeWorkspace(ctx, core.RelCanManage, ownerID)
+	if err != nil {
+		return "", "", err
+	}
+	if s.Store == nil || s.Members == nil {
+		return "", "", core.ErrWorkspacesUnavailable
+	}
+	subject, err := s.Store.SubjectForOwnerID(ctx, userID)
+	if errors.Is(err, store.ErrNotFound) {
+		return "", "", core.NotFound("member")
+	}
+	return ownerID, subject, err
 }
 
 // ListMembers lists a workspace's members — GET /v1/owners/{ownerId}/members.

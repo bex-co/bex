@@ -190,6 +190,17 @@ func (f *fakeStore) invite(tenantID, email, role string) {
 		store.Invite{TenantID: tenantID, Email: email, Role: role})
 }
 
+func (f *fakeStore) SubjectForOwnerID(_ context.Context, ownID string) (string, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	for subject, id := range f.ownerIDs {
+		if id == ownID {
+			return subject, nil
+		}
+	}
+	return "", store.ErrNotFound
+}
+
 // OwnerIDsForSubjects mints a stable, well-formed own- id per subject (the
 // PGStore's get-or-create semantics, for tests).
 func (f *fakeStore) OwnerIDsForSubjects(_ context.Context, subjects []string) (map[string]string, error) {

@@ -67,6 +67,28 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, toRenderTeamMembers(members)) // bare array, no cursor
 	})
+	mux.HandleFunc("PATCH /v1/owners/{ownerId}/members/{userId}", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Role string `json:"role"`
+		}
+		if err := core.DecodeJSON(r, &req); err != nil {
+			core.WriteErr(w, core.ErrBadRequest)
+			return
+		}
+		m, err := s.UpdateMember(r.Context(), r.PathValue("ownerId"), r.PathValue("userId"), req.Role)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toRenderTeamMember(m))
+	})
+	mux.HandleFunc("DELETE /v1/owners/{ownerId}/members/{userId}", func(w http.ResponseWriter, r *http.Request) {
+		if err := s.RemoveMember(r.Context(), r.PathValue("ownerId"), r.PathValue("userId")); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusNoContent)
+	})
 	// GET /v1/owners/{ownerId}/limits — bex extension (w7/m9): resource caps
 	// (services/postgres/keyValues used vs. limit, 0 = unlimited). Authorizes
 	// can_view on the workspace, same as GET /v1/owners/{ownerId}.

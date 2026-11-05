@@ -339,6 +339,17 @@ func (s *PGStore) OwnerIDForSubject(ctx context.Context, subject string) (string
 	return ownIDs[subject], nil
 }
 
+// SubjectForOwnerID inverts OwnerIDsForSubjects: the subject an own- id was
+// minted for (own_id is unique). An id never minted is ErrNotFound.
+func (s *PGStore) SubjectForOwnerID(ctx context.Context, ownID string) (string, error) {
+	var subject string
+	err := s.Pool.QueryRow(ctx, `SELECT subject FROM owner_ids WHERE own_id = $1`, ownID).Scan(&subject)
+	if err != nil {
+		return "", classify("owner_id", err)
+	}
+	return subject, nil
+}
+
 // OwnerIDsForSubjects returns each subject's opaque own- id, minting one on
 // first sight. The ids a list already has are read in one query, and only a
 // subject without one is written (w5/104): the Team page polls its members

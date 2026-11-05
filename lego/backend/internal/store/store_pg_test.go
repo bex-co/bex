@@ -1897,6 +1897,14 @@ func TestOwnerIDForSubject(t *testing.T) {
 	if _, ok := ids.KindOf(a1); !ok || a1[:4] != "own-" {
 		t.Fatalf("own id = %q, want a well-formed own- id", a1)
 	}
+	// The inverse resolves a minted id back to its subject (w5/m267); an id
+	// never minted is ErrNotFound.
+	if got, err := s.SubjectForOwnerID(ctx, a1); err != nil || got != "identity-a" {
+		t.Fatalf("SubjectForOwnerID(%q) = %q, %v", a1, got, err)
+	}
+	if _, err := s.SubjectForOwnerID(ctx, "own-00000000000000000000"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unminted own id: %v, want ErrNotFound", err)
+	}
 	a2, err := s.OwnerIDForSubject(ctx, "identity-a")
 	if err != nil || a2 != a1 {
 		t.Fatalf("not stable: %q then %q (err %v)", a1, a2, err)

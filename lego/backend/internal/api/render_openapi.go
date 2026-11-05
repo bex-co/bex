@@ -146,7 +146,14 @@ var renderPathParameterPatternCompatibility = map[string]map[string]string{
 	"terminate-sandbox":     {"sandboxId": renderSandboxIDPattern},
 	"connect-sandbox-run":   {"sandboxId": renderSandboxIDPattern},
 	"connect-sandbox-files": {"sandboxId": renderSandboxIDPattern},
+	// The members list answers each userId as bex's opaque own- id (w6/m7);
+	// the member mutations must accept what the list hands out (w5/m266).
+	"update-workspace-member": {"userId": renderUserIDPattern},
+	"remove-workspace-member": {"userId": renderUserIDPattern},
 }
+
+// renderUserIDPattern accepts bex's own- user ids alongside Render's usr-.
+const renderUserIDPattern = `^(?:usr|own)-[0-9a-v]{20}$`
 
 // renderSandboxIDPattern accepts bex's 20-character sbx- ids alongside
 // Render's 25-character ones.
