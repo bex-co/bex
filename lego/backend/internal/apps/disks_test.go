@@ -288,7 +288,7 @@ func listDisksREST(t *testing.T, mux *http.ServeMux, query string) []DiskView {
 	// — otherwise it lists a different tenant's disks, which is correctly none.
 	req := httptest.NewRequest("GET", "/v1/disks?"+query, nil)
 	req = req.WithContext(core.WithWorkspace(req.Context(), "tea-disks"))
-	mux.ServeHTTP(rec, req)
+	validated(t, mux).ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /v1/disks?%s => 200, got %d: %s", query, rec.Code, rec.Body)
 	}
@@ -367,7 +367,7 @@ func TestCreateServiceAcceptsRendersServiceDetailsDisk(t *testing.T) {
 
 	body := `{"name":"web","type":"web_service","repo":"https://github.com/o/r","serviceDetails":{"plan":"starter","disk":{"name":"data","mountPath":"/var/data","sizeGB":25}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create with serviceDetails.disk => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -398,7 +398,7 @@ func TestCreateServiceDiskDefaultsSizeWhenOmitted(t *testing.T) {
 
 	body := `{"name":"web","type":"web_service","repo":"https://github.com/o/r","serviceDetails":{"plan":"starter","disk":{"name":"data","mountPath":"/var/data"}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create with sizeGB omitted => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -489,7 +489,7 @@ func TestRESTAcceptsAOneGBDisk(t *testing.T) {
 	svc, _, _ := newDiskService(diskEligibleApp("web"))
 	mux := diskRESTMux(t, svc)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/disks",
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/disks",
 		strings.NewReader(`{"serviceId":"web","name":"data","mountPath":"/var/data","sizeGB":1}`)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST /v1/disks sizeGB 1 => %d: %s", rec.Code, rec.Body)
@@ -499,7 +499,7 @@ func TestRESTAcceptsAOneGBDisk(t *testing.T) {
 		t.Fatalf("created = %+v, %v; want sizeGB 1", created, err)
 	}
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/disks/"+created.ID, nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/disks/"+created.ID, nil))
 	var read DiskView
 	if err := json.Unmarshal(rec.Body.Bytes(), &read); rec.Code != http.StatusOK || err != nil || read.SizeGB != 1 {
 		t.Fatalf("GET /v1/disks/%s => %d %s", created.ID, rec.Code, rec.Body)

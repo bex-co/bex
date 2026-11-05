@@ -89,7 +89,7 @@ func TestPrivateServiceIsNeverPubliclyRoutableThroughRESTCreate(t *testing.T) {
 
 	body := `{"name":"pserv","type":"private_service","image":{"imagePath":"nginx:alpine"}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST /v1/services = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -99,7 +99,7 @@ func TestPrivateServiceIsNeverPubliclyRoutableThroughRESTCreate(t *testing.T) {
 
 	// And on the read-back, not just the create echo.
 	read := httptest.NewRecorder()
-	mux.ServeHTTP(read, httptest.NewRequest(http.MethodGet, "/v1/services?name=pserv", nil))
+	validated(t, mux).ServeHTTP(read, httptest.NewRequest(http.MethodGet, "/v1/services?name=pserv", nil))
 	if read.Code != http.StatusOK {
 		t.Fatalf("GET /v1/services = %d: %s", read.Code, read.Body.String())
 	}

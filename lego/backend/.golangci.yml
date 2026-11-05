@@ -25,6 +25,16 @@ linters:
           deny:
             - pkg: github.com/rs/xid
               desc: mint ids via internal/id (id.New); only internal/id may import xid — see docs/ADR020-identifiers.md
+        # internal/rendertest validates responses against the pinned Render
+        # spec for tests (w3/m272). It fails a testing.TB, so production code
+        # importing it is always a mistake.
+        test-helpers-stay-in-tests:
+          files:
+            - "$all"
+            - "!$test"
+          deny:
+            - pkg: github.com/bex-co/bex/lego/backend/internal/rendertest
+              desc: internal/rendertest is a test helper; import it only from _test.go files
     forbidigo:
       # Resolve through the type checker so an aliased import or an explicit
       # generic instantiation is caught too, not just the literal text.

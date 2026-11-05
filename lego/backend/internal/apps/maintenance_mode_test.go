@@ -50,7 +50,7 @@ func TestMaintenanceModeRESTCanonicalShapeAndPresence(t *testing.T) {
 	patch := func(body string) *httptest.ResponseRecorder {
 		req := httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body))
 		rr := httptest.NewRecorder()
-		mux.ServeHTTP(rr, req)
+		validated(t, mux).ServeHTTP(rr, req)
 		return rr
 	}
 
@@ -86,7 +86,7 @@ func TestMaintenanceModeRESTCanonicalShapeAndPresence(t *testing.T) {
 	legacyMux := http.NewServeMux()
 	legacySvc.RegisterREST(legacyMux)
 	legacy := httptest.NewRecorder()
-	legacyMux.ServeHTTP(legacy, httptest.NewRequest(http.MethodGet, "/v1/services/legacy", nil))
+	validated(t, legacyMux).ServeHTTP(legacy, httptest.NewRequest(http.MethodGet, "/v1/services/legacy", nil))
 	if legacy.Code != http.StatusOK {
 		t.Fatalf("legacy read status = %d body=%s", legacy.Code, legacy.Body.String())
 	}
@@ -365,7 +365,7 @@ func TestMaintenanceModeCreateRESTRequiresBothKeys(t *testing.T) {
 		`{"name":"null-mode","image":{"imagePath":"nginx:1"},"serviceDetails":{"plan":"starter","maintenanceMode":null}}`,
 	} {
 		rr := httptest.NewRecorder()
-		mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+		validated(t, mux).ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 		if rr.Code != http.StatusBadRequest || !strings.Contains(rr.Body.String(), "requires enabled and uri") {
 			t.Fatalf("invalid create = %d %s", rr.Code, rr.Body.String())
 		}
@@ -380,7 +380,7 @@ func TestMaintenanceModeCreateRESTRequiresBothKeys(t *testing.T) {
 
 	body := []byte(`{"name":"web","image":{"imagePath":"nginx:1"},"serviceDetails":{"plan":"starter","maintenanceMode":{"enabled":true,"uri":""}}}`)
 	rr := httptest.NewRecorder()
-	mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/services", bytes.NewReader(body)))
+	validated(t, mux).ServeHTTP(rr, httptest.NewRequest(http.MethodPost, "/v1/services", bytes.NewReader(body)))
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("create status = %d body=%s", rr.Code, rr.Body.String())
 	}
@@ -398,7 +398,7 @@ func TestMaintenanceModeRESTPlanTransitions(t *testing.T) {
 	svc.RegisterREST(mux)
 	patch := func(body string) *httptest.ResponseRecorder {
 		rr := httptest.NewRecorder()
-		mux.ServeHTTP(rr, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
+		validated(t, mux).ServeHTTP(rr, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
 		return rr
 	}
 

@@ -109,7 +109,7 @@ func TestValidateBlueprintManifestSizeBoundary(t *testing.T) {
 				manifest := "#" + strings.Repeat("x", size-len(valid)-1) + valid
 				req := blueprintValidationRequest(t, format, manifest)
 				rec := httptest.NewRecorder()
-				mux.ServeHTTP(rec, req.WithContext(ownershipCtx()))
+				validated(t, mux).ServeHTTP(rec, req.WithContext(ownershipCtx()))
 				if size == blueprintMaxManifestBytes {
 					var result BlueprintValidation
 					if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &result) != nil || !result.Valid {
@@ -206,7 +206,7 @@ func TestValidateBlueprintEmptyManifestAndNamedRefusals(t *testing.T) {
 	svc.RegisterREST(mux)
 	serve := func(req *http.Request) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req.WithContext(ownershipCtx()))
+		validated(t, mux).ServeHTTP(rec, req.WithContext(ownershipCtx()))
 		return rec
 	}
 	for _, format := range []string{"json", "multipart"} {

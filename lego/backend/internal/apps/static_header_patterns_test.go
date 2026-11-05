@@ -62,7 +62,7 @@ func TestStaticHeaderWildcardPersistenceAcrossAdapters(t *testing.T) {
 				body, _ := json.Marshal(headers)
 				for _, method := range []string{http.MethodPut, http.MethodGet} {
 					rec := httptest.NewRecorder()
-					mux.ServeHTTP(rec, httptest.NewRequest(method, "/v1/services/site/headers", strings.NewReader(string(body))))
+					validated(t, mux).ServeHTTP(rec, httptest.NewRequest(method, "/v1/services/site/headers", strings.NewReader(string(body))))
 					if rec.Code != http.StatusOK {
 						t.Fatalf("%s: %d %s", method, rec.Code, rec.Body.String())
 					}

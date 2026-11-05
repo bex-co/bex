@@ -87,7 +87,7 @@ func TestRESTUsesAndAcceptsTypedServiceIDAfterRename(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services?name=Customer+API", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services?name=Customer+API", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET renamed service = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -100,7 +100,7 @@ func TestRESTUsesAndAcceptsTypedServiceIDAfterRename(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/srv-d9example", strings.NewReader(`{"name":"Renamed Again"}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/srv-d9example", strings.NewReader(`{"name":"Renamed Again"}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH by typed id = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -134,7 +134,7 @@ func TestRESTPatchAcceptsOfficialCLIServiceBody(t *testing.T) {
 		}
 	}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH official CLI body = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -208,7 +208,7 @@ func TestRESTCreateSeedsOfficialCLISecretFiles(t *testing.T) {
 
 	body := `{"name":"web","type":"web_service","image":{"imagePath":"nginx:alpine"},"secretFiles":[{"name":"app-secret","content":"top-secret"}]}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST with secretFiles = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -231,7 +231,7 @@ func TestACreateWithoutSecretsStillPrepares(t *testing.T) {
 
 	body := `{"name":"web","type":"web_service","image":{"imagePath":"nginx:alpine"}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST without secrets = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -253,7 +253,7 @@ func TestACreatesPreparedSecretsRunWithinTheirBound(t *testing.T) {
 
 	body := `{"name":"web","type":"web_service","image":{"imagePath":"nginx:alpine"},"secretFiles":[{"name":"app-secret","content":"top-secret"}]}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST with secretFiles = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -274,7 +274,7 @@ func TestRESTCreateAcceptsOfficialCLIRegionAsSingleRegionHint(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body))
 	req = req.WithContext(core.WithStrictJSONDecoding(req.Context()))
-	mux.ServeHTTP(rec, req)
+	validated(t, mux).ServeHTTP(rec, req)
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST with official CLI region = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -290,7 +290,7 @@ func TestRESTCreateRejectsSecretFilesBeforeWriteWhenUnavailable(t *testing.T) {
 
 	body := `{"name":"web","type":"web_service","image":{"imagePath":"nginx:alpine"},"secretFiles":[{"name":"app-secret","content":"top-secret"}]}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("POST with unavailable secretFiles = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -310,7 +310,7 @@ func TestRESTRejectsUnsupportedOfficialCLIFieldsInsteadOfSilentlyDroppingThem(t 
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
 			}
@@ -326,7 +326,7 @@ func TestRESTRejectsUnsupportedOfficialCLIFieldsInsteadOfSilentlyDroppingThem(t 
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("status = %d: %s", rec.Code, rec.Body.String())
 			}
@@ -343,7 +343,7 @@ func TestRESTPatchAcceptsOfficialCLISourceFields(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"image":{"imagePath":"nginx:stable","ownerId":""},"branch":"release"}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"image":{"imagePath":"nginx:stable","ownerId":""},"branch":"release"}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH image/branch = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -353,7 +353,7 @@ func TestRESTPatchAcceptsOfficialCLISourceFields(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"repo":"https://github.com/acme/api","branch":"next"}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"repo":"https://github.com/acme/api","branch":"next"}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH repo/branch = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -388,7 +388,7 @@ func TestRESTPatchRejectsConflictingOrUnknownCLIImageFieldsWithoutMutation(t *te
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(tc.body))
 			req = req.WithContext(core.WithStrictJSONDecoding(req.Context()))
-			mux.ServeHTTP(rec, req)
+			validated(t, mux).ServeHTTP(rec, req)
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("PATCH = %d, want 400: %s", rec.Code, rec.Body.String())
 			}
@@ -431,7 +431,7 @@ func TestRESTCreateDecodesOfficialCLITypeSpecificDetails(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(tc.body)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(tc.body)))
 			if rec.Code != http.StatusCreated {
 				t.Fatalf("POST = %d: %s", rec.Code, rec.Body.String())
 			}
@@ -514,7 +514,7 @@ func TestRESTListServiceInstancesForOfficialCLI(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/web/instances", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/web/instances", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET instances = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -527,7 +527,7 @@ func TestRESTListServiceInstancesForOfficialCLI(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/missing/instances", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/missing/instances", nil))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("GET missing instances = %d, want 404", rec.Code)
 	}
@@ -541,7 +541,7 @@ func TestRESTNameFilterUsesMutableRenderName(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services?name=Friendly+API", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services?name=Friendly+API", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET by mutable name = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -564,7 +564,7 @@ func TestRESTEnvironmentFilterUsesProjectedMembership(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services?environmentId=env-staging", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services?environmentId=env-staging", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET by environment = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -589,7 +589,7 @@ func TestRESTEnvironmentFilterAcceptsOfficialCLIMultipleValueEncoding(t *testing
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services?environmentId=env-staging%2Cenv-production", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services?environmentId=env-staging%2Cenv-production", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET by multiple environments = %d: %s", rec.Code, rec.Body.String())
 	}

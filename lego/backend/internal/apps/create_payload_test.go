@@ -413,7 +413,7 @@ func TestCreateTimeSecretsThreadThroughEverySurface(t *testing.T) {
 			`"secretFiles":[{"name":"token","content":"` + fileContent + `"}],` +
 			`"envVars":[{"key":"MESSAGE","value":"` + envValue + `"}]}`
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 		if rec.Code != http.StatusCreated {
 			t.Fatalf("POST = %d: %s", rec.Code, rec.Body.String())
 		}

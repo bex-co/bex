@@ -51,7 +51,7 @@ func TestRESTRefusesBuildSourceID(t *testing.T) {
 				path = "/v1/services"
 			}
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(tc.method, path, strings.NewReader(tc.body)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(tc.method, path, strings.NewReader(tc.body)))
 			if tc.want == "" {
 				if rec.Code < 200 || rec.Code >= 300 {
 					t.Fatalf("status=%d body=%s", rec.Code, rec.Body)

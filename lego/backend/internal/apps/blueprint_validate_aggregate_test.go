@@ -84,7 +84,7 @@ func TestValidateBlueprintAggregatesPerServiceErrorsWithLocations(t *testing.T) 
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, twoFreeWorkers))))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, twoFreeWorkers))))
 	var rest BlueprintValidation
 	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
 		t.Fatalf("REST unmarshal: %v (%s)", err, rec.Body.String())

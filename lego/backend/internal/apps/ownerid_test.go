@@ -131,7 +131,7 @@ func TestREST_ServicesOwnerIDQueryParam(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("GET", "/v1/services?ownerId=tea-1", nil)
-	mux.ServeHTTP(rec, req.WithContext(ctxAs("user-a")))
+	validated(t, mux).ServeHTTP(rec, req.WithContext(ctxAs("user-a")))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET /v1/services?ownerId=tea-1: %d body=%s", rec.Code, rec.Body.String())
 	}

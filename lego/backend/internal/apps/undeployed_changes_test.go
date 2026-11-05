@@ -80,7 +80,7 @@ func TestServiceReadsCarryAuthoritativeUndeployedChanges(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			response := httptest.NewRecorder()
-			mux.ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/v1/services/web", nil))
+			validated(t, mux).ServeHTTP(response, httptest.NewRequest(http.MethodGet, "/v1/services/web", nil))
 			if response.Code != http.StatusOK {
 				t.Fatalf("REST read: %d %s", response.Code, response.Body.String())
 			}

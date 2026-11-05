@@ -119,7 +119,7 @@ func TestRESTCreateThreadsNotifyOnFailAndReadsItBack(t *testing.T) {
 
 	body := `{"name":"web","image":{"imagePath":"nginx:v1"},"notifyOnFail":"ignore"}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -128,7 +128,7 @@ func TestRESTCreateThreadsNotifyOnFailAndReadsItBack(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -150,7 +150,7 @@ func TestRESTCreateRejectsUnknownNotifyOnFail(t *testing.T) {
 
 	body := `{"name":"web","image":{"imagePath":"nginx:v1"},"notifyOnFail":"loud"}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("create with notifyOnFail='loud' => 400, got %d: %s", rec.Code, rec.Body)
 	}
@@ -163,7 +163,7 @@ func TestRESTPatchServiceNotifyOnFail(t *testing.T) {
 
 	body := strings.NewReader(`{"notifyOnFail":"notify"}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH notifyOnFail => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -188,7 +188,7 @@ func TestRESTPatchServiceRejectsUnknownNotifyOnFail(t *testing.T) {
 
 	body := strings.NewReader(`{"notifyOnFail":"loud"}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("PATCH notifyOnFail='loud' => 400, got %d: %s", rec.Code, rec.Body)
 	}
@@ -332,7 +332,7 @@ func TestNotifyOnFailPresentOnAllThreeSurfaces(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}

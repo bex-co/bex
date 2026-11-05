@@ -320,7 +320,7 @@ func TestCronRunRESTEnvelopeGetAndCancel(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	list := httptest.NewRecorder()
-	mux.ServeHTTP(list, httptest.NewRequest(http.MethodGet, "/v1/cron-jobs/nightly/runs?limit=2", nil))
+	validated(t, mux).ServeHTTP(list, httptest.NewRequest(http.MethodGet, "/v1/cron-jobs/nightly/runs?limit=2", nil))
 	if list.Code != http.StatusOK {
 		t.Fatalf("list status=%d body=%s", list.Code, list.Body.String())
 	}
@@ -333,7 +333,7 @@ func TestCronRunRESTEnvelopeGetAndCancel(t *testing.T) {
 	}
 
 	get := httptest.NewRecorder()
-	mux.ServeHTTP(get, httptest.NewRequest(http.MethodGet, "/v1/cron-jobs/nightly/runs/"+page[0].Cursor, nil))
+	validated(t, mux).ServeHTTP(get, httptest.NewRequest(http.MethodGet, "/v1/cron-jobs/nightly/runs/"+page[0].Cursor, nil))
 	if get.Code != http.StatusOK {
 		t.Fatalf("get status=%d body=%s", get.Code, get.Body.String())
 	}
@@ -344,7 +344,7 @@ func TestCronRunRESTEnvelopeGetAndCancel(t *testing.T) {
 	}
 
 	cancel := httptest.NewRecorder()
-	mux.ServeHTTP(cancel, httptest.NewRequest(http.MethodPost, "/v1/cron-jobs/nightly/runs/"+page[0].Cursor+"/cancel", nil))
+	validated(t, mux).ServeHTTP(cancel, httptest.NewRequest(http.MethodPost, "/v1/cron-jobs/nightly/runs/"+page[0].Cursor+"/cancel", nil))
 	if cancel.Code != http.StatusOK {
 		t.Fatalf("cancel status=%d body=%s", cancel.Code, cancel.Body.String())
 	}
@@ -354,7 +354,7 @@ func TestCronRunRESTEnvelopeGetAndCancel(t *testing.T) {
 	}
 
 	terminal := httptest.NewRecorder()
-	mux.ServeHTTP(terminal, httptest.NewRequest(http.MethodPost, "/v1/cron-jobs/nightly/runs/"+page[1].Cursor+"/cancel", nil))
+	validated(t, mux).ServeHTTP(terminal, httptest.NewRequest(http.MethodPost, "/v1/cron-jobs/nightly/runs/"+page[1].Cursor+"/cancel", nil))
 	if terminal.Code != http.StatusConflict {
 		t.Fatalf("terminal cancel status=%d body=%s", terminal.Code, terminal.Body.String())
 	}
@@ -364,7 +364,7 @@ func TestCronRunRESTEnvelopeGetAndCancel(t *testing.T) {
 	mux = http.NewServeMux()
 	svc.RegisterREST(mux)
 	cancelCurrent := httptest.NewRecorder()
-	mux.ServeHTTP(cancelCurrent, httptest.NewRequest(http.MethodDelete, "/v1/cron-jobs/nightly/runs", nil))
+	validated(t, mux).ServeHTTP(cancelCurrent, httptest.NewRequest(http.MethodDelete, "/v1/cron-jobs/nightly/runs", nil))
 	if cancelCurrent.Code != http.StatusNoContent || cancelCurrent.Body.Len() != 0 {
 		t.Fatalf("current cancel status=%d body=%q", cancelCurrent.Code, cancelCurrent.Body.String())
 	}
@@ -529,7 +529,7 @@ func TestCronActionErrorCodesMatchRESTGraphQLAndMCP(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(tt.restMethod, tt.restPath, nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(tt.restMethod, tt.restPath, nil))
 			if rec.Code != tt.wantStatus {
 				t.Fatalf("status=%d body=%s, want %d", rec.Code, rec.Body.String(), tt.wantStatus)
 			}

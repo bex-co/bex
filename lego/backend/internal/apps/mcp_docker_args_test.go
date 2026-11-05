@@ -132,7 +132,7 @@ func TestMCPCreateImageServiceKeepsDockerCommand(t *testing.T) {
 	body := `{"name":"echo","type":"web_service","image":{"imagePath":"hashicorp/http-echo:0.2.3"},"serviceDetails":{"runtime":"image","plan":"free",` +
 		`"envSpecificDetails":{"dockerCommand":"` + cmd + `"}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("REST image create = %d: %s", rec.Code, rec.Body.String())
 	}

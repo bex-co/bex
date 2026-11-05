@@ -57,7 +57,7 @@ func getServiceBody(t *testing.T, app *appv1alpha1.App) []byte {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+app.Name, nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+app.Name, nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET %s = %d: %s", app.Name, rec.Code, rec.Body.String())
 	}
@@ -73,6 +73,7 @@ func withoutClock(t *testing.T, raw []byte) []byte {
 		t.Fatal(err)
 	}
 	delete(m, "nextRunAt")
+	delete(m, "createdAt") // the fake API server's creation stamp
 	if details, ok := m["serviceDetails"].(map[string]any); ok {
 		delete(details, "nextRunAt")
 	}

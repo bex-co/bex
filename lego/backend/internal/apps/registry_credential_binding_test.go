@@ -144,7 +144,7 @@ func TestRESTRegistryCredentialFailureClassificationAndWireValidation(t *testing
 				mux := http.NewServeMux()
 				svc.RegisterREST(mux)
 				rec := httptest.NewRecorder()
-				mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+				validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 				if rec.Code != tc.status || !strings.Contains(rec.Body.String(), tc.err.Error()) {
 					t.Fatalf("POST %s = %d: %s, want %d with %q", body, rec.Code, rec.Body.String(), tc.status, tc.err)
 				}
@@ -161,7 +161,7 @@ func TestRESTRegistryCredentialFailureClassificationAndWireValidation(t *testing
 		mux := http.NewServeMux()
 		svc.RegisterREST(mux)
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 		if rec.Code != http.StatusBadRequest {
 			t.Fatalf("invalid registryCredentialId POST = %d: %s", rec.Code, rec.Body.String())
 		}
@@ -175,7 +175,7 @@ func TestRESTRegistryCredentialCreatePatchAndClear(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(`{"name":"web","type":"web_service","image":{"imagePath":"ghcr.io/acme/private:1","registryCredentialId":"rgc-one"}}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(`{"name":"web","type":"web_service","image":{"imagePath":"ghcr.io/acme/private:1","registryCredentialId":"rgc-one"}}`)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -188,7 +188,7 @@ func TestRESTRegistryCredentialCreatePatchAndClear(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"image":{"imagePath":"ghcr.io/acme/private:2","registryCredentialId":"rgc-two"}}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"image":{"imagePath":"ghcr.io/acme/private:2","registryCredentialId":"rgc-two"}}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH set = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -202,7 +202,7 @@ func TestRESTRegistryCredentialCreatePatchAndClear(t *testing.T) {
 
 	rc.ok = false
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"image":{"imagePath":"ghcr.io/acme/private:2","registryCredentialId":""}}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{"image":{"imagePath":"ghcr.io/acme/private:2","registryCredentialId":""}}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH clear = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -219,7 +219,7 @@ func TestRESTDockerBuildRegistryCredentialCreatePatchAndEcho(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(`{
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(`{
 		"name":"web","type":"web_service","repo":"https://github.com/octo/app",
 		"serviceDetails":{"runtime":"docker","envSpecificDetails":{"registryCredentialId":"rgc-one"}}
 	}`)))
@@ -235,7 +235,7 @@ func TestRESTDockerBuildRegistryCredentialCreatePatchAndEcho(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(`{
 		"serviceDetails":{"envSpecificDetails":{"registryCredentialId":"rgc-two"}}
 	}`)))
 	if rec.Code != http.StatusOK {
@@ -338,7 +338,7 @@ func TestRESTDockerBuildRegistryCredentialRejectsNonDockerRuntime(t *testing.T) 
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(`{
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(`{
 		"name":"native","type":"web_service","repo":"https://github.com/octo/app",
 		"serviceDetails":{"runtime":"node","envSpecificDetails":{"buildCommand":"npm ci","startCommand":"npm start","registryCredentialId":"rgc-one"}}
 	}`)))

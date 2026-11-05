@@ -92,7 +92,7 @@ func TestRESTPreviewOptOut(t *testing.T) {
 					body = fmt.Sprintf(`{"name":"new","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{%s}}`, tc.details)
 				}
 				rec := httptest.NewRecorder()
-				mux.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)))
+				validated(t, mux).ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)))
 				if tc.accepted {
 					if rec.Code < 200 || rec.Code >= 300 {
 						t.Fatalf("status=%d body=%s", rec.Code, rec.Body)

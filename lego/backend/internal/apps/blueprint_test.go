@@ -2801,7 +2801,7 @@ func TestBusyCodeAcrossAdapters(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/v1/blueprints/blp-1/sync", strings.NewReader(body))
 		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-a", Method: "oauth2"}))
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req)
+		validated(t, mux).ServeHTTP(rec, req)
 		if rec.Code != http.StatusConflict {
 			t.Fatalf("busy sync => 409, got %d: %s", rec.Code, rec.Body)
 		}
@@ -3175,7 +3175,7 @@ func TestRESTValidateBlueprint(t *testing.T) {
 
 	body := fmt.Sprintf(`{"bexYaml":%q}`, stackManifest)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("validate valid => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -3200,7 +3200,7 @@ func TestRESTDeployBlueprintUsesStackCore(t *testing.T) {
 	svc.RegisterREST(mux)
 	body := fmt.Sprintf(`{"bexYaml":%q}`, stackManifest)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/deploy", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/deploy", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("deploy Blueprint => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -3241,7 +3241,7 @@ func TestRESTValidateBlueprintRenderCLIMultipart(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, multipartBlueprintRequest(t, "tea-workspace", "render.yaml", stackManifest))
+	validated(t, mux).ServeHTTP(rec, multipartBlueprintRequest(t, "tea-workspace", "render.yaml", stackManifest))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("multipart validate => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -3269,7 +3269,7 @@ func TestRESTValidateBlueprintRenderCLIMultipartInvalidReturnsValidationResult(t
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, multipartBlueprintRequest(t, "tea-workspace", "render.yaml", "services:\n  - name: \"\"\n"))
+	validated(t, mux).ServeHTTP(rec, multipartBlueprintRequest(t, "tea-workspace", "render.yaml", "services:\n  - name: \"\"\n"))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("invalid Blueprint is a validation result, not a transport error: got %d: %s", rec.Code, rec.Body)
 	}
@@ -3290,7 +3290,7 @@ func TestRESTValidateBlueprintRenderCLIMultipartRequiresOwner(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, multipartBlueprintRequest(t, "", "render.yaml", stackManifest))
+	validated(t, mux).ServeHTTP(rec, multipartBlueprintRequest(t, "", "render.yaml", stackManifest))
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "ownerId is required") {
 		t.Errorf("got %d (%s), want 400 naming ownerId", rec.Code, rec.Body)
 	}
@@ -3309,7 +3309,7 @@ func TestRESTValidateBlueprintMultipartOwnerIDScopesAuthorization(t *testing.T) 
 		req := multipartBlueprintRequest(t, tc.ownerID, "render.yaml", stackManifest)
 		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-a", Method: "oauth2"}))
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req)
+		validated(t, mux).ServeHTTP(rec, req)
 		if rec.Code != tc.wantCode {
 			t.Errorf("ownerId %q: got %d (%s), want %d", tc.ownerID, rec.Code, rec.Body, tc.wantCode)
 		}
@@ -3323,7 +3323,7 @@ func TestRESTValidateBlueprintBadYAML(t *testing.T) {
 
 	body := `{"bexYaml":"services:\n  - name: \"\"\n    type: web\n"}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("validate bad => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -3349,7 +3349,7 @@ func TestRESTListBlueprints(t *testing.T) {
 	req := httptest.NewRequest("GET", "/v1/blueprints?ownerId=tea-a", nil)
 	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-a", Method: "oauth2"}))
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
+	validated(t, mux).ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list blueprints => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -3398,7 +3398,7 @@ func TestRESTListBlueprintsPagesByCursor(t *testing.T) {
 		req := httptest.NewRequest("GET", target, nil)
 		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-a", Method: "oauth2"}))
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req)
+		validated(t, mux).ServeHTTP(rec, req)
 		var out []struct {
 			Blueprint struct {
 				ID string `json:"id"`
@@ -3443,7 +3443,7 @@ func TestRESTListBlueprintSyncsIncludesErrorMessage(t *testing.T) {
 	req := httptest.NewRequest("GET", "/v1/blueprints/blp-1/syncs?ownerId=tea-a", nil)
 	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-a", Method: "oauth2"}))
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
+	validated(t, mux).ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list blueprint syncs => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -4197,7 +4197,7 @@ func TestBlueprintByIDNotFoundIsIdenticalAcrossSurfaces(t *testing.T) {
 	restReq := httptest.NewRequest("GET", "/v1/blueprints/blp-absent?ownerId=tea-a", nil)
 	restReq = restReq.WithContext(ctx)
 	restRec := httptest.NewRecorder()
-	mux.ServeHTTP(restRec, restReq)
+	validated(t, mux).ServeHTTP(restRec, restReq)
 	if restRec.Code != http.StatusNotFound {
 		t.Errorf("REST GET missing blueprint = %d %s, want 404", restRec.Code, restRec.Body)
 	}

@@ -37,7 +37,7 @@ func TestRenderNativeBuildContractAcrossCreateSurfaces(t *testing.T) {
 		mux := http.NewServeMux()
 		svc.RegisterREST(mux)
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(`{
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(`{
 			"type":"web_service",
 			"name":"web",
 			"repo":"https://github.com/x/web",
@@ -109,7 +109,7 @@ func TestRenderDockerDetailsMapToDockerfileBuild(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(`{
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(`{
 		"type":"web_service",
 		"name":"web",
 		"repo":"https://github.com/x/web",
@@ -188,7 +188,7 @@ func TestServiceReadRoundTripCompleteness(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("GET => %d: %s", rec.Code, rec.Body)
 			}
@@ -283,7 +283,7 @@ func TestDockerfileServiceRuntimeIsConsistentAcrossSurfaces(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET => %d: %s", rec.Code, rec.Body)
 	}
@@ -341,7 +341,7 @@ func TestImageServiceRuntimeIsConsistentAcrossSurfaces(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 	var out renderService
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("decode: %v", err)

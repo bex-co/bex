@@ -1630,7 +1630,15 @@ func (s *Service) registerBlueprintRoutes(mux *http.ServeMux) {
 		return s.ApproveBlueprint(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"), body.ManualEnvVars)
 	}))
 	mux.HandleFunc("GET /v1/blueprints/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		return s.GetBlueprintByID(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"))
+		v, err := s.GetBlueprintByID(r.Context(), r.PathValue("id"), r.URL.Query().Get("ownerId"))
+		if err != nil {
+			return nil, err
+		}
+		detail := blueprintDetail{BlueprintView: v, Resources: v.Resources}
+		if detail.Resources == nil {
+			detail.Resources = []BlueprintResource{}
+		}
+		return detail, nil
 	}))
 	mux.HandleFunc("PATCH /v1/blueprints/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		var body struct {
@@ -2019,6 +2027,14 @@ type blueprintWithCursor struct {
 // renderBlueprintsWithCursor wraps each row in Render's `blueprintWithCursor`,
 // the envelope every other bex list already uses (w4/157). A bare row array
 // decoded as `blueprintWithCursor` gave a Render client empty objects.
+// blueprintDetail is Render's retrieve-blueprint object, which requires
+// resources: a Blueprint that declares none answers [] where the shared view
+// omits the key (w3/m272).
+type blueprintDetail struct {
+	BlueprintView
+	Resources []BlueprintResource `json:"resources"`
+}
+
 func renderBlueprintsWithCursor(views []BlueprintView) []blueprintWithCursor {
 	out := make([]blueprintWithCursor, len(views))
 	for i, v := range views {

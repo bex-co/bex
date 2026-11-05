@@ -49,7 +49,7 @@ func TestBlueprintPublicIDOnEverySurface(t *testing.T) {
 	svc.RegisterREST(mux)
 	rest := func(method, path, body string) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(ctx))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(ctx))
 		return rec
 	}
 	schema := blueprintSchema(t, svc)

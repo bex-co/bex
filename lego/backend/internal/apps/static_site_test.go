@@ -247,7 +247,7 @@ func TestRESTCreateStaticSite(t *testing.T) {
 		"serviceDetails":{"publishPath":"dist"},
 		"routes":[{"type":"rewrite","source":"/*","destination":"/index.html"}]}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create static_site => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -268,7 +268,7 @@ func TestRESTPutRoutesAndHeaders(t *testing.T) {
 
 	// PUT /routes replaces the whole list.
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PUT", "/v1/services/site/routes",
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PUT", "/v1/services/site/routes",
 		strings.NewReader(`[{"type":"redirect","source":"/x","destination":"/y"}]`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PUT routes => 200, got %d: %s", rec.Code, rec.Body)
@@ -283,7 +283,7 @@ func TestRESTPutRoutesAndHeaders(t *testing.T) {
 
 	// GET /headers reads them back.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/site/headers", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/site/headers", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET headers => 200, got %d", rec.Code)
 	}

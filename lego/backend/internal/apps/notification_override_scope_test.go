@@ -40,7 +40,7 @@ func TestUnfilteredOverridesSpanTheCallersWorkspaces(t *testing.T) {
 	list := func(query string) []string {
 		t.Helper()
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/notification-settings/overrides"+query, nil).WithContext(ctxAs("id-a")))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/notification-settings/overrides"+query, nil).WithContext(ctxAs("id-a")))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET overrides%s = %d %s", query, rec.Code, rec.Body)
 		}

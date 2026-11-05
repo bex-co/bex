@@ -223,7 +223,7 @@ func TestRESTCreateCronJob(t *testing.T) {
 
 	body := `{"name":"nightly","type":"cron_job","schedule":"0 * * * *","command":"npm run report","image":{"imagePath":"job:v1"}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create cron => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -239,7 +239,7 @@ func TestRESTCronRunTrigger(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/cron-jobs/nightly/runs", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/cron-jobs/nightly/runs", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("cron run => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -248,7 +248,7 @@ func TestRESTCronRunTrigger(t *testing.T) {
 	}
 	// The same verb is reachable under the /v1/services noun too.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/nightly/runs", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/nightly/runs", nil))
 	if rec.Code != http.StatusOK {
 		t.Errorf("cron run (services noun) => 200, got %d", rec.Code)
 	}

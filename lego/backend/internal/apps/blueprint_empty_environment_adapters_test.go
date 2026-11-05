@@ -87,7 +87,7 @@ func TestBlueprintEmptyEnvironmentDirectApplyAdapters(t *testing.T) {
 					}
 				} else {
 					rec := httptest.NewRecorder()
-					mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/deploy", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q,"ownerId":%q}`, manifest, connOwner))).WithContext(ownershipCtx()))
+					validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/deploy", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q,"ownerId":%q}`, manifest, connOwner))).WithContext(ownershipCtx()))
 					if rec.Code != http.StatusOK {
 						t.Fatalf("apply: %d %s", rec.Code, rec.Body.String())
 					}
@@ -161,7 +161,7 @@ func TestBlueprintEmptyEnvironmentGitAdapters(t *testing.T) {
 						t.Fatal(err)
 					}
 					rec := httptest.NewRecorder()
-					mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body)).WithContext(ownershipCtx()))
+					validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, path, bytes.NewReader(body)).WithContext(ownershipCtx()))
 					if rec.Code != http.StatusOK && rec.Code != http.StatusCreated {
 						t.Fatalf("%s: %d %s", verb, rec.Code, rec.Body.String())
 					}

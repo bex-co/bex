@@ -67,7 +67,7 @@ func TestRESTCreateThreadsBuildFilterAndReadsItBack(t *testing.T) {
 
 	body := `{"name":"web","repo":"https://github.com/x/mono","buildFilter":{"paths":["src/**"],"ignoredPaths":["docs/**"]}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -77,7 +77,7 @@ func TestRESTCreateThreadsBuildFilterAndReadsItBack(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -106,7 +106,7 @@ func TestRESTBuildFilterMarshalsArraysNotNull(t *testing.T) {
 
 	body := `{"name":"web","repo":"https://github.com/x/mono","buildFilter":{"paths":["src/**"]}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -266,7 +266,7 @@ func TestRESTPatchServiceBuildFilter(t *testing.T) {
 
 	body := strings.NewReader(`{"buildFilter":{"paths":["api/**"],"ignoredPaths":[]}}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH buildFilter => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -293,14 +293,14 @@ func TestRESTOneSidedBuildFilterUpdateReplacesWholeFilter(t *testing.T) {
 
 	create := `{"name":"web","repo":"https://github.com/x/mono","buildFilter":{"paths":["src/**"],"ignoredPaths":["docs/**"]}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(create)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(create)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
 
 	patch := `{"buildFilter":{"paths":["src/*.go"],"ignoredPaths":null}}`
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(patch)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(patch)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("patch => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -314,7 +314,7 @@ func TestRESTOneSidedBuildFilterUpdateReplacesWholeFilter(t *testing.T) {
 
 	// An update that omits buildFilter leaves it alone.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"autoDeploy":"no"}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"autoDeploy":"no"}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("unrelated patch => 200, got %d: %s", rec.Code, rec.Body)
 	}

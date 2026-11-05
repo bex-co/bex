@@ -45,7 +45,7 @@ func TestCustomDomainRefusalsAreCodedOnEverySurface(t *testing.T) {
 		"REST": func(host string) (int, string) {
 			body, _ := json.Marshal(map[string]string{"name": host})
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services/web/custom-domains", strings.NewReader(string(body))))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services/web/custom-domains", strings.NewReader(string(body))))
 			var out struct{ Code string }
 			_ = json.Unmarshal(rec.Body.Bytes(), &out)
 			return rec.Code, out.Code

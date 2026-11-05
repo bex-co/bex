@@ -75,7 +75,7 @@ func TestCreateBlueprintRESTFetchFailureIsNotA500(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/v1/blueprints", strings.NewReader(`{"repo":"https://github.com/a/nope","branch":"main","ownerId":"tea-a"}`))
 	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-a", Method: "oauth2"}))
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, req)
+	validated(t, mux).ServeHTTP(rec, req)
 	var body struct{ Code, Message string }
 	_ = json.Unmarshal(rec.Body.Bytes(), &body)
 	if rec.Code != http.StatusBadRequest || body.Code != string(BlueprintFetchRepoNotFound) || !strings.Contains(body.Message, "GitHub app") {

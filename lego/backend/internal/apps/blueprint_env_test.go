@@ -253,7 +253,7 @@ func TestValidateFiveFormsCrossSurface(t *testing.T) {
 	svc.RegisterREST(mux)
 	body := fmt.Sprintf(`{"bexYaml":%q}`, fiveFieldManifest)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(body)))
 	var rest BlueprintValidation
 	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
 		t.Fatalf("REST unmarshal: %v", err)
@@ -289,7 +289,7 @@ func TestValidateFiveFormsCrossSurface(t *testing.T) {
     pullRequestPreviewsEnabled: true
 `
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, unsupported))))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, unsupported))))
 	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil {
 		t.Fatalf("REST unsupported unmarshal: %v", err)
 	}
@@ -689,7 +689,7 @@ func TestDeployStackResultReportsEveryKind(t *testing.T) {
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
 	body := fmt.Sprintf(`{"bexYaml":%q}`, allKindsManifest)
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/deploy", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/deploy", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("deploy Blueprint => 200, got %d: %s", rec.Code, rec.Body)
 	}

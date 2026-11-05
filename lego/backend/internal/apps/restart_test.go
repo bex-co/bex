@@ -65,7 +65,7 @@ func TestRestartRunsTheWiredDeployVerb(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services/web/restart", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services/web/restart", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("POST restart = %d %s, want 200", rec.Code, rec.Body)
 	}

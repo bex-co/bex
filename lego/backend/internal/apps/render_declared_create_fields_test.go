@@ -36,7 +36,7 @@ func TestRESTCreateStaticSiteTakesRoutesAndHeadersFromServiceDetails(t *testing.
 			"routes":[{"type":"rewrite","source":"/*","destination":"/index.html"}],
 			"headers":[{"path":"/*","name":"X-Frame-Options","value":"DENY"}]}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => %d: %s", rec.Code, rec.Body)
 	}
@@ -58,7 +58,7 @@ func TestRESTCreateTakesAutoscalingFromServiceDetails(t *testing.T) {
 		"serviceDetails":{"autoscaling":{"enabled":true,"min":2,"max":5,
 			"criteria":{"cpu":{"enabled":true,"percentage":65},"memory":{"enabled":false,"percentage":0}}}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => %d: %s", rec.Code, rec.Body)
 	}
@@ -83,7 +83,7 @@ func TestRESTRefusesDeclaredButUnservedFieldsByName(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body)))
 			if rec.Code < 400 || rec.Code >= 500 || !strings.Contains(rec.Body.String(), tc.want) {
 				t.Fatalf("%s => %d %s, want a 4xx naming %q", tc.name, rec.Code, rec.Body, tc.want)
 			}

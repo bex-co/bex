@@ -18,16 +18,18 @@ package api
 
 // conformance_test.go — TestRenderConformance validates bex's live REST
 // responses against the complete embedded Render OpenAPI document shared with
-// the production request gate.
+// the production request gate. Every other test that builds its handler with
+// buildHandler is validated the same way, response by response
+// (validatingRenderResponses); this file seeds one fixture per endpoint family
+// and service kind so each is reached at least once.
 //
-// Validation errors that match a conformanceAllowlist entry (allowlist.go) are
-// suppressed with an ADR018 citation; everything else fails the build. A new
-// divergence without an allowlist entry turns the CI job red at PR time.
-//
-// The deliberate pin-refresh workflow, provenance checks, and compatibility
-// review are documented in docs/render-artifacts/openapi-request-validation.md.
-// For each new response failure, either fix bex or add a narrow ADR018-cited
-// conformanceAllowlist entry; the stale-entry test prevents permanent excuses.
+// Validation errors that match a rendertest.Allowlist entry
+// (internal/rendertest/allowlist.go) are suppressed with an ADR018 citation;
+// everything else fails the build. The deliberate pin-refresh workflow,
+// provenance checks, and compatibility review are documented in
+// docs/render-artifacts/openapi-request-validation.md. For each new response
+// failure, fix bex; the allowlist only shrinks, and TestMain fails an entry no
+// response reproduces any more.
 
 import (
 	"context"
@@ -35,17 +37,18 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
-	"slices"
 	"strings"
 	"testing"
 	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/metrics"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -157,6 +160,45 @@ func conformAppWithDomains(name string, domains ...string) *appv1alpha1.App {
 	return a
 }
 
+// conformServiceKinds is one service per Render service kind and source the
+// REST service projection branches on, with the serviceDetails keys only that
+// kind's Render union member (or source) carries.
+var conformServiceKinds = []struct {
+	name, renderType string
+	spec             appv1alpha1.AppSpec
+	detailKeys       []string
+}{
+	{"kind-image", "web_service",
+		appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Image: "nginx:1.27", Tier: "free", Port: 8080, HealthCheckPath: "/healthz"},
+		[]string{"openPorts", "healthCheckPath", "maintenanceMode"}},
+	{"kind-git", "web_service",
+		appv1alpha1.AppSpec{Type: appv1alpha1.TypeWebService, Repo: "https://github.com/bex-co/hello-go", Branch: "main", Runtime: "go", BuildCommand: "go build -o app", StartCommand: "./app", Tier: "free", Port: 8080},
+		[]string{"openPorts", "envSpecificDetails", "runtime"}},
+	{"kind-static", "static_site",
+		appv1alpha1.AppSpec{Type: appv1alpha1.TypeStaticSite, Repo: "https://github.com/bex-co/site", Branch: "main", BuildCommand: "npm run build", PublishPath: "dist"},
+		[]string{"publishPath", "buildCommand"}},
+	{"kind-cron", "cron_job",
+		appv1alpha1.AppSpec{Type: appv1alpha1.TypeCronJob, Image: "busybox:1.36", Tier: "starter", Schedule: "*/5 * * * *", Command: "date"},
+		[]string{"schedule", "envSpecificDetails"}},
+	{"kind-private", "private_service",
+		appv1alpha1.AppSpec{Type: appv1alpha1.TypePrivateService, Image: "redis:7", Tier: "starter", Port: 6379},
+		[]string{"openPorts", "internalAddress"}},
+	{"kind-worker", "background_worker",
+		appv1alpha1.AppSpec{Type: appv1alpha1.TypeBackgroundWorker, Image: "busybox:1.36", Tier: "starter", StartCommand: "sleep infinity"},
+		[]string{"numInstances", "envSpecificDetails"}},
+}
+
+func conformServiceKindApps() []client.Object {
+	out := make([]client.Object, 0, len(conformServiceKinds))
+	for _, kind := range conformServiceKinds {
+		a := conformApp(kind.name, "")
+		a.Spec = kind.spec
+		a.Spec.Replicas = 1
+		out = append(out, a)
+	}
+	return out
+}
+
 // conformDatabase creates a Database CR with a creation timestamp.
 func conformDatabase(name string) *appv1alpha1.Database {
 	return &appv1alpha1.Database{
@@ -216,8 +258,8 @@ func conformDeploy(id, appID string) store.Deploy {
 
 // TestRenderConformance validates that bex's live REST responses for the core
 // endpoint families match the pinned Render OpenAPI response schemas.
-// Deliberate divergences are silenced only via conformanceAllowlist entries in
-// conformance_allowlist_test.go, each citing its ADR018 row.
+// Deliberate divergences are silenced only via rendertest.Allowlist entries in
+// internal/rendertest/allowlist.go, each citing its ADR018 row.
 func TestRenderConformance(t *testing.T) {
 	spec := loadRenderSpec(t)
 
@@ -259,7 +301,7 @@ func TestRenderConformance(t *testing.T) {
 
 	h, _ := serverWith(t,
 		&core.Base{
-			Client: fakeClient(
+			Client: fakeClient(append([]client.Object{
 				conformApp(appName, appID),
 				conformAppWithDomains("web-cd", customFQN),
 				conformDatabase(dbName),
@@ -271,7 +313,7 @@ func TestRenderConformance(t *testing.T) {
 				conformDatastoreSecret(kvName, map[string]string{
 					"uri": "redis://default:p@" + kvName + ".default:6379",
 				}),
-			),
+			}, conformServiceKindApps()...)...),
 			Namespace: "default",
 			Clock:     func() time.Time { return conformEpoch },
 		},
@@ -292,12 +334,11 @@ func TestRenderConformance(t *testing.T) {
 		if w.Code != 200 {
 			t.Fatalf("GET %s => %d (want 200): %s", path, w.Code, w.Body.String())
 		}
-		errs := filterAllowed(operationID, spec.validate(operationID, w.Body.Bytes()))
+		errs := rendertest.Unallowed(operationID, spec.validate(operationID, w.Body.Bytes()))
 		if len(errs) > 0 {
 			t.Errorf(
 				"Render schema violation(s) for %s (operationId=%s).\n"+
-					"To silence: add an entry to conformanceAllowlist citing its ADR018 row.\n"+
-					"To fix: update the bex response to match Render's schema.\n"+
+					"Fix the bex response to match Render's schema (rendertest.Allowlist only shrinks).\n"+
 					"Violations:\n  %s",
 				path, operationID, strings.Join(errs, "\n  "),
 			)
@@ -312,6 +353,33 @@ func TestRenderConformance(t *testing.T) {
 		check(t, "/v1/services/"+appName, "retrieve-service")
 	})
 
+	// One service per Render kind and source (w3/m272 t003). check validates
+	// each by-id response, including its serviceDetails against the union
+	// member its type selects; the assertions below pin that each kind really
+	// carries its own member's distinguishing field, so a fixture that
+	// silently degraded to a plain web service could not pass for the kind.
+	for _, kind := range conformServiceKinds {
+		t.Run("services/get/"+kind.name, func(t *testing.T) {
+			check(t, "/v1/services/"+kind.name, "retrieve-service")
+			var got struct {
+				Type           string         `json:"type"`
+				ServiceDetails map[string]any `json:"serviceDetails"`
+			}
+			w := do(t, h, "GET", "/v1/services/"+kind.name, testToken, "")
+			if err := json.Unmarshal(w.Body.Bytes(), &got); err != nil {
+				t.Fatal(err)
+			}
+			if got.Type != kind.renderType {
+				t.Errorf("type = %q, want %q", got.Type, kind.renderType)
+			}
+			for _, key := range kind.detailKeys {
+				if _, ok := got.ServiceDetails[key]; !ok {
+					t.Errorf("serviceDetails lacks %s's %q: %v", kind.name, key, got.ServiceDetails)
+				}
+			}
+		})
+	}
+
 	t.Run("deploys/list", func(t *testing.T) {
 		check(t, "/v1/services/"+appName+"/deploys", "list-deploys")
 	})
@@ -321,8 +389,6 @@ func TestRenderConformance(t *testing.T) {
 	})
 
 	t.Run("postgres/list", func(t *testing.T) {
-		// bex returns a flat []PostgresView; Render expects [{postgres:{},cursor}].
-		// The mismatch is in the allowlist (ADR018 §Postgres REST).
 		check(t, "/v1/postgres", "list-postgres")
 	})
 
@@ -364,16 +430,9 @@ func TestRenderConformance(t *testing.T) {
 	// answers 201 and patch 200 in redisDetail, suspend/resume 202 and delete
 	// 204, as the pinned spec documents.
 	t.Run("redis/writes", func(t *testing.T) {
-		// create and update answer redisDetail, retrieve-redis's own schema, so
-		// its allowlist entries are the ones that apply. The fake client never
-		// stamps creationTimestamp (the API server does), so a missing
-		// createdAt here is the fixture's, not bex's.
 		validate := func(operationID string, status int, body []byte) {
 			t.Helper()
-			errs := slices.DeleteFunc(filterAllowed("retrieve-redis", spec.validateStatus(operationID, status, body)), func(e string) bool {
-				return e == `/createdAt: property "createdAt" is missing`
-			})
-			if len(errs) > 0 {
+			if errs := rendertest.Unallowed(operationID, spec.validateStatus(operationID, status, body)); len(errs) > 0 {
 				t.Errorf("%s diverges from Render's schema:\n  %s", operationID, strings.Join(errs, "\n  "))
 			}
 		}
@@ -448,7 +507,7 @@ func TestRenderConformance(t *testing.T) {
 		if w.Code != http.StatusOK {
 			t.Fatalf("PUT secret-files = %d: %s", w.Code, w.Body.String())
 		}
-		if errs := filterAllowed("update-secret-files-for-service", spec.validate("update-secret-files-for-service", w.Body.Bytes())); len(errs) > 0 {
+		if errs := rendertest.Unallowed("update-secret-files-for-service", spec.validate("update-secret-files-for-service", w.Body.Bytes())); len(errs) > 0 {
 			t.Errorf("update-secret-files-for-service diverges: %v", errs)
 		}
 		w = do(t, h, "GET", "/v1/services/"+appName+"/secret-files", testToken, "")
@@ -460,99 +519,4 @@ func TestRenderConformance(t *testing.T) {
 			t.Fatalf("after replace-all, list = %s, want exactly a.txt and b.txt (seeded files gone)", w.Body.String())
 		}
 	})
-}
-
-// TestConformanceAllowlistEntries verifies that every entry in conformanceAllowlist
-// actually suppresses a real validation error from the live conformance suite —
-// a removed allowlist entry that was never real (or that bex fixed) would otherwise
-// silently pass, giving false confidence that the suite still covers that path.
-//
-// The test re-runs the conformance check WITHOUT filtering, then confirms each
-// allowlist entry's `contains` string appears in the raw error set for its
-// operation. An entry that no longer matches means bex now conforms on that
-// point and the entry should be removed.
-func TestConformanceAllowlistEntries(t *testing.T) {
-	spec := loadRenderSpec(t)
-
-	const (
-		appName = "web"
-		dbName  = "pg1"
-		kvName  = "kv1"
-	)
-
-	secretStore := &fakeAuditKV{m: map[string]map[string]string{
-		"services/" + appName + "/env":   {"K": "V"},
-		"services/" + appName + "/files": {"ca.pem": "cert"},
-	}}
-	deployStore := &conformDeployStore{byApp: map[string][]store.Deploy{
-		"srv-web": {conformDeploy("dep-1", "srv-web")},
-	}}
-	eventStore := &conformEventStore{rows: []store.ServiceEventRow{
-		{Key: "dep-1:" + store.EventPhaseStarted, At: conformEpoch, Source: store.EventSourceDeploy, Phase: store.EventPhaseStarted, DeployID: "dep-1", Trigger: store.TriggerAPI},
-	}}
-	eventID := ids.Derive(ids.Event, eventStore.rows[0].Key)
-
-	h, _ := serverWith(t,
-		&core.Base{
-			Client: fakeClient(
-				conformApp(appName, "srv-web"),
-				conformAppWithDomains("web-cd", "api.example.com"),
-				conformDatabase(dbName),
-				conformKeyValue(kvName),
-			),
-			Namespace: "default",
-			Clock:     func() time.Time { return conformEpoch },
-		},
-		Deps{
-			ResourceMetrics: func(context.Context, string, string) ([]metrics.PodResourceUsage, error) { return nil, nil },
-			Secrets:         secretStore,
-			DeployStore:     deployStore,
-			EventStore:      eventStore,
-			APIKeys:         newFakeKeyStore(),
-		},
-	)
-
-	// operationPath maps an operationId to the bex REST path under test.
-	operationPath := map[string]string{
-		"list-services":                 "/v1/services",
-		"retrieve-service":              "/v1/services/" + appName,
-		"list-postgres":                 "/v1/postgres",
-		"retrieve-postgres":             "/v1/postgres/" + dbName,
-		"retrieve-key-value":            "/v1/key-value/" + kvName,
-		"retrieve-redis":                "/v1/redis/" + kvName,
-		"list-key-value":                "/v1/key-value",
-		"list-secret-files-for-service": "/v1/services/" + appName + "/secret-files",
-		"list-custom-domains":           "/v1/services/web-cd/custom-domains",
-		"list-events":                   "/v1/services/" + appName + "/events",
-		"retrieve-event":                "/v1/events/" + eventID,
-		"list-redis":                    "/v1/redis",
-	}
-
-	for opID, divergences := range conformanceAllowlist {
-		path, ok := operationPath[opID]
-		if !ok {
-			t.Errorf("allowlist entry %q has no operationPath mapping — add one to TestConformanceAllowlistEntries", opID)
-			continue
-		}
-		t.Run(opID, func(t *testing.T) {
-			w := do(t, h, "GET", path, testToken, "")
-			if w.Code != 200 {
-				t.Fatalf("GET %s => %d: %s", path, w.Code, w.Body.String())
-			}
-			rawErrs := spec.validate(opID, w.Body.Bytes())
-			for _, div := range divergences {
-				found := false
-				for _, e := range rawErrs {
-					if strings.Contains(e, div.contains) {
-						found = true
-						break
-					}
-				}
-				if !found {
-					t.Errorf("allowlist entry %q (contains=%q) did not match any raw validation error — bex may now conform on this point; remove the entry.\nRaw errors: %v",
-						div.adr018, div.contains, rawErrs)
-				}
-			}
-		})
-	}
 }

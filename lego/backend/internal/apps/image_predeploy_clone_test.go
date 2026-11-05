@@ -61,7 +61,7 @@ func imagePreDeployApp(svcType, preDeploy string) *appv1alpha1.App {
 
 func TestImagePreDeployReadIsTheCloneContract(t *testing.T) {
 	for _, svcType := range imagePreDeployKinds {
-		body := getServiceBody(t, imagePreDeployApp(svcType, "echo QA_PREDEPLOY_MARKER"))
+		body := withoutClock(t, getServiceBody(t, imagePreDeployApp(svcType, "echo QA_PREDEPLOY_MARKER")))
 		golden := imagePreDeployCloneSource(svcType)
 		if os.Getenv("BEX_UPDATE_GOLDEN") == "1" {
 			var pretty bytes.Buffer
@@ -135,7 +135,7 @@ func TestImagePreDeployListReadCarriesTheCommand(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("list = %d: %s", rec.Code, rec.Body.String())
 	}

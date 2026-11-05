@@ -231,7 +231,7 @@ func TestReviewedSourceAcrossAdapters(t *testing.T) {
 		req := httptest.NewRequest(http.MethodPost, "/v1/blueprints/blp-1/sync", strings.NewReader(body))
 		req = req.WithContext(ctx)
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req)
+		validated(t, mux).ServeHTTP(rec, req)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("REST status = %d body %s", rec.Code, rec.Body.String())
 		}

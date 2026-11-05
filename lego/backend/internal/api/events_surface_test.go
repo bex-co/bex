@@ -460,8 +460,15 @@ func TestEventsNeverCarryValues(t *testing.T) {
 	fake.rows[3].Trigger = plantedSecret // not "create"/"api" ⇒ six false booleans
 	base := &core.Base{Client: fakeClient(eventsApp()), Namespace: "default", Authz: &fakeChecker{allow: true}}
 	h, srv := serverWith(t, base, Deps{EventStore: fake})
+	// The planted unmapped verb serializes with an empty type, outside Render's
+	// event enum; TestEveryTargetedVerbIsNamedOrExcused keeps the real store
+	// from producing one, so REST is probed past the response validator.
+	unvalidated, err := srv.Handler()
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	rest := do(t, h, "GET", "/v1/services/web/events?startTime=2026-07-01T00:00:00Z", testToken, "").Body.String()
+	rest := do(t, unvalidated, "GET", "/v1/services/web/events?startTime=2026-07-01T00:00:00Z", testToken, "").Body.String()
 	if strings.Contains(rest, plantedSecret) {
 		t.Errorf("REST events leaked a value:\n%s", rest)
 	}

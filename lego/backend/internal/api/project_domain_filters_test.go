@@ -23,6 +23,8 @@ import (
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -104,12 +106,20 @@ func TestGatedProjectAndDomainListFilters(t *testing.T) {
 	}
 	// Legacy storeless domains have no per-host creation timestamp. A window
 	// must preserve the shared missing-timestamp semantics rather than invent one.
+	// An App with no creationTimestamp at all is unreachable through a real API
+	// server, so this defensive branch is probed on the unvalidated handler:
+	// its empty createdAt is not a response Render clients can receive.
 	srv.Apps.Store = nil
 	app.Spec.Hosts = []string{"legacy.example.com"}
+	app.CreationTimestamp = metav1.Time{}
 	if err := base.Client.Update(context.Background(), app); err != nil {
 		t.Fatal(err)
 	}
-	w := do(t, h, "GET", "/v1/services/web/custom-domains?createdAfter=2030-01-01T00:00:00Z", testToken, "")
+	unvalidated, err := srv.Handler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	w := do(t, unvalidated, "GET", "/v1/services/web/custom-domains?createdAfter=2030-01-01T00:00:00Z", testToken, "")
 	if w.Code != 200 || !strings.Contains(w.Body.String(), "legacy.example.com") {
 		t.Fatalf("legacy domain: %d %s", w.Code, w.Body.String())
 	}

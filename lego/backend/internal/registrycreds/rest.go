@@ -185,7 +185,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusCreated, toWire(v))
+		// Render answers create-registry-credential with 200 "Created" (pinned
+		// spec, its only success status); a 201 left generated Render clients
+		// with no parsed body (w3/m272).
+		core.WriteJSON(w, http.StatusOK, toWire(v))
 	})
 
 	mux.HandleFunc("GET /v1/registrycredentials/{id}", func(w http.ResponseWriter, r *http.Request) {

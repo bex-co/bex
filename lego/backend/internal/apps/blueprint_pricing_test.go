@@ -280,7 +280,7 @@ func TestRESTValidateBlueprintEstimatedPricing(t *testing.T) {
 
 	body := fmt.Sprintf(`{"bexYaml":%q}`, beancountManifest)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("validate => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -357,7 +357,7 @@ func TestValidateBlueprintPromotedFieldsCrossSurface(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, manifest))))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, manifest))))
 	var rest BlueprintValidation
 	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil || !rest.Valid {
 		t.Fatalf("REST promoted fields: valid=%v err=%v body=%s", rest.Valid, err, rec.Body)
@@ -386,7 +386,7 @@ func TestValidateBlueprintPromotedFieldsCrossSurface(t *testing.T) {
 	disk := manifest + `    previewPlan: starter
 `
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, disk))))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, disk))))
 	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil || rest.Valid || len(rest.Errors) == 0 || rest.Errors[0].Path == nil || *rest.Errors[0].Path != "services[2].previewPlan" {
 		t.Fatalf("REST disk rejection = %+v err=%v", rest, err)
 	}

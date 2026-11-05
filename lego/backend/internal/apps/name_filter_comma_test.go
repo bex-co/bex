@@ -58,7 +58,7 @@ func TestListNameFilterKeepsEncodedCommas(t *testing.T) {
 		{"name=no-such-name", nil},
 	} {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services?"+tc.query, nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services?"+tc.query, nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("?%s => %d: %s", tc.query, rec.Code, rec.Body)
 		}

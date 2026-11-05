@@ -52,7 +52,7 @@ func TestDiskInvariantsRefusedAcrossSurfaces(t *testing.T) {
 					mux := http.NewServeMux()
 					svc.RegisterREST(mux)
 					rec := httptest.NewRecorder()
-					mux.ServeHTTP(rec, httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body)))
+					validated(t, mux).ServeHTTP(rec, httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body)))
 					if rec.Code != http.StatusBadRequest {
 						t.Fatalf("status=%d body=%s", rec.Code, rec.Body.String())
 					}

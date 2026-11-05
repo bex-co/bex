@@ -108,7 +108,7 @@ func displayNameRejectionCall(t *testing.T, svc *Service, surface string) func(*
 			}
 			req := httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(string(body)))
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, req)
+			validated(t, mux).ServeHTTP(rec, req)
 			var out struct{ Code, Message, Error string }
 			if rec.Code != http.StatusBadRequest || json.Unmarshal(rec.Body.Bytes(), &out) != nil || out.Message != out.Error {
 				t.Fatalf("REST refusal = %d %s", rec.Code, rec.Body)

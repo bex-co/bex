@@ -189,7 +189,7 @@ func TestServicePatchCrossSurfaceEquivalence(t *testing.T) {
 	mux := http.NewServeMux()
 	restSvc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(restBody)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(restBody)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("REST PATCH => %d: %s", rec.Code, rec.Body)
 	}

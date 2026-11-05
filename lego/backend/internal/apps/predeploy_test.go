@@ -43,7 +43,7 @@ func TestRESTCreateThreadsPreDeployCommandAndReadsItBack(t *testing.T) {
 
 	body := `{"name":"web","repo":"https://github.com/x/mono","preDeployCommand":"npm run migrate"}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -53,7 +53,7 @@ func TestRESTCreateThreadsPreDeployCommandAndReadsItBack(t *testing.T) {
 
 	// Read-back: Render nests it under serviceDetails.preDeployCommand.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 	var out struct {
 		ServiceDetails struct {
 			PreDeployCommand string `json:"preDeployCommand"`
@@ -72,7 +72,7 @@ func TestRESTCreateAcceptsPreDeployUnderServiceDetails(t *testing.T) {
 	// Render-faithful nesting; top-level absent, so the nested value wins.
 	body := `{"name":"web","repo":"https://github.com/x/mono","serviceDetails":{"preDeployCommand":"rails db:migrate"}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -184,7 +184,7 @@ func TestRESTPatchServicePreDeployCommand(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"preDeployCommand":"npm run migrate"}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"preDeployCommand":"npm run migrate"}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH preDeployCommand => 200, got %d: %s", rec.Code, rec.Body)
 	}

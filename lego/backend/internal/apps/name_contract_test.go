@@ -51,6 +51,9 @@ func renamedApp(name, svcType, displayName string) *appv1alpha1.App {
 	a := sampleApp(name)
 	a.Spec.Type = svcType
 	a.Spec.DisplayName = displayName
+	if svcType == appv1alpha1.TypeCronJob {
+		a.Spec.Schedule = "0 * * * *" // every create path requires one
+	}
 	return a
 }
 
@@ -64,7 +67,7 @@ func readSurfaceNames(t *testing.T, svc *Service, immutableName string) (restNam
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/"+immutableName, nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/"+immutableName, nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("REST GET %s: %d %s", immutableName, rec.Code, rec.Body)
 	}
@@ -167,13 +170,13 @@ func TestImmutableNameAddressesButDisplayLabelDoesNot(t *testing.T) {
 
 	// The immutable name round-trips: GET /v1/services/{immutableName} -> 200.
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET by immutable name => 200, got %d: %s", rec.Code, rec.Body)
 	}
 	// The display label is not an address: GET /v1/services/{displayName} -> 404.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/renamed-label", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/renamed-label", nil))
 	if rec.Code != http.StatusNotFound {
 		t.Fatalf("GET by display label => 404 (not a stable address), got %d: %s", rec.Code, rec.Body)
 	}
@@ -200,7 +203,7 @@ func TestListFilterMatchesBothNameSpellings(t *testing.T) {
 
 	for _, spelling := range []string{"web", "renamed-label"} {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?name="+spelling, nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?name="+spelling, nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("list ?name=%s => 200, got %d: %s", spelling, rec.Code, rec.Body)
 		}

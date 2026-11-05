@@ -199,7 +199,7 @@ func TestBlueprintRenderExportWithRegionsValidatesAndPlans(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, renderExportBlueprint))))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/validate", strings.NewReader(fmt.Sprintf(`{"bexYaml":%q}`, renderExportBlueprint))))
 	var rest BlueprintValidation
 	if err := json.Unmarshal(rec.Body.Bytes(), &rest); err != nil || !rest.Valid {
 		t.Fatalf("REST validate: code=%d valid=%v err=%v body=%s", rec.Code, rest.Valid, err, rec.Body)
@@ -261,7 +261,7 @@ func TestCreateServiceRegionPolicyAcrossSurfaces(t *testing.T) {
 			}
 			body := fmt.Sprintf(`{"name":%q,"type":"web_service","image":{"imagePath":"nginx:alpine","ownerId":""},"serviceDetails":{%s}}`, name, details)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 			if rec.Code != http.StatusCreated {
 				return outcome{err: fmt.Sprintf("%d %s", rec.Code, rec.Body.String())}
 			}

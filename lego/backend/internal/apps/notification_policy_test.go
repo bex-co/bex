@@ -56,7 +56,7 @@ func TestNotificationOverrideRESTContract(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/notification-settings/overrides/services/web", strings.NewReader(`{"notificationsToSend":"all"}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/notification-settings/overrides/services/web", strings.NewReader(`{"notificationsToSend":"all"}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH = %d: %s", rec.Code, rec.Body)
 	}
@@ -71,7 +71,7 @@ func TestNotificationOverrideRESTContract(t *testing.T) {
 		t.Fatalf("response = %+v", got)
 	}
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/notification-settings/overrides/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/notification-settings/overrides/services/web", nil))
 	if rec.Code != http.StatusOK || !strings.Contains(rec.Body.String(), `"notificationsToSend":"all"`) {
 		t.Fatalf("GET = %d: %s", rec.Code, rec.Body)
 	}
@@ -105,7 +105,7 @@ func TestNotificationOverridesListContract(t *testing.T) {
 	patch := func(t *testing.T, service, policy string) {
 		t.Helper()
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch,
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch,
 			"/v1/notification-settings/overrides/services/"+service,
 			strings.NewReader(`{"notificationsToSend":"`+policy+`"}`)))
 		if rec.Code != http.StatusOK {
@@ -115,7 +115,7 @@ func TestNotificationOverridesListContract(t *testing.T) {
 	list := func(t *testing.T, query string) []notificationOverrideEntry {
 		t.Helper()
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/notification-settings/overrides"+query, nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/notification-settings/overrides"+query, nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET %q = %d: %s", query, rec.Code, rec.Body)
 		}
@@ -206,7 +206,7 @@ func TestNotificationOverridesListIsWorkspaceScoped(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, "/v1/notification-settings/overrides"+query, nil)
 		r = r.WithContext(core.WithIdentity(r.Context(), core.Identity{Subject: "id-a"}))
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, r)
+		validated(t, mux).ServeHTTP(rec, r)
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET %q = %d: %s", query, rec.Code, rec.Body)
 		}
@@ -234,7 +234,7 @@ func TestNotificationOverridesListIsWorkspaceScoped(t *testing.T) {
 		r := httptest.NewRequest(http.MethodGet, "/v1/notification-settings/overrides?ownerId=tea-b", nil)
 		r = r.WithContext(core.WithIdentity(r.Context(), core.Identity{Subject: "id-a"}))
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, r)
+		validated(t, mux).ServeHTTP(rec, r)
 		if strings.Contains(rec.Body.String(), "theirs") {
 			t.Fatalf("a foreign workspace's service leaked: %d %s", rec.Code, rec.Body)
 		}
@@ -258,7 +258,7 @@ func TestNotificationOverrideSingleObjectCarriesServiceID(t *testing.T) {
 		httptest.NewRequest(http.MethodPatch, "/v1/notification-settings/overrides/services/web", strings.NewReader(`{"notificationsToSend":"failure"}`)),
 	} {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req)
+		validated(t, mux).ServeHTTP(rec, req)
 		var got struct{ ServiceID, NotificationsToSend, PreviewNotificationsEnabled string }
 		if err := json.Unmarshal(rec.Body.Bytes(), &got); rec.Code != http.StatusOK || err != nil ||
 			got.ServiceID != want || got.NotificationsToSend == "" || got.PreviewNotificationsEnabled == "" {

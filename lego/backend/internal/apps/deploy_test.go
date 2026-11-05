@@ -282,7 +282,7 @@ func TestRESTCreateService(t *testing.T) {
 	// nest under serviceDetails; envVars is [{key,value}].
 	body := `{"name":"web","image":{"imagePath":"nginx:1"},"serviceDetails":{"plan":"standard","numInstances":3},"envVars":[{"key":"K","value":"V"}]}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -307,7 +307,7 @@ func TestRESTCreatePrivateService(t *testing.T) {
 
 	body := `{"type":"private_service","name":"worker","image":{"imagePath":"nginx:1"}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}

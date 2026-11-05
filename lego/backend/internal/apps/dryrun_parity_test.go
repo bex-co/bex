@@ -165,7 +165,7 @@ func TestRESTDryRunCreateRefusesReservedDashboardHost(t *testing.T) {
 	svc.RegisterREST(mux)
 	body := `{"name":"preview-svc","type":"web_service","image":{"imagePath":"img:v1"},"domains":["dashboard.bex.co"]}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services?dryRun=true", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services?dryRun=true", strings.NewReader(body)))
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "reserved platform hostname") {
 		t.Fatalf("dry-run create with dashboard host => %d %s, want 400 reserved platform hostname", rec.Code, rec.Body)
 	}

@@ -38,7 +38,7 @@ func TestMalformedStaticRouteRefusedAcrossAdapters(t *testing.T) {
 				mux := http.NewServeMux()
 				svc.RegisterREST(mux)
 				rec := httptest.NewRecorder()
-				mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/v1/services/site/routes", strings.NewReader(`[{"type":"rewrite","source":"/old","destination":"/bad%"}]`)))
+				validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPut, "/v1/services/site/routes", strings.NewReader(`[{"type":"rewrite","source":"/old","destination":"/bad%"}]`)))
 				if rec.Code != http.StatusBadRequest {
 					t.Fatalf("status=%d %s", rec.Code, rec.Body)
 				}

@@ -135,7 +135,7 @@ func TestRESTPatchBuildSettings(t *testing.T) {
 	svc.RegisterREST(mux)
 	body := `{"serviceDetails":{"envSpecificDetails":{"dockerCommand":"bin/server","dockerfilePath":"docker/Dockerfile.prod"}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH build settings => %d: %s", rec.Code, rec.Body)
 	}
@@ -424,7 +424,7 @@ func TestEverySurfaceClearsAStaticBuildToDirectPublication(t *testing.T) {
 		mux := http.NewServeMux()
 		svc.RegisterREST(mux)
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/site",
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/site",
 			strings.NewReader(`{"serviceDetails":{"buildCommand":"","publishPath":"."}}`)))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("PATCH => %d: %s", rec.Code, rec.Body)

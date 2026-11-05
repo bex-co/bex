@@ -164,7 +164,7 @@ func TestRESTServiceOutboundIPsExactWireShape(t *testing.T) {
 
 	path := "/v1/services/" + testServiceID + "/outbound-ips"
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET %s = %d: %s", path, rec.Code, rec.Body.String())
 	}
@@ -186,7 +186,7 @@ func TestRESTServiceOutboundIPsEmptyAndMissing(t *testing.T) {
 		mux := http.NewServeMux()
 		instanceService(outboundIPTestApp()).RegisterREST(mux)
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+testServiceID+"/outbound-ips", nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+testServiceID+"/outbound-ips", nil))
 		if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != `{"type":"shared","ips":[]}` {
 			t.Fatalf("empty outbound-ips = %d %q, want 200 {\"type\":\"shared\",\"ips\":[]}", rec.Code, rec.Body.String())
 		}
@@ -196,7 +196,7 @@ func TestRESTServiceOutboundIPsEmptyAndMissing(t *testing.T) {
 		mux := http.NewServeMux()
 		instanceService().RegisterREST(mux)
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/srv-missing/outbound-ips", nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/srv-missing/outbound-ips", nil))
 		if rec.Code != http.StatusNotFound {
 			t.Fatalf("missing = %d: %s", rec.Code, rec.Body.String())
 		}
@@ -218,7 +218,7 @@ func TestRESTServiceOutboundIPsEmptyAndMissing(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/v1/services/"+testServiceID+"/outbound-ips", nil)
 		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "alice", Method: "session"}))
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req)
+		validated(t, mux).ServeHTTP(rec, req)
 		if rec.Code != http.StatusForbidden || trap.nodeListCalled {
 			t.Fatalf("foreign workspace = %d nodeList=%v body=%s", rec.Code, trap.nodeListCalled, rec.Body.String())
 		}

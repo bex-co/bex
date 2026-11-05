@@ -232,7 +232,7 @@ func TestSourceValidationFailurePreservesAppAndCredentials(t *testing.T) {
 				mux := http.NewServeMux()
 				svc.RegisterREST(mux)
 				rec := httptest.NewRecorder()
-				mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"repo":"https://github.com/stranger/private","branch":"release"}`)))
+				validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"repo":"https://github.com/stranger/private","branch":"release"}`)))
 				if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "GitHub connections") {
 					t.Fatalf("response %d: %s", rec.Code, rec.Body.String())
 				}

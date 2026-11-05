@@ -42,7 +42,7 @@ func TestRESTCreateThreadsRootDirAndReadsItBack(t *testing.T) {
 
 	body := `{"name":"web","repo":"https://github.com/x/mono","rootDir":"services/api"}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -51,7 +51,7 @@ func TestRESTCreateThreadsRootDirAndReadsItBack(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -181,7 +181,7 @@ func TestRESTPatchServiceRootDir(t *testing.T) {
 
 	body := strings.NewReader(`{"rootDir":"api"}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH rootDir => 200, got %d: %s", rec.Code, rec.Body)
 	}

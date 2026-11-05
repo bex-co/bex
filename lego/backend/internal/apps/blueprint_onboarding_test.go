@@ -354,7 +354,7 @@ services:
 			req.ContentLength = int64(len(body))
 		}
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req)
+		validated(t, mux).ServeHTTP(rec, req)
 		var out map[string]any
 		_ = json.Unmarshal(rec.Body.Bytes(), &out)
 		return rec.Code, out
@@ -419,7 +419,7 @@ func TestBlueprintManualSyncRefusesACreatedBlueprint(t *testing.T) {
 				mux := http.NewServeMux()
 				svc.RegisterREST(mux)
 				rec := httptest.NewRecorder()
-				mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/"+id+"/sync", strings.NewReader(`{"ownerId":"tea-a"}`)).WithContext(ctx))
+				validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/"+id+"/sync", strings.NewReader(`{"ownerId":"tea-a"}`)).WithContext(ctx))
 				if rec.Code != http.StatusConflict {
 					t.Fatalf("sync = %d %s, want 409", rec.Code, rec.Body.String())
 				}

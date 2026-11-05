@@ -39,17 +39,23 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
+// fakeClient stamps creationTimestamp like a real API server
+// (rendertest.Stamped), so the REST responses validated by validated() carry
+// the createdAt Render requires.
 func fakeClient(objs ...client.Object) client.Client {
 	scheme := runtime.NewScheme()
 	_ = clientgoscheme.AddToScheme(scheme)
 	_ = appv1alpha1.AddToScheme(scheme)
-	return fake.NewClientBuilder().WithScheme(scheme).WithObjects(objs...).Build()
+	return fake.NewClientBuilder().WithScheme(scheme).
+		WithObjects(rendertest.Stamped(objs...)...).
+		WithInterceptorFuncs(rendertest.StampOnCreate).Build()
 }
 
 func sampleApp(name string) *appv1alpha1.App {
@@ -164,7 +170,7 @@ func TestInternalAddressOnAllThreeSurfaces(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}
@@ -249,7 +255,7 @@ func TestSlugPresentOnAllThreeSurfaces(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}
@@ -314,7 +320,7 @@ func TestSuspendersPresentOnAllThreeSurfaces(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}
@@ -1528,7 +1534,7 @@ func TestRESTFragmentRenderShape(t *testing.T) {
 	// list is the {service, cursor} envelope.
 	var list []serviceWithCursor
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services", nil))
 	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 1 {
 		t.Fatalf("list: %v %+v", err, list)
 	}
@@ -1537,18 +1543,18 @@ func TestRESTFragmentRenderShape(t *testing.T) {
 	}
 	// suspend => 202, restart => 200 (Render status codes).
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/suspend", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/suspend", nil))
 	if rec.Code != http.StatusAccepted {
 		t.Errorf("suspend => 202, got %d", rec.Code)
 	}
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/restart", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/restart", nil))
 	if rec.Code != http.StatusOK {
 		t.Errorf("restart => 200, got %d", rec.Code)
 	}
 	// unknown => 404.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/nope", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/nope", nil))
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("unknown => 404, got %d", rec.Code)
 	}
@@ -1562,7 +1568,7 @@ func TestRESTUsesTypedServiceIDForResponseAndLifecycle(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services", nil))
 	var list []serviceWithCursor
 	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 1 {
 		t.Fatalf("list: %v %+v", err, list)
@@ -1572,7 +1578,7 @@ func TestRESTUsesTypedServiceIDForResponseAndLifecycle(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/srv-c185th5c2rvvnhbfiltg/restart", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/srv-c185th5c2rvvnhbfiltg/restart", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("restart by typed id => %d: %s", rec.Code, rec.Body.String())
 	}
@@ -1588,6 +1594,7 @@ func TestRESTListTypeFilter(t *testing.T) {
 	worker.Spec.Type = appv1alpha1.TypeBackgroundWorker
 	cron := sampleApp("cron")
 	cron.Spec.Type = appv1alpha1.TypeCronJob
+	cron.Spec.Schedule = "0 * * * *"
 
 	svc, _ := newService(nil, web, worker, cron)
 	mux := http.NewServeMux()
@@ -1595,7 +1602,7 @@ func TestRESTListTypeFilter(t *testing.T) {
 
 	listNames := func(query string) []string {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services"+query, nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services"+query, nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET %s = %d: %s", query, rec.Code, rec.Body.String())
 		}
@@ -1636,7 +1643,7 @@ func TestRESTListSuspendedFilter(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=suspended", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=suspended", nil))
 	var page []serviceWithCursor
 	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -1646,7 +1653,7 @@ func TestRESTListSuspendedFilter(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=not_suspended", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=not_suspended", nil))
 	if err := json.Unmarshal(rec.Body.Bytes(), &page); err != nil {
 		t.Fatalf("decode: %v", err)
 	}
@@ -1655,7 +1662,7 @@ func TestRESTListSuspendedFilter(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=maybe", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?suspended=maybe", nil))
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("suspended=maybe => 400, got %d", rec.Code)
 	}
@@ -1663,28 +1670,27 @@ func TestRESTListSuspendedFilter(t *testing.T) {
 
 func TestRESTListTimeFilters(t *testing.T) {
 	// GET /v1/services?createdBefore/After/updatedBefore/After (w2/m52).
-	early := sampleApp("early")
-	late := sampleApp("late")
-
-	svc, _ := newService(nil, early, late)
-	// Manually set CreatedAt on the views by patching the underlying CRs'
-	// resource version timestamps — the fake client doesn't set CreationTimestamp,
-	// so we rely on the fact that both views will have empty CreatedAt and thus
-	// PASS any time filter (legacy-group rule: empty timestamp → include).
+	svc, _ := newService(nil)
+	// Both Apps lack a creationTimestamp, so their views have an empty
+	// CreatedAt and PASS any time filter (legacy-group rule: empty timestamp →
+	// include). A real API server always stamps one, so this defensive branch
+	// is built on an unstamped client and served past the response validator:
+	// a service without createdAt is not a response Render clients receive.
+	svc.Client = fake.NewClientBuilder().WithScheme(svc.Client.Scheme()).WithObjects(sampleApp("early"), sampleApp("late")).Build()
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
 	// Malformed timestamp → 400.
 	for _, param := range []string{"createdBefore", "createdAfter", "updatedBefore", "updatedAfter"} {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?"+param+"=yesterday", nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?"+param+"=yesterday", nil))
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("%s=yesterday => 400, got %d", param, rec.Code)
 		}
 	}
 
-	// Empty CreatedAt on apps (fake client has no creation timestamp) → passes
-	// any time window (same rule as matchesTimeWindow in envgroups).
+	// Empty CreatedAt on apps (no creation timestamp) → passes any time window
+	// (same rule as matchesTimeWindow in envgroups).
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services?createdBefore=2020-01-01T00:00:00Z", nil))
 	if rec.Code != http.StatusOK {
@@ -1722,7 +1728,7 @@ func TestRESTListTimeWindowExcludes(t *testing.T) {
 	listNames := func(query string) []string {
 		t.Helper()
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services"+query, nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services"+query, nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET /v1/services%s = %d: %s", query, rec.Code, rec.Body.String())
 		}
@@ -1764,7 +1770,7 @@ func TestRESTPatchServicePlan(t *testing.T) {
 
 	body := strings.NewReader(`{"serviceDetails":{"plan":"pro_plus"}}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH plan => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -1778,14 +1784,14 @@ func TestRESTPatchServicePlan(t *testing.T) {
 
 	// Unknown plan => 400, and it must not have changed anything.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"serviceDetails":{"plan":"gold"}}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"serviceDetails":{"plan":"gold"}}`)))
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("unknown plan => 400, got %d", rec.Code)
 	}
 
 	// A PATCH with no serviceDetails.plan is a no-op read, not an error.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{}`)))
 	if rec.Code != http.StatusOK {
 		t.Errorf("PATCH with no plan field => 200 (no-op), got %d", rec.Code)
 	}
@@ -1802,7 +1808,7 @@ func TestRESTScaleService(t *testing.T) {
 
 	// scale => 202 with numInstances honored (Render's scale status code).
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/scale", strings.NewReader(`{"numInstances":3}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/scale", strings.NewReader(`{"numInstances":3}`)))
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("scale => 202, got %d: %s", rec.Code, rec.Body)
 	}
@@ -1819,7 +1825,7 @@ func TestRESTScaleService(t *testing.T) {
 
 	// Out-of-range numInstances => 400, and it must not change anything.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/scale", strings.NewReader(`{"numInstances":0}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/scale", strings.NewReader(`{"numInstances":0}`)))
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("numInstances 0 => 400, got %d", rec.Code)
 	}
@@ -1835,7 +1841,7 @@ func TestRESTDeleteService(t *testing.T) {
 
 	// delete => 204 empty body (Render's delete semantics), CR gone.
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web", nil))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("delete => 204, got %d: %s", rec.Code, rec.Body)
 	}
@@ -1846,7 +1852,7 @@ func TestRESTDeleteService(t *testing.T) {
 
 	// A second delete of the now-unknown id => 404.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web", nil))
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("delete unknown => 404, got %d", rec.Code)
 	}
@@ -1856,7 +1862,7 @@ func TestRESTDeleteService(t *testing.T) {
 	mux2 := http.NewServeMux()
 	svc2.RegisterREST(mux2)
 	rec = httptest.NewRecorder()
-	mux2.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/api", nil))
+	validated(t, mux2).ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/api", nil))
 	if rec.Code != http.StatusNoContent {
 		t.Errorf("delete via /v1/services => 204, got %d", rec.Code)
 	}

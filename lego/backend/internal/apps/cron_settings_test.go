@@ -111,7 +111,7 @@ func TestRESTPatchCronJobScheduleAndCommand(t *testing.T) {
 
 	body := `{"schedule":"0 8 * * 1","command":"node weekly.js"}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/nightly", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/nightly", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH cron => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -134,7 +134,7 @@ func TestRESTPatchCronJobScheduleOnlyPreservesCommand(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/nightly", strings.NewReader(`{"schedule":"0 8 * * 1"}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/nightly", strings.NewReader(`{"schedule":"0 8 * * 1"}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH schedule-only => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -153,7 +153,7 @@ func TestRESTPatchCronJobRejectsNonCron(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"schedule":"0 * * * *"}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(`{"schedule":"0 * * * *"}`)))
 	if rec.Code == http.StatusOK {
 		t.Errorf("PATCH schedule on non-cron App must not return 200: %s", rec.Body)
 	}
@@ -165,7 +165,7 @@ func TestRESTPatchCronJobRejectsInvalidSchedule(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/nightly", strings.NewReader(`{"schedule":"not valid"}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/nightly", strings.NewReader(`{"schedule":"not valid"}`)))
 	if rec.Code == http.StatusOK {
 		t.Errorf("PATCH with invalid schedule must not return 200: %s", rec.Body)
 	}

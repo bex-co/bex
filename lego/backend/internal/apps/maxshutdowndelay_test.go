@@ -57,7 +57,7 @@ func TestRESTMaxShutdownDelayCreatePatchAndReadPlacement(t *testing.T) {
 
 			body := fmt.Sprintf(`{"name":"app","type":%q,"image":{"imagePath":"nginx:v1"},"serviceDetails":{"maxShutdownDelaySeconds":75}}`, serviceType)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 			if rec.Code != http.StatusCreated {
 				t.Fatalf("create => %d: %s", rec.Code, rec.Body)
 			}
@@ -69,7 +69,7 @@ func TestRESTMaxShutdownDelayCreatePatchAndReadPlacement(t *testing.T) {
 
 			rec = httptest.NewRecorder()
 			patch := `{"serviceDetails":{"maxShutdownDelaySeconds":120}}`
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/app", strings.NewReader(patch)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/app", strings.NewReader(patch)))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("PATCH => %d: %s", rec.Code, rec.Body)
 			}
@@ -80,7 +80,7 @@ func TestRESTMaxShutdownDelayCreatePatchAndReadPlacement(t *testing.T) {
 			assertMaxShutdownDelayPlacement(t, rec.Body.Bytes(), 120)
 
 			rec = httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/app", nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/app", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("GET => %d: %s", rec.Code, rec.Body)
 			}
@@ -116,7 +116,7 @@ func TestRESTMaxShutdownDelayDefaultsToThirtyOnReadWithoutMutatingSpec(t *testin
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/web", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET => %d: %s", rec.Code, rec.Body)
 	}
@@ -135,7 +135,7 @@ func TestRESTMaxShutdownDelayRejectsRangeAndWrongTypesWithNamed400(t *testing.T)
 			svc.RegisterREST(mux)
 			body := fmt.Sprintf(`{"name":"web","image":{"imagePath":"nginx:v1"},"serviceDetails":{"maxShutdownDelaySeconds":%s}}`, value)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 			if rec.Code != http.StatusBadRequest {
 				t.Fatalf("value %s => %d, want 400: %s", value, rec.Code, rec.Body)
 			}
@@ -151,7 +151,7 @@ func TestRESTMaxShutdownDelayRejectsRangeAndWrongTypesWithNamed400(t *testing.T)
 	for _, value := range []string{"0", "301", `"30"`, "false", "null"} {
 		rec := httptest.NewRecorder()
 		body := fmt.Sprintf(`{"serviceDetails":{"maxShutdownDelaySeconds":%s}}`, value)
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
 		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "maxShutdownDelaySeconds") {
 			t.Errorf("PATCH value %s => %d %s, want named 400", value, rec.Code, rec.Body)
 		}

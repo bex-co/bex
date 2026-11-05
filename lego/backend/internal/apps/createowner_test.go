@@ -180,7 +180,7 @@ func TestREST_CreateHonorsOwnerIDInTheBody(t *testing.T) {
 	body := `{"name":"web","image":{"imagePath":"nginx"},"ownerId":"tea-2"}`
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/v1/services", strings.NewReader(body))
-	mux.ServeHTTP(rec, req.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(rec, req.WithContext(ctxAs("dana")))
 
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST /v1/services: %d body=%s", rec.Code, rec.Body.String())
@@ -239,7 +239,7 @@ func TestREST_CreateAcceptsOfficialCLIImageOwnerID(t *testing.T) {
 
 			rec := httptest.NewRecorder()
 			req := httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(tc.body))
-			mux.ServeHTTP(rec, req.WithContext(ctxAs("dana")))
+			validated(t, mux).ServeHTTP(rec, req.WithContext(ctxAs("dana")))
 			if rec.Code != tc.wantStatus {
 				t.Fatalf("POST = %d, want %d: %s", rec.Code, tc.wantStatus, rec.Body.String())
 			}
@@ -271,7 +271,7 @@ func TestREST_CreateWithANonMemberOwnerIDIs403(t *testing.T) {
 	body := `{"name":"web","image":{"imagePath":"nginx"},"ownerId":"tea-stranger"}`
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/v1/services", strings.NewReader(body))
-	mux.ServeHTTP(rec, req.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(rec, req.WithContext(ctxAs("dana")))
 
 	if rec.Code != http.StatusForbidden {
 		t.Fatalf("POST /v1/services with a non-member ownerId: %d body=%s, want 403", rec.Code, rec.Body.String())
@@ -290,7 +290,7 @@ func TestREST_CreateResponseContainsDeployIDWhenStoreActive(t *testing.T) {
 	body := `{"name":"web","image":{"imagePath":"nginx"}}`
 	rr := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/v1/services", strings.NewReader(body))
-	mux.ServeHTTP(rr, req.WithContext(core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})))
+	validated(t, mux).ServeHTTP(rr, req.WithContext(core.WithIdentity(context.Background(), core.Identity{Subject: "id-a", Method: "session"})))
 
 	if rr.Code != http.StatusCreated {
 		t.Fatalf("POST /v1/services: %d body=%s", rr.Code, rr.Body.String())

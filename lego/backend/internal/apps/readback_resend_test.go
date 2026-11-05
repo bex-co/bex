@@ -156,7 +156,7 @@ func TestEveryServiceShapeReadsBackReSendable(t *testing.T) {
 			svc.RegisterREST(mux)
 
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/subject", nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/subject", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("GET = %d: %s", rec.Code, rec.Body.String())
 			}
@@ -186,7 +186,7 @@ func TestEveryServiceShapeReadsBackReSendable(t *testing.T) {
 				t.Fatal(err)
 			}
 			rec = httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(string(body))))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(string(body))))
 			if rec.Code != http.StatusOK && rec.Code != http.StatusCreated {
 				t.Fatalf("re-sending this shape's own read as a create = %d: %s\nechoed keys: %v",
 					rec.Code, rec.Body.String(), echoed)

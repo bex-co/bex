@@ -33,7 +33,7 @@ func staticRulesREST(t *testing.T) func(method, path, body string) *httptest.Res
 	svc.RegisterREST(mux)
 	return func(method, path, body string) *httptest.ResponseRecorder {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(method, "/v1/services/site"+path, strings.NewReader(body)))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(method, "/v1/services/site"+path, strings.NewReader(body)))
 		return rec
 	}
 }

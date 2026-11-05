@@ -101,7 +101,7 @@ func TestBlueprintDetachPlanAcrossSurfaces(t *testing.T) {
 							args["ownerId"] = connOwner
 							body, _ := json.Marshal(args)
 							rec := httptest.NewRecorder()
-							mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/"+path, strings.NewReader(string(body))).WithContext(ownershipCtx()))
+							validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/"+path, strings.NewReader(string(body))).WithContext(ownershipCtx()))
 							refused = rec.Code != http.StatusOK
 							if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
 								t.Fatal(err)
@@ -179,7 +179,7 @@ func TestBlueprintDetachSyncResultAcrossSurfaces(t *testing.T) {
 				svc.RegisterREST(mux)
 				body, _ := json.Marshal(map[string]any{"ownerId": connOwner, "bexYaml": detachReplacementManifest})
 				rec := httptest.NewRecorder()
-				mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/"+bp.ID+"/sync?ownerId="+connOwner, strings.NewReader(string(body))).WithContext(ownershipCtx()))
+				validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/"+bp.ID+"/sync?ownerId="+connOwner, strings.NewReader(string(body))).WithContext(ownershipCtx()))
 				if rec.Code != http.StatusOK {
 					t.Fatalf("sync:%d %s", rec.Code, rec.Body.String())
 				}

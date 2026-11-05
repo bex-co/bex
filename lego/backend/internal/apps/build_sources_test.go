@@ -360,7 +360,7 @@ func TestServicePatchLinksABuildSource(t *testing.T) {
 		rec := httptest.NewRecorder()
 		req := httptest.NewRequest(http.MethodPatch, "/v1/services/"+web.ID, strings.NewReader(body)).WithContext(ctx)
 		req.ContentLength = int64(len(body))
-		mux.ServeHTTP(rec, req)
+		validated(t, mux).ServeHTTP(rec, req)
 		return rec
 	}
 	for name, body := range map[string]string{

@@ -134,7 +134,7 @@ func TestRESTServiceMetadataParity_Present(t *testing.T) {
 	createRec := httptest.NewRecorder()
 	createReq := httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(
 		`{"name":"web-meta","image":{"imagePath":"nginx"},"ownerId":"tea-2"}`))
-	mux.ServeHTTP(createRec, createReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(createRec, createReq.WithContext(ctxAs("dana")))
 	if createRec.Code != http.StatusCreated {
 		t.Fatalf("create => %d: %s", createRec.Code, createRec.Body.String())
 	}
@@ -151,7 +151,7 @@ func TestRESTServiceMetadataParity_Present(t *testing.T) {
 
 	listRec := httptest.NewRecorder()
 	listReq := httptest.NewRequest(http.MethodGet, "/v1/services?ownerId=tea-2", nil)
-	mux.ServeHTTP(listRec, listReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(listRec, listReq.WithContext(ctxAs("dana")))
 	var list []map[string]any
 	if err := json.Unmarshal(listRec.Body.Bytes(), &list); err != nil {
 		t.Fatalf("list decode: %v", err)
@@ -167,12 +167,12 @@ func TestRESTServiceMetadataParity_Present(t *testing.T) {
 
 	getRec := httptest.NewRecorder()
 	getReq := httptest.NewRequest(http.MethodGet, "/v1/services/"+id, nil)
-	mux.ServeHTTP(getRec, getReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(getRec, getReq.WithContext(ctxAs("dana")))
 	check("get", decodeMap(t, getRec.Body.Bytes()))
 
 	patchRec := httptest.NewRecorder()
 	patchReq := httptest.NewRequest(http.MethodPatch, "/v1/services/"+id, strings.NewReader(`{"name":"web-meta-renamed"}`))
-	mux.ServeHTTP(patchRec, patchReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(patchRec, patchReq.WithContext(ctxAs("dana")))
 	if patchRec.Code != http.StatusOK {
 		t.Fatalf("patch => %d: %s", patchRec.Code, patchRec.Body.String())
 	}
@@ -180,7 +180,7 @@ func TestRESTServiceMetadataParity_Present(t *testing.T) {
 
 	suspendRec := httptest.NewRecorder()
 	suspendReq := httptest.NewRequest(http.MethodPost, "/v1/services/"+id+"/suspend", nil)
-	mux.ServeHTTP(suspendRec, suspendReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(suspendRec, suspendReq.WithContext(ctxAs("dana")))
 	if suspendRec.Code != http.StatusAccepted {
 		t.Fatalf("suspend => %d: %s", suspendRec.Code, suspendRec.Body.String())
 	}
@@ -188,7 +188,7 @@ func TestRESTServiceMetadataParity_Present(t *testing.T) {
 
 	resumeRec := httptest.NewRecorder()
 	resumeReq := httptest.NewRequest(http.MethodPost, "/v1/services/"+id+"/resume", nil)
-	mux.ServeHTTP(resumeRec, resumeReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(resumeRec, resumeReq.WithContext(ctxAs("dana")))
 	if resumeRec.Code != http.StatusAccepted {
 		t.Fatalf("resume => %d: %s", resumeRec.Code, resumeRec.Body.String())
 	}
@@ -217,7 +217,7 @@ func TestRESTServiceMetadataParity_OmittedWhenUnresolved(t *testing.T) {
 	createRec := httptest.NewRecorder()
 	createReq := httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(
 		`{"name":"web-bare","image":{"imagePath":"nginx"}}`))
-	mux.ServeHTTP(createRec, createReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(createRec, createReq.WithContext(ctxAs("dana")))
 	if createRec.Code != http.StatusCreated {
 		t.Fatalf("create => %d: %s", createRec.Code, createRec.Body.String())
 	}
@@ -231,7 +231,7 @@ func TestRESTServiceMetadataParity_OmittedWhenUnresolved(t *testing.T) {
 
 	listRec := httptest.NewRecorder()
 	listReq := httptest.NewRequest(http.MethodGet, "/v1/services", nil)
-	mux.ServeHTTP(listRec, listReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(listRec, listReq.WithContext(ctxAs("dana")))
 	var list []map[string]any
 	if err := json.Unmarshal(listRec.Body.Bytes(), &list); err != nil {
 		t.Fatalf("list decode: %v", err)
@@ -247,12 +247,12 @@ func TestRESTServiceMetadataParity_OmittedWhenUnresolved(t *testing.T) {
 
 	getRec := httptest.NewRecorder()
 	getReq := httptest.NewRequest(http.MethodGet, "/v1/services/"+id, nil)
-	mux.ServeHTTP(getRec, getReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(getRec, getReq.WithContext(ctxAs("dana")))
 	check("get", decodeMap(t, getRec.Body.Bytes()))
 
 	patchRec := httptest.NewRecorder()
 	patchReq := httptest.NewRequest(http.MethodPatch, "/v1/services/"+id, strings.NewReader(`{"name":"web-bare-renamed"}`))
-	mux.ServeHTTP(patchRec, patchReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(patchRec, patchReq.WithContext(ctxAs("dana")))
 	if patchRec.Code != http.StatusOK {
 		t.Fatalf("patch => %d: %s", patchRec.Code, patchRec.Body.String())
 	}
@@ -260,7 +260,7 @@ func TestRESTServiceMetadataParity_OmittedWhenUnresolved(t *testing.T) {
 
 	suspendRec := httptest.NewRecorder()
 	suspendReq := httptest.NewRequest(http.MethodPost, "/v1/services/"+id+"/suspend", nil)
-	mux.ServeHTTP(suspendRec, suspendReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(suspendRec, suspendReq.WithContext(ctxAs("dana")))
 	if suspendRec.Code != http.StatusAccepted {
 		t.Fatalf("suspend => %d: %s", suspendRec.Code, suspendRec.Body.String())
 	}
@@ -268,7 +268,7 @@ func TestRESTServiceMetadataParity_OmittedWhenUnresolved(t *testing.T) {
 
 	resumeRec := httptest.NewRecorder()
 	resumeReq := httptest.NewRequest(http.MethodPost, "/v1/services/"+id+"/resume", nil)
-	mux.ServeHTTP(resumeRec, resumeReq.WithContext(ctxAs("dana")))
+	validated(t, mux).ServeHTTP(resumeRec, resumeReq.WithContext(ctxAs("dana")))
 	if resumeRec.Code != http.StatusAccepted {
 		t.Fatalf("resume => %d: %s", resumeRec.Code, resumeRec.Body.String())
 	}
@@ -297,7 +297,7 @@ func TestGraphQLServiceListMetadata(t *testing.T) {
 			createRec := httptest.NewRecorder()
 			createReq := httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(
 				`{"name":"web-meta","repo":"https://github.com/acme/web","serviceDetails":{"runtime":"node","envSpecificDetails":{"buildCommand":"npm install","startCommand":"npm start"}}}`))
-			mux.ServeHTTP(createRec, createReq.WithContext(ctxAs("dana")))
+			validated(t, mux).ServeHTTP(createRec, createReq.WithContext(ctxAs("dana")))
 			if createRec.Code != http.StatusCreated {
 				t.Fatalf("create => %d: %s", createRec.Code, createRec.Body.String())
 			}

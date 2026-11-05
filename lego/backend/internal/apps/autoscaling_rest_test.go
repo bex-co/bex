@@ -40,7 +40,7 @@ func putAutoscaling(t *testing.T, svc *Service, body string) *httptest.ResponseR
 	})))
 	req.Header.Set("Content-Type", "application/json")
 	w := httptest.NewRecorder()
-	mux.ServeHTTP(w, req)
+	validated(t, mux).ServeHTTP(w, req)
 	return w
 }
 

@@ -95,7 +95,7 @@ func blueprintValidationSurfaces(t *testing.T, svc *Service) []blueprintValidati
 	return []blueprintValidationSurface{
 		{"REST multipart", func(t *testing.T, yaml string) map[string]any {
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, multipartBlueprintRequest(t, "tea-workspace", "render.yaml", yaml))
+			validated(t, mux).ServeHTTP(rec, multipartBlueprintRequest(t, "tea-workspace", "render.yaml", yaml))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("validate status=%d body=%s", rec.Code, rec.Body)
 			}

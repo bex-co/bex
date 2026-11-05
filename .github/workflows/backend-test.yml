@@ -147,21 +147,19 @@ jobs:
           echo "$RUNNER_TEMP/bin" >> "$GITHUB_PATH"
       - name: wait for Loki
         run: timeout 90 bash -c 'until curl -sf http://localhost:3100/ready; do sleep 2; done'
-      # TestRenderConformance (internal/api/conformance_test.go) validates bex's
-      # REST responses against the pinned Render OpenAPI schemas in
-      # internal/api/testdata/render-openapi.json. It runs as part of go test
-      # ./... below (no extra step needed).
+      # Every Render-shaped /v1 response the internal/api and internal/apps
+      # suites produce is validated against the pinned Render OpenAPI
+      # (internal/api/openapi/render-public-api-1.json) by internal/rendertest
+      # (w3/m272), as part of go test ./... below (no extra step needed).
       #
       # Pin-update workflow (when Render ships a spec change):
-      #  1. Replace lego/backend/internal/api/testdata/render-openapi.json with
-      #     the new spec (or its response-schema subset for the covered operationIds).
-      #  2. Run: cd lego/backend && go test ./internal/api/... -run TestRenderConformance -v
-      #  3. For each new failure, decide keep-or-fix:
-      #     - Keep (bex intentionally diverges): add an entry to conformanceAllowlist
-      #       in conformance_allowlist_test.go, citing the ADR018 row.
-      #     - Fix: update bex's response to match Render's schema, remove the entry.
-      #  4. TestConformanceAllowlistEntries will flag any allowlist entry that no
-      #     longer matches a real divergence (bex now conforms on that point).
+      #  1. Re-pin per docs/render-artifacts/openapi-request-validation.md.
+      #  2. Run this job's go test ./... (with the test database).
+      #  3. Fix each new response failure. rendertest.Allowlist only shrinks
+      #     (TestAllowlistOnlyShrinks); each entry cites a row of ADR018's
+      #     "Allowlisted response-schema divergences" table.
+      #  4. A full run fails any allowlist entry no response reproduces any
+      #     more (bex now conforms there): remove it and lower allowlistSize.
       - name: go test ./... (backend)
         working-directory: lego/backend
         env:

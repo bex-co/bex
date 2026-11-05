@@ -171,7 +171,7 @@ func TestRESTServiceInstancesExactWireShape(t *testing.T) {
 	path := "/v1/services/" + testServiceID + "/instances"
 	t.Run(path, func(t *testing.T) {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, path, nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET %s = %d: %s", path, rec.Code, rec.Body.String())
 		}
@@ -199,7 +199,7 @@ func TestRESTServiceInstancesEmptyMissingAndForeignWorkspace(t *testing.T) {
 		mux := http.NewServeMux()
 		instanceService(app).RegisterREST(mux)
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+testServiceID+"/instances", nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+testServiceID+"/instances", nil))
 		if rec.Code != http.StatusOK || strings.TrimSpace(rec.Body.String()) != "[]" {
 			t.Fatalf("empty instances = %d %q, want 200 []", rec.Code, rec.Body.String())
 		}
@@ -209,7 +209,7 @@ func TestRESTServiceInstancesEmptyMissingAndForeignWorkspace(t *testing.T) {
 		mux := http.NewServeMux()
 		instanceService().RegisterREST(mux)
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/srv-missing/instances", nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/srv-missing/instances", nil))
 		if rec.Code != http.StatusNotFound {
 			t.Fatalf("missing = %d: %s", rec.Code, rec.Body.String())
 		}
@@ -231,7 +231,7 @@ func TestRESTServiceInstancesEmptyMissingAndForeignWorkspace(t *testing.T) {
 		req := httptest.NewRequest(http.MethodGet, "/v1/services/"+testServiceID+"/instances", nil)
 		req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "alice", Method: "session"}))
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req)
+		validated(t, mux).ServeHTTP(rec, req)
 		if rec.Code != http.StatusForbidden || trap.podListCalled {
 			t.Fatalf("foreign workspace = %d podList=%v body=%s", rec.Code, trap.podListCalled, rec.Body.String())
 		}

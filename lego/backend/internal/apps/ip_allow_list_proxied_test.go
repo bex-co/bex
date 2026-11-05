@@ -180,21 +180,21 @@ func TestRESTServiceDetailsNameProxiedDomains(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web",
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web",
 		strings.NewReader(`{"serviceDetails":{"ipAllowList":[{"cidrBlock":"203.0.113.0/24","description":"office"}]}}`)))
 	if got := decode(t, rec); !slices.Equal(got, []string{"shop.example.com"}) {
 		t.Errorf("PATCH serviceDetails.ipAllowListProxiedDomains = %v", got)
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 	if got := decode(t, rec); !slices.Equal(got, []string{"shop.example.com"}) {
 		t.Errorf("GET serviceDetails.ipAllowListProxiedDomains = %v", got)
 	}
 
 	// Cleared: the key disappears again, byte-compatible with Render.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web",
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web",
 		strings.NewReader(`{"serviceDetails":{"ipAllowList":[]}}`)))
 	if strings.Contains(rec.Body.String(), "ipAllowListProxiedDomains") {
 		t.Errorf("cleared allowlist still carries the warning field: %s", rec.Body)

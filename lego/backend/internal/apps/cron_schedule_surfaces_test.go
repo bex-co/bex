@@ -70,7 +70,7 @@ func TestCronScheduleContractAcrossSurfaces(t *testing.T) {
 			svc.RegisterREST(mux)
 			body := fmt.Sprintf(`{"name":"nightly","type":"cron_job","schedule":%q,"image":{"imagePath":"job:v1"}}`, schedule)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 			return rec.Code == http.StatusCreated, restRefusal(rec)
 		}},
 		{"REST PATCH /v1/services/{id}", func(t *testing.T, schedule string) (bool, string) {

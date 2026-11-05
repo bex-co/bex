@@ -97,7 +97,7 @@ func TestRESTCreateKeepsDockerCronCommandFromNativeSpelling(t *testing.T) {
 	body := `{"name":"nightly","type":"cron_job","repo":"https://github.com/bex-co/example","serviceDetails":{"runtime":"docker","plan":"starter",` +
 		`"schedule":"*/10 * * * *","envSpecificDetails":{"buildCommand":"","startCommand":"echo qa"}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST docker cron = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -117,7 +117,7 @@ func TestRESTCreateDockerCronPrefersDockerCommandWhenBothSent(t *testing.T) {
 	body := `{"name":"nightly","type":"cron_job","repo":"https://github.com/bex-co/example","serviceDetails":{"runtime":"docker","plan":"starter",` +
 		`"schedule":"*/10 * * * *","envSpecificDetails":{"startCommand":"native","dockerCommand":"docker"}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST docker cron = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -138,7 +138,7 @@ func TestRESTCreateDockerWebServiceKeepsItsStartCommand(t *testing.T) {
 	body := `{"name":"web","type":"web_service","repo":"https://github.com/bex-co/example","serviceDetails":{"runtime":"docker","plan":"free",` +
 		`"envSpecificDetails":{"startCommand":"echo native"}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST docker web = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -164,7 +164,7 @@ func TestReadProjectsStoredDockerCronCommand(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/nightly", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/nightly", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET docker cron = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -190,7 +190,7 @@ func TestUpdateDockerCronCommandRoundTripsThroughTheRead(t *testing.T) {
 
 	rec := httptest.NewRecorder()
 	patch := `{"serviceDetails":{"envSpecificDetails":{"dockerCommand":"echo patched"}}}`
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/nightly", strings.NewReader(patch)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/nightly", strings.NewReader(patch)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH docker cron command = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -211,7 +211,7 @@ func TestNativeCronCommandUnchanged(t *testing.T) {
 	body := `{"name":"ncron","type":"cron_job","repo":"https://github.com/bex-co/example","serviceDetails":{"runtime":"go","plan":"starter",` +
 		`"schedule":"*/10 * * * *","envSpecificDetails":{"buildCommand":"go build","startCommand":"echo native"}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST native cron = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -321,7 +321,7 @@ func TestFreeWebServiceReadShapeIsReSendableAsCreate(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/freeweb", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/freeweb", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET free web service = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -350,7 +350,7 @@ func TestFreeWebServiceReadShapeIsReSendableAsCreate(t *testing.T) {
 		t.Fatal(err)
 	}
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(string(body))))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(string(body))))
 	if rec.Code != http.StatusOK && rec.Code != http.StatusCreated {
 		t.Fatalf("echoing a free web service's own read back as a create = %d: %s", rec.Code, rec.Body.String())
 	}
@@ -411,7 +411,7 @@ func TestImageBackedServiceReadsNoBranch(t *testing.T) {
 		{"repoweb", "release"},
 	} {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+tc.name, nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/"+tc.name, nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET %s = %d: %s", tc.name, rec.Code, rec.Body.String())
 		}
@@ -439,7 +439,7 @@ func TestRESTCreateImageServiceKeepsDockerCommand(t *testing.T) {
 	body := `{"name":"echo","type":"web_service","image":{"imagePath":"hashicorp/http-echo:0.2.3"},"serviceDetails":{"runtime":"image","plan":"free",` +
 		`"envSpecificDetails":{"dockerCommand":"/http-echo -listen=:3000 -text=ok"}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST image service = %d: %s", rec.Code, rec.Body.String())
 	}

@@ -110,7 +110,7 @@ func TestServiceIDAgreesAcrossRESTGraphQLAndMCP(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/srv-m46test0000000000d", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/srv-m46test0000000000d", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("REST status = %d, body %s", rec.Code, rec.Body)
 	}

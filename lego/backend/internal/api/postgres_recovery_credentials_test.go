@@ -30,6 +30,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -143,7 +144,7 @@ func TestRenderPostgresRecoveryAndCredentials(t *testing.T) {
 	}
 	// Recovery returns the same partial postgres detail as retrieve-postgres;
 	// only those existing, documented metadata omissions are allowed.
-	if errs := filterAllowed("retrieve-postgres", spec.validateStatus("recover-postgres", res.Code, res.Body.Bytes())); len(errs) > 0 {
+	if errs := rendertest.Unallowed("retrieve-postgres", spec.validateStatus("recover-postgres", res.Code, res.Body.Bytes())); len(errs) > 0 {
 		t.Fatal(errs)
 	}
 	var recovered struct {

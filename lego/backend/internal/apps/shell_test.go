@@ -110,7 +110,7 @@ func TestREST_ShellTicketStatuses(t *testing.T) {
 	bareMux := http.NewServeMux()
 	bare.RegisterREST(bareMux)
 	rec := httptest.NewRecorder()
-	bareMux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/"+sshServiceID+"/shell-ticket", nil))
+	validated(t, bareMux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/"+sshServiceID+"/shell-ticket", nil))
 	if rec.Code != http.StatusServiceUnavailable {
 		t.Fatalf("unconfigured => 503, got %d", rec.Code)
 	}
@@ -124,7 +124,7 @@ func TestREST_ShellTicketStatuses(t *testing.T) {
 	rec = httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/v1/services/"+sshServiceID+"/shell-ticket", nil)
 	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-1", Method: "session"}))
-	mux.ServeHTTP(rec, req)
+	validated(t, mux).ServeHTTP(rec, req)
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("configured => 201, got %d: %s", rec.Code, rec.Body)
 	}

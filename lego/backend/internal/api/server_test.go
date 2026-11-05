@@ -68,6 +68,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/projects"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/router"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/secrets"
@@ -88,8 +89,13 @@ func testScheme() *runtime.Scheme {
 	return scheme
 }
 
+// fakeClient stamps creationTimestamp like a real API server
+// (rendertest.Stamped), so served responses carry the createdAt Render
+// requires and the response validator in buildHandler sees production shapes.
 func fakeClient(objs ...client.Object) client.Client {
-	return fake.NewClientBuilder().WithScheme(testScheme()).WithObjects(objs...).Build()
+	return fake.NewClientBuilder().WithScheme(testScheme()).
+		WithObjects(rendertest.Stamped(objs...)...).
+		WithInterceptorFuncs(rendertest.StampOnCreate).Build()
 }
 
 func sampleApp(name string) *appv1alpha1.App {
@@ -184,13 +190,17 @@ func serverWithKratos(t *testing.T, base *core.Base, d Deps, hydraURL, kratosURL
 	return buildHandler(t, srv)
 }
 
+// buildHandler is srv.Handler() with every Render-shaped /v1 response
+// validated against the pinned schema (validatingRenderResponses): a test that
+// drives a route into a wrong-typed field, a missing required key or an
+// undocumented status fails, whatever the test itself asserts.
 func buildHandler(t *testing.T, srv *Server) http.Handler {
 	t.Helper()
-	h, err := srv.Handler()
+	muxes, err := srv.composedMuxes()
 	if err != nil {
 		t.Fatalf("Handler: %v", err)
 	}
-	return h
+	return validatingRenderResponses(t, muxes.rest, srv.wrapMuxes(muxes))
 }
 
 func do(t *testing.T, h http.Handler, method, path, token, body string) *httptest.ResponseRecorder {

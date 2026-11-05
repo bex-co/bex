@@ -35,7 +35,7 @@ func cacheApp(name, tier, typ string) *appv1alpha1.App {
 func restDo(t *testing.T, mux *http.ServeMux, method, path, body string) *httptest.ResponseRecorder {
 	t.Helper()
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)))
 	return rec
 }
 

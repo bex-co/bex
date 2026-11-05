@@ -42,7 +42,7 @@ func TestRESTCreateThreadsHealthCheckPathAndReadsItBack(t *testing.T) {
 
 	body := `{"name":"web","image":{"imagePath":"nginx:v1"},"serviceDetails":{"healthCheckPath":"/healthz"}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -51,7 +51,7 @@ func TestRESTCreateThreadsHealthCheckPathAndReadsItBack(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -76,7 +76,7 @@ func TestRESTPatchServiceHealthCheckPath(t *testing.T) {
 	// healthCheckPath is a top-level PATCH field (not nested in serviceDetails).
 	body := strings.NewReader(`{"healthCheckPath":"/ready"}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH healthCheckPath => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -107,7 +107,7 @@ func TestRESTPatchServiceHealthCheckPathEmpty(t *testing.T) {
 	// and the service verb must not undo that by coercing back to "/".
 	body := strings.NewReader(`{"healthCheckPath":""}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH healthCheckPath='' => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -281,7 +281,7 @@ func TestCreateRejectsNonSlashHealthCheckPathBeforePersisting(t *testing.T) {
 
 	body := `{"name":"web","image":{"imagePath":"nginx:v1"},"serviceDetails":{"healthCheckPath":"missing-slash"}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "health check path must start with /") {
 		t.Fatalf("create => 400 naming the path rule, got %d: %s", rec.Code, rec.Body)
 	}

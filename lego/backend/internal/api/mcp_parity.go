@@ -22,7 +22,7 @@ import (
 )
 
 // mcp_parity.go classifies bex's MCP tools against the pinned upstream surface
-// (render_mcp.go). It is the MCP counterpart of conformance_allowlist_test.go,
+// (render_mcp.go). It is the MCP counterpart of internal/rendertest's allowlist,
 // which does the same job for REST.
 //
 // The class is DERIVED from the pin, never hand-declared. A hand-maintained

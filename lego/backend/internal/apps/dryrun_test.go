@@ -70,7 +70,7 @@ func TestRESTDryRunCreateService(t *testing.T) {
 	// Image is Render's nested object: {"imagePath": "..."}.
 	body := `{"name":"preview-svc","image":{"imagePath":"img:v1"},"dryRun":true}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("dry-run create => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -92,7 +92,7 @@ func TestRESTDryRunCreateServiceQueryParam(t *testing.T) {
 	// dryRun via query param => 200, no CR created.
 	body := `{"name":"preview-qp","image":{"imagePath":"img:v1"}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services?dryRun=true", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services?dryRun=true", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("dry-run (query param) => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -110,7 +110,7 @@ func TestRESTDryRunPatchServicePlan(t *testing.T) {
 	// dryRun PATCH with plan => 200, plan not written.
 	body := `{"serviceDetails":{"plan":"starter"},"dryRun":true}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/patch-svc", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/patch-svc", strings.NewReader(body)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("dry-run patch => 200, got %d: %s", rec.Code, rec.Body)
 	}

@@ -164,7 +164,7 @@ func TestRESTCreateWithIPAllowListAndReadBack(t *testing.T) {
 	// schema has no such property — w6/m106).
 	body := `{"name":"web","image":{"imagePath":"nginx:v1"},"serviceDetails":{"ipAllowList":[{"cidrBlock":"203.0.113.0/24","description":"office"}]}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -186,7 +186,7 @@ func TestRESTCreateWithIPAllowListAndReadBack(t *testing.T) {
 	assertNestedIPAllowList(t, "create", created.Service, "203.0.113.0/24", "office")
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET => 200, got %d", rec.Code)
 	}
@@ -227,7 +227,7 @@ func TestRESTCreateWithInvalidIPAllowListReturns400(t *testing.T) {
 
 	body := `{"name":"web","image":{"imagePath":"nginx:v1"},"serviceDetails":{"ipAllowList":[{"cidrBlock":"not-a-cidr","description":"bad"}]}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("create with invalid cidr => 400, got %d: %s", rec.Code, rec.Body)
 	}
@@ -241,7 +241,7 @@ func TestRESTPatchIPAllowList(t *testing.T) {
 	// PATCH nests ipAllowList under serviceDetails (Render-faithful).
 	body := strings.NewReader(`{"serviceDetails":{"ipAllowList":[{"cidrBlock":"10.0.0.0/8","description":"vpn"},{"cidrBlock":"192.168.0.0/16","description":"lan"}]}}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -259,7 +259,7 @@ func TestRESTPatchIPAllowListWithInvalidCIDRReturns400(t *testing.T) {
 
 	body := strings.NewReader(`{"serviceDetails":{"ipAllowList":[{"cidrBlock":"bad-cidr","description":""}]}}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("PATCH invalid cidr => 400, got %d: %s", rec.Code, rec.Body)
 	}
@@ -516,7 +516,7 @@ func TestIPAllowListPresentOnAllThreeSurfaces(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}

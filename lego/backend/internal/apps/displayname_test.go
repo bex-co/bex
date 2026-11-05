@@ -178,7 +178,7 @@ func TestRESTDisplayNamePatchRoundTripAndOmission(t *testing.T) {
 	patch := func(body string) map[string]any {
 		t.Helper()
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", strings.NewReader(body)))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("PATCH %s => %d: %s", body, rec.Code, rec.Body.String())
 		}
@@ -200,7 +200,7 @@ func TestRESTDisplayNamePatchRoundTripAndOmission(t *testing.T) {
 	}
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/web", nil))
 	var out map[string]any
 	if rec.Code != http.StatusOK || json.Unmarshal(rec.Body.Bytes(), &out) != nil || out["displayName"] != "" {
 		t.Fatalf("GET after clear => %d %s", rec.Code, rec.Body.String())
@@ -350,7 +350,7 @@ func TestRESTBlankRenameClearsLikeGraphQL(t *testing.T) {
 	patch := func(body string) (int, map[string]any) {
 		t.Helper()
 		w := httptest.NewRecorder()
-		mux.ServeHTTP(w, httptest.NewRequest(http.MethodPatch, "/v1/services/immutable-id", strings.NewReader(body)))
+		validated(t, mux).ServeHTTP(w, httptest.NewRequest(http.MethodPatch, "/v1/services/immutable-id", strings.NewReader(body)))
 		var out map[string]any
 		_ = json.Unmarshal(w.Body.Bytes(), &out)
 		return w.Code, out

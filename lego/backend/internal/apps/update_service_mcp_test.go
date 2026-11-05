@@ -372,7 +372,7 @@ func TestUpdateServiceMatchesRESTPatchFieldForField(t *testing.T) {
 			mux := http.NewServeMux()
 			restSvc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(tc.restBody)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", strings.NewReader(tc.restBody)))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST PATCH %s => %d: %s", tc.restBody, rec.Code, rec.Body)
 			}

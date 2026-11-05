@@ -193,7 +193,7 @@ func TestPushDeliveryAgreesAcrossRESTGraphQLAndMCP(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}

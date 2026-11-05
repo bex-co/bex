@@ -98,7 +98,7 @@ func serveJSON(t *testing.T, mux *http.ServeMux, method, path string, body any) 
 		t.Fatal(err)
 	}
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(string(raw))))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(string(raw))))
 	return rec
 }
 

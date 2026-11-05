@@ -56,7 +56,7 @@ func TestPendingURLDerivedForStaticSiteBeforeFirstDeploy(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/site", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/site", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get => 200, got %d: %s", rec.Code, rec.Body)
 	}

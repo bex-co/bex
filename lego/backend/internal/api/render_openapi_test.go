@@ -977,8 +977,8 @@ func TestRegistryCredentialRESTWritesPassTheRenderValidator(t *testing.T) {
 	created := requestOpenAPITest(t, handler, http.MethodPost, "/v1/registrycredentials", "application/json",
 		`{"name":"ghcr","host":"ghcr.io","username":"alice","authToken":"hunter2","expiresAt":"2099-01-01T00:00:00Z"}`)
 	var credential struct{ ID, Name, Host string }
-	if err := json.Unmarshal(created.Body.Bytes(), &credential); created.Code != http.StatusCreated || err != nil || credential.Host != "ghcr.io" {
-		t.Fatalf("create = %d %s, want 201", created.Code, created.Body.String())
+	if err := json.Unmarshal(created.Body.Bytes(), &credential); created.Code != http.StatusOK || err != nil || credential.Host != "ghcr.io" {
+		t.Fatalf("create = %d %s, want 200", created.Code, created.Body.String())
 	}
 	if strings.Contains(created.Body.String(), "hunter2") {
 		t.Fatalf("create echoed the secret: %s", created.Body.String())
@@ -992,9 +992,9 @@ func TestRegistryCredentialRESTWritesPassTheRenderValidator(t *testing.T) {
 	render := requestOpenAPITest(t, handler, http.MethodPost, "/v1/registrycredentials", "application/json",
 		`{"name":"x","registry":"DOCKER","username":"u","authToken":"t","ownerId":"tea-a"}`)
 	var rendered map[string]any
-	if err := json.Unmarshal(render.Body.Bytes(), &rendered); render.Code != http.StatusCreated || err != nil ||
+	if err := json.Unmarshal(render.Body.Bytes(), &rendered); render.Code != http.StatusOK || err != nil ||
 		rendered["registry"] != "DOCKER" || rendered["host"] != "docker.io" {
-		t.Fatalf("Render body = %d %s, want 201 with registry DOCKER on docker.io", render.Code, render.Body.String())
+		t.Fatalf("Render body = %d %s, want 200 with registry DOCKER on docker.io", render.Code, render.Body.String())
 	}
 	for _, field := range []string{"id", "name", "username", "registry", "updatedAt"} {
 		if _, ok := rendered[field]; !ok {

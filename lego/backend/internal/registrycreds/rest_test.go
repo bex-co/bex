@@ -43,8 +43,8 @@ func TestRESTCreateReturnsNoSecretAndReadsBack(t *testing.T) {
 	body := `{"host":"ghcr.io","username":"alice","authToken":"hunter2","name":"GHCR prod"}`
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(body)))
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("create => 200, got %d: %s", rec.Code, rec.Body)
 	}
 	if strings.Contains(rec.Body.String(), "hunter2") {
 		t.Fatalf("create response leaked the secret: %s", rec.Body)
@@ -71,7 +71,7 @@ func TestRESTCanonicalRenderRouteGetsCredential(t *testing.T) {
 	_, mux := testMux()
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(`{"host":"ghcr.io","username":"alice","authToken":"hunter2"}`)))
-	if rec.Code != http.StatusCreated {
+	if rec.Code != http.StatusOK {
 		t.Fatalf("create => %d: %s", rec.Code, rec.Body)
 	}
 	var created credentialWire
@@ -110,7 +110,7 @@ func TestRESTListNeverIncludesSecrets(t *testing.T) {
 	} {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(body)))
-		if rec.Code != http.StatusCreated {
+		if rec.Code != http.StatusOK {
 			t.Fatalf("create: %d %s", rec.Code, rec.Body)
 		}
 	}
@@ -215,8 +215,8 @@ func TestRESTReportsExpiredStatus(t *testing.T) {
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials",
 		strings.NewReader(`{"host":"registry.gitlab.com","username":"bob","authToken":"s3cr3t","expiresAt":"2020-01-01T00:00:00Z"}`)))
-	if rec.Code != http.StatusCreated {
-		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("create => 200, got %d: %s", rec.Code, rec.Body)
 	}
 	var created credentialWire
 	_ = json.Unmarshal(rec.Body.Bytes(), &created)
@@ -248,7 +248,7 @@ func TestRESTNonDefaultWorkspaceCredentialIsFullyReachable(t *testing.T) {
 		strings.NewReader(`{"ownerId":"tea-other","host":"ghcr.io","username":"alice","authToken":"hunter2"}`)).WithContext(ctx)
 	rec := httptest.NewRecorder()
 	mux.ServeHTTP(rec, req)
-	if rec.Code != http.StatusCreated {
+	if rec.Code != http.StatusOK {
 		t.Fatalf("create => %d: %s", rec.Code, rec.Body)
 	}
 	var created credentialWire
@@ -302,7 +302,7 @@ func TestRESTListHonorsRenderFilters(t *testing.T) {
 	} {
 		rec := httptest.NewRecorder()
 		mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/registrycredentials", strings.NewReader(body)))
-		if rec.Code != http.StatusCreated {
+		if rec.Code != http.StatusOK {
 			t.Fatalf("create: %d %s", rec.Code, rec.Body)
 		}
 		var c credentialWire
@@ -388,7 +388,7 @@ func TestRESTAcceptsRendersRegistryEnum(t *testing.T) {
 		{`{"name":"g","host":"registry.example.com:5000","username":"u","authToken":"t"}`, "", "registry.example.com:5000"},
 	} {
 		code, created := do("POST", "/v1/registrycredentials", tc.body)
-		if code != http.StatusCreated {
+		if code != http.StatusOK {
 			t.Fatalf("create %s = %d %v", tc.body, code, created)
 		}
 		code, got := do("GET", "/v1/registrycredentials/"+created["id"].(string), "")

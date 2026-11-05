@@ -32,7 +32,7 @@ func serveRESTPatch(t *testing.T, svc *Service, name, body string) *httptest.Res
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/"+name, strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/"+name, strings.NewReader(body)))
 	return rec
 }
 
@@ -98,7 +98,7 @@ func serveRESTStrict(t *testing.T, svc *Service, method, path, body string) *htt
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(method, path, strings.NewReader(body))
 	req = req.WithContext(core.WithStrictJSONDecoding(req.Context()))
-	mux.ServeHTTP(rec, req)
+	validated(t, mux).ServeHTTP(rec, req)
 	return rec
 }
 

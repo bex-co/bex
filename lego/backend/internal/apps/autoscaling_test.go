@@ -189,7 +189,7 @@ func TestRESTGetAutoscaling(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/autoscaling", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/autoscaling", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET autoscaling => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -211,7 +211,7 @@ func TestRESTPutAutoscaling(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("PUT", "/v1/services/web/autoscaling", strings.NewReader(body))
 	req = req.WithContext(core.WithStrictJSONDecoding(req.Context()))
-	mux.ServeHTTP(rec, req)
+	validated(t, mux).ServeHTTP(rec, req)
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PUT autoscaling => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -234,7 +234,7 @@ func TestRESTDeleteAutoscaling(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web/autoscaling", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web/autoscaling", nil))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("DELETE autoscaling => 204, got %d: %s", rec.Code, rec.Body)
 	}

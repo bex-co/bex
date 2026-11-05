@@ -198,8 +198,9 @@ func TestResourceRESTMetadataOmitsUnavailableConfigurationAndLegacyOwner(t *test
 		ObjectMeta: metav1.ObjectMeta{Name: "legacy", Namespace: "default", Labels: map[string]string{core.LabelAppID: "srv-legacy0000000000000"}},
 		Spec:       appv1alpha1.AppSpec{Image: "nginx"},
 	}
-	legacyDB := &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "legacy-db", Namespace: "default"}}
-	legacyKV := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "legacy-kv", Namespace: "default"}}
+	// Plan "free" is the CRD default a real API server applies to a legacy CR.
+	legacyDB := &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "legacy-db", Namespace: "default"}, Spec: appv1alpha1.DatabaseSpec{Plan: "free"}}
+	legacyKV := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "legacy-kv", Namespace: "default"}, Spec: appv1alpha1.KeyValueSpec{Plan: "free"}}
 	base := serverBase(t, st)
 	base.Client = fakeClient(app, db, kv, legacy)
 	h, _ := serverWith(t, base, Deps{WorkspaceStore: st})

@@ -145,7 +145,7 @@ func TestRESTRefusesPausedTier(t *testing.T) {
 		{"POST", "/v1/services", `{"name":"ultra","type":"web_service","image":{"imagePath":"nginx:1"},"serviceDetails":{"plan":"pro_ultra","runtime":"image"}}`},
 	} {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body)))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(tc.method, tc.path, strings.NewReader(tc.body)))
 		var body struct {
 			Code    string `json:"code"`
 			Message string `json:"message"`

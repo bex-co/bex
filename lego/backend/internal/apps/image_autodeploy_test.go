@@ -42,7 +42,7 @@ func TestRESTImageCreateAutoDeploy(t *testing.T) {
 			svc.RegisterREST(mux)
 			body := `{"name":"image","ownerId":"default","type":"web_service","envVars":[{"key":"WHOAMI_PORT_NUMBER","value":"3000"},{"key":"QA_MARKER","value":"m99"}],"image":{"imagePath":"docker.io/traefik/whoami:v1.11.0","ownerId":""},"serviceDetails":{"healthCheckPath":"/","numInstances":1,"plan":"free","region":"frankfurt","runtime":"image"}` + tc.field + `}`
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 			if rec.Code != tc.status {
 				t.Fatalf("status=%d want=%d: %s", rec.Code, tc.status, rec.Body)
 			}
@@ -54,7 +54,7 @@ func TestRESTImageCreateAutoDeploy(t *testing.T) {
 				t.Fatal("image automation enabled")
 			}
 			rec = httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/image", nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/image", nil))
 			var result map[string]any
 			if err := json.Unmarshal(rec.Body.Bytes(), &result); err != nil {
 				t.Fatal(err)

@@ -593,7 +593,7 @@ func validationSurfaces(t *testing.T, svc *Service) func(*testing.T, string) (su
 		surfaces := map[string]surfaceValidation{}
 
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, multipartBlueprintRequest(t, connOwner, "render.yaml", doc).WithContext(ownershipCtx()))
+		validated(t, mux).ServeHTTP(rec, multipartBlueprintRequest(t, connOwner, "render.yaml", doc).WithContext(ownershipCtx()))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("REST %d %s", rec.Code, rec.Body)
 		}

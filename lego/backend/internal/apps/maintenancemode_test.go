@@ -44,7 +44,7 @@ func TestRESTCreateThreadsMaintenanceModeAndReadsItBack(t *testing.T) {
 
 	body := `{"name":"web","type":"web_service","image":{"imagePath":"nginx"},"serviceDetails":{"plan":"starter","maintenanceMode":{"enabled":true,"uri":"https://status.example.com/maintenance"}}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -54,7 +54,7 @@ func TestRESTCreateThreadsMaintenanceModeAndReadsItBack(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/web", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -82,7 +82,7 @@ func TestRESTGetMaintenanceModeDefaultsToDisabled(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/web", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/services/web", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("get => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -98,7 +98,7 @@ func TestRESTPatchServiceMaintenanceMode(t *testing.T) {
 
 	body := strings.NewReader(`{"serviceDetails":{"maintenanceMode":{"enabled":true,"uri":""}}}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH maintenanceMode => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -110,7 +110,7 @@ func TestRESTPatchServiceMaintenanceMode(t *testing.T) {
 	// Disabling round-trips too, and is never blocked (no confirm needed).
 	body = strings.NewReader(`{"serviceDetails":{"maintenanceMode":{"enabled":false,"uri":""}}}`)
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH disable => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -125,7 +125,7 @@ func TestRESTMaintenanceModeRejectedForNonWebService(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(createBody)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/services", strings.NewReader(createBody)))
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("create maintenanceMode on background_worker => 400, got %d: %s", rec.Code, rec.Body)
 	}
@@ -136,7 +136,7 @@ func TestRESTMaintenanceModeRejectedForNonWebService(t *testing.T) {
 	mux = http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/worker2", strings.NewReader(`{"serviceDetails":{"maintenanceMode":{"enabled":true,"uri":""}}}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPatch, "/v1/services/worker2", strings.NewReader(`{"serviceDetails":{"maintenanceMode":{"enabled":true,"uri":""}}}`)))
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("PATCH maintenanceMode on background_worker => 400, got %d: %s", rec.Code, rec.Body)
 	}

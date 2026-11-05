@@ -390,7 +390,7 @@ func TestGenerateBlueprintCrossSurface(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/generate", strings.NewReader(
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/generate", strings.NewReader(
 		`{"serviceIds":["web"],"postgresIds":["dpg-abc123"],"keyValueIds":["red-xyz789"]}`)))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("REST generate => %d: %s", rec.Code, rec.Body)
@@ -514,14 +514,14 @@ func TestGenerateBlueprintRefusesAMalformedBodyAs400(t *testing.T) {
 	svc.RegisterREST(mux)
 	for _, body := range []string{``, `{`, `"x"`, `[]`, `{"serviceIds":"x"}`} {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/generate", strings.NewReader(body)))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/generate", strings.NewReader(body)))
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("generate %q = %d %s, want 400", body, rec.Code, rec.Body.String())
 		}
 	}
 	// null decodes, and reaches the named empty-selection refusal as before.
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/generate", strings.NewReader(`null`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodPost, "/v1/blueprints/generate", strings.NewReader(`null`)))
 	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "select at least one") {
 		t.Errorf("generate null = %d %s, want the empty-selection 400", rec.Code, rec.Body.String())
 	}

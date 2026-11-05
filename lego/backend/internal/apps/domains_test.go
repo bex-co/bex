@@ -41,6 +41,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -1212,7 +1213,7 @@ func TestRESTCustomDomains(t *testing.T) {
 	// sibling pairing (t002) — so this stays a single-domain lifecycle test;
 	// the paired case gets its own test (TestRESTCustomDomainsPairedAdd).
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
 		strings.NewReader(`{"name":"app.example.com"}`)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST => 201, got %d: %s", rec.Code, rec.Body)
@@ -1238,7 +1239,7 @@ func TestRESTCustomDomains(t *testing.T) {
 
 	// POST …/verify is Render's asynchronous trigger: 202, no body.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains/app.example.com/verify", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains/app.example.com/verify", nil))
 	if rec.Code != http.StatusAccepted {
 		t.Fatalf("POST verify => 202, got %d: %s", rec.Code, rec.Body)
 	}
@@ -1248,7 +1249,7 @@ func TestRESTCustomDomains(t *testing.T) {
 
 	// GET list returns [{customDomain:{...}, cursor:"..."}].
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET list => 200, got %d", rec.Code)
 	}
@@ -1262,14 +1263,14 @@ func TestRESTCustomDomains(t *testing.T) {
 
 	// GET single returns the domain.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/app.example.com", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/app.example.com", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("GET single => 200, got %d", rec.Code)
 	}
 
 	// DELETE returns 204 No Content.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web/custom-domains/app.example.com", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web/custom-domains/app.example.com", nil))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("DELETE => 204, got %d", rec.Code)
 	}
@@ -1279,7 +1280,7 @@ func TestRESTCustomDomains(t *testing.T) {
 
 	// GET single after delete => 404.
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/app.example.com", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/app.example.com", nil))
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("deleted domain => 404, got %d", rec.Code)
 	}
@@ -1295,7 +1296,7 @@ func TestRESTCustomDomainsPairedAdd(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
 		strings.NewReader(`{"name":"foo.com"}`)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("POST => 201, got %d: %s", rec.Code, rec.Body)
@@ -1312,7 +1313,7 @@ func TestRESTCustomDomainsPairedAdd(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains", nil))
 	var list []customDomainWithCursor
 	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 2 {
 		t.Fatalf("list: %v len=%d, want 2 (the pair)", err, len(list))
@@ -1332,12 +1333,12 @@ func TestRESTCustomDomainsPairedAdd(t *testing.T) {
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web/custom-domains/foo.com", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("DELETE", "/v1/services/web/custom-domains/foo.com", nil))
 	if rec.Code != http.StatusNoContent {
 		t.Fatalf("DELETE canonical => 204, got %d: %s", rec.Code, rec.Body)
 	}
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains", nil))
 	if err := json.Unmarshal(rec.Body.Bytes(), &list); err != nil || len(list) != 0 {
 		t.Fatalf("REST canonical delete must remove generated pair: %v len=%d", err, len(list))
 	}
@@ -1352,7 +1353,7 @@ func TestRESTCustomDomainsSiblingConflict(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
 		strings.NewReader(`{"name":"foo.com"}`)))
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("POST sibling of another service's host => 409, got %d: %s", rec.Code, rec.Body)
@@ -1366,7 +1367,7 @@ func TestRESTCustomDomainsBadRequest(t *testing.T) {
 
 	// Missing name field => 400.
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
 		strings.NewReader(`{"name":""}`)))
 	if rec.Code != http.StatusBadRequest {
 		t.Errorf("empty name => 400, got %d", rec.Code)
@@ -1379,7 +1380,7 @@ func TestRESTCustomDomainsUnknownApp(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/nope/custom-domains", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/nope/custom-domains", nil))
 	if rec.Code != http.StatusNotFound {
 		t.Errorf("unknown app => 404, got %d", rec.Code)
 	}
@@ -1395,7 +1396,7 @@ func TestManagedPendingDomainSurfaceParity(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/app.example.com", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/app.example.com", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("REST get = %d: %s", rec.Code, rec.Body)
 	}
@@ -1699,7 +1700,7 @@ func TestRESTListDomainsPagination(t *testing.T) {
 			url += "&cursor=" + cursor
 		}
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest("GET", url, nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", url, nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET page => %d: %s", rec.Code, rec.Body)
 		}
@@ -1753,7 +1754,7 @@ func TestRESTListDomainsFilterVerificationStatus(t *testing.T) {
 	getList := func(vs string) []customDomainWithCursor {
 		t.Helper()
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest("GET",
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET",
 			"/v1/services/web/custom-domains?verificationStatus="+vs, nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET verificationStatus=%s => %d: %s", vs, rec.Code, rec.Body)
@@ -1790,7 +1791,7 @@ func TestRESTListDomainsFilterDomainType(t *testing.T) {
 	getList := func(dt string) []customDomainWithCursor {
 		t.Helper()
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest("GET",
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET",
 			"/v1/services/web/custom-domains?domainType="+dt, nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET domainType=%s => %d: %s", dt, rec.Code, rec.Body)
@@ -1833,7 +1834,7 @@ func TestRESTListDomainsInvalidEnumBadRequest(t *testing.T) {
 		"/v1/services/web/custom-domains?domainType=APEX",
 	} {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest("GET", url, nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", url, nil))
 		if rec.Code != http.StatusBadRequest {
 			t.Errorf("GET %s => %d, want 400", url, rec.Code)
 		}
@@ -2208,14 +2209,14 @@ func TestRESTCustomDomainQuota(t *testing.T) {
 	svc.RegisterREST(mux)
 
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
 		strings.NewReader(`{"name":"a.example.com"}`)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("first POST => 201, got %d: %s", rec.Code, rec.Body)
 	}
 
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services/web/custom-domains",
 		strings.NewReader(`{"name":"b.example.com"}`)))
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("over-cap POST => 409, got %d: %s", rec.Code, rec.Body)
@@ -2332,7 +2333,7 @@ func acmeService(apps []*appv1alpha1.App, objs ...client.Object) *Service {
 		all = append(all, a)
 	}
 	all = append(all, objs...)
-	cl := fake.NewClientBuilder().WithScheme(acmeScheme()).WithObjects(all...).Build()
+	cl := fake.NewClientBuilder().WithScheme(acmeScheme()).WithObjects(rendertest.Stamped(all...)...).Build()
 	return &Service{Base: &core.Base{Client: cl, Namespace: "default"}, DomainTraffic: allowDomainTraffic{}}
 }
 
@@ -2489,7 +2490,7 @@ func TestCertificateReasonSurfaceParity(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/blockeden.xyz", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/blockeden.xyz", nil))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("REST get = %d: %s", rec.Code, rec.Body)
 	}
@@ -2536,7 +2537,7 @@ func TestCertificateReasonAbsentWhenIssued(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/good.example.com", nil))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/web/custom-domains/good.example.com", nil))
 	if strings.Contains(rec.Body.String(), "certificateReason") {
 		t.Errorf("issued domain must omit certificateReason: %s", rec.Body)
 	}

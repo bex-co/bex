@@ -45,7 +45,7 @@ func TestREST_CreateDuplicateNameIs409(t *testing.T) {
 	body := `{"name":"web","image":{"imagePath":"nginx"}}`
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest("POST", "/v1/services", strings.NewReader(body))
-	mux.ServeHTTP(rec, req)
+	validated(t, mux).ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusConflict {
 		t.Fatalf("POST /v1/services duplicate name: %d body=%s, want 409", rec.Code, rec.Body.String())

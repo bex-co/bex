@@ -152,7 +152,7 @@ func TestGenerateBlueprintAfterSourceSwitchOnEverySurface(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/generate", strings.NewReader(`{"serviceIds":["srv-svc"]}`)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/blueprints/generate", strings.NewReader(`{"serviceIds":["srv-svc"]}`)))
 	var restOut GenerateBlueprintResult
 	if err := json.Unmarshal(rec.Body.Bytes(), &restOut); rec.Code != http.StatusOK || err != nil || restOut.Manifest != want {
 		t.Fatalf("REST generate => %d (err %v): %s", rec.Code, err, rec.Body)

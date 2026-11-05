@@ -51,6 +51,9 @@ import (
 func typedApp(name, svcType string) *appv1alpha1.App {
 	a := sampleApp(name)
 	a.Spec.Type = svcType
+	if svcType == appv1alpha1.TypeCronJob {
+		a.Spec.Schedule = "0 * * * *" // every create path requires one
+	}
 	return a
 }
 
@@ -73,7 +76,7 @@ func TestRESTCreateAcceptsNestedRenderSubdomainPolicy(t *testing.T) {
 	// enabled needs no custom domain.
 	body := `{"type":"web_service","name":"web","image":{"imagePath":"nginx:v1"},"serviceDetails":{"renderSubdomainPolicy":"enabled"}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create nested enabled => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -85,7 +88,7 @@ func TestRESTCreateAcceptsNestedRenderSubdomainPolicy(t *testing.T) {
 	// top-level form always did (here satisfied by a domain in the body).
 	body = `{"type":"web_service","name":"web2","image":{"imagePath":"nginx:v1"},"domains":["ex.example.com"],"serviceDetails":{"renderSubdomainPolicy":"disabled"}}`
 	rec = httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("create nested disabled+domain => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -106,7 +109,7 @@ func TestRESTCreateNestedRenderSubdomainPolicyNoLongerUnknownField(t *testing.T)
 
 	body := `{"type":"web_service","name":"","serviceDetails":{"env":"go","renderSubdomainPolicy":"disabled"}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusBadRequest {
 		t.Fatalf("incomplete body => 400, got %d: %s", rec.Code, rec.Body)
 	}
@@ -130,7 +133,7 @@ func TestRESTCreateTopLevelRenderSubdomainPolicyWins(t *testing.T) {
 
 	body := `{"type":"web_service","name":"web","image":{"imagePath":"nginx:v1"},"renderSubdomainPolicy":"enabled","serviceDetails":{"renderSubdomainPolicy":"disabled"}}`
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
 	if rec.Code != http.StatusCreated {
 		t.Fatalf("top-level enabled must win (no domain needed) => 201, got %d: %s", rec.Code, rec.Body)
 	}
@@ -150,7 +153,7 @@ func TestRESTPatchAcceptsNestedRenderSubdomainPolicy(t *testing.T) {
 
 	body := strings.NewReader(`{"serviceDetails":{"renderSubdomainPolicy":"disabled"}}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH nested => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -172,7 +175,7 @@ func TestRESTPatchNestedRenderSubdomainPolicyWins(t *testing.T) {
 
 	body := strings.NewReader(`{"renderSubdomainPolicy":"enabled","serviceDetails":{"renderSubdomainPolicy":"disabled"}}`)
 	rec := httptest.NewRecorder()
-	mux.ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("PATCH", "/v1/services/web", body))
 	if rec.Code != http.StatusOK {
 		t.Fatalf("PATCH => 200, got %d: %s", rec.Code, rec.Body)
 	}
@@ -252,7 +255,7 @@ func TestRESTResponseRenderSubdomainPolicyNestedNotTopLevel(t *testing.T) {
 		} `json:"serviceDetails"`
 	} {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/"+name, nil))
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/"+name, nil))
 		if rec.Code != http.StatusOK {
 			t.Fatalf("GET %s => 200, got %d: %s", name, rec.Code, rec.Body)
 		}
@@ -308,7 +311,7 @@ func TestRenderSubdomainPolicyAgreesAcrossSurfaces(t *testing.T) {
 			mux := http.NewServeMux()
 			svc.RegisterREST(mux)
 			rec := httptest.NewRecorder()
-			mux.ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/svc", nil))
+			validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/svc", nil))
 			if rec.Code != http.StatusOK {
 				t.Fatalf("REST GET: %d %s", rec.Code, rec.Body)
 			}

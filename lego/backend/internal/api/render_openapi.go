@@ -19,7 +19,6 @@ package api
 import (
 	"context"
 	"crypto/sha256"
-	_ "embed"
 	"errors"
 	"fmt"
 	"maps"
@@ -33,6 +32,7 @@ import (
 	"github.com/getkin/kin-openapi/routers"
 	"github.com/getkin/kin-openapi/routers/legacy"
 
+	"github.com/bex-co/bex/lego/backend/internal/api/openapi"
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/types/tiers"
 )
@@ -43,14 +43,11 @@ const (
 )
 
 // renderOpenAPISource is Render's complete, unversioned public contract,
-// fetched from https://api-docs.render.com/openapi/render-public-api-1.json on
-// 2026-11-02 (round-5 drift, w2/m251: 208 -> 252 operations; the previous
-// 2026-09-11 pin came from w6/073). It is deliberately embedded: API startup and
-// CI never depend on Render's availability or silently accept an upstream
-// contract change.
-//
-//go:embed openapi/render-public-api-1.json
-var renderOpenAPISource []byte
+// fetched on 2026-11-02 (round-5 drift, w2/m251: 208 -> 252 operations; the
+// previous 2026-09-11 pin came from w6/073). It is embedded by the leaf asset
+// package so the test-only response validator (internal/rendertest) reads the
+// very same bytes.
+var renderOpenAPISource = openapi.RenderPublicAPI
 
 type renderOpenAPIContract struct {
 	document *openapi3.T
@@ -676,31 +673,8 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		serveMuxJSON(v.next, w, r)
 		return
 	}
-	if notOfferedRoutes[pattern] {
-		v.next.ServeHTTP(w, r)
-		return
-	}
-
-	validationRequest := r.Clone(r.Context())
-	urlCopy := *validationRequest.URL
-	urlCopy.Path = strings.TrimPrefix(urlCopy.Path, renderAPIPrefix)
-	if urlCopy.Path == "" {
-		urlCopy.Path = "/"
-	}
-	validationRequest.URL = &urlCopy
-
-	route, pathParams, err := v.contract.router.FindRoute(validationRequest)
-	if err != nil {
-		v.next.ServeHTTP(w, r)
-		return
-	}
-	// A bex-native route whose literal segment merely *looks* like a value for
-	// one of Render's path parameters is not that Render operation, and must
-	// not be validated as one (w2/m100). `GET /v1/webhooks/event-types` matched
-	// Render's `GET /webhooks/{webhookId}`, failed the id pattern, and died
-	// with 400 before its handler ever ran — the route was registered,
-	// authz-classified and documented, and unreachable.
-	if isBexNativeLiteralRoute(v.contract, pattern) || isBexNativeShortRoute(v.contract, pattern, route.Path) {
+	route, pathParams, validationRequest, ok := v.contract.renderOperation(pattern, r)
+	if !ok {
 		v.next.ServeHTTP(w, r)
 		return
 	}
@@ -732,7 +706,7 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 		validationRequest.Header = validationRequest.Header.Clone()
 		validationRequest.Header.Set("Content-Type", "application/json")
 	}
-	err = validateRenderRequest(r.Context(), validationRequest, route, pathParams)
+	err := validateRenderRequest(r.Context(), validationRequest, route, pathParams)
 	r.Body = validationRequest.Body
 	r.GetBody = validationRequest.GetBody
 	r.ContentLength = validationRequest.ContentLength
@@ -742,6 +716,40 @@ func (v *renderRequestValidator) ServeHTTP(w http.ResponseWriter, r *http.Reques
 	}
 
 	v.next.ServeHTTP(w, r.WithContext(core.WithStrictJSONDecoding(r.Context())))
+}
+
+// renderOperation resolves the Render operation a request that bex's REST mux
+// routed to pattern is validated as, together with the /v1-stripped clone the
+// validator reads. ok is false for a route outside the contract: one bex
+// answers as not offered, one the pinned spec has no path for, or a bex-native
+// route that merely looks like a Render path. The test-only response
+// validator calls it too, so requests and responses are matched alike.
+func (c *renderOpenAPIContract) renderOperation(pattern string, r *http.Request) (route *routers.Route, pathParams map[string]string, validationRequest *http.Request, ok bool) {
+	if notOfferedRoutes[pattern] {
+		return nil, nil, nil, false
+	}
+	validationRequest = r.Clone(r.Context())
+	urlCopy := *validationRequest.URL
+	urlCopy.Path = strings.TrimPrefix(urlCopy.Path, renderAPIPrefix)
+	if urlCopy.Path == "" {
+		urlCopy.Path = "/"
+	}
+	validationRequest.URL = &urlCopy
+
+	route, pathParams, err := c.router.FindRoute(validationRequest)
+	if err != nil {
+		return nil, nil, nil, false
+	}
+	// A bex-native route whose literal segment merely *looks* like a value for
+	// one of Render's path parameters is not that Render operation, and must
+	// not be validated as one (w2/m100). `GET /v1/webhooks/event-types` matched
+	// Render's `GET /webhooks/{webhookId}`, failed the id pattern, and died
+	// with 400 before its handler ever ran — the route was registered,
+	// authz-classified and documented, and unreachable.
+	if isBexNativeLiteralRoute(c, pattern) || isBexNativeShortRoute(c, pattern, route.Path) {
+		return nil, nil, nil, false
+	}
+	return route, pathParams, validationRequest, true
 }
 
 func retiredPublicRESTAlias(r *http.Request) bool {

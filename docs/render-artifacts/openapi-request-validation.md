@@ -142,10 +142,10 @@ Render describes the source as unversioned, so refresh is deliberate and review-
 5. From `lego/backend`, run:
 
    ```sh
-   go test ./internal/api -run 'TestRender(OpenAPI|Route|Request|Conformance)|TestConformanceAllowlistEntries' -count=1
+   go test ./internal/api -run 'TestRender(OpenAPI|Route|Request|Conformance)' -count=1
    go test ./...
    ```
 
-6. Run the relevant lint target and the official CLI compatibility fixtures. Any new response divergence needs a narrow ADR018-cited allowlist entry; the stale-entry test must remain green. Do not add runtime response validation.
+6. Run the relevant lint target and the official CLI compatibility fixtures. Every Render-shaped response the `internal/api` and `internal/apps` suites produce is validated against the new pin (`internal/rendertest`, w3/m272): fix each new response failure. The allowlist only shrinks, each entry citing a row of ADR018's "Allowlisted response-schema divergences" table, and a full `go test ./...` with the test database fails a stale entry. Do not add runtime response validation.
 
 The digest/count/ref/intersection tests intentionally fail after replacement until the review metadata is updated. That failure is the refresh gate, not a reason to loosen the tests.

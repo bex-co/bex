@@ -52,7 +52,7 @@ func listServices(t *testing.T, svc *Service, subject, query string) (int, []lis
 	svc.RegisterREST(mux)
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodGet, "/v1/services?"+query, nil).WithContext(ctxAs(subject))
-	mux.ServeHTTP(rec, req)
+	validated(t, mux).ServeHTTP(rec, req)
 	var out []listedService
 	if rec.Code == http.StatusOK {
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
