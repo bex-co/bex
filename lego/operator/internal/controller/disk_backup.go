@@ -380,13 +380,17 @@ func (r *AppReconciler) diskSnapshotJobSpec(app *appv1alpha1.App, labels map[str
 	return spec
 }
 
-// diskSnapshotResources requests a sliver of CPU but keeps the 100m limit:
-// the pod must fit on the service's node, which bin-packing keeps nearly full
-// of CPU requests, while the stream still gets real CPU once it is running.
+// diskSnapshotResources reserves no CPU and little memory, keeping the full
+// limits. A running service's snapshot must schedule onto that service's node,
+// and bin-packing fills nodes to the last few millicores (a 2026-11-05 backup
+// could not fit even a 10m request), so the stream runs on spare capacity up
+// to its limits instead of failing to schedule at all. The explicit zero is
+// kept: a LimitRange default applies only when a request is absent.
 func diskSnapshotResources() corev1.ResourceRequirements {
 	res := backupResources("100m", "256Mi", diskSnapshotEphemeralBudget())
 	res.Requests = res.Requests.DeepCopy()
-	res.Requests[corev1.ResourceCPU] = resource.MustParse("10m")
+	res.Requests[corev1.ResourceCPU] = resource.MustParse("0")
+	res.Requests[corev1.ResourceMemory] = resource.MustParse("64Mi")
 	return res
 }
 

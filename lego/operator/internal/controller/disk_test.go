@@ -621,18 +621,23 @@ func TestDiskSnapshotAffinityRequiresTheServiceNodeOnlyWhileItRuns(t *testing.T)
 	}
 }
 
-// The pod must fit on a bin-packed node beside the service, so it requests a
-// sliver of CPU, while the 100m limit still lets the stream run at speed.
-func TestDiskSnapshotRequestsLittleCPUButKeepsItsLimit(t *testing.T) {
+// The pod must fit on a bin-packed node beside the service even when its CPU
+// requests are full, so it reserves no CPU, while the limits still let the
+// stream run at speed.
+func TestDiskSnapshotReservesNoCPUButKeepsItsLimits(t *testing.T) {
 	r := &AppReconciler{BackupHelperImage: "test-operator"}
 	res := r.diskSnapshotJobSpec(diskApp("svc", &appv1alpha1.DiskSpec{}), nil, "backup", nil).Template.Spec.Containers[0].Resources
-	if got := res.Requests.Cpu().String(); got != "10m" {
-		t.Fatalf("cpu request = %s, want 10m", got)
+	cpu, ok := res.Requests[corev1.ResourceCPU]
+	if !ok || !cpu.IsZero() {
+		t.Fatalf("cpu request = %v (present=%v), want an explicit 0 so no LimitRange default replaces it", cpu.String(), ok)
+	}
+	if got := res.Requests.Memory().String(); got != "64Mi" {
+		t.Fatalf("memory request = %s, want 64Mi", got)
 	}
 	if got := res.Limits.Cpu().String(); got != "100m" {
 		t.Fatalf("cpu limit = %s, want 100m", got)
 	}
-	if !res.Requests.Memory().Equal(*res.Limits.Memory()) {
-		t.Fatalf("memory request %s must equal its limit %s", res.Requests.Memory(), res.Limits.Memory())
+	if got := res.Limits.Memory().String(); got != "256Mi" {
+		t.Fatalf("memory limit = %s, want 256Mi", got)
 	}
 }
