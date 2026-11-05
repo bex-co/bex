@@ -46,7 +46,7 @@ var tenantNodePoolSelector = client.MatchingLabels{"bex.co/pool": "tenant"}
 // dedicated egress IP sets (a recorded non-goal, .pm/DO_NOT_DO.md), so
 // dedicatedIpId is never present.
 func (s *Service) OutboundIPs(ctx context.Context, name string) (core.OutboundIPs, error) {
-	if _, err := s.AuthorizeApp(ctx, core.RelCanView, name); err != nil {
+	if _, err := s.AuthorizeLiveApp(ctx, core.RelCanView, name); err != nil {
 		return core.OutboundIPs{}, err
 	}
 	var nodes corev1.NodeList

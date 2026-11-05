@@ -203,6 +203,13 @@ func (s *Service) scope(ctx context.Context, relation, service string) (*appv1al
 	if err != nil {
 		return nil, nil, "", err // ErrNotFound for unknown services, exactly like Get
 	}
+	// A read of a service whose deletion is accepted is as absent as the service
+	// itself (w3/m81, w4/503); a write keeps reaching the CR being torn down.
+	if relation == core.RelCanView || relation == core.RelCanViewSensitive {
+		if err := core.NotFoundIfDeleting(a); err != nil {
+			return nil, nil, "", err
+		}
+	}
 	if s.Store == nil {
 		return nil, nil, "", core.ErrSecretsUnavailable
 	}

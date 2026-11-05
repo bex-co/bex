@@ -141,7 +141,7 @@ func (s *Service) AddDisk(ctx context.Context, serviceID, name, mountPath string
 // set (Render's serviceIds filter, narrowed to the single-disk reality).
 func (s *Service) ListDisks(ctx context.Context, serviceID string) ([]DiskView, error) {
 	if serviceID != "" {
-		a, err := s.AuthorizeApp(ctx, core.RelCanView, serviceID)
+		a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, serviceID)
 		if err != nil {
 			return nil, err
 		}

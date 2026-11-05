@@ -727,7 +727,7 @@ func (s *Service) projectDomainClaims(ctx context.Context, app *appv1alpha1.App,
 // ListDomains returns durable managed claims (including pending rows) or, in
 // storeless mode, the custom domains already admitted into the App spec.
 func (s *Service) ListDomains(ctx context.Context, appName string) ([]DomainView, error) {
-	app, err := s.AuthorizeApp(ctx, core.RelCanView, appName)
+	app, err := s.AuthorizeLiveApp(ctx, core.RelCanView, appName)
 	if err != nil {
 		return nil, err
 	}
@@ -802,7 +802,7 @@ func (s *Service) domainHost(ctx context.Context, app *appv1alpha1.App, ref stri
 // GetDomain returns one custom domain by cdm- id or hostname, or
 // core.NotFound("custom domain") once the service has authorized (w4/154).
 func (s *Service) GetDomain(ctx context.Context, appName, hostname string) (DomainView, error) {
-	app, err := s.AuthorizeApp(ctx, core.RelCanView, appName)
+	app, err := s.AuthorizeLiveApp(ctx, core.RelCanView, appName)
 	if err != nil {
 		return DomainView{}, err
 	}

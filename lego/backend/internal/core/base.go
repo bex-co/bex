@@ -1502,6 +1502,23 @@ func AppPublicName(a *appv1alpha1.App) string {
 	return a.Name
 }
 
+// AuthorizeLiveApp is AuthorizeApp for a by-id read: after the caller is
+// authorized (so a forbidden caller still sees forbidden, and the check is no
+// existence oracle), an App whose deletion Kubernetes has accepted answers
+// ErrNotFound like a service that never existed (w3/m81, w4/503). Writes and
+// lifecycle teardown keep AuthorizeApp, which must still reach the CR being
+// removed.
+func (b *Base) AuthorizeLiveApp(ctx context.Context, relation, name string) (*appv1alpha1.App, error) {
+	a, err := b.AuthorizeApp(ctx, relation, name)
+	if err != nil {
+		return nil, err
+	}
+	if err := NotFoundIfDeleting(a); err != nil {
+		return nil, err
+	}
+	return a, nil
+}
+
 // NotFoundIfDeleting implements the m81/m35 read contract for any CR whose
 // deletion Kubernetes has accepted (a stamped DeletionTimestamp): every by-id
 // tenant read reports it as absent — ErrNotFound, indistinguishable from a

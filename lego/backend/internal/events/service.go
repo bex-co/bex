@@ -924,7 +924,7 @@ const (
 // no deploys and no audit target: an empty feed, not an error — the deploy-history
 // precedent.
 func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Event, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, service)
+	a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, service)
 	if err != nil {
 		return nil, err
 	}

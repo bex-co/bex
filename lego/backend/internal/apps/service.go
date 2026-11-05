@@ -1522,7 +1522,7 @@ func (s *Service) Get(ctx context.Context, name string) (AppView, error) {
 //     the short interval before Kubernetes finishes deleting old Pods. The
 //     latter includes auto-sleep's scale-to-zero state.
 func (s *Service) ListInstances(ctx context.Context, name string) ([]ServiceInstanceView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -4004,7 +4004,7 @@ func (s *Service) TriggerCronRun(ctx context.Context, name string) (CronRunView,
 // status slice is already bounded by the operator; Page supplies Render-style
 // cursor/limit semantics and an unknown cursor yields an empty tail.
 func (s *Service) ListCronRuns(ctx context.Context, name, cursor string, limit int) ([]CronRunView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return nil, err
 	}
@@ -4019,7 +4019,7 @@ func (s *Service) ListCronRuns(ctx context.Context, name, cursor string, limit i
 // A run from another service, an unknown id, or a non-cron service is the same
 // 404 shape so ids cannot be used to probe across resources.
 func (s *Service) GetCronRun(ctx context.Context, name, runID string) (CronRunView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return CronRunView{}, err
 	}
@@ -5989,7 +5989,7 @@ func autoscalingView(a *appv1alpha1.App) AutoscalingView {
 // GetAutoscaling returns the current autoscaling configuration for a service.
 // Returns AutoscalingView{Enabled:false} when no autoscaling spec is set.
 func (s *Service) GetAutoscaling(ctx context.Context, name string) (AutoscalingView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, name)
+	a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, name)
 	if err != nil {
 		return AutoscalingView{}, err
 	}

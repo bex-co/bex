@@ -136,7 +136,7 @@ func k8sJobName(jobID string) string {
 
 // List returns a service's one-off job history, newest first.
 func (s *Service) List(ctx context.Context, serviceID string, filter ListFilter) ([]JobView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, serviceID)
+	a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, serviceID)
 	if err != nil {
 		return nil, err
 	}
@@ -205,7 +205,7 @@ func (s *Service) Create(ctx context.Context, serviceID, _, _ string) (JobView, 
 
 // Get fetches a single job by id, syncing status from the cluster if non-terminal.
 func (s *Service) Get(ctx context.Context, serviceID, jobID string) (JobView, error) {
-	a, err := s.AuthorizeApp(ctx, core.RelCanView, serviceID)
+	a, err := s.AuthorizeLiveApp(ctx, core.RelCanView, serviceID)
 	if err != nil {
 		return JobView{}, err
 	}
