@@ -34,6 +34,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] **m255** — [Disk usage over 80% notifies, as on Render](m255/README.md) (8 tasks) — 2026-11-04 解阻（D1=A）：先改 local-capd 出站规则、重建本地集群，再做 dev-2 验收；生产部分仍待决定
 - [ ] **m256** — [Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does](m256/README.md) (13 tasks) — 2026-11-04 解阻（D3=A）：bex launcher 升到 v2.35.0，用它在生产走完 t007（同时覆盖 t012），然后 t011 收尾
 - [x] **m262** — [Build Sources follow-ups: dryRun, picker paging, linked-service settings, linked crons, deploy provenance](done/m262/README.md) (9 tasks) — **DONE 2026-11-03** ← promoted from w2/071 2026-11-03; Render parity included
+- [ ] **m263** — [Sandbox flags the Render CLI v2.35 sends: honor or refuse each by name](m263/README.md) (9 tasks) ← from the w2/m256 pin-bump re-diff 2026-11-04; Render parity included
 - [x] **m261** — [Blueprint create with `existingResources: create_new`](done/m261/README.md) (8 tasks) — **DONE 2026-11-03** ← promoted from w2/069 2026-11-03; Render parity included (REST/GraphQL/MCP Blueprint create)
 - [x] [064 — Emit Render's `disk_snapshot_restored` instead of bex's `disk_restored`](done/064.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [065 — Blueprint responses carry `ownerId`; Blueprint PATCH accepts `branch`](done/065.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
