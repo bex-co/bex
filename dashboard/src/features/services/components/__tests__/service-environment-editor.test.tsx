@@ -127,7 +127,9 @@ describe("ServiceEnvironmentEditor", () => {
     const edit = await screen.findByRole("button", { name: "Edit" });
     expect(edit).toBeDisabled();
     expect(screen.getByRole("button", { name: "Export" })).toBeEnabled();
-    expect(screen.getAllByRole("button", { name: "Reveal" })[0]).toBeEnabled();
+    expect(
+      screen.getAllByRole("button", { name: /^Reveal / })[0],
+    ).toBeEnabled();
 
     await user.hover(edit.parentElement!);
     expect(await screen.findByRole("tooltip")).toHaveTextContent(
@@ -137,7 +139,7 @@ describe("ServiceEnvironmentEditor", () => {
     expect(screen.queryByRole("textbox", { name: /Value for / })).toBeNull();
     expect(save).not.toHaveBeenCalled();
 
-    await user.click(screen.getAllByRole("button", { name: "Reveal" })[0]);
+    await user.click(screen.getAllByRole("button", { name: /^Reveal / })[0]);
     expect(await screen.findByText("ALPHA-value")).toBeInTheDocument();
   });
 
@@ -152,7 +154,7 @@ describe("ServiceEnvironmentEditor", () => {
     expect(screen.getByRole("button", { name: "Export" })).toBeDisabled();
     expect(
       screen
-        .getAllByRole("button", { name: "Reveal" })
+        .getAllByRole("button", { name: /^Reveal / })
         .every((button) => button.hasAttribute("disabled")),
     ).toBe(true);
 
@@ -220,6 +222,18 @@ describe("ServiceEnvironmentEditor", () => {
     expect(screen.getByRole("button", { name: "Cancel" })).toBeEnabled();
   });
 
+  // w4/499: with several rows, every Reveal button names the value it exposes.
+  it("names each Reveal button after its row", async () => {
+    renderEditor();
+    await screen.findAllByText("••••••••••••");
+    const names = screen
+      .getAllByRole("button", { name: /^Reveal / })
+      .map((button) => button.getAttribute("aria-label"));
+    expect(names.length).toBeGreaterThan(1);
+    expect(new Set(names).size).toBe(names.length);
+    expect(names).toContain("Reveal ALPHA");
+  });
+
   it("starts masked and reveals only the requested value", async () => {
     const user = userEvent.setup();
     renderEditor();
@@ -229,7 +243,7 @@ describe("ServiceEnvironmentEditor", () => {
     ).not.toBeInTheDocument();
 
     const alpha = screen.getByText("ALPHA").closest("div");
-    await user.click(within(alpha!).getByRole("button", { name: "Reveal" }));
+    await user.click(within(alpha!).getByRole("button", { name: /^Reveal / }));
     expect(await screen.findByText("ALPHA-value")).toBeInTheDocument();
     expect(revealEnv).toHaveBeenCalledTimes(1);
     expect(revealEnv).toHaveBeenCalledWith("ALPHA");
@@ -250,7 +264,7 @@ describe("ServiceEnvironmentEditor", () => {
     await screen.findAllByText("••••••••••••");
 
     const alpha = screen.getByText("ALPHA").closest("div");
-    await user.click(within(alpha!).getByRole("button", { name: "Reveal" }));
+    await user.click(within(alpha!).getByRole("button", { name: /^Reveal / }));
     const revealed = await screen.findByText(/line-two pass109/);
 
     // The element must PRESERVE the newlines rather than collapse them.
@@ -726,7 +740,9 @@ describe("ServiceEnvironmentEditor", () => {
     renderEditor();
     expect(await screen.findByRole("button", { name: "Edit" })).toBeDisabled();
     // Reveal stays can_view_sensitive — a contributor who can view still reveals.
-    expect(screen.getAllByRole("button", { name: "Reveal" })[0]).toBeEnabled();
+    expect(
+      screen.getAllByRole("button", { name: /^Reveal / })[0],
+    ).toBeEnabled();
   });
 
   it("lets an admin enter the write draft", async () => {

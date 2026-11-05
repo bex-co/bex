@@ -5175,6 +5175,16 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Reveal",
     description: "Reveal one masked environment value",
   },
+  "services.envRevealOne": {
+    message: "Reveal {name}",
+    description:
+      "aria-label of the per-row Reveal button for one env var or secret file; starts with the visible text \"Reveal\" (w4/499)",
+  },
+  "services.envHideOne": {
+    message: "Hide {name}",
+    description:
+      "aria-label of the per-row Hide button for one env var or secret file; starts with the visible text \"Hide\" (w4/499)",
+  },
   "services.envHide": {
     message: "Hide",
     description: "Mask one revealed environment value",

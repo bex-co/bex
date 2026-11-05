@@ -1218,6 +1218,12 @@ function SensitiveViewItem({
             size="sm"
             variant="ghost"
             disabled={loading || (!visible && revealDisabled)}
+            aria-label={t(
+              visible ? "services.envHideOne" : "services.envRevealOne",
+              {
+                name,
+              },
+            )}
             onClick={onToggle}
           >
             {loading ? (

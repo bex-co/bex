@@ -5049,6 +5049,16 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "显示",
     description: "Reveal one masked environment value",
   },
+  "services.envRevealOne": {
+    message: "显示 {name}",
+    description:
+      "aria-label of the per-row Reveal button for one env var or secret file; starts with the visible text (w4/499)",
+  },
+  "services.envHideOne": {
+    message: "隐藏 {name}",
+    description:
+      "aria-label of the per-row Hide button for one env var or secret file; starts with the visible text (w4/499)",
+  },
   "services.envHide": {
     message: "隐藏",
     description: "Mask one revealed environment value",
