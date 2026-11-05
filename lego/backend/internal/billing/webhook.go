@@ -41,8 +41,9 @@ type StripeWebhook struct {
 	// OnCustomerUpdated audits a default-payment-method change made in the
 	// Billing Portal (w2/070).
 	OnCustomerUpdated func(context.Context, *stripe.Event) error
-	// OnTrust feeds the agent-model trust tiers from invoice.paid,
-	// invoice.payment_failed and charge.dispute.created/closed (ADR091 D10.1).
+	// OnTrust reduces trustEventTypes: invoice and dispute events feed the
+	// agent-model trust tiers, threshold invoices and bad debt (ADR091
+	// D10.1–D10.3).
 	OnTrust func(context.Context, *stripe.Event) error
 	Metrics *Metrics
 }

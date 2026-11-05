@@ -138,3 +138,111 @@ func TestPGSpendCapRefusesTheMintAtThePlanCap(t *testing.T) {
 		t.Fatalf("session = phase %q code %q reason %q", failed.Phase, failed.FailureReasonCode, failed.FailureReason)
 	}
 }
+
+// ADR091 D10.3 acceptance (real DB): a failed invoice payment refuses the
+// next platform-route mint with 429 BILLING_BALANCE_DUE, far under the cap and
+// with no grace period, and the session fails with the readable reason and
+// failureReasonCode. Paying that invoice lifts the refusal (the workspace
+// stays at T0 for 30 days, whose $10 cap still has room).
+func TestPGBillingBalanceDueRefusesTheMintUntilPaid(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	pg := store.NewPGStore(pool)
+	tenant, err := pg.CreateTenant(ctx, "balance-due-"+time.Now().Format("150405.000000000"), store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = pg.DeleteTenant(ctx, tenant.ID) }()
+	enablePlatformRoute(t, tenant.ID)
+	session, err := pg.CreateAgentSession(ctx, store.AgentSession{
+		WorkspaceID: tenant.ID, Repo: "octo/repo", Branch: "bex-agent/task-1",
+		AgentConfig: []byte(`{"agent":"claude","task":"x"}`), InitialPrompt: "x",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if session, err = pg.SetAgentSessionLifecycle(ctx, session.ID, "sbx-due", "running", "running", false); err != nil {
+		t.Fatal(err)
+	}
+	now := time.Now().UTC()
+	secret := []byte("balance-due-test-secret-012345678")
+	mux := http.NewServeMux()
+	clock := now
+	mux.Handle(InternalModelMintPath, &ModelHandler{Secret: secret, Minter: &ModelMinter{Sessions: pg, Spend: pg, Now: func() time.Time { return clock }}})
+	mux.Handle(InternalModelAuthFailurePath, &ModelAuthFailureHandler{Secret: secret, Failer: &ModelAuthFailer{Sessions: pg, Spend: pg}})
+	api := httptest.NewServer(mux)
+	defer api.Close()
+	client := &ModelClient{URL: api.URL + InternalModelMintPath, Secret: secret, HTTP: api.Client()}
+	req := ModelMintRequest{SessionID: session.ID, Workspace: tenant.ID, PodName: "sbx-due-0", PodUID: "uid-due"}
+
+	// A paying (T1) workspace mints.
+	if _, _, _, err := pg.RecordBillingTrustPayment(ctx, store.BillingTrustPayment{
+		InvoiceID: "in_due_paid_" + tenant.ID, WorkspaceID: tenant.ID, AmountCents: 5000, PaidAt: now.Add(-48 * time.Hour),
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := client.Mint(ctx, req); err != nil || got.Credential != testPlatformKey {
+		t.Fatalf("paying workspace: err=%v, want the platform key", err)
+	}
+	// Its threshold charge fails: the next mint (past the 20s cache) refuses.
+	failed := "in_due_failed_" + tenant.ID
+	if _, _, _, err := pg.RecordBillingTrustFailure(ctx, tenant.ID, failed, now.Add(-time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	clock = clock.Add(spendStatusTTL)
+	if _, err := client.Mint(ctx, req); !errors.Is(err, ErrBillingBalanceDue) {
+		t.Fatalf("after a failed invoice: %v, want ErrBillingBalanceDue", err)
+	}
+	resp, err := signedPost(ctx, client.URL, secret, time.Now(), api.Client(), ModelMintRequest{
+		SessionID: req.SessionID, Workspace: req.Workspace, PodName: req.PodName, PodUID: req.PodUID, Nonce: newNonce(),
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusTooManyRequests || resp.Header.Get(RefusalHeader) != RefusalBillingBalanceDue {
+		t.Fatalf("mint = %d %q, want 429 %s", resp.StatusCode, resp.Header.Get(RefusalHeader), RefusalBillingBalanceDue)
+	}
+	// Paying a different invoice does not lift it.
+	if _, _, _, err := pg.RecordBillingTrustPayment(ctx, store.BillingTrustPayment{
+		InvoiceID: "in_due_other_" + tenant.ID, WorkspaceID: tenant.ID, AmountCents: 100, PaidAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	clock = clock.Add(spendStatusTTL)
+	if _, err := client.Mint(ctx, req); !errors.Is(err, ErrBillingBalanceDue) {
+		t.Fatalf("after paying another invoice: %v, want ErrBillingBalanceDue", err)
+	}
+	// Paying the failed invoice lifts the refusal.
+	if _, _, _, err := pg.RecordBillingTrustPayment(ctx, store.BillingTrustPayment{
+		InvoiceID: failed, WorkspaceID: tenant.ID, AmountCents: 1000, PaidAt: now,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	clock = clock.Add(spendStatusTTL)
+	if got, err := client.Mint(ctx, req); err != nil || got.Credential != testPlatformKey {
+		t.Fatalf("after paying the failed invoice: err=%v, want the platform key", err)
+	}
+
+	if err := client.ReportBillingBalanceDue(ctx, req); err != nil {
+		t.Fatalf("report: %v", err)
+	}
+	ended, err := pg.GetAgentSession(ctx, session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if ended.Phase != modelFailedPhase || ended.FailureReasonCode != BillingBalanceDueCode || ended.FailureReason != BillingBalanceDueReason {
+		t.Fatalf("session = phase %q code %q reason %q", ended.Phase, ended.FailureReasonCode, ended.FailureReason)
+	}
+}

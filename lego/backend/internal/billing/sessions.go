@@ -470,14 +470,22 @@ func (c *StripeClient) bindDefaultPaymentMethod(ctx context.Context, checkout ve
 }
 
 func (c *StripeClient) findSubscriptionObject(ctx context.Context, workspaceID, customerID string) (*stripe.Subscription, error) {
+	return c.liveSubscription(ctx, workspaceID, customerID, true)
+}
+
+// liveSubscription is findSubscriptionObject; expandCard expands each
+// Subscription's default_payment_method, which only a card reader needs.
+func (c *StripeClient) liveSubscription(ctx context.Context, workspaceID, customerID string, expandCard bool) (*stripe.Subscription, error) {
 	params := &stripe.SubscriptionListParams{
 		ListParams: stripe.ListParams{Limit: stripe.Int64(100)},
 		Customer:   stripe.String(customerID),
 		Status:     stripe.String("all"),
 	}
 	params.Context = ctx
-	// See Readiness: expanded so the card can be named, not just counted.
-	params.AddExpand("data.default_payment_method")
+	if expandCard {
+		// See Readiness: expanded so the card can be named, not just counted.
+		params.AddExpand("data.default_payment_method")
+	}
 	iter := c.sc.Subscriptions.List(params)
 	var found []*stripe.Subscription
 	for iter.Next() {

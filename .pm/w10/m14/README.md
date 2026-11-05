@@ -1,6 +1,6 @@
 # w10 · m14 — Platform model key: OpenRouter for an allowlisted workspace now, metered rollout to every workspace
 
-**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** todo (t001–t006, t012 done; pricing decided in [ADR091](../../../docs/ADR091-agent-model-pricing.md) 2026-10-30; t007 widen due 2026-11-13, rescheduled 2026-11-05 to ship all of ADR091 first)
+**Worker:** worker10 **Goal:** Agent sessions can run on a bex-owned OpenRouter key without the tenant supplying a model key. The first step serves the allowlisted workspace `tea-d98210cbbpdc73dcrkvg`, which unblocks `https://dashboard.bex.co/agents/ags-dbdh96fsf6rc738q771g`, failed today with "this workspace's model API key is missing". It then widens to every workspace once token usage is metered, priced, billed and capped. **Status:** todo (t001–t006, t012, t014 done; pricing decided in [ADR091](../../../docs/ADR091-agent-model-pricing.md) 2026-10-30; t007 widen due 2026-11-13, rescheduled 2026-11-05 to ship all of ADR091 first)
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Data policy for platform-key traffic (OpenRouter provider routing, terms copy) — **DONE**         | 45m  | t002       |
 | t012 | BYO model key write path + model source precedence (ADR091 D7, absorbs w10/009) — **DONE** | 1.5h | t004 |
 | t013 | Customer UI: usage line, Settings → Agents spend, composer cap banners, per-turn cost (ADR091 D6) | 2h | t005, t012 |
-| t014 | Tiered threshold billing via a Stripe item threshold; a failed charge stops model spend (ADR091 D10.2–D10.3) | 1.5h | t004, t005 |
+| t014 | Tiered threshold billing via a Stripe item threshold; a failed charge stops model spend (ADR091 D10.2–D10.3) — **DONE** | 1.5h | t004, t005 |
 | t015 | Settle before delete; Radar + prepaid-card refusal + card fingerprint dedupe (ADR091 D10.4–D10.6) | 1.5h | t014 |
 | t007 | Widen the platform route to every workspace — **due 2026-11-13** (gates: live Stripe meter, OpenRouter credit limit, terms copy) | 30m | t004–t006, t012–t015 |
 | t008 | Render parity (capabilities/model-key readiness across REST/GraphQL/MCP/dashboard)    | 20m  | t007       |

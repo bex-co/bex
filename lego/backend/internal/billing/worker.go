@@ -49,6 +49,7 @@ type WorkerStore interface {
 	CompleteBillingNotification(context.Context, string, int64, time.Time) error
 	FailBillingNotification(context.Context, string, int64, string, time.Time) error
 	PurgeStripeBillingEvents(context.Context, time.Time) (int64, error)
+	PurgeAgentModelWriteOffs(context.Context, time.Time) (int64, error)
 }
 
 type BillingNotifier interface {
@@ -165,7 +166,8 @@ func (w *Worker) drainNotifications(ctx context.Context, now time.Time, lease ti
 	return nil
 }
 
-// purgeEvents drops Stripe events past the retention horizon, at most once per
+// purgeEvents drops Stripe events past the retention horizon, and agent-model
+// write-offs past theirs (store.AgentModelWriteOffRetention), at most once per
 // purgeInterval. The zero lastPurge deliberately purges on the first tick after
 // start, so retention still runs on a process that restarts more often than the
 // interval.
@@ -174,6 +176,9 @@ func (w *Worker) purgeEvents(ctx context.Context, now time.Time) error {
 		return nil
 	}
 	if _, err := w.Store.PurgeStripeBillingEvents(ctx, now.Add(-eventRetention)); err != nil {
+		return err
+	}
+	if _, err := w.Store.PurgeAgentModelWriteOffs(ctx, now.Add(-store.AgentModelWriteOffRetention)); err != nil {
 		return err
 	}
 	w.lastPurge = now

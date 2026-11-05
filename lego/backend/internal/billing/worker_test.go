@@ -33,6 +33,7 @@ type workerCapture struct {
 	notificationsComplete int
 	notificationsFailed   int
 	purgeBefore           time.Time
+	writeOffPurgeBefore   time.Time
 }
 
 func (s *workerCapture) ClaimDueBillingLifecycle(_ context.Context, _ time.Time, _ time.Duration) (store.BillingLifecycle, bool, error) {
@@ -67,6 +68,10 @@ func (s *workerCapture) FailBillingNotification(_ context.Context, _ string, _ i
 func (s *workerCapture) PurgeStripeBillingEvents(_ context.Context, before time.Time) (int64, error) {
 	s.purgeBefore = before
 	return 3, nil
+}
+func (s *workerCapture) PurgeAgentModelWriteOffs(_ context.Context, before time.Time) (int64, error) {
+	s.writeOffPurgeBefore = before
+	return 0, nil
 }
 
 type enforcerCapture struct {
@@ -124,6 +129,9 @@ func TestWorkerRetriesIndependentlyAndCompletesRecoveryTarget(t *testing.T) {
 	}
 	if stateStore.notificationsFailed != 1 || stateStore.notificationsComplete != 1 {
 		t.Fatalf("notification outcomes failed=%d complete=%d", stateStore.notificationsFailed, stateStore.notificationsComplete)
+	}
+	if !stateStore.writeOffPurgeBefore.Equal(now.Add(-store.AgentModelWriteOffRetention)) {
+		t.Fatalf("write-off purge before = %s", stateStore.writeOffPurgeBefore)
 	}
 	if !stateStore.purgeBefore.Equal(now.Add(-90 * 24 * time.Hour)) {
 		t.Fatalf("purge before = %s", stateStore.purgeBefore)

@@ -172,17 +172,8 @@ func addAgentModelUsage(ctx context.Context, tx pgx.Tx, u AgentModelUsage, kind 
 
 // agentSessionMonthToDateSQL sums workspace $1's agent_session meters of the
 // kinds in $3 over the calendar month starting at $2, across hourly and
-// compacted rows. resource_kind is a literal so the planner can use the
-// partial usage_hourly_agent_session_idx.
-const agentSessionMonthToDateSQL = `(SELECT COALESCE(SUM(quantity), 0)::bigint FROM (
-		SELECT quantity FROM usage_hourly
-		WHERE workspace_id = $1 AND resource_kind = '` + ResourceKindAgentSession + `' AND kind = ANY($3::text[])
-		  AND window_start >= $2::timestamptz
-		UNION ALL
-		SELECT quantity FROM usage_monthly
-		WHERE workspace_id = $1 AND resource_kind = '` + ResourceKindAgentSession + `' AND kind = ANY($3::text[])
-		  AND month = ($2::timestamptz AT TIME ZONE 'UTC')::date
-	) u)`
+// compacted rows (the partial usage_hourly_agent_session_idx).
+var agentSessionMonthToDateSQL = agentSessionUsageSumSQL("workspace_id = $1 AND ", "$2", "$3")
 
 // AgentSpendInputs is everything one workspace's agent-model spend position
 // (ADR091 D5, D10.1) is computed from.
@@ -197,27 +188,31 @@ type AgentSpendInputs struct {
 	// ModelKeySet reports whether the workspace set its own model key, which
 	// takes it off the platform route (AgentEnvironment.ModelKeySet).
 	ModelKeySet bool
+	// BalanceDue reports an open failed invoice (paid or voided closes it) or
+	// an unpaid agent-model write-off (ADR091 D10.3).
+	BalanceDue bool
 }
 
 // AgentSpendInputs reads workspaceID's plan, trust record, cap override,
-// month-to-date agent-model cost and BYO model key flag in one round trip (the
-// mint's hot path).
+// month-to-date agent-model cost, BYO model key flag and balance due in one
+// round trip (the mint's hot path).
 // ErrNotFound when the workspace does not exist.
 func (s *PGStore) AgentSpendInputs(ctx context.Context, workspaceID string, now time.Time) (AgentSpendInputs, error) {
-	now = now.UTC()
-	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
 	var in AgentSpendInputs
 	var trust trustRow
 	// The bt.* list is billingTrustColumns, in order.
 	err := s.Pool.QueryRow(ctx, `
 		SELECT t.plan, bt.lifetime_paid_cents, bt.paid_cycle_invoices, bt.locked_until, bt.failed_invoice_id,
 		       bt.last_failure_at, bt.dispute_id, ae.agent_model_spend_cap_override_microusd,
-		       `+agentSessionMonthToDateSQL+`, ae.model_key_set_at IS NOT NULL
+		       `+agentSessionMonthToDateSQL+`, ae.model_key_set_at IS NOT NULL,
+		       EXISTS (SELECT 1 FROM billing_trust_failed_invoices f
+		               WHERE f.workspace_id = t.id AND f.failed_at IS NOT NULL AND f.settled_at IS NULL)
+		       OR EXISTS (SELECT 1 FROM billing_agent_model_writeoffs w WHERE w.workspace_id = t.id)
 		FROM tenants t
 		LEFT JOIN billing_trust bt ON bt.workspace_id = t.id
 		LEFT JOIN agent_environments ae ON ae.workspace_id = t.id
-		WHERE t.id = $1`, workspaceID, monthStart, []string{UsageKindAgentModelCostMicroUSD},
-	).Scan(append(append([]any{&in.Plan}, trust.dest()...), &in.OverrideMicroUSD, &in.MonthToDateMicroUSD, &in.ModelKeySet)...)
+		WHERE t.id = $1`, workspaceID, MonthStartUTC(now), []string{UsageKindAgentModelCostMicroUSD},
+	).Scan(append(append([]any{&in.Plan}, trust.dest()...), &in.OverrideMicroUSD, &in.MonthToDateMicroUSD, &in.ModelKeySet, &in.BalanceDue)...)
 	if err != nil {
 		return AgentSpendInputs{}, classify("workspace", err)
 	}

@@ -45,7 +45,25 @@ type Trust struct {
 	// OnTierChanged is told after a committed tier change (the Stripe
 	// agent-model threshold follows the tier); nil ⇒ nothing.
 	OnTierChanged TierChangedFunc
-	Clock         func() time.Time
+	// WriteOffs and Invoices record an invoice marked uncollectible as
+	// agent-model bad debt (ADR091 D10); either nil ⇒ the event is ignored.
+	// Invoices also finalizes threshold invoices at once (nil ⇒ Stripe does
+	// an hour later).
+	WriteOffs WriteOffStore
+	Invoices  TrustInvoices
+	Clock     func() time.Time
+}
+
+// WriteOffStore records agent-model bad debt; *store.PGStore satisfies it.
+type WriteOffStore interface {
+	RecordAgentModelWriteOff(ctx context.Context, w store.AgentModelWriteOff) (bool, error)
+}
+
+// TrustInvoices re-reads an invoice's agent-model lines and finalizes draft
+// threshold invoices; *StripeClient satisfies it.
+type TrustInvoices interface {
+	AgentModelInvoiceLines(ctx context.Context, invoiceID string) (AgentModelInvoice, error)
+	FinalizeThresholdInvoice(ctx context.Context, invoiceID string) error
 }
 
 // TierChangedFunc is told a workspace's trust tier changed through a
@@ -57,6 +75,7 @@ type TierChangedFunc func(ctx context.Context, workspaceID string, tier pricing.
 type TrustStore interface {
 	RecordBillingTrustPayment(context.Context, store.BillingTrustPayment) (store.BillingTrust, store.BillingTrust, bool, error)
 	RecordBillingTrustFailure(ctx context.Context, workspaceID, invoiceID string, at time.Time) (store.BillingTrust, store.BillingTrust, bool, error)
+	SettleBillingTrustInvoice(ctx context.Context, workspaceID, invoiceID string, at time.Time) error
 	RecordBillingTrustDispute(ctx context.Context, workspaceID, disputeID string) (store.BillingTrust, store.BillingTrust, error)
 	RecordBillingTrustDisputeWon(ctx context.Context, workspaceID, disputeID string) (store.BillingTrust, store.BillingTrust, error)
 	BillingWorkspaceForCustomer(ctx context.Context, customerID string, livemode bool) (string, bool, error)
@@ -74,6 +93,10 @@ type DisputedChargeResolver interface {
 var trustEventTypes = []stripe.EventType{
 	stripe.EventTypeInvoicePaid, stripe.EventTypeInvoicePaymentFailed,
 	stripe.EventTypeChargeDisputeCreated, stripe.EventTypeChargeDisputeClosed,
+	// Not tier inputs (ADR091 D10.2–D10.3): a voided invoice closes its
+	// balance-due refusal; a written-off one records agent-model bad debt; a
+	// draft threshold invoice is finalized at once.
+	stripe.EventTypeInvoiceVoided, stripe.EventTypeInvoiceMarkedUncollectible, stripe.EventTypeInvoiceCreated,
 }
 
 func isTrustEvent(eventType stripe.EventType) bool {
@@ -104,7 +127,8 @@ func (t *Trust) HandleStripeEvent(ctx context.Context, event *stripe.Event) erro
 		err           error
 	)
 	switch event.Type {
-	case stripe.EventTypeInvoicePaid, stripe.EventTypeInvoicePaymentFailed:
+	case stripe.EventTypeInvoicePaid, stripe.EventTypeInvoicePaymentFailed, stripe.EventTypeInvoiceVoided,
+		stripe.EventTypeInvoiceMarkedUncollectible, stripe.EventTypeInvoiceCreated:
 		var invoice stripe.Invoice
 		if err := json.Unmarshal(event.Data.Raw, &invoice); err != nil {
 			return fmt.Errorf("invalid invoice event: %w", err)
@@ -114,21 +138,30 @@ func (t *Trust) HandleStripeEvent(ctx context.Context, event *stripe.Event) erro
 			return nil
 		}
 		workspaceID = ws
-		if event.Type == stripe.EventTypeInvoicePaymentFailed {
+		switch event.Type {
+		case stripe.EventTypeInvoiceCreated:
+			return t.finalizeThresholdInvoice(ctx, &invoice)
+		case stripe.EventTypeInvoiceMarkedUncollectible:
+			return t.recordWriteOff(ctx, ws, &invoice, at)
+		case stripe.EventTypeInvoiceVoided:
+			return ignoreWorkspaceGone(t.Store.SettleBillingTrustInvoice(ctx, ws, invoice.ID, at))
+		case stripe.EventTypeInvoicePaymentFailed:
 			before, after, _, err = t.Store.RecordBillingTrustFailure(ctx, ws, invoice.ID, at)
-			break
+		default:
+			paidAt := at
+			if invoice.StatusTransitions != nil && invoice.StatusTransitions.PaidAt > 0 {
+				paidAt = time.Unix(invoice.StatusTransitions.PaidAt, 0).UTC()
+			}
+			if invoice.AmountPaid <= 0 {
+				// Credits and $0 invoices are not payment history, but they
+				// do close the invoice for the balance-due refusal.
+				return ignoreWorkspaceGone(t.Store.SettleBillingTrustInvoice(ctx, ws, invoice.ID, paidAt))
+			}
+			before, after, _, err = t.Store.RecordBillingTrustPayment(ctx, store.BillingTrustPayment{
+				InvoiceID: invoice.ID, WorkspaceID: ws, AmountCents: invoice.AmountPaid,
+				Cycle: invoice.BillingReason == stripe.InvoiceBillingReasonSubscriptionCycle, PaidAt: paidAt,
+			})
 		}
-		if invoice.AmountPaid <= 0 {
-			return nil // credits and $0 invoices are not payment history
-		}
-		paidAt := at
-		if invoice.StatusTransitions != nil && invoice.StatusTransitions.PaidAt > 0 {
-			paidAt = time.Unix(invoice.StatusTransitions.PaidAt, 0).UTC()
-		}
-		before, after, _, err = t.Store.RecordBillingTrustPayment(ctx, store.BillingTrustPayment{
-			InvoiceID: invoice.ID, WorkspaceID: ws, AmountCents: invoice.AmountPaid,
-			Cycle: invoice.BillingReason == stripe.InvoiceBillingReasonSubscriptionCycle, PaidAt: paidAt,
-		})
 	case stripe.EventTypeChargeDisputeCreated, stripe.EventTypeChargeDisputeClosed:
 		var dispute stripe.Dispute
 		if err := json.Unmarshal(event.Data.Raw, &dispute); err != nil {
@@ -155,15 +188,72 @@ func (t *Trust) HandleStripeEvent(ctx context.Context, event *stripe.Event) erro
 	default:
 		return nil
 	}
-	if errors.Is(err, store.ErrWorkspaceGone) {
-		return nil
-	}
 	if err != nil {
-		return err
+		return ignoreWorkspaceGone(err)
 	}
 	t.notifyTierChange(ctx, workspaceID, before, after)
 	return nil
 }
+
+// ignoreWorkspaceGone acknowledges an event whose workspace was deleted.
+func ignoreWorkspaceGone(err error) error {
+	if errors.Is(err, store.ErrWorkspaceGone) {
+		return nil
+	}
+	return err
+}
+
+// finalizeThresholdInvoice finalizes a draft subscription_threshold invoice so
+// Stripe charges it now rather than after its one-hour draft window.
+func (t *Trust) finalizeThresholdInvoice(ctx context.Context, invoice *stripe.Invoice) error {
+	if t.Invoices == nil || invoice.BillingReason != stripe.InvoiceBillingReasonSubscriptionThreshold ||
+		invoice.Status != stripe.InvoiceStatusDraft {
+		return nil
+	}
+	return t.Invoices.FinalizeThresholdInvoice(ctx, invoice.ID)
+}
+
+// recordWriteOff records the agent-model share of an invoice marked
+// uncollectible: its agent-model lines net of discounts (re-read from
+// Stripe), prorated by the part of the invoice still unpaid
+// (amount_remaining / total). An invoice with no agent-model spend records
+// nothing.
+func (t *Trust) recordWriteOff(ctx context.Context, workspaceID string, invoice *stripe.Invoice, at time.Time) error {
+	if t.WriteOffs == nil || t.Invoices == nil || invoice.Customer == nil || invoice.Customer.ID == "" || invoice.Total <= 0 {
+		return nil
+	}
+	lines, err := t.Invoices.AgentModelInvoiceLines(ctx, invoice.ID)
+	if err != nil {
+		return err
+	}
+	if lines.NetCents <= 0 {
+		return nil
+	}
+	remaining := min(max(invoice.AmountRemaining, 0), invoice.Total)
+	writtenOff := lines.NetCents * remaining / invoice.Total
+	if writtenOff <= 0 {
+		return nil
+	}
+	month := lines.UsageMonth
+	if month.IsZero() {
+		month = time.Unix(invoice.PeriodStart, 0).UTC()
+	}
+	recorded, err := t.WriteOffs.RecordAgentModelWriteOff(ctx, store.AgentModelWriteOff{
+		InvoiceID: invoice.ID, WorkspaceID: workspaceID, CustomerID: invoice.Customer.ID, UsageMonth: month,
+		AgentModelNetMicroUSD: lines.NetCents * microUSDPerCent, AmountMicroUSD: writtenOff * microUSDPerCent, WrittenOffAt: at,
+	})
+	if errors.Is(err, store.ErrInvalidAgentModelWriteOff) {
+		log.Printf("billing: invoice %s of workspace %s: %v; acknowledged", invoice.ID, workspaceID, err)
+		return nil
+	}
+	if err == nil && recorded {
+		log.Printf("billing: invoice %s of workspace %s written off; agent-model bad debt recorded", invoice.ID, workspaceID)
+	}
+	return err
+}
+
+// microUSDPerCent converts an invoice line's cents to the meter's micro-USD.
+const microUSDPerCent = 10_000
 
 // disputedWorkspace resolves a dispute's workspace through its Charge's
 // Customer, re-read from Stripe (the event payload is never trusted for

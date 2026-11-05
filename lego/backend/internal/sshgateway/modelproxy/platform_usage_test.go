@@ -63,6 +63,7 @@ type usageStore struct {
 	reports   int
 	plan      string
 	trust     store.BillingTrust
+	due       bool
 	usedMicro int64
 	reason    string
 	clock     time.Time
@@ -89,7 +90,7 @@ func (s *usageStore) RecordAgentModelUsage(_ context.Context, u store.AgentModel
 func (s *usageStore) AgentSpendInputs(context.Context, string, time.Time) (store.AgentSpendInputs, error) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
-	return store.AgentSpendInputs{Plan: s.plan, Trust: s.trust, MonthToDateMicroUSD: s.usedMicro}, nil
+	return store.AgentSpendInputs{Plan: s.plan, Trust: s.trust, MonthToDateMicroUSD: s.usedMicro, BalanceDue: s.due}, nil
 }
 
 // now is the minter's clock; advance moves it past the mint's spend cache.
@@ -301,6 +302,35 @@ func TestPlatformRouteSpendCapRefusesAtTheLimit(t *testing.T) {
 	// T0's ceiling, not the plan cap, is what binds: the reason says so.
 	if _, reason := st.snapshot(); !strings.Contains(reason, agentsession.ModelSpendCapReachedCode) || !strings.Contains(reason, "new workspaces") {
 		t.Fatalf("session failure reason = %q", reason)
+	}
+}
+
+// An unpaid failed invoice refuses the platform route with a typed 429
+// BILLING_BALANCE_DUE even far under the cap (ADR091 D10.3: no grace period
+// for model spend), and the session fails with the readable reason.
+func TestPlatformRouteRefusesWhileABalanceIsDue(t *testing.T) {
+	upstream := &cannedTransport{contentType: "application/json", body: `{"usage":{"input_tokens":1,"output_tokens":1}}`}
+	proxy, st := platformHarness(t, upstream)
+	st.mu.Lock()
+	st.trust = store.BillingTrust{FailedInvoiceID: "in_failed", LockedUntil: store.LockedIndefinitely}
+	st.due = true
+	st.mu.Unlock()
+	resp := requestBody(t, proxy, pinnedBody)
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusTooManyRequests || upstream.last != nil {
+		t.Fatalf("balance due: status %d upstream=%v, want 429 and no upstream", resp.StatusCode, upstream.last != nil)
+	}
+	var refusal struct {
+		Error struct{ Type, Code, Message string } `json:"error"`
+	}
+	if err := json.Unmarshal(body, &refusal); err != nil || refusal.Error.Code != agentsession.BillingBalanceDueCode ||
+		refusal.Error.Type != "rate_limit_error" || !strings.Contains(refusal.Error.Message, "payment for this workspace failed") {
+		t.Fatalf("refusal body = %s", body)
+	}
+	eventually(t, func() bool { _, reason := st.snapshot(); return reason != "" })
+	if _, reason := st.snapshot(); reason != agentsession.BillingBalanceDueReason {
+		t.Fatalf("session failure reason = %q, want %q", reason, agentsession.BillingBalanceDueReason)
 	}
 }
 

@@ -55,14 +55,10 @@ func (c *StripeClient) EnsureContract(ctx context.Context, tenantID string) erro
 	if err != nil {
 		return err
 	}
-	items := make([]*stripe.SubscriptionItemsParams, 0, len(priceIDs))
-	for _, priceID := range priceIDs {
-		items = append(items, &stripe.SubscriptionItemsParams{Price: stripe.String(priceID)})
-	}
 	params := &stripe.SubscriptionParams{
 		Customer:         stripe.String(customerID),
 		CollectionMethod: stripe.String(string(stripe.SubscriptionCollectionMethodChargeAutomatically)),
-		Items:            items,
+		Items:            c.contractItems(ctx, tenantID, priceIDs),
 		Metadata: map[string]string{
 			workspaceMetadataKey:    tenantID,
 			subscriptionMetadataKey: "true",
@@ -211,7 +207,7 @@ func (c *StripeClient) retireCustomer(ctx context.Context, tenantID, customerID 
 // without creating it. Multiple matches are rejected instead of silently
 // choosing one and risking double-rated usage.
 func (c *StripeClient) findSubscription(ctx context.Context, tenantID, customerID string) (string, bool, error) {
-	subscription, err := c.findSubscriptionObject(ctx, tenantID, customerID)
+	subscription, err := c.liveSubscription(ctx, tenantID, customerID, false)
 	if err != nil {
 		return "", false, err
 	}
@@ -303,6 +299,7 @@ func (c *StripeClient) resolvePriceIDs(ctx context.Context) ([]string, error) {
 	if len(c.priceIDs) == 0 {
 		c.priceIDs = slices.Clone(priceIDs)
 		c.priceMeters = meters
+		c.priceByKey = found
 	}
 	out := slices.Clone(c.priceIDs)
 	c.mu.Unlock()
@@ -365,6 +362,8 @@ func (c *StripeClient) syncContractItems(ctx context.Context, tenantID, subscrip
 	}
 	listParams.Context = ctx
 	rated := map[string]string{} // meter → the Price id an item rates it with
+	_, agentMeter := c.agentModelMeter()
+	var items []*stripe.SubscriptionItem
 	iter := c.sc.SubscriptionItems.List(listParams)
 	for iter.Next() {
 		item := iter.SubscriptionItem()
@@ -372,10 +371,12 @@ func (c *StripeClient) syncContractItems(ctx context.Context, tenantID, subscrip
 			continue
 		}
 		rated[item.Price.Recurring.Meter] = item.Price.ID
+		items = append(items, item)
 	}
 	if err := iter.Err(); err != nil {
 		return fmt.Errorf("stripe: list items of subscription %s for %s: %w", subscriptionID, tenantID, err)
 	}
+	agentItem := c.agentModelItem(tenantID, subscriptionID, items)
 
 	for _, priceID := range priceIDs {
 		meter := meters[priceID]
@@ -392,6 +393,9 @@ func (c *StripeClient) syncContractItems(ctx context.Context, tenantID, subscrip
 			Price:             stripe.String(priceID),
 			ProrationBehavior: stripe.String("none"),
 		}
+		if meter == agentMeter {
+			params.BillingThresholds = c.thresholdParams(ctx, tenantID)
+		}
 		params.Context = ctx
 		params.SetIdempotencyKey("bex-subscription-item-" + subscriptionID + "-" + priceID)
 		if _, err := c.sc.SubscriptionItems.New(params); err != nil {
@@ -400,6 +404,23 @@ func (c *StripeClient) syncContractItems(ctx context.Context, tenantID, subscrip
 		}
 		c.metrics.Operation("contract_item_add", "success")
 		rated[meter] = priceID
+	}
+	// The agent-model item already existed: bring its threshold to the tier
+	// (a Subscription created before thresholds, or a change missed while
+	// this process was down). A failure never holds usage export: it is
+	// reported, and the Subscription stays unsynced so the next EnsureContract
+	// retries it (the threshold sweep retries workspaces with a trust record).
+	if agentItem != nil {
+		want, err := c.wantAgentModelThreshold(ctx, tenantID)
+		if err == nil {
+			err = c.applyAgentModelThreshold(ctx, tenantID, agentItem, want)
+		} else {
+			c.metrics.Operation("agent_model_threshold", "error")
+		}
+		if err != nil {
+			log.Printf("billing: agent-model threshold of subscription %s (%s) not synced; retried next sync: %v", subscriptionID, tenantID, err)
+			return nil
+		}
 	}
 
 	c.mu.Lock()

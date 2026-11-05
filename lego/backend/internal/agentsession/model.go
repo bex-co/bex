@@ -366,6 +366,11 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	// route is resolved for the workspace now, the same decision
 	// modelEndpointHost just made, so the host is OpenRouter here.
 	if route := routeFor(req.Workspace, agent, status.ModelKeySet); route != nil && route.platformKey != "" && host == OpenRouterHost {
+		// An unpaid failed invoice stops model spend at once (ADR091 D10.3),
+		// before the cap is even consulted.
+		if status.BalanceDue {
+			return ModelMintResponse{}, ErrBillingBalanceDue
+		}
 		if status.Reached() {
 			return ModelMintResponse{}, ErrModelSpendCapReached
 		}

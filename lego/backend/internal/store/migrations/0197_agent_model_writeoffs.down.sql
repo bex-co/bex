@@ -1,0 +1,11 @@
+-- Reverse 0197.
+DROP INDEX usage_hourly_agent_session_kind_idx;
+DROP TABLE billing_agent_model_revenue_months;
+DROP TABLE billing_agent_model_writeoffs;
+DROP TABLE billing_trust_failed_invoices;
+ALTER TABLE billing_trust
+    DROP COLUMN threshold_next_attempt_at,
+    DROP COLUMN threshold_attempts,
+    DROP COLUMN threshold_synced_at,
+    DROP COLUMN threshold_synced_microusd,
+    DROP COLUMN threshold_synced_version;

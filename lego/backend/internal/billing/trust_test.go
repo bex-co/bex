@@ -224,7 +224,8 @@ func TestWebhookSetupScriptSubscribesToHandledEvents(t *testing.T) {
 	if want := HandledStripeEventTypes(); !slices.Equal(events, want) {
 		t.Fatalf("stripe-billing-setup.py WEBHOOK_EVENTS = %v, want HandledStripeEventTypes %v", events, want)
 	}
-	for _, event := range []string{"charge.dispute.created", "charge.dispute.closed"} {
+	for _, event := range []string{"charge.dispute.created", "charge.dispute.closed",
+		"invoice.voided", "invoice.marked_uncollectible", "invoice.created"} {
 		if !slices.Contains(events, event) {
 			t.Fatalf("%s must be subscribed", event)
 		}

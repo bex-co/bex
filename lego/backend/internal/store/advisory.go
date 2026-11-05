@@ -71,3 +71,26 @@ func (s *PGStore) WithAppAdvisoryLock(ctx context.Context, appID string, fn func
 		return fn()
 	})
 }
+
+// RunExclusive runs fn only if no other session holds the named advisory lock,
+// for a periodic pass that every bex-api replica schedules but only one should
+// run (its external calls would otherwise be duplicated). The lock is
+// session-scoped on one pooled connection, so no transaction stays open for
+// the pass. ran is false when another replica holds it.
+func (s *PGStore) RunExclusive(ctx context.Context, name string, fn func(context.Context) error) (ran bool, err error) {
+	conn, err := s.Pool.Acquire(ctx)
+	if err != nil {
+		return false, err
+	}
+	defer conn.Release()
+	if err := conn.QueryRow(ctx, `SELECT pg_try_advisory_lock(hashtextextended($1, 0))`, name).Scan(&ran); err != nil || !ran {
+		return false, err
+	}
+	defer func() {
+		if _, uerr := conn.Exec(context.WithoutCancel(ctx), `SELECT pg_advisory_unlock(hashtextextended($1, 0))`, name); uerr != nil {
+			// Closing the session releases the lock; the pool then discards it.
+			_ = conn.Conn().Close(context.WithoutCancel(ctx))
+		}
+	}()
+	return true, fn(ctx)
+}

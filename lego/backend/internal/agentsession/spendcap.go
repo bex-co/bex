@@ -62,6 +62,27 @@ const RefusalModelSpendCapReached = "model-spend-cap-reached"
 // race the gateway retries, and it travels as HTTP 429.
 var ErrModelSpendCapReached = errors.New("agent model spend cap reached")
 
+// BillingBalanceDueCode is the stable code of the refusal while the workspace
+// has an unpaid failed invoice (ADR091 D10.3): model spend is cash out, so it
+// gets no ADR040 §7 grace period.
+const BillingBalanceDueCode = "BILLING_BALANCE_DUE"
+
+// BillingBalanceDueReason is the failureReason of a session refused with
+// BillingBalanceDueCode.
+const BillingBalanceDueReason = "a payment for this workspace failed; update the payment method or pay the outstanding invoice, then start a new session"
+
+// ModelFailureCauseBillingBalanceDue is ModelMintRequest.Cause on a report
+// that a mint was refused for an unpaid failed invoice.
+const ModelFailureCauseBillingBalanceDue = "billing_balance_due"
+
+// RefusalBillingBalanceDue is RefusalHeader's value for ErrBillingBalanceDue.
+const RefusalBillingBalanceDue = "billing-balance-due"
+
+// ErrBillingBalanceDue refuses a platform-route mint while the workspace has
+// an unpaid failed invoice. Like ErrModelSpendCapReached it is a standing
+// state, travels as HTTP 429, and never wraps ErrForbidden.
+var ErrBillingBalanceDue = errors.New("billing balance due")
+
 // SpendStore is the store surface of the spend status; *store.PGStore
 // satisfies it.
 type SpendStore interface {
@@ -76,6 +97,10 @@ type SpendStatus struct {
 	// Locked is true while a failed or disputed payment holds the workspace
 	// at the first tier.
 	Locked bool
+	// BalanceDue is true while a failed invoice is open or a written-off one
+	// unpaid (store.AgentSpendInputs.BalanceDue): the mint refuses the
+	// platform route with BillingBalanceDueCode until each is paid or voided.
+	BalanceDue bool
 	// PlanCap is the plan default; MaxCap the highest override an admin may
 	// set; Override the admin's override as stored (nil when unset).
 	PlanCap  int64
@@ -119,6 +144,7 @@ func SpendStatusOf(sheet *pricing.Sheet, in store.AgentSpendInputs, now time.Tim
 		Plan:        in.Plan,
 		Tier:        sheet.TrustTier(in.Trust.LifetimePaidCents, in.Trust.PaidCycleInvoices, lock, now),
 		Locked:      now.Before(lock),
+		BalanceDue:  in.BalanceDue,
 		PlanCap:     sheet.AgentModelPlanSpendCapMicroUSD(in.Plan),
 		MaxCap:      sheet.AgentModelMaxCapMicroUSD(in.Plan),
 		MonthToDate: in.MonthToDateMicroUSD,
@@ -152,7 +178,10 @@ func ReadSpendStatus(ctx context.Context, st SpendStore, sheet *pricing.Sheet, w
 
 // spendStatusTTL bounds how stale the mint's view of a workspace's spend may
 // be. The mint runs once per model exchange, so the cache keeps the hot path
-// off the database at the cost of up to this much overshoot past the cap.
+// off the database at the cost of up to this much overshoot past the cap. A
+// newly failed invoice (BalanceDue) likewise reaches a replica's mint within
+// this TTL of the invoice.payment_failed webhook committing, and a payment
+// lifts the refusal within the same bound.
 const spendStatusTTL = 20 * time.Second
 
 // spendCache is the mint's per-workspace SpendStatus cache. The settings
@@ -232,5 +261,12 @@ func (m *ModelMinter) ForgetSpend(workspaceID string) {
 // auth-failure verb with a cause, so the same live-sandbox binding applies.
 func (c *ModelClient) ReportSpendCapReached(ctx context.Context, req ModelMintRequest) error {
 	req.Cause = ModelFailureCauseSpendCapReached
+	return c.ReportAuthFailure(ctx, req)
+}
+
+// ReportBillingBalanceDue is ReportSpendCapReached for a mint refused with
+// ErrBillingBalanceDue: the session fails with BillingBalanceDueReason.
+func (c *ModelClient) ReportBillingBalanceDue(ctx context.Context, req ModelMintRequest) error {
+	req.Cause = ModelFailureCauseBillingBalanceDue
 	return c.ReportAuthFailure(ctx, req)
 }

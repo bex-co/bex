@@ -77,6 +77,12 @@ WEBHOOK_EVENTS = [
     # T0 until it closes as won.
     "charge.dispute.created",
     "charge.dispute.closed",
+    # ADR091 D10.2–D10.3: a voided invoice closes its balance-due refusal, a
+    # written-off one records agent-model bad debt, and a draft threshold
+    # invoice is finalized at once.
+    "invoice.voided",
+    "invoice.marked_uncollectible",
+    "invoice.created",
 ]
 
 

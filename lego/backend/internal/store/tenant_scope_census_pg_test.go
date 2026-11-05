@@ -28,13 +28,14 @@ import (
 )
 
 var tenantScopeRetention = map[string]string{
-	"audit_events.workspace_id":                "retain:security audit history; audit.Service.Run invokes PurgeAuditEvents daily/startup with the configured retention (90 days by default)",
-	"ssh_sessions.workspace_id":                "retain:security session history; audit.Service.Run invokes PurgeSSHSessions with the same retention",
-	"cli_telemetry_events.workspace_id":        "retain:operational telemetry; audit.Service.Run invokes PurgeCLITelemetryEvents with the same retention",
-	"workspace_creation_attempts.workspace_id": "retain:provisional workspace IDs precede tenants; ExpireWorkspaceCreationAttempts removes terminal finalized/expired rows after 30 days when the Stripe workspace cleaner is enabled",
-	"usage_retired_resources.workspace_id":     "retain:the apps delete trigger writes it while a workspace cascade removes its Apps, so it cannot reference tenants; usage compaction's PruneRetiredUsageResources drops rows whose workspace is gone and rows past the 48h catch-up bound, and reads skip both (w4/m173)",
-	"agent_session_attachments.workspace_id":   "purger:DeleteTenant retires the workspace's attachment rows in its own transaction; the attachment sweep deletes their bucket objects, then the rows (ADR095)",
-	"agent_session_dispatches.workspace_id":    "retain:indefinite tombstones preserve late sandbox/policy cleanup after session deletion (ListAgentDispatchesDue/agentsessions.Completer.recoverDispatches); no age GC exists, and deleted-workspace rows may retry without a tenant key while workspace purgers own teardown",
+	"audit_events.workspace_id":                  "retain:security audit history; audit.Service.Run invokes PurgeAuditEvents daily/startup with the configured retention (90 days by default)",
+	"ssh_sessions.workspace_id":                  "retain:security session history; audit.Service.Run invokes PurgeSSHSessions with the same retention",
+	"cli_telemetry_events.workspace_id":          "retain:operational telemetry; audit.Service.Run invokes PurgeCLITelemetryEvents with the same retention",
+	"workspace_creation_attempts.workspace_id":   "retain:provisional workspace IDs precede tenants; ExpireWorkspaceCreationAttempts removes terminal finalized/expired rows after 30 days when the Stripe workspace cleaner is enabled",
+	"usage_retired_resources.workspace_id":       "retain:the apps delete trigger writes it while a workspace cascade removes its Apps, so it cannot reference tenants; usage compaction's PruneRetiredUsageResources drops rows whose workspace is gone and rows past the 48h catch-up bound, and reads skip both (w4/m173)",
+	"agent_session_attachments.workspace_id":     "purger:DeleteTenant retires the workspace's attachment rows in its own transaction; the attachment sweep deletes their bucket objects, then the rows (ADR095)",
+	"billing_agent_model_writeoffs.workspace_id": "retain:agent-model bad debt outlives the workspace as a debt record (ADR091 D10, ADR086 amendment 2026-11-05; a future D10.6 card-fingerprint check may read it); a later payment of the invoice deletes the row, and the billing worker's PurgeAgentModelWriteOffs drops rows after 7 years",
+	"agent_session_dispatches.workspace_id":      "retain:indefinite tombstones preserve late sandbox/policy cleanup after session deletion (ListAgentDispatchesDue/agentsessions.Completer.recoverDispatches); no age GC exists, and deleted-workspace rows may retry without a tenant key while workspace purgers own teardown",
 }
 
 func tenantScopeDispositions(ctx context.Context, db schemaQuerier) ([]string, map[string]string, error) {

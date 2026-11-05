@@ -187,6 +187,12 @@ func (s *PGStore) RecordBillingTrustPayment(ctx context.Context, p BillingTrustP
 		return BillingTrust{}, BillingTrust{}, false, fmt.Errorf("billing trust payment needs an invoice, a workspace, a positive amount and a paid time")
 	}
 	paidAt := p.PaidAt.UTC()
+	// An invoice paid after it was written off is no longer bad debt. Its own
+	// statement, keyed by invoice alone, so it lands even when the workspace
+	// is gone (the trust update below then fails its foreign key).
+	if _, err := s.Pool.Exec(ctx, `DELETE FROM billing_agent_model_writeoffs WHERE invoice_id = $1`, p.InvoiceID); err != nil {
+		return BillingTrust{}, BillingTrust{}, false, err
+	}
 	before, after, err = s.trustUpdate(ctx, p.WorkspaceID, func(tx pgx.Tx, _ BillingTrust) (string, []any, error) {
 		tag, err := tx.Exec(ctx, `
 			INSERT INTO billing_trust_invoices (invoice_id, workspace_id, amount_cents, cycle, paid_at)
@@ -197,6 +203,11 @@ func (s *PGStore) RecordBillingTrustPayment(ctx context.Context, p BillingTrustP
 		}
 		if counted = tag.RowsAffected() == 1; !counted {
 			return "", nil, nil
+		}
+		if _, err := tx.Exec(ctx, `
+			UPDATE billing_trust_failed_invoices SET settled_at = COALESCE(settled_at, $3)
+			WHERE workspace_id = $1 AND invoice_id = $2`, p.WorkspaceID, p.InvoiceID, paidAt); err != nil {
+			return "", nil, err
 		}
 		cycle := 0
 		if p.Cycle {
@@ -217,19 +228,26 @@ func (s *PGStore) RecordBillingTrustPayment(ctx context.Context, p BillingTrustP
 
 // RecordBillingTrustFailure drops the workspace to T0 until invoiceID is paid
 // (locked_until = 'infinity'; that invoice's payment turns it into paid_at +
-// 30 days). A failure of an invoice already recorded as paid is a late
-// redelivery and changes nothing. While another failure is open, the newer
-// of the two names the invoice that settles the lock (an out-of-order older
-// failure keeps the lock but not its invoice). applied reports whether the
-// lock was set.
+// 30 days) and opens invoiceID for the mint's balance-due refusal. A failure
+// of an invoice already recorded as paid or settled is a late redelivery and
+// changes nothing. While another failure is open, the newer of the two names
+// the invoice that settles the lock (an out-of-order older failure keeps the
+// lock but not its invoice); every failed invoice stays open for the refusal
+// until it is itself paid or voided. applied reports whether the lock was set.
 func (s *PGStore) RecordBillingTrustFailure(ctx context.Context, workspaceID, invoiceID string, at time.Time) (before, after BillingTrust, applied bool, err error) {
 	if workspaceID == "" || invoiceID == "" || at.IsZero() {
 		return BillingTrust{}, BillingTrust{}, false, fmt.Errorf("billing trust failure needs a workspace, an invoice and a time")
 	}
 	before, after, err = s.trustUpdate(ctx, workspaceID, func(tx pgx.Tx, _ BillingTrust) (string, []any, error) {
-		var paid bool
-		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM billing_trust_invoices WHERE invoice_id = $1)`,
-			invoiceID).Scan(&paid); err != nil || paid {
+		var settled bool
+		if err := tx.QueryRow(ctx, `SELECT EXISTS (SELECT 1 FROM billing_trust_invoices WHERE invoice_id = $2)
+			OR EXISTS (SELECT 1 FROM billing_trust_failed_invoices WHERE workspace_id = $1 AND invoice_id = $2 AND settled_at IS NOT NULL)`,
+			workspaceID, invoiceID).Scan(&settled); err != nil || settled {
+			return "", nil, err
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO billing_trust_failed_invoices (workspace_id, invoice_id, failed_at) VALUES ($1, $2, $3)
+			ON CONFLICT (workspace_id, invoice_id) DO NOTHING`, workspaceID, invoiceID, at.UTC()); err != nil {
 			return "", nil, err
 		}
 		applied = true
@@ -243,6 +261,23 @@ func (s *PGStore) RecordBillingTrustFailure(ctx context.Context, workspaceID, in
 		return BillingTrust{}, BillingTrust{}, false, err
 	}
 	return before, after, applied, nil
+}
+
+// SettleBillingTrustInvoice closes invoiceID for the mint's balance-due
+// refusal without counting a payment: invoice.voided, or an invoice.paid with
+// nothing paid (a credit). Recorded even before the invoice's failure arrives,
+// so a late invoice.payment_failed cannot reopen it. The T0 lock is untouched:
+// only a payment settles it.
+func (s *PGStore) SettleBillingTrustInvoice(ctx context.Context, workspaceID, invoiceID string, at time.Time) error {
+	if workspaceID == "" || invoiceID == "" || at.IsZero() {
+		return fmt.Errorf("billing trust settlement needs a workspace, an invoice and a time")
+	}
+	_, err := s.Pool.Exec(ctx, `
+		INSERT INTO billing_trust_failed_invoices (workspace_id, invoice_id, settled_at) VALUES ($1, $2, $3)
+		ON CONFLICT (workspace_id, invoice_id) DO UPDATE
+		SET settled_at = COALESCE(billing_trust_failed_invoices.settled_at, EXCLUDED.settled_at)`,
+		workspaceID, invoiceID, at.UTC())
+	return trustWriteError(workspaceID, err)
 }
 
 // RecordBillingTrustDispute holds the workspace at T0 for disputeID until it
@@ -284,4 +319,86 @@ func (s *PGStore) BillingWorkspaceForCustomer(ctx context.Context, customerID st
 		return "", false, err
 	}
 	return workspaceID, true, nil
+}
+
+// AgentModelThresholdState is a workspace's trust record with the Stripe
+// agent-model threshold last applied for it (ADR091 D10.2).
+type AgentModelThresholdState struct {
+	Trust BillingTrust
+	// Synced is false until a value was applied; SyncedMicroUSD is that
+	// value (nil = none, T4).
+	Synced         bool
+	SyncedMicroUSD *int64
+}
+
+// AgentModelThresholdsDue lists up to limit workspaces whose threshold may be
+// stale at now: never applied, trust record changed since the value applied,
+// or payment lock expired after it was computed. A workspace in failure
+// backoff is skipped until its retry time.
+func (s *PGStore) AgentModelThresholdsDue(ctx context.Context, now time.Time, limit int) ([]string, error) {
+	rows, err := s.Pool.Query(ctx, `
+		SELECT workspace_id FROM billing_trust
+		WHERE (threshold_next_attempt_at IS NULL OR threshold_next_attempt_at <= $1)
+		  AND (threshold_synced_version IS DISTINCT FROM updated_at
+		       OR (locked_until > threshold_synced_at AND locked_until <= $1))
+		ORDER BY threshold_next_attempt_at NULLS FIRST, workspace_id
+		LIMIT $2`, now.UTC(), limit)
+	if err != nil {
+		return nil, err
+	}
+	return pgx.CollectRows(rows, pgx.RowTo[string])
+}
+
+// WithAgentModelThresholdSync serializes one workspace's threshold sync across
+// replicas (a transaction-scoped advisory lock, held across apply's Stripe
+// call like WithTenantAdvisoryLock). apply gets the state read under the lock
+// and returns the value it brought Stripe to. On success that value is
+// recorded against the trust version apply saw (a change committed meanwhile
+// leaves the workspace due again); on failure the workspace backs off
+// (1 minute doubling to 1 hour) and apply's error is returned. A workspace
+// with no trust record runs apply on the zero record and records nothing.
+func (s *PGStore) WithAgentModelThresholdSync(ctx context.Context, workspaceID string, now time.Time, apply func(AgentModelThresholdState) (*int64, error)) error {
+	var applyErr error
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+			"agent-model-threshold:"+workspaceID); err != nil {
+			return err
+		}
+		var (
+			r       trustRow
+			version pgtype.Timestamptz
+			state   AgentModelThresholdState
+		)
+		err := tx.QueryRow(ctx, `
+			SELECT `+billingTrustColumns+`, updated_at, threshold_synced_version IS NOT NULL, threshold_synced_microusd
+			FROM billing_trust WHERE workspace_id = $1`, workspaceID,
+		).Scan(append(r.dest(), &version, &state.Synced, &state.SyncedMicroUSD)...)
+		found := err == nil
+		if err != nil && !errors.Is(err, pgx.ErrNoRows) {
+			return err
+		}
+		state.Trust = r.record(workspaceID)
+		value, err := apply(state)
+		if !found {
+			applyErr = err
+			return nil
+		}
+		if err != nil {
+			applyErr = err
+			_, err = tx.Exec(ctx, `
+				UPDATE billing_trust SET threshold_attempts = threshold_attempts + 1,
+				  threshold_next_attempt_at = $2::timestamptz + LEAST(interval '1 minute' * power(2, LEAST(threshold_attempts, 6)), interval '1 hour')
+				WHERE workspace_id = $1`, workspaceID, now.UTC())
+			return err
+		}
+		_, err = tx.Exec(ctx, `
+			UPDATE billing_trust SET threshold_synced_version = $2, threshold_synced_microusd = $3, threshold_synced_at = $4,
+			  threshold_attempts = 0, threshold_next_attempt_at = NULL
+			WHERE workspace_id = $1`, workspaceID, version, value, now.UTC())
+		return err
+	})
+	if err != nil {
+		return err
+	}
+	return applyErr
 }

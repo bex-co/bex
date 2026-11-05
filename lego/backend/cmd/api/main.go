@@ -73,7 +73,6 @@ import (
 	pushtransport "github.com/bex-co/bex/lego/backend/internal/notifications/push"
 	"github.com/bex-co/bex/lego/backend/internal/opsrole"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
-	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
@@ -934,6 +933,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 		if !cfg.StripeAgentModelMeter {
 			heldMeters = []string{store.UsageKindAgentModelCostMicroUSD}
 		}
+		thresholds := &billing.AgentModelThresholds{Store: st, Interval: cfg.StripeReconcileInterval, Metrics: billingMetrics}
 		stripeClient := billing.NewStripe(billing.StripeConfig{
 			SecretKey:             stripeSecretKey,
 			PublishableKey:        publishableKey,
@@ -948,7 +948,10 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			Audit:                 st,
 			Metrics:               billingMetrics,
 			HeldMeters:            heldMeters,
+			AgentModelThreshold:   thresholds.Want,
 		})
+		thresholds.Stripe = stripeClient
+		go thresholds.Run(ctx)
 		usageSvc.Billing = stripeClient
 		deps.Billing = stripeClient
 		deps.BillingState = st
@@ -1012,13 +1015,11 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			if lifecycle != nil {
 				handler.OnLifecycle = lifecycle.HandleStripeEvent
 			}
-			// ADR091 D10.1: paid invoices, failed payments and disputes feed
-			// the agent-model trust tiers. Until the Stripe threshold follows
-			// the tier, a tier change is only logged.
+			// ADR091 D10.1–D10.3: invoice and dispute events feed the
+			// agent-model trust tiers, the threshold and bad debt.
 			trust := &billing.Trust{Store: st, Charges: stripeClient,
-				OnTierChanged: func(_ context.Context, workspaceID string, tier pricing.Tier) {
-					log.Printf("billing trust: workspace %s is now agent-model trust tier %s", workspaceID, tier.Name)
-				}}
+				OnTierChanged: thresholds.OnTierChanged,
+				WriteOffs:     st, Invoices: stripeClient}
 			handler.OnTrust = trust.HandleStripeEvent
 			deps.StripeWebhook = handler
 		}

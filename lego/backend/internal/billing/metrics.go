@@ -35,6 +35,10 @@ type Metrics struct {
 	rejectedRows     prometheus.Gauge
 	ambiguousRows    prometheus.Gauge
 	lastWebhook      prometheus.Gauge
+	// agentModelRevenue / agentModelWrittenOff are a calendar month's
+	// agent-model revenue and write-offs (month = current | previous, UTC).
+	agentModelRevenue    *prometheus.GaugeVec
+	agentModelWrittenOff *prometheus.GaugeVec
 }
 
 func NewMetrics(registerer prometheus.Registerer) *Metrics {
@@ -67,8 +71,17 @@ func NewMetrics(registerer prometheus.Registerer) *Metrics {
 			Namespace: "bex", Subsystem: "billing", Name: "webhook_last_success_timestamp_seconds",
 			Help: "Unix timestamp of the last signature, API-version, and mode-valid Stripe webhook.",
 		}),
+		agentModelRevenue: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: "bex", Subsystem: "billing", Name: "agent_model_month_revenue_microusd",
+			Help: "Agent-model revenue (metered customer price) in the calendar month, micro-USD (ADR091 D10).",
+		}, []string{"month"}),
+		agentModelWrittenOff: prometheus.NewGaugeVec(prometheus.GaugeOpts{
+			Namespace: "bex", Subsystem: "billing", Name: "agent_model_month_written_off_microusd",
+			Help: "Agent-model amount on invoices marked uncollectible in the calendar month, micro-USD; above 2% of revenue is ADR091 D10's prepaid trigger.",
+		}, []string{"month"}),
 	}
-	registerer.MustRegister(m.enabled, m.operations, m.pendingRows, m.oldestPendingAge, m.rejectedRows, m.ambiguousRows, m.lastWebhook)
+	registerer.MustRegister(m.enabled, m.operations, m.pendingRows, m.oldestPendingAge, m.rejectedRows, m.ambiguousRows, m.lastWebhook,
+		m.agentModelRevenue, m.agentModelWrittenOff)
 	m.enabled.Set(0)
 	return m
 }
@@ -105,4 +118,14 @@ func (m *Metrics) WebhookSucceeded(at time.Time) {
 		m.lastWebhook.Set(float64(at.UTC().Unix()))
 		m.Operation("webhook", "success")
 	}
+}
+
+// SetAgentModelBadDebt exports one month's agent-model revenue and
+// write-offs; month is "current" or "previous".
+func (m *Metrics) SetAgentModelBadDebt(month string, debt store.AgentModelBadDebt) {
+	if m == nil {
+		return
+	}
+	m.agentModelRevenue.WithLabelValues(month).Set(float64(debt.RevenueMicroUSD))
+	m.agentModelWrittenOff.WithLabelValues(month).Set(float64(debt.WrittenOffMicroUSD))
 }

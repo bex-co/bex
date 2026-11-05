@@ -42,6 +42,8 @@ The lookup/event names are:
 - `egress_gib`, `build_seconds`, `storage_gb_hours`, `disk_gb_hours`, and `sandbox_compute_seconds` (one unit is one milli-vCPU-equivalent second; memory is folded into the quantity at ADR047's AgentCore reference ratio);
 - `agent_model_cost_microusd` — the one platform model meter (ADR091 D1–D3): one unit is one micro-USD of customer price (upstream cost × `agentModel.markup`), priced at $0.000001 (`unit_amount_decimal` 0.0001 cents). Its rows export about 5 minutes after their hour closes rather than after the 48h seal. The per-model token meters are display only and have no Stripe meter. bex-api holds this meter (left off every Subscription, its rows kept pending in the outbox) until `BEX_STRIPE_AGENT_MODEL_METER=1` in `lego/operator/config/api/deployment.yaml`. Set it in the change that follows a run that created the Price on that account, test and live alike. Releasing the hold ships the held backlog within the 34-day backfill horizon.
 
+  **Threshold billing is managed by bex on the item (ADR091 D10.2).** bex-api sets `billing_thresholds.usage_gte` on each Subscription's `agent_model_cost_microusd` item to the workspace's trust-tier charge threshold in micro-USD ($10 = `10000000` at T0, then $25 / $50 / $250, removed at T4): when it creates the item, when the emitter first syncs an existing Subscription in a process, on every tier-changing webhook, and in a sweep every `BEX_STRIPE_RECONCILE_INTERVAL` (default 5m, one replica at a time) for tier changes no webhook announces (a payment lock expiring) and failed updates (per-workspace backoff, 1 minute doubling to 1 hour). The sweep records the value it applied in `billing_trust` and calls Stripe only when the tier's value differs from it. Stripe then cuts a `subscription_threshold` invoice for that item alone (compute never triggers it); the cycle invoice bills only the remainder. Never set or edit these thresholds by hand or in the setup script: the emitter's first sync after a bex-api restart, or the workspace's next tier change, overwrites them. While the meter is held there is no item and no threshold. Stripe's threshold invoice is created as a draft that would auto-finalize an hour later; bex-api finalizes it on `invoice.created` so it is charged at once (probe 2026-11-05, recorded in w10/m14 t014).
+
 Free tiers have no paid meter. Bytes are rebased to GiB and storage GB-seconds to GB-hours so the decimal Price fits Stripe's supported precision.
 
 ### Repricing a dimension (the 2026-10 Postgres catalog change, w2/m171)
@@ -115,8 +117,15 @@ stripe webhook_endpoints create \
   -d 'enabled_events[7]=customer.subscription.deleted' \
   -d 'enabled_events[8]=customer.subscription.paused' \
   -d 'enabled_events[9]=customer.subscription.resumed' \
-  -d 'enabled_events[10]=customer.updated'
+  -d 'enabled_events[10]=customer.updated' \
+  -d 'enabled_events[11]=charge.dispute.created' \
+  -d 'enabled_events[12]=charge.dispute.closed' \
+  -d 'enabled_events[13]=invoice.voided' \
+  -d 'enabled_events[14]=invoice.marked_uncollectible' \
+  -d 'enabled_events[15]=invoice.created'
 ```
+
+`charge.dispute.created`/`closed` (ADR091 D10.1) feed the agent-model trust tiers. ADR091 D10.2–D10.3 adds three invoice events. `invoice.voided` closes a failed invoice for the mint's `BILLING_BALANCE_DUE` refusal. `invoice.marked_uncollectible` records the agent-model share of a written-off invoice as bad debt (`billing_agent_model_writeoffs`). `invoice.created` lets bex-api finalize a draft `subscription_threshold` invoice at once, instead of after Stripe's one-hour draft window. An endpoint provisioned before these lacks them; add them with `--add-missing-webhook-events` as below.
 
 `customer.updated` (w2/070) audits a default-card change made in the Billing Portal as `UpdateWorkspacePaymentMethodEvent`. An endpoint created before it lacks that event; `scripts/stripe-billing-setup.py --webhook-url <url> --add-missing-webhook-events` (add `--live` for production) appends the missing events to that one endpoint without removing any, refuses every other drift, and runs no other setup step.
 
@@ -265,7 +274,7 @@ Use add → deploy → verify → revoke, never in-place guessing:
 2. Put the replacement in the out-of-band/keychain custody source, run `DRY_RUN=1 scripts/stripe-billing-secret.sh`, apply it, and wait for both bex-api replicas plus `/healthz` and `/metrics`.
 3. Run the read-only reconciliation, create/resolve one disposable Customer/Subscription, and verify no duplicate object or event quantity.
 4. Revoke the old restricted key only after the replacement passes. Record key ids/fingerprints and timestamps, never values.
-5. For webhook rotation, create a second test endpoint with the exact eleven events/API version, deploy its one-time signing secret, prove a new test event reaches `pending_webhooks=0`, then disable/delete the old endpoint. Do not revoke the only working secret first.
+5. For webhook rotation, create a second test endpoint with the exact sixteen events/API version, deploy its one-time signing secret, prove a new test event reaches `pending_webhooks=0`, then disable/delete the old endpoint. Do not revoke the only working secret first.
 
 To disable, remove the out-of-band `bex-stripe` Secret and roll bex-api. Confirm `bex_billing_enabled=0`, estimate-only surfaces, continuing `usage_hourly` writes, zero provider traffic, and no alerts. Disabling emission does **not** pause or cancel existing Subscriptions. Restore the Secret, reconcile backlog before resuming, and confirm the unique Customer/Subscription counts and meter-summary quantities did not increase twice.
 
@@ -301,7 +310,7 @@ Separately create the **live** restricted key with the §2 permission inventory 
 
 1. Compare all 14 live lookup keys and rates with `pricing.yaml`.
 2. Confirm `bex-comp-100` is valid, perpetual, and exactly 100% off.
-3. Confirm the webhook endpoint URL, API version, and exact eleven-event allowlist from §3 (the `--webhook-url` provisioning enforces these; this is the human double-check).
+3. Confirm the webhook endpoint URL, API version, and exact sixteen-event allowlist from §3 (the `--webhook-url` provisioning enforces these; this is the human double-check).
 4. Confirm Stripe's account-level invoice, retry, and email settings, and that the recorded dunning decision matches `BEX_STRIPE_DUNNING_ENABLED`.
 5. Confirm Checkout setup and the scoped Customer Portal round trip in test mode, including replay-safe completion and trusted returns.
 6. Confirm `BEX_STRIPE_EPOCH` in the live `.env` equals the decided cutover instant; understand that sealed rows after that instant and within the 34-day safety window can be backfilled and charged.

@@ -267,6 +267,9 @@ class StripeBillingSetupTest(TestCase):
         # it is won, so the endpoint must deliver its creation and closure.
         self.assertIn("charge.dispute.created", SETUP.WEBHOOK_EVENTS)
         self.assertIn("charge.dispute.closed", SETUP.WEBHOOK_EVENTS)
+        # ADR091 D10.2–D10.3: voided, written-off and threshold invoices.
+        for event in ("invoice.voided", "invoice.marked_uncollectible", "invoice.created"):
+            self.assertIn(event, SETUP.WEBHOOK_EVENTS)
         self.assertEqual(len(SETUP.WEBHOOK_EVENTS), len(set(SETUP.WEBHOOK_EVENTS)))
 
     def test_webhook_endpoint_is_idempotent_and_refuses_drift(self):

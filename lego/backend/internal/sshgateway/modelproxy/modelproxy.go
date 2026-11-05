@@ -187,8 +187,14 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 			// answer in the Anthropic error shape so the agent CLI shows the
 			// code rather than a bare status.
 			b.Metrics.Authentication("model_spend_cap_reached")
-			b.reportSpendCapReached(verified)
-			writeSpendCapRefusal(w)
+			b.reportRefusal(verified, b.API.ReportSpendCapReached)
+			writeModelRefusal(w, agentsession.ModelSpendCapReachedCode, agentsession.ModelSpendCapReachedReason)
+		case errors.Is(err, agentsession.ErrBillingBalanceDue):
+			// An unpaid failed invoice stops model spend at once (ADR091
+			// D10.3); same terminal report and Anthropic-shaped 429.
+			b.Metrics.Authentication("billing_balance_due")
+			b.reportRefusal(verified, b.API.ReportBillingBalanceDue)
+			writeModelRefusal(w, agentsession.BillingBalanceDueCode, agentsession.BillingBalanceDueReason)
 		case errors.Is(err, agentsession.ErrForbidden):
 			// A stale, cross, or post-terminal sandbox asking for a session that is
 			// not its own: it learns nothing and must not be able to end a live
@@ -320,29 +326,29 @@ func (b *Broker) usageReporter() *usageReporter {
 	return b.usage
 }
 
-// writeSpendCapRefusal answers a cap-refused exchange with HTTP 429 in the
-// Anthropic Messages error shape, carrying the stable code.
-func writeSpendCapRefusal(w http.ResponseWriter) {
+// writeModelRefusal answers a refused exchange (spend cap, balance due) with
+// HTTP 429 in the Anthropic Messages error shape, carrying the stable code.
+func writeModelRefusal(w http.ResponseWriter, code, reason string) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusTooManyRequests)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"type": "error",
 		"error": map[string]string{
 			"type":    "rate_limit_error",
-			"code":    agentsession.ModelSpendCapReachedCode,
-			"message": agentsession.ModelSpendCapReachedCode + ": " + agentsession.ModelSpendCapReachedReason,
+			"code":    code,
+			"message": code + ": " + reason,
 		},
 	})
 }
 
-// reportSpendCapReached is reportAuthFailure's spend-cap sibling: detached
-// and best-effort, it fails the session with ModelSpendCapReachedReason.
-func (b *Broker) reportSpendCapReached(req agentsession.ModelMintRequest) {
+// reportRefusal is reportAuthFailure's sibling for a refused mint: detached
+// and best-effort, report fails the session with the refusal's reason.
+func (b *Broker) reportRefusal(req agentsession.ModelMintRequest, report func(context.Context, agentsession.ModelMintRequest) error) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), authFailureReportTimeout)
 		defer cancel()
-		if err := b.API.ReportSpendCapReached(ctx, req); err != nil {
-			log.Printf("agent model proxy: report spend-cap refusal failed (session=%s): %v", req.SessionID, err)
+		if err := report(ctx, req); err != nil {
+			log.Printf("agent model proxy: report refused mint failed (session=%s): %v", req.SessionID, err)
 		}
 	}()
 }

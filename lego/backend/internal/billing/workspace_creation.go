@@ -201,15 +201,11 @@ func (c *StripeClient) PrepareWorkspaceContract(ctx context.Context, attemptID, 
 	if err != nil {
 		return "", err
 	}
-	items := make([]*stripe.SubscriptionItemsParams, 0, len(priceIDs))
-	for _, priceID := range priceIDs {
-		items = append(items, &stripe.SubscriptionItemsParams{Price: stripe.String(priceID)})
-	}
 	subParams := &stripe.SubscriptionParams{
 		Customer:             stripe.String(customerID),
 		CollectionMethod:     stripe.String(string(stripe.SubscriptionCollectionMethodChargeAutomatically)),
 		DefaultPaymentMethod: stripe.String(paymentMethodID),
-		Items:                items,
+		Items:                c.contractItems(ctx, workspaceID, priceIDs),
 		Metadata:             map[string]string{workspaceMetadataKey: workspaceID, subscriptionMetadataKey: "true", workspaceCreationAttemptMetadataKey: attemptID},
 	}
 	subParams.Context = ctx

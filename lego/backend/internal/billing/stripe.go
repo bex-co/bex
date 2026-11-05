@@ -129,6 +129,12 @@ type StripeConfig struct {
 	// BEX_STRIPE_AGENT_MODEL_METER is unset (ADR091 D3). The emitter holds the
 	// same kinds pending, so a held meter is never billed against a missing Price.
 	HeldMeters []string
+	// AgentModelThreshold returns a workspace's agent-model charge threshold
+	// in micro-USD (nil = none, tier T4) for the agent-model item's
+	// billing_thresholds.usage_gte (ADR091 D10.2): set when the item is
+	// created and reconciled when an existing Subscription is synced. Nil
+	// leaves every item without a threshold.
+	AgentModelThreshold func(ctx context.Context, workspaceID string) (*int64, error)
 }
 
 // BillingStateStore is the narrow persistence seam the Stripe client needs.
@@ -164,6 +170,8 @@ type StripeClient struct {
 	// catalog in this process (syncContractItems).
 	priceMeters     map[string]string
 	syncedContracts map[string]bool
+	// priceByKey maps each resolved catalog lookup key to its Price.
+	priceByKey map[string]string
 
 	billingEpoch          time.Time
 	compCouponID          string
@@ -171,6 +179,7 @@ type StripeClient struct {
 	portalConfigurationID string
 	taxCode               string
 	heldMeters            []string
+	agentModelThreshold   func(ctx context.Context, workspaceID string) (*int64, error)
 	taxBehavior           string
 	testMode              bool
 	publishableKey        string
@@ -211,6 +220,7 @@ func NewStripe(cfg StripeConfig) *StripeClient {
 		portalConfigurationID: cfg.PortalConfigurationID,
 		taxCode:               cfg.TaxCode,
 		heldMeters:            slices.Clone(cfg.HeldMeters),
+		agentModelThreshold:   cfg.AgentModelThreshold,
 		taxBehavior:           cfg.TaxBehavior,
 		testMode:              strings.Contains(cfg.SecretKey, "_test_"),
 		publishableKey:        cfg.PublishableKey,
