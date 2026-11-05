@@ -1,6 +1,6 @@
 # w9 · m164 — Dual-stack IP allow-list trap: a datastore denies the client's IPv6 with an opaque TLS EOF
 
-**Worker:** worker9 **Goal:** a tenant who allow-lists the IP address the product shows them can actually reach their Postgres and Key Value external endpoints — and a client that is genuinely refused is told so, never dropped with a bare TLS EOF **Status:** blocked — t001–t008 done; t009 waits for the bex.co DNS reconcile (user token, see Blocked)
+**Worker:** worker9 **Goal:** a tenant who allow-lists the IP address the product shows them can actually reach their Postgres and Key Value external endpoints — and a client that is genuinely refused is told so, never dropped with a bare TLS EOF **Status:** done — AAAA removed for `*.db`/`*.kv` (2026-11-05); live verification passed
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity across the touched surfaces — **DONE** | 45m | t003, t005 |
 | t007 | Simplify the code this milestone changed — **DONE** | 30m | t006 |
 | t008 | Test coverage for the shipped behavior — **DONE** | 45m | t006 |
-| t009 | Closeout — **BLOCKED** (bex.co DNS token) | 30m | t008 |
+| t009 | Closeout — **DONE** | 30m | t008 |
 ## Definition of done
 
 - On a dual-stack client whose allow list contains **only** its IPv4 `/32`, `bex psql <free-pg> -c 'SELECT 1'` either returns the probe row or fails with a message that **names the IP allow list** — never a bare `SSL error: unexpected eof while reading`. The same holds for the Key Value external endpoint through its supported entrypoint.
@@ -280,3 +280,34 @@ BEX_DB_DOMAIN=db.bex.co BEX_KV_DOMAIN=kv.bex.co HCLOUD_TOKEN=… CLOUDFLARE_API_
 **Done signal.** `dig +short AAAA probe.db.bex.co` and `dig +short AAAA probe.kv.bex.co` return nothing.
 
 **Worker next step (t009).** Re-run the t001 repros (the pasted `connection-info` command connects) and the new verifier legs, then close out.
+
+## Live verification (2026-11-05, after AAAA removal)
+
+**DNS change.** The two AAAA records (`*.db.bex.co`, `*.kv.bex.co`) were deleted with the authenticated `cf` CLI; the A records (`49.12.20.236`) were kept. This gives the same end state as the A-only reconcile. Public DNS through 1.1.1.1 returns A only, with no AAAA, for `probe.db.bex.co`, `probe-pool.db.bex.co` and `probe.kv.bex.co`.
+
+**Setup.**
+- Client: dual-stack (IPv4 plus a global IPv6).
+- Fixtures: a free Postgres `dpg-dbmghiv2j1is73dev3pg` and a free Key Value `red-dbmghj4rv9ic73d23i2g` in `bex-canary`, each created with an IPv4-only allow list (the client's `/32`).
+- Both fixture hosts resolve A only.
+
+**Results**
+
+| Check | Result |
+| --- | --- |
+| `psql` with the `externalConnectionString` exactly as copied, no family forced | PASS, `select 1` returned (previously an IPv6 attempt and `SSL error: unexpected eof`) |
+| The product's `psqlCommand` as shown | PASS |
+| `bex psql <id> --command 'SELECT 1 AS probe'` | PASS, one row |
+| Key Value `cliCommand` as shown, plus `PING` | PASS, `PONG` (previously a TLS EOF over IPv6) |
+| `scripts/psql-compat-verify.sh` (existing-target mode) | Not runnable here: it refuses production APIs by design. The Key Value verifier uses the same non-production harness. Their data-path leg is the AAAA check plus a connect, which the rows above cover by hand. |
+
+**Cleanup.** Both fixtures were deleted (`GET` 404) and the counts returned to baseline. The CLI was logged out, and both QA sessions were revoked (`logged-out` / `already-signed-out`).
+
+## AAAA removed (2026-11-05)
+
+The datastore wildcard AAAA records (`*.db.bex.co` and `*.kv.bex.co` → `2a01:4f8:c01e:3d1f::1`) were deleted in Cloudflare. The deletion used the user's authenticated `cf` CLI session after the user said "try again" (no API token was minted). The A records (`49.12.20.236`) were unchanged.
+
+**Result:** the same end state the A-only `scripts/datastore-dns-cloudflare.sh` reconciles to.
+
+**Public DNS (1.1.1.1):** `probe.db.bex.co`, `probe-pool.db.bex.co` and `probe.kv.bex.co` return A only.
+
+**Re-creating AAAA:** add `AAAA <wildcard> 2a01:4f8:c01e:3d1f::1` (DNS-only). Future reconciles with the current script keep it A-only.
