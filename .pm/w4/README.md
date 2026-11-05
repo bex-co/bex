@@ -353,6 +353,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **500** — [`GET /v1/services?environmentId=<env>` without `ownerId` returns `[]` when the environment is in another of the caller's workspaces](500.md) — todo (~45m) ← live `/qa-find-bugs w4` loop round 91, 2026-11-05 UTC (pin `cc3c51e12952`; major, REST). `apps/rest.go:841-878` lists the default workspace, then filters; same shape in postgres/keyvalue/envgroups lists.
 - [ ] **499** — [Every env var and secret file row's Reveal/Hide button has the same accessible name](499.md) — todo (~15m) ← live `/qa-find-bugs w4` loop round 88, 2026-11-05 UTC (pin `cc3c51e12952`; minor, a11y). `service-environment-editor.tsx:1217-1230` toggle has no `aria-label`; Copy uses `envCopyOne {name}`.
 - [ ] **498** — [A cron job's Settings has no Source card, so an image cron's image can never be changed (or even seen) in the dashboard](498.md) — todo (~50m) ← live `/qa-find-bugs w4` loop round 86, 2026-11-05 UTC (pin `cc3c51e12952`; **major**, Render parity). `settings-sections.ts:67-72` never pushes `source` for `cron_job`; REST PATCH image works.
 - [ ] **497** — [The env editor's two file pickers leave a second, focusable "Choose File" control behind their visible button](497.md) — todo (~15m) ← live `/qa-find-bugs w4` loop round 76, 2026-11-05 UTC (pin `c8bbc07cbeeb`; minor, a11y). `env-import-dialog.tsx:161-170`, `service-environment-editor.tsx:896-906` use `sr-only`; `attachment-chips.tsx` uses `hidden`.
