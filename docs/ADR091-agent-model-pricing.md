@@ -10,7 +10,7 @@
 
 ## Context
 
-- **Where it runs today.** Agent sessions run on a bex-owned OpenRouter key through the platform model route, currently only in allowlisted workspaces (ADR090). Widening it to every workspace is `w10/m14` t007, due 2026-11-06.
+- **Where it runs today.** Agent sessions run on a bex-owned OpenRouter key through the platform model route, currently only in allowlisted workspaces (ADR090). Widening it to every workspace is `w10/m14` t007, due 2026-11-13 (moved from 2026-11-06 on 2026-11-05).
 - **What is metered.** bex already meters `agent_model_{input,output,cache_read,cache_write}_tokens` per request: the gateway tee-parses the provider usage, and bex-api stores idempotent `agent_model_usage_events` (ADR023). Nothing is priced or capped yet.
 - **No BYO path.** Customers cannot set their own model key: there is no write path for `ModelKeySecretPath` (`w10/009`). So the platform model is the only way a customer can use agent sessions at all.
 - **Time-of-day prices.** OpenRouter prices `deepseek/deepseek-v4.1-flash-1017` by time of day: $0.15/M prompt, $0.60/M completion and $0.003/M cache read. Prices double on weekdays 01:00–04:00 and 06:00–10:00 UTC. A fixed per-token price either loses money at peak or overcharges off-peak.
@@ -89,7 +89,7 @@ This absorbs `w10/009`.
 1. Implement D1–D7 and D10.
 2. Create the Stripe meter on test Stripe, then live Stripe.
 3. Set the OpenRouter credit limit.
-4. Widen `BEX_AGENT_PLATFORM_MODEL_WORKSPACES` to every workspace (`w10/m14` t007), by 2026-11-06.
+4. Widen `BEX_AGENT_PLATFORM_MODEL_WORKSPACES` to every workspace (`w10/m14` t007), by 2026-11-13 (moved from 2026-11-06 on 2026-11-05 so all of D1–D7 and D10 ship first).
 
 ### D10 — Non-payment and delete-before-invoice protection
 
@@ -179,4 +179,3 @@ Pro and Scale stay post-paid with tiered thresholds. Until then, threshold billi
 - New customers see one or two small charges ($10, then $25) before their charges settle at month end; the tier and next charge point are shown in Settings → Billing.
 - Account deletion gains a payment step that can refuse deletion while a balance is due. ADR086 is amended accordingly in implementation.
 - There is no render.com equivalent, so this is a bex-native surface. [ADR018](ADR018-render-parity.md) records it as such, not as parity drift.
-  
