@@ -605,9 +605,9 @@ metadata:
     bex.co/agent-session: $session_label
   annotations:
     bex.co/egress-phase: $phase
-    bex.co/model-endpoint: api.github.com
+    bex.co/model-endpoint: api.anthropic.com
     bex.co/egress-allowlist: '["example.com"]'
-    bex.co/egress-allowlist-hash: 100680ad546ce6a577f42f52df33b4cf1f2459085590b33bd215076c513b1782
+    bex.co/egress-allowlist-hash: d6c92270a5f83db8d9ee2f75256ec9fa549a94ad15d3804b13347d06273c9e92
 spec:
   endpointSelector:
     matchLabels:
@@ -647,6 +647,18 @@ $registry_sni
       toPorts:
         - ports:
             - port: "8082"
+              protocol: TCP
+    # The model proxy hop: bex-api runs with BEX_AGENT_MODEL_PROXY_URL, so the
+    # model host is reached through the gateway, not by FQDN (sessionegress
+    # allowlistRules; bex-api-session-egress requires exactly these rules).
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: bex-system
+            k8s:io.cilium.k8s.policy.serviceaccount: bex-ssh-gateway
+            k8s:app.kubernetes.io/name: bex-ssh-gateway
+      toPorts:
+        - ports:
+            - port: "8084"
               protocol: TCP
 YAML
 }
