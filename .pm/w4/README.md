@@ -353,6 +353,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **483** — [For a repo the GitHub App doesn't cover, production promises auto-deploy via a "manual git webhook with your BEX_WEBHOOK_SECRET" that customers can't get and production rejects](483.md) — todo (~45m) ← live `/qa-find-bugs w4` loop round 51, 2026-11-05 UTC (pin `dcdc774c1a6b`; **major**). `apps/pushdelivery.go:113-150` reports `manual_webhook` without checking multitenant mode (`webhook.go:336-338` 403s the manual key).
 - [ ] **482** — [Custom-domain DNS panels name every copy button "Copy CNAME host/target", with no domain](482.md) — todo (~20m) ← live `/qa-find-bugs w4` loop round 49, 2026-11-05 UTC (pin `dcdc774c1a6b`; minor, a11y). Residual of w4/436: `custom-domains-section.tsx:378-400` `DnsRecordFieldsRow` never receives the domain name.
 - [ ] **481** — [A project's resource table lists a static site's Runtime as "Not available —"](481.md) — todo (~15m) ← live `/qa-find-bugs w4` loop round 48, 2026-11-05 UTC (pin `dcdc774c1a6b`; minor). `use-grouped-resources.ts:29` maps only `s.runtime`, which is empty for static sites by design, so the `static: "Static"` label at `:86` is never used.
 - [ ] **480** — [A linked env group marks overridden keys with strikethrough and a hover title only](480.md) — todo (~20m) ← live `/qa-find-bugs w4` loop round 47, 2026-11-05 UTC (pin `dcdc774c1a6b`; minor, a11y). `env-groups-panel.tsx:541-551`, `:560-570` render `<Badge title><s>key</s></Badge>`.
