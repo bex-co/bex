@@ -6,7 +6,6 @@ import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities"
 import { mockCapabilities } from "@/test/mocks/capabilities";
 
 const setRootDir = vi.fn(async () => true);
-const setBranch = vi.fn(async () => true);
 const setAutoDeployTrigger = vi.fn(async () => true);
 const setPreDeployCommand = vi.fn(async () => true);
 const setBuildFilter = vi.fn(async () => true);
@@ -17,10 +16,6 @@ const setDockerContext = vi.fn(async () => true);
 
 vi.mock("@/features/services/hooks/use-root-dir", () => ({
   useRootDir: () => ({ setRootDir, busy: false }),
-}));
-
-vi.mock("@/features/services/hooks/use-branch", () => ({
-  useBranch: () => ({ setBranch, busy: false }),
 }));
 
 vi.mock("@/features/services/hooks/use-build-filter", () => ({
@@ -66,30 +61,10 @@ vi.mock("@/features/services/hooks/use-deploy-hook", () => ({
   }),
 }));
 
-// The Branch combobox reads the repo's branches (w5/m54); empty => free-text.
-const repoBranches = { branches: [] as string[], loading: false };
-vi.mock("@/features/services/hooks/use-repo-branches", () => ({
-  useRepoBranches: () => repoBranches,
-}));
-
-// The Source combobox (w5/m54) reads useRepos and writes useSetRepo.
-const setRepo = vi.fn(async () => true);
-vi.mock("@/features/services/hooks/use-set-repo", () => ({
-  useSetRepo: () => ({ setRepo, busy: false }),
-}));
-vi.mock("@/features/services/hooks/use-set-image", () => ({
-  useSetImage: () => ({ setImage: vi.fn(), busy: false }),
-}));
-vi.mock("@/features/services/hooks/use-repos", () => ({
-  useRepos: () => ({ repos: [], loading: false, error: undefined }),
-}));
-
 beforeEach(() => {
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   setRootDir.mockClear();
   setRootDir.mockResolvedValue(true);
-  setBranch.mockClear();
-  setBranch.mockResolvedValue(true);
   setAutoDeployTrigger.mockClear();
   setAutoDeployTrigger.mockResolvedValue(true);
   setPreDeployCommand.mockClear();
@@ -101,8 +76,6 @@ beforeEach(() => {
   setStartCommand.mockClear();
   setStartCommand.mockResolvedValue(true);
   setDockerfilePath.mockClear();
-  setRepo.mockClear();
-  setRepo.mockResolvedValue(true);
   setDockerfilePath.mockResolvedValue(true);
   setDockerContext.mockClear();
   setDockerContext.mockResolvedValue(true);

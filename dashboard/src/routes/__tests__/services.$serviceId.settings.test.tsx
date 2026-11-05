@@ -312,9 +312,6 @@ vi.mock("@/features/services/hooks/use-cron-job", () => ({
 vi.mock("@/features/services/hooks/use-root-dir", () => ({
   useRootDir: () => ({ setRootDir: vi.fn(async () => true), busy: false }),
 }));
-vi.mock("@/features/services/hooks/use-branch", () => ({
-  useBranch: () => ({ setBranch: vi.fn(async () => true), busy: false }),
-}));
 vi.mock("@/features/services/hooks/use-build-command", () => ({
   useBuildCommand: () => ({
     setBuildCommand: vi.fn(async () => true),
