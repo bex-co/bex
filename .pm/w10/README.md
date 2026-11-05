@@ -40,8 +40,8 @@ implementation serves every workstream since `w1/m72`; `.pm/w10/dev-10/` keeps o
 ## Inbox
 
 - [ ] **008** — Sandbox pod-ready timeout misreported as capacity; informer-staleness root cause (incident 2026-10-29/30) → [`008.md`](008.md)
-- [ ] **011** — Billing charge tree shows raw `agent_session` / `agent_model_*` / `disk_gb_seconds` names, a capitalized model id and "Included" for unpriced lines → [`011.md`](011.md)
 
+- [x] **011** — Billing charge tree shows raw `agent_session` / `agent_model_*` / `disk_gb_seconds` names, a capitalized model id and "Included" for unpriced lines → [`done/011.md`](done/011.md) — done 2026-11-05 (`ee2441fc6`, verified in production)
 - [x] **010** — fallback TLS cert inside the 30-day window turns every deploy red → [`done/010.md`](done/010.md) — done 2026-10-31 (duplicate of w4/441; fixed by ADR093 cert-manager renewal, live at pin d147703d7657)
 - [x] **009** — Customers have no way to set a BYO model key → [`done/009.md`](done/009.md) — absorbed into m14 t012 2026-10-30
 - [x] **007** — Mobile agent composer sends the repo default branch, rejected by the backend → [`done/007.md`](done/007.md) — done 2026-10-28
