@@ -16,5 +16,5 @@
 - [x] **003** — Dashboard `/agents` renders `outcome.result` and the in-flight partial result → [`003.md`](done/003.md)
 - [ ] **004** — Live structured-output session on a dev stack (m259 definition of done) → [`004.md`](blocked/004.md) — **BLOCKED (needs someone to run a live structured-output session on a dev stack (`dev-env.sh <1-10> agent-up` plus a model route); dev-21 does not exist)**
 - [x] **005** — Dashboard `/agents` creates with a `maxSpendUSD` ceiling and shows `outcome.cost` → [`005.md`](done/005.md)
-- [ ] **006** — `outcome.cost.sandboxSeconds`: attribute sandbox compute to a session → [`006.md`](006.md)
+- [ ] **006** — `outcome.cost.sandboxSeconds`: attribute sandbox compute to a session → [`006.md`](blocked/006.md) — **BLOCKED (needs the user to pick the unit — billed weighted milli-vCPU seconds or wall-clock seconds — and approve a durable session-to-sandbox attribution on `sandbox_meter_states`, a billing-adjacent schema change; not required for Devin parity, which exposes cost as a single figure)**
 - [ ] **007** — Live completion webhook and spend ceiling on a dev stack (m260 definition of done) → [`007.md`](blocked/007.md) — **BLOCKED (needs someone to run a live completion-webhook and spend-ceiling session on a dev stack (`dev-env.sh <1-10> agent-up`, a webhook receiver, a model route); dev-21 does not exist)**
