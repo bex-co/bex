@@ -671,6 +671,13 @@ cmd_up() {
   echo "==> operator RBAC for the $DEV_NS apps namespace (secrets CRUD)"
   render "$TEMPLATES/rbac.yaml" | kubectl apply -f - >/dev/null
 
+  # Every tenant namespace bex-api provisions binds these ClusterRoles; without
+  # them the operator cannot read a tenant's Secrets, so cron jobs, disks and
+  # every App deletion fail on a cluster that never ran agent-up (w2 dev-2 walk,
+  # 2026-11-05). Shared and idempotent; agent-up applies the same file.
+  echo "==> tenant-namespace ClusterRoles (shared; the RoleBindings bex-api stamps point at these)"
+  kubectl apply -f deploy/gitops/base/tenant-namespace-clusterroles.yaml >/dev/null
+
   ensure_cnpg
 
   echo "==> CNPG Clusters (kratos-db, hydra-db, bex-db)"
