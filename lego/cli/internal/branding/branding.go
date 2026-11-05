@@ -245,10 +245,19 @@ func RewriteText(s string) string {
 		{"from Render", "from Bex"},
 		{"the Render ", "the Bex "},
 		{"your Render ", "your Bex "},
+		{"Render reads ", "Bex reads "},
 		{"`render ", "`bex "},
 		{"\"render ", "\"bex "},
 		{"`render`", "`bex`"},
-		{"'render workspace set", "'bex workspace set"},
+		{"'render ", "'bex "},
+		// A piped example (`echo … | render sandbox-groups images import`,
+		// v2.34.0) starts mid-line, so rewriteBareCommand never sees it.
+		{"| render ", "| bex "},
+		// The v2.35.0 `ea blueprints` help cites upstream's default state dir
+		// and config-dir input; bex's config.StateDir() is $HOME/.bex/state
+		// and its config-dir input is BEX_CLI_CONFIG_DIR (bridge, w8/018).
+		{"~/.render/state/", "~/.bex/state/"},
+		{"RENDER_CLI_CONFIG_DIR to use a different", "BEX_CLI_CONFIG_DIR to use a different"},
 	} {
 		out = strings.ReplaceAll(out, pair.old, pair.new)
 	}

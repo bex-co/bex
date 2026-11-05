@@ -68,3 +68,10 @@ t001–t006, t008–t010, t013 done; t012 implemented (its production check ride
   3. 发布前在生产走完 t007，证据写入 t007、t012。
   4. 按 t011 收尾。
 - **剩余条件：** 如果 `go get` 或生产写操作被 auto-mode 拦截，重新 blocked，并写明需要用户放行的具体动作。
+
+## Pin bump — 2026-11-04 (local, not yet shipped)
+
+- `lego/cli` now pins render-oss/cli v2.35.0 (`24ac2d60fdb2`, `v1.1.3-0.20261102222634-24ac2d60fdb2`, Go 1.27.3). `bex-cli-validate.sh`, `go test ./...` and golangci-lint all pass. The UPSTREAM_RENDER_CLI.md re-diff checks are recorded in `docs/cli-compatibility-checklist.md`.
+- Sandboxes left early access upstream (v2.32.0, no alias): `bex ea sandboxes` is now `bex sandboxes`. The launcher tests and the branding overlay follow it.
+- **For t007:** the v2.35 CLI always sends `existingResources`, defaulting to `create_new` (served since w2/m261). Pass `--existing-resources adopt` to walk Render's adopt path.
+- Server gaps the new CLI exposes, filed as **w2/m263**: idle timeout, `--timeout=0`, plan names, named refusals for groups and images, and the `ea blueprints` next-step hints.

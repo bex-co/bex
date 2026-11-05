@@ -76,10 +76,18 @@ func TestRewriteTextBrandingPhrases(t *testing.T) {
 		{"Visit https://render.com/docs/ssh", "Visit https://render.com/docs/ssh"},
 		{"bex.yml is a filename alias", "bex.yml is a filename alias"},
 		{"'render workspace set <name|ID>'", "'bex workspace set <name|ID>'"},
-		{"groups with \"render ea sandbox-groups\".", "groups with \"bex ea sandbox-groups\"."},
+		{"groups with \"render sandbox-groups\".", "groups with \"bex sandbox-groups\"."},
 		{"Manage sandboxes for your Render workspace.", "Manage sandboxes for your Bex workspace."},
 		{"validate \"render.yaml\" and \"bex.yml\"", "validate \"render.yaml\" and \"bex.yml\""},
 		{"render.yaml bex.yml ~/.render/skills https://render.com RENDER_HOST renderer", "render.yaml bex.yml ~/.render/skills https://render.com RENDER_HOST renderer"},
+		// v2.34.0/v2.35.0 help: piped examples, quoted references, the
+		// blueprint manual-env-var state path and config-dir input.
+		{"  echo \"$T\" | render sandbox-groups images import ghcr.io/a/b:1", "  echo \"$T\" | bex sandbox-groups images import ghcr.io/a/b:1"},
+		{"(e.g., 'render workflows tasks list --local')", "(e.g., 'bex workflows tasks list --local')"},
+		{"Render reads the pushed repository", "Bex reads the pushed repository"},
+		{"at ~/.render/state/manual-env-vars/<id>.json", "at ~/.bex/state/manual-env-vars/<id>.json"},
+		{"Set RENDER_CLI_CONFIG_DIR to use a different config directory.", "Set BEX_CLI_CONFIG_DIR to use a different config directory."},
+		{"--local stores in .render/objects/ (RENDER_REGION)", "--local stores in .render/objects/ (RENDER_REGION)"},
 	}
 	for _, tc := range cases {
 		if got := RewriteText(tc.in); got != tc.want {

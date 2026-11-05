@@ -974,12 +974,21 @@ func TestBexNestedHelp(t *testing.T) {
 		{"workspace set", []string{"$HOME/.bex/cli.yaml", "$HOME/.bex/state", "BEX_CLI_CONFIG_DIR", "BEX_CLI_CONFIG_PATH", "RENDER_CLI_CONFIG_PATH", "RENDER_CLI_CONFIG_DIR"}, []string{"$HOME/.render"}},
 		{"blueprints validate", []string{"render.yaml", "bex blueprints validate"}, []string{"bex.yaml"}},
 		// w7/045: double-quoted command references and "your Render workspace"
-		// in the ea sandbox family, and the render.com job-plan link (whose
-		// replacement must not cite a nonexistent `services get`, w2/044).
-		{"ea sandboxes", []string{"your Bex workspace", "\"bex ea sandbox-groups\"", "\"bex ea sandboxes snapshots create\"", "\"bex ea sandboxes create --snapshot-id\""}, []string{"Render workspace", "\"render "}},
-		{"ea sandboxes snapshots", []string{"your Bex workspace", "\"bex ea sandboxes create --snapshot-id\""}, []string{"Render workspace", "\"render "}},
-		{"ea sandboxes snapshots create", []string{"\"bex ea sandboxes snapshots get\""}, []string{"\"render "}},
-		{"ea sandbox-groups", []string{"your Bex workspace"}, []string{"Render workspace", "\"render "}},
+		// in the sandbox family (top-level since v2.35.0; it was `ea sandboxes`),
+		// and the render.com job-plan link (whose replacement must not cite a
+		// nonexistent `services get`, w2/044).
+		{"sandboxes", []string{"your Bex workspace", "\"bex sandbox-groups\"", "\"bex sandboxes snapshots create\"", "\"bex sandboxes create --snapshot-id\""}, []string{"Render workspace", "\"render "}},
+		{"sandboxes snapshots", []string{"bex sandboxes snapshots create sbx-abc123"}, []string{"Render workspace", "render "}},
+		{"sandboxes snapshots create", nil, []string{"render "}},
+		{"sandbox-groups", []string{"your Bex workspace"}, []string{"Render workspace", "\"render "}},
+		// v2.34.0 piped image-import example starts mid-line.
+		{"sandbox-groups images", []string{"| bex sandbox-groups images import"}, []string{"render "}},
+		{"sandbox-groups images import", []string{"| bex sandbox-groups images import"}, []string{"render "}},
+		// v2.35.0 `ea blueprints`: bex's state dir and config-dir input.
+		{"ea blueprints create", []string{"~/.bex/state/manual-env-vars/", "BEX_CLI_CONFIG_DIR", "Bex reads the pushed repository", "render.yaml"}, []string{"~/.render", "RENDER_CLI_CONFIG_DIR", "Render ", "render "}},
+		{"ea blueprints plan", []string{"~/.bex/state/manual-env-vars/", "BEX_CLI_CONFIG_DIR", "\"bex ea blueprints approve\""}, []string{"~/.render", "RENDER_CLI_CONFIG_DIR", "Render ", "render "}},
+		{"ea blueprints approve", []string{"~/.bex/state/manual-env-vars/", "BEX_CLI_CONFIG_DIR", "\"bex ea blueprints plan\""}, []string{"~/.render", "RENDER_CLI_CONFIG_DIR", "Render ", "render "}},
+		{"ea blueprints update", []string{"~/.bex/state/manual-env-vars/", "\"bex ea blueprints approve\""}, []string{"~/.render", "Render ", "render "}},
 		{"jobs create", []string{"bex jobs create srv-abc123", "--plan-id plan-srv-006"}, []string{"render.com/docs", "render jobs create", "services get"}},
 	}
 	for _, resource := range []string{"postgres", "pg", "keyvalues", "kv"} {

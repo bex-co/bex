@@ -88,7 +88,7 @@ func TestSandboxCopyRejectsBareUUID(t *testing.T) {
 
 func runBexCopy(t *testing.T, apiURL, src, dst string) (stdout, stderr string, err error) {
 	t.Helper()
-	command := bexAgainst(t, apiURL, "ea", "sandboxes", "copy", src, dst, "-o", "json")
+	command := bexAgainst(t, apiURL, "sandboxes", "copy", src, dst, "-o", "json")
 	var out, errOut bytes.Buffer
 	command.Stdout = &out
 	command.Stderr = &errOut

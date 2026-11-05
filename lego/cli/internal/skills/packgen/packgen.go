@@ -36,7 +36,7 @@ import (
 const UpstreamCommit = "33801b5"
 
 // droppedSkills are bex non-goals: Render Workflows, and sandbox groups and
-// the Render sandbox SDK (bex offers only the `ea sandboxes` subset).
+// the Render sandbox SDK (bex offers only the `sandboxes` subset).
 var droppedSkills = map[string]bool{"render-workflows": true, "render-sandboxes": true}
 
 //go:embed overrides
