@@ -1,5 +1,6 @@
 import { describe, it, expect } from "vitest";
 import {
+  formatDiskCapacity,
   formatMetricValue,
   formatMetricShort,
   axisTickValues,
@@ -180,5 +181,20 @@ describe("axisTickValues (w4/382)", () => {
   it("leaves other units on the plain midpoint", () => {
     expect(axisTickValues("percentage", 0, 1)).toEqual([0, 0.5, 1]);
     expect(axisTickValues("cpu", 0, 3)).toEqual([0, 1.5, 3]);
+  });
+});
+
+// w4/513: a provisioned disk size reads in the GB the plan and autoscaling copy
+// use, never GiB beside "1 GB current".
+describe("formatDiskCapacity", () => {
+  const GIB = 1024 ** 3;
+  it("states whole and fractional provisioned sizes in GB", () => {
+    expect(formatDiskCapacity(GIB)).toBe("1 GB");
+    expect(formatDiskCapacity(16 * GIB)).toBe("16 GB");
+    expect(formatDiskCapacity(1.5 * GIB)).toBe("1.5 GB");
+  });
+  it("keeps the byte formatter below one GB", () => {
+    expect(formatDiskCapacity(512 * 1024 ** 2)).toBe("512 MiB");
+    expect(formatDiskCapacity(10 * 1024)).toBe("10 KiB");
   });
 });

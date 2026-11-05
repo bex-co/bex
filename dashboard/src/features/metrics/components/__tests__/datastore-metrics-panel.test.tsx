@@ -188,7 +188,7 @@ describe("DatastoreMetricsPanel", () => {
 
   // w4/m91: the Capacity label reflects the datastore's logical/billed disk size
   // (bex-api now sources disk_capacity from StorageGB, not the physical PVC). A
-  // near-full 1 GB Postgres shows "Capacity 1 GiB" against ~810 MiB used, so its
+  // near-full 1 GB Postgres shows "Capacity 1 GB" against ~810 MiB used, so its
   // fullness reads truthfully instead of ~8% of a fixed 10 GiB PVC floor.
   it("shows the logical/billed capacity, so a near-full 1 GB datastore reads near-full", () => {
     const gib = 1024 * 1024 * 1024;
@@ -200,7 +200,7 @@ describe("DatastoreMetricsPanel", () => {
 
     render(<DatastoreMetricsPanel kind="database" resource="dpg-abc" />);
 
-    expect(screen.getByText("Capacity 1 GiB")).toBeInTheDocument();
+    expect(screen.getByText("Capacity 1 GB")).toBeInTheDocument();
   });
 
   // Beside the Postgres autoscaling box at phone width the capacity label takes
@@ -226,7 +226,7 @@ describe("DatastoreMetricsPanel", () => {
     expect(
       screen.queryByTestId("disk-capacity-pending"),
     ).not.toBeInTheDocument();
-    expect(screen.getByText("Capacity 1 GiB")).toBeInTheDocument();
+    expect(screen.getByText("Capacity 1 GB")).toBeInTheDocument();
 
     capacity = emptyResult();
     rerender(panel());

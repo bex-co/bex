@@ -19,7 +19,10 @@ import { MetricError } from "@/features/metrics/components/metric-error";
 import { seriesColor } from "@/features/metrics/components/chart-layout";
 import { useDatastoreMetrics } from "@/features/metrics/hooks/use-datastore-metrics";
 import { useTranslations } from "@/common/hooks/use-translations";
-import { formatMetricValue } from "@/features/metrics/lib/format";
+import {
+  formatDiskCapacity,
+  formatMetricValue,
+} from "@/features/metrics/lib/format";
 import { latestValue } from "@/features/metrics/lib/series";
 import type { ChartSeries, DatastoreKind } from "@/features/metrics/types";
 
@@ -173,7 +176,7 @@ export function DatastoreMetricsPanel({
               {diskCapacityValue != null ? (
                 <span className="text-xs text-muted-foreground">
                   {t("metrics.diskCapacityLabel", {
-                    value: formatMetricValue("bytes", diskCapacityValue),
+                    value: formatDiskCapacity(diskCapacityValue),
                   })}
                 </span>
               ) : diskCapacity.loading ? (

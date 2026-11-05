@@ -19,6 +19,19 @@ export function formatMetricValue(unit: string, value: number): string {
   }
 }
 
+const GIB = 1024 ** 3;
+
+/**
+ * A provisioned disk size as the plan, disk and autoscaling copy state it:
+ * whole "GB" (bex's GB is 2^30 bytes, w4/513). Sizes below one GB are not a
+ * provisioned size, so they keep the byte formatter.
+ */
+export function formatDiskCapacity(bytes: number): string {
+  if (bytes < GIB) return formatBytes(bytes);
+  const gb = Math.round((bytes / GIB) * 100) / 100;
+  return `${gb} GB`;
+}
+
 /** Compact axis/tooltip value — shorter than formatMetricValue's full label. */
 export function formatMetricShort(unit: string, value: number): string {
   switch (unit) {
