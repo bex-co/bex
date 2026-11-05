@@ -32,6 +32,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -574,5 +575,43 @@ func TestMCPAcceptsAOneGBDisk(t *testing.T) {
 	}
 	if grown := call("update_disk", map[string]any{"diskId": added.ID, "sizeGB": 5}); grown.SizeGB != 5 {
 		t.Fatalf("update_disk sizeGB = %d, want 5", grown.SizeGB)
+	}
+}
+
+// With the control-plane store, serviceDetails.disk carries the disk's dsk-
+// id from its row, as Render's serviceDisk does (w3/053).
+func TestServiceDetailsDiskCarriesItsID(t *testing.T) {
+	st := &recordingStore{}
+	svc, _ := newService(st)
+	mux := diskRESTMux(t, svc)
+	body := `{"name":"web","type":"web_service","repo":"https://github.com/o/r","serviceDetails":{"plan":"starter","disk":{"name":"data","mountPath":"/var/data","sizeGB":25}}}`
+	rec := httptest.NewRecorder()
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("POST", "/v1/services", strings.NewReader(body)))
+	if rec.Code != http.StatusCreated {
+		t.Fatalf("create => %d: %s", rec.Code, rec.Body)
+	}
+	var created struct {
+		Service struct {
+			ID      string `json:"id"`
+			OwnerID string `json:"ownerId"`
+		} `json:"service"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &created); err != nil || created.Service.ID == "" {
+		t.Fatalf("create body: %v %s", err, rec.Body)
+	}
+	diskID := ids.New(ids.Disk)
+	st.disks = map[string]store.Disk{diskID: {ID: diskID, TenantID: created.Service.OwnerID, AppID: created.Service.ID, Name: "data", MountPath: "/var/data", SizeGB: 25}}
+
+	rec = httptest.NewRecorder()
+	validated(t, mux).ServeHTTP(rec, httptest.NewRequest("GET", "/v1/services/"+created.Service.ID, nil))
+	var got struct {
+		ServiceDetails struct {
+			Disk struct {
+				ID string `json:"id"`
+			} `json:"disk"`
+		} `json:"serviceDetails"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil || got.ServiceDetails.Disk.ID != diskID {
+		t.Fatalf("serviceDetails.disk.id = %q (%v), want %s: %s", got.ServiceDetails.Disk.ID, err, diskID, rec.Body)
 	}
 }

@@ -37,8 +37,7 @@ import (
 // carries as `service`. A line carries only the labels its stream actually had: an
 // app line has no method/statusCode, a request line no instance. Core's
 // `container` label stays off the REST line: Render's label-name enum is closed
-// and has no container (w3/m272). GraphQL never exposed it; MCP keeps it in
-// list_logs' label map.
+// and has no container (w3/m272), so GraphQL and MCP list_logs leave it off too.
 var renderLabels = []struct{ name, key string }{
 	{LabelType, LabelType},
 	{"resource", "service"},

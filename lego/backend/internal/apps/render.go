@@ -729,9 +729,25 @@ func (s *Service) restServices(ctx context.Context, apps []AppView) []renderServ
 				rendered.RegistryCredential = &renderRegistryCredentialSummary{ID: id, Name: name}
 			}
 		}
+		s.addServiceDiskID(ctx, app, rendered.ServiceDetails)
 		out = append(out, rendered)
 	}
 	return out
+}
+
+// addServiceDiskID sets Render's serviceDetails.disk.id from the disk's
+// control-plane row: the App CR the view is projected from carries the disk's
+// shape but not its dsk- id (w3/053). A read failure leaves the id out.
+func (s *Service) addServiceDiskID(ctx context.Context, app AppView, details map[string]any) {
+	disk, ok := details["disk"].(map[string]any)
+	if !ok || s.Store == nil {
+		return
+	}
+	rows, err := s.Store.ListDisks(ctx, app.OwnerID, app.ID)
+	if err != nil || len(rows) == 0 {
+		return
+	}
+	disk["id"] = rows[0].ID
 }
 
 // resolveCredentialNames collects the unique credential ids from apps and

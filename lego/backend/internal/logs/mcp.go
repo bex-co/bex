@@ -18,6 +18,7 @@ package logs
 
 import (
 	"context"
+	"maps"
 	"slices"
 	"time"
 
@@ -164,7 +165,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 			HasMore:       page.HasMore,
 			NextStartTime: page.NextStartTime,
 			NextEndTime:   page.NextEndTime,
-			Logs:          page.Entries,
+			Logs:          mcpLogEntries(page.Entries),
 		}, nil
 	})
 
@@ -197,4 +198,18 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		slices.Sort(all)
 		return nil, listLogLabelValuesResult{Values: slices.Compact(all)}, nil
 	})
+}
+
+// mcpLogEntries drops Core's container label, which Render's closed label
+// vocabulary does not have and the REST line leaves off too (w3/053).
+func mcpLogEntries(entries []LogEntry) []LogEntry {
+	out := make([]LogEntry, len(entries))
+	for i, e := range entries {
+		out[i] = e
+		if _, ok := e.Labels["container"]; ok {
+			out[i].Labels = maps.Clone(e.Labels)
+			delete(out[i].Labels, "container")
+		}
+	}
+	return out
 }

@@ -87,7 +87,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 - [x] **m177** — Move the Prometheus rule pack out of the inline Argo Application values (7 tasks) — **done 2026-10-29** ([done/m177](done/m177/README.md)): rules live in `deploy/gitops/base/rules/alerting_rules.yml` via a mounted, reloader-watched ConfigMap; Application size 392,955 / 421,080 of 1,310,720 bytes; production `/api/v1/rules` loads the same 123 rules from `/etc/rules` with Watchdog firing (verified by `/unblock w3`).
 ## Inbox
 
-- [ ] **053** — [Response-shape divergences found by the m272 schema check](053.md) — residual of w3/m272
+- [x] **053** — **done 2026-11-05** ([done/053.md](done/053.md)): REST `serviceDetails.disk.id` from the disk row, MCP `list_logs` without `container`, and `dryRun`'s 200 recorded as a bex extension.
 - [ ] **052** — [Private-network port discovery: web services' extra listeners, UDP, declared-but-idle ports](052.md) — residual of w3/m273
 - [x] **051** — **done 2026-11-05** ([done/051.md](done/051.md)): the failure-alert email's "View events" link names the service by its `srv-` id.
 - [x] **050** — **promoted 2026-11-05 → [`m275`](m275/README.md)** ([done/050.md](done/050.md)): buildSources-only projects and non-literal build-time env vars.
