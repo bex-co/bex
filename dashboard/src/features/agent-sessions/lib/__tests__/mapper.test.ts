@@ -146,6 +146,43 @@ describe("toAgentSessionView", () => {
     expect(view.isTerminal).toBe(false); // phase "running"
     expect(view.isSteerable).toBe(false);
   });
+
+  // w21/001: the server computes steerability and the outcome; the phase table
+  // is only the fallback for a partial cache entry.
+  it("reads steerable, state and outcome from the server", () => {
+    const view = toAgentSessionView(
+      wire({
+        phase: "completed",
+        state: "needs_input",
+        steerable: false, // the server's word wins over the phase table
+        outcome: {
+          __typename: "AgentSessionOutcome",
+          state: "needs_input",
+          steerable: false,
+          turn: 2,
+          summary: "Done, see the PR.",
+          deliveryNote: null,
+          failureReasonCode: null,
+          pullRequest: null,
+        },
+      }),
+    );
+    expect(view.isSteerable).toBe(false);
+    expect(view.state).toBe("needs_input");
+    expect(view.outcome).toEqual({
+      state: "needs_input",
+      steerable: false,
+      turn: 2,
+      summary: "Done, see the PR.",
+      deliveryNote: null,
+      failureReasonCode: null,
+    });
+    // Without the field, a completed session is steerable by phase.
+    const partial = toAgentSessionView(wire({ phase: "completed" }));
+    expect(partial.isSteerable).toBe(true);
+    expect(partial.state).toBeNull();
+    expect(partial.outcome).toBeNull();
+  });
 });
 
 // w10/m9 t003 (w3/013): `url` is the phase-2 raw-ACP WebSocket gateway

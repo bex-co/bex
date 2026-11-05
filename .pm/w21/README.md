@@ -11,5 +11,5 @@
 
 ## Inbox
 
-- [ ] **001** — Dashboard `/agents` and mobile read `state`/`outcome` instead of decoding `phase` → [`001.md`](001.md)
+- [x] **001** — Dashboard `/agents` and mobile read `state`/`outcome` instead of decoding `phase` → [`001.md`](done/001.md)
 - [ ] **002** — Dashboard `/agents` create sends an `idempotencyKey` and shows `title`/`tags` → [`002.md`](002.md)

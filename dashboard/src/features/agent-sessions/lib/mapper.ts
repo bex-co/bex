@@ -83,7 +83,20 @@ export function toAgentSessionView(
     isArchived: wire.archivedAt != null,
     isFinished: isTerminalPhase(phase),
     isTerminal: isTerminalPhase(phase),
-    isSteerable: isSteerablePhase(phase),
+    // The server computes steerability (w21/m257); the phase table is only the
+    // fallback for a partial cache entry that predates the field.
+    isSteerable: wire.steerable ?? isSteerablePhase(phase),
+    state: wire.state ?? null,
+    outcome: wire.outcome
+      ? {
+          state: wire.outcome.state,
+          steerable: wire.outcome.steerable,
+          turn: wire.outcome.turn ?? 0,
+          summary: wire.outcome.summary ?? null,
+          deliveryNote: wire.outcome.deliveryNote ?? null,
+          failureReasonCode: wire.outcome.failureReasonCode ?? null,
+        }
+      : null,
   };
 }
 

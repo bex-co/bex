@@ -23,6 +23,21 @@ fragment AgentSessionFields on AgentSession {
   sandboxId
   sshAddress
   phase
+  state
+  steerable
+  outcome {
+    state
+    steerable
+    turn
+    summary
+    deliveryNote
+    failureReasonCode
+    pullRequest {
+      url
+      number
+      headSha
+    }
+  }
   status
   headSha
   prUrl

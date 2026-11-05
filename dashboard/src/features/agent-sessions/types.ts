@@ -4,6 +4,16 @@
 // stable lifecycle enum), never the free-text `status`; `lib/mapper.ts` derives
 // the isTerminal/isSteerable/duration helpers so pages never re-encode phase.
 
+/** The latest turn's machine-readable outcome (w21/m257). */
+export interface AgentSessionOutcome {
+  state: string;
+  steerable: boolean;
+  turn: number;
+  summary: string | null;
+  deliveryNote: string | null;
+  failureReasonCode: string | null;
+}
+
 /**
  * The session lifecycle enum (backend `models.go` Phase* constants). Terminal
  * phases are completed/failed/canceled; every other phase is still converging.
@@ -157,6 +167,13 @@ export interface AgentSessionView {
    * steered over the stream POST instead (t002), not this flag.
    */
   isSteerable: boolean;
+  /**
+   * The server-computed session state (`state`, w21/m257): what a caller should
+   * do next. Null on a partial cache entry that predates the field.
+   */
+  state: string | null;
+  /** The server-computed outcome of the latest turn; null before one exists. */
+  outcome: AgentSessionOutcome | null;
 }
 
 /**
