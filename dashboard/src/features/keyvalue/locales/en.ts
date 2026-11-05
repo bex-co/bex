@@ -206,7 +206,7 @@ const enKeyValue: Record<string, TranslationEntry> = {
   },
   // --- Row actions / delete ---
   "keyvalue.actionsMenu": {
-    message: "Open actions menu",
+    message: "Actions for {name}",
     description: "Accessible label for the per-row actions trigger",
   },
   "keyvalue.actionDelete": {

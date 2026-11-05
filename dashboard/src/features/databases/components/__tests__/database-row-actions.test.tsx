@@ -52,8 +52,9 @@ describe("DatabaseRowActions", () => {
     render(<DatabaseRowActions database={DB} onDeleted={vi.fn()} />);
 
     await user.tab();
+    // w4/511: the trigger names its row, so a list of rows has distinct menus.
     expect(
-      screen.getByRole("button", { name: "Open actions menu" }),
+      screen.getByRole("button", { name: "Actions for shop-db" }),
     ).toHaveFocus();
     await user.keyboard("{Enter}{ArrowDown}");
     const removeItem = await screen.findByRole("menuitem", { name: "Delete" });
@@ -86,7 +87,7 @@ describe("DatabaseRowActions", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
     const suspend = await screen.findByRole("menuitem", { name: "Suspend" });
     const restart = screen.getByRole("menuitem", { name: "Restart" });
     expect(suspend).toHaveAttribute("aria-disabled", "true");
@@ -102,7 +103,7 @@ describe("DatabaseRowActions", () => {
     const user = userEvent.setup();
     render(<DatabaseRowActions database={DB} onDeleted={onDeleted} />);
 
-    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
 
     const dialog = await screen.findByRole("alertdialog");
@@ -135,7 +136,7 @@ describe("DatabaseRowActions", () => {
     const user = userEvent.setup();
     render(<DatabaseRowActions database={DB} onDeleted={onDeleted} />);
 
-    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
     await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
     const localDialog = await screen.findByRole("alertdialog");
     await user.type(

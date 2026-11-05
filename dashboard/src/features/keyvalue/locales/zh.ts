@@ -199,7 +199,7 @@ const zhKeyValue: Record<string, TranslationEntry> = {
   },
   // --- Row actions / delete ---
   "keyvalue.actionsMenu": {
-    message: "打开操作菜单",
+    message: "{name} 的操作",
     description: "Accessible label for the per-row actions trigger",
   },
   "keyvalue.actionDelete": {

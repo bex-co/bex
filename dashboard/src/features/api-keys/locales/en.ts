@@ -113,6 +113,10 @@ const enApiKeys: Record<string, TranslationEntry> = {
     message: "Copy client ID",
     description: "Copy button aria-label for the client_id",
   },
+  "apiKeys.copyClientIdNamed": {
+    message: "Copy client ID for {name}",
+    description: "Copy button aria-label for one API client row's client_id",
+  },
   "apiKeys.copySecret": {
     message: "Copy client secret",
     description: "Copy button aria-label for the client_secret",

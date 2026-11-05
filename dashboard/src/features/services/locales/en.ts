@@ -352,7 +352,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Services table status badge for an unrecognized phase",
   },
   "services.actionsMenu": {
-    message: "Open actions menu",
+    message: "Actions for {name}",
     description: "Accessible label for the per-row actions trigger",
   },
   "services.actionSuspend": {

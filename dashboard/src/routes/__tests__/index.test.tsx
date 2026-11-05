@@ -387,10 +387,14 @@ describe("HomePage", () => {
       within(table).getByText("sessions-cache").closest("a"),
     ).toHaveAttribute("href", "/keyvalue/sessions-cache");
 
-    // one actions trigger per row
+    // one actions trigger per row, each naming its own resource (w4/511)
+    const triggers = within(table).getAllByRole("button", {
+      name: /^Actions for /,
+    });
+    expect(triggers).toHaveLength(3);
     expect(
-      within(table).getAllByRole("button", { name: "Open actions menu" }),
-    ).toHaveLength(3);
+      new Set(triggers.map((b) => b.getAttribute("aria-label"))).size,
+    ).toBe(3);
   });
 
   it("renders a project card linking to the project's own page", async () => {
@@ -474,7 +478,7 @@ describe("HomePage", () => {
 
     await screen.findByText("Overview");
     expect(
-      screen.queryByRole("button", { name: "Open actions menu" }),
+      screen.queryByRole("button", { name: /^Actions for / }),
     ).not.toBeInTheDocument();
     expect(screen.queryByText("No resources yet")).not.toBeInTheDocument();
     expect(

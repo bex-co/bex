@@ -283,7 +283,7 @@ describe("KeyValueDetailPage", () => {
       screen.getByRole("button", { name: "Delete Key Value Instance" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Open actions menu" }),
+      screen.queryByRole("button", { name: /^Actions for / }),
     ).not.toBeInTheDocument();
     expect(
       screen.getByRole("button", { name: "Reveal connection info" }),

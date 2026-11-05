@@ -264,7 +264,7 @@ export function ServiceRowActions({
             variant="ghost"
             size="icon-sm"
             disabled={busy}
-            aria-label={t("services.actionsMenu")}
+            aria-label={t("services.actionsMenu", { name: service.name })}
           >
             {busy ? <Loader2 className="animate-spin" /> : <MoreHorizontal />}
           </Button>

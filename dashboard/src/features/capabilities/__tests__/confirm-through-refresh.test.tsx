@@ -361,7 +361,7 @@ const consumers: Consumer[] = [
       );
       return { dispatched: () => onRun.mock.calls.length };
     },
-    open: () => pickMenuItem("Open actions menu", "Restart"),
+    open: () => pickMenuItem(/^Actions for /, "Restart"),
   },
   {
     name: "deploy row → Rollback (DeployActions, selected-row adjustment)",

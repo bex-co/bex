@@ -37,7 +37,7 @@ describe("ApiKeyRow — metadata columns (w4/m13/t003, w4/m105)", () => {
     );
     expect(screen.getByText("key-1")).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Copy client ID" }),
+      screen.getByRole("button", { name: "Copy client ID for deploy-agent" }),
     ).toBeInTheDocument();
     expect(screen.getByText("user:minter")).toBeInTheDocument();
     expect(screen.getByText("3d")).toBeInTheDocument(); // 2026-07-05 → 2026-07-08

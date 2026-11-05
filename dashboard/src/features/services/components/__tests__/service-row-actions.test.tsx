@@ -164,7 +164,7 @@ describe.each([
     );
     if (surface === "resource list") {
       await user.click(
-        screen.getByRole("button", { name: "Open actions menu" }),
+        screen.getByRole("button", { name: `Actions for ${service.name}` }),
       );
       await user.click(screen.getByRole("menuitem", { name: "Suspend" }));
     } else {
@@ -239,9 +239,7 @@ describe.each([
       <Component service={service} pending={null} onRun={onRun} />,
     );
     if (surface === "resource list") {
-      await user.click(
-        screen.getByRole("button", { name: "Open actions menu" }),
-      );
+      await user.click(screen.getByRole("button", { name: /^Actions for / }));
       await user.click(screen.getByRole("menuitem", { name: "Suspend" }));
     } else {
       await user.click(screen.getByRole("button", { name: "Suspend" }));
@@ -287,9 +285,7 @@ describe.each([
         />,
       );
       if (surface === "resource list") {
-        await user.click(
-          screen.getByRole("button", { name: "Open actions menu" }),
-        );
+        await user.click(screen.getByRole("button", { name: /^Actions for / }));
         await user.click(screen.getByRole("menuitem", { name: "Resume" }));
       } else {
         await user.click(screen.getByRole("button", { name: "Resume" }));
@@ -313,7 +309,7 @@ describe("ServiceRowActions", () => {
       <ServiceRowActions service={service} pending={null} onRun={onRun} />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
     await user.click(screen.getByRole("menuitem", { name: "Suspend" }));
     const ordinaryConfirm = await screen.findByRole("alertdialog");
     await user.click(
@@ -360,7 +356,7 @@ describe("ServiceRowActions", () => {
       <ServiceRowActions service={service} pending={null} onRun={onRun} />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
     const suspend = screen.getByRole("menuitem", { name: "Suspend" });
     expect(suspend).toHaveAttribute("aria-disabled", "true");
     await user.click(suspend);
@@ -385,7 +381,7 @@ describe("ServiceRowActions", () => {
       <ServiceRowActions service={service} pending={null} onRun={onRun} />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
     const restart = screen.getByRole("menuitem", { name: "Restart" });
     expect(restart).toHaveAttribute("aria-disabled", "true");
     await user.click(restart);
@@ -402,7 +398,7 @@ describe("ServiceRowActions", () => {
       />,
     );
 
-    await user.click(screen.getByRole("button", { name: "Open actions menu" }));
+    await user.click(screen.getByRole("button", { name: /^Actions for / }));
     expect(
       screen.getByRole("menuitem", { name: "Suspend" }),
     ).toBeInTheDocument();
@@ -415,7 +411,7 @@ describe("ServiceRowActions", () => {
 describe.each([
   {
     language: "en",
-    menu: "Open actions menu",
+    menu: /^Actions for /,
     suspend: "Suspend",
     resume: "Resume",
     cron: /pauses future scheduled runs\. An active run continues\. To stop it, select Cancel in Recent Runs\./,
@@ -429,7 +425,7 @@ describe.each([
   },
   {
     language: "zh",
-    menu: "打开操作菜单",
+    menu: /的操作$/,
     suspend: "暂停",
     resume: "恢复",
     cron: /暂停后续的计划运行。正在运行的任务会继续。如需停止它，请在“最近运行”中选择“取消”/,
@@ -489,18 +485,19 @@ describe.each([
       ["static_site", true, "staticConfirm"],
       ["private_service", false, "privateConfirm"],
       ["background_worker", false, "privateConfirm"],
-    ] as const)("keeps %s suspension semantics", async (type, publicUrl, confirmCopy) => {
-      const { dialog } = await openSuspend({ ...service, type });
-      expect(
-        within(dialog).getByText(copy[confirmCopy]),
-      ).toBeInTheDocument();
-      if (surface === "settings") {
-        expect(
-          screen.getByText(publicUrl ? copy.publicCard : copy.privateCard),
-        ).toBeInTheDocument();
-      }
-      expect(screen.queryByText(copy.cron)).not.toBeInTheDocument();
-    });
+    ] as const)(
+      "keeps %s suspension semantics",
+      async (type, publicUrl, confirmCopy) => {
+        const { dialog } = await openSuspend({ ...service, type });
+        expect(within(dialog).getByText(copy[confirmCopy])).toBeInTheDocument();
+        if (surface === "settings") {
+          expect(
+            screen.getByText(publicUrl ? copy.publicCard : copy.privateCard),
+          ).toBeInTheDocument();
+        }
+        expect(screen.queryByText(copy.cron)).not.toBeInTheDocument();
+      },
+    );
   });
 
   it("describes resuming the cron schedule and dispatches resume", async () => {

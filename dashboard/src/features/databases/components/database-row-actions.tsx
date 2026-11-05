@@ -124,7 +124,7 @@ export function DatabaseRowActionsWithCapabilities({
             variant="ghost"
             size="icon-sm"
             disabled={busy}
-            aria-label={t("databases.actionsMenu")}
+            aria-label={t("databases.actionsMenu", { name: database.name })}
           >
             {busy ? <Loader2 className="animate-spin" /> : <MoreHorizontal />}
           </Button>

@@ -101,7 +101,7 @@ const zhDatabases: Record<string, TranslationEntry> = {
   },
   // --- Row actions / delete ---
   "databases.actionsMenu": {
-    message: "打开操作菜单",
+    message: "{name} 的操作",
     description: "Accessible label for the per-row actions trigger",
   },
   "databases.actionDelete": {

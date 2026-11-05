@@ -343,7 +343,7 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Services table status badge for an unrecognized phase",
   },
   "services.actionsMenu": {
-    message: "打开操作菜单",
+    message: "{name} 的操作",
     description: "Accessible label for the per-row actions trigger",
   },
   "services.actionSuspend": {

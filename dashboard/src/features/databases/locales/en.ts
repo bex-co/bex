@@ -101,7 +101,7 @@ const enDatabases: Record<string, TranslationEntry> = {
   },
   // --- Row actions / delete ---
   "databases.actionsMenu": {
-    message: "Open actions menu",
+    message: "Actions for {name}",
     description: "Accessible label for the per-row actions trigger",
   },
   "databases.actionDelete": {

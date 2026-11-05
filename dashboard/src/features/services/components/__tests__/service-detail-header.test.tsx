@@ -734,7 +734,7 @@ describe("ServiceDetailHeader", () => {
       screen.getByRole("button", { name: "Manual Deploy" }),
     ).toBeInTheDocument();
     expect(
-      screen.queryByRole("button", { name: "Open actions menu" }),
+      screen.queryByRole("button", { name: /^Actions for / }),
     ).not.toBeInTheDocument();
   });
 

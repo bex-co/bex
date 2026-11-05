@@ -85,7 +85,7 @@ export function KeyValueRowActionsWithCapabilities({
             variant="ghost"
             size="icon-sm"
             disabled={busy}
-            aria-label={t("keyvalue.actionsMenu")}
+            aria-label={t("keyvalue.actionsMenu", { name: keyValue.name })}
           >
             {busy ? <Loader2 className="animate-spin" /> : <MoreHorizontal />}
           </Button>

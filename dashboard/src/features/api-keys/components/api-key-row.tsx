@@ -30,7 +30,7 @@ export function ApiKeyRow({ entry, onRevoke, revoking }: ApiKeyRowProps) {
           </code>
           <CopyButton
             value={entry.id}
-            label={t("apiKeys.copyClientId")}
+            label={t("apiKeys.copyClientIdNamed", { name: entry.name })}
             successText={t("apiKeys.copied")}
             errorText={t("apiKeys.copyError")}
           />

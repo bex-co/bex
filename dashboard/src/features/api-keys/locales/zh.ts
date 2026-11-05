@@ -112,6 +112,10 @@ const zhApiKeys: Record<string, TranslationEntry> = {
     message: "复制客户端 ID",
     description: "Copy button aria-label for the client_id",
   },
+  "apiKeys.copyClientIdNamed": {
+    message: "复制 {name} 的客户端 ID",
+    description: "Copy button aria-label for one API client row's client_id",
+  },
   "apiKeys.copySecret": {
     message: "复制客户端密钥",
     description: "Copy button aria-label for the client_secret",
