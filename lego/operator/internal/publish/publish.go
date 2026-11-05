@@ -217,6 +217,11 @@ const (
 type Observation struct {
 	Phase   Phase
 	Message string
+	// UserError marks a failed publish whose cause is the tenant's own source
+	// (a publish directory that does not exist), as opposed to a platform fault
+	// (upload, store). The reconciler closes the deploy build_failed for it, as
+	// Render fails the build for a missing publish directory (w4/493).
+	UserError bool
 }
 
 // Ensure dispatches the publish Job if absent and returns its CURRENT state
@@ -240,7 +245,8 @@ func Ensure(ctx context.Context, o Options) (Observation, error) {
 	case execution.JobHasCondition(cur, batchv1.JobComplete):
 		return Observation{Phase: PhaseSucceeded}, nil
 	case execution.JobHasCondition(cur, batchv1.JobFailed):
-		return Observation{Phase: PhaseFailed, Message: failureMessage(ctx, o.Client, cur)}, nil
+		msg, userErr := failureMessage(ctx, o.Client, cur)
+		return Observation{Phase: PhaseFailed, Message: msg, UserError: userErr}, nil
 	}
 	return Observation{Phase: PhasePublishing}, nil
 }
@@ -266,25 +272,32 @@ const maxFailureDetail = 512
 //
 // The Job-level reason remains the fallback: a Job reaped by
 // activeDeadlineSeconds has no failed container to quote.
-func failureMessage(ctx context.Context, cl client.Client, job *batchv1.Job) string {
-	if detail := failedContainerDetail(ctx, cl, job); detail != "" {
-		return detail
+func failureMessage(ctx context.Context, cl client.Client, job *batchv1.Job) (string, bool) {
+	if detail, userErr := failedContainerDetail(ctx, cl, job); detail != "" {
+		return detail, userErr
 	}
-	return execution.JobFailureMessage(job, "unknown publish failure")
+	return execution.JobFailureMessage(job, "unknown publish failure"), false
 }
+
+// userSourceExit is the exit code a publish step uses when the tenant's own
+// source is the cause (a missing publish directory, w4/493). No tool the steps
+// run exits with it (EX_NOINPUT), so it cannot be mistaken for a platform fault.
+const userSourceExit = 66
 
 // failedContainerDetail returns "<container>: <what it printed> (exit N)" for
 // the first container of the Job's pods that terminated non-zero, or "" when
-// nothing usable is recorded. Best effort by construction: a listing error or a
+// nothing usable is recorded. A failure the tenant's source caused (exit
+// userSourceExit) returns just what the step said, with no container name or
+// exit code, and reports userErr. Best effort by construction: a listing error or a
 // pod already swept leaves the caller on the Job-level reason rather than
 // failing the observation.
-func failedContainerDetail(ctx context.Context, cl client.Client, job *batchv1.Job) string {
+func failedContainerDetail(ctx context.Context, cl client.Client, job *batchv1.Job) (detail string, userErr bool) {
 	var pods corev1.PodList
 	if err := cl.List(ctx, &pods,
 		client.InNamespace(job.Namespace),
 		client.MatchingLabels{jobNameLabel: job.Name},
 	); err != nil {
-		return ""
+		return "", false
 	}
 	for i := range pods.Items {
 		statuses := append(
@@ -303,10 +316,13 @@ func failedContainerDetail(ctx context.Context, cl client.Client, job *batchv1.J
 			if len(said) > maxFailureDetail {
 				said = said[:maxFailureDetail] + "…"
 			}
-			return fmt.Sprintf("%s: %s (exit %d)", cs.Name, said, term.ExitCode)
+			if term.ExitCode == userSourceExit {
+				return said, true
+			}
+			return fmt.Sprintf("%s: %s (exit %d)", cs.Name, said, term.ExitCode), false
 		}
 	}
-	return ""
+	return "", false
 }
 
 // stepFailureFallback says which STEP of the publish broke when the container
@@ -517,10 +533,12 @@ aws s3 sync "$SOURCE_URI" ` + outMount + ` --endpoint-url "$ENDPOINT" --no-progr
 // dir itself.
 func extractContainer(o Options) corev1.Container {
 	return corev1.Container{
-		Name:    "extract",
-		Image:   o.Image,
-		Command: []string{"sh", "-c", `set -e; cp -a "$PUBLISH_PATH"/. ` + outMount + `/`},
-		Env:     []corev1.EnvVar{{Name: "PUBLISH_PATH", Value: o.PublishPath}},
+		Name:  "extract",
+		Image: o.Image,
+		Command: []string{"sh", "-c", `set -e
+if [ ! -d "$PUBLISH_PATH" ]; then printf 'the publish directory "%s" does not exist in the built image\n' "$PUBLISH_PATH" > /dev/termination-log; exit ` + fmt.Sprint(userSourceExit) + `; fi
+cp -a "$PUBLISH_PATH"/. ` + outMount + `/`},
+		Env: []corev1.EnvVar{{Name: "PUBLISH_PATH", Value: o.PublishPath}},
 		VolumeMounts: []corev1.VolumeMount{
 			{Name: outVolume, MountPath: outMount},
 		},
@@ -586,7 +604,7 @@ git remote add origin "$REPO"
 set -- ` + execution.GitHTTPSTransport + ` -c ` + execution.GitHubCredentialHelper + `
 git "$@" fetch -q --depth 1 origin -- "$REF" || fail $? "could not fetch \"$REF\" from this service's repository — check that the branch or commit exists and that bex still has access to the repo"
 git checkout -q FETCH_HEAD || fail $? "fetched \"$REF\" but could not check it out"
-` + directSubmodules + `cd "/work/$SRC_DIR" || fail $? "the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\""
+` + directSubmodules + `cd "/work/$SRC_DIR" || fail ` + fmt.Sprint(userSourceExit) + ` "the publish directory \"$SRC_DIR\" does not exist in the repository at \"$REF\""
 cp -a . ` + outMount + `/ || fail $? "the publish directory \"$SRC_DIR\" exists but its contents could not be staged for upload"`
 	env := []corev1.EnvVar{
 		{Name: "REPO", Value: o.Repo},

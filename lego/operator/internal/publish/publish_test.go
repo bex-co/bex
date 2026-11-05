@@ -648,7 +648,7 @@ func TestCloneStepsExplainTheirOwnFailures(t *testing.T) {
 		`fail() { printf '%s\n' "$2" > /dev/termination-log; exit "$1"; }`,
 		`fetch -q --depth 1 origin -- "$REF" || fail $?`,
 		`checkout -q FETCH_HEAD || fail $?`,
-		`cd "/work/$SRC_DIR" || fail $?`,
+		`cd "/work/$SRC_DIR" || fail 66`,
 		`cp -a . /out/ || fail $?`,
 	} {
 		if !strings.Contains(script, frag) {
@@ -749,5 +749,86 @@ func TestFailedPublishNeverQuotesKubernetesBareError(t *testing.T) {
 	}
 	if strings.Contains(obs.Message, "BackoffLimitExceeded") {
 		t.Errorf("message = %q, want the container's step INSTEAD of the Job's backoff reason", obs.Message)
+	}
+}
+
+// failedPublishObservation runs Ensure over a Job whose one container ended with
+// the given exit code and termination message.
+func failedPublishObservation(t *testing.T, container string, exit int32, message string) Observation {
+	t.Helper()
+	ctx := context.Background()
+	o := testOptions()
+	o.Image = ""
+	o.Repo = "https://github.com/bex-co/site"
+	cl := fake.NewClientBuilder().Build()
+	o.Client = cl
+	if _, err := Ensure(ctx, o); err != nil {
+		t.Fatalf("Ensure: %v", err)
+	}
+	job := &batchv1.Job{}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(PublishJob(o)), job); err != nil {
+		t.Fatalf("get dispatched Job: %v", err)
+	}
+	job.Status.Conditions = []batchv1.JobCondition{{
+		Type: batchv1.JobFailed, Status: corev1.ConditionTrue,
+		Reason: "BackoffLimitExceeded", Message: "Job has reached the specified backoff limit",
+	}}
+	if err := cl.Status().Update(ctx, job); err != nil {
+		t.Fatalf("fail Job: %v", err)
+	}
+	pod := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{
+			Name: job.Name + "-abcde", Namespace: job.Namespace,
+			Labels: map[string]string{jobNameLabel: job.Name},
+		},
+		Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: "upload", Image: "x"}}},
+	}
+	if err := cl.Create(ctx, pod); err != nil {
+		t.Fatalf("create pod: %v", err)
+	}
+	pod.Status.InitContainerStatuses = []corev1.ContainerStatus{{
+		Name:  container,
+		State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: exit, Message: message}},
+	}}
+	if err := cl.Status().Update(ctx, pod); err != nil {
+		t.Fatalf("set pod status: %v", err)
+	}
+	obs, err := Ensure(ctx, o)
+	if err != nil {
+		t.Fatalf("Ensure on failed Job: %v", err)
+	}
+	return obs
+}
+
+// w4/493: a missing publish directory is the tenant's own source error. It is
+// reported without the internal container name or exit code and flagged so the
+// deploy closes build_failed; a platform fault keeps its diagnostic prefix and
+// stays an update failure.
+func TestMissingPublishDirectoryIsAUserSourceError(t *testing.T) {
+	const said = `the publish directory "dist" does not exist in the repository at "ad13122c"`
+	for _, container := range []string{"clone", "extract"} {
+		obs := failedPublishObservation(t, container, userSourceExit, said)
+		if !obs.UserError || obs.Message != said {
+			t.Errorf("%s: observation = %+v, want the bare message flagged as a user error", container, obs)
+		}
+	}
+	upload := failedPublishObservation(t, "upload", 1, "")
+	if upload.UserError || !strings.HasPrefix(upload.Message, "upload: ") || !strings.Contains(upload.Message, "(exit 1)") {
+		t.Errorf("upload fault = %+v, want an unflagged, prefixed platform message", upload)
+	}
+	fetch := failedPublishObservation(t, "clone", 128, `could not fetch "main" from this service's repository`)
+	if fetch.UserError {
+		t.Errorf("fetch failure = %+v, want it left as an update failure", fetch)
+	}
+}
+
+func TestExtractStepFailsAUserErrorForAMissingPublishDirectory(t *testing.T) {
+	o := testOptions()
+	o.PublishPath = "/app/dist"
+	script := extractContainer(o).Command[2]
+	for _, frag := range []string{`[ ! -d "$PUBLISH_PATH" ]`, "/dev/termination-log", "exit 66", `cp -a "$PUBLISH_PATH"/.`} {
+		if !strings.Contains(script, frag) {
+			t.Errorf("extract script missing %q:\n%s", frag, script)
+		}
 	}
 }

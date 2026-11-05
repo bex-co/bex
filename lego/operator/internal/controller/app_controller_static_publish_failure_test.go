@@ -66,7 +66,7 @@ var _ = Describe("a failed static publish over a served release (w4/m155)", func
 	}
 	// settleJob finishes the current release's publish Job by hand (envtest has
 	// no kubelet), with the clone container's own words on failure.
-	settleJob := func(failMessage string) {
+	settleJob := func(failMessage string, exitCode ...int32) {
 		jobNN := types.NamespacedName{Name: "pub-" + name + "-" + releaseRevision(get()), Namespace: ns}
 		var job batchv1.Job
 		Eventually(func() error { return k8sClient.Get(ctx, jobNN, &job) }, "30s", "250ms").Should(Succeed())
@@ -86,7 +86,7 @@ var _ = Describe("a failed static publish over a served release (w4/m155)", func
 			DeferCleanup(func() { _ = k8sClient.Delete(ctx, pod) })
 			pod.Status.InitContainerStatuses = []corev1.ContainerStatus{{
 				Name:  "clone",
-				State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: 2, Message: failMessage + "\n"}},
+				State: corev1.ContainerState{Terminated: &corev1.ContainerStateTerminated{ExitCode: append(exitCode, 2)[0], Message: failMessage + "\n"}},
 			}}
 			Expect(k8sClient.Status().Update(ctx, pod)).To(Succeed())
 			job.Status.Conditions = append(job.Status.Conditions,
@@ -106,6 +106,19 @@ var _ = Describe("a failed static publish over a served release (w4/m155)", func
 		Expect(app.Status.ActiveRevision).To(Equal(revision), "the failed revision must never become active")
 		Expect(app.Status.StaticPrefix).To(Equal(prefix), "the served immutable prefix must not move")
 	}
+	// expectBuildVerdict: a missing publish directory is the tenant's own source
+	// error (w4/493), so it is recorded as a user-error BUILD failure.
+	expectBuildVerdict := func(generation int64, dir string) {
+		app := get()
+		cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionBuild)
+		Expect(cond).NotTo(BeNil(), "the failed publish's diagnosis must outlive the Ready condition")
+		Expect(cond.Status).To(Equal(metav1.ConditionFalse))
+		Expect(cond.Reason).To(Equal(appv1alpha1.ReasonBuildFailedUserError))
+		Expect(cond.Message).To(ContainSubstring(dir))
+		Expect(cond.Message).NotTo(ContainSubstring("clone:"))
+		Expect(cond.Message).NotTo(ContainSubstring("(exit"))
+		Expect(cond.ObservedGeneration).To(Equal(generation), "attributed to the release that failed to publish")
+	}
 	expectVerdict := func(generation int64, dir string) {
 		app := get()
 		cond := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionRollout)
@@ -116,7 +129,7 @@ var _ = Describe("a failed static publish over a served release (w4/m155)", func
 		Expect(cond.ObservedGeneration).To(Equal(generation), "attributed to the release that failed to publish")
 	}
 
-	It("keeps the prior release Running, records the failure, and survives suspend, resume and recovery", func() {
+	It("keeps the prior release Running, records a user-error build failure for a missing directory, and survives suspend, resume and recovery", func() {
 		app := &appv1alpha1.App{
 			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: ns},
 			Spec: appv1alpha1.AppSpec{
@@ -147,27 +160,27 @@ var _ = Describe("a failed static publish over a served release (w4/m155)", func
 		reconcileN()
 		failedGen := releaseGeneration(get())
 		Expect(releaseRevision(get())).NotTo(Equal(servedRev))
-		settleJob(`the publish directory "examples/static-site/qa-missing-output" does not exist in the repository at "main"`)
+		settleJob(`the publish directory "examples/static-site/qa-missing-output" does not exist in the repository at "main"`, 66)
 		reconcileN()
 		expectServingPrior(appv1alpha1.PhaseRunning, servedRev, servedPrefix)
 		ready := meta.FindStatusCondition(get().Status.Conditions, appv1alpha1.ConditionReady)
 		Expect(ready.Status).To(Equal(metav1.ConditionTrue))
 		Expect(ready.Reason).To(Equal(reasonPriorReleaseServing))
-		Expect(ready.Message).To(ContainSubstring("the latest publish failed"))
-		expectVerdict(failedGen, "qa-missing-output")
+		Expect(ready.Message).To(ContainSubstring("the latest build failed"))
+		expectBuildVerdict(failedGen, "qa-missing-output")
 
 		By("suspending while the latest publish is failed")
 		update(func(a *appv1alpha1.App) { a.Spec.Suspended = true })
 		reconcileN()
 		expectServingPrior(appv1alpha1.PhaseHibernated, servedRev, servedPrefix)
 		Expect(meta.FindStatusCondition(get().Status.Conditions, appv1alpha1.ConditionReady).Reason).To(Equal(reasonSuspended))
-		expectVerdict(failedGen, "qa-missing-output")
+		expectBuildVerdict(failedGen, "qa-missing-output")
 
 		By("resuming without activating the failed revision")
 		update(func(a *appv1alpha1.App) { a.Spec.Suspended = false })
 		reconcileN()
 		expectServingPrior(appv1alpha1.PhaseRunning, servedRev, servedPrefix)
-		expectVerdict(failedGen, "qa-missing-output")
+		expectBuildVerdict(failedGen, "qa-missing-output")
 
 		By("recovering with a valid publish directory")
 		update(func(a *appv1alpha1.App) { a.Spec.PublishPath = "." })
@@ -181,8 +194,18 @@ var _ = Describe("a failed static publish over a served release (w4/m155)", func
 		Expect(recovered.Status.StaticPrefix).NotTo(Equal(servedPrefix))
 		// The earlier verdict stays bound to its own generation; it cannot read as
 		// the recovered release's failure.
-		expectVerdict(failedGen, "qa-missing-output")
+		expectBuildVerdict(failedGen, "qa-missing-output")
 		Expect(releaseGeneration(recovered)).NotTo(Equal(failedGen))
+
+		By("failing another publish on the platform side, which stays a rollout failure")
+		recoveredRev, recoveredPrefix := recovered.Status.ActiveRevision, recovered.Status.StaticPrefix
+		update(func(a *appv1alpha1.App) { a.Spec.PublishPath = "dist" })
+		reconcileN()
+		platformGen := releaseGeneration(get())
+		settleJob("the site was built but could not be uploaded to the static-site store", 1)
+		reconcileN()
+		expectServingPrior(appv1alpha1.PhaseRunning, recoveredRev, recoveredPrefix)
+		expectVerdict(platformGen, "could not be uploaded")
 	})
 })
 

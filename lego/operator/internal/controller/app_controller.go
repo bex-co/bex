@@ -4409,6 +4409,14 @@ func (r *AppReconciler) publishStaticRevision(ctx context.Context, app *appv1alp
 		r.setPhase(ctx, app, appv1alpha1.PhaseDeploying, "Publishing", "Publishing static output to object store")
 		return ctrl.Result{RequeueAfter: publish.ObserveInterval}, nil
 	case publish.PhaseFailed:
+		if obs.UserError {
+			// The tenant's own source (a publish directory that does not exist)
+			// fails the build, as it does on Render (w4/493). r.fail records the
+			// durable Build condition bex-api closes the row build_failed from,
+			// and over a release that already served it keeps that release
+			// serving (settleFailureOverPriorRelease), so m155's guarantee holds.
+			return r.fail(ctx, app, appv1alpha1.ReasonBuildFailedUserError, errors.New(obs.Message))
+		}
 		return r.failPublish(ctx, app, errors.New(obs.Message))
 	}
 	return ctrl.Result{}, nil
@@ -6639,6 +6647,12 @@ func (r *AppReconciler) settleFailureOverPriorRelease(ctx context.Context, app *
 			dep.Spec.Replicas != nil && *dep.Spec.Replicas == 0 {
 			parked = true
 		}
+	}
+	// A static site has no Deployment to read, but a user suspend parks it all
+	// the same (the static-server's resolver keeps a suspended site out of
+	// serving), as failPublish already records for a publish failure (w4/m155).
+	if app.Spec.Type == appv1alpha1.TypeStaticSite && app.Spec.Suspended {
+		parked = true
 	}
 	r.settlePriorRelease(ctx, app, failed, parked)
 }
