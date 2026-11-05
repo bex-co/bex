@@ -75,3 +75,13 @@ t001–t006, t008–t010, t013 done; t012 implemented (its production check ride
 - Sandboxes left early access upstream (v2.32.0, no alias): `bex ea sandboxes` is now `bex sandboxes`. The launcher tests and the branding overlay follow it.
 - **For t007:** the v2.35 CLI always sends `existingResources`, defaulting to `create_new` (served since w2/m261). Pass `--existing-resources adopt` to walk Render's adopt path.
 - Server gaps the new CLI exposes, filed as **w2/m263**: idle timeout, `--timeout=0`, plan names, named refusals for groups and images, and the `ea blueprints` next-step hints.
+
+## t007 production walk — 2026-11-05 (stopped at approve)
+
+- **Login:** `bex login` (pinned v2.35.0) device flow, completed with `qa-login.sh --login-challenge` in an isolated `BEX_CLI_CONFIG_DIR`. Workspace `tea-daif693dqjvc73e7as3g`.
+- **create, passed:** `bex ea blueprints create --repo https://github.com/bex-co/bex --branch main --path examples/static-site/render.yaml --name qa-20261105-bp --existing-resources adopt -o json` exited 0 with Render's shape: `{blueprint{status:"created"}, planningOutcome:"planned", notices:[], sync{rawPlan.actions:[create service static-site], requiredManualEnvVars:[]}}`. No service existed before approve.
+- **approve, refused by the CLI before any request (exit 1):** `invalid Blueprint ID "blp-db136288mmqc73d4hpug": Blueprint IDs start with exs- followed by 20 lowercase letters or digits`. Upstream v2.35.0 validates Blueprint ids client-side, so `approve`, `plan` and `update` cannot address any bex Blueprint. Filed as **w2/m269** (expose `exs-` public ids); t007 resumes after it.
+- **Also seen:**
+  - `meta.next` says `render ea blueprints approve …` (m263 t005).
+  - `workspace current` with none set says ``Use `render workspace set` ``: a backtick form the overlay misses (added to m263 t005).
+- **Cleanup:** the Blueprint was deleted (REST DELETE 204, GET 404).
