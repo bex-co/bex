@@ -318,3 +318,26 @@ func (c failingGetClient) Get(context.Context, client.ObjectKey, client.Object, 
 func (c failingGetClient) List(context.Context, client.ObjectList, ...client.ListOption) error {
 	return c.err
 }
+
+// getFailsClient fails every Get with a non-NotFound error, like client-go does
+// for a name that is not a valid path segment.
+type getFailsClient struct{ client.Client }
+
+func (getFailsClient) Get(context.Context, client.ObjectKey, client.Object, ...client.GetOption) error {
+	return errors.New("invalid path segment")
+}
+
+// TestDatastoreSeamsTreatUnaddressableNamesAsAbsent is w4/482: an id with a
+// `/` (or `..`) can name no object, so it is a not-found, never the client
+// library's refusal rendered as a 500.
+func TestDatastoreSeamsTreatUnaddressableNamesAsAbsent(t *testing.T) {
+	for _, seam := range datastoreSeams() {
+		for _, bad := range []string{"a/b", "../../etc", "a%b"} {
+			b := resolvingBase()
+			b.Client = getFailsClient{b.Client}
+			if _, err := seam.call(b, actingCtx(), RelCanView, bad); !errors.Is(err, ErrNotFound) {
+				t.Errorf("%s(%q) = %v, want not found", seam.name, bad, err)
+			}
+		}
+	}
+}

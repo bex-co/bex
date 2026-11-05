@@ -1706,3 +1706,36 @@ func TestBuildJobCarriesItsReleaseRevision(t *testing.T) {
 		}
 	}
 }
+
+// TestBuildkitFailureSummaryNamesTheCauseOnce is w4/477: captured shape of a
+// failing native build command — earlier steps' bookkeeping, then the failure
+// told three times — reduces to the command's output and the verdict.
+func TestBuildkitFailureSummaryNamesTheCauseOnce(t *testing.T) {
+	in := `#20 merging 0.2s done
+#20 DONE 0.4s
+
+#24 [stage-0 10/12] COPY <<BEX_LOAD_ENV /opt/bex/load-env
+#24 DONE 0.0s
+
+#25 [stage-0 11/12] RUN build command 'echo compiling && exit 3'
+#25 0.087 compiling
+#25 ERROR: build command 'echo compiling && exit 3' exited with code 3
+------
+ > [stage-0 11/12] RUN build command 'echo compiling && exit 3':
+0.087 compiling
+------
+error: build command 'echo compiling && exit 3' exited with code 3`
+	want := "0.087 compiling\nerror: build command 'echo compiling && exit 3' exited with code 3"
+	if got := buildkitFailureSummary(in); got != want {
+		t.Errorf("got %q, want %q", got, want)
+	}
+	for _, keep := range []string{
+		"fatal: unable to access repo\nerror: git fetch failed",
+		"#20 DONE 0.4s\n#25 ERROR: killed",
+		"plain output",
+	} {
+		if got := buildkitFailureSummary(keep); got != keep {
+			t.Errorf("buildkitFailureSummary(%q) = %q, want unchanged", keep, got)
+		}
+	}
+}

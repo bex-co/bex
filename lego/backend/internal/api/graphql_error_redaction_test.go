@@ -25,6 +25,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/graphql-go/graphql"
 	"github.com/graphql-go/graphql/gqlerrors"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -134,5 +135,43 @@ func TestSanitizeGraphQLErrorsNamesATimedOutWriteAsOutcomeUnknown(t *testing.T) 
 	}, true)
 	if coded[0].Extensions["code"] != "ENV_GROUP_NAME_EXISTS" {
 		t.Fatalf("coded refusal in a mutation = %v, want its own code", coded[0].Extensions)
+	}
+}
+
+// TestOperationSelectionErrorsAreRequestErrors is w4/484, against the real
+// executor: an operationName that selects no single operation keeps graphql-go's
+// message instead of being redacted to INTERNAL, while a resolver failure is
+// still redacted.
+func TestOperationSelectionErrorsAreRequestErrors(t *testing.T) {
+	schema, err := graphql.NewSchema(graphql.SchemaConfig{Query: graphql.NewObject(graphql.ObjectConfig{
+		Name: "Query",
+		Fields: graphql.Fields{
+			"ok":   &graphql.Field{Type: graphql.String, Resolve: func(graphql.ResolveParams) (any, error) { return "x", nil }},
+			"boom": &graphql.Field{Type: graphql.String, Resolve: func(graphql.ResolveParams) (any, error) { return nil, errors.New("pq: secret") }},
+		},
+	})})
+	if err != nil {
+		t.Fatal(err)
+	}
+	run := func(query, op string) []gqlerrors.FormattedError {
+		r := graphql.Do(graphql.Params{Schema: schema, RequestString: query, OperationName: op})
+		return sanitizeGraphQLErrors(r.Errors, false)
+	}
+	two := `query A { ok } query B { ok }`
+	for _, tc := range []struct{ query, op, want string }{
+		{two, "", "Must provide operation name"},
+		{two, "Nope", "Unknown operation named"},
+		{`query A { ok }`, "Nope", "Unknown operation named"},
+	} {
+		errs := run(tc.query, tc.op)
+		if len(errs) != 1 || !strings.Contains(errs[0].Message, tc.want) || errs[0].Extensions["code"] == core.CodeInternal {
+			t.Errorf("op %q = %+v, want message containing %q", tc.op, errs, tc.want)
+		}
+	}
+	if errs := run(two, "A"); len(errs) != 0 {
+		t.Errorf("named operation in a multi-operation document: %+v", errs)
+	}
+	if errs := run(`{ boom }`, ""); len(errs) != 1 || errs[0].Message != "internal error" {
+		t.Errorf("resolver failure = %+v, want redacted", errs)
 	}
 }

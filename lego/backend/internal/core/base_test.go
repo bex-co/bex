@@ -19,6 +19,7 @@ package core
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 
 	corev1 "k8s.io/api/core/v1"
@@ -353,5 +354,54 @@ func TestAuthzFailuresAreRedactedAndEmptyWorkspaceNeverReachesChecker(t *testing
 				t.Fatal("empty workspace reached OpenFGA")
 			}
 		})
+	}
+}
+
+type sqlStateError struct{}
+
+func (sqlStateError) Error() string    { return "invalid byte sequence for encoding UTF8: 0x00" }
+func (sqlStateError) SQLState() string { return "22021" }
+
+type failingMembers struct {
+	fakeWorkspace
+	err error
+}
+
+func (f failingMembers) IsMember(context.Context, Identity, string) (bool, error) {
+	return false, f.err
+}
+
+// TestMalformedWorkspaceIDsAreNot503 is w4/481: a workspace id the store or
+// OpenFGA cannot hold is a client error or a denial, while a real outage
+// stays "authorization unavailable".
+func TestMalformedWorkspaceIDsAreNot503(t *testing.T) {
+	ctx := WithIdentity(context.Background(), Identity{Subject: "user", Method: "session"})
+	base := &Base{Workspace: fakeWorkspace{"user": "tea-own"}}
+	for _, bad := range []string{"\x00", "a\x00b", "tea-own\x00", "\xc0\x80", "\xed\xa0\x80"} {
+		_, err := base.resolveWorkspace(WithWorkspace(ctx, bad))
+		if !errors.Is(err, ErrBadRequest) {
+			t.Errorf("ownerId %q = %v, want bad request", bad, err)
+		}
+	}
+	if _, err := base.resolveWorkspace(WithWorkspace(ctx, "tea-nope")); !errors.Is(err, ErrForbidden) {
+		t.Errorf("foreign well-formed id = %v, want forbidden", err)
+	}
+	dataErr := &Base{Workspace: failingMembers{fakeWorkspace{"user": "tea-own"}, sqlStateError{}}}
+	if _, err := dataErr.resolveWorkspace(WithWorkspace(ctx, "tea-x")); !errors.Is(err, ErrForbidden) {
+		t.Errorf("SQLSTATE 22 = %v, want forbidden", err)
+	}
+	outage := &Base{Workspace: failingMembers{fakeWorkspace{"user": "tea-own"}, errors.New("connection refused")}}
+	if _, err := outage.resolveWorkspace(WithWorkspace(ctx, "tea-x")); !errors.Is(err, ErrAuthzUnavailable) {
+		t.Errorf("outage = %v, want authz unavailable", err)
+	}
+	checker := &fakeAllowChecker{}
+	fga := &Base{Authz: checker}
+	for _, bad := range []string{"a b", "a\nb", "a#b", "a:b", strings.Repeat("x", 300)} {
+		if err := fga.checkAuthz(ctx, RelCanView, WorkspaceObject(bad)); !errors.Is(err, ErrForbidden) {
+			t.Errorf("object id %q = %v, want forbidden", bad, err)
+		}
+	}
+	if err := fga.checkAuthz(ctx, RelCanView, WorkspaceObject("tea-d98210cbbpdc73dcrkvg")); err != nil {
+		t.Errorf("real id: %v", err)
 	}
 }

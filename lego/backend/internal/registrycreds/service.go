@@ -38,6 +38,7 @@ import (
 	"fmt"
 	"strings"
 	"time"
+	"unicode"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -244,6 +245,8 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (CredentialView
 	}
 	if name == "" {
 		name = host
+	} else if name, err = core.CheckLabel(name); err != nil { // a supplied name only; the host fallback is not capped (w4/483)
+		return CredentialView{}, err
 	}
 	if err := validateCredentialFields(name, host, username, req.Secret); err != nil {
 		return CredentialView{}, err
@@ -320,6 +323,10 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 		if name == "" {
 			return CredentialView{}, fmt.Errorf("%w: name cannot be empty", core.ErrBadRequest)
 		}
+		var err error
+		if name, err = core.CheckLabel(name); err != nil {
+			return CredentialView{}, err
+		}
 		if len(name) > maxCredentialFieldBytes {
 			return CredentialView{}, fmt.Errorf("%w: name must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
 		}
@@ -332,6 +339,9 @@ func (s *Service) Update(ctx context.Context, id string, req UpdateRequest) (Cre
 		}
 		if len(username) > maxCredentialFieldBytes {
 			return CredentialView{}, fmt.Errorf("%w: username must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
+		}
+		if hasControlCharacter(username) {
+			return CredentialView{}, fmt.Errorf("%w: username must not contain control characters", core.ErrBadRequest)
 		}
 	}
 	// Validate the whole request before any persistence: a rejected update
@@ -400,6 +410,9 @@ func (s *Service) Delete(ctx context.Context, id string) error {
 }
 
 func validateCredentialFields(name, host, username, secret string) error {
+	if hasControlCharacter(username) {
+		return fmt.Errorf("%w: username must not contain control characters", core.ErrBadRequest)
+	}
 	switch {
 	case len(name) > maxCredentialFieldBytes:
 		return fmt.Errorf("%w: name must be at most %d bytes", core.ErrBadRequest, maxCredentialFieldBytes)
@@ -426,4 +439,10 @@ func mapStoreErr(err error) error {
 		return core.ErrNotFound
 	}
 	return err
+}
+
+// hasControlCharacter reports a control character (NUL included: PostgreSQL
+// text cannot store it, which used to surface as a 500, w4/483).
+func hasControlCharacter(s string) bool {
+	return strings.ContainsFunc(s, unicode.IsControl)
 }

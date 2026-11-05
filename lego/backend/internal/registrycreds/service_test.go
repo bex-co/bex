@@ -580,3 +580,32 @@ func (f fakeWorkspaceResolver) Tenant(context.Context, core.Identity) (string, b
 func (f fakeWorkspaceResolver) IsMember(context.Context, core.Identity, string) (bool, error) {
 	return true, nil
 }
+
+// TestNameAndUsernameRefuseControlCharacters is w4/483: a supplied name follows
+// core.CheckLabel on create and update, a NUL or newline username is refused,
+// and the host fallback name is not held to the label cap.
+func TestNameAndUsernameRefuseControlCharacters(t *testing.T) {
+	s, _, _ := newTestService()
+	ctx := context.Background()
+	for _, name := range []string{"a\nb", "a\x00b", "a\tb", strings.Repeat("x", 101)} {
+		if _, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Name: name, Username: "u", Secret: "t"}); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("Create name %q = %v, want bad request", name, err)
+		}
+	}
+	for _, user := range []string{"u\x00x", "u\nx"} {
+		if _, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Username: user, Secret: "t"}); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("Create username %q = %v, want bad request", user, err)
+		}
+	}
+	created, err := s.Create(ctx, CreateRequest{Host: "ghcr.io", Name: "  café 中文  ", Username: "u", Secret: "t"})
+	if err != nil || created.Name != "café 中文" {
+		t.Fatalf("ordinary name = %q, %v", created.Name, err)
+	}
+	bad, user := "a\x00b", "u\x00x"
+	if _, err := s.Update(ctx, created.ID, UpdateRequest{Name: &bad}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("Update name NUL = %v, want bad request", err)
+	}
+	if _, err := s.Update(ctx, created.ID, UpdateRequest{Username: &user}); !errors.Is(err, core.ErrBadRequest) {
+		t.Errorf("Update username NUL = %v, want bad request", err)
+	}
+}

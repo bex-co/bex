@@ -148,7 +148,7 @@ func (s *Service) GetSecretFile(ctx context.Context, service, name string) (Secr
 // the file's name (content echoed). Manage-scope verb; the pods roll to pick up
 // the change.
 func (s *Service) SetSecretFile(ctx context.Context, service, name, content string) (SecretFileView, error) {
-	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return SecretFileView{}, err
 	}
@@ -187,6 +187,7 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 	if err := s.materializeFiles(ctx, a, files, committedAt(filesWrite.version)); err != nil {
 		return SecretFileView{}, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, files: filesWrite}, err)
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetSecretFile)
 	return SecretFileView{Name: name, Content: content}, nil
 }
 
@@ -196,7 +197,7 @@ func (s *Service) SetSecretFile(ctx context.Context, service, name, content stri
 // anything is written, so a bad entry cannot partially apply. Returns the new
 // set, name-sorted, contents echoed as the per-file PUT does. Manage-scope verb.
 func (s *Service) SetSecretFiles(ctx context.Context, service string, in []SecretFileView) ([]SecretFileView, error) {
-	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return nil, err
 	}
@@ -229,6 +230,7 @@ func (s *Service) SetSecretFiles(ctx context.Context, service string, in []Secre
 	if err := s.materializeFiles(ctx, a, stored, committedAt(filesWrite.version)); err != nil {
 		return nil, s.compensateEnvironment(ctx, envPatchTxn{service: service, originalApp: original, files: filesWrite}, err)
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbSetSecretFiles)
 	out := make([]SecretFileView, 0, len(next))
 	for _, name := range core.SortedKeys(next) {
 		out = append(out, SecretFileView{Name: name, Content: next[name]})
@@ -655,7 +657,7 @@ func NewCreateSecretsSeeder(service *Service) CreateSecretsSeeder {
 // DeleteSecretFile removes one file (Render's DELETE .../secret-files/{name}),
 // re-projecting the reduced set. Unknown file => core.NotFound("secret file"), after the service authorized (w4/154).
 func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) error {
-	a, ctx, service, err := s.scope(ctx, core.RelCanCreate, service)
+	a, ctx, service, err := s.scopeForWrite(ctx, core.RelCanCreate, service)
 	if err != nil {
 		return err
 	}
@@ -668,6 +670,7 @@ func (s *Service) DeleteSecretFile(ctx context.Context, service, name string) er
 	if !nameFound {
 		return core.NotFound("secret file")
 	}
+	s.RecordAppConfigChanged(ctx, a, core.AuditVerbDeleteSecretFile)
 	return nil
 }
 

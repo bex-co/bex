@@ -42,6 +42,9 @@ func (s *PGStore) CreateProject(ctx context.Context, tenantID, name string) (Pro
 
 func (s *PGStore) GetProject(ctx context.Context, id string) (Project, error) {
 	var p Project
+	if !textBindable(id) {
+		return Project{}, classify("project", pgx.ErrNoRows)
+	}
 	err := s.Pool.QueryRow(ctx,
 		`SELECT id, tenant_id, name, created_at, updated_at FROM projects WHERE id = $1`, id,
 	).Scan(&p.ID, &p.TenantID, &p.Name, &p.CreatedAt, &p.UpdatedAt)

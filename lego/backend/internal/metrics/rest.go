@@ -444,10 +444,14 @@ func parseMetricParams(r *http.Request) ([]string, MetricQuery, error) {
 		if err != nil {
 			return nil, MetricQuery{}, fmt.Errorf("quantile: %w", err)
 		}
+		if f < 0 || f > 1 {
+			return nil, MetricQuery{}, fmt.Errorf("%w: quantile must be between 0 and 1", core.ErrBadRequest)
+		}
 		q.Quantiles = append(q.Quantiles, f)
 	}
 	if len(q.Quantiles) == 1 {
 		q.Quantile = q.Quantiles[0]
+		q.QuantileSet = true
 	}
 	if method := v.Get("aggregateAllMethod"); method != "" {
 		replica, aggMax, parseErr := parseReplicaAggregate(method)

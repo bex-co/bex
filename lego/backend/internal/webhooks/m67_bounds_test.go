@@ -19,6 +19,7 @@ package webhooks
 import (
 	"context"
 	"errors"
+	"strings"
 	"testing"
 	"time"
 
@@ -180,5 +181,22 @@ func TestRetentionDefaults(t *testing.T) {
 	}
 	if st.sweeps[0].keepPerEndpoint != defaultRetentionKeepPerEndpoint {
 		t.Errorf("default keepPerEndpoint = %d, want %d", st.sweeps[0].keepPerEndpoint, defaultRetentionKeepPerEndpoint)
+	}
+}
+
+// TestNormalizeNameFollowsCheckLabel is w4/483: a webhook name refuses control
+// characters (NUL included) and over-long values; blank stays "required".
+func TestNormalizeNameFollowsCheckLabel(t *testing.T) {
+	for _, bad := range []string{"a\nb", "a\x00b", "a\tb", strings.Repeat("x", 101)} {
+		if _, err := normalizeName(bad); !errors.Is(err, core.ErrBadRequest) {
+			t.Errorf("normalizeName(%q) = %v, want bad request", bad, err)
+		}
+	}
+	var coded *core.CodedError
+	if _, err := normalizeName("   "); !errors.As(err, &coded) || coded.Code != WebhookNameInvalidCode {
+		t.Errorf("blank = %v, want %s", err, WebhookNameInvalidCode)
+	}
+	if got, err := normalizeName("  café 中文  "); err != nil || got != "café 中文" {
+		t.Errorf("ordinary = %q, %v", got, err)
 	}
 }

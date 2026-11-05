@@ -219,6 +219,10 @@ const (
 	AuditVerbDeleteEnvVar     = "secrets.DeleteEnvVar"
 	AuditVerbSeedEnvVars      = "secrets.SeedEnvVars"
 	AuditVerbPatchEnvironment = "secrets.PatchEnvironment"
+	// Secret-file writes (w4/479): the per-file, replace-all and delete entrypoints.
+	AuditVerbSetSecretFile    = "secrets.SetSecretFile"
+	AuditVerbSetSecretFiles   = "secrets.SetSecretFiles"
+	AuditVerbDeleteSecretFile = "secrets.DeleteSecretFile"
 	AuditVerbAddDomain        = "apps.AddDomain"
 	AuditVerbVerifyDomain     = "apps.VerifyDomain"
 	AuditVerbDeleteDomain     = "apps.DeleteDomain"
@@ -540,6 +544,7 @@ var appConfigVerbs = map[string]bool{
 	AuditVerbRegenerateDeployHook: true,
 	AuditVerbSetEnvVars:           true, AuditVerbSetEnvVar: true, AuditVerbDeleteEnvVar: true,
 	AuditVerbSeedEnvVars: true, AuditVerbPatchEnvironment: true,
+	AuditVerbSetSecretFile: true, AuditVerbSetSecretFiles: true, AuditVerbDeleteSecretFile: true,
 	AuditVerbLinkService: true, AuditVerbUnlinkService: true, AuditVerbLinkEnvGroup: true,
 	AuditVerbJobCreate: true, AuditVerbJobCancel: true,
 	AuditVerbAddDisk: true, AuditVerbUpdateDisk: true, AuditVerbDeleteDisk: true,

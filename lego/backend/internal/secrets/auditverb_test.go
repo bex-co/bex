@@ -99,6 +99,10 @@ func TestWriteVerbsRecordTheirOwnAuditVerbName(t *testing.T) {
 			_, err := s.SetSecretFile(ctx, "web", "cert.pem", "body")
 			return err
 		}},
+		{want: "secrets.SetSecretFiles", call: func(s *Service, ctx context.Context) error {
+			_, err := s.SetSecretFiles(ctx, "web", []SecretFileView{{Name: "cert.pem", Content: "body"}})
+			return err
+		}},
 		{want: "secrets.SeedSecretFiles", call: func(s *Service, ctx context.Context) error {
 			return s.SeedSecretFiles(ctx, "web", []core.SecretFile{{Name: "cert.pem", Content: "body"}})
 		}},

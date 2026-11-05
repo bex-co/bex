@@ -19,7 +19,9 @@ package core
 import (
 	"context"
 	"io"
+	"math"
 	"net/http"
+	"net/http/httptest"
 	"strings"
 	"testing"
 )
@@ -141,5 +143,15 @@ func TestDecodeJSONStrictChecksAllowListEntries(t *testing.T) {
 	req = req.WithContext(WithStrictJSONDecoding(req.Context()))
 	if err := DecodeJSON(req, &strict); err == nil {
 		t.Fatal("strict decode accepted a bare allowlist string")
+	}
+}
+
+// TestWriteJSONUnencodableBodyIs500 is w4/480: a body encoding/json refuses
+// (a non-finite float) was a 200 with zero bytes.
+func TestWriteJSONUnencodableBodyIs500(t *testing.T) {
+	rec := httptest.NewRecorder()
+	WriteJSON(rec, http.StatusOK, []float64{math.Inf(1)})
+	if rec.Code != http.StatusInternalServerError || !strings.Contains(rec.Body.String(), "internal error") {
+		t.Fatalf("got %d %q, want 500 with an error body", rec.Code, rec.Body)
 	}
 }

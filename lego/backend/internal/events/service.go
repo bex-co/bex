@@ -47,7 +47,7 @@ limitations under the License.
 // and these bex-named types, for writes Render's vocabulary has no name for:
 //
 //	env_vars_changed            secrets.Set/DeleteEnvVar(s)     (KEYS and VALUES both absent — see Redaction)
-//	service_environment_changed secrets.PatchEnvironment        (env vars + files; names and values absent)
+//	service_environment_changed secrets.PatchEnvironment / Set,DeleteSecretFile(s) (env vars + files; names and values absent)
 //	service_moved               projects.MoveService / environments.MoveService (w6/m134: one row per
 //	                            service whose project/environment placement changed in a successful
 //	                            bulk SetServices replacement; details carry the before/after public
@@ -448,6 +448,9 @@ var eventTypes = map[string]string{
 	"secrets.DeleteEnvVar":                  TypeEnvVarsChanged,
 	"secrets.SeedEnvVars":                   TypeEnvVarsChanged, // blueprint seed-once (w1/m35)
 	"secrets.PatchEnvironment":              TypeServiceEnvironmentChanged,
+	"secrets.SetSecretFile":                 TypeServiceEnvironmentChanged,
+	"secrets.SetSecretFiles":                TypeServiceEnvironmentChanged,
+	"secrets.DeleteSecretFile":              TypeServiceEnvironmentChanged,
 	core.AuditVerbProjectServiceMoved:       TypeServiceMoved,
 	core.AuditVerbEnvironmentServiceMoved:   TypeServiceMoved,
 	"envgroups.LinkService":                 TypeEnvGroupLinked,

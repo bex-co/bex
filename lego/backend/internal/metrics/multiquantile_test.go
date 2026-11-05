@@ -20,7 +20,9 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"net/http"
 	"strconv"
+	"strings"
 	"testing"
 
 	"github.com/graphql-go/graphql"
@@ -189,4 +191,29 @@ func labelValue(labels []renderMetricLabel, field string) string {
 		}
 	}
 	return ""
+}
+
+// TestRESTLatencyQuantileRange is w4/480: a quantile outside [0, 1] is a 400
+// naming it, and an explicit 0 reaches the source as 0, not the p95 default.
+func TestRESTLatencyQuantileRange(t *testing.T) {
+	var calls []float64
+	svc := newService(nil, echoQuantileSource(&calls), sampleApp("web"))
+	for _, bad := range []string{"2", "1.0000001", "-1"} {
+		rec := serveREST(svc, "/v1/metrics/http-latency?resource=web&quantile="+bad)
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "quantile") {
+			t.Errorf("quantile=%s = %d %s, want 400 naming quantile", bad, rec.Code, rec.Body)
+		}
+	}
+	calls = nil
+	if rec := serveREST(svc, "/v1/metrics/http-latency?resource=web&quantile=0"); rec.Code != http.StatusOK {
+		t.Fatalf("quantile=0 = %d %s", rec.Code, rec.Body)
+	}
+	if len(calls) != 1 || calls[0] != 0 {
+		t.Errorf("source quantiles = %v, want [0]", calls)
+	}
+	calls = nil
+	_ = serveREST(svc, "/v1/metrics/http-latency?resource=web")
+	if len(calls) != 1 || calls[0] != defaultQuantile {
+		t.Errorf("omitted quantile reached the source as %v, want the default", calls)
+	}
 }

@@ -92,6 +92,9 @@ func (s *PGStore) CreateEnvironment(ctx context.Context, projectID, tenantID, na
 }
 
 func (s *PGStore) GetEnvironment(ctx context.Context, id string) (Environment, error) {
+	if !textBindable(id) {
+		return Environment{}, fmt.Errorf("environment: %w", ErrNotFound)
+	}
 	return scanEnvironment(s.Pool.QueryRow(ctx,
 		`SELECT `+environmentColumns+` FROM environments WHERE id = $1`, ids.EnvironmentStorageID(id)))
 }

@@ -1783,6 +1783,11 @@ func sanitizeGraphQLErrors(errs []gqlerrors.FormattedError, mutation bool) []gql
 		if resolverErr == nil {
 			continue
 		}
+		// graphql-go's operation selection fails with plain errors (no path, no
+		// locations) that wrap no resolver; they are the caller's to fix (w4/484).
+		if isOperationSelectionError(errs[i]) {
+			continue
+		}
 		if core.IsPublicError(resolverErr) {
 			// graphql-go reads extensions off the returned error only, so a
 			// CodedError a resolver wrapped (fmt.Errorf("…: %w", coded)) would
@@ -1811,6 +1816,18 @@ func sanitizeGraphQLErrors(errs []gqlerrors.FormattedError, mutation bool) []gql
 		errs[i].Extensions = map[string]any{"code": core.CodeInternal}
 	}
 	return errs
+}
+
+// isOperationSelectionError matches the two errors graphql-go raises before
+// executing anything when operationName does not select exactly one operation.
+// The wording is pinned by a test against the real executor, so an upgrade that
+// rewords it fails loudly instead of reverting to "internal error".
+func isOperationSelectionError(e gqlerrors.FormattedError) bool {
+	if len(e.Path) > 0 || len(e.Locations) > 0 {
+		return false
+	}
+	return e.Message == "Must provide operation name if query contains multiple operations." ||
+		strings.HasPrefix(e.Message, "Unknown operation named ")
 }
 
 // resolverError peels graphql-go's *gqlerrors.Error wrapper to recover the error

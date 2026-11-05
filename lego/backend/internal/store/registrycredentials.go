@@ -120,6 +120,9 @@ func (s *PGStore) GetRegistryCredential(ctx context.Context, workspaceID, id str
 // (403). Public credential reads continue to use GetRegistryCredential so this
 // lookup cannot accidentally become an unscoped read surface.
 func (s *PGStore) GetRegistryCredentialByID(ctx context.Context, id string) (RegistryCredential, error) {
+	if !textBindable(id) {
+		return RegistryCredential{}, classify("registry credential", pgx.ErrNoRows)
+	}
 	c, err := scanRegistryCredential(s.Pool.QueryRow(ctx,
 		`SELECT `+registryCredentialColumns+` FROM registry_credentials WHERE id = $1`, id))
 	if err != nil {

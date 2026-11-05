@@ -26,6 +26,7 @@ import (
 	"strings"
 	"sync"
 	"time"
+	"unicode/utf8"
 
 	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgconn"
@@ -2902,6 +2903,9 @@ func (s *PGStore) SettleCanceledPreDeploy(ctx context.Context, appID string, gen
 // check violations are caller errors. (Ids are plain text, so a malformed id
 // simply matches no rows — ErrNoRows covers it.)
 func classify(entity string, err error) error {
+	if code := sqlState(err); code == "22021" { // invalid byte sequence: the value was refused, not stored
+		return fmt.Errorf("%s: %w: not valid text", entity, ErrInvalid)
+	}
 	if errors.Is(err, pgx.ErrNoRows) {
 		return fmt.Errorf("%s: %w", entity, ErrNotFound)
 	}
@@ -2917,4 +2921,20 @@ func classify(entity string, err error) error {
 		}
 	}
 	return err
+}
+
+// textBindable reports whether s can be bound as a PostgreSQL text parameter:
+// text holds neither NUL nor invalid UTF-8, and binding either raises a data
+// exception (SQLSTATE 22021) rather than matching no row. A by-id read of such
+// an id is a plain not-found (w4/482).
+func textBindable(s string) bool {
+	return utf8.ValidString(s) && !strings.ContainsRune(s, 0)
+}
+
+func sqlState(err error) string {
+	var pgErr *pgconn.PgError
+	if errors.As(err, &pgErr) {
+		return pgErr.Code
+	}
+	return ""
 }

@@ -142,7 +142,11 @@ type MetricQuery struct {
 	Metric     string        // one of the Metric* ids
 	Start, End time.Time     // request-metric time range (zero => End=now, Start=End-1h)
 	Resolution time.Duration // request-metric step (<=0 => 1m)
-	Quantile   float64       // http_latency percentile 0..1 (<=0 => .95)
+	Quantile   float64       // http_latency percentile 0..1 (<=0 => .95 unless QuantileSet)
+	// QuantileSet marks Quantile as explicitly requested, so an explicit 0 is
+	// the minimum rather than "unset" (w4/480). Surfaces that cannot tell 0
+	// from absent leave it false and keep the default.
+	QuantileSet bool
 	// Quantiles, when non-empty, requests several http_latency percentiles in one
 	// read (the dashboard's percentile "All" overlay, w5/m56) — the multi-quantile
 	// sibling of Quantile. Only MetricsWithQuantiles consults it; the single-quantile
@@ -195,10 +199,22 @@ func (q MetricQuery) normalized(now time.Time) MetricQuery {
 	if q.Resolution <= 0 {
 		q.Resolution = defaultResolution
 	}
-	if q.Quantile <= 0 {
+	if q.Quantile <= 0 && !(q.QuantileSet && q.Quantile == 0) {
 		q.Quantile = defaultQuantile
 	}
 	return q
+}
+
+// checkQuantileRange refuses a latency percentile outside [0, 1]: above 1
+// Prometheus answers +Inf, which JSON cannot carry, and a negative value was
+// silently replaced by the default (w4/480).
+func checkQuantileRange(q MetricQuery) error {
+	for _, v := range append([]float64{q.Quantile}, q.Quantiles...) {
+		if v < 0 || v > 1 {
+			return fmt.Errorf("%w: quantile must be between 0 and 1", core.ErrBadRequest)
+		}
+	}
+	return nil
 }
 
 // PodResourceUsage is one pod's current CPU/memory usage — a metrics-server
@@ -505,6 +521,9 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	if q.GroupBy == groupByHost && q.Metric != MetricHTTPRequests {
 		return nil, fmt.Errorf("%w: aggregateBy=host applies only to http_requests", core.ErrBadRequest)
 	}
+	if err := checkQuantileRange(q); err != nil {
+		return nil, err
+	}
 	q = q.normalized(s.Now())
 	if q.Metric == MetricBandwidth {
 		if err := checkBandwidthGranularity(q.Start, q.End, q.Resolution); err != nil {
@@ -604,7 +623,7 @@ func (s *Service) MetricsWithQuantiles(ctx context.Context, q MetricQuery) ([]Qu
 		echoed := 0.0
 		if isLatency {
 			echoed = single
-			if echoed <= 0 {
+			if echoed <= 0 && !(q.QuantileSet && echoed == 0) {
 				echoed = defaultQuantile
 			}
 		}

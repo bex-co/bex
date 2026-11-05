@@ -704,7 +704,7 @@ func windowSeconds(start, finish time.Time) float64 {
 // phase, kept beside the containers themselves so a renamed phase cannot
 // silently break the failure message's step attribution.
 var buildStepNames = map[string]string{
-	"clone":                "clone",
+	"clone":                "source checkout",
 	cacheRestorePhase:      "build cache restore",
 	cachePurgePhase:        "build cache purge",
 	"prepare-native-build": "build preparation",
@@ -742,7 +742,7 @@ func failureDetail(ctx context.Context, o Options, jobName string) (step, tail s
 			if s, ok := buildStepNames[cs.Name]; ok {
 				step = s
 			}
-			tail = failureTail(nativeCommandFailure(t.Message))
+			tail = failureTail(buildkitFailureSummary(nativeCommandFailure(t.Message)))
 		}
 	}
 	return step, tail
@@ -792,6 +792,42 @@ func nativeCommandFailure(msg string) string {
 		command = strings.TrimPrefix(command, nativeStaticInstallStep)
 		return fmt.Sprintf("build command '%s' exited with code %s", command, parts[2])
 	})
+}
+
+var buildkitErrorLine = regexp.MustCompile(`^#[0-9]+ ERROR:`)
+
+// buildkitFailureSummary reduces a BuildKit plain-progress transcript of a
+// failed step to what a tenant needs, said once (w4/477): the failing
+// command's own output, then BuildKit's final verdict. BuildKit narrates the
+// failure three times (the `#N ERROR:` progress line, the `------` block with
+// its `> [step]` header, the closing `error:` line) after every earlier
+// step's `#N DONE` bookkeeping, and the byte-tail would otherwise keep that
+// bookkeeping. Output without that shape (git, push, buildpack, an OOM kill
+// with no summary) is returned unchanged.
+func buildkitFailureSummary(msg string) string {
+	lines := strings.Split(strings.TrimSpace(msg), "\n")
+	var errAt, open, closing = -1, -1, -1
+	for i, l := range lines {
+		switch {
+		case errAt < 0 && buildkitErrorLine.MatchString(l):
+			errAt = i
+		case errAt >= 0 && l == "------":
+			if open < 0 {
+				open = i
+			} else if closing < 0 {
+				closing = i
+			}
+		}
+	}
+	if errAt < 0 || closing < 0 {
+		return msg
+	}
+	body := lines[open+1 : closing]
+	if len(body) > 0 && strings.HasPrefix(strings.TrimSpace(body[0]), "> [") {
+		body = body[1:]
+	}
+	out := append(append([]string{}, body...), lines[closing+1:]...)
+	return strings.TrimSpace(strings.Join(out, "\n"))
 }
 
 // failureTailBytes bounds how much of the failing container's output enters

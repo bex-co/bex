@@ -1002,7 +1002,10 @@ func (s *Service) mayManageWorkspace(ctx context.Context, tenantID string) bool 
 }
 
 func normalizeName(raw string) (string, error) {
-	name := strings.TrimSpace(raw)
+	name, err := core.TrimmedLabel(raw) // control characters and over-long names are refused (w4/483)
+	if err != nil {
+		return "", err
+	}
 	if name == "" {
 		return "", core.NewBadRequestError(WebhookNameInvalidCode,
 			"name is required", map[string]any{"field": "name"})

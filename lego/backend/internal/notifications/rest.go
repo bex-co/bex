@@ -61,11 +61,23 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return s.GetSettings(r.Context(), r.URL.Query().Get("ownerId"))
 	}))
 	mux.HandleFunc("PATCH /v1/notification-settings", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
-		req, err := core.DecodeBody[SettingsView](r)
+		// A partial update (w4/478): a field the body omits keeps its stored
+		// value, and an unknown field is a 400 rather than a silent no-op.
+		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		req, err := core.DecodeBody[settingsPatch](r)
 		if err != nil {
 			return nil, err
 		}
-		return s.UpdateSettings(r.Context(), r.URL.Query().Get("ownerId"), req.DeployStarted, req.DeploySucceeded, req.DeployFailed)
+		ownerID := r.URL.Query().Get("ownerId")
+		cur, err := s.GetSettings(r.Context(), ownerID)
+		if err != nil {
+			return nil, err
+		}
+		if req.DeployStarted == nil && req.DeploySucceeded == nil && req.DeployFailed == nil {
+			return cur, nil
+		}
+		return s.UpdateSettings(r.Context(), ownerID,
+			pick(req.DeployStarted, cur.DeployStarted), pick(req.DeploySucceeded, cur.DeploySucceeded), pick(req.DeployFailed, cur.DeployFailed))
 	}))
 	mux.HandleFunc("GET /v1/notification-settings/push", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.GetPushSettings(r.Context())
@@ -146,4 +158,19 @@ func inboxLimit(r *http.Request) (int, error) {
 		return 0, fmt.Errorf("%w: query parameter \"limit\" must be between 1 and %d", core.ErrBadRequest, maxNotificationInboxLimit)
 	}
 	return limit, nil
+}
+
+// settingsPatch is the REST body of PATCH /v1/notification-settings; a nil
+// field was not sent and leaves the stored preference alone.
+type settingsPatch struct {
+	DeployStarted   *bool `json:"deployStarted"`
+	DeploySucceeded *bool `json:"deploySucceeded"`
+	DeployFailed    *bool `json:"deployFailed"`
+}
+
+func pick(sent *bool, current bool) bool {
+	if sent != nil {
+		return *sent
+	}
+	return current
 }

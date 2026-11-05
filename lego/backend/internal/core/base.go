@@ -26,6 +26,8 @@ import (
 	"slices"
 	"strings"
 	"time"
+	"unicode"
+	"unicode/utf8"
 
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
@@ -758,6 +760,9 @@ func (b *Base) resolveWorkspaceUncached(ctx context.Context) (string, error) {
 			// tenant_members, so resolving to it already proves the membership.
 			return tenantID, nil
 		}
+		if !validWorkspaceName(named) {
+			return "", fmt.Errorf("%w: invalid query parameter \"ownerId\"", ErrBadRequest)
+		}
 		if err := b.requireMember(ctx, id, named); err != nil {
 			return "", err
 		}
@@ -907,6 +912,9 @@ func (b *Base) checkAuthz(ctx context.Context, relation, object string) error {
 	id, ok := IdentityFrom(ctx)
 	if !ok {
 		return ErrForbidden
+	}
+	if !validFGAObject(object) {
+		return ErrForbidden // an id OpenFGA cannot hold names nothing the caller may touch (w4/481)
 	}
 	allowed, err := b.Authz.Check(ctx, "user:"+id.Subject, relation, object)
 	if err != nil {
@@ -1668,6 +1676,9 @@ func (b *Base) findKeyValue(ctx context.Context, name string) (*appv1alpha1.KeyV
 // keeping it there is what makes the "indexed reads first, unindexed sweep
 // last" ordering visible at the call site where the cost lives.
 func (b *Base) getInDatastoreNamespaces(ctx context.Context, name string, out client.Object) (bool, error) {
+	if len(pathvalidation.IsValidPathSegmentName(name)) > 0 {
+		return false, nil // not a name any object can carry (w4/482): absent, as AuthorizeApp treats it
+	}
 	acting, _ := b.resolveWorkspace(ctx)
 	for _, ns := range b.DatastoreNamespaces(acting) {
 		err := b.Client.Get(ctx, client.ObjectKey{Namespace: ns, Name: name}, out)
@@ -1998,6 +2009,9 @@ func (b *Base) checkWorkspaceAccess(ctx context.Context, relation, tenantID stri
 func (b *Base) requireMember(ctx context.Context, id Identity, tenantID string) error {
 	member, err := b.Workspace.IsMember(ctx, id, tenantID)
 	if err != nil {
+		if sqlDataException(err) {
+			return ErrForbidden // the store refused the value itself: no such workspace to be a member of
+		}
 		log.Printf("core: workspace membership unavailable: %v", err)
 		return ErrAuthzUnavailable
 	}
@@ -2252,4 +2266,37 @@ func HostsFromURLs(urls []string) []string {
 		out = append(out, strings.TrimSuffix(host, "/"))
 	}
 	return out
+}
+
+// validWorkspaceName reports whether a caller-named workspace id is a string
+// the membership store can bind: PostgreSQL text holds neither NUL nor invalid
+// UTF-8, and refusing it there surfaced as a 503 (w4/481). It looks only at
+// the string, never at membership, so it is no existence oracle.
+func validWorkspaceName(name string) bool {
+	return utf8.ValidString(name) && !strings.ContainsRune(name, 0)
+}
+
+// validFGAObject reports whether object ("type:id") is one OpenFGA accepts:
+// at most 256 bytes, valid UTF-8, and an id with no whitespace, control
+// characters, '#' or ':'. A caller-supplied id outside that can never be
+// granted anything, so the answer is a denial, not "authorization unavailable".
+func validFGAObject(object string) bool {
+	if len(object) > 256 || !utf8.ValidString(object) {
+		return false
+	}
+	_, id, _ := strings.Cut(object, ":")
+	for _, r := range id {
+		if r == '#' || r == ':' || unicode.IsSpace(r) || unicode.IsControl(r) {
+			return false
+		}
+	}
+	return true
+}
+
+// sqlDataException reports a PostgreSQL SQLSTATE class 22 error (data
+// exception, e.g. 22021 invalid byte sequence): the server rejected the value,
+// not the connection.
+func sqlDataException(err error) bool {
+	var coded interface{ SQLState() string }
+	return errors.As(err, &coded) && strings.HasPrefix(coded.SQLState(), "22")
 }

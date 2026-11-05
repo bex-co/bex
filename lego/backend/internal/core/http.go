@@ -240,9 +240,18 @@ func safeJSONDecodeError(err error) error {
 //
 // A nil slice is written as `[]`, never `null` — see emptyArray.
 func WriteJSON(w http.ResponseWriter, status int, body any) {
+	// Marshal before committing the status: a value encoding/json refuses (a
+	// non-finite float) used to leave a 200 with an empty body (w4/480). Lists
+	// are bounded by their routes' limits, so holding one in memory is cheap.
+	var buf bytes.Buffer
+	if err := json.NewEncoder(&buf).Encode(emptyArray(body)); err != nil {
+		log.Printf("bex-api: encode response: %v", err)
+		WriteErrStatus(w, http.StatusInternalServerError, "internal error")
+		return
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
-	_ = json.NewEncoder(w).Encode(emptyArray(body))
+	_, _ = w.Write(buf.Bytes())
 }
 
 // emptyArray substitutes an empty slice for a nil one so an empty list

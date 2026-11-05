@@ -113,3 +113,39 @@ func TestUpdateSettingsThreeSurfaceParity(t *testing.T) {
 		t.Fatalf("settings drift: REST=%+v GraphQL=%+v MCP=%+v want=%+v", rest, gql.Settings, mcpSettings, want)
 	}
 }
+
+// TestRESTPatchNotificationSettingsIsPartial is w4/478: a field the body
+// omits keeps its stored value, an empty body is a read, and an unknown field
+// is a 400 that changes nothing.
+func TestRESTPatchNotificationSettingsIsPartial(t *testing.T) {
+	ctx := core.WithIdentity(context.Background(), core.Identity{Subject: "alice"})
+	svc := newTestService(newFakeStore(), fakeWorkspace{"alice": "tea-a"}, nil, nil)
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	patch := func(body string) (int, SettingsView) {
+		t.Helper()
+		req := httptest.NewRequest(http.MethodPatch, "/v1/notification-settings", strings.NewReader(body)).WithContext(ctx)
+		rec := httptest.NewRecorder()
+		mux.ServeHTTP(rec, req)
+		var got SettingsView
+		_ = json.Unmarshal(rec.Body.Bytes(), &got)
+		return rec.Code, got
+	}
+	for _, c := range []struct {
+		body string
+		code int
+		want SettingsView
+	}{
+		{`{}`, 200, defaultSettings},
+		{`{"deployStarted":true}`, 200, SettingsView{DeployStarted: true, DeployFailed: true}},
+		{`{"deployFailed":false}`, 200, SettingsView{DeployStarted: true}},
+		{`{"notificationsToSend":"bogus"}`, 400, SettingsView{}},
+		{`{"deployFailed":"yes"}`, 400, SettingsView{}},
+		{`{}`, 200, SettingsView{DeployStarted: true}},
+	} {
+		code, got := patch(c.body)
+		if code != c.code || (code == 200 && got != c.want) {
+			t.Errorf("PATCH %s = %d %+v, want %d %+v", c.body, code, got, c.code, c.want)
+		}
+	}
+}
