@@ -29,3 +29,13 @@
 - **Expected outcome:** a deploy run takes about an hour instead of 1.5–4 h, and fewer runs are superseded while they build (w6/m156).
 - **Why now:** w6/m156's replay showed six fully built runs discarded in four 11–25 h gaps because a run takes 1–3 h; shortening the run shrinks that window directly, alongside m156's allowlist (D8 = (a)).
 - **Render parity:** omitted. CI/deploy infrastructure, no REST/GraphQL/MCP/UI surface.
+
+## Measurements and follow-ups — 2026-11-05
+
+- **Run 41993520985** (`c8bbc07cb`, after Docker Desktop went to 24 CPU / 72 GB and the two fixes below): tests 6–14 min in parallel, `build` **38.0 min** (images 10.5 / 3.2 / 1.2 / 4.4 / 7.2 min, sign + SBOM 7.0, CVE scans ~1), deploy 8.4 min; push → production ~60 min against the 1.5–4 h baseline. `build` still ran on `bex-production` with a 4-CPU / 512-PID runner.
+- **Fixes shipped on the way:** `f258c8a49` (CVE scans reuse the installed Trivy: ~8 min and ten flaky downloads per run), `c8bbc07cb` (`GOMAXPROCS=4` in the Go builder stages: with 24 visible CPUs `go build` exhausted the runner's 512-PID cap), `7d5b65710` (the Helm chart mirror skips upstream downloads for charts already published at their reviewed digest).
+- **Follow-ups for this milestone** (from the reviews of those fixes):
+  - Move `deploy.yml`'s `build` job to the `bex-build` pool and raise that pool's runner limits (e.g. 12 CPU / 24 GB) in `block-eden-mono/projects/github-runner/docker-compose.yml`; raise every pool's `pids: 512` (e.g. 4096): DinD's dockerd, buildkitd and the build share it, and `bex-ci`'s `make test` / `make lint` and `bex-build`'s log-shipper / hcloud-csi builds run uncapped Go parallelism under the same limit.
+  - Persist the Trivy DB and binary across runs (per-pool cache volume), or start the DB download in the background at job start: 2–6 min plus the last flaky download per run. Keep the CVE scans in one job if t003 parallelises the image builds.
+  - Merge `lego/Dockerfile`'s 16 sequential `go build` steps into ~3 invocations (operator plain flags with explicit packages, the `-trimpath` pair, backend) so links run in parallel; do not use `./cmd/...` (`registry-migrate` is not shipped).
+  - `scripts/helm-artifact.sh mirror`: make the skip check anonymous so it also proves public pullability, and run the full anonymous pull + sha256 only after a fresh push; then parallelise the 16 charts (~1.6 min → seconds).
