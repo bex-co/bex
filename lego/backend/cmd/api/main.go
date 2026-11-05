@@ -371,7 +371,7 @@ func main() {
 		// session metadata older than BEX_AUDIT_RETENTION_DAYS daily, same
 		// cadence/shape as usage's compaction loop above. The write side is
 		// base.Audit (wired above); this Service is the read verb + sweep only.
-		auditSvc := &audit.Service{Base: base, Store: st}
+		auditSvc := &audit.Service{Base: base, Store: st, UserIDs: st}
 		if cfg.AuditRetentionSet {
 			auditSvc.RetentionDays = cfg.AuditRetention
 		}

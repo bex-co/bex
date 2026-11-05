@@ -15,7 +15,7 @@ export type Role = (typeof ROLES)[number];
 /** An accepted member. `subject` is the raw identity id — kept as the mutation
  *  key (role change / remove), a bex-native contract distinct from Render's
  *  `userId` surface (docs/render-artifacts/owners-api.md). `userId` is the
- *  opaque own- id and `email` the resolved identity email (w6/m10) — both may
+ *  opaque usr- id and `email` the resolved identity email (w6/m10) — both may
  *  be empty when the identity provider is unwired or the lookup misses.
  *  `mfaEnabled` mirrors Render's per-member otpEnabled (w1/m33) — honest-false
  *  on a lookup miss, like email. */

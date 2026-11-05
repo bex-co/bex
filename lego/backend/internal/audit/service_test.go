@@ -501,3 +501,44 @@ func TestPurgeIncludesProductAnalyticsRetention(t *testing.T) {
 		t.Fatalf("product purge calls=%d before=%s", st.productPurgeCalls, st.productPurgeBefore)
 	}
 }
+
+type fakeUserIDs map[string]string
+
+func (f fakeUserIDs) LookupOwnerIDs(_ context.Context, subjects []string) (map[string]string, error) {
+	out := map[string]string{}
+	for _, s := range subjects {
+		if id, ok := f[s]; ok {
+			out[s] = id
+		}
+	}
+	return out, nil
+}
+
+// w5/m277: on Render's REST audit log a human actor's id is the usr- id the
+// members list answers for that person; API-key and system actors keep theirs.
+func TestRenderAuditLogUserActorsCarryTheirUsrID(t *testing.T) {
+	events := []Event{
+		{ID: "aud-1", Caller: "kratos-a", CallerMethod: "session"},
+		{ID: "aud-2", Caller: "client-1", CallerMethod: "oauth2"},
+		{ID: "aud-3", Caller: "", CallerMethod: ""},
+	}
+	svc := &Service{UserIDs: fakeUserIDs{"kratos-a": "own-00000000000000000007", "client-1": "own-00000000000000000008"}}
+	userIDs, err := svc.userIDs(context.Background(), events)
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := toAuditLogList(events, userIDs)
+	if got := list[0].AuditLog.Actor; got.Type != "user" || got.ID != "usr-00000000000000000007" {
+		t.Errorf("user actor = %+v, want usr- id", got)
+	}
+	if got := list[1].AuditLog.Actor; got.Type != "rest_api" || got.ID != "client-1" {
+		t.Errorf("API actor = %+v, want its subject unchanged", got)
+	}
+	if got := list[2].AuditLog.Actor; got.Type != "system" || got.ID != "" {
+		t.Errorf("system actor = %+v", got)
+	}
+	// Without a resolver the subject stays, as before.
+	if got := toAuditLogList(events, nil)[0].AuditLog.Actor.ID; got != "kratos-a" {
+		t.Errorf("no resolver: id = %q", got)
+	}
+}

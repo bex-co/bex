@@ -37,6 +37,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/billing"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -706,7 +707,14 @@ func (s *Service) CurrentUser(ctx context.Context) (UserView, error) {
 			human, _ = s.KeyOwners.KeyOwner(ctx, id.Subject)
 		}
 	}
-	u.ID = human
+	// Render's whoami id is the same usr- id the members list answers for
+	// this person (w5/m277), never the raw Kratos subject.
+	// A store failure degrades to no id rather than failing whoami.
+	if human != "" && s.Store != nil {
+		if ownIDs, err := s.Store.OwnerIDsForSubjects(ctx, []string{human}); err == nil {
+			u.ID = ids.UserPublicID(ownIDs[human])
+		}
+	}
 	if u.Email == "" && s.Identities != nil && human != "" {
 		if attrs, ok := s.Identities.Lookup(ctx, human); ok {
 			u.Email, u.Name = attrs.Email, attrs.Name
@@ -882,7 +890,8 @@ type MemberView struct {
 }
 
 // UpdateMember is Render's update-workspace-member: userId is the member's
-// own- id and role is Render's teamMemberRole.
+// usr- id (or the own- id handed out before w5/m277) and role is Render's
+// teamMemberRole.
 func (s *Service) UpdateMember(ctx context.Context, ownerID, userID, role string) (MemberView, error) {
 	ownerID, subject, err := s.memberSubject(ctx, ownerID, userID)
 	if err != nil {
@@ -895,7 +904,7 @@ func (s *Service) UpdateMember(ctx context.Context, ownerID, userID, role string
 	if err := s.Members.ChangeRole(ctx, ownerID, subject, bexRole); err != nil {
 		return MemberView{}, err
 	}
-	m := MemberView{Subject: subject, OwnerID: userID, Role: bexRole}
+	m := MemberView{Subject: subject, OwnerID: ids.UserStorageID(userID), Role: bexRole}
 	if s.Identities != nil {
 		if attrs, ok := s.Identities.LookupMany(ctx, []string{subject})[subject]; ok {
 			m.Email, m.Name, m.MFAEnabled = attrs.Email, attrs.Name, attrs.MFAEnabled
@@ -924,7 +933,7 @@ func (s *Service) memberSubject(ctx context.Context, ownerID, userID string) (st
 	if s.Store == nil || s.Members == nil {
 		return "", "", core.ErrWorkspacesUnavailable
 	}
-	subject, err := s.Store.SubjectForOwnerID(ctx, userID)
+	subject, err := s.Store.SubjectForOwnerID(ctx, ids.UserStorageID(userID))
 	if errors.Is(err, store.ErrNotFound) {
 		return "", "", core.NotFound("member")
 	}

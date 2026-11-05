@@ -339,6 +339,29 @@ func (s *PGStore) OwnerIDForSubject(ctx context.Context, subject string) (string
 	return ownIDs[subject], nil
 }
 
+// LookupOwnerIDs returns the own- ids already minted for subjects, minting
+// none: a read surface that names machine callers (API-key client ids) beside
+// people must not create user ids for them (w5/m277).
+func (s *PGStore) LookupOwnerIDs(ctx context.Context, subjects []string) (map[string]string, error) {
+	out := make(map[string]string, len(subjects))
+	if len(subjects) == 0 {
+		return out, nil
+	}
+	rows, err := s.Pool.Query(ctx, `SELECT subject, own_id FROM owner_ids WHERE subject = ANY($1)`, subjects)
+	if err != nil {
+		return nil, classify("owner_id", err)
+	}
+	defer rows.Close()
+	for rows.Next() {
+		var subject, ownID string
+		if err := rows.Scan(&subject, &ownID); err != nil {
+			return nil, err
+		}
+		out[subject] = ownID
+	}
+	return out, rows.Err()
+}
+
 // SubjectForOwnerID inverts OwnerIDsForSubjects: the subject an own- id was
 // minted for (own_id is unique). An id never minted is ErrNotFound.
 func (s *PGStore) SubjectForOwnerID(ctx context.Context, ownID string) (string, error) {

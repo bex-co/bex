@@ -23,6 +23,7 @@ import (
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 )
 
 // owners_test.go covers w6/m2's read verbs: GetWorkspace (own-/tea- resolution),
@@ -247,7 +248,7 @@ func TestToRenderTeamMember_NoNameHonestOmission(t *testing.T) {
 		Subject: "user-a", OwnerID: "own-00000000000000000001",
 		Role: "admin", Email: "a@example.com", MFAEnabled: true,
 	})
-	if m.UserID != "own-00000000000000000001" || m.Name != "" || m.Email != "a@example.com" ||
+	if m.UserID != "usr-00000000000000000001" || m.Name != "" || m.Email != "a@example.com" ||
 		m.Status != "active" || m.Role != "ADMIN" || !m.MFAEnabled {
 		t.Fatalf("renderTeamMember = %+v", m)
 	}
@@ -310,14 +311,20 @@ func TestRenderMemberMutationsResolveTheListedUserID(t *testing.T) {
 	if err != nil || len(listed) != 1 {
 		t.Fatalf("list: %+v %v", listed, err)
 	}
-	userID := listed[0].OwnerID
+	// The members list answers usr- (w5/m277); the own- ids handed out before
+	// still resolve.
+	userID := ids.UserPublicID(listed[0].OwnerID)
+	if _, err := svc.UpdateMember(ctxAs("user-a"), w.ID, listed[0].OwnerID, "ADMIN"); err != nil {
+		t.Fatalf("legacy own- userId: %v", err)
+	}
 
 	for render, bex := range map[string]string{
 		"ADMIN": "admin", "DEVELOPER": "developer", "WORKSPACE_CONTRIBUTOR": "contributor",
 		"WORKSPACE_BILLING": "billing", "WORKSPACE_VIEWER": "viewer",
 	} {
 		m, err := svc.UpdateMember(ctxAs("user-a"), w.ID, userID, render)
-		if err != nil || members.roles["user-a"] != bex || renderTeamMemberRole(m.Role) != render {
+		if err != nil || members.roles["user-a"] != bex || renderTeamMemberRole(m.Role) != render ||
+			toRenderTeamMember(m).UserID != userID {
 			t.Fatalf("%s: member %+v err %v changed %q", render, m, err, members.roles["user-a"])
 		}
 	}

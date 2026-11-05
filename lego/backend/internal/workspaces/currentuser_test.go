@@ -76,7 +76,7 @@ func ctxAsOAuthUser(subject string) context.Context {
 func TestCurrentUser_SessionCallerNamed(t *testing.T) {
 	svc := allowSvc(newFakeStore(), &fakeGranter{}, nil, nil)
 	u, err := svc.CurrentUser(ctxAsSession("user-a", "a@example.com", "Ada Lovelace"))
-	if err != nil || u.ID != "user-a" || u.Email != "a@example.com" || u.Name != "Ada Lovelace" {
+	if err != nil || u.ID != "usr-00000000000000000001" || u.Email != "a@example.com" || u.Name != "Ada Lovelace" {
 		t.Fatalf("CurrentUser = %+v, %v", u, err)
 	}
 }
@@ -85,7 +85,7 @@ func TestCurrentUser_SessionCallerNamelessLegacyIdentity(t *testing.T) {
 	// An identity minted before the name trait existed: email only, name "".
 	svc := allowSvc(newFakeStore(), &fakeGranter{}, nil, nil)
 	u, err := svc.CurrentUser(ctxAsSession("user-a", "a@example.com", ""))
-	if err != nil || u.ID != "user-a" || u.Email != "a@example.com" || u.Name != "" {
+	if err != nil || u.ID != "usr-00000000000000000001" || u.Email != "a@example.com" || u.Name != "" {
 		t.Fatalf("CurrentUser = %+v, %v", u, err)
 	}
 }
@@ -93,13 +93,14 @@ func TestCurrentUser_SessionCallerNamelessLegacyIdentity(t *testing.T) {
 func TestCurrentUser_APIKeyCallerResolvesThroughKeyBinding(t *testing.T) {
 	// The machine caller's subject is a Hydra client_id; KeyOwners resolves it to
 	// the minting human, whose traits come from the same Identities lookup the
-	// owners/members surfaces use. Id is that human's subject — never the key.
+	// owners/members surfaces use. Id is that human's usr- id (w5/m277) —
+	// never the key, never the raw subject.
 	svc := allowSvc(newFakeStore(), &fakeGranter{}, nil, nil)
 	svc.Identities = fakeIdentities{"user-a": {Email: "a@example.com", Name: "Ada Lovelace"}}
 	svc.KeyOwners = fakeKeyOwners{"key-1": "user-a"}
 
 	u, err := svc.CurrentUser(ctxAsAPIKey("key-1"))
-	if err != nil || u.ID != "user-a" || u.Email != "a@example.com" || u.Name != "Ada Lovelace" {
+	if err != nil || u.ID != "usr-00000000000000000001" || u.Email != "a@example.com" || u.Name != "Ada Lovelace" {
 		t.Fatalf("CurrentUser = %+v, %v", u, err)
 	}
 }
@@ -111,7 +112,7 @@ func TestCurrentUser_OAuthUserTokenSubjectResolvesDirectly(t *testing.T) {
 	svc.Identities = fakeIdentities{"user-a": {Email: "a@example.com", Name: "Ada Lovelace"}}
 
 	u, err := svc.CurrentUser(ctxAsOAuthUser("user-a"))
-	if err != nil || u.ID != "user-a" || u.Email != "a@example.com" || u.Name != "Ada Lovelace" {
+	if err != nil || u.ID != "usr-00000000000000000001" || u.Email != "a@example.com" || u.Name != "Ada Lovelace" {
 		t.Fatalf("CurrentUser = %+v, %v", u, err)
 	}
 }
@@ -168,7 +169,7 @@ func TestRESTUsers_DecodesIntoPinnedCLIUserWithID(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
 		t.Fatalf("decode pinned CLI User: %v body=%s", err, rec.Body.String())
 	}
-	if got.Id != "user-a" || got.Email != "a@example.com" || got.Name != "Ada Lovelace" {
+	if got.Id != "usr-00000000000000000001" || got.Email != "a@example.com" || got.Name != "Ada Lovelace" {
 		t.Fatalf("pinned CLI User = %+v", got)
 	}
 }

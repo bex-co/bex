@@ -1061,7 +1061,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Secrets:       secretsSvc,
 		EnvGroups:     envGroupsSvc,
 		Deploys:       deploysSvc,
-		Events:        &events.Service{Base: base, Store: d.EventStore, Identities: identityEmailLookup{d.Identities}},
+		Events:        &events.Service{Base: base, Store: d.EventStore, Identities: identityEmailLookup{d.Identities}, UserIDs: userIDLookup(d.EventStore)},
 		Workspaces:    workspaceSvc,
 		Members:       membersSvc,
 		Billing:       billingSvc,
@@ -1990,4 +1990,13 @@ func (m memberMutator) ChangeRole(ctx context.Context, workspaceID, subject, rol
 
 func (m memberMutator) Remove(ctx context.Context, workspaceID, subject string) error {
 	return m.svc.Remove(ctx, workspaceID, subject)
+}
+
+// userIDLookup is the store's non-minting user-id read when it has one
+// (*store.PGStore), else nil (w5/m277).
+func userIDLookup(st any) core.UserIDLookup {
+	if lookup, ok := st.(core.UserIDLookup); ok {
+		return lookup
+	}
+	return nil
 }

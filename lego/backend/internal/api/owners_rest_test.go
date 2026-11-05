@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"regexp"
 	"strings"
 	"sync"
 	"testing"
@@ -274,9 +275,10 @@ func TestOwnersREST_ListGetMembers(t *testing.T) {
 	}
 	roles := map[string]bool{}
 	for _, m := range members {
-		// userId is the opaque own- id (w6/m7), never the raw Kratos subject.
-		if !strings.HasPrefix(m.UserID, "own-") {
-			t.Errorf("member userId = %q, want an own- id (not a raw subject)", m.UserID)
+		// userId is Render's usr- spelling of the opaque own- id (w6/m7,
+		// w5/m277), never the raw Kratos subject.
+		if !strings.HasPrefix(m.UserID, "usr-") {
+			t.Errorf("member userId = %q, want a usr- id (not a raw subject)", m.UserID)
 		}
 		if m.Status != "active" {
 			t.Errorf("status = %q, want active", m.Status)
@@ -332,7 +334,7 @@ func TestOwnersREST_Pagination(t *testing.T) {
 }
 
 // TestOwnersREST_MemberUserIDStableOwnID asserts a member's userId is an opaque
-// own- id (never the raw Kratos subject) and stable across calls (w6/m7).
+// usr- id (never the raw Kratos subject) and stable across calls (w6/m7, w5/m277).
 func TestOwnersREST_MemberUserIDStableOwnID(t *testing.T) {
 	st := newFakeWSStore()
 	h, _ := serverWith(t, serverBase(t, st), Deps{WorkspaceStore: st})
@@ -350,9 +352,11 @@ func TestOwnersREST_MemberUserIDStableOwnID(t *testing.T) {
 		return members[0].UserID
 	}
 
+	// Render's userIdPathParam pattern: the usr- spelling of the durable own-
+	// key (w5/m277).
 	first := userID()
-	if !strings.HasPrefix(first, "own-") || first == "client-1" {
-		t.Fatalf("userId = %q, want an opaque own- id", first)
+	if !regexp.MustCompile(`^usr-[0-9a-v]{20}$`).MatchString(first) || first == "client-1" {
+		t.Fatalf("userId = %q, want Render's usr- id", first)
 	}
 	if second := userID(); second != first {
 		t.Fatalf("userId not stable across calls: %q then %q", first, second)

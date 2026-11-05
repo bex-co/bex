@@ -1905,6 +1905,16 @@ func TestOwnerIDForSubject(t *testing.T) {
 	if _, err := s.SubjectForOwnerID(ctx, "own-00000000000000000000"); !errors.Is(err, ErrNotFound) {
 		t.Fatalf("unminted own id: %v, want ErrNotFound", err)
 	}
+	// LookupOwnerIDs reads without minting: a subject never seen stays absent
+	// and gains no row (w5/m277).
+	found, err := s.LookupOwnerIDs(ctx, []string{"identity-a", "api-key-client"})
+	if err != nil || found["identity-a"] != a1 || len(found) != 1 {
+		t.Fatalf("LookupOwnerIDs = %v, %v", found, err)
+	}
+	var minted int
+	if err := pool.QueryRow(ctx, `SELECT count(*) FROM owner_ids WHERE subject = 'api-key-client'`).Scan(&minted); err != nil || minted != 0 {
+		t.Fatalf("LookupOwnerIDs minted a row (%d, %v)", minted, err)
+	}
 	a2, err := s.OwnerIDForSubject(ctx, "identity-a")
 	if err != nil || a2 != a1 {
 		t.Fatalf("not stable: %q then %q (err %v)", a1, a2, err)

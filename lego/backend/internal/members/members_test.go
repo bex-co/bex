@@ -674,7 +674,7 @@ func TestListEnrichesUserIDAndEmail(t *testing.T) {
 	if len(ms) != 1 {
 		t.Fatalf("members = %+v", ms)
 	}
-	if ms[0].UserID == "" || !strings.HasPrefix(ms[0].UserID, "own-") {
+	if ms[0].UserID == "" || !strings.HasPrefix(ms[0].UserID, "usr-") {
 		t.Errorf("userId not minted: %q", ms[0].UserID)
 	}
 	if ms[0].Email != "admin@example.com" {

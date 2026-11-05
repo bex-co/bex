@@ -40,6 +40,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -266,7 +267,8 @@ type Mailer interface {
 // OpenFGA user (Kratos identity id or Hydra client id) — kept as the mutation
 // key (ChangeRole/Remove take `subject`; a bex-native contract, not Render's
 // `userId` surface, docs/render-artifacts/owners-api.md). UserID is the same
-// opaque "own-" id the owners API reports as `userId` (w6/m7); Email is
+// opaque user id the owners API reports as `userId`, in Render's usr-
+// spelling of the durable own- key (w6/m7, w5/m277); Email is
 // resolved via Identities, same as the owners API — both honest-omit
 // (""/unset) when the identity reader is nil or a lookup misses (w6/m10).
 // Role is UPPERCASE (Render enum). MFAEnabled mirrors Render's per-member
@@ -522,7 +524,7 @@ func (s *Service) List(ctx context.Context, workspaceID string) ([]MemberView, e
 		mv := memberView(m)
 		mv.IsOwner = owner != "" && m.Subject == owner
 		mv.IsSelf = caller.Subject != "" && m.Subject == caller.Subject
-		mv.UserID = ownIDs[m.Subject]
+		mv.UserID = ids.UserPublicID(ownIDs[m.Subject])
 		mv.IdentityResolved = true
 		if s.Identities != nil {
 			if attrs, ok := identities[m.Subject]; ok {

@@ -54,6 +54,9 @@ type AuditStore interface {
 type Service struct {
 	*core.Base
 	Store AuditStore
+	// UserIDs resolves a human actor's subject to its user id, which the
+	// Render REST adapter answers as usr- (w5/m277). Nil leaves the subject.
+	UserIDs core.UserIDLookup
 	// RetentionDays is how long an event survives before the sweep purges it
 	// (BEX_AUDIT_RETENTION_DAYS). <1 means DefaultRetentionDays.
 	RetentionDays int

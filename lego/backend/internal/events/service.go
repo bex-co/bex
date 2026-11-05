@@ -903,6 +903,9 @@ type Service struct {
 	Store EventStore
 	// Identities resolves suspender/trigger user emails; optional.
 	Identities EmailLookup
+	// UserIDs answers those users' ids as Render's usr- (w5/m277); optional,
+	// nil leaves the subject.
+	UserIDs core.UserIDLookup
 	// MaxQueryHours, when positive, caps the startTime–endTime window a caller may
 	// ask for (BEX_MAX_QUERY_HOURS) — the same bound logs and metrics enforce.
 	// Enforced HERE, not in the REST fragment, so all three surfaces reject the
@@ -970,6 +973,7 @@ func (s *Service) List(ctx context.Context, service string, filter Filter) ([]Ev
 		out = append(out, view(r, service))
 	}
 	s.resolveUserEmails(ctx, out)
+	s.resolveUserIDs(ctx, out)
 	return out, nil
 }
 
@@ -1018,6 +1022,53 @@ func (s *Service) resolveUserEmails(ctx context.Context, events []Event) {
 	}
 }
 
+// resolveUserIDs replaces the user subjects the feed names (triggering,
+// suspending, resuming user) with the usr- ids the members list answers for
+// them (w5/m277). Subjects without a user id — API-key clients — and a lookup
+// failure leave the feed as it was; emails are resolved first, by subject.
+func (s *Service) resolveUserIDs(ctx context.Context, events []Event) {
+	var subjects []string
+	seen := map[string]struct{}{}
+	collect := func(subject string) {
+		if _, dup := seen[subject]; subject != "" && !dup {
+			seen[subject] = struct{}{}
+			subjects = append(subjects, subject)
+		}
+	}
+	refs := func(e *Event) []*UserRef {
+		out := []*UserRef{e.Details.SuspendedByUser, e.Details.ResumedByUser}
+		if e.Details.Trigger != nil {
+			out = append(out, e.Details.Trigger.User)
+		}
+		return out
+	}
+	for i := range events {
+		collect(events[i].Details.TriggeredByUser)
+		for _, u := range refs(&events[i]) {
+			if u != nil {
+				collect(u.ID)
+			}
+		}
+	}
+	public, err := core.PublicUserIDs(ctx, s.UserIDs, subjects)
+	if err != nil || len(public) == 0 {
+		return
+	}
+	for i := range events {
+		if id, ok := public[events[i].Details.TriggeredByUser]; ok {
+			events[i].Details.TriggeredByUser = id
+		}
+		for _, u := range refs(&events[i]) {
+			if u == nil {
+				continue
+			}
+			if id, ok := public[u.ID]; ok {
+				u.ID = id
+			}
+		}
+	}
+}
+
 // Get returns one globally-addressed event by its stable evt-… id. An explicit
 // ownerId (or a workspace the request already names) scopes the lookup as
 // before. Otherwise the event's OWN workspace does (w4/m172), so a member of
@@ -1050,7 +1101,10 @@ func (s *Service) Get(ctx context.Context, eventID string) (Event, error) {
 		return Event{}, err
 	}
 	event := view(lookup.Event, lookup.ServiceID)
-	s.resolveUserEmails(ctx, []Event{event})
+	page := []Event{event}
+	s.resolveUserEmails(ctx, page)
+	s.resolveUserIDs(ctx, page)
+	event = page[0]
 	// The trigger indexes every safe source row, while this package owns the
 	// closed public vocabulary. An indexed-but-unmapped audit effect stays hidden
 	// exactly as it does in List and webhook dispatch.

@@ -16,7 +16,11 @@ limitations under the License.
 
 package workspaces
 
-import "strings"
+import (
+	"strings"
+
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
+)
 
 // render.go maps OwnerView/MemberView onto Render's public-API "owner"/
 // "teamMember" shapes, pinned verbatim from the OpenAPI spec in
@@ -130,8 +134,9 @@ type renderTeamMember struct {
 
 func toRenderTeamMember(m MemberView) renderTeamMember {
 	return renderTeamMember{
-		// Render's userId is an opaque own- id, not the raw Kratos subject (w6/m7).
-		UserID: m.OwnerID,
+		// Render's userId is an opaque id, never the raw Kratos subject (w6/m7),
+		// in Render's usr- spelling of the durable own- key (w5/m277).
+		UserID: ids.UserPublicID(m.OwnerID),
 		Name:   m.Name,
 		Email:  m.Email,
 		// bex tracks no invited/deactivated member state yet — every row in

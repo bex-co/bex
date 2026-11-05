@@ -17,6 +17,7 @@ limitations under the License.
 package audit
 
 import (
+	"context"
 	"net/http"
 	"net/url"
 	"strconv"
@@ -50,7 +51,8 @@ type renderAuditLog struct {
 }
 
 // renderAuditActor is Render's actor object. type is the closed
-// user|rest_api|system enum (actorType); id carries bex's caller subject.
+// user|rest_api|system enum (actorType); id is a user's usr- id (w5/m277) and
+// otherwise bex's caller subject.
 // email is omitted: the audit row deliberately stores only the subject
 // (redaction-by-structure), and Render marks the field optional.
 type renderAuditActor struct {
@@ -156,12 +158,32 @@ type auditLogWithCursor struct {
 	Cursor   string         `json:"cursor"`
 }
 
-func toAuditLogList(events []Event) []auditLogWithCursor {
+// toAuditLogList renders a page; userIDs maps a human actor's subject to its
+// public usr- id (Service.userIDs).
+func toAuditLogList(events []Event, userIDs map[string]string) []auditLogWithCursor {
 	out := make([]auditLogWithCursor, 0, len(events))
 	for _, e := range events {
-		out = append(out, auditLogWithCursor{AuditLog: toRenderAuditLog(e), Cursor: e.ID})
+		log := toRenderAuditLog(e)
+		if id, ok := userIDs[e.Caller]; ok {
+			log.Actor.ID = id
+		}
+		out = append(out, auditLogWithCursor{AuditLog: log, Cursor: e.ID})
 	}
 	return out
+}
+
+// userIDs resolves the page's human actors to the usr- id the members list
+// and GET /v1/users answer for them (w5/m277), in one read.
+func (s *Service) userIDs(ctx context.Context, events []Event) (map[string]string, error) {
+	seen := map[string]struct{}{}
+	var subjects []string
+	for _, e := range events {
+		if _, dup := seen[e.Caller]; !dup && e.Caller != "" && actorType(e.CallerMethod) == "user" {
+			seen[e.Caller] = struct{}{}
+			subjects = append(subjects, e.Caller)
+		}
+	}
+	return core.PublicUserIDs(ctx, s.UserIDs, subjects)
 }
 
 // filterFromQuery translates Render's startTime/endTime/direction/cursor/
@@ -198,6 +220,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		core.WriteJSON(w, http.StatusOK, toAuditLogList(events))
+		userIDs, err := s.userIDs(r.Context(), events)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, toAuditLogList(events, userIDs))
 	})
 }

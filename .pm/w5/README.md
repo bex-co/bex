@@ -22,7 +22,8 @@ User decision 2026-11-05: all five items of the sixth `/pm-brainstorm w5` propos
 - [x] **m267** — [Render's workspace member mutations: PATCH and DELETE /owners/{ownerId}/members/{userId}](done/m267/README.md) (8 tasks; 4h45m total) ← round 6 item 3; ADR018 unsigned `—` omission row — **DONE 2026-11-05**: Render member PATCH/DELETE served through the members verbs; follow-up w5/179 (`usr-` user ids)
 - [ ] **m268** — [Key Value "Enable Internal Authentication", as on Render](m268/README.md) (9 tasks; 6h45m total) ← round 6 item 4; w8/204 follow-up — **2026-11-05: implemented on all surfaces (t001–t004, t006–t008); t005 live walk waits for the deploy**
 - [x] **178** — [`BUN_VERSION=canary` builds, as on Render](done/178.md) (~1h, may promote) ← round 6 item 5; Render changelog 2026-10-16
-- [ ] **179** — [Render user ids are `usr-`; bex answers `own-`](179.md) ← found by w5/m267
+- [x] **179** — [Render user ids are `usr-`; bex answers `own-`](done/179.md) ← found by w5/m267 — promoted to m277
+- [x] **m277** — [One `usr-` user id on every surface, as on Render](done/m277/README.md) (8 tasks; 5h15m total) ← promoted from w5/179 — **DONE 2026-11-05**: members, whoami, audit-log and events user ids answer `usr-`; mutations accept both spellings
 
 ## Approved queue — 2026-10-20 (brainstorm round 5, parity-first)
 
