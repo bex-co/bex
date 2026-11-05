@@ -135,6 +135,16 @@ install_metrics_server >/dev/null
 check "a bare mock installs metrics-server once" "$(grep -c 'install metrics-server' "$helm_calls")" "1"
 unset -f helm kubectl
 
+echo "build boundary on a Calico mock:"
+# 9. A fresh CAPD mock has no cilium.io CRDs: the boundary must apply without
+#    its Cilium policies, keeping the namespace, RBAC and NetworkPolicies.
+applied="$tmp/applied.yaml"
+kubectl() { cat >"$applied"; }
+apply_build_boundary
+check "no Cilium object reaches the Calico mock" "$(grep -c '^kind: Cilium' "$applied" || true)" "0"
+check "both bex-build RoleBindings are applied" "$(grep -c '^kind: RoleBinding' "$applied")" "2"
+unset -f kubectl
+
 echo
 if [ "$fails" -ne 0 ]; then
   echo "FAILED: $fails check(s)" >&2

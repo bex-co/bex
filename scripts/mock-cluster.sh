@@ -259,6 +259,17 @@ install_metrics_server() {
 
 # Definitions end here. scripts/mock-cluster.test.sh sources this file to
 # exercise the lock and publication contracts without provisioning anything.
+# apply_build_boundary applies deploy/gitops/base/build-boundary.yaml (the
+# bex-build namespace and RBAC) idempotently, minus its Cilium policies: this
+# cluster runs Calico and has no cilium.io CRDs (the local GitOps overlay deletes
+# every Cilium object for the same reason), so applying them failed every fresh
+# bring-up; a cluster already carrying dev-env's inert CRD shim only hid that.
+apply_build_boundary() {
+  yq 'select(.kind != "CiliumNetworkPolicy" and .kind != "CiliumClusterwideNetworkPolicy")' \
+    deploy/gitops/base/build-boundary.yaml \
+    | KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f -
+}
+
 if [ -n "${BEX_MOCK_CLUSTER_LIB:-}" ]; then return 0 2>/dev/null || exit 0; fi
 
 if [ "${1:-}" = scale ]; then acquire_lock; scale "${2:?usage: scale N}"; exit 0; fi
@@ -483,9 +494,8 @@ require "metrics-server availability" \
 # which needs the namespace and its RBAC. Production gets both from
 # deploy/gitops/base/build-boundary.yaml through Argo CD, which this mock does
 # not install, so without it every App deletion on a dev-N stack stalls on its
-# finalizer (w5/084). The same manifest, applied as is (idempotent).
-require "build boundary (bex-build)" \
-  env KUBECONFIG="$WL_KUBECONFIG" kubectl apply -f deploy/gitops/base/build-boundary.yaml
+# finalizer (w5/084). See apply_build_boundary.
+require "build boundary (bex-build)" apply_build_boundary
 
 # The bex-datastore PriorityClass (w2/m247): the operator stamps it on every
 # new Postgres/Key Value Pod so the workspace compute quota excludes them, and
