@@ -1450,7 +1450,7 @@ func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st 
 			cl = n.Base.Client
 		}
 		go (&notifications.AlertEmailWorker{
-			Store: st, Policy: notifications.AppNotificationPolicy(cl),
+			Store: st, Policy: notifications.AppNotificationPolicy(cl), Owners: notifications.StoredOwnerPolicy(st),
 			Mailer: n.Mailer, Identities: n.Identities, DashboardBaseURL: n.DashboardBaseURL,
 		}).Run(ctx)
 	}
@@ -1458,9 +1458,16 @@ func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st 
 	// transport starts the event consumer. With config absent there is no client,
 	// no worker, no feed advancement, and no provider network traffic.
 	if st != nil && (mobilePush != nil || webPush != nil) {
+		var cl client.Client
+		if n := srv.Notifications; n != nil && n.Base != nil {
+			cl = n.Base.Client
+		}
 		pushWorker := &notifications.PushWorker{
 			Store: st, Sender: notifications.PushTransportSender{Transport: mobilePush, WebPush: webPush},
 			Receipts: mobilePush, Metrics: pushMetrics, Evidence: notifications.PushEvidenceLogger{},
+			// A service's notification level (its override, else the workspace
+			// policy) applies to its pushes too (w3/m271).
+			Owners: notifications.StoredOwnerPolicy(st), Policy: notifications.AppNotificationPolicy(cl),
 		}
 		go pushWorker.Run(ctx)
 	}

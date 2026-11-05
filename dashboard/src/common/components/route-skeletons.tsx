@@ -54,6 +54,7 @@ import {
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
+import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
 import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
 import { InstanceTypePickerCardSkeleton } from "@/features/services/components/instance-type-groups";
 import {
@@ -1257,7 +1258,7 @@ export function WorkspaceSettingsPageSkeleton() {
       className="flex-1 overflow-auto p-4 sm:p-6"
     >
       <div className="mx-auto grid w-full max-w-4xl items-start gap-6 lg:grid-cols-[minmax(0,1fr)_13rem] lg:gap-10">
-        <ResponsiveSectionNavigationSkeleton count={4} />
+        <ResponsiveSectionNavigationSkeleton count={5} />
         <div className="min-w-0 space-y-6 lg:col-start-1 lg:row-start-1">
           <Region name="page-header" className="space-y-2">
             <Skeleton className="h-6 w-48" />
@@ -1268,6 +1269,9 @@ export function WorkspaceSettingsPageSkeleton() {
           </Region>
           <Region name="team">
             <TableCardSkeleton rows={3} columns={4} />
+          </Region>
+          <Region name="notifications">
+            <WorkspaceNotificationsCardSkeleton />
           </Region>
           <Region name="agents">
             <AgentEnvironmentCardSkeleton />

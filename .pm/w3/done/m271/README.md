@@ -1,20 +1,20 @@
 # w3 · m271 — Workspace notification policy: GET/PATCH /notification-settings/owners/{ownerId}, as on Render
 
-**Worker:** worker3 **Goal:** a workspace has Render's owner-level notification policy, and a service set to "Use workspace default" follows it **Status:** todo
+**Worker:** worker3 **Goal:** a workspace has Render's owner-level notification policy, and a service set to "Use workspace default" follows it **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Amend ADR052 #8 and ADR018: workspace policy layered over member preferences | 45m | — |
-| t002 | Workspace policy migration and store (admin-tier writes) | 1h | t001 |
-| t003 | Mount REST GET/PATCH /v1/notification-settings/owners/{ownerId} | 1h | t002 |
-| t004 | GraphQL/MCP verbs; mail and push fan-out resolve `default` from the workspace policy | 1.5h | t002 |
-| t005 | Workspace Settings → Notifications UI and real default on the service page | 1h | t004 |
-| t006 | Render parity | 30m | t003, t005 |
-| t007 | Simplify | 20m | t006 |
-| t008 | Test coverage | 40m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t001 | Amend ADR052 #8 and ADR018: workspace policy layered over member preferences — **DONE** | 45m | — |
+| t002 | Workspace policy migration and store (admin-tier writes) — **DONE** | 1h | t001 |
+| t003 | Mount REST GET/PATCH /v1/notification-settings/owners/{ownerId} — **DONE** | 1h | t002 |
+| t004 | GraphQL/MCP verbs; mail and push fan-out resolve `default` from the workspace policy — **DONE** | 1.5h | t002 |
+| t005 | Workspace Settings → Notifications UI and real default on the service page — **DONE** | 1h | t004 |
+| t006 | Render parity — **DONE** | 30m | t003, t005 |
+| t007 | Simplify — **DONE** | 20m | t006 |
+| t008 | Test coverage — **DONE** | 40m | t006 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 

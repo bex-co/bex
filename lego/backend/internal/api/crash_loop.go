@@ -33,7 +33,7 @@ func newCrashLoop(appsSvc *apps.Service, d Deps) *crashloop.Sweeper {
 	w := &crashloop.Sweeper{Apps: apps.CrashLoopWorker{Svc: appsSvc}, Window: window}
 	if alerts, ok := d.Store.(notifications.ServiceAlertStore); ok && appsSvc != nil && appsSvc.Base != nil {
 		w.Notifier = notifications.CrashLoopNotifier{
-			Store: alerts, Policy: notifications.AppNotificationPolicy(appsSvc.Client), Window: window,
+			Store: alerts, Policy: notifications.AppNotificationPolicy(appsSvc.Client), Owners: ownerPolicies(d), Window: window,
 		}
 	}
 	return w
@@ -49,7 +49,14 @@ func newDiskUsage(appsSvc *apps.Service, d Deps) *diskusage.Sweeper {
 	}
 	w := &diskusage.Sweeper{Apps: appsSvc.Client, Store: st, Usage: d.DiskUsage}
 	if alerts, ok := d.Store.(notifications.ServiceAlertStore); ok {
-		w.Notifier = notifications.DiskUsageNotifier{Store: alerts, Policy: notifications.AppNotificationPolicy(appsSvc.Client)}
+		w.Notifier = notifications.DiskUsageNotifier{Store: alerts, Policy: notifications.AppNotificationPolicy(appsSvc.Client), Owners: ownerPolicies(d)}
 	}
 	return w
+}
+
+// ownerPolicies reads each workspace's notification policy (w3/m271) from the
+// control-plane store; without one every workspace has Render's default.
+func ownerPolicies(d Deps) notifications.OwnerPolicyLookup {
+	st, _ := d.Store.(notifications.OwnerPolicyStore)
+	return notifications.StoredOwnerPolicy(st)
 }

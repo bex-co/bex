@@ -96,7 +96,9 @@ function RouteComponent() {
  * the pending skeleton draw the same list (w5/m124).
  */
 export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
-  const { service, loading, refetch } = useServer(serviceId, { poll: false });
+  const { service, loading, refetch, ownerId } = useServer(serviceId, {
+    poll: false,
+  });
   const { pending, run } = useServiceLifecycle({ refetch });
   const { t } = useTranslations();
   const sections = serviceSettingsSections(service ?? undefined);
@@ -333,6 +335,7 @@ export function ServiceSettingsPage({ serviceId }: { serviceId: string }) {
             <CardContent>
               <ServiceNotificationsRow
                 serviceId={serviceId}
+                ownerId={ownerId}
                 notificationsToSend={service?.notificationsToSend}
               />
             </CardContent>

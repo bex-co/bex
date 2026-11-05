@@ -80,8 +80,11 @@ type ServiceNotificationPolicy func(ctx context.Context, tenantID, serviceID str
 // AlertEmailWorker tails the event feed and failed Blueprint syncs into
 // per-recipient alert streams, then mails the streams that fall due.
 type AlertEmailWorker struct {
-	Store            AlertEmailStore
-	Policy           ServiceNotificationPolicy
+	Store  AlertEmailStore
+	Policy ServiceNotificationPolicy
+	// Owners resolves each workspace's notification policy (w3/m271); nil
+	// applies Render's default (email on, failure only).
+	Owners           OwnerPolicyLookup
 	Mailer           Mailer
 	Identities       EmailLookup
 	DashboardBaseURL string
@@ -184,26 +187,39 @@ func (w *AlertEmailWorker) dispatchFeed(ctx context.Context, byTenant map[string
 func (w *AlertEmailWorker) projectFeed(ctx context.Context, rows []store.WebhookEventRow, byTenant map[string][]store.AlertEmailRecipient) ([]store.AlertEmailItem, error) {
 	var items []store.AlertEmailItem
 	policies := map[string]string{}
+	owners := ownerPolicyCache{lookup: w.Owners}
 	for _, row := range rows {
 		event, detail, ok := classifyAlertEmail(row)
 		if !ok || len(byTenant[row.TenantID]) == 0 {
 			continue
 		}
-		cacheKey := row.TenantID + "/" + row.ServiceID
-		policy, cached := policies[cacheKey]
+		// The service's override is found by its srv- id (row.AppID, the App
+		// CR's app-id label), not by the feed's tenant-name composite, which
+		// no App carries: keyed on that, every override read as "default".
+		serviceID := row.AppID
+		if serviceID == "" {
+			serviceID = row.ServiceID
+		}
+		cacheKey := row.TenantID + "/" + serviceID
+		service, cached := policies[cacheKey]
 		if !cached && w.Policy != nil {
 			var err error
-			if policy, err = w.Policy(ctx, row.TenantID, row.ServiceID); err != nil {
-				return nil, fmt.Errorf("resolve notification policy for %s: %w", row.ServiceID, err)
+			if service, err = w.Policy(ctx, row.TenantID, serviceID); err != nil {
+				return nil, fmt.Errorf("resolve notification policy for %s: %w", serviceID, err)
 			}
-			policies[cacheKey] = policy
+			policies[cacheKey] = service
 		}
+		owner, err := owners.get(ctx, row.TenantID)
+		if err != nil {
+			return nil, err
+		}
+		policy := emailPolicy{owner: owner, service: service}
 		name := row.ServiceName
 		if name == "" {
 			name = row.ServiceID
 		}
 		for _, r := range byTenant[row.TenantID] {
-			if !wantsFailureEmail(policy, r) {
+			if !policy.wants(levelFailure, toggleFailed, alertPrefs(r)) {
 				continue
 			}
 			items = append(items, store.AlertEmailItem{
@@ -236,6 +252,30 @@ func classifyAlertEmail(row store.WebhookEventRow) (event, detail string, ok boo
 	return "", "", false
 }
 
+// ownerPolicyCache reads each workspace's notification policy once per pass.
+type ownerPolicyCache struct {
+	lookup OwnerPolicyLookup
+	byID   map[string]OwnerPolicy
+}
+
+func (c *ownerPolicyCache) get(ctx context.Context, tenantID string) (OwnerPolicy, error) {
+	if p, ok := c.byID[tenantID]; ok {
+		return p, nil
+	}
+	p, err := ownerPolicy(ctx, c.lookup, tenantID)
+	if err != nil {
+		return OwnerPolicy{}, fmt.Errorf("resolve workspace notification policy for %s: %w", tenantID, err)
+	}
+	if c.byID == nil {
+		c.byID = map[string]OwnerPolicy{}
+	}
+	c.byID[tenantID] = p
+	return p, nil
+}
+
+// alertPrefs is the failure preference an alert recipient carries.
+func alertPrefs(r store.AlertEmailRecipient) memberPrefs { return memberPrefs{failed: r.DeployFailed} }
+
 // failureNotificationPolicy is the policy a service applies to its failure
 // notifications: notificationsToSend when set, otherwise the legacy
 // notifyOnFail (notify => failure, ignore => none), otherwise default. The
@@ -255,21 +295,9 @@ func failureNotificationPolicy(notificationsToSend, notifyOnFail string) string 
 	return appv1alpha1.NotificationsToSendDefault
 }
 
-// wantsFailureEmail applies a failure policy to one member: none suppresses,
-// failure and all send, default follows the member's failure preference.
-func wantsFailureEmail(policy string, r store.AlertEmailRecipient) bool {
-	switch policy {
-	case appv1alpha1.NotificationsToSendNone:
-		return false
-	case appv1alpha1.NotificationsToSendFailure, appv1alpha1.NotificationsToSendAll:
-		return true
-	default:
-		return r.DeployFailed
-	}
-}
-
 // dispatchBlueprints projects failed Blueprint syncs. A Blueprint has no
-// service policy, so each member's failure preference decides.
+// service override, so the workspace policy and each member's failure
+// preference decide.
 func (w *AlertEmailWorker) dispatchBlueprints(ctx context.Context, byTenant map[string][]store.AlertEmailRecipient, until time.Time) error {
 	if !w.blueprintLoaded {
 		at, key, err := w.Store.EnsureAlertEmailWatermark(ctx, store.AlertEmailBlueprintWatermark, until)
@@ -293,13 +321,19 @@ func (w *AlertEmailWorker) dispatchBlueprints(ctx context.Context, byTenant map[
 			return nil
 		}
 		var items []store.AlertEmailItem
+		owners := ownerPolicyCache{lookup: w.Owners}
 		for _, f := range failed {
 			name := f.BlueprintName
 			if name == "" {
 				name = id.BlueprintPublicID(f.BlueprintID)
 			}
+			owner, err := owners.get(ctx, f.TenantID)
+			if err != nil {
+				return err
+			}
+			policy := emailPolicy{owner: owner, service: appv1alpha1.NotificationsToSendDefault}
 			for _, r := range byTenant[f.TenantID] {
-				if !r.DeployFailed {
+				if !policy.wants(levelFailure, toggleFailed, alertPrefs(r)) {
 					continue
 				}
 				items = append(items, store.AlertEmailItem{
@@ -502,6 +536,7 @@ type ServiceAlertStore interface {
 type CrashLoopNotifier struct {
 	Store  ServiceAlertStore
 	Policy ServiceNotificationPolicy
+	Owners OwnerPolicyLookup
 	// Window is the suspension window, named in the email.
 	Window time.Duration
 }
@@ -510,7 +545,7 @@ type CrashLoopNotifier struct {
 // and the moment its window started, so a retried or raced suspension mails
 // once.
 func (n CrashLoopNotifier) NotifyCrashLoopSuspended(ctx context.Context, tenantID, serviceID, name string, failingSince, at time.Time) error {
-	return enqueueServiceAlert(ctx, n.Store, n.Policy, tenantID, serviceID, wantsFailureEmail, store.AlertEmailItem{
+	return enqueueServiceAlert(ctx, n.Store, n.Policy, n.Owners, tenantID, serviceID, levelFailure, store.AlertEmailItem{
 		SourceKey:  "crashloop:" + serviceID + ":" + failingSince.UTC().Format(time.RFC3339),
 		ResourceID: serviceID, Event: store.AlertEmailServiceSuspended, ResourceName: name,
 		Detail: windowWords(n.Window), OccurredAt: at,
@@ -518,19 +553,30 @@ func (n CrashLoopNotifier) NotifyCrashLoopSuspended(ctx context.Context, tenantI
 }
 
 // enqueueServiceAlert enqueues template for every member of tenantID whom the
-// service's notification policy and wants admit. A worker-raised alert has no
-// feed cursor; template.SourceKey makes a retry or a racing replica mail once.
-func enqueueServiceAlert(ctx context.Context, st ServiceAlertStore, policyOf ServiceNotificationPolicy,
-	tenantID, serviceID string, wants func(string, store.AlertEmailRecipient) bool, template store.AlertEmailItem) error {
+// service's notification level (its override, else the workspace policy)
+// admits for an event of level. Under the workspace policy a failure follows
+// each member's failure preference; an "all" event has no member preference.
+// A worker-raised alert has no feed cursor; template.SourceKey makes a retry
+// or a racing replica mail once.
+func enqueueServiceAlert(ctx context.Context, st ServiceAlertStore, policyOf ServiceNotificationPolicy, owners OwnerPolicyLookup,
+	tenantID, serviceID string, level notifyLevel, template store.AlertEmailItem) error {
 	if st == nil {
 		return nil
 	}
-	policy := appv1alpha1.NotificationsToSendDefault
+	service := appv1alpha1.NotificationsToSendDefault
 	if policyOf != nil {
 		var err error
-		if policy, err = policyOf(ctx, tenantID, serviceID); err != nil {
+		if service, err = policyOf(ctx, tenantID, serviceID); err != nil {
 			return err
 		}
+	}
+	owner, err := ownerPolicy(ctx, owners, tenantID)
+	if err != nil {
+		return err
+	}
+	policy, toggle := emailPolicy{owner: owner, service: service}, toggleFailed
+	if level == levelAll {
+		toggle = toggleNone
 	}
 	recipients, err := st.ListAlertEmailRecipientsFor(ctx, tenantID)
 	if err != nil {
@@ -538,7 +584,7 @@ func enqueueServiceAlert(ctx context.Context, st ServiceAlertStore, policyOf Ser
 	}
 	var items []store.AlertEmailItem
 	for _, r := range recipients {
-		if !wants(policy, r) {
+		if !policy.wants(level, toggle, alertPrefs(r)) {
 			continue
 		}
 		item := template
@@ -557,26 +603,21 @@ func enqueueServiceAlert(ctx context.Context, st ServiceAlertStore, policyOf Ser
 type DiskUsageNotifier struct {
 	Store  ServiceAlertStore
 	Policy ServiceNotificationPolicy
+	Owners OwnerPolicyLookup
 }
 
 // NotifyDiskUsage enqueues the alert under the crossing fact's source key.
 func (n DiskUsageNotifier) NotifyDiskUsage(ctx context.Context, tenantID, serviceID, name string, high bool,
 	d store.DiskUsageDetails, sourceKey string, at time.Time) error {
-	event, wants := store.AlertEmailDiskUsageHigh, wantsFailureEmail
+	event, level := store.AlertEmailDiskUsageHigh, levelFailure
 	if !high {
-		event, wants = store.AlertEmailDiskUsageRecovered, wantsAllEmail
+		event, level = store.AlertEmailDiskUsageRecovered, levelAll
 	}
-	return enqueueServiceAlert(ctx, n.Store, n.Policy, tenantID, serviceID, wants, store.AlertEmailItem{
+	return enqueueServiceAlert(ctx, n.Store, n.Policy, n.Owners, tenantID, serviceID, level, store.AlertEmailItem{
 		SourceKey: sourceKey, ResourceID: serviceID, Event: event, ResourceName: name,
 		Detail:     diskUsageDetail(d),
 		OccurredAt: at,
 	})
-}
-
-// wantsAllEmail admits a member only to "all notifications": a service whose
-// notificationsToSend is all. Render's workspace default is failure-only.
-func wantsAllEmail(policy string, _ store.AlertEmailRecipient) bool {
-	return policy == appv1alpha1.NotificationsToSendAll
 }
 
 // diskUsageDetail is the disk sentence a disk-usage email carries.

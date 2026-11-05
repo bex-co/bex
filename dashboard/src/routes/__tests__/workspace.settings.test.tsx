@@ -52,6 +52,15 @@ vi.mock(
   }),
 );
 
+vi.mock(
+  "@/features/notifications/components/workspace-notifications-card",
+  () => ({
+    WorkspaceNotificationsCard: ({ ownerId }: { ownerId: string }) => (
+      <div>Workspace notifications card {ownerId}</div>
+    ),
+  }),
+);
+
 // The danger zone gained a permanent resident in w5/m102: Leave workspace is
 // available to every member, so the section now exists regardless of how many
 // workspaces the caller has — only the DELETE card stays gated on having
@@ -126,6 +135,18 @@ describe("WorkspaceSettingsPage", () => {
     expect(screen.getByRole("link", { name: "Agents" })).toHaveAttribute(
       "href",
       "#agents",
+    );
+  });
+
+  it("renders the Notifications section for the current workspace (w3/m271)", async () => {
+    await renderPage();
+
+    expect(
+      screen.getByText("Workspace notifications card tea-primary"),
+    ).toBeInTheDocument();
+    expect(screen.getByRole("link", { name: "Notifications" })).toHaveAttribute(
+      "href",
+      "#notifications",
     );
   });
 

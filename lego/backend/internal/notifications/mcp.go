@@ -54,4 +54,22 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 		v, err := s.UpdateSettings(ctx, "", in.DeployStarted, in.DeploySucceeded, in.DeployFailed)
 		return nil, v, err
 	})
+
+	// The workspace notification policy (w3/m271): the same object and verbs
+	// as Render's GET/PATCH /notification-settings/owners/{ownerId}.
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "get_owner_notification_settings",
+		Description: "Get a workspace's notification policy, as on Render's owner notification settings: emailEnabled, notificationsToSend (none, failure or all — what a service whose notificationsToSend is default sends), and slackEnabled/previewNotificationsEnabled (always false; bex has no Slack or preview environments).",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, OwnerSettingsView, error) {
+		v, err := s.GetOwnerSettings(ctx, "")
+		return nil, v, err
+	})
+
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "update_owner_notification_settings",
+		Description: "Update a workspace's notification policy (workspace admins only). Omitted fields keep their value: emailEnabled turns email on or off for the workspace; notificationsToSend none|failure|all is what every service on its default sends (a service's own override still wins); previewNotificationsEnabled accepts only false.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in OwnerSettingsInput) (*mcp.CallToolResult, OwnerSettingsView, error) {
+		v, err := s.UpdateOwnerSettings(ctx, "", in)
+		return nil, v, err
+	})
 }

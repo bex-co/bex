@@ -15,7 +15,8 @@ const enNotifications: Record<string, TranslationEntry> = {
     description: "Toggle label",
   },
   "notifications.deployStartedHint": {
-    message: "Email me when a deploy starts.",
+    message:
+      "Email me when a deploy starts. Sent only for services that send all notifications.",
     description: "Toggle hint",
   },
   "notifications.deploySucceeded": {
@@ -23,7 +24,8 @@ const enNotifications: Record<string, TranslationEntry> = {
     description: "Toggle label",
   },
   "notifications.deploySucceededHint": {
-    message: "Email me when a deploy goes live.",
+    message:
+      "Email me when a deploy goes live. Sent only for services that send all notifications.",
     description: "Toggle hint",
   },
   "notifications.deployFailed": {
@@ -433,6 +435,82 @@ const enNotifications: Record<string, TranslationEntry> = {
   "notifications.pushEmptyOverride": {
     message: "Each service override must change delivery, urgency, or events.",
     description: "Empty override validation",
+  },
+  "notifications.workspaceTitle": {
+    message: "Notifications",
+    description:
+      "Workspace Settings → Notifications card title (the workspace notification policy)",
+  },
+  "notifications.workspaceDescription": {
+    message:
+      "Defaults for every service. A service can override them in its Settings.",
+    description: "Workspace Settings → Notifications card description",
+  },
+  "notifications.workspaceReadOnly": {
+    message: "Only workspace admins can change these defaults.",
+    description: "Workspace notification policy: read-only note for non-admins",
+  },
+  "notifications.workspaceEmailLabel": {
+    message: "Email notifications",
+    description: "Workspace notification policy: email destination switch",
+  },
+  "notifications.workspaceEmailHint": {
+    message:
+      "Off sends no notification email, whatever a service's setting says.",
+    description: "Workspace notification policy: email destination hint",
+  },
+  "notifications.workspaceLevelLabel": {
+    message: "Default service notifications",
+    description: "Workspace notification policy: level radio group label",
+  },
+  "notifications.workspaceLevelHint": {
+    message: "What services on the workspace default send.",
+    description: "Workspace notification policy: level radio group hint",
+  },
+  "notifications.levelAll": {
+    message: "All notifications",
+    description: "Notification level: every notification",
+  },
+  "notifications.levelAllHint": {
+    message: "Failures, plus deploys starting and going live, and recoveries.",
+    description: "Notification level hint: all",
+  },
+  "notifications.levelFailure": {
+    message: "Only failure notifications",
+    description: "Notification level: failures only (Render's default)",
+  },
+  "notifications.levelFailureHint": {
+    message:
+      "Failed deploys, unhealthy services, failed cron runs, full disks.",
+    description: "Notification level hint: failure",
+  },
+  "notifications.levelNone": {
+    message: "None",
+    description: "Notification level: nothing",
+  },
+  "notifications.levelNoneHint": {
+    message: "Send no notifications for these services.",
+    description: "Notification level hint: none",
+  },
+  "notifications.workspaceSave": {
+    message: "Save",
+    description: "Workspace notification policy: save button",
+  },
+  "notifications.workspaceSaved": {
+    message: "Notification defaults saved",
+    description: "Workspace notification policy: success toast",
+  },
+  "notifications.workspaceSaveFailed": {
+    message: "Couldn't save the notification defaults. Try again.",
+    description: "Workspace notification policy: save error",
+  },
+  "notifications.workspaceLoadFailed": {
+    message: "Couldn't load the workspace notification defaults.",
+    description: "Workspace notification policy: load error",
+  },
+  "notifications.workspaceRetry": {
+    message: "Retry",
+    description: "Workspace notification policy: retry button",
   },
 };
 

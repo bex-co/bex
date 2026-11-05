@@ -12,6 +12,8 @@ import { TeamPanel } from "@/features/team/components/team-panel";
 import { LeaveWorkspaceCard } from "@/features/team/components/leave-workspace-card";
 import { AgentEnvironmentCard } from "@/features/agent-environment/components/agent-environment-card";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
+import { WorkspaceNotificationsCard } from "@/features/notifications/components/workspace-notifications-card";
+import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
 import { WorkspaceSettingsPageSkeleton } from "@/common/components/route-skeletons";
 import {
   SECTION_NAVIGATION_STICKY_CLASS,
@@ -90,6 +92,9 @@ function WorkspaceSettingsPage() {
                 <section data-skeleton-region="team">
                   <CardSkeleton rows={5} />
                 </section>
+                <section data-skeleton-region="notifications">
+                  <WorkspaceNotificationsCardSkeleton />
+                </section>
                 <section data-skeleton-region="agents">
                   <AgentEnvironmentCardSkeleton />
                 </section>
@@ -123,6 +128,15 @@ function WorkspaceSettingsPage() {
                 {/* Settings → Agents (w10/m17/t005): the workspace agent
                     environment — network tier and default model — configured
                     once here instead of per session. */}
+                {/* Settings → Notifications (w3/m271): the workspace
+                    notification policy every service on "Use workspace
+                    default" follows — Render's owner notification settings. */}
+                <section
+                  id="notifications"
+                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                >
+                  <WorkspaceNotificationsCard ownerId={currentWorkspace.id} />
+                </section>
                 <section
                   id="agents"
                   className={SECTION_NAVIGATION_TARGET_CLASS}

@@ -56,6 +56,8 @@ type fakeStore struct {
 	devices    map[[3]string]store.DevicePushSubscription
 	browsers   map[[3]string]store.WebPushSubscription
 	push       map[[2]string][]store.PushNotification
+	owners     map[string]store.NotificationOwnerPolicy // workspace -> policy row
+	ownerErr   error
 }
 
 func newFakeStore() *fakeStore {
@@ -96,6 +98,40 @@ func (f *fakeStore) UpsertNotificationPushPolicy(_ context.Context, tenantID, su
 
 func (f *fakeStore) ListNotifyRecipients(_ context.Context, tenantID string) ([]store.NotifyRecipient, error) {
 	return f.recipients[tenantID], nil
+}
+
+func (f *fakeStore) GetNotificationOwnerPolicy(_ context.Context, workspaceID string) (store.NotificationOwnerPolicy, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.ownerErr != nil {
+		return store.NotificationOwnerPolicy{}, f.ownerErr
+	}
+	row, ok := f.owners[workspaceID]
+	if !ok {
+		return store.NotificationOwnerPolicy{}, store.ErrNotFound
+	}
+	return row, nil
+}
+
+func (f *fakeStore) UpsertNotificationOwnerPolicy(_ context.Context, workspaceID string, patch store.NotificationOwnerPolicyPatch) (store.NotificationOwnerPolicy, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	if f.owners == nil {
+		f.owners = map[string]store.NotificationOwnerPolicy{}
+	}
+	row, ok := f.owners[workspaceID]
+	if !ok {
+		row = store.NotificationOwnerPolicy{WorkspaceID: workspaceID, EmailEnabled: true, NotificationsToSend: "failure"}
+	}
+	if patch.EmailEnabled != nil {
+		row.EmailEnabled = *patch.EmailEnabled
+	}
+	if patch.NotificationsToSend != nil {
+		row.NotificationsToSend = *patch.NotificationsToSend
+	}
+	row.UpdatedAt = time.Now()
+	f.owners[workspaceID] = row
+	return row, nil
 }
 
 func (f *fakeStore) UpsertDevicePushSubscription(_ context.Context, sub store.DevicePushSubscription) (store.DevicePushSubscription, error) {
@@ -383,8 +419,16 @@ func TestSettingsUnavailableWhenStoreNil(t *testing.T) {
 	}
 }
 
+// sendAllNotifications sets tea-a's workspace policy to "all" (w3/m271): a
+// deploy starting or going live is an "all" notification, so a member's own
+// started/succeeded preference only narrows what that level sends.
+func sendAllNotifications(st *fakeStore) {
+	st.owners = map[string]store.NotificationOwnerPolicy{"tea-a": {WorkspaceID: "tea-a", EmailEnabled: true, NotificationsToSend: "all"}}
+}
+
 func TestNotifyDeployStartedRespectsStartedPreference(t *testing.T) {
 	st := newFakeStore()
+	sendAllNotifications(st)
 	st.recipients["tea-a"] = []store.NotifyRecipient{
 		{Subject: "alice", DeployStarted: true},
 		{Subject: "bob", DeployStarted: false},
@@ -408,9 +452,10 @@ func TestNotifyDeployStartedRespectsStartedPreference(t *testing.T) {
 
 func TestNotifyDeploySendsOnlyToRecipientsWhoWantIt(t *testing.T) {
 	st := newFakeStore()
+	sendAllNotifications(st)
 	st.recipients["tea-a"] = []store.NotifyRecipient{
 		{Subject: "alice", DeploySucceeded: true, DeployFailed: true},
-		{Subject: "bob", DeploySucceeded: false, DeployFailed: true}, // opted out of success mail
+		{Subject: "bob", DeployStarted: true, DeploySucceeded: false, DeployFailed: true}, // opted out of success mail
 		{Subject: "carol", DeploySucceeded: true, DeployFailed: true},
 	}
 	mailer := &fakeMailer{}
@@ -535,6 +580,7 @@ func TestNotifyDeployFailedHonorsNotifyOnFailOverride(t *testing.T) {
 // following each member's own deploySucceeded preference, unmodified.
 func TestNotifyDeploySucceededIgnoresNotifyOnFail(t *testing.T) {
 	st := newFakeStore()
+	sendAllNotifications(st)
 	st.recipients["tea-a"] = []store.NotifyRecipient{
 		{Subject: "alice", DeploySucceeded: true, DeployFailed: true},
 	}

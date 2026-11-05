@@ -1,0 +1,29 @@
+# The workspace notification policy (w3/m271): Render's owner notification
+# settings (GET/PATCH /notification-settings/owners/{ownerId}). A service whose
+# notificationsToSend is "default" sends what notificationsToSend says here;
+# emailEnabled turns email off for the whole workspace. slackEnabled and
+# previewNotificationsEnabled always read false (both are non-goals). Any
+# member reads it; only admins (can_manage) write it.
+fragment OwnerNotificationSettingsFields on OwnerNotificationSettings {
+  ownerId
+  emailEnabled
+  notificationsToSend
+  slackEnabled
+  previewNotificationsEnabled
+}
+
+query OwnerNotificationSettings($ownerId: String!) {
+  ownerNotificationSettings(ownerId: $ownerId) {
+    ...OwnerNotificationSettingsFields
+  }
+}
+
+# Partial update: omitted fields keep their value.
+mutation UpdateOwnerNotificationSettings(
+  $ownerId: String!
+  $input: OwnerNotificationSettingsInput!
+) {
+  updateOwnerNotificationSettings(ownerId: $ownerId, input: $input) {
+    ...OwnerNotificationSettingsFields
+  }
+}

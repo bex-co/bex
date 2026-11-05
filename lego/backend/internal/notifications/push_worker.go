@@ -134,6 +134,13 @@ type PushWorker struct {
 	// Tick is an optional test scheduler. Production leaves it nil and Run owns
 	// a bounded ticker derived from PollInterval.
 	Tick <-chan time.Time
+	// Owners and Policy apply a service's notification level to its pushes
+	// (w3/m271): the service's notificationsToSend, else the workspace policy,
+	// drops a push the level does not send before any member's push policy is
+	// evaluated. Owners nil leaves the level out of push entirely; Policy nil
+	// treats every service as following the workspace.
+	Owners OwnerPolicyLookup
+	Policy ServiceNotificationPolicy
 
 	// cursor is this worker's cached position in the composed feed, loaded once
 	// and advanced by every committed page (store.FeedCursor).
@@ -581,6 +588,7 @@ func (w *PushWorker) fanOutPage(ctx context.Context, rows []store.WebhookEventRo
 	batch := make([]store.PushNotificationBatchItem, 0)
 	decisionTime := w.now()
 	evaluator := DeliveryPolicyEvaluator{Now: func() time.Time { return decisionTime }}
+	levels := pushLevels{worker: w, owners: ownerPolicyCache{lookup: w.Owners}, services: map[string]string{}}
 	var err error
 	for _, row := range rows {
 		// The feed query already carries the app id and the fact status, so
@@ -608,6 +616,14 @@ func (w *PushWorker) fanOutPage(ctx context.Context, rows []store.WebhookEventRo
 			target.serviceID = ""
 			target.resourceKind, target.resourceID = route.kind, row.ServiceID
 			target.deepLink = route.deepLinkPrefix + row.ServiceID
+		} else {
+			sent, levelErr := levels.admits(ctx, row.TenantID, serviceID, DeliveryEvent(projected.event))
+			if levelErr != nil {
+				return nil, levelErr
+			}
+			if !sent {
+				continue
+			}
 		}
 		batch, err = fanOutPush(batch, evaluator, byTenant[row.TenantID], target)
 		if err != nil {
@@ -615,6 +631,50 @@ func (w *PushWorker) fanOutPage(ctx context.Context, rows []store.WebhookEventRo
 		}
 	}
 	return batch, nil
+}
+
+// pushLevels applies each service's notification level to one feed page,
+// reading each service's override and each workspace's policy once.
+type pushLevels struct {
+	worker   *PushWorker
+	owners   ownerPolicyCache
+	services map[string]string
+}
+
+// admits reports whether the service's level (its override, else the
+// workspace policy) sends a push of event. The workspace's emailEnabled does
+// not apply: it names the email destination only.
+func (l *pushLevels) admits(ctx context.Context, tenantID, serviceID string, event DeliveryEvent) (bool, error) {
+	if l.worker.Owners == nil {
+		return true, nil
+	}
+	key := tenantID + "/" + serviceID
+	service, ok := l.services[key]
+	if !ok && l.worker.Policy != nil {
+		var err error
+		if service, err = l.worker.Policy(ctx, tenantID, serviceID); err != nil {
+			return false, fmt.Errorf("resolve notification policy for %s: %w", serviceID, err)
+		}
+		l.services[key] = service
+	}
+	owner, err := l.owners.get(ctx, tenantID)
+	if err != nil {
+		return false, err
+	}
+	level, _ := effectiveLevel(service, owner)
+	return levelAdmits(level, pushEventLevel(event)), nil
+}
+
+// pushEventLevel is a service push's Render tier: a failed deploy, an
+// unavailable service, a failed cron run and a suspension (a crash-loop
+// suspension is a failure on Render) are failures; a deploy starting or going
+// live, a recovery and a resume are sent only at "all".
+func pushEventLevel(event DeliveryEvent) notifyLevel {
+	switch event {
+	case DeliveryEventDeployFailed, DeliveryEventServerFailed, DeliveryEventCronFailed, DeliveryEventServiceSuspended:
+		return levelFailure
+	}
+	return levelAll
 }
 
 func storedPushDeliveryPolicy(raw json.RawMessage) (DeliveryPolicy, error) {

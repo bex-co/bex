@@ -1365,7 +1365,8 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Settings tab: service notification policy label",
   },
   "services.notificationsHint": {
-    message: "覆盖此服务的工作区默认设置。工作区默认仅发送失败通知。",
+    message:
+      "覆盖此服务的工作区默认设置。工作区默认设置位于“工作区设置 → 通知”。",
     description: "Settings tab: service notification policy explanation",
   },
   "services.notificationsEdit": {
@@ -1373,8 +1374,14 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Accessible label for the service-notifications edit button",
   },
   "services.notificationsOptionDefault": {
-    message: "使用工作区默认设置（仅失败通知）",
-    description: "Service notification option: inherit workspace default",
+    message: "使用工作区默认设置（{level}）",
+    description:
+      "Service notification option: inherit workspace default; {level} is the workspace's saved level (e.g. Only failure notifications)",
+  },
+  "services.notificationsOptionDefaultUnknown": {
+    message: "使用工作区默认设置",
+    description:
+      "Service notification option: inherit workspace default, while the workspace level is loading or unreadable",
   },
   "services.notificationsOptionAll": {
     message: "所有通知",

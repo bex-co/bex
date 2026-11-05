@@ -1397,7 +1397,7 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.notificationsHint": {
     message:
-      "Override the workspace default for this service. The workspace default sends only failure notifications.",
+      "Override the workspace default for this service. The workspace default is set in Workspace Settings → Notifications.",
     description: "Settings tab: service notification policy explanation",
   },
   "services.notificationsEdit": {
@@ -1405,8 +1405,14 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Accessible label for the service-notifications edit button",
   },
   "services.notificationsOptionDefault": {
-    message: "Use workspace default (Only failure notifications)",
-    description: "Service notification option: inherit workspace default",
+    message: "Use workspace default ({level})",
+    description:
+      "Service notification option: inherit workspace default; {level} is the workspace's saved level (e.g. Only failure notifications)",
+  },
+  "services.notificationsOptionDefaultUnknown": {
+    message: "Use workspace default",
+    description:
+      "Service notification option: inherit workspace default, while the workspace level is loading or unreadable",
   },
   "services.notificationsOptionAll": {
     message: "All notifications",

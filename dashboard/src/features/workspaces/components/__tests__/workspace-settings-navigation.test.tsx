@@ -14,6 +14,7 @@ describe("WorkspaceSettingsNavigation", () => {
     const expected: [string, string][] = [
       ["General", "#general"],
       ["Team", "#team"],
+      ["Notifications", "#notifications"],
       ["Agents", "#agents"],
       ["Danger Zone", "#danger-zone"],
     ];

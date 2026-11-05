@@ -72,11 +72,12 @@ func TestFailurePolicyDecidesWhoIsMailed(t *testing.T) {
 		// The richer policy wins over the legacy field.
 		{appv1alpha1.NotificationsToSendNone, "notify", false, false},
 	} {
-		policy := failureNotificationPolicy(tc.toSend, tc.notifyOnFail)
-		if got := wantsFailureEmail(policy, on); got != tc.wantOn {
+		// Under Render's default workspace policy (email on, failure only).
+		policy := emailPolicy{owner: defaultOwnerPolicy, service: failureNotificationPolicy(tc.toSend, tc.notifyOnFail)}
+		if got := policy.wants(levelFailure, toggleFailed, alertPrefs(on)); got != tc.wantOn {
 			t.Errorf("%q/%q opted-in member = %v, want %v", tc.toSend, tc.notifyOnFail, got, tc.wantOn)
 		}
-		if got := wantsFailureEmail(policy, off); got != tc.wantOff {
+		if got := policy.wants(levelFailure, toggleFailed, alertPrefs(off)); got != tc.wantOff {
 			t.Errorf("%q/%q opted-out member = %v, want %v", tc.toSend, tc.notifyOnFail, got, tc.wantOff)
 		}
 	}
@@ -283,14 +284,23 @@ func TestDiskUsageNotifierLevels(t *testing.T) {
 	d := store.DiskUsageDetails{DiskID: "dsk-1", DiskName: "data", MountPath: "/data", UsagePercent: 85.5, ThresholdPercent: 80}
 	for _, tc := range []struct {
 		policy    string
+		workspace string // the workspace policy's level; "" = no row (Render's default)
 		high      bool
 		wantItems int
 	}{
-		{appv1alpha1.NotificationsToSendDefault, true, 1},
-		{appv1alpha1.NotificationsToSendDefault, false, 0},
-		{appv1alpha1.NotificationsToSendFailure, false, 0},
-		{appv1alpha1.NotificationsToSendAll, false, 2},
-		{appv1alpha1.NotificationsToSendNone, true, 0},
+		{appv1alpha1.NotificationsToSendDefault, "", true, 1},
+		{appv1alpha1.NotificationsToSendDefault, "", false, 0},
+		{appv1alpha1.NotificationsToSendFailure, "", false, 0},
+		{appv1alpha1.NotificationsToSendAll, "", false, 2},
+		{appv1alpha1.NotificationsToSendNone, "", true, 0},
+		// w3/m271: a service on default follows the workspace policy. "all"
+		// sends the recovery to every member (no member preference speaks
+		// about it); "none" suppresses even the failure.
+		{appv1alpha1.NotificationsToSendDefault, appv1alpha1.NotificationsToSendAll, false, 2},
+		{appv1alpha1.NotificationsToSendDefault, appv1alpha1.NotificationsToSendNone, true, 0},
+		// An explicit service override still wins over the workspace.
+		{appv1alpha1.NotificationsToSendFailure, appv1alpha1.NotificationsToSendAll, false, 0},
+		{appv1alpha1.NotificationsToSendAll, appv1alpha1.NotificationsToSendNone, false, 2},
 	} {
 		rec := &enqueueRecorder{recipients: []store.AlertEmailRecipient{
 			{TenantID: "tea-a", Subject: "alice", DeployFailed: true},
@@ -298,11 +308,14 @@ func TestDiskUsageNotifierLevels(t *testing.T) {
 		}}
 		policy := tc.policy
 		n := DiskUsageNotifier{Store: rec, Policy: func(context.Context, string, string) (string, error) { return policy, nil }}
+		if tc.workspace != "" {
+			n.Owners = staticOwners(OwnerPolicy{EmailEnabled: true, NotificationsToSend: tc.workspace})
+		}
 		if err := n.NotifyDiskUsage(t.Context(), "tea-a", "srv-1", "db", tc.high, d, "disk_usage:dsk-1:x:1", time.Now()); err != nil {
 			t.Fatal(err)
 		}
 		if len(rec.items) != tc.wantItems {
-			t.Errorf("policy %s high=%v: %d items, want %d", tc.policy, tc.high, len(rec.items), tc.wantItems)
+			t.Errorf("policy %s workspace %q high=%v: %d items, want %d", tc.policy, tc.workspace, tc.high, len(rec.items), tc.wantItems)
 		}
 	}
 	subject, msg := alertEmail(store.AlertEmailStream{Event: store.AlertEmailDiskUsageHigh, ResourceName: "db",

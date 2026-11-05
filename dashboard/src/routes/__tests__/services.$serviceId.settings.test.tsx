@@ -193,6 +193,14 @@ vi.mock("@/features/services/hooks/use-service-notifications", () => ({
   }),
 }));
 
+// The row's "Use workspace default" label reads the workspace policy (w3/m271).
+vi.mock(
+  "@/features/notifications/hooks/use-owner-notification-settings",
+  () => ({
+    useOwnerNotificationSettings: () => ({ settings: null, loading: true }),
+  }),
+);
+
 vi.mock("@/features/services/hooks/use-max-shutdown-delay", () => ({
   useMaxShutdownDelay: () => ({
     setMaxShutdownDelay: vi.fn(async () => true),

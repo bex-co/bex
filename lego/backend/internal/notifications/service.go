@@ -47,7 +47,6 @@ import (
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
 	"github.com/bex-co/bex/lego/backend/internal/store"
-	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
 // NotificationsStore is the slice of the control-plane store this feature
@@ -70,6 +69,7 @@ type NotificationsStore interface {
 	MarkOwnPushNotificationRead(ctx context.Context, tenantID, subject, eventID string, at time.Time) (bool, error)
 	PushNotificationWorkspaces(ctx context.Context, subject, eventID string) ([]string, error)
 	CountUnreadPushNotifications(ctx context.Context, tenantID, subject string, excludeKinds []string) (int64, error)
+	OwnerPolicyStore
 }
 
 // Mailer delivers an email with a plain-text body and an optional HTML
@@ -813,13 +813,18 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 	if s.Store == nil || s.Mailer == nil {
 		return
 	}
+	if s.Identities == nil {
+		return // nowhere to resolve an address — nothing this pass can send
+	}
+	owner, err := StoredOwnerPolicy(s.Store)(ctx, tenantID)
+	if err != nil {
+		log.Printf("notifications: read notification policy for %s: %v", tenantID, err)
+		return
+	}
 	recipients, err := s.Store.ListNotifyRecipients(ctx, tenantID)
 	if err != nil {
 		log.Printf("notifications: list recipients for %s: %v", tenantID, err)
 		return
-	}
-	if s.Identities == nil {
-		return // nowhere to resolve an address — nothing this pass can send
 	}
 	// The email is identical for every recipient — compose it once, before the
 	// fan-out, rather than rebuilding the same URL + body inside each goroutine
@@ -827,27 +832,20 @@ func (s *Service) notifyDeploy(ctx context.Context, tenantID, appName string, ki
 	logsURL := s.deployLogsURL(appName, details.deployID)
 	emailSubject, msg := deployEmail(appName, kind, details, logsURL)
 	text, html := msg.Text(), msg.HTML()
+	// The service's level (its override, else the workspace policy) decides
+	// which deploy mail is sent; under the workspace policy each member's own
+	// preference then narrows it (w3/m271).
+	policy := emailPolicy{owner: owner, service: notificationsToSend}
+	level, toggle := levelFailure, toggleFailed
+	switch kind {
+	case deployMailStarted:
+		level, toggle = levelAll, toggleStarted
+	case deployMailSucceeded:
+		level, toggle = levelAll, toggleSucceeded
+	}
 	var to []string
 	for _, r := range recipients {
-		var wants bool
-		switch notificationsToSend {
-		case appv1alpha1.NotificationsToSendNone:
-			wants = false
-		case appv1alpha1.NotificationsToSendFailure:
-			wants = kind == deployMailFailed
-		case appv1alpha1.NotificationsToSendAll:
-			wants = true
-		default:
-			switch kind {
-			case deployMailStarted:
-				wants = r.DeployStarted
-			case deployMailSucceeded:
-				wants = r.DeploySucceeded
-			case deployMailFailed:
-				wants = r.DeployFailed
-			}
-		}
-		if wants {
+		if policy.wants(level, toggle, memberPrefs{started: r.DeployStarted, succeeded: r.DeploySucceeded, failed: r.DeployFailed}) {
 			to = append(to, r.Subject)
 		}
 	}

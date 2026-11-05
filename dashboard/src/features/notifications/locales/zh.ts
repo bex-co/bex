@@ -15,7 +15,7 @@ const zhNotifications: Record<string, TranslationEntry> = {
     description: "Toggle label",
   },
   "notifications.deployStartedHint": {
-    message: "部署开始时通过邮件通知我。",
+    message: "部署开始时通过邮件通知我。仅对发送全部通知的服务生效。",
     description: "Toggle hint",
   },
   "notifications.deploySucceeded": {
@@ -23,7 +23,7 @@ const zhNotifications: Record<string, TranslationEntry> = {
     description: "Toggle label",
   },
   "notifications.deploySucceededHint": {
-    message: "部署上线时通过邮件通知我。",
+    message: "部署上线时通过邮件通知我。仅对发送全部通知的服务生效。",
     description: "Toggle hint",
   },
   "notifications.deployFailed": {
@@ -400,6 +400,79 @@ const zhNotifications: Record<string, TranslationEntry> = {
   "notifications.pushEmptyOverride": {
     message: "每个服务覆盖都必须更改投递、紧急程度或事件。",
     description: "Validation",
+  },
+  "notifications.workspaceTitle": {
+    message: "通知",
+    description:
+      "Workspace Settings → Notifications card title (the workspace notification policy)",
+  },
+  "notifications.workspaceDescription": {
+    message: "适用于所有服务的默认设置。服务可在其设置中覆盖。",
+    description: "Workspace Settings → Notifications card description",
+  },
+  "notifications.workspaceReadOnly": {
+    message: "只有工作区管理员可以修改这些默认设置。",
+    description: "Workspace notification policy: read-only note for non-admins",
+  },
+  "notifications.workspaceEmailLabel": {
+    message: "邮件通知",
+    description: "Workspace notification policy: email destination switch",
+  },
+  "notifications.workspaceEmailHint": {
+    message: "关闭后不发送任何通知邮件，无论服务如何设置。",
+    description: "Workspace notification policy: email destination hint",
+  },
+  "notifications.workspaceLevelLabel": {
+    message: "默认服务通知",
+    description: "Workspace notification policy: level radio group label",
+  },
+  "notifications.workspaceLevelHint": {
+    message: "使用工作区默认设置的服务发送的通知。",
+    description: "Workspace notification policy: level radio group hint",
+  },
+  "notifications.levelAll": {
+    message: "所有通知",
+    description: "Notification level: every notification",
+  },
+  "notifications.levelAllHint": {
+    message: "失败通知，以及部署开始、部署上线和恢复。",
+    description: "Notification level hint: all",
+  },
+  "notifications.levelFailure": {
+    message: "仅失败通知",
+    description: "Notification level: failures only (Render's default)",
+  },
+  "notifications.levelFailureHint": {
+    message: "部署失败、服务不健康、定时任务运行失败、磁盘将满。",
+    description: "Notification level hint: failure",
+  },
+  "notifications.levelNone": {
+    message: "无",
+    description: "Notification level: nothing",
+  },
+  "notifications.levelNoneHint": {
+    message: "不为这些服务发送任何通知。",
+    description: "Notification level hint: none",
+  },
+  "notifications.workspaceSave": {
+    message: "保存",
+    description: "Workspace notification policy: save button",
+  },
+  "notifications.workspaceSaved": {
+    message: "通知默认设置已保存",
+    description: "Workspace notification policy: success toast",
+  },
+  "notifications.workspaceSaveFailed": {
+    message: "无法保存通知默认设置，请重试。",
+    description: "Workspace notification policy: save error",
+  },
+  "notifications.workspaceLoadFailed": {
+    message: "无法加载工作区通知默认设置。",
+    description: "Workspace notification policy: load error",
+  },
+  "notifications.workspaceRetry": {
+    message: "重试",
+    description: "Workspace notification policy: retry button",
   },
 };
 

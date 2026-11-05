@@ -36,6 +36,22 @@ const PORT = Number(process.env.PORT) || 8099;
 // borrowed copy of the first workspace's resources.
 const WORKSPACE_DEFAULT = "tea-localdefault00000001";
 const WORKSPACE_SECOND = "tea-localsecond000000002";
+
+// Saved workspace notification policies (w3/m271), by workspace id. A workspace
+// with no entry has Render's default: email on, failure notifications only.
+const OWNER_NOTIFICATION_SETTINGS = new Map();
+function ownerNotificationSettingsFor(ownerId = WORKSPACE_DEFAULT) {
+  return (
+    OWNER_NOTIFICATION_SETTINGS.get(ownerId) ?? {
+      __typename: "OwnerNotificationSettings",
+      ownerId,
+      emailEnabled: true,
+      notificationsToSend: "failure",
+      slackEnabled: false,
+      previewNotificationsEnabled: false,
+    }
+  );
+}
 const WORKSPACES = [
   {
     __typename: "Workspace",
@@ -2220,6 +2236,25 @@ function resolveGraphQL({ operationName, variables = {} }) {
     }
     case "RegistryCredentials":
       return { registryCredentials: [] };
+    // The workspace notification policy (w3/m271): Render's default until the
+    // stub is told otherwise; the update merges a partial input.
+    case "OwnerNotificationSettings":
+      return {
+        ownerNotificationSettings: ownerNotificationSettingsFor(
+          variables.ownerId,
+        ),
+      };
+    case "UpdateOwnerNotificationSettings": {
+      const next = { ...ownerNotificationSettingsFor(variables.ownerId) };
+      if (typeof variables.input?.emailEnabled === "boolean") {
+        next.emailEnabled = variables.input.emailEnabled;
+      }
+      if (typeof variables.input?.notificationsToSend === "string") {
+        next.notificationsToSend = variables.input.notificationsToSend;
+      }
+      OWNER_NOTIFICATION_SETTINGS.set(next.ownerId, next);
+      return { updateOwnerNotificationSettings: next };
+    }
     case "NotificationSettings":
       return {
         notificationSettings: {

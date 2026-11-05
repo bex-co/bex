@@ -1568,6 +1568,7 @@ export type Mutation = {
   /** Change the store's instance plan. The change restarts the store, which is unavailable for a minute or two, and it changes what the workspace is billed. A store with persistenceMode off loses every key in the restart; journal-snapshot and snapshot stores keep their persisted data. */
   updateKeyValuePlan: Maybe<KeyValue>;
   updateNotificationSettings: Maybe<NotificationSettings>;
+  updateOwnerNotificationSettings: OwnerNotificationSettings;
   updatePushNotificationSettings: Maybe<PushNotificationSettings>;
   updateRegistryCredential: Maybe<RegistryCredential>;
   updateRouterKey: Maybe<Scalars['Boolean']['output']>;
@@ -2868,6 +2869,12 @@ export type MutationUpdateNotificationSettingsArgs = {
 };
 
 
+export type MutationUpdateOwnerNotificationSettingsArgs = {
+  input: OwnerNotificationSettingsInput;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
 export type MutationUpdatePushNotificationSettingsArgs = {
   settings: PushNotificationSettingsInput;
 };
@@ -2960,6 +2967,23 @@ export type OutboundIPs = {
   dedicatedIpId: Maybe<Scalars['String']['output']>;
   ips: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   type: Maybe<Scalars['String']['output']>;
+};
+
+export type OwnerNotificationSettings = {
+  __typename: 'OwnerNotificationSettings';
+  emailEnabled: Scalars['Boolean']['output'];
+  notificationsToSend: Scalars['String']['output'];
+  ownerId: Scalars['String']['output'];
+  previewNotificationsEnabled: Scalars['Boolean']['output'];
+  slackEnabled: Scalars['Boolean']['output'];
+};
+
+export type OwnerNotificationSettingsInput = {
+  emailEnabled?: InputMaybe<Scalars['Boolean']['input']>;
+  /** none, failure or all. */
+  notificationsToSend?: InputMaybe<Scalars['String']['input']>;
+  /** Only false is accepted: bex has no preview environments. */
+  previewNotificationsEnabled?: InputMaybe<Scalars['Boolean']['input']>;
 };
 
 export type PostgresConnectionInfo = {
@@ -3188,6 +3212,7 @@ export type Query = {
   notificationInbox: Array<PushNotification>;
   notificationSettings: Maybe<NotificationSettings>;
   notificationWebPushSubscriptions: Maybe<Array<Maybe<NotificationWebPushSubscription>>>;
+  ownerNotificationSettings: OwnerNotificationSettings;
   project: Maybe<Project>;
   projects: Maybe<Array<Maybe<Project>>>;
   pushEventUrgencies: Array<PushEventUrgency>;
@@ -3744,6 +3769,11 @@ export type QueryNotificationInboxArgs = {
 
 
 export type QueryNotificationSettingsArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryOwnerNotificationSettingsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 

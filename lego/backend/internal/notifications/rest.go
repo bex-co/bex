@@ -24,9 +24,8 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// rest.go is the notifications REST fragment (bex extension — Render exposes
-// notification settings only via its dashboard GraphQL). GET/PATCH
-// /v1/notification-settings read/write the CALLER's own preferences — always
+// rest.go is the notifications REST fragment. GET/PATCH
+// /v1/notification-settings (a bex extension) read/write the CALLER's own preferences — always
 // "me", never another member, the same self-service shape GET /v1/usage uses.
 //
 // They are "me" but not "me, everywhere": preferences live per (tenant,
@@ -34,18 +33,23 @@ import (
 // of the address. `?ownerId=` names it; omitting it keeps the previous
 // behavior, the caller's default workspace (w4/m128).
 //
-// Render's `/notification-settings/owners/{ownerId}` is deliberately NOT the
-// path for this, even though the id in it is the same workspace id. Render's
-// operation there returns the OWNER-level object — `{ownerId, slackEnabled,
-// emailEnabled, previewNotificationsEnabled, notificationsToSend}` — which is
-// a workspace-wide policy, not one member's own preferences, and whose Slack
-// half is a recorded non-goal (.pm/DO_NOT_DO.md round 14). Serving a body of
-// `{deployStarted, deploySucceeded, deployFailed}` from Render's path would
-// make the route-intersection inventory count two Render operations bex does
-// not implement. The member-scoped query parameter says what is true.
+// Render's `/notification-settings/owners/{ownerId}` serves the OWNER-level
+// object instead — `{ownerId, slackEnabled, emailEnabled,
+// previewNotificationsEnabled, notificationsToSend}`, the workspace-wide
+// policy a service on "default" follows (w3/m271), in Render's shape.
 
 // RegisterREST mounts the notification-settings endpoints on the shared mux.
 func (s *Service) RegisterREST(mux *http.ServeMux) {
+	mux.HandleFunc("GET /v1/notification-settings/owners/{ownerId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		return s.GetOwnerSettings(r.Context(), r.PathValue("ownerId"))
+	}))
+	mux.HandleFunc("PATCH /v1/notification-settings/owners/{ownerId}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		req, err := core.DecodeBody[OwnerSettingsInput](r)
+		if err != nil {
+			return nil, err
+		}
+		return s.UpdateOwnerSettings(r.Context(), r.PathValue("ownerId"), req)
+	}))
 	mux.HandleFunc("GET /v1/notifications", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		limit, err := inboxLimit(r)
 		if err != nil {

@@ -39,6 +39,42 @@ var notificationSettingsGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+// ownerNotificationSettingsGQLType is Render's owner notification settings
+// object (w3/m271), the same fields REST serves.
+var ownerNotificationSettingsGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "OwnerNotificationSettings",
+	Fields: graphql.Fields{
+		"ownerId":                     gqlutil.ReqStrField(func(v OwnerSettingsView) any { return v.OwnerID }),
+		"slackEnabled":                gqlutil.ReqBoolField(func(v OwnerSettingsView) any { return v.SlackEnabled }),
+		"emailEnabled":                gqlutil.ReqBoolField(func(v OwnerSettingsView) any { return v.EmailEnabled }),
+		"previewNotificationsEnabled": gqlutil.ReqBoolField(func(v OwnerSettingsView) any { return v.PreviewNotificationsEnabled }),
+		"notificationsToSend":         gqlutil.ReqStrField(func(v OwnerSettingsView) any { return v.NotificationsToSend }),
+	},
+})
+
+var ownerNotificationSettingsGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "OwnerNotificationSettingsInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"emailEnabled":                &graphql.InputObjectFieldConfig{Type: graphql.Boolean},
+		"previewNotificationsEnabled": &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "Only false is accepted: bex has no preview environments."},
+		"notificationsToSend":         &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "none, failure or all."},
+	},
+})
+
+func gqlOwnerSettingsInput(raw map[string]any) OwnerSettingsInput {
+	var in OwnerSettingsInput
+	if v, ok := raw["emailEnabled"].(bool); ok {
+		in.EmailEnabled = &v
+	}
+	if v, ok := raw["previewNotificationsEnabled"].(bool); ok {
+		in.PreviewNotificationsEnabled = &v
+	}
+	if v, ok := raw["notificationsToSend"].(string); ok {
+		in.NotificationsToSend = &v
+	}
+	return in
+}
+
 var pushDeliveryEventGQLEnum = graphql.NewEnum(graphql.EnumConfig{
 	Name: "PushNotificationEvent",
 	Values: graphql.EnumValueConfigMap{
@@ -234,6 +270,14 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.GetSettings(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
+		// The workspace notification policy (w3/m271), Render's owner settings.
+		"ownerNotificationSettings": &graphql.Field{
+			Type: graphql.NewNonNull(ownerNotificationSettingsGQLType),
+			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.GetOwnerSettings(p.Context, gqlutil.Str(p.Args, "ownerId"))
+			},
+		},
 		"pushNotificationSettings": &graphql.Field{
 			Type:    pushSettingsGQLType,
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.GetPushSettings(p.Context) },
@@ -316,6 +360,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.UpdateSettings(p.Context, gqlutil.Str(p.Args, "ownerId"),
 					p.Args["deployStarted"].(bool), p.Args["deploySucceeded"].(bool), p.Args["deployFailed"].(bool))
+			},
+		},
+		"updateOwnerNotificationSettings": &graphql.Field{
+			Type: graphql.NewNonNull(ownerNotificationSettingsGQLType),
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+				"input":   gqlutil.ReqArg(ownerNotificationSettingsGQLInput),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.UpdateOwnerSettings(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlOwnerSettingsInput(p.Args["input"].(map[string]any)))
 			},
 		},
 		"updatePushNotificationSettings": &graphql.Field{

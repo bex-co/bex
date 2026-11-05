@@ -132,6 +132,7 @@ var neverEmptyArrayRoutes = map[string]string{
 	"GET /v1/viewer/capabilities":                                    "grants is append onto make([]CapabilityGrant, 0, 8) and is never empty (members/service.go)",
 	"GET /v1/notification-settings/push/availability":                "booleans only; no array",
 	"GET /v1/notification-settings/push/event-urgencies":             "notifications.pushEventUrgencies, a package var with one row per selectable event (notifications/push_worker.go)",
+	"GET /v1/notification-settings/owners/{ownerId}":                 "Render's owner notification settings: an id, booleans and a level; no array (w3/m271)",
 }
 
 // unreachableArrayRoutes are array routes this DB-less harness cannot drive to

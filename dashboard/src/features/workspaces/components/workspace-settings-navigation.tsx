@@ -1,4 +1,4 @@
-import { Bot, Settings2, TriangleAlert, Users } from "lucide-react";
+import { Bell, Bot, Settings2, TriangleAlert, Users } from "lucide-react";
 import { SectionNavigation } from "@/common/components/section-navigation";
 import { useTranslations } from "@/common/hooks/use-translations";
 
@@ -21,6 +21,11 @@ export function WorkspaceSettingsNavigation({
       icon: Settings2,
     },
     { href: "#team", label: t("team.title"), icon: Users },
+    {
+      href: "#notifications",
+      label: t("notifications.workspaceTitle"),
+      icon: Bell,
+    },
     { href: "#agents", label: t("agentEnvironment.title"), icon: Bot },
     ...(showDangerZone
       ? [

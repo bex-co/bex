@@ -15,5 +15,8 @@ export const apolloCacheConfig: InMemoryCacheConfig = {
     // One agent environment per workspace (w10/m17): keyed by its owner so
     // updateAgentEnvironment's result refreshes the settings query in place.
     AgentEnvironment: { keyFields: ["ownerId"] },
+    // One notification policy per workspace (w3/m271): keyed by its owner so a
+    // save refreshes the settings card and every service page's default label.
+    OwnerNotificationSettings: { keyFields: ["ownerId"] },
   },
 };
