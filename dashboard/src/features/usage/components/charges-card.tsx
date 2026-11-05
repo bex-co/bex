@@ -223,7 +223,7 @@ function CategoryRow({
  * The honesty caveat for a money figure built on incomplete metering (w4/048).
  * Mirrors the Metrics page's degraded-source badge (network-metrics-card) so the
  * two surfaces disclose degraded data the same way: an amber "Partial data" line
- * whose tooltip names the coverage boundary and the degraded meters. Rendered
+ * with a line under it naming the coverage boundary and the degraded meters. Rendered
  * only when the estimate is genuinely not complete and there is something
  * concrete to disclose — a `through` bound or named degraded sources — so an
  * indeterminate "unknown" read with nothing to show stays silent.
@@ -247,14 +247,16 @@ function CoverageCaveat({ coverage }: { coverage: Coverage }) {
       }),
     );
   }
+  // The explanation is visible text, not a hover-only title, so keyboard and
+  // screen-reader users learn what is incomplete too (w4/495).
   return (
-    <span
-      className="mt-1 flex items-center gap-1 text-xs text-amber-600 dark:text-amber-500"
-      title={parts.join(" ")}
-    >
-      <AlertTriangle className="h-3.5 w-3.5" />
-      {t("usage.coveragePartial")}
-    </span>
+    <div className="mt-1 space-y-0.5 text-xs">
+      <span className="flex items-center gap-1 text-amber-600 dark:text-amber-500">
+        <AlertTriangle aria-hidden="true" className="h-3.5 w-3.5" />
+        {t("usage.coveragePartial")}
+      </span>
+      <p className="text-muted-foreground">{parts.join(" ")}</p>
+    </div>
   );
 }
 

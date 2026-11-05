@@ -798,13 +798,15 @@ describe("ChargesCard coverage caveat (w4/048)", () => {
       />,
     );
 
-    const caveat = screen.getByText("Partial data");
-    expect(caveat).toBeInTheDocument();
-    // The tooltip discloses the date the estimate is complete through and the
-    // degraded meters, so the dollar figure isn't presented as authoritative.
-    const title = caveat.getAttribute("title") ?? "";
-    expect(title).toContain("2026-09-01");
-    expect(title).toContain("direct, http, instance");
+    expect(screen.getByText("Partial data")).toBeInTheDocument();
+    // The visible explanation (not a hover-only title, w4/495) discloses the date
+    // the estimate is complete through and the degraded meters, so the dollar
+    // figure isn't presented as authoritative.
+    const detail = screen.getByText(/may undercount/);
+    expect(detail).toHaveTextContent("2026-09-01");
+    expect(detail).toHaveTextContent("direct, http, instance");
+    expect(detail).toBeVisible();
+    expect(screen.getByText("Partial data")).not.toHaveAttribute("title");
   });
 
   it("shows no caveat when metering is complete", () => {
