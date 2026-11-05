@@ -1,6 +1,6 @@
 # w5 · m265 — Postgres credential rotation: a new user becomes the default, as on Render
 
-**Worker:** worker5 **Goal:** a customer rotates a Postgres password with zero downtime: the new credential becomes the default, connection strings follow it, and the old one can be deleted (the original owner is deactivated, not dropped). **Status:** todo (t001–t004, t006–t009 done; t005 live production walk pending the deploy)
+**Worker:** worker5 **Goal:** a customer rotates a Postgres password with zero downtime: the new credential becomes the default, connection strings follow it, and the old one can be deleted (the original owner is deactivated, not dropped). **Status:** done
 
 ## Tasks (in order)
 
@@ -10,12 +10,12 @@
 | t002 | Core + REST: `POST /v1/postgres/{id}/credentials` creates the new default; delete rules follow Render — **DONE** | 1h30m | t001 |
 | t003 | Connection info and Blueprint `fromDatabase` follow the default user — **DONE** | 1h | t001 |
 | t004 | GraphQL, MCP and dashboard Credentials section follow Render's flow — **DONE** | 1h30m | t002 |
-| t005 | Live zero-downtime rotation walk on dev-5 or production | 45m | t003, t004 |
+| t005 | Live zero-downtime rotation walk on dev-5 or production — **DONE** | 45m | t003, t004 |
 | t006 | ADR018 and ADR009 record the rotation contract — **DONE** | 20m | t005 |
 | t007 | Render parity — **DONE** | 30m | t006 |
 | t008 | Simplify — **DONE** | 20m | t007 |
 | t009 | Test coverage — **DONE** | 45m | t007, t008 |
-| t010 | Closeout | 10m | t009 |
+| t010 | Closeout — **DONE** | 10m | t009 |
 
 Total: **10 tasks, about 8h20m**.
 
@@ -42,3 +42,16 @@ Total: **10 tasks, about 8h20m**.
 - **Simplify (t008):** three-way review applied — role chain for second rotations, owner-retirement gate, status-backed Blueprint references, `PoolerSecretName`, single fetch in `DeleteCredential`, shared GraphQL/MCP credential helpers, no extra reconcile read for never-rotated databases, dashboard cache write instead of refetch.
 - **Tests (t009):** operator unit + fake-client projection tests, REST conformance flow, MCP rotation test, Blueprint reference test, dashboard hook/panel tests.
 - **Remaining:** t005 — after deploy, rotate a disposable production database with a Blueprint-linked service through the Render-shaped REST path, sync, retire the old credential, confirm the service stays up and the old password is refused; then t010.
+
+## Closeout (2026-11-05) — live production walk (t005)
+
+Production `cc3c51e12` (pin `e3211740a`). A disposable free Postgres `w5-m265-rotation` (`dpg-dbmauekrv9ic73d23df0`) was created in the QA user's `tian-personal` workspace and driven through the Render-shaped REST path with `psql` over the external endpoint. No connection string or password was printed.
+
+- Create: 201, `available`. The owner `dpg_dbmauekrv9ic73d23df0_user` logs in and creates a table.
+- `POST …/credentials {"username":"rotated"}`: **202, empty body**. `GET …/credentials` shows `rotated` as `default:true` and the owner as `default:false`.
+- Connection info then logs in as **`rotated`**, which reads the owner's table. The owner still works before deletion.
+- `DELETE …/credentials/rotated` (the default): **400**. `DELETE …/credentials/<owner>`: **200**. A fresh owner login is then refused (`FATAL: role … is not permitted to log in`), while `rotated` still logs in and reads the owner's table. The credential list is `[rotated (default)]`.
+- Cleanup: the database is deleted (204, then 404), no `w5-` leftovers remain, and the QA session is logged out.
+- **Not walked live:** a Blueprint-linked service picking up the new default on its next sync. It is covered by `TestResolveDatabaseReferenceFollowsTheDefaultCredential` and the operator projection tests.
+
+The definition of done holds: rotation through the Render path, a default that cannot be deleted, an owner retired without dropping its objects, and connection info following the new default.

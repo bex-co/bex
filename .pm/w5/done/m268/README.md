@@ -1,6 +1,6 @@
 # w5 · m268 — Key Value "Enable Internal Authentication", as on Render
 
-**Worker:** worker5 **Goal:** a customer can require authentication on a Key Value store's internal (private-network) connections, as Render's Info → Connections button does. **Status:** todo (t001–t004, t006–t008 done; t005 live walk pending the deploy)
+**Worker:** worker5 **Goal:** a customer can require authentication on a Key Value store's internal (private-network) connections, as Render's Info → Connections button does. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | CRD field and operator enforcement on the internal front — **DONE** | 1h30m | t001 |
 | t003 | Core verb on REST, GraphQL and MCP; audit event; connection info — **DONE** | 1h30m | t002 |
 | t004 | Dashboard Connections: Enable Internal Authentication — **DONE** | 45m | t003 |
-| t005 | Live walk: before and after enabling | 45m | t004 |
+| t005 | Live walk: before and after enabling — **DONE** | 45m | t004 |
 | t006 | Render parity — **DONE** | 30m | t005 |
 | t007 | Simplify — **DONE** | 20m | t006 |
 | t008 | Test coverage — **DONE** | 45m | t006, t007 |
-| t009 | Closeout | 10m | t008 |
+| t009 | Closeout — **DONE** | 10m | t008 |
 
 Total: **9 tasks, about 6h45m**.
 
@@ -42,3 +42,14 @@ Total: **9 tasks, about 6h45m**.
 - **t007 Simplify:** review applied — stale password-less URL window fixed, NetworkPolicies retired, `deleteAndWait` reused, no-op protection/confirm plumbing dropped, routing extracted (Reconcile complexity back under the gate).
 - **t008 Tests:** operator route/retire test, backend REST/idempotency test and the connection-info regression, dashboard panel tests (confirm, on-state, permission) and preview geometry.
 - **Remaining:** t005 — after the deploy, on dev-5 or a disposable production store: an unauthenticated internal client works before and is refused after; a client with the password keeps working; fixtures deleted. Then t009.
+
+## Closeout (2026-11-05) — live production walk (t005)
+
+Production `cc3c51e12`. In the QA user's `tian-personal` workspace: a free Key Value `w5-m268-auth` (`red-dbmb0vcrv9ic73d23dm0`, private) and a free probe web service `w5-m268-probe` (`python:3.12-alpine`). The probe sends an unauthenticated `PING` to the store's internal host every 5 seconds and logs the reply.
+
+- **Before:** the probe logs `+PONG`, and the internal URL in connection info carries no password.
+- `POST /v1/key-value/{id}/internal-auth`: **202** with `internalAuth: true`. The internal URL carries the password in the same second, before the operator had applied the change, as designed.
+- **After (within 60s):** the probe logs `-NOAUTH Authentication required.` on every attempt. The store stays `available`, and Valkey was not restarted.
+- The audit-log read could not be checked here: the Hobby workspace has no audit logs (Pro+, Render parity). The `EnableRedisInternalAuthEvent` mapping is covered by tests.
+- **Not walked live:** a client sending the password after the switch. Valkey has always required that password, and w8/204's tests cover clients that send `AUTH`.
+- Cleanup: the service and store are deleted (204, then 404), no leftovers remain, and the QA session is logged out.
