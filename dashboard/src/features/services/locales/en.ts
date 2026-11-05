@@ -2014,7 +2014,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Edge-caching free-plan eligibility note",
   },
   "services.edgeCachingSave": {
-    message: "Save",
+    message: "Save edge caching",
     description: "Edge-caching save button",
   },
   "services.edgeCachingSaving": {
@@ -2073,7 +2073,7 @@ const enServices: Record<string, TranslationEntry> = {
       "Settings runtime select placeholder for a legacy service with no runtime recorded",
   },
   "services.runtimeSave": {
-    message: "Save",
+    message: "Save runtime",
     description: "Settings runtime save button",
   },
   "services.runtimeSaving": {
@@ -4938,7 +4938,7 @@ const enServices: Record<string, TranslationEntry> = {
       "Placeholder shown when the allow list is empty (Render default, w7/m32)",
   },
   "services.networkingAdd": {
-    message: "Add",
+    message: "Add allowlist entry",
     description: "Button to add a CIDR to the draft list (w7/m32)",
   },
   "services.networkingEntryDescription": {
@@ -4966,7 +4966,7 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Validation error for an invalid service allowlist CIDR",
   },
   "services.networkingSave": {
-    message: "Save",
+    message: "Save allowlist",
     description: "Button to persist the CIDR list (w7/m32)",
   },
   "services.networkingRemove": {

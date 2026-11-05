@@ -26,7 +26,7 @@ describe("RuntimeSection", () => {
         "Changing the runtime rebuilds and redeploys the service. Native runtimes use the Build Command and Start Command below.",
       ),
     ).toBeInTheDocument();
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save runtime" })).toBeDisabled();
   });
 
   it("offers Render's runtimes in Render's order", async () => {
@@ -57,7 +57,7 @@ describe("RuntimeSection", () => {
 
     await user.click(picker());
     await user.click(screen.getByRole("option", { name: "Python 3" }));
-    const save = screen.getByRole("button", { name: "Save" });
+    const save = screen.getByRole("button", { name: "Save runtime" });
     expect(save).toBeEnabled();
 
     await user.click(save);
@@ -81,7 +81,7 @@ describe("RuntimeSection", () => {
 
     await user.click(picker());
     await user.click(screen.getByRole("option", { name: "Go" }));
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Save runtime" }));
     await user.click(screen.getByRole("button", { name: "Cancel" }));
 
     expect(mockSetRuntime).not.toHaveBeenCalled();

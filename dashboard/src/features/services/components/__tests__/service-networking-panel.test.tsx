@@ -42,7 +42,7 @@ describe("ServiceNetworkingPanel", () => {
       />,
     );
     expect(screen.getByText(/require the Scale plan/)).toBeInTheDocument();
-    expect(screen.queryByRole("button", { name: "Add" })).toBeNull();
+    expect(screen.queryByRole("button", { name: "Add allowlist entry" })).toBeNull();
     await user.click(screen.getByRole("button", { name: "Clear all rules" }));
     expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", []);
   });
@@ -52,7 +52,7 @@ describe("ServiceNetworkingPanel", () => {
     render(
       <ServiceNetworkingPanel serviceId="srv-web" currentAllowList={[]} />,
     );
-    expect(screen.getByRole("button", { name: "Add" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Add allowlist entry" })).toBeInTheDocument();
   });
 
   it("renders and resubmits descriptions without dropping them", async () => {
@@ -76,8 +76,8 @@ describe("ServiceNetworkingPanel", () => {
       .at(-1);
     expect(descriptionInput).toBeDefined();
     await user.type(descriptionInput!, "vpn");
-    await user.click(screen.getByRole("button", { name: "Add" }));
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Add allowlist entry" }));
+    await user.click(screen.getByRole("button", { name: "Save allowlist" }));
 
     expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", [
       { cidrBlock: "203.0.113.0/24", description: "office" },
@@ -105,7 +105,7 @@ describe("ServiceNetworkingPanel", () => {
     await user.click(
       screen.getByRole("button", { name: "Move 10.0.0.0/8 up" }),
     );
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Save allowlist" }));
 
     expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", [
       { cidrBlock: "10.0.0.0/8", description: "vpn" },
@@ -120,13 +120,13 @@ describe("ServiceNetworkingPanel", () => {
     );
     const input = screen.getByPlaceholderText("203.0.113.0/24");
     await user.type(input, "not-a-cidr");
-    await user.click(screen.getByRole("button", { name: "Add" }));
+    await user.click(screen.getByRole("button", { name: "Add allowlist entry" }));
 
     expect(input).toHaveValue("not-a-cidr");
     expect(screen.getByRole("alert")).toHaveTextContent(
       "Enter a valid IPv4 or IPv6 CIDR block.",
     );
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save allowlist" })).toBeDisabled();
     expect(mocks.saveAllowList).not.toHaveBeenCalled();
   });
 
@@ -141,7 +141,7 @@ describe("ServiceNetworkingPanel", () => {
     await user.click(
       screen.getByRole("button", { name: "Remove 203.0.113.0/24" }),
     );
-    await user.click(screen.getByRole("button", { name: "Save" }));
+    await user.click(screen.getByRole("button", { name: "Save allowlist" }));
     expect(mocks.saveAllowList).toHaveBeenCalledWith("srv-web", []);
   });
 
@@ -161,7 +161,7 @@ describe("ServiceNetworkingPanel", () => {
     expect(notice).toHaveTextContent("shop.example.com");
     expect(notice).toHaveTextContent("DNS only (grey cloud)");
     // A warning, not a refusal: the editor stays and can still save.
-    expect(screen.getByRole("button", { name: "Save" })).toBeInTheDocument();
+    expect(screen.getByRole("button", { name: "Save allowlist" })).toBeInTheDocument();
   });
 
   it("renders no Cloudflare notice without proxied domains", () => {

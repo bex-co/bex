@@ -65,7 +65,7 @@ describe("EdgeCachingSection", () => {
         cacheProfile="no-cache"
       />,
     );
-    const save = screen.getByRole("button", { name: "Save" });
+    const save = screen.getByRole("button", { name: "Save edge caching" });
     // Nothing to save until the selection differs from the saved profile.
     expect(save).toBeDisabled();
 
@@ -147,7 +147,7 @@ describe("EdgeCachingSection", () => {
     for (const option of screen.getAllByRole("radio")) {
       expect(option).toBeDisabled();
     }
-    expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
+    expect(screen.getByRole("button", { name: "Save edge caching" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Purge cache" })).toBeDisabled();
   });
 });
