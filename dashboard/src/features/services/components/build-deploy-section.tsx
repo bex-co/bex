@@ -122,6 +122,8 @@ function autoDeployHintKey(pushDeliveryMethod: string | null) {
       return "services.autoDeployViaGitHub" as const;
     case "manual_webhook":
       return "services.autoDeployViaWebhook" as const;
+    case "unavailable":
+      return "services.autoDeployUnavailable" as const;
     default:
       return "services.autoDeployDeliveryUnknown" as const;
   }

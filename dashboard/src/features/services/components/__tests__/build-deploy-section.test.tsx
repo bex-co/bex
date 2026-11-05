@@ -784,6 +784,28 @@ describe("BuildDeploySection", () => {
     expect(screen.getByText(/manual git webhook/)).toBeInTheDocument();
   });
 
+  // w4/483: a multitenant install rejects the shared manual webhook key, so a
+  // repo the GitHub App does not cover must not promise a webhook.
+  it("says auto-deploy can't run when no push can reach bex", () => {
+    render(
+      <BuildDeploySection
+        serviceId="app"
+        repo="https://github.com/someone-else/side-project"
+        branch="main"
+        rootDir={null}
+        autoDeploy={true}
+        pushDeliveryMethod="unavailable"
+        preDeployCommand={null}
+        showPreDeployCommand={false}
+      />,
+    );
+    expect(
+      screen.getByText(/Auto-deploy can't run for this repo/),
+    ).toBeInTheDocument();
+    expect(screen.queryByText(/manual git webhook/)).not.toBeInTheDocument();
+    expect(screen.queryByText(/BEX_WEBHOOK_SECRET/)).not.toBeInTheDocument();
+  });
+
   // GitHub unreachable, and the not-yet-loaded first render: name no mechanism
   // at all rather than pick one and be wrong in whichever direction.
   it.each([

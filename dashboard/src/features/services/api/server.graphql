@@ -108,7 +108,7 @@ query Server($id: String!) {
     # page which of two colliding groups the service actually runs.
     linkedEnvGroupIds
     # pushDeliveryMethod (w6/m99) is whether a push can REACH bex for THIS repo:
-    # github_app | manual_webhook | none | unknown. autoDeploy above is only the
+    # github_app | manual_webhook | unavailable | none | unknown. autoDeploy above is only the
     # on/off setting, so it cannot tell a granted repo from an ungranted one; the
     # Build & Deploy card's Auto-Deploy hint reads this instead of a host regex.
     # Only the by-id read computes it (the list query has no such field).

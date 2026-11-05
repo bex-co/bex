@@ -730,6 +730,9 @@ func configureServerAuthOptions(srv *api.Server, cfg *Config) {
 	// manual webhook secret because it carries no per-workspace binding and would
 	// authorize cross-tenant deployment mutations. The GitHub App key is unaffected.
 	srv.MultitenantWebhook = cfg.CPDBURI != ""
+	if srv.Apps != nil {
+		srv.Apps.ManualWebhookDisabled = srv.MultitenantWebhook
+	}
 }
 
 func validateWebhookReplayConfig(manualSecret, githubSecret string, durableReplays bool) error {

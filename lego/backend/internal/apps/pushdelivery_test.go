@@ -42,6 +42,8 @@ func TestPushDeliveryMethodFollowsTheRepoGrant(t *testing.T) {
 		repo string
 		gh   *fakeCloneTokens
 		want string
+		// multitenant: the install rejects the shared manual webhook key (w4/483).
+		multitenant bool
 	}{
 		{
 			name: "granted-repo-keeps-the-github-app-claim", // the w2/m9 control case
@@ -62,6 +64,36 @@ func TestPushDeliveryMethodFollowsTheRepoGrant(t *testing.T) {
 			want: PushDeliveryManualWebhook,
 		},
 		{
+			name: "multitenant-ungranted-repo-has-no-delivery-path",
+			repo: "https://github.com/someone-else/side-project",
+			gh:   &fakeCloneTokens{ok: false},
+			want: PushDeliveryUnavailable, multitenant: true,
+		},
+		{
+			name: "multitenant-github-integration-off-has-no-delivery-path",
+			repo: "https://github.com/acme/mono",
+			gh:   nil,
+			want: PushDeliveryUnavailable, multitenant: true,
+		},
+		{
+			name: "multitenant-granted-repo-keeps-the-github-app-claim",
+			repo: "https://github.com/acme/mono",
+			gh:   &fakeCloneTokens{token: "tok", ok: true},
+			want: PushDeliveryGitHubApp, multitenant: true,
+		},
+		{
+			name: "multitenant-image-backed-service-stays-none",
+			repo: "",
+			gh:   &fakeCloneTokens{ok: true},
+			want: PushDeliveryNone, multitenant: true,
+		},
+		{
+			name: "multitenant-github-failure-stays-unknown",
+			repo: "https://github.com/acme/mono",
+			gh:   &fakeCloneTokens{err: errors.New("github down")},
+			want: PushDeliveryUnknown, multitenant: true,
+		},
+		{
 			name: "image-backed-service-has-no-push-to-deliver",
 			repo: "",
 			gh:   &fakeCloneTokens{ok: true},
@@ -77,6 +109,7 @@ func TestPushDeliveryMethodFollowsTheRepoGrant(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			app := repoApp("web", tc.repo, "master")
 			svc, _ := newService(nil, app)
+			svc.ManualWebhookDisabled = tc.multitenant
 			if tc.gh != nil {
 				svc.GitHub = tc.gh
 			}

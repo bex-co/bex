@@ -203,7 +203,7 @@ export interface ServiceView {
   linkedEnvGroupIds?: string[] | null;
   /**
    * How a push to the tracked branch can actually REACH bex for this specific
-   * repo (w6/m99): "github_app" | "manual_webhook" | "none" | "unknown" —
+   * repo (w6/m99): "github_app" | "manual_webhook" | "unavailable" | "none" | "unknown" —
    * what the autoDeploy on/off setting above cannot express. null on the list
    * query, which does not select it, and on an older API.
    */
@@ -397,7 +397,12 @@ export type LifecycleAction = "suspend" | "resume" | "restart";
 
 /** A resolved service-type key (i18n label) + the badge variant it renders as. */
 export type ServiceTypeKey =
-  "web" | "private" | "worker" | "cron" | "static" | "unknown";
+  | "web"
+  | "private"
+  | "worker"
+  | "cron"
+  | "static"
+  | "unknown";
 
 /**
  * One env-var key on a sensitive-config list. Values are fetched individually
@@ -532,7 +537,10 @@ export type ServiceStatusKey =
   | "unknown";
 
 export type ServiceBadgeVariant =
-  "default" | "secondary" | "outline" | "destructive";
+  | "default"
+  | "secondary"
+  | "outline"
+  | "destructive";
 
 export interface ServiceStatus {
   key: ServiceStatusKey;

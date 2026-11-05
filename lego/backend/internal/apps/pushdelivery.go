@@ -48,6 +48,12 @@ const (
 	// account, or a github.com repo outside the installation's grant). A push
 	// redeploys only through a manually configured webhook.
 	PushDeliveryManualWebhook = "manual_webhook"
+	// PushDeliveryUnavailable: the same repos as manual_webhook, on an install
+	// that rejects the shared manual webhook key (multitenant: the key has no
+	// workspace binding, so every delivery is a 403). No push can reach bex, so
+	// promising a webhook would lose deploys silently (w4/483). The Deploy Hook
+	// still triggers a deploy.
+	PushDeliveryUnavailable = "unavailable"
 	// PushDeliveryNone: no repo at all (image-backed) — push-to-deploy does not
 	// apply. Not "no": there is no push to deliver.
 	PushDeliveryNone = "none"
@@ -104,6 +110,15 @@ func (s *Service) pushDeliveryCache() *pushDeliveryState {
 	return s.pushDelivery
 }
 
+// manualPushDelivery is the answer for a repo the GitHub App cannot deliver
+// for: a manual webhook where the shared key is accepted, otherwise nothing.
+func (s *Service) manualPushDelivery() string {
+	if s.ManualWebhookDisabled {
+		return PushDeliveryUnavailable
+	}
+	return PushDeliveryManualWebhook
+}
+
 // pushDeliveryMethod reports how a git push to this App's tracked branch can
 // reach bex. It is computed on READ, never snapshotted at create time: a
 // workspace's installation grant is edited on GitHub's side at any moment, and
@@ -122,7 +137,7 @@ func (s *Service) pushDeliveryMethod(ctx context.Context, a *appv1alpha1.App) st
 		// delivery mechanism — but the shared manual webhook still redeploys, so
 		// this is manual_webhook, not "not applicable". Matches what the
 		// dashboard already (correctly) shows for a workspace with no connection.
-		return PushDeliveryManualWebhook
+		return s.manualPushDelivery()
 	}
 	workspaceID := s.AppWorkspace(ctx, a)
 	// "\n" cannot occur in a workspace id, so the two fields can't run together
@@ -142,7 +157,7 @@ func (s *Service) pushDeliveryMethod(ctx context.Context, a *appv1alpha1.App) st
 		lookup, cancel := context.WithTimeout(ctx, pushDeliveryTimeout)
 		defer cancel()
 		granted, err := s.GitHub.RepoGranted(lookup, workspaceID, repo)
-		method, ttl := PushDeliveryManualWebhook, pushDeliveryTTL
+		method, ttl := s.manualPushDelivery(), pushDeliveryTTL
 		switch {
 		case err != nil:
 			method, ttl = PushDeliveryUnknown, pushDeliveryUnknownTTL

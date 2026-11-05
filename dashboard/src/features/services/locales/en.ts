@@ -2731,9 +2731,15 @@ const enServices: Record<string, TranslationEntry> = {
   },
   "services.autoDeployViaWebhook": {
     message:
-      "A push redeploys only if the repo's manual git webhook is configured with your BEX_WEBHOOK_SECRET.",
+      "A push redeploys only if the repo's manual git webhook is configured with this install's BEX_WEBHOOK_SECRET.",
     description:
       "Build & Deploy: source indicator when the GitHub App cannot deliver a push for this repo — no connection, another git host, or a repo the installation does not grant (pushDeliveryMethod manual_webhook)",
+  },
+  "services.autoDeployUnavailable": {
+    message:
+      "Auto-deploy can't run for this repo: GitHub doesn't send bex its pushes. Connect the repo through the GitHub app, or trigger deploys with the Deploy Hook.",
+    description:
+      "Build & Deploy: source indicator when no push can reach bex for this repo — the GitHub App does not cover it and this install rejects the shared manual webhook key (pushDeliveryMethod unavailable, w4/483)",
   },
   "services.autoDeployDeliveryUnknown": {
     message:

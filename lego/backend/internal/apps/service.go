@@ -157,6 +157,11 @@ type Service struct {
 	// trigger whose repo belongs to the workspace's connection, so private repos
 	// clone (docs/ADR026-github-integration.md). nil => public-clone only, unchanged.
 	GitHub CloneTokenSource
+	// ManualWebhookDisabled mirrors the webhook handler refusing the shared
+	// BEX_WEBHOOK_SECRET (multitenant installs). The service read then reports
+	// pushDeliveryMethod "unavailable" instead of "manual_webhook" for repos the
+	// GitHub App does not cover (w4/483).
+	ManualWebhookDisabled bool
 	// Commits resolves a repo-backed deploy's triggering ref to the exact
 	// commit it points at (w9/001) — github.Service's DeployCommitSource, the
 	// same seam deploys.Service.Commits wires. nil => the deploy rows this
@@ -644,7 +649,7 @@ type AppView struct {
 	// checksPass (w1/m181).
 	AutoDeployTrigger string `json:"autoDeployTrigger"`
 	// PushDeliveryMethod is how a push to Branch can REACH bex for this specific
-	// repo — github_app | manual_webhook | none | unknown (see pushdelivery.go).
+	// repo — github_app | manual_webhook | unavailable | none | unknown (see pushdelivery.go).
 	// AutoDeploy above is the on/off setting; this is whether the setting has a
 	// delivery path at all, which the setting alone cannot express (w6/m99).
 	//

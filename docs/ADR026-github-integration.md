@@ -116,7 +116,7 @@ The GitHub App's one app-wide webhook delivers push events (signed with `BEX_GIT
 
 §7's guarantee is scoped to an **installed** repo. bex's Public Git URL tab accepts _any_ github.com URL, including one outside every connection's grant — an ordinary state (and the documented workaround for `w6/m97`), where GitHub sends no push event at all and no auto-deploy can ever fire. Until w6/m99 nothing said so: the stored `spec.autoDeploy` boolean defaults on for every repo-backed create (Render's own behavior, deliberately kept), REST/GraphQL/MCP reported only that boolean, and the dashboard's Build & Deploy hint inferred the _mechanism_ from `workspace has any connection && the URL says github.com`, promising "redeploys automatically via the GitHub app" for a repo that can never deliver one.
 
-The service read path therefore carries a separate **`pushDeliveryMethod`** field — `github_app` | `manual_webhook` | `none` (image-backed, nothing to deliver) | `unknown` (GitHub unreachable; never guessed in either direction). It is the on/off **setting**'s missing companion: whether that setting has a delivery path at all.
+The service read path therefore carries a separate **`pushDeliveryMethod`** field — `github_app` | `manual_webhook` | `unavailable` (the install rejects the shared manual key, as every multitenant install does, so no push can reach bex; w4/483) | `none` (image-backed, nothing to deliver) | `unknown` (GitHub unreachable; never guessed in either direction). It is the on/off **setting**'s missing companion: whether that setting has a delivery path at all.
 
 Two properties make it trustworthy:
 

@@ -2674,6 +2674,12 @@ const zhServices: Record<string, TranslationEntry> = {
     description:
       "Build & Deploy: source indicator when the GitHub App cannot deliver a push for this repo — no connection, another git host, or a repo the installation does not grant (pushDeliveryMethod manual_webhook)",
   },
+  "services.autoDeployUnavailable": {
+    message:
+      "此仓库无法自动部署：GitHub 不会把推送发给 bex。请通过 GitHub 应用连接该仓库，或使用 Deploy Hook 触发部署。",
+    description:
+      "Build & Deploy: source indicator when no push can reach bex for this repo — the GitHub App does not cover it and this install rejects the shared manual webhook key (pushDeliveryMethod unavailable, w4/483)",
+  },
   "services.autoDeployDeliveryUnknown": {
     message:
       "正在检查推送如何送达 bex… 若持续如此，则表示无法连接 GitHub，暂时无法确认送达方式。",
