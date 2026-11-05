@@ -181,6 +181,13 @@ metrics:
     addEntryPointsLabels: true
     addServicesLabels: true # per-service labels (service=…) for App attribution
     addRoutersLabels: true # per-router labels (host/path attribution, future use)
+    # Latency histogram upper bounds in seconds (w4/502). Traefik's default is
+    # "0.1,0.3,1.2,5.0": every request faster than 100 ms lands in the first
+    # bucket, so histogram_quantile() interpolates inside (0, 0.1] and reads
+    # exactly 0.1 x q (p50 50 ms, p95 95 ms) for any fast service. These bounds
+    # keep the resolution below 100 ms; the last finite bound stays above the
+    # longest proxied request the edge allows.
+    buckets: "0.005,0.01,0.025,0.05,0.1,0.25,0.5,1,2.5,5,10"
 # entrypoints web(:80) + websecure(:443) with NO forced web->websecure redirect,
 # so cert-manager HTTP-01 challenges on :80 succeed.
 extraObjects:
