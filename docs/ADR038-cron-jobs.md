@@ -144,7 +144,7 @@ The started fact stores the same `crr-` id from the moment the run starts, so `c
 Two known divergences remain:
 
 - bex does not record the memory limit a run was killed at, so `oomKilled.memoryLimit` is present but empty.
-- The ended `status` keeps bex's `succeeded|failed|canceled` lifecycle vocabulary rather than Render's `successful|unsuccessful`. The dashboard and the other `*_ended` events share it.
+- On REST and MCP the `cron_job_run_ended` `status` uses Render's run enum (`successful|unsuccessful|canceled`), the same words the run carries on `GET /v1/cron-jobs/{id}/runs` (w4/507). The other `*_ended` events and GraphQL keep the `succeeded|failed|canceled` lifecycle words, which the dashboard timeline reads.
 
 ## Evidence
 

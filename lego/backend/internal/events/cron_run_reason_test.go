@@ -62,8 +62,10 @@ func TestCronJobRunEndedCarriesRendersReasonObject(t *testing.T) {
 			if err := json.Unmarshal(body, &got); err != nil {
 				t.Fatal(err)
 			}
-			if got.CronJobRunID != "crr-abc" || got.Status != tc.status {
-				t.Fatalf("details = %s, want cronJobRunId crr-abc and status %s", body, tc.status)
+			// w4/507: the run's own enum, not the lifecycle word.
+			wantStatus := map[string]string{store.EventStatusSucceeded: "successful", store.EventStatusFailed: "unsuccessful"}[tc.status]
+			if got.CronJobRunID != "crr-abc" || got.Status != wantStatus {
+				t.Fatalf("details = %s, want cronJobRunId crr-abc and status %s", body, wantStatus)
 			}
 			if string(got.Reason) != tc.want {
 				t.Fatalf("reason = %s, want %s", got.Reason, tc.want)
@@ -145,5 +147,32 @@ func TestCronJobRunStartedCarriesItsRunID(t *testing.T) {
 				t.Fatalf("REST/MCP details = %s, want cronJobRunId %s", body, tc.want)
 			}
 		})
+	}
+}
+
+// w4/507: cron_job_run_ended speaks Render's cronJobRun status enum, matching
+// GET /v1/cron-jobs/{id}/runs for the same run; a canceled run keeps
+// "canceled", and the other *_ended events keep succeeded|failed|canceled.
+func TestCronJobRunEndedStatusUsesTheRunEnum(t *testing.T) {
+	status := func(factType, fact string) string {
+		row := store.ServiceEventRow{
+			Key: "k:" + factType + fact, Source: store.EventSourceFact, FactType: factType, FactStatus: fact, FactRunID: "crr-x",
+		}
+		return toRenderEvent(view(row, "srv-1")).Details.Status
+	}
+	for fact, want := range map[string]string{
+		store.EventStatusSucceeded: "successful",
+		store.EventStatusFailed:    "unsuccessful",
+		store.EventStatusCanceled:  "canceled",
+	} {
+		if got := status(TypeCronJobRunEnded, fact); got != want {
+			t.Errorf("cron_job_run_ended %s -> %q, want %q", fact, got, want)
+		}
+	}
+	if got := status(TypeBuildEnded, store.EventStatusFailed); got != store.EventStatusFailed {
+		t.Errorf("build_ended failed -> %q, want it unchanged", got)
+	}
+	if got := status(TypeJobRunEnded, store.EventStatusSucceeded); got != store.EventStatusSucceeded {
+		t.Errorf("job_run_ended succeeded -> %q, want it unchanged", got)
 	}
 }

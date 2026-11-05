@@ -206,6 +206,20 @@ type renderTrigger struct {
 	User *renderUser `json:"user,omitempty"`
 }
 
+// renderCronRunStatus maps the stored lifecycle word onto Render's cronJobRun
+// status enum (pending|successful|unsuccessful|canceled), the vocabulary the
+// same run carries on GET /v1/cron-jobs/{id}/runs (w4/507). Other *_ended
+// events keep succeeded|failed|canceled, which Render documents for them.
+func renderCronRunStatus(status string) string {
+	switch status {
+	case store.EventStatusSucceeded:
+		return "successful"
+	case store.EventStatusFailed:
+		return "unsuccessful"
+	}
+	return status
+}
+
 func toRenderEvent(e Event) renderEvent {
 	d := renderDetails{
 		DeployID:         e.Details.DeployID,
@@ -276,6 +290,7 @@ func toRenderEvent(e Event) renderEvent {
 		d.CronJobRunID = e.Details.CronJobRunID
 	case TypeCronJobRunEnded:
 		d.CronJobRunID = e.Details.CronJobRunID
+		d.Status = renderCronRunStatus(e.Details.Status)
 		if reason := toCronRunReason(e.Details); reason != nil {
 			d.Reason = reason
 		}
