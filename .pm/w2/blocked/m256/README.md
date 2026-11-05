@@ -85,3 +85,9 @@ t001–t006, t008–t010, t013 done; t012 implemented (its production check ride
   - `meta.next` says `render ea blueprints approve …` (m263 t005).
   - `workspace current` with none set says ``Use `render workspace set` ``: a backtick form the overlay misses (added to m263 t005).
 - **Cleanup:** the Blueprint was deleted (REST DELETE 204, GET 404).
+
+## Blocked (2026-11-05): waiting for a production deploy
+
+Everything implementable is shipped. What remains is the production walk, and production is still pinned to `c8bbc07cbeeb`, which predates this work. Every later deploy run is superseded at write-back: run `0505f4532` succeeded its tests, then skipped build and deploy. That starvation is owned by **w6/m156** (t003, decision (a)).
+
+**Release condition:** the `chore(deploy): pin platform images to <sha>` commit on main reaches a revision containing `eaf967d80` (m269). Then the worker runs the walk listed above as the next step.

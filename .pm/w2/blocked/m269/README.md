@@ -46,3 +46,9 @@
 - **Unchanged:** storage, labels, claims and sync ids (`bsr-`).
 - **Tests and checks:** `TestBlueprintPublicIDOnEverySurface`, the OpenAPI gate for both spellings, id/view/email/dashboard tests, the real-DB apps/api/store suites, `make lint` and the dashboard tests all pass.
 - **Still open (t009):** once deployed, re-run m256 t007 with the v2.35 CLI: `approve`, `plan` and `update --branch` on an `exs-` id.
+
+## Blocked (2026-11-05): waiting for a production deploy
+
+Everything implementable is shipped. What remains is the production walk, and production is still pinned to `c8bbc07cbeeb`, which predates this work. Every later deploy run is superseded at write-back: run `0505f4532` succeeded its tests, then skipped build and deploy. That starvation is owned by **w6/m156** (t003, decision (a)).
+
+**Release condition:** the `chore(deploy): pin platform images to <sha>` commit on main reaches a revision containing `eaf967d80` (m269). Then the worker runs the walk listed above as the next step.

@@ -70,3 +70,9 @@ t001–t011, t013–t015, t017 done; t016 implemented 2026-11-03 (7991a0e57, 98e
   4. 不带 `buildCommand` 的 native source 创建时得到 400。
   5. 证据写入 t016，清理全部资源，然后按 DoD 用 t012 收尾。
 - **如果生产写操作被 auto-mode 拦截：** 重新 blocked，并写明需要用户授权的具体动作。
+
+## Blocked (2026-11-05): waiting for a production deploy
+
+Everything implementable is shipped. What remains is the production walk, and production is still pinned to `c8bbc07cbeeb`, which predates this work. Every later deploy run is superseded at write-back: run `0505f4532` succeeded its tests, then skipped build and deploy. That starvation is owned by **w6/m156** (t003, decision (a)).
+
+**Release condition:** the `chore(deploy): pin platform images to <sha>` commit on main reaches a revision containing `c071550db` (t018). Then the worker runs the walk listed above as the next step.
