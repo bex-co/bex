@@ -43,7 +43,7 @@ func TestAgentModelUsageIsIdempotentAndMetered(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pool.Close()
+	t.Cleanup(pool.Close) // registered first, so it runs after the tenant cleanup
 	st := NewPGStore(pool)
 	tenant, err := st.CreateTenant(ctx, "agent-model-usage", PlanHobby)
 	if err != nil {
@@ -91,11 +91,11 @@ func TestAgentModelUsageIsIdempotentAndMetered(t *testing.T) {
 			t.Errorf("%s = %d, want %d (rows %+v)", kind, got[kind], total, rows)
 		}
 	}
-	total, err := st.AgentModelTokensMonthToDate(ctx, tenant.ID, at)
+	total, err := st.agentSessionMonthToDate(ctx, tenant.ID, at, AgentModelUsageKinds)
 	if err != nil || total != 427 {
 		t.Fatalf("month-to-date tokens = %d, %v, want 427", total, err)
 	}
-	if next, err := st.AgentModelTokensMonthToDate(ctx, tenant.ID, at.AddDate(0, 1, 0)); err != nil || next != 0 {
+	if next, err := st.agentSessionMonthToDate(ctx, tenant.ID, at.AddDate(0, 1, 0), AgentModelUsageKinds); err != nil || next != 0 {
 		t.Fatalf("next month's tokens = %d, %v, want 0", next, err)
 	}
 
@@ -106,7 +106,7 @@ func TestAgentModelUsageIsIdempotentAndMetered(t *testing.T) {
 	if err := pool.QueryRow(ctx, `SELECT count(*) FROM agent_model_usage_events WHERE workspace_id = $1`, tenant.ID).Scan(&ledger); err != nil || ledger != 0 {
 		t.Fatalf("ledger rows after compaction = %d, %v", ledger, err)
 	}
-	if after, err := st.AgentModelTokensMonthToDate(ctx, tenant.ID, at); err != nil || after != 427 {
+	if after, err := st.agentSessionMonthToDate(ctx, tenant.ID, at, AgentModelUsageKinds); err != nil || after != 427 {
 		t.Fatalf("month-to-date after compaction = %d, %v, want 427 from usage_monthly", after, err)
 	}
 }
@@ -127,7 +127,7 @@ func TestAgentModelCostIsMeteredOnceAndSealsFast(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pool.Close()
+	t.Cleanup(pool.Close) // registered first, so it runs after the tenant cleanup
 	st := NewPGStore(pool)
 	tenant, err := st.CreateTenant(ctx, "agent-model-cost", PlanHobby)
 	if err != nil {
@@ -173,10 +173,10 @@ func TestAgentModelCostIsMeteredOnceAndSealsFast(t *testing.T) {
 		tenant.ID, UsageKindAgentModelCostMicroUSD, model, ResourceKindAgentSession, window).Scan(&quantity); err != nil || quantity != 1300 {
 		t.Fatalf("cost meter row = %d, %v, want 1300 (replay and unpriced add nothing)", quantity, err)
 	}
-	if total, err := st.AgentModelCostMonthToDate(ctx, tenant.ID, at); err != nil || total != 1300 {
-		t.Fatalf("month-to-date cost = %d, %v, want 1300", total, err)
+	if in, err := st.AgentSpendInputs(ctx, tenant.ID, at); err != nil || in.MonthToDateMicroUSD != 1300 {
+		t.Fatalf("month-to-date cost = %d, %v, want 1300", in.MonthToDateMicroUSD, err)
 	}
-	if tokens, err := st.AgentModelTokensMonthToDate(ctx, tenant.ID, at); err != nil || tokens != 24 {
+	if tokens, err := st.agentSessionMonthToDate(ctx, tenant.ID, at, AgentModelUsageKinds); err != nil || tokens != 24 {
 		t.Fatalf("month-to-date tokens = %d, %v, want 24 (cost is not a token)", tokens, err)
 	}
 
@@ -242,7 +242,7 @@ func TestAgentModelLateUsageSkipsAnExportedRow(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer pool.Close()
+	t.Cleanup(pool.Close) // registered first, so it runs after the tenant cleanup
 	st := NewPGStore(pool)
 	tenant, err := st.CreateTenant(ctx, "agent-model-late", PlanHobby)
 	if err != nil {
@@ -313,4 +313,14 @@ func TestAgentModelLateUsageSkipsAnExportedRow(t *testing.T) {
 	if tokens := read(UsageKindAgentModelInputTokens); len(tokens) != 1 || tokens[0].quantity != 15 {
 		t.Fatalf("input token rows = %+v, want one row of 15", tokens)
 	}
+}
+
+// agentSessionMonthToDate runs the spend query's month-to-date sum for any
+// meter kinds, so the tests can check the token meters through the same SQL.
+func (s *PGStore) agentSessionMonthToDate(ctx context.Context, workspaceID string, now time.Time, kinds []string) (int64, error) {
+	now = now.UTC()
+	var total int64
+	err := s.Pool.QueryRow(ctx, `SELECT `+agentSessionMonthToDateSQL,
+		workspaceID, time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC), kinds).Scan(&total)
+	return total, err
 }

@@ -529,7 +529,7 @@ spec:
                     # construction (route = registered mux pattern, never a path;
                     # tool/operation = closed registry) — see
                     # lego/backend/internal/api/httpmetrics.go.
-                    regex: bex_(billing|agent_session|sandbox|webhooks|push|api)_.*
+                    regex: bex_(billing|agent_session|agent_platform_model|sandbox|webhooks|push|api)_.*
                     action: keep
               # Build-plane SLIs from the operator's own registry (docs/ADR060
               # D5). This job is why the series are readable at all: the manager

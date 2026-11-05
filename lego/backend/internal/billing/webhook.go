@@ -41,7 +41,10 @@ type StripeWebhook struct {
 	// OnCustomerUpdated audits a default-payment-method change made in the
 	// Billing Portal (w2/070).
 	OnCustomerUpdated func(context.Context, *stripe.Event) error
-	Metrics           *Metrics
+	// OnTrust feeds the agent-model trust tiers from invoice.paid,
+	// invoice.payment_failed and charge.dispute.created/closed (ADR091 D10.1).
+	OnTrust func(context.Context, *stripe.Event) error
+	Metrics *Metrics
 }
 
 func (h *StripeWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -99,6 +102,14 @@ func (h *StripeWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			h.Metrics.Operation("webhook_handler", "error")
 			log.Printf("billing: Stripe lifecycle handler event=%s type=%s: %v", event.ID, event.Type, err)
 			http.Error(w, "billing lifecycle unavailable", http.StatusServiceUnavailable)
+			return
+		}
+	}
+	if isTrustEvent(event.Type) && h.OnTrust != nil {
+		if err := h.OnTrust(r.Context(), &event); err != nil {
+			h.Metrics.Operation("webhook_handler", "error")
+			log.Printf("billing: Stripe trust handler event=%s type=%s: %v", event.ID, event.Type, err)
+			http.Error(w, "billing trust unavailable", http.StatusServiceUnavailable)
 			return
 		}
 	}

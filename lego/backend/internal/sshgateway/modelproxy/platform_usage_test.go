@@ -55,15 +55,17 @@ func (c *cannedTransport) RoundTrip(r *http.Request) (*http.Response, error) {
 }
 
 // usageStore is bex-api's side of the platform harness: the session row, the
-// idempotent usage ledger, the plan quota inputs and the terminal CAS.
+// idempotent usage ledger, the spend-cap inputs and the terminal CAS.
 type usageStore struct {
-	mu         sync.Mutex
-	session    store.AgentSession
-	recorded   map[string]store.AgentModelUsage
-	reports    int
-	plan       string
-	usedTokens int64
-	reason     string
+	mu        sync.Mutex
+	session   store.AgentSession
+	recorded  map[string]store.AgentModelUsage
+	reports   int
+	plan      string
+	trust     store.BillingTrust
+	usedMicro int64
+	reason    string
+	clock     time.Time
 }
 
 func (s *usageStore) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {
@@ -84,12 +86,23 @@ func (s *usageStore) RecordAgentModelUsage(_ context.Context, u store.AgentModel
 	return true, nil
 }
 
-func (s *usageStore) GetTenant(context.Context, string) (store.Tenant, error) {
-	return store.Tenant{ID: "tea-a", Plan: s.plan}, nil
+func (s *usageStore) AgentSpendInputs(context.Context, string, time.Time) (store.AgentSpendInputs, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return store.AgentSpendInputs{Plan: s.plan, Trust: s.trust, MonthToDateMicroUSD: s.usedMicro}, nil
 }
 
-func (s *usageStore) AgentModelTokensMonthToDate(context.Context, string, time.Time) (int64, error) {
-	return s.usedTokens, nil
+// now is the minter's clock; advance moves it past the mint's spend cache.
+func (s *usageStore) now() time.Time {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.clock
+}
+
+func (s *usageStore) advance(d time.Duration) {
+	s.mu.Lock()
+	s.clock = s.clock.Add(d)
+	s.mu.Unlock()
 }
 
 func (s *usageStore) FinalizeAgentSession(_ context.Context, _, _, _, _, reason string) (store.AgentSession, store.TerminalTurnFact, error) {
@@ -121,9 +134,9 @@ func eventually(t *testing.T, cond func() bool) {
 }
 
 // platformHarness enables the platform route for tea-a and wires the real
-// mint, usage and auth-failure verbs behind the shared HMAC. quota < 0 means
-// no quota (the shipped default).
-func platformHarness(t *testing.T, upstream *cannedTransport, quota int64) (*httptest.Server, *usageStore) {
+// mint, usage and auth-failure verbs behind the shared HMAC, with the
+// shipped spend caps (a fresh Hobby workspace: T0, $10).
+func platformHarness(t *testing.T, upstream *cannedTransport) (*httptest.Server, *usageStore) {
 	t.Helper()
 	if err := agentsession.EnablePlatformModelRoute(agentsession.DevModelRouteOpenRouter, "", []string{"tea-a"}, platformKey); err != nil {
 		t.Fatal(err)
@@ -136,15 +149,13 @@ func platformHarness(t *testing.T, upstream *cannedTransport, quota int64) (*htt
 		},
 		recorded: map[string]store.AgentModelUsage{},
 		plan:     store.PlanHobby,
+		clock:    time.Now().UTC(),
 	}
-	minter := &agentsession.ModelMinter{Keys: fakeKV{}, Sessions: st, Quota: st}
-	if quota >= 0 {
-		minter.QuotaFor = func(plan string) (int64, bool) { return quota, plan == store.PlanHobby }
-	}
+	minter := &agentsession.ModelMinter{Keys: fakeKV{}, Sessions: st, Spend: st, Now: st.now}
 	mux := http.NewServeMux()
 	mux.Handle(agentsession.InternalModelMintPath, &agentsession.ModelHandler{Secret: secret, Minter: minter})
 	mux.Handle(agentsession.InternalModelUsagePath, &agentsession.ModelUsageHandler{Secret: secret, Recorder: &agentsession.ModelUsageRecorder{Store: st}})
-	mux.Handle(agentsession.InternalModelAuthFailurePath, &agentsession.ModelAuthFailureHandler{Secret: secret, Failer: &agentsession.ModelAuthFailer{Sessions: st}})
+	mux.Handle(agentsession.InternalModelAuthFailurePath, &agentsession.ModelAuthFailureHandler{Secret: secret, Failer: &agentsession.ModelAuthFailer{Sessions: st, Spend: st}})
 	api := httptest.NewServer(mux)
 	t.Cleanup(api.Close)
 	broker := &modelproxy.Broker{
@@ -171,7 +182,7 @@ func TestPlatformRouteMetersStreamingUsage(t *testing.T) {
 		`data: {"type":"message_delta","delta":{"stop_reason":"end_turn"},"usage":{"output_tokens":345}}` + "\n\n" +
 		"event: message_stop\ndata: {\"type\":\"message_stop\"}\n\n"
 	upstream := &cannedTransport{contentType: "text/event-stream", body: stream}
-	proxy, st := platformHarness(t, upstream, -1)
+	proxy, st := platformHarness(t, upstream)
 
 	resp := requestBody(t, proxy, pinnedBody)
 	relayed, _ := io.ReadAll(resp.Body)
@@ -201,7 +212,7 @@ func TestPlatformRouteMetersStreamingUsage(t *testing.T) {
 
 func TestPlatformRouteMetersJSONUsage(t *testing.T) {
 	upstream := &cannedTransport{contentType: "application/json", body: `{"id":"gen-2","type":"message","content":[{"type":"text","text":"hi"}],"usage":{"input_tokens":6,"output_tokens":5,"cache_creation_input_tokens":7,"cache_read_input_tokens":0,"cost":3.23e-06}}`}
-	proxy, st := platformHarness(t, upstream, -1)
+	proxy, st := platformHarness(t, upstream)
 	resp := requestBody(t, proxy, `{"model":"`+agentsession.DefaultDevModel+`","max_tokens":5,"messages":[]}`)
 	resp.Body.Close()
 	eventually(t, func() bool { got, _ := st.snapshot(); return len(got) == 1 })
@@ -221,7 +232,7 @@ func TestPlatformRouteMetersJSONUsage(t *testing.T) {
 // object is refused before any upstream request.
 func TestPlatformRouteInjectsDataPolicyAndRefusesClientProvider(t *testing.T) {
 	upstream := &cannedTransport{contentType: "application/json", body: `{"usage":{"input_tokens":1,"output_tokens":1}}`}
-	proxy, _ := platformHarness(t, upstream, -1)
+	proxy, _ := platformHarness(t, upstream)
 	resp := requestBody(t, proxy, pinnedBody+"\n")
 	resp.Body.Close()
 	want := strings.TrimSuffix(pinnedBody, "}") + `,"provider":{"data_collection":"deny"}}`
@@ -248,27 +259,30 @@ func TestPlatformRouteInjectsDataPolicyAndRefusesClientProvider(t *testing.T) {
 	}
 }
 
-// A workspace under its quota is served; at the quota the mint is refused
+// A workspace under its spend cap is served; at the cap the mint is refused
 // with a typed 429 the agent CLI can show, and the session fails with the
-// readable quota reason. With no quota configured nothing is read or capped
-// (the other tests run that way).
-func TestPlatformRouteQuotaRefusesAtTheLimit(t *testing.T) {
+// readable spend-cap reason (ADR091 D5). A fresh Hobby workspace is T0, so
+// its cap is the $10 tier ceiling.
+func TestPlatformRouteSpendCapRefusesAtTheLimit(t *testing.T) {
 	upstream := &cannedTransport{contentType: "application/json", body: `{"usage":{"input_tokens":1,"output_tokens":1}}`}
-	proxy, st := platformHarness(t, upstream, 1000)
-	st.usedTokens = 999
+	proxy, st := platformHarness(t, upstream)
+	st.usedMicro = 9_999_999
 	resp := requestBody(t, proxy, pinnedBody)
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
-		t.Fatalf("under quota: status %d, want 200", resp.StatusCode)
+		t.Fatalf("under the cap: status %d, want 200", resp.StatusCode)
 	}
 
-	st.usedTokens = 1000
+	st.mu.Lock()
+	st.usedMicro = 10_000_000
+	st.mu.Unlock()
+	st.advance(time.Minute) // past the mint's spend cache
 	upstream.last = nil
 	resp = requestBody(t, proxy, pinnedBody)
 	body, _ := io.ReadAll(resp.Body)
 	resp.Body.Close()
 	if resp.StatusCode != http.StatusTooManyRequests || upstream.last != nil {
-		t.Fatalf("at quota: status %d upstream=%v, want 429 and no upstream", resp.StatusCode, upstream.last != nil)
+		t.Fatalf("at the cap: status %d upstream=%v, want 429 and no upstream", resp.StatusCode, upstream.last != nil)
 	}
 	var refusal struct {
 		Type  string `json:"type"`
@@ -277,14 +291,15 @@ func TestPlatformRouteQuotaRefusesAtTheLimit(t *testing.T) {
 		} `json:"error"`
 	}
 	if err := json.Unmarshal(body, &refusal); err != nil || refusal.Type != "error" ||
-		refusal.Error.Code != agentsession.ModelQuotaExceededCode || !strings.Contains(refusal.Error.Message, "quota") {
+		refusal.Error.Code != agentsession.ModelSpendCapReachedCode || !strings.Contains(refusal.Error.Message, "spend cap") {
 		t.Fatalf("refusal body = %s", body)
 	}
 	if strings.Contains(string(body), platformKey) {
 		t.Fatal("refusal leaked the platform key")
 	}
 	eventually(t, func() bool { _, reason := st.snapshot(); return reason != "" })
-	if _, reason := st.snapshot(); reason != agentsession.ModelQuotaExceededReason {
+	// T0's ceiling, not the plan cap, is what binds: the reason says so.
+	if _, reason := st.snapshot(); !strings.Contains(reason, agentsession.ModelSpendCapReachedCode) || !strings.Contains(reason, "new workspaces") {
 		t.Fatalf("session failure reason = %q", reason)
 	}
 }

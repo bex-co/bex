@@ -181,14 +181,14 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 			b.Metrics.Authentication("missing_model_key")
 			b.reportAuthFailure(verified)
 			http.Error(w, "forbidden", http.StatusForbidden)
-		case errors.Is(err, agentsession.ErrModelQuotaExceeded):
-			// The workspace spent its plan's monthly platform-route tokens
-			// (w10/m14 t005). Terminalize the session with the readable reason,
-			// and answer in the Anthropic error shape so the agent CLI shows the
+		case errors.Is(err, agentsession.ErrModelSpendCapReached):
+			// The workspace reached its monthly agent-model spend cap (ADR091
+			// D5). Terminalize the session with the readable reason, and
+			// answer in the Anthropic error shape so the agent CLI shows the
 			// code rather than a bare status.
-			b.Metrics.Authentication("model_quota_exceeded")
-			b.reportQuotaExceeded(verified)
-			writeQuotaRefusal(w)
+			b.Metrics.Authentication("model_spend_cap_reached")
+			b.reportSpendCapReached(verified)
+			writeSpendCapRefusal(w)
 		case errors.Is(err, agentsession.ErrForbidden):
 			// A stale, cross, or post-terminal sandbox asking for a session that is
 			// not its own: it learns nothing and must not be able to end a live
@@ -320,29 +320,29 @@ func (b *Broker) usageReporter() *usageReporter {
 	return b.usage
 }
 
-// writeQuotaRefusal answers a quota-refused exchange with HTTP 429 in the
+// writeSpendCapRefusal answers a cap-refused exchange with HTTP 429 in the
 // Anthropic Messages error shape, carrying the stable code.
-func writeQuotaRefusal(w http.ResponseWriter) {
+func writeSpendCapRefusal(w http.ResponseWriter) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusTooManyRequests)
 	_ = json.NewEncoder(w).Encode(map[string]any{
 		"type": "error",
 		"error": map[string]string{
 			"type":    "rate_limit_error",
-			"code":    agentsession.ModelQuotaExceededCode,
-			"message": agentsession.ModelQuotaExceededCode + ": " + agentsession.ModelQuotaExceededReason,
+			"code":    agentsession.ModelSpendCapReachedCode,
+			"message": agentsession.ModelSpendCapReachedCode + ": " + agentsession.ModelSpendCapReachedReason,
 		},
 	})
 }
 
-// reportQuotaExceeded is reportAuthFailure's quota sibling: detached and
-// best-effort, it fails the session with ModelQuotaExceededReason.
-func (b *Broker) reportQuotaExceeded(req agentsession.ModelMintRequest) {
+// reportSpendCapReached is reportAuthFailure's spend-cap sibling: detached
+// and best-effort, it fails the session with ModelSpendCapReachedReason.
+func (b *Broker) reportSpendCapReached(req agentsession.ModelMintRequest) {
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), authFailureReportTimeout)
 		defer cancel()
-		if err := b.API.ReportQuotaExceeded(ctx, req); err != nil {
-			log.Printf("agent model proxy: report quota refusal failed (session=%s): %v", req.SessionID, err)
+		if err := b.API.ReportSpendCapReached(ctx, req); err != nil {
+			log.Printf("agent model proxy: report spend-cap refusal failed (session=%s): %v", req.SessionID, err)
 		}
 	}()
 }

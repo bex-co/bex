@@ -73,6 +73,10 @@ WEBHOOK_EVENTS = [
     "customer.subscription.resumed",
     # w2/070: a default-card change made in the Billing Portal, audited.
     "customer.updated",
+    # ADR091 D10.1: a dispute holds the workspace's agent-model trust tier at
+    # T0 until it closes as won.
+    "charge.dispute.created",
+    "charge.dispute.closed",
 ]
 
 

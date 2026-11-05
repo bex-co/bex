@@ -47,7 +47,7 @@ func TestEverySurfaceServesTheFailureCode(t *testing.T) {
 	}
 	want := map[string]any{
 		create(fmt.Errorf("create: %w", core.NewConflictError(sandbox.CodeSandboxCapacityLimit, "the workspace is at its sandbox limit", nil))): sandbox.CodeSandboxCapacityLimit,
-		create(fmt.Errorf("create: %w", core.NewUnavailableError(sandbox.CodeSandboxStartFailed, "the sandbox did not start", nil))): sandbox.CodeSandboxStartFailed,
+		create(fmt.Errorf("create: %w", core.NewUnavailableError(sandbox.CodeSandboxStartFailed, "the sandbox did not start", nil))):            sandbox.CodeSandboxStartFailed,
 		create(errors.New("pod schedule timeout")): nil,
 		create(nil): nil,
 	}

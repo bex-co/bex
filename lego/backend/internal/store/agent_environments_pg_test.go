@@ -80,6 +80,24 @@ func TestAgentEnvironmentUpsertIsPartialAndBounded(t *testing.T) {
 		t.Fatalf("clearing the hosts = %+v err=%v", got, err)
 	}
 
+	// The spend cap override (ADR091 D5): set, kept by other partial writes,
+	// cleared back to the plan default; zero is refused by the CHECK.
+	capMicro := int64(50_000_000)
+	if got, err = st.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{SpendCapOverrideMicroUSD: &capMicro}); err != nil ||
+		got.SpendCapOverrideMicroUSD == nil || *got.SpendCapOverrideMicroUSD != capMicro || got.NetworkTier != tier {
+		t.Fatalf("setting the cap = %+v err=%v", got, err)
+	}
+	if got, err = st.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{DefaultModel: &model}); err != nil || got.SpendCapOverrideMicroUSD == nil {
+		t.Fatalf("a model write lost the cap: %+v err=%v", got, err)
+	}
+	if got, err = st.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{ClearSpendCapOverride: true}); err != nil || got.SpendCapOverrideMicroUSD != nil {
+		t.Fatalf("clearing the cap = %+v err=%v", got, err)
+	}
+	zero := int64(0)
+	if _, err := st.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{SpendCapOverrideMicroUSD: &zero}); !errors.Is(err, ErrInvalid) {
+		t.Fatalf("zero cap error = %v, want ErrInvalid", err)
+	}
+
 	bad := "internet"
 	if _, err := st.UpsertAgentEnvironment(ctx, tenant.ID, AgentEnvironmentPatch{NetworkTier: &bad}); !errors.Is(err, ErrInvalid) {
 		t.Fatalf("unknown tier error = %v, want ErrInvalid", err)

@@ -37,6 +37,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/drivergrant"
 	"github.com/bex-co/bex/lego/backend/internal/github"
 	ids "github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -84,9 +85,10 @@ type Store interface {
 	// ListSandboxTenantKeys enumerates workspaces that have an OpenSandbox
 	// tenant key so inventory reconcile can list every live sandbox (w5/m99).
 	ListSandboxTenantKeys(ctx context.Context) ([]store.SandboxTenantKey, error)
-	// CountLiveAgentSessionSandboxes bounds the ADR059 D6 per-workspace live-
-	// sandbox cap: sessions in a live phase holding a sandbox id for the workspace.
-	CountLiveAgentSessionSandboxes(ctx context.Context, workspaceID string, phases []string) (int, error)
+	// CountActiveAgentSessions counts the workspace's active sessions: with
+	// WithSandbox, the ADR059 D6 live-sandbox cap's working set; by agent,
+	// the trust tier's concurrent platform-model sessions (ADR091 D10.1).
+	CountActiveAgentSessions(ctx context.Context, workspaceID string, c store.AgentSessionCount) (int, error)
 	// Transcript persistence (ADR051): the Completer harvests the driver's log
 	// at completion, folds it into items and merges them here (idempotent by
 	// session+turn+item index; a partial tee item is replaced by its complete copy).
@@ -210,6 +212,12 @@ type Service struct {
 	// network tier, custom hosts, default model. nil (store off) ⇒ every
 	// workspace has the defaults and updates are unavailable.
 	Environments EnvironmentStore
+	// Spend reads the agent-model spend controls (ADR091 D5, D10.1): the
+	// trust tier's concurrent-session limit at admission and the spend cap
+	// fields of the environment view, from Sheet (nil ⇒ pricing.Default).
+	// nil Spend (store off) ⇒ no tier limit and no spend fields.
+	Spend SpendStore
+	Sheet *pricing.Sheet
 	// RegistryHosts is the package-registry catalog session policies render
 	// (sessionegress.Manager.RegistryDomains), reported by the environment
 	// for display. Empty ⇒ the built-in catalog.
@@ -228,11 +236,6 @@ type Service struct {
 	// gated) runner so the async lifecycle is deterministic without sleeps.
 	dispatchRunner func(func())
 }
-
-// liveSandboxPhases are the phases that hold a provisioned (or provisioning)
-// sandbox and thus count against the per-workspace live cap — the same set the
-// Completer treats as active. A terminal session in its idle grace is excluded.
-var liveSandboxPhases = activePhases
 
 // admitDispatch is the ONE admission gate every verb that provisions fresh
 // sandbox compute (Create, Steer) runs, in a fixed order: the
@@ -263,7 +266,7 @@ func (s *Service) enforceLiveSandboxCap(ctx context.Context, workspaceID string)
 	if s.MaxLiveSandboxes <= 0 {
 		return nil
 	}
-	n, err := s.Store.CountLiveAgentSessionSandboxes(ctx, workspaceID, liveSandboxPhases)
+	n, err := s.Store.CountActiveAgentSessions(ctx, workspaceID, store.AgentSessionCount{WithSandbox: true})
 	if err != nil {
 		return mapStoreError("", err)
 	}
@@ -493,6 +496,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := s.admitDispatch(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
+	admission, err := s.trustAdmissionFor(ctx, workspaceID, req.AgentConfig.Agent)
+	if err != nil {
+		return View{}, err
+	}
 	config, err := json.Marshal(req.AgentConfig)
 	if err != nil {
 		return View{}, err
@@ -508,7 +515,11 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		InitialAttachments: store.AgentAttachmentBinding{
 			IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx),
 		},
+		AdmissionLimit: admission.limit, AdmissionCount: admission.count,
 	})
+	if errors.Is(err, store.ErrAgentSessionAdmissionLimit) {
+		return View{}, admission.refusal(admission.limit)
+	}
 	if errors.Is(err, store.ErrAgentSessionIdempotencyKey) {
 		// Lost the race for the key to a concurrent identical create.
 		view, found, replayErr := s.replayCreate(ctx, workspaceID, idemKey, idemHash)
@@ -1122,6 +1133,11 @@ func (s *Service) Resume(ctx context.Context, sessionID string) (View, error) {
 	if err := s.enforceLiveSandboxCap(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
 	}
+	if config, err := decodeAgentConfig(record); err != nil {
+		return View{}, err
+	} else if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent); err != nil {
+		return View{}, err
+	}
 	if err := s.RequireBillingMutation(ctx, record.WorkspaceID); err != nil {
 		return View{}, err
 	}
@@ -1414,6 +1430,9 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	}
 	config, err := decodeAgentConfig(record)
 	if err != nil {
+		return View{}, err
+	}
+	if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent); err != nil {
 		return View{}, err
 	}
 	// Every dispatch re-resolves the workspace environment, so a tier or host

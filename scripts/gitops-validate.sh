@@ -1434,7 +1434,7 @@ if [[ -z "$keep_regex" ]]; then
   echo "FAIL: could not read the bex-api scrape keep-list regex from deploy/gitops/base/prometheus.yaml" >&2
   fail=1
 fi
-for family in sandbox agent_session api billing webhooks push; do
+for family in sandbox agent_session agent_platform_model api billing webhooks push; do
   if [[ "$keep_regex" != *"$family"* ]]; then
     echo "FAIL: bex_${family}_* is alerted but absent from the bex-api scrape keep-list ($keep_regex) — the rule would evaluate a series that is never scraped" >&2
     fail=1

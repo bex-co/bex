@@ -139,15 +139,33 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return gqlTime(*v.UpdatedAt)
 		})},
+		"agentModelMonthlySpendCapUsd":  optionalFloatField("Effective monthly agent-model spend cap in USD: min(the admin override or the plan default, the trust tier's ceiling).", func(v Environment) *float64 { return v.AgentModelMonthlySpendCapUSD }),
+		"agentModelPlanSpendCapUsd":     optionalFloatField("The plan's default monthly agent-model spend cap in USD.", func(v Environment) *float64 { return v.AgentModelPlanSpendCapUSD }),
+		"agentModelSpendCapOverrideUsd": optionalFloatField("The admin's spend cap override in USD; null means the plan default.", func(v Environment) *float64 { return v.AgentModelSpendCapOverrideUSD }),
+		"agentModelMaxSpendCapUsd":      optionalFloatField("The highest override an admin may set (10x the plan default).", func(v Environment) *float64 { return v.AgentModelMaxSpendCapUSD }),
+		"agentModelSpendMonthToDateUsd": optionalFloatField("Month-to-date agent-model spend in USD (UTC calendar month).", func(v Environment) *float64 { return v.AgentModelSpendMonthToDateUSD }),
+		"trustTier":                     &graphql.Field{Type: graphql.String, Description: "The workspace's billing trust tier (T0 new .. T4).", Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.TrustTier) })},
+		"nextChargeThresholdUsd":        optionalFloatField("The agent-model spend at which the card is charged mid-cycle; null at the top tier (month-end only).", func(v Environment) *float64 { return v.NextChargeThresholdUSD }),
 	},
 })
+
+func optionalFloatField(description string, get func(Environment) *float64) *graphql.Field {
+	return &graphql.Field{Type: graphql.Float, Description: description, Resolve: gqlutil.Field(func(v Environment) any {
+		if f := get(v); f != nil {
+			return *f
+		}
+		return nil
+	})}
+}
 
 var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "AgentEnvironmentInput",
 	Fields: graphql.InputObjectConfigFieldMap{
-		"networkTier":  &graphql.InputObjectFieldConfig{Type: agentNetworkTierGQLEnum},
-		"customHosts":  &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the whole list; [] clears it. Opened only by the CUSTOM tier."},
-		"defaultModel": &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "\"\" returns to the provider default."},
+		"networkTier":                    &graphql.InputObjectFieldConfig{Type: agentNetworkTierGQLEnum},
+		"customHosts":                    &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Replaces the whole list; [] clears it. Opened only by the CUSTOM tier."},
+		"defaultModel":                   &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "\"\" returns to the provider default."},
+		spendCapField:                    &graphql.InputObjectFieldConfig{Type: graphql.Float, Description: "Monthly agent-model spend cap in USD (more than 0, at most 10x the plan default)."},
+		"resetAgentModelMonthlySpendCap": &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true returns the spend cap to the plan default."},
 	},
 })
 
@@ -172,6 +190,15 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 	}
 	if model, ok := raw["defaultModel"].(string); ok {
 		input.DefaultModel = &model
+	}
+	if reset, ok := raw["resetAgentModelMonthlySpendCap"].(bool); ok {
+		input.ResetAgentModelMonthlySpendCap = reset
+	}
+	if v, present := raw[spendCapField]; present {
+		input.AgentModelMonthlySpendCapSet = true
+		if n, ok := v.(float64); ok { // graphql.Float coerces every literal to float64
+			input.AgentModelMonthlySpendCapUSD = &n
+		}
 	}
 	return input
 }

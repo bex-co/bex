@@ -170,35 +170,53 @@ func addAgentModelUsage(ctx context.Context, tx pgx.Tx, u AgentModelUsage, kind 
 	return tag.RowsAffected() == 1, nil
 }
 
-// AgentModelCostMonthToDate is workspaceID's month-to-date platform-route
-// customer price in micro-USD (agent_model_cost_microusd, every model) in the
-// calendar month containing now: the input to the spend cap (ADR091 D5).
-func (s *PGStore) AgentModelCostMonthToDate(ctx context.Context, workspaceID string, now time.Time) (int64, error) {
-	return s.agentSessionMonthToDate(ctx, workspaceID, now, []string{UsageKindAgentModelCostMicroUSD})
+// agentSessionMonthToDateSQL sums workspace $1's agent_session meters of the
+// kinds in $3 over the calendar month starting at $2, across hourly and
+// compacted rows. resource_kind is a literal so the planner can use the
+// partial usage_hourly_agent_session_idx.
+const agentSessionMonthToDateSQL = `(SELECT COALESCE(SUM(quantity), 0)::bigint FROM (
+		SELECT quantity FROM usage_hourly
+		WHERE workspace_id = $1 AND resource_kind = '` + ResourceKindAgentSession + `' AND kind = ANY($3::text[])
+		  AND window_start >= $2::timestamptz
+		UNION ALL
+		SELECT quantity FROM usage_monthly
+		WHERE workspace_id = $1 AND resource_kind = '` + ResourceKindAgentSession + `' AND kind = ANY($3::text[])
+		  AND month = ($2::timestamptz AT TIME ZONE 'UTC')::date
+	) u)`
+
+// AgentSpendInputs is everything one workspace's agent-model spend position
+// (ADR091 D5, D10.1) is computed from.
+type AgentSpendInputs struct {
+	Plan  string
+	Trust BillingTrust
+	// OverrideMicroUSD is the admin's cap override; nil means the plan default.
+	OverrideMicroUSD *int64
+	// MonthToDateMicroUSD is agent_model_cost_microusd over the calendar month
+	// (UTC) containing now.
+	MonthToDateMicroUSD int64
 }
 
-// AgentModelTokensMonthToDate is workspaceID's total platform-route tokens
-// (all four token meters, every model) in the calendar month containing now:
-// the input to the plan quota check (w10/m14 t005).
-func (s *PGStore) AgentModelTokensMonthToDate(ctx context.Context, workspaceID string, now time.Time) (int64, error) {
-	return s.agentSessionMonthToDate(ctx, workspaceID, now, AgentModelUsageKinds)
-}
-
-// agentSessionMonthToDate sums workspaceID's agent_session meters of kinds
-// over the calendar month containing now, across hourly and compacted rows.
-func (s *PGStore) agentSessionMonthToDate(ctx context.Context, workspaceID string, now time.Time, kinds []string) (int64, error) {
+// AgentSpendInputs reads workspaceID's plan, trust record, cap override and
+// month-to-date agent-model cost in one round trip (the mint's hot path).
+// ErrNotFound when the workspace does not exist.
+func (s *PGStore) AgentSpendInputs(ctx context.Context, workspaceID string, now time.Time) (AgentSpendInputs, error) {
 	now = now.UTC()
 	monthStart := time.Date(now.Year(), now.Month(), 1, 0, 0, 0, 0, time.UTC)
-	var total int64
+	var in AgentSpendInputs
+	var trust trustRow
+	// The bt.* list is billingTrustColumns, in order.
 	err := s.Pool.QueryRow(ctx, `
-		SELECT COALESCE(SUM(quantity), 0)::bigint FROM (
-			SELECT quantity FROM usage_hourly
-			WHERE workspace_id = $1 AND resource_kind = $3 AND kind = ANY($4)
-			  AND window_start >= $2
-			UNION ALL
-			SELECT quantity FROM usage_monthly
-			WHERE workspace_id = $1 AND resource_kind = $3 AND kind = ANY($4)
-			  AND month = ($2::timestamptz AT TIME ZONE 'UTC')::date
-		) u`, workspaceID, monthStart, ResourceKindAgentSession, kinds).Scan(&total)
-	return total, err
+		SELECT t.plan, bt.lifetime_paid_cents, bt.paid_cycle_invoices, bt.locked_until, bt.failed_invoice_id,
+		       bt.last_failure_at, bt.dispute_id, ae.agent_model_spend_cap_override_microusd,
+		       `+agentSessionMonthToDateSQL+`
+		FROM tenants t
+		LEFT JOIN billing_trust bt ON bt.workspace_id = t.id
+		LEFT JOIN agent_environments ae ON ae.workspace_id = t.id
+		WHERE t.id = $1`, workspaceID, monthStart, []string{UsageKindAgentModelCostMicroUSD},
+	).Scan(append(append([]any{&in.Plan}, trust.dest()...), &in.OverrideMicroUSD, &in.MonthToDateMicroUSD)...)
+	if err != nil {
+		return AgentSpendInputs{}, classify("workspace", err)
+	}
+	in.Trust = trust.record(workspaceID)
+	return in, nil
 }

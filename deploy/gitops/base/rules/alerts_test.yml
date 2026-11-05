@@ -1996,3 +1996,42 @@ tests:
             exp_annotations:
               summary: "etcd WAL fsync p99 on cp-a is 990.1ms"
               description: "Slow WAL fsync on cp-a delays every write and heartbeats (the 'slow fdatasync' / 'apply took too long' log lines). This is disk latency evidence, not a proven need to replace the disk. Debug: kubectl -n kube-system logs etcd-cp-a --tail=300 | grep -Ei 'fdatasync|took too long'."
+
+  # ADR091 D5: stubbed platform spend at 85% of the OpenRouter key's credit
+  # limit fires once across replicas (b's last poll is older and lower);
+  # 79% and a key with no limit (0) stay quiet.
+  - name: platform model credit passes 80% of the OpenRouter limit
+    interval: 1m
+    input_series:
+      - series: bex_agent_platform_model_credit_limit_usd{job="bex-api",instance="a"}
+        values: "1000x30"
+      - series: bex_agent_platform_model_credit_usage_usd{job="bex-api",instance="a"}
+        values: "850x30"
+      - series: bex_agent_platform_model_credit_limit_usd{job="bex-api",instance="b"}
+        values: "1000x30"
+      - series: bex_agent_platform_model_credit_usage_usd{job="bex-api",instance="b"}
+        values: "600x30"
+    alert_rule_test:
+      - eval_time: 20m
+        alertname: PlatformModelCreditHigh
+        exp_alerts:
+          - exp_labels:
+              severity: warning
+            exp_annotations:
+              summary: "Platform model key has used 85% of its OpenRouter credit limit"
+              description: "Platform agent-model spend has passed 80% of the credit limit on the platform OpenRouter key (BEX_AGENT_PLATFORM_MODEL_KEY). At 100% OpenRouter refuses every platform-model request, so every workspace's agent sessions stop. Check per-workspace spend (agent_model_cost_microusd) for an outlier, then raise the key's credit limit in the OpenRouter console (Settings → API Keys) if the spend is expected. Runbook: docs/ADR091-agent-model-pricing.md#d5--spend-caps"
+
+  - name: platform model credit under 80% or with no limit stays quiet
+    interval: 1m
+    input_series:
+      - series: bex_agent_platform_model_credit_limit_usd{job="bex-api",instance="a"}
+        values: "1000x15 0x15"
+      - series: bex_agent_platform_model_credit_usage_usd{job="bex-api",instance="a"}
+        values: "790x15 5000x15"
+    alert_rule_test:
+      - eval_time: 14m
+        alertname: PlatformModelCreditHigh
+        exp_alerts: []
+      - eval_time: 30m
+        alertname: PlatformModelCreditHigh
+        exp_alerts: []

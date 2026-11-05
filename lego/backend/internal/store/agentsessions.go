@@ -23,6 +23,7 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/jackc/pgx/v5"
@@ -170,6 +171,38 @@ type AgentSession struct {
 	// InitialAttachments is create-only input bound to turn 1 in the same
 	// transaction (ADR095 D3); never scanned.
 	InitialAttachments AgentAttachmentBinding
+	// AdmissionLimit is create-only input: when positive, the insert is
+	// refused with ErrAgentSessionAdmissionLimit if the workspace already has
+	// that many active sessions matching AdmissionCount. The count and the
+	// insert share a transaction under a per-workspace advisory lock, so
+	// concurrent creates cannot overshoot (ADR091 D10.1 trust tiers).
+	AdmissionLimit int
+	AdmissionCount AgentSessionCount
+}
+
+// ErrAgentSessionAdmissionLimit is a create refused at its AdmissionLimit.
+var ErrAgentSessionAdmissionLimit = errors.New("agent session admission limit reached")
+
+// ActiveAgentSessionPhases are the non-terminal phases a workspace's session
+// counts are taken over (agentsessions.activePhases; a test there keeps the
+// two equal). activeAgentSessionPhasesSQL is the same set as the predicate of
+// the partial agent_sessions_active_workspace_idx (migration 0194), so the
+// order matters.
+var ActiveAgentSessionPhases = []string{"creating", "running", "resuming", "redispatching"}
+
+var activeAgentSessionPhasesSQL = "phase IN ('" + strings.Join(ActiveAgentSessionPhases, "', '") + "')"
+
+// AgentSessionCount narrows CountActiveAgentSessions.
+type AgentSessionCount struct {
+	// WithSandbox counts only sessions holding a sandbox id: the ADR059 D6
+	// live-sandbox working set. Otherwise a session counts from the moment it
+	// is accepted.
+	WithSandbox bool
+	// Agent, when set, counts only sessions of that (normalized) agent profile.
+	Agent string
+	// ExcludeID leaves one session out: the one a steer or resume reactivates
+	// must not count against itself.
+	ExcludeID string
 }
 
 // DefaultAgentBranchPrefix prefixes the branch a session gets when the caller
@@ -212,6 +245,19 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 	var row AgentSession
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var err error
+		if in.AdmissionLimit > 0 {
+			if _, err = tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`,
+				"agent-session-admission:"+in.WorkspaceID); err != nil {
+				return err
+			}
+			n, err := countActiveAgentSessions(ctx, tx, in.WorkspaceID, in.AdmissionCount)
+			if err != nil {
+				return err
+			}
+			if n >= in.AdmissionLimit {
+				return ErrAgentSessionAdmissionLimit
+			}
+		}
 		if in.IdempotencyKey != "" {
 			// Release a key past its window so it can bind to this new session.
 			if _, err = tx.Exec(ctx, `
@@ -246,7 +292,7 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 		}
 		return insertAgentDispatch(ctx, tx, row, "")
 	})
-	if errors.Is(err, ErrAgentSessionIdempotencyKey) {
+	if errors.Is(err, ErrAgentSessionIdempotencyKey) || errors.Is(err, ErrAgentSessionAdmissionLimit) {
 		return AgentSession{}, err
 	}
 	if err != nil {
@@ -688,19 +734,27 @@ func (s *PGStore) DeferPreviousSandboxTeardown(ctx context.Context, sessionID st
 	return err
 }
 
-// CountLiveAgentSessionSandboxes counts the workspace's sessions currently in a
-// live phase (`phases`) that hold a sandbox id — the concurrent live-sandbox
-// working set the ADR059 D6 per-workspace cap bounds. A terminal session in its
-// idle grace still carries a sandbox_id but is not in a live phase, so it does
-// not count against the create/steer/resume cap. Trusted read used by the
-// dispatch-time admission check; a small best-effort overshoot is acceptable
-// (the dispatch CAS and reconcile bound it), so it takes no lock.
-func (s *PGStore) CountLiveAgentSessionSandboxes(ctx context.Context, workspaceID string, phases []string) (int, error) {
+// CountActiveAgentSessions counts the workspace's sessions in an active phase
+// matching c. A terminal session in its idle grace still carries a sandbox_id
+// but is not active, so it never counts. Unlocked, it is the best-effort
+// pre-check the live-sandbox cap and steer/resume use (the dispatch CAS and
+// reconcile bound a small overshoot); a create that must not overshoot sets
+// AgentSession.AdmissionLimit instead.
+func (s *PGStore) CountActiveAgentSessions(ctx context.Context, workspaceID string, c AgentSessionCount) (int, error) {
+	return countActiveAgentSessions(ctx, s.Pool, workspaceID, c)
+}
+
+func countActiveAgentSessions(ctx context.Context, q interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, workspaceID string, c AgentSessionCount) (int, error) {
 	var n int
-	err := s.Pool.QueryRow(ctx, `
+	err := q.QueryRow(ctx, `
 		SELECT count(*) FROM agent_sessions
-		WHERE workspace_id = $1 AND phase = ANY($2) AND sandbox_id <> ''`,
-		workspaceID, phases).Scan(&n)
+		WHERE workspace_id = $1 AND `+activeAgentSessionPhasesSQL+`
+		  AND (NOT $2::boolean OR sandbox_id <> '')
+		  AND ($3::text = '' OR agent_config->>'agent' = $3::text)
+		  AND id <> $4::text`,
+		workspaceID, c.WithSandbox, c.Agent, c.ExcludeID).Scan(&n)
 	return n, err
 }
 
@@ -1107,7 +1161,7 @@ func (s *PGStore) DeleteAgentSession(ctx context.Context, id string) error {
 
 // StampAgentSessionFailureCode sets the stable failureReasonCode on a session
 // that FinalizeAgentSession has just failed with exactly reason, so a client
-// can act on the cause (w10/m14 t005: AGENT_MODEL_QUOTA_EXCEEDED). The reason
+// can act on the cause (e.g. AGENT_MODEL_SPEND_CAP_REACHED). The reason
 // match keeps a later, different failure write from inheriting the code.
 func (s *PGStore) StampAgentSessionFailureCode(ctx context.Context, id, reason, code string) error {
 	_, err := s.Pool.Exec(ctx, `

@@ -29,7 +29,10 @@ type AgentEnvironment struct {
 	NetworkTier  string
 	CustomHosts  []string
 	DefaultModel string
-	UpdatedAt    time.Time
+	// SpendCapOverrideMicroUSD is the admin's monthly agent-model spend cap
+	// (ADR091 D5); nil means the plan default.
+	SpendCapOverrideMicroUSD *int64
+	UpdatedAt                time.Time
 }
 
 // AgentEnvironmentPatch is a partial update: a nil field keeps the stored
@@ -38,6 +41,10 @@ type AgentEnvironmentPatch struct {
 	NetworkTier  *string
 	CustomHosts  *[]string
 	DefaultModel *string
+	// SpendCapOverrideMicroUSD sets the override; ClearSpendCapOverride returns
+	// to the plan default (and wins over a set value).
+	SpendCapOverrideMicroUSD *int64
+	ClearSpendCapOverride    bool
 }
 
 // GetAgentEnvironment returns the workspace's explicit row — ErrNotFound when
@@ -45,9 +52,9 @@ type AgentEnvironmentPatch struct {
 func (s *PGStore) GetAgentEnvironment(ctx context.Context, workspaceID string) (AgentEnvironment, error) {
 	e := AgentEnvironment{WorkspaceID: workspaceID}
 	err := s.Pool.QueryRow(ctx, `
-		SELECT network_tier, custom_hosts, default_model, updated_at
+		SELECT network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, updated_at
 		FROM agent_environments WHERE workspace_id = $1`, workspaceID,
-	).Scan(&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.UpdatedAt)
+	).Scan(&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.SpendCapOverrideMicroUSD, &e.UpdatedAt)
 	if err != nil {
 		return AgentEnvironment{}, classify("agent environment", err)
 	}
@@ -64,16 +71,20 @@ func (s *PGStore) UpsertAgentEnvironment(ctx context.Context, workspaceID string
 	}
 	e := AgentEnvironment{WorkspaceID: workspaceID}
 	err := s.Pool.QueryRow(ctx, `
-		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model)
-		VALUES ($1, COALESCE($2, 'registries'), COALESCE($3::text[], '{}'), COALESCE($4, ''))
+		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd)
+		VALUES ($1, COALESCE($2, 'registries'), COALESCE($3::text[], '{}'), COALESCE($4, ''),
+		        CASE WHEN $6::boolean THEN NULL ELSE $5::bigint END)
 		ON CONFLICT (workspace_id) DO UPDATE
 			SET network_tier  = COALESCE($2, agent_environments.network_tier),
 			    custom_hosts  = COALESCE($3::text[], agent_environments.custom_hosts),
 			    default_model = COALESCE($4, agent_environments.default_model),
+			    agent_model_spend_cap_override_microusd = CASE
+			        WHEN $6::boolean THEN NULL
+			        ELSE COALESCE($5::bigint, agent_environments.agent_model_spend_cap_override_microusd) END,
 			    updated_at    = now()
-		RETURNING network_tier, custom_hosts, default_model, updated_at`,
-		workspaceID, patch.NetworkTier, hosts, patch.DefaultModel,
-	).Scan(&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.UpdatedAt)
+		RETURNING network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, updated_at`,
+		workspaceID, patch.NetworkTier, hosts, patch.DefaultModel, patch.SpendCapOverrideMicroUSD, patch.ClearSpendCapOverride,
+	).Scan(&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.SpendCapOverrideMicroUSD, &e.UpdatedAt)
 	if err != nil {
 		return AgentEnvironment{}, classify("agent environment", err)
 	}

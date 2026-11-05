@@ -1,6 +1,8 @@
 package agentsessions
 
 import (
+	"bytes"
+	"io"
 	"net/http"
 	"strconv"
 
@@ -96,10 +98,17 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("PATCH /v1/agent-environment", func(w http.ResponseWriter, r *http.Request) {
 		var input EnvironmentInput
 		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		raw, err := io.ReadAll(io.LimitReader(r.Body, maxEnvironmentBody+1))
+		if err != nil || len(raw) > maxEnvironmentBody {
+			core.WriteErrStatus(w, http.StatusBadRequest, "invalid JSON request body")
+			return
+		}
+		r.Body = io.NopCloser(bytes.NewReader(raw))
 		if err := core.DecodeJSON(r, &input); err != nil {
 			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
 			return
 		}
+		input.markSpendCapPresence(raw)
 		env, err := s.UpdateEnvironment(r.Context(), r.URL.Query().Get("ownerId"), input)
 		if err != nil {
 			core.WriteErr(w, err)
@@ -269,3 +278,7 @@ func (s *Service) registerAttachmentREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, list)
 	})
 }
+
+// maxEnvironmentBody bounds a PATCH /v1/agent-environment body (32 hosts and
+// a model id fit in a few KiB).
+const maxEnvironmentBody = 64 << 10

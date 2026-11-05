@@ -32,39 +32,18 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// Platform model route metering and quota (w10/m14 t003/t005, ADR090 §
+// Platform model route metering (ADR090 §
 // Platform OpenRouter route). The gateway model proxy reads each
 // platform-key exchange's token usage from the provider response and reports
 // it here over the same gateway-only HMAC channel as the mint; bex-api
 // records it into usage_hourly (ADR023), where the estimate and the billing
 // outbox (ADR040) read it like every other meter. The mint compares the
-// workspace's month-to-date tokens with its plan quota before releasing the
-// platform key.
+// workspace's month-to-date cost with its spend cap (spendcap.go) before
+// releasing the platform key.
 
 // InternalModelUsagePath is the usage-report sibling of the model mint on
 // bex-api's :8091 listener.
 const InternalModelUsagePath = InternalModelMintPath + "/usage"
-
-// ModelQuotaExceededCode is the stable code of a platform-route quota refusal:
-// the session's failureReasonCode and the gateway's error body both carry it.
-const ModelQuotaExceededCode = "AGENT_MODEL_QUOTA_EXCEEDED"
-
-// ModelQuotaExceededReason is the terminal failureReason of a session whose
-// workspace exhausted its plan's monthly platform model token quota.
-const ModelQuotaExceededReason = "this workspace has used its plan's monthly platform model token quota (" + ModelQuotaExceededCode + "); upgrade the workspace plan or wait for the quota to reset on the 1st (UTC), then start a new session"
-
-// ModelFailureCauseQuotaExceeded is ModelMintRequest.Cause on a report that a
-// mint was refused for quota. Empty Cause is the original auth-failure report.
-const ModelFailureCauseQuotaExceeded = "quota_exceeded"
-
-// RefusalModelQuotaExceeded is RefusalHeader's value for ErrModelQuotaExceeded.
-const RefusalModelQuotaExceeded = "model-quota-exceeded"
-
-// ErrModelQuotaExceeded refuses a platform-route mint once the workspace's
-// month-to-date platform tokens reach its plan quota. It deliberately does
-// NOT wrap ErrForbidden: it is a standing state, never the create-time race
-// the gateway retries, and it travels as HTTP 429.
-var ErrModelQuotaExceeded = errors.New("agent model quota exceeded")
 
 // maxReportedTokens bounds one exchange's reported count per meter; no
 // provider response comes near it, so a larger value is a bug, not usage.
@@ -282,61 +261,14 @@ func (c *ModelClient) ReportUsage(ctx context.Context, rep ModelUsageReport) err
 	return err
 }
 
-// ReportQuotaExceeded tells bex-api to fail the session whose platform-route
-// mint was refused for quota, with ModelQuotaExceededReason. It is the
-// auth-failure verb with a cause, so the same live-sandbox binding applies.
-func (c *ModelClient) ReportQuotaExceeded(ctx context.Context, req ModelMintRequest) error {
-	req.Cause = ModelFailureCauseQuotaExceeded
-	return c.ReportAuthFailure(ctx, req)
-}
-
-// ModelQuotaStore is the store surface of the mint-time quota check;
-// *store.PGStore satisfies it.
-type ModelQuotaStore interface {
-	GetTenant(context.Context, string) (store.Tenant, error)
-	AgentModelTokensMonthToDate(context.Context, string, time.Time) (int64, error)
-}
-
-// checkModelQuota refuses with ErrModelQuotaExceeded once workspaceID's
-// month-to-date platform tokens reach its plan's quota. With no quota on the
-// sheet for any plan (the shipped default) it reads nothing and allows.
-func (m *ModelMinter) checkModelQuota(ctx context.Context, workspaceID string) error {
-	quotaFor := m.QuotaFor
-	if quotaFor == nil {
-		if !pricing.Default.AgentModelQuotaConfigured() {
-			return nil
-		}
-		quotaFor = pricing.Default.AgentModelMonthlyTokenQuota
-	}
-	if m.Quota == nil {
-		return nil
-	}
-	tenant, err := m.Quota.GetTenant(ctx, workspaceID)
-	if err != nil {
-		return fmt.Errorf("agent model quota: read workspace plan: %w", err)
-	}
-	limit, limited := quotaFor(tenant.Plan)
-	if !limited {
-		return nil
-	}
-	used, err := m.Quota.AgentModelTokensMonthToDate(ctx, workspaceID, m.now())
-	if err != nil {
-		return fmt.Errorf("agent model quota: read month-to-date tokens: %w", err)
-	}
-	if used >= limit {
-		return ErrModelQuotaExceeded
-	}
-	return nil
-}
-
 // modelFailureReason maps an auth-failure report's cause to the terminal
 // reason and stable code it records. An unknown cause is refused.
 func modelFailureReason(cause string) (reason, code string, err error) {
 	switch cause {
 	case "":
 		return ModelAuthFailureReason, "", nil
-	case ModelFailureCauseQuotaExceeded:
-		return ModelQuotaExceededReason, ModelQuotaExceededCode, nil
+	case ModelFailureCauseSpendCapReached:
+		return ModelSpendCapReachedReason, ModelSpendCapReachedCode, nil
 	default:
 		return "", "", fmt.Errorf("%w: unknown failure cause", ErrInvalidRequest)
 	}

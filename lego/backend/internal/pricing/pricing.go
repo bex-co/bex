@@ -32,7 +32,6 @@ import (
 	_ "embed"
 	"fmt"
 	"math"
-	"slices"
 	"sort"
 	"strconv"
 	"strings"
@@ -68,9 +67,14 @@ type Sheet struct {
 	// × markup and metered as agent_model_cost_microusd. Token meters are
 	// display only.
 	agentModelMarkup float64
-	// agentModelQuota is plan → monthly platform-route token quota (all four
-	// token meters summed). A plan absent here is unlimited (w10/m14 t005).
-	agentModelQuota map[string]int64
+	// agentModelSpendCap is plan → default monthly agent-model spend cap in
+	// micro-USD (ADR091 D5); enterprise and unknown plans take the highest one.
+	agentModelSpendCap map[string]int64
+	// agentModelMaxCapMultiplier bounds an admin cap override to this × the
+	// plan default.
+	agentModelMaxCapMultiplier float64
+	// trustTiers is the D10.1 ladder, T0 first.
+	trustTiers []Tier
 }
 
 // tokensPerMillion is the display basis of the platform-route token meters:
@@ -96,23 +100,6 @@ func (s *Sheet) AgentModelMarkup() float64 {
 		return 0
 	}
 	return s.agentModelMarkup
-}
-
-// AgentModelMonthlyTokenQuota is plan's monthly platform-route token quota.
-// limited is false when the sheet sets none for the plan (the default for
-// every plan): the platform route is then uncapped by plan.
-func (s *Sheet) AgentModelMonthlyTokenQuota(plan string) (tokens int64, limited bool) {
-	if s == nil {
-		return 0, false
-	}
-	tokens, limited = s.agentModelQuota[plan]
-	return tokens, limited
-}
-
-// AgentModelQuotaConfigured reports whether any plan has a platform-route
-// token quota, so the mint can skip the plan lookup entirely while none does.
-func (s *Sheet) AgentModelQuotaConfigured() bool {
-	return s != nil && len(s.agentModelQuota) > 0
 }
 
 // BillableMeterNames returns the Stripe lookup/event names represented by this
@@ -494,11 +481,13 @@ type sheetFile struct {
 		USDPerMonth float64 `json:"usdPerMonth"`
 	} `json:"workspace"`
 	AgentModel struct {
-		Markup            float64 `json:"markup"`
-		MonthlyTokenQuota []struct {
-			Plan   string `json:"plan"`
-			Tokens int64  `json:"tokens"`
-		} `json:"monthlyTokenQuota"`
+		Markup             float64 `json:"markup"`
+		MaxCapMultiplier   float64 `json:"maxCapMultiplier"`
+		MonthlySpendCapUSD []struct {
+			Plan string  `json:"plan"`
+			USD  float64 `json:"usd"`
+		} `json:"monthlySpendCapUsd"`
+		TrustTiers []tierFile `json:"trustTiers"`
 	} `json:"agentModel"`
 }
 
@@ -530,22 +519,12 @@ func parseSheet(raw []byte) (*Sheet, error) {
 		workspace: make(map[string]float64, len(f.Workspace)),
 
 		agentModelMarkup: f.AgentModel.Markup,
-		agentModelQuota:  make(map[string]int64, len(f.AgentModel.MonthlyTokenQuota)),
 	}
 	if m := f.AgentModel.Markup; math.IsNaN(m) || m < minAgentModelMarkup || m > maxAgentModelMarkup {
 		return nil, fmt.Errorf("agentModel.markup %v must be between %d and %d", m, minAgentModelMarkup, maxAgentModelMarkup)
 	}
-	for _, e := range f.AgentModel.MonthlyTokenQuota {
-		if !slices.Contains(store.WorkspacePlans, e.Plan) {
-			return nil, fmt.Errorf("agentModel.monthlyTokenQuota plan %q is not a workspace plan", e.Plan)
-		}
-		if _, dup := s.agentModelQuota[e.Plan]; dup {
-			return nil, fmt.Errorf("agentModel.monthlyTokenQuota lists plan %s twice", e.Plan)
-		}
-		if e.Tokens <= 0 {
-			return nil, fmt.Errorf("agentModel.monthlyTokenQuota plan %s needs positive tokens (omit the plan for unlimited)", e.Plan)
-		}
-		s.agentModelQuota[e.Plan] = e.Tokens
+	if err := s.parseSpendControls(f); err != nil {
+		return nil, err
 	}
 	for _, e := range f.Compute {
 		if e.Tier == "" {

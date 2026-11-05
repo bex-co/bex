@@ -18,6 +18,7 @@ package agentsessions
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"log"
 	"maps"
@@ -71,15 +72,45 @@ type Environment struct {
 	PinnedModel   *string    `json:"pinnedModel"`
 	RegistryHosts []string   `json:"registryHosts"`
 	UpdatedAt     *time.Time `json:"updatedAt"`
+	// The agent-model spend controls (ADR091 D5, D10.1); all nil when the
+	// store is off. AgentModelMonthlySpendCapUSD is the effective cap:
+	// min(the admin override or the plan default, the trust tier's ceiling).
+	AgentModelMonthlySpendCapUSD  *float64 `json:"agentModelMonthlySpendCapUsd"`
+	AgentModelPlanSpendCapUSD     *float64 `json:"agentModelPlanSpendCapUsd"`
+	AgentModelSpendCapOverrideUSD *float64 `json:"agentModelSpendCapOverrideUsd"`
+	AgentModelSpendMonthToDateUSD *float64 `json:"agentModelSpendMonthToDateUsd"`
+	AgentModelMaxSpendCapUSD      *float64 `json:"agentModelMaxSpendCapUsd"`
+	TrustTier                     *string  `json:"trustTier"`
+	NextChargeThresholdUSD        *float64 `json:"nextChargeThresholdUsd"`
 }
 
 // EnvironmentInput is a partial update: an omitted (or null) field keeps its
 // value. CustomHosts replaces the whole list ([] clears it); DefaultModel ""
-// returns to the provider default.
+// returns to the provider default. AgentModelMonthlySpendCapUSD is the one
+// exception to "null keeps": an explicit null clears the override back to
+// the plan default, which the wire adapters record in
+// AgentModelMonthlySpendCapSet.
 type EnvironmentInput struct {
-	NetworkTier  *string   `json:"networkTier,omitempty"`
-	CustomHosts  *[]string `json:"customHosts,omitempty"`
-	DefaultModel *string   `json:"defaultModel,omitempty"`
+	NetworkTier                    *string   `json:"networkTier,omitempty"`
+	CustomHosts                    *[]string `json:"customHosts,omitempty"`
+	DefaultModel                   *string   `json:"defaultModel,omitempty"`
+	AgentModelMonthlySpendCapUSD   *float64  `json:"agentModelMonthlySpendCapUsd,omitempty" jsonschema:"monthly agent-model spend cap in USD (admins only), up to 10x the plan default; null returns to the plan default"`
+	ResetAgentModelMonthlySpendCap bool      `json:"resetAgentModelMonthlySpendCap,omitempty" jsonschema:"true returns the spend cap to the plan default"`
+	// AgentModelMonthlySpendCapSet is true when the field was present, so a
+	// nil value with it set clears the override.
+	AgentModelMonthlySpendCapSet bool `json:"-"`
+}
+
+// spendCapField is the wire name of the spend-cap override.
+const spendCapField = "agentModelMonthlySpendCapUsd"
+
+// markSpendCapPresence records whether the raw JSON object named the spend
+// cap, so an explicit null clears it instead of keeping it.
+func (in *EnvironmentInput) markSpendCapPresence(raw []byte) {
+	var fields map[string]json.RawMessage
+	if json.Unmarshal(raw, &fields) == nil {
+		_, in.AgentModelMonthlySpendCapSet = fields[spendCapField]
+	}
 }
 
 // modelIDPattern bounds a model id that reaches a sandbox env var: provider
@@ -98,7 +129,15 @@ func (s *Service) Environment(ctx context.Context, ownerID string) (Environment,
 	if err != nil {
 		return Environment{}, err
 	}
-	return s.environmentView(row), nil
+	view := s.environmentView(row)
+	if s.Spend == nil {
+		return view, nil
+	}
+	status, err := s.readSpend(ctx, workspaceID)
+	if err != nil {
+		return Environment{}, err
+	}
+	return withSpend(view, status), nil
 }
 
 // UpdateEnvironment applies a partial update. Admin-only (can_manage on the
@@ -117,6 +156,19 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 	if err != nil {
 		return Environment{}, err
 	}
+	// One spend read serves both the cap bound and the returned view; the
+	// written override is applied to it in hand.
+	var status agentsession.SpendStatus
+	if s.Spend != nil {
+		if status, err = s.readSpend(ctx, workspaceID); err != nil {
+			return Environment{}, err
+		}
+	} else if input.AgentModelMonthlySpendCapUSD != nil {
+		return Environment{}, core.ErrAgentSessionsUnavailable
+	}
+	if err := s.validateSpendCap(status, input, &patch); err != nil {
+		return Environment{}, err
+	}
 	row, err := s.Environments.UpsertAgentEnvironment(ctx, workspaceID, patch)
 	if err != nil {
 		if errors.Is(err, store.ErrNotFound) {
@@ -125,7 +177,11 @@ func (s *Service) UpdateEnvironment(ctx context.Context, ownerID string, input E
 		log.Printf("agent environment: write failed (workspace=%s): %v", workspaceID, err)
 		return Environment{}, core.NewAgentSessionDependencyUnavailableError()
 	}
-	return s.environmentView(row), nil
+	view := s.environmentView(row)
+	if s.Spend == nil {
+		return view, nil
+	}
+	return withSpend(view, status.WithOverride(row.SpendCapOverrideMicroUSD)), nil
 }
 
 func validateEnvironmentInput(workspaceID string, input EnvironmentInput) (store.AgentEnvironmentPatch, error) {

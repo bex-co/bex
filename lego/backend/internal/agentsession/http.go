@@ -83,9 +83,9 @@ func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secr
 			status = http.StatusForbidden
 		case errors.Is(err, ErrInvalidRequest):
 			status = http.StatusBadRequest
-		case errors.Is(err, ErrModelQuotaExceeded):
+		case errors.Is(err, ErrModelSpendCapReached):
 			status = http.StatusTooManyRequests
-			w.Header().Set(RefusalHeader, RefusalModelQuotaExceeded)
+			w.Header().Set(RefusalHeader, RefusalModelSpendCapReached)
 		}
 		// Name the refusal so the caller can tell "this workspace has no model key"
 		// (the tenant's to fix, and worth terminalizing the session for) from an
@@ -166,8 +166,8 @@ func postSignedMint[Req, Resp any](ctx context.Context, url string, secret []byt
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
-		if resp.StatusCode == http.StatusTooManyRequests && resp.Header.Get(RefusalHeader) == RefusalModelQuotaExceeded {
-			return zero, ErrModelQuotaExceeded
+		if resp.StatusCode == http.StatusTooManyRequests && resp.Header.Get(RefusalHeader) == RefusalModelSpendCapReached {
+			return zero, ErrModelSpendCapReached
 		}
 		if resp.StatusCode == http.StatusForbidden || resp.StatusCode == http.StatusUnauthorized {
 			// Recover the specific refusal when bex-api named it. Absent or unknown

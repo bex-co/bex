@@ -74,6 +74,12 @@ func (f *fakeEnvironments) UpsertAgentEnvironment(_ context.Context, ws string, 
 	if patch.DefaultModel != nil {
 		row.DefaultModel = *patch.DefaultModel
 	}
+	if patch.SpendCapOverrideMicroUSD != nil {
+		row.SpendCapOverrideMicroUSD = patch.SpendCapOverrideMicroUSD
+	}
+	if patch.ClearSpendCapOverride {
+		row.SpendCapOverrideMicroUSD = nil
+	}
 	row.UpdatedAt = time.Date(2026, 10, 27, 12, 0, 0, 0, time.UTC)
 	f.rows[ws] = row
 	return row, nil

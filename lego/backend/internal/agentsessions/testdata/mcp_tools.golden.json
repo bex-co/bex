@@ -1230,7 +1230,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, and whether the model is pinned by the platform model route.",
+    "description": "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, whether the model is pinned by the platform model route, and the agent-model spend controls: the effective monthly spend cap in USD (min of the admin override or plan default and the billing trust tier's ceiling), the plan default, the override, month-to-date spend, the trust tier (T0..T4) and the next charge threshold.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1244,6 +1244,36 @@
     "outputSchema": {
       "additionalProperties": false,
       "properties": {
+        "agentModelMaxSpendCapUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "agentModelMonthlySpendCapUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "agentModelPlanSpendCapUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "agentModelSpendCapOverrideUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "agentModelSpendMonthToDateUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
         "customHosts": {
           "items": {
             "type": "string"
@@ -1265,6 +1295,12 @@
         "networkTier": {
           "type": "string"
         },
+        "nextChargeThresholdUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
         "ownerId": {
           "type": "string"
         },
@@ -1283,6 +1319,12 @@
             "array"
           ]
         },
+        "trustTier": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
         "updatedAt": {
           "type": [
             "null",
@@ -1298,7 +1340,14 @@
         "modelPinned",
         "pinnedModel",
         "registryHosts",
-        "updatedAt"
+        "updatedAt",
+        "agentModelMonthlySpendCapUsd",
+        "agentModelPlanSpendCapUsd",
+        "agentModelSpendCapOverrideUsd",
+        "agentModelSpendMonthToDateUsd",
+        "agentModelMaxSpendCapUsd",
+        "trustTier",
+        "nextChargeThresholdUsd"
       ],
       "type": "object"
     }
@@ -3689,10 +3738,17 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. The network tier and hosts apply from each session's next turn; the default model applies to sessions created afterwards.",
+    "description": "Update a workspace's agent environment (workspace admins only). Omitted fields keep their value: networkTier registries|custom|full; customHosts replaces the list (exact public hostnames, at most 32; [] clears); defaultModel \"\" returns to the provider default and cannot differ from a pinned model. agentModelMonthlySpendCapUsd sets the monthly agent-model spend cap in USD (more than 0, at most 10x the plan default; null or resetAgentModelMonthlySpendCap: true returns to the plan default). The network tier and hosts apply from each session's next turn; the default model applies to sessions created afterwards; the spend cap applies within 20 seconds.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
+        "agentModelMonthlySpendCapUsd": {
+          "description": "monthly agent-model spend cap in USD (admins only), up to 10x the plan default; null returns to the plan default",
+          "type": [
+            "null",
+            "number"
+          ]
+        },
         "customHosts": {
           "items": {
             "type": "string"
@@ -3716,6 +3772,10 @@
         },
         "ownerId": {
           "type": "string"
+        },
+        "resetAgentModelMonthlySpendCap": {
+          "description": "true returns the spend cap to the plan default",
+          "type": "boolean"
         }
       },
       "type": "object"
@@ -3724,6 +3784,36 @@
     "outputSchema": {
       "additionalProperties": false,
       "properties": {
+        "agentModelMaxSpendCapUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "agentModelMonthlySpendCapUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "agentModelPlanSpendCapUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "agentModelSpendCapOverrideUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
+        "agentModelSpendMonthToDateUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
         "customHosts": {
           "items": {
             "type": "string"
@@ -3745,6 +3835,12 @@
         "networkTier": {
           "type": "string"
         },
+        "nextChargeThresholdUsd": {
+          "type": [
+            "null",
+            "number"
+          ]
+        },
         "ownerId": {
           "type": "string"
         },
@@ -3763,6 +3859,12 @@
             "array"
           ]
         },
+        "trustTier": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
         "updatedAt": {
           "type": [
             "null",
@@ -3778,7 +3880,14 @@
         "modelPinned",
         "pinnedModel",
         "registryHosts",
-        "updatedAt"
+        "updatedAt",
+        "agentModelMonthlySpendCapUsd",
+        "agentModelPlanSpendCapUsd",
+        "agentModelSpendCapOverrideUsd",
+        "agentModelSpendMonthToDateUsd",
+        "agentModelMaxSpendCapUsd",
+        "trustTier",
+        "nextChargeThresholdUsd"
       ],
       "type": "object"
     }

@@ -262,6 +262,13 @@ class StripeBillingSetupTest(TestCase):
             )
             self.assertEqual(0o600, os.stat(secret_file).st_mode & 0o777)
 
+    def test_webhook_events_include_dispute(self):
+        # ADR091 D10.1: a dispute holds the agent-model trust tier at T0 until
+        # it is won, so the endpoint must deliver its creation and closure.
+        self.assertIn("charge.dispute.created", SETUP.WEBHOOK_EVENTS)
+        self.assertIn("charge.dispute.closed", SETUP.WEBHOOK_EVENTS)
+        self.assertEqual(len(SETUP.WEBHOOK_EVENTS), len(set(SETUP.WEBHOOK_EVENTS)))
+
     def test_webhook_endpoint_is_idempotent_and_refuses_drift(self):
         matching = {
             "id": "we_ok",

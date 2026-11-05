@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/id"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -83,43 +84,71 @@ func TestModelUsageRecorderIsIdempotentAndBound(t *testing.T) {
 	}
 }
 
-type quotaLedger struct {
-	reads int
-	used  int64
+type spendLedger struct {
+	plan     string
+	trust    store.BillingTrust
+	override *int64
+	used     int64
+	reads    int
 }
 
-func (q *quotaLedger) GetTenant(context.Context, string) (store.Tenant, error) {
+func (q *spendLedger) AgentSpendInputs(_ context.Context, ws string, _ time.Time) (store.AgentSpendInputs, error) {
 	q.reads++
-	return store.Tenant{Plan: store.PlanHobby}, nil
+	return store.AgentSpendInputs{Plan: q.plan, Trust: q.trust, OverrideMicroUSD: q.override, MonthToDateMicroUSD: q.used}, nil
 }
 
-func (q *quotaLedger) AgentModelTokensMonthToDate(context.Context, string, time.Time) (int64, error) {
-	q.reads++
-	return q.used, nil
-}
+// ADR091 D5/D10.1: the effective cap is min(override clamped to the plan's
+// bound, or the plan default; the tier ceiling); at or over it the mint
+// refuses with a 429-mapped error that is not the retried ErrForbidden.
+func TestSpendCapEffectiveCap(t *testing.T) {
+	now := time.Date(2026, 11, 5, 0, 0, 0, 0, time.UTC)
+	t1 := store.BillingTrust{LifetimePaidCents: 1000}
+	usd := func(v float64) *int64 { m := pricing.USDToMicro(v); return &m }
+	for name, tc := range map[string]struct {
+		ledger spendLedger
+		want   float64
+		reason string
+	}{
+		"T0 on Pro is capped at $10":      {spendLedger{plan: store.PlanPro}, 10, modelSpendNewWorkspaceReason},
+		"T0 override above is still $10":  {spendLedger{plan: store.PlanPro, override: usd(500)}, 10, modelSpendNewWorkspaceReason},
+		"T0 override below the ceiling":   {spendLedger{plan: store.PlanPro, override: usd(5)}, 5, ModelSpendCapReachedReason},
+		"T1 Hobby gets the plan cap":      {spendLedger{plan: store.PlanHobby, trust: t1}, 20, ModelSpendCapReachedReason},
+		"T1 Pro override raises it":       {spendLedger{plan: store.PlanPro, trust: t1, override: usd(1500)}, 1500, ModelSpendCapReachedReason},
+		"downgraded override is clamped":  {spendLedger{plan: store.PlanHobby, trust: t1, override: usd(1500)}, 200, ModelSpendCapReachedReason},
+		"T1 enterprise takes the top cap": {spendLedger{plan: store.PlanEnterprise, trust: t1}, 2000, ModelSpendCapReachedReason},
+		"locked T4 is back to T0's $10":   {spendLedger{plan: store.PlanScale, trust: store.BillingTrust{LifetimePaidCents: 1 << 30, PaidCycleInvoices: 10, LockedUntil: store.LockedIndefinitely}}, 10, modelSpendLockedReason},
+		"a dispute holds T4 at T0":        {spendLedger{plan: store.PlanScale, trust: store.BillingTrust{LifetimePaidCents: 1 << 30, PaidCycleInvoices: 10, DisputeID: "dp_1"}}, 10, modelSpendLockedReason},
+	} {
+		status, err := ReadSpendStatus(context.Background(), &tc.ledger, nil, "tea-a", now)
+		if err != nil || status.EffectiveCap != pricing.USDToMicro(tc.want) || status.SpendCapReachedReason() != tc.reason {
+			t.Errorf("%s: cap = %d (%v) reason %q, want $%v %q", name, status.EffectiveCap, err, status.SpendCapReachedReason(), tc.want, tc.reason)
+		}
+	}
 
-// The shipped sheet sets no quota: the check reads nothing and allows, so
-// the platform route behaves exactly as before t005.
-func TestModelQuotaIsUnlimitedByDefault(t *testing.T) {
-	q := &quotaLedger{used: 1 << 40}
-	m := &ModelMinter{Quota: q}
-	if err := m.checkModelQuota(context.Background(), "tea-a"); err != nil || q.reads != 0 {
-		t.Fatalf("default quota check = %v after %d reads, want allow with no reads", err, q.reads)
+	clock := now
+	q := &spendLedger{plan: store.PlanHobby, trust: t1, used: 19_999_999}
+	m := &ModelMinter{Spend: q, Now: func() time.Time { return clock }}
+	if err := m.checkSpendCap(context.Background(), "tea-a"); err != nil {
+		t.Fatalf("under the cap: %v", err)
 	}
-	m.QuotaFor = func(string) (int64, bool) { return 100, true }
-	q.used = 99
-	if err := m.checkModelQuota(context.Background(), "tea-a"); err != nil {
-		t.Fatalf("under quota: %v", err)
+	// The mint's view is cached per workspace for spendStatusTTL.
+	q.used = 20_000_000
+	clock = now.Add(spendStatusTTL - time.Second)
+	if err := m.checkSpendCap(context.Background(), "tea-a"); err != nil || q.reads != 1 {
+		t.Fatalf("within the cache TTL: %v after %d reads, want the cached allow", err, q.reads)
 	}
-	q.used = 100
-	if err := m.checkModelQuota(context.Background(), "tea-a"); !errors.Is(err, ErrModelQuotaExceeded) || errors.Is(err, ErrForbidden) {
-		t.Fatalf("at quota: %v, want ErrModelQuotaExceeded (not a retried ErrForbidden)", err)
+	clock = now.Add(spendStatusTTL)
+	if err := m.checkSpendCap(context.Background(), "tea-a"); !errors.Is(err, ErrModelSpendCapReached) || errors.Is(err, ErrForbidden) || q.reads != 2 {
+		t.Fatalf("at the cap: %v, want ErrModelSpendCapReached (not a retried ErrForbidden)", err)
+	}
+	if err := (&ModelMinter{}).checkSpendCap(context.Background(), "tea-a"); err != nil {
+		t.Fatalf("unwired spend store must check nothing: %v", err)
 	}
 }
 
 func TestModelFailureReasonVocabularyIsClosed(t *testing.T) {
-	if reason, code, err := modelFailureReason(ModelFailureCauseQuotaExceeded); err != nil || reason != ModelQuotaExceededReason || code != ModelQuotaExceededCode {
-		t.Fatalf("quota cause = %q %q %v", reason, code, err)
+	if reason, code, err := modelFailureReason(ModelFailureCauseSpendCapReached); err != nil || reason != ModelSpendCapReachedReason || code != ModelSpendCapReachedCode {
+		t.Fatalf("spend-cap cause = %q %q %v", reason, code, err)
 	}
 	if reason, code, err := modelFailureReason(""); err != nil || reason != ModelAuthFailureReason || code != "" {
 		t.Fatalf("auth cause = %q %q %v", reason, code, err)

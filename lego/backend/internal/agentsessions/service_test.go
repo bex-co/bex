@@ -133,16 +133,20 @@ func (f *fakeStore) AgentSessionSSHActivity(_ context.Context, resourceID string
 	return hasFreshOpen, lastEnded, nil
 }
 
-func (f *fakeStore) CountLiveAgentSessionSandboxes(_ context.Context, workspaceID string, phases []string) (int, error) {
-	live := map[string]bool{}
-	for _, p := range phases {
-		live[p] = true
-	}
+func (f *fakeStore) CountActiveAgentSessions(_ context.Context, workspaceID string, c store.AgentSessionCount) (int, error) {
 	n := 0
 	for _, row := range f.rows {
-		if row.WorkspaceID == workspaceID && row.SandboxID != "" && live[row.Phase] {
-			n++
+		if row.WorkspaceID != workspaceID || !slices.Contains(store.ActiveAgentSessionPhases, row.Phase) ||
+			(c.WithSandbox && row.SandboxID == "") || row.ID == c.ExcludeID {
+			continue
 		}
+		if c.Agent != "" {
+			var config AgentConfig
+			if json.Unmarshal(row.AgentConfig, &config) != nil || config.Agent != c.Agent {
+				continue
+			}
+		}
+		n++
 	}
 	return n, nil
 }
@@ -448,7 +452,12 @@ func (f *fakeStore) recordTurn(id string, turn int, prompt, delivery string) {
 	f.turns[id][turn] = store.AgentSessionTurn{SessionID: id, Turn: turn, Prompt: prompt, DeliveryMode: delivery, CreatedAt: f.now}
 }
 
-func (f *fakeStore) CreateAgentSession(_ context.Context, in store.AgentSession) (store.AgentSession, error) {
+func (f *fakeStore) CreateAgentSession(ctx context.Context, in store.AgentSession) (store.AgentSession, error) {
+	if in.AdmissionLimit > 0 {
+		if n, _ := f.CountActiveAgentSessions(ctx, in.WorkspaceID, in.AdmissionCount); n >= in.AdmissionLimit {
+			return store.AgentSession{}, store.ErrAgentSessionAdmissionLimit
+		}
+	}
 	if in.IdempotencyKey != "" {
 		if _, _, err := f.FindAgentSessionByIdempotencyKey(context.Background(), in.WorkspaceID, in.IdempotencyKey); err == nil {
 			return store.AgentSession{}, store.ErrAgentSessionIdempotencyKey

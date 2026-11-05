@@ -28,6 +28,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/sessionegress"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
@@ -204,7 +205,8 @@ type ModelMintRequest struct {
 	PodUID    string `json:"podUid"`
 	Nonce     string `json:"nonce,omitempty"`
 	// Cause is set only on the auth-failure report: empty is a vendor/missing
-	// key rejection, ModelFailureCauseQuotaExceeded a platform quota refusal.
+	// key rejection, ModelFailureCauseSpendCapReached a platform spend-cap
+	// refusal.
 	Cause string `json:"cause,omitempty"`
 }
 
@@ -283,11 +285,12 @@ type ModelMinter struct {
 	Sessions SessionStore
 	Audit    core.AuditSink
 	Now      func() time.Time
-	// Quota, when wired, enforces the platform route's per-plan monthly token
-	// quota at mint time (w10/m14 t005). QuotaFor overrides the quota source
-	// (pricing.Default's agentModel.monthlyTokenQuota) in tests.
-	Quota    ModelQuotaStore
-	QuotaFor func(plan string) (tokens int64, limited bool)
+	// Spend, when wired, enforces the platform route's monthly spend cap at
+	// mint time (ADR091 D5) from Sheet (nil ⇒ pricing.Default), through a
+	// short per-workspace cache.
+	Spend SpendStore
+	Sheet *pricing.Sheet
+	spend spendCache
 }
 
 func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response ModelMintResponse, err error) {
@@ -340,7 +343,7 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 	// The route is resolved for the workspace now, the same decision
 	// modelEndpointHostOf just made, so the host is OpenRouter here.
 	if route := routeFor(req.Workspace, agent); route != nil && route.platformKey != "" && host == OpenRouterHost {
-		if err := m.checkModelQuota(ctx, req.Workspace); err != nil {
+		if err := m.checkSpendCap(ctx, req.Workspace); err != nil {
 			return ModelMintResponse{}, err
 		}
 		return ModelMintResponse{
@@ -399,6 +402,11 @@ type ModelAuthFailer struct {
 	// ObserveTerminal, when set, records a successful vendor-auth-reject CAS
 	// (w5/m88). Wired from bex-api's shared CompletionMetrics; nil in unit tests.
 	ObserveTerminal func(fact store.TerminalTurnFact)
+	// Spend, when wired, words a spend-cap failure by its cause (new
+	// workspace, failed payment, or the monthly cap) from Sheet (nil ⇒
+	// pricing.Default); unwired, the monthly-cap wording applies.
+	Spend SpendStore
+	Sheet *pricing.Sheet
 }
 
 func (f *ModelAuthFailer) Fail(ctx context.Context, req ModelMintRequest) (response ModelAuthFailureResponse, err error) {
@@ -437,6 +445,13 @@ func (f *ModelAuthFailer) Fail(ctx context.Context, req ModelMintRequest) (respo
 		// after the session has failed lands here and 403s harmlessly (the gateway's
 		// report is best-effort and just logs).
 		return ModelAuthFailureResponse{}, ErrForbidden
+	}
+	if req.Cause == ModelFailureCauseSpendCapReached && f.Spend != nil {
+		if status, err := ReadSpendStatus(ctx, f.Spend, f.Sheet, req.Workspace, f.now()); err != nil {
+			log.Printf("agent-session spend-cap failure: read spend status failed (session=%s): %v", req.SessionID, err)
+		} else {
+			reason = status.SpendCapReachedReason()
+		}
 	}
 	// CAS the live session to failed. The phase guard handles the concurrent race
 	// where two reports both read `running`: the loser's CAS matches no live row and

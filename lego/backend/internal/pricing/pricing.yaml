@@ -129,10 +129,54 @@ disk:
 # agent_model_*_tokens meters stay as the per-model usage breakdown and rate
 # $0. markup must be between 1 and 10.
 #
-# monthlyTokenQuota (shipped empty) caps a plan's monthly platform-route tokens:
-#   monthlyTokenQuota:          # plan absent ⇒ unlimited
-#     - plan: hobby
-#       tokens: 20000000
+# Spend caps and trust tiers (ADR091 D5, D10.1). monthlySpendCapUsd is each
+# plan's default monthly cap on month-to-date agent_model_cost_microusd
+# (customer price); enterprise (no row) takes the highest listed plan's cap.
+# Workspace admins may override it up to maxCapMultiplier × the plan default.
+# trustTiers is ordered T0..T4; a workspace sits in the highest tier whose
+# minLifetimePaidUsd AND minPaidCycleInvoices it meets (successful, non-zero
+# bex invoices only), and a failed charge or dispute holds it at T0 for 30
+# days after settlement. chargeThresholdUsd null = month-end only (no
+# threshold); capCeilingUsd null = the plan/override cap applies;
+# maxConcurrentSessions null = no tier limit on live platform-model sessions.
 agentModel:
   markup: 1.30
-  monthlyTokenQuota: []
+  maxCapMultiplier: 10
+  monthlySpendCapUsd:
+    - plan: hobby
+      usd: 20
+    - plan: pro
+      usd: 200
+    - plan: scale
+      usd: 2000
+  trustTiers:
+    - tier: T0
+      minLifetimePaidUsd: 0
+      minPaidCycleInvoices: 0
+      chargeThresholdUsd: 10
+      capCeilingUsd: 10
+      maxConcurrentSessions: 2
+    - tier: T1
+      minLifetimePaidUsd: 10
+      minPaidCycleInvoices: 0
+      chargeThresholdUsd: 25
+      capCeilingUsd: null
+      maxConcurrentSessions: null
+    - tier: T2
+      minLifetimePaidUsd: 100
+      minPaidCycleInvoices: 1
+      chargeThresholdUsd: 50
+      capCeilingUsd: null
+      maxConcurrentSessions: null
+    - tier: T3
+      minLifetimePaidUsd: 500
+      minPaidCycleInvoices: 3
+      chargeThresholdUsd: 250
+      capCeilingUsd: null
+      maxConcurrentSessions: null
+    - tier: T4
+      minLifetimePaidUsd: 2000
+      minPaidCycleInvoices: 6
+      chargeThresholdUsd: null
+      capCeilingUsd: null
+      maxConcurrentSessions: null

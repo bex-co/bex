@@ -1277,6 +1277,23 @@ groups:
           summary: "{{ $value | humanizePercentage }} of agent-session sandbox provisions are failing"
           description: "More than a quarter of agent-session sandbox creations failed to reach Running in the last hour, so users are accepting a session that never boots (ADR047 accept-fast/provision-async). Check the OpenSandbox substrate first: kubectl -n opensandbox-system get pods, node capacity on the sandbox pool, and image-pull health for BEX_AGENT_SESSION_IMAGE. bex_agent_session_provision_seconds{outcome} separates a slow provision from a failed one. Runbook: docs/ADR047-cloud-coding-agent-sessions.md"
 
+      # ADR091 D5 global backstop. The platform OpenRouter key carries a
+      # credit limit set in the OpenRouter console; at 100% OpenRouter
+      # refuses every platform-model request for every workspace. Every
+      # bex-api replica reads the key's own limit/usage every 10 minutes,
+      # so max() collapses the replicas to one series. No limit set (0)
+      # never fires.
+      - alert: PlatformModelCreditHigh
+        expr: |
+          max(bex_agent_platform_model_credit_usage_usd)
+            / max(bex_agent_platform_model_credit_limit_usd > 0) >= 0.8
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Platform model key has used {{ $value | humanizePercentage }} of its OpenRouter credit limit"
+          description: "Platform agent-model spend has passed 80% of the credit limit on the platform OpenRouter key (BEX_AGENT_PLATFORM_MODEL_KEY). At 100% OpenRouter refuses every platform-model request, so every workspace's agent sessions stop. Check per-workspace spend (agent_model_cost_microusd) for an outlier, then raise the key's credit limit in the OpenRouter console (Settings → API Keys) if the spend is expected. Runbook: docs/ADR091-agent-model-pricing.md#d5--spend-caps"
+
       # w5/m95. ADR088's tenant-facing coverage table carried one
       # row reading "none (accepted for now) ... Owner: unfiled":
       # sandbox creation OUTSIDE an agent session. The sibling alert

@@ -378,6 +378,10 @@ type Deps struct {
 	// AgentEnvironmentStore persists each workspace's agent environment
 	// (w10/m17); nil ⇒ defaults only.
 	AgentEnvironmentStore agentsessions.EnvironmentStore
+	// AgentSpendStore reads the agent-model spend controls (ADR091 D5,
+	// D10.1): the trust tier's session limit and the environment's spend
+	// fields; nil ⇒ neither.
+	AgentSpendStore agentsessions.SpendStore
 	// AgentAttachments and AgentAttachmentStore are the ADR095 attachment
 	// bucket and table; either nil ⇒ attachments are unavailable.
 	AgentAttachments     agentsessions.AttachmentObjects
@@ -1032,6 +1036,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			MaxLiveSandboxes: d.AgentMaxLiveSandboxesPerWorkspace,
 			TurnTimeout:      d.AgentTurnTimeout,
 			Environments:     d.AgentEnvironmentStore,
+			Spend:            d.AgentSpendStore,
 			RegistryHosts:    d.AgentRegistryHosts,
 			Attachments:      d.AgentAttachments,
 			AttachmentRows:   d.AgentAttachmentStore,

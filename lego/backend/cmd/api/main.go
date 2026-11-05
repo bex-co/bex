@@ -73,6 +73,7 @@ import (
 	pushtransport "github.com/bex-co/bex/lego/backend/internal/notifications/push"
 	"github.com/bex-co/bex/lego/backend/internal/opsrole"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
+	"github.com/bex-co/bex/lego/backend/internal/pricing"
 	"github.com/bex-co/bex/lego/backend/internal/registrycreds"
 	"github.com/bex-co/bex/lego/backend/internal/sandbox"
 	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
@@ -202,6 +203,12 @@ func main() {
 	// shared by both listeners and the GraphQL/MCP observation points, so the
 	// origin-side view of an incident lives on the same registry /metrics serves.
 	originMetrics := api.NewOriginMetrics(metricRegistry)
+	if cfg.AgentPlatformModelRoute != "" && cfg.AgentPlatformModelKey != "" {
+		// ADR091 D5 global backstop: export the platform key's OpenRouter
+		// credit limit and usage every 10 minutes (PlatformModelCreditHigh
+		// alerts at 80%). The limit itself is set in the OpenRouter console.
+		go agentsession.NewPlatformCreditMonitor(metricRegistry, cfg.AgentPlatformModelKey).Run(ctx)
+	}
 	pushMetrics.SetEnabled(mobilePush != nil || webPush != nil)
 
 	scheme := runtime.NewScheme()
@@ -788,6 +795,8 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.AgentAttachmentStore = st // ADR095: attachment metadata
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
+	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.
+	deps.AgentSpendStore = st
 	if writer, ok := authzChecker.(agentsessions.TupleWriter); ok {
 		deps.AgentSessionTuples = writer
 	}
@@ -990,6 +999,14 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			if lifecycle != nil {
 				handler.OnLifecycle = lifecycle.HandleStripeEvent
 			}
+			// ADR091 D10.1: paid invoices, failed payments and disputes feed
+			// the agent-model trust tiers. Until the Stripe threshold follows
+			// the tier, a tier change is only logged.
+			trust := &billing.Trust{Store: st, Charges: stripeClient,
+				OnTierChanged: func(_ context.Context, workspaceID string, tier pricing.Tier) {
+					log.Printf("billing trust: workspace %s is now agent-model trust tier %s", workspaceID, tier.Name)
+				}}
+			handler.OnTrust = trust.HandleStripeEvent
 			deps.StripeWebhook = handler
 		}
 		log.Printf("bex-api Stripe Billing enabled (seal horizon %s, epoch %s, webhook %t)", emitter.SealHours, billingEpoch.Format(time.RFC3339), deps.StripeWebhook != nil)
@@ -1062,9 +1079,10 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 		if modelKeys != nil {
 			internalRoot.Handle(agentsession.InternalModelMintPath, &agentsession.ModelHandler{
 				Secret: []byte(cfg.SandboxExecSecret),
-				// Quota: the platform route's per-plan monthly token quota
-				// (pricing.yaml agentModel.monthlyTokenQuota; none set ⇒ unlimited).
-				Minter: &agentsession.ModelMinter{Keys: modelKeys, Sessions: st, Audit: st, Quota: st},
+				// Spend: the platform route's monthly agent-model spend cap
+				// (ADR091 D5): min(admin override or pricing.yaml plan
+				// default, the trust tier's ceiling) on month-to-date cost.
+				Minter: &agentsession.ModelMinter{Keys: modelKeys, Sessions: st, Audit: st, Spend: st},
 				Nonce:  st,
 			})
 			// The gateway reports each platform-route exchange's token usage
@@ -1088,7 +1106,7 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 			internalRoot.Handle(agentsession.InternalModelAuthFailurePath, &agentsession.ModelAuthFailureHandler{
 				Secret: []byte(cfg.SandboxExecSecret),
 				Failer: &agentsession.ModelAuthFailer{
-					Sessions: st, Audit: st,
+					Sessions: st, Audit: st, Spend: st,
 					ObserveTerminal: agentMetrics.ObserveVendorAuthRejected,
 				},
 				Nonce: st,

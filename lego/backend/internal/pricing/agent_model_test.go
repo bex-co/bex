@@ -26,18 +26,22 @@ import (
 
 const testModel = "deepseek/deepseek-v4.1-flash-1017"
 
-// emptyAgentModelBlock is the shipped agentModel block the sheet tests rewrite.
-const emptyAgentModelBlock = "agentModel:\n  markup: 1.30\n  monthlyTokenQuota: []\n"
-
-// sheetWithAgentModel is the shipped sheet with its agentModel block replaced.
+// sheetWithAgentModel is the shipped sheet with its (final) agentModel block
+// replaced.
 func sheetWithAgentModel(t *testing.T, block string) (*Sheet, error) {
 	t.Helper()
-	raw := strings.Replace(string(sheetYAML), emptyAgentModelBlock, "agentModel:\n"+block, 1)
-	if raw == string(sheetYAML) {
+	i := strings.Index(string(sheetYAML), "\nagentModel:\n")
+	if i < 0 {
 		t.Fatal("pricing.yaml no longer ends with the agentModel block this test rewrites")
 	}
-	return parseSheet([]byte(raw))
+	return parseSheet([]byte(string(sheetYAML[:i+1]) + "agentModel:\n" + block))
 }
+
+// spendBlock is a minimal valid spend-control block the validation cases edit.
+const spendBlock = "  maxCapMultiplier: 10\n" +
+	"  monthlySpendCapUsd:\n    - plan: hobby\n      usd: 20\n    - plan: pro\n      usd: 200\n    - plan: scale\n      usd: 2000\n" +
+	"  trustTiers:\n    - tier: T0\n      minLifetimePaidUsd: 0\n      minPaidCycleInvoices: 0\n      capCeilingUsd: 10\n      maxConcurrentSessions: 2\n" +
+	"    - tier: T1\n      minLifetimePaidUsd: 10\n      minPaidCycleInvoices: 0\n"
 
 func agentSessionRows(model string) []store.UsageSummaryRow {
 	row := func(kind string, total int64) store.UsageSummaryRow {
@@ -87,37 +91,25 @@ func TestAgentModelCostMeterIsTheOnlyBilledLine(t *testing.T) {
 			t.Fatalf("token meter %s must not be billable (ADR091 D3)", name)
 		}
 	}
-	for _, plan := range store.WorkspacePlans {
-		if _, limited := Default.AgentModelMonthlyTokenQuota(plan); limited {
-			t.Fatalf("default sheet caps plan %s", plan)
-		}
-	}
-}
-
-func TestAgentModelQuotaStillParses(t *testing.T) {
-	s, err := sheetWithAgentModel(t, "  markup: 1.5\n  monthlyTokenQuota:\n    - plan: hobby\n      tokens: 1000\n")
-	if err != nil {
-		t.Fatalf("parse: %v", err)
-	}
-	if s.AgentModelMarkup() != 1.5 {
-		t.Fatalf("markup = %v, want 1.5", s.AgentModelMarkup())
-	}
-	if quota, limited := s.AgentModelMonthlyTokenQuota(store.PlanHobby); !limited || quota != 1000 {
-		t.Fatalf("hobby quota = %d/%v, want 1000", quota, limited)
-	}
-	if _, limited := s.AgentModelMonthlyTokenQuota(store.PlanPro); limited {
-		t.Fatal("a plan without a quota entry must be unlimited")
-	}
 }
 
 func TestAgentModelSheetValidation(t *testing.T) {
+	if _, err := sheetWithAgentModel(t, "  markup: 1.3\n"+spendBlock); err != nil {
+		t.Fatalf("valid block refused: %v", err)
+	}
 	for name, block := range map[string]string{
-		"missing markup":    "  monthlyTokenQuota: []\n",
-		"markup below cost": "  markup: 0.9\n",
-		"markup typo":       "  markup: 13\n",
-		"per-model prices":  "  markup: 1.3\n  models:\n    - model: m\n",
-		"unknown plan":      "  markup: 1.3\n  monthlyTokenQuota:\n    - plan: gold\n      tokens: 5\n",
-		"zero quota":        "  markup: 1.3\n  monthlyTokenQuota:\n    - plan: pro\n      tokens: 0\n",
+		"missing markup":      spendBlock,
+		"markup below cost":   "  markup: 0.9\n" + spendBlock,
+		"markup typo":         "  markup: 13\n" + spendBlock,
+		"per-model prices":    "  markup: 1.3\n  models:\n    - model: m\n" + spendBlock,
+		"token quota is gone": "  markup: 1.3\n  monthlyTokenQuota: []\n" + spendBlock,
+		"no multiplier":       "  markup: 1.3\n" + strings.Replace(spendBlock, "  maxCapMultiplier: 10\n", "", 1),
+		"unknown plan":        "  markup: 1.3\n" + strings.Replace(spendBlock, "plan: scale", "plan: gold", 1),
+		"zero cap":            "  markup: 1.3\n" + strings.Replace(spendBlock, "usd: 200\n", "usd: 0\n", 1),
+		"no tiers":            "  markup: 1.3\n" + spendBlock[:strings.Index(spendBlock, "  trustTiers:")],
+		"T0 needs payment":    "  markup: 1.3\n" + strings.Replace(spendBlock, "minLifetimePaidUsd: 0\n", "minLifetimePaidUsd: 1\n", 1),
+		"ladder not rising":   "  markup: 1.3\n" + strings.Replace(spendBlock, "minLifetimePaidUsd: 10\n", "minLifetimePaidUsd: 0\n", 1),
+		"zero concurrency":    "  markup: 1.3\n" + strings.Replace(spendBlock, "maxConcurrentSessions: 2", "maxConcurrentSessions: 0", 1),
 	} {
 		if _, err := sheetWithAgentModel(t, block); err == nil {
 			t.Errorf("%s: parse accepted an invalid agentModel block", name)

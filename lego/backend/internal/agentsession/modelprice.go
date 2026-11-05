@@ -213,26 +213,13 @@ func (t *OpenRouterPriceTable) fetch(ctx context.Context) (map[string]modelPrice
 	if url == "" {
 		url = openRouterModelsURL
 	}
-	client := t.HTTP
-	if client == nil {
-		client = http.DefaultClient
-	}
-	ctx, cancel := context.WithTimeout(ctx, priceTableFetchTimeout)
-	defer cancel()
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
-	if err != nil {
-		return nil, err
-	}
-	req.Header.Set("Accept", "application/json")
-	resp, err := client.Do(req)
-	if err != nil {
-		return nil, err
-	}
-	defer resp.Body.Close()
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("GET models: HTTP %d", resp.StatusCode)
-	}
-	return parseOpenRouterModels(io.LimitReader(resp.Body, maxPriceTableBytes))
+	var models map[string]modelPrice
+	err := getOpenRouterJSON(ctx, t.HTTP, url, "", priceTableFetchTimeout, maxPriceTableBytes, func(r io.Reader) error {
+		var err error
+		models, err = parseOpenRouterModels(r)
+		return err
+	})
+	return models, err
 }
 
 // priceString is an OpenRouter price: a decimal string of USD per token
