@@ -17,11 +17,10 @@ import {
 } from "@/common/components/ui/alert.tsx";
 import { Button } from "@/common/components/ui/button";
 import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuLabel,
-  DropdownMenuTrigger,
-} from "@/common/components/ui/dropdown-menu";
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/common/components/ui/popover";
 import { Skeleton } from "@/common/components/ui/skeleton.tsx";
 import {
   Tooltip,
@@ -364,21 +363,25 @@ function ServiceConnectButton({
 }) {
   const { t } = useTranslations();
   const command = service.sshAddress ? `ssh ${service.sshAddress}` : "";
-  // A link inside the menu (a remedy, the add-key CTA, the browser terminal)
-  // navigates without unmounting this header, so the modal menu, and its
-  // body pointer lock, stayed open over the destination (w4/m183).
+  // A link inside the panel (a remedy, the add-key CTA, the browser terminal)
+  // navigates without unmounting this header, so the panel stayed open over
+  // the destination (w4/m183). It is a Popover, not a menu: its Copy buttons
+  // and links are ordinary controls, so Tab walks them and Escape returns
+  // focus to Connect (w4/512). A dropdown menu with no menu items kept focus
+  // on its container.
   const [open, setOpen] = useState(false);
 
   return (
-    <DropdownMenu open={open} onOpenChange={setOpen}>
-      <DropdownMenuTrigger asChild>
+    <Popover open={open} onOpenChange={setOpen}>
+      <PopoverTrigger asChild>
         <Button variant="outline" size="sm">
           {t("services.connect")}
           <ChevronDown className="size-3.5" />
         </Button>
-      </DropdownMenuTrigger>
-      <DropdownMenuContent
+      </PopoverTrigger>
+      <PopoverContent
         align="end"
+        aria-label={t("services.connect")}
         className="w-80 p-3"
         onClickCapture={(e) => {
           if ((e.target as Element).closest("a[href]")) setOpen(false);
@@ -389,10 +392,10 @@ function ServiceConnectButton({
           // `<slug>:<port>` sibling services dial (ADR041 D4, w9/m58), plus
           // an image-port service's other open ports (w6/m148).
           <>
-            <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
+            <div className="flex items-center gap-2 pb-1.5 text-sm font-medium">
               <Network className="size-4" />
               {t("services.connectInternal")}
-            </DropdownMenuLabel>
+            </div>
             {service.internalAddress ? (
               <ConnectCodeRow
                 className="mb-2"
@@ -414,10 +417,10 @@ function ServiceConnectButton({
             ) : null}
           </>
         ) : null}
-        <DropdownMenuLabel className="flex items-center gap-2 px-0 pt-0">
+        <div className="flex items-center gap-2 pb-1.5 text-sm font-medium">
           <Terminal className="size-4" />
           {t("services.connectSSH")}
-        </DropdownMenuLabel>
+        </div>
         {command ? (
           // Gate the doomed `ssh …` command behind key registration (w2/m66).
           // With no key it fails off-surface; swap it for an add-key CTA — and,
@@ -458,8 +461,8 @@ function ServiceConnectButton({
         ) : (
           <SshUnavailable service={service} />
         )}
-      </DropdownMenuContent>
-    </DropdownMenu>
+      </PopoverContent>
+    </Popover>
   );
 }
 

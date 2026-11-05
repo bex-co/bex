@@ -458,6 +458,40 @@ describe("ServiceDetailHeader", () => {
     },
   );
 
+  // w4/512: Connect was a dropdown menu with no menu items, so focus stayed on
+  // the menu container and Tab never reached the Copy buttons.
+  it("lets the keyboard reach Connect's Copy buttons and Escape return to Connect", async () => {
+    const user = userEvent.setup();
+    renderHeader(
+      svc({
+        internalAddress: "web-x1y2:3000",
+        sshAddress: "srv-example@ssh.bex.co",
+      }),
+    );
+
+    const connect = await screen.findByRole("button", { name: "Connect" });
+    connect.focus();
+    await user.keyboard("{Enter}");
+    const panel = await screen.findByRole("dialog", { name: "Connect" });
+
+    // Focus lands inside the panel, which is a dialog rather than a menu, and
+    // its controls are ordinary tab stops (a menu without items kept focus on
+    // its container and gave them none). jsdom cannot replay the portal's tab
+    // order, so assert the stops themselves.
+    expect(panel).toContainElement(document.activeElement as HTMLElement);
+    expect(screen.queryByRole("menu")).toBeNull();
+    for (const name of ["Copy internal address", "Copy SSH command"]) {
+      const copy = within(panel).getByRole("button", { name });
+      expect(copy).not.toHaveAttribute("tabindex", "-1");
+      copy.focus();
+      expect(copy).toHaveFocus();
+    }
+
+    await user.keyboard("{Escape}");
+    await waitFor(() => expect(screen.queryByRole("dialog")).toBeNull());
+    expect(connect).toHaveFocus();
+  });
+
   it("keeps the general explanation, visibly, when the user holds no remedy", async () => {
     const user = userEvent.setup();
     renderHeader(svc({ sshAddress: null, plan: "starter" }));
@@ -884,7 +918,7 @@ describe("open ports beside the Service Address (w6/m148)", () => {
     renderHeader(svc(clickhouse));
 
     await user.click(await screen.findByRole("button", { name: "Connect" }));
-    const menu = screen.getByRole("menu");
+    const menu = screen.getByRole("dialog", { name: "Connect" });
 
     expect(within(menu).getByText("ch-x1y2:8123")).toBeInTheDocument();
     expectPorts(within(menu).getByRole("list", { name: "Open ports" }));
@@ -911,7 +945,7 @@ describe("open ports beside the Service Address (w6/m148)", () => {
     expect(screen.queryByText("Open ports")).not.toBeInTheDocument();
 
     await user.click(await screen.findByRole("button", { name: "Connect" }));
-    const menu = screen.getByRole("menu");
+    const menu = screen.getByRole("dialog", { name: "Connect" });
     expect(within(menu).getByText("Internal")).toBeInTheDocument();
     expect(within(menu).getByText(pendingNote)).toBeInTheDocument();
   });
