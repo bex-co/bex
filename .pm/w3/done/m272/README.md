@@ -1,19 +1,19 @@
 # w3 · m272 — Every REST response in the test suite is validated against the pinned Render schema
 
-**Worker:** worker3 **Goal:** a Render-shape drift in any `/v1` response fails CI instead of being found by live QA **Status:** todo
+**Worker:** worker3 **Goal:** a Render-shape drift in any `/v1` response fails CI instead of being found by live QA **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Response-validating wrapper in the API test handler | 1.5h | — |
-| t002 | Triage violations: fix each, or allowlist with an ADR018 row | 2h | t001 |
-| t003 | Conformance fixtures across all service kinds | 1h | t001 |
-| t004 | Hook internal/apps httptest suites into the same validator | 1h | t001 |
-| t005 | Render parity | 30m | t002, t003, t004 |
-| t006 | Simplify | 20m | t005 |
-| t007 | Test coverage | 40m | t005 |
-| t008 | Closeout | 10m | t006, t007 |
+| t001 | Response-validating wrapper in the API test handler — **DONE** | 1.5h | — |
+| t002 | Triage violations: fix each, or allowlist with an ADR018 row — **DONE** | 2h | t001 |
+| t003 | Conformance fixtures across all service kinds — **DONE** | 1h | t001 |
+| t004 | Hook internal/apps httptest suites into the same validator — **DONE** | 1h | t001 |
+| t005 | Render parity — **DONE** | 30m | t002, t003, t004 |
+| t006 | Simplify — **DONE** | 20m | t005 |
+| t007 | Test coverage — **DONE** | 40m | t005 |
+| t008 | Closeout — **DONE** | 10m | t006, t007 |
 
 ## Definition of done
 
