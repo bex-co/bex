@@ -507,6 +507,10 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "暂停",
     description: "Event-picker group — suspend/resume events",
   },
+  "webhooks.group.agentSession": {
+    message: "云端 Agent",
+    description: "Event-picker group — cloud coding agent session events",
+  },
   "webhooks.group.other": {
     message: "其他",
     description:
@@ -735,6 +739,18 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.service_woken": {
     message: "服务已被唤醒",
     description: "Event label — service_woken",
+  },
+  "webhooks.event.agent_session_turn_succeeded": {
+    message: "Agent 会话回合成功",
+    description: "Event label — agent_session_turn_succeeded",
+  },
+  "webhooks.event.agent_session_turn_failed": {
+    message: "Agent 会话回合失败",
+    description: "Event label — agent_session_turn_failed",
+  },
+  "webhooks.event.agent_session_needs_input": {
+    message: "Agent 会话需要输入",
+    description: "Event label — agent_session_needs_input",
   },
   "webhooks.event.service_moved": {
     message: "服务已移动",

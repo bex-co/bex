@@ -73,6 +73,11 @@ const GROUPS: Record<string, string[]> = {
     "service_hibernated",
     "service_woken",
   ],
+  agentSession: [
+    "agent_session_turn_succeeded",
+    "agent_session_turn_failed",
+    "agent_session_needs_input",
+  ],
 };
 
 /** Keys Render lists as bare rows (no group); bex-native singles join here too. */

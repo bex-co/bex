@@ -298,7 +298,11 @@ type ModelMinter struct {
 	// fails those mints closed.
 	Spend SpendStore
 	Sheet *pricing.Sheet
-	spend spendCache
+	// SessionSpend reads a session's recorded model price for its own
+	// maxSpendUSD ceiling (ADR094 D8). A session with a ceiling fails closed
+	// when it is unwired.
+	SessionSpend SessionSpendStore
+	spend        spendCache
 }
 
 func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response ModelMintResponse, err error) {
@@ -374,6 +378,9 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 		if status.Reached() {
 			return ModelMintResponse{}, ErrModelSpendCapReached
 		}
+		if err := m.checkSessionCeiling(ctx, session); err != nil {
+			return ModelMintResponse{}, err
+		}
 		return ModelMintResponse{
 			Credential: route.platformKey, EndpointHost: host, Scheme: AuthSchemeBearer,
 			PathPrefix: pathPrefix, PinnedModel: route.model,
@@ -399,6 +406,28 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 		return ModelMintResponse{}, ErrModelKeyMissing
 	}
 	return ModelMintResponse{Credential: credential, EndpointHost: host, Scheme: ResolveAuthScheme(host, credential), PathPrefix: pathPrefix}, nil
+}
+
+// checkSessionCeiling refuses the mint once the session's recorded platform
+// price has reached its own maxSpendUSD ceiling (ADR094 D8). Together with the
+// monthly cap above it, the lower of the two binds. Spend is read per request
+// (one indexed sum), not through the 20 s workspace cache, so a ceiling is
+// overshot by at most the exchanges in flight and not yet reported.
+func (m *ModelMinter) checkSessionCeiling(ctx context.Context, session store.AgentSession) error {
+	if session.MaxSpendMicroUSD == nil {
+		return nil
+	}
+	if m.SessionSpend == nil {
+		return errSpendStoreUnwired
+	}
+	spent, err := m.SessionSpend.AgentSessionModelSpendMicroUSD(ctx, session.WorkspaceID, session.ID)
+	if err != nil {
+		return fmt.Errorf("agent session model spend: %w", err)
+	}
+	if spent >= *session.MaxSpendMicroUSD {
+		return ErrModelSessionSpendCapReached
+	}
+	return nil
 }
 
 func (m *ModelMinter) now() time.Time {

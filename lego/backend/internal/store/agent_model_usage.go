@@ -331,3 +331,17 @@ func (s *PGStore) AgentSessionModelUsage(ctx context.Context, sessionID string) 
 	}
 	return out, nil
 }
+
+// AgentSessionModelSpendMicroUSD is what sessionID has spent on the platform
+// route: the sum of its recorded customer prices, in micro-USD (ADR094 D8's
+// per-session ceiling reads it before each model request). A session without
+// events reads 0. Events are kept AgentModelEventRetentionMonths, far past any
+// session's life.
+func (s *PGStore) AgentSessionModelSpendMicroUSD(ctx context.Context, workspaceID, sessionID string) (int64, error) {
+	var spent int64
+	err := s.Pool.QueryRow(ctx, `
+		SELECT COALESCE(SUM(price_microusd), 0)::bigint
+		FROM agent_model_usage_events
+		WHERE workspace_id = $1 AND session_id = $2`, workspaceID, sessionID).Scan(&spent)
+	return spent, err
+}

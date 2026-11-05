@@ -184,6 +184,14 @@ type CreateRequest struct {
 	// set) fails the turn STRUCTURED_OUTPUT_MISSING if it ends without one.
 	OutputSchema   map[string]any `json:"outputSchema,omitempty" jsonschema:"a JSON Schema 2020-12 object (at most 64 KiB, no external $ref) the turn's result must satisfy; read it from outcome.result"`
 	OutputRequired *bool          `json:"outputRequired,omitempty" jsonschema:"default true when outputSchema is set: a turn that ends without a final valid result fails STRUCTURED_OUTPUT_MISSING"`
+	// MaxSpendUSD is a per-session ceiling on the platform model's customer
+	// price in USD (ADR094 D8), under the workspace's monthly cap: once the
+	// session has spent it, its next model request is refused
+	// AGENT_MODEL_SPEND_CAP_REACHED (scope session) and the turn fails. Only a
+	// session on the platform model route is metered; any other session is
+	// refused 400 AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE rather than left
+	// unbounded.
+	MaxSpendUSD *float64 `json:"maxSpendUSD,omitempty" jsonschema:"a ceiling on this session's platform model spend in USD (more than 0, at most 100000); the turn fails AGENT_MODEL_SPEND_CAP_REACHED with scope session once reached. Needs the platform model route; a session on the workspace's own model key is refused AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE"`
 }
 
 // SteerRequest is a follow-up prompt turn on an existing session (ADR047 D8
@@ -217,8 +225,11 @@ type View struct {
 	// State is the coarse derived state (ADR094 D7): working, needs_input,
 	// succeeded, failed or canceled. Steerable says a follow-up message is
 	// accepted now, so a finished-but-open session is never ambiguous.
-	State        string `json:"state"`
-	Steerable    bool   `json:"steerable"`
+	State     string `json:"state"`
+	Steerable bool   `json:"steerable"`
+	// MaxSpendUSD is the session's maxSpendUSD ceiling as a decimal string, or
+	// absent when it has none (ADR094 D8).
+	MaxSpendUSD  string `json:"maxSpendUSD,omitempty"`
 	Status       string `json:"status"`
 	HeadSHA      string `json:"headSha,omitempty"`
 	PRURL        string `json:"prUrl,omitempty"`
@@ -291,6 +302,17 @@ type Outcome struct {
 	// computed only on the single-session read and wait. A non-final (partial)
 	// result is on the transcript turn, not here.
 	Result any `json:"result,omitempty"`
+	// Cost is what the session's platform-route model requests cost so far
+	// (ADR094 D7); absent when it made none (a workspace's own key bills at its
+	// provider). Computed only on the single-session read, wait and webhook.
+	Cost *Cost `json:"cost,omitempty"`
+}
+
+// Cost is the ADR091 meter's reading for one session.
+type Cost struct {
+	// ModelUSD is the session's total agent_model_cost_microusd as a decimal
+	// string to the micro-dollar ("0.42", "0.001234"), never a float.
+	ModelUSD string `json:"modelUSD"`
 }
 
 // PullRequest is the PR the agent opened for the session (ADR090).

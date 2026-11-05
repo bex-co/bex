@@ -96,9 +96,27 @@
         "id": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "type": "string"
+        },
         "outcome": {
           "additionalProperties": false,
           "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "modelUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "deliveryNote": {
               "type": "string"
             },
@@ -354,9 +372,27 @@
         "id": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "type": "string"
+        },
         "outcome": {
           "additionalProperties": false,
           "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "modelUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "deliveryNote": {
               "type": "string"
             },
@@ -609,9 +645,27 @@
         "id": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "type": "string"
+        },
         "outcome": {
           "additionalProperties": false,
           "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "modelUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "deliveryNote": {
               "type": "string"
             },
@@ -827,6 +881,13 @@
         "idempotencyKey": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "description": "a ceiling on this session's platform model spend in USD (more than 0, at most 100000); the turn fails AGENT_MODEL_SPEND_CAP_REACHED with scope session once reached. Needs the platform model route; a session on the workspace's own model key is refused AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE",
+          "type": [
+            "null",
+            "number"
+          ]
+        },
         "outputRequired": {
           "description": "default true when outputSchema is set: a turn that ends without a final valid result fails STRUCTURED_OUTPUT_MISSING",
           "type": [
@@ -940,9 +1001,27 @@
         "id": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "type": "string"
+        },
         "outcome": {
           "additionalProperties": false,
           "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "modelUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "deliveryNote": {
               "type": "string"
             },
@@ -1494,9 +1573,27 @@
         "id": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "type": "string"
+        },
         "outcome": {
           "additionalProperties": false,
           "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "modelUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "deliveryNote": {
               "type": "string"
             },
@@ -2346,9 +2443,27 @@
               "id": {
                 "type": "string"
               },
+              "maxSpendUSD": {
+                "type": "string"
+              },
               "outcome": {
                 "additionalProperties": false,
                 "properties": {
+                  "cost": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "modelUSD": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "modelUSD"
+                    ],
+                    "type": [
+                      "null",
+                      "object"
+                    ]
+                  },
                   "deliveryNote": {
                     "type": "string"
                   },
@@ -2612,9 +2727,27 @@
         "id": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "type": "string"
+        },
         "outcome": {
           "additionalProperties": false,
           "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "modelUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "deliveryNote": {
               "type": "string"
             },
@@ -2901,9 +3034,27 @@
         "id": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "type": "string"
+        },
         "outcome": {
           "additionalProperties": false,
           "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "modelUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "deliveryNote": {
               "type": "string"
             },
@@ -3119,6 +3270,13 @@
         "idempotencyKey": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "description": "a ceiling on this session's platform model spend in USD (more than 0, at most 100000); the turn fails AGENT_MODEL_SPEND_CAP_REACHED with scope session once reached. Needs the platform model route; a session on the workspace's own model key is refused AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE",
+          "type": [
+            "null",
+            "number"
+          ]
+        },
         "outputRequired": {
           "description": "default true when outputSchema is set: a turn that ends without a final valid result fails STRUCTURED_OUTPUT_MISSING",
           "type": [
@@ -3232,9 +3390,27 @@
         "id": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "type": "string"
+        },
         "outcome": {
           "additionalProperties": false,
           "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "modelUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "deliveryNote": {
               "type": "string"
             },
@@ -3521,9 +3697,27 @@
         "id": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "type": "string"
+        },
         "outcome": {
           "additionalProperties": false,
           "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "modelUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "deliveryNote": {
               "type": "string"
             },
@@ -3776,9 +3970,27 @@
         "id": {
           "type": "string"
         },
+        "maxSpendUSD": {
+          "type": "string"
+        },
         "outcome": {
           "additionalProperties": false,
           "properties": {
+            "cost": {
+              "additionalProperties": false,
+              "properties": {
+                "modelUSD": {
+                  "type": "string"
+                }
+              },
+              "required": [
+                "modelUSD"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "deliveryNote": {
               "type": "string"
             },
@@ -4263,6 +4475,21 @@
               "outcome": {
                 "additionalProperties": false,
                 "properties": {
+                  "cost": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "modelUSD": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "modelUSD"
+                    ],
+                    "type": [
+                      "null",
+                      "object"
+                    ]
+                  },
                   "deliveryNote": {
                     "type": "string"
                   },

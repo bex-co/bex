@@ -313,7 +313,7 @@ func TestFanOutAdmitsOnlyEventsInsideEligibilityIntervals(t *testing.T) {
 		{t2, true},
 		{t2.Add(time.Hour), true},
 	} {
-		batch, err := w.fanOutPage([]store.WebhookEventRow{deployRow("k", tc.at)}, map[string][]store.WebhookEndpoint{"tea-a": {a}})
+		batch, err := w.fanOutPage(context.Background(), []store.WebhookEventRow{deployRow("k", tc.at)}, map[string][]store.WebhookEndpoint{"tea-a": {a}})
 		if err != nil {
 			t.Fatal(err)
 		}

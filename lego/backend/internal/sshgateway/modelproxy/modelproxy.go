@@ -181,6 +181,12 @@ func (b *Broker) serveModel(w http.ResponseWriter, r *http.Request) {
 			b.Metrics.Authentication("missing_model_key")
 			b.reportAuthFailure(verified)
 			http.Error(w, "forbidden", http.StatusForbidden)
+		case errors.Is(err, agentsession.ErrModelSessionSpendCapReached):
+			// The session's own maxSpendUSD ceiling (ADR094 D8): the same code
+			// and 429 with the session scope, and the session fails.
+			b.Metrics.Authentication("model_session_spend_cap_reached")
+			b.reportRefusal(verified, b.API.ReportSessionSpendCapReached)
+			writeModelRefusalScoped(w, agentsession.ModelSpendCapReachedCode, agentsession.ModelSessionSpendCapReachedReason, agentsession.ModelSpendScopeSession)
 		case errors.Is(err, agentsession.ErrModelSpendCapReached):
 			// The workspace reached its monthly agent-model spend cap (ADR091
 			// D5). Terminalize the session with the readable reason, and
@@ -329,16 +335,23 @@ func (b *Broker) usageReporter() *usageReporter {
 // writeModelRefusal answers a refused exchange (spend cap, balance due) with
 // HTTP 429 in the Anthropic Messages error shape, carrying the stable code.
 func writeModelRefusal(w http.ResponseWriter, code, reason string) {
+	writeModelRefusalScoped(w, code, reason, "")
+}
+
+// writeModelRefusalScoped is writeModelRefusal with the refusal's scope named
+// in the error body when it has one (the session ceiling, ADR094 D8).
+func writeModelRefusalScoped(w http.ResponseWriter, code, reason, scope string) {
+	body := map[string]string{
+		"type":    "rate_limit_error",
+		"code":    code,
+		"message": code + ": " + reason,
+	}
+	if scope != "" {
+		body["scope"] = scope
+	}
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(http.StatusTooManyRequests)
-	_ = json.NewEncoder(w).Encode(map[string]any{
-		"type": "error",
-		"error": map[string]string{
-			"type":    "rate_limit_error",
-			"code":    code,
-			"message": code + ": " + reason,
-		},
-	})
+	_ = json.NewEncoder(w).Encode(map[string]any{"type": "error", "error": body})
 }
 
 // reportRefusal is reportAuthFailure's sibling for a refused mint: detached

@@ -520,6 +520,10 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Suspension",
     description: "Event-picker group — suspend/resume events",
   },
+  "webhooks.group.agentSession": {
+    message: "Cloud Agents",
+    description: "Event-picker group — cloud coding agent session events",
+  },
   "webhooks.group.other": {
     message: "Other",
     description:
@@ -748,6 +752,18 @@ const enWebhooks: Record<string, TranslationEntry> = {
   "webhooks.event.service_woken": {
     message: "Service Woke Up",
     description: "Event label — service_woken",
+  },
+  "webhooks.event.agent_session_turn_succeeded": {
+    message: "Agent Session Turn Succeeded",
+    description: "Event label — agent_session_turn_succeeded",
+  },
+  "webhooks.event.agent_session_turn_failed": {
+    message: "Agent Session Turn Failed",
+    description: "Event label — agent_session_turn_failed",
+  },
+  "webhooks.event.agent_session_needs_input": {
+    message: "Agent Session Needs Input",
+    description: "Event label — agent_session_needs_input",
   },
   "webhooks.event.service_moved": {
     message: "Service Moved",

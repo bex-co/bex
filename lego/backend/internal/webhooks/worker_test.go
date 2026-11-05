@@ -516,7 +516,10 @@ func TestDispatchFansOutOnlyToSubscribedEndpointsOfTheEventsWorkspace(t *testing
 		t.Errorf("watermark key = %q, want the last processed row", st.wmKey)
 	}
 	for _, d := range st.queue {
-		var p payload
+		var p struct {
+			Timestamp string      `json:"timestamp"`
+			Data      payloadData `json:"data"`
+		}
 		if err := json.Unmarshal([]byte(d.Payload), &p); err != nil {
 			t.Fatalf("payload not JSON: %v", err)
 		}

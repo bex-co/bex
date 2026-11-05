@@ -47,6 +47,24 @@ const (
 	modelSpendLockedReason       = "this workspace's agent model spend is limited after a failed or disputed payment (" + ModelSpendCapReachedCode + "); settle the outstanding payment in Settings → Billing, then start a new session"
 )
 
+// ModelSpendScopeSession is the scope of a refusal at the session's own
+// maxSpendUSD ceiling (ADR094 D8), as the gateway's error body names it.
+// The workspace's monthly cap carries no scope.
+const ModelSpendScopeSession = "session"
+
+// ModelSessionSpendCapReachedReason is the terminal failureReason of a session
+// stopped at its own maxSpendUSD ceiling; it carries the same stable code as
+// the monthly cap, with the session scope named in the text.
+const ModelSessionSpendCapReachedReason = "this session reached its maxSpendUSD ceiling (" + ModelSpendCapReachedCode + ", scope session); start a new session or send a follow-up with a higher ceiling"
+
+// ModelFailureCauseSessionSpendCapReached is ModelMintRequest.Cause on a
+// report that a mint was refused at the session's ceiling.
+const ModelFailureCauseSessionSpendCapReached = "session_spend_cap_reached"
+
+// RefusalModelSessionSpendCapReached is RefusalHeader's value for
+// ErrModelSessionSpendCapReached.
+const RefusalModelSessionSpendCapReached = "model-session-spend-cap-reached"
+
 // ModelFailureCauseSpendCapReached is ModelMintRequest.Cause on a report that a
 // mint was refused at the spend cap. Empty Cause is the original auth-failure
 // report.
@@ -61,6 +79,11 @@ const RefusalModelSpendCapReached = "model-spend-cap-reached"
 // does NOT wrap ErrForbidden: it is a standing state, never the create-time
 // race the gateway retries, and it travels as HTTP 429.
 var ErrModelSpendCapReached = errors.New("agent model spend cap reached")
+
+// ErrModelSessionSpendCapReached refuses a platform-route mint once the
+// session's recorded model price reaches its own maxSpendUSD ceiling. It is
+// an ErrModelSpendCapReached (same code, same 429) with the session scope.
+var ErrModelSessionSpendCapReached = fmt.Errorf("session ceiling: %w", ErrModelSpendCapReached)
 
 // BillingBalanceDueCode is the stable code of the refusal while the workspace
 // has an unpaid failed invoice (ADR091 D10.3): model spend is cash out, so it
@@ -87,6 +110,12 @@ var ErrBillingBalanceDue = errors.New("billing balance due")
 // satisfies it.
 type SpendStore interface {
 	AgentSpendInputs(ctx context.Context, workspaceID string, now time.Time) (store.AgentSpendInputs, error)
+}
+
+// SessionSpendStore reads what one session has spent on the platform route;
+// *store.PGStore satisfies it.
+type SessionSpendStore interface {
+	AgentSessionModelSpendMicroUSD(ctx context.Context, workspaceID, sessionID string) (int64, error)
 }
 
 // SpendStatus is one workspace's agent-model spend position. Every amount is
@@ -268,5 +297,13 @@ func (c *ModelClient) ReportSpendCapReached(ctx context.Context, req ModelMintRe
 // ErrBillingBalanceDue: the session fails with BillingBalanceDueReason.
 func (c *ModelClient) ReportBillingBalanceDue(ctx context.Context, req ModelMintRequest) error {
 	req.Cause = ModelFailureCauseBillingBalanceDue
+	return c.ReportAuthFailure(ctx, req)
+}
+
+// ReportSessionSpendCapReached is ReportSpendCapReached for a mint refused at
+// the session's own ceiling: the session fails with
+// ModelSessionSpendCapReachedReason.
+func (c *ModelClient) ReportSessionSpendCapReached(ctx context.Context, req ModelMintRequest) error {
+	req.Cause = ModelFailureCauseSessionSpendCapReached
 	return c.ReportAuthFailure(ctx, req)
 }

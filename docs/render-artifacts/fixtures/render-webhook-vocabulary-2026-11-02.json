@@ -152,6 +152,9 @@
     "postgres_credentials_deleted"
   ],
   "bexSupported": [
+    "agent_session_needs_input",
+    "agent_session_turn_failed",
+    "agent_session_turn_succeeded",
     "auto_deploy_disabled",
     "auto_deploy_enabled",
     "autoscaling_config_changed",
@@ -216,6 +219,9 @@
     "service_woken"
   ],
   "bexExtensions": [
+    "agent_session_needs_input",
+    "agent_session_turn_failed",
+    "agent_session_turn_succeeded",
     "branch_changed",
     "service_hibernated",
     "service_moved",

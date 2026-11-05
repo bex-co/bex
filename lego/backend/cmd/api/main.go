@@ -386,7 +386,7 @@ func main() {
 		// invalidate.
 		var modelMinter *agentsession.ModelMinter
 		if deps.Secrets != nil {
-			modelMinter = &agentsession.ModelMinter{Keys: deps.Secrets, Sessions: st, Audit: st, Spend: st}
+			modelMinter = &agentsession.ModelMinter{Keys: deps.Secrets, Sessions: st, Audit: st, Spend: st, SessionSpend: st}
 			deps.AgentModelKeyChanged = modelMinter.ForgetSpend
 			go backfillModelKeyFlags(ctx, deps.Secrets, st)
 		}
@@ -1483,6 +1483,9 @@ func startDeliveryWorkers(ctx context.Context, cfg *Config, srv *api.Server, st 
 			RetentionDays: whRetentionDays, RetentionKeepPerEndpoint: whKeepPerEndpoint,
 			Attempts: webhookMetrics, Admissions: webhookMetrics,
 			MaxDeliveriesPerWorkspace: whMaxDeliveriesPerWorkspace,
+		}
+		if srv.AgentSessions != nil {
+			whWorker.AgentOutcomes = agentsessions.TurnOutcomes{Service: srv.AgentSessions}
 		}
 		go whWorker.Run(ctx)
 	}

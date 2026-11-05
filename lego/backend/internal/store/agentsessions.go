@@ -183,6 +183,9 @@ type AgentSession struct {
 	// (ADR094 D3); read-only afterwards.
 	Title string
 	Tags  []string
+	// MaxSpendMicroUSD is the per-session ceiling on the platform-route model
+	// price (ADR094 D8), in micro-USD; nil = none. Create-only, read-only after.
+	MaxSpendMicroUSD *int64
 	// InitialPrompt is create-only input used to atomically insert turn 1 with
 	// the session row. It is not an agent_sessions column and is never scanned.
 	InitialPrompt string
@@ -244,14 +247,14 @@ const AgentSessionIdempotencyWindow = 24 * time.Hour
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
 	phase, status, head_sha, pr_url, pr_number, turns, delivery_mode, delivery_note,
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
-	archived_at, title, tags`
+	archived_at, title, tags, max_spend_microusd`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
 	err := row.Scan(&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
-		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags)
+		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD)
 	return s, err
 }
 
@@ -293,10 +296,10 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 			}
 		}
 		row, err = scanAgentSession(tx.QueryRow(ctx, `
-			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags)
-			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10)
+			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags, max_spend_microusd)
+			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10, $11)
 			RETURNING `+agentSessionColumns,
-			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags)))
+			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags), in.MaxSpendMicroUSD))
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "agent_sessions_idempotency_key_idx" {
@@ -342,7 +345,7 @@ func (s *PGStore) FindAgentSessionByIdempotencyKey(ctx context.Context, workspac
 	err := row.Scan(&out.ID, &out.WorkspaceID, &out.Repo, &out.Branch, &out.AgentConfig,
 		&out.SandboxID, &out.Phase, &out.Status, &out.HeadSHA, &out.PRURL, &out.PRNumber,
 		&out.Turns, &out.DeliveryMode, &out.DeliveryNote, &out.FailureReason, &out.FailureReasonCode,
-		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &hash)
+		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &hash)
 	if err != nil {
 		return AgentSession{}, "", classify("agent session", err)
 	}

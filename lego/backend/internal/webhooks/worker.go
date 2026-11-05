@@ -201,6 +201,9 @@ type Worker struct {
 	// retain regardless of age, so a burst inside the age window cannot evade the
 	// age rule. <1 => defaultRetentionKeepPerEndpoint.
 	RetentionKeepPerEndpoint int
+	// AgentOutcomes fills the payload of the agent session turn events
+	// (ADR094 D9). nil drops them: without it there is no outcome to send.
+	AgentOutcomes AgentSessionOutcomes
 
 	// cursor caches the durable watermark between ticks to skip an I/O round trip
 	// on a quiet tick. It is a pure optimization under two replicas: the
@@ -372,9 +375,25 @@ func (w *Worker) sweepRetention(ctx context.Context) error {
 // nothing but the event type, when, and which service; details are fetched
 // back through the API, never pushed.
 type payload struct {
-	Type      string      `json:"type"`
-	Timestamp string      `json:"timestamp"`
-	Data      payloadData `json:"data"`
+	Type      string `json:"type"`
+	Timestamp string `json:"timestamp"`
+	Data      any    `json:"data"`
+}
+
+// agentPayloadData is the data of an agent session turn event (ADR094 D9):
+// the session's id and state with the same outcome the session read carries,
+// minus the summary. id is the session id, not an event id.
+type agentPayloadData struct {
+	ID      string          `json:"id"`
+	State   string          `json:"state"`
+	Outcome json.RawMessage `json:"outcome"`
+}
+
+// AgentSessionOutcomes reads the outcome an agent session turn event carries
+// (agentsessions.Service satisfies it). It returns store.ErrNotFound when the
+// session no longer exists, which drops the event.
+type AgentSessionOutcomes interface {
+	AgentSessionTurnOutcome(ctx context.Context, sessionID string, turn int, phase string) (state string, outcome json.RawMessage, err error)
 }
 
 type payloadData struct {
@@ -435,8 +454,8 @@ func (w *Worker) dispatch(ctx context.Context, endpoints []store.WebhookEndpoint
 			capped += result.Capped
 			return nil
 		},
-		Project: func(_ context.Context, rows []store.WebhookEventRow) ([]store.WebhookDelivery, error) {
-			return w.fanOutPage(rows, byTenant)
+		Project: func(ctx context.Context, rows []store.WebhookEventRow) ([]store.WebhookDelivery, error) {
+			return w.fanOutPage(ctx, rows, byTenant)
 		},
 	})
 	if capped > 0 {
@@ -451,10 +470,18 @@ func (w *Worker) dispatch(ctx context.Context, endpoints []store.WebhookEndpoint
 // fanOutPage turns one page of the feed into deliveries: every subscribed
 // endpoint of the event's workspace that both wants this event type and was
 // enabled when it happened.
-func (w *Worker) fanOutPage(rows []store.WebhookEventRow, byTenant map[string][]store.WebhookEndpoint) ([]store.WebhookDelivery, error) {
+func (w *Worker) fanOutPage(ctx context.Context, rows []store.WebhookEventRow, byTenant map[string][]store.WebhookEndpoint) ([]store.WebhookDelivery, error) {
 	var batch []store.WebhookDelivery
 	now := w.now()
 	for _, r := range rows {
+		if r.Source == store.EventSourceAgent {
+			agent, err := w.fanOutAgent(ctx, r, byTenant[r.TenantID], now)
+			if err != nil {
+				return nil, err
+			}
+			batch = append(batch, agent...)
+			continue
+		}
 		eventType, data, ok := project(r)
 		if !ok {
 			continue
@@ -486,6 +513,48 @@ func (w *Worker) fanOutPage(rows []store.WebhookEventRow, byTenant map[string][]
 				NextAttemptAt: now,
 			})
 		}
+	}
+	return batch, nil
+}
+
+// fanOutAgent turns one agent_session_turn_events row into deliveries. The
+// outcome is read only when an endpoint wants the event, and a read failure
+// fails the page (the watermark stays, so the pass retries) rather than
+// dropping an event. The webhook-id is derived from the row key like every
+// other event's, so retries and replicas dedupe.
+func (w *Worker) fanOutAgent(ctx context.Context, r store.WebhookEventRow, endpoints []store.WebhookEndpoint, now time.Time) ([]store.WebhookDelivery, error) {
+	eventType, ok := agentTurnEvents[r.Phase]
+	if !ok || w.AgentOutcomes == nil {
+		return nil, nil
+	}
+	var subscribed []store.WebhookEndpoint
+	for _, e := range endpoints {
+		if eligibleAt(e.Eligibility, r.At) && (len(e.EventTypes) == 0 || endpointSubscribes(e.EventTypes, eventType)) {
+			subscribed = append(subscribed, e)
+		}
+	}
+	if len(subscribed) == 0 {
+		return nil, nil
+	}
+	state, outcome, err := w.AgentOutcomes.AgentSessionTurnOutcome(ctx, r.ServiceID, r.Turn, r.Phase)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil, nil
+	}
+	if err != nil {
+		return nil, fmt.Errorf("agent session %s outcome: %w", r.ServiceID, err)
+	}
+	raw, err := json.Marshal(payload{Type: eventType, Timestamp: r.At.UTC().Format(time.RFC3339),
+		Data: agentPayloadData{ID: r.ServiceID, State: state, Outcome: outcome}})
+	if err != nil {
+		return nil, err
+	}
+	eventID := ids.Derive(ids.Event, r.Key)
+	batch := make([]store.WebhookDelivery, 0, len(subscribed))
+	for _, e := range subscribed {
+		batch = append(batch, store.WebhookDelivery{
+			ID: ids.New(ids.WebhookDelivery), EndpointID: e.ID, EventID: eventID,
+			EventType: eventType, Payload: string(raw), NextAttemptAt: now,
+		})
 	}
 	return batch, nil
 }

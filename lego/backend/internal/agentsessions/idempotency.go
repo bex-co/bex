@@ -46,7 +46,9 @@ func idempotencyOf(workspaceID string, req CreateRequest, output store.AgentTurn
 		// The normalized output contract (ADR094 D5), likewise omitted when unset.
 		OutputSchema   json.RawMessage `json:"o,omitempty"`
 		OutputRequired bool            `json:"q,omitempty"`
-	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required})
+		// The per-session spend ceiling (ADR094 D8), omitted when unset.
+		MaxSpendUSD *float64 `json:"m,omitempty"`
+	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required, req.MaxSpendUSD})
 	if err != nil {
 		return "", "", err
 	}

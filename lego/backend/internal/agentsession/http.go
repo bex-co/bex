@@ -83,6 +83,10 @@ func serveSignedMint[Req, Resp any](w http.ResponseWriter, r *http.Request, secr
 			status = http.StatusForbidden
 		case errors.Is(err, ErrInvalidRequest):
 			status = http.StatusBadRequest
+		case errors.Is(err, ErrModelSessionSpendCapReached):
+			// Tested before the monthly cap it wraps.
+			status = http.StatusTooManyRequests
+			w.Header().Set(RefusalHeader, RefusalModelSessionSpendCapReached)
 		case errors.Is(err, ErrModelSpendCapReached):
 			status = http.StatusTooManyRequests
 			w.Header().Set(RefusalHeader, RefusalModelSpendCapReached)
@@ -171,6 +175,8 @@ func postSignedMint[Req, Resp any](ctx context.Context, url string, secret []byt
 		_, _ = io.Copy(io.Discard, io.LimitReader(resp.Body, 4096))
 		if resp.StatusCode == http.StatusTooManyRequests {
 			switch resp.Header.Get(RefusalHeader) {
+			case RefusalModelSessionSpendCapReached:
+				return zero, ErrModelSessionSpendCapReached
 			case RefusalModelSpendCapReached:
 				return zero, ErrModelSpendCapReached
 			case RefusalBillingBalanceDue:

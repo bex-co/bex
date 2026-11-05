@@ -278,6 +278,8 @@ func modelFailureReason(cause string) (reason, code string, err error) {
 		return ModelAuthFailureReason, "", nil
 	case ModelFailureCauseSpendCapReached:
 		return ModelSpendCapReachedReason, ModelSpendCapReachedCode, nil
+	case ModelFailureCauseSessionSpendCapReached:
+		return ModelSessionSpendCapReachedReason, ModelSpendCapReachedCode, nil
 	case ModelFailureCauseBillingBalanceDue:
 		return BillingBalanceDueReason, BillingBalanceDueCode, nil
 	default:

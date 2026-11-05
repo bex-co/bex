@@ -245,6 +245,14 @@ var agentSessionPullRequestGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var agentSessionCostGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentSessionCost",
+	Description: "What the session's platform-route model requests cost so far (ADR094 D7).",
+	Fields: graphql.Fields{
+		"modelUSD": gqlutil.ReqStrField(func(v Cost) any { return v.ModelUSD }),
+	},
+})
+
 var agentSessionOutcomeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionOutcome",
 	Fields: graphql.Fields{
@@ -267,8 +275,22 @@ var agentSessionOutcomeGQLType = graphql.NewObject(graphql.ObjectConfig{
 			return v.Files
 		})},
 		"result": jsonTextField("The current turn's last valid final structured result (ADR094 D5) as JSON text, or null.", func(v Outcome) any { return v.Result }),
+		"cost": &graphql.Field{Type: agentSessionCostGQLType, Resolve: gqlutil.Field(func(v Outcome) any {
+			if v.Cost == nil {
+				return nil
+			}
+			return *v.Cost
+		})},
 	},
 })
+
+// floatArg is an optional Float argument; nil when it is absent or null.
+func floatArg(args map[string]any, key string) *float64 {
+	if v, ok := args[key].(float64); ok { // graphql.Float coerces every literal to float64
+		return &v
+	}
+	return nil
+}
 
 // jsonTextField is a nullable String field carrying a JSON value as text, the
 // way the transcript part is (GraphQL has no JSON scalar here). Null when the
@@ -295,6 +317,7 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"repo":        gqlutil.ReqStrField(func(v View) any { return v.Repo }),
 		"branch":      gqlutil.ReqStrField(func(v View) any { return v.Branch }),
 		"title":       gqlutil.StrField(func(v View) any { return v.Title }),
+		"maxSpendUSD": gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
 		"tags":        &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
 		"agentConfig": gqlutil.Typed(graphql.NewNonNull(agentConfigGQLType), func(v View) any { return v.AgentConfig }),
 		"sandboxId":   gqlutil.StrField(func(v View) any { return v.SandboxID }),
@@ -616,13 +639,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"attachmentIds":   gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"outputSchema":    gqlutil.Arg(graphql.String),
 				"outputRequired":  gqlutil.Arg(graphql.Boolean),
+				"maxSpendUSD":     gqlutil.Arg(graphql.Float),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				schema, required, err := outputArgs(p.Args)
 				if err != nil {
 					return nil, err
 				}
-				return s.Create(p.Context, CreateRequest{OutputSchema: schema, OutputRequired: required, OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"])})
+				return s.Create(p.Context, CreateRequest{MaxSpendUSD: floatArg(p.Args, "maxSpendUSD"), OutputSchema: schema, OutputRequired: required, OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"])})
 			},
 		},
 		"steerAgentSession": &graphql.Field{

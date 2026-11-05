@@ -170,7 +170,22 @@ const (
 	TypeCommitIgnored         = "commit_ignored"
 	TypeAutoscalingStarted    = "autoscaling_started"
 	TypeAutoscalingEnded      = "autoscaling_ended"
+	// Cloud coding-agent turn outcomes (ADR094 D9; w21/m260) — bex extensions
+	// with no Render twin. A session's turn ending succeeded or failed pushes
+	// {id, state, outcome} so an orchestrator need not poll. TypeAgentSession-
+	// NeedsInput is advertised for subscription but nothing emits it until a
+	// session can wait for input (w11/m7).
+	TypeAgentSessionTurnSucceeded = "agent_session_turn_succeeded"
+	TypeAgentSessionTurnFailed    = "agent_session_turn_failed"
+	TypeAgentSessionNeedsInput    = "agent_session_needs_input"
 )
+
+// agentTurnEvents maps the phase an agent session turn ended in (the
+// agent_session_turn_events row) to its webhook event type.
+var agentTurnEvents = map[string]string{
+	"completed": TypeAgentSessionTurnSucceeded,
+	"failed":    TypeAgentSessionTurnFailed,
+}
 
 // verbEvents maps an audited verb ("<package>.<Method>", the same key
 // internal/events maps) to the webhook event type it produces — the SINGLE
@@ -273,6 +288,10 @@ var EventTypes = func() []string {
 	for _, t := range factEvents {
 		set[t] = true
 	}
+	for _, t := range agentTurnEvents {
+		set[t] = true
+	}
+	set[TypeAgentSessionNeedsInput] = true
 	return slices.Sorted(maps.Keys(set))
 }()
 

@@ -758,6 +758,10 @@ type WebhookEventRow struct {
 	// AppID is the app's internal control-plane id, as opposed to ServiceID's
 	// public composite. Empty on the datastore audit arm, which has no app.
 	AppID string
+	// Turn is the agent turn number on EventSourceAgent rows (ADR094 D9); 0
+	// elsewhere. Phase carries the session phase the turn ended in
+	// (completed | failed), ServiceID the session id.
+	Turn int
 }
 
 // appDisplayLabel is the SQL spelling of renderServiceName (internal/apps): the
@@ -799,7 +803,8 @@ WITH feed AS (
            ''::text                            AS verb,
            ''::text                            AS fact_type,
 	       NULL::boolean                       AS auto_deploy_enabled,
-           a.id                                AS app_id
+           a.id                                AS app_id,
+           0::int                              AS agent_turn
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
     WHERE a.tenant_id = ANY($5)
@@ -817,7 +822,8 @@ WITH feed AS (
            ''::text,
            ''::text,
 	       NULL::boolean,
-           a.id
+           a.id,
+           0::int
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
     WHERE d.finished_at IS NOT NULL AND a.tenant_id = ANY($5)
@@ -835,7 +841,8 @@ WITH feed AS (
            e.verb,
            ''::text,
 	       e.auto_deploy_enabled,
-           a.id
+           a.id,
+           0::int
     FROM audit_events e
     JOIN service_event_index i ON i.source = 'audit' AND i.source_row_id = e.id
     JOIN apps a ON a.id = i.app_id AND a.tenant_id = i.workspace_id
@@ -854,7 +861,8 @@ WITH feed AS (
 		   e.verb,
 		   ''::text,
 		   NULL::boolean,
-		   ''::text
+		   ''::text,
+           0::int
     FROM audit_events e
 	WHERE e.workspace_id = ANY($5)
 	  AND e.outcome = 'allowed'
@@ -874,7 +882,8 @@ WITH feed AS (
            ''::text,
            f.fact_type,
 	       NULL::boolean,
-           a.id
+           a.id,
+           0::int
     FROM service_event_facts f
     JOIN apps a ON a.id = f.app_id
     WHERE a.tenant_id = ANY($5)
@@ -892,11 +901,30 @@ WITH feed AS (
            ''::text,
            f.fact_type,
 	       NULL::boolean,
-           ''::text
+           ''::text,
+           0::int
     FROM datastore_event_facts f
     WHERE f.workspace_id = ANY($5)
+  UNION ALL
+    SELECT e.recorded_at,
+           'agent:' || e.session_id || ':' || e.turn || ':' || e.phase,
+           e.recorded_at,
+           e.workspace_id,
+           e.session_id,
+           ''::text,
+           '` + EventSourceAgent + `'::text,
+           e.phase,
+           ''::text,
+           ''::text,
+           ''::text,
+           ''::text,
+           NULL::boolean,
+           ''::text,
+           e.turn
+    FROM agent_session_turn_events e
+    WHERE e.workspace_id = ANY($5)
 )
-SELECT cursor_at, key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb, fact_type, auto_deploy_enabled, app_id
+SELECT cursor_at, key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb, fact_type, auto_deploy_enabled, app_id, agent_turn
 FROM feed
 WHERE (cursor_at, key) > ($1, $2) AND cursor_at <= $3
 ORDER BY cursor_at, key
@@ -916,7 +944,7 @@ func (s *PGStore) ListWebhookEvents(ctx context.Context, afterAt time.Time, afte
 	var out []WebhookEventRow
 	for rows.Next() {
 		var r WebhookEventRow
-		if err := rows.Scan(&r.CursorAt, &r.Key, &r.At, &r.TenantID, &r.ServiceID, &r.ServiceName, &r.Source, &r.Phase, &r.DeployID, &r.Status, &r.Verb, &r.FactType, &r.AutoDeployEnabled, &r.AppID); err != nil {
+		if err := rows.Scan(&r.CursorAt, &r.Key, &r.At, &r.TenantID, &r.ServiceID, &r.ServiceName, &r.Source, &r.Phase, &r.DeployID, &r.Status, &r.Verb, &r.FactType, &r.AutoDeployEnabled, &r.AppID, &r.Turn); err != nil {
 			return nil, err
 		}
 		out = append(out, r)

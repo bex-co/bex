@@ -45,6 +45,7 @@ func (s *Service) fillOutcome(ctx context.Context, record store.AgentSession, ou
 		log.Printf("agent-session outcome: list turns session=%s: %v", record.ID, err)
 		return
 	}
+	out.Cost = s.outcomeCost(ctx, record.ID)
 	latest := -1
 	for _, t := range turns {
 		if t.CompletedAt != nil && t.Turn > latest {
@@ -59,6 +60,29 @@ func (s *Service) fillOutcome(ctx context.Context, record store.AgentSession, ou
 	if latest >= 0 {
 		out.Summary, out.Files = s.outcomeSummary(ctx, record.ID, latest), s.outcomeFiles(ctx, record.ID, latest)
 	}
+}
+
+// outcomeCost is the session's platform-route model cost so far, to the
+// micro-dollar from the same events ADR091 bills (ModelCost reads them to the
+// cent). Nil when it made no priced request, and on a read failure.
+func (s *Service) outcomeCost(ctx context.Context, sessionID string) *Cost {
+	if s.ModelCosts == nil {
+		return nil
+	}
+	read, err := s.ModelCosts.AgentSessionModelUsage(ctx, sessionID)
+	if err != nil {
+		log.Printf("agent-session outcome: read model cost session=%s: %v", sessionID, err)
+		return nil
+	}
+	var total, requests int64
+	for _, t := range read.Turns {
+		total += t.PriceMicroUSD
+		requests += t.Requests
+	}
+	if requests == 0 {
+		return nil
+	}
+	return &Cost{ModelUSD: microUSDDecimal(total)}
 }
 
 func (s *Service) outcomeSummary(ctx context.Context, sessionID string, turn int) string {
@@ -95,4 +119,38 @@ func (s *Service) outcomeFiles(ctx context.Context, sessionID string, turn int) 
 		files = append(files, TurnAttachment{ID: a.ID, Name: a.Name, MediaType: a.MediaType, Size: a.SizeBytes})
 	}
 	return files
+}
+
+// TurnOutcomes is the webhook worker's read of a turn event's outcome
+// (webhooks.AgentSessionOutcomes). It is a separate type, not a Service verb:
+// it acts for the platform delivering to a subscribed endpoint and has no
+// caller identity to authorize, so it must stay out of the verb surface the
+// transports and the authorization sweep enumerate.
+type TurnOutcomes struct{ Service *Service }
+
+// AgentSessionTurnOutcome is the payload of an agent_session_turn_* webhook
+// (ADR094 D9): the session's state for the phase its turn ended in and the
+// outcome the session read carries, without the summary (which can quote
+// the repository and tool output) and the file list. It acts for the platform
+// delivering to a subscribed endpoint, not for a caller, so it does no
+// authorization. When the session has since moved on to another turn, only the
+// state and turn are reported: the row's other fields belong to the newer
+// turn. store.ErrNotFound when the session is gone.
+func (o TurnOutcomes) AgentSessionTurnOutcome(ctx context.Context, sessionID string, turn int, phase string) (string, json.RawMessage, error) {
+	s := o.Service
+	record, err := s.Store.GetAgentSession(ctx, sessionID)
+	if err != nil {
+		return "", nil, err
+	}
+	state := stateOf(phase)
+	out := &Outcome{State: state, Turn: turn}
+	if record.Turns == turn {
+		out = outcomeOf(record)
+		out.State = state
+		out.Steerable = steerable(record.Phase, record.ArchivedAt != nil)
+		s.fillOutcome(ctx, record, out)
+		out.Summary, out.Files = "", nil
+	}
+	raw, err := json.Marshal(out)
+	return state, raw, err
 }

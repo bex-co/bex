@@ -516,6 +516,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := s.admitDispatch(ctx, workspaceID); err != nil {
 		return View{}, err
 	}
+	ceiling, err := parseSessionCeiling(req.MaxSpendUSD, sessionMetered(workspaceID, req.AgentConfig.Agent, env.ModelKeySet()))
+	if err != nil {
+		return View{}, err
+	}
 	admission, err := s.trustAdmissionFor(ctx, workspaceID, req.AgentConfig.Agent, env.ModelKeySet())
 	if err != nil {
 		return View{}, err
@@ -531,7 +535,8 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		AgentConfig:   config,
 		InitialPrompt: strings.TrimSpace(req.AgentConfig.Task),
 		Title:         req.Title, Tags: req.Tags,
-		IdempotencyKey: idemKey, IdempotencyHash: idemHash,
+		MaxSpendMicroUSD: ceiling,
+		IdempotencyKey:   idemKey, IdempotencyHash: idemHash,
 		InitialAttachments: store.AgentAttachmentBinding{
 			IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx),
 		},
@@ -1719,7 +1724,7 @@ func viewOf(record store.AgentSession) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	return View{ID: record.ID, OwnerID: record.WorkspaceID, Repo: record.Repo, Branch: record.Branch, Title: record.Title, Tags: record.Tags,
+	view := View{ID: record.ID, OwnerID: record.WorkspaceID, Repo: record.Repo, Branch: record.Branch, Title: record.Title, Tags: record.Tags,
 		AgentConfig: config, SandboxID: record.SandboxID, Phase: record.Phase, Status: record.Status,
 		State: stateOf(record.Phase), Steerable: steerable(record.Phase, record.ArchivedAt != nil),
 		Outcome: outcomeOf(record),
@@ -1727,7 +1732,11 @@ func viewOf(record store.AgentSession) (View, error) {
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
-		ArchivedAt: record.ArchivedAt}, nil
+		ArchivedAt: record.ArchivedAt}
+	if record.MaxSpendMicroUSD != nil {
+		view.MaxSpendUSD = microUSDDecimal(*record.MaxSpendMicroUSD)
+	}
+	return view, nil
 }
 
 func mapStoreError(id string, err error) error {

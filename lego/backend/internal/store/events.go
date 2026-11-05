@@ -48,6 +48,9 @@ const (
 	EventSourceDeploy = "deploy"
 	EventSourceAudit  = "audit"
 	EventSourceFact   = "fact"
+	// EventSourceAgent rows come from agent_session_turn_events (ADR094 D9),
+	// read only by the webhook feed.
+	EventSourceAgent = "agent"
 )
 
 // Deploy-event phases: one deploys row yields a started event at created_at and,

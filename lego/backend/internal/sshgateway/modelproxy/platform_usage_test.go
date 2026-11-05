@@ -67,6 +67,14 @@ type usageStore struct {
 	usedMicro int64
 	reason    string
 	clock     time.Time
+	// sessionSpent is the session's recorded price (ADR094 D8's ceiling reads it).
+	sessionSpent int64
+}
+
+func (s *usageStore) AgentSessionModelSpendMicroUSD(context.Context, string, string) (int64, error) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.sessionSpent, nil
 }
 
 func (s *usageStore) GetAgentSession(_ context.Context, id string) (store.AgentSession, error) {
@@ -152,7 +160,7 @@ func platformHarness(t *testing.T, upstream *cannedTransport) (*httptest.Server,
 		plan:     store.PlanHobby,
 		clock:    time.Now().UTC(),
 	}
-	minter := &agentsession.ModelMinter{Keys: fakeKV{}, Sessions: st, Spend: st, Now: st.now}
+	minter := &agentsession.ModelMinter{Keys: fakeKV{}, Sessions: st, Spend: st, SessionSpend: st, Now: st.now}
 	mux := http.NewServeMux()
 	mux.Handle(agentsession.InternalModelMintPath, &agentsession.ModelHandler{Secret: secret, Minter: minter})
 	mux.Handle(agentsession.InternalModelUsagePath, &agentsession.ModelUsageHandler{Secret: secret, Recorder: &agentsession.ModelUsageRecorder{Store: st}})
@@ -301,6 +309,53 @@ func TestPlatformRouteSpendCapRefusesAtTheLimit(t *testing.T) {
 	eventually(t, func() bool { _, reason := st.snapshot(); return reason != "" })
 	// T0's ceiling, not the plan cap, is what binds: the reason says so.
 	if _, reason := st.snapshot(); !strings.Contains(reason, agentsession.ModelSpendCapReachedCode) || !strings.Contains(reason, "new workspaces") {
+		t.Fatalf("session failure reason = %q", reason)
+	}
+}
+
+// A session with a maxSpendUSD ceiling is served under it; at it the mint is
+// refused with the same code as the monthly cap, scope "session", and the
+// session fails with the session-ceiling reason (ADR094 D8). The workspace is
+// far under its own cap throughout.
+func TestPlatformRouteSessionCeilingRefusesAtTheLimit(t *testing.T) {
+	upstream := &cannedTransport{contentType: "application/json", body: `{"usage":{"input_tokens":1,"output_tokens":1}}`}
+	proxy, st := platformHarness(t, upstream)
+	ceiling := int64(2_000_000)
+	st.mu.Lock()
+	st.session.MaxSpendMicroUSD = &ceiling
+	st.sessionSpent = ceiling - 1
+	st.mu.Unlock()
+	resp := requestBody(t, proxy, pinnedBody)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("under the ceiling: status %d, want 200", resp.StatusCode)
+	}
+
+	st.mu.Lock()
+	st.sessionSpent = ceiling
+	st.mu.Unlock()
+	upstream.last = nil
+	resp = requestBody(t, proxy, pinnedBody)
+	body, _ := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if resp.StatusCode != http.StatusTooManyRequests || upstream.last != nil {
+		t.Fatalf("at the ceiling: status %d upstream=%v, want 429 and no upstream", resp.StatusCode, upstream.last != nil)
+	}
+	var refusal struct {
+		Type  string `json:"type"`
+		Error struct {
+			Type, Code, Message, Scope string
+		} `json:"error"`
+	}
+	if err := json.Unmarshal(body, &refusal); err != nil || refusal.Type != "error" ||
+		refusal.Error.Code != agentsession.ModelSpendCapReachedCode || refusal.Error.Scope != agentsession.ModelSpendScopeSession {
+		t.Fatalf("refusal body = %s", body)
+	}
+	if strings.Contains(string(body), platformKey) {
+		t.Fatal("refusal leaked the platform key")
+	}
+	eventually(t, func() bool { _, reason := st.snapshot(); return reason != "" })
+	if _, reason := st.snapshot(); reason != agentsession.ModelSessionSpendCapReachedReason {
 		t.Fatalf("session failure reason = %q", reason)
 	}
 }
