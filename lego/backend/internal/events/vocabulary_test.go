@@ -163,6 +163,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 	// path and record the same database credentials effect.
 	excusedVerbs["postgres.CreateCredential"] = "records CreateUser's credentials effect"
 	excusedVerbs["postgres.DeleteCredential"] = "records DeleteUser's credentials effect"
+	excusedVerbs["keyvalue.EnableInternalAuth"] = "audited as Render's EnableRedisInternalAuthEvent; Key Value has no events feed (w5/m268)"
 	// w5/m116: a dry-run is its verb's plan step stopped before the first write.
 	// It authorizes only can_view and writes nothing, so its audit row is a read
 	// that never becomes an event. The walk cannot see that: the dry-run branch's

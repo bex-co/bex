@@ -560,7 +560,9 @@ func (r *KeyValueReconciler) reconcileKeyValueCredentials(
 	}
 	desiredData := keyValueConnectionSecretData(string(auth.Data[kvPasswordKey]), internalHost,
 		kv.Spec.Public && r.KvDomain != "", kv.Name, r.KvDomain)
-	if kv.Status.InternalAuthOptional {
+	// Enabled internal auth (w5/m268) puts the password back into the URL
+	// from the first reconcile that sees it.
+	if kv.Status.InternalAuthOptional && !kv.Spec.InternalAuth {
 		desiredData["uri"] = fmt.Appendf(nil, "redis://%s:%d", kv.Name, kvPort)
 	}
 	if connection.Immutable != nil && *connection.Immutable && !secretDataEqual(connection.Data, desiredData) {
@@ -785,7 +787,7 @@ func (r *KeyValueReconciler) reconcileKeyValueService(ctx context.Context, kv *a
 		usingProxy := svc.Spec.Selector[labelKeyValueInternalProxy] == kv.Name
 		svc.Spec.Type = corev1.ServiceTypeClusterIP
 		svc.Spec.Selector = intent.labels
-		if intent.internalProxy || usingProxy {
+		if !kv.Spec.InternalAuth && (intent.internalProxy || usingProxy) {
 			svc.Spec.Selector = map[string]string{labelKeyValueInternalProxy: kv.Name}
 		}
 		svc.Spec.Ports = []corev1.ServicePort{{Port: kvPort, TargetPort: intstr.FromInt(kvPort), Name: keyValueContainerName}}
@@ -1058,16 +1060,8 @@ func (r *KeyValueReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	}
 	intent.platformSecretName = platform.Name
 
-	proxyReady, err := r.reconcileKeyValueInternalProxy(ctx, &kv, intent)
-	if err != nil {
+	if err := r.reconcileKeyValueInternalRoute(ctx, &kv, &intent); err != nil {
 		return r.kvFail(ctx, &kv, appv1alpha1.ReasonServiceFailed, err)
-	}
-	intent.internalProxy = proxyReady || kv.Status.InternalAuthOptional
-	if err := r.reconcileKeyValueService(ctx, &kv, intent); err != nil {
-		return r.kvFail(ctx, &kv, appv1alpha1.ReasonServiceFailed, err)
-	}
-	if proxyReady {
-		kv.Status.InternalAuthOptional = true
 	}
 	if result, done, err := r.prepareKeyValuePersistence(ctx, &kv, sts, platform, &intent); done || err != nil {
 		return result, err

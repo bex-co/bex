@@ -72,6 +72,7 @@ type renderKeyValue struct {
 	EnvironmentID    string                  `json:"environmentId,omitempty"`
 	ExternalHost     string                  `json:"externalHost,omitempty"`
 	Public           bool                    `json:"public"`
+	InternalAuth     bool                    `json:"internalAuth"`
 	ProjectID        string                  `json:"projectId,omitempty"`
 	// BlueprintID names the Blueprint managing this instance (w4/m125); a bex
 	// extension, since Render does not enforce Blueprint ownership.
@@ -104,6 +105,7 @@ func toRenderKeyValue(kv KeyValueView) renderKeyValue {
 		EnvironmentID: kv.EnvironmentID,
 		ExternalHost:  kv.ExternalHost,
 		Public:        kv.Public,
+		InternalAuth:  kv.InternalAuth,
 		ProjectID:     kv.ProjectID,
 		BlueprintID:   kv.BlueprintID,
 	}
@@ -243,6 +245,14 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		return map[string][]string{"cidrs": core.AllowListCIDRs(list)}, nil
 	}))
 	mux.HandleFunc("PUT "+base+"/{id}/ip-allow-list", s.handleSetIPAllowList)
+
+	// Render's "Enable Internal Authentication" is a dashboard control with no
+	// REST field; bex serves it on every surface (ADR008), so REST gets this
+	// extension. 202 like the lifecycle verbs: the operator converges it.
+	mux.HandleFunc("POST "+base+"/{id}/internal-auth", func(w http.ResponseWriter, r *http.Request) {
+		kv, err := s.EnableInternalAuth(r.Context(), r.PathValue("id"))
+		s.respondKeyValue(w, r, http.StatusAccepted, kv, err)
+	})
 
 	// --- logs (w3/m30) ---
 	mux.HandleFunc("GET "+base+"/{id}/logs", s.handleKeyValueLogs)

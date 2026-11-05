@@ -22,6 +22,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	networkingv1 "k8s.io/api/networking/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
@@ -122,7 +123,7 @@ func keyValueInternalDeploymentReady(dep *appsv1.Deployment) bool {
 }
 
 func (r *KeyValueReconciler) keyValueInternalProxyReady(ctx context.Context, kv *appv1alpha1.KeyValue) bool {
-	if r.InternalProxyImage == "" {
+	if r.InternalProxyImage == "" || kv.Spec.InternalAuth {
 		return true
 	}
 	dep := &appsv1.Deployment{}
@@ -131,4 +132,48 @@ func (r *KeyValueReconciler) keyValueInternalProxyReady(ctx context.Context, kv 
 		reader = r.Client
 	}
 	return reader.Get(ctx, client.ObjectKey{Name: keyValueInternalProxyName(kv), Namespace: kv.Namespace}, dep) == nil && keyValueInternalDeploymentReady(dep)
+}
+
+// reconcileKeyValueInternalRoute points the stable Service at the
+// password-less proxy once it is ready (w8/204) or, with internal auth enabled
+// (w5/m268), straight at Valkey — then retires the proxy, dropping the
+// connections it carried unauthenticated, as Render's restart does.
+func (r *KeyValueReconciler) reconcileKeyValueInternalRoute(ctx context.Context, kv *appv1alpha1.KeyValue, intent *keyValueIntent) error {
+	if kv.Spec.InternalAuth {
+		kv.Status.InternalAuthOptional = false
+		intent.internalProxy = false
+		if err := r.reconcileKeyValueService(ctx, kv, *intent); err != nil {
+			return err
+		}
+		return r.retireKeyValueInternalProxy(ctx, kv)
+	}
+	proxyReady, err := r.reconcileKeyValueInternalProxy(ctx, kv, *intent)
+	if err != nil {
+		return err
+	}
+	intent.internalProxy = proxyReady || kv.Status.InternalAuthOptional
+	if err := r.reconcileKeyValueService(ctx, kv, *intent); err != nil {
+		return err
+	}
+	if proxyReady {
+		kv.Status.InternalAuthOptional = true
+	}
+	return nil
+}
+
+// retireKeyValueInternalProxy removes the password-less front of a store whose
+// internal auth was enabled: its Deployment, backend Service and the two
+// NetworkPolicies that existed only for it.
+func (r *KeyValueReconciler) retireKeyValueInternalProxy(ctx context.Context, kv *appv1alpha1.KeyValue) error {
+	for _, obj := range []client.Object{
+		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: keyValueInternalProxyName(kv), Namespace: kv.Namespace}},
+		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: keyValueInternalBackendName(kv), Namespace: kv.Namespace}},
+		&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-internal-proxy-environment-ingress", Namespace: kv.Namespace}},
+		&networkingv1.NetworkPolicy{ObjectMeta: metav1.ObjectMeta{Name: kv.Name + "-internal-proxy-backend-ingress", Namespace: kv.Namespace}},
+	} {
+		if _, err := deleteAndWait(ctx, r.Client, obj); err != nil {
+			return err
+		}
+	}
+	return nil
 }

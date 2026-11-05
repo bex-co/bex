@@ -109,7 +109,10 @@ type KeyValueView struct {
 
 	// bex-native extras (Render clients ignore unknown keys).
 	ExternalHost string `json:"externalHost,omitempty"`
-	Public       bool   `json:"public"`
+	// InternalAuth is true once internal connections require the password
+	// (Render's "Enable Internal Authentication", w5/m268).
+	InternalAuth bool `json:"internalAuth"`
+	Public       bool `json:"public"`
 	// ExternalAccessRestarts is true while turning external access on would
 	// restart the store (externalAccessRestarts).
 	ExternalAccessRestarts bool `json:"externalAccessRestarts,omitempty"`
@@ -304,6 +307,7 @@ func kvView(kv *appv1alpha1.KeyValue) KeyValueView {
 	// ipAllowList is required in Render's schema — an unrestricted instance
 	// serializes as [], never as an absent key (core.AllowListOrEmpty, w6/m109).
 	return KeyValueView{
+		InternalAuth:           kv.Spec.InternalAuth,
 		ID:                     kv.Name,
 		Name:                   kv.Spec.Name,
 		Plan:                   kv.Spec.Plan,
@@ -715,6 +719,27 @@ func (s *Service) DeleteKeyValue(ctx context.Context, name string) error {
 		}
 	}
 	return s.Client.Delete(ctx, kv)
+}
+
+// EnableInternalAuth requires the password on internal (private-network)
+// connections too — Render's "Enable Internal Authentication". Like Render's
+// it is enable-only: the operator routes the internal Service straight to
+// Valkey and retires the password-less proxy, so open unauthenticated
+// connections drop and the internal URL carries the password again. Linked
+// services read the new URL on their next deploy.
+func (s *Service) EnableInternalAuth(ctx context.Context, name string) (KeyValueView, error) {
+	kv, err := s.fetchKeyValue(ctx, core.RelCanCreate, name)
+	if err != nil {
+		return KeyValueView{}, err
+	}
+	if !kv.Spec.InternalAuth {
+		kv.Spec.InternalAuth = true
+		resourcemeta.Touch(kv, s.Now())
+		if err := s.Client.Update(ctx, kv); err != nil {
+			return KeyValueView{}, err
+		}
+	}
+	return s.view(kv), nil
 }
 
 // Suspend scales a store to zero (data preserved on the PVC) — Render's KV
@@ -1283,7 +1308,7 @@ func (s *Service) KeyValueConnectionInfo(ctx context.Context, name string) (KeyV
 		}
 	}
 
-	if kv.Status.InternalAuthOptional {
+	if kv.Status.InternalAuthOptional && !kv.Spec.InternalAuth {
 		// Status is set only after the stable Service routes through a ready
 		// auth-injecting front. Publishing this sooner would hand clients an
 		// unauthenticated URL to a backend that still requires AUTH.

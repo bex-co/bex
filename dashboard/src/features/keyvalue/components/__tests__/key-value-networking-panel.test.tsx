@@ -60,7 +60,10 @@ describe("Key Value networking: external access that restarts the store", () => 
       name: "Delete data and save rules",
     });
     expect(confirm).toBeDisabled();
-    await user.type(screen.getByRole("textbox", { name: "Sudo Command" }), PHRASE);
+    await user.type(
+      screen.getByRole("textbox", { name: "Sudo Command" }),
+      PHRASE,
+    );
     await user.click(confirm);
     expect(state.save).toHaveBeenNthCalledWith(2, RULE, PHRASE);
     expect(dialog).not.toBeInTheDocument();
@@ -72,13 +75,18 @@ describe("Key Value networking: external access that restarts the store", () => 
     render(<KeyValueNetworkingPanel id="red-cache" />);
 
     await addRuleAndSave(user);
-    await user.type(screen.getByRole("textbox", { name: "Sudo Command" }), "sudo");
+    await user.type(
+      screen.getByRole("textbox", { name: "Sudo Command" }),
+      "sudo",
+    );
     await user.click(screen.getByRole("button", { name: "Cancel" }));
     expect(screen.queryByRole("dialog")).toBeNull();
     expect(state.save).toHaveBeenCalledTimes(1);
 
     await user.click(screen.getByRole("button", { name: "Save allowlist" }));
-    expect(screen.getByRole("textbox", { name: "Sudo Command" })).toHaveValue("");
+    expect(screen.getByRole("textbox", { name: "Sudo Command" })).toHaveValue(
+      "",
+    );
   });
 
   it("keeps the no-restart copy and saves directly when the listener already runs", async () => {

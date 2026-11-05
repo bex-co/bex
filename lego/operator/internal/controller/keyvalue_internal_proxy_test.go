@@ -22,6 +22,7 @@ import (
 
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -105,6 +106,57 @@ func TestKeyValueInternalProxyCutoverPreservesServerAndRouting(t *testing.T) {
 	}
 	if !reflect.DeepEqual(server.Spec, original.Spec) {
 		t.Fatal("migration changed Off server template and would discard data")
+	}
+}
+
+// w5/m268: enabling internal auth routes the stable Service straight back to
+// Valkey (which requires AUTH) even after a proxy cutover, retires the proxy
+// and its backend Service, and stops gating readiness on a proxy.
+func TestKeyValueInternalAuthRetiresTheProxyRoute(t *testing.T) {
+	ctx := context.Background()
+	scheme := keyValueBackupTestScheme(t)
+	kv := &appv1alpha1.KeyValue{ObjectMeta: metav1.ObjectMeta{Name: "red-auth", Namespace: "tea-test", UID: "auth"}}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithStatusSubresource(&appsv1.Deployment{}).Build()
+	r := &KeyValueReconciler{Client: cl, Scheme: scheme, InternalProxyImage: "bex@sha256:fixture"}
+	intent := keyValueIntent{authSecretName: "auth", credentialRevision: "revision", labels: map[string]string{labelKeyValue: kv.Name}}
+	if _, err := r.reconcileKeyValueInternalProxy(ctx, kv, intent); err != nil {
+		t.Fatal(err)
+	}
+	intent.internalProxy = true
+	if err := r.reconcileKeyValueService(ctx, kv, intent); err != nil {
+		t.Fatal(err)
+	}
+	service := &corev1.Service{}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(kv), service); err != nil || service.Spec.Selector[labelKeyValueInternalProxy] != kv.Name {
+		t.Fatalf("precondition: routed through the proxy: %v %v", service.Spec.Selector, err)
+	}
+
+	kv.Spec.InternalAuth = true
+	if err := r.reconcileKeyValueService(ctx, kv, intent); err != nil {
+		t.Fatal(err)
+	}
+	if err := cl.Get(ctx, client.ObjectKeyFromObject(kv), service); err != nil {
+		t.Fatal(err)
+	}
+	if service.Spec.Selector[labelKeyValue] != kv.Name || service.Spec.Selector[labelKeyValueInternalProxy] != "" {
+		t.Fatalf("internal auth must route to Valkey directly: %v", service.Spec.Selector)
+	}
+	if err := r.retireKeyValueInternalProxy(ctx, kv); err != nil {
+		t.Fatal(err)
+	}
+	for _, obj := range []client.Object{
+		&appsv1.Deployment{ObjectMeta: metav1.ObjectMeta{Name: keyValueInternalProxyName(kv), Namespace: kv.Namespace}},
+		&corev1.Service{ObjectMeta: metav1.ObjectMeta{Name: keyValueInternalBackendName(kv), Namespace: kv.Namespace}},
+	} {
+		if err := cl.Get(ctx, client.ObjectKeyFromObject(obj), obj); !apierrors.IsNotFound(err) {
+			t.Errorf("%T %s survived: %v", obj, obj.GetName(), err)
+		}
+	}
+	if err := r.retireKeyValueInternalProxy(ctx, kv); err != nil {
+		t.Fatalf("retiring again must be a no-op: %v", err)
+	}
+	if !r.keyValueInternalProxyReady(ctx, kv) {
+		t.Fatal("readiness must not wait for a retired proxy")
 	}
 }
 

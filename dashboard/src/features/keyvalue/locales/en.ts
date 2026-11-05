@@ -404,6 +404,35 @@ const enKeyValue: Record<string, TranslationEntry> = {
       "Connection strings for this Key Value store. Revealed only when you ask — never shown automatically.",
     description: "Connection-info panel card description",
   },
+  "keyvalue.internalAuthOff": {
+    message: "Internal connections don't require a password.",
+    description: "Connections panel: internal auth off",
+  },
+  "keyvalue.internalAuthOn": {
+    message: "Internal connections require the password.",
+    description: "Connections panel: internal auth on",
+  },
+  "keyvalue.internalAuthEnable": {
+    message: "Enable Internal Authentication",
+    description: "Button and confirm label (Render's wording)",
+  },
+  "keyvalue.internalAuthConfirmTitle": {
+    message: "Enable internal authentication?",
+    description: "Confirm dialog title",
+  },
+  "keyvalue.internalAuthConfirmBody": {
+    message:
+      "Every internal connection will need the password. Existing connections that use the unauthenticated URL will break, and linked services pick up the new URL on their next deploy; update them to the URL shown in the connection info. This can't be undone.",
+    description: "Confirm dialog body",
+  },
+  "keyvalue.internalAuthEnabled": {
+    message: "Internal authentication enabled for {name}.",
+    description: "Toast after enabling",
+  },
+  "keyvalue.internalAuthError": {
+    message: "Couldn't enable internal authentication. Please try again.",
+    description: "Toast when enabling fails",
+  },
   "keyvalue.connReveal": {
     message: "Reveal connection info",
     description: "Button that fetches the connection info on demand",

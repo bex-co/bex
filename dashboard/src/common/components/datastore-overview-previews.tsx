@@ -132,6 +132,17 @@ export function DatastoreConnectionsPreview({ kind }: { kind: DatastoreKind }) {
         <CardDescription>{t(copy.description)}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {kind === "keyvalue" ? (
+          // The internal-auth row in its default (off) state (w5/m268).
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <p className="text-sm text-muted-foreground">
+              {t("keyvalue.internalAuthOff")}
+            </p>
+            <Button variant="outline" size="sm" disabled>
+              {t("keyvalue.internalAuthEnable")}
+            </Button>
+          </div>
+        ) : null}
         <Button disabled>
           <Eye />
           {t(copy.reveal)}

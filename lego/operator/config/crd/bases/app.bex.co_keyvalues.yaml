@@ -67,6 +67,15 @@ spec:
                 items:
                   type: string
                 type: array
+              internalAuth:
+                description: |-
+                  InternalAuth requires authentication on internal (private-network)
+                  connections too — Render's "Enable Internal Authentication" (w5/m268).
+                  Off, internal clients connect without a password through the
+                  auth-injecting proxy (w8/204); on, the internal Service routes straight
+                  to Valkey, which always requires AUTH, and the internal URL carries the
+                  password. Like Render's, it is enable-only.
+                type: boolean
               ipAllowList:
                 description: |-
                   IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs in the
@@ -177,6 +186,10 @@ spec:
             required:
             - name
             type: object
+            x-kubernetes-validations:
+            - message: internalAuth cannot be turned off once enabled
+              rule: '!has(oldSelf.internalAuth) || !oldSelf.internalAuth || (has(self.internalAuth)
+                && self.internalAuth)'
           status:
             description: KeyValueStatus is the observed state of a KeyValue.
             properties:

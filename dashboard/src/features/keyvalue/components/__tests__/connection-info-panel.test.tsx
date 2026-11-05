@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { ConnectionInfoPanel } from "@/features/keyvalue/components/connection-info-panel";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
@@ -16,6 +16,11 @@ const state: {
   error: Error | undefined;
 } = { info: null, loading: false, error: undefined };
 
+const enable = vi.fn();
+vi.mock("@/features/keyvalue/hooks/use-enable-key-value-internal-auth", () => ({
+  useEnableKeyValueInternalAuth: () => ({ enable, loading: false }),
+}));
+
 vi.mock("@/features/keyvalue/hooks/use-connection-info", () => ({
   useConnectionInfo: () => ({ ...state, reveal, hide }),
 }));
@@ -26,12 +31,13 @@ beforeEach(() => {
   state.error = undefined;
   reveal.mockReset();
   hide.mockReset();
+  enable.mockReset();
   vi.mocked(useCapabilities).mockReturnValue(PERMISSIVE);
 });
 
 describe("ConnectionInfoPanel", () => {
   it("shows only the Reveal button until asked — nothing password-bearing on screen", () => {
-    render(<ConnectionInfoPanel id="kv" />);
+    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} />);
     expect(
       screen.getByRole("button", { name: /reveal connection info/i }),
     ).toBeInTheDocument();
@@ -41,7 +47,7 @@ describe("ConnectionInfoPanel", () => {
 
   it("calls reveal on click", async () => {
     const user = userEvent.setup();
-    render(<ConnectionInfoPanel id="kv" />);
+    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} />);
     await user.click(
       screen.getByRole("button", { name: /reveal connection info/i }),
     );
@@ -55,7 +61,7 @@ describe("ConnectionInfoPanel", () => {
       canViewSensitive: false,
     });
     const user = userEvent.setup();
-    render(<ConnectionInfoPanel id="kv" />);
+    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} />);
 
     const revealButton = screen.getByRole("button", {
       name: /reveal connection info/i,
@@ -69,7 +75,7 @@ describe("ConnectionInfoPanel", () => {
   });
 
   it("keeps Reveal enabled with can_view_sensitive, matching the databases panel", () => {
-    render(<ConnectionInfoPanel id="kv" />);
+    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} />);
     expect(
       screen.getByRole("button", { name: /reveal connection info/i }),
     ).toBeEnabled();
@@ -81,7 +87,7 @@ describe("ConnectionInfoPanel", () => {
       externalConnectionString: "",
       cliCommand: "redis-cli -u redis://default:s3cr3t@kv.default.svc:6379",
     };
-    render(<ConnectionInfoPanel id="kv" />);
+    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} />);
 
     expect(screen.getByText("Internal Key Value URL")).toBeInTheDocument();
     expect(
@@ -106,7 +112,7 @@ describe("ConnectionInfoPanel", () => {
       externalConnectionString: "rediss://default:s3cr3t@kv.kv.bex.co:6379",
       cliCommand: "redis-cli -u redis://default:s3cr3t@kv.default.svc:6379",
     };
-    render(<ConnectionInfoPanel id="kv" />);
+    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} />);
 
     expect(screen.getByText("External Key Value URL")).toBeInTheDocument();
     expect(
@@ -116,9 +122,51 @@ describe("ConnectionInfoPanel", () => {
 
   it("renders an error state when the reveal failed", () => {
     state.error = new Error("forbidden");
-    render(<ConnectionInfoPanel id="kv" />);
+    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} />);
     expect(
       screen.getByText("Couldn't load connection info"),
     ).toBeInTheDocument();
+  });
+
+  // w5/m268: Render's Info → Connections "Enable Internal Authentication",
+  // behind a confirmation that names what breaks; enable-only.
+  it("enables internal authentication only after the confirmation", async () => {
+    const user = userEvent.setup();
+    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} />);
+    expect(
+      screen.getByText("Internal connections don't require a password."),
+    ).toBeInTheDocument();
+    await user.click(
+      screen.getByRole("button", { name: "Enable Internal Authentication" }),
+    );
+    expect(enable).not.toHaveBeenCalled();
+    const dialog = await screen.findByRole("alertdialog");
+    expect(dialog).toHaveTextContent(/Existing connections .* will break/);
+    await user.click(
+      within(dialog).getByRole("button", {
+        name: "Enable Internal Authentication",
+      }),
+    );
+    expect(enable).toHaveBeenCalledWith("kv", "cache");
+  });
+
+  it("offers no control once internal authentication is on", () => {
+    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth />);
+    expect(
+      screen.getByText("Internal connections require the password."),
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: "Enable Internal Authentication" }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("disables enabling for a role that cannot change the store", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ canCreate: false }),
+    );
+    render(<ConnectionInfoPanel id="kv" name="cache" internalAuth={false} />);
+    expect(
+      screen.getByRole("button", { name: "Enable Internal Authentication" }),
+    ).toBeDisabled();
   });
 });

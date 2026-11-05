@@ -49,6 +49,8 @@ query KeyValue($id: String!) {
     # Off must ask for the data-loss confirmation here too (w4/m226).
     maxmemoryPolicy
     persistenceMode
+    # Whether internal connections require the password (w5/m268).
+    internalAuth
   }
 }
 
@@ -213,5 +215,13 @@ mutation ResumeKeyValue($id: String!) {
   resumeKeyValue(id: $id) {
     id
     suspended
+  }
+}
+
+# Render's Enable Internal Authentication (w5/m268): enable-only.
+mutation EnableKeyValueInternalAuth($id: String!) {
+  enableKeyValueInternalAuth(id: $id) {
+    id
+    internalAuth
   }
 }

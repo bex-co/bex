@@ -33,6 +33,7 @@ const AnnotationPreserveKeyValueBackups = "app.bex.co/preserve-backups-on-delete
 // key-value store — the Render-style "add a Key Value" unit. The operator
 // projects it to a single-instance Valkey StatefulSet in the same namespace; the
 // plan sets resources/storage. See docs/ADR021-keyvalue-management.md.
+// +kubebuilder:validation:XValidation:rule="!has(oldSelf.internalAuth) || !oldSelf.internalAuth || (has(self.internalAuth) && self.internalAuth)",message="internalAuth cannot be turned off once enabled"
 type KeyValueSpec struct {
 	// Name is the required mutable, user-facing key-value name. metadata.name is
 	// the immutable red-... resource id and the data-plane identity used for
@@ -94,6 +95,15 @@ type KeyValueSpec struct {
 	// password and endpoint. Default: running.
 	// +optional
 	Suspended bool `json:"suspended,omitempty"`
+
+	// InternalAuth requires authentication on internal (private-network)
+	// connections too — Render's "Enable Internal Authentication" (w5/m268).
+	// Off, internal clients connect without a password through the
+	// auth-injecting proxy (w8/204); on, the internal Service routes straight
+	// to Valkey, which always requires AUTH, and the internal URL carries the
+	// password. Like Render's, it is enable-only.
+	// +optional
+	InternalAuth bool `json:"internalAuth,omitempty"`
 
 	// IPAllowList restricts the EXTERNAL (public) endpoint to these CIDRs in the
 	// shared SNI proxy. Empty => the external endpoint is open to all source IPs.

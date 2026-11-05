@@ -168,6 +168,7 @@ export type AgentSessionOutcome = {
   __typename: 'AgentSessionOutcome';
   deliveryNote: Maybe<Scalars['String']['output']>;
   failureReasonCode: Maybe<Scalars['String']['output']>;
+  files: Maybe<Array<AgentSessionTurnAttachment>>;
   pullRequest: Maybe<AgentSessionPullRequest>;
   state: Scalars['String']['output'];
   steerable: Scalars['Boolean']['output'];
@@ -1208,6 +1209,7 @@ export type KeyValue = {
   externalAccessRestarts: Maybe<Scalars['Boolean']['output']>;
   externalHost: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
+  internalAuth: Maybe<Scalars['Boolean']['output']>;
   ipAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   ipAllowListEntries: Maybe<Array<Maybe<IpAllowListEntry>>>;
   maxmemoryPolicy: Maybe<Scalars['String']['output']>;
@@ -1451,6 +1453,7 @@ export type Mutation = {
   disableAutoscaling: Maybe<Scalars['Boolean']['output']>;
   disconnectBlueprint: Maybe<Scalars['Boolean']['output']>;
   disconnectGit: Maybe<Scalars['Boolean']['output']>;
+  enableKeyValueInternalAuth: Maybe<KeyValue>;
   executeDatabaseQuery: Maybe<DatabaseQueryResult>;
   failoverDatabase: Maybe<Scalars['Boolean']['output']>;
   finalizeWorkspaceCreation: Maybe<Workspace>;
@@ -1853,6 +1856,7 @@ export type MutationCreateSshKeyArgs = {
 
 
 export type MutationCreateSandboxArgs = {
+  idleTimeoutSeconds?: InputMaybe<Scalars['Int']['input']>;
   networkPolicy?: InputMaybe<SandboxNetworkPolicyInput>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   plan?: InputMaybe<Scalars['String']['input']>;
@@ -2067,6 +2071,11 @@ export type MutationDisconnectBlueprintArgs = {
 export type MutationDisconnectGitArgs = {
   installationId?: InputMaybe<Scalars['Float']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationEnableKeyValueInternalAuthArgs = {
+  id: Scalars['String']['input'];
 };
 
 
@@ -3843,6 +3852,7 @@ export type QuerySandboxArgs = {
 
 export type QuerySandboxesArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
+  status?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 
@@ -4129,6 +4139,7 @@ export type SshKey = {
 export type Sandbox = {
   __typename: 'Sandbox';
   id: Scalars['String']['output'];
+  idleTimeoutSeconds: Maybe<Scalars['Int']['output']>;
   image: Maybe<Scalars['String']['output']>;
   networkPolicy: Maybe<SandboxNetworkPolicy>;
   owner: Maybe<Scalars['String']['output']>;

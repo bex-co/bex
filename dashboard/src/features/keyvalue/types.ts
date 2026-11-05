@@ -32,6 +32,8 @@ export interface KeyValueView {
   statusReason?: string | null;
   /** The code of statusReason (the operator's Ready reason), else null. */
   statusReasonCode?: string | null;
+  /** Whether internal connections require the password; detail query only. */
+  internalAuth?: boolean;
 }
 
 /** The connection strings, fetched on demand (never in the list). The

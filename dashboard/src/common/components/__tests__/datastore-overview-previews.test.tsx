@@ -69,6 +69,9 @@ const masked = { info: null, loading: false, error: undefined };
 vi.mock("@/features/databases/hooks/use-connection-info", () => ({
   useConnectionInfo: () => ({ ...masked, reveal: vi.fn(), hide: vi.fn() }),
 }));
+vi.mock("@/features/keyvalue/hooks/use-enable-key-value-internal-auth", () => ({
+  useEnableKeyValueInternalAuth: () => ({ enable: vi.fn(), loading: false }),
+}));
 vi.mock("@/features/keyvalue/hooks/use-connection-info", () => ({
   useConnectionInfo: () => ({ ...masked, reveal: vi.fn(), hide: vi.fn() }),
 }));
@@ -138,7 +141,12 @@ describe("datastore Details and Connections previews (w4/298)", () => {
         keyValue={keyValue}
         onRenamed={vi.fn()}
       />,
-      <KeyValueConnectionInfoPanel key="connections" id={keyValue.id} />,
+      <KeyValueConnectionInfoPanel
+        key="connections"
+        id={keyValue.id}
+        name={keyValue.name}
+        internalAuth={false}
+      />,
     ],
   ] as const) {
     it(`${name} Details preview has the ready name lead and facts grid`, () => {
@@ -166,10 +174,13 @@ describe("datastore Details and Connections previews (w4/298)", () => {
       const ready = card(readyConnections);
       expect(shape(pending)).toBe(shape(ready));
       expect(pending.hasAttribute("inert")).toBe(true);
-      const reveal = within(pending as HTMLElement).getByRole("button", {
+      // Reveal (and, for Key Value, Enable Internal Authentication, w5/m268)
+      // stay disabled in the preview.
+      const buttons = within(pending as HTMLElement).getAllByRole("button", {
         hidden: true,
-      }) as HTMLButtonElement;
-      expect(reveal.disabled).toBe(true);
+      }) as HTMLButtonElement[];
+      expect(buttons.length).toBeGreaterThan(0);
+      for (const button of buttons) expect(button.disabled).toBe(true);
     });
   }
 });

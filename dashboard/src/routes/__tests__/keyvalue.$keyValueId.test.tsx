@@ -52,6 +52,14 @@ vi.mock("@/features/keyvalue/hooks/use-delete-key-value", () => ({
   useDeleteKeyValue: () => ({ remove: vi.fn(), deleting: null }),
 }));
 
+const enableInternalAuth = vi.fn();
+vi.mock("@/features/keyvalue/hooks/use-enable-key-value-internal-auth", () => ({
+  useEnableKeyValueInternalAuth: () => ({
+    enable: enableInternalAuth,
+    loading: false,
+  }),
+}));
+
 const lifecycleRun = vi.fn();
 vi.mock("@/features/keyvalue/hooks/use-key-value-lifecycle", () => ({
   useKeyValueLifecycle: () => ({ pending: null, run: lifecycleRun }),

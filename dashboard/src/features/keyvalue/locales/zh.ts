@@ -394,6 +394,35 @@ const zhKeyValue: Record<string, TranslationEntry> = {
     message: "该键值存储的连接字符串。仅在你请求时才会显示——绝不会自动展示。",
     description: "Connection-info panel card description",
   },
+  "keyvalue.internalAuthOff": {
+    message: "内部连接无需密码。",
+    description: "Connections panel: internal auth off",
+  },
+  "keyvalue.internalAuthOn": {
+    message: "内部连接需要密码。",
+    description: "Connections panel: internal auth on",
+  },
+  "keyvalue.internalAuthEnable": {
+    message: "启用内部认证",
+    description: "Button and confirm label (Render's wording)",
+  },
+  "keyvalue.internalAuthConfirmTitle": {
+    message: "启用内部认证？",
+    description: "Confirm dialog title",
+  },
+  "keyvalue.internalAuthConfirmBody": {
+    message:
+      "之后所有内部连接都需要密码。使用无认证 URL 的现有连接会断开，关联的服务在下次部署时改用新 URL；请把它们改为连接信息中显示的 URL。此操作无法撤销。",
+    description: "Confirm dialog body",
+  },
+  "keyvalue.internalAuthEnabled": {
+    message: "已为 {name} 启用内部认证。",
+    description: "Toast after enabling",
+  },
+  "keyvalue.internalAuthError": {
+    message: "无法启用内部认证，请重试。",
+    description: "Toast when enabling fails",
+  },
   "keyvalue.connReveal": {
     message: "显示连接信息",
     description: "Button that fetches the connection info on demand",

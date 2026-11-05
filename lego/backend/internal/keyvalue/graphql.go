@@ -45,6 +45,7 @@ var keyValueGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"dashboardUrl":     gqlutil.StrField(func(v KeyValueView) any { return v.DashboardURL }),
 		"externalHost":     gqlutil.StrField(func(v KeyValueView) any { return v.ExternalHost }),
 		"public":           gqlutil.BoolField(func(v KeyValueView) any { return v.Public }),
+		"internalAuth":     gqlutil.BoolField(func(v KeyValueView) any { return v.InternalAuth }),
 		// externalAccessRestarts: turning external access on would restart the
 		// store (an older store's first enable, w4/m233; a store that switches TLS
 		// at runtime never restarts for it, w8/m134). bex extension.
@@ -257,6 +258,8 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 		"resumeKeyValue": gqlutil.IDVerb(keyValueGQLType, s.Resume),
+		// Enable-only: open unauthenticated internal connections drop.
+		"enableKeyValueInternalAuth": gqlutil.IDVerb(keyValueGQLType, s.EnableInternalAuth),
 		// setKeyValuePublic is the explicit external-endpoint control (w4/m116),
 		// overriding the publication a nonempty or empty allowlist infers.
 		// confirm carries the restart phrase a first enable needs on a

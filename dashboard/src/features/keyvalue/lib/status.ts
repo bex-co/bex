@@ -46,6 +46,7 @@ export function toKeyValueView(
     statusReason: "statusReason" in d ? d.statusReason || null : null,
     statusReasonCode:
       "statusReasonCode" in d ? d.statusReasonCode || null : null,
+    internalAuth: "internalAuth" in d ? (d.internalAuth ?? false) : undefined,
   };
 }
 

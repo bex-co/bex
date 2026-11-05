@@ -161,6 +161,14 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	})
 
 	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "enable_keyvalue_internal_auth",
+		Description: "Require the password on a managed key-value store's internal (private-network) connections — Render's Enable Internal Authentication. Enable-only: open unauthenticated internal connections drop, the internal connection string then carries the password, and linked services pick it up on their next deploy. bex extension over Render's MCP.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in keyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {
+		v, err := s.EnableInternalAuth(ctx, in.KeyValueID)
+		return nil, v, err
+	})
+
+	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "resume_keyvalue",
 		Description: "Resume a suspended managed key-value store (restart compute; the data volume, password and endpoint are unchanged). bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in keyValueArgs) (*mcp.CallToolResult, KeyValueView, error) {

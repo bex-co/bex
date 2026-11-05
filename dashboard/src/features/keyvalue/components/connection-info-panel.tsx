@@ -1,4 +1,6 @@
+import { useState } from "react";
 import { Eye, Loader2 } from "lucide-react";
+import { ConfirmDialog } from "@/common/components/confirm-dialog";
 import {
   Card,
   CardContent,
@@ -14,6 +16,7 @@ import {
 } from "@/common/components/ui/alert";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useConnectionInfo } from "@/features/keyvalue/hooks/use-connection-info";
+import { useEnableKeyValueInternalAuth } from "@/features/keyvalue/hooks/use-enable-key-value-internal-auth";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { PermissionTooltip } from "@/features/capabilities/components/permission-tooltip";
 import { ConnectionField } from "@/common/components/connection-field";
@@ -29,7 +32,15 @@ import type { KeyValueConnectionInfoView } from "@/features/keyvalue/types";
  * standalone password field to further mask — mirrors
  * `databases/connection-info-panel` minus its PasswordField.
  */
-export function ConnectionInfoPanel({ id }: { id: string }) {
+export function ConnectionInfoPanel({
+  id,
+  name,
+  internalAuth,
+}: {
+  id: string;
+  name: string;
+  internalAuth: boolean;
+}) {
   const { t } = useTranslations();
   const { info, loading, error, reveal, hide } = useConnectionInfo(id);
   // Revealing the URIs is can_view_sensitive — the password lives inside the
@@ -54,6 +65,8 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
           </Alert>
         ) : null}
 
+        <InternalAuthSection id={id} name={name} enabled={internalAuth} />
+
         {info ? (
           <>
             <RevealedInfo info={info} />
@@ -74,6 +87,58 @@ export function ConnectionInfoPanel({ id }: { id: string }) {
         )}
       </CardContent>
     </Card>
+  );
+}
+
+// Render's Info → Connections control: internal connections need no password
+// until it is enabled, and enabling cannot be undone.
+function InternalAuthSection({
+  id,
+  name,
+  enabled,
+}: {
+  id: string;
+  name: string;
+  enabled: boolean;
+}) {
+  const { t } = useTranslations();
+  const { enable, loading } = useEnableKeyValueInternalAuth();
+  const [open, setOpen] = useState(false);
+  const capabilities = useCapabilities();
+  const reasonKey = capabilities.reasonKey("can_create");
+  if (enabled) {
+    return (
+      <p className="text-sm text-muted-foreground">
+        {t("keyvalue.internalAuthOn")}
+      </p>
+    );
+  }
+  return (
+    <div className="flex flex-wrap items-center justify-between gap-2">
+      <p className="text-sm text-muted-foreground">
+        {t("keyvalue.internalAuthOff")}
+      </p>
+      <PermissionTooltip reason={reasonKey ? t(reasonKey) : undefined}>
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={() => setOpen(true)}
+          disabled={loading || !capabilities.canCreate}
+        >
+          {t("keyvalue.internalAuthEnable")}
+        </Button>
+      </PermissionTooltip>
+      <ConfirmDialog
+        open={open}
+        onOpenChange={setOpen}
+        title={t("keyvalue.internalAuthConfirmTitle")}
+        description={t("keyvalue.internalAuthConfirmBody")}
+        cancelLabel={t("common.cancel")}
+        confirmLabel={t("keyvalue.internalAuthEnable")}
+        pending={loading}
+        onConfirm={() => void enable(id, name)}
+      />
+    </div>
   );
 }
 

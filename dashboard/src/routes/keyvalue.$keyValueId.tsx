@@ -238,13 +238,16 @@ export function KeyValueDetailPage() {
                   id="connection"
                   className={SECTION_NAVIGATION_TARGET_CLASS}
                 >
-                  {/* A revealed snapshot belongs to one publication state: when a
-                      confirmed access change flips `public`, remount so the old
-                      external URL is no longer copyable and a fresh Reveal is
-                      required (w4/222). Renames and status polls keep it. */}
+                  {/* A revealed snapshot belongs to one publication and
+                      internal-auth state: when a confirmed change flips
+                      `public` or `internalAuth`, remount so the old URL is no
+                      longer copyable and a fresh Reveal is required (w4/222).
+                      Renames and status polls keep it. */}
                   <ConnectionInfoPanel
-                    key={`${keyValue.id}:${keyValue.public}`}
+                    key={`${keyValue.id}:${keyValue.public}:${keyValue.internalAuth}`}
                     id={keyValue.id}
+                    name={keyValue.name}
+                    internalAuth={keyValue.internalAuth ?? false}
                   />
                 </section>
                 <section
