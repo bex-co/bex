@@ -42,6 +42,17 @@ lego/operator/cmd/activator/activator
 /.pm/**/*.gz
 /.pm/**/*.zip
 /.pm/**/*.bin
+# Evidence dumps of any size: raw run output stays local or in object storage;
+# the board keeps markdown only.
+/.pm/**/*evidence*/
+/.pm/**/*.json
+/.pm/**/*.jsonl
+/.pm/**/*.log
+/.pm/**/*.stdout
+/.pm/**/*.stderr
+/.pm/**/*evidence*.txt
+/.pm/**/*.log.txt
+/mobile/e2e/artifacts/
 
 # Python bytecode caches
 __pycache__/

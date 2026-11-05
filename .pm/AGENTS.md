@@ -4,7 +4,7 @@ Internal PM board — see [README.md](README.md). `/pm` is the only skill that w
 
 ## Evidence lives outside git
 
-The board is markdown and small text (user decision 2026-11-04, w6/100 D10). Never commit build artifacts or bulk evidence here: no file over 1 MiB and no `whl`/`gz`/`tar`/`zip`/`bin`/image/`pdf`/database file under `.pm/`. Upload them to object storage and record the sha256 and link in the item. `scripts/repo-artifact-guard.sh` rejects violations at ship time and in CI.
+The board is markdown and small text (user decision 2026-11-04, w6/100 D10). Never commit build artifacts or bulk evidence here: no file over 1 MiB and no `whl`/`gz`/`tar`/`zip`/`bin`/image/`pdf`/database file under `.pm/`. Raw run output of any size is evidence too: no `*evidence*` directory, no `json`/`jsonl`/`log`/`stdout`/`stderr` or `*evidence*.txt` file anywhere under `.pm/` (second history rewrite, 2026-11-04). Keep it in a local `evidence/` directory (gitignored) or upload it, and write the conclusion, the sha256 and the link into the item's markdown. `scripts/repo-artifact-guard.sh` rejects violations at ship time and in CI.
 
 ## Done items move to `done/` folders
 

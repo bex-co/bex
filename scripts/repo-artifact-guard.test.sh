@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # repo-artifact-guard.test.sh — repo-artifact-guard.sh against throwaway repos:
-# a big blob, a .pm archive, a big blob a later commit deletes, and a
-# size-filtered partial clone whose big blob was never fetched.
+# a big blob, a .pm archive, small evidence dumps, a big blob a later commit
+# deletes, and a size-filtered partial clone whose big blob was never fetched.
 set -euo pipefail
 
 guard=$(cd "$(dirname "$0")" && pwd)/repo-artifact-guard.sh
@@ -40,6 +40,18 @@ rejects ".pm/w1/Report Copy.ZIP (binary/archive under .pm)"
 git rm -q '.pm/w1/Report Copy.ZIP' && commit drop-zip
 passes
 rejects ".pm/w1/evidence.whl" "$base"
+
+dumps=(.pm/w1/m2/evidence/run/notes.md .pm/w1/done/038-evidence/cases.txt
+  .pm/w1/done/m3/receipt.json .pm/w1/m4/build.stdout .pm/w1/m5/Walkthrough-Evidence.txt
+  .pm/w1/m5/diagnostic.log.txt mobile/e2e/artifacts/m1/screen.md shot.PNG)
+for dump in "${dumps[@]}"; do mkdir -p "$(dirname "$dump")" && echo x >"$dump"; done
+git add . && commit dumps
+rejects "${dumps[0]} (evidence dump)"
+for dump in "${dumps[@]}"; do grep -qF "$dump (evidence dump)" "$tmp/err" || fail "dump not rejected: $dump"; done
+git rm -q "${dumps[@]}" && commit drop-dumps
+mkdir -p .pm/w1/m6 lego/testdata && echo x >.pm/w1/m6/evidence-locator.md && echo x >lego/testdata/evidence.json
+git add . && commit kept
+passes
 
 head -c 1048576 /dev/zero >lego-binary
 git add . && commit big

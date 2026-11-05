@@ -9,6 +9,9 @@
 #   - Nothing under .pm/ may carry a binary/archive extension. The board is
 #     markdown and small text; artifacts go to object storage, and the board
 #     records their sha256 and link.
+#   - No evidence dumps, whatever their size: no .pm directory named
+#     *evidence*, no .pm json/jsonl/log/stdout/stderr or *evidence*.txt, no
+#     mobile/e2e/artifacts/, no image at the repo root.
 #
 #   bash scripts/repo-artifact-guard.sh            # every blob in HEAD's tree
 #   bash scripts/repo-artifact-guard.sh <base>     # every blob added in base..HEAD
@@ -22,6 +25,7 @@ set -euo pipefail
 
 limit=$((1024 * 1024))
 pm_ext='whl|gz|tgz|tar|zip|bin|xz|zst|bz2|7z|jar|so|dylib|exe|png|jpg|jpeg|gif|webp|pdf|mp4|mov|sqlite|db'
+dump_re='^\\.pm/(.*/)?[^/]*evidence[^/]*/|^\\.pm/.*\\.(json|jsonl|log|stdout|stderr)$|^\\.pm/.*(evidence[^/]*|\\.log)\\.txt$|^mobile/e2e/artifacts/|^[^/]+\\.(png|jpe?g|gif|webp)$'
 if [ $# -gt 0 ]; then
   revs=("$1..HEAD")
   # Every path a pushed commit adds, including ones a later commit deletes.
@@ -45,7 +49,9 @@ bad=$(
         path = $0; sub(/^[^ ]+ [^ ]+ [^ ]+ ?/, "", path)
         print path " (" $3 " bytes >= 1 MiB)"
       }'
-    awk -v ext="$pm_ext" '/^\.pm\// && tolower($0) ~ "\\.(" ext ")$" {print $0 " (binary/archive under .pm)"}' <<<"$paths"
+    awk -v ext="$pm_ext" -v dump="$dump_re" '{ p = tolower($0) }
+      p ~ ("^\\.pm/.*\\.(" ext ")$") { print $0 " (binary/archive under .pm)" }
+      p ~ dump { print $0 " (evidence dump)" }' <<<"$paths"
   } | sort -u
 )
 if [ -n "$bad" ]; then
