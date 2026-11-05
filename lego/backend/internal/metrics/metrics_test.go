@@ -1197,7 +1197,7 @@ func TestMonthToDateBandwidthSourceSplitsEndedHoursFromTheCurrentHour(t *testing
 			if !strings.Contains(r.query, fmt.Sprintf("[%ds:3600s]", hours*3600)) || r.at != fmt.Sprint(hourStart.Unix()) {
 				t.Errorf("ended-hours read %q at %s, want %d hours evaluated on the hour %d", r.query, r.at, hours, hourStart.Unix())
 			}
-		case strings.Contains(r.query, "increase(") && strings.Contains(r.query, "[2400s]"):
+		case strings.Contains(r.query, "offset 2400s"):
 			sawPartial = true
 		}
 	}

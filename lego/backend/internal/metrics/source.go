@@ -967,12 +967,14 @@ func parsePromMatrix(pr promRangeResponse) ([]MetricSeries, error) {
 // between reads) plus the current partial hour. One increase() over the whole
 // window extrapolates across a span that grows with every read, which made a
 // flat counter's month-to-date figure go down for an App created this month
-// (w4/468). A window inside a single hour is just the one increase().
+// (w4/468). The current hour is an exact counter delta, not increase(), which
+// still extrapolated over a window that grows with every read (w4/477); a
+// window inside a single hour is just that delta.
 func monthToDateIncrease(ctx context.Context, hc *http.Client, base string, spec egressquery.Spec, since, at time.Time) (float64, error) {
 	hourStart := at.Truncate(time.Hour)
 	firstHour := since.Truncate(time.Hour)
 	if !hourStart.After(firstHour) {
-		return egressquery.Instant(ctx, hc, base, egressquery.Increase(spec, int64(at.Sub(since)/time.Second)), at)
+		return egressquery.Instant(ctx, hc, base, egressquery.ExactDelta(spec, int64(at.Sub(since)/time.Second)), at)
 	}
 	hours := int64(hourStart.Sub(firstHour) / time.Hour)
 	completed, err := egressquery.Instant(ctx, hc, base, egressquery.CompletedHoursIncrease(spec, hours), hourStart)
@@ -983,7 +985,7 @@ func monthToDateIncrease(ctx context.Context, hc *http.Client, base string, spec
 	if partial <= 0 {
 		return completed, nil
 	}
-	current, err := egressquery.Instant(ctx, hc, base, egressquery.IncreaseOrZero(spec, partial), at)
+	current, err := egressquery.Instant(ctx, hc, base, egressquery.ExactDelta(spec, partial), at)
 	if err != nil {
 		return 0, err
 	}

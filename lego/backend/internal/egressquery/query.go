@@ -176,6 +176,19 @@ func CompletedHoursIncrease(spec Spec, hours int64) string {
 	return fmt.Sprintf(`(sum_over_time(sum(increase(%s{%s}[3600s]))[%ds:3600s]) or vector(0))`, spec.Counter, spec.Matchers, hours*3600)
 }
 
+// ExactDelta is the bytes counted over the last `seconds` as the counter's value
+// now minus its value `seconds` ago, per series, with a series that did not
+// exist yet starting from zero. Unlike increase() it never extrapolates to the
+// window edges, so a flat counter reads the same on every later instant and a
+// month-to-date figure built from it cannot shrink between reads (w4/477). A
+// counter reset clamps that series to zero rather than going negative. Use it
+// only for the live current-hour term: billing windows are fixed and keep
+// Increase.
+func ExactDelta(spec Spec, seconds int64) string {
+	series := fmt.Sprintf(`%s{%s}`, spec.Counter, spec.Matchers)
+	return fmt.Sprintf(`(sum(clamp_min(%[1]s - (%[1]s offset %[2]ds or %[1]s * 0), 0)) or vector(0))`, series, seconds)
+}
+
 // IncreaseOrZero is the chart-grade sibling of Increase: a missing source
 // contributes 0 instead of nulling the composed sum.
 func IncreaseOrZero(spec Spec, seconds int64) string {

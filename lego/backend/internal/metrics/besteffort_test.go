@@ -103,11 +103,11 @@ func TestMonthToDateBandwidthSourceBestEffortOnUnhealthySource(t *testing.T) {
 		query := r.URL.Query().Get("query")
 		value := "1"
 		switch {
-		case strings.Contains(query, "increase(traefik_router_responses_bytes_total"):
+		case strings.Contains(query, "clamp_min(traefik_router_responses_bytes_total"):
 			value = "1048576"
-		case strings.Contains(query, "increase(bex_websocket_egress_bytes_total"):
+		case strings.Contains(query, "clamp_min(bex_websocket_egress_bytes_total"):
 			value = "2097152"
-		case strings.Contains(query, "increase(bex_app_direct_egress_bytes_total"):
+		case strings.Contains(query, "clamp_min(bex_app_direct_egress_bytes_total"):
 			value = "3145728"
 		case strings.Contains(query, `up{job="traefik"}`): // the http health product
 			value = "0"
@@ -116,7 +116,7 @@ func TestMonthToDateBandwidthSourceBestEffortOnUnhealthySource(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	// Inside one UTC hour: a single increase() per source, whatever the clock says.
+	// Inside one UTC hour: a single exact delta per source, whatever the clock says.
 	now := time.Date(2026, 11, 4, 10, 40, 0, 0, time.UTC)
 	value, degraded, err := NewMonthToDateBandwidthSource(ts.URL, ts.Client())(
 		context.Background(), "srv-web", []string{"default-web-web-onbex-co@kubernetes"}, true, now.Add(-30*time.Minute), now)
