@@ -1,6 +1,6 @@
 # w2 · m253 — A service that crash-loops for 24 hours is suspended with `stuck_crashlooping`, as on Render
 
-**Worker:** worker2 **Goal:** a service that repeatedly fails to start and become healthy over 24 hours is suspended with Render's `stuck_crashlooping` suspender, its owners are told, and a user resume brings it back. **Status:** blocked — t001–t004, t006–t008 done; t005 (dev-2 walk with a short window) next, then t009
+**Worker:** worker2 **Goal:** a service that repeatedly fails to start and become healthy over 24 hours is suspended with Render's `stuck_crashlooping` suspender, its owners are told, and a user resume brings it back. **Status:** todo — t001–t004, t006–t008 done; t005 (dev-2 walk with a short window) next, then t009
 
 ## Tasks (in order)
 
@@ -45,3 +45,23 @@
 ## Blocked (2026-11-03)
 
 All implementation is done (t001–t004 and t006–t008 done; t005 (dev-2 walk with a short crash-loop window) blocked). The remaining walk needs a gate this session cannot clear: user: choose how the local CAPD cluster runs the egress nft rule (drop it locally, or rework it to bind in nested kind nodes) so dev-2 comes up for the short-window crash-loop walk. Run `/unblock w2` to decide. The milestone returns to the queue once the gate clears.
+
+## 解阻复核（2026-11-04，复核证据，待用户决定）
+
+- **根因：** 本地 CAPD 节点用的是 Docker Desktop 的 linuxkit 内核（`7.0.12-linuxkit`），它不支持 nft 的 `socket cgroupv2` 匹配。
+- **证据：** 在临时 kind 节点里实测，`--cgroupns=private` 下各层级都失败；`--cgroupns=host` 下用绝对路径和正确层级（level 4）同样报 `Could not process rule: No such file or directory`。纯地址规则 `ip daddr 169.254.169.254 reject` 可以加载。生产的 Hetzner 节点不受影响。
+- **可行解法（待用户选）：**
+  - (A) local-capd overlay 改用不依赖 cgroup 的 metadata 地址拦截规则，生产规则不变；本地本来就没有 metadata 服务。
+  - (B) 本地改用内核支持 nft socket cgroupv2 的容器运行时（如 colima/OrbStack 的 VM）。
+  - (C) 不修本地，改走生产付费金丝雀。
+
+## 解阻决定（2026-11-04，来源：用户决定 D1=A）
+
+- **涉及：** m252 t006、m253 t005、m255 t004。
+- **决定：** 只在 `infra/clusterapi/overlays/local-capd/cluster.yaml` 里，把依赖 `socket cgroupv2` 的 containerd 出站规则换成不依赖 cgroup 的 metadata 地址拦截（`ip daddr 169.254.169.254 reject`，必要时加 IPv6 的 metadata 地址）。生产 overlay（hetzner-caph）的规则一字不改。
+- **理由：** Docker Desktop 的 linuxkit 内核不支持 nft `socket cgroupv2`（2026-11-04 实测）。本地仍然保留一道 metadata 拦截，不是移除安全控制；客户无感知。
+- **worker 下一步：**
+  1. 改 local-capd overlay 里所有出现这条规则的位置，并同步 `scripts/clusterapi-validate.sh` 对本地的断言。
+  2. 用 `scripts/mock-cluster.sh` 重建本地集群，确认节点上 containerd 为 `active`、拦截表已加载。
+  3. 用 `scripts/dev-env.sh 2 up` 起 dev-2，执行本里程碑剩余的 dev-2 验收。
+- **验收：** `clusterapi-validate.sh` 通过；dev-2 起来；本里程碑的 dev-2 证据写入对应任务。

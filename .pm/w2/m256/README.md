@@ -1,6 +1,6 @@
 # w2 · m256 — Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does
 
-**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** blocked — t001–t006, t008–t010 done; t007 (unmodified CLI v2.35 walk on production) next; t012 implemented 2026-11-03 (backend refusal + dashboard plan/Approve; its production check rides with t007's walk), then t011
+**Worker:** worker2 **Goal:** the Render CLI v2.35 `ea blueprints create`, `plan`, `approve` and `update` commands work against bex: creating a Blueprint plans its first sync without applying it, a sync can be re-planned, and approving applies the planned sync with any manual env var values. **Status:** todo — t001–t006, t008–t010 done; t007 (unmodified CLI v2.35 walk on production) next; t012 implemented 2026-11-03 (backend refusal + dashboard plan/Approve; its production check rides with t007's walk), then t011
 
 ## Tasks (in order)
 
@@ -50,3 +50,21 @@
 ## Blocked (2026-11-03)
 
 t001–t006, t008–t010, t013 done; t012 implemented (its production check rides with t007); t007 (unmodified Render CLI v2.35.0 walk) and t011 closeout open. Remaining gate: user: allow building/running the unmodified upstream Render CLI v2.35.0 (the auto-mode classifier denied cloning and building github.com/render-oss/cli in this session), or run `ea blueprints create → approve → plan → update --branch` against production as the QA user yourself; the walk also covers t012's production check. Run `/unblock w2` to decide. The milestone returns to the queue once the gate clears.
+
+## 解阻复核（2026-11-04，复核证据，待用户决定）
+
+- **不用克隆上游的替代路径：** 按 `lego/cli/UPSTREAM_RENDER_CLI.md` 的常规流程，把 `bex` launcher 的 pin 从 v2.29.0 升到 v2.35.0（在 `lego/cli` 里 `go get github.com/render-oss/cli@<v2.35.0 commit>`，走 Go module proxy）。launcher 直接用上游命令实现，没有 fork，`bex ea blueprints …` 就是原版 v2.35.0 的代码路径。顺带客户安装的 bex CLI 也会获得这组命令。
+- **生产认证：** 用 `bex login` 的 device flow，配合 `scripts/qa-login.sh --login-challenge` 以 QA 账号完成。
+- **仍需用户决定：** 是否允许走 pin 升级这条路（auto-mode 也可能拦 `go get`），或者放行直接编译上游。
+
+## 解阻决定（2026-11-04，来源：用户决定 D3=A）
+
+- **决定：** 不克隆上游仓库，按 `lego/cli/UPSTREAM_RENDER_CLI.md` 的常规流程，把 `bex` launcher 的 render-oss/cli pin 从 v2.29.0 升到 v2.35.0（在 `lego/cli` 里 `go get github.com/render-oss/cli@<v2.35.0 commit>`），完成该文档列出的每项 re-diff 检查。
+- **验收方式：** 用升级后的 `bex ea blueprints create / approve / plan / update --branch` 对生产走一遍 t007（QA 账号，`bex login` 的 device flow 配合 `scripts/qa-login.sh --login-challenge` 完成；资源加 `qa-` 前缀，结束后删除），同时覆盖 t012 的生产检查。
+- **理由：** launcher 直接使用上游命令实现（无 fork），代码路径与原版 v2.35.0 一致；顺带让客户安装的 bex CLI 获得这组命令。
+- **worker 下一步：**
+  1. 升 pin，跑 `bash scripts/bex-cli-validate.sh` 和 `cd lego/cli && go test ./...`。
+  2. 更新 `docs/cli-compatibility-checklist.md` 的 v2.35 条目。
+  3. 发布前在生产走完 t007，证据写入 t007、t012。
+  4. 按 t011 收尾。
+- **剩余条件：** 如果 `go get` 或生产写操作被 auto-mode 拦截，重新 blocked，并写明需要用户放行的具体动作。

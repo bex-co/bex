@@ -1,6 +1,6 @@
 # w2 · m254 — Build Sources: one build feeding several services, as on Render
 
-**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** blocked — t001–t008, t013–t015, t017 done; t016 implemented
+**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** todo — t001–t008, t013–t015, t017 done; t016 implemented
 
 ## Tasks (in order)
 
@@ -57,3 +57,16 @@
 ## Blocked (2026-11-03)
 
 t001–t011, t013–t015, t017 done; t016 implemented 2026-11-03 (7991a0e57, 98ebc1367); production walk 2026-11-03 22:16 UTC: native build succeeds, linked service never deploys (t018, open); t012 closeout open. Remaining gate: deploy + production walk: once a deploy carrying 7991a0e57/98ebc1367 is live (deploys were queued behind a >1h CI build on 2026-11-03), run t016's acceptance as the QA user — create a native git build source, trigger a build to `succeeded`, link a qa- Free web service, and see it go Live under its own start command — then close via t012. Run `/unblock w2` to decide. The milestone returns to the queue once the gate clears.
+
+## 解阻复核（2026-11-04，来源：复核证据）
+
+- **涉及：** t016、t012。
+- **卡点已解除：** 原卡点是“等包含 `7991a0e57`/`98ebc1367` 的部署上线”。复核在 `origin/main` `2504ba5bd`：生产 pin `d47859c4170a`（2026-11-04 08:45 PST）已包含 `7991a0e57`、`98ebc1367` 和 m262 的 `9d4e3a138`。
+- **剩余工作由 worker 自己完成：** 生产验收用 QA 账号（`scripts/qa-login.sh`，按 loopx 规则已授权，资源加 `qa-` 前缀，结束后删除）。
+- **worker 下一步（t016 验收）：**
+  1. 在 QA workspace 创建 native（node）git build source，带 `buildCommand`。
+  2. 触发 build，直到 `buildRun.status` 为 `succeeded`，并确认 carrier 的 `Build` condition 为 True。
+  3. 建一个 `qa-` Free web service 并 link 到该 source，确认它部署、变成 Live、用自己的 start command 返回 200（同时验证 t017 的 native-init 启动方式）。
+  4. 不带 `buildCommand` 的 native source 创建时得到 400。
+  5. 证据写入 t016，清理全部资源，然后按 DoD 用 t012 收尾。
+- **如果生产写操作被 auto-mode 拦截：** 重新 blocked，并写明需要用户授权的具体动作。
