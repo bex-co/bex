@@ -13,8 +13,11 @@ permissions:
 
 concurrency:
   group: repo-artifact-guard-${{ github.ref }}
-  # A cancelled main run would leave its commits out of the next run's range.
-  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+  # Every push's before..sha range must be checked, so never cancel and keep
+  # every pending run: a replaced pending run would leave its commits out of
+  # the next run's range. The job takes about a minute.
+  queue: max
+  cancel-in-progress: false
 
 jobs:
   guard:

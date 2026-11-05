@@ -44,7 +44,9 @@ permissions:
 
 concurrency:
   group: scripts-${{ github.ref }}
-  cancel-in-progress: true
+  # Only PRs cancel a running check: on main, steady pushes cancelled every
+  # run before it finished, so main's state was never reported.
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   test:

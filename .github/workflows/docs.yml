@@ -21,6 +21,13 @@ on:
 permissions:
   contents: read
 
+# One running + one pending run per branch: without a group every main push
+# queued a full run, which starved the bex-ci pool. Only PRs cancel a running
+# check.
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
 jobs:
   prettier:
     # Public-repo safety: fork PR code must never reach persistent self-hosted runners.
