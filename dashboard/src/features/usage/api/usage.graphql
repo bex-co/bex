@@ -30,6 +30,19 @@ query Usage($period: String, $ownerId: String) {
       used
       included
     }
+    # agentModel: the period's platform-route agent model spend (ADR091 D6),
+    # billed at the model provider's cost + 30%, by model and token kind.
+    agentModel {
+      monthToDateUsd
+      models {
+        model
+        costUsd
+        inputTokens
+        outputTokens
+        cacheReadTokens
+        cacheWriteTokens
+      }
+    }
     estimatedCost {
       totalUsd
       # resources is the same total grouped by the resource that incurred it,

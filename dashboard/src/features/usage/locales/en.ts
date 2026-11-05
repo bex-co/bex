@@ -492,6 +492,40 @@ const enUsage: Record<string, TranslationEntry> = {
     description:
       "Shown when the last card offered was refused because it carries an unpaid written-off balance (ADR091 D10.6)",
   },
+  "usage.agentModelTitle": {
+    message: "Agent model",
+    description:
+      "Billing page card and nav entry for agent model spend (ADR091 D6)",
+  },
+  "usage.agentModelPricing": {
+    message: "Billed at the model provider's cost + 30%.",
+    description: "Pricing statement under the Agent model title",
+  },
+  "usage.agentModelMonthToDate": {
+    message: "Month to date",
+    description: "Label of the current month's agent model total",
+  },
+  "usage.agentModelPeriodTotal": {
+    message: "Total for the month",
+    description: "Label of a closed month's agent model total",
+  },
+  "usage.agentModelBreakdown_one": {
+    message: "Breakdown by model ({count} model)",
+    description: "Toggle that expands the per-model breakdown",
+  },
+  "usage.agentModelBreakdown_other": {
+    message: "Breakdown by model ({count} models)",
+    description: "Toggle that expands the per-model breakdown",
+  },
+  "usage.agentModelEmpty": {
+    message: "No agent model usage in this period.",
+    description: "Shown when the period has no agent model spend",
+  },
+  "usage.lessThanAmount": {
+    message: "<{amount}",
+    description:
+      "A charge that rounds below the smallest amount shown, e.g. <$0.01",
+  },
 };
 
 export default enUsage;

@@ -55,6 +55,9 @@ import {
   type ComposerValues,
 } from "@/features/agent-sessions/lib/composer";
 import type { ComposerDocument } from "@/features/agent-sessions/lib/composer-document";
+import { ComposerSpendBanner } from "@/features/agent-sessions/components/composer-spend-banner";
+import { useComposerSpendGate } from "@/features/agent-sessions/hooks/use-composer-spend-gate";
+import { blocksCreate } from "@/features/agent-environment/lib/spend";
 
 const EXAMPLE_KEYS = [
   "agentSessions.exampleFixTests",
@@ -102,6 +105,10 @@ export function NewSessionComposer() {
   const showExamples = !noRepos && sessions.length === 0;
   const platformUnavailable = capabilities?.enabled === false;
   const modelKeyMissing = capabilities?.enabled && !capabilities.modelKeyReady;
+  // ADR091 D6: a platform-route workspace at its spend cap (or with an unpaid
+  // failed invoice) cannot start a session the model mint would refuse.
+  const spendGate = useComposerSpendGate();
+  const spendBlocked = blocksCreate(spendGate);
   const preflightError = useMemo(
     () =>
       platformUnavailable
@@ -144,6 +151,7 @@ export function NewSessionComposer() {
       capabilitiesLoading ||
       platformUnavailable ||
       modelKeyMissing ||
+      spendBlocked ||
       (repo && githubMissing) ||
       attachmentsBlock
     ) {
@@ -233,6 +241,7 @@ export function NewSessionComposer() {
           </AlertDescription>
         </Alert>
       ) : null}
+      <ComposerSpendBanner gate={spendGate} />
       {submitError ? (
         <Alert variant="destructive">
           <AlertTitle>{t("agentSessions.createErrorTitle")}</AlertTitle>
@@ -334,6 +343,7 @@ export function NewSessionComposer() {
                   capabilitiesLoading ||
                   platformUnavailable ||
                   modelKeyMissing ||
+                  spendBlocked ||
                   (Boolean(repo) && githubMissing) ||
                   attachmentsBlock ||
                   task.trim().length === 0

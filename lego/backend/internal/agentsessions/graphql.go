@@ -160,8 +160,20 @@ var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"agentModelSpendMonthToDateUsd": optionalFloatField("Month-to-date agent-model spend in USD (UTC calendar month).", func(v Environment) *float64 { return v.AgentModelSpendMonthToDateUSD }),
 		"trustTier":                     &graphql.Field{Type: graphql.String, Description: "The workspace's billing trust tier (T0 new .. T4).", Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.TrustTier) })},
 		"nextChargeThresholdUsd":        optionalFloatField("The agent-model spend at which the card is charged mid-cycle; null at the top tier (month-end only).", func(v Environment) *float64 { return v.NextChargeThresholdUSD }),
+		"trustTierLocked":               optionalBoolField("A failed or disputed payment holds the workspace at the first trust tier.", func(v Environment) *bool { return v.TrustTierLocked }),
+		"agentModelSpendCapTierLimited": optionalBoolField("The trust tier's ceiling, not the plan default or override, sets the effective spend cap.", func(v Environment) *bool { return v.AgentModelSpendCapTierLimited }),
+		"billingBalanceDue":             optionalBoolField("A failed invoice is unpaid, so platform-model requests are refused with BILLING_BALANCE_DUE until it is paid.", func(v Environment) *bool { return v.BillingBalanceDue }),
 	},
 })
+
+func optionalBoolField(description string, get func(Environment) *bool) *graphql.Field {
+	return &graphql.Field{Type: graphql.Boolean, Description: description, Resolve: gqlutil.Field(func(v Environment) any {
+		if b := get(v); b != nil {
+			return *b
+		}
+		return nil
+	})}
+}
 
 func optionalFloatField(description string, get func(Environment) *float64) *graphql.Field {
 	return &graphql.Field{Type: graphql.Float, Description: description, Resolve: gqlutil.Field(func(v Environment) any {
@@ -394,6 +406,36 @@ var transcriptTurnGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var turnModelCostGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentSessionTurnModelCost",
+	Description: "One turn's platform-route model requests (ADR091 D6). Token counts are display only.",
+	Fields: graphql.Fields{
+		"turn":     &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TurnModelCost) any { return v.Turn })},
+		"costUsd":  gqlutil.ReqStrField(func(v TurnModelCost) any { return v.CostUSD }),
+		"requests": &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TurnModelCost) any { return v.Requests })},
+		// Float, not Int: a long turn's token count can exceed 32 bits.
+		"inputTokens":      &graphql.Field{Type: graphql.NewNonNull(graphql.Float), Resolve: gqlutil.Field(func(v TurnModelCost) any { return v.InputTokens })},
+		"outputTokens":     &graphql.Field{Type: graphql.NewNonNull(graphql.Float), Resolve: gqlutil.Field(func(v TurnModelCost) any { return v.OutputTokens })},
+		"cacheReadTokens":  &graphql.Field{Type: graphql.NewNonNull(graphql.Float), Resolve: gqlutil.Field(func(v TurnModelCost) any { return v.CacheReadTokens })},
+		"cacheWriteTokens": &graphql.Field{Type: graphql.NewNonNull(graphql.Float), Resolve: gqlutil.Field(func(v TurnModelCost) any { return v.CacheWriteTokens })},
+		"models":           &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), Resolve: gqlutil.Field(func(v TurnModelCost) any { return v.Models })},
+		"firstAt":          gqlutil.TimeField(func(v TurnModelCost) any { return v.FirstAt }),
+		"lastAt":           gqlutil.TimeField(func(v TurnModelCost) any { return v.LastAt }),
+	},
+})
+
+var modelCostGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentSessionModelCost",
+	Description: "What a session's platform-route model requests cost (provider cost + 30%), in total and per turn (ADR091 D6). A session on the workspace's own model key records none.",
+	Fields: graphql.Fields{
+		"sessionId":   gqlutil.ReqStrField(func(v ModelCost) any { return v.SessionID }),
+		"modelSource": &graphql.Field{Type: graphql.NewNonNull(agentModelSourceGQLEnum), Description: "The model route the session runs on: PLATFORM (bex bills its requests) or BYO (the workspace's own provider bills them, so cost stays 0.00).", Resolve: gqlutil.Field(func(v ModelCost) any { return v.ModelSource })},
+		"costUsd":     &graphql.Field{Type: graphql.NewNonNull(graphql.String), Description: "The session's charge so far in USD, rounded to the cent (\"1.56\"), the same format as usage.agentModel.", Resolve: gqlutil.Field(func(v ModelCost) any { return v.CostUSD })},
+		"requests":    &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v ModelCost) any { return v.Requests })},
+		"turns":       &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(turnModelCostGQLType))), Resolve: gqlutil.Field(func(v ModelCost) any { return v.Turns })},
+	},
+})
+
 var transcriptPageGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionTranscriptPage",
 	Fields: graphql.Fields{
@@ -484,6 +526,9 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 		"agentSession": gqlutil.IDVerb(agentSessionGQLType, s.Get),
+		// agentSessionModelCost is the session's platform-route model cost in
+		// total and per turn (ADR091 D6).
+		"agentSessionModelCost": gqlutil.IDVerb(graphql.NewNonNull(modelCostGQLType), s.ModelCost),
 		"agentAttachment": &graphql.Field{
 			Type:        attachmentGQLType,
 			Description: "One agent attachment with a fresh 15-minute downloadUrl (ADR095).",

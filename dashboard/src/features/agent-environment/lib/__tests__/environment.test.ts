@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { AgentModelSource, AgentNetworkTier } from "@/graphql/definitions";
+import { AgentNetworkTier } from "@/graphql/definitions";
 import { codedGraphQLError, uncodedGraphQLError } from "@/test/mocks/apollo";
 import {
   buildPatch,
@@ -12,20 +12,14 @@ import {
   validateCustomHosts,
   type AgentEnvironmentView,
 } from "@/features/agent-environment/lib/environment";
+import { agentEnvironment } from "@/test/mocks/agent-environment";
 
-const SAVED: AgentEnvironmentView = {
-  __typename: "AgentEnvironment",
-  ownerId: "tea-1",
+const SAVED: AgentEnvironmentView = agentEnvironment({
   networkTier: AgentNetworkTier.Custom,
   customHosts: ["a.example.com", "b.example.com"],
   defaultModel: "claude-sonnet-4-5",
-  modelPinned: false,
-  pinnedModel: null,
-  modelKeySet: false,
-  modelSource: AgentModelSource.Platform,
   registryHosts: ["registry.npmjs.org"],
-  updatedAt: null,
-};
+});
 
 describe("parseHostLines", () => {
   it("trims, lowercases and drops blank lines", () => {

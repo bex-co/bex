@@ -78,8 +78,12 @@ export type AgentEnvironment = {
   agentModelPlanSpendCapUsd: Maybe<Scalars['Float']['output']>;
   /** The admin's spend cap override in USD; null means the plan default. */
   agentModelSpendCapOverrideUsd: Maybe<Scalars['Float']['output']>;
+  /** The trust tier's ceiling, not the plan default or override, sets the effective spend cap. */
+  agentModelSpendCapTierLimited: Maybe<Scalars['Boolean']['output']>;
   /** Month-to-date agent-model spend in USD (UTC calendar month). */
   agentModelSpendMonthToDateUsd: Maybe<Scalars['Float']['output']>;
+  /** A failed invoice is unpaid, so platform-model requests are refused with BILLING_BALANCE_DUE until it is paid. */
+  billingBalanceDue: Maybe<Scalars['Boolean']['output']>;
   customHosts: Array<Scalars['String']['output']>;
   defaultModel: Maybe<Scalars['String']['output']>;
   modelKeySet: Scalars['Boolean']['output'];
@@ -93,6 +97,8 @@ export type AgentEnvironment = {
   registryHosts: Array<Scalars['String']['output']>;
   /** The workspace's billing trust tier (T0 new .. T4). */
   trustTier: Maybe<Scalars['String']['output']>;
+  /** A failed or disputed payment holds the workspace at the first trust tier. */
+  trustTierLocked: Maybe<Scalars['Boolean']['output']>;
   updatedAt: Maybe<Scalars['String']['output']>;
 };
 
@@ -118,6 +124,24 @@ export enum AgentModelSource {
   None = 'NONE',
   Platform = 'PLATFORM'
 }
+
+/** The period's platform-route agent model spend, billed at the model provider's cost + 30% (ADR091 D6). */
+export type AgentModelUsage = {
+  __typename: 'AgentModelUsage';
+  models: Array<AgentModelUsageBreakdown>;
+  monthToDateUsd: Scalars['String']['output'];
+};
+
+/** One model's share of the period's platform-route agent model spend (ADR091 D6). Token counts are display only; costUsd is what is billed. */
+export type AgentModelUsageBreakdown = {
+  __typename: 'AgentModelUsageBreakdown';
+  cacheReadTokens: Scalars['Float']['output'];
+  cacheWriteTokens: Scalars['Float']['output'];
+  costUsd: Scalars['String']['output'];
+  inputTokens: Scalars['Float']['output'];
+  model: Scalars['String']['output'];
+  outputTokens: Scalars['Float']['output'];
+};
 
 /** Sandbox network access for a workspace's agent sessions. FULL reaches any public host over HTTP(S) through the bex egress proxy (model providers stay blocked; no raw TCP or SSH). */
 export enum AgentNetworkTier {
@@ -193,6 +217,18 @@ export type AgentSessionGitHubReadiness = {
   accountLogin: Maybe<Scalars['String']['output']>;
   connected: Scalars['Boolean']['output'];
   installUrl: Maybe<Scalars['String']['output']>;
+};
+
+/** What a session's platform-route model requests cost (provider cost + 30%), in total and per turn (ADR091 D6). A session on the workspace's own model key records none. */
+export type AgentSessionModelCost = {
+  __typename: 'AgentSessionModelCost';
+  /** The session's charge so far in USD, rounded to the cent ("1.56"), the same format as usage.agentModel. */
+  costUsd: Scalars['String']['output'];
+  /** The model route the session runs on: PLATFORM (bex bills its requests) or BYO (the workspace's own provider bills them, so cost stays 0.00). */
+  modelSource: AgentModelSource;
+  requests: Scalars['Int']['output'];
+  sessionId: Scalars['String']['output'];
+  turns: Array<AgentSessionTurnModelCost>;
 };
 
 export type AgentSessionOutcome = {
@@ -274,6 +310,21 @@ export type AgentSessionTurnAttachment = {
   mediaType: Scalars['String']['output'];
   name: Scalars['String']['output'];
   size: Scalars['Float']['output'];
+};
+
+/** One turn's platform-route model requests (ADR091 D6). Token counts are display only. */
+export type AgentSessionTurnModelCost = {
+  __typename: 'AgentSessionTurnModelCost';
+  cacheReadTokens: Scalars['Float']['output'];
+  cacheWriteTokens: Scalars['Float']['output'];
+  costUsd: Scalars['String']['output'];
+  firstAt: Maybe<Scalars['String']['output']>;
+  inputTokens: Scalars['Float']['output'];
+  lastAt: Maybe<Scalars['String']['output']>;
+  models: Array<Scalars['String']['output']>;
+  outputTokens: Scalars['Float']['output'];
+  requests: Scalars['Int']['output'];
+  turn: Scalars['Int']['output'];
 };
 
 export type ApiKey = {
@@ -3180,6 +3231,7 @@ export type Query = {
   /** A session's attachments oldest first; cursor is the previous page's last id. */
   agentSessionAttachments: Array<AgentAttachment>;
   agentSessionCapabilities: AgentSessionCapabilities;
+  agentSessionModelCost: AgentSessionModelCost;
   /** The complete output of one tool call whose transcript part is flagged fullOutput (w10/m18). Not found when no full copy was kept. */
   agentSessionToolOutput: AgentSessionToolOutput;
   agentSessionTranscript: AgentSessionTranscriptPage;
@@ -3333,6 +3385,11 @@ export type QueryAgentSessionAttachmentsArgs = {
 
 export type QueryAgentSessionCapabilitiesArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAgentSessionModelCostArgs = {
+  id: Scalars['String']['input'];
 };
 
 
@@ -4469,6 +4526,7 @@ export type UsageRow = {
 
 export type UsageSummary = {
   __typename: 'UsageSummary';
+  agentModel: AgentModelUsage;
   billing: Maybe<Billing>;
   coverage: UsageCoverage;
   estimatedCost: Maybe<EstimatedCost>;

@@ -258,11 +258,11 @@ func (s *Sheet) Estimate(rows []store.UsageSummaryRow) EstimatedCost {
 			Kind:         k.kind,
 			Tier:         k.tier,
 			ResourceKind: k.resourceKind,
-			CostUSD:      formatUSD(cost),
+			CostUSD:      FormatUSD(cost),
 		})
 	}
 	return EstimatedCost{
-		TotalUSD:  formatUSD(totalRaw),
+		TotalUSD:  FormatUSD(totalRaw),
 		Meters:    meters,
 		Resources: s.resourceEstimates(rows),
 	}
@@ -311,13 +311,13 @@ func (s *Sheet) resourceEstimates(rows []store.UsageSummaryRow) []ResourceEstima
 				Unit:     unit.label,
 				RateUSD:  formatRate(rate * unit.per),
 				Quantity: formatQuantity(float64(qty) / unit.per),
-				CostUSD:  formatUSD(cost),
+				CostUSD:  FormatUSD(cost),
 			})
 		}
 		out = append(out, ResourceEstimate{
 			ServiceID:    rk.serviceID,
 			ResourceKind: rk.resourceKind,
-			CostUSD:      formatUSD(resRaw),
+			CostUSD:      FormatUSD(resRaw),
 			Charges:      charges,
 		})
 	}
@@ -440,9 +440,16 @@ func (s *Sheet) rateFor(kind, tier, resourceKind string) float64 {
 	return 0
 }
 
-// formatUSD renders a float as a USD amount rounded to the nearest cent.
-func formatUSD(v float64) string {
-	return fmt.Sprintf("%.2f", math.Round(v*100)/100)
+// FormatUSD renders a USD amount rounded half away from zero to the cent
+// ("1.23", "-0.42"). It is the one USD formatter every agent-model and usage
+// read uses, so the same spend prints the same string on every surface. An
+// amount that rounds to zero prints "0.00", never "-0.00".
+func FormatUSD(v float64) string {
+	cents := math.Round(v * 100)
+	if cents == 0 {
+		return "0.00"
+	}
+	return fmt.Sprintf("%.2f", cents/100)
 }
 
 // --- YAML loading ---

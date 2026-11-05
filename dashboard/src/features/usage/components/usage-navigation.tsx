@@ -13,6 +13,7 @@
 // limitations under the License.
 
 import {
+  Bot,
   CreditCard,
   FileText,
   Gauge,
@@ -45,6 +46,7 @@ export function UsageNavigation({ className }: { className?: string }) {
       icon: Gauge,
     },
     { href: "#charges", label: t("usage.chargesTitle"), icon: Receipt },
+    { href: "#agent-model", label: t("usage.agentModelTitle"), icon: Bot },
     { href: "#credit-balance", label: t("usage.creditsTitle"), icon: Wallet },
     {
       href: "#invoice-history",

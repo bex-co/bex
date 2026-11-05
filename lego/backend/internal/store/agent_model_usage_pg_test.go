@@ -18,7 +18,9 @@ package store
 
 import (
 	"context"
+	"errors"
 	"os"
+	"strings"
 	"testing"
 	"time"
 
@@ -29,7 +31,7 @@ import (
 
 // Platform-route token usage (w10/m14 t003) is recorded once per request id
 // into usage_hourly, read back by the generic month-to-date verb and the
-// quota total, and its ledger is purged by compaction.
+// quota total, and its ledger outlives compaction for 13 months.
 func TestAgentModelUsageIsIdempotentAndMetered(t *testing.T) {
 	uri := os.Getenv("BEX_TEST_DB_URI")
 	if uri == "" {
@@ -99,15 +101,167 @@ func TestAgentModelUsageIsIdempotentAndMetered(t *testing.T) {
 		t.Fatalf("next month's tokens = %d, %v, want 0", next, err)
 	}
 
+	ledger := func() int {
+		t.Helper()
+		var n int
+		if err := pool.QueryRow(ctx, `SELECT count(*) FROM agent_model_usage_events WHERE workspace_id = $1`, tenant.ID).Scan(&n); err != nil {
+			t.Fatal(err)
+		}
+		return n
+	}
 	if _, err := st.CompactUsage(ctx, time.Date(2026, 11, 1, 0, 0, 0, 0, time.UTC)); err != nil {
 		t.Fatal(err)
 	}
-	var ledger int
-	if err := pool.QueryRow(ctx, `SELECT count(*) FROM agent_model_usage_events WHERE workspace_id = $1`, tenant.ID).Scan(&ledger); err != nil || ledger != 0 {
-		t.Fatalf("ledger rows after compaction = %d, %v", ledger, err)
+	// The request ledger outlives the hourly rows (ADR091 D6, D10.7).
+	if n := ledger(); n != 2 {
+		t.Fatalf("ledger rows after compaction = %d, want 2 (kept %d months)", n, AgentModelEventRetentionMonths)
 	}
 	if after, err := st.agentSessionMonthToDate(ctx, tenant.ID, at, AgentModelUsageKinds); err != nil || after != 427 {
 		t.Fatalf("month-to-date after compaction = %d, %v, want 427 from usage_monthly", after, err)
+	}
+	// Exactly 13 months past the events' window: still kept.
+	window := at.Truncate(time.Hour)
+	if _, err := st.CompactUsage(ctx, window.AddDate(0, AgentModelEventRetentionMonths, 0)); err != nil {
+		t.Fatal(err)
+	}
+	if n := ledger(); n != 2 {
+		t.Fatalf("ledger rows at the retention edge = %d, want 2", n)
+	}
+	if _, err := st.CompactUsage(ctx, window.AddDate(0, AgentModelEventRetentionMonths, 0).Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	if n := ledger(); n != 0 {
+		t.Fatalf("ledger rows past retention = %d, want 0", n)
+	}
+}
+
+// ADR091 D6: a session's platform-route requests are summed per turn, each
+// request in the latest turn accepted at or before it started (recorded_at
+// for rows without a start), and a retried report counts once.
+func TestAgentSessionModelUsageGroupsByTurn(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(pool.Close)
+	st := NewPGStore(pool)
+	tenant, err := st.CreateTenant(ctx, "agent-model-turns", PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, tenant.ID) })
+	session, err := st.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "main",
+		AgentConfig: []byte(`{"agent":"claude","task":"t"}`), InitialPrompt: "first",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	t0 := time.Date(2026, 10, 27, 9, 0, 0, 0, time.UTC)
+	if _, err := pool.Exec(ctx, `UPDATE agent_session_turns SET created_at = $2 WHERE session_id = $1 AND turn = 1`, session.ID, t0); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `INSERT INTO agent_session_turns (session_id, turn, prompt, created_at) VALUES ($1, 2, 'second', $2)`, session.ID, t0.Add(time.Hour)); err != nil {
+		t.Fatal(err)
+	}
+	// record lands one request recorded at `at`; a non-zero `started` is
+	// when the gateway sent it upstream.
+	record := func(req string, started, at time.Time, model string, input, price int64) bool {
+		t.Helper()
+		ok, err := st.RecordAgentModelUsage(ctx, AgentModelUsage{
+			RequestID: req + "-" + tenant.ID, WorkspaceID: tenant.ID, SessionID: session.ID, Model: model, At: at, StartedAt: started,
+			InputTokens: input, OutputTokens: 1, CostSource: AgentModelCostReported, PriceMicroUSD: price,
+		})
+		if err != nil {
+			t.Fatalf("record %s: %v", req, err)
+		}
+		if ok {
+			if _, err := pool.Exec(ctx, `UPDATE agent_model_usage_events SET recorded_at = $2 WHERE request_id = $1`, req+"-"+tenant.ID, at); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return ok
+	}
+	// a and b carry no start (rows from before started_at): recorded_at
+	// attributes them.
+	record("a", time.Time{}, t0.Add(5*time.Minute), "m/b", 10, 1300)
+	record("b", time.Time{}, t0.Add(50*time.Minute), "m/a", 20, 2600)
+	// d started in turn 1 but its stream was reported after turn 2 began: it
+	// is turn 1's request.
+	if !record("d", t0.Add(55*time.Minute), t0.Add(80*time.Minute), "m/a", 100, 4000) {
+		t.Fatal("d not recorded")
+	}
+	// The gateway's retry of d (lost acknowledgement) is not a second request.
+	if record("d", t0.Add(55*time.Minute), t0.Add(81*time.Minute), "m/a", 100, 4000) {
+		t.Fatal("retried d recorded twice")
+	}
+	record("c", t0.Add(70*time.Minute), t0.Add(70*time.Minute), "m/a", 5, 130)
+	// Another session's request never leaks in.
+	if _, err := st.RecordAgentModelUsage(ctx, AgentModelUsage{
+		RequestID: "other-" + tenant.ID, WorkspaceID: tenant.ID, SessionID: "ags-other", Model: "m/a", At: t0,
+		InputTokens: 99, CostSource: AgentModelCostReported, PriceMicroUSD: 99,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	cost, err := st.AgentSessionModelUsage(ctx, session.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cost.WorkspaceID != tenant.ID || !strings.Contains(string(cost.AgentConfig), `"agent"`) {
+		t.Fatalf("session fields = %s %s", cost.WorkspaceID, cost.AgentConfig)
+	}
+	turns := cost.Turns
+	if len(turns) != 2 {
+		t.Fatalf("turns = %+v, want 2", turns)
+	}
+	first, second := turns[0], turns[1]
+	if first.Turn != 1 || first.Requests != 3 || first.InputTokens != 130 || first.OutputTokens != 3 || first.PriceMicroUSD != 7900 ||
+		len(first.Models) != 2 || first.Models[0] != "m/a" || first.Models[1] != "m/b" {
+		t.Fatalf("turn 1 = %+v", first)
+	}
+	if !first.LastAt.Equal(t0.Add(55 * time.Minute)) {
+		t.Fatalf("turn 1 last request = %v, want d's start", first.LastAt)
+	}
+	if second.Turn != 2 || second.Requests != 1 || second.InputTokens != 5 || second.PriceMicroUSD != 130 || !second.FirstAt.Equal(t0.Add(70*time.Minute)) {
+		t.Fatalf("turn 2 = %+v", second)
+	}
+	// An event filed under another workspace with this session's id never
+	// counts: the read is scoped to the session's own workspace.
+	other, err := st.CreateTenant(ctx, "agent-model-turns-other", PlanHobby)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _, _ = pool.Exec(ctx, `DELETE FROM tenants WHERE id = $1`, other.ID) })
+	if _, err := st.RecordAgentModelUsage(ctx, AgentModelUsage{
+		RequestID: "foreign-" + tenant.ID, WorkspaceID: other.ID, SessionID: session.ID, Model: "m/a", At: t0.Add(80 * time.Minute),
+		InputTokens: 1000, CostSource: AgentModelCostReported, PriceMicroUSD: 1000,
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if again, err := st.AgentSessionModelUsage(ctx, session.ID); err != nil || len(again.Turns) != 2 || again.Turns[1].Requests != 1 {
+		t.Fatalf("read with a foreign-workspace event = %+v, %v", again, err)
+	}
+	// A session with no requests reads no turns; an unknown one is not found.
+	idle, err := st.CreateAgentSession(ctx, AgentSession{
+		WorkspaceID: tenant.ID, Repo: "bex-co/example", Branch: "main",
+		AgentConfig: []byte(`{"agent":"claude","task":"t"}`), InitialPrompt: "idle",
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if none, err := st.AgentSessionModelUsage(ctx, idle.ID); err != nil || none.Turns == nil || len(none.Turns) != 0 {
+		t.Fatalf("idle session = %+v, %v, want no turns", none, err)
+	}
+	if _, err := st.AgentSessionModelUsage(ctx, "ags-missing"); !errors.Is(err, ErrNotFound) {
+		t.Fatalf("unknown session = %v, want ErrNotFound", err)
 	}
 }
 

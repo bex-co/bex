@@ -99,7 +99,7 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     [
       <BillingPageSkeleton key="billing" />,
       "billing",
-      ["page-header", "plan", "charges", "invoice-history"],
+      ["page-header", "plan", "charges", "agent-model", "invoice-history"],
     ],
     [
       <EnvGroupsListPageSkeleton key="env-groups" />,

@@ -1230,7 +1230,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, whether the model is pinned by the platform model route, the model source (byo = the workspace's own model provider key, platform = bex-provided and billed at the provider's cost + 30%, none) with modelKeySet (the key itself is never returned), and the agent-model spend controls: the effective monthly spend cap in USD (min of the admin override or plan default and the billing trust tier's ceiling), the plan default, the override, month-to-date spend, the trust tier (T0..T4) and the next charge threshold.",
+    "description": "Read a workspace's agent environment: the sandbox network tier (registries = GitHub plus the built-in package registries for the whole session, the default; custom = registries plus customHosts; full = any public host over HTTP(S) through the bex egress proxy, with model providers blocked and no raw TCP or SSH), the custom hostnames, the default model, whether the model is pinned by the platform model route, the model source (byo = the workspace's own model provider key, platform = bex-provided and billed at the provider's cost + 30%, none) with modelKeySet (the key itself is never returned), and the agent-model spend controls: the effective monthly spend cap in USD (min of the admin override or plan default and the billing trust tier's ceiling), the plan default, the override, month-to-date spend, the trust tier (T0..T4) and the next charge threshold, whether a failed or disputed payment holds the tier (trustTierLocked), whether the tier's ceiling sets the cap (agentModelSpendCapTierLimited), and whether an unpaid failed invoice refuses platform-model requests (billingBalanceDue).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1268,10 +1268,22 @@
             "number"
           ]
         },
+        "agentModelSpendCapTierLimited": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "agentModelSpendMonthToDateUsd": {
           "type": [
             "null",
             "number"
+          ]
+        },
+        "billingBalanceDue": {
+          "type": [
+            "null",
+            "boolean"
           ]
         },
         "customHosts": {
@@ -1331,6 +1343,12 @@
             "string"
           ]
         },
+        "trustTierLocked": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "updatedAt": {
           "type": [
             "null",
@@ -1355,7 +1373,10 @@
         "agentModelSpendMonthToDateUsd",
         "agentModelMaxSpendCapUsd",
         "trustTier",
-        "nextChargeThresholdUsd"
+        "nextChargeThresholdUsd",
+        "trustTierLocked",
+        "agentModelSpendCapTierLimited",
+        "billingBalanceDue"
       ],
       "type": "object"
     }
@@ -1720,6 +1741,113 @@
         "agents",
         "ready",
         "attachments"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Read what a cloud coding-agent session's bex-provided model requests cost: the model source (platform = bex-billed, byo = billed by the workspace's own provider), the total in USD rounded to the cent (billed at the model provider's cost + 30%) and each turn's cost, request count, input/output/cache tokens and models. A session on the workspace's own model key has no requests here; its provider bills it.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "get_agent_session_model_cost",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "costUsd": {
+          "type": "string"
+        },
+        "modelSource": {
+          "type": "string"
+        },
+        "requests": {
+          "type": "integer"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "turns": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "cacheReadTokens": {
+                "type": "integer"
+              },
+              "cacheWriteTokens": {
+                "type": "integer"
+              },
+              "costUsd": {
+                "type": "string"
+              },
+              "firstAt": {
+                "type": "string"
+              },
+              "inputTokens": {
+                "type": "integer"
+              },
+              "lastAt": {
+                "type": "string"
+              },
+              "models": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "outputTokens": {
+                "type": "integer"
+              },
+              "requests": {
+                "type": "integer"
+              },
+              "turn": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "turn",
+              "costUsd",
+              "requests",
+              "inputTokens",
+              "outputTokens",
+              "cacheReadTokens",
+              "cacheWriteTokens",
+              "models",
+              "firstAt",
+              "lastAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "sessionId",
+        "modelSource",
+        "costUsd",
+        "requests",
+        "turns"
       ],
       "type": "object"
     }
@@ -3827,10 +3955,22 @@
             "number"
           ]
         },
+        "agentModelSpendCapTierLimited": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "agentModelSpendMonthToDateUsd": {
           "type": [
             "null",
             "number"
+          ]
+        },
+        "billingBalanceDue": {
+          "type": [
+            "null",
+            "boolean"
           ]
         },
         "customHosts": {
@@ -3890,6 +4030,12 @@
             "string"
           ]
         },
+        "trustTierLocked": {
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
         "updatedAt": {
           "type": [
             "null",
@@ -3914,7 +4060,10 @@
         "agentModelSpendMonthToDateUsd",
         "agentModelMaxSpendCapUsd",
         "trustTier",
-        "nextChargeThresholdUsd"
+        "nextChargeThresholdUsd",
+        "trustTierLocked",
+        "agentModelSpendCapTierLimited",
+        "billingBalanceDue"
       ],
       "type": "object"
     }

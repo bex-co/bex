@@ -59,6 +59,32 @@ describe("FailureCallout", () => {
     expect(screen.getByText("agent turn failed")).toBeInTheDocument();
   });
 
+  it("reads the model mint's spend refusals in the user's language (ADR091 D6)", () => {
+    const { rerender } = render(
+      <FailureCallout
+        session={view("failed", {
+          failureReason:
+            "this workspace reached its monthly agent model spend cap (AGENT_MODEL_SPEND_CAP_REACHED); …",
+          failureReasonCode: "AGENT_MODEL_SPEND_CAP_REACHED",
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(/reached its agent model spend limit for the month/),
+    ).toBeInTheDocument();
+    rerender(
+      <FailureCallout
+        session={view("failed", {
+          failureReason: "a payment for this workspace failed; …",
+          failureReasonCode: "BILLING_BALANCE_DUE",
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(/Pay the outstanding invoice in Billing/),
+    ).toBeInTheDocument();
+  });
+
   it("falls back to the lifecycle status for a background-provisioning failure", () => {
     // A dispatch failure stamps the reason on `status`, not `failureReason`.
     render(

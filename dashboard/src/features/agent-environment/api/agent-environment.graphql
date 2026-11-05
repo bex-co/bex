@@ -15,6 +15,20 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   modelSource
   registryHosts
   updatedAt
+  # Agent-model spend controls (ADR091 D5, D10.1); null when the store is off.
+  # agentModelMonthlySpendCapUsd is the effective cap: min(the admin override
+  # or plan default, the trust tier's ceiling).
+  agentModelMonthlySpendCapUsd
+  agentModelPlanSpendCapUsd
+  agentModelSpendCapOverrideUsd
+  agentModelMaxSpendCapUsd
+  agentModelSpendMonthToDateUsd
+  agentModelSpendCapTierLimited
+  trustTier
+  trustTierLocked
+  nextChargeThresholdUsd
+  # An unpaid failed invoice refuses platform-model requests (D10.3).
+  billingBalanceDue
 }
 
 query AgentEnvironment($ownerId: String!) {

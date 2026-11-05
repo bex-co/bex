@@ -35,6 +35,7 @@ import { FreeHoursCard } from "./free-hours-card";
 import { PlanCard } from "./plan-card";
 import { PaymentMethodCard } from "./payment-method-card";
 import { ChargesCard } from "./charges-card";
+import { AgentModelCard } from "./agent-model-card";
 import { CreditBalanceCard, InvoiceHistoryCard } from "./billing-summary-cards";
 import { UsageNavigation } from "./usage-navigation";
 import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-navigation";
@@ -42,9 +43,10 @@ import { SECTION_NAVIGATION_TARGET_CLASS } from "@/common/components/section-nav
 /**
  * The workspace billing page (`/billing`).
  *
- * Six cards, each answering one question a person opens this page with: what
+ * Seven cards, each answering one question a person opens this page with: what
  * plan am I on, what will you charge, what am I allowed to run, what is this
- * month costing me and why, what credit do I hold, and what have I paid. The
+ * month costing me and why, what are my agents' models costing (ADR091 D6),
+ * what credit do I hold, and what have I paid. The
  * charge tree (ChargesCard) carries the consumption detail that four separate
  * per-meter usage tables used to spread across the page without ever pricing
  * it.
@@ -149,6 +151,16 @@ export function UsagePage() {
                 ratedPeriodEnd={billing?.currentCost?.periodEnd ?? null}
                 loading={loading}
                 period={period ?? ""}
+              />
+            </section>
+            <section
+              id="agent-model"
+              className={SECTION_NAVIGATION_TARGET_CLASS}
+            >
+              <AgentModelCard
+                agentModel={summary?.agentModel ?? null}
+                loading={loading}
+                current={period == null}
               />
             </section>
             <section

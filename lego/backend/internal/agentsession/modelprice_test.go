@@ -263,6 +263,18 @@ func TestModelUsageRecorderPricesByCostSource(t *testing.T) {
 	if !offPeak.At.Equal(at) {
 		t.Fatalf("recorded At = %s, want the record time %s", offPeak.At, at)
 	}
+	// The start is persisted for per-turn attribution (ADR091 D6), clamped
+	// like the price: absent or skewed past startedAtSkew ⇒ the record time.
+	if want := time.Date(2026, 11, 3, 0, 59, 0, 0, time.UTC); !offPeak.StartedAt.Equal(want) {
+		t.Fatalf("persisted StartedAt = %s, want %s", offPeak.StartedAt, want)
+	}
+	if !reported.StartedAt.Equal(at) {
+		t.Fatalf("absent start persisted as %s, want the record time %s", reported.StartedAt, at)
+	}
+	skewed := record(ModelUsageReport{Model: DefaultDevModel, InputTokens: 1, UpstreamCostUSD: &cost, StartedAt: at.Add(-3 * time.Hour)})
+	if !skewed.StartedAt.Equal(at) {
+		t.Fatalf("skewed start persisted as %s, want the record time %s", skewed.StartedAt, at)
+	}
 
 	unpriced := record(ModelUsageReport{Model: "vendor/unknown", InputTokens: 5})
 	if unpriced.CostSource != store.AgentModelCostUnpriced || unpriced.PriceMicroUSD != 0 || unpriced.UpstreamCostMicroUSD != 0 {

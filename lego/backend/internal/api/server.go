@@ -384,6 +384,9 @@ type Deps struct {
 	// D10.1): the trust tier's session limit and the environment's spend
 	// fields; nil ⇒ neither.
 	AgentSpendStore agentsessions.SpendStore
+	// AgentModelCostStore reads a session's platform-route model cost per
+	// turn (ADR091 D6); nil ⇒ every session reads zero cost.
+	AgentModelCostStore agentsessions.ModelCostStore
 	// AgentModelKeyChanged is told when a workspace's own model key is set or
 	// cleared (agentsessions.Service.ModelKeyChanged); nil ⇒ nobody listens.
 	AgentModelKeyChanged func(workspaceID string)
@@ -1055,6 +1058,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			TurnTimeout:      d.AgentTurnTimeout,
 			Environments:     d.AgentEnvironmentStore,
 			Spend:            d.AgentSpendStore,
+			ModelCosts:       d.AgentModelCostStore,
 			ModelKeyChanged:  d.AgentModelKeyChanged,
 			RegistryHosts:    d.AgentRegistryHosts,
 			Attachments:      d.AgentAttachments,

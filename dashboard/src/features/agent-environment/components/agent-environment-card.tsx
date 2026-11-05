@@ -24,6 +24,7 @@ import {
 } from "@/graphql/definitions";
 import { useAgentEnvironment } from "@/features/agent-environment/hooks/use-agent-environment";
 import { ModelKeySection } from "@/features/agent-environment/components/model-key-section";
+import { SpendCapSection } from "@/features/agent-environment/components/spend-cap-section";
 import {
   AgentEnvironmentCardSkeleton,
   TIER_OPTION_CLASS,
@@ -64,8 +65,9 @@ const TIER_VALUES = TIERS.map(({ tier }) => tier);
 /**
  * Settings → Agents (w10/m17/t005): the workspace agent environment — the
  * sandbox network tier, the Custom tier's extra hostnames, the default model
- * and the model source with the write-only provider key (ADR091 D7). Any
- * member sees it; only admins (can_manage) can change it.
+ * the model source with the write-only provider key (ADR091 D7), and the
+ * agent-model spend against its monthly cap (ADR091 D5, D6). Any member sees
+ * it; only admins (can_manage) can change it.
  */
 export function AgentEnvironmentCard({ ownerId }: { ownerId: string }) {
   const { t } = useTranslations();
@@ -347,6 +349,8 @@ function AgentEnvironmentForm({
         </div>
 
         <ModelKeySection saved={saved} update={update} canManage={canManage} />
+
+        <SpendCapSection saved={saved} update={update} canManage={canManage} />
 
         {serverError?.field === "form" ? (
           <Alert variant="destructive">

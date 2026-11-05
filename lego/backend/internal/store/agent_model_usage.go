@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"time"
 
@@ -76,11 +77,15 @@ const ResourceKindAgentSession = "agent_session"
 type AgentModelUsage struct {
 	// RequestID is the gateway-minted id of the exchange; it is the
 	// idempotency key, so a retried report is recorded once.
-	RequestID        string
-	WorkspaceID      string
-	SessionID        string
-	Model            string
-	At               time.Time
+	RequestID   string
+	WorkspaceID string
+	SessionID   string
+	Model       string
+	At          time.Time
+	// StartedAt is when the gateway sent the exchange upstream, already
+	// clamped by the caller; zero ⇒ unknown, and the per-turn read falls back
+	// to the record time.
+	StartedAt        time.Time
 	InputTokens      int64
 	OutputTokens     int64
 	CacheReadTokens  int64
@@ -110,12 +115,12 @@ func (s *PGStore) RecordAgentModelUsage(ctx context.Context, u AgentModelUsage) 
 		INSERT INTO agent_model_usage_events
 			(request_id, workspace_id, session_id, model, window_start,
 			 input_tokens, output_tokens, cache_read_tokens, cache_write_tokens,
-			 upstream_cost_microusd, cost_source, price_microusd)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
+			 upstream_cost_microusd, cost_source, price_microusd, started_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13)
 		ON CONFLICT (request_id) DO NOTHING`,
 		u.RequestID, u.WorkspaceID, u.SessionID, u.Model, window,
 		u.InputTokens, u.OutputTokens, u.CacheReadTokens, u.CacheWriteTokens,
-		u.UpstreamCostMicroUSD, u.CostSource, u.PriceMicroUSD)
+		u.UpstreamCostMicroUSD, u.CostSource, u.PriceMicroUSD, nullTime(u.StartedAt))
 	if err != nil {
 		return false, err
 	}
@@ -218,4 +223,111 @@ func (s *PGStore) AgentSpendInputs(ctx context.Context, workspaceID string, now 
 	}
 	in.Trust = trust.record(workspaceID)
 	return in, nil
+}
+
+// AgentTurnModelUsage is one session turn's platform-route model usage
+// (ADR091 D6): the requests started while the turn was the session's latest,
+// summed. Turn is 0 for requests started before the session's first turn.
+type AgentTurnModelUsage struct {
+	Turn             int
+	Requests         int64
+	InputTokens      int64
+	OutputTokens     int64
+	CacheReadTokens  int64
+	CacheWriteTokens int64
+	// PriceMicroUSD is the customer price, agent_model_cost_microusd's unit.
+	PriceMicroUSD int64
+	// Models are the model ids the turn's requests used, sorted.
+	Models []string
+	// FirstAt and LastAt bound the turn's requests by start time.
+	FirstAt time.Time
+	LastAt  time.Time
+}
+
+// AgentSessionModelCost is one session's platform-route model usage per turn
+// (ADR091 D6) with the session fields the read needs to label it.
+type AgentSessionModelCost struct {
+	WorkspaceID string
+	// AgentConfig is the session's stored agent config: its modelEndpoint
+	// says which model route the session was created on.
+	AgentConfig json.RawMessage
+	// Turns lists the turns that made requests, oldest first.
+	Turns []AgentTurnModelUsage
+}
+
+// AgentSessionModelUsage reads sessionID and sums its agent_model_usage_events
+// (in the session's own workspace) per turn, in one statement; ErrNotFound
+// when the session does not exist. Turns run one at a time, so a request
+// belongs to the turn that was the latest when the request started
+// (started_at, else recorded_at for rows that predate it): a streamed request
+// reported after the next turn began still counts to the turn that sent it.
+// Each turn's range is [its created_at, the next turn's created_at), built
+// once and range-joined. Events are kept AgentModelEventRetentionMonths, so
+// an older session reads fewer (or no) turns.
+func (s *PGStore) AgentSessionModelUsage(ctx context.Context, sessionID string) (AgentSessionModelCost, error) {
+	rows, err := s.Pool.Query(ctx, `
+		WITH session AS (
+			SELECT id, workspace_id, agent_config FROM agent_sessions WHERE id = $1
+		), turns AS (
+			SELECT turn, created_at AS from_at,
+			       lead(created_at) OVER (ORDER BY turn) AS until_at
+			FROM agent_session_turns
+			WHERE session_id = $1
+		), events AS (
+			SELECT e.*, COALESCE(e.started_at, e.recorded_at) AS at
+			FROM agent_model_usage_events e
+			JOIN session s ON e.workspace_id = s.workspace_id AND e.session_id = s.id
+		), per_turn AS (
+			SELECT COALESCE(t.turn, 0) AS turn, COUNT(*) AS requests,
+			       SUM(e.input_tokens)::bigint AS input_tokens, SUM(e.output_tokens)::bigint AS output_tokens,
+			       SUM(e.cache_read_tokens)::bigint AS cache_read_tokens, SUM(e.cache_write_tokens)::bigint AS cache_write_tokens,
+			       SUM(e.price_microusd)::bigint AS price_microusd,
+			       array_agg(DISTINCT e.model ORDER BY e.model) AS models,
+			       MIN(e.at) AS first_at, MAX(e.at) AS last_at
+			FROM events e
+			LEFT JOIN turns t
+			  ON e.at >= t.from_at AND (t.until_at IS NULL OR e.at < t.until_at)
+			GROUP BY 1
+		)
+		SELECT s.workspace_id, s.agent_config, p.turn, p.requests,
+		       p.input_tokens, p.output_tokens, p.cache_read_tokens, p.cache_write_tokens,
+		       p.price_microusd, p.models, p.first_at, p.last_at
+		FROM session s
+		LEFT JOIN per_turn p ON true
+		ORDER BY p.turn`, sessionID)
+	if err != nil {
+		return AgentSessionModelCost{}, err
+	}
+	defer rows.Close()
+	out := AgentSessionModelCost{Turns: []AgentTurnModelUsage{}}
+	found := false
+	for rows.Next() {
+		var (
+			turn                         *int
+			requests, in, outTok, cr, cw *int64
+			price                        *int64
+			models                       []string
+			firstAt, lastAt              *time.Time
+		)
+		if err := rows.Scan(&out.WorkspaceID, &out.AgentConfig, &turn, &requests, &in, &outTok, &cr, &cw,
+			&price, &models, &firstAt, &lastAt); err != nil {
+			return AgentSessionModelCost{}, err
+		}
+		found = true
+		if turn == nil {
+			continue // the session has no requests
+		}
+		out.Turns = append(out.Turns, AgentTurnModelUsage{
+			Turn: *turn, Requests: *requests, InputTokens: *in, OutputTokens: *outTok,
+			CacheReadTokens: *cr, CacheWriteTokens: *cw, PriceMicroUSD: *price, Models: models,
+			FirstAt: *firstAt, LastAt: *lastAt,
+		})
+	}
+	if err := rows.Err(); err != nil {
+		return AgentSessionModelCost{}, err
+	}
+	if !found {
+		return AgentSessionModelCost{}, ErrNotFound
+	}
+	return out, nil
 }

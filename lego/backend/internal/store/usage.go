@@ -518,11 +518,18 @@ func (s *PGStore) UsageMonthToDate(ctx context.Context, workspaceID string, now 
 	return out, rows.Err()
 }
 
+// AgentModelEventRetentionMonths is how long agent_model_usage_events outlive
+// compaction's boundary: an annual invoice period plus a dispute window
+// (ADR091 D6, D10.7). Each event is the evidence behind one charged request.
+const AgentModelEventRetentionMonths = 13
+
 // CompactUsage folds every usage_hourly row with window_start < before into
-// usage_monthly and purges it (docs/ADR023-usage-metering.md § Retention). A single
-// statement, so purge and aggregate are atomic and a re-run is a no-op; the
-// additive ON CONFLICT means a straggler row compacted on a later pass adds
-// to its month rather than overwriting it.
+// usage_monthly and purges it (docs/ADR023-usage-metering.md § Retention). It
+// also purges agent_model_usage_events older than AgentModelEventRetentionMonths
+// (UTC calendar months) before the boundary. A single statement, so purge and
+// aggregate are atomic and a re-run is a no-op; the additive ON CONFLICT means
+// a straggler row compacted on a later pass adds to its month rather than
+// overwriting it.
 func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageCompaction, error) {
 	var res UsageCompaction
 	err := s.Pool.QueryRow(ctx, `
@@ -533,10 +540,13 @@ func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageComp
 			DELETE FROM usage_source_streams
 			WHERE expected_through IS NOT NULL AND expected_through <= $1
 		), purged_model_events AS (
-			-- The platform-route token ledger only guards gateway retries
-			-- (minutes); it leaves with the hourly rows it fed.
+			-- The platform-route request ledger outlives the hourly rows it
+			-- fed: per-turn cost and the invoice trace read it (ADR091 D6,
+			-- D10.7), so it is kept AgentModelEventRetentionMonths past the
+			-- boundary. The month arithmetic runs on UTC wall time, so the
+			-- cutoff never depends on the session's TimeZone.
 			DELETE FROM agent_model_usage_events
-			WHERE window_start < $1
+			WHERE window_start < (($1::timestamptz AT TIME ZONE 'UTC') - make_interval(months => $2::int)) AT TIME ZONE 'UTC'
 		), purged AS (
 			DELETE FROM usage_hourly
 			WHERE window_start < $1
@@ -555,7 +565,7 @@ func (s *PGStore) CompactUsage(ctx context.Context, before time.Time) (UsageComp
 		)
 		SELECT (SELECT COUNT(*) FROM purged),
 		       (SELECT COUNT(DISTINCT month) FROM compacted)`,
-		before,
+		before, AgentModelEventRetentionMonths,
 	).Scan(&res.HourlyRows, &res.Months)
 	return res, err
 }

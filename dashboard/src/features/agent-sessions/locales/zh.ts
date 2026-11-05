@@ -971,6 +971,112 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "正在等待文件上传完成…",
     description: "Composer hint while attachment uploads block sending",
   },
+  "agentSessions.spendWarningTitle": {
+    message: "本月智能体模型支出已达上限的 {percent}%",
+    description: "Composer warning at 80% of the spend cap (ADR091 D6)",
+  },
+  "agentSessions.spendWarningBody": {
+    message: "已使用 {used} / {cap}。达到上限后将停止新的模型请求。",
+    description: "Composer warning body",
+  },
+  "agentSessions.spendReachedTitle.cap": {
+    message: "已达到每月智能体模型支出上限",
+    description: "Composer refusal title: the workspace's own cap",
+  },
+  "agentSessions.spendReachedTitle.newWorkspace": {
+    message: "已达到新工作区支出限额",
+    description: "Composer refusal title: the T0 trust-tier ceiling",
+  },
+  "agentSessions.spendReachedTitle.locked": {
+    message: "智能体模型支出已暂停",
+    description: "Composer refusal title: a payment hold",
+  },
+  "agentSessions.spendReachedBody.cap": {
+    message:
+      "此工作区本月已使用 {used}，达到 {cap} 的上限，无法启动新会话。工作区管理员可以提高上限，或等待每月 1 日（UTC）重置。",
+    description: "Composer refusal body: the workspace's own cap",
+  },
+  "agentSessions.spendReachedBody.capMax": {
+    message:
+      "此工作区本月已使用 {used}，达到 {cap} 的上限，且上限已是可设置的最大值，无法启动新会话。上限将在每月 1 日（UTC）重置；如需更高限额，请联系支持团队。",
+    description:
+      "Composer refusal body: the workspace's own cap binds at its maximum, so no admin can raise it",
+  },
+  "agentSessions.spendReachedBody.newWorkspace": {
+    message:
+      "新工作区在首次成功付款前，最多可在 bex 提供的模型上支出 {cap}。付款后限额会提高，或在每月 1 日（UTC）重置。",
+    description: "Composer refusal body: the T0 trust-tier ceiling",
+  },
+  "agentSessions.spendReachedBody.locked": {
+    message:
+      "由于付款失败或存在争议，此工作区的智能体模型支出被限制为 {cap}。请在账单页面结清欠款后再启动新会话。",
+    description: "Composer refusal body: a payment hold",
+  },
+  "agentSessions.spendIncreaseCap": {
+    message: "提高上限",
+    description: "Admin action linking to Settings \u2192 Agents",
+  },
+  "agentSessions.spendGoToBilling": {
+    message: "前往账单",
+    description: "Link to the Billing page",
+  },
+  "agentSessions.spendBalanceDueTitle": {
+    message: "付款失败",
+    description: "Composer refusal title: BILLING_BALANCE_DUE",
+  },
+  "agentSessions.spendBalanceDueBody": {
+    message: "在结清未付发票之前，使用 bex 提供的模型的智能体会话已暂停。",
+    description: "Composer refusal body: BILLING_BALANCE_DUE",
+  },
+  "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT": {
+    message:
+      "新工作区在首次成功付款前，最多可同时运行 {limit} 个使用 bex 提供的模型的智能体会话。请等待正在运行的会话结束或停止一个会话，然后重试。",
+    description: "Mapped message for AGENT_SESSION_TRUST_LIMIT (ADR091 D10.1)",
+  },
+  "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT_locked": {
+    message:
+      "由于付款失败或存在争议，此工作区最多可同时运行 {limit} 个使用 bex 提供的模型的智能体会话。请在账单页面结清欠款以解除限制。",
+    description:
+      "Mapped message for AGENT_SESSION_TRUST_LIMIT while a payment hold applies",
+  },
+  "agentSessions.failureSpendCapReached": {
+    message:
+      "此工作区已达到本月智能体模型支出上限。管理员可以在“设置 → 智能体”中提高上限，或等待每月 1 日（UTC）重置。",
+    description: "Failure callout for AGENT_MODEL_SPEND_CAP_REACHED",
+  },
+  "agentSessions.failureBalanceDue": {
+    message:
+      "此工作区的一笔付款失败。请在账单页面支付未结发票，然后启动新会话。",
+    description: "Failure callout for BILLING_BALANCE_DUE",
+  },
+  "agentSessions.costTotal": {
+    message: "模型费用 {amount}",
+    description: "Session header: the session's model cost (ADR091 D6)",
+  },
+  "agentSessions.costByo": {
+    message: "由你的模型提供方计费",
+    description: "Session header: a BYO-key session has no bex model cost",
+  },
+  "agentSessions.costTitle": {
+    message: "各轮次的模型费用",
+    description: "Heading of the per-turn cost popover",
+  },
+  "agentSessions.costTurn": {
+    message: "第 {turn} 轮",
+    description: "One turn's row in the cost popover",
+  },
+  "agentSessions.costSetup": {
+    message: "第一轮之前",
+    description: "Requests recorded before the first turn",
+  },
+  "agentSessions.costTurnTokens": {
+    message: "输入 {input} · 输出 {output} · 缓存 {cache} token",
+    description: "A turn's token counts",
+  },
+  "agentSessions.costPricing": {
+    message: "按模型提供方成本 + 30% 计费。",
+    description: "Pricing statement in the cost popover",
+  },
 };
 
 export default zhAgentSessions;

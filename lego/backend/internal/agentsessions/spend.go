@@ -164,6 +164,10 @@ func withSpend(view Environment, status agentsession.SpendStatus) Environment {
 	view.AgentModelSpendMonthToDateUSD = usd(status.MonthToDate)
 	tier := status.Tier.Name
 	view.TrustTier = &tier
+	locked, tierLimited, balanceDue := status.Locked, status.TierLimited, status.BalanceDue
+	view.TrustTierLocked = &locked
+	view.AgentModelSpendCapTierLimited = &tierLimited
+	view.BillingBalanceDue = &balanceDue
 	if t := status.Tier.ChargeThresholdUSD; t != nil {
 		threshold := *t
 		view.NextChargeThresholdUSD = &threshold

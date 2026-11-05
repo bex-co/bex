@@ -63,6 +63,9 @@ type usageResponse struct {
 	// (w8/m139): hours used against the allowance, as Render's Billing page
 	// shows it.
 	FreeInstanceHours usageFreeHours `json:"freeInstanceHours"`
+	// AgentModel is the platform-route agent model spend by model and token
+	// kind (ADR091 D6), billed at the provider's cost + 30%.
+	AgentModel AgentModelSummary `json:"agentModel"`
 }
 
 type usageFreeHours struct {
@@ -126,5 +129,6 @@ func toUsageResponse(sum Summary) usageResponse {
 		Billing:           sum.Billing,
 		Coverage:          coverage,
 		FreeInstanceHours: usageFreeHours{Used: sum.FreeInstanceHours.Used, Included: sum.FreeInstanceHours.Included},
+		AgentModel:        sum.AgentModel,
 	}
 }

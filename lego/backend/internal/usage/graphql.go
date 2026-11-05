@@ -206,6 +206,29 @@ var freeInstanceHoursGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var agentModelBreakdownGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentModelUsageBreakdown",
+	Description: "One model's share of the period's platform-route agent model spend (ADR091 D6). Token counts are display only; costUsd is what is billed.",
+	Fields: graphql.Fields{
+		"model":   gqlutil.ReqStrField(func(m AgentModelBreakdown) any { return m.Model }),
+		"costUsd": gqlutil.ReqStrField(func(m AgentModelBreakdown) any { return m.CostUSD }),
+		// Float, not Int: a month's token count can exceed GraphQL's 32-bit Int.
+		"inputTokens":      gqlutil.Typed(graphql.NewNonNull(graphql.Float), func(m AgentModelBreakdown) any { return m.InputTokens }),
+		"outputTokens":     gqlutil.Typed(graphql.NewNonNull(graphql.Float), func(m AgentModelBreakdown) any { return m.OutputTokens }),
+		"cacheReadTokens":  gqlutil.Typed(graphql.NewNonNull(graphql.Float), func(m AgentModelBreakdown) any { return m.CacheReadTokens }),
+		"cacheWriteTokens": gqlutil.Typed(graphql.NewNonNull(graphql.Float), func(m AgentModelBreakdown) any { return m.CacheWriteTokens }),
+	},
+})
+
+var agentModelSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentModelUsage",
+	Description: "The period's platform-route agent model spend, billed at the model provider's cost + 30% (ADR091 D6).",
+	Fields: graphql.Fields{
+		"monthToDateUsd": gqlutil.ReqStrField(func(a AgentModelSummary) any { return a.MonthToDateUSD }),
+		"models":         gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentModelBreakdownGQLType))), func(a AgentModelSummary) any { return a.Models }),
+	},
+})
+
 var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "UsageSummary",
 	Fields: graphql.Fields{
@@ -216,6 +239,8 @@ var usageSummaryGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"coverage":      gqlutil.Typed(graphql.NewNonNull(usageCoverageGQLType), func(s Summary) any { return s.Coverage }),
 		// freeInstanceHours is the monthly included Free instance hours (w8/m139).
 		"freeInstanceHours": gqlutil.Typed(graphql.NewNonNull(freeInstanceHoursGQLType), func(s Summary) any { return s.FreeInstanceHours }),
+		// agentModel is the platform-route agent model spend (ADR091 D6).
+		"agentModel": gqlutil.Typed(graphql.NewNonNull(agentModelSummaryGQLType), func(s Summary) any { return s.AgentModel }),
 		// billing is the real Stripe cost/invoices (m48/m50); null ⇒ estimate-only.
 		"billing": &graphql.Field{Type: billingGQLType, Resolve: gqlutil.Field(func(s Summary) any {
 			if s.Billing == nil {

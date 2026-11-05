@@ -37,13 +37,14 @@ import (
 // fakeSpend is the SpendStore over the fake environments and sessions.
 type fakeSpend struct {
 	*fakeEnvironments
-	plan  string
-	trust store.BillingTrust
-	used  int64
+	plan       string
+	trust      store.BillingTrust
+	used       int64
+	balanceDue bool
 }
 
 func (f *fakeSpend) AgentSpendInputs(_ context.Context, ws string, _ time.Time) (store.AgentSpendInputs, error) {
-	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used}, nil
+	return store.AgentSpendInputs{Plan: f.plan, Trust: f.trust, OverrideMicroUSD: f.rows[ws].SpendCapOverrideMicroUSD, MonthToDateMicroUSD: f.used, BalanceDue: f.balanceDue}, nil
 }
 
 func spendEnvironmentService(plan string, trust store.BillingTrust) (*Service, *fakeSpend) {
@@ -67,13 +68,23 @@ func TestEnvironmentReportsSpendControls(t *testing.T) {
 	}
 	if *got.AgentModelMonthlySpendCapUSD != 10 || *got.AgentModelPlanSpendCapUSD != 200 || *got.TrustTier != "T0" ||
 		*got.NextChargeThresholdUSD != 10 || *got.AgentModelSpendMonthToDateUSD != 1.234567 ||
-		*got.AgentModelMaxSpendCapUSD != 2000 || got.AgentModelSpendCapOverrideUSD != nil {
+		*got.AgentModelMaxSpendCapUSD != 2000 || got.AgentModelSpendCapOverrideUSD != nil ||
+		!*got.AgentModelSpendCapTierLimited || *got.TrustTierLocked || *got.BillingBalanceDue {
 		t.Fatalf("T0 Pro view = %+v", got)
 	}
 	spend.trust = store.BillingTrust{LifetimePaidCents: 200000, PaidCycleInvoices: 6}
 	got, _ = svc.Environment(caller("viewer"), "tea-a")
-	if *got.AgentModelMonthlySpendCapUSD != 200 || *got.TrustTier != "T4" || got.NextChargeThresholdUSD != nil {
+	if *got.AgentModelMonthlySpendCapUSD != 200 || *got.TrustTier != "T4" || got.NextChargeThresholdUSD != nil ||
+		*got.AgentModelSpendCapTierLimited {
 		t.Fatalf("T4 Pro view = %+v", got)
+	}
+	// A failed payment: the tier is locked at T0 and model spend is refused
+	// until the invoice is paid (ADR091 D10.1, D10.3).
+	spend.trust = store.BillingTrust{LifetimePaidCents: 200000, PaidCycleInvoices: 6, LockedUntil: store.LockedIndefinitely}
+	spend.balanceDue = true
+	got, _ = svc.Environment(caller("viewer"), "tea-a")
+	if *got.TrustTier != "T0" || !*got.TrustTierLocked || !*got.BillingBalanceDue {
+		t.Fatalf("locked view = %+v", got)
 	}
 }
 

@@ -124,6 +124,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, view)
 	})
+	mux.HandleFunc("GET /v1/agent-sessions/{id}/model-cost", core.HandleByID(s.ModelCost))
 	mux.HandleFunc("POST /v1/agent-sessions/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
 		view, err := s.Cancel(r.Context(), r.PathValue("id"))
 		if err != nil {

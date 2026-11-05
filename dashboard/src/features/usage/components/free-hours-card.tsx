@@ -19,7 +19,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/common/components/ui/card";
-import { cn } from "@/common/lib/utils/utils";
+import { UsageMeter } from "@/common/components/usage-meter";
 import { useTranslations } from "@/common/hooks/use-translations";
 import type { FreeInstanceHours } from "@/features/usage/hooks/use-usage";
 
@@ -34,9 +34,12 @@ export function FreeHoursCard({ hours }: { hours: FreeInstanceHours | null }) {
   const { t } = useTranslations();
   if (!hours) return null;
   const ratio = hours.included > 0 ? hours.used / hours.included : 0;
-  const percent = Math.min(100, Math.max(0, ratio * 100));
   const spent = ratio >= 1;
   const near = ratio >= NEAR_LIMIT_RATIO;
+  const usedText = t("usage.freeHoursUsed", {
+    used: hours.used.toFixed(1),
+    included: String(hours.included),
+  });
   return (
     <Card>
       <CardHeader>
@@ -44,28 +47,13 @@ export function FreeHoursCard({ hours }: { hours: FreeInstanceHours | null }) {
         <CardDescription>{t("usage.freeHoursDescription")}</CardDescription>
       </CardHeader>
       <CardContent className="space-y-2">
-        <p className="text-sm font-medium">
-          {t("usage.freeHoursUsed", {
-            used: hours.used.toFixed(1),
-            included: String(hours.included),
-          })}
-        </p>
-        <div
-          role="progressbar"
-          aria-label={t("usage.freeHoursTitle")}
-          aria-valuemin={0}
-          aria-valuemax={100}
-          aria-valuenow={Math.round(percent)}
-          className="h-2 w-full overflow-hidden rounded-full bg-muted"
-        >
-          <div
-            className={cn(
-              "h-full",
-              spent ? "bg-destructive" : near ? "bg-amber-500" : "bg-primary",
-            )}
-            style={{ width: `${percent}%` }}
-          />
-        </div>
+        <p className="text-sm font-medium">{usedText}</p>
+        <UsageMeter
+          label={t("usage.freeHoursTitle")}
+          fraction={ratio}
+          level={spent ? "reached" : near ? "warning" : "ok"}
+          valueText={usedText}
+        />
         {spent ? (
           <p className="text-xs text-destructive">
             {t("usage.freeHoursSpent")}

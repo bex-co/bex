@@ -143,10 +143,7 @@ func (r *ModelUsageRecorder) price(rep ModelUsageReport, now time.Time) (upstrea
 	case reported != nil:
 		cost, source = *reported, store.AgentModelCostReported
 	default:
-		at := rep.StartedAt.UTC()
-		if at.IsZero() || at.After(now.Add(time.Minute)) || at.Before(now.Add(-startedAtSkew)) {
-			at = now
-		}
+		at := startedAt(rep, now)
 		computed, ok := 0.0, false
 		if r.Prices != nil {
 			computed, ok = r.Prices.Cost(rep.Model, at, rep.InputTokens, rep.OutputTokens, rep.CacheReadTokens, rep.CacheWriteTokens)
@@ -165,6 +162,18 @@ func (r *ModelUsageRecorder) price(rep ModelUsageReport, now time.Time) (upstrea
 		markup = pricing.Default.AgentModelMarkup()
 	}
 	return microUSD(cost), source, microUSD(cost * markup)
+}
+
+// startedAt is the report's StartedAt, or now when it is absent or sits
+// further from the record time than the gateway's clock can drift: one
+// validated start drives both the time-of-day price and the per-turn
+// attribution (ADR091 D2.2, D6).
+func startedAt(rep ModelUsageReport, now time.Time) time.Time {
+	at := rep.StartedAt.UTC()
+	if at.IsZero() || at.After(now.Add(time.Minute)) || at.Before(now.Add(-startedAtSkew)) {
+		return now
+	}
+	return at
 }
 
 // shouldLogUnpriced reports whether model's UNPRICED line is due: at most
@@ -212,7 +221,7 @@ func (r *ModelUsageRecorder) Record(ctx context.Context, rep ModelUsageReport) (
 	upstream, source, price := r.price(rep, now)
 	recorded, err := r.Store.RecordAgentModelUsage(ctx, store.AgentModelUsage{
 		RequestID: rep.RequestID, WorkspaceID: rep.Workspace, SessionID: rep.SessionID,
-		Model: rep.Model, At: now,
+		Model: rep.Model, At: now, StartedAt: startedAt(rep, now),
 		InputTokens: rep.InputTokens, OutputTokens: rep.OutputTokens,
 		CacheReadTokens: rep.CacheReadTokens, CacheWriteTokens: rep.CacheWriteTokens,
 		UpstreamCostMicroUSD: upstream, CostSource: source, PriceMicroUSD: price,

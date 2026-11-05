@@ -225,6 +225,9 @@ type Service struct {
 	// nil Spend (store off) ⇒ no tier limit and no spend fields.
 	Spend SpendStore
 	Sheet *pricing.Sheet
+	// ModelCosts reads a session's platform-route model cost per turn
+	// (ADR091 D6). nil (store off) ⇒ every session reads zero cost.
+	ModelCosts ModelCostStore
 	// RegistryHosts is the package-registry catalog session policies render
 	// (sessionegress.Manager.RegistryDomains), reported by the environment
 	// for display. Empty ⇒ the built-in catalog.

@@ -249,6 +249,78 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     message: "Couldn't save the model key. Try again.",
     description: "Generic model key write failure",
   },
+  "agentEnvironment.spendTitle": {
+    message: "Agent model spend",
+    description: "Heading of the agent-model spend section (ADR091 D6)",
+  },
+  "agentEnvironment.spendPricing": {
+    message:
+      "Billed at the model provider's cost + 30%. The cap stops new model requests for the rest of the month.",
+    description: "Pricing statement under the spend heading",
+  },
+  "agentEnvironment.spendSummary": {
+    message: "{used} of {cap} this month",
+    description: "Month-to-date spend against the effective monthly cap",
+  },
+  "agentEnvironment.spendMeterValue": {
+    message: "{used} of {cap}",
+    description: "Screen-reader value of the spend progress bar",
+  },
+  "agentEnvironment.spendUnavailable": {
+    message: "Spend isn't available right now.",
+    description: "Shown when the spend fields could not be read",
+  },
+  "agentEnvironment.spendTierNextCharge": {
+    message:
+      "Trust tier {tier}: your card is charged when agent model spend reaches {amount}.",
+    description: "Trust tier with its mid-month charge point (ADR091 D10.1)",
+  },
+  "agentEnvironment.spendTierMonthEnd": {
+    message: "Trust tier {tier}: agent model spend is charged at month end.",
+    description: "Top trust tier, charged only at month end",
+  },
+  "agentEnvironment.spendTierNew": {
+    message:
+      "New workspaces start with a $10 limit that rises after the first successful payment.",
+    description: "Explains the T0 new-workspace limit",
+  },
+  "agentEnvironment.spendTierLocked": {
+    message:
+      "A failed or disputed payment limits this workspace; settle it in Billing to lift the limit.",
+    description: "Explains a payment-locked trust tier",
+  },
+  "agentEnvironment.spendCapLabel": {
+    message: "Monthly spend cap (USD)",
+    description: "Label of the admin-editable cap field",
+  },
+  "agentEnvironment.spendCapSave": {
+    message: "Save cap",
+    description: "Button that saves the cap",
+  },
+  "agentEnvironment.spendCapReset": {
+    message: "Reset to plan default",
+    description: "Button that returns the cap to the plan default",
+  },
+  "agentEnvironment.spendCapHelp": {
+    message: "Plan default {plan}. Admins can set up to {max}.",
+    description: "Help under the cap field",
+  },
+  "agentEnvironment.spendCapInvalid": {
+    message: "Enter an amount more than $0 and at most {max}.",
+    description: "Client/server refusal of a cap value",
+  },
+  "agentEnvironment.spendCapSaved": {
+    message: "Spend cap saved",
+    description: "Toast after saving the cap",
+  },
+  "agentEnvironment.spendCapResetDone": {
+    message: "Spend cap reset to the plan default",
+    description: "Toast after resetting the cap",
+  },
+  "agentEnvironment.spendCapSaveFailed": {
+    message: "Couldn't save the spend cap. Try again.",
+    description: "Generic cap write failure",
+  },
 };
 
 export default enAgentEnvironment;

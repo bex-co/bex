@@ -21,6 +21,20 @@ export interface AgentSessionErrorParams {
 }
 
 /**
+ * Codes whose copy depends on a param: each names the message variant
+ * (`agentSessions.errors.<CODE>_<variant>`) its params select, or null for the
+ * plain message. The trust-tier session limit (ADR091 D10.1) names its cause:
+ * a new workspace, or one held back by a failed or disputed payment.
+ */
+const MESSAGE_VARIANTS: Record<
+  string,
+  (params: AgentSessionErrorParams) => string | null
+> = {
+  AGENT_SESSION_TRUST_LIMIT: (params) =>
+    params.locked === true ? "locked" : null,
+};
+
+/**
  * A coded `AGENT_SESSION_*` failure. Carries the stable `code`, an i18n-ready
  * `messageKey` (`agentSessions.errors.<CODE>`) the caller resolves through
  * `t()`, the server's human message as the fallback, and the structured
@@ -35,7 +49,8 @@ export class AgentSessionError extends Error {
     super(message);
     this.name = "AgentSessionError";
     this.code = code;
-    this.messageKey = `agentSessions.errors.${code}`;
+    const variant = MESSAGE_VARIANTS[code]?.(params);
+    this.messageKey = `agentSessions.errors.${code}${variant ? `_${variant}` : ""}`;
     this.params = params;
   }
 }

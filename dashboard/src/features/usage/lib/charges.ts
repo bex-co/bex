@@ -43,6 +43,22 @@ export function money(value: number, locale: string): string {
   return formatMinorUnits(Math.round(value * 100), "usd", locale);
 }
 
+/**
+ * A session-sized USD amount from the backend's cents string ("0.42"):
+ * `lessThan` wraps "$0.01" (localized "<$0.01") when billed requests round to
+ * zero cents, so a session that did spend never reads as free.
+ */
+export function sessionUsd(
+  amount: string,
+  requests: number,
+  locale: string,
+  lessThan: (amount: string) => string,
+): string {
+  const value = usd(amount);
+  if (requests > 0 && value === 0) return lessThan(money(0.01, locale));
+  return money(value, locale);
+}
+
 /** "YYYY-MM" for a given instant — the period the charge tree treats as live. */
 export function currentPeriod(now: Date): string {
   return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;

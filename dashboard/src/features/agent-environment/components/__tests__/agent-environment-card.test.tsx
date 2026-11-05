@@ -1,10 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { cleanup, render, screen } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { AgentModelSource, AgentNetworkTier } from "@/graphql/definitions";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { mockCapabilities } from "@/test/mocks/capabilities";
+import { agentEnvironment } from "@/test/mocks/agent-environment";
 import { codedGraphQLError } from "@/test/mocks/apollo";
 import { AgentEnvironmentCard } from "@/features/agent-environment/components/agent-environment-card";
 import type { UseAgentEnvironmentResult } from "@/features/agent-environment/hooks/use-agent-environment";
@@ -20,19 +21,9 @@ vi.mock("@/features/agent-environment/hooks/use-agent-environment", () => ({
 
 vi.mock("sonner", () => ({ toast: { success: vi.fn(), error: vi.fn() } }));
 
-const ENV: AgentEnvironmentView = {
-  __typename: "AgentEnvironment",
-  ownerId: "tea-1",
-  networkTier: AgentNetworkTier.Registries,
-  customHosts: [],
-  defaultModel: null,
-  modelPinned: false,
-  pinnedModel: null,
-  modelKeySet: false,
-  modelSource: AgentModelSource.Platform,
+const ENV: AgentEnvironmentView = agentEnvironment({
   registryHosts: ["registry.npmjs.org", "pypi.org", "proxy.golang.org"],
-  updatedAt: null,
-};
+});
 
 function setup(env: AgentEnvironmentView | null = ENV, loading = false) {
   const update = vi.fn(async (input) => ({ ...ENV, ...input }));
@@ -288,6 +279,170 @@ describe("AgentEnvironmentCard", () => {
       expect(
         screen.getByTestId("model-key-section-skeleton"),
       ).toBeInTheDocument();
+    });
+  });
+
+  // ADR091 D5, D6, D10.1: month-to-date spend against the cap, the pricing
+  // statement, the trust tier and the admin-editable cap.
+  describe("agent model spend", () => {
+    const SPEND = {
+      ...ENV,
+      agentModelSpendMonthToDateUsd: 8.5,
+      agentModelMonthlySpendCapUsd: 10,
+      agentModelPlanSpendCapUsd: 20,
+      agentModelMaxSpendCapUsd: 200,
+      agentModelSpendCapOverrideUsd: null,
+      agentModelSpendCapTierLimited: true,
+      trustTier: "T0",
+      trustTierLocked: false,
+      nextChargeThresholdUsd: 10,
+      billingBalanceDue: false,
+    };
+    const capField = () => screen.getByLabelText("Monthly spend cap (USD)");
+    const saveCap = () => screen.getByRole("button", { name: "Save cap" });
+    const resetCap = () =>
+      screen.getByRole("button", { name: "Reset to plan default" });
+
+    it("shows spend against the effective cap, the pricing and the new-workspace tier", () => {
+      setup(SPEND);
+      expect(screen.getByTestId("spend-summary")).toHaveTextContent(
+        "$8.50 of $10.00 this month",
+      );
+      const meter = screen.getByRole("progressbar", {
+        name: "Agent model spend",
+      });
+      expect(meter).toHaveAttribute("aria-valuenow", "85");
+      expect(meter).toHaveAttribute("aria-valuetext", "$8.50 of $10.00");
+      expect(
+        screen.getByText(/Billed at the model provider's cost \+ 30%/),
+      ).toBeInTheDocument();
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T0: your card is charged when agent model spend reaches $10.00.",
+      );
+      expect(screen.getByTestId("spend-tier-note")).toHaveTextContent(
+        "New workspaces start with a $10 limit that rises after the first successful payment.",
+      );
+      expect(capField()).toHaveValue(20);
+      expect(
+        screen.getByText("Plan default $20.00. Admins can set up to $200.00."),
+      ).toBeInTheDocument();
+    });
+
+    it("names a top-tier month-end charge and a payment hold", () => {
+      setup({
+        ...SPEND,
+        trustTier: "T4",
+        nextChargeThresholdUsd: null,
+        trustTierLocked: false,
+      });
+      expect(screen.getByTestId("spend-tier")).toHaveTextContent(
+        "Trust tier T4: agent model spend is charged at month end.",
+      );
+      // The note line stays reserved (empty) so the layout never shifts.
+      expect(screen.getByTestId("spend-tier-note").textContent?.trim()).toBe(
+        "",
+      );
+    });
+
+    it("announces unavailable spend instead of an empty 0% bar", () => {
+      setup({
+        ...SPEND,
+        agentModelSpendMonthToDateUsd: null,
+        agentModelMonthlySpendCapUsd: null,
+      });
+      const meter = screen.getByRole("progressbar", {
+        name: "Agent model spend",
+      });
+      expect(meter).not.toHaveAttribute("aria-valuenow");
+      expect(meter).toHaveAttribute(
+        "aria-valuetext",
+        "Spend isn't available right now.",
+      );
+      expect(meter).toHaveAttribute("data-state", "unavailable");
+    });
+
+    it("lets an admin set the cap within 10x the plan default", async () => {
+      const { user, update } = setup(SPEND);
+      expect(saveCap()).toBeDisabled();
+      await user.clear(capField());
+      await user.type(capField(), "250");
+      const alert = screen.getByRole("alert");
+      expect(alert).toHaveTextContent(
+        "Enter an amount more than $0 and at most $200.00.",
+      );
+      // The field names both its help and its error.
+      expect(capField().getAttribute("aria-describedby")?.split(" ")).toEqual(
+        expect.arrayContaining([alert.id]),
+      );
+      expect(capField()).toHaveAccessibleDescription(
+        /Admins can set up to \$200\.00\. Enter an amount/,
+      );
+      expect(saveCap()).toBeDisabled();
+      await user.clear(capField());
+      await user.type(capField(), "50");
+      await user.click(saveCap());
+      expect(update).toHaveBeenCalledWith({ agentModelMonthlySpendCapUsd: 50 });
+      expect(toast.success).toHaveBeenCalledWith("Spend cap saved");
+    });
+
+    it("resets an override to the plan default", async () => {
+      const { user, update } = setup({
+        ...SPEND,
+        agentModelSpendCapOverrideUsd: 50,
+      });
+      expect(capField()).toHaveValue(50);
+      await user.click(resetCap());
+      expect(update).toHaveBeenCalledWith({
+        resetAgentModelMonthlySpendCap: true,
+      });
+    });
+
+    it("maps a server cap refusal", async () => {
+      const { user, update } = setup(SPEND);
+      update.mockRejectedValueOnce(
+        codedGraphQLError("AGENT_ENVIRONMENT_SPEND_CAP_INVALID", {
+          field: "agentModelMonthlySpendCapUsd",
+        }),
+      );
+      await user.clear(capField());
+      await user.type(capField(), "30");
+      await user.click(saveCap());
+      expect(screen.getByRole("alert")).toHaveTextContent("at most $200.00");
+    });
+
+    it("shows non-admins the spend with every cap control disabled", () => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ role: "DEVELOPER", canManage: false }),
+      );
+      setup({ ...SPEND, agentModelSpendCapOverrideUsd: 50 });
+      expect(screen.getByTestId("spend-summary")).toHaveTextContent(
+        "$8.50 of $10.00",
+      );
+      expect(capField()).toBeDisabled();
+      expect(saveCap()).toBeDisabled();
+      expect(resetCap()).toBeDisabled();
+    });
+
+    it("keeps the skeleton's spend section in step with the ready card", () => {
+      setup(SPEND);
+      const readySection = screen.getByTestId("spend-cap-section");
+      // Ready: summary, meter, tier line and its own note line, then the cap
+      // field with Save (min-w-24) and Reset (min-w-48).
+      expect(saveCap()).toHaveClass("min-w-24");
+      expect(resetCap()).toHaveClass("min-w-48");
+      const readyLines = readySection.querySelectorAll(
+        ":scope > div:nth-of-type(2) > *",
+      ).length;
+      cleanup();
+
+      setup(null, true);
+      const skeleton = screen.getByTestId("spend-cap-section-skeleton");
+      expect(
+        skeleton.querySelectorAll(":scope > div:nth-of-type(2) > *"),
+      ).toHaveLength(readyLines);
+      const buttons = skeleton.querySelectorAll(".flex > *");
+      expect(buttons[1]).toHaveClass("w-24");
+      expect(buttons[2]).toHaveClass("w-48");
     });
   });
 });

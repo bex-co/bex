@@ -195,6 +195,28 @@ query AgentSessionToolOutput($id: String!, $turn: Int!, $toolCallId: String!) {
   }
 }
 
+# What a session's bex-provided model requests cost (ADR091 D6): the total
+# (provider cost + 30%) and each turn's cost and tokens. A session on the
+# workspace's own model key records none; its provider bills it.
+query AgentSessionModelCost($id: String!) {
+  agentSessionModelCost(id: $id) {
+    sessionId
+    modelSource
+    costUsd
+    requests
+    turns {
+      turn
+      costUsd
+      requests
+      inputTokens
+      outputTokens
+      cacheReadTokens
+      cacheWriteTokens
+      models
+    }
+  }
+}
+
 # One attachment with a fresh 15-minute downloadUrl on the storage origin
 # (ADR095 D7). The conversation reads this per rendered attachment and
 # refetches when an expired URL fails to load.

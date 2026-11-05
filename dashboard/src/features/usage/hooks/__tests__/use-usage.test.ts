@@ -131,8 +131,47 @@ describe("useUsage", () => {
           },
         ],
       },
+      // agentModel absent from the response ⇒ null (an older API).
+      agentModel: null,
       // billing absent from the response ⇒ null (estimate-only, m48).
       billing: null,
+    });
+  });
+
+  it("maps the agent model line and its per-model breakdown (ADR091 D6)", () => {
+    mockUseQuery.mockReturnValue(
+      createSuccessQueryResult({
+        usage: {
+          workspaceId: "ws-abc123",
+          agentModel: {
+            monthToDateUsd: "3.73",
+            models: [
+              {
+                model: "m/b",
+                costUsd: "2.50",
+                inputTokens: 1,
+                outputTokens: 0,
+                cacheReadTokens: 0,
+                cacheWriteTokens: 4,
+              },
+            ],
+          },
+        },
+      }),
+    );
+    const { result } = renderHook(() => useUsage());
+    expect(result.current.summary?.agentModel).toEqual({
+      monthToDateUsd: "3.73",
+      models: [
+        {
+          model: "m/b",
+          costUsd: "2.50",
+          inputTokens: 1,
+          outputTokens: 0,
+          cacheReadTokens: 0,
+          cacheWriteTokens: 4,
+        },
+      ],
     });
   });
 

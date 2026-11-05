@@ -242,6 +242,76 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "无法保存模型密钥，请重试。",
     description: "Generic model key write failure",
   },
+  "agentEnvironment.spendTitle": {
+    message: "智能体模型支出",
+    description: "Heading of the agent-model spend section (ADR091 D6)",
+  },
+  "agentEnvironment.spendPricing": {
+    message:
+      "按模型提供方成本 + 30% 计费。达到上限后，本月剩余时间内不再发起新的模型请求。",
+    description: "Pricing statement under the spend heading",
+  },
+  "agentEnvironment.spendSummary": {
+    message: "本月 {used} / {cap}",
+    description: "Month-to-date spend against the effective monthly cap",
+  },
+  "agentEnvironment.spendMeterValue": {
+    message: "已用 {used}，上限 {cap}",
+    description: "Screen-reader value of the spend progress bar",
+  },
+  "agentEnvironment.spendUnavailable": {
+    message: "暂时无法获取支出数据。",
+    description: "Shown when the spend fields could not be read",
+  },
+  "agentEnvironment.spendTierNextCharge": {
+    message: "信任等级 {tier}：智能体模型支出达到 {amount} 时从你的卡中扣款。",
+    description: "Trust tier with its mid-month charge point (ADR091 D10.1)",
+  },
+  "agentEnvironment.spendTierMonthEnd": {
+    message: "信任等级 {tier}：智能体模型支出在月底结算。",
+    description: "Top trust tier, charged only at month end",
+  },
+  "agentEnvironment.spendTierNew": {
+    message: "新工作区的上限为 $10，首次成功付款后会提高。",
+    description: "Explains the T0 new-workspace limit",
+  },
+  "agentEnvironment.spendTierLocked": {
+    message:
+      "由于付款失败或存在争议，此工作区受到限制；请在账单页面结清后解除限制。",
+    description: "Explains a payment-locked trust tier",
+  },
+  "agentEnvironment.spendCapLabel": {
+    message: "每月支出上限（美元）",
+    description: "Label of the admin-editable cap field",
+  },
+  "agentEnvironment.spendCapSave": {
+    message: "保存上限",
+    description: "Button that saves the cap",
+  },
+  "agentEnvironment.spendCapReset": {
+    message: "恢复为套餐默认值",
+    description: "Button that returns the cap to the plan default",
+  },
+  "agentEnvironment.spendCapHelp": {
+    message: "套餐默认值 {plan}。管理员最高可设置为 {max}。",
+    description: "Help under the cap field",
+  },
+  "agentEnvironment.spendCapInvalid": {
+    message: "请输入大于 $0 且不超过 {max} 的金额。",
+    description: "Client/server refusal of a cap value",
+  },
+  "agentEnvironment.spendCapSaved": {
+    message: "支出上限已保存",
+    description: "Toast after saving the cap",
+  },
+  "agentEnvironment.spendCapResetDone": {
+    message: "支出上限已恢复为套餐默认值",
+    description: "Toast after resetting the cap",
+  },
+  "agentEnvironment.spendCapSaveFailed": {
+    message: "无法保存支出上限，请重试。",
+    description: "Generic cap write failure",
+  },
 };
 
 export default zhAgentEnvironment;

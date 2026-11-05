@@ -180,6 +180,8 @@ function DetailSkeleton() {
             <Skeleton className="h-3 w-24" />
             <Skeleton className="h-3 w-16" />
             <Skeleton className="h-3 w-12" />
+            {/* SessionModelCost (ADR091 D6) */}
+            <Skeleton className="h-3 w-14" />
           </div>
         </div>
         <Skeleton className="h-8 w-20 shrink-0 rounded-md" />

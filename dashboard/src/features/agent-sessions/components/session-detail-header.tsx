@@ -27,6 +27,7 @@ import {
 } from "@/common/components/ui/dropdown-menu";
 import { CopyButton } from "@/common/components/copy-button";
 import { SessionFilesButton } from "@/features/agent-sessions/components/session-files-sheet";
+import { SessionModelCost } from "@/features/agent-sessions/components/session-model-cost";
 import {
   Tooltip,
   TooltipContent,
@@ -71,11 +72,11 @@ export interface SessionDetailHeaderProps {
  * The full-page chat header (ADR047 D9, w3/m44): a compact top bar with a
  * back-to-sessions link, the phase chip + the session's derived name (w1/m90 —
  * its repo, or its prompt when the session is repo-less), a compact meta row
- * (branch when there is one, ticking duration, turns), an inline draft-PR badge
- * `#N`, the Open in
- * Zed action (w2/m65), a "…" overflow menu (open PR), and cancel-with-confirm. The duration ticks live
- * while the session is non-terminal; once terminal it pins to the session's own
- * end timestamp (via the mapper). Cancel is offered only while the session can
+ * (branch when there is one, ticking duration, turns, model cost — ADR091 D6),
+ * an inline draft-PR badge `#N`, the Open in Zed action (w2/m65), a "…"
+ * overflow menu (open PR), and cancel-with-confirm. The duration ticks live
+ * while the session is non-terminal; once terminal it pins to the session's
+ * own end timestamp (via the mapper). Cancel is offered only while the session can
  * still be stopped and is disabled with a reason once canceling/canceled — the
  * confirm copy states pushed work is preserved.
  */
@@ -197,6 +198,7 @@ export function SessionDetailHeader({
           ) : null}
           <span>{t("agentSessions.metaDuration", { duration })}</span>
           <span>{t("agentSessions.metaTurns", { count: session.turns })}</span>
+          <SessionModelCost session={session} />
           {session.isArchived ? (
             <Badge variant="secondary" className="gap-1">
               <Archive className="size-3" />

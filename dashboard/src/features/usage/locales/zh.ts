@@ -484,6 +484,36 @@ const zhUsage: Record<string, TranslationEntry> = {
     description:
       "Shown when the last card offered was refused because it carries an unpaid written-off balance (ADR091 D10.6)",
   },
+  "usage.agentModelTitle": {
+    message: "智能体模型",
+    description:
+      "Billing page card and nav entry for agent model spend (ADR091 D6)",
+  },
+  "usage.agentModelPricing": {
+    message: "按模型提供方成本 + 30% 计费。",
+    description: "Pricing statement under the Agent model title",
+  },
+  "usage.agentModelMonthToDate": {
+    message: "本月至今",
+    description: "Label of the current month's agent model total",
+  },
+  "usage.agentModelPeriodTotal": {
+    message: "当月合计",
+    description: "Label of a closed month's agent model total",
+  },
+  "usage.agentModelBreakdown_other": {
+    message: "按模型细分（{count} 个模型）",
+    description: "Toggle that expands the per-model breakdown",
+  },
+  "usage.agentModelEmpty": {
+    message: "此期间没有智能体模型用量。",
+    description: "Shown when the period has no agent model spend",
+  },
+  "usage.lessThanAmount": {
+    message: "不足 {amount}",
+    description:
+      "A charge that rounds below the smallest amount shown, e.g. <$0.01",
+  },
 };
 
 export default zhUsage;

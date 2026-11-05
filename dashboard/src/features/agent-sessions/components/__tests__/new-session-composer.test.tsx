@@ -11,6 +11,11 @@ import { NewSessionComposer } from "@/features/agent-sessions/components/new-ses
 import { AgentSessionError } from "@/features/agent-sessions/lib/errors";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import { agentSessionView } from "@/test/mocks/agent-session";
+import { agentEnvironment } from "@/test/mocks/agent-environment";
+import { mockCapabilities } from "@/test/mocks/capabilities";
+import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
+import { AgentModelSource } from "@/graphql/definitions";
+import type { AgentEnvironmentView } from "@/features/agent-environment/lib/environment";
 
 const mockNavigate = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -110,7 +115,25 @@ vi.mock(
   }),
 );
 
+// The workspace agent environment drives the spend banner (ADR091 D6);
+// null (not loaded) shows none.
+const spend = vi.hoisted(() => ({
+  environment: null as AgentEnvironmentView | null,
+}));
+vi.mock("@/features/agent-environment/hooks/use-agent-environment", () => ({
+  useAgentEnvironment: () => ({
+    environment: spend.environment,
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+    update: vi.fn(),
+    saving: false,
+  }),
+}));
+
 beforeEach(() => {
+  spend.environment = null;
+  vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
   uploads.length = 0;
   capabilitiesState.capabilities.attachments.enabled = true;
   priorSessions = [];
@@ -787,5 +810,154 @@ describe("NewSessionComposer attachments (ADR095)", () => {
     expect(
       screen.queryByRole("button", { name: "Attach files" }),
     ).not.toBeInTheDocument();
+  });
+});
+
+describe("NewSessionComposer agent model spend (ADR091 D6)", () => {
+  function spending(used: number, over: Partial<AgentEnvironmentView> = {}) {
+    spend.environment = agentEnvironment({
+      agentModelSpendMonthToDateUsd: used,
+      agentModelMonthlySpendCapUsd: 20,
+      agentModelPlanSpendCapUsd: 20,
+      agentModelMaxSpendCapUsd: 200,
+      agentModelSpendCapTierLimited: false,
+      trustTierLocked: false,
+      billingBalanceDue: false,
+      ...over,
+    });
+  }
+  const banner = () => screen.queryByTestId("composer-spend-banner");
+  const start = () => screen.getByRole("button", { name: "Start session" });
+
+  it("shows no banner below 80% of the cap and lets a session start", async () => {
+    spending(15.99);
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(banner()).toBeNull();
+    expect(start()).toBeEnabled();
+  });
+
+  it("warns at 80% of the cap without blocking", async () => {
+    spending(16);
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(banner()).toHaveTextContent(
+      "Agent model spend is at 80% of this month's cap",
+    );
+    expect(banner()).toHaveTextContent("$16.00 of $20.00 used");
+    expect(start()).toBeEnabled();
+  });
+
+  it("blocks at the cap and offers admins an Increase cap action", async () => {
+    spending(20);
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(banner()).toHaveTextContent("Monthly agent model spend cap reached");
+    expect(start()).toBeDisabled();
+    expect(screen.getByRole("link", { name: "Increase cap" })).toHaveAttribute(
+      "href",
+      "/workspace/settings#agents",
+    );
+    await user.keyboard("{Enter}");
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("blocks at the cap without the admin action for non-admins", async () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    spending(25);
+    render(<NewSessionComposer />);
+    expect(banner()).toHaveTextContent("Monthly agent model spend cap reached");
+    expect(screen.queryByRole("link", { name: "Increase cap" })).toBeNull();
+  });
+
+  it("drops the admin action once the cap is at its maximum", () => {
+    spending(200, {
+      agentModelMonthlySpendCapUsd: 200,
+      agentModelSpendCapOverrideUsd: 200,
+    });
+    render(<NewSessionComposer />);
+    expect(banner()).toHaveTextContent("Monthly agent model spend cap reached");
+    expect(banner()).toHaveTextContent("the most it can be set to");
+    expect(screen.queryByRole("link", { name: "Increase cap" })).toBeNull();
+    expect(start()).toBeDisabled();
+  });
+
+  it("names the new-workspace limit when the trust tier sets the cap", () => {
+    spending(10, {
+      agentModelMonthlySpendCapUsd: 10,
+      agentModelSpendCapTierLimited: true,
+      trustTier: "T0",
+    });
+    render(<NewSessionComposer />);
+    expect(banner()).toHaveTextContent("New-workspace spend limit reached");
+    expect(banner()).toHaveTextContent("up to $10.00");
+    expect(screen.queryByRole("link", { name: "Increase cap" })).toBeNull();
+  });
+
+  it("blocks with a Billing link while a payment is due", async () => {
+    spending(1, { billingBalanceDue: true });
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(banner()).toHaveTextContent("A payment failed");
+    expect(screen.getByRole("link", { name: "Go to Billing" })).toHaveAttribute(
+      "href",
+      "/billing",
+    );
+    expect(start()).toBeDisabled();
+  });
+
+  it("shows no spend UI for a workspace on its own model key", async () => {
+    spending(500, {
+      modelSource: AgentModelSource.Byo,
+      modelKeySet: true,
+      billingBalanceDue: true,
+    });
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    expect(banner()).toBeNull();
+    expect(start()).toBeEnabled();
+  });
+
+  it("explains the trust tier's concurrent-session limit on create", async () => {
+    create.mockRejectedValue(
+      new AgentSessionError("AGENT_SESSION_TRUST_LIMIT", "server copy", {
+        live: 2,
+        limit: 2,
+        trustTier: "T0",
+        locked: false,
+      }),
+    );
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.click(start());
+    expect(
+      await screen.findByText(
+        /New workspaces can run 2 agent sessions on the bex-provided model at once/,
+      ),
+    ).toBeInTheDocument();
+  });
+
+  it("points a payment-held workspace's session limit at Billing", async () => {
+    create.mockRejectedValue(
+      new AgentSessionError("AGENT_SESSION_TRUST_LIMIT", "server copy", {
+        limit: 2,
+        locked: true,
+      }),
+    );
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.click(start());
+    expect(
+      await screen.findByText(/Settle the outstanding payment in Billing/),
+    ).toBeInTheDocument();
   });
 });

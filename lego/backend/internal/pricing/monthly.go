@@ -48,7 +48,7 @@ func (s *Sheet) InstanceMonthlyUSD(tier, resourceKind string) (usd string, liste
 	if !ok {
 		return "", false
 	}
-	return formatUSD(rate * MonthSeconds), true
+	return FormatUSD(rate * MonthSeconds), true
 }
 
 // Variable-cost reasons: resources whose real cost depends on runtime behavior
@@ -189,11 +189,11 @@ func (s *Sheet) MonthlyEstimate(resources []MonthlyResource) MonthlyEstimate {
 				ResourceKind: r.ResourceKind,
 				Tier:         r.Tier,
 				TierLabel:    label,
-				MonthlyUSD:   formatUSD(lineUSD),
-				InstanceUSD:  formatUSD(instanceUSD),
+				MonthlyUSD:   FormatUSD(lineUSD),
+				InstanceUSD:  FormatUSD(instanceUSD),
 			}
 			if math.Round(storageUSD*100) != 0 {
-				line.StorageUSD = formatUSD(storageUSD)
+				line.StorageUSD = FormatUSD(storageUSD)
 				line.StorageGB = r.StorageGB
 			}
 			lines = append(lines, line)
@@ -207,7 +207,7 @@ func (s *Sheet) MonthlyEstimate(resources []MonthlyResource) MonthlyEstimate {
 		}
 	}
 	return MonthlyEstimate{
-		TotalUSD: formatUSD(total),
+		TotalUSD: FormatUSD(total),
 		Lines:    lines,
 		Variable: variable,
 	}

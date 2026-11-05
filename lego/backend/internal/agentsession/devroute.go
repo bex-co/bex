@@ -237,6 +237,13 @@ func PlatformPinnedModel(workspaceID string, byoKey bool) (string, bool) {
 	return route.model, true
 }
 
+// IsPlatformModelEndpoint reports whether a session's stored model endpoint
+// is the platform model route's (bex-billed) rather than a provider the
+// workspace's own key pays for (ADR091 D6).
+func IsPlatformModelEndpoint(endpoint string) bool {
+	return strings.TrimRight(strings.TrimSpace(endpoint), "/") == openRouterEndpoint
+}
+
 // PinnedAgent reports whether agent is the profile a model route serves, so
 // a pinned workspace's other profiles keep their own model choice.
 func PinnedAgent(agent string) bool {

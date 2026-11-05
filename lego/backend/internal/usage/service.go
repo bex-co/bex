@@ -159,6 +159,9 @@ type Summary struct {
 	// usage" for the period (w8/m139): hours its Free web services ran against
 	// the monthly allowance.
 	FreeInstanceHours FreeInstanceHours
+	// AgentModel is the period's platform-route agent model spend by model
+	// and token kind (ADR091 D6).
+	AgentModel AgentModelSummary
 }
 
 // DefaultFreeInstanceHours is Render's monthly Free instance-hours allowance
@@ -224,7 +227,7 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 		// Store is off or caller has no tenant: return an empty summary rather
 		// than an error — the same pattern as apps.List returning all apps in the
 		// store-off mode.
-		return Summary{}, nil
+		return Summary{AgentModel: summariseAgentModel(nil, pricing.EstimatedCost{})}, nil
 	}
 	rows, err := s.Store.UsageMonthToDate(ctx, tenantID, now)
 	if err != nil {
@@ -235,6 +238,7 @@ func (s *Service) monthToDateAt(ctx context.Context, ownerID string, now time.Ti
 	sum.Period = now.Format(periodLayout)
 	sum.FreeInstanceHours = s.freeInstanceHours(rows)
 	sum.EstimatedCost = pricing.Default.Estimate(rows)
+	sum.AgentModel = summariseAgentModel(rows, sum.EstimatedCost)
 	nameResourceEstimates(&sum.EstimatedCost, sum.Services)
 	// The Stripe projection (real cost, invoices, credit grants) is a billing
 	// capability, not part of the general usage read: model.fga reserves

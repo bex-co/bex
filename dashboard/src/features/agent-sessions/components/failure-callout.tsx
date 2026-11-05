@@ -18,6 +18,11 @@ import {
 } from "@/features/agent-sessions/lib/mapper";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 
+const SPEND_FAILURE_KEYS: Record<string, string> = {
+  AGENT_MODEL_SPEND_CAP_REACHED: "agentSessions.failureSpendCapReached",
+  BILLING_BALANCE_DUE: "agentSessions.failureBalanceDue",
+};
+
 export interface FailureCalloutProps {
   session: AgentSessionView;
   /** Re-read the session once a retry redispatch converges (phase/turns change). */
@@ -48,10 +53,15 @@ export function FailureCallout({ session, onRetried }: FailureCalloutProps) {
   // wall — so lead with an Upgrade CTA (Retry stays for the "freed a sandbox"
   // case). Any other failure keeps the recorded reason + Retry.
   const capacity = isSandboxCapacityFailure(session);
+  // The model mint's typed refusals (ADR091 D5, D10.3) read in the user's
+  // language rather than as the server's English sentence.
+  const spendKey = SPEND_FAILURE_KEYS[session.failureReasonCode ?? ""];
   const reason = capacity
     ? t("agentSessions.capacityFailureBody")
-    : (agentSessionFailureReason(session) ??
-      t("agentSessions.failureReasonFallback"));
+    : spendKey
+      ? t(spendKey)
+      : (agentSessionFailureReason(session) ??
+        t("agentSessions.failureReasonFallback"));
 
   async function handleRetry() {
     setRetrying(true);

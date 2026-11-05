@@ -7,6 +7,8 @@ import {
   agentSessionView,
   repoLessAgentSessionView,
 } from "@/test/mocks/agent-session";
+import { AgentModelSource } from "@/graphql/definitions";
+import type { AgentSessionModelCost } from "@/features/agent-sessions/hooks/use-agent-session-model-cost";
 
 const navigateMock = vi.fn();
 vi.mock("@tanstack/react-router", () => ({
@@ -36,6 +38,18 @@ vi.mock("@/features/agent-sessions/hooks/use-agent-session-mutations", () => ({
   }),
 }));
 
+// The header's model cost (ADR091 D6) reads its own query.
+const modelCost = vi.hoisted(() => ({
+  cost: null as AgentSessionModelCost | null,
+  loading: false,
+}));
+vi.mock("@/features/agent-sessions/hooks/use-agent-session-model-cost", () => ({
+  useAgentSessionModelCost: () => ({
+    cost: modelCost.cost,
+    loading: modelCost.loading,
+  }),
+}));
+
 function view(over: Partial<AgentSessionView> = {}): AgentSessionView {
   return agentSessionView({ phase: "completed", turns: 1, ...over });
 }
@@ -53,6 +67,8 @@ function heading(): HTMLElement {
 
 describe("SessionDetailHeader", () => {
   beforeEach(() => {
+    modelCost.cost = null;
+    modelCost.loading = false;
     navigateMock.mockClear();
     archiveMock.mockClear();
     unarchiveMock.mockClear();
@@ -221,5 +237,104 @@ describe("SessionDetailHeader", () => {
       expect(heading().textContent!.length).toBeLessThan(task.length);
       expect(heading()).toHaveAttribute("title", task);
     });
+  });
+});
+
+describe("SessionDetailHeader model cost (ADR091 D6)", () => {
+  const turn = (n: number, costUsd: string) => ({
+    __typename: "AgentSessionTurnModelCost" as const,
+    turn: n,
+    costUsd,
+    requests: 2,
+    inputTokens: 1200,
+    outputTokens: 300,
+    cacheReadTokens: 40,
+    cacheWriteTokens: 2,
+    models: ["deepseek/deepseek-v4"],
+  });
+
+  beforeEach(() => {
+    modelCost.cost = null;
+    modelCost.loading = false;
+  });
+
+  it("shows the session total and each turn's cost", async () => {
+    modelCost.cost = {
+      __typename: "AgentSessionModelCost",
+      sessionId: "ags-1",
+      modelSource: AgentModelSource.Platform,
+      costUsd: "0.42",
+      requests: 4,
+      // Turn 2's billed requests round to zero cents: "<$0.01", never free.
+      turns: [turn(1, "0.42"), turn(2, "0.00")],
+    };
+    const user = userEvent.setup();
+    render(<SessionDetailHeader session={view({ turns: 2 })} />);
+    await user.click(
+      screen.getByRole("button", { name: /\$0\.42 model cost/ }),
+    );
+    const list = await screen.findByRole("list", {
+      name: "Model cost by turn",
+    });
+    expect(list).toHaveTextContent("Turn 1$0.42");
+    expect(list).toHaveTextContent("Turn 2<$0.01");
+    expect(list).toHaveTextContent(
+      "1,200 input · 300 output · 42 cache tokens",
+    );
+    expect(
+      screen.getByText("Billed at the model provider's cost + 30%."),
+    ).toBeInTheDocument();
+  });
+
+  it("reads Billed by your provider for a session on the workspace's own key", () => {
+    modelCost.cost = {
+      __typename: "AgentSessionModelCost",
+      sessionId: "ags-1",
+      modelSource: AgentModelSource.Byo,
+      costUsd: "0.00",
+      requests: 0,
+      turns: [],
+    };
+    render(<SessionDetailHeader session={view()} />);
+    expect(screen.getByText("Billed by your provider")).toBeInTheDocument();
+    expect(screen.queryByText(/model cost/)).toBeNull();
+  });
+
+  it("reads $0.00 for a platform session with no requests yet", () => {
+    modelCost.cost = {
+      __typename: "AgentSessionModelCost",
+      sessionId: "ags-1",
+      modelSource: AgentModelSource.Platform,
+      costUsd: "0.00",
+      requests: 0,
+      turns: [],
+    };
+    render(<SessionDetailHeader session={view()} />);
+    expect(screen.getByText("$0.00 model cost")).toBeInTheDocument();
+  });
+
+  it("holds the cost slot with a skeleton while it loads", () => {
+    modelCost.loading = true;
+    render(<SessionDetailHeader session={view()} />);
+    expect(
+      screen.getByTestId("session-model-cost-skeleton"),
+    ).toBeInTheDocument();
+  });
+
+  // The ready header keeps the skeleton's slot when the cost can't be read,
+  // so the meta row never shifts (dashboard AGENTS.md skeleton rule).
+  it("keeps the slot's width when the cost is unavailable", () => {
+    modelCost.loading = true;
+    const { unmount } = render(<SessionDetailHeader session={view()} />);
+    const skeletonClass = screen
+      .getByTestId("session-model-cost-skeleton")
+      .className.split(" ")
+      .filter((c) => /^[hw]-/.test(c));
+    unmount();
+    modelCost.loading = false;
+    render(<SessionDetailHeader session={view()} />);
+    const placeholder = screen.getByTestId("session-model-cost-placeholder");
+    expect(placeholder).toHaveAttribute("aria-hidden", "true");
+    expect(placeholder).toHaveClass(...skeletonClass);
   });
 });

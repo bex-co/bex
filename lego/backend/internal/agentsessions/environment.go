@@ -90,6 +90,15 @@ type Environment struct {
 	AgentModelMaxSpendCapUSD      *float64 `json:"agentModelMaxSpendCapUsd"`
 	TrustTier                     *string  `json:"trustTier"`
 	NextChargeThresholdUSD        *float64 `json:"nextChargeThresholdUsd"`
+	// TrustTierLocked: a failed or disputed payment holds the workspace at
+	// the first tier (ADR091 D10.1). AgentModelSpendCapTierLimited: the trust
+	// tier's ceiling, not the plan or override, sets the effective cap.
+	// BillingBalanceDue: a failed invoice is open or a written-off one unpaid,
+	// so platform-model requests are refused with BILLING_BALANCE_DUE
+	// (D10.3). All nil when the store is off.
+	TrustTierLocked               *bool `json:"trustTierLocked"`
+	AgentModelSpendCapTierLimited *bool `json:"agentModelSpendCapTierLimited"`
+	BillingBalanceDue             *bool `json:"billingBalanceDue"`
 }
 
 // EnvironmentInput is a partial update: an omitted (or null) field keeps its

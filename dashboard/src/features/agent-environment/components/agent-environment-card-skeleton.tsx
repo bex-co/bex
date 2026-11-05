@@ -15,7 +15,10 @@ export const TIER_OPTION_CLASS =
  * The Settings → Agents card while its environment loads: header, the three
  * network-tier options, the registry-list disclosure, the default-model field,
  * the model-key section (title, description, source line and the admin's key
- * row) and the Save footer, at the ready card's geometry (dashboard/AGENTS.md
+ * row), the agent-model spend section (title, pricing line, spend summary,
+ * progress bar, tier line, tier note line, cap field with Save and Reset,
+ * help line) and the
+ * Save footer, at the ready card's geometry (dashboard/AGENTS.md
  * skeleton rule). The Custom hostname list is data-dependent and omitted.
  */
 export function AgentEnvironmentCardSkeleton() {
@@ -62,6 +65,32 @@ export function AgentEnvironmentCardSkeleton() {
               <Skeleton className="h-9 w-24" />
             </div>
             <Skeleton className="h-3 w-72 max-w-full" />
+          </div>
+        </div>
+        <div
+          className="space-y-3 border-t pt-6"
+          data-testid="spend-cap-section-skeleton"
+        >
+          <div className="space-y-1">
+            <Skeleton className="h-4 w-36" />
+            <Skeleton className="h-4 w-72 max-w-full" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-5 w-48" />
+            <Skeleton className="h-2 w-full rounded-full" />
+            {/* Tier line, then the T0 / payment-hold note on its own line. */}
+            <Skeleton className="h-4 w-80 max-w-full" />
+            <Skeleton className="h-4 w-72 max-w-full" />
+          </div>
+          <div className="space-y-2">
+            <Skeleton className="h-4 w-40" />
+            <div className="flex max-w-xl flex-wrap gap-2">
+              <Skeleton className="h-9 w-40" />
+              {/* Save cap (min-w-24) and Reset to plan default (min-w-48). */}
+              <Skeleton className="h-9 w-24" />
+              <Skeleton className="h-9 w-48" />
+            </div>
+            <Skeleton className="h-4 w-64 max-w-full" />
           </div>
         </div>
       </CardContent>

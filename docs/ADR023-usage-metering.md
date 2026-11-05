@@ -155,6 +155,7 @@ Properties of the compaction pass:
 - **Transparent to the API.** The period query sums `usage_hourly` and `usage_monthly` together, so REST/GraphQL/MCP answers are correct whether a month is still hot, already compacted, or (never yet) compacted — correctness never depends on the compaction having run.
 - **Atomic and idempotent.** The aggregate-insert and hourly-purge are a single statement, so a crash can never leave the two tables inconsistent, and re-running over the same window is a no-op. Straggler hourly rows compacted by a later pass _add_ to their month's aggregate.
 - **Never races the rollup.** The compaction boundary is clamped to 48 hours ago (the rollup's restart catch-up limit), so a window the metering loop might still rewrite is never compacted underneath it.
+- **The agent model request ledger stays longer.** `agent_model_usage_events` (one row per platform-route model request, with its cost, cost source and price) is not purged with the hourly rows it fed. The same pass deletes events older than **13 months** before the compaction boundary, so per-turn session cost and the invoice dispute trace survive the invoice period plus a dispute window ([ADR091](ADR091-agent-model-pricing.md) D6, D10.7; w10/m14 t013; migration 0199 adds `started_at`, the request's validated start, and indexes `(session_id, recorded_at)`). The deletion cutoff is computed in UTC calendar months.
 
 The pass runs daily (plus once at startup) inside `usage.Service.Run`; it needs only `BEX_CP_DB_URI`, not Prometheus.
 

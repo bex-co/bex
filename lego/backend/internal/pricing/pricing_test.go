@@ -56,10 +56,10 @@ func TestWorkspacePlanFeesAreThirtyPercentOffRender(t *testing.T) {
 	if hobby != 0 {
 		t.Errorf("hobby = %v, want 0", hobby)
 	}
-	if formatUSD(pro) != "17.50" { // Render $25 × 0.70
+	if FormatUSD(pro) != "17.50" { // Render $25 × 0.70
 		t.Errorf("pro = %v, want 17.50", pro)
 	}
-	if formatUSD(scale) != "349.30" { // Render $499 × 0.70
+	if FormatUSD(scale) != "349.30" { // Render $499 × 0.70
 		t.Errorf("scale = %v, want 349.30", scale)
 	}
 }
@@ -481,10 +481,13 @@ func TestFormatUSD(t *testing.T) {
 		{4.9004878, "4.90"},
 		{0.0049, "0.00"}, // sub-cent
 		{0.005, "0.01"},  // exactly half a cent rounds up
+		{-0.42, "-0.42"}, // a credit keeps its sign
+		{-0.004, "0.00"}, // rounds to zero: never "-0.00"
+		{-1.5, "-1.50"},
 	}
 	for _, c := range cases {
-		if got := formatUSD(c.input); got != c.want {
-			t.Errorf("formatUSD(%v) = %q, want %q", c.input, got, c.want)
+		if got := FormatUSD(c.input); got != c.want {
+			t.Errorf("FormatUSD(%v) = %q, want %q", c.input, got, c.want)
 		}
 	}
 }

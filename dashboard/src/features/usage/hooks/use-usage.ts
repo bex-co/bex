@@ -135,11 +135,31 @@ export interface FreeInstanceHours {
   included: number;
 }
 
+/** One model's share of the period's agent model spend (ADR091 D6). */
+export interface AgentModelBreakdown {
+  model: string;
+  costUsd: string;
+  inputTokens: number;
+  outputTokens: number;
+  cacheReadTokens: number;
+  cacheWriteTokens: number;
+}
+
+/**
+ * The period's bex-provided agent model spend (ADR091 D6), billed at the
+ * model provider's cost + 30%; models are highest cost first.
+ */
+export interface AgentModelUsage {
+  monthToDateUsd: string;
+  models: AgentModelBreakdown[];
+}
+
 export interface UsageSummary {
   workspaceId: string;
   period: string; // "YYYY-MM"
   coverage: Coverage;
   freeInstanceHours: FreeInstanceHours;
+  agentModel: AgentModelUsage | null;
   estimatedCost: EstimatedCost | null;
   billing: Billing | null;
 }
@@ -187,6 +207,19 @@ export function useUsage(period?: string): UseUsageResult {
               used: raw.freeInstanceHours?.used ?? 0,
               included: raw.freeInstanceHours?.included ?? 750,
             },
+            agentModel: raw.agentModel
+              ? {
+                  monthToDateUsd: raw.agentModel.monthToDateUsd,
+                  models: raw.agentModel.models.map((m) => ({
+                    model: m.model,
+                    costUsd: m.costUsd,
+                    inputTokens: m.inputTokens,
+                    outputTokens: m.outputTokens,
+                    cacheReadTokens: m.cacheReadTokens,
+                    cacheWriteTokens: m.cacheWriteTokens,
+                  })),
+                }
+              : null,
             estimatedCost: raw.estimatedCost
               ? {
                   totalUsd: raw.estimatedCost.totalUsd ?? "0.00",

@@ -54,6 +54,7 @@ import {
 } from "@/features/services/lib/create-context";
 import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
+import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
 import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
 import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
 import { InstanceTypePickerCardSkeleton } from "@/features/services/components/instance-type-groups";
@@ -660,6 +661,9 @@ export function BillingPageSkeleton() {
           <Region name="charges">
             <CardSkeleton rows={7} />
           </Region>
+          <Region name="agent-model">
+            <AgentModelCardSkeleton />
+          </Region>
           <Region name="credit-balance">
             <CardSkeleton rows={3} />
           </Region>
@@ -673,7 +677,7 @@ export function BillingPageSkeleton() {
           </Region>
         </div>
         <div className="sticky top-6 hidden lg:block">
-          <VerticalNavigationSkeleton count={6} />
+          <VerticalNavigationSkeleton count={7} />
         </div>
       </div>
     </PendingFrame>

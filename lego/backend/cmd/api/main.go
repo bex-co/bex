@@ -809,6 +809,8 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.AgentEnvironmentStore = st
 	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.
 	deps.AgentSpendStore = st
+	// ADR091 D6: per-session, per-turn model cost from the usage events.
+	deps.AgentModelCostStore = st
 	if writer, ok := authzChecker.(agentsessions.TupleWriter); ok {
 		deps.AgentSessionTuples = writer
 	}

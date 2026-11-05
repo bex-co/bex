@@ -1035,6 +1035,113 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Waiting for files to finish uploading…",
     description: "Composer hint while attachment uploads block sending",
   },
+  "agentSessions.spendWarningTitle": {
+    message: "Agent model spend is at {percent}% of this month's cap",
+    description: "Composer warning at 80% of the spend cap (ADR091 D6)",
+  },
+  "agentSessions.spendWarningBody": {
+    message: "{used} of {cap} used. New model requests stop at the cap.",
+    description: "Composer warning body",
+  },
+  "agentSessions.spendReachedTitle.cap": {
+    message: "Monthly agent model spend cap reached",
+    description: "Composer refusal title: the workspace's own cap",
+  },
+  "agentSessions.spendReachedTitle.newWorkspace": {
+    message: "New-workspace spend limit reached",
+    description: "Composer refusal title: the T0 trust-tier ceiling",
+  },
+  "agentSessions.spendReachedTitle.locked": {
+    message: "Agent model spend is on hold",
+    description: "Composer refusal title: a payment hold",
+  },
+  "agentSessions.spendReachedBody.cap": {
+    message:
+      "This workspace has used {used} of its {cap} monthly cap, so new sessions can't start. A workspace admin can raise the cap, or it resets on the 1st (UTC).",
+    description: "Composer refusal body: the workspace's own cap",
+  },
+  "agentSessions.spendReachedBody.capMax": {
+    message:
+      "This workspace has used {used} of its {cap} monthly cap, the most it can be set to, so new sessions can't start. The cap resets on the 1st (UTC); contact support if you need a higher limit.",
+    description:
+      "Composer refusal body: the workspace's own cap binds at its maximum, so no admin can raise it",
+  },
+  "agentSessions.spendReachedBody.newWorkspace": {
+    message:
+      "New workspaces can spend up to {cap} on the bex-provided model until their first successful payment. The limit rises after that, or resets on the 1st (UTC).",
+    description: "Composer refusal body: the T0 trust-tier ceiling",
+  },
+  "agentSessions.spendReachedBody.locked": {
+    message:
+      "A failed or disputed payment limits this workspace's agent model spend to {cap}. Settle the outstanding payment in Billing, then start a new session.",
+    description: "Composer refusal body: a payment hold",
+  },
+  "agentSessions.spendIncreaseCap": {
+    message: "Increase cap",
+    description: "Admin action linking to Settings \u2192 Agents",
+  },
+  "agentSessions.spendGoToBilling": {
+    message: "Go to Billing",
+    description: "Link to the Billing page",
+  },
+  "agentSessions.spendBalanceDueTitle": {
+    message: "A payment failed",
+    description: "Composer refusal title: BILLING_BALANCE_DUE",
+  },
+  "agentSessions.spendBalanceDueBody": {
+    message:
+      "Agent sessions on the bex-provided model are paused until the outstanding invoice is paid.",
+    description: "Composer refusal body: BILLING_BALANCE_DUE",
+  },
+  "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT": {
+    message:
+      "New workspaces can run {limit} agent sessions on the bex-provided model at once until their first successful payment. Wait for a running session to finish or stop one, then try again.",
+    description: "Mapped message for AGENT_SESSION_TRUST_LIMIT (ADR091 D10.1)",
+  },
+  "agentSessions.errors.AGENT_SESSION_TRUST_LIMIT_locked": {
+    message:
+      "After a failed or disputed payment, this workspace can run {limit} agent sessions on the bex-provided model at once. Settle the outstanding payment in Billing to lift the limit.",
+    description:
+      "Mapped message for AGENT_SESSION_TRUST_LIMIT while a payment hold applies",
+  },
+  "agentSessions.failureSpendCapReached": {
+    message:
+      "This workspace reached its agent model spend limit for the month. An admin can raise the cap in Settings → Agents, or it resets on the 1st (UTC).",
+    description: "Failure callout for AGENT_MODEL_SPEND_CAP_REACHED",
+  },
+  "agentSessions.failureBalanceDue": {
+    message:
+      "A payment for this workspace failed. Pay the outstanding invoice in Billing, then start a new session.",
+    description: "Failure callout for BILLING_BALANCE_DUE",
+  },
+  "agentSessions.costTotal": {
+    message: "{amount} model cost",
+    description: "Session header: the session's model cost (ADR091 D6)",
+  },
+  "agentSessions.costByo": {
+    message: "Billed by your provider",
+    description: "Session header: a BYO-key session has no bex model cost",
+  },
+  "agentSessions.costTitle": {
+    message: "Model cost by turn",
+    description: "Heading of the per-turn cost popover",
+  },
+  "agentSessions.costTurn": {
+    message: "Turn {turn}",
+    description: "One turn's row in the cost popover",
+  },
+  "agentSessions.costSetup": {
+    message: "Before the first turn",
+    description: "Requests recorded before the first turn",
+  },
+  "agentSessions.costTurnTokens": {
+    message: "{input} input · {output} output · {cache} cache tokens",
+    description: "A turn's token counts",
+  },
+  "agentSessions.costPricing": {
+    message: "Billed at the model provider's cost + 30%.",
+    description: "Pricing statement in the cost popover",
+  },
 };
 
 export default enAgentSessions;

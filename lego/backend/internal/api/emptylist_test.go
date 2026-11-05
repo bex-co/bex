@@ -168,6 +168,7 @@ var unreachableArrayRoutes = map[string]string{
 	"GET /v1/git/claim/selections/{id}":                  "needs the GitHub integration; candidates is make([]ClaimCandidate, 0, …) (github/service.go)",
 	"GET /v1/agent-sessions":                             "needs the agent-session stack; make([]View, 0, len(rows)) (agentsessions/service.go)",
 	"GET /v1/agent-sessions/{id}/transcript":             "needs the agent-session stack; TranscriptPage parts/turns are make (agentsessions/service.go)",
+	"GET /v1/agent-sessions/{id}/model-cost":             "needs the agent-session stack; ModelCost.turns starts as an empty slice (agentsessions/modelcost.go)",
 	"GET /v1/agent-sessions/{id}/attachments":            "needs the attachments bucket and store; make([]Attachment, len(rows)) (agentsessions/attachments.go)",
 	"GET /v1/owners/{ownerId}/members":                   "needs a real workspace; toRenderTeamMembers make (workspaces/render.go)",
 	"GET /v1/workspaces/{workspaceId}/members":           "needs the members store; make([]MemberView, 0, len(ms)) (members/service.go)",
