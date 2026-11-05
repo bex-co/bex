@@ -2662,6 +2662,9 @@ for required_operator_workload_guard in \
   "variables.target.metadata.?labels['app.bex.co/keyvalue-uid'].orValue('') != ''" \
   "t.?key.orValue('') != 'bex.co/serving-pool' ||" \
   "t.?value.orValue('') in variables.servingPools" \
+  "(variables.appOwnedWorkload || variables.keyValueStatefulSet) &&" \
+  "o.apiVersion == 'app.bex.co/v1alpha1' && o.kind == 'KeyValue' &&" \
+  "o.name == variables.podMetadata.?labels['app.bex.co/keyvalue'].orValue('')" \
   "t.?key.orValue('') != 'bex.co/build-only' ||" \
   "variables.podMetadata.?labels['app.bex.co/component'].orValue('') == 'build'"; do
   grep -qF "$required_operator_workload_guard" deploy/gitops/base/operator-workload-admission.yaml || {

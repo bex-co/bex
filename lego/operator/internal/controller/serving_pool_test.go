@@ -164,3 +164,24 @@ func TestAdmissionServingPoolsMatchTheCatalog(t *testing.T) {
 		t.Errorf("bex-operator-workloads admits serving pools %v, the tier catalog names %v", admitted, want)
 	}
 }
+
+// w5/m266: a Key Value tier that names a pool places its Valkey pod exactly as
+// a large App tier does; a standard tier keeps no toleration or affinity, and
+// re-applying either is a no-op.
+func TestValkeyPodServingPoolPlacement(t *testing.T) {
+	kv := &appv1alpha1.KeyValue{}
+	kv.Name = "red-x"
+	for tier, pool := range map[string]string{"standard": "", "pro-plus": "xl"} {
+		var spec corev1.PodSpec
+		plan := tiers.ValkeyTier{ID: tier, CPU: "500m", Memory: "1Gi", StorageGB: 1, Instances: 1, ServingPool: pool}
+		intent := keyValueIntent{plan: plan, authSecretName: "a", platformSecretName: "p"}
+		applyValkeyPodSpec(&spec, kv, intent)
+		// assertServingPlacement reads the compute routing; reuse it by tier name.
+		assertServingPlacement(t, "valkey", tier, spec)
+		again := *spec.DeepCopy()
+		applyValkeyPodSpec(&again, kv, intent)
+		if !equality.Semantic.DeepEqual(spec, again) {
+			t.Errorf("tier %q: re-applying the pod spec changed it", tier)
+		}
+	}
+}

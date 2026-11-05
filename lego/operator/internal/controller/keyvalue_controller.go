@@ -907,9 +907,10 @@ func applyKeyValueStatefulSet(sts *appsv1.StatefulSet, kv *appv1alpha1.KeyValue,
 
 // applyValkeyPodSpec writes the Valkey server + metrics-exporter template onto
 // spec. It assigns only the fields this controller owns — never the whole
-// PodSpec — so anything it does not own (nodeSelector, tolerations,
-// serviceAccountName, …) survives an update instead of being blanked and
-// re-defaulted into a spurious rollout every reconcile.
+// PodSpec — so anything it does not own (nodeSelector, serviceAccountName, …)
+// survives an update instead of being blanked and re-defaulted into a spurious
+// rollout every reconcile. Tolerations and affinity are owned: the tier's
+// serving pool sets them, and a standard tier clears them.
 func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent keyValueIntent) {
 	// Both passwords expand into the server's ACL args: the tenant's (default
 	// user, also the readiness probe's) and the platform user's (the metrics
@@ -940,6 +941,7 @@ func applyValkeyPodSpec(spec *corev1.PodSpec, kv *appv1alpha1.KeyValue, intent k
 		volumes = []corev1.Volume{{Name: kvTLSVolume, VolumeSource: corev1.VolumeSource{Secret: secret}}}
 	}
 	spec.Volumes = volumes
+	execution.PlaceOnServingPool(spec, intent.plan.ServingPool)
 	// Harden the managed Valkey pod the same way tenant Deployments are (w1/m53):
 	// drop ALL caps, no privilege escalation, RuntimeDefault seccomp, and no
 	// ServiceAccount token mounted (Valkey never talks to the apiserver).

@@ -306,7 +306,7 @@ postgres:
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
 ` + validValkey,
-			"paused default tier": `
+		"paused default tier": `
 compute:
   default: starter
   tiers:
@@ -316,6 +316,22 @@ postgres:
   tiers:
     - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
 ` + validValkey,
+		"valkey tier on an unknown pool": `
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
+    - {id: big, renderPlan: big, cpu: "4", memory: 16Gi, ephemeralStorage: 1Gi, servingPool: xl}
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+valkey:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1}
+    - {id: huge, cpu: "4", memory: 40Gi, storageGB: 40, instances: 1, servingPool: xxl}
+`,
 		"empty postgres family": `
 compute:
   default: starter
@@ -569,5 +585,33 @@ func TestPostgresCapacityFeatures(t *testing.T) {
 		if got := (PostgresTier{CPU: cpu}).MaxReadReplicas(); got != want {
 			t.Errorf("CPU %q: replica limit=%d, want %d", cpu, got, want)
 		}
+	}
+}
+
+// w5/m266: a Key Value tier may name a pool the compute ladder names.
+func TestValkeyServingPool(t *testing.T) {
+	_, _, v, err := parse([]byte(`
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
+    - {id: big, renderPlan: big, cpu: "4", memory: 16Gi, ephemeralStorage: 1Gi, servingPool: xl}
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+valkey:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1}
+    - {id: huge, cpu: "4", memory: 20Gi, storageGB: 20, instances: 1, servingPool: xl}
+`))
+	if err != nil {
+		t.Fatal(err)
+	}
+	huge, _ := v.ByID("huge")
+	free, _ := v.ByID("free")
+	if huge.ServingPool != "xl" || free.ServingPool != "" {
+		t.Fatalf("pools: huge %q free %q", huge.ServingPool, free.ServingPool)
 	}
 }

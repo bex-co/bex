@@ -409,15 +409,21 @@ var _ = Describe("Application container policy admission", func() {
 				}
 			}
 		}
-		// No platform workload — datastore, backup, export, purge, publish —
-		// may carry either pool's toleration: each would pin a node the
-		// autoscaler exists to release. The one App-owned helper among them,
-		// the disk restore Job, may follow its App's volume onto the App's
-		// serving pool, and still never onto a build node.
+		// No other platform workload — backup, export, purge, publish — may
+		// carry either pool's toleration: each would pin a node the autoscaler
+		// exists to release. The App-owned disk restore Job may follow its
+		// App's volume onto the App's serving pool, and a KeyValue's Valkey
+		// StatefulSet may run on the pool a large tier names (w5/m266); neither
+		// ever reaches a build node.
+		keyValueStatefulSets := 0
 		for _, workload := range admissionPlatformWorkloads(workspace) {
-			appOwned := slices.ContainsFunc(workload.GetOwnerReferences(), func(o metav1.OwnerReference) bool {
-				return o.Kind == "App" && o.Controller != nil && *o.Controller
+			_, statefulSet := workload.(*appsv1.StatefulSet)
+			mayUseServingPool := slices.ContainsFunc(workload.GetOwnerReferences(), func(o metav1.OwnerReference) bool {
+				return o.Controller != nil && *o.Controller && (o.Kind == "App" || (statefulSet && o.Kind == "KeyValue"))
 			})
+			if statefulSet && mayUseServingPool {
+				keyValueStatefulSets++
+			}
 			for _, toleration := range []corev1.Toleration{
 				{Key: execution.ServingPoolKey, Operator: corev1.TolerationOpEqual, Value: "xl", Effect: corev1.TaintEffectNoSchedule},
 				{Key: execution.BuildPoolTaintKey, Operator: corev1.TolerationOpEqual, Value: execution.BuildPoolTaintValue, Effect: corev1.TaintEffectNoSchedule},
@@ -426,11 +432,41 @@ var _ = Describe("Application container policy admission", func() {
 				pod := admissionPodTemplate(bad)
 				pod.Spec.Tolerations = append(pod.Spec.Tolerations, toleration)
 				scenario := fmt.Sprintf("%T %s with %s", workload, workload.GetName(), toleration.Key)
-				if appOwned && toleration.Key == execution.ServingPoolKey {
+				if mayUseServingPool && toleration.Key == execution.ServingPoolKey {
 					Expect(operator.Create(ctx, bad, client.DryRunAll)).To(Succeed(), scenario)
 					continue
 				}
 				expectPoolDenied(operator.Create(ctx, bad, client.DryRunAll), scenario)
+			}
+		}
+		Expect(keyValueStatefulSets).To(Equal(1), "the platform workloads include the Valkey StatefulSet")
+		// The Valkey StatefulSet's allowance is as narrow as an App's: only its
+		// own KeyValue, the exact toleration shape and a cataloged pool.
+		for _, workload := range admissionPlatformWorkloads(workspace) {
+			sts, ok := workload.(*appsv1.StatefulSet)
+			if !ok {
+				continue
+			}
+			placed := admissionFreshWorkload(sts)
+			execution.PlaceOnServingPool(&admissionPodTemplate(placed).Spec, "xl")
+			Expect(operator.Create(ctx, placed, client.DryRunAll)).To(Succeed(), "Valkey StatefulSet on the xl pool")
+			for _, mutation := range []struct {
+				name   string
+				change func(client.Object, *corev1.PodTemplateSpec)
+			}{
+				{"foreign-keyvalue", func(o client.Object, _ *corev1.PodTemplateSpec) { o.GetOwnerReferences()[0].Name = "other-valkey" }},
+				{"relabelled-pod", func(o client.Object, p *corev1.PodTemplateSpec) {
+					p.Labels["app.bex.co/keyvalue"] = "other-valkey"
+					o.(*appsv1.StatefulSet).Spec.Selector.MatchLabels["app.bex.co/keyvalue"] = "other-valkey"
+				}},
+				{"uncataloged-pool", func(_ client.Object, p *corev1.PodTemplateSpec) { p.Spec.Tolerations[0].Value = "xxxl" }},
+				{"any-pool", func(_ client.Object, p *corev1.PodTemplateSpec) {
+					p.Spec.Tolerations[0].Operator, p.Spec.Tolerations[0].Value = corev1.TolerationOpExists, ""
+				}},
+			} {
+				bad := placed.DeepCopyObject().(client.Object)
+				mutation.change(bad, admissionPodTemplate(bad))
+				expectPoolDenied(operator.Create(ctx, admissionFreshWorkload(bad), client.DryRunAll), "Valkey StatefulSet/"+mutation.name)
 			}
 		}
 		// The build Job keeps its build-only toleration in its isolated

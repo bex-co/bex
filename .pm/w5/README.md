@@ -18,7 +18,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 User decision 2026-11-05: all five items of the sixth `/pm-brainstorm w5` proposal, in priority order, followed by `/loopx w5`. Render parity is included for m265–m268. The m266 interim refusal for 20g/40g is **not** signed; m266 t006 records the outcome.
 
 - [ ] **m265** — [Postgres credential rotation: a new user becomes the default, as on Render](m265/README.md) (10 tasks; 8h20m total) ← round 6 item 1; ADR018 unsigned `—` omission row — **2026-11-05: implemented and real-CNPG verified (t001–t004, t006–t009); t005 live production walk waits for the deploy**
-- [ ] **m266** — [Key Value Pro, Pro Plus and size-named plans create, as on Render](m266/README.md) (10 tasks; 7h30m total) ← round 6 item 2; valkey tiers stop at standard
+- [ ] **m266** — [Key Value Pro, Pro Plus and size-named plans create, as on Render](blocked/m266/README.md) (10 tasks; 7h30m total) ← round 6 item 2; valkey tiers stop at standard — **BLOCKED (user: authorize the live Stripe Key Value prices, reprice `standard` $21→$14, and confirm pausing the `xxl`-pool tiers; placement plumbing shipped)**
 - [ ] **m267** — [Render's workspace member mutations: PATCH and DELETE /owners/{ownerId}/members/{userId}](m267/README.md) (8 tasks; 4h45m total) ← round 6 item 3; ADR018 unsigned `—` omission row
 - [ ] **m268** — [Key Value "Enable Internal Authentication", as on Render](m268/README.md) (9 tasks; 6h45m total) ← round 6 item 4; w8/204 follow-up
 - [ ] **178** — [`BUN_VERSION=canary` builds, as on Render](178.md) (~1h, may promote) ← round 6 item 5; Render changelog 2026-10-16

@@ -123,13 +123,13 @@ func HardenPod(spec *corev1.PodSpec) {
 }
 
 // PlaceOnServingPool sets a tenant pod's serving-pool placement from its
-// tier's pool (tiers.Compute.ServingPool): for a named pool, a toleration of
+// tier's pool (a compute or Key Value tier's servingPool): for a named pool, a toleration of
 // exactly that pool's taint and a REQUIRED node affinity to its label, so the
 // pod lands only there — never on a standard node it cannot fit, nor on the
 // other pool. An empty pool clears both, so the projection is idempotent and a
 // tier change back down leaves the pod with today's placement. It owns the
-// whole Tolerations/Affinity of the pods it is applied to (serving, cron and
-// pre-deploy pods carry no other), and never widens beyond the
+// whole Tolerations/Affinity of the pods it is applied to (serving, cron,
+// pre-deploy and Valkey pods carry no other), and never widens beyond the
 // `bex.co/pool=tenant` set the pool's nodes also belong to.
 func PlaceOnServingPool(spec *corev1.PodSpec, pool string) {
 	spec.Tolerations, spec.Affinity = nil, nil

@@ -116,6 +116,10 @@ type ValkeyTier struct {
 	StorageGB int32 `json:"storageGB"`
 	// Instances is the Valkey StatefulSet size (1 for MVP).
 	Instances int32 `json:"instances"`
+	// ServingPool means what it means on ComputeTier: a store larger than a
+	// standard bex-tenant-0 node runs on the dedicated pool the compute ladder
+	// already names.
+	ServingPool string `json:"servingPool,omitempty"`
 }
 
 // ComputeCatalog is the parsed, validated compute ladder with O(1) lookups
@@ -419,7 +423,7 @@ func parse(raw []byte) (ComputeCatalog, PostgresCatalog, ValkeyCatalog, error) {
 	if err != nil {
 		return ComputeCatalog{}, PostgresCatalog{}, ValkeyCatalog{}, fmt.Errorf("postgres: %w", err)
 	}
-	v, err := parseValkey(f.Valkey.Tiers, f.Valkey.Default)
+	v, err := parseValkey(f.Valkey.Tiers, f.Valkey.Default, c.ServingPools())
 	if err != nil {
 		return ComputeCatalog{}, PostgresCatalog{}, ValkeyCatalog{}, fmt.Errorf("valkey: %w", err)
 	}
@@ -481,7 +485,9 @@ func parsePostgres(entries []PostgresTier, defaultID string) (PostgresCatalog, e
 	return PostgresCatalog{tiers: entries, byID: byID, defaultID: defaultID}, nil
 }
 
-func parseValkey(entries []ValkeyTier, defaultID string) (ValkeyCatalog, error) {
+// pools is the compute ladder's serving pools: the only ones workload
+// admission and the CAPH overlay know, so a Key Value tier may name no other.
+func parseValkey(entries []ValkeyTier, defaultID string, pools []string) (ValkeyCatalog, error) {
 	if len(entries) == 0 {
 		return ValkeyCatalog{}, fmt.Errorf("no tiers defined")
 	}
@@ -492,6 +498,9 @@ func parseValkey(entries []ValkeyTier, defaultID string) (ValkeyCatalog, error) 
 		}
 		if err := validateDatastore(t.ID, t.StorageGB, t.Instances); err != nil {
 			return ValkeyCatalog{}, err
+		}
+		if t.ServingPool != "" && !slices.Contains(pools, t.ServingPool) {
+			return ValkeyCatalog{}, fmt.Errorf("tier %q: servingPool %q is not a compute serving pool %v", t.ID, t.ServingPool, pools)
 		}
 		byID[t.ID] = t
 	}
