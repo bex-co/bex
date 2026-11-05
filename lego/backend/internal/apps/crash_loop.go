@@ -22,6 +22,7 @@ import (
 	"strings"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -43,11 +44,25 @@ var crashLoopReasons = map[string]bool{
 	appv1alpha1.ReasonHealthCheckFailing: true,
 }
 
-// CrashLoopFailingSince reports whether a is failing to start and become
-// healthy now, and since when its Ready condition has been False. Services the
-// owner or the platform already parked, services mid-build or mid-deploy (a fix
-// may be on its way), and cron jobs and static sites (no long-running instance)
-// are never failing in this sense.
+// CrashLoopFailingSince reports whether a's own status says it is failing to
+// start and become healthy now, and since when its Ready condition has been
+// False. The rule (docs/ADR096-crashloop-suspension.md § Rule):
+//
+//   - Ready is False with a start-failure reason (crashLoopReasons);
+//   - the phase is Running, Deploying or Failed. The operator reports a
+//     served release whose pods start crashing as Deploying with Ready
+//     CrashLoopBackOff (reportRolloutProgress handles every not-ready
+//     Deployment alike), so Deploying alone does not mean a rollout;
+//   - the release those pods run has finished rolling out
+//     (crashLoopReleaseSettled): a newer release still rolling out is a
+//     deploy in progress, and a first release that never served is a failed
+//     deploy the operator has stopped at zero replicas, with no restarts.
+//
+// Services the owner or the platform already parked, services mid-build, and
+// cron jobs and static sites (no long-running instance) are never failing in
+// this sense. The status alone cannot tell whether restarts continue or
+// whether one instance still serves; the sweeper asks the pods for that
+// (CrashLoopRestarting).
 func CrashLoopFailingSince(a *appv1alpha1.App) (time.Time, bool) {
 	if a.Spec.Suspended || a.Annotations[core.AnnotFreeHoursSuspended] != "" || a.Annotations[core.AnnotCrashLoopSuspended] != "" {
 		return time.Time{}, false
@@ -57,7 +72,7 @@ func CrashLoopFailingSince(a *appv1alpha1.App) (time.Time, bool) {
 		return time.Time{}, false
 	}
 	switch a.Status.Phase {
-	case appv1alpha1.PhaseRunning, appv1alpha1.PhaseFailed:
+	case appv1alpha1.PhaseRunning, appv1alpha1.PhaseDeploying, appv1alpha1.PhaseFailed:
 	default:
 		return time.Time{}, false
 	}
@@ -65,7 +80,68 @@ func CrashLoopFailingSince(a *appv1alpha1.App) (time.Time, bool) {
 	if ready == nil || ready.Status != metav1.ConditionFalse || !crashLoopReasons[ready.Reason] {
 		return time.Time{}, false
 	}
+	if !crashLoopReleaseSettled(a) {
+		return time.Time{}, false
+	}
 	return ready.LastTransitionTime.Time, true
+}
+
+// crashLoopReleaseSettled reports whether no rollout is in progress for a:
+// its current release (status.releaseGeneration) has served — the active
+// revision is that release's — or that release's rollout already settled
+// failed (a Rollout=False verdict for it) over an earlier release that served.
+// Either way the pods that are restarting are a steady state, not a deploy
+// that may still succeed.
+//
+// A release that never served (no active revision) is excluded even when its
+// verdict is in: the operator parks a failed first release at zero replicas
+// (w1/m179), so its CrashLoopBackOff Ready condition and Failed phase are a
+// record of the failed deploy, not restarts. A status written before release
+// generations existed has only the active revision, which is then the
+// release.
+func crashLoopReleaseSettled(a *appv1alpha1.App) bool {
+	active := a.Status.ActiveRevision
+	if active == "" {
+		return false
+	}
+	release := a.Status.ReleaseGeneration
+	if release <= 0 {
+		return true
+	}
+	if served, ok := appv1alpha1.RevisionGeneration(active); ok && served == release {
+		return true
+	}
+	verdict := meta.FindStatusCondition(a.Status.Conditions, appv1alpha1.ConditionRollout)
+	return verdict != nil && verdict.Status == metav1.ConditionFalse && verdict.ObservedGeneration == release
+}
+
+// CrashLoopRestarting reports whether a service's pods show a crash loop that
+// is still turning: none of its live instances is Ready, and at least one
+// app container has restarted or is waiting out a CrashLoopBackOff. No live
+// pod at all means nothing is restarting (a service parked at zero), and one
+// Ready instance means the service still serves; neither is suspended.
+func CrashLoopRestarting(pods []corev1.Pod) bool {
+	restarting := false
+	for i := range pods {
+		p := &pods[i]
+		if p.DeletionTimestamp != nil || p.Status.Phase == corev1.PodSucceeded || p.Status.Phase == corev1.PodFailed {
+			continue
+		}
+		for _, c := range p.Status.Conditions {
+			if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue {
+				return false
+			}
+		}
+		for _, cs := range p.Status.ContainerStatuses {
+			if cs.Name != core.AppContainer {
+				continue
+			}
+			if cs.RestartCount > 0 || (cs.State.Waiting != nil && cs.State.Waiting.Reason == appv1alpha1.ReasonCrashLoopBackOff) {
+				restarting = true
+			}
+		}
+	}
+	return restarting
 }
 
 // CrashLoopObservation is the AnnotCrashLoopObserved value for a first
@@ -133,6 +209,16 @@ func (w CrashLoopWorker) Now() time.Time { return w.Svc.Now() }
 // Suspend suspends a for a crash loop.
 func (w CrashLoopWorker) Suspend(ctx context.Context, a *appv1alpha1.App, at time.Time) error {
 	return w.Svc.suspendForCrashLoop(ctx, a, at)
+}
+
+// Restarting reports whether a's pods are crash-looping now
+// (CrashLoopRestarting).
+func (w CrashLoopWorker) Restarting(ctx context.Context, a *appv1alpha1.App) (bool, error) {
+	pods, err := w.Svc.OwnAppPods(ctx, a)
+	if err != nil {
+		return false, err
+	}
+	return CrashLoopRestarting(pods), nil
 }
 
 // Observe records (or clears, with "") the sweeper's first sighting of a.

@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -48,14 +49,38 @@ func (n *recordingNotifier) NotifyCrashLoopSuspended(_ context.Context, tenant, 
 
 type appOpt func(*appv1alpha1.App)
 
+// failing is the status the operator writes for a served release whose pods
+// keep crashing: phase Deploying (reportRolloutProgress handles every
+// not-ready Deployment alike), Ready=False with the diagnosis, and the
+// current release (rev-1) already active.
 func failing(reason string, since time.Time) appOpt {
 	return func(a *appv1alpha1.App) {
-		a.Status.Phase = appv1alpha1.PhaseRunning
+		a.Status.Phase = appv1alpha1.PhaseDeploying
+		a.Status.ActiveRevision = "rev-1"
+		a.Status.ReleaseGeneration = 1
 		a.Status.Conditions = []metav1.Condition{{
 			Type: appv1alpha1.ConditionReady, Status: metav1.ConditionFalse, Reason: reason,
 			LastTransitionTime: metav1.NewTime(since),
 		}}
 	}
+}
+
+// rollingOut makes the current release a newer one (rev-2) that has not served
+// yet: a deploy in progress over the served rev-1.
+func rollingOut(a *appv1alpha1.App) {
+	a.Status.ReleaseGeneration = 2
+}
+
+// failedFirstRelease is the operator's stopped first release (w1/m179):
+// nothing served, the release's rollout verdict is in, phase Failed with the
+// diagnosis on Ready, and the Deployment parked at zero (no pods).
+func failedFirstRelease(a *appv1alpha1.App) {
+	a.Status.Phase = appv1alpha1.PhaseFailed
+	a.Status.ActiveRevision = ""
+	a.Status.Conditions = append(a.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: appv1alpha1.ReasonCrashLoopBackOff,
+		ObservedGeneration: 1, LastTransitionTime: a.Status.Conditions[0].LastTransitionTime,
+	})
 }
 
 func app(name string, opts ...appOpt) *appv1alpha1.App {
@@ -69,6 +94,33 @@ func app(name string, opts ...appOpt) *appv1alpha1.App {
 		opt(a)
 	}
 	return a
+}
+
+// pod is one of app's instances. restarts and waiting describe its app
+// container; ready its Ready condition.
+func pod(app, suffix string, restarts int32, waiting string, ready bool) *corev1.Pod {
+	p := &corev1.Pod{
+		ObjectMeta: metav1.ObjectMeta{Name: app + "-" + suffix, Namespace: "tea-a", Labels: map[string]string{
+			core.PodLabelApp: app, core.LabelAppID: "srv-" + app,
+		}},
+		Status: corev1.PodStatus{Phase: corev1.PodRunning},
+	}
+	cs := corev1.ContainerStatus{Name: core.AppContainer, RestartCount: restarts}
+	if waiting != "" {
+		cs.State.Waiting = &corev1.ContainerStateWaiting{Reason: waiting}
+	}
+	p.Status.ContainerStatuses = []corev1.ContainerStatus{cs}
+	status := corev1.ConditionFalse
+	if ready {
+		status = corev1.ConditionTrue
+	}
+	p.Status.Conditions = []corev1.PodCondition{{Type: corev1.PodReady, Status: status}}
+	return p
+}
+
+// crashing is an instance of app in CrashLoopBackOff.
+func crashing(app string) *corev1.Pod {
+	return pod(app, "crash", 12, appv1alpha1.ReasonCrashLoopBackOff, false)
 }
 
 type harness struct {
@@ -115,15 +167,37 @@ func TestSweepSuspendsOnlyServicesFailingForTheWholeWindow(t *testing.T) {
 	now := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
 	day := 24 * time.Hour
 	h := newHarness(t, now,
-		app("crashing", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day))),
+		// A once-healthy service now crash-looping: the main real-world case
+		// (w2/m253 dev-2 walk finding B).
+		app("crashing", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day))), crashing("crashing"),
 		app("unhealthy", failing(appv1alpha1.ReasonHealthCheckFailing, now.Add(-3*day))),
-		app("young", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(time.Hour))),
+		pod("unhealthy", "probe", 4, "", false),
+		// A newer release's rollout failed and settled; the served release's
+		// pods are the ones crash-looping.
+		app("regressed", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day)), rollingOut, func(a *appv1alpha1.App) {
+			a.Status.Conditions = append(a.Status.Conditions, metav1.Condition{
+				Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: "ProgressDeadlineExceeded",
+				ObservedGeneration: 2, LastTransitionTime: metav1.NewTime(now.Add(-3 * day)),
+			})
+		}), crashing("regressed"),
+		app("young", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(time.Hour))), crashing("young"),
 		app("stalled", failing("Unschedulable", now.Add(-3*day))),
 		app("healthy", func(a *appv1alpha1.App) {
 			a.Status.Phase = appv1alpha1.PhaseRunning
 			a.Status.Conditions = []metav1.Condition{{Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: "Ready", LastTransitionTime: metav1.NewTime(now.Add(-3 * day))}}
 		}),
-		app("deploying", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day)), func(a *appv1alpha1.App) { a.Status.Phase = appv1alpha1.PhaseDeploying }),
+		// A genuine rollout of a newer release whose new pods crash: a deploy
+		// in progress, settled by its own deadline.
+		app("deploying", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day)), rollingOut), crashing("deploying"),
+		app("building", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day)), func(a *appv1alpha1.App) { a.Status.Phase = appv1alpha1.PhaseBuilding }),
+		crashing("building"),
+		// A failed first release parked at zero (finding A).
+		app("stopped", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day)), failedFirstRelease),
+		// One instance of three still serves.
+		app("degraded", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day))), crashing("degraded"),
+		pod("degraded", "ok", 0, "", true),
+		// The status still reads crash-looping but no instance is left.
+		app("gone", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day))),
 		app("cron", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day)), func(a *appv1alpha1.App) { a.Spec.Type = appv1alpha1.TypeCronJob }),
 		app("parked", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day)), func(a *appv1alpha1.App) { a.Spec.Suspended = true }),
 		app("capped", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-3*day)), func(a *appv1alpha1.App) {
@@ -151,15 +225,20 @@ func TestSweepSuspendsOnlyServicesFailingForTheWholeWindow(t *testing.T) {
 	h.now = now.Add(day)
 	h.sweep()
 	h.sweep() // a second sweep suspends and mails nothing more
-	for _, name := range []string{"crashing", "unhealthy"} {
+	for _, name := range []string{"crashing", "unhealthy", "regressed"} {
 		a := h.get(name)
 		if !a.Spec.Suspended || a.Annotations[core.AnnotCrashLoopSuspended] != h.now.Format(time.RFC3339) || a.Annotations[core.AnnotCrashLoopObserved] != "" {
 			t.Errorf("%s: suspended=%v annotations=%v", name, a.Spec.Suspended, a.Annotations)
 		}
 	}
-	for _, name := range []string{"young", "stalled", "healthy", "deploying", "cron"} {
+	for _, name := range []string{"young", "stalled", "healthy", "deploying", "building", "stopped", "degraded", "gone", "cron"} {
 		if h.get(name).Spec.Suspended {
 			t.Errorf("%s must keep running", name)
+		}
+	}
+	for _, name := range []string{"stalled", "healthy", "deploying", "building", "stopped", "degraded", "gone", "cron"} {
+		if got := h.get(name).Annotations[core.AnnotCrashLoopObserved]; got != "" {
+			t.Errorf("%s is not crash-looping but was sighted: %q", name, got)
 		}
 	}
 	for _, name := range []string{"parked", "capped"} {
@@ -167,11 +246,11 @@ func TestSweepSuspendsOnlyServicesFailingForTheWholeWindow(t *testing.T) {
 			t.Errorf("%s: an existing suspension must not be touched: %v", name, a.Annotations)
 		}
 	}
-	if len(h.notes.notices) != 2 {
+	if len(h.notes.notices) != 3 {
 		t.Fatalf("notices = %+v, want one per suspended service", h.notes.notices)
 	}
 	for _, n := range h.notes.notices {
-		if n.tenant != "tea-a" || (n.service != "srv-crashing" && n.service != "srv-unhealthy") || !n.since.Equal(now) {
+		if n.tenant != "tea-a" || (n.service != "srv-crashing" && n.service != "srv-unhealthy" && n.service != "srv-regressed") || !n.since.Equal(now) {
 			t.Errorf("notice %+v", n)
 		}
 	}
@@ -184,7 +263,7 @@ func TestNewGenerationRestartsTheWindow(t *testing.T) {
 	h := newHarness(t, now, app("resumed", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-72*time.Hour)), func(a *appv1alpha1.App) {
 		a.Generation = 7
 		a.Annotations = map[string]string{core.AnnotCrashLoopObserved: apps.CrashLoopObservation(6, now.Add(-48*time.Hour))}
-	}))
+	}), crashing("resumed"))
 	h.sweep()
 	a := h.get("resumed")
 	if a.Spec.Suspended || a.Annotations[core.AnnotCrashLoopObserved] != apps.CrashLoopObservation(7, now) {
@@ -218,7 +297,7 @@ func TestUnnotifiedServiceIsNotSuspended(t *testing.T) {
 	now := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
 	h := newHarness(t, now, app("looping", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-48*time.Hour)), func(a *appv1alpha1.App) {
 		a.Annotations = map[string]string{core.AnnotCrashLoopObserved: apps.CrashLoopObservation(0, now.Add(-25*time.Hour))}
-	}))
+	}), crashing("looping"))
 	n := &failingNotifier{}
 	h.sw.Notifier = n
 	if err := h.sw.SweepOnce(context.Background()); err == nil {
@@ -233,10 +312,77 @@ func TestSweepHonorsAShorterWindow(t *testing.T) {
 	now := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
 	h := newHarness(t, now, app("dev", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-time.Hour)), func(a *appv1alpha1.App) {
 		a.Annotations = map[string]string{core.AnnotCrashLoopObserved: apps.CrashLoopObservation(0, now.Add(-6*time.Minute))}
-	}))
+	}), crashing("dev"))
 	h.sw.Window = 5 * time.Minute
 	h.sweep()
 	if !h.get("dev").Spec.Suspended {
 		t.Error("a 5-minute window (BEX_CRASHLOOP_SUSPEND_AFTER) must apply")
+	}
+}
+
+// w2/m253 finding A: a first release whose rollout failed is parked at zero
+// replicas by the operator; its Failed phase and CrashLoopBackOff Ready
+// condition are the failed deploy's record, not restarts. It is never sighted
+// or suspended, and a resume (which the operator answers by parking it again)
+// does not make it so either.
+func TestStoppedFirstReleaseIsNeverSuspended(t *testing.T) {
+	now := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
+	h := newHarness(t, now, app("stopped", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-72*time.Hour)), failedFirstRelease, func(a *appv1alpha1.App) {
+		a.Generation = 3 // resumed after an earlier suspension
+		a.Annotations = map[string]string{core.AnnotCrashLoopObserved: apps.CrashLoopObservation(3, now.Add(-48*time.Hour))}
+	}))
+	h.sweep()
+	h.now = now.Add(48 * time.Hour)
+	h.sweep()
+	a := h.get("stopped")
+	if a.Spec.Suspended || a.Annotations[core.AnnotCrashLoopSuspended] != "" || len(h.notes.notices) != 0 {
+		t.Fatalf("a stopped first release was suspended: suspended=%v annotations=%v notices=%v", a.Spec.Suspended, a.Annotations, h.notes.notices)
+	}
+	if got := a.Annotations[core.AnnotCrashLoopObserved]; got != "" {
+		t.Errorf("stale sighting kept: %q", got)
+	}
+}
+
+// w2/m253 finding B: a service that served and then started crashing reads
+// Deploying (with Ready CrashLoopBackOff) and is suspended after the window;
+// a moment with an instance Ready restarts the window.
+func TestOnceHealthyServiceThatCrashLoopsIsSuspended(t *testing.T) {
+	now := time.Date(2026, 11, 3, 12, 0, 0, 0, time.UTC)
+	h := newHarness(t, now, app("api", failing(appv1alpha1.ReasonCrashLoopBackOff, now.Add(-time.Hour))), crashing("api"))
+	h.sweep()
+	if got := h.get("api").Annotations[core.AnnotCrashLoopObserved]; got != apps.CrashLoopObservation(0, now) {
+		t.Fatalf("sighting = %q, want one at %s", got, now)
+	}
+
+	// Twelve hours in, an instance comes up Ready: the sighting is cleared.
+	h.now = now.Add(12 * time.Hour)
+	ready := pod("api", "up", 0, "", true)
+	if err := h.cl.Create(context.Background(), ready); err != nil {
+		t.Fatal(err)
+	}
+	h.sweep()
+	if got := h.get("api").Annotations[core.AnnotCrashLoopObserved]; got != "" {
+		t.Fatalf("a Ready instance must clear the sighting, got %q", got)
+	}
+	if err := h.cl.Delete(context.Background(), ready); err != nil {
+		t.Fatal(err)
+	}
+
+	// It crashes again: a fresh window from the next sighting.
+	h.now = now.Add(13 * time.Hour)
+	h.sweep()
+	h.now = now.Add(13*time.Hour + 24*time.Hour - time.Second)
+	h.sweep()
+	if h.get("api").Spec.Suspended {
+		t.Fatal("suspended before a full window after the healthy moment")
+	}
+	h.now = now.Add(13*time.Hour + 24*time.Hour)
+	h.sweep()
+	a := h.get("api")
+	if !a.Spec.Suspended || a.Annotations[core.AnnotCrashLoopSuspended] == "" || len(h.notes.notices) != 1 {
+		t.Fatalf("suspended=%v annotations=%v notices=%v", a.Spec.Suspended, a.Annotations, h.notes.notices)
+	}
+	if n := h.notes.notices[0]; n.service != "srv-api" || !n.since.Equal(now.Add(13*time.Hour)) {
+		t.Errorf("notice %+v", n)
 	}
 }

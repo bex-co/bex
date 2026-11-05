@@ -88,6 +88,16 @@ func (w *Sweeper) SweepOnce(ctx context.Context) error {
 	for i := range list {
 		a := &list[i]
 		since, failing := apps.CrashLoopFailingSince(a)
+		if failing {
+			// The status says so; the pods say whether restarts continue
+			// with no instance Ready (ADR096 § Rule).
+			restarting, err := w.Apps.Restarting(ctx, a)
+			if err != nil {
+				errs = append(errs, fmt.Errorf("read pods of %s: %w", a.Name, err))
+				continue
+			}
+			failing = restarting
+		}
 		if !failing {
 			if a.Annotations[core.AnnotCrashLoopObserved] != "" {
 				errs = append(errs, w.Apps.Observe(ctx, a, ""))
