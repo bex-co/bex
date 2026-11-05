@@ -394,6 +394,40 @@ const zhUsage: Record<string, TranslationEntry> = {
     message: "键值存储",
     description: "Charge-tree category for managed Key Value instances",
   },
+  "usage.categoryAgentSessions": {
+    message: "Agent 会话",
+    description:
+      "Charge-tree category for platform model usage of agent sessions",
+  },
+  "usage.chargeDisk": {
+    message: "磁盘",
+    description: "Charge line for a service's provisioned persistent disk",
+  },
+  "usage.chargeAgentModelCost": {
+    message: "模型用量",
+    description:
+      "Charge line for platform model spend, billed at provider cost plus markup (ADR091)",
+  },
+  "usage.chargeAgentModelRate": {
+    message: "服务商成本 + 30%",
+    description: "Rate column value for the platform model spend line",
+  },
+  "usage.chargeAgentModelInputTokens": {
+    message: "输入 token",
+    description: "Breakdown line for platform model input tokens",
+  },
+  "usage.chargeAgentModelOutputTokens": {
+    message: "输出 token",
+    description: "Breakdown line for platform model output tokens",
+  },
+  "usage.chargeAgentModelCacheReadTokens": {
+    message: "缓存读取 token",
+    description: "Breakdown line for platform model cache-read tokens",
+  },
+  "usage.chargeAgentModelCacheWriteTokens": {
+    message: "缓存写入 token",
+    description: "Breakdown line for platform model cache-write tokens",
+  },
   "usage.categorySandboxes": {
     message: "沙箱",
     description: "Charge-tree category for hosted agent sandboxes",

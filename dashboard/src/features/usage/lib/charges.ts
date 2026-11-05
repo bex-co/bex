@@ -22,6 +22,7 @@ export const CATEGORY_ORDER = [
   "postgres",
   "key_value",
   "sandbox",
+  "agent_session",
 ] as const;
 
 export interface ChargeCategory {

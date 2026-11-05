@@ -341,6 +341,85 @@ describe("ChargesCard", () => {
     expect(screen.getByText("Included")).toBeInTheDocument();
   });
 
+  // w10/011: an agent session's platform model usage reads as a bill, not as
+  // meter identifiers. The model id is the tier and must render verbatim, and
+  // token breakdown lines never claim an allowance the plan does not include.
+  it("labels agent-session model usage and keeps the model id verbatim", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([
+          resource({
+            serviceId: "ags-one",
+            serviceName: "",
+            resourceKind: "agent_session",
+            costUsd: "0.13",
+            charges: [
+              {
+                kind: "agent_model_cost_microusd",
+                tier: "deepseek/deepseek-v4.1-flash-1017",
+                unit: "USD",
+                rateUsd: "1",
+                quantity: "0.13",
+                costUsd: "0.13",
+              },
+              {
+                kind: "agent_model_input_tokens",
+                tier: "deepseek/deepseek-v4.1-flash-1017",
+                unit: "1M tokens",
+                rateUsd: "0",
+                quantity: "0.0205",
+                costUsd: "0.00",
+              },
+            ],
+          }),
+        ])}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: /Agent sessions/ }));
+    fireEvent.click(screen.getByRole("button", { name: /ags-one/ }));
+    expect(screen.getByText("Model usage")).toBeInTheDocument();
+    expect(screen.getByText("Input tokens")).toBeInTheDocument();
+    expect(screen.getByText("Provider cost + 30%")).toBeInTheDocument();
+    expect(screen.queryByText("Included")).not.toBeInTheDocument();
+    expect(screen.queryByText(/agent_model_/)).not.toBeInTheDocument();
+    const models = screen.getAllByText("deepseek/deepseek-v4.1-flash-1017");
+    expect(models).toHaveLength(2);
+    for (const model of models) expect(model).not.toHaveClass("capitalize");
+  });
+
+  it("labels a service disk charge instead of its meter name", () => {
+    render(
+      <ChargesCard
+        estimatedCost={estimate([
+          resource({
+            charges: [
+              {
+                kind: "disk_gb_seconds",
+                tier: "",
+                unit: "GB-mo",
+                rateUsd: "0.175",
+                quantity: "1.11",
+                costUsd: "0.19",
+              },
+            ],
+          }),
+        ])}
+        invoicedUsd={null}
+        loading={false}
+        period=""
+        now={MID_JULY}
+      />,
+    );
+    fireEvent.click(screen.getByRole("button", { name: "Expand all" }));
+    fireEvent.click(screen.getByRole("button", { name: /api/ }));
+    expect(screen.getByText("Disk")).toBeInTheDocument();
+    expect(screen.queryByText("disk_gb_seconds")).not.toBeInTheDocument();
+  });
+
   it("totals the estimate and projects month end when there is no invoice", () => {
     render(
       <ChargesCard

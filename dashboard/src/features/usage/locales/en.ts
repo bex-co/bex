@@ -402,6 +402,40 @@ const enUsage: Record<string, TranslationEntry> = {
     message: "Key Value",
     description: "Charge-tree category for managed Key Value instances",
   },
+  "usage.categoryAgentSessions": {
+    message: "Agent sessions",
+    description:
+      "Charge-tree category for platform model usage of agent sessions",
+  },
+  "usage.chargeDisk": {
+    message: "Disk",
+    description: "Charge line for a service's provisioned persistent disk",
+  },
+  "usage.chargeAgentModelCost": {
+    message: "Model usage",
+    description:
+      "Charge line for platform model spend, billed at provider cost plus markup (ADR091)",
+  },
+  "usage.chargeAgentModelRate": {
+    message: "Provider cost + 30%",
+    description: "Rate column value for the platform model spend line",
+  },
+  "usage.chargeAgentModelInputTokens": {
+    message: "Input tokens",
+    description: "Breakdown line for platform model input tokens",
+  },
+  "usage.chargeAgentModelOutputTokens": {
+    message: "Output tokens",
+    description: "Breakdown line for platform model output tokens",
+  },
+  "usage.chargeAgentModelCacheReadTokens": {
+    message: "Cache read tokens",
+    description: "Breakdown line for platform model cache-read tokens",
+  },
+  "usage.chargeAgentModelCacheWriteTokens": {
+    message: "Cache write tokens",
+    description: "Breakdown line for platform model cache-write tokens",
+  },
   "usage.categorySandboxes": {
     message: "Sandboxes",
     description: "Charge-tree category for hosted agent sandboxes",

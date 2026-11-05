@@ -57,6 +57,7 @@ const CATEGORY_LABEL_KEYS: Record<string, string> = {
   postgres: "usage.categoryPostgres",
   key_value: "usage.categoryKeyValue",
   sandbox: "usage.categorySandboxes",
+  agent_session: "usage.categoryAgentSessions",
 };
 
 /** Meter kinds read as charge names on a bill, not as raw meter identifiers. */
@@ -66,7 +67,30 @@ const CHARGE_LABEL_KEYS: Record<string, string> = {
   build_seconds: "usage.chargeBuild",
   storage_gb_seconds: "usage.chargeStorage",
   sandbox_compute_seconds: "usage.chargeSandboxCompute",
+  disk_gb_seconds: "usage.chargeDisk",
+  agent_model_cost_microusd: "usage.chargeAgentModelCost",
+  agent_model_input_tokens: "usage.chargeAgentModelInputTokens",
+  agent_model_output_tokens: "usage.chargeAgentModelOutputTokens",
+  agent_model_cache_read_tokens: "usage.chargeAgentModelCacheReadTokens",
+  agent_model_cache_write_tokens: "usage.chargeAgentModelCacheWriteTokens",
 };
+
+/** Agent-model lines carry the model id as their tier, and are priced at the
+ * provider's cost plus a markup rather than a per-unit rate (ADR091). */
+const isAgentModelCharge = (kind: string) => kind.startsWith("agent_model_");
+
+/** The rate column. A zero rate is "Included" only for plan-priced meters: an
+ * agent-model token line is a usage breakdown that ADR091's cost line bills,
+ * never a plan allowance, so it shows no rate instead of claiming one. */
+function chargeRate(charge: ChargeLine, t: (key: string) => string): string {
+  if (charge.kind === "agent_model_cost_microusd") {
+    return t("usage.chargeAgentModelRate");
+  }
+  if (isAgentModelCharge(charge.kind)) return "—";
+  return charge.rateUsd === "0"
+    ? t("usage.chargeFree")
+    : `$${charge.rateUsd}/${charge.unit}`;
+}
 
 function ChargeRow({ charge }: { charge: ChargeLine }) {
   const { t } = useTranslations();
@@ -76,15 +100,15 @@ function ChargeRow({ charge }: { charge: ChargeLine }) {
       <span className="text-sm">
         {labelKey ? t(labelKey) : charge.kind}
         {charge.tier && (
-          <span className="ml-2 text-xs text-muted-foreground capitalize">
+          <span
+            className={`ml-2 text-xs text-muted-foreground${isAgentModelCharge(charge.kind) ? "" : " capitalize"}`}
+          >
             {charge.tier}
           </span>
         )}
       </span>
       <span className="font-mono text-xs text-muted-foreground tabular-nums sm:w-32 sm:text-right">
-        {charge.rateUsd === "0"
-          ? t("usage.chargeFree")
-          : `$${charge.rateUsd}/${charge.unit}`}
+        {chargeRate(charge, t)}
       </span>
       <span className="font-mono text-xs text-muted-foreground tabular-nums sm:w-28 sm:text-right">
         {charge.quantity} {charge.unit}
