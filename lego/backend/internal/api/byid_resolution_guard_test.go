@@ -75,6 +75,7 @@ var byIDResolutions = map[string]byIDResolution{
 	"owners":                             {"", "", "the path id is the workspace", nil},
 	"ssh-keys":                           {"", "", "user-scoped: a caller's own public keys", nil},
 	"objects":                            {"", "", "reads nothing: every operation answers not offered (ADR018, w6/097)", nil},
+	"sandbox-groups":                     {"", "", "reads nothing: every operation answers a named not-offered 404 (ADR018, w2/m263)", nil},
 	"build-sources":                      {"apps", "AuthorizeApp", "a build source is a carrier App, resolved under core.WithBuildSources (ADR097)", nil},
 	"notification-device-subscriptions":  {"notifications", "ScopeByID", "the caller's own device, in the workspace it was registered in (w5/m115)", []string{"scopeDevice"}},
 	"notification-webpush-subscriptions": {"", "", "the caller's own browser registration", nil},

@@ -61,6 +61,9 @@ var sandboxGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"timeoutSeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(s Sandbox) any {
 			return s.TimeoutSeconds
 		})},
+		"idleTimeoutSeconds": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(s Sandbox) any {
+			return s.IdleTimeoutSeconds
+		})},
 		"networkPolicy": &graphql.Field{Type: sandboxNetworkPolicyGQLType, Resolve: gqlutil.Field(func(s Sandbox) any {
 			return s.NetworkPolicy
 		})},
@@ -76,9 +79,13 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 	return graphql.Fields{
 		"sandboxes": &graphql.Field{
 			Type: graphql.NewList(sandboxGQLType),
-			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+				// Render's list `status` filter; omitted = every status but terminated.
+				"status": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.List(ownerScoped(p))
+				return s.listFiltered(ownerScoped(p), gqlutil.StringList(p.Args["status"]))
 			},
 		},
 		"sandbox": &graphql.Field{
@@ -104,7 +111,9 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"ownerId":        gqlutil.Arg(graphql.String),
 				"region":         gqlutil.Arg(graphql.String),
 				"timeoutSeconds": gqlutil.Arg(graphql.Int),
-				"networkPolicy":  gqlutil.Arg(sandboxNetworkPolicyInput),
+				// Render's idleTimeoutSeconds; see validateIdleTimeout.
+				"idleTimeoutSeconds": gqlutil.Arg(graphql.Int),
+				"networkPolicy":      gqlutil.Arg(sandboxNetworkPolicyInput),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				var policy *NetworkPolicy
@@ -112,12 +121,13 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					policy = &NetworkPolicy{Default: NetworkPolicyDefault(gqlutil.Str(raw, "default")), Type: NetworkPolicyDefault(gqlutil.Str(raw, "type"))}
 				}
 				return s.Create(p.Context, CreateRequest{
-					OwnerID:        gqlutil.Str(p.Args, "ownerId"),
-					Template:       gqlutil.Str(p.Args, "template"),
-					Plan:           Plan(gqlutil.Str(p.Args, "plan")),
-					Region:         gqlutil.Str(p.Args, "region"),
-					TimeoutSeconds: gqlutil.Int(p.Args, "timeoutSeconds"),
-					NetworkPolicy:  policy,
+					OwnerID:            gqlutil.Str(p.Args, "ownerId"),
+					Template:           gqlutil.Str(p.Args, "template"),
+					Plan:               Plan(gqlutil.Str(p.Args, "plan")),
+					Region:             gqlutil.Str(p.Args, "region"),
+					TimeoutSeconds:     gqlutil.Int(p.Args, "timeoutSeconds"),
+					IdleTimeoutSeconds: gqlutil.Int(p.Args, "idleTimeoutSeconds"),
+					NetworkPolicy:      policy,
 				})
 			},
 		},

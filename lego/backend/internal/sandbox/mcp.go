@@ -28,12 +28,20 @@ import (
 // registered image; plan is the Render-compatible size; ownerId scopes the
 // workspace (empty => the caller's default).
 type spawnSandboxArgs struct {
-	Template       string         `json:"template,omitempty"`
-	Plan           string         `json:"plan,omitempty"`
-	OwnerID        string         `json:"ownerId,omitempty"`
-	Region         string         `json:"region,omitempty"`
-	TimeoutSeconds int            `json:"timeoutSeconds,omitempty"`
-	NetworkPolicy  *NetworkPolicy `json:"networkPolicy,omitempty"`
+	Template       string `json:"template,omitempty"`
+	Plan           string `json:"plan,omitempty"`
+	OwnerID        string `json:"ownerId,omitempty"`
+	Region         string `json:"region,omitempty"`
+	TimeoutSeconds int    `json:"timeoutSeconds,omitempty"`
+	// IdleTimeoutSeconds is Render's create field; see validateIdleTimeout.
+	IdleTimeoutSeconds int            `json:"idleTimeoutSeconds,omitempty"`
+	NetworkPolicy      *NetworkPolicy `json:"networkPolicy,omitempty"`
+}
+
+// listSandboxesArgs is the MCP input for list_sandboxes: Render's list
+// `status` filter (omitted = every status but terminated).
+type listSandboxesArgs struct {
+	Status []string `json:"status,omitempty"`
 }
 
 type sandboxIDArgs struct {
@@ -67,18 +75,19 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: "Create a hosted agent sandbox from a registered template and return its id and status."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in spawnSandboxArgs) (*mcp.CallToolResult, Sandbox, error) {
 			sb, err := s.Create(ctx, CreateRequest{
-				OwnerID:        in.OwnerID,
-				Template:       in.Template,
-				Plan:           Plan(in.Plan),
-				Region:         in.Region,
-				TimeoutSeconds: in.TimeoutSeconds,
-				NetworkPolicy:  in.NetworkPolicy,
+				OwnerID:            in.OwnerID,
+				Template:           in.Template,
+				Plan:               Plan(in.Plan),
+				Region:             in.Region,
+				TimeoutSeconds:     in.TimeoutSeconds,
+				IdleTimeoutSeconds: in.IdleTimeoutSeconds,
+				NetworkPolicy:      in.NetworkPolicy,
 			})
 			return nil, sb, err
 		})
-	mcputil.AddTool(server, &mcp.Tool{Name: "list_sandboxes", Description: "List the caller's workspace's sandboxes with their statuses."},
-		func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listSandboxesResult, error) {
-			out, err := s.List(ctx)
+	mcputil.AddTool(server, &mcp.Tool{Name: "list_sandboxes", Description: "List the caller's workspace's sandboxes with their statuses. Optional status: a list of Render sandbox statuses to keep; omitted, terminated sandboxes are hidden."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in listSandboxesArgs) (*mcp.CallToolResult, listSandboxesResult, error) {
+			out, err := s.listFiltered(ctx, in.Status)
 			return nil, listSandboxesResult{Sandboxes: out}, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "stop_sandbox", Description: "Terminate a sandbox by id."},

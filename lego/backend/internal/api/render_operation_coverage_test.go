@@ -113,7 +113,9 @@ func TestEveryRenderOperationMountedOrDocumented(t *testing.T) {
 			_, pattern := mux.Handler(req)
 			citation, omitted := renderOperationOmissions[operation.OperationID]
 			delete(remaining, operation.OperationID)
-			if pattern != "" {
+			// A not-offered route is mounted only to name its refusal; it is
+			// still an omission and must keep its ADR018 citation.
+			if pattern != "" && !notOfferedRoutes[pattern] {
 				if omitted {
 					t.Errorf("stale omission for mounted %s", operation.OperationID)
 				}

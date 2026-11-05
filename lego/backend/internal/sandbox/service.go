@@ -57,6 +57,9 @@ const (
 	metadataAgentSession = agentsession.LabelSession
 	minSandboxTimeout    = 60
 	maxSandboxTimeout    = 86400
+	// Render's idleTimeoutSeconds bounds for a positive value.
+	minIdleTimeout = 300
+	maxIdleTimeout = 86400
 )
 
 // KeyProvider mints/looks up a workspace's OpenSandbox tenant key (OSEP-0014):
@@ -124,14 +127,17 @@ type Service struct {
 // CreateRequest is the caller's create input. OwnerID binds the workspace (as
 // every create does); Template selects a registered image (empty ⇒ the default,
 // since the Render CLI sends no template); Plan/Region/TimeoutSeconds/NetworkPolicy
-// are Render CLI create fields echoed back on the resource.
+// are Render CLI create fields echoed back on the resource. A named Plan sizes
+// the sandbox (planResources); an omitted one keeps the template's own size.
+// IdleTimeoutSeconds is Render's create field; see validateIdleTimeout.
 type CreateRequest struct {
-	OwnerID        string
-	Template       string
-	Plan           Plan
-	Region         string
-	TimeoutSeconds int
-	NetworkPolicy  *NetworkPolicy
+	OwnerID            string
+	Template           string
+	Plan               Plan
+	Region             string
+	TimeoutSeconds     int
+	IdleTimeoutSeconds int
+	NetworkPolicy      *NetworkPolicy
 }
 
 func (s *Service) enabled() bool { return s.Client != nil }
@@ -205,12 +211,82 @@ func refuseUnsupportedCreateOptions(hasEnv, hasSnapshot bool) error {
 	}
 	if hasSnapshot {
 		return core.NewBadRequestError(
-			"SANDBOX_SNAPSHOTS_UNSUPPORTED",
+			codeSandboxSnapshotsUnsupported,
 			"sandbox snapshots are not supported (--from/--snapshot-id); create a sandbox from a template instead",
 			map[string]any{"field": "snapshotId", "flags": []string{"--from", "--snapshot-id"}},
 		)
 	}
 	return nil
+}
+
+// codeSandboxSnapshotsUnsupported names Render's sandbox snapshots: the
+// `snapshotId`/`snapshotName` create fields and every snapshot route.
+const codeSandboxSnapshotsUnsupported = "SANDBOX_SNAPSHOTS_UNSUPPORTED"
+
+// CodeSandboxGroupsUnsupported names Render's sandbox groups — every
+// `/sandbox-groups` route and the `sandboxGroupId` create field and list
+// filter. bex has no group layer: each workspace's sandboxes live in its one
+// `<ws>-sandbox` namespace (ADR018 § Render operation omissions).
+const CodeSandboxGroupsUnsupported = "SANDBOX_GROUPS_UNSUPPORTED"
+
+// CodeSandboxImagesUnsupported names Render's imported sandbox images
+// (`sandbox-groups images import|get`, `sandboxes create --image`). bex starts
+// every sandbox from a registered template (ADR014 D2), never a caller image.
+const CodeSandboxImagesUnsupported = "SANDBOX_IMAGES_UNSUPPORTED"
+
+// sandboxGroupsUnsupported is the refusal for a sandbox-group reference.
+func sandboxGroupsUnsupported(field string) error {
+	return core.NewBadRequestError(CodeSandboxGroupsUnsupported,
+		"sandbox groups are not supported: every sandbox belongs to its workspace directly; omit --group/--sandbox-group",
+		map[string]any{"field": field, "flags": []string{"--group", "--sandbox-group"}})
+}
+
+// refuseGroupAndImage names the Render create fields that select a sandbox
+// group (`sandboxGroupId`, from `--group`/`--sandbox-group`) or an imported
+// image (`buildId`/`buildName` from `--image` and its deprecated alias
+// `--build`, or a raw `image` ref). Without these declarations strict decoding
+// answered `unknown field "sandboxGroupId"` — an internal wire key, not the
+// flag the user typed (w2/m263).
+func refuseGroupAndImage(sandboxGroupID string, hasImage bool) error {
+	if sandboxGroupID != "" {
+		return sandboxGroupsUnsupported("sandboxGroupId")
+	}
+	if hasImage {
+		return core.NewBadRequestError(CodeSandboxImagesUnsupported,
+			"sandbox images are not supported (--image, or its deprecated alias --build): bex starts every sandbox from its base image; create the sandbox without --image and install what you need inside it",
+			map[string]any{"fields": []string{"buildId", "buildName", "image"}, "flags": []string{"--image", "--build"}})
+	}
+	return nil
+}
+
+// validateIdleTimeout applies Render's idleTimeoutSeconds contract (0, or 300
+// through 86400): 0 is honored, and a positive value is refused by name
+// (w2/m263). bex has no idle suspension: OpenSandbox reports no activity
+// signal, and a Kubernetes pause snapshots only the root filesystem (ADR042
+// D5), so suspending an "idle" sandbox would kill its processes and nothing
+// resumes it on the next exec. 0 — "disable automatic idle suspension" — is
+// exactly what bex does, and is what every sandbox reports (ADR018 § Sandbox
+// create flags).
+func validateIdleTimeout(idle int) error {
+	if idle == 0 {
+		return nil
+	}
+	if idle < minIdleTimeout || idle > maxIdleTimeout {
+		return core.NewBadRequestError("SANDBOX_IDLE_TIMEOUT_INVALID",
+			fmt.Sprintf("sandbox idleTimeoutSeconds must be 0 (disabled) or between %d and %d", minIdleTimeout, maxIdleTimeout),
+			map[string]any{"field": "idleTimeoutSeconds", "minimumNonZero": minIdleTimeout, "max": maxIdleTimeout})
+	}
+	return core.NewBadRequestError("SANDBOX_IDLE_TIMEOUT_UNSUPPORTED",
+		"automatic idle suspension is not supported: a bex sandbox runs until its timeout or until you stop it; omit --idle-timeout or pass --idle-timeout=0",
+		map[string]any{"field": "idleTimeoutSeconds", "flags": []string{"--idle-timeout"}, "supported": []int{0}})
+}
+
+// invalidPlan is Render's invalid_sandbox_plan refusal: the message lists the
+// accepted plans.
+func invalidPlan(plan Plan) error {
+	return core.NewBadRequestError("SANDBOX_PLAN_INVALID",
+		fmt.Sprintf("unknown sandbox plan %q; use one of %s", plan, strings.Join(planNames(), ", ")),
+		map[string]any{"field": "plan", "supported": planNames()})
 }
 
 func validateCreateMetadata(region string, timeout int) error {
@@ -525,9 +601,12 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 		plan = s.DefaultPlan
 	}
 	if plan != "" && !ValidPlan(plan) {
-		return Sandbox{}, fmt.Errorf("%w: unknown plan %q", core.ErrBadRequest, plan)
+		return Sandbox{}, invalidPlan(plan)
 	}
 	if err := validateCreateMetadata(req.Region, req.TimeoutSeconds); err != nil {
+		return Sandbox{}, err
+	}
+	if err := validateIdleTimeout(req.IdleTimeoutSeconds); err != nil {
 		return Sandbox{}, err
 	}
 	policy, err := normalizeNetworkPolicy(req.NetworkPolicy)
@@ -541,6 +620,11 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	tmpl, ok := s.Templates[name]
 	if !ok {
 		return Sandbox{}, fmt.Errorf("%w: unknown template %q", core.ErrBadRequest, name)
+	}
+	// A plan the caller names is the sandbox's size, as on Render; an omitted
+	// plan keeps the template's registered size (the default plan only labels).
+	if size, named := planResources[req.Plan]; named {
+		tmpl.CPU, tmpl.Memory = size.CPU, size.Memory
 	}
 	ws := s.WorkspaceOrDefault(ctx)
 	// Mint the tenant-facing id here: OpenSandbox accepts no client-supplied id,
@@ -954,6 +1038,22 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 		}
 	}
 	return out, nil
+}
+
+// listFiltered is List narrowed by Render's status filter — the one helper
+// the REST, GraphQL and MCP list adapters share, so all three apply the same
+// default and refuse the same unknown status. The filter is validated before
+// the authorized List runs.
+func (s *Service) listFiltered(ctx context.Context, status []string) ([]Sandbox, error) {
+	want, err := parseStatusFilter(status)
+	if err != nil {
+		return nil, err
+	}
+	out, err := s.List(ctx)
+	if err != nil {
+		return nil, err
+	}
+	return filterStatuses(out, want), nil
 }
 
 // Get returns one sandbox's status. With no workspace named in ctx it acts in

@@ -433,6 +433,11 @@ func NewNotFoundError(code, msg string, params map[string]any) *CodedError {
 	return &CodedError{Code: code, Params: params, sentinel: ErrNotFound, msg: msg}
 }
 
+// NotOffered is the named 404 a Render route bex deliberately does not serve
+// answers (Code/Message feed NewNotFoundError), so a Render client prints why
+// instead of the router's bare 404.
+type NotOffered struct{ Code, Message string }
+
 // NotFoundCode is a missing resource's code: ErrNotFound's, and NotFound's.
 // A feature-specific not-found keeps its own (NewNotFoundError).
 const NotFoundCode = "NOT_FOUND"

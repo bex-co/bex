@@ -36,7 +36,7 @@ The shared contract and real handler/launcher tests live in `lego/cli/testdata/s
 
 **Sandbox** — `{ id: <SandboxId>, plan: <SandboxPlan>, networkPolicy: <SandboxNetworkPolicy>, status: <SandboxStatus> }` (plus timestamps).
 
-**SandboxPlan** (compute size; matches Workflow plans of the same name): `starter` · `standard` · `pro`.
+**SandboxPlan** (compute size): `1c-2g` · `2c-4g` · `4c-8g` · `8c-16g`, plus the deprecated `starter` · `standard` · `pro` (sized like the Workflow plans of the same name). Since w2/m263 each plan sets the sandbox container's CPU/memory limit (`starter` 0.5 CPU/512 MiB, `standard` = `1c-2g`, `pro` = `2c-4g`); see [ADR018 § Sandbox create flags](../ADR018-render-parity.md#sandbox-create-flags-w2m263) for `idleTimeoutSeconds`, `timeoutSeconds: 0`, groups and images.
 
 **SandboxStatus**: `creating` · `running` · `suspended` · `resuming` · `errored` · `terminated`.
 
@@ -44,7 +44,7 @@ Note: Render's sandbox lifecycle has a `suspended`/`resuming` pair (pause/resume
 
 ## Deliberate bex divergences
 
-- **`plan` → tier**: Render's `starter/standard/pro` must map onto bex's compute tiers (or a sandbox-specific sizing); the value is echoed back on `Sandbox`.
+- **`plan` → size**: each accepted plan maps to a fixed sandbox CPU/memory limit (w2/m263); an unknown plan is `SANDBOX_PLAN_INVALID`. The value is echoed back on `Sandbox`, and billing follows the resources through the weighted compute meter.
 - **`networkPolicy`**: the field is no longer accepted-and-ignored. Omitted policy normalizes to `{default:"deny-all"}`; `deny-all` is the only accepted Render enum and round-trips from durable OpenSandbox metadata. `allow-all` and unknown values fail before any runtime call with `SANDBOX_NETWORK_POLICY_UNSUPPORTED` across REST, GraphQL, MCP, and the CLI. In bex, `deny-all` means default-deny plus a platform-managed HTTPS FQDN allowlist required for agent package/source/model access; arbitrary tenant-authored rules are unsupported. Cilium requires an approved exact SNI and explicitly denies private/rebound HTTPS targets. This narrower-than-Render posture is deliberate and enforced outside gVisor.
 - **Visibility/ownership**: Render's `ownerId` is a team boundary. bex adds a per-caller boundary inside that workspace: ordinary members list/get/exec/stop only sandboxes whose reserved owner/workspace metadata matches their resolved identity and whose sandbox-regime plus enforced-policy stamps are intact; an explicit workspace admin may operate all fully hardened owned sandboxes in the workspace. Foreign, ownerless, and incompletely hardened objects are indistinguishable from missing ones (`SANDBOX_NOT_FOUND`).
 - **`image`**: bex's `Create` is template-based (ADR014 D2 / ADR042 D2) — the image is fixed at template registration, not taken from an arbitrary request ref.

@@ -115,17 +115,22 @@ var emptyListCases = []emptyListCase{
 // neverEmptyArrayRoutes are array routes whose contents are a build-time
 // constant, so there is no empty case to assert — they cannot regress to null.
 var neverEmptyArrayRoutes = map[string]string{
-	"GET /v1/objects/{ownerId}/{region}":                 "answers 404 not offered, never a list (ADR018, w6/097)",
-	"GET /v1/objects/{ownerId}/{region}/{key...}":        "answers 404 not offered (ADR018, w6/097)",
-	"GET /v1/postgres/{id}/recovery":                     "recoveryStatus and optional startsAt only; no arrays",
-	"GET /v1/postgres/{id}/credentials":                  "always includes the default CNPG owner credential (postgres.ListCredentials)",
-	"GET /v1/metrics/disk-capacity":                      "the provisioned capacity of a disk — one constant series, never an empty list",
-	"GET /v1/webhooks/event-types":                       "webhooks.EventTypes, a sorted package var over a non-empty set (webhooks/service.go)",
-	"GET /v1/metrics/filters/http":                       "one descriptor per supported HTTP filter; inner values[] via filterValuesOrEmpty (metrics/service.go)",
-	"GET /v1/metrics/filters/application":                "one descriptor per supported application filter, same helper",
-	"GET /v1/viewer/capabilities":                        "grants is append onto make([]CapabilityGrant, 0, 8) and is never empty (members/service.go)",
-	"GET /v1/notification-settings/push/availability":    "booleans only; no array",
-	"GET /v1/notification-settings/push/event-urgencies": "notifications.pushEventUrgencies, a package var with one row per selectable event (notifications/push_worker.go)",
+	"GET /v1/objects/{ownerId}/{region}":                             "answers 404 not offered, never a list (ADR018, w6/097)",
+	"GET /v1/objects/{ownerId}/{region}/{key...}":                    "answers 404 not offered (ADR018, w6/097)",
+	"GET /v1/sandbox-groups":                                         "answers 404 SANDBOX_GROUPS_UNSUPPORTED, never a list (ADR018, w2/m263)",
+	"GET /v1/sandbox-groups/{sandboxGroupId}":                        "answers 404 SANDBOX_GROUPS_UNSUPPORTED (ADR018, w2/m263)",
+	"GET /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}":       "answers 404 SANDBOX_IMAGES_UNSUPPORTED (ADR018, w2/m263)",
+	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots":              "answers 404 SANDBOX_SNAPSHOTS_UNSUPPORTED, never a list (ADR018, w2/m263)",
+	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}": "answers 404 SANDBOX_SNAPSHOTS_UNSUPPORTED (ADR018, w2/m263)",
+	"GET /v1/postgres/{id}/recovery":                                 "recoveryStatus and optional startsAt only; no arrays",
+	"GET /v1/postgres/{id}/credentials":                              "always includes the default CNPG owner credential (postgres.ListCredentials)",
+	"GET /v1/metrics/disk-capacity":                                  "the provisioned capacity of a disk — one constant series, never an empty list",
+	"GET /v1/webhooks/event-types":                                   "webhooks.EventTypes, a sorted package var over a non-empty set (webhooks/service.go)",
+	"GET /v1/metrics/filters/http":                                   "one descriptor per supported HTTP filter; inner values[] via filterValuesOrEmpty (metrics/service.go)",
+	"GET /v1/metrics/filters/application":                            "one descriptor per supported application filter, same helper",
+	"GET /v1/viewer/capabilities":                                    "grants is append onto make([]CapabilityGrant, 0, 8) and is never empty (members/service.go)",
+	"GET /v1/notification-settings/push/availability":                "booleans only; no array",
+	"GET /v1/notification-settings/push/event-urgencies":             "notifications.pushEventUrgencies, a package var with one row per selectable event (notifications/push_worker.go)",
 }
 
 // unreachableArrayRoutes are array routes this DB-less harness cannot drive to

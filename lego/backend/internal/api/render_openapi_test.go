@@ -203,7 +203,8 @@ func TestRenderRouteIntersectionInventory(t *testing.T) {
 		for method, operation := range item.Operations() {
 			target := "/v1" + parameter.ReplaceAllString(path, "fixture")
 			req := httptest.NewRequest(strings.ToUpper(method), target, nil)
-			if _, pattern := mux.Handler(req); pattern != "" {
+			// A not-offered route answers a named 404 and is no intersection.
+			if _, pattern := mux.Handler(req); pattern != "" && !notOfferedRoutes[pattern] {
 				operationIDs = append(operationIDs, operation.OperationID)
 			}
 		}

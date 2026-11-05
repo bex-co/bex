@@ -27,26 +27,66 @@ package sandbox
 
 import (
 	"encoding/json"
+	"fmt"
+	"slices"
+	"strings"
 	"time"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
 // Plan is the Render-compatible sandbox compute size (SandboxPlan in the CLI's
-// OpenAPI client). bex maps these onto its own sizing at Create time.
+// OpenAPI client). Each plan fixes the sandbox container's CPU and memory limit
+// (planResources); billing follows those resources through the weighted
+// compute meter, so a plan needs no pricing entry of its own.
 type Plan string
 
 const (
+	// Render's spec-named plans (CLI v2.35 help: `--plan 1c-2g|2c-4g|4c-8g|8c-16g`).
+	Plan1C2G  Plan = "1c-2g"
+	Plan2C4G  Plan = "2c-4g"
+	Plan4C8G  Plan = "4c-8g"
+	Plan8C16G Plan = "8c-16g"
+	// Render's deprecated names, kept as accepted aliases. They size like the
+	// Workflow plans of the same name: starter 0.5 CPU / 512 MB (no spec-named
+	// equivalent), standard ≡ 1c-2g, pro ≡ 2c-4g.
 	PlanStarter  Plan = "starter"
 	PlanStandard Plan = "standard"
 	PlanPro      Plan = "pro"
 )
 
+// planSize is the CPU and memory limit a plan gives the sandbox container.
+type planSize struct {
+	CPU    string
+	Memory string
+}
+
+// planResources maps every accepted plan onto its compute size. The
+// spec-named plans are exactly their names; the deprecated names keep the
+// sizes Render documents for them.
+var planResources = map[Plan]planSize{
+	Plan1C2G:     {CPU: "1", Memory: "2Gi"},
+	Plan2C4G:     {CPU: "2", Memory: "4Gi"},
+	Plan4C8G:     {CPU: "4", Memory: "8Gi"},
+	Plan8C16G:    {CPU: "8", Memory: "16Gi"},
+	PlanStarter:  {CPU: "500m", Memory: "512Mi"},
+	PlanStandard: {CPU: "1", Memory: "2Gi"},
+	PlanPro:      {CPU: "2", Memory: "4Gi"},
+}
+
+// planNames lists the accepted plans in Render's order (sandboxPlan enum):
+// the current spec-named plans, then the deprecated aliases.
+func planNames() []string {
+	return []string{
+		string(Plan1C2G), string(Plan2C4G), string(Plan4C8G), string(Plan8C16G),
+		string(PlanStarter), string(PlanStandard), string(PlanPro),
+	}
+}
+
 // ValidPlan reports whether p is a known Render sandbox plan.
 func ValidPlan(p Plan) bool {
-	switch p {
-	case PlanStarter, PlanStandard, PlanPro:
-		return true
-	}
-	return false
+	_, ok := planResources[p]
+	return ok
 }
 
 // Status is the Render-compatible sandbox lifecycle status (SandboxStatus).
@@ -61,6 +101,10 @@ const (
 	StatusResuming   Status = "resuming"
 	StatusErrored    Status = "errored"
 	StatusTerminated Status = "terminated"
+	// StatusSuspending is in Render's list `status` filter enum but is never
+	// reported by bex: its pause is synchronous, so a sandbox goes straight
+	// from running to suspended.
+	StatusSuspending Status = "suspending"
 )
 
 // Sandbox is the Render-compatible resource returned on the REST/GraphQL/MCP
@@ -76,11 +120,15 @@ type Sandbox struct {
 	Region string `json:"region,omitempty"`
 	// TimeoutSeconds is the effective lifetime bound in seconds. 0 is never
 	// returned — omitted/legacy "no expiry" is normalized to 86400 (w5/m99).
-	TimeoutSeconds int            `json:"timeoutSeconds"`
-	NetworkPolicy  *NetworkPolicy `json:"networkPolicy,omitempty"`
-	Owner          string         `json:"owner,omitempty"`
-	Workspace      string         `json:"workspace,omitempty"`
-	CreatedAt      *time.Time     `json:"createdAt,omitempty"`
+	TimeoutSeconds int `json:"timeoutSeconds"`
+	// IdleTimeoutSeconds is always 0: bex never suspends a sandbox for
+	// inactivity (see validateIdleTimeout), so Render's
+	// "0 disables automatic idle suspension" is the honest answer (w2/m263).
+	IdleTimeoutSeconds int            `json:"idleTimeoutSeconds"`
+	NetworkPolicy      *NetworkPolicy `json:"networkPolicy,omitempty"`
+	Owner              string         `json:"owner,omitempty"`
+	Workspace          string         `json:"workspace,omitempty"`
+	CreatedAt          *time.Time     `json:"createdAt,omitempty"`
 	// Image is the resolved template image (bex Create is template-based,
 	// ADR014 D2) — informational; the request never picks an arbitrary image.
 	Image string `json:"image,omitempty"`
@@ -144,4 +192,39 @@ func mapOpenSandboxStatus(s string) Status {
 	default:
 		return StatusErrored
 	}
+}
+
+// renderListStatuses is Render's list-sandboxes `status` enum. Filtering on
+// StatusSuspending matches nothing, as a status no sandbox is in does on Render.
+var renderListStatuses = []string{
+	string(StatusCreating), string(StatusRunning), string(StatusSuspending), string(StatusSuspended),
+	string(StatusResuming), string(StatusErrored), string(StatusTerminated),
+}
+
+// parseStatusFilter checks Render's list `status` filter values (REST splits
+// its comma/repeated form with core.QueryList). Empty means Render's default —
+// every status except terminated. An unknown status is refused by name, never
+// dropped, so a filter is never silently widened (w2/m263).
+func parseStatusFilter(values []string) (map[Status]bool, error) {
+	want := make(map[Status]bool, len(values))
+	for _, status := range values {
+		if !slices.Contains(renderListStatuses, status) {
+			return nil, core.NewBadRequestError("SANDBOX_STATUS_INVALID",
+				fmt.Sprintf("unknown sandbox status %q; use one of %s", status, strings.Join(renderListStatuses, ", ")),
+				map[string]any{"field": "status", "supported": renderListStatuses})
+		}
+		want[Status(status)] = true
+	}
+	return want, nil
+}
+
+// filterStatuses keeps the sandboxes whose status is wanted, or every
+// non-terminated one when no status was named.
+func filterStatuses(in []Sandbox, want map[Status]bool) []Sandbox {
+	return core.Filter(in, func(sb Sandbox) bool {
+		if len(want) == 0 {
+			return sb.Status != StatusTerminated
+		}
+		return want[sb.Status]
+	})
 }

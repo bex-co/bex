@@ -443,8 +443,8 @@ func TestEveryConstrainedIDPathParameterAcceptsItsBexID(t *testing.T) {
 	for path, item := range contract.document.Paths.Map() {
 		for method, operation := range item.Operations() {
 			probe := httptest.NewRequest(strings.ToUpper(method), "/v1"+placeholder.ReplaceAllString(path, "fixture"), nil)
-			if _, pattern := mux.Handler(probe); pattern == "" {
-				continue // Render-only operation; bex serves no route here.
+			if _, pattern := mux.Handler(probe); pattern == "" || notOfferedRoutes[pattern] {
+				continue // Render-only operation (or a named not-offered refusal the gate never sees).
 			}
 			for _, params := range []openapi3.Parameters{item.Parameters, operation.Parameters} {
 				for _, ref := range params {

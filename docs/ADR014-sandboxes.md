@@ -113,7 +113,7 @@ Because bex-api is the single funnel (D1), it is the natural **admission-control
 
 ### Lifetime bound (w5/m99)
 
-Every sandbox has an enforced maximum lifetime of **86400 seconds (24 hours)**. `timeoutSeconds: 0` (or omitted) means that default/maximum — matching the pinned Render CLI — never "no expiry". bex-api stamps the effective bound into `bex.co/timeout-seconds` metadata, returns it on REST/GraphQL/MCP reads, and the Completer inventory reconcile terminates sandboxes past `createdAt + bound`. Agent-session sandboxes share the same bound; session-side teardown (cancel, idle grace, previous-sandbox intents) is the fast path, and inventory reconcile is the backstop when a row forgot its `sandbox_id`.
+Every sandbox has an enforced maximum lifetime of **86400 seconds (24 hours)**. `timeoutSeconds: 0` (or omitted) means that default/maximum — never "no expiry". That matched the pinned Render CLI until v2.34.0 redefined `0` as "no timeout" (with a 30-day paid maximum); bex keeps the bound, and [ADR018 § Sandbox create flags](ADR018-render-parity.md#sandbox-create-flags-w2m263) records the divergence as awaiting user sign-off (w2/m263). bex-api stamps the effective bound into `bex.co/timeout-seconds` metadata, returns it on REST/GraphQL/MCP reads, and the Completer inventory reconcile terminates sandboxes past `createdAt + bound`. Agent-session sandboxes share the same bound; session-side teardown (cancel, idle grace, previous-sandbox intents) is the fast path, and inventory reconcile is the backstop when a row forgot its `sandbox_id`.
 
 ### D7 — State model & durability (a ladder, mostly deferred above pause/resume)
 

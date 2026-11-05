@@ -56,6 +56,16 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			// Render CLI v2.29's `--from <name>` sends snapshotName (an ID
 			// still goes as snapshotId); refused the same way.
 			SnapshotName string `json:"snapshotName"`
+			// Render CLI v2.31+ `--idle-timeout`; see validateIdleTimeout.
+			IdleTimeoutSeconds int `json:"idleTimeoutSeconds"`
+			// Declared to be refused by name, like Env/SnapshotID above:
+			// v2.32 `--group`/`--sandbox-group` sends sandboxGroupId, and
+			// v2.34 `--image` sends buildId (an `sbb-` id) or buildName. A raw
+			// `image` ref (ea-sandbox.md's original wire table) is the same request.
+			SandboxGroupID string `json:"sandboxGroupId"`
+			BuildID        string `json:"buildId"`
+			BuildName      string `json:"buildName"`
+			Image          string `json:"image"`
 		}
 		// A missing/empty body is fine — template+plan fall back to defaults —
 		// but malformed or unknown nested policy fields must never be ignored.
@@ -68,6 +78,10 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
+		if err := refuseGroupAndImage(body.SandboxGroupID, body.BuildID != "" || body.BuildName != "" || body.Image != ""); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
 		// The Render CLI sends ownerId in the BODY; the query param is the REST
 		// convention. Prefer the query, fall back to the body (empty ⇒ default ws).
 		owner := r.URL.Query().Get("ownerId")
@@ -75,12 +89,13 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			owner = body.OwnerID
 		}
 		sb, err := s.Create(r.Context(), CreateRequest{
-			OwnerID:        owner,
-			Template:       body.Template,
-			Plan:           body.Plan,
-			Region:         body.Region,
-			TimeoutSeconds: body.TimeoutSeconds,
-			NetworkPolicy:  body.NetworkPolicy,
+			OwnerID:            owner,
+			Template:           body.Template,
+			Plan:               body.Plan,
+			Region:             body.Region,
+			TimeoutSeconds:     body.TimeoutSeconds,
+			IdleTimeoutSeconds: body.IdleTimeoutSeconds,
+			NetworkPolicy:      body.NetworkPolicy,
 		})
 		if err != nil {
 			core.WriteErr(w, err)
@@ -89,8 +104,15 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusCreated, sb)
 	})
 	mux.HandleFunc("GET /v1/sandboxes", func(w http.ResponseWriter, r *http.Request) {
-		ctx := core.WithWorkspace(r.Context(), r.URL.Query().Get("ownerId"))
-		out, err := s.List(ctx)
+		query := r.URL.Query()
+		// A list never ignores a filter it was given: a group filter has no
+		// groups to match (refused by name), and status filters apply.
+		if query.Get("sandboxGroupId") != "" {
+			core.WriteErr(w, sandboxGroupsUnsupported("sandboxGroupId"))
+			return
+		}
+		ctx := core.WithWorkspace(r.Context(), query.Get("ownerId"))
+		out, err := s.listFiltered(ctx, core.QueryList(query, "status"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return

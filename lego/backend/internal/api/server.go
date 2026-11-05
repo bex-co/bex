@@ -1518,43 +1518,51 @@ func (s *Server) restHandler(extra ...restRegistrar) *http.ServeMux {
 		w.Header().Set("Content-Type", "application/json")
 		w.Write([]byte("[]")) //nolint:errcheck
 	})
-	// Render's early-access object storage (`render ea objects`) is not
-	// offered on bex (ADR018, user decision 2026-10-29, w6/097). Each
-	// operation names that, not the router's bare 404, so a Render CLI
-	// pointed at bex shows why (it prints a 404's message).
-	mountNotOffered(mux, objectStorageRoutes, objectStorageNotOffered)
+	// Render routes bex deliberately does not serve each answer a named 404
+	// rather than the router's bare one (a Render CLI prints a 404's message).
+	mountNotOffered(mux, notOfferedRefusals)
 	return mux
 }
 
-func mountNotOffered(mux *http.ServeMux, routes []string, message string) {
-	for _, pattern := range routes {
+func mountNotOffered(mux *http.ServeMux, routes map[string]core.NotOffered) {
+	for pattern, refusal := range routes {
 		mux.HandleFunc(pattern, func(w http.ResponseWriter, _ *http.Request) {
-			core.WriteErr(w, core.NewNotFoundError(core.NotFoundCode, message, nil))
+			core.WriteErr(w, core.NewNotFoundError(refusal.Code, refusal.Message, nil))
 		})
 	}
 }
 
+// notOfferedRefusals maps every not-offered Render route pattern to its named
+// 404:
+//   - Render's early-access object storage (`render ea objects`) is not
+//     offered (ADR018, user decision 2026-10-29, w6/097).
+//   - Render's sandbox groups, imported images and snapshots are not served
+//     (ADR018 § Render operation omissions, w2/m263).
+var notOfferedRefusals = func() map[string]core.NotOffered {
+	routes := maps.Clone(sandbox.NotOfferedRoutes)
+	for _, pattern := range []string{
+		"GET /v1/objects/{ownerId}/{region}",
+		"PUT /v1/objects/{ownerId}/{region}/{key...}",
+		"GET /v1/objects/{ownerId}/{region}/{key...}",
+		"DELETE /v1/objects/{ownerId}/{region}/{key...}",
+	} {
+		routes[pattern] = core.NotOffered{Code: core.NotFoundCode, Message: objectStorageNotOffered}
+	}
+	return routes
+}()
+
 // notOfferedRoutes are answered before the Render request gate runs: a body
 // the gate would refuse must still get the named 404.
 var notOfferedRoutes = func() map[string]bool {
-	set := map[string]bool{}
-	for _, routes := range [][]string{objectStorageRoutes} {
-		for _, pattern := range routes {
-			set[pattern] = true
-		}
+	set := make(map[string]bool, len(notOfferedRefusals))
+	for pattern := range notOfferedRefusals {
+		set[pattern] = true
 	}
 	return set
 }()
 
 // objectStorageNotOffered is the answer to every Render object storage call.
 const objectStorageNotOffered = "bex does not offer Render's early-access object storage yet"
-
-var objectStorageRoutes = []string{
-	"GET /v1/objects/{ownerId}/{region}",
-	"PUT /v1/objects/{ownerId}/{region}/{key...}",
-	"GET /v1/objects/{ownerId}/{region}/{key...}",
-	"DELETE /v1/objects/{ownerId}/{region}/{key...}",
-}
 
 // newSchema merges every feature's GraphQL fragments into the single root Query
 // and Mutation objects — the one schema the /graphql handler serves.
