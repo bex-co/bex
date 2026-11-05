@@ -39,3 +39,25 @@ func TestTextBindableAndInvalidByteSequence(t *testing.T) {
 		t.Errorf("unrelated error rewritten: %v", got)
 	}
 }
+
+// w4/504: the workspace-scoped registry-credential routes answer a malformed id
+// as not-found before any query, exactly like GetRegistryCredentialByID. A nil
+// pool would panic if a guard let the id through to the database.
+func TestRegistryCredentialRoutesTreatMalformedIDsAsAbsent(t *testing.T) {
+	s := &PGStore{}
+	ctx := t.Context()
+	for _, id := range []string{"\xff\xfe", "\xc0\x80", "a\x00b"} {
+		if _, err := s.GetRegistryCredential(ctx, "tea-a", id); !errors.Is(err, ErrNotFound) {
+			t.Errorf("Get(%q) = %v, want ErrNotFound", id, err)
+		}
+		if _, err := s.UpdateRegistryCredential(ctx, "tea-a", id, "n", "u", nil); !errors.Is(err, ErrNotFound) {
+			t.Errorf("Update(%q) = %v, want ErrNotFound", id, err)
+		}
+		if err := s.TouchRegistryCredential(ctx, "tea-a", id); !errors.Is(err, ErrNotFound) {
+			t.Errorf("Touch(%q) = %v, want ErrNotFound", id, err)
+		}
+		if err := s.DeleteRegistryCredential(ctx, "tea-a", id); !errors.Is(err, ErrNotFound) {
+			t.Errorf("Delete(%q) = %v, want ErrNotFound", id, err)
+		}
+	}
+}

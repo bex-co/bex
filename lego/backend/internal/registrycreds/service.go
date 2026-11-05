@@ -438,6 +438,11 @@ func mapStoreErr(err error) error {
 	if errors.Is(err, store.ErrNotFound) {
 		return core.ErrNotFound
 	}
+	// A value the database refused as malformed (a SQLSTATE 22 data exception
+	// store.classify maps to ErrInvalid) is the caller's error, not a 500 (w4/504).
+	if errors.Is(err, store.ErrInvalid) {
+		return fmt.Errorf("%w: %v", core.ErrBadRequest, err)
+	}
 	return err
 }
 

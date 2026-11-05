@@ -106,6 +106,9 @@ func (s *PGStore) CountRegistryCredentials(ctx context.Context, workspaceID stri
 // GetRegistryCredential returns one credential, scoped to workspaceID so a
 // caller can never fetch another workspace's row by guessing its id.
 func (s *PGStore) GetRegistryCredential(ctx context.Context, workspaceID, id string) (RegistryCredential, error) {
+	if !textBindable(id) {
+		return RegistryCredential{}, classify("registry credential", pgx.ErrNoRows)
+	}
 	c, err := scanRegistryCredential(s.Pool.QueryRow(ctx,
 		`SELECT `+registryCredentialColumns+` FROM registry_credentials WHERE id = $1 AND workspace_id = $2`, id, workspaceID))
 	if err != nil {
@@ -175,6 +178,9 @@ func (s *PGStore) GetRegistryCredentialByHost(ctx context.Context, workspaceID, 
 // method never touches secret material). Nil expiresAt clears any existing
 // expiry.
 func (s *PGStore) UpdateRegistryCredential(ctx context.Context, workspaceID, id, name, username string, expiresAt *time.Time) (RegistryCredential, error) {
+	if !textBindable(id) {
+		return RegistryCredential{}, classify("registry credential", pgx.ErrNoRows)
+	}
 	c, err := scanRegistryCredential(s.Pool.QueryRow(ctx,
 		`UPDATE registry_credentials SET name = $3, username = $4, expires_at = $5, updated_at = now()
 		 WHERE id = $1 AND workspace_id = $2
@@ -191,6 +197,9 @@ func (s *PGStore) UpdateRegistryCredential(ctx context.Context, workspaceID, id,
 // when only the OpenBao-held secret was rotated, so the metadata row still
 // reflects when the credential last changed.
 func (s *PGStore) TouchRegistryCredential(ctx context.Context, workspaceID, id string) error {
+	if !textBindable(id) {
+		return ErrNotFound
+	}
 	tag, err := s.Pool.Exec(ctx,
 		`UPDATE registry_credentials SET updated_at = now() WHERE id = $1 AND workspace_id = $2`, id, workspaceID)
 	if err != nil {
@@ -205,6 +214,9 @@ func (s *PGStore) TouchRegistryCredential(ctx context.Context, workspaceID, id s
 // DeleteRegistryCredential removes the row, scoped to workspaceID. Not-found
 // (including a cross-workspace id) is ErrNotFound.
 func (s *PGStore) DeleteRegistryCredential(ctx context.Context, workspaceID, id string) error {
+	if !textBindable(id) {
+		return ErrNotFound
+	}
 	tag, err := s.Pool.Exec(ctx, `DELETE FROM registry_credentials WHERE id = $1 AND workspace_id = $2`, id, workspaceID)
 	if err != nil {
 		return classify("registry credential", err)

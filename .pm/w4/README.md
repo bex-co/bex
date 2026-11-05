@@ -354,7 +354,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 ## Inbox
 
 - [ ] **505** — [A static site whose publish directory is missing still reports `build_ended` `succeeded` before its deploy closes `build_failed`](505.md) — todo (~40m) ← split from w4/493
-- [ ] **504** — [A registry credential read, rename or delete with an id that is not valid UTF-8 still answers `500 internal error` after the w4/490 fix, which guarded only `GetRegistryCredentialByID`](504.md) (~20m; minor) ← live `/qa-find-bugs w4` verification of 485–492, 2026-11-05. Projects/environments/datastores now 404; `store/registrycredentials.go:108,177,193,207` bind the id unguarded and `registrycreds/service.go:434` does not map `ErrInvalid`.
+- [x] **504** — [A registry credential read, rename or delete with an id that is not valid UTF-8 still answers `500 internal error` after the w4/490 fix, which guarded only `GetRegistryCredentialByID`](done/504.md) — DONE 2026-11-05
 - [x] **503** — [A service that is being deleted still answers 200 on its env-vars, secret-files, custom-domains, events, jobs, instances and autoscaling reads, while `GET /v1/services/{id}` already answers 404](done/503.md) — DONE 2026-11-05
 - [x] **502** — [Response-time percentiles are bucket-interpolation artifacts for any service faster than 100 ms: p50, p95 and p99 always read exactly 50, 95 and 99 ms, because Traefik runs with its default histogram buckets](done/502.md) — DONE 2026-11-05
 - [x] **501** — [The Web Shell instance picker has no accessible name](done/501.md) — DONE 2026-11-05
