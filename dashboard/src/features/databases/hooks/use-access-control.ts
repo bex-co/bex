@@ -3,10 +3,11 @@ import { useApolloClient, useMutation, useQuery } from "@apollo/client/react";
 import { toast } from "sonner";
 import {
   DatabaseIpAllowListDocument,
-  DatabaseUsersDocument,
+  DatabaseCredentialsDocument,
+  type DatabaseCredentialsQuery,
   SetDatabaseIpAllowListDocument,
-  CreateDatabaseUserDocument,
-  DeleteDatabaseUserDocument,
+  CreateDatabaseCredentialDocument,
+  DeleteDatabaseCredentialDocument,
   DatabasePooledConnectionDocument,
 } from "@/graphql/definitions";
 import type { IPAllowListEntryDraft } from "@/common/lib/ip-allow-list";
@@ -27,10 +28,10 @@ export interface PooledStrings {
 
 /**
  * Reads + edits a database's access controls: the external-endpoint IP allowlist
- * and the additional Postgres login roles, plus an on-demand reveal of the
- * pooled connection strings (only surfaced on request, like the password). Every
- * mutation refetches its list so the panel reflects the operator, and a new
- * user's generated password is returned once (never re-fetchable).
+ * and Render's credentials (w5/m265 — a new credential becomes the default and
+ * its password is read through the connection info, never echoed), plus an
+ * on-demand reveal of the pooled connection strings. Every mutation refetches
+ * its list so the panel reflects the operator.
  */
 export function useAccessControl(id: string) {
   const { t } = useTranslations();
@@ -43,7 +44,7 @@ export function useAccessControl(id: string) {
     pollInterval: RESOURCE_POLL_INTERVAL_MS,
     skipPollAttempt: skipPollWhenHidden,
   });
-  const usersQuery = useQuery(DatabaseUsersDocument, {
+  const credentialsQuery = useQuery(DatabaseCredentialsDocument, {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
@@ -53,10 +54,10 @@ export function useAccessControl(id: string) {
   const [setAllowListMut, { loading: savingAllowList }] = useMutation(
     SetDatabaseIpAllowListDocument,
   );
-  const [createUserMut, { loading: creatingUser }] = useMutation(
-    CreateDatabaseUserDocument,
+  const [createCredentialMut, { loading: creatingCredential }] = useMutation(
+    CreateDatabaseCredentialDocument,
   );
-  const [deleteUserMut] = useMutation(DeleteDatabaseUserDocument);
+  const [deleteCredentialMut] = useMutation(DeleteDatabaseCredentialDocument);
 
   // Entries, not bare CIDRs: each carries the operator-facing description a
   // human gave it, which persists end to end (w4/m24).
@@ -66,10 +67,29 @@ export function useAccessControl(id: string) {
     .filter((e): e is NonNullable<typeof e> => e != null)
     .map((e) => ({ cidrBlock: e.cidrBlock, description: e.description ?? "" }));
 
-  const users: string[] = (usersQuery.data?.databaseUsers ?? [])
-    .filter((u): u is NonNullable<typeof u> => u != null)
-    .map((u) => u.name ?? "")
-    .filter((n) => n !== "");
+  const credentials = (credentialsQuery.data?.databaseCredentials ?? []).filter(
+    (
+      c,
+    ): c is {
+      __typename: "DatabaseCredential";
+      username: string;
+      default: boolean;
+    } => !!c?.username,
+  );
+
+  // Each credential write answers the resulting list; store it as the query's
+  // result instead of refetching.
+  const storeCredentials = useCallback(
+    (list: DatabaseCredentialsQuery["databaseCredentials"] | undefined) => {
+      if (list)
+        client.cache.writeQuery({
+          query: DatabaseCredentialsDocument,
+          variables: { id },
+          data: { databaseCredentials: list },
+        });
+    },
+    [client, id],
+  );
 
   const saveAllowList = useCallback(
     async (entries: IPAllowListEntryDraft[]): Promise<boolean> => {
@@ -88,43 +108,45 @@ export function useAccessControl(id: string) {
     [setAllowListMut, allowListQuery, id, t],
   );
 
-  const createUser = useCallback(
-    async (name: string): Promise<string | null> => {
+  const createCredential = useCallback(
+    async (name: string): Promise<boolean> => {
       try {
-        const res = await createUserMut({ variables: { id, name } });
-        void usersQuery.refetch();
-        toast.success(t("databases.accessUserCreated", { name }));
-        return res.data?.createDatabaseUser?.password ?? null;
+        const res = await createCredentialMut({
+          variables: { id, username: name },
+        });
+        storeCredentials(res.data?.createDatabaseCredential);
+        toast.success(t("databases.accessCredentialCreated", { name }));
+        return true;
       } catch (e) {
         toast.error(
           hasGraphQLErrorCode(e, "POSTGRES_IDENTIFIER_RESERVED")
             ? t("databases.fieldPhysicalNameReserved", { name })
-            : mutationErrorMessage(e, t("databases.accessUserError")),
-        );
-        return null;
-      }
-    },
-    [createUserMut, usersQuery, id, t],
-  );
-
-  const deleteUser = useCallback(
-    async (name: string): Promise<boolean> => {
-      try {
-        await deleteUserMut({ variables: { id, name } });
-        void usersQuery.refetch();
-        toast.success(t("databases.accessUserDeleted", { name }));
-        return true;
-      } catch (err) {
-        toast.error(
-          mutationErrorMessage(
-            err,
-            t("databases.accessUserDeleteError", { name }),
-          ),
+            : mutationErrorMessage(e, t("databases.accessCredentialError")),
         );
         return false;
       }
     },
-    [deleteUserMut, usersQuery, id, t],
+    [createCredentialMut, storeCredentials, id, t],
+  );
+
+  const deleteCredential = useCallback(
+    async (name: string): Promise<void> => {
+      try {
+        const res = await deleteCredentialMut({
+          variables: { id, username: name },
+        });
+        storeCredentials(res.data?.deleteDatabaseCredential);
+        toast.success(t("databases.accessCredentialDeleted", { name }));
+      } catch (err) {
+        toast.error(
+          mutationErrorMessage(
+            err,
+            t("databases.accessCredentialDeleteError", { name }),
+          ),
+        );
+      }
+    },
+    [deleteCredentialMut, storeCredentials, id, t],
   );
 
   // Pooled connection strings, revealed on demand (never on mount).
@@ -154,13 +176,13 @@ export function useAccessControl(id: string) {
   return {
     allowList,
     isPublic: allowListQuery.data?.database?.public,
-    users,
-    loading: allowListQuery.loading || usersQuery.loading,
+    credentials,
+    loading: allowListQuery.loading || credentialsQuery.loading,
     savingAllowList,
-    creatingUser,
+    creatingCredential,
     saveAllowList,
-    createUser,
-    deleteUser,
+    createCredential,
+    deleteCredential,
     pooled,
     poolLoading,
     revealPooled,

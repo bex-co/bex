@@ -133,9 +133,12 @@ query DatabaseExports($id: String!) {
   }
 }
 
-query DatabaseUsers($id: String!) {
-  databaseUsers(id: $id) {
-    name
+# Render's credentials (w5/m265): the owner (unless retired) and every added
+# login, with the default marked.
+query DatabaseCredentials($id: String!) {
+  databaseCredentials(id: $id) {
+    username
+    default
   }
 }
 
@@ -256,15 +259,20 @@ mutation SetDatabaseIpAllowList(
   }
 }
 
-mutation CreateDatabaseUser($id: String!, $name: String!) {
-  createDatabaseUser(id: $id, name: $name) {
-    name
-    password
+# A new credential becomes the default; its password is read through the
+# connection info, never echoed (Render's create-postgres-user).
+mutation CreateDatabaseCredential($id: String!, $username: String!) {
+  createDatabaseCredential(id: $id, username: $username) {
+    username
+    default
   }
 }
 
-mutation DeleteDatabaseUser($id: String!, $name: String!) {
-  deleteDatabaseUser(id: $id, name: $name)
+mutation DeleteDatabaseCredential($id: String!, $username: String!) {
+  deleteDatabaseCredential(id: $id, username: $username) {
+    username
+    default
+  }
 }
 
 # The create dialog's plan-picker source (w5/m8): the shared lego/types/tiers

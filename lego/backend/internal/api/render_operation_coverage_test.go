@@ -29,7 +29,6 @@ var renderOperationOmissions = map[string]string{
 	"cancelFlowRun":                        "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"cancelTaskRun":                        "ADR018 \u00a7 Render operation omissions \u2014 Render Workflows",
 	"create-dedicated-ip":                  "ADR018 \u00a7 Render operation omissions \u2014 Dedicated outbound IPs",
-	"create-postgres-user":                 "ADR018 \u00a7 Render operation omissions \u2014 Postgres default credential rotation",
 	"create-redis":                         "ADR018 \u00a7 Render operation omissions \u2014 Legacy Redis spelling",
 	"create-sandbox-group":                 "ADR018 \u00a7 Render operation omissions \u2014 Render sandbox groups, snapshots and executions",
 	"create-sandbox-snapshot":              "ADR018 \u00a7 Render operation omissions \u2014 Render sandbox groups, snapshots and executions",

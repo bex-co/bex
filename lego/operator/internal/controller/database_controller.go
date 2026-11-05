@@ -402,12 +402,31 @@ func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers [
 	present := make(map[string]struct{}, len(users)+1)
 	if owner != "" {
 		present[owner] = struct{}{}
-		roles = append(roles, map[string]any{
+		role := map[string]any{
 			"name":     owner,
 			cnpgEnsure: cnpgPresent,
 			"login":    true,
 			"inRoles":  []any{insightsMonitorRole},
-		})
+		}
+		// A tombstoned owner is Render's "deleted" original user: retired like
+		// any other login, but kept, with everything it owns.
+		if slices.Contains(deletedUsers, owner) {
+			role["login"], role["disablePassword"] = false, true
+		}
+		roles = append(roles, role)
+	}
+	// A credential with owner privileges also joins every earlier one and every
+	// retired login: whichever credential ran a migration owns its tables, and
+	// the next default must keep reaching them after that one is deleted.
+	// Joining only earlier credentials keeps the membership graph acyclic.
+	inherited := []any{}
+	if owner != "" {
+		inherited = append(inherited, owner)
+	}
+	for _, name := range deletedUsers {
+		if name != owner && !slices.ContainsFunc(users, func(u appv1alpha1.DatabaseUser) bool { return u.Name == name }) {
+			inherited = append(inherited, name)
+		}
 	}
 	for _, u := range users {
 		if _, dup := present[u.Name]; dup {
@@ -417,6 +436,10 @@ func managedRoles(owner string, users []appv1alpha1.DatabaseUser, deletedUsers [
 		role := map[string]any{"name": u.Name, cnpgEnsure: cnpgPresent, "login": true}
 		if u.SecretName != "" {
 			role["passwordSecret"] = map[string]any{"name": u.SecretName}
+		}
+		if u.OwnerPrivileges && len(inherited) > 0 {
+			role["inRoles"] = slices.Clone(inherited)
+			inherited = append(inherited, u.Name)
 		}
 		roles = append(roles, role)
 	}
@@ -918,7 +941,11 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 		return r.dbFail(ctx, &db, appv1alpha1.ReasonNetworkPolicyFailed, err)
 	}
 
-	r.stampConnectionStatus(&db, storageGB, backups)
+	connectionSecret, err := r.reconcileDefaultConnectionSecret(ctx, &db)
+	if err != nil {
+		return r.dbFail(ctx, &db, appv1alpha1.ReasonClusterFailed, err)
+	}
+	r.stampConnectionStatus(&db, storageGB, backups, connectionSecret)
 
 	if reason, err := r.reconcileScheduledBackup(ctx, &db, backups.enabled); err != nil {
 		return r.dbFail(ctx, &db, reason, err)
@@ -952,7 +979,12 @@ func (r *DatabaseReconciler) Reconcile(ctx context.Context, req ctrl.Request) (c
 	// accepted intent so readiness cannot use a different capacity calculation.
 	desiredInstances, _, _ := unstructured.NestedInt64(cluster.Object, "spec", "instances")
 
-	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backups.enabled, backups.targetServerName, soonerRequeue(soonerRequeue(soonerRequeue(exportRequeue, diskRequeue), tlsRequeue), r.walArchiveStallRequeue(backups.enabled)))
+	requeue := soonerRequeue(soonerRequeue(soonerRequeue(exportRequeue, diskRequeue), tlsRequeue), r.walArchiveStallRequeue(backups.enabled))
+	if connectionSecret == "" {
+		// Nothing watches Secrets: poll for the rotation's source Secrets.
+		requeue = soonerRequeue(requeue, defaultCredentialRequeue)
+	}
+	return r.reconcileDatabaseReadiness(ctx, &db, cluster, desiredInstances, backups.enabled, backups.targetServerName, requeue)
 }
 
 // databaseServerAltDNSNames returns every public SNI name that can terminate
@@ -1099,10 +1131,14 @@ func unobservedOperandPostgresql(cluster *unstructured.Unstructured) (map[string
 // backups resolved to. CNPG generates Secret "<cluster>-app" (username/password/
 // dbname/host/port/uri) and Service "<cluster>-rw" — the internal Database URL
 // is that Secret's "uri".
-func (r *DatabaseReconciler) stampConnectionStatus(db *appv1alpha1.Database, storageGB int32, backups databaseBackupIntent) {
+//
+// connectionSecret is the Secret now current for the default credential; empty
+// keeps the previous value, so a rotation never briefly hands consumers the
+// owner again.
+func (r *DatabaseReconciler) stampConnectionStatus(db *appv1alpha1.Database, storageGB int32, backups databaseBackupIntent, connectionSecret string) {
 	db.Status.Host = fmt.Sprintf("%s-rw.%s.svc", db.Name, db.Namespace)
 	db.Status.Port = pgPort
-	db.Status.SecretName = db.Name + "-app"
+	db.Status.SecretName = cmp.Or(connectionSecret, db.Status.SecretName, appv1alpha1.ApplicationSecretName(db.Name))
 	db.Status.AllocatedStorageGB = storageGB
 	db.Status.ObservedStorageGB = db.Spec.StorageGB
 	db.Status.ObservedGeneration = db.Generation
@@ -1323,25 +1359,23 @@ func (r *DatabaseReconciler) reconcilePooler(ctx context.Context, db *appv1alpha
 	return !ready, nil
 }
 
-// reconcilePoolerConnectionSecret projects CNPG's rotating application
-// credentials into a second Secret whose URI targets the owned PgBouncer
+// reconcilePoolerConnectionSecret projects the default credential
+// (status.secretName: CNPG's rotating application Secret, or the default-user
+// Secret after a w5/m265 rotation) into a second Secret whose URI targets the owned PgBouncer
 // Service. A Blueprint fromDatabase.connectionPoolString can therefore remain
 // a normal SecretKeyRef rather than injecting a password-bearing URL into an
 // App spec. The source Secret is never mutated.
 func (r *DatabaseReconciler) reconcilePoolerConnectionSecret(ctx context.Context, db *appv1alpha1.Database) (bool, error) {
-	source := &corev1.Secret{}
-	if err := r.secretClient().Get(ctx, client.ObjectKey{Namespace: db.Namespace, Name: db.Name + "-app"}, source); err != nil {
-		if apierrors.IsNotFound(err) {
-			return false, nil
-		}
+	source, ok, err := r.optionalSecret(ctx, db.Namespace, db.CurrentConnectionSecretName())
+	if !ok || err != nil {
 		return false, err
 	}
 	username, password, databaseName := source.Data["username"], source.Data["password"], source.Data["dbname"]
 	if len(username) == 0 || len(password) == 0 || len(databaseName) == 0 {
-		return false, fmt.Errorf("CNPG application Secret %q lacks username, password, or dbname", source.Name)
+		return false, fmt.Errorf("connection Secret %q lacks username, password, or dbname", source.Name)
 	}
-	target := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: db.Name + "-pooler-app", Namespace: db.Namespace}}
-	_, err := controllerutil.CreateOrUpdate(ctx, r.secretClient(), target, func() error {
+	target := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.PoolerSecretName(db.Name), Namespace: db.Namespace}}
+	_, err = controllerutil.CreateOrUpdate(ctx, r.secretClient(), target, func() error {
 		target.Type = corev1.SecretTypeOpaque
 		target.Data = map[string][]byte{
 			"uri": fmt.Appendf(nil, "postgresql://%s:%s@%s:5432/%s", username, password, db.Status.PoolerHost, databaseName),
@@ -1434,7 +1468,7 @@ func projectBackupCredential(ctx context.Context, cl client.Client, srcNS, dstNS
 }
 
 func (r *DatabaseReconciler) deletePoolerConnectionSecret(ctx context.Context, db *appv1alpha1.Database) error {
-	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: db.Name + "-pooler-app", Namespace: db.Namespace}}
+	secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: appv1alpha1.PoolerSecretName(db.Name), Namespace: db.Namespace}}
 	// Existence check first: a Database without a pooler has no such Secret on
 	// any pass, and a blind Delete is a per-reconcile round trip that deletes
 	// nothing (w7/m84). secretClient() is the deliberately uncached client, so

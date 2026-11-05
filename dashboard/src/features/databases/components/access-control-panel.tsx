@@ -9,8 +9,7 @@ import {
 } from "@/common/components/ui/card";
 import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
-import { Alert, AlertDescription } from "@/common/components/ui/alert";
-import { CopyButton } from "@/common/components/copy-button";
+import { Badge } from "@/common/components/ui/badge";
 import { ConnectionField } from "@/common/components/connection-field";
 import { IPAllowListEditor } from "@/common/components/ip-allow-list-editor";
 import { ipAllowListEntryKey } from "@/common/lib/ip-allow-list";
@@ -21,9 +20,9 @@ import { useDatabaseInstanceTypes } from "@/features/databases/hooks/use-databas
 
 /**
  * The database detail's Access Control section: the external-endpoint IP
- * allowlist (editable CIDR list), the additional Postgres login roles (create
- * reveals the password once, delete), and an on-demand reveal of the pooled
- * connection strings. Mirrors the services env-vars panel shape.
+ * allowlist (editable CIDR list), Render's credentials (a new one becomes the
+ * default; the default can't be deleted), and an on-demand reveal of the
+ * pooled connection strings. Mirrors the services env-vars panel shape.
  */
 export function AccessControlPanel({
   id,
@@ -52,7 +51,7 @@ export function AccessControlPanel({
           key={ipAllowListEntryKey(access.allowList)}
           access={access}
         />
-        <UsersSection access={access} />
+        <CredentialsSection access={access} />
         <PoolerSection access={access} supportsPooling={supportsPooling} />
       </CardContent>
     </Card>
@@ -105,89 +104,69 @@ function AllowListSection({ access }: { access: Access }) {
   );
 }
 
-function UsersSection({ access }: { access: Access }) {
+// Passwords are read through the connection info, never shown here (Render).
+function CredentialsSection({ access }: { access: Access }) {
   const { t } = useTranslations();
   const reservedId = useId();
   const [name, setName] = useState("");
-  const [revealed, setRevealed] = useState<{
-    name: string;
-    password: string;
-  } | null>(null);
 
   // A reserved role wedged the database's reconcile (w4/m170); bex-api refuses
   // it too, but say so before the click.
   const reserved = isReservedPostgresRole(name.trim());
 
   async function create() {
-    const pw = await access.createUser(name.trim());
-    if (pw != null) {
-      setRevealed({ name: name.trim(), password: pw });
+    if (await access.createCredential(name.trim())) {
       setName("");
     }
   }
 
   return (
     <section className="space-y-2">
-      <h4 className="text-sm font-medium">{t("databases.accessUsers")}</h4>
+      <h4 className="text-sm font-medium">
+        {t("databases.accessCredentials")}
+      </h4>
       <p className="text-xs text-muted-foreground">
-        {t("databases.accessUsersHint")}
+        {t("databases.accessCredentialsHint")}
       </p>
-      {access.users.length === 0 ? (
-        <p className="text-sm text-muted-foreground">
-          {t("databases.accessUsersEmpty")}
-        </p>
-      ) : (
-        <ul className="space-y-1">
-          {access.users.map((u) => (
-            <li
-              key={u}
-              className="flex items-center justify-between gap-2 rounded-md border px-3 py-2"
-            >
-              <code className="font-mono text-sm">{u}</code>
-              <Button
-                variant="ghost"
-                size="icon-sm"
-                aria-label={t("databases.accessUserDelete", { name: u })}
-                onClick={async () => {
-                  // A deleted user's one-time password is dead; don't keep
-                  // offering it for copy.
-                  if (await access.deleteUser(u)) {
-                    setRevealed((r) => (r?.name === u ? null : r));
-                  }
-                }}
-              >
-                <Trash2 />
-              </Button>
-            </li>
-          ))}
-        </ul>
-      )}
-      {revealed ? (
-        <Alert>
-          <AlertDescription className="space-y-1">
-            <span className="text-sm font-medium">
-              {t("databases.accessUserPasswordOnce", { name: revealed.name })}
+      <ul className="space-y-1">
+        {access.credentials.map((c) => (
+          <li
+            key={c.username}
+            className="flex items-center justify-between gap-2 rounded-md border px-3 py-2"
+          >
+            <span className="flex min-w-0 items-center gap-2">
+              <code className="truncate font-mono text-sm">{c.username}</code>
+              {c.default ? (
+                <Badge variant="secondary">
+                  {t("databases.accessCredentialDefault")}
+                </Badge>
+              ) : null}
             </span>
-            <div className="flex items-center justify-between gap-2 rounded-md border bg-muted px-2 py-1">
-              <code className="truncate font-mono text-xs">
-                {revealed.password}
-              </code>
-              <CopyButton
-                value={revealed.password}
-                label={t("databases.accessUserPasswordCopy")}
-                successText={t("databases.copied")}
-                errorText={t("databases.copyError")}
-              />
-            </div>
-          </AlertDescription>
-        </Alert>
-      ) : null}
+            <Button
+              variant="ghost"
+              size="icon-sm"
+              aria-label={t("databases.accessCredentialDelete", {
+                name: c.username,
+              })}
+              title={
+                c.default
+                  ? t("databases.accessCredentialDefaultLocked")
+                  : undefined
+              }
+              disabled={c.default}
+              onClick={() => void access.deleteCredential(c.username)}
+            >
+              <Trash2 />
+            </Button>
+          </li>
+        ))}
+      </ul>
       <div className="flex gap-2">
         <Input
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="reporting"
-          aria-label={t("databases.accessUserName")}
+          placeholder="app_user_2"
+          aria-label={t("databases.accessCredentialName")}
           aria-invalid={reserved}
           aria-describedby={reserved ? reservedId : undefined}
           className="max-w-xs"
@@ -196,14 +175,14 @@ function UsersSection({ access }: { access: Access }) {
           variant="outline"
           size="sm"
           onClick={() => void create()}
-          disabled={!name.trim() || reserved || access.creatingUser}
+          disabled={!name.trim() || reserved || access.creatingCredential}
         >
-          {access.creatingUser ? (
+          {access.creatingCredential ? (
             <Loader2 className="animate-spin" />
           ) : (
             <Plus />
           )}
-          {t("databases.accessUserAdd")}
+          {t("databases.accessCredentialAdd")}
         </Button>
       </div>
       {reserved ? (

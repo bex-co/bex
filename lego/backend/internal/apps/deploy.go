@@ -249,6 +249,18 @@ type StackDatabaseView struct {
 	ID     string `json:"id"`
 	Name   string `json:"name"`
 	Status string `json:"status"` // Database phase (Pending|Provisioning|Ready|Failed)
+
+	ref databaseRef
+}
+
+// databaseRef is what a fromDatabase reference resolves to: the Database's
+// resource id and the Secret currently carrying its default credential
+// (CNPG's "-app", or the default-user Secret once a credential rotation has
+// been applied).
+type databaseRef struct{ id, secret string }
+
+func databaseRefOf(d *appv1alpha1.Database) databaseRef {
+	return databaseRef{id: d.Name, secret: d.CurrentConnectionSecretName()}
 }
 
 type StackKeyValueView struct {
@@ -838,7 +850,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.requireStackBilling(ctx, st); err != nil {
 		return StackResult{}, err
 	}
-	databaseIDs, kvCRNames, err := s.resolveExistingBlueprintReferences(ctx, st, snap)
+	dbRefs, kvCRNames, err := s.resolveExistingBlueprintReferences(ctx, st, snap)
 	if err != nil {
 		return StackResult{}, err
 	}
@@ -878,7 +890,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
-	if err := s.applyStackDatastores(ctx, st, assignments, snap, databaseIDs, kvCRNames, &res); err != nil {
+	if err := s.applyStackDatastores(ctx, st, assignments, snap, dbRefs, kvCRNames, &res); err != nil {
 		return res, err
 	}
 	// The apply resolves each declared service as the plan did (w5/m133).
@@ -903,7 +915,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
 		return res, err
 	}
-	deferred, err := s.applyStackServices(ctx, st, appsByName, assignments, databaseIDs, kvCRNames, serviceApps, lookupTarget, &res)
+	deferred, err := s.applyStackServices(ctx, st, appsByName, assignments, dbRefs, kvCRNames, serviceApps, lookupTarget, &res)
 	if err != nil {
 		return res, err
 	}
@@ -981,7 +993,7 @@ func (s *Service) applyStackEnvGroups(ctx context.Context, envGroups []parsedEnv
 // Secret, which only exists once the Database converges — applying the
 // dependent first would leave it Pending on a missing Secret anyway, but
 // applying the DB first starts its provisioning immediately.
-func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, snap *workspaceSnapshot, databaseIDs, kvCRNames map[string]string, res *StackResult) error {
+func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, snap *workspaceSnapshot, dbRefs map[string]databaseRef, kvCRNames map[string]string, res *StackResult) error {
 	// The compiler refuses a name repeated within a kind (as Render does), and
 	// each loop looks up only its own kind, so no lookup below targets a CR
 	// this loop has just created.
@@ -998,7 +1010,7 @@ func (s *Service) applyStackDatastores(ctx context.Context, st parsedStack, assi
 			return err
 		}
 		res.Databases = append(res.Databases, v)
-		databaseIDs[db.name] = v.ID
+		dbRefs[db.name] = v.ref
 	}
 	for _, kv := range st.keyValues {
 		if err := requireDeployAuthority(ctx, s); err != nil {
@@ -1032,7 +1044,7 @@ type deferredService struct {
 // with every already-resolvable reference on its env and its applied view
 // appended onto res; the services whose host refs were forward references are
 // returned for the post-create patch pass.
-func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsByName map[string]*appv1alpha1.App, assignments map[string]core.EnvironmentAssignment, databaseIDs, kvCRNames map[string]string, serviceApps map[string]*appv1alpha1.App, lookupTarget func(string) *appv1alpha1.App, res *StackResult) ([]deferredService, error) {
+func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsByName map[string]*appv1alpha1.App, assignments map[string]core.EnvironmentAssignment, dbRefs map[string]databaseRef, kvCRNames map[string]string, serviceApps map[string]*appv1alpha1.App, lookupTarget func(string) *appv1alpha1.App, res *StackResult) ([]deferredService, error) {
 	var deferred []deferredService
 	type appliedTarget struct {
 		ctx context.Context
@@ -1043,7 +1055,7 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return nil, err
 		}
-		laterRefs, err := resolveServiceRefs(&svc, databaseIDs, kvCRNames, lookupTarget, s.BaseDomain)
+		laterRefs, err := resolveServiceRefs(&svc, dbRefs, kvCRNames, lookupTarget, s.BaseDomain)
 		if err != nil {
 			return nil, err
 		}
@@ -1152,9 +1164,9 @@ func (s *Service) patchDeferredStackServices(ctx context.Context, deferred []def
 // resolved database/key-value env vars and every already-resolvable host ref
 // are appended onto svc.req.Env; the forward host refs (sibling not created
 // yet) are returned for the post-create patch pass.
-func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]string, lookupTarget func(string) *appv1alpha1.App, baseDomain string) ([]hostRef, error) {
+func resolveServiceRefs(svc *parsedService, dbRefs map[string]databaseRef, kvCRNames map[string]string, lookupTarget func(string) *appv1alpha1.App, baseDomain string) ([]hostRef, error) {
 	for _, ref := range svc.databaseRefs {
-		ev, err := resolveDatabaseRef(ref, databaseIDs)
+		ev, err := resolveDatabaseRef(ref, dbRefs)
 		if err != nil {
 			return nil, fmt.Errorf("%w: service %q: %v", core.ErrBadRequest, svc.req.Name, err)
 		}
@@ -1190,19 +1202,19 @@ func resolveServiceRefs(svc *parsedService, databaseIDs, kvCRNames map[string]st
 // credential value. Service envVarKey copying remains same-file-only because
 // its source value is intentionally not a generally readable resource field.
 // snap lists a datastore kind only when a lookup needs it.
-func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st parsedStack, snap *workspaceSnapshot) (map[string]string, map[string]string, error) {
-	databaseIDs := make(map[string]string, len(st.databases))
+func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st parsedStack, snap *workspaceSnapshot) (map[string]databaseRef, map[string]string, error) {
+	dbRefs := make(map[string]databaseRef, len(st.databases))
 	keyValueIDs := make(map[string]string, len(st.keyValues))
 	neededDatabases, neededKeyValues := undeclaredBlueprintRefs(st)
 	if len(neededDatabases) == 0 && len(neededKeyValues) == 0 {
-		return databaseIDs, keyValueIDs, nil
+		return dbRefs, keyValueIDs, nil
 	}
 
 	tenantID, scoped := s.Tenant(ctx)
 	// Every unresolvable reference is reported, databases then Key Values,
 	// each sorted by name (w8/051): apply's single message is deterministic
 	// and validate can locate every one. A cluster read failure still stops.
-	refused, err := s.resolveUndeclaredDatabases(ctx, st, neededDatabases, snap, tenantID, scoped, databaseIDs)
+	refused, err := s.resolveUndeclaredDatabases(ctx, st, neededDatabases, snap, tenantID, scoped, dbRefs)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -1213,7 +1225,7 @@ func (s *Service) resolveExistingBlueprintReferences(ctx context.Context, st par
 	if refused = append(refused, refusedKV...); len(refused) > 0 {
 		return nil, nil, refused
 	}
-	return databaseIDs, keyValueIDs, nil
+	return dbRefs, keyValueIDs, nil
 }
 
 // undeclaredBlueprintRefs collects the database and Key Value display names the
@@ -1250,7 +1262,7 @@ func undeclaredBlueprintRefs(st parsedStack) (databases, keyValues map[string]bo
 // out, read from the request's snapshot. Every name
 // that matches no database, or more than one, is refused (sorted by name); err
 // is only a failed workspace read.
-func (s *Service) resolveUndeclaredDatabases(ctx context.Context, st parsedStack, needed map[string]bool, snap *workspaceSnapshot, tenantID string, scoped bool, out map[string]string) (blueprintResourceErrors, error) {
+func (s *Service) resolveUndeclaredDatabases(ctx context.Context, st parsedStack, needed map[string]bool, snap *workspaceSnapshot, tenantID string, scoped bool, out map[string]databaseRef) (blueprintResourceErrors, error) {
 	if len(needed) == 0 {
 		return nil, nil
 	}
@@ -1274,7 +1286,7 @@ func (s *Service) resolveUndeclaredDatabases(ctx context.Context, st parsedStack
 					err: poolerRequiredError(service, name)})
 				continue
 			}
-			out[name] = found.Name
+			out[name] = databaseRefOf(found)
 		}
 	}
 	return refused, nil
@@ -3279,18 +3291,22 @@ func validateKeyedEnv(e bexEnvVar) error {
 // resolveDatabaseRef turns a validated fromDatabase entry into a Secret ref
 // after applyDatabase has resolved the display name to an immutable resource id.
 // Credentials remain indirect so rotation never writes plaintext into an App.
-func resolveDatabaseRef(e bexEnvVar, databaseIDs map[string]string) (appv1alpha1.EnvVar, error) {
+//
+// The Secret is the database's current default credential, so a Blueprint
+// sync after a credential rotation re-points the service at the new default,
+// as Render's "update their value on the next Blueprint sync" (w5/m265).
+func resolveDatabaseRef(e bexEnvVar, dbRefs map[string]databaseRef) (appv1alpha1.EnvVar, error) {
 	ref := e.FromDatabase
 	if ref == nil {
 		return appv1alpha1.EnvVar{}, fmt.Errorf("not a database reference")
 	}
-	databaseID := databaseIDs[ref.Name]
-	if databaseID == "" {
+	db := dbRefs[ref.Name]
+	if db.id == "" {
 		return appv1alpha1.EnvVar{}, fmt.Errorf("fromDatabase references unresolved database %q", ref.Name)
 	}
-	secretName := databaseID + "-app"
+	secretName := db.secret
 	if ref.Property == dbPropertyConnectionPoolString {
-		secretName = databaseID + "-pooler-app"
+		secretName = appv1alpha1.PoolerSecretName(db.id)
 	}
 	return appv1alpha1.EnvVar{
 		Name: e.Key,
@@ -4117,5 +4133,5 @@ func stackKeyValueView(kv *appv1alpha1.KeyValue) StackKeyValueView {
 }
 
 func stackDatabaseView(d *appv1alpha1.Database) StackDatabaseView {
-	return StackDatabaseView{ID: d.Name, Name: d.Spec.Name, Status: string(d.Status.Phase)}
+	return StackDatabaseView{ID: d.Name, Name: d.Spec.Name, Status: string(d.Status.Phase), ref: databaseRefOf(d)}
 }

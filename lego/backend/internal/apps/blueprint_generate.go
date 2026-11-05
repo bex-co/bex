@@ -615,8 +615,8 @@ func datastoreReference(key string, ref *appv1alpha1.SecretKeySelector, dbDispla
 		}, true
 	}
 	secretName := ref.Name
-	pooler := strings.HasSuffix(secretName, "-pooler-app")
-	crName := strings.TrimSuffix(strings.TrimSuffix(secretName, "-pooler-app"), "-app")
+	crName, _ := appv1alpha1.DatabaseIDFromSecretName(secretName)
+	pooler := secretName == appv1alpha1.PoolerSecretName(crName)
 	display, ok := dbDisplayByID[crName]
 	if !ok {
 		return nil, false

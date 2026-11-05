@@ -20,7 +20,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"strings"
 
 	corev1 "k8s.io/api/core/v1"
 	networkingv1 "k8s.io/api/networking/v1"
@@ -104,16 +103,14 @@ func (r *AppReconciler) readBuildEnvRefs(ctx context.Context, app *appv1alpha1.A
 
 // buildDatabasePending names a linked Postgres that is still being created, so
 // the build waits for it instead of running `migrate` against a server that is
-// not accepting connections yet. A fromDatabase Secret is "<db>-app" or
-// "<db>-pooler-app"; a Secret that names no Database (a Key Value, a hand-
-// written reference) never holds the build.
+// not accepting connections yet. A fromDatabase Secret is "<db>-app",
+// "<db>-default-app" (w5/m265) or "<db>-pooler-app"; a Secret that names no
+// Database (a Key Value, a hand-written reference) never holds the build.
 func (r *AppReconciler) buildDatabasePending(ctx context.Context, app *appv1alpha1.App, refs []buildEnvRef) (string, error) {
 	for _, ref := range refs {
-		name, ok := strings.CutSuffix(ref.secret, "-pooler-app")
+		name, ok := appv1alpha1.DatabaseIDFromSecretName(ref.secret)
 		if !ok {
-			if name, ok = strings.CutSuffix(ref.secret, "-app"); !ok {
-				continue
-			}
+			continue
 		}
 		var db appv1alpha1.Database
 		if err := r.Get(ctx, client.ObjectKey{Namespace: app.Namespace, Name: name}, &db); err != nil {

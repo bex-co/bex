@@ -73,6 +73,19 @@ spec:
                 maxLength: 63
                 pattern: ^[a-z_][a-z0-9_]{0,62}$
                 type: string
+              defaultUser:
+                description: |-
+                  DefaultUser names the member of Users that is the database's "default"
+                  credential, Render's model: every credential added through
+                  POST /postgres/{id}/credentials becomes the new default (w5/m265). Empty
+                  keeps the create-time owner as the default. The operator projects the
+                  default's credentials into DefaultConnectionSecretName, which
+                  status.secretName then names, so connection info, Blueprint fromDatabase
+                  references, the pooler and exports all follow it. Listing the owner in
+                  DeletedUsers retires its login (Render "deletes" the original user that
+                  way) while it keeps owning the database's objects.
+                maxLength: 63
+                type: string
               deletedUsers:
                 description: |-
                   DeletedUsers are login-role names removed via the API whose credentials
@@ -314,6 +327,13 @@ spec:
                       description: Name is the role name (a valid unquoted PostgreSQL
                         identifier).
                       type: string
+                    ownerPrivileges:
+                      description: |-
+                        OwnerPrivileges makes the role a member of the database owner role, so it
+                        can use every object the owner has created. Render credentials are
+                        interchangeable defaults; the native auxiliary users (POST …/users) keep
+                        this false and are granted nothing.
+                      type: boolean
                     secretName:
                       description: |-
                         SecretName references a Secret in the Database's namespace whose "password"
@@ -349,6 +369,9 @@ spec:
             - message: databaseUser is immutable
               rule: '!has(oldSelf.databaseUser) ? !has(self.databaseUser) : has(self.databaseUser)
                 && self.databaseUser == oldSelf.databaseUser'
+            - message: defaultUser must name one of users
+              rule: '!has(self.defaultUser) || (has(self.users) && self.users.exists(u,
+                u.name == self.defaultUser))'
           status:
             description: DatabaseStatus is the observed state of a Database.
             properties:

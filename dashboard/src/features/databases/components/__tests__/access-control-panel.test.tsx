@@ -3,9 +3,9 @@ import userEvent from "@testing-library/user-event";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { AccessControlPanel } from "@/features/databases/components/access-control-panel";
 
-const createUser = vi.fn();
-const deleteUser = vi.fn();
-let users: string[] = [];
+const createCredential = vi.fn();
+const deleteCredential = vi.fn();
+let credentials: { username: string; default: boolean }[] = [];
 let pooled: { internal: string; external: string } | null = null;
 vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
   useDatabaseInstanceTypes: () => ({
@@ -18,13 +18,13 @@ vi.mock("@/features/databases/hooks/use-database-instance-types", () => ({
 vi.mock("@/features/databases/hooks/use-access-control", () => ({
   useAccessControl: () => ({
     allowList: [],
-    users,
+    credentials,
     loading: false,
     savingAllowList: false,
-    creatingUser: false,
+    creatingCredential: false,
     saveAllowList: vi.fn(),
-    createUser,
-    deleteUser,
+    createCredential,
+    deleteCredential,
     pooled,
     poolLoading: false,
     revealPooled: vi.fn(),
@@ -32,78 +32,95 @@ vi.mock("@/features/databases/hooks/use-access-control", () => ({
 }));
 
 beforeEach(() => {
-  createUser.mockReset();
-  deleteUser.mockReset();
-  users = [];
+  createCredential.mockReset();
+  deleteCredential.mockReset();
+  credentials = [];
   pooled = null;
 });
 
-describe("AccessControlPanel database-user creation", () => {
-  it("keeps the returned password visible on the owning database page", async () => {
-    createUser.mockResolvedValue("one-time-password");
+// w5/m265: Render's Credentials section — a new credential becomes the
+// default, the default cannot be deleted, and no password is shown here.
+describe("AccessControlPanel credentials", () => {
+  it("marks the default and refuses to delete it, with the reason", async () => {
+    credentials = [
+      { username: "dpg_x_user", default: false },
+      { username: "rotated", default: true },
+    ];
+    deleteCredential.mockResolvedValue(undefined);
     const user = userEvent.setup();
     render(<AccessControlPanel id="dpg-source" plan="free" />);
 
-    await user.type(screen.getByPlaceholderText("reporting"), "analytics");
-    await user.click(screen.getByRole("button", { name: "Add user" }));
+    const locked = screen.getByRole("button", { name: "Delete rotated" });
+    expect(locked).toBeDisabled();
+    expect(locked).toHaveAttribute(
+      "title",
+      "The default credential can't be deleted. Add a new default credential first.",
+    );
+    expect(screen.getAllByText("Default")).toHaveLength(1);
 
-    expect(createUser).toHaveBeenCalledWith("analytics");
-    expect(await screen.findByText("one-time-password")).toBeInTheDocument();
-    expect(
-      screen.getByText("Password for analytics — shown once:"),
-    ).toBeInTheDocument();
-    expect(
-      screen.getByRole("button", { name: /Copy .*password/i }),
-    ).toBeInTheDocument();
-    expect(screen.getByPlaceholderText("reporting")).toHaveValue("");
+    await user.click(screen.getByRole("button", { name: "Delete dpg_x_user" }));
+    expect(deleteCredential).toHaveBeenCalledWith("dpg_x_user");
   });
 
-  it("drops the one-time password once that user is deleted, and only then", async () => {
-    createUser.mockResolvedValue("one-time-password");
-    users = ["analytics", "other"];
+  it("creates a new default credential and clears the input, showing no password", async () => {
+    createCredential.mockResolvedValue(true);
     const user = userEvent.setup();
     render(<AccessControlPanel id="dpg-source" plan="free" />);
-    await user.type(screen.getByPlaceholderText("reporting"), "analytics");
-    await user.click(screen.getByRole("button", { name: "Add user" }));
-    expect(await screen.findByText("one-time-password")).toBeInTheDocument();
 
-    deleteUser.mockResolvedValue(true);
-    await user.click(screen.getByRole("button", { name: /Delete .*other/i }));
-    expect(screen.getByText("one-time-password")).toBeInTheDocument();
-
-    deleteUser.mockResolvedValue(false); // a failed delete leaves the user
+    const name = screen.getByRole("textbox", {
+      name: "New credential username",
+    });
+    await user.type(name, "rotated");
     await user.click(
-      screen.getByRole("button", { name: /Delete .*analytics/i }),
+      screen.getByRole("button", { name: "New default credential" }),
     );
-    expect(screen.getByText("one-time-password")).toBeInTheDocument();
 
-    deleteUser.mockResolvedValue(true);
+    expect(createCredential).toHaveBeenCalledWith("rotated");
+    expect(name).toHaveValue("");
+    // Render echoes no password; it is read through the connection info.
+    expect(
+      screen.queryByRole("button", { name: /copy/i }),
+    ).not.toBeInTheDocument();
+  });
+
+  it("keeps the username recoverable on failure", async () => {
+    createCredential.mockResolvedValue(false);
+    const user = userEvent.setup();
+    render(<AccessControlPanel id="dpg-source" plan="free" />);
+
+    const name = screen.getByRole("textbox", {
+      name: "New credential username",
+    });
+    await user.type(name, "analytics");
     await user.click(
-      screen.getByRole("button", { name: /Delete .*analytics/i }),
+      screen.getByRole("button", { name: "New default credential" }),
     );
-    expect(screen.queryByText("one-time-password")).not.toBeInTheDocument();
-    expect(deleteUser).toHaveBeenLastCalledWith("analytics");
+    expect(name).toHaveValue("analytics");
   });
 
   // w4/m170: adding "postgres" wedged the database; say so before the click.
   it("refuses a reserved role name before submit", async () => {
     const user = userEvent.setup();
     render(<AccessControlPanel id="dpg-source" plan="free" />);
-    await user.type(screen.getByPlaceholderText("reporting"), "postgres");
-    expect(screen.getByRole("button", { name: "Add user" })).toBeDisabled();
+    const name = screen.getByRole("textbox", {
+      name: "New credential username",
+    });
+    await user.type(name, "postgres");
+    const add = screen.getByRole("button", { name: "New default credential" });
+    expect(add).toBeDisabled();
     expect(
       screen.getByText(
         "“postgres” is reserved by PostgreSQL. Choose another name.",
       ),
     ).toBeInTheDocument();
-    expect(createUser).not.toHaveBeenCalled();
+    expect(createCredential).not.toHaveBeenCalled();
 
-    await user.clear(screen.getByPlaceholderText("reporting"));
-    await user.type(screen.getByPlaceholderText("reporting"), "qa_extra");
-    expect(screen.getByRole("button", { name: "Add user" })).toBeEnabled();
+    await user.clear(name);
+    await user.type(name, "qa_extra");
+    expect(add).toBeEnabled();
   });
 
-  it("names the allowlist and database-user inputs", () => {
+  it("names the allowlist inputs", () => {
     render(<AccessControlPanel id="dpg-source" plan="free" />);
     expect(
       screen.getByRole("textbox", { name: "New CIDR block" }),
@@ -111,24 +128,6 @@ describe("AccessControlPanel database-user creation", () => {
     expect(
       screen.getByRole("textbox", { name: "New rule description" }),
     ).toBeInTheDocument();
-    expect(
-      screen.getByRole("textbox", { name: "Database username" }),
-    ).toBeInTheDocument();
-  });
-
-  it("keeps the username recoverable and shows no credential on failure", async () => {
-    createUser.mockResolvedValue(null);
-    const user = userEvent.setup();
-    render(<AccessControlPanel id="dpg-source" plan="free" />);
-
-    const name = screen.getByRole("textbox", { name: "Database username" });
-    await user.type(name, "analytics");
-    await user.click(screen.getByRole("button", { name: "Add user" }));
-
-    expect(name).toHaveValue("analytics");
-    expect(
-      screen.queryByText("Password for analytics — shown once:"),
-    ).not.toBeInTheDocument();
   });
 });
 

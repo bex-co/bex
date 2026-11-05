@@ -746,6 +746,12 @@ export type DatabaseBackup = {
   status: Maybe<Scalars['String']['output']>;
 };
 
+export type DatabaseCredential = {
+  __typename: 'DatabaseCredential';
+  default: Scalars['Boolean']['output'];
+  username: Maybe<Scalars['String']['output']>;
+};
+
 export type DatabaseExport = {
   __typename: 'DatabaseExport';
   createdAt: Maybe<Scalars['String']['output']>;
@@ -1398,6 +1404,8 @@ export type Mutation = {
   createBlueprint: Maybe<Blueprint>;
   createBuildSource: Maybe<BuildSource>;
   createDatabase: Maybe<Database>;
+  /** Add a login that becomes the database's default credential; read its password from databaseConnectionInfo. */
+  createDatabaseCredential: Maybe<Array<Maybe<DatabaseCredential>>>;
   createDatabaseExport: Maybe<DatabaseExport>;
   createDatabaseUser: Maybe<DatabaseUserWithPassword>;
   createEnvGroup: Maybe<EnvGroup>;
@@ -1421,6 +1429,8 @@ export type Mutation = {
   deleteBuildSource: Maybe<Scalars['Boolean']['output']>;
   deleteCustomDomain: Maybe<Scalars['Boolean']['output']>;
   deleteDatabase: Maybe<Scalars['Boolean']['output']>;
+  /** Delete a credential other than the default. The original owner is never dropped: its login is revoked and it keeps owning the database's objects. */
+  deleteDatabaseCredential: Maybe<Array<Maybe<DatabaseCredential>>>;
   /** Request revocation of an additional login role. true means the request was accepted; the role is retired (NOLOGIN, NULL password) on the next reconcile, keeping its grants and owned objects. */
   deleteDatabaseUser: Maybe<Scalars['Boolean']['output']>;
   deleteDisk: Maybe<Scalars['Boolean']['output']>;
@@ -1740,6 +1750,12 @@ export type MutationCreateDatabaseArgs = {
 };
 
 
+export type MutationCreateDatabaseCredentialArgs = {
+  id: Scalars['String']['input'];
+  username: Scalars['String']['input'];
+};
+
+
 export type MutationCreateDatabaseExportArgs = {
   id: Scalars['String']['input'];
 };
@@ -1936,6 +1952,12 @@ export type MutationDeleteCustomDomainArgs = {
 export type MutationDeleteDatabaseArgs = {
   confirm?: InputMaybe<Scalars['String']['input']>;
   id: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteDatabaseCredentialArgs = {
+  id: Scalars['String']['input'];
+  username: Scalars['String']['input'];
 };
 
 
@@ -3111,6 +3133,7 @@ export type Query = {
   database: Maybe<Database>;
   databaseActions: Array<ActionDecision>;
   databaseConnectionInfo: Maybe<PostgresConnectionInfo>;
+  databaseCredentials: Maybe<Array<Maybe<DatabaseCredential>>>;
   databaseExports: Maybe<Array<Maybe<DatabaseExport>>>;
   databaseInstanceTypes: Maybe<Array<Maybe<DatabaseInstanceType>>>;
   databaseIpAllowList: Maybe<Array<Maybe<Scalars['String']['output']>>>;
@@ -3396,6 +3419,11 @@ export type QueryDatabaseActionsArgs = {
 
 
 export type QueryDatabaseConnectionInfoArgs = {
+  id: Scalars['String']['input'];
+};
+
+
+export type QueryDatabaseCredentialsArgs = {
   id: Scalars['String']['input'];
 };
 

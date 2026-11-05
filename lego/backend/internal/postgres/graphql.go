@@ -17,6 +17,7 @@ limitations under the License.
 package postgres
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -166,6 +167,31 @@ var databaseUserGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"name": gqlutil.StrField(func(v PostgresUserView) any { return v.Name }),
 	},
 })
+
+// databaseCredentialGQLType is Render's postgresUser: a login and whether it is
+// the database's default credential (w5/m265).
+var databaseCredentialGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "DatabaseCredential",
+	Fields: graphql.Fields{
+		"username": gqlutil.StrField(func(v PostgresCredentialView) any { return v.Username }),
+		"default":  gqlutil.ReqBoolField(func(v PostgresCredentialView) any { return v.Default }),
+	},
+})
+
+// credentialMutation is a credential write that answers the resulting list.
+func credentialMutation(op func(context.Context, string, string) ([]PostgresCredentialView, error), description string) *graphql.Field {
+	return &graphql.Field{
+		Type:        graphql.NewList(databaseCredentialGQLType),
+		Description: description,
+		Args: graphql.FieldConfigArgument{
+			"id":       gqlutil.ReqArg(graphql.String),
+			"username": gqlutil.ReqArg(graphql.String),
+		},
+		Resolve: func(p graphql.ResolveParams) (any, error) {
+			return op(p.Context, p.Args["id"].(string), p.Args["username"].(string))
+		},
+	}
+}
 
 // databaseUserWithPasswordGQLType is createDatabaseUser's one-time result, the
 // only place a role's generated password is surfaced.
@@ -446,9 +472,10 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			Type:    graphql.NewList(databaseInstanceTypeGQLType),
 			Resolve: func(p graphql.ResolveParams) (any, error) { return s.InstanceTypes(p.Context) },
 		},
-		"databaseRecoveryInfo": gqlutil.IDVerb(databaseRecoveryInfoGQLType, s.RecoveryInfo),           // PITR window + backup list
-		"databaseExports":      gqlutil.IDVerb(graphql.NewList(databaseExportGQLType), s.ListExports), // logical pg_dump exports
-		"databaseUsers":        gqlutil.IDVerb(graphql.NewList(databaseUserGQLType), s.ListUsers),     // additional managed login roles
+		"databaseRecoveryInfo": gqlutil.IDVerb(databaseRecoveryInfoGQLType, s.RecoveryInfo),                   // PITR window + backup list
+		"databaseExports":      gqlutil.IDVerb(graphql.NewList(databaseExportGQLType), s.ListExports),         // logical pg_dump exports
+		"databaseUsers":        gqlutil.IDVerb(graphql.NewList(databaseUserGQLType), s.ListUsers),             // additional managed login roles
+		"databaseCredentials":  gqlutil.IDVerb(graphql.NewList(databaseCredentialGQLType), s.ListCredentials), // Render credentials, default marked (w5/m265)
 		"databaseIpAllowList": &graphql.Field{ // external-endpoint CIDR allowlist (strings; the Database type's ipAllowListEntries carries descriptions)
 			Type: graphql.NewList(graphql.String),
 			Args: gqlutil.IDArg(),
@@ -706,6 +733,10 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 
+		"createDatabaseCredential": credentialMutation(s.CreateCredential,
+			"Add a login that becomes the database's default credential; read its password from databaseConnectionInfo."),
+		"deleteDatabaseCredential": credentialMutation(s.DeleteCredential,
+			"Delete a credential other than the default. The original owner is never dropped: its login is revoked and it keeps owning the database's objects."),
 		"executeDatabaseQuery": &graphql.Field{
 			Type: databaseQueryResultGQLType,
 			Args: graphql.FieldConfigArgument{

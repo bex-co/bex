@@ -917,59 +917,55 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Couldn't save the allowlist. Please try again.",
     description: "Toast when saving the allowlist fails",
   },
-  "databases.accessUsers": {
-    message: "Database users",
-    description: "Access panel section heading (Postgres login roles)",
+  "databases.accessCredentials": {
+    message: "Credentials",
+    description:
+      "Access panel section heading (Postgres credentials, Render's Credentials section)",
   },
-  "databases.accessUsersHint": {
+  "databases.accessCredentialsHint": {
     message:
-      "Additional login roles beyond the owner. A new user's password is shown once — copy it now.",
-    description: "Access panel users helper text",
+      "Add a new default credential to rotate the database password. Connection info switches to it, and linked services pick it up on their next Blueprint sync. Older credentials keep working until you delete them.",
+    description: "Access panel credentials helper text",
   },
-  "databases.accessUsersEmpty": {
-    message: "No additional users.",
-    description: "Access panel empty users list",
+  "databases.accessCredentialDefault": {
+    message: "Default",
+    description: "Badge on the database's default credential",
   },
-  "databases.accessUserAdd": {
-    message: "Add user",
-    description: "Access panel button to create a database user",
+  "databases.accessCredentialAdd": {
+    message: "New default credential",
+    description:
+      "Access panel button to create a credential that becomes the default",
   },
-  "databases.accessUserName": {
-    message: "Database username",
-    description: "Accessible label for the add-database-user name input",
+  "databases.accessCredentialName": {
+    message: "New credential username",
+    description: "Accessible label for the new-credential username input",
   },
-  "databases.accessUserDelete": {
+  "databases.accessCredentialDelete": {
     message: "Delete {name}",
-    description: "Accessible label to delete a database user",
+    description: "Accessible label to delete a database credential",
   },
-  "databases.accessUserPassword": {
-    message: "Password",
-    description: "Label for a newly-created user's password",
+  "databases.accessCredentialDefaultLocked": {
+    message:
+      "The default credential can't be deleted. Add a new default credential first.",
+    description: "Why the delete button is disabled on the default credential",
   },
-  "databases.accessUserPasswordCopy": {
-    message: "Copy password",
-    description: "Accessible label for copying a newly-created user password",
+  "databases.accessCredentialCreated": {
+    message:
+      "{name} is now the default credential. Its password is in the connection info.",
+    description: "Toast after creating a credential",
   },
-  "databases.accessUserPasswordOnce": {
-    message: "Password for {name} — shown once:",
-    description: "Access panel one-time password reveal label",
+  "databases.accessCredentialError": {
+    message: "Couldn't create the credential. Please try again.",
+    description: "Toast when creating a credential fails",
   },
-  "databases.accessUserCreated": {
-    message: "Created user {name}.",
-    description: "Toast after creating a database user",
-  },
-  "databases.accessUserError": {
-    message: "Couldn't create the user. Please try again.",
-    description: "Toast when creating a user fails",
-  },
-  "databases.accessUserDeleted": {
+  "databases.accessCredentialDeleted": {
     message: "Revocation requested for {name}.",
     description:
-      "Toast after deleting a database user: the login is retired asynchronously on the next reconcile, so this confirms accepted intent, not a completed revocation",
+      "Toast after deleting a credential: the login is retired asynchronously on the next reconcile, so this confirms accepted intent, not a completed revocation",
   },
-  "databases.accessUserDeleteError": {
+  "databases.accessCredentialDeleteError": {
     message: "Couldn't delete {name}. Please try again.",
-    description: "Toast when deleting a user fails",
+    description: "Toast when deleting a credential fails",
   },
   "databases.accessPooler": {
     message: "Connection pooling",

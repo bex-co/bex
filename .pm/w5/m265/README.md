@@ -1,20 +1,20 @@
 # w5 · m265 — Postgres credential rotation: a new user becomes the default, as on Render
 
-**Worker:** worker5 **Goal:** a customer rotates a Postgres password with zero downtime: the new credential becomes the default, connection strings follow it, and the old one can be deleted (the original owner is deactivated, not dropped). **Status:** todo
+**Worker:** worker5 **Goal:** a customer rotates a Postgres password with zero downtime: the new credential becomes the default, connection strings follow it, and the old one can be deleted (the original owner is deactivated, not dropped). **Status:** todo (t001–t004, t006–t009 done; t005 live production walk pending the deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | CRD default-user pointer and original-owner deactivation; operator projects them to CNPG | 1h30m | — |
-| t002 | Core + REST: `POST /v1/postgres/{id}/credentials` creates the new default; delete rules follow Render | 1h30m | t001 |
-| t003 | Connection info and Blueprint `fromDatabase` follow the default user | 1h | t001 |
-| t004 | GraphQL, MCP and dashboard Credentials section follow Render's flow | 1h30m | t002 |
+| t001 | CRD default-user pointer and original-owner deactivation; operator projects them to CNPG — **DONE** | 1h30m | — |
+| t002 | Core + REST: `POST /v1/postgres/{id}/credentials` creates the new default; delete rules follow Render — **DONE** | 1h30m | t001 |
+| t003 | Connection info and Blueprint `fromDatabase` follow the default user — **DONE** | 1h | t001 |
+| t004 | GraphQL, MCP and dashboard Credentials section follow Render's flow — **DONE** | 1h30m | t002 |
 | t005 | Live zero-downtime rotation walk on dev-5 or production | 45m | t003, t004 |
-| t006 | ADR018 and ADR009 record the rotation contract | 20m | t005 |
-| t007 | Render parity | 30m | t006 |
-| t008 | Simplify | 20m | t007 |
-| t009 | Test coverage | 45m | t007, t008 |
+| t006 | ADR018 and ADR009 record the rotation contract — **DONE** | 20m | t005 |
+| t007 | Render parity — **DONE** | 30m | t006 |
+| t008 | Simplify — **DONE** | 20m | t007 |
+| t009 | Test coverage — **DONE** | 45m | t007, t008 |
 | t010 | Closeout | 10m | t009 |
 
 Total: **10 tasks, about 8h20m**.
@@ -33,3 +33,12 @@ Total: **10 tasks, about 8h20m**.
 - **Expected outcome:** customers rotate database passwords without downtime, through any surface.
 - **Why now:** a security-relevant routine operation with no owner; the managed-role machinery (`spec.users`, per-issuance Secrets) already exists, so the increment is small.
 - **Render parity:** included — REST, GraphQL, MCP and dashboard change.
+
+## Progress (2026-11-05)
+
+- **Shipped in code:** CRD `defaultUser` + `users[].ownerPrivileges`; operator role chain (owner + retired logins + earlier credentials), owner retirement (`login:false`, `disablePassword`), `<id>-default-app` Secret with `status.secretName` moving only once it is current, pooler following it; Core `CreateCredential`/`DeleteCredential` (owner retirement refused with 409 until the switch is applied); REST `POST /v1/postgres/{id}/credentials` (202, no body, an ordinary write as on Render); GraphQL `databaseCredentials`/`createDatabaseCredential`/`deleteDatabaseCredential`; MCP `list_/create_/delete_postgres_credential(s)`; Blueprint `fromDatabase` reading the current connection Secret; dashboard Credentials section.
+- **Real CNPG 1.30.1** (`scripts/pg-credential-rotation-check.sh`, throwaway kind cluster, deleted afterwards): the new default reads/writes the owner's tables and creates objects; the retired owner is refused and keeps its table; after a second rotation and retiring the earlier credential, its tables stay reachable. PASS.
+- **Render parity (t007):** REST matches Render's `create-postgres-user` (202, no body) and `delete-postgres-user`; GraphQL/MCP are bex additions (Render's MCP has no credential tool) and return the resulting list; the dashboard follows Render's Credentials section ("New default credential", default badge, delete locked on the default). One deliberate addition: retiring the owner answers 409 until the new default is applied, a few seconds after the create. Recorded in ADR018 and ADR009.
+- **Simplify (t008):** three-way review applied — role chain for second rotations, owner-retirement gate, status-backed Blueprint references, `PoolerSecretName`, single fetch in `DeleteCredential`, shared GraphQL/MCP credential helpers, no extra reconcile read for never-rotated databases, dashboard cache write instead of refetch.
+- **Tests (t009):** operator unit + fake-client projection tests, REST conformance flow, MCP rotation test, Blueprint reference test, dashboard hook/panel tests.
+- **Remaining:** t005 — after deploy, rotate a disposable production database with a Blueprint-linked service through the Render-shaped REST path, sync, retire the old credential, confirm the service stays up and the old password is refused; then t010.

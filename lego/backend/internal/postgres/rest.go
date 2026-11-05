@@ -381,8 +381,24 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE "+base+"/{id}/users/{user}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteUser(r.Context(), r.PathValue("id"), r.PathValue("user"))
 	}))
+	// Render answers 202 with no body: the password is read back through
+	// connection-info.
+	mux.HandleFunc("POST "+base+"/{id}/credentials", func(w http.ResponseWriter, r *http.Request) {
+		var req struct {
+			Username string `json:"username"`
+		}
+		if !decodeOr400(w, r, &req) {
+			return
+		}
+		if _, err := s.CreateCredential(r.Context(), r.PathValue("id"), req.Username); err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		w.WriteHeader(http.StatusAccepted)
+	})
 	mux.HandleFunc("DELETE "+base+"/{id}/credentials/{user}", core.HandleNoBody(http.StatusOK, func(r *http.Request) error {
-		return s.DeleteUser(r.Context(), r.PathValue("id"), r.PathValue("user"))
+		_, err := s.DeleteCredential(r.Context(), r.PathValue("id"), r.PathValue("user"))
+		return err
 	}))
 
 	// --- logs (w3/m28) ---

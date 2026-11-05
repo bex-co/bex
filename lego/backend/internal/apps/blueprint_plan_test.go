@@ -21,6 +21,8 @@ import (
 	"strings"
 	"testing"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -338,11 +340,43 @@ func TestParseBlueprintServiceTranslatesDeprecatedDomain(t *testing.T) {
 	}
 }
 
+// w5/m265: a fromDatabase reference reads the database's current default
+// credential, so a sync after a rotation re-points it at the new default.
+func TestResolveDatabaseReferenceFollowsTheDefaultCredential(t *testing.T) {
+	t.Parallel()
+	rotated := &appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "dpg-orders"}}
+	rotated.Spec.Users = []appv1alpha1.DatabaseUser{{Name: "rotated", SecretName: "s"}}
+	for _, tc := range []struct {
+		db   *appv1alpha1.Database
+		want string
+	}{
+		{&appv1alpha1.Database{ObjectMeta: metav1.ObjectMeta{Name: "dpg-orders"}}, "dpg-orders-app"},
+		// Rotated but not yet applied by the operator: still CNPG's Secret.
+		{func() *appv1alpha1.Database { d := rotated.DeepCopy(); d.Spec.DefaultUser = "rotated"; return d }(), "dpg-orders-app"},
+		{func() *appv1alpha1.Database {
+			d := rotated.DeepCopy()
+			d.Spec.DefaultUser = "rotated"
+			d.Status.SecretName = "dpg-orders-default-app"
+			return d
+		}(), "dpg-orders-default-app"},
+	} {
+		value, err := resolveDatabaseRef(bexEnvVar{Key: "DATABASE_URL", FromDatabase: &bexFromRef{
+			Name: "orders", Property: "connectionString",
+		}}, map[string]databaseRef{"orders": databaseRefOf(tc.db)})
+		if err != nil {
+			t.Fatalf("resolveDatabaseRef: %v", err)
+		}
+		if got := value.ValueFrom.SecretKeyRef; got.Name != tc.want || got.Key != "uri" {
+			t.Errorf("reference = %#v, want %s uri", got, tc.want)
+		}
+	}
+}
+
 func TestResolveDatabasePoolerReferenceStaysSecretBacked(t *testing.T) {
 	t.Parallel()
 	value, err := resolveDatabaseRef(bexEnvVar{Key: "DATABASE_POOL_URL", FromDatabase: &bexFromRef{
 		Name: "orders", Property: "connectionPoolString",
-	}}, map[string]string{"orders": "dpg-orders"})
+	}}, map[string]databaseRef{"orders": {id: "dpg-orders", secret: "dpg-orders-default-app"}})
 	if err != nil {
 		t.Fatalf("resolveDatabaseRef: %v", err)
 	}

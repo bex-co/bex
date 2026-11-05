@@ -223,10 +223,7 @@ func (s *Service) executeAuthorizedQuery(ctx context.Context, db *appv1alpha1.Da
 // databaseSecret resolves a previously-authorized Database's CNPG application
 // Secret without performing a second, potentially drifting authorization check.
 func (s *Service) databaseSecret(ctx context.Context, db *appv1alpha1.Database) (*corev1.Secret, error) {
-	secretName := db.Status.SecretName
-	if secretName == "" {
-		secretName = db.Name + "-app"
-	}
+	secretName := db.CurrentConnectionSecretName()
 	var sec corev1.Secret
 	// The connection Secret is created by CNPG beside its Cluster, so it lives
 	// in the Database CR's own namespace (ADR043 D8), not the shared one.

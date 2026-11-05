@@ -19,6 +19,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"slices"
 	"strings"
 	"testing"
 
@@ -78,9 +79,62 @@ func TestRenderPostgresRecoveryAndCredentials(t *testing.T) {
 	if len(persisted.Spec.Users) != 0 || len(persisted.Spec.DeletedUsers) != 1 {
 		t.Fatalf("delete did not revoke reader: %+v", persisted.Spec)
 	}
-	res = do(t, h, "DELETE", path+"/credentials/"+db.Spec.EffectiveDatabaseUser(db.Name), testToken, "")
+	// Render refuses to delete the default credential (w5/m265): the owner is
+	// the default until a credential is created.
+	owner := db.Spec.EffectiveDatabaseUser(db.Name)
+	res = do(t, h, "DELETE", path+"/credentials/"+owner, testToken, "")
+	if res.Code != 400 {
+		t.Fatalf("default credential deletion: %d %s", res.Code, res.Body.String())
+	}
+
+	// create-postgres-user: the new user becomes the default (202, no body).
+	res = do(t, h, "POST", path+"/credentials", testToken, `{"username":"rotated"}`)
+	if res.Code != 202 || res.Body.Len() != 0 {
+		t.Fatalf("create credential: %d %s", res.Code, res.Body.String())
+	}
+	if errs := spec.validateStatus("create-postgres-user", res.Code, nil); len(errs) > 0 {
+		t.Fatal(errs)
+	}
+	res = do(t, h, "GET", path+"/credentials", testToken, "")
+	if !strings.Contains(res.Body.String(), `{"username":"rotated","default":true}`) || !strings.Contains(res.Body.String(), `{"username":"`+owner+`","default":false}`) {
+		t.Fatalf("credentials after rotation = %s", res.Body.String())
+	}
+	res = do(t, h, "DELETE", path+"/credentials/rotated", testToken, "")
+	if res.Code != 400 {
+		t.Fatalf("new default deletion: %d %s", res.Code, res.Body.String())
+	}
+	// Until the operator has applied the new default, consumers still read the
+	// owner, so retiring it is refused as a retryable conflict.
+	res = do(t, h, "DELETE", path+"/credentials/"+owner, testToken, "")
+	if res.Code != 409 {
+		t.Fatalf("owner deletion before the rotation applied: %d %s", res.Code, res.Body.String())
+	}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(db), &persisted); err != nil {
+		t.Fatal(err)
+	}
+	persisted.Status.SecretName = appv1alpha1.DefaultConnectionSecretName(db.Name)
+	if err := cl.Update(context.Background(), &persisted); err != nil {
+		t.Fatal(err)
+	}
+	// Deleting the original owner retires its login; it is never dropped.
+	res = do(t, h, "DELETE", path+"/credentials/"+owner, testToken, "")
+	if res.Code != 200 {
+		t.Fatalf("owner deletion after rotation: %d %s", res.Code, res.Body.String())
+	}
+	if err := cl.Get(context.Background(), client.ObjectKeyFromObject(db), &persisted); err != nil {
+		t.Fatal(err)
+	}
+	if persisted.Spec.DefaultUser != "rotated" || !slices.Contains(persisted.Spec.DeletedUsers, owner) ||
+		len(persisted.Spec.Users) != 1 || !persisted.Spec.Users[0].OwnerPrivileges {
+		t.Fatalf("rotation spec = %+v", persisted.Spec)
+	}
+	res = do(t, h, "GET", path+"/credentials", testToken, "")
+	if res.Body.String() != `[{"username":"rotated","default":true}]`+"\n" && res.Body.String() != `[{"username":"rotated","default":true}]` {
+		t.Fatalf("credentials after owner retirement = %q", res.Body.String())
+	}
+	res = do(t, h, "DELETE", path+"/credentials/"+owner, testToken, "")
 	if res.Code != 404 {
-		t.Fatalf("owner credential deletion: %d %s", res.Code, res.Body.String())
+		t.Fatalf("second owner deletion: %d %s", res.Code, res.Body.String())
 	}
 
 	res = do(t, h, "POST", path+"/recovery", testToken, `{"restoreName":"restored","restoreTime":"2026-09-10T00:00:00Z"}`)

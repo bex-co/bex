@@ -93,6 +93,7 @@ func (s DatabaseSpec) EffectiveDatabaseUser(resourceID string) string {
 // docs/ADR009-postgresql-management.md.
 // +kubebuilder:validation:XValidation:rule="!has(oldSelf.databaseName) ? !has(self.databaseName) : has(self.databaseName) && self.databaseName == oldSelf.databaseName",message="databaseName is immutable"
 // +kubebuilder:validation:XValidation:rule="!has(oldSelf.databaseUser) ? !has(self.databaseUser) : has(self.databaseUser) && self.databaseUser == oldSelf.databaseUser",message="databaseUser is immutable"
+// +kubebuilder:validation:XValidation:rule="!has(self.defaultUser) || (has(self.users) && self.users.exists(u, u.name == self.defaultUser))",message="defaultUser must name one of users"
 type DatabaseSpec struct {
 	// Name is the required mutable, user-facing database name. metadata.name is
 	// the immutable dpg-... resource id and the data-plane identity used for
@@ -218,6 +219,19 @@ type DatabaseSpec struct {
 	// +optional
 	DeletedUsers []string `json:"deletedUsers,omitempty"`
 
+	// DefaultUser names the member of Users that is the database's "default"
+	// credential, Render's model: every credential added through
+	// POST /postgres/{id}/credentials becomes the new default (w5/m265). Empty
+	// keeps the create-time owner as the default. The operator projects the
+	// default's credentials into DefaultConnectionSecretName, which
+	// status.secretName then names, so connection info, Blueprint fromDatabase
+	// references, the pooler and exports all follow it. Listing the owner in
+	// DeletedUsers retires its login (Render "deletes" the original user that
+	// way) while it keeps owning the database's objects.
+	// +optional
+	// +kubebuilder:validation:MaxLength=63
+	DefaultUser string `json:"defaultUser,omitempty"`
+
 	// Recovery, when set, provisions this Database by restoring another Database's
 	// object-store backups to a point in time (PITR) into a NEW instance, instead
 	// of initializing an empty database (CNPG bootstrap.recovery). Immutable after
@@ -291,6 +305,64 @@ type DatabaseUser struct {
 	// every credential issuance so a stale or concurrent Secret cannot be adopted.
 	// +optional
 	SecretName string `json:"secretName,omitempty"`
+
+	// OwnerPrivileges makes the role a member of the database owner role, so it
+	// can use every object the owner has created. Render credentials are
+	// interchangeable defaults; the native auxiliary users (POST …/users) keep
+	// this false and are granted nothing.
+	// +optional
+	OwnerPrivileges bool `json:"ownerPrivileges,omitempty"`
+}
+
+// ApplicationSecretName is CNPG's generated "<id>-app" Secret: the create-time
+// owner's credentials (username/password/dbname/host/port/uri).
+func ApplicationSecretName(resourceID string) string { return resourceID + "-app" }
+
+// PoolerSecretName is the operator-owned Secret whose "uri" targets the
+// Database's PgBouncer Service with its default credential.
+func PoolerSecretName(resourceID string) string { return resourceID + "-pooler-app" }
+
+// DefaultConnectionSecretName is the operator-owned Secret holding the
+// connection details of a Database whose default credential is not the owner
+// (spec.defaultUser). Same keys as ApplicationSecretName's.
+func DefaultConnectionSecretName(resourceID string) string { return resourceID + "-default-app" }
+
+// DatabaseIDFromSecretName inverts the connection Secret names a fromDatabase
+// reference can carry: "<id>-pooler-app", "<id>-default-app" and "<id>-app".
+func DatabaseIDFromSecretName(secretName string) (string, bool) {
+	for _, suffix := range []string{PoolerSecretName(""), DefaultConnectionSecretName(""), ApplicationSecretName("")} {
+		if id, ok := strings.CutSuffix(secretName, suffix); ok {
+			return id, true
+		}
+	}
+	return "", false
+}
+
+// ConnectionSecretName is the Secret the Database's default credential should
+// be read from: the default-user Secret when one is set, else CNPG's.
+func (d *Database) ConnectionSecretName() string {
+	if d.Spec.DefaultUser != "" {
+		return DefaultConnectionSecretName(d.Name)
+	}
+	return ApplicationSecretName(d.Name)
+}
+
+// CurrentConnectionSecretName is the Secret consumers read now:
+// status.secretName, which the operator moves only once the Secret is
+// current, else CNPG's before the first reconcile.
+func (d *Database) CurrentConnectionSecretName() string {
+	if d.Status.SecretName != "" {
+		return d.Status.SecretName
+	}
+	return ApplicationSecretName(d.Name)
+}
+
+// DefaultCredential names the login that is the database's default.
+func (s DatabaseSpec) DefaultCredential(resourceID string) string {
+	if s.DefaultUser != "" {
+		return s.DefaultUser
+	}
+	return s.EffectiveDatabaseUser(resourceID)
 }
 
 // DatabaseRecovery restores a new Database from a source Database's backups.

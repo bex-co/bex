@@ -893,58 +893,53 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "无法保存允许列表，请重试。",
     description: "Toast when saving the allowlist fails",
   },
-  "databases.accessUsers": {
-    message: "数据库用户",
-    description: "Access panel section heading (Postgres login roles)",
+  "databases.accessCredentials": {
+    message: "凭据",
+    description:
+      "Access panel section heading (Postgres credentials, Render's Credentials section)",
   },
-  "databases.accessUsersHint": {
-    message: "所有者之外的额外登录角色。新用户的密码只显示一次，请立即复制。",
-    description: "Access panel users helper text",
+  "databases.accessCredentialsHint": {
+    message:
+      "新建默认凭据即可轮换数据库密码。连接信息会立即改用新凭据，关联的服务在下次 Blueprint 同步时改用它。旧凭据在删除前仍可使用。",
+    description: "Access panel credentials helper text",
   },
-  "databases.accessUsersEmpty": {
-    message: "暂无额外用户。",
-    description: "Access panel empty users list",
+  "databases.accessCredentialDefault": {
+    message: "默认",
+    description: "Badge on the database's default credential",
   },
-  "databases.accessUserAdd": {
-    message: "添加用户",
-    description: "Access panel button to create a database user",
+  "databases.accessCredentialAdd": {
+    message: "新建默认凭据",
+    description:
+      "Access panel button to create a credential that becomes the default",
   },
-  "databases.accessUserName": {
-    message: "数据库用户名",
-    description: "Accessible label for the add-database-user name input",
+  "databases.accessCredentialName": {
+    message: "新凭据用户名",
+    description: "Accessible label for the new-credential username input",
   },
-  "databases.accessUserDelete": {
+  "databases.accessCredentialDelete": {
     message: "删除 {name}",
-    description: "Accessible label to delete a database user",
+    description: "Accessible label to delete a database credential",
   },
-  "databases.accessUserPassword": {
-    message: "密码",
-    description: "Label for a newly-created user's password",
+  "databases.accessCredentialDefaultLocked": {
+    message: "默认凭据不能删除，请先新建一个默认凭据。",
+    description: "Why the delete button is disabled on the default credential",
   },
-  "databases.accessUserPasswordCopy": {
-    message: "复制密码",
-    description: "Accessible label for copying a newly-created user password",
+  "databases.accessCredentialCreated": {
+    message: "{name} 已成为默认凭据，其密码可在连接信息中查看。",
+    description: "Toast after creating a credential",
   },
-  "databases.accessUserPasswordOnce": {
-    message: "{name} 的密码（仅显示一次）：",
-    description: "Access panel one-time password reveal label",
+  "databases.accessCredentialError": {
+    message: "无法创建凭据，请重试。",
+    description: "Toast when creating a credential fails",
   },
-  "databases.accessUserCreated": {
-    message: "已创建用户 {name}。",
-    description: "Toast after creating a database user",
-  },
-  "databases.accessUserError": {
-    message: "无法创建用户，请重试。",
-    description: "Toast when creating a user fails",
-  },
-  "databases.accessUserDeleted": {
+  "databases.accessCredentialDeleted": {
     message: "已请求撤销 {name} 的访问权限。",
     description:
-      "Toast after deleting a database user: the login is retired asynchronously on the next reconcile, so this confirms accepted intent, not a completed revocation",
+      "Toast after deleting a credential: the login is retired asynchronously on the next reconcile, so this confirms accepted intent, not a completed revocation",
   },
-  "databases.accessUserDeleteError": {
+  "databases.accessCredentialDeleteError": {
     message: "无法删除 {name}，请重试。",
-    description: "Toast when deleting a user fails",
+    description: "Toast when deleting a credential fails",
   },
   "databases.accessPooler": {
     message: "连接池",

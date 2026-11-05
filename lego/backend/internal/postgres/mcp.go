@@ -171,6 +171,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 	s.registerLifecycleMCP(srv)
 	s.registerRecoveryMCP(srv)
 	s.registerAccessMCP(srv)
+	s.registerCredentialsMCP(srv)
 	s.registerInsightsMCP(srv)
 	s.registerLogsMCP(srv)
 }
@@ -434,6 +435,40 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		err := s.DeleteUser(ctx, in.PostgresID, in.Name)
 		return nil, deleteResult{Deleted: err == nil}, err
 	})
+}
+
+// registerCredentialsMCP adds Render's credential-rotation tools (w5/m265).
+func (s *Service) registerCredentialsMCP(srv *mcp.Server) {
+	mcputil.AddTool(srv, &mcp.Tool{
+		Name:        "list_postgres_credentials",
+		Description: "List a managed Postgres database's credentials (the owner, unless its login was retired, and every added login), marking which one is the default that connection info and Blueprint references use.",
+	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, credentialsResult, error) {
+		v, err := s.ListCredentials(ctx, in.PostgresID)
+		return nil, credentialsResult{Credentials: v}, err
+	})
+	addCredentialTool(srv, "create_postgres_credential",
+		"Rotate a managed Postgres database's credentials: add a login that becomes the default. Connection info then returns its password, and Blueprint fromDatabase references move to it on their next sync; earlier credentials keep working until deleted.",
+		s.CreateCredential)
+	addCredentialTool(srv, "delete_postgres_credential",
+		"Delete a managed Postgres credential that is not the default (add a new credential first). Deleting the original owner revokes its login; it keeps owning the database's objects.",
+		s.DeleteCredential)
+}
+
+func addCredentialTool(srv *mcp.Server, name, description string, op func(context.Context, string, string) ([]PostgresCredentialView, error)) {
+	mcputil.AddTool(srv, &mcp.Tool{Name: name, Description: description},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in credentialArgs) (*mcp.CallToolResult, credentialsResult, error) {
+			v, err := op(ctx, in.PostgresID, in.Username)
+			return nil, credentialsResult{Credentials: v}, err
+		})
+}
+
+type credentialArgs struct {
+	PostgresID string `json:"postgresId" jsonschema:"the immutable postgres id (dpg-...)"`
+	Username   string `json:"username" jsonschema:"the login name (lowercase letters, digits and underscores)"`
+}
+
+type credentialsResult struct {
+	Credentials []PostgresCredentialView `json:"credentials"`
 }
 
 // deleteResult is the boolean-shaped output for delete_postgres_user.
