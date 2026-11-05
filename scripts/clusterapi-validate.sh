@@ -948,6 +948,19 @@ while IFS= read -r block; do
   fi
 done < <(yq -o=json -I=0 -N '[.. | select(has("preKubeadmCommands")) | .preKubeadmCommands | join("\n")] | .[]' "$CAPD_OVERLAY" 2>/dev/null)
 
+# w2 D1 (2026-11-04): Docker Desktop's kernel cannot load nft `socket cgroupv2`,
+# so the local overlay denies the metadata address to the whole node host
+# instead. It may differ from production's rule, but never drop the deny.
+echo "==> $CAPD_OVERLAY still denies the metadata address from the node host"
+while IFS= read -r block; do
+  if echo "$block" | grep -q '20-bex-egress.conf' \
+    && { ! echo "$block" | grep -q 'ip daddr 169.254.169.254 counter reject' \
+      || ! echo "$block" | grep -q "nft list table inet bex_containerd_egress | grep -q '169.254.169.254'"; }; then
+    echo "FAIL: $CAPD_OVERLAY writes the containerd egress drop-in without denying 169.254.169.254 and verifying the table" >&2
+    fail=1
+  fi
+done < <(yq -o=json -I=0 -N '[.. | select(has("preKubeadmCommands")) | .preKubeadmCommands | join("\n")] | .[]' "$CAPD_OVERLAY" 2>/dev/null)
+
 # w4/m200: the bake must keep installing the reviewed patched kubelet. A
 # recipe that drops the step, or a release bump that leaves the patch behind,
 # would silently restore the stock reader that joins stdout/stderr records.
