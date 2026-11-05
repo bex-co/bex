@@ -353,6 +353,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **508** — [Regression of w4/m230: a user Resume can be recorded as `service_woken` (an idle wake) instead of `service_resumed`](508.md) — todo (~45m) ← live `/qa-find-bugs w4` loop round 109, 2026-11-05 UTC (pin `cc3c51e12952`; major, events/notifications). `store/event_facts.go:546-551` drops the suspend reason while still Hibernated.
 - [ ] **507** — [REST/MCP `cron_job_run_ended` reports `status: succeeded|failed` where the same run object says `successful|unsuccessful`](507.md) — todo (~35m) ← live `/qa-find-bugs w4` loop round 108, 2026-11-05 UTC (pin `cc3c51e12952`; minor, Render parity). `events/rest.go:218` copies the lifecycle status; ADR038:147 divergence has no ADR018 sign-off.
 - [x] **506** — [The shell-ticket and native SSH refusals answer one sentence, "service is not eligible and running", for a Free plan, a suspended service, a static or cron service, and a service that is not running yet](done/506.md) — DONE 2026-11-05
 - [x] **505** — [A static site whose publish directory is missing still reports `build_ended` `succeeded` before its deploy closes `build_failed`](done/505.md) — DONE 2026-11-05
