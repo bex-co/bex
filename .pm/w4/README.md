@@ -353,6 +353,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **507** — [REST/MCP `cron_job_run_ended` reports `status: succeeded|failed` where the same run object says `successful|unsuccessful`](507.md) — todo (~35m) ← live `/qa-find-bugs w4` loop round 108, 2026-11-05 UTC (pin `cc3c51e12952`; minor, Render parity). `events/rest.go:218` copies the lifecycle status; ADR038:147 divergence has no ADR018 sign-off.
 - [x] **506** — [The shell-ticket and native SSH refusals answer one sentence, "service is not eligible and running", for a Free plan, a suspended service, a static or cron service, and a service that is not running yet](done/506.md) — DONE 2026-11-05
 - [x] **505** — [A static site whose publish directory is missing still reports `build_ended` `succeeded` before its deploy closes `build_failed`](done/505.md) — DONE 2026-11-05
 - [x] **504** — [A registry credential read, rename or delete with an id that is not valid UTF-8 still answers `500 internal error` after the w4/490 fix, which guarded only `GetRegistryCredentialByID`](done/504.md) — DONE 2026-11-05
