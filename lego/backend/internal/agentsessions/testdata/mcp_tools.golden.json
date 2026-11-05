@@ -105,6 +105,36 @@
             "failureReasonCode": {
               "type": "string"
             },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -332,6 +362,36 @@
             "failureReasonCode": {
               "type": "string"
             },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -555,6 +615,36 @@
             },
             "failureReasonCode": {
               "type": "string"
+            },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
             },
             "pullRequest": {
               "additionalProperties": false,
@@ -843,6 +933,36 @@
             },
             "failureReasonCode": {
               "type": "string"
+            },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
             },
             "pullRequest": {
               "additionalProperties": false,
@@ -1288,6 +1408,36 @@
             },
             "failureReasonCode": {
               "type": "string"
+            },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
             },
             "pullRequest": {
               "additionalProperties": false,
@@ -1995,6 +2145,36 @@
                   "failureReasonCode": {
                     "type": "string"
                   },
+                  "files": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mediaType": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "mediaType",
+                        "size"
+                      ],
+                      "type": "object"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
                   "pullRequest": {
                     "additionalProperties": false,
                     "properties": {
@@ -2229,6 +2409,36 @@
             },
             "failureReasonCode": {
               "type": "string"
+            },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
             },
             "pullRequest": {
               "additionalProperties": false,
@@ -2475,6 +2685,36 @@
             },
             "failureReasonCode": {
               "type": "string"
+            },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
             },
             "pullRequest": {
               "additionalProperties": false,
@@ -2764,6 +3004,36 @@
             "failureReasonCode": {
               "type": "string"
             },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -3010,6 +3280,36 @@
             "failureReasonCode": {
               "type": "string"
             },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -3233,6 +3533,36 @@
             },
             "failureReasonCode": {
               "type": "string"
+            },
+            "files": {
+              "items": {
+                "additionalProperties": false,
+                "properties": {
+                  "id": {
+                    "type": "string"
+                  },
+                  "mediaType": {
+                    "type": "string"
+                  },
+                  "name": {
+                    "type": "string"
+                  },
+                  "size": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "id",
+                  "name",
+                  "mediaType",
+                  "size"
+                ],
+                "type": "object"
+              },
+              "type": [
+                "null",
+                "array"
+              ]
             },
             "pullRequest": {
               "additionalProperties": false,
@@ -3586,6 +3916,36 @@
                   },
                   "failureReasonCode": {
                     "type": "string"
+                  },
+                  "files": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mediaType": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "mediaType",
+                        "size"
+                      ],
+                      "type": "object"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
                   },
                   "pullRequest": {
                     "additionalProperties": false,

@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 
@@ -193,4 +194,32 @@ func TestEverySurfaceServesStateAndOutcome(t *testing.T) {
 		t.Fatal(err)
 	}
 	check("MCP", m.State, m.Steerable, m.Outcome.Summary, m.Outcome.PullRequest.URL)
+}
+
+// outcome.files are the files the agent shared in the summary's turn (ADR095
+// D11): outputs of the latest completed turn only — never the user's inputs,
+// and never an earlier turn's outputs.
+func TestOutcomeFilesAreTheLatestCompletedTurnsSharedFiles(t *testing.T) {
+	svc, st, fga, _ := fixture()
+	rows := &fakeAttachmentRows{rows: map[string]store.AgentAttachment{}, state: map[string]string{}}
+	svc.Attachments, svc.AttachmentRows = &fakeObjects{data: map[string][]byte{}}, rows
+	id := seedSession(st, fga, func(r *store.AgentSession) { r.Phase, r.Turns = PhaseCompleted, 2 })
+	seedCompletedTurn(st, id, 1, `{"type":"text","text":"one"}`)
+	seedCompletedTurn(st, id, 2, `{"type":"text","text":"two"}`)
+	for _, a := range []store.AgentAttachment{
+		{ID: "att-old", SessionID: id, Turn: 1, Direction: store.AgentAttachmentOutput, Name: "old.csv", MediaType: "text/csv", SizeBytes: 3},
+		{ID: "att-in", SessionID: id, Turn: 2, Direction: store.AgentAttachmentInput, Name: "input.log", MediaType: "text/plain", SizeBytes: 4},
+		{ID: "att-out", SessionID: id, Turn: 2, Direction: store.AgentAttachmentOutput, Name: "report.csv", MediaType: "text/csv", SizeBytes: 26},
+	} {
+		rows.rows[a.ID], rows.state[a.ID] = a, "ready"
+	}
+
+	got, err := svc.Get(caller("alice"), id)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := []TurnAttachment{{ID: "att-out", Name: "report.csv", MediaType: "text/csv", Size: 26}}
+	if got.Outcome == nil || !slices.Equal(got.Outcome.Files, want) {
+		t.Fatalf("outcome.files = %+v, want %+v", got.Outcome, want)
+	}
 }

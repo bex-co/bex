@@ -200,6 +200,12 @@ var agentSessionOutcomeGQLType = graphql.NewObject(graphql.ObjectConfig{
 		})},
 		"deliveryNote":      gqlutil.OptionalStrField(func(v Outcome) any { return v.DeliveryNote }),
 		"failureReasonCode": gqlutil.OptionalStrField(func(v Outcome) any { return v.FailureReasonCode }),
+		"files": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(turnAttachmentGQLType)), Resolve: gqlutil.Field(func(v Outcome) any {
+			if v.Files == nil {
+				return nil
+			}
+			return v.Files
+		})},
 	},
 })
 

@@ -145,7 +145,7 @@ func (s *Service) Wait(ctx context.Context, req WaitRequest, progress func(line 
 			}
 		}
 		if waitDone(result, until) {
-			s.attachSummaries(ctx, result.Sessions, rows)
+			s.attachOutcomeDetail(ctx, result.Sessions, rows)
 			return result, nil
 		}
 		select {
@@ -153,7 +153,7 @@ func (s *Service) Wait(ctx context.Context, req WaitRequest, progress func(line 
 			return WaitResult{}, ctx.Err()
 		case <-deadline.C:
 			result.TimedOut = true
-			s.attachSummaries(ctx, result.Sessions, rows)
+			s.attachOutcomeDetail(ctx, result.Sessions, rows)
 			return result, nil
 		case <-wake:
 		case <-tick.C:
@@ -235,14 +235,14 @@ func progressLine(r WaitResult) string {
 	return fmt.Sprintf("%d of %d agent sessions settled", len(r.Settled), len(r.Sessions))
 }
 
-// attachSummaries fills the final-answer summary for sessions that have one to
-// show; the per-poll reads stay summary-free so waiting costs no transcript reads.
-func (s *Service) attachSummaries(ctx context.Context, sessions []WaitSession, rows map[string]store.AgentSession) {
+// attachOutcomeDetail fills the final-answer summary and shared files for
+// settled sessions; the per-poll reads skip them so waiting costs no extra reads.
+func (s *Service) attachOutcomeDetail(ctx context.Context, sessions []WaitSession, rows map[string]store.AgentSession) {
 	for i := range sessions {
 		if sessions[i].State == StateWorking {
 			continue
 		}
-		sessions[i].Outcome.Summary = s.outcomeSummary(ctx, rows[sessions[i].ID])
+		sessions[i].Outcome.Summary, sessions[i].Outcome.Files = s.outcomeDetail(ctx, rows[sessions[i].ID])
 	}
 }
 

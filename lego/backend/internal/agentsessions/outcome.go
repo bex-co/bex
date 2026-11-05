@@ -33,14 +33,15 @@ func outcomeOf(record store.AgentSession) *Outcome {
 	return out
 }
 
-// outcomeSummary returns the final assistant text of the latest completed turn,
-// clipped head-and-tail, or "" when none exists or the read fails (the summary
-// is a convenience; the transcript tool stays the source of truth).
-func (s *Service) outcomeSummary(ctx context.Context, record store.AgentSession) string {
+// outcomeDetail returns the latest completed turn's final assistant text,
+// clipped head-and-tail, and the files the agent shared in that turn. Either
+// is empty when there is no completed turn or a read fails: the outcome is a
+// convenience, and the transcript and attachment list stay the source of truth.
+func (s *Service) outcomeDetail(ctx context.Context, record store.AgentSession) (string, []TurnAttachment) {
 	turns, err := s.Store.AgentSessionTurns(ctx, record.ID)
 	if err != nil {
 		log.Printf("agent-session outcome: list turns session=%s: %v", record.ID, err)
-		return ""
+		return "", nil
 	}
 	latest := -1
 	for _, t := range turns {
@@ -49,11 +50,15 @@ func (s *Service) outcomeSummary(ctx context.Context, record store.AgentSession)
 		}
 	}
 	if latest < 0 {
-		return ""
+		return "", nil
 	}
-	items, err := s.Store.AgentSessionTurnTail(ctx, record.ID, latest, outcomeTailBytesLimit, outcomeTailItems)
+	return s.outcomeSummary(ctx, record.ID, latest), s.outcomeFiles(ctx, record.ID, latest)
+}
+
+func (s *Service) outcomeSummary(ctx context.Context, sessionID string, turn int) string {
+	items, err := s.Store.AgentSessionTurnTail(ctx, sessionID, turn, outcomeTailBytesLimit, outcomeTailItems)
 	if err != nil {
-		log.Printf("agent-session outcome: read turn tail session=%s: %v", record.ID, err)
+		log.Printf("agent-session outcome: read turn tail session=%s: %v", sessionID, err)
 		return ""
 	}
 	for _, item := range items { // newest first
@@ -66,4 +71,22 @@ func (s *Service) outcomeSummary(ctx context.Context, record store.AgentSession)
 		}
 	}
 	return ""
+}
+
+func (s *Service) outcomeFiles(ctx context.Context, sessionID string, turn int) []TurnAttachment {
+	if s.AttachmentRows == nil {
+		return nil
+	}
+	rows, err := s.AttachmentRows.ListAgentSessionAttachments(ctx, sessionID, store.AgentAttachmentListQuery{
+		Direction: store.AgentAttachmentOutput, Turn: turn, Limit: store.MaxAgentSessionAttachments,
+	})
+	if err != nil {
+		log.Printf("agent-session outcome: list shared files session=%s: %v", sessionID, err)
+		return nil
+	}
+	files := make([]TurnAttachment, 0, len(rows))
+	for _, a := range rows {
+		files = append(files, TurnAttachment{ID: a.ID, Name: a.Name, MediaType: a.MediaType, Size: a.SizeBytes})
+	}
+	return files
 }

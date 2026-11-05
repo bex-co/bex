@@ -1082,9 +1082,9 @@ func (s *Service) Get(ctx context.Context, sessionID string) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
-	// The summary costs a transcript read, so only the single-session read
-	// pays it; list pages carry the outcome without it.
-	view.Outcome.Summary = s.outcomeSummary(ctx, record)
+	// The summary and shared files cost reads, so only the single-session read
+	// pays them; list pages carry the outcome without them.
+	view.Outcome.Summary, view.Outcome.Files = s.outcomeDetail(ctx, record)
 	return view, nil
 }
 

@@ -257,8 +257,8 @@ type View struct {
 
 // Outcome is the compact account of where a session stands (ADR094 D7): its
 // state, whether it accepts a message, the latest turn's final answer, and
-// what it delivered. result (structured output) and cost arrive with later
-// milestones and stay absent until then.
+// what it delivered: the PR and the files it shared. result (structured
+// output) and cost arrive with later milestones and stay absent until then.
 type Outcome struct {
 	State     string `json:"state"`
 	Steerable bool   `json:"steerable"`
@@ -269,6 +269,11 @@ type Outcome struct {
 	PullRequest       *PullRequest `json:"pullRequest,omitempty"`
 	DeliveryNote      string       `json:"deliveryNote,omitempty"`
 	FailureReasonCode string       `json:"failureReasonCode,omitempty"`
+	// Files are the files the agent shared (share_file) in the same turn as
+	// Summary (ADR095 D11). Fetch one with get_agent_attachment / …/content.
+	// Like Summary it is computed only on the single-session read and wait, so
+	// a list page omits it rather than reporting "no files".
+	Files []TurnAttachment `json:"files,omitempty"`
 }
 
 // PullRequest is the PR the agent opened for the session (ADR090).
@@ -363,7 +368,8 @@ type TranscriptTurn struct {
 	Attachments []TurnAttachment `json:"attachments"`
 }
 
-// TurnAttachment is one file a turn attached, as recorded when it was accepted.
+// TurnAttachment is one file of a turn: an input it attached, or a file the
+// agent shared in it (Outcome.Files).
 type TurnAttachment struct {
 	ID        string `json:"id"`
 	Name      string `json:"name"`
