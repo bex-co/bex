@@ -1,6 +1,6 @@
 # w9 · m169 — ADR095 phase 2 — attachments in the `/agents` dashboard
 
-**Worker:** worker9 **Goal:** a dashboard user can paste, drop or pick files when starting or steering a session and sees them in the conversation. **Status:** todo — t001, t002, t004–t006 done; t003 live check once m168 has provisioned the bucket
+**Worker:** worker9 **Goal:** a dashboard user can paste, drop or pick files when starting or steering a session and sees them in the conversation. **Status:** done — live acceptance passed 2026-11-05 (see Live acceptance)
 
 ## Tasks (in order)
 
@@ -9,11 +9,11 @@
 | t001 | Upload client and attachment chips in both composers — **DONE** | 90m | — |
 | t002 | Render user-turn attachments: thumbnails, file cards, lightbox — **DONE** | 60m | t001 |
 | t008 | Allow the attachments storage origin in the dashboard CSP img-src — **DONE** | 20m | t006 |
-| t003 | Live dashboard verification at desktop and narrow mobile | 40m | t002 |
+| t003 | Live dashboard verification at desktop and narrow mobile — **DONE** | 40m | t002 |
 | t004 | Render parity (Devin reference) — **DONE** | 25m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 45m | t004, t005 |
-| t007 | Closeout | 10m | t006 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -100,3 +100,10 @@ Screenshots were removed from git in the 2026-11-04 history rewrite; the text ab
 **FAILED: raster thumbnails do not load in production.** The dashboard CSP is `img-src 'self' data: https://*.stripe.com` (`dashboard/vite.config.ts:356`). The browser blocks the presigned `https://s3.eu-central-2.wasabisys.com/...` URL, so the thumbnail and lightbox show a broken image. Downloads still work, because they navigate.
 
 **Fix.** Add the attachments storage origin (`https://s3.eu-central-2.wasabisys.com`, or derive it from config) to `img-src`, then re-verify a thumbnail loads.
+
+## Live acceptance (2026-11-05, production at `dcdc774c1`)
+
+- **PASS, thumbnail and lightbox (previously blocked by CSP).** Live CSP `img-src` now includes `https://s3.eu-central-2.wasabisys.com`.
+  - On a session whose turn 1 carried `shot.png` and `build.log`, at 1280 px: the thumbnail loaded from Wasabi (naturalWidth 96), clicking it opened a dialog with the loaded image, and the `build.log` download card showed "165 B".
+  - At 390 px: the thumbnail and lightbox loaded the same way, with no horizontal overflow.
+- **Composer flow** (paste, picker, chips, remove → DELETE 204, follow-up attach) passed in the 2026-11-04 run and was not repeated. A new send with files would hit the m168 copy blocker at dispatch; the user turn still renders.

@@ -557,6 +557,11 @@ func (r terminatedReader) Read(p []byte) (int, error) {
 // copyArchive validates before forwarding each member, strips owners and
 // special permission bits, and supplies end markers only after the complete
 // source (including its gzip checksum, when present) has been verified.
+// ValidateArchive applies the extraction rules copyArchive enforces without
+// writing anything, so a producer of upload archives can prove its output is
+// one the gateway accepts.
+func ValidateArchive(src io.Reader) error { return copyArchive(io.Discard, src) }
+
 func copyArchive(dst io.Writer, src io.Reader) error {
 	tr := tar.NewReader(terminatedReader{src})
 	tw := tar.NewWriter(&boundedWriter{writer: dst, remaining: files.MaxTransferBytes})

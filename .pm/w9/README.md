@@ -15,10 +15,10 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
-- [ ] **m168** — [ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery](m168/README.md) (10 tasks; t001–t009 **DONE**) — **next:** provision the production attachments bucket (user-authorized D1, 2026-11-04), then the live check
-- [ ] **m169** — [ADR095 phase 2 — attachments in the `/agents` dashboard](m169/README.md) (7 tasks; t001, t002, t004–t006 **DONE**) — **next:** live desktop + mobile check once m168 has provisioned the bucket
-- [ ] **m170** — [ADR095 phase 3 — agent-shared output files and the Files tab](m170/README.md) (7 tasks; t001–t006 **DONE**) — **next:** live share-a-CSV check once m168 has provisioned the bucket
-- [ ] **m171** — [ADR095 phase 4 — attachment tools on the MCP server](m171/README.md) (6 tasks; t001–t005 **DONE**) — **next:** live MCP-client check once m168 has provisioned the bucket
+- [ ] **m168** — [ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery](m168/README.md) (11 tasks; t001–t009, t011 **DONE**) — **next:** after the dispatch-archive fix deploys, re-run the agent-reads-attachments live check (t010)
+- [x] **m169** — [ADR095 phase 2 — attachments in the `/agents` dashboard](done/m169/README.md) — **DONE 2026-11-05:** live acceptance passed on production
+- [x] **m170** — [ADR095 phase 3 — agent-shared output files and the Files tab](done/m170/README.md) — **DONE 2026-11-05:** live acceptance passed on production
+- [x] **m171** — [ADR095 phase 4 — attachment tools on the MCP server](done/m171/README.md) — **DONE 2026-11-05:** live acceptance passed on production
 - [x] **m167** — [`bex edit`: the platform CLI delegates editing to bex desktop](done/m167/README.md) (8 tasks) ← user discussion 2026-11-02 — **DONE (2026-11-02):** `bex edit [path…|ags-id]` + strict path-shaped `bex <path>` exec `bex-desktop` (bex-desktop `ecfa77a9d1`, ADR002); installer notice for the old desktop link; CLI/backend contract tests, lint green.
 - [x] **074** — [Sandbox nodes join without gVisor: fail closed, catch template drift, stop calling it a capacity limit](done/074.md) — **DONE 2026-11-04:** 启动门禁 + MachineHealthCheck 已应用到生产，漂移检查无漂移，非容量启动失败改报 `SANDBOX_START_FAILED`
 - [x] **072** — [An image web service whose process binds a port other than its `EXPOSE` never goes live](done/072.md) — **DONE 2026-11-04:** the port scan keeps partial results and tries likely ports first (`0c66aa83d`); the original `WHOAMI_PORT_NUMBER=3000` recipe now goes live on production and serves 200

@@ -1,6 +1,6 @@
 # w9 · m171 — ADR095 phase 4 — attachment tools on the MCP server
 
-**Worker:** worker9 **Goal:** an MCP client can upload, attach, list and read agent attachments, including seeing shared images inline. **Status:** todo — t001–t005 done; t006 live MCP-client check once m168 has provisioned the bucket
+**Worker:** worker9 **Goal:** an MCP client can upload, attach, list and read agent attachments, including seeing shared images inline. **Status:** done — live acceptance passed 2026-11-05 (see Live acceptance)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Simplify — **DONE** | 15m | t003 |
 | t005 | Test coverage — **DONE** | 45m | t003, t004 |
 | t007 | Align the MCP upload limit with the /mcp request body limit — **DONE** | 20m | t005 |
-| t006 | Closeout | 10m | t005 |
+| t006 | Closeout — **DONE** | 10m | t005 |
 
 ## Definition of done
 
@@ -98,3 +98,13 @@ The client was the official `@modelcontextprotocol/sdk` 1.32.2 `StreamableHTTPCl
 - An upload of 1.4 MiB decoded succeeds; 1.6 MiB fails with a transport-level `413 request body exceeds 2097152 bytes`.
 - **Cause:** `/mcp` sits under the global `BEX_MAX_BODY_BYTES` (2 MiB) body limit, and base64 inflates the payload by about 4/3.
 - **Fix:** either exempt or raise the `/mcp` limit (about 6 MiB, enough for 4 MiB of base64 plus the JSON envelope), or lower `maxMCPUploadBytes` to about 1.5 MiB and update the tool description. Add a test at the real HTTP boundary.
+
+## Live acceptance (2026-11-05, production at `dcdc774c1`)
+
+- **PASS, using the official MCP TypeScript SDK 1.32.2 against `https://api.bex.co/mcp/cloud-agents` with a QA bearer.**
+  - `tools/list` includes the 4 attachment tools.
+  - `upload_agent_attachment` with 900 KiB succeeds (size 921600).
+  - 1 MiB + 1 byte returns the tool error `AGENT_ATTACHMENT_TOO_LARGE: an MCP upload is limited to 1 MiB; use REST POST /v1/agent-attachments for up to 25 MiB`, not a transport 413.
+  - `get_agent_attachment` on a PNG returns an `image/png` image block, byte-identical (339 B).
+  - `list_agent_session_attachments` lists a session's output.
+  - The test uploads were deleted with `delete_agent_attachment`.

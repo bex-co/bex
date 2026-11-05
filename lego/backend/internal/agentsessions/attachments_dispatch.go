@@ -137,10 +137,20 @@ func (s *Service) copyAttachments(ctx context.Context, workspaceID, sessionID, s
 }
 
 // writeAttachmentTar writes read-only regular files of exactly the recorded
-// size.
+// size. The gateway extracts only archives whose parent directories precede
+// their children and that never repeat a name, so each `<turn>/` directory is
+// written once, before its first file.
 func (s *Service) writeAttachmentTar(ctx context.Context, w io.Writer, files []store.AgentAttachment) error {
 	archive := tar.NewWriter(w)
+	dirs := map[string]bool{}
 	for _, a := range files {
+		if dir := strconv.Itoa(a.Turn); !dirs[dir] {
+			dirs[dir] = true
+			if err := archive.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: dir + "/",
+				Mode: 0o555, ModTime: a.CreatedAt}); err != nil {
+				return err
+			}
+		}
 		if err := archive.WriteHeader(&tar.Header{Typeflag: tar.TypeReg, Name: attachmentEntry(a),
 			Mode: 0o444, Size: a.SizeBytes, ModTime: a.CreatedAt}); err != nil {
 			return err

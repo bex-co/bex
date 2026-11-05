@@ -1,6 +1,6 @@
 # w9 · m168 — ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery
 
-**Worker:** worker9 **Goal:** a REST or GraphQL caller can upload a file, attach it to a new session or a follow-up, and the agent sees it in a fresh sandbox under `/attachments`. **Status:** todo — t001–t009 done; t010: provision the bucket (D1, 2026-11-04), then the live check
+**Worker:** worker9 **Goal:** a REST or GraphQL caller can upload a file, attach it to a new session or a follow-up, and the agent sees it in a fresh sandbox under `/attachments`. **Status:** todo — t001–t009, t011 done; t010: re-run the agent-reads-attachments live check once the t011 fix deploys
 
 ## Tasks (in order)
 
@@ -15,6 +15,7 @@
 | t007 | Render parity (Devin reference) — **DONE** | 25m | t004, t006 |
 | t008 | Simplify — **DONE** | 15m | t007 |
 | t009 | Test coverage — **DONE** | 45m | t007, t008 |
+| t011 | Dispatch archive writes each `<turn>/` directory before its files — **DONE** | 20m | t009 |
 | t010 | Closeout | 10m | t009 |
 
 ## Definition of done
@@ -118,3 +119,26 @@ The production bucket `bex-agent-attachments` was provisioned and verified (put/
 **Separate bug.** That runtime failure is reported to the customer as `SANDBOX_CAPACITY_LIMIT`, "the likely cause is this workspace's sandbox capacity (plan limit)". The node was nearly idle (3% CPU requested).
 
 **Cleanup.** Fixtures were deleted and their absence verified: sessions → 404, attachments → 404, no BatchSandbox or pods left.
+
+## Live acceptance (2026-11-05, production at `dcdc774c1`)
+
+- **FAIL — blocker found.** Dispatching a session with attachments fails with `ATTACHMENT_COPY_FAILED`. The bex-api log says `sandbox file gateway answered 400`, and the ssh-gateway log says `invalid or unsupported sandbox archive: parent directory must precede its children`.
+  - Root cause: the copy archive in `lego/backend/internal/agentsessions/attachments_dispatch.go:142-144` writes only `TypeReg` entries (`<turn>/<att-id>-<name>`) with no `TypeDir` header for `<turn>/`. The gateway's strict extractor (`lego/backend/internal/sshgateway/sandboxfiles/sandboxfiles.go:597`) rejects that.
+  - The unit tests used a fake copier, so they never exercised the real archive.
+  - Fix: emit a directory header for each turn directory before its files, and add a test that runs the real gateway extractor on the produced archive.
+- **PASS:**
+  - REST upload: `build.log` was sniffed as `text/plain` (165 B) and `shot.png` as `image/png` (339 B), with sha256 matching locally.
+  - `attachmentIds` on create bound both files.
+  - `GET …/content` returns a 302 to `s3.eu-central-2.wasabisys.com`. The downloads are byte-identical; the log is served as `attachment`, the PNG as `inline`.
+- **Not exercised** (blocked by the copy bug): the agent reading the files, and a follow-up turn with a file.
+- **Workspace.** Agent sessions ran in `bex` (`tea-d98210cbbpdc73dcrkvg`), the only QA workspace with `ready=true` and a model key. `bex-canary` reports `ready=false` / `modelKeyReady=false`.
+
+## Fix after live acceptance (2026-11-05): t011
+
+**Symptom.** Every agent session with an attachment failed `ATTACHMENT_COPY_FAILED`. bex-api logged `sandbox file gateway answered 400`; the gateway logged `parent directory must precede its children`.
+
+**Cause.** `writeAttachmentTar` (`lego/backend/internal/agentsessions/attachments_dispatch.go`) wrote only `<turn>/<att-id>-<name>` file entries. The gateway extractor requires each parent directory entry to come first, and allows no repeated names. Unit tests used a fake copier and never built a real archive.
+
+**Fix.** Each `<turn>/` directory is written once, before its first file. A new `sandboxfiles.ValidateArchive` exposes the gateway's real extraction rules, and `TestAttachmentTarIsAcceptedByTheGatewayExtractor` builds the archive for interleaved turns and checks it against them. Mutation-checked: without the fix, the test fails with the production error.
+
+**Next (t010).** After deploy, re-run the agent-reads-attachments check: a log and a PNG on create, plus a follow-up file, the agent quotes and describes them, and content downloads byte-exact.

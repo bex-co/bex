@@ -1,6 +1,6 @@
 # w9 · m170 — ADR095 phase 3 — agent-shared output files and the Files tab
 
-**Worker:** worker9 **Goal:** the agent can share files back (`share_file`) and users download them from the conversation, the Files tab or the API. **Status:** todo — t001–t006 done; t007 live share-a-CSV check once m168 has provisioned the bucket
+**Worker:** worker9 **Goal:** the agent can share files back (`share_file`) and users download them from the conversation, the Files tab or the API. **Status:** done — live acceptance passed 2026-11-05 (see Live acceptance)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity (Devin reference) — **DONE** | 25m | t002, t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 45m | t004, t005 |
-| t007 | Closeout | 10m | t006 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -92,3 +92,11 @@ The live DoD (a session writes a CSV, shares it, and it downloads from the dashb
 **Not run: `share_file`.** No agent sandbox can start on production right now (`containerd-shim-runsc-v1` missing on `bex-sandbox-cgqq6-vlvqv`; see m168's evidence). Re-run "write a CSV and share it" once sandboxes start.
 
 Note: shared-image cards will also hit the dashboard CSP `img-src` gap recorded in m169.
+
+## Live acceptance (2026-11-05, production at `dcdc774c1`)
+
+- **PASS.** A repo-less session with no attachments asked the agent to write `/tmp/qa-report.csv` and share it.
+  - The transcript shows the `mcp__bex__share_file` call returning `{attachmentId, name: qa-report.csv, mediaType: text/csv, size: 26}`.
+  - `GET /v1/agent-sessions/{id}/attachments?direction=output` lists it as turn 1, `output`, 26 B. The download is byte-identical to the expected 3-line CSV.
+  - In the dashboard at 1280 px, the "qa-report.csv 26 B" card renders after the activity group (it follows the tool steps in DOM order). The Files sheet lists "qa-report.csv · Agent · 1 · 26 B".
+- **Bonus.** The session's sandbox started and completed in about 45 s on the replaced gVisor node, which confirms the 074 fix end to end.
