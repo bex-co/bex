@@ -38,8 +38,8 @@ import (
 // stamp, the apply's last write, re-reads the workspace through the apply's
 // snapshot (forget), and the view reads what it listed (w5/141).
 type workspaceSnapshot struct {
-	s            *Service
-	tenantID     string
+	s        *Service
+	tenantID string
 	// rawApps is the workspace's one App listing, carriers included;
 	// appList is its services.
 	rawApps      *appv1alpha1.AppList

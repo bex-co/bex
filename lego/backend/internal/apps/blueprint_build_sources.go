@@ -75,19 +75,19 @@ type parsedBuildSource struct {
 	// svc is the carrier as a build-only service declaration; svc.req.Name is
 	// the build source's name until the create mints its id.
 	svc parsedService
+	// refVars are its fromDatabase / Key Value references, classified with
+	// the services' in parse pass 2.
+	refVars []envRef
 }
 
-// blueprintBuildSourceEnvError refuses a build-time env var form the carrier
-// cannot hold: a carrier has no runtime environment to seed or reference, so
-// only literal values are build-time variables.
+// blueprintBuildSourceEnvError refuses the one build-time env var form a
+// build source cannot hold: a reference to a service (its address or one of
+// its values). Build sources apply before services, so the build would run
+// before what it references exists; a Key Value's fromService is a datastore
+// reference and is served.
 func blueprintBuildSourceEnvError(name string, i int, e bexEnvVar) error {
-	switch {
-	case e.FromGroup != "", e.FromDatabase != nil, e.FromService != nil:
-		return atEnvEntry(i, fmt.Errorf("%w: build source %q envVars[%q]: build-time env vars take a literal value; references are not available on a build source", core.ErrBadRequest, name, e.Key))
-	case e.GenerateValue:
-		return atEnvEntry(i, fmt.Errorf("%w: build source %q envVars[%q]: generateValue is not available on a build source; set a literal value", core.ErrBadRequest, name, e.Key))
-	case e.Sync != nil && !*e.Sync:
-		return atEnvEntry(i, fmt.Errorf("%w: build source %q envVars[%q]: sync: false is not available on a build source; set a literal value", core.ErrBadRequest, name, e.Key))
+	if e.FromService != nil && !isKeyValueType(e.FromService.Type) {
+		return atEnvEntry(i, fmt.Errorf("%w: build source %q envVars[%q]: fromService a service is not available on a build source, which builds before the services it would reference", core.ErrBadRequest, name, e.Key))
 	}
 	return nil
 }
@@ -119,7 +119,7 @@ func parseBuildSource(overrides blueprintParseOverrides, b bexBuildSource, proje
 			return parsedBuildSource{}, err
 		}
 	}
-	req, _, err := parseService(overrides, decl)
+	req, se, err := parseService(overrides, decl)
 	if err != nil {
 		return parsedBuildSource{}, err
 	}
@@ -129,8 +129,9 @@ func parseBuildSource(overrides blueprintParseOverrides, b bexBuildSource, proje
 	}
 	req.buildSource = &buildSourceCreate{name: name}
 	return parsedBuildSource{
-		name: name, project: project, region: region, native: native,
-		svc: parsedService{req: req, fields: blueprintBuildSourceFields(fields), registryCredentialName: credName},
+		name: name, project: project, region: region, native: native, refVars: se.refVars,
+		svc: parsedService{req: req, fields: blueprintBuildSourceFields(fields), registryCredentialName: credName,
+			groupLinks: se.groupLinks, seedLiterals: se.seedLiterals, seedGenerates: se.seedGenerates, promptKeys: se.promptKeys, env: se},
 	}, nil
 }
 
@@ -283,6 +284,9 @@ func buildSourceProjectID(project string, groupings []parsedGrouping, assignment
 	if project == "" {
 		return "", nil
 	}
+	if assignment := assignments[blueprintGroupingKey(project, "")]; assignment.ProjectID != "" {
+		return assignment.ProjectID, nil
+	}
 	for _, g := range groupings {
 		if g.projectName != project {
 			continue
@@ -297,7 +301,7 @@ func buildSourceProjectID(project string, groupings []parsedGrouping, assignment
 // applyStackBuildSources creates or synchronizes each declared build source
 // before the services that link it, returning every carrier a service may
 // link (declared ones as applied, then the workspace's others).
-func (s *Service) applyStackBuildSources(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, snap *workspaceSnapshot, res *StackResult) (map[string]*appv1alpha1.App, error) {
+func (s *Service) applyStackBuildSources(ctx context.Context, st parsedStack, assignments map[string]core.EnvironmentAssignment, snap *workspaceSnapshot, dbRefs map[string]databaseRef, kvCRNames map[string]string, res *StackResult) (map[string]*appv1alpha1.App, error) {
 	if len(st.buildSources) == 0 && !st.linksBuildSources() {
 		return nil, nil
 	}
@@ -312,6 +316,11 @@ func (s *Service) applyStackBuildSources(ctx context.Context, st parsedStack, as
 		}
 		projectID, err := buildSourceProjectID(b.project, st.groupings, assignments)
 		if err != nil {
+			return nil, err
+		}
+		// Datastore references become the carrier's secret-ref env, which
+		// its build mounts; nothing else in a build source refers forward.
+		if _, err := resolveServiceRefs(&b.svc, dbRefs, kvCRNames, func(string) *appv1alpha1.App { return nil }, s.BaseDomain); err != nil {
 			return nil, err
 		}
 		carrier, err := s.applyStackBuildSource(ctx, b, projectID, existing[b.name])
@@ -333,13 +342,19 @@ func (s *Service) applyStackBuildSource(ctx context.Context, b parsedBuildSource
 		return nil, err
 	}
 	req := b.svc.req
+	// A new carrier links its groups as it is written, so its first build
+	// has them; an existing one links them before the update rebuilds it.
+	req.initialEnvGroups = b.svc.groupLinks
 	if current == nil {
 		id, err := s.createBuildSourceCarrier(ctx, req, b.name, projectID)
 		if err != nil {
 			return nil, err
 		}
 		_, carrier, err := s.buildSourceApp(ctx, core.RelCanView, id)
-		return carrier, err
+		if err != nil {
+			return nil, err
+		}
+		return carrier, s.seedBuildSourceEnv(ctx, b, carrier)
 	}
 	if b.project != "" {
 		scope, err := s.buildSourceScope(ctx, current)
@@ -356,10 +371,33 @@ func (s *Service) applyStackBuildSource(ctx context.Context, b parsedBuildSource
 	}
 	req.buildSource.shape(&desired)
 	ctx = core.WithBuildSources(ctx)
+	verbCtx, ref := stackServiceTarget(ctx, current)
+	for _, g := range b.svc.groupLinks {
+		if err := s.EnvGroups.LinkEnvGroup(verbCtx, g, ref); err != nil {
+			return nil, fmt.Errorf("linking env group %q: %w", g, err)
+		}
+	}
+	if err := s.seedBuildSourceEnv(ctx, b, current); err != nil {
+		return nil, err
+	}
 	if _, err := s.updateStackService(ctx, req, b.svc.fields, desired, current); err != nil {
 		return nil, err
 	}
 	return s.currentStackService(ctx, current)
+}
+
+// seedBuildSourceEnv seeds a carrier's sync: false and generateValue
+// build-time vars once, as a service's are: a later sync neither overwrites
+// nor re-mints them.
+func (s *Service) seedBuildSourceEnv(ctx context.Context, b parsedBuildSource, carrier *appv1alpha1.App) error {
+	if len(b.svc.seedLiterals) == 0 && len(b.svc.seedGenerates) == 0 {
+		return nil
+	}
+	verbCtx, ref := stackServiceTarget(core.WithBuildSources(ctx), carrier)
+	if err := s.EnvSeeder.SeedEnvVars(verbCtx, ref, b.svc.seedLiterals, b.svc.seedGenerates); err != nil {
+		return fmt.Errorf("seeding build-time env: %w", err)
+	}
+	return nil
 }
 
 // buildSourceScope is the project an existing carrier is scoped to; "" with
@@ -477,4 +515,56 @@ func (st *parsedStack) resolveBuildSourceIDs(links map[string]*appv1alpha1.App) 
 			st.services[i].req.BuildSourceID = core.AppPublicID(carrier)
 		}
 	}
+}
+
+// applyBlueprintSourceProjects finds or creates each project that declares
+// build sources and no environment, recording it under its project-only
+// grouping key for buildSourceProjectID.
+func (s *Service) applyBlueprintSourceProjects(ctx context.Context, names []string, assignments map[string]core.EnvironmentAssignment) error {
+	if len(names) == 0 {
+		return nil
+	}
+	tenantID, ok := s.Tenant(ctx)
+	if s.BlueprintGroups == nil || !ok {
+		return core.ErrWorkspacesUnavailable
+	}
+	projects, err := s.BlueprintGroups.ListProjects(ctx, tenantID)
+	if err != nil {
+		return fmt.Errorf("listing Blueprint projects: %w", err)
+	}
+	byName := make(map[string]store.Project, len(projects))
+	for _, p := range projects {
+		byName[p.Name] = p
+	}
+	var audits []groupingAuditEntry
+	for _, name := range names {
+		project, exists := byName[name]
+		if !exists {
+			projectCount, environmentCount, err := s.BlueprintGroups.CountWorkspaceGroupings(ctx, tenantID)
+			if err != nil {
+				return fmt.Errorf("counting Blueprint groupings: %w", err)
+			}
+			if err := s.blueprintGroupingQuota(projectCount+1, environmentCount); err != nil {
+				return err
+			}
+			if project, err = s.BlueprintGroups.CreateProject(ctx, tenantID, name); err != nil {
+				return fmt.Errorf("creating Blueprint project %q: %w", name, err)
+			}
+			byName[name] = project
+			audits = append(audits, groupingAuditEntry{action: "project_created", project: name})
+		}
+		assignments[blueprintGroupingKey(name, "")] = core.EnvironmentAssignment{ProjectID: project.ID}
+	}
+	s.emitGroupingAudits(ctx, tenantID, audits)
+	return nil
+}
+
+// envDeclarations are the declarations whose envVars the apply materializes:
+// every service, then every build source's carrier.
+func (st parsedStack) envDeclarations() []parsedService {
+	out := slices.Clone(st.services)
+	for _, b := range st.buildSources {
+		out = append(out, b.svc)
+	}
+	return out
 }

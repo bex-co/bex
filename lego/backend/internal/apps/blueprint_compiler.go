@@ -269,6 +269,11 @@ func blueprintProjectEnvironmentsProblems(object map[string]any, path []string, 
 	if _, declared := object["environments"]; declared {
 		return nil
 	}
+	// A project may hold only build sources (Render's 2026-10 schema); the
+	// apply creates the project itself for them (ADR097 § Blueprints).
+	if sources, _ := object["buildSources"].([]any); len(sources) > 0 {
+		return nil
+	}
 	pointer := renderSchemaPointer(path)
 	location := lookupBlueprintLocation(pointer, locations)
 	return []BlueprintSourceProblem{{

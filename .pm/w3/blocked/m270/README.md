@@ -36,3 +36,5 @@
 - **Gate:** the milestone's own why-now: closing waits on `w2/m254` closing (its next step is t016, production acceptance with the QA account). Then, with this milestone deployed, a live check on production: validate and sync a render.yaml that declares one git build source and two linked services through the QA account, see one carrier build feed both services, and re-sync as a no-op.
 - **Owner / release condition:** w2's worker closes m254; then any worker runs the live check (`scripts/qa-login.sh`) and t009.
 - **DoD note:** ADR018's row reads ◐, not ✅: two edge divergences remain and are filed as `w3/050` (buildSources-only projects; non-literal build-time env vars). Closeout should either land 050 first or record the user's acceptance of ◐.
+
+- **2026-11-05 update:** `w3/m275` closed the two residual gaps; ADR018's row now reads ✅, so the DoD note above is resolved. Only the w2/m254 + live production gate remains.

@@ -567,6 +567,9 @@ type parsedStack struct {
 	keyValues    []parsedKeyValue
 	buildSources []parsedBuildSource
 	groupings    []parsedGrouping
+	// sourceProjects are the projects that declare build sources but no
+	// environment: the apply creates them for their build sources' scope.
+	sourceProjects []string
 }
 
 type parsedGrouping struct {
@@ -895,6 +898,9 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err != nil {
 		return StackResult{}, err
 	}
+	if err := s.applyBlueprintSourceProjects(ctx, st.sourceProjects, assignments); err != nil {
+		return StackResult{}, err
+	}
 	// req.Confirm rides the context from here on — applyCreate's protection
 	// guard (requireUnprotected) reads it via core.ConfirmFrom, the same
 	// context seam Delete/Suspend's REST/GraphQL/MCP adapters use.
@@ -916,7 +922,7 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 		if err := s.requireBlueprintExecution(ctx, req); err != nil {
 			return res, err
 		}
-		carriers, err := s.applyStackBuildSources(ctx, st, assignments, snap, &res)
+		carriers, err := s.applyStackBuildSources(ctx, st, assignments, snap, dbRefs, kvCRNames, &res)
 		if err != nil {
 			return res, err
 		}
@@ -1281,7 +1287,7 @@ func undeclaredBlueprintRefs(st parsedStack) (databases, keyValues map[string]bo
 
 	databases = map[string]bool{}
 	keyValues = map[string]bool{}
-	for _, service := range st.services {
+	for _, service := range st.envDeclarations() {
 		for _, ref := range service.databaseRefs {
 			if ref.FromDatabase != nil && !declaredDatabases[ref.FromDatabase.Name] {
 				databases[ref.FromDatabase.Name] = true
@@ -1945,7 +1951,7 @@ func (s *Service) preflightBlueprintEnv(ctx context.Context, st parsedStack) err
 	usesGroups := len(st.envGroups) > 0
 	usesSeed, usesCopy := false, false
 	var groupLinks []string
-	for _, svc := range st.services {
+	for _, svc := range st.envDeclarations() {
 		if len(svc.groupLinks) > 0 {
 			usesGroups = true
 			groupLinks = append(groupLinks, svc.groupLinks...)
@@ -2227,12 +2233,16 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 		return parsedStack{}, err
 	}
 	buildSources := mergeDecls(m.BuildSources, ungrouped.BuildSources, false)
+	var sourceProjects []string
 	for _, project := range m.Projects {
 		for _, b := range project.BuildSources {
 			buildSources = append(buildSources, decl[bexBuildSource]{value: b, grouping: strings.TrimSpace(project.Name)})
 		}
+		if len(project.BuildSources) > 0 && len(project.Environments) == 0 {
+			sourceProjects = append(sourceProjects, strings.TrimSpace(project.Name))
+		}
 	}
-	st := parsedStack{groupings: groupings}
+	st := parsedStack{groupings: groupings, sourceProjects: sourceProjects}
 	if len(services) == 0 && len(databases) == 0 && len(envGroups) == 0 && len(buildSources) == 0 {
 		return parsedStack{}, fmt.Errorf("%w: render.yaml must define at least one service, database, env group, build source, or project environment resource", core.ErrBadRequest)
 	}
@@ -2347,6 +2357,17 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 
 	// Pass 2: classify each pending service's deferred references now that
 	// every name, port, and known-env is available.
+	for i := range st.buildSources {
+		b := &st.buildSources[i]
+		for j := range b.refVars {
+			slugRefNames(&b.refVars[j].bexEnvVar)
+		}
+		svc, err := idx.classifyRefs(b.svc, b.refVars)
+		if err != nil {
+			return parsedStack{}, blueprintResourceErrors{{kind: BlueprintResourceBuildSource, name: b.name, err: err}}
+		}
+		b.svc = svc
+	}
 	for _, p := range pendings {
 		if b, ok := parsedBlueprintBuildSource(st, p.svc.req.blueprintBuildSource); ok {
 			if err := checkDeclaredBuildSourceLink(p.svc, b); err != nil {

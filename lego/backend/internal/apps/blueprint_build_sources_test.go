@@ -18,10 +18,12 @@ package apps
 
 import (
 	"errors"
+	"slices"
 	"strings"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -102,8 +104,6 @@ func TestBlueprintBuildSourceRefusals(t *testing.T) {
 	for name, manifest := range map[string]string{
 		"native without start": strings.Replace(buildSourceBlueprint, "    startCommand: node api.js\n", "", 1),
 		"docker with start":    strings.Replace(buildSourceBlueprint, "runtime: node", "runtime: docker", 1),
-		"reference env var":    strings.Replace(buildSourceBlueprint, "          value: production", "          fromDatabase: {name: db, property: connectionString}", 1),
-		"generated env var":    strings.Replace(buildSourceBlueprint, "          value: production", "          generateValue: true", 1),
 	} {
 		t.Run(name, func(t *testing.T) {
 			source, ir, problems := CompileBlueprintIR(manifest)
@@ -398,5 +398,99 @@ func TestBlueprintBuildSourcePlanNamesAnOmittedField(t *testing.T) {
 		if a.Kind == BlueprintResourceBuildSource && (a.Operation != BlueprintPlanUpdate || len(a.ChangedFields) != 1 || a.ChangedFields[0].Path != "git.buildFilter") {
 			t.Fatalf("build source action = %+v, want an update of git.buildFilter", a)
 		}
+	}
+}
+
+// A project that declares only build sources applies (Render's 2026-10
+// schema): its build sources are scoped to it, and a missing project is
+// created for them. A project with neither is still refused (w3/m275).
+func TestBlueprintBuildSourcesOnlyProject(t *testing.T) {
+	const manifest = `projects:
+  - name: p
+    buildSources:
+      - name: mono
+        image: {url: nginx:1}
+`
+	requireOneProblem(t, "projects:\n  - name: p\n", "BLUEPRINT_PROJECT_ENVIRONMENTS_REQUIRED", "#/projects/0", "at least one environment")
+
+	svc, st, ctx := newBuildSourceService(t)
+	groups := &blueprintGroupingTestStore{recordingStore: st.recordingStore, projects: []store.Project{{ID: "prj-a", TenantID: "tea-a", Name: "p"}}}
+	svc.BlueprintGroups = groups
+	res, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: manifest})
+	if err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	if len(res.BuildSources) != 1 || st.rows[res.BuildSources[0].ID].ScopeProjectID != "prj-a" {
+		t.Fatalf("build sources = %+v, want mono scoped to prj-a", res.BuildSources)
+	}
+
+	assignments := map[string]core.EnvironmentAssignment{}
+	if err := svc.applyBlueprintSourceProjects(core.WithWorkspace(ctx, "tea-a"), []string{"fresh"}, assignments); err != nil {
+		t.Fatal(err)
+	}
+	created := assignments[blueprintGroupingKey("fresh", "")].ProjectID
+	if created == "" || len(groups.projects) != 2 || groups.projects[1].Name != "fresh" || groups.projects[1].ID != created {
+		t.Fatalf("projects = %+v, assignment %q; want fresh created and assigned", groups.projects, created)
+	}
+}
+
+// A build source's envVars take a service's forms (w3/m275): generateValue is
+// seeded once into the carrier's store, fromGroup links the group to the
+// carrier, fromDatabase becomes a secret-ref build env var; only a reference
+// to a service, which builds after it, is refused.
+func TestBlueprintBuildSourceEnvForms(t *testing.T) {
+	const manifest = `envVarGroups:
+  - name: shared
+    envVars:
+      - key: FLAG
+        value: "1"
+databases:
+  - name: db
+    plan: free
+buildSources:
+  - name: mono
+    git:
+      repo: https://github.com/acme/mono
+      runtime: docker
+      envVars:
+        - key: TOKEN
+          generateValue: true
+        - fromGroup: shared
+        - key: DATABASE_URL
+          fromDatabase: {name: db, property: connectionString}
+`
+	svc, _, ctx := newBuildSourceService(t)
+	groups, seeder := newFakeEnvGroups(), &fakeSeeder{}
+	svc.EnvGroups, svc.EnvSeeder = groups, seeder
+	res, err := svc.DeployStack(ctx, DeployRequest{OwnerID: "tea-a", Manifest: manifest})
+	if err != nil {
+		t.Fatalf("DeployStack: %v", err)
+	}
+	id := res.BuildSources[0].ID
+	carrier := getTenantApp(t, svc.Client, "tea-a", id)
+	ref := stackServiceRef(carrier)
+	if !slices.Contains(groups.links, "shared->"+ref) {
+		t.Errorf("group links = %v, want shared linked to %s", groups.links, ref)
+	}
+	if len(seeder.seeds) != 1 || seeder.seeds[0].service != ref || !slices.Equal(seeder.seeds[0].generates, []string{"TOKEN"}) {
+		t.Errorf("seeds = %+v, want TOKEN generated once on %s", seeder.seeds, ref)
+	}
+	var dbEnv *appv1alpha1.EnvVar
+	for i := range carrier.Spec.Env {
+		if carrier.Spec.Env[i].Name == "DATABASE_URL" {
+			dbEnv = &carrier.Spec.Env[i]
+		}
+	}
+	if dbEnv == nil || dbEnv.ValueFrom == nil || dbEnv.ValueFrom.SecretKeyRef == nil {
+		t.Fatalf("carrier env = %+v, want DATABASE_URL from the database's Secret", carrier.Spec.Env)
+	}
+
+	refused := strings.Replace(manifest, "fromDatabase: {name: db, property: connectionString}", "fromService: {type: web, name: api, property: host}", 1)
+	source, ir, problems := CompileBlueprintIR(refused)
+	if len(problems) > 0 {
+		t.Fatalf("compile: %+v", problems)
+	}
+	if _, err := parseCompiledStack(blueprintParseOverrides{}, source, ir); !errors.Is(err, core.ErrBadRequest) || !strings.Contains(err.Error(), "builds before the services") {
+		t.Fatalf("fromService a service = %v, want a named refusal", err)
 	}
 }
