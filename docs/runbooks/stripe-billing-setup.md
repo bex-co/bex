@@ -117,7 +117,7 @@ stripe webhook_endpoints create \
   -d 'enabled_events[10]=customer.updated'
 ```
 
-`customer.updated` (w2/070) audits a default-card change made in the Billing Portal as `UpdateWorkspacePaymentMethodEvent`. An endpoint created before it lacks that event; `scripts/stripe-billing-setup.py --webhook-url <url> --add-missing-webhook-events` (add `--live` for production) appends the missing events to that one endpoint without removing any, and refuses every other drift.
+`customer.updated` (w2/070) audits a default-card change made in the Billing Portal as `UpdateWorkspacePaymentMethodEvent`. An endpoint created before it lacks that event; `scripts/stripe-billing-setup.py --webhook-url <url> --add-missing-webhook-events` (add `--live` for production) appends the missing events to that one endpoint without removing any, refuses every other drift, and runs no other setup step.
 
 Capture the returned signing `secret` once and store it out of band as `BEX_STRIPE_WEBHOOK_SECRET`. It is a distinct credential from the restricted API key. Do not paste it into git, `.env.example`, logs, or a ticket.
 

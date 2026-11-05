@@ -439,6 +439,14 @@ def main(live=False, tax_code=None, tax_behavior=None, dashboard_url=None, webho
          add_missing_webhook_events=False):
     global STRIPE_GLOBAL_ARGS
     STRIPE_GLOBAL_ARGS = ["--live"] if live else []
+    if add_missing_webhook_events:
+        # The endpoint repair alone: no catalog, portal or tax work runs, so the
+        # one change this mode can make is appending events to bex's endpoint.
+        if not webhook_url:
+            raise RuntimeError("--add-missing-webhook-events needs --webhook-url")
+        webhook_id, webhook_status = ensure_webhook_endpoint(webhook_url, live, True)
+        print(f"webhook endpoint: {webhook_status} ({webhook_id})")
+        return
     dims = parse_pricing()
     meters = existing_meters()
     coupons = existing_coupons()
@@ -471,7 +479,7 @@ def main(live=False, tax_code=None, tax_behavior=None, dashboard_url=None, webho
         print("  skipped (pass --dashboard-url to provision the scoped portal)")
 
     print("\n== Billing webhook endpoint ==")
-    webhook_id, webhook_status = ensure_webhook_endpoint(webhook_url, live, add_missing_webhook_events)
+    webhook_id, webhook_status = ensure_webhook_endpoint(webhook_url, live)
     if webhook_id:
         print(f"  endpoint: {webhook_status} ({webhook_id})")
         print("  feed the signing secret to stripe-billing-secret.sh as BEX_STRIPE_WEBHOOK_SECRET")
@@ -517,8 +525,8 @@ if __name__ == "__main__":
     parser.add_argument(
         "--add-missing-webhook-events",
         action="store_true",
-        help="with --webhook-url: append handled events the existing endpoint lacks "
-             "(never removes one); refuses any other drift",
+        help="with --webhook-url: ONLY append handled events the existing endpoint lacks "
+             "(never removes one; refuses any other drift); skips every other setup step",
     )
     args = parser.parse_args()
     try:

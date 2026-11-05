@@ -332,6 +332,19 @@ class StripeBillingSetupTest(TestCase):
                     SETUP.ensure_webhook_endpoint(url, live=True, add_missing_events=flag)
                 stripe.assert_not_called()
 
+    def test_add_missing_webhook_events_mode_touches_only_the_endpoint(self):
+        # w2/070: the repair mode runs no catalog, portal or tax step.
+        with mock.patch.object(SETUP, "ensure_webhook_endpoint", return_value=("we_ok", "updated")) as ensure, \
+                mock.patch.object(SETUP, "parse_pricing") as pricing, \
+                mock.patch.object(SETUP, "stripe") as stripe:
+            SETUP.main(live=True, webhook_url="https://api.bex.co/v1/webhooks/stripe",
+                       add_missing_webhook_events=True)
+            ensure.assert_called_once_with("https://api.bex.co/v1/webhooks/stripe", True, True)
+            pricing.assert_not_called()
+            stripe.assert_not_called()
+        with self.assertRaisesRegex(RuntimeError, "needs --webhook-url"):
+            SETUP.main(add_missing_webhook_events=True)
+
     def test_portal_configuration_rejects_non_origin_urls(self):
         for url in (
             "http://dashboard.bex.co",

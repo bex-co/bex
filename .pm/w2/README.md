@@ -42,7 +42,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] [067 — The audit log records a workspace payment-method change, as Render's does](done/067.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [068 — Scope refusals: Render now names `insufficient_token_scope`; bex answers `INSUFFICIENT_SCOPE`](done/068.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [069 — Blueprint create with `existingResources: create_new`](done/069.md) ← w2/m256 (variant of the shipped `adopt`) — **PROMOTED 2026-11-03** to m261
-- [ ] [070 — Audit payment-method changes made in the Stripe-hosted portal](070.md) — 2026-11-04 解阻（D4=A）：worker 实现 handler，并只追加 bex endpoint 的 `customer.updated`
+- [ ] [070 — Audit payment-method changes made in the Stripe-hosted portal](blocked/070.md) — **BLOCKED (user: run `python3 scripts/stripe-billing-setup.py --live --webhook-url https://api.bex.co/v1/webhooks/stripe --add-missing-webhook-events` — the classifier denied the agent this live Stripe write; handler already shipped)**
 - [x] [071 — Build Sources follow-ups from the w2/m254 parity pass](done/071.md) ← w2/m254 t009 — **PROMOTED 2026-11-03** to m262
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
