@@ -15,7 +15,9 @@
 #   DENY probes: cross-workspace pod and Service, platform services (bex-api,
 #                OpenBao, Prometheus, zot), cloud metadata (169.254.169.254), and
 #                the node's own IP (kubelet :10250) — must be REFUSED or TIME OUT
-#   ALLOW probes: same-workspace private service, public internet — must SUCCEED
+#   ALLOW probes: same-workspace (paid) private service, public internet — must
+#                SUCCEED. A Free web service takes no private traffic, as on
+#                Render (ADR022 § Free-plan private-network ingress, w8/m130).
 # followed by the w7/m2 hardening section (PSS baseline admission, pod
 # securityContext, SA-token automount, ResourceQuota/LimitRange), read off
 # workspace A's namespace rather than a shared one.
@@ -354,7 +356,10 @@ log "creating test Apps in their own workspace namespaces..."
 # Every App's namespace equals its app.bex.co/workspace label — the only shape
 # AppReconciler.canonicalNamespace accepts outside the bootstrap namespace.
 
-# App A — workspace A
+# App A — workspace A: the same-workspace ALLOW target, so a paid private
+# service. An App with no tier is Free, and the operator labels Free pods
+# app.bex.co/free-plan, which deny-free-plan-private-ingress blocks from
+# every workspace pod (w8/m130) — that made this probe red from 2026-10-27.
 kubectl apply -n "$WS_A" -f - <<EOF
 apiVersion: app.bex.co/v1alpha1
 kind: App
@@ -364,12 +369,15 @@ metadata:
   labels:
     app.bex.co/workspace: $WS_A
 spec:
+  type: private_service
+  tier: starter
   image: traefik/whoami
   port: 80
   expose: false
 EOF
 
-# App B — workspace B
+# App B — workspace B: paid too, or the cross-workspace DENY probes below would
+# pass on the Free-plan deny alone, without testing namespace isolation.
 kubectl apply -n "$WS_B" -f - <<EOF
 apiVersion: app.bex.co/v1alpha1
 kind: App
@@ -379,6 +387,8 @@ metadata:
   labels:
     app.bex.co/workspace: $WS_B
 spec:
+  type: private_service
+  tier: starter
   image: traefik/whoami
   port: 80
   expose: false
@@ -492,7 +502,7 @@ fi
 echo ""
 echo "=== ALLOW probes (expected: CONNECTED) ==="
 
-# same-workspace: probe-a → App A service in the same namespace (private)
+# same-workspace: probe-a → App A, a paid private service in the same namespace
 probe_allow_nc "same-workspace-private-service" probe-a "$APP_A.$WS_A.svc" 80
 
 # public internet egress — the counter-assertion for the metadata + node DENY
