@@ -353,6 +353,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **497** — [The env editor's two file pickers leave a second, focusable "Choose File" control behind their visible button](497.md) — todo (~15m) ← live `/qa-find-bugs w4` loop round 76, 2026-11-05 UTC (pin `c8bbc07cbeeb`; minor, a11y). `env-import-dialog.tsx:161-170`, `service-environment-editor.tsx:896-906` use `sr-only`; `attachment-chips.tsx` uses `hidden`.
 - [ ] **496** — [Every workspace's usage coverage has been `partial` since the month began (`through` stuck at 2026-11-01, every source degraded)](496.md) — todo (investigate ~45m) ← live `/qa-find-bugs w4` loop round 74, 2026-11-05 UTC (pin `c8bbc07cbeeb`; **major, cause unverified**, billing integrity). Start at `store/usage.go:309` `CurrentUsageCoverage`.
 - [ ] **495** — [The Billing page's "Partial data" caveat keeps its explanation in a hover-only `title`](495.md) — todo (~15m) ← live `/qa-find-bugs w4` loop round 74, 2026-11-05 UTC (pin `c8bbc07cbeeb`; minor, a11y). `usage/components/charges-card.tsx:232-258`.
 - [ ] **494** — [An out-of-range Max shutdown delay just greys out Save, with no message saying why](494.md) — todo (~15m) ← live `/qa-find-bugs w4` loop round 70, 2026-11-05 UTC (pin `c8bbc07cbeeb`; minor). `max-shutdown-delay-row.tsx:35-43` puts the range rule in `dirty` instead of `EditableFieldRow`'s `validate`.
