@@ -2332,11 +2332,14 @@ func (r *AppReconciler) backfillWorkloadPullSecrets(ctx context.Context, app *ap
 const annotRotateRegistryCreds = "bex.co/rotate-registry-creds"
 
 // appNeedsRegistryCred reports whether the App needs a platform-registry
-// credential: it will build+push to our registry (Repo-based) or already has a
-// registry-hosted image in spec or status.
+// credential: it will build+push to our registry (Repo-based), already has a
+// registry-hosted image in spec or status, or runs a linked build source's
+// registry-hosted build, which copyLinkedBuild copies into its own repository
+// and the deploy gate then pulls (w2/m254 t018).
 func (r *AppReconciler) appNeedsRegistryCred(app *appv1alpha1.App) bool {
 	return app.Spec.Repo != "" || r.registryHosted(app.Spec.Image) ||
-		r.registryHosted(app.Status.Image) || r.registryHosted(app.Status.ArtifactImage)
+		r.registryHosted(app.Status.Image) || r.registryHosted(app.Status.ArtifactImage) ||
+		(app.Spec.BuildSource != nil && r.registryHosted(app.Spec.BuildSource.Image))
 }
 
 // ensurePerAppRegistryCreds mints per-App pull credentials (w7/m36) when
@@ -6394,6 +6397,8 @@ func (r *AppReconciler) awaitRegistryCredActive(ctx context.Context, app *appv1a
 	active, err := r.PerAppRegistry.EnsureActiveFor(ctx, appIdentity(app), app.Namespace)
 	if err != nil {
 		logf.FromContext(ctx).Error(err, logMsg, "app", app.Name)
+		// The held rollout explains itself on the App, not only in the log.
+		r.setPhase(ctx, app, phase, reasonRegistryCredsPending, waitMsg)
 		return ctrl.Result{RequeueAfter: 15 * time.Second}, true
 	}
 	if !active {

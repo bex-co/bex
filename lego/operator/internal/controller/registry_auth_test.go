@@ -631,3 +631,29 @@ func findContainer(containers []corev1.Container, name string) *corev1.Container
 	}
 	return nil
 }
+
+// A service linked to a build source carries no Repo or Image of its own; its
+// registry-hosted build image still needs the App's pull credential, or the
+// deploy gate waits forever for a secret nothing mints (w2/m254 t018).
+func TestAppNeedsRegistryCredForALinkedBuildSource(t *testing.T) {
+	r := &AppReconciler{Registry: "zot.bex-registry.svc:5000"}
+	linked := func(image string) *appv1alpha1.App {
+		return &appv1alpha1.App{Spec: appv1alpha1.AppSpec{BuildSource: &appv1alpha1.BuildSourceLink{Name: "bds", Image: image}}}
+	}
+	cases := []struct {
+		name string
+		app  *appv1alpha1.App
+		want bool
+	}{
+		{"linked, registry-hosted build", linked("zot.bex-registry.svc:5000/ws/ws-bds-x:gen-2@sha256:abc"), true},
+		{"linked, no build yet", linked(""), false},
+		{"linked, external image", linked("docker.io/library/nginx:1"), false},
+		{"repo", &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Repo: "https://github.com/octo/app"}}, true},
+		{"external image only", &appv1alpha1.App{Spec: appv1alpha1.AppSpec{Image: "docker.io/library/nginx:1"}}, false},
+	}
+	for _, tc := range cases {
+		if got := r.appNeedsRegistryCred(tc.app); got != tc.want {
+			t.Errorf("%s: appNeedsRegistryCred = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+}

@@ -213,6 +213,25 @@ var _ = Describe("Per-App registry pull credentials (w7/m36)", func() {
 		cleanupApp(r, name)
 	})
 
+	It("mints the pull Secret for a service linked to a build source (w2/m254 t018)", func() {
+		const name = "per-app-cred-linked"
+		r := newReconciler()
+		nn := types.NamespacedName{Name: name, Namespace: namespace}
+		Expect(k8sClient.Create(ctx, &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: name, Namespace: namespace},
+			Spec: appv1alpha1.AppSpec{Port: 3000, BuildSource: &appv1alpha1.BuildSourceLink{
+				Name: "bds-carrier", Image: registry_ + "/bds-carrier:gen-1@sha256:" + strings.Repeat("a", 64),
+			}},
+		})).To(Succeed())
+		for range 2 {
+			_, _ = r.Reconcile(ctx, reconcile.Request{NamespacedName: nn})
+		}
+		Expect(k8sClient.Get(ctx, types.NamespacedName{
+			Name: registry.PullSecretName(name), Namespace: namespace,
+		}, &corev1.Secret{})).To(Succeed())
+		cleanupApp(r, name)
+	})
+
 	It("revokes per-App credentials on App deletion", func() {
 		const name = "per-app-cred-revoke"
 		r := newReconciler()

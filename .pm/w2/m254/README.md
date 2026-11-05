@@ -19,7 +19,7 @@
 | t015 | Meter build source build minutes — **DONE** | 1h | t006 |
 | t016 | A native-runtime git build source never builds: the operator requires a startCommand the carrier never has — implemented, awaiting production verification | 1h | t006 |
 | t017 | A service linked to a native build source starts like a native service: native-init and bash — **DONE** | 1h | t016 |
-| t018 | A service linked to a build source never deploys: the operator gates it on a pull credential it never mints | 45m | t016 |
+| t018 | A service linked to a build source never deploys: the operator gates it on a pull credential it never mints — implemented 2026-11-05, awaiting production verification | 45m | t016 |
 | t009 | Render parity — **DONE** | 15m | t008, t013, t014, t015, t016, t017 |
 | t010 | Simplify — **DONE** | 15m | t009 |
 | t011 | Test coverage — **DONE** | 30m | t009 |
