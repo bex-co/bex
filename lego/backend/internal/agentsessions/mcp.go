@@ -106,6 +106,9 @@ type steerArgs struct {
 	Prompt          string   `json:"prompt"`
 	EgressAllowlist []string `json:"egressAllowlist,omitempty"`
 	AttachmentIDs   []string `json:"attachmentIds,omitempty"`
+	// OutputSchema and OutputRequired: this turn's structured-output contract (ADR094 D5).
+	OutputSchema   map[string]any `json:"outputSchema,omitempty" jsonschema:"a JSON Schema 2020-12 object (at most 64 KiB, no external $ref) the turn's result must satisfy; read it from outcome.result"`
+	OutputRequired *bool          `json:"outputRequired,omitempty" jsonschema:"default true when outputSchema is set: a turn that ends without a final valid result fails STRUCTURED_OUTPUT_MISSING"`
 }
 
 type uploadAttachmentArgs struct {
@@ -141,7 +144,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 		out, err := s.Create(ctx, in)
 		return nil, out, err
 	}
-	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_session", Description: "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one)."}, createSession)
+	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_session", Description: "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING."}, createSession)
 	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_agent_session", Description: "Alias of create_agent_session. Start a cloud coding-agent session on a repository; it does not return an attach ticket (call attach_agent_session for one)."}, createSession)
 	s.registerWaitMCP(server)
 	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_sessions", Description: "List cloud coding-agent sessions in a workspace: one filtered page, newest first. Defaults to the unarchived working set; archived selects false|true|all; cursor is the prior page's last session id (a shorter/empty page is the end)."},
@@ -239,10 +242,10 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	// send_agent_session_message is the canonical name for a follow-up turn
 	// (ADR094 D2); steer_agent_session stays as an alias.
 	sendMessage := func(ctx context.Context, _ *mcp.CallToolRequest, in steerArgs) (*mcp.CallToolResult, View, error) {
-		out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist, AttachmentIDs: in.AttachmentIDs})
+		out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist, AttachmentIDs: in.AttachmentIDs, OutputSchema: in.OutputSchema, OutputRequired: in.OutputRequired})
 		return nil, out, err
 	}
-	mcputil.AddTool(server, &mcp.Tool{Name: "send_agent_session_message", Description: "Send a follow-up message to a cloud coding-agent session: it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. The session must be steerable (state succeeded or failed, not archived or canceled)."}, sendMessage)
+	mcputil.AddTool(server, &mcp.Tool{Name: "send_agent_session_message", Description: "Send a follow-up message to a cloud coding-agent session: it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. The session must be steerable (state succeeded or failed, not archived or canceled). Pass outputSchema to require a machine-readable result for this turn, read from outcome.result."}, sendMessage)
 	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."}, sendMessage)
 	s.registerAttachmentMCP(server)
 }

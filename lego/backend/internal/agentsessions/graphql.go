@@ -1,6 +1,7 @@
 package agentsessions
 
 import (
+	"encoding/json"
 	"maps"
 	"slices"
 	"time"
@@ -265,8 +266,26 @@ var agentSessionOutcomeGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return v.Files
 		})},
+		"result": jsonTextField("The current turn's last valid final structured result (ADR094 D5) as JSON text, or null.", func(v Outcome) any { return v.Result }),
 	},
 })
+
+// jsonTextField is a nullable String field carrying a JSON value as text, the
+// way the transcript part is (GraphQL has no JSON scalar here). Null when the
+// value is absent.
+func jsonTextField[T any](description string, value func(T) any) *graphql.Field {
+	return &graphql.Field{Type: graphql.String, Description: description, Resolve: gqlutil.Field(func(v T) any {
+		raw := value(v)
+		if raw == nil {
+			return nil
+		}
+		text, err := json.Marshal(raw)
+		if err != nil {
+			return nil
+		}
+		return string(text)
+	})}
+}
 
 var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSession",
@@ -403,6 +422,10 @@ var transcriptTurnGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return gqlTime(*v.CompletedAt)
 		})},
+		"outputSchema":   jsonTextField("The JSON Schema the turn was accepted with (ADR094 D5), as JSON text, or null for a free-form turn.", func(v TranscriptTurn) any { return v.OutputSchema }),
+		"outputRequired": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.OutputRequired })},
+		"result":         jsonTextField("The agent's last valid structured result for the turn as JSON text, readable while the turn runs, or null.", func(v TranscriptTurn) any { return v.Result }),
+		"resultFinal":    &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Description: "The agent declared result final; only a final result becomes outcome.result.", Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.ResultFinal })},
 	},
 })
 
@@ -591,9 +614,15 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"egressAllowlist": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"idempotencyKey":  gqlutil.Arg(graphql.String),
 				"attachmentIds":   gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"outputSchema":    gqlutil.Arg(graphql.String),
+				"outputRequired":  gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Create(p.Context, CreateRequest{OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"])})
+				schema, required, err := outputArgs(p.Args)
+				if err != nil {
+					return nil, err
+				}
+				return s.Create(p.Context, CreateRequest{OutputSchema: schema, OutputRequired: required, OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"])})
 			},
 		},
 		"steerAgentSession": &graphql.Field{
@@ -603,9 +632,15 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"prompt":          gqlutil.ReqArg(graphql.String),
 				"egressAllowlist": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"attachmentIds":   gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"outputSchema":    gqlutil.Arg(graphql.String),
+				"outputRequired":  gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.Steer(p.Context, SteerRequest{SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"])})
+				schema, required, err := outputArgs(p.Args)
+				if err != nil {
+					return nil, err
+				}
+				return s.Steer(p.Context, SteerRequest{OutputSchema: schema, OutputRequired: required, SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"])})
 			},
 		},
 		"updateAgentEnvironment": &graphql.Field{

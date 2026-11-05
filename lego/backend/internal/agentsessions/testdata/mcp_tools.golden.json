@@ -156,6 +156,7 @@
                 "object"
               ]
             },
+            "result": true,
             "state": {
               "type": "string"
             },
@@ -413,6 +414,7 @@
                 "object"
               ]
             },
+            "result": true,
             "state": {
               "type": "string"
             },
@@ -667,6 +669,7 @@
                 "object"
               ]
             },
+            "result": true,
             "state": {
               "type": "string"
             },
@@ -771,7 +774,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one).",
+    "description": "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -823,6 +826,18 @@
         },
         "idempotencyKey": {
           "type": "string"
+        },
+        "outputRequired": {
+          "description": "default true when outputSchema is set: a turn that ends without a final valid result fails STRUCTURED_OUTPUT_MISSING",
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "outputSchema": {
+          "additionalProperties": true,
+          "description": "a JSON Schema 2020-12 object (at most 64 KiB, no external $ref) the turn's result must satisfy; read it from outcome.result",
+          "type": "object"
         },
         "ownerId": {
           "type": "string"
@@ -985,6 +1000,7 @@
                 "object"
               ]
             },
+            "result": true,
             "state": {
               "type": "string"
             },
@@ -1538,6 +1554,7 @@
                 "object"
               ]
             },
+            "result": true,
             "state": {
               "type": "string"
             },
@@ -2036,8 +2053,16 @@
               "deliveryMode": {
                 "type": "string"
               },
+              "outputRequired": {
+                "type": "boolean"
+              },
+              "outputSchema": true,
               "prompt": {
                 "type": "string"
+              },
+              "result": true,
+              "resultFinal": {
+                "type": "boolean"
               },
               "transcriptComplete": {
                 "type": "boolean"
@@ -2381,6 +2406,7 @@
                       "object"
                     ]
                   },
+                  "result": true,
                   "state": {
                     "type": "string"
                   },
@@ -2646,6 +2672,7 @@
                 "object"
               ]
             },
+            "result": true,
             "state": {
               "type": "string"
             },
@@ -2750,7 +2777,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Send a follow-up message to a cloud coding-agent session: it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. The session must be steerable (state succeeded or failed, not archived or canceled).",
+    "description": "Send a follow-up message to a cloud coding-agent session: it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. The session must be steerable (state succeeded or failed, not archived or canceled). Pass outputSchema to require a machine-readable result for this turn, read from outcome.result.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -2774,6 +2801,18 @@
         },
         "id": {
           "type": "string"
+        },
+        "outputRequired": {
+          "description": "default true when outputSchema is set: a turn that ends without a final valid result fails STRUCTURED_OUTPUT_MISSING",
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "outputSchema": {
+          "additionalProperties": true,
+          "description": "a JSON Schema 2020-12 object (at most 64 KiB, no external $ref) the turn's result must satisfy; read it from outcome.result",
+          "type": "object"
         },
         "prompt": {
           "type": "string"
@@ -2922,6 +2961,7 @@
                 "object"
               ]
             },
+            "result": true,
             "state": {
               "type": "string"
             },
@@ -3078,6 +3118,18 @@
         },
         "idempotencyKey": {
           "type": "string"
+        },
+        "outputRequired": {
+          "description": "default true when outputSchema is set: a turn that ends without a final valid result fails STRUCTURED_OUTPUT_MISSING",
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "outputSchema": {
+          "additionalProperties": true,
+          "description": "a JSON Schema 2020-12 object (at most 64 KiB, no external $ref) the turn's result must satisfy; read it from outcome.result",
+          "type": "object"
         },
         "ownerId": {
           "type": "string"
@@ -3240,6 +3292,7 @@
                 "object"
               ]
             },
+            "result": true,
             "state": {
               "type": "string"
             },
@@ -3368,6 +3421,18 @@
         },
         "id": {
           "type": "string"
+        },
+        "outputRequired": {
+          "description": "default true when outputSchema is set: a turn that ends without a final valid result fails STRUCTURED_OUTPUT_MISSING",
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "outputSchema": {
+          "additionalProperties": true,
+          "description": "a JSON Schema 2020-12 object (at most 64 KiB, no external $ref) the turn's result must satisfy; read it from outcome.result",
+          "type": "object"
         },
         "prompt": {
           "type": "string"
@@ -3516,6 +3581,7 @@
                 "object"
               ]
             },
+            "result": true,
             "state": {
               "type": "string"
             },
@@ -3770,6 +3836,7 @@
                 "object"
               ]
             },
+            "result": true,
             "state": {
               "type": "string"
             },
@@ -4253,6 +4320,7 @@
                       "object"
                     ]
                   },
+                  "result": true,
                   "state": {
                     "type": "string"
                   },

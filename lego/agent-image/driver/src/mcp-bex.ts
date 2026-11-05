@@ -23,6 +23,9 @@
 //     agent supplies only a title and a body.
 //   - share_file (when the deployment stores attachments) posts a file to the
 //     session's Pod-bound share URL.
+//   - submit_result (when the turn carries an outputSchema, ADR094 D5)
+//     validates a structured result against that schema and posts it to the
+//     session's Pod-bound result URL.
 // No secret is involved: the gateway authenticates the source Pod.
 //
 // The transport is newline-delimited JSON-RPC 2.0 over stdio, hand-rolled to
@@ -34,6 +37,11 @@ import { fileURLToPath } from "node:url";
 import { describeError } from "./errors.js";
 import { postToGateway, type ToolError } from "./gateway.js";
 import { writeJsonAtomic } from "./fs-util.js";
+import {
+  submitResult,
+  submitResultToolDefinition,
+  submitResultToolName,
+} from "./submit-result.js";
 import {
   shareFile,
   shareFileToolDefinition,
@@ -219,6 +227,9 @@ export function availableTools(
   const tools: Array<{ name: string }> = [];
   if (env.BEX_PR_ENDPOINT) tools.push(toolDefinition);
   if (env.BEX_SHARE_ENDPOINT) tools.push(shareFileToolDefinition);
+  if (env.BEX_RESULT_ENDPOINT && env.BEX_RESULT_SCHEMA) {
+    tools.push(submitResultToolDefinition);
+  }
   return tools;
 }
 
@@ -229,6 +240,9 @@ function serverInstructions(env: NodeJS.ProcessEnv): string {
   }
   if (env.BEX_SHARE_ENDPOINT) {
     lines.push(`Use ${shareFileToolName} to hand the user a file that should not be committed.`);
+  }
+  if (env.BEX_RESULT_ENDPOINT && env.BEX_RESULT_SCHEMA) {
+    lines.push(`Use ${submitResultToolName} to hand back this task's structured result.`);
   }
   return lines.join(" ");
 }
@@ -283,10 +297,13 @@ export async function handleMessage(
       if (!availableTools(env).some((tool) => tool.name === name)) {
         return rpcError(message.id, -32602, `unknown tool: ${String(name)}`);
       }
+      const args = message.params?.arguments;
       const outcome =
         name === shareFileToolName
-          ? await shareFile(message.params?.arguments, env)
-          : await openOrUpdateDraftPr(message.params?.arguments, env);
+          ? await shareFile(args, env)
+          : name === submitResultToolName
+            ? await submitResult(args, env)
+            : await openOrUpdateDraftPr(args, env);
       const structured = outcome.ok ? outcome.result : { error: outcome.error };
       return rpcResult(message.id, {
         content: [{ type: "text", text: JSON.stringify(structured) }],

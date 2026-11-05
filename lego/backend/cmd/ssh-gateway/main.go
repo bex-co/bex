@@ -290,6 +290,13 @@ func main() {
 			Secret: []byte(secret),
 		}
 
+		// ADR094 D5: the agent submits a turn's structured result through its
+		// Pod-bound result URL; bex-api validates it against the turn's schema.
+		credentials.Results = &agentsession.ResultClient{
+			URL:    envOr("BEX_AGENT_RESULT_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalResultPath),
+			Secret: []byte(secret),
+		}
+
 		modelAPIURL := envOr("BEX_AGENT_MODEL_CREDENTIAL_API_URL", "http://bex-api.bex-system.svc:8091"+agentsession.InternalModelMintPath)
 		model.Pods = agentcred.KubeSessionPodResolver{Client: clientset}
 		model.API = &agentsession.ModelClient{URL: modelAPIURL, Secret: []byte(secret)}
@@ -425,6 +432,7 @@ func main() {
 		credentialMux.Handle("GET "+agentsession.GitProxyPath, credentials.Handler())
 		credentialMux.Handle("POST "+agentsession.GitProxyPath, credentials.Handler())
 		credentialMux.Handle("POST "+agentsession.ShareFileProxyPath, credentials.ShareFileHandler())
+		credentialMux.Handle("POST "+agentsession.ResultProxyPath, credentials.ResultHandler())
 		defer startAuxListener("agent git proxy", "agent git proxy", envOr("BEX_AGENT_CREDENTIAL_ADDR", ":8082"), credentialMux, stop, metrics,
 			func(server *http.Server) {
 				server.ReadTimeout = durationEnv("BEX_AGENT_GIT_READ_TIMEOUT", 10*time.Minute)

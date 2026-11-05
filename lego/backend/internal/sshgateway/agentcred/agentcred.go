@@ -145,6 +145,9 @@ type Broker struct {
 	// Files is the bex-api share verb (ADR095 D6) behind ShareFileProxyPath.
 	// nil ⇒ the route answers unavailable.
 	Files ShareFileForwarder
+	// Results is the bex-api structured-result verb (ADR094 D5) behind
+	// ResultProxyPath. nil ⇒ the route answers unavailable.
+	Results ResultForwarder
 	// MaxResponseBytes bounds one streamed upstream response body; 0 means
 	// defaultMaxResponseBodyBytes. Exceeding it aborts the exchange loudly.
 	MaxResponseBytes int64

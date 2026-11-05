@@ -214,13 +214,13 @@ func (b bindingStore) CreateAgentSession(ctx context.Context, in store.AgentSess
 	return out, nil
 }
 
-func (b bindingStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, delivery, phase, status string, binding store.AgentAttachmentBinding) (store.AgentSession, error) {
+func (b bindingStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, delivery, phase, status string, binding store.AgentAttachmentBinding, output store.AgentTurnOutput) (store.AgentSession, error) {
 	row := b.fakeStore.rows[id]
 	snapshot, err := b.rows.bind(row.WorkspaceID, id, row.Turns+1, binding, true)
 	if err != nil {
 		return store.AgentSession{}, err
 	}
-	out, err := b.fakeStore.BeginAgentSessionTurn(ctx, id, prompt, delivery, phase, status, binding)
+	out, err := b.fakeStore.BeginAgentSessionTurn(ctx, id, prompt, delivery, phase, status, binding, output)
 	if err == nil {
 		b.setSnapshot(id, out.Turns, snapshot)
 	}

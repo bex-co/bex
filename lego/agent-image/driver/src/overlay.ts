@@ -23,6 +23,7 @@
 import type { AttachmentManifest } from "./attachments.js";
 import { toolName } from "./mcp-bex.js";
 import { shareFileToolName } from "./share-file.js";
+import { submitResultToolName } from "./submit-result.js";
 
 export const overlayVersion = 1;
 
@@ -39,6 +40,11 @@ export interface OverlayContext {
   networkTier?: string;
   attachments?: AttachmentManifest;
   shareUrl?: string;
+  // Structured output (ADR094 D5): the turn's JSON Schema text and its Pod-bound
+  // result URL. The section appears only when both are set.
+  outputSchema?: string;
+  resultUrl?: string;
+  outputRequired?: boolean;
 }
 
 function sessionSection(): string {
@@ -143,6 +149,34 @@ function sharingSection(context: OverlayContext): string {
 To hand the user a file that should not be committed, such as a report, a CSV, a screenshot or a generated image, call \`${shareFileToolName}\` with its path. The user sees it in the conversation and can download it. Code changes still belong in commits.`;
 }
 
+// compactSchema prints the schema once, indented, so the agent can read it.
+function compactSchema(schema: string): string {
+  try {
+    return JSON.stringify(JSON.parse(schema), null, 2);
+  } catch {
+    return schema;
+  }
+}
+
+// resultSection tells the agent this turn's answer is a structured result and
+// what it must satisfy (ADR094 D5); only turns that carry an outputSchema have it.
+function resultSection(context: OverlayContext): string {
+  if (!context.outputSchema || !context.resultUrl) return "";
+  const required =
+    context.outputRequired === false
+      ? "Submitting it is optional for this task, but the caller reads it instead of your prose."
+      : "The task is not complete until a final result is accepted.";
+  return `
+
+## Structured result
+
+The caller of this task reads a machine-readable result, not your prose. Call \`${submitResultToolName}\` with \`result\` set to a JSON value that satisfies this JSON Schema, and \`final: true\` once it is complete, before you end the turn. ${required} If the tool returns validation errors, fix the result and call it again; the last valid call wins. \`final: false\` saves a partial value without finishing. Still end with a short written summary.
+
+\`\`\`json
+${compactSchema(context.outputSchema)}
+\`\`\``;
+}
+
 // platformOverlay renders the overlay for this session. Repo sessions name the
 // concrete branch, base and PR tool; repo-less sessions get the scratch form.
 export function platformOverlay(context: OverlayContext): string {
@@ -154,6 +188,6 @@ export function platformOverlay(context: OverlayContext): string {
 
 This section comes from bex, the platform hosting this session. It adds to your existing instructions and does not replace them.
 
-${body}${attachmentsSection(context)}${sharingSection(context)}
+${body}${attachmentsSection(context)}${sharingSection(context)}${resultSection(context)}
 `;
 }

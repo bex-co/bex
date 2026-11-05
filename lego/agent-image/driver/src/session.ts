@@ -14,7 +14,7 @@
  * limitations under the License.
  */
 
-import { readFile, stat } from "node:fs/promises";
+import { readFile, rm, stat } from "node:fs/promises";
 import { createUIMessageStream } from "ai";
 import { createSessionProvider, type SessionProvider } from "./acp.js";
 import { createUpdateMapper } from "./acp-map.js";
@@ -31,6 +31,7 @@ import { writeJsonAtomic } from "./fs-util.js";
 import type { AgentDriverConfig } from "./config.js";
 import { attachmentBlocks } from "./attachments.js";
 import { platformOverlay } from "./overlay.js";
+import { readResultRecord, resultReminder } from "./submit-result.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 import { TurnLogSink } from "./turn-log.js";
 
@@ -55,6 +56,10 @@ export interface TurnResult extends StatusRecord {
   resume: SessionProvider["resume"];
   usage: unknown;
   git?: DeliveryStatus;
+  // Structured output (ADR094 D5), only on a turn that carries a schema:
+  // whether a final result was accepted and whether the one reminder was sent.
+  // Informational: bex-api decides from the result it stored itself.
+  output?: { final: boolean; reminded: boolean };
 }
 
 async function writeStatus(
@@ -188,6 +193,7 @@ export async function runHeadlessTurn(
   let promptResponse:
     Awaited<ReturnType<SessionProvider["prompt"]>> | undefined;
   let delivery: DeliveryStatus | undefined;
+  let output: { final: boolean; reminded: boolean } | undefined;
   const turnAbort = new AbortController();
   let rejectDeadline!: (error: Error) => void;
   const deadline = new Promise<never>((_, reject) => {
@@ -213,6 +219,8 @@ export async function runHeadlessTurn(
     if (!prompt)
       throw new Error("BEX_AGENT_PROMPT is required for a headless turn");
     await turnLog.open();
+    // A result recorded by an earlier run in this rootfs is not this turn's.
+    if (config.outputSchema) await rm(config.resultRecordPath, { force: true });
     await writeStatus(config.statusPath, { state: "running" });
     // createUIMessageStream's onError swallows an execute() throw into an error
     // chunk, so the consume loop below would otherwise resolve normally on an
@@ -260,6 +268,20 @@ export async function runHeadlessTurn(
                 ? await attachmentBlocks(config.attachments, provider.imagePrompts)
                 : [],
             );
+            if (config.outputSchema && config.resultUrl) {
+              // Exactly one reminder when a required result is still missing,
+              // inside the same turn and before the delivery check so that
+              // check reads the final tree. bex-api fails the turn
+              // STRUCTURED_OUTPUT_MISSING if it is still missing afterwards.
+              let final = (await readResultRecord(config.resultRecordPath)).final;
+              const reminded = config.outputRequired && !final;
+              if (reminded) {
+                for (const chunk of mapper.flush()) writer.write(chunk);
+                promptResponse = await provider.prompt(resultReminder());
+                final = (await readResultRecord(config.resultRecordPath)).final;
+              }
+              output = { final, reminded };
+            }
             if (config.deliver) {
               // Delivery check before the provider stops, so the one nudge
               // continues the same ACP session with the agent's full context.
@@ -306,6 +328,7 @@ export async function runHeadlessTurn(
       ...(continuityRung !== "none" ? { continuity: continuityRung } : {}),
       ...(resumedFrom ? { resumedFrom } : {}),
       ...(delivery ? { git: delivery } : {}),
+      ...(output ? { output } : {}),
     };
     await writeStatus(config.statusPath, status);
     return { ...status, usage: promptResponse?.usage ?? {} } as TurnResult;

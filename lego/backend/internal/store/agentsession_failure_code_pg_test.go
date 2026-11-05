@@ -80,7 +80,7 @@ func TestPGAgentSessionFailureCode(t *testing.T) {
 		want(t, row, capacity.Reason, capacity.Code)
 	})
 	t.Run("a new turn clears it", func(t *testing.T) {
-		row, err := s.BeginAgentSessionTurn(ctx, refused(t).ID, "try again", "", "redispatching", "redispatching", AgentAttachmentBinding{})
+		row, err := s.BeginAgentSessionTurn(ctx, refused(t).ID, "try again", "", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{})
 		if err != nil {
 			t.Fatal(err)
 		}

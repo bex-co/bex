@@ -73,6 +73,15 @@ export interface AgentDriverConfig {
   // The session's Pod-bound share URL (ADR095 D6) the bex MCP server's
   // share_file posts to; empty when the deployment has no attachments store.
   shareUrl: string;
+  // Structured output (ADR094 D5): the session's Pod-bound result URL, the
+  // turn's JSON Schema text and whether the turn must end with a final result.
+  // Empty when the turn is free-form (no submit_result tool, no reminder).
+  resultUrl: string;
+  outputSchema: string;
+  outputRequired: boolean;
+  // Driver-owned file where the bex MCP server records whether a final result
+  // was accepted, which drives the one reminder.
+  resultRecordPath: string;
   // The draft PR earlier turns of this session opened (empty on turn 1), so a
   // re-dispatched sandbox updates it rather than describing only its own turn.
   existingPrUrl: string;
@@ -102,6 +111,41 @@ export interface AgentDriverConfig {
 // placeholder is useless off-pod: the proxy authenticates the source Pod.
 export function modelProxyPlaceholder(sessionID: string): string {
   return `bex-model-proxy-placeholder-${sessionID}`;
+}
+
+// outputContract reads the turn's structured-output env. The schema is checked
+// here so a malformed one fails the turn at start rather than at the first
+// submit_result; a turn without a schema or a result URL gets neither field
+// (the agent cannot submit without the URL, so the tool is not offered).
+function outputContract(env: NodeJS.ProcessEnv): {
+  resultUrl: string;
+  outputSchema: string;
+  outputRequired: boolean;
+} {
+  const schema = env.BEX_AGENT_OUTPUT_SCHEMA || "";
+  const url = env.BEX_AGENT_RESULT_URL || "";
+  if (!schema || !url) {
+    return { resultUrl: "", outputSchema: "", outputRequired: false };
+  }
+  if (Buffer.byteLength(schema, "utf8") > 64 * 1024) {
+    throw new Error("BEX_AGENT_OUTPUT_SCHEMA exceeds 64 KiB");
+  }
+  let parsed: unknown;
+  try {
+    parsed = JSON.parse(schema);
+  } catch (error) {
+    throw new Error(
+      `BEX_AGENT_OUTPUT_SCHEMA must be a JSON object: ${describeError(error)}`,
+    );
+  }
+  if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+    throw new Error("BEX_AGENT_OUTPUT_SCHEMA must be a JSON object");
+  }
+  return {
+    resultUrl: url,
+    outputSchema: schema,
+    outputRequired: env.BEX_AGENT_OUTPUT_REQUIRED !== "0",
+  };
 }
 
 const envNamePattern = /^[A-Z_][A-Z0-9_]*$/;
@@ -287,6 +331,8 @@ export function loadConfig(
     statusPath,
     prRecordPath: path.join(path.dirname(statusPath), "pull-request.json"),
     shareUrl: env.BEX_AGENT_SHARE_URL || "",
+    ...outputContract(env),
+    resultRecordPath: path.join(path.dirname(statusPath), "result.json"),
     existingPrUrl: env.BEX_AGENT_PR_URL || "",
     existingPrNumber:
       optionalNonNegativeInt(env.BEX_AGENT_PR_NUMBER, "BEX_AGENT_PR_NUMBER") ||

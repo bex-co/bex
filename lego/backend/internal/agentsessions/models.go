@@ -177,6 +177,13 @@ type CreateRequest struct {
 	Tags  []string `json:"tags,omitempty"`
 	// AttachmentIDs are uploads to attach to the first turn (ADR095 D3).
 	AttachmentIDs []string `json:"attachmentIds,omitempty"`
+	// OutputSchema makes the first turn's result machine-readable (ADR094 D5):
+	// a JSON Schema 2020-12 object of at most 64 KiB with no external $ref. The
+	// agent submits a result that validates against it; outcome.result carries
+	// the last valid final one. OutputRequired (default true when a schema is
+	// set) fails the turn STRUCTURED_OUTPUT_MISSING if it ends without one.
+	OutputSchema   map[string]any `json:"outputSchema,omitempty" jsonschema:"a JSON Schema 2020-12 object (at most 64 KiB, no external $ref) the turn's result must satisfy; read it from outcome.result"`
+	OutputRequired *bool          `json:"outputRequired,omitempty" jsonschema:"default true when outputSchema is set: a turn that ends without a final valid result fails STRUCTURED_OUTPUT_MISSING"`
 }
 
 // SteerRequest is a follow-up prompt turn on an existing session (ADR047 D8
@@ -188,6 +195,10 @@ type SteerRequest struct {
 	EgressAllowlist []string `json:"egressAllowlist,omitempty"`
 	// AttachmentIDs are uploads to attach to this turn (ADR095 D3).
 	AttachmentIDs []string `json:"attachmentIds,omitempty"`
+	// OutputSchema and OutputRequired are this turn's structured-output contract
+	// (ADR094 D5), exactly as on CreateRequest; a turn without a schema is free-form.
+	OutputSchema   map[string]any `json:"outputSchema,omitempty"`
+	OutputRequired *bool          `json:"outputRequired,omitempty"`
 }
 
 // View is byte-for-byte the same domain shape projected by REST, GraphQL, and
@@ -257,8 +268,8 @@ type View struct {
 
 // Outcome is the compact account of where a session stands (ADR094 D7): its
 // state, whether it accepts a message, the latest turn's final answer, and
-// what it delivered: the PR and the files it shared. result (structured
-// output) and cost arrive with later milestones and stay absent until then.
+// what it delivered: the PR and the files it shared, and the validated
+// structured result. cost arrives with a later milestone and stays absent until then.
 type Outcome struct {
 	State     string `json:"state"`
 	Steerable bool   `json:"steerable"`
@@ -274,6 +285,12 @@ type Outcome struct {
 	// Like Summary it is computed only on the single-session read and wait, so
 	// a list page omits it rather than reporting "no files".
 	Files []TurnAttachment `json:"files,omitempty"`
+	// Result is the current turn's last valid final submission against its
+	// outputSchema (ADR094 D5), or absent: the turn had no schema, has not
+	// submitted a final result yet, or ended without one. Like Summary it is
+	// computed only on the single-session read and wait. A non-final (partial)
+	// result is on the transcript turn, not here.
+	Result any `json:"result,omitempty"`
 }
 
 // PullRequest is the PR the agent opened for the session (ADR090).
@@ -366,6 +383,14 @@ type TranscriptTurn struct {
 	CompletedAt         *time.Time `json:"completedAt,omitempty"`
 	// Attachments are the files this turn attached (ADR095 D3); never null.
 	Attachments []TurnAttachment `json:"attachments"`
+	// OutputSchema is the JSON Schema the turn was accepted with (ADR094 D5),
+	// absent for a free-form turn. Result is the agent's last valid submission,
+	// readable while the turn runs; ResultFinal says it declared that one final
+	// (only a final result becomes outcome.result).
+	OutputSchema   any  `json:"outputSchema,omitempty"`
+	OutputRequired bool `json:"outputRequired,omitempty"`
+	Result         any  `json:"result,omitempty"`
+	ResultFinal    bool `json:"resultFinal,omitempty"`
 }
 
 // TurnAttachment is one file of a turn: an input it attached, or a file the

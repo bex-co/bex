@@ -446,6 +446,40 @@ func (f *fakeStore) CompleteAgentSessionTurn(_ context.Context, id string, turn 
 	return nil
 }
 
+func (f *fakeStore) setTurnOutput(id string, turn int, output store.AgentTurnOutput) {
+	row := f.turns[id][turn]
+	row.OutputSchema, row.OutputRequired = output.Schema, output.Required
+	f.turns[id][turn] = row
+}
+
+// RecordAgentSessionResult mirrors the store: only a live session's current
+// turn that carries a schema takes a result, and a non-final submission is
+// accepted but never replaces a final one.
+func (f *fakeStore) RecordAgentSessionResult(_ context.Context, id string, turn int, result json.RawMessage, final bool) (bool, error) {
+	f.rowMu.Lock()
+	defer f.rowMu.Unlock()
+	session, ok := f.rows[id]
+	row, hasTurn := f.turns[id][turn]
+	live := session.Phase == PhaseCreating || session.Phase == PhaseRunning || session.Phase == PhaseResuming || session.Phase == PhaseRedispatching
+	if !ok || !hasTurn || !live || session.Turns != turn || len(row.OutputSchema) == 0 {
+		return false, nil
+	}
+	if !row.ResultFinal || final {
+		row.Result = result
+	}
+	row.ResultFinal = row.ResultFinal || final
+	f.turns[id][turn] = row
+	return true, nil
+}
+
+func (f *fakeStore) StampAgentSessionFailureCode(_ context.Context, id, reason, code string) error {
+	if row, ok := f.rows[id]; ok && row.Phase == PhaseFailed && row.FailureReason == reason {
+		row.FailureReasonCode = code
+		f.rows[id] = row
+	}
+	return nil
+}
+
 func (f *fakeStore) recordTurn(id string, turn int, prompt, delivery string) {
 	if f.turns[id] == nil {
 		f.turns[id] = map[int]store.AgentSessionTurn{}
@@ -477,6 +511,7 @@ func (f *fakeStore) CreateAgentSession(ctx context.Context, in store.AgentSessio
 	}
 	if prompt != "" {
 		f.recordTurn(in.ID, 1, prompt, "")
+		f.setTurnOutput(in.ID, 1, in.InitialOutput)
 		in.Turns = 1
 		f.rows[in.ID] = in
 	}
@@ -484,13 +519,14 @@ func (f *fakeStore) CreateAgentSession(ctx context.Context, in store.AgentSessio
 	return in, nil
 }
 
-func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, delivery, phase, status string, _ store.AgentAttachmentBinding) (store.AgentSession, error) {
+func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, delivery, phase, status string, _ store.AgentAttachmentBinding, output store.AgentTurnOutput) (store.AgentSession, error) {
 	row, ok := f.rows[id]
 	if !ok {
 		return store.AgentSession{}, store.ErrNotFound
 	}
 	previousSandboxID := row.SandboxID
 	f.recordTurn(id, row.Turns+1, prompt, delivery)
+	f.setTurnOutput(id, row.Turns+1, output)
 	row.Turns++
 	row.SandboxID, row.Phase, row.Status = "", phase, status
 	row.FailureReason, row.FailureReasonCode = "", ""

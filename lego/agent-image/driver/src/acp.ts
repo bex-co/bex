@@ -99,13 +99,21 @@ export function bexMcpServerScript(): string {
 // bexMcpServers registers the `bex` stdio MCP server when the session has at
 // least one of its endpoints: open_or_update_draft_pr for repo sessions (the
 // Pod-bound Git proxy path plus /pull-request) and share_file when the
-// deployment stores attachments (the Pod-bound share URL, ADR095 D6). The
+// deployment stores attachments (the Pod-bound share URL, ADR095 D6) and
+// submit_result when the turn carries an outputSchema (the Pod-bound result
+// URL, ADR094 D5). The
 // gateway authenticates the source Pod, so no secret is passed.
 export function bexMcpServers(
   config: Pick<
     AgentDriverConfig,
     "deliver" | "repoUrl" | "prRecordPath" | "shareUrl"
-  >,
+  > &
+    Partial<
+      Pick<
+        AgentDriverConfig,
+        "resultUrl" | "outputSchema" | "resultRecordPath"
+      >
+    >,
 ): McpServer[] {
   const env: Array<{ name: string; value: string }> = [];
   if (config.deliver && config.repoUrl) {
@@ -119,6 +127,13 @@ export function bexMcpServers(
   }
   if (config.shareUrl) {
     env.push({ name: "BEX_SHARE_ENDPOINT", value: config.shareUrl });
+  }
+  if (config.resultUrl && config.outputSchema) {
+    env.push(
+      { name: "BEX_RESULT_ENDPOINT", value: config.resultUrl },
+      { name: "BEX_RESULT_SCHEMA", value: config.outputSchema },
+      { name: "BEX_RESULT_RECORD_PATH", value: config.resultRecordPath ?? "" },
+    );
   }
   if (env.length === 0) return [];
   return [

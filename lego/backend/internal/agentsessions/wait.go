@@ -235,14 +235,14 @@ func progressLine(r WaitResult) string {
 	return fmt.Sprintf("%d of %d agent sessions settled", len(r.Settled), len(r.Sessions))
 }
 
-// attachOutcomeDetail fills the final-answer summary and shared files for
+// attachOutcomeDetail fills the final-answer summary, shared files and result for
 // settled sessions; the per-poll reads skip them so waiting costs no extra reads.
 func (s *Service) attachOutcomeDetail(ctx context.Context, sessions []WaitSession, rows map[string]store.AgentSession) {
 	for i := range sessions {
 		if sessions[i].State == StateWorking {
 			continue
 		}
-		sessions[i].Outcome.Summary, sessions[i].Outcome.Files = s.outcomeDetail(ctx, rows[sessions[i].ID])
+		s.fillOutcome(ctx, rows[sessions[i].ID], sessions[i].Outcome)
 	}
 }
 

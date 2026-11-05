@@ -18,7 +18,7 @@ const maxIdempotencyKeyLen = 128
 // it guards. The digest covers everything that shapes the session the client
 // asked for, so retrying the same intent matches and changing any of it does
 // not. No key means no idempotency (both results empty).
-func idempotencyOf(workspaceID string, req CreateRequest) (key, hash string, err error) {
+func idempotencyOf(workspaceID string, req CreateRequest, output store.AgentTurnOutput) (key, hash string, err error) {
 	key = req.IdempotencyKey
 	if key == "" {
 		return "", "", nil
@@ -43,7 +43,10 @@ func idempotencyOf(workspaceID string, req CreateRequest) (key, hash string, err
 		Tags      []string    `json:"g"`
 		// omitempty keeps every digest made before attachments existed (ADR095).
 		Attachments []string `json:"a,omitempty"`
-	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs})
+		// The normalized output contract (ADR094 D5), likewise omitted when unset.
+		OutputSchema   json.RawMessage `json:"o,omitempty"`
+		OutputRequired bool            `json:"q,omitempty"`
+	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required})
 	if err != nil {
 		return "", "", err
 	}

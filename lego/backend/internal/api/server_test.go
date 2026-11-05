@@ -1205,6 +1205,15 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	if recv == reflect.TypeFor[*agentsessions.Service]() && m.Name == "ShareFile" {
 		return false
 	}
+	// The agent's structured-result verb (ADR094 D5) is the same kind of
+	// gateway-only entry: the :8091 result handler's signed, kind-tagged envelope
+	// names the verified session and Pod. Its envelope, replay and Pod-binding
+	// contracts live in agentsession/result_test.go and
+	// sshgateway/agentcred/result_test.go, its storage contract in
+	// agentsessions/outputschema_test.go.
+	if recv == reflect.TypeFor[*agentsessions.Service]() && m.Name == "SubmitResult" {
+		return false
+	}
 	if !declaredMethodsOn(recv)[m.Name] {
 		return false
 	}

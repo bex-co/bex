@@ -133,7 +133,7 @@ func TestAgentAttachmentQuotas(t *testing.T) {
 	}
 	one := insertUpload(t, s, tenant.ID, "alice", 1, time.Now().Add(time.Hour))
 	_, err = s.BeginAgentSessionTurn(ctx, record.ID, "more", "redispatch", "redispatching", "redispatching",
-		AgentAttachmentBinding{IDs: []string{one.ID}, Caller: "alice"})
+		AgentAttachmentBinding{IDs: []string{one.ID}, Caller: "alice"}, AgentTurnOutput{})
 	if !errors.Is(err, ErrAgentSessionAttachmentQuota) {
 		t.Fatalf("err = %v, want the session quota", err)
 	}

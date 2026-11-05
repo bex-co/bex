@@ -33,26 +33,32 @@ func outcomeOf(record store.AgentSession) *Outcome {
 	return out
 }
 
-// outcomeDetail returns the latest completed turn's final assistant text,
-// clipped head-and-tail, and the files the agent shared in that turn. Either
-// is empty when there is no completed turn or a read fails: the outcome is a
-// convenience, and the transcript and attachment list stay the source of truth.
-func (s *Service) outcomeDetail(ctx context.Context, record store.AgentSession) (string, []TurnAttachment) {
+// fillOutcome adds what costs reads to an outcome built from the row alone: the
+// latest completed turn's final assistant text (clipped head-and-tail) and the
+// files the agent shared in it, and the current turn's final structured result.
+// Each stays empty when there is nothing to report or a read fails: the outcome
+// is a convenience, and the transcript, attachment list and turn rows stay the
+// source of truth.
+func (s *Service) fillOutcome(ctx context.Context, record store.AgentSession, out *Outcome) {
 	turns, err := s.Store.AgentSessionTurns(ctx, record.ID)
 	if err != nil {
 		log.Printf("agent-session outcome: list turns session=%s: %v", record.ID, err)
-		return "", nil
+		return
 	}
 	latest := -1
 	for _, t := range turns {
 		if t.CompletedAt != nil && t.Turn > latest {
 			latest = t.Turn
 		}
+		// The result belongs to the current turn, whose completed_at may not be
+		// stamped yet when the phase turns terminal.
+		if t.Turn == record.Turns && t.ResultFinal {
+			out.Result = jsonValue(t.Result)
+		}
 	}
-	if latest < 0 {
-		return "", nil
+	if latest >= 0 {
+		out.Summary, out.Files = s.outcomeSummary(ctx, record.ID, latest), s.outcomeFiles(ctx, record.ID, latest)
 	}
-	return s.outcomeSummary(ctx, record.ID, latest), s.outcomeFiles(ctx, record.ID, latest)
 }
 
 func (s *Service) outcomeSummary(ctx context.Context, sessionID string, turn int) string {

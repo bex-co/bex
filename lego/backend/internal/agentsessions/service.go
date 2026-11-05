@@ -62,9 +62,15 @@ type Store interface {
 	SetAgentSessionFailure(context.Context, string, string, string) (store.AgentSession, error)
 	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
-	BeginAgentSessionTurn(context.Context, string, string, string, string, string, store.AgentAttachmentBinding) (store.AgentSession, error)
+	BeginAgentSessionTurn(context.Context, string, string, string, string, string, store.AgentAttachmentBinding, store.AgentTurnOutput) (store.AgentSession, error)
+	// RecordAgentSessionResult stores the structured result submitted for the
+	// session's current turn (ADR094 D5); false when the turn takes none.
+	RecordAgentSessionResult(ctx context.Context, sessionID string, turn int, result json.RawMessage, final bool) (bool, error)
 	RecordAgentSessionDispatch(context.Context, string, string, string, string, string, int) (store.AgentSession, error)
 	FinalizeAgentSession(ctx context.Context, id, phase, headSHA, deliveryNote, failureReason string) (store.AgentSession, store.TerminalTurnFact, error)
+	// StampAgentSessionFailureCode sets the stable failureReasonCode on a session
+	// just failed with exactly that reason.
+	StampAgentSessionFailureCode(ctx context.Context, id, reason, code string) error
 	DeleteAgentSession(context.Context, string) error
 	// Deferred-teardown reaping (ADR054 D6, generalized by w2/m67 / w10/m15):
 	// the Completer defers a finished session's sandbox teardown while an editor
@@ -474,13 +480,17 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := s.validateAttachmentIDs(req.AttachmentIDs); err != nil {
 		return View{}, err
 	}
+	output, err := parseTurnOutput(req.OutputSchema, req.OutputRequired)
+	if err != nil {
+		return View{}, err
+	}
 	workspaceID, ok := s.Tenant(ctx)
 	if !ok {
 		return View{}, core.ErrForbidden
 	}
 	// Idempotent create (ADR094 D4): a retry with the same key replays the first
 	// session before anything is admitted, provisioned or billed.
-	idemKey, idemHash, err := idempotencyOf(workspaceID, req)
+	idemKey, idemHash, err := idempotencyOf(workspaceID, req, output)
 	if err != nil {
 		return View{}, err
 	}
@@ -525,6 +535,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		InitialAttachments: store.AgentAttachmentBinding{
 			IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx),
 		},
+		InitialOutput:  output,
 		AdmissionLimit: admission.limit, AdmissionCount: admission.count,
 	})
 	if errors.Is(err, store.ErrAgentSessionAdmissionLimit) {
@@ -554,7 +565,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		modelEndpoint: modelEndpoint,
 		modelAPIKey:   modelAPIKey,
 		egress:        sessionEgress(env, egressAllowlist),
-		env:           s.withNetworkEnv(s.driverEnv(req.AgentConfig, record, env.ModelKeySet()), env.NetworkTier, record),
+		env:           s.withOutputEnv(s.withNetworkEnv(s.driverEnv(req.AgentConfig, record, env.ModelKeySet()), env.NetworkTier, record), record, output),
 		turn:          record.Turns,
 	}
 	s.detach(ctx, func(ctx context.Context) { s.runDispatch(ctx, record, spec) })
@@ -1034,6 +1045,8 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 			TranscriptTruncated: turn.TranscriptTruncated,
 			TruncationReason:    turn.TruncationReason, CreatedAt: turn.CreatedAt,
 			CompletedAt: turn.CompletedAt, Attachments: turnAttachments(turn.Attachments),
+			OutputSchema: jsonValue(turn.OutputSchema), OutputRequired: turn.OutputRequired,
+			Result: jsonValue(turn.Result), ResultFinal: turn.ResultFinal,
 		})
 	}
 	for _, p := range parts {
@@ -1113,7 +1126,7 @@ func (s *Service) Get(ctx context.Context, sessionID string) (View, error) {
 	}
 	// The summary and shared files cost reads, so only the single-session read
 	// pays them; list pages carry the outcome without them.
-	view.Outcome.Summary, view.Outcome.Files = s.outcomeDetail(ctx, record)
+	s.fillOutcome(ctx, record, view.Outcome)
 	return view, nil
 }
 
@@ -1442,6 +1455,10 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err := s.validateAttachmentIDs(req.AttachmentIDs); err != nil {
 		return View{}, err
 	}
+	output, err := parseTurnOutput(req.OutputSchema, req.OutputRequired)
+	if err != nil {
+		return View{}, err
+	}
 	record, err := s.Store.GetAgentSession(ctx, req.SessionID)
 	if err != nil {
 		return View{}, mapStoreError(req.SessionID, err)
@@ -1491,11 +1508,11 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	}
 	previousSandboxID := record.SandboxID
 	record, err = s.Store.BeginAgentSessionTurn(ctx, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching",
-		store.AgentAttachmentBinding{IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx)})
+		store.AgentAttachmentBinding{IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx)}, output)
 	if err != nil {
 		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
 	}
-	env := s.withNetworkEnv(s.driverEnv(config, record, workspaceEnv.ModelKeySet()), workspaceEnv.NetworkTier, record)
+	env := s.withOutputEnv(s.withNetworkEnv(s.driverEnv(config, record, workspaceEnv.ModelKeySet()), workspaceEnv.NetworkTier, record), record, output)
 	env["BEX_AGENT_PROMPT"] = prompt // the steering prompt overrides the original task
 	spec := dispatchSpec{
 		template:          strings.TrimSpace(config.Template),

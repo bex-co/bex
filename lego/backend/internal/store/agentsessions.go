@@ -110,6 +110,29 @@ type AgentSessionTurn struct {
 	// Attachments are the uploads this turn attached (ADR095 D3), snapshotted
 	// at binding.
 	Attachments []TurnAttachment
+	// OutputSchema is the JSON Schema this turn's result must satisfy (ADR094
+	// D5); nil for a free-form turn. OutputRequired makes a turn that ends
+	// without a final result fail. Result is the agent's last valid submission
+	// and ResultFinal says it declared that one final.
+	OutputSchema   json.RawMessage
+	OutputRequired bool
+	Result         json.RawMessage
+	ResultFinal    bool
+}
+
+// AgentTurnOutput is the structured-output contract a turn is accepted with
+// (ADR094 D5): the already-validated schema, or nil for a free-form turn.
+type AgentTurnOutput struct {
+	Schema   json.RawMessage
+	Required bool
+}
+
+// nullable is the argument for a jsonb column: SQL NULL for an empty value.
+func (o AgentTurnOutput) nullable() any {
+	if len(o.Schema) == 0 {
+		return nil
+	}
+	return []byte(o.Schema)
 }
 
 // TerminalTurnFact is the immutable timing for a successful terminal CAS on the
@@ -171,6 +194,8 @@ type AgentSession struct {
 	// InitialAttachments is create-only input bound to turn 1 in the same
 	// transaction (ADR095 D3); never scanned.
 	InitialAttachments AgentAttachmentBinding
+	// InitialOutput is create-only input stored on turn 1 (ADR094 D5); never scanned.
+	InitialOutput AgentTurnOutput
 	// AdmissionLimit is create-only input: when positive, the insert is
 	// refused with ErrAgentSessionAdmissionLimit if the workspace already has
 	// that many active sessions matching AdmissionCount. The count and the
@@ -281,8 +306,8 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 		}
 		if in.InitialPrompt != "" {
 			_, err = tx.Exec(ctx, `
-				INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode)
-				VALUES ($1, 1, $2, '')`, in.ID, in.InitialPrompt)
+				INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode, output_schema, output_required)
+				VALUES ($1, 1, $2, '', $3, $4)`, in.ID, in.InitialPrompt, in.InitialOutput.nullable(), in.InitialOutput.Required)
 			if err == nil {
 				err = bindAgentAttachments(ctx, tx, in.WorkspaceID, in.ID, 1, in.InitialAttachments)
 			}
@@ -337,7 +362,7 @@ func (s *PGStore) GetAgentSession(ctx context.Context, id string) (AgentSession,
 // moves the session into its asynchronous dispatch phase. The public turn count
 // advances here, with prompt acceptance, so provisioning failure cannot erase
 // or renumber what the user submitted.
-func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding) (AgentSession, error) {
+func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput) (AgentSession, error) {
 	var out AgentSession
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var turns int
@@ -355,8 +380,8 @@ func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliver
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode)
-			VALUES ($1, $2, $3, $4)`, id, turns+1, prompt, deliveryMode); err != nil {
+			INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode, output_schema, output_required)
+			VALUES ($1, $2, $3, $4, $5, $6)`, id, turns+1, prompt, deliveryMode, output.nullable(), output.Required); err != nil {
 			return err
 		}
 		if err := bindAgentAttachments(ctx, tx, workspaceID, id, turns+1, attachments); err != nil {
@@ -406,7 +431,8 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 	rows, err := s.Pool.Query(ctx, `
 		SELECT session_id, turn, prompt, delivery_mode,
 		       transcript_complete, transcript_truncated, truncation_reason,
-		       created_at, started_at, completed_at, attachments
+		       created_at, started_at, completed_at, attachments,
+		       output_schema, output_required, result, result_final
 		FROM agent_session_turns WHERE session_id=$1 ORDER BY turn`, sessionID)
 	if err != nil {
 		return nil, err
@@ -417,7 +443,8 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		var turn AgentSessionTurn
 		if err := rows.Scan(&turn.SessionID, &turn.Turn, &turn.Prompt, &turn.DeliveryMode,
 			&turn.TranscriptComplete, &turn.TranscriptTruncated, &turn.TruncationReason,
-			&turn.CreatedAt, &turn.StartedAt, &turn.CompletedAt, &turn.Attachments); err != nil {
+			&turn.CreatedAt, &turn.StartedAt, &turn.CompletedAt, &turn.Attachments,
+			&turn.OutputSchema, &turn.OutputRequired, &turn.Result, &turn.ResultFinal); err != nil {
 			return nil, err
 		}
 		out = append(out, turn)
@@ -441,6 +468,28 @@ func (s *PGStore) CompleteAgentSessionTurn(ctx context.Context, sessionID string
 		return fmt.Errorf("agent session turn: %w", ErrNotFound)
 	}
 	return nil
+}
+
+// RecordAgentSessionResult stores the structured result the agent submitted
+// for a session's current turn (ADR094 D5). It writes only while the session
+// is in a credential-eligible live phase and only to a turn that carries an
+// output schema; the last valid submission wins, except that a non-final
+// submission is accepted but never replaces one the agent already declared
+// final. It reports whether the turn took the submission, so a caller can tell
+// a turn that takes none (no schema, or no longer running) from an accepted one.
+func (s *PGStore) RecordAgentSessionResult(ctx context.Context, sessionID string, turn int, result json.RawMessage, final bool) (bool, error) {
+	tag, err := s.Pool.Exec(ctx, `
+		UPDATE agent_session_turns t
+		SET result = CASE WHEN t.result_final AND NOT $4 THEN t.result ELSE $3::jsonb END,
+		    result_final = t.result_final OR $4
+		FROM agent_sessions s
+		WHERE t.session_id=$1 AND t.turn=$2 AND s.id=t.session_id AND s.turns=t.turn
+		  AND `+"s."+activeAgentSessionPhasesSQL+`
+		  AND t.output_schema IS NOT NULL`, sessionID, turn, []byte(result), final)
+	if err != nil {
+		return false, classify("agent session result", err)
+	}
+	return tag.RowsAffected() > 0, nil
 }
 
 // Archived-membership selector for ListAgentSessions (ADR065 D3). The zero

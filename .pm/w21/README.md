@@ -6,10 +6,12 @@
 
 - [x] **m257** — Cloud Agents MCP phase 1: contract hygiene — honest descriptions, `state`, `outcome` (8 tasks) → [`done/m257/`](done/m257/README.md) ← from [ADR094](../../docs/ADR094-coding-agent-mcp.md) D10 phase 1
 - [x] **m258** — Cloud Agents MCP phase 2: the `/mcp/cloud-agents` toolset, `wait_agent_sessions`, idempotent create, `bex.cloud_agents` scope (11 tasks) → [`done/m258/`](done/m258/README.md) ← from ADR094 D10 phase 2; after m257
-- [ ] **m259** — Cloud Agents MCP phase 3: schema-validated structured output (`submit_result`) (9 tasks) → [`m259/`](m259/README.md) ← from ADR094 D10 phase 3; after m258
+- [x] **m259** — Cloud Agents MCP phase 3: schema-validated structured output (`submit_result`) (9 tasks) → [`done/m259/`](done/m259/README.md) ← from ADR094 D10 phase 3; after m258 — DONE 2026-11-05
 - [ ] **m260** — Cloud Agents MCP phase 4: completion webhooks, per-session spend ceiling, `outcome.cost` (7 tasks) → [`m260/`](m260/README.md) ← from ADR094 D10 phase 4; spend tasks gated on `w10/m14` t004–t005
 
 ## Inbox
 
 - [x] **001** — Dashboard `/agents` and mobile read `state`/`outcome` instead of decoding `phase` → [`001.md`](done/001.md)
 - [x] **002** — Dashboard `/agents` create sends an `idempotencyKey` and shows `title`/`tags` → [`002.md`](done/002.md)
+- [ ] **003** — Dashboard `/agents` renders `outcome.result` and the in-flight partial result → [`003.md`](003.md)
+- [ ] **004** — Live structured-output session on a dev stack (m259 definition of done) → [`004.md`](004.md)

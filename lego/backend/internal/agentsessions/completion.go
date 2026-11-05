@@ -442,6 +442,15 @@ func (c *Completer) finalize(ctx context.Context, record store.AgentSession) {
 // fails the turn — the agent answered, and the work stays in the sandbox until
 // it is closed after the idle TTL — it is named in the delivery note instead.
 func (c *Completer) complete(ctx context.Context, record store.AgentSession, report statusReport) {
+	missing, err := c.structuredOutputMissing(ctx, record)
+	if err != nil {
+		log.Printf("agent-session completer: read turn output contract failed (session=%s): %v", record.ID, err)
+		return // retry next tick; the sandbox stays until the row is finalized
+	}
+	if missing {
+		c.failMissingOutput(ctx, record)
+		return
+	}
 	headSHA := ""
 	if core.ValidCommitSHA(report.Git.RemoteHead) {
 		headSHA = report.Git.RemoteHead
@@ -459,6 +468,39 @@ func (c *Completer) complete(ctx context.Context, record store.AgentSession, rep
 	// Tear down against the FINALIZED row so the idle clock (record.UpdatedAt) is
 	// the turn-end time, not the stale pre-finalize timestamp; SandboxID survives
 	// finalize, so it is still present here.
+	c.teardown(ctx, final)
+}
+
+// structuredOutputMissing reports a turn that was accepted with a required
+// outputSchema and ended without a final valid result (ADR094 D5). The driver's
+// status is not believed here: only a result bex-api itself validated and
+// stored counts, so a sandbox cannot claim one it never submitted.
+func (c *Completer) structuredOutputMissing(ctx context.Context, record store.AgentSession) (bool, error) {
+	turns, err := c.Store.AgentSessionTurns(ctx, record.ID)
+	if err != nil {
+		return false, err
+	}
+	for _, turn := range turns {
+		if turn.Turn == record.Turns {
+			return turn.OutputRequired && len(turn.OutputSchema) > 0 && !turn.ResultFinal, nil
+		}
+	}
+	return false, nil
+}
+
+// failMissingOutput ends a turn that required a structured result and has none.
+// A pull request the agent opened stays on the session: the row keeps its PR
+// fields and the code says why the turn failed, not that the work was lost.
+func (c *Completer) failMissingOutput(ctx context.Context, record store.AgentSession) {
+	final, fact, ok := c.finalizeFailure(ctx, record, structuredOutputMissingReason)
+	if !ok {
+		return
+	}
+	if err := c.Store.StampAgentSessionFailureCode(ctx, record.ID, structuredOutputMissingReason, FailureCodeStructuredOutputMissing); err != nil {
+		log.Printf("agent-session completer: stamp failure code failed (session=%s): %v", record.ID, err)
+	}
+	c.Metrics.observeTerminalTurn(turnOutcomeFailed, fact)
+	log.Printf("agent-session completer: failed session=%s code=%s", record.ID, FailureCodeStructuredOutputMissing)
 	c.teardown(ctx, final)
 }
 

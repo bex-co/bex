@@ -130,6 +130,20 @@ function deliveryBehavior(promptIndex) {
   }
 }
 
+// Structured-output stand-in (ADR094 D5): the fixture behaves like an agent
+// that calls submit_result with final:true, simulated by writing the bex MCP
+// server's driver-owned result record. ACP_FIXTURE_RESULT picks when:
+// "first" on the task prompt, "on-reminder" only once the driver reminds it,
+// anything else (or unset) never.
+function resultBehavior(promptIndex) {
+  const mode = process.env.ACP_FIXTURE_RESULT;
+  const record = bexEnv("BEX_RESULT_RECORD_PATH");
+  if (!mode || !record) return;
+  if ((mode === "first" && promptIndex === 0) || (mode === "on-reminder" && promptIndex === 1)) {
+    writeFileSync(record, JSON.stringify({ final: true }));
+  }
+}
+
 let promptCount = 0;
 
 function commitFixture() {
@@ -373,6 +387,7 @@ lines.on("line", async (line) => {
       if (promptIndex > 0) {
         // A follow-up prompt on the same session (the driver's delivery nudge).
         deliveryBehavior(promptIndex);
+        resultBehavior(promptIndex);
         update(sessionId, {
           sessionUpdate: "agent_message_chunk",
           content: { type: "text", text: "Follow-up handled." },
@@ -430,6 +445,7 @@ lines.on("line", async (line) => {
       });
       commitFixture();
       deliveryBehavior(promptIndex);
+      resultBehavior(promptIndex);
       update(sessionId, {
         sessionUpdate: "agent_message_chunk",
         content: { type: "text", text: "Task committed." },
