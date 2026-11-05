@@ -50,9 +50,11 @@ func TestPromResourceQueryExcludesPodsBeforeTheApp(t *testing.T) {
 	}
 }
 
-// TestMetricsStartAtTheAppsCreation: a read reaching back before the App was
-// created starts at its creation; one entirely before it is empty.
-func TestMetricsStartAtTheAppsCreation(t *testing.T) {
+// TestMetricsKeepTheRequestedGridAndDropPointsBeforeTheApp: a read reaching
+// back before the App was created keeps its requested start (so the step grid
+// stays on start+k*step, w4/484) while the source is told the creation as the
+// pod floor and no returned point precedes it; one entirely before it is empty.
+func TestMetricsKeepTheRequestedGridAndDropPointsBeforeTheApp(t *testing.T) {
 	now := fixedClock()
 	created := now.Add(-10 * time.Minute)
 	app := sampleApp("web")
@@ -67,11 +69,53 @@ func TestMetricsStartAtTheAppsCreation(t *testing.T) {
 	if _, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricCPU, Start: now.Add(-time.Hour), End: now, Resolution: time.Minute}); err != nil {
 		t.Fatal(err)
 	}
-	if len(got) != 1 || !got[0].Start.Equal(created) || !got[0].NotBefore.Equal(created) {
-		t.Fatalf("range requests = %+v, want start and NotBefore at the App's creation %s", got, created)
+	if len(got) != 1 || !got[0].Start.Equal(now.Add(-time.Hour)) || !got[0].NotBefore.Equal(created) {
+		t.Fatalf("range requests = %+v, want the requested start and NotBefore at the App's creation %s", got, created)
 	}
 	series, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricCPU, Start: now.Add(-time.Hour), End: created.Add(-time.Minute), Resolution: time.Minute})
 	if err != nil || len(series) != 0 || len(got) != 1 {
 		t.Fatalf("a window before the App = %+v (err %v, %d source calls), want empty without a query", series, err, len(got))
+	}
+}
+
+// TestYoungServiceChartsItsFirstStep (w4/484): a service younger than one chart
+// step still returns the latest grid point, and nothing before its creation.
+func TestYoungServiceChartsItsFirstStep(t *testing.T) {
+	now := fixedClock()
+	created := now.Add(-5 * time.Minute)
+	app := sampleApp("web")
+	app.Labels = map[string]string{core.LabelAppID: "srv-new"}
+	app.CreationTimestamp = metav1.NewTime(created)
+	svc := newService(nil, nil, app)
+	step := 24 * time.Minute
+	start := now.Add(-48 * time.Hour)
+	var got ResourceMetricsRangeRequest
+	svc.ResourceMetricsRange = func(_ context.Context, req ResourceMetricsRangeRequest) ([]MetricSeries, error) {
+		got = req
+		// A grid on the requested start: the point at creation-5m belongs to
+		// the predecessor window, the last one (end) is the new service's.
+		return []MetricSeries{{Points: []MetricPoint{
+			{Timestamp: created.Add(-time.Minute).UTC().Format(time.RFC3339), Value: 9},
+			{Timestamp: now.UTC().Format(time.RFC3339), Value: 1},
+		}}}, nil
+	}
+	series, err := svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricInstanceCount, Start: start, End: now, Resolution: step})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !got.Start.Equal(start) {
+		t.Fatalf("source start = %s, want the requested %s so the grid is not re-anchored", got.Start, start)
+	}
+	if len(series) != 1 || len(series[0].Points) != 1 || series[0].Points[0].Value != 1 {
+		t.Fatalf("series = %+v, want only the point at the window end", series)
+	}
+	// Every point before the creation: the series disappears rather than
+	// charting a predecessor.
+	svc.ResourceMetricsRange = func(context.Context, ResourceMetricsRangeRequest) ([]MetricSeries, error) {
+		return []MetricSeries{{Points: []MetricPoint{{Timestamp: created.Add(-time.Hour).UTC().Format(time.RFC3339), Value: 9}}}}, nil
+	}
+	series, err = svc.Metrics(context.Background(), MetricQuery{App: "web", Metric: MetricInstanceCount, Start: start, End: now, Resolution: step})
+	if err != nil || len(series) != 0 {
+		t.Fatalf("series = %+v (err %v), want none", series, err)
 	}
 }

@@ -534,12 +534,14 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 		return nil, err
 	}
 	// Nothing an App owns predates it: a service recreated under a deleted
-	// one's name charts from its own creation (w8/m124). This only narrows.
-	if created := core.AppNotBefore(app); q.Start.Before(created) {
-		if !created.Before(q.End) {
-			return []MetricSeries{}, nil
-		}
-		q.Start = created
+	// one's name charts from its own creation (w8/m124). The window stays as
+	// requested, because Prometheus evaluates at start+k*step: moving start to
+	// the creation moved the whole grid, so a service younger than one step
+	// had no point at all and charted "No data" (w4/484). Points before the
+	// creation are dropped from the result instead.
+	created := core.AppNotBefore(app)
+	if q.Start.Before(created) && !created.Before(q.End) {
+		return []MetricSeries{}, nil
 	}
 	var series []MetricSeries
 	switch q.Metric {
@@ -559,6 +561,7 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 	if err != nil {
 		return nil, err
 	}
+	series = dropPointsBefore(series, created)
 	var live []ids.InstanceCandidate
 	if len(q.Instances) > 0 || q.ReplicaAggregate != "" || q.AggregateMax {
 		if needsLiveInstanceCandidates(q.Metric) {
@@ -573,6 +576,32 @@ func (s *Service) Metrics(ctx context.Context, q MetricQuery) ([]MetricSeries, e
 		}
 	}
 	return applyInstanceSelection(q, series, live)
+}
+
+// dropPointsBefore removes the points timestamped before an App's creation and
+// the series left with none, so a read that starts before the App existed
+// reports only what the App itself produced while the grid stays on the
+// requested start+k*step (w4/484). A zero or unparsable bound keeps everything.
+func dropPointsBefore(series []MetricSeries, created time.Time) []MetricSeries {
+	if created.IsZero() {
+		return series
+	}
+	out := series[:0:0]
+	for _, ser := range series {
+		kept := make([]MetricPoint, 0, len(ser.Points))
+		for _, p := range ser.Points {
+			ts, err := time.Parse(time.RFC3339, p.Timestamp)
+			if err != nil || !ts.Before(created) {
+				kept = append(kept, p)
+			}
+		}
+		if len(kept) == 0 && len(ser.Points) > 0 {
+			continue
+		}
+		ser.Points = kept
+		out = append(out, ser)
+	}
+	return out
 }
 
 func needsLiveInstanceCandidates(metric string) bool {
