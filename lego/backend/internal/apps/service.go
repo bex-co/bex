@@ -1269,15 +1269,9 @@ func publicID(a *appv1alpha1.App) string {
 	return core.AppPublicName(a)
 }
 
-func sshEligible(v AppView) bool {
-	// Render only offers SSH on paid services. Treat a missing/unknown plan as
-	// ineligible instead of accidentally turning an unclassified service into a
-	// paid one.
-	plan, knownPlan := tiers.Compute.ByRenderPlan(v.Plan)
-	if v.Suspended || !knownPlan || plan.ID == "free" {
-		return false
-	}
-	switch v.Type {
+// sshTypeHasInstances: the service kinds a shell or SSH session can attach to.
+func sshTypeHasInstances(t string) bool {
+	switch t {
 	case appv1alpha1.TypeWebService, appv1alpha1.TypePrivateService, appv1alpha1.TypeBackgroundWorker:
 		return true
 	default:
@@ -1285,13 +1279,36 @@ func sshEligible(v AppView) bool {
 	}
 }
 
+// sshPaidPlan: Render only offers SSH on paid services. A missing/unknown plan
+// is ineligible instead of accidentally turning an unclassified service into a
+// paid one.
+func sshPaidPlan(plan string) bool {
+	p, known := tiers.Compute.ByRenderPlan(plan)
+	return known && p.ID != "free"
+}
+
+func sshEligible(v AppView) bool {
+	return !v.Suspended && sshPaidPlan(v.Plan) && sshTypeHasInstances(v.Type)
+}
+
 // sshSessionReady is the shared runtime gate both pods/exec transports
 // (ResolveSSHSession's native SSH and CreateShellSession's browser shell)
 // apply on top of sshEligible: the service must be Running with a live
 // revision and image before a session can target one of its pods.
+//
+// Every refusal stays a 409 but names its own blocker, so a client can tell
+// which remedy applies (w4/506). The type is checked before the plan because a
+// static site or cron job is not helped by a paid plan.
 func sshSessionReady(v AppView) error {
-	if !sshEligible(v) || v.Phase != string(appv1alpha1.PhaseRunning) || v.Revision == "" || v.Image == "" {
-		return fmt.Errorf("%w: service is not eligible and running", core.ErrConflict)
+	switch {
+	case v.Suspended:
+		return fmt.Errorf("%w: shell access is unavailable while the service is suspended; resume it first", core.ErrConflict)
+	case !sshTypeHasInstances(v.Type):
+		return fmt.Errorf("%w: shell access is available for web services, private services and background workers", core.ErrConflict)
+	case !sshPaidPlan(v.Plan):
+		return fmt.Errorf("%w: shell access needs a paid instance type; Free services have no SSH or shell", core.ErrConflict)
+	case v.Phase != string(appv1alpha1.PhaseRunning) || v.Revision == "" || v.Image == "":
+		return fmt.Errorf("%w: the service has no running instance yet; wait for the current deploy to go live", core.ErrConflict)
 	}
 	return nil
 }
