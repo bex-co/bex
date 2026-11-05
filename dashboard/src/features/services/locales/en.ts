@@ -1302,6 +1302,11 @@ const enServices: Record<string, TranslationEntry> = {
     message: "Max shutdown delay updated.",
     description: "Toast after setMaxShutdownDelay succeeds",
   },
+  "services.maxShutdownDelayRangeError": {
+    message: "Enter a whole number of seconds from {min} to {max}.",
+    description:
+      "Inline validation message for a max shutdown delay outside 1–300 or not a whole number (w4/494)",
+  },
   "services.maxShutdownDelayError": {
     message: "Couldn't update the max shutdown delay.",
     description: "Toast after setMaxShutdownDelay fails",

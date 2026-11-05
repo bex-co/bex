@@ -9,6 +9,18 @@ export interface MaxShutdownDelayRowProps {
   onChanged?: () => void;
 }
 
+const MIN_DELAY = 1;
+const MAX_DELAY = 300;
+
+/** The draft as seconds, or null unless it is a whole number from 1 to 300. */
+function parseDelay(draft: string): number | null {
+  if (draft.trim() === "") return null;
+  const parsed = Number(draft);
+  return Number.isInteger(parsed) && parsed >= MIN_DELAY && parsed <= MAX_DELAY
+    ? parsed
+    : null;
+}
+
 /** Render-style edit-in-place row for the graceful-shutdown window (1–300s). */
 export function MaxShutdownDelayRow({
   serviceId,
@@ -26,23 +38,31 @@ export function MaxShutdownDelayRow({
       value={String(current)}
       editLabel={t("services.maxShutdownDelayEdit")}
       type="number"
-      min={1}
-      max={300}
+      min={MIN_DELAY}
+      max={MAX_DELAY}
       step={1}
       mono
       busy={busy}
-      // Only an in-range integer other than the current value is savable.
+      // Dirty means "differs from the current value"; an out-of-range draft is
+      // reported by validate() instead of silently greying out Save (w4/494).
       dirty={(value) => {
-        const parsed = Number(value);
-        return (
-          Number.isInteger(parsed) &&
-          parsed >= 1 &&
-          parsed <= 300 &&
-          parsed !== current
-        );
+        const parsed = parseDelay(value);
+        return parsed !== null && parsed !== current;
       }}
+      validate={(value) =>
+        parseDelay(value) === null
+          ? t("services.maxShutdownDelayRangeError", {
+              min: String(MIN_DELAY),
+              max: String(MAX_DELAY),
+            })
+          : null
+      }
       onSave={async (value) => {
-        const ok = await setMaxShutdownDelay(serviceId, Number(value));
+        const parsed = parseDelay(value);
+        // validate() already blocks Save on an invalid draft; this is the type
+        // narrowing, not a second gate.
+        if (parsed === null) return false;
+        const ok = await setMaxShutdownDelay(serviceId, parsed);
         if (ok) onChanged?.();
         return ok;
       }}

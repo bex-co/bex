@@ -1273,6 +1273,11 @@ const zhServices: Record<string, TranslationEntry> = {
     message: "最大关闭延迟已更新。",
     description: "Toast after setMaxShutdownDelay succeeds",
   },
+  "services.maxShutdownDelayRangeError": {
+    message: "请输入 {min} 到 {max} 之间的整数秒数。",
+    description:
+      "Inline validation message for a max shutdown delay outside 1–300 or not a whole number (w4/494)",
+  },
   "services.maxShutdownDelayError": {
     message: "无法更新最大关闭延迟。",
     description: "Toast after setMaxShutdownDelay fails",

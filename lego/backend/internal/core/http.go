@@ -216,9 +216,20 @@ func UnmarshalJSON(ctx context.Context, data []byte, dst any) error {
 	return decodeJSON(ctx, bytes.NewReader(data), dst)
 }
 
+// JSONFieldError is a decode error from a custom UnmarshalJSON whose message
+// names only the field and the rule, so strict decoding may return it as
+// written instead of the generic "invalid JSON request body" (w4/494).
+type JSONFieldError struct{ Message string }
+
+func (e *JSONFieldError) Error() string { return e.Message }
+
 func safeJSONDecodeError(err error) error {
 	if errors.Is(err, io.EOF) {
 		return io.EOF
+	}
+	var fieldErr *JSONFieldError
+	if errors.As(err, &fieldErr) {
+		return errors.New(fieldErr.Message)
 	}
 	const unknownPrefix = "json: unknown field \""
 	message := err.Error()

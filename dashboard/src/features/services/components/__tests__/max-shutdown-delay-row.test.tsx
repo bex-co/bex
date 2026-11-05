@@ -70,7 +70,21 @@ describe("MaxShutdownDelayRow", () => {
       await user.clear(input);
       await user.type(input, value);
       expect(save).toBeDisabled();
+      // w4/494: Save is not simply greyed out; the rule is stated, announced
+      // and linked to the input.
+      const message = screen.getByRole("alert");
+      expect(message).toHaveTextContent(
+        "Enter a whole number of seconds from 1 to 300.",
+      );
+      expect(input).toHaveAccessibleDescription(
+        expect.stringContaining("Enter a whole number of seconds"),
+      );
     }
     expect(setMaxShutdownDelay).not.toHaveBeenCalled();
+
+    await user.clear(input);
+    await user.type(input, "60");
+    expect(screen.queryByRole("alert")).not.toBeInTheDocument();
+    expect(save).toBeEnabled();
   });
 });

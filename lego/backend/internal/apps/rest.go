@@ -171,7 +171,7 @@ type optionalInt32 struct {
 func (v *optionalInt32) UnmarshalJSON(data []byte) error {
 	var value int32
 	if string(data) == "null" || json.Unmarshal(data, &value) != nil {
-		return fmt.Errorf("maxShutdownDelaySeconds must be an integer")
+		return &core.JSONFieldError{Message: "maxShutdownDelaySeconds must be a whole number of seconds"}
 	}
 	v.Value = value
 	v.Set = true
