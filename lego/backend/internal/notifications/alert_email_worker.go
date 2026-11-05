@@ -193,9 +193,10 @@ func (w *AlertEmailWorker) projectFeed(ctx context.Context, rows []store.Webhook
 		if !ok || len(byTenant[row.TenantID]) == 0 {
 			continue
 		}
-		// The service's override is found by its srv- id (row.AppID, the App
-		// CR's app-id label), not by the feed's tenant-name composite, which
-		// no App carries: keyed on that, every override read as "default".
+		// The service is its srv- id (row.AppID, the App CR's app-id label),
+		// not the feed's tenant-name composite, which no App carries: keyed on
+		// that, every override read as "default" and the email's Events link
+		// named no service page.
 		serviceID := row.AppID
 		if serviceID == "" {
 			serviceID = row.ServiceID
@@ -224,7 +225,7 @@ func (w *AlertEmailWorker) projectFeed(ctx context.Context, rows []store.Webhook
 			}
 			items = append(items, store.AlertEmailItem{
 				TenantID: row.TenantID, Subject: r.Subject, SourceKey: row.Key,
-				ResourceID: row.ServiceID, Event: event, ResourceName: name, Detail: detail,
+				ResourceID: serviceID, Event: event, ResourceName: name, Detail: detail,
 				OccurredAt: row.At,
 			})
 		}

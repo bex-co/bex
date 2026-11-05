@@ -327,3 +327,19 @@ func TestPushFollowsTheServiceLevel(t *testing.T) {
 		})
 	}
 }
+
+// TestAlertFeedLinksTheServiceByItsID: a feed row names its service by the
+// tenant-name composite and by its srv- id; the alert, and so the email's
+// "View events" link, carries the srv- id the dashboard routes by (w3/051).
+func TestAlertFeedLinksTheServiceByItsID(t *testing.T) {
+	byTenant := map[string][]store.AlertEmailRecipient{"tea-a": {{TenantID: "tea-a", Subject: "alice", DeployFailed: true}}}
+	rows := []store.WebhookEventRow{{TenantID: "tea-a", ServiceID: "tea-a-web", AppID: "srv-1", ServiceName: "web", Key: "fact:1", Source: store.EventSourceFact, FactType: string(store.EventFactServerFailed)}}
+	w := &AlertEmailWorker{DashboardBaseURL: "https://dashboard.example"}
+	items, err := w.projectFeed(context.Background(), rows, byTenant)
+	if err != nil || len(items) != 1 || items[0].ResourceID != "srv-1" {
+		t.Fatalf("items = %+v, %v; want one alert on srv-1", items, err)
+	}
+	if got := w.dashboardURL(store.AlertEmailStream{ResourceID: items[0].ResourceID, Event: items[0].Event}); got != "https://dashboard.example/services/srv-1/events" {
+		t.Fatalf("link = %q", got)
+	}
+}

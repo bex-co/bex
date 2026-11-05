@@ -86,8 +86,9 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 - [x] **m177** — Move the Prometheus rule pack out of the inline Argo Application values (7 tasks) — **done 2026-10-29** ([done/m177](done/m177/README.md)): rules live in `deploy/gitops/base/rules/alerting_rules.yml` via a mounted, reloader-watched ConfigMap; Application size 392,955 / 421,080 of 1,310,720 bytes; production `/api/v1/rules` loads the same 123 rules from `/etc/rules` with Watchdog firing (verified by `/unblock w3`).
 ## Inbox
 
+- [ ] **053** — [Response-shape divergences found by the m272 schema check](053.md) — residual of w3/m272
 - [ ] **052** — [Private-network port discovery: web services' extra listeners, UDP, declared-but-idle ports](052.md) — residual of w3/m273
-- [ ] **051** — [Alert email "View events" link uses the wrong service id](051.md) — residual of w3/m271
+- [x] **051** — **done 2026-11-05** ([done/051.md](done/051.md)): the failure-alert email's "View events" link names the service by its `srv-` id.
 - [ ] **050** — [Blueprint build sources: buildSources-only projects and non-literal build-time env vars](050.md) — residual of w3/m270
 - [x] **045** — **promoted 2026-10-21 → [`m177`](done/m177/README.md)** (note moved to [done/045.md](done/045.md)): the Prometheus Argo Application is out of room.
 - [x] **044** — **promoted 2026-10-29 → [`m244`](m244/README.md)** (note moved to [done/044.md](done/044.md)): Correlate and fix the api.bex.co dropped-mutation race. The `IdleTimeout` fix is live and the origin side is clean (0 `/graphql` 5xx or 502 at the edge in 3 days; HTTP/1.1 idle reuse works up to 6 min), but browser `ERR_CONNECTION_CLOSED` sightings continued with no edge record, so the browser↔edge cause moves to m244.
