@@ -28,4 +28,12 @@ describe("WebShellPanel", () => {
     // The picker shows the default "Any ready instance" selection.
     expect(screen.getByText("Any ready instance")).toBeInTheDocument();
   });
+
+  // w4/501: the combobox is named by the visible "Instance" text.
+  it("names the instance picker", () => {
+    render(<WebShellPanel serviceId="srv-x" />);
+    expect(
+      screen.getByRole("combobox", { name: "Instance" }),
+    ).toBeInTheDocument();
+  });
 });

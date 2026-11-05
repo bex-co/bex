@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   Select,
   SelectContent,
@@ -25,6 +25,7 @@ export function WebShellPanel({ serviceId }: { serviceId: string }) {
   const { t } = useTranslations();
   const { instances } = useServiceInstances(serviceId);
   const [selected, setSelected] = useState<string>(ANY_INSTANCE);
+  const labelId = useId();
 
   // A selection that no longer exists (an instance was replaced by a deploy)
   // falls back to "any" so the terminal never targets a vanished pod.
@@ -36,7 +37,7 @@ export function WebShellPanel({ serviceId }: { serviceId: string }) {
   return (
     <div className="space-y-3">
       <div className="flex items-center gap-2">
-        <span className="text-muted-foreground text-sm">
+        <span id={labelId} className="text-muted-foreground text-sm">
           {t("services.shellInstanceLabel")}
         </span>
         <Select
@@ -44,7 +45,11 @@ export function WebShellPanel({ serviceId }: { serviceId: string }) {
           onValueChange={setSelected}
           disabled={instances.length === 0}
         >
-          <SelectTrigger size="sm" className="w-[220px]">
+          <SelectTrigger
+            size="sm"
+            className="w-[220px]"
+            aria-labelledby={labelId}
+          >
             <SelectValue placeholder={t("services.shellInstanceSelect")} />
           </SelectTrigger>
           <SelectContent>
