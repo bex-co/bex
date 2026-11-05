@@ -45,6 +45,12 @@ export interface CreateAgentSessionInput {
    * not start a second sandbox. Reuse it for a retry of the same submit.
    */
   idempotencyKey?: string;
+  /**
+   * A ceiling on the session's platform-model spend in USD (ADR094 D8). The
+   * server refuses it (`AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE`) on a workspace
+   * that runs its own model key, so it is sent only when the user set one.
+   */
+  maxSpendUSD?: number | null;
   // No model / egressAllowlist: the dashboard leaves both to the workspace's
   // agent environment (w10/m17). The API still accepts them for CLI/MCP.
 }
@@ -203,6 +209,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
                 ? input.attachmentIds
                 : undefined,
               idempotencyKey: input.idempotencyKey || undefined,
+              maxSpendUSD: input.maxSpendUSD ?? undefined,
             },
             fetchPolicy: "no-cache",
           }),

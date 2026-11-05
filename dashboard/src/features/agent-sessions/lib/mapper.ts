@@ -55,6 +55,7 @@ export function toAgentSessionView(
     branch: wire.branch,
     title: wire.title?.trim() || null,
     tags: wire.tags ?? [],
+    maxSpendUSD: wire.maxSpendUSD || null,
     agentConfig: {
       agent: config?.agent ?? "",
       model: config?.model ?? null,
@@ -97,6 +98,10 @@ export function toAgentSessionView(
           summary: wire.outcome.summary ?? null,
           deliveryNote: wire.outcome.deliveryNote ?? null,
           failureReasonCode: wire.outcome.failureReasonCode ?? null,
+          result: wire.outcome.result ?? null,
+          cost: wire.outcome.cost
+            ? { modelUSD: wire.outcome.cost.modelUSD }
+            : null,
         }
       : null,
   };

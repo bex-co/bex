@@ -15,6 +15,7 @@ fragment AgentSessionFields on AgentSession {
   branch
   title
   tags
+  maxSpendUSD
   agentConfig {
     agent
     model
@@ -34,6 +35,10 @@ fragment AgentSessionFields on AgentSession {
     summary
     deliveryNote
     failureReasonCode
+    result
+    cost {
+      modelUSD
+    }
     pullRequest {
       url
       number
@@ -124,6 +129,7 @@ mutation CreateAgentSession(
   $egressAllowlist: [String!]
   $attachmentIds: [String!]
   $idempotencyKey: String
+  $maxSpendUSD: Float
 ) {
   createAgentSession(
     ownerId: $ownerId
@@ -133,6 +139,7 @@ mutation CreateAgentSession(
     egressAllowlist: $egressAllowlist
     attachmentIds: $attachmentIds
     idempotencyKey: $idempotencyKey
+    maxSpendUSD: $maxSpendUSD
   ) {
     ...AgentSessionFields
     ...AgentSessionMintFields
@@ -220,6 +227,21 @@ query AgentSessionToolOutput($id: String!, $turn: Int!, $toolCallId: String!) {
 # What a session's bex-provided model requests cost (ADR091 D6): the total
 # (provider cost + 30%) and each turn's cost and tokens. A session on the
 # workspace's own model key records none; its provider bills it.
+# The turns' structured-output state (ADR094 D5, w21/003) without any parts: an
+# afterSeq past every part leaves the page's `parts` empty, so the poll that
+# watches a running turn's draft `result` stays small. `outcome.result` carries
+# the final value; this carries the partial one.
+query AgentSessionTurnResults($id: String!) {
+  agentSessionTranscript(id: $id, afterSeq: 2147483647, limit: 1) {
+    turns {
+      turn
+      outputSchema
+      result
+      resultFinal
+    }
+  }
+}
+
 query AgentSessionModelCost($id: String!) {
   agentSessionModelCost(id: $id) {
     sessionId

@@ -3,6 +3,8 @@ import { Loader2 } from "lucide-react";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
 import { DeliveryNoteCallout } from "@/features/agent-sessions/components/delivery-note-callout";
+import { StructuredResultCallout } from "@/features/agent-sessions/components/structured-result-callout";
+import { SessionSpendNote } from "@/features/agent-sessions/components/session-spend-note";
 import { FailureCallout } from "@/features/agent-sessions/components/failure-callout";
 import { SteeringComposer } from "@/features/agent-sessions/components/steering-composer";
 import { SessionConversation } from "@/features/agent-sessions/components/session-conversation";
@@ -92,6 +94,8 @@ export function SessionChatColumn({
       {showPendingSteer ? (
         <OptimisticUserBubble text={pendingSteer.prompt} />
       ) : null}
+      <StructuredResultCallout session={session} />
+      <SessionSpendNote session={session} />
       <FailureCallout session={session} onRetried={onChanged} />
       <DeliveryNoteCallout session={session} />
     </>

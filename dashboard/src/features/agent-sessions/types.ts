@@ -12,6 +12,13 @@ export interface AgentSessionOutcome {
   summary: string | null;
   deliveryNote: string | null;
   failureReasonCode: string | null;
+  /**
+   * The turn's final schema-validated structured result as JSON text (ADR094
+   * D5, w21/003); null for a free-form turn or before the agent declared one.
+   */
+  result: string | null;
+  /** The session's priced model spend so far (ADR094 D7); null when unpriced. */
+  cost: { modelUSD: string } | null;
 }
 
 /**
@@ -123,6 +130,11 @@ export interface AgentSessionView {
   title: string | null;
   /** The caller's tags, for the list's tag filter. */
   tags: string[];
+  /**
+   * The per-session model spend ceiling in USD as a decimal string (ADR094 D8,
+   * w21/m260); null when the caller set none.
+   */
+  maxSpendUSD: string | null;
   /** The lifecycle enum the whole UI keys off. */
   phase: AgentSessionPhase;
   /** Free-text human status line; display-only, never branched on. */

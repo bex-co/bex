@@ -483,11 +483,15 @@ describe("NewSessionComposer", () => {
     expect(screen.queryByRole("textbox", { name: /branch/i })).toBeNull();
     expect(screen.queryByRole("textbox", { name: /model/i })).toBeNull();
     expect(screen.queryByRole("textbox", { name: /egress|host/i })).toBeNull();
-    // The task box is the rich editor; no plain input or textarea remains
-    // (the hidden file input behind the paperclip is not a text field).
+    // The task box is the rich editor; the only plain input is the optional
+    // spend limit (w21/005) and no textarea remains (the hidden file input
+    // behind the paperclip is not a text field).
+    expect(container.querySelectorAll("textarea")).toHaveLength(0);
     expect(
-      container.querySelectorAll('input:not([type="file"]), textarea'),
-    ).toHaveLength(0);
+      Array.from(container.querySelectorAll('input:not([type="file"])')).map(
+        (el) => el.getAttribute("aria-label"),
+      ),
+    ).toEqual(["Spend limit (USD)"]);
     expect(screen.getByLabelText("Agent")).toBeInTheDocument();
     expect(attachmentControl()).toBeInTheDocument();
   });
@@ -507,6 +511,56 @@ describe("NewSessionComposer", () => {
     expect(create.mock.calls[0][0].branch).toMatch(
       /^bex-agent\/session-[0-9a-z]+$/,
     );
+  });
+
+  it("sends maxSpendUSD only when a spend limit was typed (w21/005)", async () => {
+    const user = userEvent.setup();
+    const { unmount } = render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].maxSpendUSD).toBeNull();
+    unmount();
+
+    create.mockClear();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.type(screen.getByLabelText("Spend limit (USD)"), "2.5");
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].maxSpendUSD).toBe(2.5);
+  });
+
+  it("blocks submit on an out-of-range spend limit", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.type(screen.getByLabelText("Spend limit (USD)"), "0");
+    expect(
+      screen.getByRole("button", { name: "Start session" }),
+    ).toBeDisabled();
+    expect(screen.getByText(/more than \$0 and at most/)).toBeInTheDocument();
+    expect(create).not.toHaveBeenCalled();
+  });
+
+  it("shows the server's message when the workspace cannot meter a spend limit", async () => {
+    create.mockRejectedValue(
+      new AgentSessionError(
+        "AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE",
+        "unavailable",
+        {},
+      ),
+    );
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.type(screen.getByLabelText("Spend limit (USD)"), "5");
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    expect(
+      await screen.findByText(
+        /only applies to sessions on the bex-provided model/,
+      ),
+    ).toBeInTheDocument();
   });
 
   it("renders the house callout when the backend reports the feature unavailable (503)", async () => {

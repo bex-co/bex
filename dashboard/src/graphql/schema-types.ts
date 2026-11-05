@@ -165,6 +165,7 @@ export type AgentSession = {
   failureReasonCode: Maybe<Scalars['String']['output']>;
   headSha: Maybe<Scalars['String']['output']>;
   id: Scalars['String']['output'];
+  maxSpendUSD: Maybe<Scalars['String']['output']>;
   outcome: Maybe<AgentSessionOutcome>;
   ownerId: Scalars['String']['output'];
   phase: Scalars['String']['output'];
@@ -212,6 +213,12 @@ export type AgentSessionConfigInput = {
   template?: InputMaybe<Scalars['String']['input']>;
 };
 
+/** What the session's platform-route model requests cost so far (ADR094 D7). */
+export type AgentSessionCost = {
+  __typename: 'AgentSessionCost';
+  modelUSD: Scalars['String']['output'];
+};
+
 export type AgentSessionGitHubReadiness = {
   __typename: 'AgentSessionGitHubReadiness';
   accountLogin: Maybe<Scalars['String']['output']>;
@@ -233,10 +240,13 @@ export type AgentSessionModelCost = {
 
 export type AgentSessionOutcome = {
   __typename: 'AgentSessionOutcome';
+  cost: Maybe<AgentSessionCost>;
   deliveryNote: Maybe<Scalars['String']['output']>;
   failureReasonCode: Maybe<Scalars['String']['output']>;
   files: Maybe<Array<AgentSessionTurnAttachment>>;
   pullRequest: Maybe<AgentSessionPullRequest>;
+  /** The current turn's last valid final structured result (ADR094 D5) as JSON text, or null. */
+  result: Maybe<Scalars['String']['output']>;
   state: Scalars['String']['output'];
   steerable: Scalars['Boolean']['output'];
   summary: Maybe<Scalars['String']['output']>;
@@ -297,7 +307,14 @@ export type AgentSessionTranscriptTurn = {
   completedAt: Maybe<Scalars['String']['output']>;
   createdAt: Scalars['String']['output'];
   deliveryMode: Scalars['String']['output'];
+  outputRequired: Scalars['Boolean']['output'];
+  /** The JSON Schema the turn was accepted with (ADR094 D5), as JSON text, or null for a free-form turn. */
+  outputSchema: Maybe<Scalars['String']['output']>;
   prompt: Scalars['String']['output'];
+  /** The agent's last valid structured result for the turn as JSON text, readable while the turn runs, or null. */
+  result: Maybe<Scalars['String']['output']>;
+  /** The agent declared result final; only a final result becomes outcome.result. */
+  resultFinal: Scalars['Boolean']['output'];
   transcriptComplete: Scalars['Boolean']['output'];
   transcriptTruncated: Scalars['Boolean']['output'];
   truncationReason: Scalars['String']['output'];
@@ -1767,6 +1784,9 @@ export type MutationCreateAgentSessionArgs = {
   branch?: InputMaybe<Scalars['String']['input']>;
   egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
   idempotencyKey?: InputMaybe<Scalars['String']['input']>;
+  maxSpendUSD?: InputMaybe<Scalars['Float']['input']>;
+  outputRequired?: InputMaybe<Scalars['Boolean']['input']>;
+  outputSchema?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   repo: Scalars['String']['input'];
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
@@ -2788,6 +2808,8 @@ export type MutationSteerAgentSessionArgs = {
   attachmentIds?: InputMaybe<Array<Scalars['String']['input']>>;
   egressAllowlist?: InputMaybe<Array<Scalars['String']['input']>>;
   id: Scalars['String']['input'];
+  outputRequired?: InputMaybe<Scalars['Boolean']['input']>;
+  outputSchema?: InputMaybe<Scalars['String']['input']>;
   prompt: Scalars['String']['input'];
 };
 

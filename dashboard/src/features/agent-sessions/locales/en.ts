@@ -1117,6 +1117,75 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Mapped message for AGENT_SESSION_TRUST_LIMIT while a payment hold applies",
   },
+  "agentSessions.errors.AGENT_SESSION_SPEND_LIMIT_INVALID": {
+    message: "The spend limit must be more than $0 and at most $100,000.",
+    description:
+      "Mapped message for AGENT_SESSION_SPEND_LIMIT_INVALID (ADR094 D8)",
+  },
+  "agentSessions.errors.AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE": {
+    message:
+      "A spend limit only applies to sessions on the bex-provided model. This workspace uses its own model key, so clear the limit or switch the workspace to the bex model in Settings → Agents.",
+    description:
+      "Mapped message for AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE (ADR094 D8)",
+  },
+  "agentSessions.spendLimitLabel": {
+    message: "Spend limit (USD)",
+    description:
+      "Composer — label/aria-label of the optional per-session spend ceiling input",
+  },
+  "agentSessions.spendLimitPlaceholder": {
+    message: "Spend limit",
+    description:
+      "Composer — placeholder of the optional per-session spend ceiling input",
+  },
+  "agentSessions.spendLimitHint": {
+    message:
+      "Optional. The session stops once its bex-model spend reaches this amount (more than $0, at most $100,000).",
+    description: "Composer — help text under the spend limit input",
+  },
+  "agentSessions.spendLimitInvalid": {
+    message:
+      "Enter an amount more than $0 and at most $100,000, or leave it blank.",
+    description: "Composer — inline error for an out-of-range spend limit",
+  },
+  "agentSessions.failureSessionSpendLimitReached": {
+    message:
+      "This session stopped because its model spend reached the session limit of {limit}. Start a new session with a higher limit to continue.",
+    description:
+      "Failure callout for AGENT_MODEL_SPEND_CAP_REACHED when the session's own maxSpendUSD ceiling was hit",
+  },
+  "agentSessions.spendNote": {
+    message: "Model spend {spent}",
+    description:
+      "Session page — the session's model spend so far (outcome.cost)",
+  },
+  "agentSessions.spendNoteWithLimit": {
+    message: "Model spend {spent} of the {limit} session limit",
+    description:
+      "Session page — model spend so far beside the session's spend limit",
+  },
+  "agentSessions.resultTitle": {
+    message: "Result",
+    description:
+      "Session page — heading over the turn's final structured result",
+  },
+  "agentSessions.resultDraftTitle": {
+    message: "Draft result",
+    description:
+      "Session page — heading over the agent's not-yet-final structured result while the turn runs",
+  },
+  "agentSessions.resultDraftHint": {
+    message: "Not final yet. The agent may still change it.",
+    description: "Session page — note under a draft structured result",
+  },
+  "agentSessions.resultCopy": {
+    message: "Copy JSON",
+    description: "Session page — button copying the structured result",
+  },
+  "agentSessions.resultCopied": {
+    message: "Copied",
+    description: "Session page — toast after copying the structured result",
+  },
   "agentSessions.failureSpendCapReached": {
     message:
       "This workspace reached its agent model spend limit for the month. An admin can raise the cap in Settings → Agents, or it resets on the 1st (UTC).",

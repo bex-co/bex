@@ -163,6 +163,8 @@ describe("toAgentSessionView", () => {
           summary: "Done, see the PR.",
           deliveryNote: null,
           failureReasonCode: null,
+          result: '{"ok":true}',
+          cost: { __typename: "AgentSessionCost", modelUSD: "0.001234" },
           pullRequest: null,
         },
       }),
@@ -176,6 +178,8 @@ describe("toAgentSessionView", () => {
       summary: "Done, see the PR.",
       deliveryNote: null,
       failureReasonCode: null,
+      result: '{"ok":true}',
+      cost: { modelUSD: "0.001234" },
     });
     // Without the field, a completed session is steerable by phase.
     const partial = toAgentSessionView(wire({ phase: "completed" }));

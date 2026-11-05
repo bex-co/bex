@@ -32,6 +32,13 @@ vi.mock("@/features/agent-sessions/components/steering-composer", () => ({
     </button>
   ),
 }));
+vi.mock(
+  "@/features/agent-sessions/components/structured-result-callout",
+  () => ({ StructuredResultCallout: () => null }),
+);
+vi.mock("@/features/agent-sessions/components/session-spend-note", () => ({
+  SessionSpendNote: () => null,
+}));
 vi.mock("@/features/agent-sessions/components/failure-callout", () => ({
   FailureCallout: () => null,
 }));
@@ -140,9 +147,7 @@ describe("SessionChatColumn optimistic redispatch echo (w2/m64)", () => {
     expect(screen.getByText("echoed prompt")).toBeInTheDocument();
 
     // A phase-only transition with no accepted-turn increment must not hide it.
-    rerender(
-      column(view("redispatching", { sandboxId: "", turns: 2 })),
-    );
+    rerender(column(view("redispatching", { sandboxId: "", turns: 2 })));
     expect(screen.getByText("echoed prompt")).toBeInTheDocument();
   });
 

@@ -10,6 +10,7 @@ import {
   AlertTitle,
 } from "@/common/components/ui/alert";
 import { Button } from "@/common/components/ui/button";
+import { Input } from "@/common/components/ui/input";
 import { cn } from "@/common/lib/utils/utils";
 import {
   Select,
@@ -55,6 +56,7 @@ import {
   type ComposerValues,
 } from "@/features/agent-sessions/lib/composer";
 import type { ComposerDocument } from "@/features/agent-sessions/lib/composer-document";
+import { parseSpendLimit } from "@/features/agent-sessions/lib/spend-limit";
 import { ComposerSpendBanner } from "@/features/agent-sessions/components/composer-spend-banner";
 import { useComposerSpendGate } from "@/features/agent-sessions/hooks/use-composer-spend-gate";
 import { blocksCreate } from "@/features/agent-environment/lib/spend";
@@ -96,6 +98,9 @@ export function NewSessionComposer() {
   });
   const [availabilityError, setAvailabilityError] = useState<unknown>(null);
   const [submitError, setSubmitError] = useState<string | null>(null);
+  // The optional per-session model spend ceiling (ADR094 D8), kept as typed.
+  const [spendLimitText, setSpendLimitText] = useState("");
+  const spendLimit = parseSpendLimit(spendLimitText);
   const editorRef = useRef<InlineMentionEditorHandle | null>(null);
   const { task, repo, sessionIds } = composerDocument;
   const noRepos = !reposLoading && repos.length === 0;
@@ -155,7 +160,8 @@ export function NewSessionComposer() {
       modelKeyMissing ||
       spendBlocked ||
       (repo && githubMissing) ||
-      attachmentsBlock
+      attachmentsBlock ||
+      !spendLimit.ok
     ) {
       return;
     }
@@ -181,6 +187,7 @@ export function NewSessionComposer() {
       values.agent,
       prompt,
       sentAttachmentIds,
+      spendLimit.value,
     ]);
     if (submitKey.current?.fingerprint !== fingerprint) {
       submitKey.current = { fingerprint, key: crypto.randomUUID() };
@@ -194,6 +201,7 @@ export function NewSessionComposer() {
         agent: values.agent,
         task: prompt,
         attachmentIds: sentAttachmentIds,
+        maxSpendUSD: spendLimit.value,
       });
       uploads.clear(sentAttachmentIds);
       submitKey.current = null;
@@ -334,6 +342,20 @@ export function NewSessionComposer() {
                 <AttachButton onFiles={uploads.add} disabled={isSubmitting} />
               ) : null}
 
+              <Input
+                type="text"
+                inputMode="decimal"
+                value={spendLimitText}
+                onChange={(e) => setSpendLimitText(e.target.value)}
+                disabled={isSubmitting}
+                placeholder={t("agentSessions.spendLimitPlaceholder")}
+                aria-label={t("agentSessions.spendLimitLabel")}
+                title={t("agentSessions.spendLimitHint")}
+                aria-invalid={!spendLimit.ok}
+                data-testid="agent-composer-spend-limit"
+                className="h-8 w-28 border-0 bg-transparent px-2 text-xs shadow-none"
+              />
+
               <Button
                 type="button"
                 variant={repo ? "secondary" : "ghost"}
@@ -364,6 +386,7 @@ export function NewSessionComposer() {
                   spendBlocked ||
                   (Boolean(repo) && githubMissing) ||
                   attachmentsBlock ||
+                  !spendLimit.ok ||
                   task.trim().length === 0
                 }
               >
@@ -379,12 +402,19 @@ export function NewSessionComposer() {
         </form>
       </Form>
 
-      <p className="text-muted-foreground px-1 text-xs">
-        {uploads.hasErrors
-          ? t("agentSessions.attachmentsBlockSend")
-          : uploads.uploading
-            ? t("agentSessions.attachmentsUploading")
-            : t("agentSessions.keyboardHint")}
+      <p
+        className={cn(
+          "px-1 text-xs",
+          spendLimit.ok ? "text-muted-foreground" : "text-destructive",
+        )}
+      >
+        {!spendLimit.ok
+          ? t("agentSessions.spendLimitInvalid")
+          : uploads.hasErrors
+            ? t("agentSessions.attachmentsBlockSend")
+            : uploads.uploading
+              ? t("agentSessions.attachmentsUploading")
+              : t("agentSessions.keyboardHint")}
       </p>
 
       {showExamples ? (

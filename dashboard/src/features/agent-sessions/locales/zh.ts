@@ -1052,6 +1052,74 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Mapped message for AGENT_SESSION_TRUST_LIMIT while a payment hold applies",
   },
+  "agentSessions.errors.AGENT_SESSION_SPEND_LIMIT_INVALID": {
+    message: "支出上限必须大于 $0 且不超过 $100,000。",
+    description:
+      "Mapped message for AGENT_SESSION_SPEND_LIMIT_INVALID (ADR094 D8)",
+  },
+  "agentSessions.errors.AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE": {
+    message:
+      "支出上限仅适用于使用 bex 提供模型的会话。此工作区使用自己的模型密钥，请清除上限，或在“设置 → 智能体”中切换为 bex 模型。",
+    description:
+      "Mapped message for AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE (ADR094 D8)",
+  },
+  "agentSessions.spendLimitLabel": {
+    message: "支出上限（USD）",
+    description:
+      "Composer — label/aria-label of the optional per-session spend ceiling input",
+  },
+  "agentSessions.spendLimitPlaceholder": {
+    message: "支出上限",
+    description:
+      "Composer — placeholder of the optional per-session spend ceiling input",
+  },
+  "agentSessions.spendLimitHint": {
+    message:
+      "可选。会话的 bex 模型支出达到该金额后即停止（大于 $0，不超过 $100,000）。",
+    description: "Composer — help text under the spend limit input",
+  },
+  "agentSessions.spendLimitInvalid": {
+    message: "请输入大于 $0 且不超过 $100,000 的金额，或留空。",
+    description: "Composer — inline error for an out-of-range spend limit",
+  },
+  "agentSessions.failureSessionSpendLimitReached": {
+    message:
+      "此会话因模型支出达到会话上限 {limit} 而停止。请新建会话并设置更高的上限后继续。",
+    description:
+      "Failure callout for AGENT_MODEL_SPEND_CAP_REACHED when the session's own maxSpendUSD ceiling was hit",
+  },
+  "agentSessions.spendNote": {
+    message: "模型支出 {spent}",
+    description:
+      "Session page — the session's model spend so far (outcome.cost)",
+  },
+  "agentSessions.spendNoteWithLimit": {
+    message: "模型支出 {spent}，会话上限 {limit}",
+    description:
+      "Session page — model spend so far beside the session's spend limit",
+  },
+  "agentSessions.resultTitle": {
+    message: "结果",
+    description:
+      "Session page — heading over the turn's final structured result",
+  },
+  "agentSessions.resultDraftTitle": {
+    message: "草稿结果",
+    description:
+      "Session page — heading over the agent's not-yet-final structured result while the turn runs",
+  },
+  "agentSessions.resultDraftHint": {
+    message: "尚未定稿，智能体仍可能修改。",
+    description: "Session page — note under a draft structured result",
+  },
+  "agentSessions.resultCopy": {
+    message: "复制 JSON",
+    description: "Session page — button copying the structured result",
+  },
+  "agentSessions.resultCopied": {
+    message: "已复制",
+    description: "Session page — toast after copying the structured result",
+  },
   "agentSessions.failureSpendCapReached": {
     message:
       "此工作区已达到本月智能体模型支出上限。管理员可以在“设置 → 智能体”中提高上限，或等待每月 1 日（UTC）重置。",

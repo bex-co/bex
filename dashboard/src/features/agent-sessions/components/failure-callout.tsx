@@ -13,6 +13,10 @@ import { useTranslations } from "@/common/hooks/use-translations";
 import { useAgentSessionMutations } from "@/features/agent-sessions/hooks/use-agent-session-mutations";
 import { agentSessionErrorMessage } from "@/features/agent-sessions/lib/errors";
 import {
+  stoppedAtSessionSpendLimit,
+  formatPreciseUsd,
+} from "@/features/agent-sessions/lib/spend-limit";
+import {
   agentSessionFailureReason,
   isSandboxCapacityFailure,
 } from "@/features/agent-sessions/lib/mapper";
@@ -42,7 +46,7 @@ export interface FailureCalloutProps {
  * redispatching phase.
  */
 export function FailureCallout({ session, onRetried }: FailureCalloutProps) {
-  const { t } = useTranslations();
+  const { t, i18n } = useTranslations();
   const navigate = useNavigate();
   const { steer } = useAgentSessionMutations();
   const [retrying, setRetrying] = useState(false);
@@ -56,12 +60,17 @@ export function FailureCallout({ session, onRetried }: FailureCalloutProps) {
   // The model mint's typed refusals (ADR091 D5, D10.3) read in the user's
   // language rather than as the server's English sentence.
   const spendKey = SPEND_FAILURE_KEYS[session.failureReasonCode ?? ""];
+  // A session that hit its own maxSpendUSD ceiling names it, not the monthly cap.
   const reason = capacity
     ? t("agentSessions.capacityFailureBody")
-    : spendKey
-      ? t(spendKey)
-      : (agentSessionFailureReason(session) ??
-        t("agentSessions.failureReasonFallback"));
+    : stoppedAtSessionSpendLimit(session)
+      ? t("agentSessions.failureSessionSpendLimitReached", {
+          limit: formatPreciseUsd(session.maxSpendUSD ?? "", i18n.language),
+        })
+      : spendKey
+        ? t(spendKey)
+        : (agentSessionFailureReason(session) ??
+          t("agentSessions.failureReasonFallback"));
 
   async function handleRetry() {
     setRetrying(true);

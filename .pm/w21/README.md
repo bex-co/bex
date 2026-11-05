@@ -13,8 +13,8 @@
 
 - [x] **001** — Dashboard `/agents` and mobile read `state`/`outcome` instead of decoding `phase` → [`001.md`](done/001.md)
 - [x] **002** — Dashboard `/agents` create sends an `idempotencyKey` and shows `title`/`tags` → [`002.md`](done/002.md)
-- [ ] **003** — Dashboard `/agents` renders `outcome.result` and the in-flight partial result → [`003.md`](003.md)
-- [ ] **004** — Live structured-output session on a dev stack (m259 definition of done) → [`004.md`](004.md)
-- [ ] **005** — Dashboard `/agents` creates with a `maxSpendUSD` ceiling and shows `outcome.cost` → [`005.md`](005.md)
+- [x] **003** — Dashboard `/agents` renders `outcome.result` and the in-flight partial result → [`003.md`](done/003.md)
+- [ ] **004** — Live structured-output session on a dev stack (m259 definition of done) → [`004.md`](blocked/004.md) — **BLOCKED (needs someone to run a live structured-output session on a dev stack (`dev-env.sh <1-10> agent-up` plus a model route); dev-21 does not exist)**
+- [x] **005** — Dashboard `/agents` creates with a `maxSpendUSD` ceiling and shows `outcome.cost` → [`005.md`](done/005.md)
 - [ ] **006** — `outcome.cost.sandboxSeconds`: attribute sandbox compute to a session → [`006.md`](006.md)
-- [ ] **007** — Live completion webhook and spend ceiling on a dev stack (m260 definition of done) → [`007.md`](007.md)
+- [ ] **007** — Live completion webhook and spend ceiling on a dev stack (m260 definition of done) → [`007.md`](blocked/007.md) — **BLOCKED (needs someone to run a live completion-webhook and spend-ceiling session on a dev stack (`dev-env.sh <1-10> agent-up`, a webhook receiver, a model route); dev-21 does not exist)**

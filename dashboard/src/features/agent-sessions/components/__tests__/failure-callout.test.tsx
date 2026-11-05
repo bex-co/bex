@@ -59,6 +59,42 @@ describe("FailureCallout", () => {
     expect(screen.getByText("agent turn failed")).toBeInTheDocument();
   });
 
+  it("names the session limit when the session's own ceiling stopped it (w21/005)", () => {
+    const outcome = (modelUSD: string) => ({
+      state: "failed",
+      steerable: true,
+      turn: 1,
+      summary: null,
+      deliveryNote: null,
+      failureReasonCode: "AGENT_MODEL_SPEND_CAP_REACHED",
+      result: null,
+      cost: { modelUSD },
+    });
+    const { rerender } = render(
+      <FailureCallout
+        session={view("failed", {
+          failureReasonCode: "AGENT_MODEL_SPEND_CAP_REACHED",
+          maxSpendUSD: "5",
+          outcome: outcome("5.01"),
+        })}
+      />,
+    );
+    expect(screen.getByText(/session limit of \$5\.00/)).toBeInTheDocument();
+    // Under its own ceiling, the monthly workspace cap is what stopped it.
+    rerender(
+      <FailureCallout
+        session={view("failed", {
+          failureReasonCode: "AGENT_MODEL_SPEND_CAP_REACHED",
+          maxSpendUSD: "5",
+          outcome: outcome("1.20"),
+        })}
+      />,
+    );
+    expect(
+      screen.getByText(/reached its agent model spend limit for the month/),
+    ).toBeInTheDocument();
+  });
+
   it("reads the model mint's spend refusals in the user's language (ADR091 D6)", () => {
     const { rerender } = render(
       <FailureCallout

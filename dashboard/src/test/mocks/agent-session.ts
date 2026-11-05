@@ -27,6 +27,7 @@ export function agentSessionView({
     branch: "bex-agent/fix",
     title: null,
     tags: [],
+    maxSpendUSD: null,
     state: null,
     outcome: null,
     agentConfig: agentConfig ?? {
