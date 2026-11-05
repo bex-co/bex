@@ -353,6 +353,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **506** — [The shell-ticket and native SSH refusals answer one sentence, "service is not eligible and running", for a Free plan, a suspended service, a static or cron service, and a service that is not running yet](506.md) (~30m; minor) ← live `/qa-find-bugs w4` loop round 99, 2026-11-05 UTC; `sshSessionReady` (`apps/service.go:1292`) folds four blockers into one message.
 - [ ] **505** — [A static site whose publish directory is missing still reports `build_ended` `succeeded` before its deploy closes `build_failed`](505.md) — todo (~40m) ← split from w4/493
 - [x] **504** — [A registry credential read, rename or delete with an id that is not valid UTF-8 still answers `500 internal error` after the w4/490 fix, which guarded only `GetRegistryCredentialByID`](done/504.md) — DONE 2026-11-05
 - [x] **503** — [A service that is being deleted still answers 200 on its env-vars, secret-files, custom-domains, events, jobs, instances and autoscaling reads, while `GET /v1/services/{id}` already answers 404](done/503.md) — DONE 2026-11-05
