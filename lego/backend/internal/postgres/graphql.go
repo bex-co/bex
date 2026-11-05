@@ -55,12 +55,12 @@ var postgresGQLType = graphql.NewObject(graphql.ObjectConfig{
 		// highAvailabilityReady (bex extension, w2/059) is the observed standby:
 		// HA on and two instances ready.
 		"highAvailabilityReady": gqlutil.BoolField(func(v PostgresView) any { return v.HighAvailabilityReady }),
-		"readReplicas":              gqlutil.Typed(graphql.NewList(readReplicaViewGQLType), func(v PostgresView) any { return v.ReadReplicas }),
-		"suspended":                 gqlutil.StrField(func(v PostgresView) any { return v.Suspended }),
-		"suspenders":                gqlutil.StrsField(func(v PostgresView) any { return v.Suspenders }),
-		"role":                      gqlutil.StrField(func(v PostgresView) any { return v.Role }),
-		"createdAt":                 gqlutil.StrField(func(v PostgresView) any { return v.CreatedAt }),
-		"updatedAt":                 gqlutil.StrField(func(v PostgresView) any { return v.UpdatedAt }),
+		"readReplicas":          gqlutil.Typed(graphql.NewList(readReplicaViewGQLType), func(v PostgresView) any { return v.ReadReplicas }),
+		"suspended":             gqlutil.StrField(func(v PostgresView) any { return v.Suspended }),
+		"suspenders":            gqlutil.StrsField(func(v PostgresView) any { return v.Suspenders }),
+		"role":                  gqlutil.StrField(func(v PostgresView) any { return v.Role }),
+		"createdAt":             gqlutil.StrField(func(v PostgresView) any { return v.CreatedAt }),
+		"updatedAt":             gqlutil.StrField(func(v PostgresView) any { return v.UpdatedAt }),
 		// expiresAt: Render's free-database expiry, null for a paid plan (w8/m126).
 		"expiresAt":          gqlutil.OptionalStrField(func(v PostgresView) any { return v.ExpiresAt }),
 		"region":             gqlutil.StrField(func(v PostgresView) any { return v.Region }),
@@ -216,16 +216,6 @@ var connectionInfoGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// parameterInputGQLType is the {name, value} input pair for
-// setDatabaseParameterOverrides (GraphQL has no built-in map type).
-var parameterInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
-	Name: "ParameterInput",
-	Fields: graphql.InputObjectConfigFieldMap{
-		"name":  &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
-		"value": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
-	},
-})
-
 var readReplicaInputGQLType = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name: "DatabaseReadReplicaInput",
 	Fields: graphql.InputObjectConfigFieldMap{
@@ -339,8 +329,9 @@ var parameterOverrideViewGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
-// parameterSpecViewGQLType is the tenant's DECLARED overrides — what a write
-// replaces, and what the editor binds to. Distinct from
+// parameterSpecViewGQLType is the tenant's DECLARED overrides
+// (Database.spec.parameters) — read-only since parameterOverrides was retired
+// (w2/066); a database that declares any keeps applying them. Distinct from
 // DatabaseParameterOverride above, which is the observed pg_settings config and
 // is mostly the operator's (w6/m133).
 var parameterSpecViewGQLType = graphql.NewObject(graphql.ObjectConfig{
@@ -715,28 +706,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 
-		// --- insights (m25): parameter overrides write ---
-		"setDatabaseParameterOverrides": &graphql.Field{
-			Type: postgresGQLType,
-			Args: graphql.FieldConfigArgument{
-				"id": gqlutil.ReqArg(graphql.String),
-				// parameters is a list of {name, value} pairs (GraphQL has no map type).
-				"parameters": gqlutil.Arg(graphql.NewList(parameterInputGQLType)),
-			},
-			Resolve: func(p graphql.ResolveParams) (any, error) {
-				items, _ := p.Args["parameters"].([]any)
-				params := make(map[string]string, len(items))
-				for _, item := range items {
-					m, _ := item.(map[string]any)
-					k, _ := m["name"].(string)
-					v, _ := m["value"].(string)
-					if k != "" {
-						params[k] = v
-					}
-				}
-				return s.SetParameterOverrides(p.Context, p.Args["id"].(string), params)
-			},
-		},
 		"executeDatabaseQuery": &graphql.Field{
 			Type: databaseQueryResultGQLType,
 			Args: graphql.FieldConfigArgument{

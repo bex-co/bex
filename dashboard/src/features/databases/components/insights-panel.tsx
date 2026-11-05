@@ -26,7 +26,7 @@ import { Button } from "@/common/components/ui/button";
 import { Badge } from "@/common/components/ui/badge";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useDatabaseInsights } from "@/features/databases/hooks/use-database-insights";
-import { ParameterOverridesEditor } from "@/features/databases/components/parameter-overrides-editor";
+import type { DatabaseParameterSpecQuery } from "@/graphql/definitions";
 
 /**
  * `"schema"."table"` with each identifier double-quoted and embedded quotes
@@ -315,36 +315,20 @@ export function InsightsPanel({ id }: { id: string }) {
           )}
         </Section>
 
-        {/* The DECLARED parameters — the editable set. A save replaces exactly
-            this, so it is the only honest thing to seed the editor from
-            (w6/m133). */}
-        <Section
-          title={t("databases.insightsParamsTitle")}
-          description={t("databases.insightsParamsDescription")}
-        >
-          {insights.parameterSpecLoading ? (
-            <p className="text-sm text-muted-foreground">
-              {t("databases.loading")}
-            </p>
-          ) : insights.parameterSpecError ? (
-            <p className="text-sm text-destructive">
-              {t("databases.insightsUnavailable")}
-            </p>
-          ) : (
-            // Keyed by database only: the editor adopts a new saved set
-            // itself, keeping an unsaved draft (w4/253).
-            <ParameterOverridesEditor
-              key={id}
-              parameters={insights.parameterSpec}
-              saving={insights.saving}
-              onSave={insights.saveParameters}
-            />
-          )}
-        </Section>
+        {/* The DECLARED parameters, read-only and shown only when a database
+            still carries some: parameterOverrides was retired to match Render
+            (w2/066), but a set declared before then keeps applying. */}
+        {insights.parameterSpec.length > 0 && (
+          <Section
+            title={t("databases.insightsParamsTitle")}
+            description={t("databases.insightsParamsDescription")}
+          >
+            <DeclaredParameters parameters={insights.parameterSpec} />
+          </Section>
+        )}
 
         {/* The OBSERVED effective config, read-only. Mostly the platform's —
-            a database nobody has configured still lists ~48 rows — so it is a
-            diagnostic, never editor state. */}
+            a database nobody has configured still lists ~48 rows. */}
         <Section
           title={t("databases.insightsEffectiveParamsTitle")}
           description={t("databases.insightsEffectiveParamsDescription")}
@@ -400,6 +384,75 @@ export function InsightsPanel({ id }: { id: string }) {
         </Section>
       </CardContent>
     </Card>
+  );
+}
+
+type DeclaredParameter = NonNullable<
+  NonNullable<DatabaseParameterSpecQuery["databaseParameterSpec"]>[number]
+>;
+
+/** Read-only view of Database.spec.parameters beside what pg_settings reports
+ * for each name (w4/m132). */
+function DeclaredParameters({
+  parameters,
+}: {
+  parameters: DeclaredParameter[];
+}) {
+  const { t } = useTranslations();
+  return (
+    <div className="overflow-x-auto">
+      <table className="w-full text-xs">
+        <thead>
+          <tr className="border-b text-left text-muted-foreground">
+            <th className="pb-1 pr-3 font-medium">
+              {t("databases.insightsColParam")}
+            </th>
+            <th className="pb-1 pr-3 font-medium">
+              {t("databases.insightsParamsDeclaredValue")}
+            </th>
+            <th className="pb-1 font-medium">
+              {t("databases.insightsParamsObservedValue")}
+            </th>
+          </tr>
+        </thead>
+        <tbody>
+          {parameters.map((parameter, index) => (
+            <tr
+              key={parameter.name ?? index}
+              className="border-b last:border-0"
+            >
+              <td className="py-1 pr-3 font-mono text-muted-foreground">
+                {parameter.name}
+              </td>
+              <td className="py-1 pr-3 font-mono">{parameter.value}</td>
+              <td className="py-1">
+                {parameter.observationStatus === "observed" ? (
+                  <div>
+                    <code>
+                      {parameter.observedSetting}
+                      {parameter.observedUnit
+                        ? ` ${parameter.observedUnit}`
+                        : ""}
+                    </code>
+                    <p className="text-muted-foreground">
+                      {t("databases.insightsParamsObservedHint")}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="text-amber-700 dark:text-amber-400">
+                    {t(
+                      parameter.observationStatus === "not_observed"
+                        ? "databases.insightsParamsNotObserved"
+                        : "databases.insightsParamsObservationUnavailable",
+                    )}
+                  </p>
+                )}
+              </td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+    </div>
   );
 }
 

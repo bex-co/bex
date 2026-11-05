@@ -528,13 +528,13 @@ Every workspace-scoped row below also accepts optional `workspaceId`; it is omit
 | `recover_postgres` | `{postgresId, name, targetTime?, plan?, version?}` | `Recover` | new `postgres` |
 | `list_postgres_exports` / `create_postgres_export` | `{postgresId}` | `ListExports`/`CreateExport` | `{exports}` / export |
 | `get_postgres_ip_allow_list` | `{postgresId}` | `GetIPAllowList` | `{cidrs}` |
-| `update_postgres` (w1/m71 + w1/m74 — the fold of the two `set_postgres_*` setters plus `rename_postgres`, `update_postgres_plan`, `update_postgres_version`, `update_postgres_disk_autoscaling`) | `{postgresId, name?, plan?, version?, enableDiskAutoscaling?, ipAllowList?, ipAllowListCidrs?, parameterOverrides?, dryRun?}` | `UpdatePostgres`/`UpdatePostgresDryRun` | updated `postgres` |
+| `update_postgres` (w1/m71 + w1/m74 — the fold of the two `set_postgres_*` setters plus `rename_postgres`, `update_postgres_plan`, `update_postgres_version`, `update_postgres_disk_autoscaling`) | `{postgresId, name?, plan?, version?, enableDiskAutoscaling?, ipAllowList?, ipAllowListCidrs?, dryRun?}` (`parameterOverrides` is refused by name since w2/066) | `UpdatePostgres`/`UpdatePostgresDryRun` | updated `postgres` |
 | `list_postgres_users` / `create_postgres_user` / `delete_postgres_user` | `{postgresId, name?}` | `ListUsers`/`CreateUser`/`DeleteUser` | `{users}` / `{name, password}` / `{deleted}` |
 | `list_postgres_processes` (w2/m25) | `{postgresId}` | `Processes` | `{processes: [process, ...]}` |
 | `list_postgres_top_queries` (w2/m25) | `{postgresId}` | `TopQueries` | `{queries: [topQuery, ...]}` |
 | `get_postgres_sizes` (w2/m25) | `{postgresId}` | `Sizes` | `{database, tables: [tableSize, ...]}` |
 | `list_postgres_table_scans` (w2/m25) | `{postgresId}` | `TableScans` | `{tableScans: [tableScan, ...]}` |
-| `list_postgres_parameter_overrides` (w2/m25; the WRITE folded into `update_postgres`) | `{postgresId}` | `ParameterOverrides` | `{overrides: [override, ...]}` / updated `postgres` |
+| `list_postgres_parameter_overrides` (w2/m25; read-only — the write was retired at w2/066) | `{postgresId}` | `ParameterOverrides` | `{overrides: [override, ...]}` |
 | `list_key_value` | `{workspaceId?}` | `ListKeyValues` | `{keyValues: [keyValue, ...]}` |
 | `get_key_value` | `{keyValueId}` | `GetKeyValue` | `keyValue` |
 | `create_key_value` | `{name, plan?, version?, storageGB?, public?}` | `CreateKeyValue` | created `keyValue` |

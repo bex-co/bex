@@ -1490,7 +1490,6 @@ export type Mutation = {
   setBuildFilter: Maybe<Service>;
   setCacheProfile: Maybe<Service>;
   setDatabaseIpAllowList: Maybe<Database>;
-  setDatabaseParameterOverrides: Maybe<Database>;
   setDatabasePublic: Maybe<Database>;
   setDatabaseReadReplicas: Maybe<Database>;
   setDisplayName: Maybe<Service>;
@@ -2375,12 +2374,6 @@ export type MutationSetDatabaseIpAllowListArgs = {
 };
 
 
-export type MutationSetDatabaseParameterOverridesArgs = {
-  id: Scalars['String']['input'];
-  parameters?: InputMaybe<Array<InputMaybe<ParameterInput>>>;
-};
-
-
 export type MutationSetDatabasePublicArgs = {
   id: Scalars['String']['input'];
   public: Scalars['Boolean']['input'];
@@ -2945,11 +2938,6 @@ export type OutboundIPs = {
   dedicatedIpId: Maybe<Scalars['String']['output']>;
   ips: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   type: Maybe<Scalars['String']['output']>;
-};
-
-export type ParameterInput = {
-  name: Scalars['String']['input'];
-  value: Scalars['String']['input'];
 };
 
 export type PostgresConnectionInfo = {

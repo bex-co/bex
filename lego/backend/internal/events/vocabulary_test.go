@@ -153,7 +153,7 @@ func TestEveryTargetedVerbIsNamedOrExcused(t *testing.T) {
 		"postgres.Suspend", "postgres.Resume", "postgres.Restart", "postgres.Failover",
 		"postgres.SetPlan", "postgres.DeletePostgres", "postgres.SetIPAllowList",
 		"postgres.CreateUser", "postgres.DeleteUser", "postgres.Recover",
-		"postgres.CreateExport", "postgres.SetParameterOverrides", "postgres.SetProjectID",
+		"postgres.CreateExport", "postgres.SetProjectID",
 		"keyvalue.Suspend", "keyvalue.Resume", "keyvalue.SetPlan",
 		"keyvalue.DeleteKeyValue", "keyvalue.SetIPAllowList", "keyvalue.SetProjectID",
 	} {

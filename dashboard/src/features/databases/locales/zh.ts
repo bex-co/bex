@@ -1353,10 +1353,6 @@ const zhDatabases: Record<string, TranslationEntry> = {
     message: "观测设置",
     description: "Declared PostgreSQL parameter observation diagnostic.",
   },
-  "databases.insightsParamsNoObservation": {
-    message: "此值暂无观测结果。",
-    description: "Declared PostgreSQL parameter observation diagnostic.",
-  },
   "databases.insightsParamsObservedHint": {
     message: "实时设置；这并不确认请求的值已生效。",
     description: "Declared PostgreSQL parameter observation diagnostic.",
@@ -1372,12 +1368,13 @@ const zhDatabases: Record<string, TranslationEntry> = {
   "databases.insightsParamsTitle": {
     message: "参数覆盖",
     description:
-      "Insights panel — heading for the parameters this database declares (the editable set)",
+      "Insights panel — heading for the parameters this database declares (read-only)",
   },
   "databases.insightsParamsDescription": {
-    message: "此数据库声明的 postgresql.conf 设置。保存会替换整组设置。",
+    message:
+      "此数据库在参数覆盖下线前声明的设置。它们仍然生效，但无法再在此修改；如需设置会话默认值，请在 SQL 控制台使用 ALTER DATABASE … SET。",
     description:
-      "Explains that the editor holds the tenant's own declared parameters and that a save is a full replacement",
+      "Explains that the declared parameters are read-only legacy settings that still apply, and how to set session defaults instead",
   },
   "databases.insightsEffectiveParamsTitle": {
     message: "非默认参数",
@@ -1391,68 +1388,6 @@ const zhDatabases: Record<string, TranslationEntry> = {
   "databases.insightsNoParams": {
     message: "所有参数均为默认值。",
     description: "Insights parameter-overrides empty state",
-  },
-  "databases.insightsNoDeclaredParams": {
-    message: "此数据库未设置任何参数覆盖。",
-    description:
-      "Empty state for the declared-parameter editor on a database nobody has configured",
-  },
-  "databases.insightsParamsAdd": {
-    message: "添加覆盖项",
-    description: "Button that adds a Postgres parameter override row",
-  },
-  "databases.insightsParamsSave": {
-    message: "保存覆盖项",
-    description: "Button that replaces the Postgres parameter overrides",
-  },
-  "databases.insightsParamsSaving": {
-    message: "正在保存…",
-    description: "Postgres parameter-overrides save button while saving",
-  },
-  "databases.insightsParamsDiscard": {
-    message: "放弃更改",
-    description: "Button that restores the last saved parameter draft",
-  },
-  "databases.insightsParamsActions": {
-    message: "操作",
-    description: "Screen-reader-only header for parameter-row actions",
-  },
-  "databases.insightsParamNameLabel": {
-    message: "参数 {index} 名称",
-    description: "Accessible label for a parameter override name input",
-  },
-  "databases.insightsParamValueLabel": {
-    message: "参数 {index} 值",
-    description: "Accessible label for a parameter override value input",
-  },
-  "databases.insightsParamsRemove": {
-    message: "移除 {name}",
-    description: "Accessible label for a parameter override remove button",
-  },
-  "databases.insightsParamsUnnamed": {
-    message: "参数 {index}",
-    description: "Fallback name in the remove label for an empty draft row",
-  },
-  "databases.insightsParamsPending": {
-    message: "待应用",
-    description: "Source shown for a newly added, not-yet-applied override",
-  },
-  "databases.insightsParamsBlank": {
-    message: "每个覆盖项都需要参数名称和值。",
-    description: "Inline validation for an incomplete parameter row",
-  },
-  "databases.insightsParamsDuplicate": {
-    message: "{name} 出现了多次。",
-    description: "Inline validation for duplicate parameter names",
-  },
-  "databases.insightsParamsManaged": {
-    message: "shared_preload_libraries 由 bex 管理，无法覆盖。",
-    description:
-      "Inline validation for the platform-managed Postgres parameter",
-  },
-  "databases.insightsParamsSaveError": {
-    message: "无法保存参数覆盖项，请重试。",
-    description: "Fallback error when the parameter mutation fails",
   },
   "databases.insightsColTable": {
     message: "表",

@@ -1054,21 +1054,20 @@ func TestRESTUpdatePostgresPartial(t *testing.T) {
 		t.Error("spec.highAvailability should be true after an HA-only update")
 	}
 
-	// Render accepts parameterOverrides inline on PATCH. It reaches the same
-	// replace-style spec.parameters seam as PUT /parameter-overrides.
-	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"parameterOverrides":{"work_mem":"16MB","shared_preload_libraries":"badlib"}}`)
-	if w.Code != http.StatusOK {
-		t.Fatalf("inline parameterOverrides PATCH => 200, got %d: %s", w.Code, w.Body.String())
+	// parameterOverrides is retired (w2/066): PATCH refuses it by name and
+	// leaves the declared set alone.
+	before := got.Spec.Parameters
+	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"parameterOverrides":{"work_mem":"16MB"}}`)
+	if w.Code != http.StatusBadRequest || !strings.Contains(w.Body.String(), "parameterOverrides") {
+		t.Fatalf("inline parameterOverrides PATCH => named 400, got %d: %s", w.Code, w.Body.String())
 	}
 	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
-	if !reflect.DeepEqual(got.Spec.Parameters, map[string]string{"work_mem": "16MB"}) {
-		t.Fatalf("inline parameterOverrides = %v, want guarded replace map", got.Spec.Parameters)
+	if !reflect.DeepEqual(got.Spec.Parameters, before) {
+		t.Fatalf("refused parameterOverrides PATCH changed spec.parameters: %v -> %v", before, got.Spec.Parameters)
 	}
-	// Omission leaves overrides untouched.
 	w = serveREST(svc, "PATCH", "/v1/postgres/upd-db", `{"diskSizeGB":21}`)
-	_ = cl.Get(ctx, client.ObjectKey{Namespace: "default", Name: "upd-db"}, &got)
-	if w.Code != http.StatusOK || !reflect.DeepEqual(got.Spec.Parameters, map[string]string{"work_mem": "16MB"}) {
-		t.Fatalf("PATCH without parameterOverrides changed them: status=%d params=%v", w.Code, got.Spec.Parameters)
+	if w.Code != http.StatusOK {
+		t.Fatalf("disk grow PATCH => 200, got %d: %s", w.Code, w.Body.String())
 	}
 
 	// Storage is grow-only across every REST/CLI call: a smaller explicit disk

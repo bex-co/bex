@@ -176,18 +176,6 @@ type PostgresView struct {
 	// BackupsEnabled reports whether continuous backups (and so recovery/PITR)
 	// are active for this instance — surfaced by the controller once projected.
 	BackupsEnabled bool `json:"backupsEnabled"`
-	// ParameterOverrides is the DECLARED postgresql.conf override set
-	// (Database.spec.parameters) — what this database sets, and what a PATCH
-	// replaces. Render's own postgresDetail schema carries the same key with the
-	// same name/value map shape, so this is parity, not an extension.
-	//
-	// Before w6/m133 spec.parameters was effectively WRITE-ONLY: no read surface
-	// returned it, so a caller could declare overrides and never read back what
-	// they had declared — which is why the dashboard editor was seeded from the
-	// pg_settings view instead, and a single edit rewrote the tenant's declared
-	// config with the operator's own. Omitted rather than serialized as {} when
-	// empty, matching Render's optional key.
-	ParameterOverrides map[string]string `json:"parameterOverrides,omitempty"`
 
 	// OwnerID is Render's workspace-scoping field (w6/m2/t004), read from the
 	// Database CR's core.LabelTenant label (the same one apps.AppView.OwnerID
@@ -327,12 +315,26 @@ type CreatePostgresRequest struct {
 	// addressable read-only connection URL. Render's readReplicas: [{name}].
 	// Independent of EnableHighAvailability.
 	ReadReplicas []ReadReplicaInput `json:"readReplicas,omitempty"`
-	// ParameterOverrides is Render's create-time postgresql.conf overrides
-	// (postgresPOSTInput.parameterOverrides), held to the same rule as PATCH.
+	// ParameterOverrides is decoded only so a request carrying it is refused by
+	// name: Render retired the field (OpenAPI pinned 2026-11-02) and so did bex
+	// (w2/066, user decision D2=A). Any presence, {} included, is a 400.
 	ParameterOverrides map[string]string `json:"parameterOverrides,omitempty"`
 	// DryRun, when true, resolves and returns the spec preview without any k8s
 	// write — zero side effects (w2/m29). Validation still runs.
 	DryRun bool `json:"dryRun,omitempty"`
+}
+
+// parameterOverridesRetiredError refuses the retired parameterOverrides field
+// on every create/update surface (w2/066, user decision D2=A — Render's
+// 2026-11-02 OpenAPI dropped it). Session defaults remain available through
+// standard SQL, which is what the message points at. Overrides a database
+// already declares (Database.spec.parameters) keep applying unchanged.
+func parameterOverridesRetiredError() error {
+	return core.NewBadRequestError(
+		"POSTGRES_PARAMETER_OVERRIDES_UNSUPPORTED",
+		"parameterOverrides is no longer supported; set session defaults with SQL instead: ALTER DATABASE <name> SET <parameter> = <value> (or ALTER ROLE <role> SET <parameter> = <value>)",
+		nil,
+	)
 }
 
 // reservedIdentifierError refuses a name PostgreSQL owns (w4/m170), naming the
@@ -599,7 +601,6 @@ func pgView(d *appv1alpha1.Database) PostgresView {
 		PoolerEnabled:             d.Spec.Pooler,
 		ConnectionPool:            connectionPoolEnum(d.Spec.Pooler),
 		BackupsEnabled:            d.Status.BackupsEnabled,
-		ParameterOverrides:        declaredParameters(d),
 		OwnerID:                   d.Labels[core.LabelTenant],
 		ProjectID:                 d.Labels[core.LabelProject],
 		EnvironmentID:             id.EnvironmentPublicID(d.Labels[core.LabelEnvironment]),
@@ -845,8 +846,8 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 	if err := req.validatePhysicalIdentifiers(); err != nil {
 		return PostgresView{}, err
 	}
-	if err := checkParameterOverrides(req.ParameterOverrides); err != nil {
-		return PostgresView{}, err
+	if req.ParameterOverrides != nil {
+		return PostgresView{}, parameterOverridesRetiredError()
 	}
 	pooler, err := resolvePooler(req.Pooler, req.ConnectionPool)
 	if err != nil {
@@ -886,7 +887,6 @@ func (s *Service) CreatePostgres(ctx context.Context, req CreatePostgresRequest)
 			Pooler:           pooler != nil && *pooler,
 			HighAvailability: req.EnableHighAvailability,
 			ReadReplicas:     readReplicaSpecs(req.ReadReplicas),
-			Parameters:       normalizeParameterOverrides(req.ParameterOverrides),
 		},
 	}
 	if err := CheckDatabaseAdmission(nil, d.Spec); err != nil {
@@ -1290,8 +1290,10 @@ type PostgresPatch struct {
 	// IPAllowList controls external access: nil preserves intent, a nonempty
 	// list publishes for those sources, and an empty list withdraws the public
 	// endpoint (Render's --clear-ip-allow-list). Internal access is unaffected.
-	IPAllowList        *[]core.IPAllowListEntry
-	ParameterOverrides *map[string]string // nil = unchanged; non-nil empty map clears it
+	IPAllowList *[]core.IPAllowListEntry
+	// ParameterOverrides is carried only so validate() can refuse it by name
+	// (w2/066): any non-nil value, an empty map included, is a 400.
+	ParameterOverrides *map[string]string
 	// Public is a Bex override and wins over IPAllowList when both are present.
 	// Explicit true with an empty list preserves unrestricted external access;
 	// false withdraws the endpoint while retaining any rules. Nil alone leaves
@@ -1331,35 +1333,14 @@ func (patch PostgresPatch) validate() error {
 			return err
 		}
 	}
-	// Operator-owned settings are refused here rather than filtered, so a caller
-	// is told what was rejected instead of believing it landed (w6/m133).
-	// validate() is the single choke point for updates: applyPostgresPatch is the
-	// only update-time writer of d.Spec.Parameters (create applies the same
-	// checkParameterOverrides), and every surface that reaches it —
-	// REST PATCH, REST PUT /parameter-overrides, GraphQL
-	// setDatabaseParameterOverrides, MCP update_postgres — goes through
-	// UpdatePostgres, which calls this before applying anything.
+	// Retired field (w2/066): refused by name on every update surface — REST
+	// PATCH and MCP update_postgres both reach UpdatePostgres, which calls this
+	// before applying anything. No update writes d.Spec.Parameters any more
+	// (a recovery still carries the source's set, see tenantParameters).
 	if patch.ParameterOverrides != nil {
-		return checkParameterOverrides(*patch.ParameterOverrides)
+		return parameterOverridesRetiredError()
 	}
 	return nil
-}
-
-// checkParameterOverrides refuses operator-owned settings by name — the one
-// rule a create (w8/057) and every update share.
-func checkParameterOverrides(params map[string]string) error {
-	if managed := operatorManagedParameterNames(params); len(managed) > 0 {
-		return fmt.Errorf("%w: %s %s managed by the platform and cannot be set as a database parameter",
-			core.ErrBadRequest, strings.Join(managed, ", "), pluralIsAre(len(managed)))
-	}
-	return nil
-}
-
-func pluralIsAre(n int) string {
-	if n == 1 {
-		return "is"
-	}
-	return "are"
 }
 
 // DatabaseStorageHighWater is the floor a storage resize may not go below: the
@@ -1410,9 +1391,6 @@ func (patch PostgresPatch) apply(d *appv1alpha1.Database) {
 		d.Spec.IPAllowList = core.AllowListToSpec(*patch.IPAllowList)
 		d.Spec.Public = len(*patch.IPAllowList) > 0
 	}
-	if patch.ParameterOverrides != nil {
-		d.Spec.Parameters = normalizeParameterOverrides(*patch.ParameterOverrides)
-	}
 	if patch.Public != nil {
 		d.Spec.Public = *patch.Public
 	}
@@ -1448,74 +1426,13 @@ func readReplicaSpecs(in []ReadReplicaInput) []appv1alpha1.DatabaseReadReplica {
 	return out
 }
 
-// sensitiveLoggingParameters are the PostgreSQL settings that put STATEMENT
-// TEXT — and therefore the literals inside it: passwords, tokens, personal
-// data — into the database log. They are not blocked outright, because
-// log_min_duration_statement is the standard way to find a slow query and
-// refusing it would cost real operational value; they are gated at
-// developer-and-up (codex round-5 F7).
-//
-// can_create rather than can_view_sensitive, even though this is a
-// confidentiality boundary: the two relations resolve to the SAME roles
-// (developer or admin, per model.fga), and can_create is a write relation, so
-// the change stays in the service events feed. can_view_sensitive is a read
-// relation whose allowed outcomes are deliberately not recorded — gating a
-// write on it would make a security-relevant configuration change invisible.
-// Same reasoning the deploy-hook rotation carries in representativeVerbRelations.
-//
-// auto_explain.* is matched by prefix, defensively: it logs query text with
-// bind parameters, and while it needs shared_preload_libraries (which the
-// operator owns and normalizeParameterOverrides drops) that is one operator
-// change away from becoming reachable.
-var sensitiveLoggingParameters = map[string]bool{
-	"log_statement":                     true, // all/mod/ddl — logs the statement itself
-	"log_min_duration_statement":        true, // >= 0 logs the text of every qualifying statement
-	"log_min_error_statement":           true, // logs the statement that errored
-	"log_min_duration_sample":           true, // sampled variant of the above
-	"log_statement_sample_rate":         true, // controls how much of that sample is emitted
-	"log_parameter_max_length":          true, // how much of the BIND PARAMETERS (the literal values) is logged
-	"log_parameter_max_length_on_error": true,
-}
-
-// sensitiveLoggingParameterPrefixes are setting-name PREFIXES whose entire
-// family discloses statement text, matched so a knob the exact-name map has
-// not heard of cannot slip under the gate (codex round-7 F2: the map knew
-// auto_explain.log_analyze but not debug_print_plan, whose parse/rewrite/plan
-// trees carry every literal — the enumeration-completeness failure this fixes).
-var sensitiveLoggingParameterPrefixes = []string{
-	"debug_print_",  // debug_print_parse/rewritten/plan: raw trees, literals included
-	"auto_explain.", // the module's whole knob family logs query text/plans
-}
-
-// setsSensitiveLoggingParameter reports whether an override map asserts any
-// statement-logging setting.
-//
-// Presence, not delta: the parameter map is a full REPLACEMENT, so a caller
-// submitting it is asserting the whole logging configuration, not editing one
-// key. A contributor who needs to tune work_mem on a database whose logging a
-// developer configured therefore has to ask a developer — the same boundary
-// that already applies to every other developer-owned setting, and the reading
-// that fails closed.
-func setsSensitiveLoggingParameter(params map[string]string) bool {
-	for name := range params {
-		canonical := strings.ToLower(strings.TrimSpace(name))
-		if sensitiveLoggingParameters[canonical] {
-			return true
-		}
-		for _, prefix := range sensitiveLoggingParameterPrefixes {
-			if strings.HasPrefix(canonical, prefix) {
-				return true
-			}
-		}
-	}
-	return false
-}
-
 // operatorManagedParameters are postgresql.conf settings the PLATFORM owns.
 // A tenant value for any of them either breaks a platform guarantee or is
 // rejected by CloudNativePG's own admission webhook, which would leave the
-// tenant's Database unreconcilable — so they are refused at the API rather
-// than written to spec.parameters (w6/m133).
+// tenant's Database unreconcilable. The API refused them as overrides until
+// parameterOverrides was retired (w6/m133, then w2/066); the table now serves
+// recovery (tenantParameters), which strips them from a legacy source's
+// spec.parameters so they cannot wedge the restore.
 //
 // Why a denylist at all: the operator merges spec.parameters straight on top of
 // its own CNPG parameter map (database_controller.go's pgParams loop), so a
@@ -1537,12 +1454,6 @@ func setsSensitiveLoggingParameter(params map[string]string) bool {
 //   - Not tenant configuration — log shipping (CNPG parses its own JSON log at
 //     a fixed destination), and allow_alter_system, which would let a tenant
 //     bypass this guard entirely via ALTER SYSTEM.
-//
-// This is deliberately NOT the same mechanism as shared_preload_libraries,
-// which stays silently dropped just below: that drop is a documented contract
-// (SetParameterOverrides' doc, the MCP tool schema) with its own client-side
-// message in the editor. These have neither, and dropping them silently would
-// leave a tenant believing they had set archive_command when they had not.
 var operatorManagedParameters = map[string]bool{
 	// WAL archival / recovery — backups and PITR run on these.
 	"archive_mode":             true,
@@ -1591,8 +1502,7 @@ var operatorManagedParameters = map[string]bool{
 }
 
 // operatorManagedParameterPrefixes match whole families, so a knob the exact
-// map has not heard of cannot slip under the guard — the same defensive shape
-// sensitiveLoggingParameterPrefixes already uses in this file.
+// map has not heard of cannot slip under the guard.
 var operatorManagedParameterPrefixes = []string{
 	"archive_",        // archive_command, archive_cleanup_command, …
 	"restore_command", // and any suffixed variant
@@ -1629,35 +1539,6 @@ func operatorManagedParameterNames(params map[string]string) []string {
 	return slices.Compact(found)
 }
 
-// declaredParameters copies spec.parameters for the view. A copy, not the map
-// itself: the view escapes to every surface and must not alias CR state.
-func declaredParameters(d *appv1alpha1.Database) map[string]string {
-	if len(d.Spec.Parameters) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(d.Spec.Parameters))
-	for k, v := range d.Spec.Parameters {
-		out[k] = v
-	}
-	return out
-}
-
-func normalizeParameterOverrides(params map[string]string) map[string]string {
-	if len(params) == 0 {
-		return nil
-	}
-	out := make(map[string]string, len(params))
-	for name, value := range params {
-		if name != "shared_preload_libraries" {
-			out[name] = value
-		}
-	}
-	if len(out) == 0 {
-		return nil
-	}
-	return out
-}
-
 // UpdatePostgres applies a partial update (Render's PATCH /postgres/{id}
 // semantics — only fields set in patch change; everything else is left alone).
 // SetPlan remains the plan-only entry point GraphQL's updateDatabasePlan
@@ -1676,17 +1557,7 @@ func (s *Service) UpdatePostgresDryRun(ctx context.Context, name string, patch P
 }
 
 func (s *Service) updatePostgres(ctx context.Context, name string, patch PostgresPatch, dryRun bool) (PostgresView, error) {
-	// SECURITY (codex round-5 F7): turning on statement logging writes the SQL
-	// text — and the literals inside it — into the database log, which
-	// can_view_logs (contributor and up) can read. That is the same disclosure
-	// ExecuteQuery and the top-query views reserve for developer-and-up, so the
-	// write that CAUSES it must not be reachable one rung lower. Relation
-	// resolved from the request before the single fetch (the t001 shape); the
-	// alternative — fetch, diff, then gate — needs a second authorization pass
-	// on an already-fetched resource, which this codebase forbids because the
-	// two gates resolve different workspaces (see backend/AGENTS.md).
-	relation := core.LifecycleOrCreate(patch.ParameterOverrides != nil && setsSensitiveLoggingParameter(*patch.ParameterOverrides))
-	ctx, d, err := s.fetchToChange(ctx, name, dryRun, relation)
+	ctx, d, err := s.fetchToChange(ctx, name, dryRun, core.RelCanOperate)
 	if err != nil {
 		return PostgresView{}, err
 	}

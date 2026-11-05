@@ -18,6 +18,7 @@ package postgres
 
 import (
 	"context"
+	"strings"
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
@@ -27,10 +28,11 @@ import (
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
-// update_postgres_mcp_test.go covers w1/m71's datastore fold: the two
-// replace-shaped Postgres setters became arguments on one patch tool. Both were
-// already "replace this whole list/map", so the property under test is that
-// replace stayed replace and that mentioning one never rewrites the other.
+// update_postgres_mcp_test.go covers w1/m71's datastore fold: the
+// replace-shaped Postgres setters became arguments on one patch tool, so the
+// property under test is that replace stayed replace and that mentioning one
+// field never rewrites another. The parameterOverrides half of that fold was
+// retired at w2/066 and is now refused by name.
 
 func updatePostgresFixture(t *testing.T) (*Service, client.Client, func(string, map[string]any) *mcp.CallToolResult) {
 	t.Helper()
@@ -76,63 +78,87 @@ func postgresSpec(t *testing.T, cl client.Client) appv1alpha1.DatabaseSpec {
 	return db.Spec
 }
 
-func TestUpdatePostgresFoldsBothSetters(t *testing.T) {
+func TestUpdatePostgresIPAllowListLeavesDeclaredParametersAlone(t *testing.T) {
 	_, cl, call := updatePostgresFixture(t)
 
-	// parameterOverrides alone: replaces the map, leaves the allowlist alone.
-	if res := call("update_postgres", map[string]any{
-		"postgresId":         "dpg-upd",
-		"parameterOverrides": map[string]any{"max_connections": "200"},
-	}); res.IsError {
-		t.Fatalf("update_postgres parameterOverrides: %+v", res.Content)
-	}
-	spec := postgresSpec(t, cl)
-	if spec.Parameters["max_connections"] != "200" || spec.Parameters["work_mem"] != "" {
-		t.Fatalf("parameterOverrides did not REPLACE the map: %#v", spec.Parameters)
-	}
-	if len(spec.IPAllowList) != 1 || spec.IPAllowList[0].Description != "office" {
-		t.Fatalf("parameterOverrides call touched the omitted allowlist: %#v", spec.IPAllowList)
-	}
-
-	// ipAllowList alone: replaces the list, leaves the parameters alone.
+	// ipAllowList alone: replaces the list, leaves the declared parameters alone.
 	if res := call("update_postgres", map[string]any{
 		"postgresId":  "dpg-upd",
 		"ipAllowList": []map[string]any{{"cidrBlock": "198.51.100.0/24", "description": "vpn"}},
 	}); res.IsError {
 		t.Fatalf("update_postgres ipAllowList: %+v", res.Content)
 	}
-	spec = postgresSpec(t, cl)
+	spec := postgresSpec(t, cl)
 	if len(spec.IPAllowList) != 1 || spec.IPAllowList[0].CIDR != "198.51.100.0/24" {
 		t.Fatalf("ipAllowList did not replace: %#v", spec.IPAllowList)
 	}
-	if spec.Parameters["max_connections"] != "200" {
-		t.Fatalf("ipAllowList call touched the omitted parameters: %#v", spec.Parameters)
+	if len(spec.Parameters) != 1 || spec.Parameters["work_mem"] != "16MB" {
+		t.Fatalf("ipAllowList call touched the declared parameters: %#v", spec.Parameters)
 	}
 
-	// An empty map/list clears, which is what the retired setters did.
-	call("update_postgres", map[string]any{
-		"postgresId":         "dpg-upd",
-		"parameterOverrides": map[string]any{},
-		"ipAllowListCidrs":   []string{},
-	})
-	spec = postgresSpec(t, cl)
-	if len(spec.Parameters) != 0 || len(spec.IPAllowList) != 0 {
-		t.Fatalf("empty arguments did not clear: params=%#v allowlist=%#v", spec.Parameters, spec.IPAllowList)
+	// An empty list clears, which is what the retired setter did.
+	if res := call("update_postgres", map[string]any{"postgresId": "dpg-upd", "ipAllowListCidrs": []string{}}); res.IsError {
+		t.Fatalf("update_postgres empty ipAllowListCidrs: %+v", res.Content)
 	}
+	spec = postgresSpec(t, cl)
+	if len(spec.IPAllowList) != 0 || spec.Parameters["work_mem"] != "16MB" {
+		t.Fatalf("empty allowlist did not clear only the allowlist: params=%#v allowlist=%#v", spec.Parameters, spec.IPAllowList)
+	}
+}
+
+// TestUpdatePostgresRefusesRetiredParameterOverrides — w2/066 (user decision
+// D2=A): Render retired parameterOverrides, so update_postgres refuses it by
+// name with guidance toward ALTER DATABASE/ROLE … SET, for a write and a dry
+// run alike, with or without a neighbouring field, and {} included. The
+// database's existing spec.parameters must survive every refusal untouched.
+func TestUpdatePostgresRefusesRetiredParameterOverrides(t *testing.T) {
+	for name, args := range map[string]map[string]any{
+		"replace":       {"parameterOverrides": map[string]any{"max_connections": "200"}},
+		"empty map":     {"parameterOverrides": map[string]any{}},
+		"dry run":       {"parameterOverrides": map[string]any{"max_connections": "500"}, "dryRun": true},
+		"with neighbor": {"parameterOverrides": map[string]any{"work_mem": "8MB"}, "name": "renamed"},
+	} {
+		t.Run(name, func(t *testing.T) {
+			_, cl, call := updatePostgresFixture(t)
+			args["postgresId"] = "dpg-upd"
+			res := call("update_postgres", args)
+			if !res.IsError {
+				t.Fatalf("parameterOverrides should be refused: %+v", res.Content)
+			}
+			text := mcpResultText(res)
+			if !strings.Contains(text, "parameterOverrides") || !strings.Contains(text, "ALTER DATABASE") {
+				t.Fatalf("refusal must name parameterOverrides and point at ALTER DATABASE: %q", text)
+			}
+			spec := postgresSpec(t, cl)
+			if len(spec.Parameters) != 1 || spec.Parameters["work_mem"] != "16MB" || spec.Name != "dpg-upd" {
+				t.Fatalf("refused call changed the database: name=%q params=%#v", spec.Name, spec.Parameters)
+			}
+		})
+	}
+}
+
+func mcpResultText(res *mcp.CallToolResult) string {
+	var b strings.Builder
+	for _, c := range res.Content {
+		if tc, ok := c.(*mcp.TextContent); ok {
+			b.WriteString(tc.Text)
+		}
+	}
+	return b.String()
 }
 
 func TestUpdatePostgresDryRunWritesNothing(t *testing.T) {
 	_, cl, call := updatePostgresFixture(t)
 
 	if res := call("update_postgres", map[string]any{
-		"postgresId":         "dpg-upd",
-		"parameterOverrides": map[string]any{"max_connections": "500"},
-		"dryRun":             true,
+		"postgresId": "dpg-upd",
+		"name":       "previewed",
+		"dryRun":     true,
 	}); res.IsError {
 		t.Fatalf("dry-run update_postgres: %+v", res.Content)
 	}
-	if got := postgresSpec(t, cl).Parameters["work_mem"]; got != "16MB" {
-		t.Fatalf("dry run wrote through: parameters = %#v", postgresSpec(t, cl).Parameters)
+	if got := postgresSpec(t, cl).Name; got != "dpg-upd" {
+		t.Fatalf("dry run wrote through: name = %q", got)
 	}
 }
 

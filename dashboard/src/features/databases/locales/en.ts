@@ -1401,10 +1401,6 @@ const enDatabases: Record<string, TranslationEntry> = {
     message: "Observed setting",
     description: "Declared PostgreSQL parameter observation diagnostic.",
   },
-  "databases.insightsParamsNoObservation": {
-    message: "No observation for this value yet.",
-    description: "Declared PostgreSQL parameter observation diagnostic.",
-  },
   "databases.insightsParamsObservedHint": {
     message:
       "Live setting; this does not confirm the requested value was applied.",
@@ -1421,13 +1417,13 @@ const enDatabases: Record<string, TranslationEntry> = {
   "databases.insightsParamsTitle": {
     message: "Parameter overrides",
     description:
-      "Insights panel — heading for the parameters this database declares (the editable set)",
+      "Insights panel — heading for the parameters this database declares (read-only)",
   },
   "databases.insightsParamsDescription": {
     message:
-      "The postgresql.conf settings this database declares. Saving replaces the whole set.",
+      "Settings this database declared before parameter overrides were retired. They still apply but can no longer be changed here; set session defaults with ALTER DATABASE … SET in the SQL console.",
     description:
-      "Explains that the editor holds the tenant's own declared parameters and that a save is a full replacement",
+      "Explains that the declared parameters are read-only legacy settings that still apply, and how to set session defaults instead",
   },
   "databases.insightsEffectiveParamsTitle": {
     message: "Non-default parameters",
@@ -1442,69 +1438,6 @@ const enDatabases: Record<string, TranslationEntry> = {
   "databases.insightsNoParams": {
     message: "All parameters are at their defaults.",
     description: "Insights parameter-overrides empty state",
-  },
-  "databases.insightsNoDeclaredParams": {
-    message: "This database sets no parameter overrides.",
-    description:
-      "Empty state for the declared-parameter editor on a database nobody has configured",
-  },
-  "databases.insightsParamsAdd": {
-    message: "Add override",
-    description: "Button that adds a Postgres parameter override row",
-  },
-  "databases.insightsParamsSave": {
-    message: "Save overrides",
-    description: "Button that replaces the Postgres parameter overrides",
-  },
-  "databases.insightsParamsSaving": {
-    message: "Saving…",
-    description: "Postgres parameter-overrides save button while saving",
-  },
-  "databases.insightsParamsDiscard": {
-    message: "Discard changes",
-    description: "Button that restores the last saved parameter draft",
-  },
-  "databases.insightsParamsActions": {
-    message: "Actions",
-    description: "Screen-reader-only header for parameter-row actions",
-  },
-  "databases.insightsParamNameLabel": {
-    message: "Parameter {index} name",
-    description: "Accessible label for a parameter override name input",
-  },
-  "databases.insightsParamValueLabel": {
-    message: "Parameter {index} value",
-    description: "Accessible label for a parameter override value input",
-  },
-  "databases.insightsParamsRemove": {
-    message: "Remove {name}",
-    description: "Accessible label for a parameter override remove button",
-  },
-  "databases.insightsParamsUnnamed": {
-    message: "parameter {index}",
-    description: "Fallback name in the remove label for an empty draft row",
-  },
-  "databases.insightsParamsPending": {
-    message: "Pending",
-    description: "Source shown for a newly added, not-yet-applied override",
-  },
-  "databases.insightsParamsBlank": {
-    message: "Every override needs both a parameter name and a value.",
-    description: "Inline validation for an incomplete parameter row",
-  },
-  "databases.insightsParamsDuplicate": {
-    message: "{name} appears more than once.",
-    description: "Inline validation for duplicate parameter names",
-  },
-  "databases.insightsParamsManaged": {
-    message:
-      "shared_preload_libraries is managed by bex and can't be overridden.",
-    description:
-      "Inline validation for the platform-managed Postgres parameter",
-  },
-  "databases.insightsParamsSaveError": {
-    message: "Couldn't save parameter overrides. Please try again.",
-    description: "Fallback error when the parameter mutation fails",
   },
   // Table column headers shared across insight sub-sections
   "databases.insightsColTable": {

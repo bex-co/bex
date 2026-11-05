@@ -38,9 +38,7 @@ func TestParameterSpecObservationIntegration(t *testing.T) {
 	seedDatabaseAt(t, svc, "observed-live", uri.String())
 	for _, declared := range []string{"8MB", "16MB", "not-a-size"} {
 		t.Run(declared, func(t *testing.T) {
-			if _, err := svc.SetParameterOverrides(ctx, "observed-live", map[string]string{"work_mem": declared, "bex_unknown_parameter": "enabled"}); err != nil {
-				t.Fatal(err)
-			}
+			declareParameters(t, svc, "observed-live", map[string]string{"work_mem": declared, "bex_unknown_parameter": "enabled"})
 			rows, err := svc.ParameterSpec(ctx, "observed-live")
 			if err != nil {
 				t.Fatal(err)
@@ -74,9 +72,7 @@ func TestParameterSpecObservationNameCaseIntegration(t *testing.T) {
 	seedDatabaseAt(t, svc, "observed-case", uri.String())
 	for _, name := range []string{"timezone", "TimeZone"} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := svc.SetParameterOverrides(ctx, "observed-case", map[string]string{name: "Europe/Berlin"}); err != nil {
-				t.Fatal(err)
-			}
+			declareParameters(t, svc, "observed-case", map[string]string{name: "Europe/Berlin"})
 			rows, err := svc.ParameterSpec(ctx, "observed-case")
 			if err != nil {
 				t.Fatal(err)
@@ -105,9 +101,7 @@ func TestParameterSpecObservationConnectionFailureIntegration(t *testing.T) {
 	svc, _ := newService()
 	seedDatabaseAt(t, svc, "unavailable-live", uri.String())
 	ctx := context.Background()
-	if _, err := svc.SetParameterOverrides(ctx, "unavailable-live", map[string]string{"work_mem": "8MB"}); err != nil {
-		t.Fatal(err)
-	}
+	declareParameters(t, svc, "unavailable-live", map[string]string{"work_mem": "8MB"})
 	if _, err := svc.ParameterOverrides(ctx, "unavailable-live"); err == nil {
 		t.Fatal("invalid startup setting unexpectedly connected")
 	}

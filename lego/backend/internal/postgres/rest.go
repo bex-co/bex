@@ -423,20 +423,12 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	mux.HandleFunc("GET "+base+"/{id}/top-queries", core.HandleByID(s.TopQueries))
 	mux.HandleFunc("GET "+base+"/{id}/sizes", core.HandleByID(s.Sizes))
 	mux.HandleFunc("GET "+base+"/{id}/table-scans", core.HandleByID(s.TableScans))
+	// The observed pg_settings config (mostly the operator's own settings).
 	mux.HandleFunc("GET "+base+"/{id}/parameter-overrides", core.HandleByID(s.ParameterOverrides))
-	// The DECLARED set — what PUT below replaces. /parameter-overrides above is
-	// the observed pg_settings config and is mostly the operator's (w6/m133).
+	// The DECLARED set (Database.spec.parameters), read-only since
+	// parameterOverrides was retired (w2/066): whatever a database already
+	// declares keeps applying, and nothing can change it through the API.
 	mux.HandleFunc("GET "+base+"/{id}/parameters", core.HandleByID(s.ParameterSpec))
-	mux.HandleFunc("PUT "+base+"/{id}/parameter-overrides", func(w http.ResponseWriter, r *http.Request) {
-		var req struct {
-			Parameters map[string]string `json:"parameters"`
-		}
-		if !decodeOr400(w, r, &req) {
-			return
-		}
-		pg, err := s.SetParameterOverrides(r.Context(), r.PathValue("id"), req.Parameters)
-		s.respondPostgres(w, r, http.StatusOK, pg, err)
-	})
 }
 
 // handleUpdatePostgres is PATCH /v1/postgres/{id} —
@@ -463,10 +455,12 @@ func (s *Service) handleUpdatePostgres(w http.ResponseWriter, r *http.Request) {
 		// Pooler is bex's native bool form; ConnectionPool is Render's enum
 		// alias (w2/024). Both optional; resolvePooler folds them (identical
 		// intent fine, contradiction or unknown enum a named 400).
-		Pooler             *bool                    `json:"pooler,omitempty"`
-		ConnectionPool     *string                  `json:"connectionPool,omitempty"`
-		IPAllowList        *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
-		ParameterOverrides *map[string]string       `json:"parameterOverrides,omitempty"`
+		Pooler         *bool                    `json:"pooler,omitempty"`
+		ConnectionPool *string                  `json:"connectionPool,omitempty"`
+		IPAllowList    *[]core.IPAllowListEntry `json:"ipAllowList,omitempty"`
+		// ParameterOverrides is retired (w2/066): decoded only so that a request
+		// carrying it, {} included, is refused by name (PostgresPatch.validate).
+		ParameterOverrides *map[string]string `json:"parameterOverrides,omitempty"`
 		// Public is bex's explicit external-endpoint control (w4/m116). Render
 		// clients never send it; omitted leaves the endpoint as it is.
 		Public *bool `json:"public,omitempty"`

@@ -1,6 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { render, screen } from "@testing-library/react";
-import userEvent from "@testing-library/user-event";
 import { InsightsPanel } from "@/features/databases/components/insights-panel";
 
 // The literal PostgreSQL substitutes for a query text the reading role may not
@@ -58,7 +57,13 @@ function topQuery(over: Partial<TopQueryRow>): TopQueryRow {
   };
 }
 
-type SpecRow = { name: string; value: string };
+type SpecRow = {
+  name: string;
+  value: string;
+  observationStatus?: string;
+  observedSetting?: string | null;
+  observedUnit?: string | null;
+};
 type SizeRow = { schema: string; name: string; sizePretty: string };
 type ScanRow = {
   schema: string;
@@ -81,7 +86,6 @@ const state: {
   sizes: null,
   tableScans: [],
 };
-const saveParameters = vi.fn();
 
 vi.mock("@/features/databases/hooks/use-database-insights", () => ({
   useDatabaseInsights: () => ({
@@ -101,10 +105,6 @@ vi.mock("@/features/databases/hooks/use-database-insights", () => ({
     parameterOverridesLoading: false,
     parameterOverridesError: undefined,
     parameterSpec: state.parameterSpec,
-    parameterSpecLoading: false,
-    parameterSpecError: undefined,
-    saving: false,
-    saveParameters,
     refetchAll: vi.fn(),
   }),
 }));
@@ -115,7 +115,6 @@ beforeEach(() => {
   state.parameterSpec = [];
   state.sizes = null;
   state.tableScans = [];
-  saveParameters.mockReset();
 });
 
 describe("InsightsPanel masked rows", () => {
@@ -204,108 +203,45 @@ describe("InsightsPanel Top queries on a narrow screen", () => {
   });
 });
 
-// A poll or another tab's save delivers a new saved set while this tab holds
-// an unsaved draft. The panel used to key the editor by the saved values, so
-// the new set remounted it and silently dropped the draft (w4/253).
-describe("InsightsPanel parameter overrides refresh", () => {
-  const value = () => screen.getByLabelText("Parameter 1 value");
-  const saveButton = () =>
-    screen.getByRole("button", { name: "Save overrides" });
-  const discard = () =>
-    screen.queryByRole("button", { name: "Discard changes" });
-
-  function deliver(
-    rerender: (ui: React.ReactElement) => void,
-    spec: SpecRow[],
-    id = "dpg-1",
-  ) {
-    state.parameterSpec = spec;
-    rerender(<InsightsPanel id={id} />);
-  }
-
-  it("keeps a dirty draft when another tab saves, and Discard picks the latest saved value", async () => {
-    const user = userEvent.setup();
-    state.parameterSpec = [{ name: "work_mem", value: "8MB" }];
-    const { rerender } = render(<InsightsPanel id="dpg-1" />);
-
-    await user.clear(value());
-    await user.type(value(), "16MB");
-    deliver(rerender, [{ name: "work_mem", value: "12MB" }]);
-
-    expect(value()).toHaveValue("16MB");
-    expect(saveButton()).toBeEnabled();
-    expect(discard()).toBeInTheDocument();
-    expect(saveParameters).not.toHaveBeenCalled();
-
-    await user.click(discard()!);
-    expect(value()).toHaveValue("12MB");
-    expect(saveButton()).toBeDisabled();
+// parameterOverrides was retired to match Render (w2/066): the editor is gone,
+// and a database that still declares parameters shows them read-only.
+describe("InsightsPanel declared parameters", () => {
+  it("hides the section for a database that declares nothing", () => {
+    render(<InsightsPanel id="dpg-1" />);
+    expect(screen.queryByText("Parameter overrides")).not.toBeInTheDocument();
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
   });
 
-  it("refreshes an untouched editor to the latest saved set, including added and removed rows", () => {
-    state.parameterSpec = [{ name: "work_mem", value: "8MB" }];
-    const { rerender } = render(<InsightsPanel id="dpg-1" />);
+  it("shows declared parameters read-only with their observations", () => {
+    state.parameterSpec = [
+      {
+        name: "max_connections",
+        value: "200",
+        observationStatus: "not_observed",
+      },
+      {
+        name: "work_mem",
+        value: "8MB",
+        observationStatus: "observed",
+        observedSetting: "8192",
+        observedUnit: "kB",
+      },
+    ];
+    render(<InsightsPanel id="dpg-1" />);
 
-    deliver(rerender, [
-      { name: "random_page_cost", value: "1.25" },
-      { name: "work_mem", value: "12MB" },
-    ]);
-    expect(screen.getByLabelText("Parameter 1 name")).toHaveValue(
-      "random_page_cost",
-    );
-    expect(screen.getByLabelText("Parameter 2 value")).toHaveValue("12MB");
-    expect(saveButton()).toBeDisabled();
-
-    deliver(rerender, []);
-    expect(screen.queryByLabelText("Parameter 1 name")).not.toBeInTheDocument();
-  });
-
-  it("adopts its own successful save and then follows later saved sets", async () => {
-    const user = userEvent.setup();
-    saveParameters.mockResolvedValue({ ok: true });
-    state.parameterSpec = [{ name: "work_mem", value: "8MB" }];
-    const { rerender } = render(<InsightsPanel id="dpg-1" />);
-
-    await user.clear(value());
-    await user.type(value(), "16MB");
-    await user.click(saveButton());
-    expect(saveParameters).toHaveBeenCalledWith([
-      { name: "work_mem", value: "16MB" },
-    ]);
-    expect(saveButton()).toBeDisabled();
-    expect(discard()).not.toBeInTheDocument();
-
-    deliver(rerender, [{ name: "work_mem", value: "16MB" }]);
-    deliver(rerender, [{ name: "work_mem", value: "24MB" }]);
-    expect(value()).toHaveValue("24MB");
-  });
-
-  it("keeps a failed save's draft through a refresh", async () => {
-    const user = userEvent.setup();
-    saveParameters.mockResolvedValue({ ok: false, error: "bad value" });
-    state.parameterSpec = [{ name: "work_mem", value: "8MB" }];
-    const { rerender } = render(<InsightsPanel id="dpg-1" />);
-
-    await user.clear(value());
-    await user.type(value(), "nope");
-    await user.click(saveButton());
-    expect(screen.getByRole("alert")).toHaveTextContent("bad value");
-
-    deliver(rerender, [{ name: "work_mem", value: "12MB" }]);
-    expect(value()).toHaveValue("nope");
-  });
-
-  it("resets the editor for a different database", async () => {
-    const user = userEvent.setup();
-    state.parameterSpec = [{ name: "work_mem", value: "8MB" }];
-    const { rerender } = render(<InsightsPanel id="dpg-1" />);
-
-    await user.clear(value());
-    await user.type(value(), "16MB");
-    deliver(rerender, [{ name: "work_mem", value: "8MB" }], "dpg-2");
-
-    expect(value()).toHaveValue("8MB");
-    expect(discard()).not.toBeInTheDocument();
+    expect(screen.getByText("Parameter overrides")).toBeInTheDocument();
+    expect(screen.getByText(/ALTER DATABASE … SET/)).toBeInTheDocument();
+    expect(screen.getByText("work_mem")).toBeInTheDocument();
+    expect(screen.getByText("8MB")).toBeInTheDocument();
+    expect(screen.getByText("8192 kB")).toBeInTheDocument();
+    expect(
+      screen.getByText(/Requested override not observed/),
+    ).toBeInTheDocument();
+    // Nothing to edit: no inputs, no save/add/remove controls.
+    expect(screen.queryByRole("textbox")).not.toBeInTheDocument();
+    expect(
+      screen.queryByRole("button", { name: /save|add|remove|discard/i }),
+    ).not.toBeInTheDocument();
   });
 });
 

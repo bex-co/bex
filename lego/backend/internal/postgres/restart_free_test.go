@@ -81,7 +81,6 @@ func TestARestartFreePostgresChangeReadsAvailable(t *testing.T) {
 		"public off":           {PostgresPatch{Public: new(false)}, true},
 		"plan change":          {PostgresPatch{Plan: new("basic-256mb")}, false},
 		"storage change":       {PostgresPatch{DiskSizeGB: new(int32(5))}, false},
-		"parameter change":     {PostgresPatch{ParameterOverrides: &map[string]string{"work_mem": "8MB"}}, false},
 		"pooler change":        {PostgresPatch{Pooler: new(true)}, false},
 		"rules plus plan":      {PostgresPatch{IPAllowList: &empty, Plan: new("basic-256mb")}, false},
 	} {

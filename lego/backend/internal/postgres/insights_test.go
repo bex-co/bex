@@ -56,59 +56,9 @@ func TestInsightInputGuards(t *testing.T) {
 
 }
 
-// TestSetParameterOverrides covers the write path (CR patching) without a live DB.
-func TestSetParameterOverrides(t *testing.T) {
-	svc, cl := newService()
-	seedDatabase(t, cl, "param-db")
-	ctx := context.Background()
-
-	pg, err := svc.SetParameterOverrides(ctx, "param-db", map[string]string{
-		"log_min_duration_statement": "1000",
-		"work_mem":                   "8MB",
-	})
-	if err != nil {
-		t.Fatalf("SetParameterOverrides => %v", err)
-	}
-	if pg.ID != "param-db" {
-		t.Fatalf("view id = %q, want param-db", pg.ID)
-	}
-
-	spec, err := svc.GetParameterSpec(ctx, "param-db")
-	if err != nil {
-		t.Fatalf("GetParameterSpec => %v", err)
-	}
-	if spec["log_min_duration_statement"] != "1000" || spec["work_mem"] != "8MB" {
-		t.Fatalf("GetParameterSpec = %v, want the two params", spec)
-	}
-
-	// shared_preload_libraries must be dropped — the operator owns that key.
-	if _, err := svc.SetParameterOverrides(ctx, "param-db", map[string]string{
-		"shared_preload_libraries": "pg_stat_statements,badlib",
-		"log_statement":            "all",
-	}); err != nil {
-		t.Fatalf("SetParameterOverrides with shared_preload_libraries => %v", err)
-	}
-	spec2, _ := svc.GetParameterSpec(ctx, "param-db")
-	if _, has := spec2["shared_preload_libraries"]; has {
-		t.Error("shared_preload_libraries must be dropped from user-settable params")
-	}
-	if spec2["log_statement"] != "all" {
-		t.Errorf("other params should survive: %v", spec2)
-	}
-
-	// Empty map clears parameters.
-	if _, err := svc.SetParameterOverrides(ctx, "param-db", map[string]string{}); err != nil {
-		t.Fatalf("SetParameterOverrides empty => %v", err)
-	}
-	spec3, _ := svc.GetParameterSpec(ctx, "param-db")
-	if len(spec3) != 0 {
-		t.Fatalf("cleared params should be empty, got %v", spec3)
-	}
-}
-
-// TestRESTInsightEndpoints verifies routing for the five GET endpoints and the
-// PUT parameter-overrides handler. The seeded DB uses a non-routable URI so
-// TopQueries returns 503 on a failed dial; PUT does not dial and returns 200.
+// TestRESTInsightEndpoints verifies routing for the five GET endpoints. The
+// seeded DB uses a non-routable URI so TopQueries returns 503 on a failed dial.
+// The bex-only PUT parameter-overrides route was retired at w2/066.
 func TestRESTInsightEndpoints(t *testing.T) {
 	svc, cl := newService()
 	seedDatabase(t, cl, "ins-db")
@@ -125,8 +75,8 @@ func TestRESTInsightEndpoints(t *testing.T) {
 		{"GET", "/v1/postgres/ins-db/sizes", "", 500},
 		{"GET", "/v1/postgres/ins-db/table-scans", "", 500},
 		{"GET", "/v1/postgres/ins-db/parameter-overrides", "", 500},
-		// PUT only patches the CR — no DB dial required.
-		{"PUT", "/v1/postgres/ins-db/parameter-overrides", `{"parameters":{"work_mem":"16MB"}}`, 200},
+		// Retired write route (w2/066): the path only serves GET now.
+		{"PUT", "/v1/postgres/ins-db/parameter-overrides", `{"parameters":{"work_mem":"16MB"}}`, 405},
 		// Unknown database → 404.
 		{"GET", "/v1/postgres/nope/processes", "", 404},
 		{"GET", "/v1/postgres/nope/sizes", "", 404},
@@ -169,8 +119,9 @@ func TestInsightHelpers(t *testing.T) {
 	}
 }
 
-// TestGQLInsightFields verifies that the five insight query fields and the
-// setDatabaseParameterOverrides mutation are registered in the GraphQL schema.
+// TestGQLInsightFields verifies that the five insight query fields are
+// registered in the GraphQL schema, and that the retired
+// setDatabaseParameterOverrides mutation (w2/066) is not.
 // GraphQLQuery/GraphQLMutation return field maps; no database object is needed.
 func TestGQLInsightFields(t *testing.T) {
 	svc, _ := newService()
@@ -186,8 +137,8 @@ func TestGQLInsightFields(t *testing.T) {
 			t.Errorf("GraphQLQuery missing field %q", name)
 		}
 	}
-	if _, ok := svc.GraphQLMutation()["setDatabaseParameterOverrides"]; !ok {
-		t.Error("GraphQLMutation missing setDatabaseParameterOverrides")
+	if _, ok := svc.GraphQLMutation()["setDatabaseParameterOverrides"]; ok {
+		t.Error("GraphQLMutation still registers the retired setDatabaseParameterOverrides")
 	}
 }
 
@@ -378,11 +329,9 @@ func TestInsightQueryTimeout(t *testing.T) {
 }
 
 // TestParameterSpecIsTheDeclaredSet covers the read w6/m133 added: the tenant's
-// declared overrides, sorted, empty for a database nobody has configured. Before
-// this read existed spec.parameters was effectively WRITE-ONLY — no surface
-// returned it — which is why the dashboard editor was seeded from the pg_settings
-// view instead, and why a single edit replaced the tenant's declared config with
-// ~48 rows of the operator's own.
+// declared overrides, sorted, empty for a database nobody has configured. The
+// set is read-only since parameterOverrides was retired (w2/066), so the test
+// seeds it on the CR the way a pre-retirement database carries it.
 func TestParameterSpecIsTheDeclaredSet(t *testing.T) {
 	svc, cl := newService()
 	seedDatabase(t, cl, "spec-db")
@@ -398,19 +347,21 @@ func TestParameterSpecIsTheDeclaredSet(t *testing.T) {
 		t.Fatalf("ParameterSpec on a fresh database = %v, want empty", fresh)
 	}
 
-	if _, err := svc.SetParameterOverrides(ctx, "spec-db", map[string]string{
+	db := getDatabase(t, cl, "spec-db")
+	db.Spec.Parameters = map[string]string{
 		"work_mem":                  "8MB",
 		"effective_cache_size":      "1GB",
 		"default_statistics_target": "200",
-	}); err != nil {
-		t.Fatalf("SetParameterOverrides => %v", err)
+	}
+	if err := cl.Update(ctx, db); err != nil {
+		t.Fatalf("seed spec.parameters => %v", err)
 	}
 
 	got, err := svc.ParameterSpec(ctx, "spec-db")
 	if err != nil {
 		t.Fatalf("ParameterSpec => %v", err)
 	}
-	// Name-sorted, so an editor bound to it does not reshuffle between reads.
+	// Name-sorted, so a reader does not reshuffle between reads.
 	want := []ParameterSpecView{
 		{Name: "default_statistics_target", Value: "200", ObservationStatus: "unavailable"},
 		{Name: "effective_cache_size", Value: "1GB", ObservationStatus: "unavailable"},
@@ -430,113 +381,39 @@ func TestParameterSpecIsTheDeclaredSet(t *testing.T) {
 	}
 }
 
-// TestOperatorManagedParametersAreRefused is the security half of w6/m133. These
-// names reached spec.parameters unchecked: normalizeParameterOverrides filtered
-// exactly one key. The dashboard seeded its editor from pg_settings, so a tenant
-// removing a single row and saving wrote the operator's archive/restore commands
-// and TLS paths in as their own declared config.
-func TestOperatorManagedParametersAreRefused(t *testing.T) {
-	svc, cl := newService()
-	seedDatabase(t, cl, "guard-db")
-	ctx := context.Background()
-
-	// Seed a legitimate value so a refusal can be shown not to disturb it.
-	if _, err := svc.SetParameterOverrides(ctx, "guard-db", map[string]string{"work_mem": "8MB"}); err != nil {
-		t.Fatalf("seed => %v", err)
-	}
-
-	refused := []struct{ name, value string }{
-		// The DoD names these two explicitly.
-		{"restore_command", "/bin/false %f %p"},
-		{"ssl_key_file", "/tmp/attacker.key"},
-		// WAL archival: overwriting this silently ends continuous backup.
-		{"archive_command", "/bin/true"},
-		{"archive_mode", "off"},
-		{"wal_level", "minimal"},
+// TestOperatorManagedParameterNames pins the platform-owned name table w6/m133
+// introduced. It once refused tenant overrides; since parameterOverrides was
+// retired (w2/066) it keeps a recovery from carrying a legacy source's
+// platform-managed settings into the restore (tenantParameters, w4/360).
+func TestOperatorManagedParameterNames(t *testing.T) {
+	managed := []string{
+		"restore_command", "ssl_key_file", "archive_command", "archive_mode", "wal_level",
 		// Prefix-matched families the exact map never names.
-		{"ssl_ciphers", "NULL-MD5"},
-		{"recovery_target_time", "2000-01-01"},
-		{"archive_cleanup_command", "/bin/rm -rf /"},
-		{"syslog_facility", "LOCAL0"},
+		"ssl_ciphers", "recovery_target_time", "archive_cleanup_command", "syslog_facility",
 		// Replication / pod control.
-		{"listen_addresses", "127.0.0.1"},
-		{"port", "6543"},
-		{"restart_after_crash", "off"},
-		// Would let a tenant bypass this guard entirely from inside SQL.
-		{"allow_alter_system", "on"},
-		// The operator re-projects this every reconcile; a tenant value wins the
-		// merge and would blank the top-queries panel (ADR009).
-		{"pg_stat_statements.track", "none"},
-		// The managed extension allowlist (ADR092 D3): a tenant list would
-		// admit an untrusted extension, or drop pgextwlist altogether.
-		{"extwlist.extensions", "file_fdw,adminpack"},
-		{"extwlist.restrict_to_database_owner", "off"},
-		{"local_preload_libraries", ""},
-		{"session_preload_libraries", "auto_explain"},
-		{"timescaledb.license", "timescale"},
-		{"duckdb.enable_external_access", "on"},
-		// Case and whitespace must not slip past.
-		{"  ARCHIVE_COMMAND  ", "/bin/true"},
+		"listen_addresses", "port", "restart_after_crash", "allow_alter_system",
+		"pg_stat_statements.track",
+		// The managed extension allowlist (ADR092 D3).
+		"extwlist.extensions", "extwlist.restrict_to_database_owner",
+		"local_preload_libraries", "session_preload_libraries",
+		"timescaledb.license", "duckdb.enable_external_access",
 	}
-	for _, tc := range refused {
-		t.Run(strings.TrimSpace(tc.name), func(t *testing.T) {
-			_, err := svc.SetParameterOverrides(ctx, "guard-db", map[string]string{
-				"work_mem": "8MB",
-				tc.name:    tc.value,
-			})
-			if !errors.Is(err, core.ErrBadRequest) {
-				t.Fatalf("setting %q => %v, want ErrBadRequest", tc.name, err)
-			}
-			// Refused, not partially applied: the whole write is rejected.
-			spec, _ := svc.GetParameterSpec(ctx, "guard-db")
-			if _, landed := spec[strings.ToLower(strings.TrimSpace(tc.name))]; landed {
-				t.Errorf("%q landed in spec.parameters despite the refusal: %v", tc.name, spec)
-			}
-			if spec["work_mem"] != "8MB" {
-				t.Errorf("the refusal disturbed existing config: %v", spec)
-			}
-		})
-	}
-
-	// The error names what was rejected, so a caller can fix it.
-	_, err := svc.SetParameterOverrides(ctx, "guard-db", map[string]string{"restore_command": "x", "ssl": "off"})
-	if err == nil || !strings.Contains(err.Error(), "restore_command") || !strings.Contains(err.Error(), "ssl") {
-		t.Errorf("error = %v, want it to name both refused parameters", err)
-	}
-
-	// Legitimate tuning still round-trips — the guard must not over-refuse.
-	allowed := map[string]string{
-		"work_mem":                            "16MB",
-		"maintenance_work_mem":                "256MB",
-		"shared_buffers":                      "512MB", // ADR009's own tuning example
-		"effective_cache_size":                "2GB",
-		"max_connections":                     "200",
-		"random_page_cost":                    "1.1",
-		"statement_timeout":                   "30s",
-		"idle_in_transaction_session_timeout": "60s",
-		"default_statistics_target":           "200",
-		"autovacuum_vacuum_scale_factor":      "0.05",
-		"max_parallel_workers":                "8",
-		"timezone":                            "UTC",
-	}
-	if _, err := svc.SetParameterOverrides(ctx, "guard-db", allowed); err != nil {
-		t.Fatalf("legitimate tuning parameters must still be settable, got %v", err)
-	}
-	spec, _ := svc.GetParameterSpec(ctx, "guard-db")
-	for name, value := range allowed {
-		if spec[name] != value {
-			t.Errorf("%s = %q, want %q", name, spec[name], value)
+	for _, name := range managed {
+		if got := operatorManagedParameterNames(map[string]string{name: "x", "work_mem": "8MB"}); len(got) != 1 || got[0] != name {
+			t.Errorf("operatorManagedParameterNames(%q) = %v, want [%s]", name, got, name)
 		}
 	}
-
-	// shared_preload_libraries keeps its documented SILENT DROP rather than
-	// joining the refusal set: that contract is published in the MCP tool schema
-	// and SetParameterOverrides' own doc, and the editor blocks it client-side.
-	if _, err := svc.SetParameterOverrides(ctx, "guard-db", map[string]string{
-		"shared_preload_libraries": "badlib",
-		"work_mem":                 "4MB",
-	}); err != nil {
-		t.Fatalf("shared_preload_libraries must still be dropped, not refused: %v", err)
+	// Case and whitespace fold to the canonical name.
+	if got := operatorManagedParameterNames(map[string]string{"  ARCHIVE_COMMAND  ": "x"}); len(got) != 1 || got[0] != "archive_command" {
+		t.Errorf("padded upper-case archive_command => %v", got)
+	}
+	// Ordinary tuning is the tenant's and must not be stripped.
+	for _, name := range []string{"work_mem", "maintenance_work_mem", "shared_buffers", "effective_cache_size",
+		"max_connections", "random_page_cost", "statement_timeout", "idle_in_transaction_session_timeout",
+		"default_statistics_target", "autovacuum_vacuum_scale_factor", "max_parallel_workers", "timezone"} {
+		if got := operatorManagedParameterNames(map[string]string{name: "x"}); len(got) != 0 {
+			t.Errorf("%q wrongly treated as platform-managed: %v", name, got)
+		}
 	}
 }
 

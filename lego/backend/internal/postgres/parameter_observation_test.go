@@ -30,6 +30,18 @@ import (
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
+// declareParameters seeds Database.spec.parameters directly — no API writes it
+// since parameterOverrides was retired (w2/066), so a test stands in for a
+// database that declared its set before then.
+func declareParameters(t *testing.T, svc *Service, name string, params map[string]string) {
+	t.Helper()
+	db := getDatabase(t, svc.Base.Client, name)
+	db.Spec.Parameters = params
+	if err := svc.Base.Client.Update(context.Background(), db); err != nil {
+		t.Fatalf("declare parameters on %s: %v", name, err)
+	}
+}
+
 func TestParameterObservationsPreserveDeclarations(t *testing.T) {
 	declared := map[string]string{"work_mem": "8MB", "qa_unknown": "1", "maintenance_work_mem": "not-a-size", "default_statistics_target": "200"}
 	observed := []ParameterOverrideView{
@@ -107,10 +119,7 @@ func TestParameterSpecObservationAuthorizationAndEmptyDeclarations(t *testing.T)
 	if rows, err := svc.ParameterSpec(ctx, "observed-db"); err != nil || len(rows) != 0 {
 		t.Fatalf("empty declarations = %+v, %v", rows, err)
 	}
-	svc.Authz = nil
-	if _, err := svc.SetParameterOverrides(context.Background(), "observed-db", map[string]string{"work_mem": "8MB"}); err != nil {
-		t.Fatal(err)
-	}
+	declareParameters(t, svc, "observed-db", map[string]string{"work_mem": "8MB"})
 	svc.Authz = staleAllowChecker{}
 	if _, err := svc.ParameterSpec(ctx, "observed-db"); !errors.Is(err, core.ErrForbidden) {
 		t.Fatalf("revoked observation = %v", err)
@@ -121,9 +130,7 @@ func TestParameterSpecUnavailableAcrossSurfaces(t *testing.T) {
 	svc, cl := newService()
 	seedDatabase(t, cl, "observed-db")
 	declared := map[string]string{"qa_unknown": "1", "work_mem": "not-a-size"}
-	if _, err := svc.SetParameterOverrides(context.Background(), "observed-db", declared); err != nil {
-		t.Fatal(err)
-	}
+	declareParameters(t, svc, "observed-db", declared)
 	assertRows := func(rows []ParameterSpecView) {
 		t.Helper()
 		if len(rows) != 2 {

@@ -305,7 +305,9 @@ func (s *Service) registerRecoveryMCP(srv *mcp.Server) {
 
 // ipAllowListArgs / userArgs are the access-tool inputs.
 // updatePostgresArgs is update_postgres's input: the patch-shaped fold of
-// set_postgres_ip_allow_list and set_postgres_parameter_overrides (w1/m71).
+// set_postgres_ip_allow_list and set_postgres_parameter_overrides (w1/m71);
+// parameterOverrides has since been retired (w2/066) and is kept only so it is
+// refused by name.
 // Each field is a pointer to the value the underlying PostgresPatch already
 // documents as "nil = unchanged", so an omitted argument writes nothing while a
 // present one replaces that whole list or map — the same semantics REST PATCH
@@ -329,7 +331,7 @@ type updatePostgresArgs struct {
 	EnableHighAvailability *bool                    `json:"enableHighAvailability,omitempty" jsonschema:"true adds a standby on another node (billed like the primary) and requires a plan with at least 1 CPU; false removes it; omission leaves it unchanged. A plan change below 1 CPU while it stays on is refused"`
 	IPAllowList            *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the external-endpoint CIDR allowlist with these {cidrBlock, description} entries; [] disables external connections, a nonempty list enables matching sources, omission preserves intent; an explicit public value wins"`
 	IPAllowListCidrs       *[]string                `json:"ipAllowListCidrs,omitempty" jsonschema:"the plain-CIDR-string form of ipAllowList, for callers with no descriptions to keep; setting both to conflicting values is rejected"`
-	ParameterOverrides     *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"replaces the postgresql.conf parameter overrides (key = parameter name, value = setting string); the operator projects them to the CNPG Cluster and rolls it if needed. This REPLACES the declared set, so send every parameter you want to keep — read the current set with list_postgres_parameters first, NOT list_postgres_parameter_overrides (that one is the observed config and is mostly the platform's). Pass {} to clear every override. shared_preload_libraries is silently dropped, and platform-managed settings (WAL archive/restore commands, TLS paths, replication and logging) are refused"`
+	ParameterOverrides     *map[string]string       `json:"parameterOverrides,omitempty" jsonschema:"no longer supported and refused if present (Render retired the field): set session defaults with SQL instead, as the database owner over a regular connection (query_render_postgres is read-only) — ALTER DATABASE <name> SET <parameter> = <value> or ALTER ROLE <role> SET <parameter> = <value>"`
 	// Confirm is the protected-environment phrase a rename or a version upgrade
 	// needs on a member of a protected environment (w4/m127).
 	Confirm string `json:"confirm,omitempty" jsonschema:"accepted for compatibility and ignored: a protected environment restricts this to workspace Admins (w8/187) and needs no phrase"`
@@ -375,7 +377,7 @@ func (s *Service) registerAccessMCP(srv *mcp.Server) {
 		// The disk-autoscaling cap is interpolated from the shared plan catalog
 		// rather than written out, so the number an agent reads cannot drift from
 		// the number the operator enforces (pinned by the adapter-parity test).
-		Description: fmt.Sprintf("Update a managed Postgres database's settings in one call: name, plan, major version, disk size, disk autoscaling, high availability (a standby, on plans with at least 1 CPU), connection pooling, external access, IP allowlist, read replicas, and postgresql.conf parameter overrides. Omitted fields stay unchanged; supplied lists and maps replace the declared set (empty clears it). An empty ipAllowList disables external connections; a nonempty list enables access for its source CIDRs. An explicit public value overrides that inferred publication state. Internal access is unchanged. Pass dryRun:true to validate and preview without writes. A plan change is billable, and a version upgrade takes the database offline during pg_upgrade. Free storage is fixed at 1 GB; autoscaling and connection pooling require a paid plan. With enableDiskAutoscaling on, storage grows by 50%% rounded up to 5 GB at 90%% full, capped at %d TB with a 12-hour cooldown. readReplicas replaces the named replica set: at most %d, on plans with at least %s CPU and %d GB of storage; a new name is a lowercase DNS label of at most %d characters, and each replica is a billed instance.", tiers.Postgres.DiskAutoscalingCapGB()/1024, tiers.PostgresMaxReadReplicas, tiers.PostgresReadReplicaMinCPU, tiers.PostgresReadReplicaMinStorageGB, readReplicaNameMaxLength),
+		Description: fmt.Sprintf("Update a managed Postgres database's settings in one call: name, plan, major version, disk size, disk autoscaling, high availability (a standby, on plans with at least 1 CPU), connection pooling, external access, IP allowlist, and read replicas. Omitted fields stay unchanged; supplied lists replace the declared set (empty clears it). An empty ipAllowList disables external connections; a nonempty list enables access for its source CIDRs. An explicit public value overrides that inferred publication state. Internal access is unchanged. Pass dryRun:true to validate and preview without writes. A plan change is billable, and a version upgrade takes the database offline during pg_upgrade. Free storage is fixed at 1 GB; autoscaling and connection pooling require a paid plan. With enableDiskAutoscaling on, storage grows by 50%% rounded up to 5 GB at 90%% full, capped at %d TB with a 12-hour cooldown. readReplicas replaces the named replica set: at most %d, on plans with at least %s CPU and %d GB of storage; a new name is a lowercase DNS label of at most %d characters, and each replica is a billed instance.", tiers.Postgres.DiskAutoscalingCapGB()/1024, tiers.PostgresMaxReadReplicas, tiers.PostgresReadReplicaMinCPU, tiers.PostgresReadReplicaMinStorageGB, readReplicaNameMaxLength),
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in updatePostgresArgs) (*mcp.CallToolResult, PostgresView, error) {
 		allowList, err := core.ResolveAllowListPatch(in.IPAllowList, in.IPAllowListCidrs)
 		if err != nil {
@@ -507,7 +509,7 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_parameter_overrides",
-		Description: "List non-default postgresql.conf parameters for a managed Postgres database (pg_settings where source is not 'default'). Shows name, current setting, unit, and source of each override. This is the OBSERVED effective configuration and is mostly set by the platform, not by you — a database nobody has configured still returns ~48 rows, including the operator's WAL archive/restore commands and TLS paths. It is read-only diagnostics. To see or change what this database declares, use list_postgres_parameters and update_postgres's parameterOverrides.",
+		Description: "List non-default postgresql.conf parameters for a managed Postgres database (pg_settings where source is not 'default'). Shows name, current setting, unit, and source of each override. This is the OBSERVED effective configuration and is mostly set by the platform, not by you — a database nobody has configured still returns ~48 rows, including the operator's WAL archive/restore commands and TLS paths. It is read-only diagnostics. To see what this database itself declares, use list_postgres_parameters. To set a session default, run ALTER DATABASE <name> SET <parameter> = <value> (or ALTER ROLE ... SET) as the database owner over a regular connection.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, parameterOverridesResult, error) {
 		out, err := s.ParameterOverrides(ctx, in.PostgresID)
 		if err != nil {
@@ -518,7 +520,7 @@ func (s *Service) registerInsightsMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_postgres_parameters",
-		Description: "List the postgresql.conf parameters THIS database declares (Database.spec.parameters) — the tenant-owned set that update_postgres's parameterOverrides replaces. Empty for a database nobody has configured. Use this, not list_postgres_parameter_overrides, to read back what was set. Each declaration includes observationStatus (observed, not_observed, or unavailable), observedSetting and observedUnit. Observed means the name exists in non-default pg_settings, not that the requested value has applied; units may differ.",
+		Description: "List the postgresql.conf parameters THIS database declares (Database.spec.parameters). Read-only: parameter overrides are no longer accepted, but any a database already declares keep applying. Empty for most databases. To set a session default instead, run ALTER DATABASE <name> SET <parameter> = <value> (or ALTER ROLE ... SET) as the database owner over a regular connection. Each declaration includes observationStatus (observed, not_observed, or unavailable), observedSetting and observedUnit. Observed means the name exists in non-default pg_settings, not that the requested value has applied; units may differ.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in postgresArgs) (*mcp.CallToolResult, parameterSpecResult, error) {
 		out, err := s.ParameterSpec(ctx, in.PostgresID)
 		if err != nil {

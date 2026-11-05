@@ -19,67 +19,29 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   DatabaseParameterOverridesDocument,
   DatabaseParameterSpecDocument,
-  SetDatabaseParameterOverridesDocument,
 } from "@/graphql/definitions";
 import { skipPollWhenHidden } from "@/common/lib/polling";
 import { useDatabaseInsights } from "@/features/databases/hooks/use-database-insights";
-import { uncodedGraphQLError } from "@/test/mocks/apollo";
 
 const mockUseQuery = vi.fn();
-const mockUseMutation = vi.fn();
 vi.mock("@apollo/client/react", () => ({
   useQuery: (...args: unknown[]) => mockUseQuery(...args),
-  useMutation: (...args: unknown[]) => mockUseMutation(...args),
 }));
 
-const setParameters = vi.fn();
-const refetchOverrides = vi.fn();
-
-describe("useDatabaseInsights parameter writes", () => {
+describe("useDatabaseInsights parameter reads", () => {
   beforeEach(() => {
-    setParameters.mockReset();
-    refetchOverrides.mockReset();
-    refetchOverrides.mockResolvedValue(undefined);
     mockUseQuery.mockReset();
-    mockUseMutation.mockReset();
     mockUseQuery.mockImplementation((document: unknown) => ({
       data:
-        document === DatabaseParameterOverridesDocument
-          ? { databaseParameterOverrides: [] }
+        document === DatabaseParameterSpecDocument
+          ? {
+              databaseParameterSpec: [{ name: "work_mem", value: "8MB" }, null],
+            }
           : undefined,
       loading: false,
       error: undefined,
-      refetch:
-        document === DatabaseParameterOverridesDocument
-          ? refetchOverrides
-          : vi.fn(),
+      refetch: vi.fn(),
     }));
-    mockUseMutation.mockReturnValue([setParameters, { loading: false }]);
-  });
-
-  it("sends the replace payload and refreshes the live view", async () => {
-    setParameters.mockResolvedValue({ data: {} });
-    const { result } = renderHook(() => useDatabaseInsights("db-1"));
-
-    const saved = await result.current.saveParameters([
-      { name: "work_mem", value: "16MB" },
-    ]);
-
-    expect(saved).toEqual({ ok: true });
-    expect(mockUseMutation).toHaveBeenCalledWith(
-      SetDatabaseParameterOverridesDocument,
-    );
-    expect(setParameters).toHaveBeenCalledWith({
-      variables: {
-        id: "db-1",
-        parameters: [{ name: "work_mem", value: "16MB" }],
-      },
-    });
-    expect(refetchOverrides).toHaveBeenCalledOnce();
-    expect(mockUseQuery).toHaveBeenCalledWith(
-      DatabaseParameterOverridesDocument,
-      expect.objectContaining({ pollInterval: 15_000 }),
-    );
   });
 
   it("refreshes declared observations on the same visible-page cadence", () => {
@@ -98,48 +60,14 @@ describe("useDatabaseInsights parameter writes", () => {
     }
   });
 
-  it("returns the backend message without refetching after rejection", async () => {
-    setParameters.mockRejectedValue(uncodedGraphQLError("operation forbidden"));
+  // parameterOverrides was retired (w2/066): the hook reads the declared set
+  // and exposes no write.
+  it("exposes the declared set read-only, without null rows", () => {
     const { result } = renderHook(() => useDatabaseInsights("db-1"));
-
-    const saved = await result.current.saveParameters([]);
-
-    expect(saved).toEqual({ ok: false, error: "Operation forbidden" });
-    expect(refetchOverrides).not.toHaveBeenCalled();
-  });
-
-  // The editor shows its own translated copy for a null error (w5/164).
-  it("returns no message for a transport failure", async () => {
-    setParameters.mockRejectedValue(new TypeError("Failed to fetch"));
-    const { result } = renderHook(() => useDatabaseInsights("db-1"));
-
-    expect(await result.current.saveParameters([])).toEqual({
-      ok: false,
-      error: null,
-    });
-  });
-
-  // A poll or post-save refetch reports loading too; the panel would swap the
-  // editor for a placeholder and drop a draft added to an empty set (w4/253).
-  it("reports the declared set as loading only before its first result", () => {
-    const spec = (data: unknown) =>
-      mockUseQuery.mockImplementation((document: unknown) => ({
-        data: document === DatabaseParameterSpecDocument ? data : undefined,
-        loading: true,
-        error: undefined,
-        refetch: vi.fn(),
-      }));
-
-    spec(undefined);
-    expect(
-      renderHook(() => useDatabaseInsights("db-1")).result.current
-        .parameterSpecLoading,
-    ).toBe(true);
-
-    spec({ databaseParameterSpec: [] });
-    expect(
-      renderHook(() => useDatabaseInsights("db-1")).result.current
-        .parameterSpecLoading,
-    ).toBe(false);
+    expect(result.current.parameterSpec).toEqual([
+      { name: "work_mem", value: "8MB" },
+    ]);
+    expect(result.current).not.toHaveProperty("saveParameters");
+    expect(result.current).not.toHaveProperty("saving");
   });
 });

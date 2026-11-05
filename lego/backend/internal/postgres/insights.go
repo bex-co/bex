@@ -17,9 +17,10 @@ limitations under the License.
 // insights.go is the live introspection surface for managed Postgres databases:
 // processes / top-queries / sizes / table-scans / parameter-overrides.  All
 // read verbs connect via the CNPG-generated app Secret and run a predefined,
-// read-only query — none echo caller-supplied SQL.  The write verb
-// (SetParameterOverrides) patches Database.spec.parameters; the operator
-// projects it to the CNPG Cluster's spec.postgresql.parameters.
+// read-only query — none echo caller-supplied SQL.  ParameterSpec reads the
+// declared Database.spec.parameters, which is read-only since parameterOverrides
+// was retired (w2/066); the operator keeps projecting any existing set to the
+// CNPG Cluster's spec.postgresql.parameters.
 package postgres
 
 import (
@@ -638,21 +639,15 @@ func parameterOverrideViews(res QueryResult) []ParameterOverrideView {
 	return out
 }
 
-// SetParameterOverrides replaces the Database's parameter overrides.
-// shared_preload_libraries cannot be overridden (the operator always sets it
-// to include pg_stat_statements); any entry with that key is silently dropped.
-func (s *Service) SetParameterOverrides(ctx context.Context, dbID string, params map[string]string) (PostgresView, error) {
-	return s.UpdatePostgres(ctx, dbID, PostgresPatch{ParameterOverrides: &params})
-}
-
 // ParameterSpec returns the tenant's DECLARED parameter overrides
 // (Database.spec.parameters) as a stable name-sorted list — the read every
-// surface exposes and the editor binds to. GetParameterSpec below returns the
-// same data as a map for callers that want one.
+// surface exposes. GetParameterSpec below returns the same data as a map for
+// callers that want one.
 //
-// A write replaces exactly this set, so this is the only honest thing to seed
-// an editor from: ParameterOverrides is the observed pg_settings config and is
-// mostly the operator's (w6/m133).
+// Read-only: no API writes this set since parameterOverrides was retired
+// (w2/066), but a database that already declares parameters keeps applying
+// them. Distinct from ParameterOverrides, the observed pg_settings config,
+// which is mostly the operator's (w6/m133).
 func (s *Service) ParameterSpec(ctx context.Context, dbID string) ([]ParameterSpecView, error) {
 	db, err := s.fetchDatabaseForRead(ctx, core.RelCanView, dbID)
 	if err != nil {
@@ -666,7 +661,7 @@ func (s *Service) ParameterSpec(ctx context.Context, dbID string) ([]ParameterSp
 	if err := s.AuthorizeDatabaseFresh(ctx, core.RelCanView, db); err != nil {
 		return nil, err
 	}
-	// A restarting or unreachable server must not hold the editable declaration
+	// A restarting or unreachable server must not hold the declaration
 	// hostage to the normal insight query's longer timeout.
 	observationCtx, cancel := context.WithTimeout(ctx, 2*time.Second)
 	defer cancel()

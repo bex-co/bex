@@ -15,7 +15,7 @@ limitations under the License.
 */
 
 import { useMemo } from "react";
-import { useQuery, useMutation } from "@apollo/client/react";
+import { useQuery } from "@apollo/client/react";
 import {
   DatabaseProcessesDocument,
   DatabaseTopQueriesDocument,
@@ -23,18 +23,12 @@ import {
   DatabaseTableScansDocument,
   DatabaseParameterOverridesDocument,
   DatabaseParameterSpecDocument,
-  SetDatabaseParameterOverridesDocument,
-  type ParameterInput,
 } from "@/graphql/definitions";
-import { relayableReason } from "@/common/lib/graphql-error";
 import { nonNull } from "@/common/lib/non-null";
 import {
   RESOURCE_POLL_INTERVAL_MS,
   skipPollWhenHidden,
 } from "@/common/lib/polling";
-
-export type SaveParametersResult =
-  { ok: true } | { ok: false; error: string | null };
 
 /**
  * Returns all five insight datasets for a managed-Postgres database.
@@ -75,16 +69,14 @@ export function useDatabaseInsights(id: string) {
     variables: { id },
     fetchPolicy: "cache-and-network",
     errorPolicy: "all",
-    // The operator applies postgresql.conf changes asynchronously. Keep the
-    // live pg_settings view moving until the saved setting/source appears.
     pollInterval: 15_000,
     skipPollAttempt: skipPollWhenHidden,
   });
 
-  // The DECLARED overrides — what this database sets, and what a save replaces.
-  // parameterOverrides above is the observed pg_settings config, most of which
-  // the operator owns; binding the editor to it made a single edit rewrite
-  // spec.parameters with ~48 operator values (w6/m133).
+  // The DECLARED overrides (Database.spec.parameters) — read-only since
+  // parameterOverrides was retired (w2/066); a database that declared some
+  // before then keeps applying them. parameterOverrides above is the observed
+  // pg_settings config, most of which the operator owns (w6/m133).
   const parameterSpec = useQuery(DatabaseParameterSpecDocument, {
     variables: { id },
     fetchPolicy: "cache-and-network",
@@ -92,25 +84,6 @@ export function useDatabaseInsights(id: string) {
     pollInterval: 15_000,
     skipPollAttempt: skipPollWhenHidden,
   });
-
-  const [setParameters, { loading: saving }] = useMutation(
-    SetDatabaseParameterOverridesDocument,
-  );
-
-  async function saveParameters(
-    params: ParameterInput[],
-  ): Promise<SaveParametersResult> {
-    try {
-      await setParameters({ variables: { id, parameters: params } });
-      // Both: the declared set is what the editor shows, and the pg_settings
-      // view moves once the operator has applied the change.
-      void parameterSpec.refetch();
-      void parameterOverrides.refetch();
-      return { ok: true };
-    } catch (err) {
-      return { ok: false, error: relayableReason(err) || null };
-    }
-  }
 
   // The generated result types carry nullable list items; the panel renders
   // concrete rows, so drop the nulls here once. Memoized per query so a poll
@@ -175,14 +148,6 @@ export function useDatabaseInsights(id: string) {
     parameterOverridesError: parameterOverrides.error,
 
     parameterSpec: parameterSpecRows,
-    // First load only: a poll or post-save refetch also reports loading, and
-    // swapping the editor for a placeholder then would drop its draft (w4/253).
-    parameterSpecLoading:
-      parameterSpec.loading && parameterSpecData === undefined,
-    parameterSpecError: parameterSpec.error,
-
-    saving,
-    saveParameters,
 
     refetchAll() {
       void processes.refetch();

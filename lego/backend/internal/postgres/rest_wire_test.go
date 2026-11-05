@@ -62,8 +62,9 @@ func TestRESTPostgresPlanIsInRendersEnum(t *testing.T) {
 	}
 }
 
-// Create accepts Render's parameterOverrides under PATCH's rule, and a
-// malformed body names what is wrong instead of a bare "bad request body".
+// Create refuses the retired parameterOverrides by name even under the strict
+// decoder production runs (w2/066), and a malformed body names what is wrong
+// instead of a bare "bad request body".
 func TestRESTCreatePostgresParameterOverridesAndDecodeErrors(t *testing.T) {
 	svc, _ := newService()
 	mux := http.NewServeMux()
@@ -74,15 +75,15 @@ func TestRESTCreatePostgresParameterOverridesAndDecodeErrors(t *testing.T) {
 		mux.ServeHTTP(rec, req.WithContext(core.WithStrictJSONDecoding(req.Context())))
 		return rec
 	}
-	rec := post(`{"name":"qa-pg","plan":"basic_256mb","parameterOverrides":{"work_mem":"64MB"},"dryRun":true}`)
-	var got PostgresView
-	_ = json.Unmarshal(rec.Body.Bytes(), &got)
-	if rec.Code != http.StatusOK || got.ParameterOverrides["work_mem"] != "64MB" || got.Plan != "basic_256mb" {
-		t.Fatalf("create with overrides => %d %s", rec.Code, rec.Body)
-	}
-	if rec := post(`{"name":"qa-pg","plan":"free","parameterOverrides":{"wal_level":"minimal"},"dryRun":true}`); rec.Code != http.StatusBadRequest ||
-		!strings.Contains(rec.Body.String(), "wal_level") {
-		t.Fatalf("operator-managed override => %d %s", rec.Code, rec.Body)
+	for _, body := range []string{
+		`{"name":"qa-pg","plan":"basic_256mb","parameterOverrides":{"work_mem":"64MB"},"dryRun":true}`,
+		`{"name":"qa-pg","plan":"basic_256mb","parameterOverrides":{},"dryRun":true}`,
+	} {
+		if rec := post(body); rec.Code != http.StatusBadRequest ||
+			!strings.Contains(rec.Body.String(), "parameterOverrides is no longer supported") ||
+			!strings.Contains(rec.Body.String(), "ALTER DATABASE") {
+			t.Fatalf("create with parameterOverrides %s => %d %s, want the named refusal", body, rec.Code, rec.Body)
+		}
 	}
 	if rec := post(`{"name":"qa-pg","plan":"free","nope":1,"dryRun":true}`); rec.Code != http.StatusBadRequest ||
 		!strings.Contains(rec.Body.String(), `nope`) {

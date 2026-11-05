@@ -37,7 +37,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m261** — [Blueprint create with `existingResources: create_new`](done/m261/README.md) (8 tasks) — **DONE 2026-11-03** ← promoted from w2/069 2026-11-03; Render parity included (REST/GraphQL/MCP Blueprint create)
 - [x] [064 — Emit Render's `disk_snapshot_restored` instead of bex's `disk_restored`](done/064.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [065 — Blueprint responses carry `ownerId`; Blueprint PATCH accepts `branch`](done/065.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
-- [ ] [066 — Render removed Postgres `parameterOverrides`; keep bex's or retire it?](066.md) — 2026-11-04 解阻（D2=A）：下线所有入口、保留已生效值，对齐 Render
+- [x] [066 — Render removed Postgres `parameterOverrides`; keep bex's or retire it?](done/066.md) — **DONE 2026-11-04** (D2=A): refused by name on REST/MCP, gone from reads and the dashboard; existing values keep applying
 - [x] [067 — The audit log records a workspace payment-method change, as Render's does](done/067.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [068 — Scope refusals: Render now names `insufficient_token_scope`; bex answers `INSUFFICIENT_SCOPE`](done/068.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [069 — Blueprint create with `existingResources: create_new`](done/069.md) ← w2/m256 (variant of the shipped `adopt`) — **PROMOTED 2026-11-03** to m261
