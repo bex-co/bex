@@ -44,7 +44,7 @@ scalar() {
   return 0
 }
 
-echo "==> Helm artifact download recovery and checksum enforcement"
+echo "==> Helm artifact download recovery, checksum enforcement and mirror reuse"
 bash scripts/helm-artifact.test.sh
 
 echo "==> privileged manifests and charts have immutable source identities"

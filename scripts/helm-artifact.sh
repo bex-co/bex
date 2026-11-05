@@ -72,6 +72,20 @@ mirror_one() {
   local destination=$2
   lookup "$chart"
   [ "$locked_oci_digest" != "-" ] || die "$chart has no reviewed OCI identity"
+  command -v oras >/dev/null || die "oras is required to normalize Helm OCI manifests"
+  local reference="$mirror_registry/$locked_name:$locked_version"
+  # Already published at the reviewed digest: skip the upstream download, so a
+  # chart server outage only matters when the lock changes (run 41993520985:
+  # three 504s from GitHub releases failed a deploy that changed no chart). The
+  # anonymous verify pass still checks the archive against the lock.
+  local current
+  if current=$(oras manifest fetch "${oras_transport_args[@]}" --descriptor "$reference" 2>"$destination.fetch-error" | jq -er '.digest') \
+    && [ "$current" = "$locked_oci_digest" ]; then
+    printf 'Already mirrored: %s@%s\n' "$reference" "$current"
+    return 0
+  fi
+  printf 'helm-artifact: %s is not published at the reviewed digest (%s); mirroring from upstream\n' \
+    "$reference" "${current:-$(head -c 200 "$destination.fetch-error")}" >&2
   local archive
   archive=$(pull_locked "$chart" "$destination")
   local output
@@ -83,8 +97,6 @@ mirror_one() {
   # exactly one locked chart layer and the expected Helm media types, remove
   # only the volatile timestamp, then replace the tag through ORAS. The stable
   # manifest digest is the identity reviewed in the lock and used by Argo.
-  command -v oras >/dev/null || die "oras is required to normalize Helm OCI manifests"
-  local reference="$mirror_registry/$locked_name:$locked_version"
   local raw_manifest="$destination/$locked_name.raw-manifest.json"
   local stable_manifest="$destination/$locked_name.stable-manifest.json"
   oras manifest fetch "${oras_transport_args[@]}" "$reference" -o "$raw_manifest" \
