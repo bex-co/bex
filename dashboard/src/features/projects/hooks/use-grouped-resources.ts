@@ -26,7 +26,10 @@ export function toServiceRow(s: ServiceView): ResourceRow {
     name: s.name,
     createdAt: s.createdAt,
     updatedAt: s.updatedAt ?? null,
-    runtime: formatRuntime(s.runtime),
+    // A static site has no runtime on the wire (Render's object has none), but
+    // its kind is the one fact the row certainly knows (w4/481).
+    runtime:
+      formatRuntime(s.runtime) ?? (s.type === "static_site" ? "Static" : null),
     region: s.region ?? null,
     service: s,
   };

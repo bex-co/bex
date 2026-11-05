@@ -38,6 +38,23 @@ describe("Project resource metadata normalization", () => {
     expect(row.updatedAt).toBeNull();
   });
 
+  it("names a static site's runtime Static even though the server sends none (w4/481)", () => {
+    const base = {
+      id: "srv-s",
+      name: "Site",
+      runtime: "",
+      region: "frankfurt",
+      createdAt: "2026-01-01T00:00:00Z",
+      updatedAt: null,
+    };
+    expect(
+      toServiceRow({ ...base, type: "static_site" } as never).runtime,
+    ).toBe("Static");
+    expect(
+      toServiceRow({ ...base, type: "web_service" } as never).runtime,
+    ).toBeNull();
+  });
+
   it("maps datastore product versions and leaves Env Group placement unknown", () => {
     expect(
       toDatabaseRow({
