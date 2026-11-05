@@ -239,6 +239,9 @@ type StackResult struct {
 	Databases []StackDatabaseView `json:"databases"`
 	KeyValues []StackKeyValueView `json:"keyValues"`
 	EnvGroups []StackEnvGroupView `json:"envGroups"`
+	// BuildSources are the build sources the Blueprint declares (ADR097 §
+	// Blueprints).
+	BuildSources []StackBuildSourceView `json:"buildSources,omitempty"`
 }
 
 // StackDatabaseView is the minimal managed-Postgres projection a stack deploy
@@ -278,6 +281,12 @@ type StackEnvGroupView struct {
 	Name string `json:"name"`
 }
 
+// StackBuildSourceView is an applied build source: its bds- id and name.
+type StackBuildSourceView struct {
+	ID   string `json:"id"`
+	Name string `json:"name"`
+}
+
 // --- manifest shape (render.yaml Blueprint vocabulary) ---
 
 // bexManifest is the legacy Go type used to adapt compiler-validated render.yaml
@@ -285,22 +294,25 @@ type StackEnvGroupView struct {
 // the Blueprint key `services:`; databases live under `databases:`; env groups under
 // `envVarGroups:` (materialized by name at apply, w1/m35).
 type bexManifest struct {
-	Services     []bexService  `json:"services"`     // Blueprint services list
-	Databases    []bexDatabase `json:"databases"`    // Blueprint databases list
-	EnvVarGroups []bexEnvGroup `json:"envVarGroups"` // Blueprint env-groups list
-	Projects     []bexProject  `json:"projects"`
-	Ungrouped    *bexResources `json:"ungrouped"`
+	Services     []bexService     `json:"services"`     // Blueprint services list
+	Databases    []bexDatabase    `json:"databases"`    // Blueprint databases list
+	EnvVarGroups []bexEnvGroup    `json:"envVarGroups"` // Blueprint env-groups list
+	BuildSources []bexBuildSource `json:"buildSources"` // Blueprint build sources (ADR097 § Blueprints)
+	Projects     []bexProject     `json:"projects"`
+	Ungrouped    *bexResources    `json:"ungrouped"`
 }
 
 type bexResources struct {
-	Services     []bexService  `json:"services"`
-	Databases    []bexDatabase `json:"databases"`
-	EnvVarGroups []bexEnvGroup `json:"envVarGroups"`
+	Services     []bexService     `json:"services"`
+	Databases    []bexDatabase    `json:"databases"`
+	EnvVarGroups []bexEnvGroup    `json:"envVarGroups"`
+	BuildSources []bexBuildSource `json:"buildSources"`
 }
 
 type bexProject struct {
 	Name         string           `json:"name"`
 	Environments []bexEnvironment `json:"environments"`
+	BuildSources []bexBuildSource `json:"buildSources"`
 }
 
 type bexEnvironment struct {
@@ -346,6 +358,9 @@ type bexService struct {
 	// field can never be mistaken for a bex extension.
 	Builder string        `json:"builder"`
 	XBex    *bexExtension `json:"x-bex,omitempty"`
+	// BuildSource links the service to a build source by name, which then
+	// provides all its source and build configuration (ADR097 § Blueprints).
+	BuildSource string `json:"buildSource"`
 	// RegistryCredential is render.yaml's service-level private-registry
 	// credential reference (w8/m19 t005).
 	RegistryCredential *bexRegistryCredentialRef `json:"registryCredential"`
@@ -546,11 +561,12 @@ type bexFromRef struct {
 // on an applied resource (fromDatabase secret names, fromService host slugs)
 // are carried as deferred refs and resolved during apply.
 type parsedStack struct {
-	envGroups []parsedEnvGroup
-	services  []parsedService
-	databases []parsedDatabase
-	keyValues []parsedKeyValue
-	groupings []parsedGrouping
+	envGroups    []parsedEnvGroup
+	services     []parsedService
+	databases    []parsedDatabase
+	keyValues    []parsedKeyValue
+	buildSources []parsedBuildSource
+	groupings    []parsedGrouping
 }
 
 type parsedGrouping struct {
@@ -847,6 +863,9 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	if err := s.preflightBlueprintOwnership(ctx, req, st, snap); err != nil {
 		return StackResult{}, err
 	}
+	if err := s.validateBlueprintBuildSources(ctx, st, snap); err != nil {
+		return StackResult{}, err
+	}
 	if err := s.requireStackBilling(ctx, st); err != nil {
 		return StackResult{}, err
 	}
@@ -892,6 +911,20 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	}
 	if err := s.applyStackDatastores(ctx, st, assignments, snap, dbRefs, kvCRNames, &res); err != nil {
 		return res, err
+	}
+	if len(st.buildSources) > 0 || st.linksBuildSources() {
+		if err := s.requireBlueprintExecution(ctx, req); err != nil {
+			return res, err
+		}
+		carriers, err := s.applyStackBuildSources(ctx, st, assignments, snap, &res)
+		if err != nil {
+			return res, err
+		}
+		links, err := blueprintBuildSourceLinks(st, carriers)
+		if err != nil {
+			return res, err
+		}
+		st.resolveBuildSourceIDs(links)
 	}
 	// The apply resolves each declared service as the plan did (w5/m133).
 	appsByName, err := snap.services(ctx)
@@ -1054,6 +1087,11 @@ func (s *Service) applyStackServices(ctx context.Context, st parsedStack, appsBy
 	for _, svc := range st.services {
 		if err := requireDeployAuthority(ctx, s); err != nil {
 			return nil, err
+		}
+		// deployParsedStack resolves every link before this pass, so an
+		// unresolved one here would create a service with no source.
+		if svc.req.blueprintBuildSource != "" && svc.req.BuildSourceID == "" {
+			return nil, fmt.Errorf("blueprint apply: service %q: buildSource %q is unresolved", svc.req.Name, svc.req.blueprintBuildSource)
 		}
 		laterRefs, err := resolveServiceRefs(&svc, dbRefs, kvCRNames, lookupTarget, s.BaseDomain)
 		if err != nil {
@@ -1437,13 +1475,24 @@ func blueprintRegistryCredentialName(a bexService) (string, error) {
 // private image without its credential.
 func (s *Service) resolveBlueprintRegistryCredentials(ctx context.Context, st *parsedStack) error {
 	resolved := map[string]string{} // name → id, one lookup per distinct name per stack
+	type declaration struct {
+		noun string
+		svc  *parsedService
+	}
+	declarations := make([]declaration, 0, len(st.services)+len(st.buildSources))
 	for i := range st.services {
-		name := st.services[i].registryCredentialName
+		declarations = append(declarations, declaration{"service", &st.services[i]})
+	}
+	for i := range st.buildSources {
+		declarations = append(declarations, declaration{"build source", &st.buildSources[i].svc})
+	}
+	for _, d := range declarations {
+		name := d.svc.registryCredentialName
 		if name == "" {
 			continue
 		}
 		if s.RegistryCreds == nil {
-			return fmt.Errorf("%w: service %q: registry credentials are not configured on this deployment", core.ErrBadRequest, st.services[i].req.Name)
+			return fmt.Errorf("%w: %s %q: registry credentials are not configured on this deployment", core.ErrBadRequest, d.noun, d.svc.req.Name)
 		}
 		id, hit := resolved[name]
 		if !hit {
@@ -1454,12 +1503,12 @@ func (s *Service) resolveBlueprintRegistryCredentials(ctx context.Context, st *p
 				return err
 			}
 			if !found {
-				return fmt.Errorf("%w: service %q: registry credential %q not found in this workspace", core.ErrBadRequest, st.services[i].req.Name, name)
+				return fmt.Errorf("%w: %s %q: registry credential %q not found in this workspace", core.ErrBadRequest, d.noun, d.svc.req.Name, name)
 			}
 			resolved[name] = id
 		}
 		credentialID := id
-		st.services[i].req.RegistryCredentialID = &credentialID
+		d.svc.req.RegistryCredentialID = &credentialID
 	}
 	return nil
 }
@@ -2177,12 +2226,29 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	if err != nil {
 		return parsedStack{}, err
 	}
+	buildSources := mergeDecls(m.BuildSources, ungrouped.BuildSources, false)
+	for _, project := range m.Projects {
+		for _, b := range project.BuildSources {
+			buildSources = append(buildSources, decl[bexBuildSource]{value: b, grouping: strings.TrimSpace(project.Name)})
+		}
+	}
 	st := parsedStack{groupings: groupings}
-	if len(services) == 0 && len(databases) == 0 && len(envGroups) == 0 {
-		return parsedStack{}, fmt.Errorf("%w: render.yaml must define at least one service, database, env group, or project environment resource", core.ErrBadRequest)
+	if len(services) == 0 && len(databases) == 0 && len(envGroups) == 0 && len(buildSources) == 0 {
+		return parsedStack{}, fmt.Errorf("%w: render.yaml must define at least one service, database, env group, build source, or project environment resource", core.ErrBadRequest)
 	}
 
 	var problems blueprintResourceErrors
+	// Build sources (ADR097 § Blueprints): each is the build-only service its
+	// carrier is; the grouping slot carries a project entry's project name.
+	for _, b := range buildSources {
+		name := strings.TrimSpace(b.value.Name)
+		pb, err := parseBuildSource(overrides, b.value, b.grouping, fieldsByResource[BlueprintResourceBuildSource][name])
+		if err != nil {
+			problems = append(problems, blueprintResourceError{kind: BlueprintResourceBuildSource, name: name, err: err})
+			continue
+		}
+		st.buildSources = append(st.buildSources, pb)
+	}
 	// Env groups first; a service's fromGroup links one. Names arrive unique
 	// within each kind: the compiler refuses a repeat
 	// (BLUEPRINT_DUPLICATE_RESOURCE) and, as on Render, lets a database, a
@@ -2282,6 +2348,11 @@ func parseCompiledStack(overrides blueprintParseOverrides, source *BlueprintSour
 	// Pass 2: classify each pending service's deferred references now that
 	// every name, port, and known-env is available.
 	for _, p := range pendings {
+		if b, ok := parsedBlueprintBuildSource(st, p.svc.req.blueprintBuildSource); ok {
+			if err := checkDeclaredBuildSourceLink(p.svc, b); err != nil {
+				return parsedStack{}, blueprintResourceErrors{{kind: BlueprintResourceService, name: p.svc.req.Name, err: err}}
+			}
+		}
 		for i := range p.refVars {
 			slugRefNames(&p.refVars[i].bexEnvVar)
 		}
@@ -2801,6 +2872,11 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		return CreateRequest{}, serviceEnv{}, err
 	}
 	repo, branch := overrides.serviceSource(a)
+	if a.BuildSource != "" {
+		// The build source provides the source; the Blueprint's repo is not
+		// this service's (ADR097 § Blueprints).
+		repo, branch = "", ""
+	}
 	svcType, err := manifestType(a.Type, a.Runtime)
 	if err != nil {
 		return CreateRequest{}, serviceEnv{}, err
@@ -2879,6 +2955,7 @@ func parseService(overrides blueprintParseOverrides, a bexService) (CreateReques
 		SubdomainPolicy:         a.RenderSubdomainPolicy,
 		Routes:                  a.Routes,
 		Headers:                 a.Headers,
+		blueprintBuildSource:    strings.TrimSpace(a.BuildSource),
 	}, se, nil
 }
 
@@ -3422,6 +3499,11 @@ func (s *Service) applyStackService(ctx context.Context, req CreateRequest, fiel
 	if err != nil {
 		return AppView{}, nil, err
 	}
+	if existing != nil && req.BuildSourceID != "" {
+		if desired.BuildSource, err = s.blueprintServiceLink(ctx, req, fields, existing); err != nil {
+			return AppView{}, nil, err
+		}
+	}
 	if err := s.requireServiceInboundRules(ctx, s.resolveTenantID(ctx), req.IPAllowList, existing); err != nil {
 		return AppView{}, nil, err
 	}
@@ -3781,7 +3863,18 @@ func (s *Service) persistBlueprintIntent(ctx context.Context, a *appv1alpha1.App
 		return nil
 	}
 	cur := a.Spec
-	if cur.Repo != want.Repo || cur.Image != want.Image || cur.Branch != want.Branch ||
+	if want.BuildSource != nil && (cur.BuildSource == nil || cur.BuildSource.Name != want.BuildSource.Name) {
+		linker, ok := s.buildSourceLinker()
+		if !ok {
+			return fmt.Errorf("%w: build sources need the control plane", core.ErrUnavailable)
+		}
+		if err := s.markSourcePending(ctx, a); err != nil {
+			return err
+		}
+		if err := linker.SetAppBuildSource(ctx, id, core.BuildSourceIDOfLink(a.Labels[core.LabelTenant], want.BuildSource), want.BuildSource.Image); err != nil {
+			return err
+		}
+	} else if cur.Repo != want.Repo || cur.Image != want.Image || cur.Branch != want.Branch ||
 		!sameStringPtr(cur.RegistryCredentialID, want.RegistryCredentialID) {
 		if err := s.markSourcePending(ctx, a); err != nil {
 			return err

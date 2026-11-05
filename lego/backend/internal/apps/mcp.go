@@ -408,11 +408,14 @@ type renderStack struct {
 	Databases []StackDatabaseView `json:"databases,omitempty"`
 	KeyValues []StackKeyValueView `json:"keyValues,omitempty"`
 	EnvGroups []StackEnvGroupView `json:"envGroups,omitempty"`
+	// BuildSources are the build sources the file declares (ADR097 §
+	// Blueprints), applied before the services that link them.
+	BuildSources []StackBuildSourceView `json:"buildSources,omitempty"`
 }
 
 // toRenderStack maps a StackResult onto the MCP deploy result shape.
 func toRenderStack(res StackResult) renderStack {
-	return renderStack{Services: toRenderServices(res.Services), Databases: res.Databases, KeyValues: res.KeyValues, EnvGroups: res.EnvGroups}
+	return renderStack{Services: toRenderServices(res.Services), Databases: res.Databases, KeyValues: res.KeyValues, EnvGroups: res.EnvGroups, BuildSources: res.BuildSources}
 }
 
 // validateBlueprintArgs is validate_bex_yml's input; the wire name remains

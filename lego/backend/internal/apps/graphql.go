@@ -1189,6 +1189,13 @@ var syncBlueprintResultGQLType = graphql.NewObject(graphql.ObjectConfig{
 			}
 			return names
 		})},
+		"buildSources": &graphql.Field{Type: graphql.NewList(graphql.String), Resolve: gqlutil.Field(func(r SyncBlueprintResult) any {
+			names := make([]string, len(r.Stack.BuildSources))
+			for i, b := range r.Stack.BuildSources {
+				names[i] = b.Name
+			}
+			return names
+		})},
 	},
 })
 

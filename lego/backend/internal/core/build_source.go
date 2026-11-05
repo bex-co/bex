@@ -144,8 +144,14 @@ func BuildSourceLinkTo(carrier *appv1alpha1.App) *appv1alpha1.BuildSourceLink {
 // BuildSourceIDOf is the public id of the build source a linked App deploys
 // from: its carrier is named CRName(tenant, id) (ADR097).
 func BuildSourceIDOf(a *appv1alpha1.App) string {
-	if a.Spec.BuildSource == nil {
+	return BuildSourceIDOfLink(a.Labels[LabelTenant], a.Spec.BuildSource)
+}
+
+// BuildSourceIDOfLink is the public id of the build source link names, in
+// workspace tenantID; "" for no link.
+func BuildSourceIDOfLink(tenantID string, link *appv1alpha1.BuildSourceLink) string {
+	if link == nil {
 		return ""
 	}
-	return strings.TrimPrefix(a.Spec.BuildSource.Name, a.Labels[LabelTenant]+"-")
+	return strings.TrimPrefix(link.Name, tenantID+"-")
 }

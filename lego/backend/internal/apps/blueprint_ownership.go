@@ -72,6 +72,8 @@ func blueprintClaimResourceKind(kind store.BlueprintClaimKind) BlueprintResource
 		return BlueprintResourcePostgres
 	case store.BlueprintClaimKeyValue:
 		return BlueprintResourceKeyValue
+	case store.BlueprintClaimBuildSource:
+		return BlueprintResourceBuildSource
 	}
 	return BlueprintResourceKind(kind)
 }
@@ -107,7 +109,7 @@ func blueprintResourceOwner(owners map[store.BlueprintResourceKey]string, kind s
 // workspace.
 func (s *Service) blueprintOwnershipConflicts(ctx context.Context, selfID string, st parsedStack, snap *workspaceSnapshot) ([]blueprintOwnershipConflict, error) {
 	tenantID := snap.tenantID
-	if len(st.services) == 0 && len(st.databases) == 0 && len(st.keyValues) == 0 {
+	if len(st.services) == 0 && len(st.databases) == 0 && len(st.keyValues) == 0 && len(st.buildSources) == 0 {
 		return nil, nil
 	}
 	owners := s.blueprintResourceOwners(ctx, tenantID)
@@ -157,6 +159,19 @@ func (s *Service) blueprintOwnershipConflicts(ctx context.Context, selfID string
 		}
 		for _, kv := range st.keyValues {
 			record(store.BlueprintClaimKeyValue, kv.name, byName[kv.name])
+		}
+	}
+	if len(st.buildSources) > 0 {
+		carriers, err := snap.buildSources(ctx)
+		if err != nil {
+			return nil, err
+		}
+		for _, b := range st.buildSources {
+			var labelOwner string
+			if carrier := carriers[b.name]; carrier != nil {
+				labelOwner = carrier.Labels[core.LabelBlueprint]
+			}
+			record(store.BlueprintClaimBuildSource, b.name, labelOwner)
 		}
 	}
 	return conflicts, nil
@@ -209,6 +224,8 @@ func blueprintOwnershipError(c blueprintOwnershipConflict) error {
 		wording = "database"
 	case BlueprintResourceKeyValue:
 		wording = "key value"
+	case BlueprintResourceBuildSource:
+		wording = "build source"
 	}
 	return core.NewConflictError("BLUEPRINT_RESOURCE_CONFLICT",
 		fmt.Sprintf("%s %q is managed by blueprint %s; retry with confirm=%q to transfer ownership to this blueprint", wording, c.name, public, phrase),
@@ -377,6 +394,19 @@ func (s *Service) stampBlueprintOwnership(ctx context.Context, blueprintID strin
 			}
 		}
 	}
+	if len(st.buildSources) > 0 {
+		carriers, err := snap.buildSources(ctx)
+		if err != nil {
+			return fmt.Errorf("listing build sources for ownership stamp: %w", err)
+		}
+		for _, b := range st.buildSources {
+			if carrier := carriers[b.name]; carrier != nil {
+				if err := claimAndLabel(store.BlueprintClaimBuildSource, b.name, carrier); err != nil {
+					return err
+				}
+			}
+		}
+	}
 	return s.releaseUndeclaredClaims(ctx, tenantID, blueprintID, st)
 }
 
@@ -452,7 +482,11 @@ func (s *Service) clearBlueprintMarkers(ctx context.Context, tenantID, blueprint
 		return fmt.Errorf("listing owned apps: %w", err)
 	}
 	for i := range apps.Items {
-		clear(store.BlueprintResourceKey{Kind: store.BlueprintClaimService, Name: core.AppPublicName(&apps.Items[i])}, &apps.Items[i])
+		if core.IsBuildSource(&apps.Items[i]) {
+			clear(store.BlueprintResourceKey{Kind: store.BlueprintClaimBuildSource, Name: buildSourceName(&apps.Items[i])}, &apps.Items[i])
+		} else {
+			clear(store.BlueprintResourceKey{Kind: store.BlueprintClaimService, Name: core.AppPublicName(&apps.Items[i])}, &apps.Items[i])
+		}
 	}
 	var databases appv1alpha1.DatabaseList
 	if err := s.Client.List(ctx, &databases, owned...); err != nil {
@@ -754,6 +788,9 @@ func blueprintDeclaredClaims(st parsedStack) map[store.BlueprintResourceKey]bool
 	}
 	for _, kv := range st.keyValues {
 		declared[store.BlueprintResourceKey{Kind: store.BlueprintClaimKeyValue, Name: kv.name}] = true
+	}
+	for _, b := range st.buildSources {
+		declared[store.BlueprintResourceKey{Kind: store.BlueprintClaimBuildSource, Name: b.name}] = true
 	}
 	return declared
 }

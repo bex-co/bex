@@ -372,6 +372,18 @@ func probeBlueprintServiceSpec(dst *appv1alpha1.AppSpec, want appv1alpha1.AppSpe
 	if omits("repo") && !present("image") && want.Repo != "" && prebuiltImageSource(*dst) {
 		applyBlueprintRepo(dst, want)
 	}
+	// buildSource links the service to a build source, which then provides
+	// all its source and build configuration; an entry that builds its own
+	// source again unlinks it (ADR097 § Blueprints).
+	if applies("buildSource") && want.BuildSource != nil && (dst.BuildSource == nil || dst.BuildSource.Name != want.BuildSource.Name) {
+		linkBuildSourceSpec(dst, *want.BuildSource)
+	}
+	if omits("buildSource") && dst.BuildSource != nil && (dst.Repo != "" || dst.Image != "" || want.Repo != "" || want.Image != "") {
+		if dst.Repo == "" && dst.Image == "" {
+			dst.Repo, dst.Image, dst.Branch = want.Repo, want.Image, want.Branch
+		}
+		dst.BuildSource = nil
+	}
 	// A native or buildpack start command was baked into the image it built;
 	// left on a prebuilt image it would run as that image's /bin/sh command
 	// override, so a switch that declares no command drops it (w8/m70).

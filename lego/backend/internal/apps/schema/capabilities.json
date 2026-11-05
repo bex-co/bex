@@ -963,104 +963,154 @@
       "reason": "PR preview environments are a rejected non-goal (DO_NOT_DO.md, w2/m11 rejection 2026-07-12): fail-closed so preview intent is never silently dropped"
     },
     "#/allOf/1/properties/buildSources": {
-      "state": "unsupported",
-      "reason": "Render Build Sources (shared build reuse) are a Render private beta (render.com/blog/build-reuse-private-beta, 2026-09-21) with no blueprint-spec documentation: one immutable build deployed to every linked service, with build-time env vars scoped apart from runtime ones. bex builds per service and has no build-only env scope, so inlining a build source into each service would be the lossy approximation ADR049 D7 forbids; rejected with a named error (w1/m170)"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/allOf/1/properties/ungrouped/properties/buildSources": {
-      "state": "unsupported",
-      "reason": "Render Build Sources (shared build reuse) are a Render private beta (render.com/blog/build-reuse-private-beta, 2026-09-21) with no blueprint-spec documentation: one immutable build deployed to every linked service, with build-time env vars scoped apart from runtime ones. bex builds per service and has no build-only env scope, so inlining a build source into each service would be the lossy approximation ADR049 D7 forbids; rejected with a named error (w1/m170)"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSource/properties/git": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSource/properties/image": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSource/properties/name": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSourceGit/allOf/0/then/properties/runtime": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
     },
     "#/definitions/buildSourceGit/properties/dockerContext": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSourceGit/properties/branch": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSourceGit/properties/buildCommand": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSourceGit/properties/buildFilter": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSourceGit/properties/dockerfilePath": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSourceGit/properties/envVars": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSourceGit/properties/region": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSourceGit/properties/registryCredential": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSourceGit/properties/repo": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSourceGit/properties/rootDir": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/buildSourceGit/properties/runtime": {
-      "state": "unsupported",
-      "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/project/properties/buildSources": {
-      "state": "unsupported",
-      "reason": "Render Build Sources (shared build reuse) are a Render private beta (render.com/blog/build-reuse-private-beta, 2026-09-21) with no blueprint-spec documentation: one immutable build deployed to every linked service, with build-time env vars scoped apart from runtime ones. bex builds per service and has no build-only env scope, so inlining a build source into each service would be the lossy approximation ADR049 D7 forbids; rejected with a named error (w1/m170)"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/serverService/allOf/1/then/properties/branch": {
-      "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
     },
     "#/definitions/serverService/allOf/1/then/properties/buildCommand": {
-      "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
     },
     "#/definitions/serverService/allOf/1/then/properties/buildFilter": {
-      "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
     },
     "#/definitions/serverService/allOf/1/then/properties/dockerContext": {
-      "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
     },
     "#/definitions/serverService/allOf/1/then/properties/dockerfilePath": {
-      "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
     },
     "#/definitions/serverService/allOf/1/then/properties/image": {
-      "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
     },
     "#/definitions/serverService/allOf/1/then/properties/previewPlan": {
-      "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
     },
     "#/definitions/serverService/allOf/1/then/properties/previews": {
       "state": "unsupported",
@@ -1077,20 +1127,28 @@
       "fixture": "internal/apps/previews_test.go:TestBlueprintPreviewOptOut"
     },
     "#/definitions/serverService/allOf/1/then/properties/registryCredential": {
-      "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
     },
     "#/definitions/serverService/allOf/1/then/properties/repo": {
-      "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
     },
     "#/definitions/serverService/allOf/1/then/properties/runtime": {
-      "state": "unsupported",
-      "reason": "serverService's 'buildSource is linked' branch: these false-schemas forbid service-level source fields only when buildSource is set, and buildSource is unsupported (w1/m170), so the branch never applies on bex"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "serverService's 'buildSource is linked' branch: the pinned false-schema refuses this source field beside buildSource, as Render does, because the build source provides it (w3/m270)"
     },
     "#/definitions/serverService/properties/buildSource": {
-      "state": "unsupported",
-      "reason": "Render Build Sources (shared build reuse) are a Render private beta (render.com/blog/build-reuse-private-beta, 2026-09-21) with no blueprint-spec documentation: one immutable build deployed to every linked service, with build-time env vars scoped apart from runtime ones. bex builds per service and has no build-only env scope, so inlining a build source into each service would be the lossy approximation ADR049 D7 forbids; rejected with a named error (w1/m170)"
+      "state": "translated",
+      "handler": "parseCompiledStack",
+      "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+      "reason": "Render Build Sources map onto bex build-source carriers (ADR097 § Blueprints, w3/m270): one build feeds every linked service"
     },
     "#/definitions/workflowService/properties/autoDeployTrigger": {
       "state": "unsupported",
@@ -2176,32 +2234,46 @@
     },
     "#/definitions/buildSourceRuntime/enum": {
       "\"docker\"": {
-        "state": "unsupported",
-        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+        "reason": "a git build source's runtime, built by the carrier's build pipeline (ADR097 § Blueprints, w3/m270)"
       },
       "\"elixir\"": {
-        "state": "unsupported",
-        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+        "reason": "a git build source's runtime, built by the carrier's build pipeline (ADR097 § Blueprints, w3/m270)"
       },
       "\"go\"": {
-        "state": "unsupported",
-        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+        "reason": "a git build source's runtime, built by the carrier's build pipeline (ADR097 § Blueprints, w3/m270)"
       },
       "\"node\"": {
-        "state": "unsupported",
-        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+        "reason": "a git build source's runtime, built by the carrier's build pipeline (ADR097 § Blueprints, w3/m270)"
       },
       "\"python\"": {
-        "state": "unsupported",
-        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+        "reason": "a git build source's runtime, built by the carrier's build pipeline (ADR097 § Blueprints, w3/m270)"
       },
       "\"ruby\"": {
-        "state": "unsupported",
-        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+        "reason": "a git build source's runtime, built by the carrier's build pipeline (ADR097 § Blueprints, w3/m270)"
       },
       "\"rust\"": {
-        "state": "unsupported",
-        "reason": "reachable only inside a buildSources entry, which is unsupported (w1/m170); never evaluated on its own"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_build_sources_test.go:TestBlueprintBuildSourcesCompile",
+        "reason": "a git build source's runtime, built by the carrier's build pipeline (ADR097 § Blueprints, w3/m270)"
       }
     },
     "#/definitions/workflowService/properties/runtime/enum": {

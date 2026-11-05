@@ -317,6 +317,10 @@ const enBlueprints: Record<string, TranslationEntry> = {
     message: "Environment group",
     description: "Plan row resource kind",
   },
+  "blueprints.previewKindBuildSource": {
+    message: "Build source",
+    description: "Plan row resource kind",
+  },
   "blueprints.previewServices": {
     message: "Services",
     description: "Review section plan group label — services in the manifest",

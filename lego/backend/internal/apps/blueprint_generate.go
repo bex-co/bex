@@ -30,6 +30,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"maps"
 	"regexp"
 	"slices"
 	"strconv"
@@ -193,6 +194,9 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 	}
 
 	var services []map[string]any
+	// The build sources the selected services link, exported beside them so
+	// the file is complete (ADR097 § Blueprints).
+	carriers, carriersByID := map[string]*appv1alpha1.App{}, map[string]*appv1alpha1.App{}
 	for _, id := range req.ServiceIDs {
 		a, err := s.AuthorizeApp(ctx, core.RelCanViewSensitive, id)
 		if err != nil {
@@ -203,6 +207,17 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 			return GenerateBlueprintResult{}, err
 		}
 		services = append(services, entry)
+		if id := core.BuildSourceIDOf(a); id != "" {
+			carrier := carriersByID[id]
+			if carrier == nil {
+				if _, carrier, err = s.buildSourceApp(ctx, core.RelCanViewSensitive, id); err != nil {
+					return GenerateBlueprintResult{}, err
+				}
+				carriersByID[id] = carrier
+			}
+			entry["buildSource"] = buildSourceName(carrier)
+			carriers[buildSourceName(carrier)] = carrier
+		}
 	}
 	region := resourcemeta.RenderRegion(s.Metadata.PlatformRegion())
 	for _, kv := range keyValues {
@@ -216,6 +231,17 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 	doc := map[string]any{}
 	if len(services) > 0 {
 		doc["services"] = services
+	}
+	if len(carriers) > 0 {
+		var out []map[string]any
+		for _, name := range slices.Sorted(maps.Keys(carriers)) {
+			entry, err := s.generateBuildSourceEntry(ctx, carriers[name])
+			if err != nil {
+				return GenerateBlueprintResult{}, err
+			}
+			out = append(out, entry)
+		}
+		doc["buildSources"] = out
 	}
 	if len(databases) > 0 {
 		var out []map[string]any
@@ -342,78 +368,12 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		entry["region"] = region
 	}
 
-	// The read surfaces' runtime (core.EffectiveRuntime), not the raw spec field:
-	// a Dockerfile build commonly leaves spec.runtime empty and says so through
-	// spec.builder, and render.yaml requires a runtime, so emitting only the
-	// raw field failed the self-check for an ordinary git service (w4/193).
-	runtime := core.EffectiveRuntime(a.Spec, svcType)
-	builder := exportedBuilder(a.Spec)
-	// A bound registry credential exports by name (w5/089): on image.creds for
-	// a prebuilt image, as Render spells it, else on registryCredential.
-	creds, err := s.exportedRegistryCredential(ctx, a)
-	if err != nil {
-		return nil, err
-	}
-	switch {
-	case a.Spec.Image != "":
-		entry["runtime"] = "image"
-		image := map[string]any{"url": a.Spec.Image}
-		if creds != nil {
-			image["creds"] = creds
+	// A linked service takes its whole source and build configuration from
+	// its build source; GenerateBlueprint names it (ADR097 § Blueprints).
+	if a.Spec.BuildSource == nil {
+		if err := s.generateServiceSource(ctx, a, entry, svcType); err != nil {
+			return nil, err
 		}
-		entry["image"] = image
-	case static:
-		entry["runtime"] = "static"
-	case runtime != "":
-		entry["runtime"] = runtime
-	case builder == buildBuildpack:
-		entry["runtime"] = blueprintBuildpackRuntime
-	}
-	if builder != "" {
-		entry["x-bex"] = map[string]any{"builder": builder}
-	}
-	if creds != nil && a.Spec.Image == "" {
-		entry["registryCredential"] = creds
-	}
-	if a.Spec.Repo != "" {
-		entry["repo"] = a.Spec.Repo
-		// Every selected branch is exported, main included: to Render (and to
-		// a direct create, w8/m76) an omitted branch means the repository's
-		// default, so dropping an explicit main would re-create a
-		// master-default repo's service on master.
-		if a.Spec.Branch != "" {
-			entry["branch"] = a.Spec.Branch
-		}
-	}
-	// A switch from Git to a prebuilt image keeps the Git settings on the App
-	// for a switch back, but an image entry may not declare them
-	// (prebuiltImageSourceFields): the export's own check would refuse the
-	// manifest (w4/288).
-	if a.Spec.Image == "" {
-		if a.Spec.RootDir != "" {
-			entry["rootDir"] = a.Spec.RootDir
-		}
-		if filter := buildFilterView(a.Spec.BuildFilter); filter != nil {
-			entry["buildFilter"] = filter
-		}
-	}
-	// Only a Dockerfile build reads these, and create refuses them elsewhere
-	// (w5/090): a service created before that holds one exports without it,
-	// and a sync of the file keeps the stored value.
-	if buildStrategy(a.Spec) == buildDockerfile {
-		if a.Spec.DockerfilePath != "" {
-			entry["dockerfilePath"] = a.Spec.DockerfilePath
-		}
-		// rootDir-relative, as render.yaml reads it (w8/m128).
-		if context := wireDockerContext(a.Spec.RootDir, a.Spec.DockerContext); context != "." {
-			entry["dockerContext"] = context
-		}
-	}
-	// Only a native build runs a build command, and render.yaml refuses one
-	// beside any other runtime: a Dockerfile or buildpack build's would fail
-	// the export's own check.
-	if a.Spec.BuildCommand != "" && nativeBuild(buildStrategy(a.Spec)) {
-		entry["buildCommand"] = a.Spec.BuildCommand
 	}
 	if a.Spec.StartCommand != "" && !static {
 		entry[blueprintCommandField(a.Spec)] = a.Spec.StartCommand
@@ -517,6 +477,124 @@ func (s *Service) generateServiceEntry(ctx context.Context, a *appv1alpha1.App, 
 		entry["envVars"] = envVars
 	}
 	return entry, nil
+}
+
+// buildSourceGitFields are the exported service fields a build source's git
+// block carries, under the same names.
+var buildSourceGitFields = []string{"repo", "branch", "runtime", "buildCommand", "buildFilter", "rootDir",
+	"dockerContext", "dockerfilePath", "registryCredential"}
+
+// generateBuildSourceEntry exports a build source carrier: its source fields
+// as the service export writes them, under git (or image), and its literal
+// build-time env vars. A value held only in the env store has no Blueprint
+// form on a build source and is left out.
+func (s *Service) generateBuildSourceEntry(ctx context.Context, carrier *appv1alpha1.App) (map[string]any, error) {
+	source := map[string]any{}
+	if err := s.generateServiceSource(ctx, carrier, source, appv1alpha1.TypeBackgroundWorker); err != nil {
+		return nil, err
+	}
+	entry := map[string]any{"name": buildSourceName(carrier)}
+	if image, ok := source["image"]; ok {
+		entry["image"] = image
+		return entry, nil
+	}
+	git := map[string]any{}
+	for _, name := range buildSourceGitFields {
+		if value, ok := source[name]; ok {
+			git[name] = value
+		}
+	}
+	var env []map[string]any
+	for _, e := range carrier.Spec.Env {
+		if e.ValueFrom == nil {
+			env = append(env, map[string]any{"key": e.Name, "value": e.Value})
+		}
+	}
+	if len(env) > 0 {
+		git["envVars"] = env
+	}
+	entry["git"] = git
+	return entry, nil
+}
+
+// generateServiceSource writes an App's own source and build fields onto its
+// exported entry.
+func (s *Service) generateServiceSource(ctx context.Context, a *appv1alpha1.App, entry map[string]any, svcType string) error {
+	static := svcType == appv1alpha1.TypeStaticSite
+	// The read surfaces' runtime (core.EffectiveRuntime), not the raw spec field:
+	// a Dockerfile build commonly leaves spec.runtime empty and says so through
+	// spec.builder, and render.yaml requires a runtime, so emitting only the
+	// raw field failed the self-check for an ordinary git service (w4/193).
+	runtime := core.EffectiveRuntime(a.Spec, svcType)
+	builder := exportedBuilder(a.Spec)
+	// A bound registry credential exports by name (w5/089): on image.creds for
+	// a prebuilt image, as Render spells it, else on registryCredential.
+	creds, err := s.exportedRegistryCredential(ctx, a)
+	if err != nil {
+		return err
+	}
+	switch {
+	case a.Spec.Image != "":
+		entry["runtime"] = "image"
+		image := map[string]any{"url": a.Spec.Image}
+		if creds != nil {
+			image["creds"] = creds
+		}
+		entry["image"] = image
+	case static:
+		entry["runtime"] = "static"
+	case runtime != "":
+		entry["runtime"] = runtime
+	case builder == buildBuildpack:
+		entry["runtime"] = blueprintBuildpackRuntime
+	}
+	if builder != "" {
+		entry["x-bex"] = map[string]any{"builder": builder}
+	}
+	if creds != nil && a.Spec.Image == "" {
+		entry["registryCredential"] = creds
+	}
+	if a.Spec.Repo != "" {
+		entry["repo"] = a.Spec.Repo
+		// Every selected branch is exported, main included: to Render (and to
+		// a direct create, w8/m76) an omitted branch means the repository's
+		// default, so dropping an explicit main would re-create a
+		// master-default repo's service on master.
+		if a.Spec.Branch != "" {
+			entry["branch"] = a.Spec.Branch
+		}
+	}
+	// A switch from Git to a prebuilt image keeps the Git settings on the App
+	// for a switch back, but an image entry may not declare them
+	// (prebuiltImageSourceFields): the export's own check would refuse the
+	// manifest (w4/288).
+	if a.Spec.Image == "" {
+		if a.Spec.RootDir != "" {
+			entry["rootDir"] = a.Spec.RootDir
+		}
+		if filter := buildFilterView(a.Spec.BuildFilter); filter != nil {
+			entry["buildFilter"] = filter
+		}
+	}
+	// Only a Dockerfile build reads these, and create refuses them elsewhere
+	// (w5/090): a service created before that holds one exports without it,
+	// and a sync of the file keeps the stored value.
+	if buildStrategy(a.Spec) == buildDockerfile {
+		if a.Spec.DockerfilePath != "" {
+			entry["dockerfilePath"] = a.Spec.DockerfilePath
+		}
+		// rootDir-relative, as render.yaml reads it (w8/m128).
+		if context := wireDockerContext(a.Spec.RootDir, a.Spec.DockerContext); context != "." {
+			entry["dockerContext"] = context
+		}
+	}
+	// Only a native build runs a build command, and render.yaml refuses one
+	// beside any other runtime: a Dockerfile or buildpack build's would fail
+	// the export's own check.
+	if a.Spec.BuildCommand != "" && nativeBuild(buildStrategy(a.Spec)) {
+		entry["buildCommand"] = a.Spec.BuildCommand
+	}
+	return nil
 }
 
 // generateEnvVars classifies an App's env wiring for export: literals keep
@@ -817,9 +895,10 @@ func allowListEntries(entries []appv1alpha1.IPAllowEntry) []map[string]any {
 
 // blueprintCommandField is how render.yaml spells a service's command: a
 // container's (readsDockerCommand) is dockerCommand, a native runtime's is
-// startCommand (w5/080).
+// startCommand (w5/080), as is a service linked to a build source, which only
+// a native source gives one (ADR097 § Blueprints).
 func blueprintCommandField(spec appv1alpha1.AppSpec) string {
-	if readsDockerCommand(buildStrategy(spec)) {
+	if spec.BuildSource == nil && readsDockerCommand(buildStrategy(spec)) {
 		return "dockerCommand"
 	}
 	return "startCommand"

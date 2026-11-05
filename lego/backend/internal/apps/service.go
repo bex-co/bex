@@ -1809,8 +1809,12 @@ type CreateRequest struct {
 	// t005): the source provides all source and build configuration.
 	BuildSourceID string
 	// buildSource marks the create of a Render Build Source carrier
-	// (w2/m254); only CreateBuildSource sets it.
+	// (w2/m254); only CreateBuildSource and a Blueprint's buildSources set it.
 	buildSource *buildSourceCreate
+	// blueprintBuildSource is a Blueprint service's buildSource name, which
+	// the apply resolves to BuildSourceID before any write (ADR097 §
+	// Blueprints).
+	blueprintBuildSource string
 	// Blueprint-only group names; never decoded from public create input.
 	initialEnvGroups []string
 	// storeEnvKeys are Blueprint-declared keys whose value lives in the env
@@ -2443,6 +2447,17 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 		return stackAppPlan{}, err
 	}
 	stampEnvironmentMembership(a, environment)
+	// A Blueprint service's buildSource, resolved by the apply before any
+	// write; a preview leaves a link to a build source the apply has yet to
+	// create unresolved (its rules were checked at parse).
+	if req.BuildSourceID != "" {
+		start := linkStartCommand(a.Spec.Type, req.StartCommand, req.Command)
+		link, _, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, a.Spec.Type, &start, "")
+		if err != nil {
+			return stackAppPlan{}, err
+		}
+		a.Spec.BuildSource = link
+	}
 	// Persist the initialDeployHook command for echo-back on reads (w2/m45).
 	// The ran-once annotation is added by applyCreate once the first pre-deploy
 	// Job succeeds; planStackApp only stores the command.
@@ -3168,7 +3183,7 @@ func (req CreateRequest) repoBacked() bool { return req.Repo != "" || req.implic
 // BuildKit context string (w6/m6 t003) — the git inputs' shape. A bare image
 // deploy skips those (no build).
 func validateCreateSource(req CreateRequest) error {
-	if req.BuildSourceID != "" {
+	if req.BuildSourceID != "" || req.blueprintBuildSource != "" {
 		return validateBuildSourceLinkCreate(req)
 	}
 	if !req.repoBacked() && req.Image == "" {
@@ -3329,7 +3344,7 @@ func normalizeCreateDefaults(req CreateRequest) (port, replicas int32, branch st
 	// An explicit request value wins.
 	// A build source's builds are what a linked service deploys; Render's
 	// Auto-Deploy defaults on for it too (w2/m254 t005).
-	autoDeploy = repoBacked || req.BuildSourceID != ""
+	autoDeploy = repoBacked || req.BuildSourceID != "" || req.blueprintBuildSource != ""
 	if req.AutoDeploy != nil {
 		autoDeploy = *req.AutoDeploy
 	}

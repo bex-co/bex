@@ -176,6 +176,8 @@ const (
 	blueprintCapabilityRootPreviews       blueprintCapabilityKind = "rootPreviews"
 	blueprintCapabilityServicePreviews    blueprintCapabilityKind = "servicePreviews"
 	blueprintCapabilityStaticPreviews     blueprintCapabilityKind = "staticServicePreviews"
+	blueprintCapabilityBuildSource        blueprintCapabilityKind = "buildSource"
+	blueprintCapabilityBuildSourceGit     blueprintCapabilityKind = "buildSourceGit"
 )
 
 func blueprintCapabilityProblemsAt(value any, path []string, locations map[string]BlueprintSourceLocation, registry *BlueprintCapabilityRegistry, context blueprintCapabilityContext) []BlueprintSourceProblem {
@@ -512,6 +514,7 @@ var blueprintResourceChildContexts = map[string]blueprintCapabilityContext{
 	"services":     {kind: blueprintCapabilityServices},
 	"databases":    {kind: blueprintCapabilityDatabase},
 	"envVarGroups": {kind: blueprintCapabilityEnvGroup},
+	"buildSources": {kind: blueprintCapabilityBuildSource},
 }
 
 // blueprintEnvVarChildContexts is shared by the four env-var entry kinds:
@@ -553,6 +556,7 @@ var blueprintChildContexts = map[blueprintCapabilityKind]map[string]blueprintCap
 	blueprintCapabilityResources: blueprintResourceChildContexts,
 	blueprintCapabilityProject: {
 		"environments": {kind: blueprintCapabilityEnvironment},
+		"buildSources": {kind: blueprintCapabilityBuildSource},
 	},
 	blueprintCapabilityEnvironment: mergedBlueprintMaps(blueprintResourceChildContexts, map[string]blueprintCapabilityContext{
 		"networking":  {base: blueprintEnvironmentPropertyPrefix + "networking"},
@@ -571,6 +575,15 @@ var blueprintChildContexts = map[blueprintCapabilityKind]map[string]blueprintCap
 	},
 	blueprintCapabilityEnvGroup: {
 		"envVars": {kind: blueprintCapabilityEnvKeyValue},
+	},
+	blueprintCapabilityBuildSource: {
+		"git":   {kind: blueprintCapabilityBuildSourceGit},
+		"image": {kind: blueprintCapabilityImage},
+	},
+	blueprintCapabilityBuildSourceGit: {
+		"registryCredential": {kind: blueprintCapabilityRegistryCredential},
+		"buildFilter":        {kind: blueprintCapabilityBuildFilter},
+		"envVars":            {kind: blueprintCapabilityEnvKeyValue},
 	},
 	blueprintCapabilityEnvKeyValue:       blueprintEnvVarChildContexts,
 	blueprintCapabilityEnvDatabase:       blueprintEnvVarChildContexts,
@@ -679,6 +692,10 @@ var blueprintKindEnumPointers = map[blueprintCapabilityKind]map[string]string{
 	blueprintCapabilityRoute: {
 		"type": "#/definitions/route/properties/type/enum",
 	},
+	blueprintCapabilityBuildSourceGit: {
+		"runtime": "#/definitions/buildSourceRuntime/enum",
+		"region":  "#/definitions/region/enum",
+	},
 	blueprintCapabilityRootPreviews:    blueprintPreviewsEnumPointers,
 	blueprintCapabilityServicePreviews: blueprintPreviewsEnumPointers,
 	blueprintCapabilityStaticPreviews:  blueprintPreviewsEnumPointers,
@@ -711,8 +728,6 @@ func blueprintUnsupportedCapabilityMessage(registry *BlueprintCapabilityRegistry
 		return "preview environments are not available on bex"
 	case "#/definitions/envVarFromKeyValue/properties/previewValue":
 		return "previewValue is not available on bex because preview environments are not available"
-	case "#/allOf/1/properties/buildSources", "#/allOf/1/properties/ungrouped/properties/buildSources", "#/definitions/project/properties/buildSources", "#/definitions/serverService/properties/buildSource":
-		return field + ": Render Build Sources (shared build reuse) are not available on bex; declare the repo or image and build settings on each service instead"
 	default:
 		if reason := tenantFacingReason(registry.Fields[pointer].Reason); reason != "" {
 			return fmt.Sprintf("%s is not available on bex: %s", field, reason)
@@ -753,7 +768,6 @@ func tenantFacingReason(reason string) string {
 	for _, family := range []struct{ marker, sentence string }{
 		{"PR preview environments", "preview environments are not available on bex"},
 		{"Render Workflows", "Render Workflows are not available on bex"},
-		{"buildSource", "Render Build Sources (shared build reuse) are not available on bex"},
 	} {
 		if strings.Contains(reason, family.marker) {
 			return family.sentence

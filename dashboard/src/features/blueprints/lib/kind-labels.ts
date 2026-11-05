@@ -7,6 +7,7 @@ const KIND_LABEL: Record<string, keyof typeof en> = {
   postgres: "blueprints.previewKindPostgres",
   key_value: "blueprints.previewKindKeyValue",
   env_var_group: "blueprints.previewKindEnvGroup",
+  build_source: "blueprints.previewKindBuildSource",
 };
 
 /** The label key of a Blueprint resource kind, undefined for an unknown one. */

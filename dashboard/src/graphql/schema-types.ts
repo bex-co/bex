@@ -4359,6 +4359,7 @@ export type StaticRouteInput = {
 export type SyncBlueprintResult = {
   __typename: 'SyncBlueprintResult';
   blueprint: Maybe<Blueprint>;
+  buildSources: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   databases: Maybe<Array<Maybe<Scalars['String']['output']>>>;
   detachedResources: Maybe<Array<Maybe<BlueprintResource>>>;
   envGroups: Maybe<Array<Maybe<Scalars['String']['output']>>>;

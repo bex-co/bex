@@ -303,6 +303,10 @@ const zhBlueprints: Record<string, TranslationEntry> = {
     message: "环境组",
     description: "Plan row resource kind",
   },
+  "blueprints.previewKindBuildSource": {
+    message: "构建源",
+    description: "Plan row resource kind",
+  },
   "blueprints.previewServices": {
     message: "服务",
     description: "Review section plan group label — services in the manifest",

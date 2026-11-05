@@ -690,7 +690,7 @@ type unresolvedRepoKey struct{}
 // unresolved source, not a missing one; a runtime: image service still needs
 // its image. Creation and apply call specFromCreate and stay strict.
 func blueprintReadSpec(ctx context.Context, req CreateRequest) (appv1alpha1.AppSpec, error) {
-	if req.Repo == "" && req.Image == "" && !strings.EqualFold(strings.TrimSpace(req.Runtime), buildImage) {
+	if req.Repo == "" && req.Image == "" && req.blueprintBuildSource == "" && !strings.EqualFold(strings.TrimSpace(req.Runtime), buildImage) {
 		req.implicitRepo, _ = ctx.Value(unresolvedRepoKey{}).(bool)
 	}
 	return specFromCreate(req)
@@ -754,6 +754,9 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		err = s.validateBlueprintServices(ctx, st, snap)
 	}
 	if err == nil {
+		err = s.validateBlueprintBuildSources(ctx, st, snap)
+	}
+	if err == nil {
 		// w4/118: fromDatabase and fromService→KeyValue resolve against the
 		// WORKSPACE rather than the file, and their checks ran only at apply —
 		// so a manifest naming a database that exists nowhere validated
@@ -797,7 +800,7 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 			msg := blueprintManifestCreateMessage(blueprintValidationMessage(planErr))
 			return BlueprintValidation{Errors: []BlueprintValidationError{blueprintValidationError(ir, msg)}}, nil
 		} else if available {
-			creates, createErr := s.previewStackCreates(ctx, st, actionPlan)
+			creates, createErr := s.previewStackCreates(ctx, st, actionPlan, snap)
 			if createErr != nil {
 				return BlueprintValidation{}, createErr
 			}
@@ -2036,6 +2039,7 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 	appByName := map[string]*appv1alpha1.App{}
 	dbByName := map[string]*appv1alpha1.Database{}
 	keyValueByName := map[string]*appv1alpha1.KeyValue{}
+	buildSourceByName := map[string]*appv1alpha1.App{}
 	// Each kind the manifest declares is read as the apply reads it, across
 	// namespaces, since a workspace's resources may still sit in the shared
 	// namespace (ADR043 D8, w5/125); a service as the apply resolves it
@@ -2052,6 +2056,11 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 					d := &dbList.Items[i]
 					dbByName[d.Spec.Name] = d
 				}
+			}
+		}
+		if declared[BlueprintResourceBuildSource] {
+			if carriers, err := snap.buildSources(ctx); err == nil {
+				buildSourceByName = carriers
 			}
 		}
 		if declared[BlueprintResourceKeyValue] {
@@ -2117,6 +2126,12 @@ func (s *Service) resolveBlueprintResourcesFromIR(ctx context.Context, b store.B
 				continue
 			}
 			resources = append(resources, BlueprintResource{ID: groupID, Name: resource.Name, Type: "environment_group"})
+		case BlueprintResourceBuildSource:
+			carrier, ok := buildSourceByName[resource.Name]
+			if !ok || !owned(store.BlueprintClaimBuildSource, resource.Name, carrier.Labels[core.LabelBlueprint]) {
+				continue
+			}
+			resources = append(resources, BlueprintResource{ID: core.AppPublicID(carrier), Name: resource.Name, Type: string(BlueprintResourceBuildSource)})
 		}
 	}
 	return resources

@@ -476,7 +476,7 @@ func TestEveryClaimKindHasItsOwnManifestKind(t *testing.T) {
 	seen := map[BlueprintResourceKind]store.BlueprintClaimKind{}
 	for _, kind := range store.BlueprintClaimKinds() {
 		manifest := blueprintClaimResourceKind(kind)
-		if !slices.Contains([]BlueprintResourceKind{BlueprintResourceService, BlueprintResourcePostgres, BlueprintResourceKeyValue}, manifest) {
+		if !slices.Contains([]BlueprintResourceKind{BlueprintResourceService, BlueprintResourcePostgres, BlueprintResourceKeyValue, BlueprintResourceBuildSource}, manifest) {
 			t.Errorf("claim kind %q maps to %q, not a manifest kind", kind, manifest)
 		}
 		if other, dup := seen[manifest]; dup {

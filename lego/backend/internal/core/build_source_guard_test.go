@@ -54,6 +54,7 @@ var appEnumerationsThatMayIncludeBuildSources = map[string]string{
 	"apps/domain_verification_worker.go:resolveApp":             "resolves the App a domain names",
 	"apps/workspace_snapshot.go:workspaceSnapshot":              "the snapshot's field type; filled by workspaceSnapshot.apps",
 	"apps/workspace_snapshot.go:workspaceSnapshot.apps":         "the cached list is filtered where it is filled",
+	"apps/workspace_snapshot.go:workspaceSnapshot.allApps":      "the one listing that apps (services) and buildSources (carriers) each filter",
 	"apps/checks_pass.go:serveCheckSuite":                       "a carrier opens no checked deploy",
 	"apps/checks_worker.go:tick":                                "a carrier opens no checked deploy",
 	"apps/nameavailable.go:tenantNames":                         "carrier names are bds- ids, never a service's",

@@ -172,6 +172,30 @@ describe("BlueprintPlanSummary operations", () => {
     expect(screen.getByText("plan cannot shrink storage")).toBeInTheDocument();
   });
 
+  it("labels a build source and the git fields its update changes", () => {
+    render(
+      <BlueprintPlanSummary
+        plan={{
+          ...plan,
+          totalActions: 2,
+          actions: [
+            action("update", "mono", {
+              kind: "build_source",
+              changedFields: [{ path: "git.branch" }],
+            }),
+            action("create", "api"),
+          ],
+        }}
+        pricing={null}
+      />,
+    );
+    const rows = screen.getAllByRole("listitem");
+    expect(rows.map((row) => row.textContent)).toEqual([
+      "CreateapiService",
+      "UpdatemonoBuild sourceChanges: git.branch",
+    ]);
+  });
+
   it("falls back to name groups and totalActions when the plan has no actions", () => {
     render(
       <BlueprintPlanSummary

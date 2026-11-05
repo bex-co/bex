@@ -41,8 +41,9 @@ func TestGenerateBlueprintRoundTripsRealCreates(t *testing.T) {
 	ctx := context.Background()
 	differs := map[string]bool{}
 	for _, req := range roundTripCreates(t) {
-		// A Build Source link has no Blueprint form (ADR018: Blueprint
-		// buildSources are a recorded non-goal), so it does not round-trip.
+		// A Build Source link exports with its build source, which this
+		// one-service harness does not create; TestGenerateBlueprintExportsBuildSources
+		// round-trips it (w3/m270).
 		if req.BuildSourceID != "" {
 			continue
 		}

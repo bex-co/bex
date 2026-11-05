@@ -33,12 +33,15 @@ const (
 	BlueprintClaimService  BlueprintClaimKind = "service"
 	BlueprintClaimDatabase BlueprintClaimKind = "database"
 	BlueprintClaimKeyValue BlueprintClaimKind = "key_value"
+	// BlueprintClaimBuildSource is keyed by the build source's name, its
+	// identity in the workspace (ADR097 § Blueprints).
+	BlueprintClaimBuildSource BlueprintClaimKind = "build_source"
 )
 
 // BlueprintClaimKinds is every claim kind. Tests range over it, so a new kind
 // cannot ship without its CHECK migration or its manifest kind.
 func BlueprintClaimKinds() []BlueprintClaimKind {
-	return []BlueprintClaimKind{BlueprintClaimService, BlueprintClaimDatabase, BlueprintClaimKeyValue}
+	return []BlueprintClaimKind{BlueprintClaimService, BlueprintClaimDatabase, BlueprintClaimKeyValue, BlueprintClaimBuildSource}
 }
 
 // BlueprintResourceClaim is the durable owner of one workspace resource name

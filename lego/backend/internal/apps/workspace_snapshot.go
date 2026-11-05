@@ -40,10 +40,15 @@ import (
 type workspaceSnapshot struct {
 	s            *Service
 	tenantID     string
+	// rawApps is the workspace's one App listing, carriers included;
+	// appList is its services.
+	rawApps      *appv1alpha1.AppList
 	appList      *appv1alpha1.AppList
 	serviceMap   map[string]*appv1alpha1.App
 	databaseList *appv1alpha1.DatabaseList
 	keyValueList *appv1alpha1.KeyValueList
+	// buildSourceMap is the workspace's build source carriers by name.
+	buildSourceMap map[string]*appv1alpha1.App
 }
 
 func (s *Service) newWorkspaceSnapshot(ctx context.Context) *workspaceSnapshot {
@@ -54,7 +59,7 @@ func (s *Service) newWorkspaceSnapshot(ctx context.Context) *workspaceSnapshot {
 // forget drops what the snapshot has listed, so its next reads see the
 // workspace as it is now.
 func (snap *workspaceSnapshot) forget() {
-	snap.appList, snap.serviceMap, snap.databaseList, snap.keyValueList = nil, nil, nil, nil
+	snap.rawApps, snap.appList, snap.serviceMap, snap.databaseList, snap.keyValueList, snap.buildSourceMap = nil, nil, nil, nil, nil, nil
 }
 
 // apps lists the workspace's Apps the way its datastores are listed: by tenant
@@ -64,14 +69,32 @@ func (snap *workspaceSnapshot) forget() {
 // its objects.
 func (snap *workspaceSnapshot) apps(ctx context.Context) (*appv1alpha1.AppList, error) {
 	if snap.appList == nil {
+		raw, err := snap.allApps(ctx)
+		if err != nil {
+			return nil, err
+		}
+		list := &appv1alpha1.AppList{}
+		for i := range raw.Items {
+			if !core.IsBuildSource(&raw.Items[i]) {
+				list.Items = append(list.Items, raw.Items[i])
+			}
+		}
+		snap.appList = list
+	}
+	return snap.appList, nil
+}
+
+// allApps is the workspace's Apps, build source carriers included, listed
+// once for services and build sources alike.
+func (snap *workspaceSnapshot) allApps(ctx context.Context) (*appv1alpha1.AppList, error) {
+	if snap.rawApps == nil {
 		list := &appv1alpha1.AppList{}
 		if err := snap.s.Client.List(ctx, list, snap.s.DatastoreListOptions(snap.tenantID)...); err != nil {
 			return nil, err
 		}
-		list.Items = core.ServiceApps(list.Items)
-		snap.appList = list
+		snap.rawApps = list
 	}
-	return snap.appList, nil
+	return snap.rawApps, nil
 }
 
 // services keys the workspace's Apps by the name a manifest declares them

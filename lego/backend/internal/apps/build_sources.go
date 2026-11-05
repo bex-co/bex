@@ -193,19 +193,29 @@ func (s *Service) CreateBuildSource(ctx context.Context, req CreateBuildSourceRe
 		}
 		create.Image, create.RegistryCredentialID = req.Image.ImageURL, req.Image.RegistryCredentialID
 	}
-	id := ids.New(ids.BuildSource)
-	create.Name = id
-	create.buildSource = &buildSourceCreate{id: id, name: req.Name, scopeProjectID: req.ProjectID}
-	if err := s.Metadata.CheckRequestedRegion(create.Region); err != nil {
-		return BuildSourceView{}, err
-	}
-	if err := s.checkBuildSourceProject(ctx, req.ProjectID); err != nil {
-		return BuildSourceView{}, err
-	}
-	if _, err := s.create(ctx, create); err != nil {
+	id, err := s.createBuildSourceCarrier(ctx, create, req.Name, req.ProjectID)
+	if err != nil {
 		return BuildSourceView{}, err
 	}
 	return s.GetBuildSource(ctx, id)
+}
+
+// createBuildSourceCarrier creates the carrier of build source name, scoped to
+// projectID, from create's source and build fields, and returns its id.
+func (s *Service) createBuildSourceCarrier(ctx context.Context, create CreateRequest, name, projectID string) (string, error) {
+	id := ids.New(ids.BuildSource)
+	create.Name = id
+	create.buildSource = &buildSourceCreate{id: id, name: name, scopeProjectID: projectID}
+	if err := s.Metadata.CheckRequestedRegion(create.Region); err != nil {
+		return "", err
+	}
+	if err := s.checkBuildSourceProject(ctx, projectID); err != nil {
+		return "", err
+	}
+	if _, err := s.create(ctx, create); err != nil {
+		return "", err
+	}
+	return id, nil
 }
 
 // checkBuildSourceProject refuses a project scope outside the workspace.
@@ -363,7 +373,7 @@ func buildSourceMatches(v BuildSourceView, f BuildSourceFilter) bool {
 func (s *Service) buildSourceView(ctx context.Context, a *appv1alpha1.App) (BuildSourceView, error) {
 	v := s.view(a)
 	out := BuildSourceView{
-		ID: v.ID, Name: cmp.Or(v.DisplayName, v.Name), OwnerID: v.OwnerID,
+		ID: v.ID, Name: buildSourceName(a), OwnerID: v.OwnerID,
 		CreatedAt: v.CreatedAt, UpdatedAt: cmp.Or(v.UpdatedAt, v.CreatedAt),
 		ServiceLinks: []BuildSourceServiceLink{},
 	}
@@ -704,13 +714,53 @@ func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType str
 	case native:
 		command = existing
 	}
-	switch {
-	case native && command == "":
-		return nil, "", fmt.Errorf("%w: build source %s builds with a native runtime, so the service needs a startCommand", core.ErrBadRequest, id)
-	case !native && command != "":
-		return nil, "", fmt.Errorf("%w: build source %s uses a Docker or image runtime, which takes no startCommand", core.ErrBadRequest, id)
+	if err := buildSourceStartRule(native, command, id); err != nil {
+		return nil, "", err
 	}
 	return core.BuildSourceLinkTo(carrier), command, nil
+}
+
+// buildSourceStartRule is Render's start-command rule for a service linked to
+// build source ref: a native source needs the service's start command, a
+// Docker or image one takes none.
+func buildSourceStartRule(native bool, command, ref string) error {
+	switch {
+	case native && command == "":
+		return fmt.Errorf("%w: build source %s builds with a native runtime, so the service needs a startCommand", core.ErrBadRequest, ref)
+	case !native && command != "":
+		return fmt.Errorf("%w: build source %s uses a Docker or image runtime, which takes no startCommand", core.ErrBadRequest, ref)
+	}
+	return nil
+}
+
+// linkStartCommand is the command a service linked to a build source runs: a
+// cron job's command, any other service's start command.
+func linkStartCommand(svcType, startCommand, command string) string {
+	if svcType == appv1alpha1.TypeCronJob {
+		return command
+	}
+	return startCommand
+}
+
+// buildSourceLinker is the store's link write, absent without the control
+// plane.
+func (s *Service) buildSourceLinker() (interface {
+	SetAppBuildSource(ctx context.Context, id, carrierID, image string) error
+}, bool) {
+	linker, ok := s.Store.(interface {
+		SetAppBuildSource(ctx context.Context, id, carrierID, image string) error
+	})
+	return linker, ok
+}
+
+// linkBuildSourceSpec links spec to a build source: it drops the source and
+// build configuration the build source now provides.
+func linkBuildSourceSpec(spec *appv1alpha1.AppSpec, link appv1alpha1.BuildSourceLink) {
+	spec.Repo, spec.Image, spec.Branch, spec.BuildCommit = "", "", "", ""
+	spec.CloneSecret, spec.ExternalRegistryPullSecret, spec.RegistryCredentialID = "", "", nil
+	spec.Runtime, spec.Builder, spec.BuildCommand, spec.BuildFilter = "", "", "", nil
+	spec.DockerfilePath, spec.DockerContext, spec.RootDir = "", "", ""
+	spec.BuildSource = &link
 }
 
 func buildSourceLinkImage(link *appv1alpha1.BuildSourceLink) string {
@@ -733,10 +783,7 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 		return AppView{}, err
 	}
 	cron := a.Spec.Type == appv1alpha1.TypeCronJob
-	existing := a.Spec.StartCommand
-	if cron {
-		existing = a.Spec.Command
-	}
+	existing := linkStartCommand(a.Spec.Type, a.Spec.StartCommand, a.Spec.Command)
 	// Linking repoints what the service runs: the same protected-environment
 	// rule as a repo or image change (w4/m126, w8/187), checked first as
 	// setSource does.
@@ -747,9 +794,7 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 	if err != nil {
 		return AppView{}, err
 	}
-	linker, ok := s.Store.(interface {
-		SetAppBuildSource(ctx context.Context, id, carrierID, image string) error
-	})
+	linker, ok := s.buildSourceLinker()
 	id := managedAppID(a)
 	if id != "" && !ok {
 		return AppView{}, fmt.Errorf("%w: build sources need the control plane", core.ErrUnavailable)
@@ -768,11 +813,7 @@ func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID strin
 	oldCloneSecret := a.Spec.CloneSecret
 	updated, err := s.patchUntracked(ctx, a, func(app *appv1alpha1.App) {
 		spec := &app.Spec
-		spec.Repo, spec.Image, spec.Branch, spec.BuildCommit = "", "", "", ""
-		spec.CloneSecret, spec.ExternalRegistryPullSecret, spec.RegistryCredentialID = "", "", nil
-		spec.Runtime, spec.Builder, spec.BuildCommand, spec.BuildFilter = "", "", "", nil
-		spec.DockerfilePath, spec.DockerContext, spec.RootDir = "", "", ""
-		spec.BuildSource = link
+		linkBuildSourceSpec(spec, *link)
 		if cron {
 			spec.Command = start
 		} else {

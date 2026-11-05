@@ -34,6 +34,9 @@ const (
 	BlueprintResourcePostgres    BlueprintResourceKind = "postgres"
 	BlueprintResourceKeyValue    BlueprintResourceKind = "key_value"
 	BlueprintResourceEnvVarGroup BlueprintResourceKind = "env_var_group"
+	// BlueprintResourceBuildSource is a Render Build Source (ADR097 §
+	// Blueprints): a carrier that builds once for every service linked to it.
+	BlueprintResourceBuildSource BlueprintResourceKind = "build_source"
 )
 
 // BlueprintField preserves the distinction the old typed decoder loses:
@@ -161,6 +164,15 @@ func NormalizeBlueprintIR(source *BlueprintSource) (BlueprintIR, []BlueprintSour
 	forEachBlueprintContainer(root, func(c blueprintContainer) {
 		normalizeBlueprintResourceLists(&ir, &problems, source, c.value, c.path, c.project, c.environment, c.ungrouped)
 	})
+	// A project declares build sources beside its environments, not inside
+	// one: they are scoped to the project (ADR097 § Blueprints).
+	projects, _ := root["projects"].([]any)
+	for projectIndex, rawProject := range projects {
+		if project, ok := rawProject.(map[string]any); ok {
+			projectName, _ := project["name"].(string)
+			normalizeBlueprintBuildSources(&ir, &problems, source, project, []string{"projects", fmt.Sprintf("%d", projectIndex)}, projectName)
+		}
+	}
 
 	seen := map[BlueprintResourceKind]map[string]BlueprintResourceIR{}
 	for _, resource := range ir.Resources {
@@ -241,6 +253,11 @@ var blueprintResourceDeclarations = []struct {
 }
 
 func normalizeBlueprintResourceLists(ir *BlueprintIR, problems *[]BlueprintSourceProblem, source *BlueprintSource, container map[string]any, basePath []string, project, environment string, ungrouped bool) {
+	// Only the root and ungrouped declare unscoped build sources; the schema
+	// admits none inside an environment.
+	if environment == "" {
+		normalizeBlueprintBuildSources(ir, problems, source, container, basePath, "")
+	}
 	for _, declaration := range blueprintResourceDeclarations {
 		entries, _ := container[declaration.Field].([]any)
 		for index, rawEntry := range entries {
@@ -273,6 +290,26 @@ func normalizeBlueprintResourceLists(ir *BlueprintIR, problems *[]BlueprintSourc
 	}
 }
 
+// normalizeBlueprintBuildSources adds container's buildSources entries, scoped
+// to project ("" for the root and ungrouped).
+func normalizeBlueprintBuildSources(ir *BlueprintIR, problems *[]BlueprintSourceProblem, source *BlueprintSource, container map[string]any, basePath []string, project string) {
+	entries, _ := container["buildSources"].([]any)
+	for index, rawEntry := range entries {
+		entry, ok := rawEntry.(map[string]any)
+		if !ok {
+			continue
+		}
+		path := append(append([]string(nil), basePath...), "buildSources", fmt.Sprintf("%d", index))
+		resource := blueprintResourceFromMap(source, BlueprintResourceBuildSource, entry, path, project, "", false)
+		if resource.Name == "" {
+			location := source.Locations[resource.SourcePath]
+			*problems = append(*problems, BlueprintSourceProblem{Code: "BLUEPRINT_IR_NAME", Path: resource.SourcePath + "/name", Message: "Blueprint resource is missing its name", Line: location.Line, Column: location.Column})
+			continue
+		}
+		ir.Resources = append(ir.Resources, resource)
+	}
+}
+
 func blueprintResourceFromMap(source *BlueprintSource, kind BlueprintResourceKind, entry map[string]any, path []string, project, environment string, ungrouped bool) BlueprintResourceIR {
 	resourcePath := renderSchemaPointer(path)
 	fields := make(map[string]BlueprintField, len(entry))
@@ -284,7 +321,7 @@ func blueprintResourceFromMap(source *BlueprintSource, kind BlueprintResourceKin
 	// An env group's identity is its trimmed name, as parseEnvGroup and apply
 	// read it, or a padded declaration plans a create beside the existing
 	// group (w8/094). A whitespace-only name keeps reaching the parser's error.
-	if trimmed := strings.TrimSpace(name); kind == BlueprintResourceEnvVarGroup && trimmed != "" {
+	if trimmed := strings.TrimSpace(name); (kind == BlueprintResourceEnvVarGroup || kind == BlueprintResourceBuildSource) && trimmed != "" {
 		name = trimmed
 	}
 	return BlueprintResourceIR{Kind: kind, Name: name, SourcePath: resourcePath, Project: project, Environment: environment, Ungrouped: ungrouped, Fields: fields}
@@ -375,10 +412,12 @@ func blueprintResourceRank(kind BlueprintResourceKind) int {
 		return 1
 	case BlueprintResourceKeyValue:
 		return 2
-	case BlueprintResourceService:
+	case BlueprintResourceBuildSource:
 		return 3
-	default:
+	case BlueprintResourceService:
 		return 4
+	default:
+		return 5
 	}
 }
 

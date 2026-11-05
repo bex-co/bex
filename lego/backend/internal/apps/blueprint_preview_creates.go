@@ -36,7 +36,7 @@ import (
 // and the plan's count cap). plan is the current-state plan; its create actions
 // are the resources the apply creates. A refusal comes back located at its
 // resource; any other failure (a store or cluster read) is returned.
-func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan BlueprintPlan) (blueprintResourceErrors, error) {
+func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan BlueprintPlan, snap *workspaceSnapshot) (blueprintResourceErrors, error) {
 	creates := map[BlueprintResourceKind]map[string]bool{}
 	for _, action := range plan.Actions {
 		if action.Operation != BlueprintPlanCreate {
@@ -62,6 +62,15 @@ func (s *Service) previewStackCreates(ctx context.Context, st parsedStack, plan 
 		}
 		refused = append(refused, blueprintResourceError{kind: kind, name: name, err: err})
 		return nil
+	}
+	// A link to an existing build source is checked as the apply's is.
+	if st.linksBuildSources() {
+		carriers, err := snap.buildSources(ctx)
+		if err != nil {
+			return nil, err
+		}
+		st.services = slices.Clone(st.services)
+		st.resolveBuildSourceIDs(carriers)
 	}
 	for _, svc := range st.services {
 		if !creates[BlueprintResourceService][svc.req.Name] {

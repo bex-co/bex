@@ -64,7 +64,11 @@ type blueprintActionResolver struct {
 	databases map[string]*appv1alpha1.Database
 	keyValues map[string]*appv1alpha1.KeyValue
 	envGroups map[string]string
-	parsed    parsedStack
+	// buildSources are the workspace's build source carriers by name; links
+	// resolves each service's buildSource name (nil: one the apply creates).
+	buildSources map[string]*appv1alpha1.App
+	links        map[string]*appv1alpha1.App
+	parsed       parsedStack
 	// service resolves a source switch's branch as the apply does (w8/m80).
 	service *Service
 }
@@ -90,6 +94,14 @@ func newBlueprintActionResolver(ctx context.Context, s *Service, parsed parsedSt
 		return nil, err
 	}
 	resolver.services = services
+	if parsed.linksBuildSources() || len(parsed.buildSources) > 0 {
+		if resolver.buildSources, err = snap.buildSources(ctx); err != nil {
+			return nil, err
+		}
+		if resolver.links, err = blueprintBuildSourceLinks(parsed, resolver.buildSources); err != nil {
+			return nil, err
+		}
+	}
 	databases, err := snap.databases(ctx)
 	if err != nil {
 		return nil, err
@@ -148,6 +160,12 @@ func (r *blueprintActionResolver) ResolveBlueprintResource(_ context.Context, ki
 	case BlueprintResourceEnvVarGroup:
 		groupID, ok := r.envGroups[name]
 		return BlueprintCurrentResource{ID: groupID}, ok, nil
+	case BlueprintResourceBuildSource:
+		carrier, ok := r.buildSources[name]
+		if !ok {
+			return BlueprintCurrentResource{}, false, nil
+		}
+		return BlueprintCurrentResource{ID: core.AppPublicID(carrier)}, true, nil
 	default:
 		return BlueprintCurrentResource{}, false, nil
 	}
@@ -172,6 +190,8 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		return action, nil
 	}
 	switch resource.Kind {
+	case BlueprintResourceBuildSource:
+		return r.planBlueprintBuildSource(ctx, resource, action)
 	case BlueprintResourceService:
 		svc, ok := parsedBlueprintService(r.parsed, resource.Name)
 		if !ok {
@@ -181,6 +201,7 @@ func (r *blueprintActionResolver) PlanBlueprintResource(ctx context.Context, res
 		if err != nil {
 			return BlueprintPlanAction{}, err
 		}
+		want.BuildSource = desiredBuildSourceLink(svc, r.links)
 		// The sync's own hook reconciliation, so a completed legacy hook does
 		// not plan a change the apply never makes (w8/m63).
 		initialDeployHookState(svc.req, r.services[resource.Name], &want)

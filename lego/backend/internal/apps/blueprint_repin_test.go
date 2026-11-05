@@ -165,22 +165,23 @@ func TestBlueprintCronPlanFreeIsRefused(t *testing.T) {
 	}
 }
 
-// Render Build Sources (private beta) build once and deploy the same artifact
-// to every linked service, with build-only env vars. bex has neither, so every
-// place the schema admits a build source is refused by name. A linked service
-// carries no runtime/repo (the schema no longer requires them there): the one
-// diagnostic must be the build source, not schema noise from the conditional
-// branch that forbids source fields beside it.
-func TestBlueprintRejectsBuildSourcesWithNamedError(t *testing.T) {
+// Render Build Sources build once and deploy the same artifact to every
+// linked service (w2/m254's carriers, ADR097). Every place the schema admits a
+// build source compiles (w3/m270). A linked service carries no runtime/repo
+// (the schema no longer requires them there), and the conditional branch that
+// forbids source fields beside buildSource raises no schema noise.
+func TestBlueprintAcceptsBuildSourcesWhereverTheSchemaAdmitsThem(t *testing.T) {
 	const source = "  - name: shared\n    git:\n      repo: https://github.com/bex-co/bex\n      runtime: docker\n"
-	for _, tc := range []struct{ name, manifest, path string }{
-		{"root", "buildSources:\n" + source, "#/buildSources"},
-		{"ungrouped", "ungrouped:\n  buildSources:\n  " + strings.ReplaceAll(source, "\n  ", "\n    "), "#/ungrouped/buildSources"},
-		{"project", "projects:\n  - name: p\n    buildSources:\n    " + strings.ReplaceAll(source, "\n  ", "\n      ") + "    environments:\n      - name: prod\n", "#/projects/0/buildSources"},
-		{"service link", "services:\n  - type: web\n    name: web\n    buildSource: shared\n", "#/services/0/buildSource"},
+	for _, tc := range []struct{ name, manifest string }{
+		{"root", "buildSources:\n" + source},
+		{"ungrouped", "ungrouped:\n  buildSources:\n  " + strings.ReplaceAll(source, "\n  ", "\n    ")},
+		{"project", "projects:\n  - name: p\n    buildSources:\n    " + strings.ReplaceAll(source, "\n  ", "\n      ") + "    environments:\n      - name: prod\n"},
+		{"service link", "services:\n  - type: web\n    name: web\n    buildSource: shared\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			requireOneProblem(t, tc.manifest, "BLUEPRINT_CAPABILITY_UNSUPPORTED", tc.path, "Render Build Sources")
+			if _, problems := CompileBlueprintSource(tc.manifest); len(problems) > 0 {
+				t.Fatalf("problems = %+v, want none", problems)
+			}
 		})
 	}
 }
