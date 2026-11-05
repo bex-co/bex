@@ -19,6 +19,7 @@ package core
 import (
 	"cmp"
 	"context"
+	"errors"
 	"fmt"
 	"net/url"
 	"slices"
@@ -75,6 +76,38 @@ func QueryNameList(u *url.URL, key string) []string {
 				value = element
 			}
 			out = appendListValue(out, value)
+		}
+	}
+	return out
+}
+
+// EnvironmentOwners is the owner list for a list endpoint that filters by
+// environmentId: an environment id already names its workspace, so a caller that
+// omitted ownerId gets the workspaces its environments live in instead of a
+// confident empty list from the default workspace (w4/500). An explicit owners
+// list is returned unchanged (the filters then intersect, as before).
+// workspace resolves one environment under can_view authorization. An
+// environment that does not exist or that the caller cannot view contributes no
+// workspace, so the answer is the same empty list either way and the filter is
+// no existence oracle. Any other error (the environments store is unwired or
+// down) leaves the caller on the single-workspace default it had before this
+// helper, so the list never gets worse than it was. With nothing resolved the
+// caller keeps that default as well.
+func EnvironmentOwners(ctx context.Context, owners, environmentIDs []string, workspace func(context.Context, string) (string, error)) []string {
+	if len(owners) > 0 || len(environmentIDs) == 0 || workspace == nil {
+		return owners
+	}
+	var out []string
+	for _, environmentID := range environmentIDs {
+		owner, err := workspace(ctx, environmentID)
+		if errors.Is(err, ErrNotFound) || errors.Is(err, ErrForbidden) {
+			continue
+		}
+		if err != nil {
+			return owners
+		}
+		if owner != "" && !slices.Contains(out, owner) {
+			out = append(out, owner)
 		}
 	}
 	return out

@@ -61,6 +61,10 @@ type Service struct {
 	// Environments is the shared create-time assignment resolver used by all
 	// three resource kinds.
 	Environments core.EnvironmentResolver
+	// EnvironmentWorkspace resolves an environment id to its workspace under
+	// can_view, so the list's environmentId filter without ownerId searches the
+	// environment's own workspace (w4/500). nil keeps the default-workspace list.
+	EnvironmentWorkspace func(ctx context.Context, environmentID string) (string, error)
 	// KeyValueLogs is the production query seam for typed red- resources. The
 	// compatibility adapters (REST/GraphQL/MCP) call QueryKeyValueLogs, which
 	// delegates here; the logs feature wires it via api/server.go. nil with no

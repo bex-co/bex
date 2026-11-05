@@ -76,6 +76,10 @@ type Service struct {
 	// Environments is the shared create-time assignment resolver used by all
 	// three resource kinds.
 	Environments core.EnvironmentResolver
+	// EnvironmentWorkspace resolves an environment id to its workspace under
+	// can_view, so the list's environmentId filter without ownerId searches the
+	// environment's own workspace (w4/500). nil keeps the default-workspace list.
+	EnvironmentWorkspace func(ctx context.Context, environmentID string) (string, error)
 	// ExportSigner mints short-lived object-store download URLs after the
 	// ListExports verb has passed can_view_sensitive. Production wires the
 	// Kubernetes Secret-backed S3 signer; tests can replace it.

@@ -89,6 +89,15 @@ func (s *Service) toPostgresList(ctx context.Context, pgs []PostgresView) []post
 // postgresListFilter parses GET /v1/postgres' query filters into one predicate,
 // so the route registers its paging and rendering alone (the envGroupListFilter
 // precedent). A malformed filter is a named 400 before anything is listed.
+// environmentPublicIDs is the list's environmentId filter in public form.
+func environmentPublicIDs(q url.Values) []string {
+	envIDs := core.QueryList(q, "environmentId")
+	for i := range envIDs {
+		envIDs[i] = id.EnvironmentPublicID(envIDs[i])
+	}
+	return envIDs
+}
+
 func postgresListFilter(u *url.URL) (func(PostgresView) bool, error) {
 	q := u.Query()
 	// name filters by exact name, OR'd across repeated ?name= values (Render's
@@ -96,10 +105,7 @@ func postgresListFilter(u *url.URL) (func(PostgresView) bool, error) {
 	// argument to a database id by calling this with ?name=, and requires it to
 	// narrow to exactly one match).
 	names := core.QueryNameList(u, "name")
-	envIDs := core.QueryList(q, "environmentId")
-	for i := range envIDs {
-		envIDs[i] = id.EnvironmentPublicID(envIDs[i])
-	}
+	envIDs := environmentPublicIDs(q)
 	regions := core.QueryList(q, "region")
 	// suspended= filters by Render's string enum (w2/m53), and Render declares it
 	// an ARRAY — `components.parameters` for GET /postgres gives
@@ -186,7 +192,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	const base = "/v1/postgres"
 	mux.HandleFunc("GET "+base, core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
-		out, err := core.ListOwners(r.Context(), core.QueryList(q, "ownerId"), s.ListPostgres)
+		owners := core.EnvironmentOwners(r.Context(), core.QueryList(q, "ownerId"), environmentPublicIDs(q), s.EnvironmentWorkspace)
+		out, err := core.ListOwners(r.Context(), owners, s.ListPostgres)
 		if err != nil {
 			return nil, err
 		}

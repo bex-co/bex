@@ -299,7 +299,12 @@ func (s *Service) registerDialectREST(mux *http.ServeMux, d restDialect) {
 // filtered, cursor-paged list in the dialect's envelope.
 func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request, d restDialect) {
 	q := r.URL.Query()
-	out, err := core.ListOwners(r.Context(), core.QueryList(q, "ownerId"), s.ListKeyValues)
+	envIDs := core.QueryList(q, "environmentId")
+	for i := range envIDs {
+		envIDs[i] = id.EnvironmentPublicID(envIDs[i])
+	}
+	owners := core.EnvironmentOwners(r.Context(), core.QueryList(q, "ownerId"), envIDs, s.EnvironmentWorkspace)
+	out, err := core.ListOwners(r.Context(), owners, s.ListKeyValues)
 	if err != nil {
 		core.WriteErr(w, err)
 		return
@@ -309,10 +314,6 @@ func (s *Service) handleListKeyValues(w http.ResponseWriter, r *http.Request, d 
 	// name/id argument to a key-value id by calling this with ?name=, and
 	// requires it to narrow to exactly one match).
 	names := core.QueryNameList(r.URL, "name")
-	envIDs := core.QueryList(q, "environmentId")
-	for i := range envIDs {
-		envIDs[i] = id.EnvironmentPublicID(envIDs[i])
-	}
 	regions := core.QueryList(q, "region")
 	suspended, err := core.ParseEnum("suspended", q.Get("suspended"), core.RenderSuspended, core.RenderNotSuspended)
 	if err != nil {

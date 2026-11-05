@@ -838,7 +838,11 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 	list := core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
-		owners := core.QueryList(q, "ownerId")
+		environmentIDs := core.QueryList(q, "environmentId")
+		for i := range environmentIDs {
+			environmentIDs[i] = ids.EnvironmentPublicID(environmentIDs[i])
+		}
+		owners := core.EnvironmentOwners(r.Context(), core.QueryList(q, "ownerId"), environmentIDs, s.EnvironmentWorkspace)
 		apps, err := core.ListOwners(r.Context(), owners, s.List)
 		if err != nil {
 			return nil, err
@@ -849,10 +853,6 @@ func (s *Service) registerServiceRoutes(mux *http.ServeMux) {
 		// requires it to narrow to exactly one match). environmentId and Render's
 		// serviceType enum (type=, w2/m52) OR the same way.
 		names := core.QueryNameList(r.URL, "name")
-		environmentIDs := core.QueryList(q, "environmentId")
-		for i := range environmentIDs {
-			environmentIDs[i] = ids.EnvironmentPublicID(environmentIDs[i])
-		}
 		types := core.QueryList(q, "type")
 		// Render ORs repeated suspension, runtime (deprecated env alias), and
 		// region values. Region is compared literally with platform metadata.

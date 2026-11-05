@@ -23,6 +23,7 @@ import (
 	"maps"
 	"net/http"
 	"net/http/httptest"
+	"slices"
 	"strings"
 	"testing"
 	"time"
@@ -612,5 +613,45 @@ func TestSetCommandsMapsCronStartCommand(t *testing.T) {
 	}
 	if got := getApp(t, cl, "nightly").Spec.Command; got != cmd {
 		t.Fatalf("cron command = %q, want %q", got, cmd)
+	}
+}
+
+// w4/500: GET /v1/services?environmentId= without ownerId asks the environment
+// for its workspace (public spelling), and an environment that is unknown or
+// not viewable is the same empty list as one with no services.
+func TestRESTEnvironmentFilterResolvesTheEnvironmentsWorkspace(t *testing.T) {
+	staging := sampleApp("staging")
+	staging.Labels = map[string]string{core.LabelEnvironment: "env-d98210cbbpdc73dcrkvg"}
+	svc, _ := newService(nil, staging)
+	var asked []string
+	svc.EnvironmentWorkspace = func(_ context.Context, id string) (string, error) {
+		asked = append(asked, id)
+		if id == "evm-d98210cbbpdc73dcrkvh" {
+			return "", core.ErrForbidden
+		}
+		return "", core.ErrNotFound
+	}
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	get := func(url string) []serviceWithCursor {
+		rec := httptest.NewRecorder()
+		validated(t, mux).ServeHTTP(rec, httptest.NewRequest(http.MethodGet, url, nil))
+		if rec.Code != http.StatusOK {
+			t.Fatalf("GET %s = %d: %s", url, rec.Code, rec.Body.String())
+		}
+		var got []serviceWithCursor
+		if err := json.Unmarshal(rec.Body.Bytes(), &got); err != nil {
+			t.Fatal(err)
+		}
+		return got
+	}
+	if got := get("/v1/services?environmentId=env-d98210cbbpdc73dcrkvg"); len(got) != 1 {
+		t.Fatalf("storage spelling = %#v, want the service", got)
+	}
+	if !slices.Equal(asked, []string{"evm-d98210cbbpdc73dcrkvg"}) {
+		t.Fatalf("resolver asked for %v, want the public environment id", asked)
+	}
+	if got := get("/v1/services?environmentId=evm-d98210cbbpdc73dcrkvh"); len(got) != 0 {
+		t.Fatalf("a foreign environment = %#v, want an empty list", got)
 	}
 }

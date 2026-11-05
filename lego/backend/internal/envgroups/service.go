@@ -284,7 +284,7 @@ func (s *Service) ListEnvGroupsFiltered(ctx context.Context, filter EnvGroupList
 	for i := range filter.EnvironmentIDs {
 		filter.EnvironmentIDs[i] = id.EnvironmentStorageID(filter.EnvironmentIDs[i])
 	}
-	owners := filter.OwnerIDs
+	owners := core.EnvironmentOwners(ctx, filter.OwnerIDs, filter.EnvironmentIDs, s.EnvironmentWorkspace)
 	if len(owners) == 0 {
 		owners = []string{""}
 	}

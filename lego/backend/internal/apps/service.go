@@ -256,6 +256,10 @@ type Service struct {
 	// unknown-versus-foreign classification and project lookup for all resource
 	// kinds, so service/Postgres/Key Value creates cannot drift.
 	Environments core.EnvironmentResolver
+	// EnvironmentWorkspace resolves an environment id to its workspace under
+	// can_view, so GET /v1/services?environmentId= without ownerId lists the
+	// environment's own workspace (w4/500). nil keeps the default-workspace list.
+	EnvironmentWorkspace func(ctx context.Context, environmentID string) (string, error)
 	// ExitGuards authorizes a Blueprint regroup that takes a service or
 	// datastore out of an environment: an ACL-bearing one needs a fresh
 	// can_manage (w4/m232). Nil (environments unwired) has nothing to protect.
