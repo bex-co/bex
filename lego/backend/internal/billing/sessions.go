@@ -216,7 +216,15 @@ func (c *StripeClient) CreatePortalSession(ctx context.Context, workspaceID stri
 		params.Configuration = stripe.String(c.portalConfigurationID)
 	}
 	params.Context = ctx
+	// Concurrent with the session create, joined before the URL is returned so
+	// the opener is on the Customer before the member can change the card.
+	opener := make(chan struct{})
+	go func() {
+		defer close(opener)
+		c.recordPortalOpener(ctx, customerID)
+	}()
 	session, err := c.sc.BillingPortalSessions.New(params)
+	<-opener
 	if err != nil {
 		return HostedSession{}, fmt.Errorf("stripe: create Portal Session for %s: %w", workspaceID, err)
 	}
@@ -254,21 +262,8 @@ func (c *StripeClient) CompleteCheckoutSession(ctx context.Context, eventSession
 			return fmt.Errorf("stripe: persist payment-method binding for %s: %w", checkout.workspaceID, err)
 		}
 	}
-	// Render's audit log records who changed the workspace's payment method.
-	// Failing here fails the webhook so Stripe retries; the row id derives from
-	// the session, so the retry cannot record it twice. No card details.
 	if c.audit != nil {
-		if err := c.audit.Record(ctx, core.AuditEvent{
-			ID:           ids.Derive(ids.Audit, "checkout", checkout.sessionID),
-			Caller:       checkout.actor,
-			CallerMethod: checkout.actorMethod,
-			Verb:         core.AuditVerbUpdatePaymentMethod,
-			Resource:     core.WorkspaceObject(checkout.workspaceID),
-			Outcome:      core.AuditAllowed,
-			At:           time.Now().UTC(),
-		}); err != nil {
-			return fmt.Errorf("stripe: audit payment-method change for %s: %w", checkout.workspaceID, err)
-		}
+		return c.auditPaymentMethodChange(ctx, ids.Derive(ids.Audit, "checkout", checkout.sessionID), checkout.workspaceID, checkout.actor, checkout.actorMethod)
 	}
 	return nil
 }
@@ -440,6 +435,9 @@ func (c *StripeClient) verifiedSetupPaymentMethod(ctx context.Context, checkout 
 func (c *StripeClient) bindDefaultPaymentMethod(ctx context.Context, checkout verifiedCheckout, paymentMethod *stripe.PaymentMethod) error {
 	paymentMethodID := paymentMethod.ID
 	customerUpdate := &stripe.CustomerParams{InvoiceSettings: &stripe.CustomerInvoiceSettingsParams{DefaultPaymentMethod: stripe.String(paymentMethodID)}}
+	// Marks the method this Checkout audits, so the customer.updated this write
+	// fires is not audited a second time (RecordPortalPaymentMethodChange).
+	customerUpdate.AddMetadata(boundPaymentMethodMetadataKey, paymentMethodID)
 	// A Checkout-created Customer carries no address in setup mode (Stripe only
 	// writes it back through customer_update, which needs a pre-existing
 	// Customer). Seed it from the card's billing details so tax location reads
@@ -448,7 +446,7 @@ func (c *StripeClient) bindDefaultPaymentMethod(ctx context.Context, checkout ve
 		customerUpdate.Address = addressParams(paymentMethod)
 	}
 	customerUpdate.Context = ctx
-	customerUpdate.SetIdempotencyKey("bex-payment-customer-" + checkout.sessionID)
+	customerUpdate.SetIdempotencyKey("bex-payment-customer-v2-" + checkout.sessionID)
 	if _, err := c.sc.Customers.Update(checkout.customerID, customerUpdate); err != nil {
 		return fmt.Errorf("stripe: bind Customer default payment method: %w", err)
 	}

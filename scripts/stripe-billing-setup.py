@@ -70,6 +70,8 @@ WEBHOOK_EVENTS = [
     "customer.subscription.deleted",
     "customer.subscription.paused",
     "customer.subscription.resumed",
+    # w2/070: a default-card change made in the Billing Portal, audited.
+    "customer.updated",
 ]
 
 
@@ -366,11 +368,22 @@ def ensure_portal_configuration(dashboard_url):
     return config["id"], "created"
 
 
-def ensure_webhook_endpoint(webhook_url, live):
+def enabled_event_args():
+    """The `-d enabled_events[i]=…` arguments for the full handled event set."""
+    args = []
+    for i, event in enumerate(WEBHOOK_EVENTS):
+        args.extend(["-d", f"enabled_events[{i}]={event}"])
+    return args
+
+
+def ensure_webhook_endpoint(webhook_url, live, add_missing_events=False):
     """Create or verify the billing webhook endpoint (w4/m81 t004).
 
     Idempotent by URL within the run's mode; an existing endpoint must match
-    the pinned API version and the exact event set or the run fails. On
+    the pinned API version and the exact event set or the run fails.
+    add_missing_events (w2/070) is the one repair: when the endpoint's events
+    are a strict subset of WEBHOOK_EVENTS at the pinned version, it appends the
+    missing ones to that endpoint only, never removing an event. On
     creation the one-time signing secret is written to a mode-0600 file for
     stripe-billing-secret.sh — never echoed or passed on argv.
     """
@@ -390,6 +403,10 @@ def ensure_webhook_endpoint(webhook_url, live):
         if endpoint.get("api_version") != WEBHOOK_API_VERSION:
             drift.append(f"api_version={endpoint.get('api_version')!r} want {WEBHOOK_API_VERSION!r}")
         have_events = sorted(endpoint.get("enabled_events") or [])
+        missing = sorted(set(WEBHOOK_EVENTS) - set(have_events))
+        if add_missing_events and not drift and set(have_events) < set(WEBHOOK_EVENTS):
+            stripe("webhook_endpoints", "update", endpoint["id"], *enabled_event_args())
+            return endpoint["id"], f"updated (added {', '.join(missing)})"
         if have_events != sorted(WEBHOOK_EVENTS):
             drift.append(f"enabled_events={have_events} want {sorted(WEBHOOK_EVENTS)}")
         if drift:
@@ -402,9 +419,7 @@ def ensure_webhook_endpoint(webhook_url, live):
             "-d", f"url={webhook_url}",
             "-d", f"api_version={WEBHOOK_API_VERSION}",
             "-d", "description=bex billing webhook (stripe-billing-setup.py)"]
-    for i, event in enumerate(WEBHOOK_EVENTS):
-        args.extend(["-d", f"enabled_events[{i}]={event}"])
-    endpoint = stripe(*args)
+    endpoint = stripe(*args, *enabled_event_args())
     secret = endpoint.get("secret")
     if not secret:
         raise RuntimeError(
@@ -420,7 +435,8 @@ def ensure_webhook_endpoint(webhook_url, live):
     return endpoint["id"], f"created (signing secret written to {secret_path}, mode 0600)"
 
 
-def main(live=False, tax_code=None, tax_behavior=None, dashboard_url=None, webhook_url=None):
+def main(live=False, tax_code=None, tax_behavior=None, dashboard_url=None, webhook_url=None,
+         add_missing_webhook_events=False):
     global STRIPE_GLOBAL_ARGS
     STRIPE_GLOBAL_ARGS = ["--live"] if live else []
     dims = parse_pricing()
@@ -455,12 +471,12 @@ def main(live=False, tax_code=None, tax_behavior=None, dashboard_url=None, webho
         print("  skipped (pass --dashboard-url to provision the scoped portal)")
 
     print("\n== Billing webhook endpoint ==")
-    webhook_id, webhook_status = ensure_webhook_endpoint(webhook_url, live)
+    webhook_id, webhook_status = ensure_webhook_endpoint(webhook_url, live, add_missing_webhook_events)
     if webhook_id:
         print(f"  endpoint: {webhook_status} ({webhook_id})")
         print("  feed the signing secret to stripe-billing-secret.sh as BEX_STRIPE_WEBHOOK_SECRET")
     else:
-        print("  skipped (pass --webhook-url to provision the pinned ten-event endpoint)")
+        print("  skipped (pass --webhook-url to provision the pinned endpoint)")
 
     print("\n== Stripe Tax gate ==")
     if tax_code:
@@ -496,12 +512,19 @@ if __name__ == "__main__":
     parser.add_argument(
         "--webhook-url",
         help="absolute HTTPS billing webhook URL (e.g. https://api.bex.co/v1/webhooks/stripe); "
-             "provisions the pinned-version ten-event endpoint idempotently",
+             "provisions the pinned-version endpoint idempotently",
+    )
+    parser.add_argument(
+        "--add-missing-webhook-events",
+        action="store_true",
+        help="with --webhook-url: append handled events the existing endpoint lacks "
+             "(never removes one); refuses any other drift",
     )
     args = parser.parse_args()
     try:
         main(live=args.live, tax_code=args.tax_code, tax_behavior=args.tax_behavior,
-             dashboard_url=args.dashboard_url, webhook_url=args.webhook_url)
+             dashboard_url=args.dashboard_url, webhook_url=args.webhook_url,
+             add_missing_webhook_events=args.add_missing_webhook_events)
     except RuntimeError as e:
         print(f"ERROR: {e}", file=sys.stderr)
         sys.exit(1)

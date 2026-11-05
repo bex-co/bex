@@ -917,7 +917,7 @@ func TestStripeCompleteCheckoutSessionBindsDefaultsIdempotently(t *testing.T) {
 		t.Fatalf("updates customer=%d subscription=%d", len(customerUpdates), len(subscriptionUpdates))
 	}
 	for _, req := range customerUpdates {
-		if !strings.Contains(req.body, "invoice_settings[default_payment_method]=pm_1") || req.header.Get("Idempotency-Key") != "bex-payment-customer-cs_test_1" {
+		if !strings.Contains(req.body, "invoice_settings[default_payment_method]=pm_1") || !strings.Contains(req.body, "metadata[bex_bound_payment_method]=pm_1") || req.header.Get("Idempotency-Key") != "bex-payment-customer-v2-cs_test_1" {
 			t.Errorf("Customer update = body:%s idempotency:%s", req.body, req.header.Get("Idempotency-Key"))
 		}
 	}

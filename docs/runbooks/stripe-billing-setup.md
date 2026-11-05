@@ -113,8 +113,11 @@ stripe webhook_endpoints create \
   -d 'enabled_events[6]=customer.subscription.updated' \
   -d 'enabled_events[7]=customer.subscription.deleted' \
   -d 'enabled_events[8]=customer.subscription.paused' \
-  -d 'enabled_events[9]=customer.subscription.resumed'
+  -d 'enabled_events[9]=customer.subscription.resumed' \
+  -d 'enabled_events[10]=customer.updated'
 ```
+
+`customer.updated` (w2/070) audits a default-card change made in the Billing Portal as `UpdateWorkspacePaymentMethodEvent`. An endpoint created before it lacks that event; `scripts/stripe-billing-setup.py --webhook-url <url> --add-missing-webhook-events` (add `--live` for production) appends the missing events to that one endpoint without removing any, and refuses every other drift.
 
 Capture the returned signing `secret` once and store it out of band as `BEX_STRIPE_WEBHOOK_SECRET`. It is a distinct credential from the restricted API key. Do not paste it into git, `.env.example`, logs, or a ticket.
 
@@ -122,7 +125,7 @@ For local signature verification — the normal test-mode path, since a dev clus
 
 ```bash
 stripe listen \
-  --events checkout.session.completed,invoice.payment_failed,invoice.payment_action_required,invoice.payment_succeeded,invoice.paid,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,customer.subscription.paused,customer.subscription.resumed \
+  --events checkout.session.completed,invoice.payment_failed,invoice.payment_action_required,invoice.payment_succeeded,invoice.paid,customer.subscription.created,customer.subscription.updated,customer.subscription.deleted,customer.subscription.paused,customer.subscription.resumed,customer.updated \
   --forward-to localhost:8090/v1/webhooks/stripe
 ```
 
@@ -261,7 +264,7 @@ Use add → deploy → verify → revoke, never in-place guessing:
 2. Put the replacement in the out-of-band/keychain custody source, run `DRY_RUN=1 scripts/stripe-billing-secret.sh`, apply it, and wait for both bex-api replicas plus `/healthz` and `/metrics`.
 3. Run the read-only reconciliation, create/resolve one disposable Customer/Subscription, and verify no duplicate object or event quantity.
 4. Revoke the old restricted key only after the replacement passes. Record key ids/fingerprints and timestamps, never values.
-5. For webhook rotation, create a second test endpoint with the exact ten events/API version, deploy its one-time signing secret, prove a new test event reaches `pending_webhooks=0`, then disable/delete the old endpoint. Do not revoke the only working secret first.
+5. For webhook rotation, create a second test endpoint with the exact eleven events/API version, deploy its one-time signing secret, prove a new test event reaches `pending_webhooks=0`, then disable/delete the old endpoint. Do not revoke the only working secret first.
 
 To disable, remove the out-of-band `bex-stripe` Secret and roll bex-api. Confirm `bex_billing_enabled=0`, estimate-only surfaces, continuing `usage_hourly` writes, zero provider traffic, and no alerts. Disabling emission does **not** pause or cancel existing Subscriptions. Restore the Secret, reconcile backlog before resuming, and confirm the unique Customer/Subscription counts and meter-summary quantities did not increase twice.
 
@@ -297,7 +300,7 @@ Separately create the **live** restricted key with the §2 permission inventory 
 
 1. Compare all 14 live lookup keys and rates with `pricing.yaml`.
 2. Confirm `bex-comp-100` is valid, perpetual, and exactly 100% off.
-3. Confirm the webhook endpoint URL, API version, and exact ten-event allowlist from §3 (the `--webhook-url` provisioning enforces these; this is the human double-check).
+3. Confirm the webhook endpoint URL, API version, and exact eleven-event allowlist from §3 (the `--webhook-url` provisioning enforces these; this is the human double-check).
 4. Confirm Stripe's account-level invoice, retry, and email settings, and that the recorded dunning decision matches `BEX_STRIPE_DUNNING_ENABLED`.
 5. Confirm Checkout setup and the scoped Customer Portal round trip in test mode, including replay-safe completion and trusted returns.
 6. Confirm `BEX_STRIPE_EPOCH` in the live `.env` equals the decided cutover instant; understand that sealed rows after that instant and within the 34-day safety window can be backfilled and charged.

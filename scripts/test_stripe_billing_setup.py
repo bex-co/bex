@@ -240,7 +240,7 @@ class StripeBillingSetupTest(TestCase):
             )
 
     def test_webhook_endpoint_created_with_pinned_version_and_secret_file(self):
-        # w4/m81 t004: creation pins the API version + the exact ten events and
+        # w4/m81 t004: creation pins the API version + the exact handled events and
         # writes the one-time signing secret to a mode-0600 file, never stdout.
         import os
         import tempfile
@@ -296,6 +296,41 @@ class StripeBillingSetupTest(TestCase):
                     SETUP.ensure_webhook_endpoint(
                         "https://api.bex.co/v1/webhooks/stripe", live=False
                     )
+
+    def test_webhook_endpoint_add_missing_events_only_appends(self):
+        # w2/070: the repair appends what the endpoint lacks and keeps the rest.
+        url = "https://api.bex.co/v1/webhooks/stripe"
+        lacking = {
+            "id": "we_ok",
+            "url": url,
+            "status": "enabled",
+            "api_version": SETUP.WEBHOOK_API_VERSION,
+            "enabled_events": [e for e in SETUP.WEBHOOK_EVENTS if e != "customer.updated"],
+        }
+        with mock.patch.object(SETUP, "list_all", return_value=[lacking]), mock.patch.object(
+            SETUP, "stripe"
+        ) as stripe:
+            endpoint_id, status = SETUP.ensure_webhook_endpoint(url, live=True, add_missing_events=True)
+            self.assertEqual("we_ok", endpoint_id)
+            self.assertIn("customer.updated", status)
+            args = stripe.call_args.args
+            self.assertEqual(("webhook_endpoints", "update", "we_ok"), args[:3])
+            sent = sorted(a.split("=", 1)[1] for a in args if a.startswith("enabled_events["))
+            self.assertEqual(sorted(SETUP.WEBHOOK_EVENTS), sent)
+
+        # Without the flag the same endpoint is drift, and the flag never
+        # repairs an extra event or a version mismatch.
+        for endpoint, flag in (
+            (lacking, False),
+            ({**lacking, "enabled_events": lacking["enabled_events"] + ["charge.refunded"]}, True),
+            ({**lacking, "api_version": "2020-08-27"}, True),
+        ):
+            with mock.patch.object(SETUP, "list_all", return_value=[endpoint]), mock.patch.object(
+                SETUP, "stripe"
+            ) as stripe:
+                with self.assertRaisesRegex(RuntimeError, "drifted"):
+                    SETUP.ensure_webhook_endpoint(url, live=True, add_missing_events=flag)
+                stripe.assert_not_called()
 
     def test_portal_configuration_rejects_non_origin_urls(self):
         for url in (

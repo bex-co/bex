@@ -38,7 +38,10 @@ type StripeWebhook struct {
 	ExpectedLivemode    bool
 	OnLifecycle         func(context.Context, *stripe.Event) error
 	OnCheckoutCompleted func(context.Context, *stripe.CheckoutSession) error
-	Metrics             *Metrics
+	// OnCustomerUpdated audits a default-payment-method change made in the
+	// Billing Portal (w2/070).
+	OnCustomerUpdated func(context.Context, *stripe.Event) error
+	Metrics           *Metrics
 }
 
 func (h *StripeWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -112,6 +115,14 @@ func (h *StripeWebhook) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 				http.Error(w, "payment-setup handler unavailable", http.StatusServiceUnavailable)
 				return
 			}
+		}
+	}
+	if event.Type == stripe.EventTypeCustomerUpdated && h.OnCustomerUpdated != nil {
+		if err := h.OnCustomerUpdated(r.Context(), &event); err != nil {
+			h.Metrics.Operation("webhook_handler", "error")
+			log.Printf("billing: Stripe customer.updated handler event=%s: %v", event.ID, err)
+			http.Error(w, "payment-method audit unavailable", http.StatusServiceUnavailable)
+			return
 		}
 	}
 	h.Metrics.WebhookSucceeded(time.Now())

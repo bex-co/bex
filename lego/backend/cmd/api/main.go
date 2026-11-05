@@ -973,7 +973,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 			log.Printf("bex-api Stripe dunning enabled (livemode %t, grace %s, reconcile %s)", stripeClient.ExpectedLivemode(), grace, reconcileEvery)
 		}
 		if secret := cfg.StripeWebhookSecret; secret != "" {
-			handler := &billing.StripeWebhook{Secret: secret, ExpectedLivemode: stripeClient.ExpectedLivemode(), OnCheckoutCompleted: stripeClient.CompleteCheckoutSession, Metrics: billingMetrics}
+			handler := &billing.StripeWebhook{Secret: secret, ExpectedLivemode: stripeClient.ExpectedLivemode(), OnCheckoutCompleted: stripeClient.CompleteCheckoutSession, OnCustomerUpdated: stripeClient.RecordPortalPaymentMethodChange, Metrics: billingMetrics}
 			if lifecycle != nil {
 				handler.OnLifecycle = lifecycle.HandleStripeEvent
 			}

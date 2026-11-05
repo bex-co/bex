@@ -202,11 +202,11 @@ func isLifecycleEvent(eventType stripe.EventType) bool {
 // failure as a rejected delivery. scripts/stripe-webhook-drift.sh checks the live
 // endpoint against this set.
 func HandledStripeEventTypes() []string {
-	out := make([]string, 0, len(lifecycleEventTypes)+1)
+	out := make([]string, 0, len(lifecycleEventTypes)+2)
 	for _, t := range lifecycleEventTypes {
 		out = append(out, string(t))
 	}
-	out = append(out, string(stripe.EventTypeCheckoutSessionCompleted))
+	out = append(out, string(stripe.EventTypeCheckoutSessionCompleted), string(stripe.EventTypeCustomerUpdated))
 	slices.Sort(out)
 	return out
 }
