@@ -24,6 +24,11 @@ import (
 	"testing"
 	"time"
 
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -322,5 +327,53 @@ func TestDiskUsageNotifierLevels(t *testing.T) {
 		Detail: diskUsageDetail(d), Occurrences: []time.Time{time.Now()}, PendingCount: 1}, "")
 	if subject != "Disk usage high: db" || !strings.Contains(msg.Text(), `"data" mounted at /data is 85.5% full (threshold 80%)`) {
 		t.Errorf("mail = %q / %q", subject, msg.Text())
+	}
+}
+
+// TestAlertFeedAppliesTheServicePolicyBySrvID: the feed row names its service
+// by the App CR name and carries the srv- id in AppID; the production policy
+// resolver matches the CR's bex.co/app-id label, so a service on `none` mails
+// nobody and one on `failure` mails a member who turned failure email off
+// (w2/m252 dev-2 walk, 2026-11-05).
+func TestAlertFeedAppliesTheServicePolicyBySrvID(t *testing.T) {
+	scheme := runtime.NewScheme()
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	cr := func(name, srv, toSend string) *appv1alpha1.App {
+		return &appv1alpha1.App{
+			ObjectMeta: metav1.ObjectMeta{Name: "tea-a-" + name, Namespace: "tea-a", Labels: map[string]string{
+				core.LabelTenant: "tea-a", core.LabelAppID: srv,
+			}},
+			Spec: appv1alpha1.AppSpec{Image: "nginx:1", NotificationsToSend: toSend},
+		}
+	}
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithObjects(
+		cr("quiet", "srv-quiet", appv1alpha1.NotificationsToSendNone),
+		cr("loud", "srv-loud", appv1alpha1.NotificationsToSendFailure),
+		cr("plain", "srv-plain", ""),
+	).Build()
+	byTenant := map[string][]store.AlertEmailRecipient{"tea-a": {
+		{TenantID: "tea-a", Subject: "alice", DeployFailed: true},
+		{TenantID: "tea-a", Subject: "bob", DeployFailed: false},
+	}}
+	w := &AlertEmailWorker{Policy: AppNotificationPolicy(cl), DashboardBaseURL: "https://dashboard.example"}
+	row := func(name string) store.WebhookEventRow {
+		return store.WebhookEventRow{TenantID: "tea-a", ServiceID: "tea-a-" + name, AppID: "srv-" + name, ServiceName: name,
+			Key: "fact:" + name, Source: store.EventSourceFact, FactType: string(store.EventFactServerFailed)}
+	}
+	items, err := w.projectFeed(t.Context(), []store.WebhookEventRow{row("quiet"), row("loud"), row("plain")}, byTenant)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var got []string
+	for _, it := range items {
+		got = append(got, it.Subject+"/"+it.ResourceID)
+		if url := w.dashboardURL(store.AlertEmailStream{ResourceID: it.ResourceID, Event: it.Event}); url != "https://dashboard.example/services/"+it.ResourceID+"/events" {
+			t.Errorf("link = %q", url)
+		}
+	}
+	if want := "alice/srv-loud,bob/srv-loud,alice/srv-plain"; strings.Join(got, ",") != want {
+		t.Errorf("alerts = %v, want %s (none silent; failure mails everyone; default follows each member)", got, want)
 	}
 }

@@ -20,13 +20,19 @@ import (
 	"context"
 	"fmt"
 	"os"
+	"slices"
 	"strings"
 	"sync"
 	"testing"
 	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/notifications"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/backend/internal/testenv"
@@ -126,12 +132,11 @@ func TestAlertEmailWorkerMailsFailures(t *testing.T) {
 		Clock:        func() time.Time { return clock },
 		Window:       10 * time.Minute,
 		BlueprintLag: store.FeedCommitLag,
-		Policy: func(_ context.Context, tenantID, _ string) (string, error) {
-			if tenantID == quiet.ID {
-				return appv1alpha1.NotificationsToSendNone, nil
-			}
-			return appv1alpha1.NotificationsToSendDefault, nil
-		},
+		// The production resolver over the App CRs as the projector writes
+		// them, so the muted service is found by its srv- id, not by the
+		// feed's CR name.
+		Policy: notifications.AppNotificationPolicy(appCRs(t,
+			appCR(web, ""), appCR(muted, appv1alpha1.NotificationsToSendNone))),
 	}
 	// Seed the cursors before any failure exists.
 	if err := worker.RunOnce(ctx); err != nil {
@@ -350,5 +355,172 @@ func TestAlertEmailStreamLifecycle(t *testing.T) {
 	}
 	if !watermarkAfter.Equal(wmAt) {
 		t.Errorf("a cursor-less enqueue moved the feed watermark %v -> %v", wmAt, watermarkAfter)
+	}
+}
+
+// appCR is app's App CR as the projector writes it: named "<tenant>-<name>"
+// (the feed's ServiceID), labelled with its workspace and its srv- id.
+func appCR(app store.App, notificationsToSend string) *appv1alpha1.App {
+	return &appv1alpha1.App{
+		ObjectMeta: metav1.ObjectMeta{Name: app.TenantID + "-" + app.Name, Namespace: app.TenantID, Labels: map[string]string{
+			core.LabelTenant: app.TenantID, core.LabelAppID: app.ID,
+		}},
+		Spec: appv1alpha1.AppSpec{Image: "traefik/whoami", NotificationsToSend: notificationsToSend},
+	}
+}
+
+func appCRs(t *testing.T, apps ...*appv1alpha1.App) client.Client {
+	t.Helper()
+	scheme := runtime.NewScheme()
+	if err := appv1alpha1.AddToScheme(scheme); err != nil {
+		t.Fatal(err)
+	}
+	b := fake.NewClientBuilder().WithScheme(scheme)
+	for _, a := range apps {
+		b = b.WithObjects(a)
+	}
+	return b.Build()
+}
+
+// TestAlertEmailFeedKeysServicesBySrvID: the feed names a service by its CR
+// name, but a feed-driven alert is the service's — its notificationsToSend
+// (found by the bex.co/app-id label), its stream key and its email link all
+// use the srv- id (w2/m252 dev-2 walk, 2026-11-05: a service on `none` was
+// still mailed and one on `failure` never reached a member with failure
+// email off). Streams written under the old CR-name key are rekeyed by
+// migration 0195, so an open digest window carries across the deploy.
+func TestAlertEmailFeedKeysServicesBySrvID(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := store.NewPGStore(pool)
+	if _, err := pool.Exec(ctx, `DELETE FROM alert_email_watermarks`); err != nil {
+		t.Fatal(err)
+	}
+
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+	alice, bob := "srvid-alice-"+stamp, "srvid-bob-"+stamp
+	ws, err := st.CreateWorkspace(ctx, "srvid-"+stamp, store.PlanHobby, alice)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
+	if err := st.AddMember(ctx, bob, ws.ID, "developer"); err != nil {
+		t.Fatal(err)
+	}
+	// bob turned failure email off: only a service on `failure` reaches him.
+	if _, err := st.UpsertNotificationSettings(ctx, ws.ID, bob, false, false, false); err != nil {
+		t.Fatal(err)
+	}
+	newApp := func(name string) store.App {
+		t.Helper()
+		a, err := st.CreateApp(ctx, store.App{TenantID: ws.ID, Name: name + "-" + stamp, Image: "traefik/whoami", Branch: "main", Port: 80, Replicas: 1, Tier: "starter"})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return a
+	}
+	silent, loud, plain := newApp("silent"), newApp("loud"), newApp("plain")
+
+	mailer := &alertMailer{}
+	clock := time.Now()
+	worker := &notifications.AlertEmailWorker{
+		Store: st, Mailer: mailer,
+		Identities:       alertEmails{alice: "alice@example.com", bob: "bob@example.com"},
+		Clock:            func() time.Time { return clock },
+		Window:           10 * time.Minute,
+		BlueprintLag:     store.FeedCommitLag,
+		DashboardBaseURL: "https://dashboard.example",
+		Policy: notifications.AppNotificationPolicy(appCRs(t,
+			appCR(silent, appv1alpha1.NotificationsToSendNone),
+			appCR(loud, appv1alpha1.NotificationsToSendFailure),
+			appCR(plain, appv1alpha1.NotificationsToSendDefault))),
+	}
+	if err := worker.RunOnce(ctx); err != nil {
+		t.Fatalf("seed: %v", err)
+	}
+
+	// alice was mailed about plain a minute ago, under the CR-name key the
+	// worker wrote before the fix; the migration moves it to the srv- id.
+	crName := ws.ID + "-" + plain.Name
+	if _, err := pool.Exec(ctx, `INSERT INTO alert_email_streams (tenant_id, subject, resource_id, event, resource_name, last_mailed_at)
+		VALUES ($1, $2, $3, 'server_failed', $4, now() - interval '1 minute')`, ws.ID, alice, crName, plain.Name); err != nil {
+		t.Fatal(err)
+	}
+	rekey, err := os.ReadFile("migrations/0195_alert_email_streams_service_id.up.sql")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, string(rekey)); err != nil {
+		t.Fatalf("rekey: %v", err)
+	}
+
+	for _, a := range []store.App{silent, loud, plain} {
+		if _, err := st.InsertServiceEventFact(ctx, store.ServiceEventFact{
+			SourceKey: "srvid-" + a.Name, AppID: a.ID, Type: store.EventFactServerFailed, At: time.Now(),
+		}); err != nil {
+			t.Fatal(err)
+		}
+	}
+	clock = time.Now().Add(store.FeedCommitLag + time.Second)
+	if err := worker.RunOnce(ctx); err != nil {
+		t.Fatalf("run: %v", err)
+	}
+
+	got := map[string]alertMail{}
+	for _, m := range mailer.take() {
+		got[m.to] = m
+		if m.subject != "Service unavailable: "+loud.Name {
+			t.Errorf("mailed %s %q; only the service on `failure` mails now (none is silent, plain is inside its digest window)", m.to, m.subject)
+		}
+		if want := "https://dashboard.example/services/" + loud.ID + "/events"; !strings.Contains(m.text, want) {
+			t.Errorf("mail to %s does not link %s: %q", m.to, want, m.text)
+		}
+	}
+	if _, ok := got["alice@example.com"]; !ok {
+		t.Error("alice missed the alert for the service on `failure`")
+	}
+	if _, ok := got["bob@example.com"]; !ok {
+		t.Error("bob missed the alert: a service on `failure` mails every member, whatever their own preference")
+	}
+
+	rows, err := pool.Query(ctx, `SELECT subject, resource_id, pending_count FROM alert_email_streams WHERE tenant_id = $1`, ws.ID)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer rows.Close()
+	var streams []string
+	for rows.Next() {
+		var subject, resource string
+		var pending int
+		if err := rows.Scan(&subject, &resource, &pending); err != nil {
+			t.Fatal(err)
+		}
+		who := map[string]string{alice: "alice", bob: "bob"}[subject]
+		what := map[string]string{silent.ID: "silent", loud.ID: "loud", plain.ID: "plain"}[resource]
+		if what == "" {
+			what = "unknown:" + resource
+		}
+		streams = append(streams, fmt.Sprintf("%s/%s/%d", who, what, pending))
+	}
+	if err := rows.Err(); err != nil {
+		t.Fatal(err)
+	}
+	slices.Sort(streams)
+	// alice's plain stream is the rekeyed one, now holding the new failure
+	// for the digest; no stream is keyed by a CR name.
+	want := []string{"alice/loud/0", "alice/plain/1", "bob/loud/0"}
+	if strings.Join(streams, ",") != strings.Join(want, ",") {
+		t.Errorf("streams = %v, want %v", streams, want)
 	}
 }
