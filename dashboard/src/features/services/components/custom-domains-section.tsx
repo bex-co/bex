@@ -351,7 +351,7 @@ function DnsRecordFields({ domain }: { domain: CustomDomainView }) {
           : t("services.domainDnsSubdomainGuidance", { zone })}
       </p>
       {record ? (
-        <DnsRecordFieldsRow record={record} />
+        <DnsRecordFieldsRow record={record} subject={domain.name} />
       ) : (
         <p className="text-muted-foreground text-sm italic">
           {t("services.domainDnsUnavailable")}
@@ -367,6 +367,7 @@ function DnsRecordFields({ domain }: { domain: CustomDomainView }) {
             <DnsRecordFieldsRow
               key={addr}
               record={{ type: "A", name: "@", value: addr }}
+              subject={`${domain.name} (${addr})`}
             />
           ))}
         </>
@@ -375,10 +376,14 @@ function DnsRecordFields({ domain }: { domain: CustomDomainView }) {
   );
 }
 
+/** `subject` names what the copy buttons copy for: the domain, plus the edge
+ *  address on an apex A row, so no two buttons on a page share a name (w4/482). */
 function DnsRecordFieldsRow({
   record,
+  subject,
 }: {
   record: CustomDomainView["dnsRecord"];
+  subject: string;
 }) {
   const { t } = useTranslations();
   if (!record) return null;
@@ -389,13 +394,13 @@ function DnsRecordFieldsRow({
       <RecordField
         label={t("services.domainRecordHost")}
         value={record.name}
-        copyLabel={t("services.domainCopyHost", { type })}
+        copyLabel={t("services.domainCopyHost", { type, domain: subject })}
         copy
       />
       <RecordField
         label={t("services.domainRecordTarget")}
         value={record.value}
-        copyLabel={t("services.domainCopyTarget", { type })}
+        copyLabel={t("services.domainCopyTarget", { type, domain: subject })}
         copy
       />
     </div>

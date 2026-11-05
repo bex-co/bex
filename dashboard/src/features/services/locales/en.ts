@@ -1754,11 +1754,11 @@ const enServices: Record<string, TranslationEntry> = {
     description: "Label for the DNS record target/value field",
   },
   "services.domainCopyHost": {
-    message: "Copy {type} host",
+    message: "Copy {type} host for {domain}",
     description: "Accessible label for copying a DNS host field",
   },
   "services.domainCopyTarget": {
-    message: "Copy {type} target",
+    message: "Copy {type} target for {domain}",
     description: "Accessible label for copying a DNS target/value field",
   },
   "services.domainDnsUnavailable": {

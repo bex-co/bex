@@ -1720,11 +1720,11 @@ const zhServices: Record<string, TranslationEntry> = {
     description: "Label for the DNS record target/value field",
   },
   "services.domainCopyHost": {
-    message: "复制 {type} 主机",
+    message: "复制 {domain} 的 {type} 主机",
     description: "Accessible label for copying a DNS host field",
   },
   "services.domainCopyTarget": {
-    message: "复制 {type} 目标",
+    message: "复制 {domain} 的 {type} 目标",
     description: "Accessible label for copying a DNS target/value field",
   },
   "services.domainDnsUnavailable": {

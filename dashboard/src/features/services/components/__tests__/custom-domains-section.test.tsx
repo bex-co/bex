@@ -274,10 +274,14 @@ describe("CustomDomainsSection", () => {
     expect(document.body.textContent).not.toContain("bex-domain-verification");
     // Verb-shaped, type-discriminated copy names (m101/t014) — not bare "Host"/"Target".
     expect(
-      screen.getByRole("button", { name: "Copy CNAME host" }),
+      screen.getByRole("button", {
+        name: "Copy CNAME host for api.example.com",
+      }),
     ).toBeInTheDocument();
     expect(
-      screen.getByRole("button", { name: "Copy CNAME target" }),
+      screen.getByRole("button", {
+        name: "Copy CNAME target for api.example.com",
+      }),
     ).toBeInTheDocument();
     expect(
       screen.queryByRole("button", { name: "Host" }),
@@ -334,6 +338,24 @@ describe("CustomDomainsSection", () => {
     expect(screen.getByText("203.0.113.10")).toBeInTheDocument();
     expect(screen.getByText("203.0.113.11")).toBeInTheDocument();
     expect(screen.getAllByText("A")).toHaveLength(2);
+  });
+
+  it("names every DNS copy button by its domain and edge address (w4/482)", () => {
+    mockUseCustomDomains.mockReturnValue(
+      domainsResult([
+        pendingDomain,
+        { ...apexDomain, edgeAddresses: ["203.0.113.10", "203.0.113.11"] },
+      ]),
+    );
+    render(<CustomDomainsSection serviceId="web" />);
+    const names = screen
+      .getAllByRole("button", { name: /^Copy .* (host|target) for / })
+      .map((b) => b.getAttribute("aria-label") ?? b.textContent ?? "");
+    // CNAME + ALIAS + two A rows, each with a host and a target button.
+    expect(names).toHaveLength(8);
+    expect(new Set(names).size).toBe(names.length);
+    expect(names).toContain("Copy A target for foo.com (203.0.113.11)");
+    expect(names).toContain("Copy ALIAS host for foo.com");
   });
 
   it("shows exactly two traffic records total for an unverified apex+www pair", () => {
