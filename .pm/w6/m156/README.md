@@ -1,6 +1,6 @@
 # w6 · m156 — Deploy latency watchdog: a green main never waits half a day to deploy
 
-**Worker:** worker6 **Goal:** when a deployable commit on main waits more than 6 h for its production pin, an issue opens automatically, naming why, and the remaining starvation cause is fixed. **Status:** blocked (t003 needs the user's decision on deploy supersession; t001–t002 done)
+**Worker:** worker6 **Goal:** when a deployable commit on main waits more than 6 h for its production pin, an issue opens automatically, naming why, and the remaining starvation cause is fixed. **Status:** todo (t001–t002 done; t003 unblocked by D8 = (a), 2026-11-04)
 
 ## Tasks (in order)
 
@@ -57,3 +57,16 @@ t001/t002 do not depend on this and are shipped. t004–t006 follow the decision
 - The first dispatch (41590504168) was cancelled at the 15-min timeout inside a full checkout. The checkout was fixed in `b1732715a` (blobless + sparse) and later generalised by w6/m157.
 - With threshold 0, dispatch 41595534204 succeeded and opened issue #122 "main is not reaching production" at 08:04 UTC.
 - With threshold 1000, dispatch 41610903992 succeeded and closed #122 with `Recovered: queued 3.8h bd33b3012c49 run=41609029897 waiting for the bex-production-deploy slot …`. That is a real reading: a deployable commit had been waiting 3.8 h behind the deploy slot.
+
+## Unblock decision — 2026-11-04 (source: user decision D8, /unblock w6)
+
+- **Affected:** w6/m156/t003 (and its follow-ups t004–t006); w6/087's supersession record.
+- **Decision: (a) relax the invariant.** A deploy run superseded at write-back still pins its images when every manifest change between its tested revision and the newer production manifests touches only resources its images do not read. Any change outside that reviewed set (a CRD, RBAC, or a resource the operator, dashboard or API reads) still discards the run as today.
+- **Rationale:** the replay above shows six fully tested and built runs discarded in four gaps of 11–25 h. A reviewed allowlist removes that waste while the dangerous changes keep the existing discard-and-rerun path. (b) throughput is partly delivered already: the 2026-11-04 history rewrite made every checkout ~6x smaller, and w6/m155 split the build pool. (c) left the stalls in place. Reference product: none applies; this is internal deploy mechanism with no customer-visible Render behavior, beyond fixes reaching production sooner.
+- **Remaining gates:** none external.
+- **Worker next steps (t003):**
+  1. Define the allowlist in one reviewed file next to `scripts/deploy-superseded.sh` (e.g. `deploy/gitops/charts/**` other than the operator's, third-party chart Helm values), defaulting to discard for anything not listed. Exclude anything that can change a CRD, RBAC, or a resource the platform images read.
+  2. Teach `scripts/deploy-superseded.sh` to diff the run's tested manifests against the newer production manifests and report "superseded but compatible" when every changed path is allowlisted; deploy.yml then pins instead of concluding neutral.
+  3. Tests in `scripts/deploy-superseded.test.sh`: allowlisted-only diff pins; a CRD/RBAC/operator-config change in the same diff still discards; an empty or unparseable diff discards (fail closed).
+  4. Update w6/087's record with the decision and the outcome.
+- **Acceptance:** the unit tests above pass; the next live supersession whose newer diff is allowlisted-only pins instead of being discarded (cite the run); `scripts/deploy_latency.py` over the following 7 days shows no gap over 10 h caused by `superseded`.
