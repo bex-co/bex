@@ -405,34 +405,46 @@ jobs:
               --certificate-oidc-issuer https://token.actions.githubusercontent.com \
               "$1" >/dev/null 2>&1
           }
-          todo=()
-          for ref in $REFS; do
-            retry 300 3 cosign sign --yes --oidc-provider=github-actions "$ref"
-            if attested "$ref"; then
-              echo "SBOM attestation already present for $ref; skipping"
+          # Sign every image at once (each call is network-bound), then keep
+          # the digests that still need an SBOM, in REFS order.
+          refs=($REFS)
+          rm -f /tmp/sbom-needed-* /tmp/sbom-*.spdx.json
+          sign_and_check() {
+            retry 300 3 cosign sign --yes --oidc-provider=github-actions "$1" \
+              || { echo "::error::signing $1 failed"; return 1; }
+            if attested "$1"; then
+              echo "SBOM attestation already present for $1; skipping"
             else
-              todo+=("$ref")
+              touch "/tmp/sbom-needed-$2"
             fi
-          done
-          # SBOMs run two at a time: the slowest image sets the wall clock
-          # instead of the sum, inside the runner's CPU and PID caps.
-          sbom() { retry 1200 2 syft "$1" -o "spdx-json=/tmp/sbom-$2.spdx.json"; }
+          }
           pids=()
-          for i in "${!todo[@]}"; do
-            if [ "${#pids[@]}" -ge 2 ]; then
-              wait -n || { echo "::error::an SBOM run failed"; exit 1; }
-              live=()
-              for pid in "${pids[@]}"; do kill -0 "$pid" 2>/dev/null && live+=("$pid"); done
-              pids=("${live[@]}")
-            fi
-            sbom "${todo[$i]}" "$i" & pids+=("$!")
-          done
+          for i in "${!refs[@]}"; do sign_and_check "${refs[$i]}" "$i" & pids+=("$!"); done
           for pid in "${pids[@]}"; do
-            wait "$pid" || { echo "::error::an SBOM run failed"; exit 1; }
+            wait "$pid" || exit 1
           done
-          for i in "${!todo[@]}"; do
+          todo=()
+          for i in "${!refs[@]}"; do [ -e "/tmp/sbom-needed-$i" ] && todo+=("${refs[$i]}"); done
+          # Every SBOM at once (at most five images, on a 12-CPU / 24 GB
+          # runner): the slowest image sets the wall clock instead of the sum.
+          sbom() {
+            retry 1200 2 syft "$1" -o "spdx-json=/tmp/sbom-$2.spdx.json" \
+              || { echo "::error::the SBOM for $1 failed"; return 1; }
+          }
+          pids=()
+          for i in "${!todo[@]}"; do sbom "${todo[$i]}" "$i" & pids+=("$!"); done
+          for pid in "${pids[@]}"; do
+            wait "$pid" || exit 1
+          done
+          attest() {
             retry 300 3 cosign attest --yes --oidc-provider=github-actions --type spdxjson \
-              --predicate "/tmp/sbom-$i.spdx.json" "${todo[$i]}"
+              --predicate "/tmp/sbom-$2.spdx.json" "$1" \
+              || { echo "::error::attesting the SBOM of $1 failed"; return 1; }
+          }
+          pids=()
+          for i in "${!todo[@]}"; do attest "${todo[$i]}" "$i" & pids+=("$!"); done
+          for pid in "${pids[@]}"; do
+            wait "$pid" || exit 1
           done
 
       # --- 1f. CVE scan: CRITICAL fails CI, HIGH warns (w7/m10 t001) ---
