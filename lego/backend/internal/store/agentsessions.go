@@ -536,6 +536,11 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 	if q.Limit <= 0 {
 		return nil, fmt.Errorf("agent session list: limit must be positive")
 	}
+	// A filter text cannot hold matches nothing, like any unknown value
+	// (w4/518): binding it would raise SQLSTATE 22021, a server fault.
+	if !textBindable(q.Tag) || !textBindable(q.Repo) || !textBindable(q.Cursor) {
+		return []AgentSession{}, nil
+	}
 	sql := `SELECT ` + agentSessionColumns + ` FROM agent_sessions WHERE workspace_id=$1`
 	args := []any{workspaceID}
 	arg := func(v any) string {

@@ -405,3 +405,36 @@ func TestMalformedWorkspaceIDsAreNot503(t *testing.T) {
 		t.Errorf("real id: %v", err)
 	}
 }
+
+// fgaRefusingChecker answers like OpenFGA does for an object id it cannot hold:
+// an error on both the cached and the fresh path.
+type fgaRefusingChecker struct{}
+
+func (fgaRefusingChecker) Check(context.Context, string, string, string) (bool, error) {
+	return false, errors.New("invalid object")
+}
+func (fgaRefusingChecker) CheckFresh(context.Context, string, string, string) (bool, error) {
+	return false, errors.New("invalid object")
+}
+
+// TestWriteRelationsRefuseMalformedObjectsAsForbidden is w4/518: write
+// relations (can_operate on an agent session) decide through checkAuthzFresh,
+// which skipped w4/481's object check, so a NUL id answered "authorization
+// service unavailable" where an unknown id answers forbidden.
+func TestWriteRelationsRefuseMalformedObjectsAsForbidden(t *testing.T) {
+	ctx := WithIdentity(context.Background(), Identity{Subject: "user", Method: "session"})
+	b := &Base{Authz: fgaRefusingChecker{}}
+	for _, bad := range []string{"\x00", "ags-\x00", "a\xffb"} {
+		object := "agent_session:" + bad
+		if err := b.AuthorizeOn(ctx, RelCanOperate, object); !errors.Is(err, ErrForbidden) {
+			t.Errorf("AuthorizeOn %q = %v, want forbidden", object, err)
+		}
+		if err := b.AuthorizeFreshOn(ctx, RelCanOperate, object); !errors.Is(err, ErrForbidden) {
+			t.Errorf("AuthorizeFreshOn %q = %v, want forbidden", object, err)
+		}
+	}
+	// A real outage on a well-formed object stays unavailable.
+	if err := b.AuthorizeFreshOn(ctx, RelCanOperate, "agent_session:ags-ok"); !errors.Is(err, ErrAuthzUnavailable) {
+		t.Errorf("outage = %v, want authz unavailable", err)
+	}
+}

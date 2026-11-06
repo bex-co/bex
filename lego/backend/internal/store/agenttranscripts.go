@@ -214,6 +214,9 @@ func (w *toolOutputWriter) insert(ctx context.Context, turn int, outputs []agent
 // means no full copy was kept (an output under the inline cap, one clipped
 // before w10/m18, or one over the session cap).
 func (s *PGStore) AgentSessionToolOutputs(ctx context.Context, sessionID string, turn int, toolCallID string) (map[string]string, error) {
+	if !textBindable(sessionID) || !textBindable(toolCallID) {
+		return map[string]string{}, nil // no such tool call, as for any unknown id (w4/518)
+	}
 	rows, err := s.Pool.Query(ctx, `
 		SELECT field, output FROM agent_session_tool_outputs
 		WHERE session_id = $1 AND turn = $2 AND tool_call_id = $3`, sessionID, turn, toolCallID)

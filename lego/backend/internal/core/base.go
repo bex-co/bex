@@ -947,6 +947,9 @@ func (b *Base) checkAuthzFresh(ctx context.Context, relation, object string) err
 	if !ok {
 		return ErrForbidden
 	}
+	if !validFGAObject(object) {
+		return ErrForbidden // as checkAuthz: every write relation decides here (w4/518)
+	}
 	allowed, err := fresh.CheckFresh(ctx, "user:"+id.Subject, relation, object)
 	if err != nil {
 		log.Printf("core: authorization unavailable: %v", err)

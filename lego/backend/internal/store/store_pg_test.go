@@ -186,6 +186,16 @@ func assertAgentSessions(ctx context.Context, t *testing.T, s *PGStore, tenant T
 	if err != nil || len(listed) != 1 || listed[0].ID != record.ID {
 		t.Fatalf("list agent sessions = %+v err=%v", listed, err)
 	}
+	// w4/518: a filter text cannot hold is an empty page, like an unknown one.
+	for _, bad := range []string{"\x00", "a\xffb"} {
+		for name, q := range map[string]AgentSessionListQuery{
+			"tag": {Tag: bad, Limit: 50}, "repo": {Repo: bad, Limit: 50}, "cursor": {Cursor: bad, Limit: 50},
+		} {
+			if got, err := s.ListAgentSessions(ctx, tenant.ID, q); err != nil || len(got) != 0 {
+				t.Fatalf("list with %s %q = %+v err=%v, want an empty page", name, bad, got, err)
+			}
+		}
+	}
 
 	// Binding records delivery mode for the already accepted turn.
 	if record.SandboxID != "sandbox-2" || record.Turns != 1 || record.DeliveryMode != "redispatch" {

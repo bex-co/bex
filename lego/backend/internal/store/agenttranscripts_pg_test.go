@@ -143,6 +143,12 @@ func TestPGToolFullOutputs(t *testing.T) {
 	if got, _ := s.AgentSessionToolOutputs(ctx, session, 2, "a"); len(got) != 0 {
 		t.Fatalf("another turn's read = %v, want none", got)
 	}
+	// w4/518: an id text cannot hold is no such tool call, not a server fault.
+	for _, bad := range []string{"\x00", "a\xffb"} {
+		if got, err := s.AgentSessionToolOutputs(ctx, session, 1, bad); err != nil || len(got) != 0 {
+			t.Fatalf("tool %q = %v err=%v, want none", bad, got, err)
+		}
+	}
 
 	// The session cap counts every stored copy.
 	var used int64
