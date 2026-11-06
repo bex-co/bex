@@ -166,9 +166,19 @@ jobs:
           # pushes no run deployed (06:05Z → 00:14Z on 2026-10-03/04). Runs are
           # serialized with one pending slot, so this costs at most one extra
           # build per burst.
+          #
+          # 4 skips only while the production pin is fresh. Once the last pin
+          # is 2 h old this run builds and pins anyway: under steady manifest
+          # commits and slow tests every queued run met a newer manifest and
+          # skipped too, and production kept the 00:51 pin past 13:00 UTC on
+          # 2026-11-06 (w9/m173). 0 (never pin) still always skips.
           set +e
           bash scripts/deploy-superseded.sh "$GITHUB_SHA"
           rc=$?
+          if [ "$rc" -eq 4 ] && bash scripts/deploy-pin-stale.sh 7200; then
+            echo "::notice::newer manifests landed, but the production pin is stale; building this run anyway"
+            rc=3
+          fi
           set -e
           if [ "$rc" -eq 0 ] || [ "$rc" -eq 4 ]; then
             echo "superseded=true" >> "$GITHUB_OUTPUT"

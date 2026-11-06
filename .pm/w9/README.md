@@ -20,7 +20,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **m172** — [Cloud Agents MCP phase 4: completion webhooks, per-session spend ceiling, `outcome.cost` (was w21/m260)](m172/README.md) (7 tasks; t001–t006 **DONE** in w21) — **next:** closeout after 077
 - [x] **078** — [`outcome.cost` sandbox compute (was w21/006)](done/078.md) — user decided 2026-11-06: one USD total; promoted to m178
 - [ ] **m178** — [`outcome.cost` reports sandbox compute in one USD total (Devin parity)](m178/README.md) (7 tasks) ← from 078
-- [ ] **m173** — [CI stability: deploys stop stalling on an overloaded self-hosted runner host](m173/README.md) (9 tasks) ← 2026-11-04/05 deploy gaps (thread exhaustion, runner drops, SBOM timeouts)
+- [ ] **m173** — [CI stability: deploys stop stalling on an overloaded self-hosted runner host](m173/README.md) (10 tasks) ← 2026-11-04/05 deploy gaps (thread exhaustion, runner drops, SBOM timeouts)
 - [ ] **m174** — [Session-scoped secrets for cloud agents (Devin parity)](m174/README.md) (8 tasks)
 - [ ] **m175** — [Knowledge and Playbooks for cloud agents (Devin parity)](m175/README.md) (8 tasks)
 - [ ] **m176** — [Approval mode: the agent asks before risky actions (`needs_input`)](m176/README.md) (7 tasks) ← coordinates with w11/m7 (mobile client)

@@ -167,6 +167,8 @@ jobs:
         run: bash scripts/rename-verify.test.sh
       - name: Deploy supersession detection unit tests
         run: bash scripts/deploy-superseded.test.sh
+      - name: Deploy stale-pin override unit tests
+        run: bash scripts/deploy-pin-stale.test.sh
       - name: Packer plugin pin/verify unit tests
         run: bash scripts/packer-plugin-install.test.sh
       - name: HashiCorp rootless installer unit tests
