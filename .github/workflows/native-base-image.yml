@@ -37,6 +37,7 @@ jobs:
   matrix:
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, ARM64, bex-ci]
+    timeout-minutes: 30
     outputs:
       images: ${{ steps.matrix.outputs.images }}
       publish: ${{ steps.matrix.outputs.publish }}

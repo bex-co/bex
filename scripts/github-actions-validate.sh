@@ -669,4 +669,46 @@ if [ "$(grep -Rh 'self-hosted' .github/workflows lego/operator/.github/workflows
   exit 1
 fi
 
-echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, rootless self-hosted runner custody, public-fork isolation and production-secret confinement intact"
+# 10. Bounded shared-runner jobs (w9/m173): every job on the shared `bex-ci`
+# pool sets a job-level timeout-minutes. Without one a hung step holds a
+# runner for GitHub's 6 h default: a go-lint checkout stuck from 08:54 to
+# 12:30 on 2026-11-06 left deploy tests queued. Budgets are measured, about
+# 2.5x the recent successful maximum.
+unbounded_ci_jobs="$(python3 - .github/workflows <<'PY'
+import pathlib, re, sys
+# Text scan (no YAML library on the runners): jobs sit at two-space indent
+# under `jobs:`, their keys at four.
+for path in sorted(pathlib.Path(sys.argv[1]).glob("*.yml")):
+    job, in_jobs, ci, bounded = None, False, False, False
+    def report():
+        if job and ci and not bounded:
+            print(f"{path.name}:{job}")
+    for line in path.read_text().splitlines():
+        if re.match(r"^jobs:\s*$", line):
+            in_jobs = True
+            continue
+        if not in_jobs:
+            continue
+        if re.match(r"^\S", line):
+            report()
+            job, in_jobs = None, False
+            continue
+        head = re.match(r"^  ([A-Za-z0-9_-]+):\s*$", line)
+        if head:
+            report()
+            job, ci, bounded = head.group(1), False, False
+            continue
+        if re.match(r"^    runs-on:.*\bbex-ci\b", line):
+            ci = True
+        elif re.match(r"^    timeout-minutes:", line):
+            bounded = True
+    report()
+PY
+)"
+if [ -n "$unbounded_ci_jobs" ]; then
+  echo "FAIL: bex-ci jobs without a job-level timeout-minutes (a hung step would hold a shared runner for 6 h):" >&2
+  echo "$unbounded_ci_jobs" >&2
+  exit 1
+fi
+
+echo "PASS: third-party actions SHA-pinned, reviewed inventory current, Node 20 absent, Gitleaks + supersession wiring intact, admin.conf fetchers host-key pinned with valid kubeconfig lifetimes, rootless self-hosted runner custody, bounded bex-ci jobs, public-fork isolation and production-secret confinement intact"
