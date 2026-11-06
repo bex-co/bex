@@ -20,11 +20,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"errors"
 	"fmt"
-	"io"
 	"net/http"
-	"strconv"
 	"time"
 )
 
@@ -217,6 +214,9 @@ type ResultHandler struct {
 	Now     func() time.Time
 }
 
+// resultVerb is the result verb's envelope contract on both hops.
+var resultVerb = signedVerb{maxEnvelope: maxResultEnvelopeBytes, mac: resultMACInput, refuse: NewResultError, subject: "result"}
+
 func (h *ResultHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
 		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
@@ -232,38 +232,14 @@ func (h *ResultHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	if h.Now != nil {
 		now = h.Now()
 	}
-	raw, err := io.ReadAll(io.LimitReader(r.Body, maxResultEnvelopeBytes+1))
-	if err != nil || len(raw) == 0 || len(raw) > maxResultEnvelopeBytes {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	if err := Verify(h.Secret, resultMACInput(raw), r.Header.Get(TimestampHeader), r.Header.Get(SignatureHeader), now, mintClockSkew); err != nil {
-		http.Error(w, "invalid signature", http.StatusUnauthorized)
-		return
-	}
-	envelope, ok := decodeResultEnvelope(raw)
-	if !ok {
-		http.Error(w, "invalid request", http.StatusBadRequest)
-		return
-	}
-	if !claimNonce(r.Context(), h.Nonce, envelope.Nonce, now) {
-		http.Error(w, "invalid signature", http.StatusUnauthorized)
-		return
-	}
-	if invalid := (ResultContent{Result: envelope.Result, Final: envelope.Final}).Validate(); invalid != nil {
-		WriteResultError(w, invalid)
-		return
-	}
-	response, err := h.Results.SubmitResult(r.Context(), envelope)
-	if err != nil {
-		var typed *ResultError
-		if !errors.As(err, &typed) {
-			typed = NewResultError(ResultUnavailable, "the result could not be stored")
-		}
-		WriteResultError(w, typed)
-		return
-	}
-	WriteNoStoreJSON(w, http.StatusOK, response)
+	serveSignedVerb(w, r, resultVerb, h.Secret, now, h.Nonce, decodeResultEnvelope,
+		func(e ResultEnvelope) string { return e.Nonce },
+		func(ctx context.Context, envelope ResultEnvelope) (any, error) {
+			if invalid := (ResultContent{Result: envelope.Result, Final: envelope.Final}).Validate(); invalid != nil {
+				return nil, invalid
+			}
+			return h.Results.SubmitResult(ctx, envelope)
+		})
 }
 
 // ResultClient is the gateway's HMAC-authenticated caller for the internal
@@ -287,43 +263,10 @@ func (c *ResultClient) now() time.Time {
 func (c *ResultClient) Submit(ctx context.Context, envelope ResultEnvelope) (ResultResponse, error) {
 	envelope.Kind = ResultKind
 	envelope.Nonce = newNonce()
-	raw, err := json.Marshal(envelope)
-	if err != nil {
-		return ResultResponse{}, NewResultError(ResultUnavailable, "the result request could not be built")
-	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodPost, c.URL, bytes.NewReader(raw))
-	if err != nil {
-		return ResultResponse{}, NewResultError(ResultUnavailable, "the result request could not be built")
-	}
-	req.Header.Set("Content-Type", "application/json")
-	signHeaders(req.Header, c.Secret, resultMACInput(raw), c.now())
 	client := c.HTTP
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Second}
 	}
-	resp, err := client.Do(req)
-	if err != nil {
-		return ResultResponse{}, NewResultError(ResultUnavailable, "the result service is unreachable")
-	}
-	defer func() { _ = resp.Body.Close() }()
-	payload, _ := io.ReadAll(io.LimitReader(resp.Body, 64<<10))
-	if resp.StatusCode == http.StatusOK {
-		var out ResultResponse
-		if err := json.Unmarshal(payload, &out); err != nil || !out.Accepted {
-			return ResultResponse{}, NewResultError(ResultUnavailable, "the result service returned an invalid response")
-		}
-		return out, nil
-	}
-	var refusal struct {
-		Error *ResultError `json:"error"`
-	}
-	if json.Unmarshal(payload, &refusal) == nil && refusal.Error != nil && refusal.Error.Code != "" {
-		// Re-derive status and hint from the code: the gateway relays only its
-		// own vocabulary.
-		return ResultResponse{}, NewResultError(refusal.Error.Code, refusal.Error.Message)
-	}
-	if resp.StatusCode == http.StatusUnauthorized || resp.StatusCode == http.StatusForbidden {
-		return ResultResponse{}, NewResultError(ResultForbidden, "the result request was not authorized")
-	}
-	return ResultResponse{}, NewResultError(ResultUnavailable, "the result service returned status "+strconv.Itoa(resp.StatusCode))
+	return forwardSignedVerb(ctx, resultVerb, c.URL, c.Secret, c.now(), client, envelope,
+		func(out ResultResponse) bool { return out.Accepted })
 }

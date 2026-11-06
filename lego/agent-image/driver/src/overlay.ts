@@ -25,6 +25,7 @@ import { skillsSection, type SkillManifest } from "./skills.js";
 import { toolName } from "./mcp-bex.js";
 import { shareFileToolName } from "./share-file.js";
 import { submitResultToolName } from "./submit-result.js";
+import { askUserToolName } from "./ask-user.js";
 
 export const overlayVersion = 1;
 
@@ -50,6 +51,29 @@ export interface OverlayContext {
   outputSchema?: string;
   resultUrl?: string;
   outputRequired?: boolean;
+  // Approval mode (ADR100): risky or all adds the approvals section; it needs
+  // the session's decision URL.
+  approvalMode?: string;
+  decisionUrl?: string;
+}
+
+// approvalSection (ADR100 D3–D4) appears only for a session that can pause:
+// it says which actions wait for a person and when to ask a question.
+function approvalSection(context: OverlayContext): string {
+  if (
+    !context.decisionUrl ||
+    (context.approvalMode !== "risky" && context.approvalMode !== "all")
+  )
+    return "";
+  const scope =
+    context.approvalMode === "all"
+      ? "every action that changes something (edits, commands, network calls)"
+      : "risky actions: force-pushes and remote branch deletions, `sudo`, publishing packages or releases, infrastructure and cloud changes, running downloaded code, and writes or deletions outside the checkout and /tmp";
+  return `
+
+## Approvals
+
+This session runs in approval mode. Before ${scope}, bex pauses and asks the user to approve; the action runs once they allow it. A refused action fails with a permission error: do not try it another way; continue without it and say so in your reply. If you are genuinely blocked on a choice only the user can make, call \`${askUserToolName}\` with your question and wait for the answer, after finishing the work that does not depend on it.`;
 }
 
 function sessionSection(): string {
@@ -193,6 +217,6 @@ export function platformOverlay(context: OverlayContext): string {
 
 This section comes from bex, the platform hosting this session. It adds to your existing instructions and does not replace them.
 
-${body}${attachmentsSection(context)}${skillsSection(context.skills, context.profile)}${sharingSection(context)}${resultSection(context)}
+${body}${attachmentsSection(context)}${skillsSection(context.skills, context.profile)}${sharingSection(context)}${resultSection(context)}${approvalSection(context)}
 `;
 }

@@ -80,6 +80,18 @@ const (
 const (
 	defaultMaxConns       = 64
 	defaultMaxConnsPerPod = 4
+	// Decision awaits (ADR100 D5) are 20 s long polls a paused sandbox keeps
+	// open for hours, so they get their own limiter: they must never take the
+	// slots Git, PR, share and result requests from every other sandbox need.
+	// A turn may wait on a few parallel decisions at once.
+	defaultMaxAwaits       = 2048
+	defaultMaxAwaitsPerPod = 4
+	// defaultMaxQuickAwaitsPerSession bounds awaits that bex-api answered at
+	// once instead of holding (an answer, an unknown decision, a refusal). A
+	// real wait costs one per decision; a sandbox spinning on bogus awaits
+	// runs out. It is its own budget, so a paused session whose request
+	// budget is spent can still receive its answer.
+	defaultMaxQuickAwaitsPerSession = 1000
 )
 
 // maxRequestBodyBytes caps one git smart-HTTP request body (a pack upload). A
@@ -132,6 +144,11 @@ type Broker struct {
 	// file descriptors, and Kubernetes API lookups on the shared gateway. nil
 	// gets a private limiter with the defaults (64 global, 4 per source).
 	Limits *sshgateway.SessionLimiter
+	// AwaitLimits bounds concurrent decision awaits separately (nil gets the
+	// defaults: 2048 global, 4 per source); MaxQuickAwaitsPerSession bounds the
+	// awaits answered without holding (0 = 1000).
+	AwaitLimits              *sshgateway.SessionLimiter
+	MaxQuickAwaitsPerSession int
 	// UpstreamOrigin and HTTP are test seams. Production leaves the origin empty,
 	// which fixes every credential-bearing request to HTTPS github.com.
 	UpstreamOrigin          string
@@ -148,6 +165,9 @@ type Broker struct {
 	// Results is the bex-api structured-result verb (ADR094 D5) behind
 	// ResultProxyPath. nil ⇒ the route answers unavailable.
 	Results ResultForwarder
+	// Decisions is the bex-api decision verb (ADR100 D5) behind
+	// DecisionProxyPath. nil ⇒ the route answers unavailable.
+	Decisions DecisionForwarder
 	// MaxResponseBytes bounds one streamed upstream response body; 0 means
 	// defaultMaxResponseBodyBytes. Exceeding it aborts the exchange loudly.
 	MaxResponseBytes int64
@@ -158,10 +178,14 @@ type Broker struct {
 	client     *http.Client
 
 	// limitsOnce/limits memoize the default limiter (see limiter).
-	limitsOnce sync.Once
-	limits     *sshgateway.SessionLimiter
-	budgetOnce sync.Once
-	budget     *requestBudget
+	limitsOnce      sync.Once
+	limits          *sshgateway.SessionLimiter
+	awaitLimitsOnce sync.Once
+	awaitLimits     *sshgateway.SessionLimiter
+	budgetOnce      sync.Once
+	budget          *requestBudget
+	awaitBudgetOnce sync.Once
+	awaitBudget     *requestBudget
 }
 
 // limiter returns the admission limiter, memoizing the default so acquire and
@@ -176,6 +200,17 @@ func (b *Broker) limiter() *sshgateway.SessionLimiter {
 	// documented bound.
 	b.limitsOnce.Do(func() { b.limits = sshgateway.NewSessionLimiter(defaultMaxConns, defaultMaxConnsPerPod) })
 	return b.limits
+}
+
+// awaitLimiter is limiter's twin for decision awaits.
+func (b *Broker) awaitLimiter() *sshgateway.SessionLimiter {
+	if b.AwaitLimits != nil {
+		return b.AwaitLimits
+	}
+	b.awaitLimitsOnce.Do(func() {
+		b.awaitLimits = sshgateway.NewSessionLimiter(defaultMaxAwaits, defaultMaxAwaitsPerPod)
+	})
+	return b.awaitLimits
 }
 
 func (b *Broker) Enabled() bool         { return b != nil && b.Pods != nil && b.API != nil }
@@ -196,6 +231,44 @@ const (
 	refusedSessionBudget
 	refusedWorkspaceBudget
 )
+
+// refusalWriter answers an admission refusal in a JSON route's own error
+// shape. Every sandbox verb shares the codes (forbidden, rate_limited); only
+// the wrong-target message names what the sandbox may do.
+func refusalWriter(fail func(code, message string), target string) func(admissionRefusal) {
+	return func(refusal admissionRefusal) {
+		switch refusal {
+		case refusedSource:
+			fail(agentsession.ResultForbidden, "unidentified source")
+		case refusedConcurrency:
+			fail(agentsession.ResultRateLimited, "too many concurrent requests from this sandbox")
+		case refusedPod:
+			fail(agentsession.ResultForbidden, "this request does not come from the session's sandbox")
+		case refusedTarget:
+			fail(agentsession.ResultForbidden, target)
+		case refusedSessionBudget:
+			fail(agentsession.ResultRateLimited, "request budget exhausted for this session")
+		case refusedWorkspaceBudget:
+			fail(agentsession.ResultRateLimited, "request budget exhausted for this workspace")
+		}
+	}
+}
+
+// readJSONBody reads a sandbox route's bounded JSON body. On failure it
+// answers too_large or invalid_request through fail and reports false.
+func readJSONBody(w http.ResponseWriter, r *http.Request, max int64, fail func(code, message string)) ([]byte, bool) {
+	raw, err := io.ReadAll(http.MaxBytesReader(w, r.Body, max))
+	if err == nil {
+		return raw, true
+	}
+	var tooLarge *http.MaxBytesError
+	if errors.As(err, &tooLarge) {
+		fail(agentsession.ResultTooLarge, fmt.Sprintf("the request body exceeds %d KiB", max>>10))
+		return nil, false
+	}
+	fail(agentsession.ResultInvalidRequest, "request body could not be read")
+	return nil, false
+}
 
 // admission is an admitted request: r carries the bounded context, verified is
 // the label-authorized target, and release frees the concurrency slot and the
@@ -238,12 +311,27 @@ func authorizeSession(sessionID string) podAuthorizer {
 // refuse, and reports false. The budget metric labels keep their git_ names
 // for dashboard continuity although every route on this listener charges them.
 func (b *Broker) admit(r *http.Request, namespace string, authorize podAuthorizer, refuse func(admissionRefusal)) (admission, bool) {
+	return b.admitWith(r, namespace, authorize, refuse, admitOptions{limiter: b.limiter(), charge: true})
+}
+
+// admitOptions are admit's knobs: which concurrency limiter holds the slot,
+// and whether the request is charged to the budgets up front.
+type admitOptions struct {
+	limiter *sshgateway.SessionLimiter
+	charge  bool
+}
+
+// admitWith is admit with its limiter and charging chosen by the route: a
+// decision await (ADR100 D5) is a long poll that may repeat for hours while a
+// person decides, so it holds a slot of its own limiter and is charged only
+// when it returns without holding (see serveDecision).
+func (b *Broker) admitWith(r *http.Request, namespace string, authorize podAuthorizer, refuse func(admissionRefusal), opts admitOptions) (admission, bool) {
 	sourceIP, err := RemoteIP(r.RemoteAddr)
 	if err != nil {
 		refuse(refusedSource)
 		return admission{}, false
 	}
-	limiter := b.limiter()
+	limiter := opts.limiter
 	if ok, scope := limiter.Acquire(sourceIP); !ok {
 		b.Metrics.LimitRejected(scope)
 		refuse(refusedConcurrency)
@@ -268,6 +356,9 @@ func (b *Broker) admit(r *http.Request, namespace string, authorize podAuthorize
 		refuse(refusedTarget)
 		release()
 		return admission{}, false
+	}
+	if !opts.charge {
+		return admission{r: r, pod: pod, verified: verified, release: release}, true
 	}
 	if !b.budgets().chargeSession(namespace, verified.SessionID) {
 		b.Metrics.LimitRejected("git_session_budget")
@@ -482,6 +573,16 @@ func (b *requestBudget) charge(key string, max int) bool {
 	return true
 }
 
+// exhausted reports whether key has used its whole budget, without charging.
+func (b *requestBudget) exhausted(key string, max int) bool {
+	if max <= 0 {
+		return false
+	}
+	b.mu.Lock()
+	defer b.mu.Unlock()
+	return b.charged[key] >= max
+}
+
 func (b *requestBudget) sweep(horizon time.Time) {
 	b.mu.Lock()
 	defer b.mu.Unlock()
@@ -493,12 +594,33 @@ func (b *requestBudget) sweep(horizon time.Time) {
 	}
 }
 
+func sessionBudgetKey(namespace, sessionID string) string {
+	return "session|" + namespace + "|" + sessionID
+}
+
 func (b *requestBudget) chargeSession(namespace, sessionID string) bool {
-	return b.charge("session|"+namespace+"|"+sessionID, b.perSession)
+	return b.charge(sessionBudgetKey(namespace, sessionID), b.perSession)
+}
+
+func (b *requestBudget) sessionExhausted(namespace, sessionID string) bool {
+	return b.exhausted(sessionBudgetKey(namespace, sessionID), b.perSession)
 }
 
 func (b *requestBudget) chargeWorkspace(namespace string) bool {
 	return b.charge("workspace|"+strings.TrimSuffix(namespace, "-sandbox"), b.perWorkspace)
+}
+
+// quickAwaits is the per-session budget of decision awaits answered without
+// holding (see serveDecision).
+func (b *Broker) quickAwaits() *requestBudget {
+	b.awaitBudgetOnce.Do(func() {
+		max := b.MaxQuickAwaitsPerSession
+		if max <= 0 {
+			max = defaultMaxQuickAwaitsPerSession
+		}
+		b.awaitBudget = &requestBudget{perSession: max}
+	})
+	return b.awaitBudget
 }
 
 func (b *Broker) budgets() *requestBudget {

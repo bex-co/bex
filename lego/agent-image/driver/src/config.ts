@@ -23,6 +23,7 @@ import { describeError } from "./errors.js";
 import { loadAgentProfiles, lookupAgentProfile } from "./profiles.js";
 import { isDeepStrictEqual } from "node:util";
 import { secretValuesFromEnv } from "./redact.js";
+import { approvalMode, type ApprovalMode } from "./approval.js";
 import { parseSkillManifest, type SkillManifest } from "./skills.js";
 
 export interface AgentDriverConfig {
@@ -114,6 +115,12 @@ export interface AgentDriverConfig {
   // BEX_AGENT_SECRET_NAMES. Used only to scrub published parts; the agent
   // reads the values from its own inherited env.
   secretValues: Map<string, string>;
+  // Approval mode (ADR100): when the session pauses for a person, its
+  // Pod-bound decision URL (empty for an autonomous session), and the
+  // directory where decision waits are timed so the turn timeout skips them.
+  approvalMode: ApprovalMode;
+  decisionUrl: string;
+  decisionClockPath: string;
 }
 
 // modelProxyPlaceholder mirrors agentsession.ModelKeyPlaceholder (Go). The
@@ -360,5 +367,11 @@ export function loadConfig(
     attachments: parseAttachmentManifest(env.BEX_AGENT_ATTACHMENTS),
     skills: parseSkillManifest(env.BEX_AGENT_SKILLS),
     secretValues: secretValuesFromEnv(env),
+    // Without a decision URL nothing can pause: the session runs autonomous.
+    approvalMode: env.BEX_AGENT_DECISION_URL
+      ? approvalMode(env.BEX_AGENT_APPROVAL_MODE)
+      : "autonomous",
+    decisionUrl: env.BEX_AGENT_DECISION_URL || "",
+    decisionClockPath: path.join(path.dirname(statusPath), "decision-waits"),
   };
 }

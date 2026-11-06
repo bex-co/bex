@@ -581,6 +581,9 @@ func (f *fakeStore) ListAgentSessions(_ context.Context, workspace string, q sto
 		if len(q.Phases) > 0 && !slices.Contains(q.Phases, row.Phase) {
 			continue
 		}
+		if len(q.States) > 0 && !slices.Contains(q.States, sessionState(row)) {
+			continue
+		}
 		if q.Repo != "" && row.Repo != q.Repo {
 			continue
 		}

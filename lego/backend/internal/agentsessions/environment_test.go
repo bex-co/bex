@@ -64,7 +64,14 @@ func (f *fakeEnvironments) GetAgentEnvironment(_ context.Context, ws string) (st
 func (f *fakeEnvironments) UpsertAgentEnvironment(_ context.Context, ws string, patch store.AgentEnvironmentPatch) (store.AgentEnvironment, error) {
 	row, ok := f.rows[ws]
 	if !ok {
-		row = store.AgentEnvironment{WorkspaceID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}}
+		row = store.AgentEnvironment{WorkspaceID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{},
+			ApprovalMode: ApprovalAutonomous, ApprovalBypassAllowed: true}
+	}
+	if patch.ApprovalMode != nil {
+		row.ApprovalMode = *patch.ApprovalMode
+	}
+	if patch.ApprovalBypassAllowed != nil {
+		row.ApprovalBypassAllowed = *patch.ApprovalBypassAllowed
 	}
 	if patch.NetworkTier != nil {
 		row.NetworkTier = *patch.NetworkTier
@@ -156,7 +163,8 @@ func exerciseEnvironmentRoundTrip(t *testing.T, svc *Service, ws string) {
 	if err != nil {
 		t.Fatalf("Environment: %v", err)
 	}
-	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains()}
+	want := Environment{OwnerID: ws, NetworkTier: NetworkTierRegistries, CustomHosts: []string{}, ModelSource: ModelSourceNone, RegistryHosts: sessionegress.DefaultRegistryDomains(),
+		ApprovalMode: ApprovalAutonomous, ApprovalBypassAllowed: true}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("defaults = %+v, want %+v", got, want)
 	}

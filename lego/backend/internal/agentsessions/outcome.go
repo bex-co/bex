@@ -21,7 +21,8 @@ const (
 // outcomeOf builds the outcome from the stored row alone (no transcript read).
 func outcomeOf(record store.AgentSession) *Outcome {
 	out := &Outcome{
-		State:             stateOf(record.Phase),
+		State:             sessionState(record),
+		WaitingFor:        waitingForOf(record.PendingDecisionKind),
 		Steerable:         steerable(record.Phase, record.ArchivedAt != nil),
 		Turn:              record.Turns,
 		DeliveryNote:      record.DeliveryNote,
@@ -40,6 +41,7 @@ func outcomeOf(record store.AgentSession) *Outcome {
 // is a convenience, and the transcript, attachment list and turn rows stay the
 // source of truth.
 func (s *Service) fillOutcome(ctx context.Context, record store.AgentSession, out *Outcome) {
+	out.PendingDecision = s.pendingDecision(ctx, record)
 	turns, err := s.Store.AgentSessionTurns(ctx, record.ID)
 	if err != nil {
 		log.Printf("agent-session outcome: list turns session=%s: %v", record.ID, err)
@@ -143,6 +145,9 @@ func (o TurnOutcomes) AgentSessionTurnOutcome(ctx context.Context, sessionID str
 		return "", nil, err
 	}
 	state := stateOf(phase)
+	if phase == store.AgentSessionNeedsInputPhase {
+		state = StateNeedsInput
+	}
 	out := &Outcome{State: state, Turn: turn}
 	if record.Turns == turn {
 		out = outcomeOf(record)

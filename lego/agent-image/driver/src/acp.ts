@@ -36,6 +36,7 @@ import {
   type SessionUpdate,
 } from "@agentclientprotocol/sdk/unstable";
 import type { AgentDriverConfig } from "./config.js";
+import { grant } from "./approval.js";
 import { describeError } from "./errors.js";
 
 const maximumConnectTimeoutMs = 60_000;
@@ -87,6 +88,12 @@ export interface CreateSessionOptions {
   abortSignal?: AbortSignal;
   // overlay is the rendered bex platform overlay; empty sends none.
   overlay?: string;
+  // requestPermission answers the engine's session/request_permission (ADR100
+  // D5): the approval policy, which may wait on a person. Absent grants every
+  // request, the autonomous behavior.
+  requestPermission?: (
+    request: RequestPermissionRequest,
+  ) => Promise<RequestPermissionResponse>;
 }
 
 // bexMcpServerScript is the compiled `bex` MCP server next to this module
@@ -111,7 +118,7 @@ export function bexMcpServers(
     Partial<
       Pick<
         AgentDriverConfig,
-        "resultUrl" | "outputSchema" | "resultRecordPath"
+        "resultUrl" | "outputSchema" | "resultRecordPath" | "decisionUrl" | "decisionClockPath"
       >
     >,
 ): McpServer[] {
@@ -133,6 +140,12 @@ export function bexMcpServers(
       { name: "BEX_RESULT_ENDPOINT", value: config.resultUrl },
       { name: "BEX_RESULT_SCHEMA", value: config.outputSchema },
       { name: "BEX_RESULT_RECORD_PATH", value: config.resultRecordPath ?? "" },
+    );
+  }
+  if (config.decisionUrl) {
+    env.push(
+      { name: "BEX_DECISION_ENDPOINT", value: config.decisionUrl },
+      { name: "BEX_DECISION_CLOCK_PATH", value: config.decisionClockPath ?? "" },
     );
   }
   if (env.length === 0) return [];
@@ -246,20 +259,6 @@ function withTimeout<T>(
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
 
-// autoApprove selects a permission option for a headless run. The sandbox is the
-// security boundary (ADR047 D5 egress + fs confinement), so the driver grants
-// the requested action rather than blocking a fire-and-forget turn on a prompt.
-function autoApprove(
-  request: RequestPermissionRequest,
-): RequestPermissionResponse {
-  const option =
-    request.options.find((candidate) => candidate.kind === "allow_always") ??
-    request.options.find((candidate) => candidate.kind === "allow_once") ??
-    request.options.find((candidate) => candidate.kind.startsWith("allow")) ??
-    request.options[0];
-  if (!option) return { outcome: { outcome: "cancelled" } };
-  return { outcome: { outcome: "selected", optionId: option.optionId } };
-}
 
 class SessionStateUnavailable extends Error {}
 
@@ -428,8 +427,11 @@ async function createSessionAttempt(
       }
       options.onUpdate(params.update);
     })
+    // The sandbox is the security boundary (ADR047 D5 egress + fs
+    // confinement), so an autonomous run grants every request; an approval
+    // mode routes it through the session's policy (ADR100).
     .onRequest(methods.client.session.requestPermission, ({ params }) =>
-      autoApprove(params),
+      options.requestPermission ? options.requestPermission(params) : grant(params),
     );
 
   // Writable.toWeb logs some pipe-write failures without propagating them to

@@ -1,6 +1,6 @@
 # w9 · m175 — Knowledge and Playbooks for cloud agents (Devin parity)
 
-**Worker:** worker9 **Goal:** a workspace can save reusable instructions (knowledge notes and playbooks) that agent sessions apply automatically or on request. **Status:** in progress — t001–t003, t006 done; next t004 (dashboard)
+**Worker:** worker9 **Goal:** a workspace can save reusable instructions (knowledge notes and playbooks) that agent sessions apply automatically or on request. **Status:** in progress — t001–t006 done; next t007 (CLI `--skill`, tests) and the live checks after deploy
 
 ## Tasks (in order)
 
@@ -9,8 +9,8 @@
 | t001 | Design: knowledge notes + playbooks model — **DONE** | 45m | — |
 | t002 | CRUD API for notes and playbooks — **DONE** | 90m | t001 |
 | t003 | Apply in the prompt overlay — **DONE** | 60m | t002 |
-| t004 | Dashboard: manage notes/playbooks, pick a playbook | 60m | t002 |
-| t005 | Render parity (Devin reference for agent surfaces) | 25m | t003, t004 |
+| t004 | Dashboard: manage notes/playbooks, pick a playbook — **DONE** | 60m | t002 |
+| t005 | Render parity (Devin reference for agent surfaces) — **DONE** | 25m | t003, t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage | 45m | t005, t006 |
 | t008 | Closeout | 10m | t007 |
@@ -36,3 +36,7 @@
 ## CLI follow-through (2026-11-06, from w9/m177 t004)
 
 - When this milestone adds its create/steer field, add `--skill name[:args]` on `bex agent run`/`send` (ADR099 D4) in `lego/cli/internal/agent`, with a contract test, as part of the implementation task.
+
+## CLI `--skill` (2026-11-06)
+
+- `bex agent run|send --skill NAME[:ARGUMENTS]` (repeatable) sends `skills` on create and steer, tested by `TestSkillsReachCreateAndSteer` and documented in `docs/bex-cli.md`. It ships with w9/m176.

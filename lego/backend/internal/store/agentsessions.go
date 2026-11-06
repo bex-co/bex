@@ -201,6 +201,12 @@ type AgentSession struct {
 	// (ADR098 D1): workspace agent secret references and inline session
 	// secrets. Values live only in OpenBao; this never holds one.
 	SecretNames []string
+	// PendingDecisionID and PendingDecisionKind mirror the decision the
+	// running turn is paused on (ADR100 D2): approval or question; empty when
+	// none. ApprovalMode is the session's effective approval mode (D3).
+	PendingDecisionID   string
+	PendingDecisionKind string
+	ApprovalMode        string
 	// InitialPrompt is create-only input used to atomically insert turn 1 with
 	// the session row. It is not an agent_sessions column and is never scanned.
 	InitialPrompt string
@@ -264,14 +270,21 @@ const AgentSessionIdempotencyWindow = 24 * time.Hour
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
 	phase, status, head_sha, pr_url, pr_number, turns, delivery_mode, delivery_note,
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
-	archived_at, title, tags, max_spend_microusd, secret_names`
+	archived_at, title, tags, max_spend_microusd, secret_names,
+	COALESCE(pending_decision_id, ''), COALESCE(pending_decision_kind, ''), approval_mode`
+
+// dest is the scan target list for agentSessionColumns, in order.
+func (s *AgentSession) dest() []any {
+	return []any{&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
+		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
+		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
+		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames,
+		&s.PendingDecisionID, &s.PendingDecisionKind, &s.ApprovalMode}
+}
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
-	err := row.Scan(&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
-		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
-		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
-		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames)
+	err := row.Scan(s.dest()...)
 	return s, err
 }
 
@@ -313,10 +326,10 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 			}
 		}
 		row, err = scanAgentSession(tx.QueryRow(ctx, `
-			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags, max_spend_microusd, secret_names)
-			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10, $11, $12)
+			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags, max_spend_microusd, secret_names, approval_mode)
+			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10, $11, $12, COALESCE(NULLIF($13, ''), 'autonomous'))
 			RETURNING `+agentSessionColumns,
-			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags), in.MaxSpendMicroUSD, nonNil(in.SecretNames)))
+			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags), in.MaxSpendMicroUSD, nonNil(in.SecretNames), in.ApprovalMode))
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "agent_sessions_idempotency_key_idx" {
@@ -359,10 +372,7 @@ func (s *PGStore) FindAgentSessionByIdempotencyKey(ctx context.Context, workspac
 		SELECT `+agentSessionColumns+`, idempotency_hash FROM agent_sessions
 		WHERE workspace_id=$1 AND idempotency_key=$2 AND created_at > now() - $3::interval`,
 		workspaceID, key, AgentSessionIdempotencyWindow.String())
-	err := row.Scan(&out.ID, &out.WorkspaceID, &out.Repo, &out.Branch, &out.AgentConfig,
-		&out.SandboxID, &out.Phase, &out.Status, &out.HeadSHA, &out.PRURL, &out.PRNumber,
-		&out.Turns, &out.DeliveryMode, &out.DeliveryNote, &out.FailureReason, &out.FailureReasonCode,
-		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &out.SecretNames, &hash)
+	err := row.Scan(append(out.dest(), &hash)...)
 	if err != nil {
 		return AgentSession{}, "", classify("agent session", err)
 	}
@@ -534,6 +544,9 @@ const (
 type AgentSessionListQuery struct {
 	Archived ArchivedFilter
 	Phases   []string
+	// States keeps sessions whose derived state (ADR094 D7, AgentSessionStateSQL)
+	// is one of these; it intersects with Phases.
+	States []string
 	// Tag keeps only sessions carrying this tag (ADR094 D3).
 	Tag           string
 	Repo          string
@@ -571,6 +584,9 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 	if len(q.Phases) > 0 {
 		sql += ` AND phase = ANY(` + arg(q.Phases) + `)`
 	}
+	if len(q.States) > 0 {
+		sql += ` AND ` + AgentSessionStateSQL + ` = ANY(` + arg(q.States) + `)`
+	}
 	if q.Tag != "" {
 		sql += ` AND ` + arg(q.Tag) + ` = ANY(tags)`
 	}
@@ -606,6 +622,16 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 	}
 	return out, rows.Err()
 }
+
+// AgentSessionStateSQL derives a row's coarse state (ADR094 D7) in SQL, the
+// same mapping agentsessions.stateOf applies in Go: a running turn paused on a
+// decision is needs_input (ADR100 D1), an unknown phase reads as working.
+const AgentSessionStateSQL = `(CASE
+	WHEN phase = 'running' AND pending_decision_id IS NOT NULL THEN '` + AgentSessionNeedsInput + `'
+	WHEN phase = 'completed' THEN 'succeeded'
+	WHEN phase = 'failed' THEN 'failed'
+	WHEN phase = 'canceled' THEN 'canceled'
+	ELSE 'working' END)`
 
 // SetAgentSessionArchived flips the ADR065 D1 archive flag. Idempotent both
 // ways: re-archiving keeps the original archived_at (the first archive time is
@@ -684,16 +710,16 @@ func (s *PGStore) ListAgentSessionsByPhases(ctx context.Context, phases []string
 	return out, rows.Err()
 }
 
-// ListTerminalAgentSessionsForPush returns completed/failed sessions updated at
-// or after `since`, across all workspaces, for the push worker's agent-terminal
-// projection (w11/m6 t005). Bounded by the recency window so the scan stays
+// ListTerminalAgentSessionsForPush returns completed/failed sessions, and
+// running ones paused on a decision (ADR100), updated at or after `since`,
+// across all workspaces, for the push worker's agent projection (w11/m6 t005). Bounded by the recency window so the scan stays
 // cheap; dedup to one push per (session, phase) is the notification's
 // source_event_key ON CONFLICT, not this query. Like ListAgentSessionsByPhases
 // it performs no authorization and is a trusted background read only.
 func (s *PGStore) ListTerminalAgentSessionsForPush(ctx context.Context, since time.Time) ([]AgentSession, error) {
 	rows, err := s.Pool.Query(ctx, `SELECT `+agentSessionColumns+`
 		FROM agent_sessions
-		WHERE phase = ANY($1) AND updated_at >= $2
+		WHERE (phase = ANY($1) OR (phase = 'running' AND pending_decision_id IS NOT NULL)) AND updated_at >= $2
 		ORDER BY updated_at ASC, id ASC`, []string{"completed", "failed"}, since)
 	if err != nil {
 		return nil, err

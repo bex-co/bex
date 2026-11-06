@@ -140,15 +140,17 @@ var agentModelSourceGQLEnum = graphql.NewEnum(graphql.EnumConfig{
 var agentEnvironmentGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentEnvironment",
 	Fields: graphql.Fields{
-		"ownerId":       gqlutil.ReqStrField(func(v Environment) any { return v.OwnerID }),
-		"networkTier":   gqlutil.Typed(graphql.NewNonNull(agentNetworkTierGQLEnum), func(v Environment) any { return v.NetworkTier }),
-		"customHosts":   gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.CustomHosts }),
-		"defaultModel":  &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.DefaultModel) })},
-		"modelPinned":   gqlutil.ReqBoolField(func(v Environment) any { return v.ModelPinned }),
-		"pinnedModel":   &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.PinnedModel) })},
-		"modelKeySet":   gqlutil.ReqBoolField(func(v Environment) any { return v.ModelKeySet }),
-		"modelSource":   gqlutil.Typed(graphql.NewNonNull(agentModelSourceGQLEnum), func(v Environment) any { return v.ModelSource }),
-		"registryHosts": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.RegistryHosts }),
+		"ownerId":               gqlutil.ReqStrField(func(v Environment) any { return v.OwnerID }),
+		"networkTier":           gqlutil.Typed(graphql.NewNonNull(agentNetworkTierGQLEnum), func(v Environment) any { return v.NetworkTier }),
+		"customHosts":           gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.CustomHosts }),
+		"defaultModel":          &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.DefaultModel) })},
+		"modelPinned":           gqlutil.ReqBoolField(func(v Environment) any { return v.ModelPinned }),
+		"pinnedModel":           &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any { return optionalString(v.PinnedModel) })},
+		"modelKeySet":           gqlutil.ReqBoolField(func(v Environment) any { return v.ModelKeySet }),
+		"modelSource":           gqlutil.Typed(graphql.NewNonNull(agentModelSourceGQLEnum), func(v Environment) any { return v.ModelSource }),
+		"registryHosts":         gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(graphql.String))), func(v Environment) any { return v.RegistryHosts }),
+		"approvalMode":          gqlutil.ReqStrField(func(v Environment) any { return v.ApprovalMode }),
+		"approvalBypassAllowed": gqlutil.ReqBoolField(func(v Environment) any { return v.ApprovalBypassAllowed }),
 		"updatedAt": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(v Environment) any {
 			if v.UpdatedAt == nil {
 				return nil
@@ -196,6 +198,8 @@ var agentEnvironmentGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 		"resetAgentModelMonthlySpendCap": &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true returns the spend cap to the plan default."},
 		"modelApiKey":                    &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "Write-only: sets or rotates the workspace's own model provider key. Never returned; read modelKeySet."},
 		"clearModelApiKey":               &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "true removes the workspace's own model provider key."},
+		"approvalMode":                   &graphql.InputObjectFieldConfig{Type: graphql.String, Description: "When agents pause for approval: autonomous (never), risky or all."},
+		"approvalBypassAllowed":          &graphql.InputObjectFieldConfig{Type: graphql.Boolean, Description: "Whether a session may start below approvalMode (bypassApproval)."},
 	},
 })
 
@@ -222,6 +226,8 @@ func environmentInputArg(args map[string]any) EnvironmentInput {
 		input.DefaultModel = &model
 	}
 	input.ModelAPIKey = gqlutil.StrPtr(raw, "modelApiKey")
+	input.ApprovalMode = gqlutil.StrPtr(raw, "approvalMode")
+	input.ApprovalBypassAllowed = gqlutil.BoolPtr(raw, "approvalBypassAllowed")
 	if clear := gqlutil.BoolPtr(raw, "clearModelApiKey"); clear != nil {
 		input.ClearModelAPIKey = *clear
 	}
@@ -257,10 +263,17 @@ var agentSessionCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 var agentSessionOutcomeGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionOutcome",
 	Fields: graphql.Fields{
-		"state":     gqlutil.ReqStrField(func(v Outcome) any { return v.State }),
-		"steerable": &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v Outcome) any { return v.Steerable })},
-		"turn":      gqlutil.IntField(func(v Outcome) any { return v.Turn }),
-		"summary":   gqlutil.OptionalStrField(func(v Outcome) any { return v.Summary }),
+		"state":      gqlutil.ReqStrField(func(v Outcome) any { return v.State }),
+		"steerable":  &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v Outcome) any { return v.Steerable })},
+		"turn":       gqlutil.IntField(func(v Outcome) any { return v.Turn }),
+		"summary":    gqlutil.OptionalStrField(func(v Outcome) any { return v.Summary }),
+		"waitingFor": gqlutil.OptionalStrField(func(v Outcome) any { return v.WaitingFor }),
+		"pendingDecision": &graphql.Field{Type: agentSessionDecisionGQLType, Resolve: gqlutil.Field(func(v Outcome) any {
+			if v.PendingDecision == nil {
+				return nil
+			}
+			return *v.PendingDecision
+		})},
 		"pullRequest": &graphql.Field{Type: agentSessionPullRequestGQLType, Resolve: gqlutil.Field(func(v Outcome) any {
 			if v.PullRequest == nil {
 				return nil
@@ -313,23 +326,25 @@ func jsonTextField[T any](description string, value func(T) any) *graphql.Field 
 var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSession",
 	Fields: graphql.Fields{
-		"id":          gqlutil.ReqStrField(func(v View) any { return v.ID }),
-		"ownerId":     gqlutil.ReqStrField(func(v View) any { return v.OwnerID }),
-		"repo":        gqlutil.ReqStrField(func(v View) any { return v.Repo }),
-		"branch":      gqlutil.ReqStrField(func(v View) any { return v.Branch }),
-		"title":       gqlutil.StrField(func(v View) any { return v.Title }),
-		"maxSpendUSD": gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
-		"tags":        &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
-		"secretNames": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
-		"agentConfig": gqlutil.Typed(graphql.NewNonNull(agentConfigGQLType), func(v View) any { return v.AgentConfig }),
-		"sandboxId":   gqlutil.StrField(func(v View) any { return v.SandboxID }),
-		"sshAddress":  gqlutil.StrField(func(v View) any { return v.SSHAddress }),
-		"phase":       gqlutil.ReqStrField(func(v View) any { return v.Phase }),
-		"state":       gqlutil.ReqStrField(func(v View) any { return v.State }),
-		"steerable":   &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v View) any { return v.Steerable })},
-		"status":      gqlutil.ReqStrField(func(v View) any { return v.Status }),
-		"headSha":     gqlutil.StrField(func(v View) any { return v.HeadSHA }),
-		"prUrl":       gqlutil.StrField(func(v View) any { return v.PRURL }),
+		"id":           gqlutil.ReqStrField(func(v View) any { return v.ID }),
+		"ownerId":      gqlutil.ReqStrField(func(v View) any { return v.OwnerID }),
+		"repo":         gqlutil.ReqStrField(func(v View) any { return v.Repo }),
+		"branch":       gqlutil.ReqStrField(func(v View) any { return v.Branch }),
+		"title":        gqlutil.StrField(func(v View) any { return v.Title }),
+		"maxSpendUSD":  gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
+		"tags":         &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
+		"secretNames":  &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
+		"agentConfig":  gqlutil.Typed(graphql.NewNonNull(agentConfigGQLType), func(v View) any { return v.AgentConfig }),
+		"sandboxId":    gqlutil.StrField(func(v View) any { return v.SandboxID }),
+		"sshAddress":   gqlutil.StrField(func(v View) any { return v.SSHAddress }),
+		"phase":        gqlutil.ReqStrField(func(v View) any { return v.Phase }),
+		"state":        gqlutil.ReqStrField(func(v View) any { return v.State }),
+		"steerable":    &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v View) any { return v.Steerable })},
+		"waitingFor":   gqlutil.OptionalStrField(func(v View) any { return v.WaitingFor }),
+		"approvalMode": gqlutil.StrField(func(v View) any { return v.ApprovalMode }),
+		"status":       gqlutil.ReqStrField(func(v View) any { return v.Status }),
+		"headSha":      gqlutil.StrField(func(v View) any { return v.HeadSHA }),
+		"prUrl":        gqlutil.StrField(func(v View) any { return v.PRURL }),
 		"prNumber": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v View) any {
 			if v.PRNumber == 0 {
 				return nil
@@ -694,13 +709,16 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"secretNames":     gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"secrets":         gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSecretGQLInput))),
 				"skills":          gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSkillGQLInput))),
+				"approvalMode":    gqlutil.Arg(graphql.String),
+				"bypassApproval":  gqlutil.Arg(graphql.Boolean),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				schema, required, err := outputArgs(p.Args)
 				if err != nil {
 					return nil, err
 				}
-				return s.Create(p.Context, CreateRequest{MaxSpendUSD: floatArg(p.Args, "maxSpendUSD"), OutputSchema: schema, OutputRequired: required, OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args), Skills: skillsArg(p.Args)})
+				bypass, _ := p.Args["bypassApproval"].(bool)
+				return s.Create(p.Context, CreateRequest{ApprovalMode: gqlutil.Str(p.Args, "approvalMode"), BypassApproval: bypass, MaxSpendUSD: floatArg(p.Args, "maxSpendUSD"), OutputSchema: schema, OutputRequired: required, OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args), Skills: skillsArg(p.Args)})
 			},
 		},
 		"steerAgentSession": &graphql.Field{
@@ -806,5 +824,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 		},
 	}
 	maps.Copy(fields, s.skillMutations())
+	maps.Copy(fields, s.decisionMutations())
 	return fields
 }

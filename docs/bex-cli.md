@@ -154,9 +154,10 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 `bex agent` drives Cloud Agents, bex's cloud coding agents, from a terminal or a CI job. It is a thin client of the agent-session REST contract ([ADR094](ADR094-coding-agent-mcp.md), attachments [ADR095](ADR095-agent-attachments.md)) and authenticates like every other command (`bex login`, or `BEX_ACCESS_TOKEN` in CI). Sessions are created in the active workspace (`bex workspace set` or `BEX_WORKSPACE`).
 
 | Command | What it does |
-| --- | --- |
-| `bex agent run [flags] <task…>` | Start a session. `--repo`, `--branch`, `--agent` (default `claude`), `--model`, `--title`, `--tag` (repeatable), `--attach FILE` (repeatable; uploaded first, found under `/attachments`), `--output-schema FILE` (read the result from `outcome.result`), `--max-spend USD`, `--secret NAME` (a workspace agent secret, repeatable) and `--secret-from-env NAME[=VAR]` (sends the local env var `VAR`, default `NAME`, as an inline secret for this session only; values are never taken on the command line, [ADR098](ADR098-agent-session-secrets.md)). `-f FILE` reads the task from a file (`-` for stdin). |
-| `bex agent send <ags-id> <message…>` | Start the next turn, with `--attach`, `--output-schema`, `--secret` and `--secret-from-env` for that turn. |
+| --- | --- | --- | --- |
+| `bex agent run [flags] <task…>` | Start a session. `--repo`, `--branch`, `--agent` (default `claude`), `--model`, `--title`, `--tag` (repeatable), `--attach FILE` (repeatable; uploaded first, found under `/attachments`), `--output-schema FILE` (read the result from `outcome.result`), `--max-spend USD`, `--approval-mode autonomous | risky | all`or`--bypass-approval`(ask before risky actions, [ADR100](ADR100-agent-approval-mode.md)),`--secret NAME`(a workspace agent secret, repeatable) and`--secret-from-env NAME[=VAR]`(sends the local env var`VAR`, default `NAME`, as an inline secret for this session only; values are never taken on the command line, [ADR098](ADR098-agent-session-secrets.md)). `-f FILE` reads the task from a file (`-` for stdin). |
+| `bex agent send <ags-id> <message…>` | Start the next turn, with `--attach`, `--output-schema`, `--skill`, `--secret` and `--secret-from-env` for that turn. |
+| `bex agent answer <ags-id> (--allow [--scope session] \| --deny \| --text …)` | Answer the session's pending decision: approve or deny a gated action, or reply to an `ask_user` question. |
 | `bex agent wait <ags-id>…` | Wait until up to 20 sessions end their turn (`--any`: the first one). |
 | `bex agent get <ags-id>` | Show a session and its outcome: state, summary, PR, shared files, result, model cost. |
 | `bex agent list` | List the workspace's sessions (`--state`, `--tag`, `--repo`, `--archived`, `--limit`, `--cursor`). |
@@ -175,7 +176,7 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
   | `2`   | usage error                                                  |
   | `3`   | the turn failed; stderr names its `failureReasonCode`        |
   | `4`   | the session was canceled                                     |
-  | `5`   | the agent needs input; reply with `bex agent send`           |
+  | `5`   | the agent needs input; answer with `bex agent answer`        |
   | `124` | `--timeout` elapsed while the session was still working      |
   | `130` | interrupted (Ctrl-C or SIGTERM)                              |
 

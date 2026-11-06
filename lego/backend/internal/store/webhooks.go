@@ -926,6 +926,24 @@ WITH feed AS (
            e.turn
     FROM agent_session_turn_events e
     WHERE e.workspace_id = ANY($5)
+  UNION ALL
+    SELECT d.created_at,
+           'agent-decision:' || d.id,
+           d.created_at,
+           d.workspace_id,
+           d.session_id,
+           ''::text,
+           '` + EventSourceAgent + `'::text,
+           '` + AgentSessionNeedsInputPhase + `'::text,
+           ''::text,
+           ''::text,
+           ''::text,
+           ''::text,
+           NULL::boolean,
+           ''::text,
+           d.turn
+    FROM agent_session_decisions d
+    WHERE d.workspace_id = ANY($5)
 )
 SELECT cursor_at, key, at, tenant_id, service_id, service_name, source, phase, deploy_id, status, verb, fact_type, auto_deploy_enabled, app_id, agent_turn
 FROM feed

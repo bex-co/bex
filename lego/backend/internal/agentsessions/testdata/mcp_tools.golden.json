@@ -6,6 +6,101 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
+    "description": "Answer the decision a cloud coding-agent session paused on (state needs_input; the decision is outcome.pendingDecision of get_agent_session or wait_agent_sessions). For an approval (waitingFor approval) pass allow, and scope once (default) or session; for a question (waitingFor user) pass answer. The turn then continues. A decision is answered once; one left 24 hours expires (an approval as denied).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "allow": {
+          "description": "for an approval: true runs the action, false refuses it",
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "answer": {
+          "description": "for a question: the reply the agent reads",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "decisionId": {
+          "description": "the decision id (dcs-…) from outcome.pendingDecision",
+          "type": "string"
+        },
+        "id": {
+          "description": "the agent session id (ags-…)",
+          "type": "string"
+        },
+        "scope": {
+          "description": "for an allowed approval: once (default) or session, which also allows the same kind of action for the rest of the session",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "decisionId"
+      ],
+      "type": "object"
+    },
+    "name": "answer_agent_session_decision",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "answer": true,
+        "answeredAt": {
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "detail": true,
+        "expiresAt": {
+          "type": "string"
+        },
+        "id": {
+          "type": "string"
+        },
+        "kind": {
+          "type": "string"
+        },
+        "sessionId": {
+          "type": "string"
+        },
+        "state": {
+          "type": "string"
+        },
+        "title": {
+          "type": "string"
+        },
+        "turn": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "sessionId",
+        "turn",
+        "kind",
+        "title",
+        "detail",
+        "state",
+        "createdAt",
+        "expiresAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
     "description": "Archive a cloud coding-agent session: it leaves the working-set list (still viewable; resume/steer refused until unarchived) and any still-live sandbox is reclaimed at the next reaper tick without canceling an in-flight turn.",
     "inputSchema": {
       "additionalProperties": false,
@@ -47,6 +142,9 @@
             "task"
           ],
           "type": "object"
+        },
+        "approvalMode": {
+          "type": "string"
         },
         "archivedAt": {
           "type": [
@@ -153,6 +251,58 @@
                 "array"
               ]
             },
+            "pendingDecision": {
+              "additionalProperties": false,
+              "properties": {
+                "answer": true,
+                "answeredAt": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "detail": true,
+                "expiresAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "turn": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "turn",
+                "kind",
+                "title",
+                "detail",
+                "state",
+                "createdAt",
+                "expiresAt"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -186,6 +336,9 @@
             },
             "turn": {
               "type": "integer"
+            },
+            "waitingFor": {
+              "type": "string"
             }
           },
           "required": [
@@ -262,6 +415,9 @@
           "type": "string"
         },
         "url": {
+          "type": "string"
+        },
+        "waitingFor": {
           "type": "string"
         }
       },
@@ -333,6 +489,9 @@
           ],
           "type": "object"
         },
+        "approvalMode": {
+          "type": "string"
+        },
         "archivedAt": {
           "type": [
             "null",
@@ -438,6 +597,58 @@
                 "array"
               ]
             },
+            "pendingDecision": {
+              "additionalProperties": false,
+              "properties": {
+                "answer": true,
+                "answeredAt": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "detail": true,
+                "expiresAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "turn": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "turn",
+                "kind",
+                "title",
+                "detail",
+                "state",
+                "createdAt",
+                "expiresAt"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -471,6 +682,9 @@
             },
             "turn": {
               "type": "integer"
+            },
+            "waitingFor": {
+              "type": "string"
             }
           },
           "required": [
@@ -547,6 +761,9 @@
           "type": "string"
         },
         "url": {
+          "type": "string"
+        },
+        "waitingFor": {
           "type": "string"
         }
       },
@@ -615,6 +832,9 @@
           ],
           "type": "object"
         },
+        "approvalMode": {
+          "type": "string"
+        },
         "archivedAt": {
           "type": [
             "null",
@@ -720,6 +940,58 @@
                 "array"
               ]
             },
+            "pendingDecision": {
+              "additionalProperties": false,
+              "properties": {
+                "answer": true,
+                "answeredAt": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "detail": true,
+                "expiresAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "turn": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "turn",
+                "kind",
+                "title",
+                "detail",
+                "state",
+                "createdAt",
+                "expiresAt"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -753,6 +1025,9 @@
             },
             "turn": {
               "type": "integer"
+            },
+            "waitingFor": {
+              "type": "string"
             }
           },
           "required": [
@@ -830,6 +1105,9 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
         }
       },
       "required": [
@@ -855,7 +1133,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING. Pass secretNames (workspace agent secrets) and secrets (inline, this session only) to give the agent API keys as env vars; values are redacted from the transcript. Pass skills to make the turn follow workspace skills (list_agent_skills).",
+    "description": "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING. Pass secretNames (workspace agent secrets) and secrets (inline, this session only) to give the agent API keys as env vars; values are redacted from the transcript. Pass skills to make the turn follow workspace skills (list_agent_skills). approvalMode (autonomous, risky, all) makes the agent pause in state needs_input before risky actions until answer_agent_session_decision; bypassApproval runs it autonomous.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -884,6 +1162,10 @@
           ],
           "type": "object"
         },
+        "approvalMode": {
+          "description": "autonomous, risky (ask before destructive, publishing and cloud-mutating actions) or all (ask before every action that changes something); default the workspace's mode",
+          "type": "string"
+        },
         "attachmentIds": {
           "items": {
             "type": "string"
@@ -895,6 +1177,10 @@
         },
         "branch": {
           "type": "string"
+        },
+        "bypassApproval": {
+          "description": "true runs the session autonomous, never pausing for approval (Devin's bypass_approval); refused when the workspace does not allow bypass",
+          "type": "boolean"
         },
         "egressAllowlist": {
           "items": {
@@ -1039,6 +1325,9 @@
           ],
           "type": "object"
         },
+        "approvalMode": {
+          "type": "string"
+        },
         "archivedAt": {
           "type": [
             "null",
@@ -1144,6 +1433,58 @@
                 "array"
               ]
             },
+            "pendingDecision": {
+              "additionalProperties": false,
+              "properties": {
+                "answer": true,
+                "answeredAt": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "detail": true,
+                "expiresAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "turn": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "turn",
+                "kind",
+                "title",
+                "detail",
+                "state",
+                "createdAt",
+                "expiresAt"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -1177,6 +1518,9 @@
             },
             "turn": {
               "type": "integer"
+            },
+            "waitingFor": {
+              "type": "string"
             }
           },
           "required": [
@@ -1253,6 +1597,9 @@
           "type": "string"
         },
         "url": {
+          "type": "string"
+        },
+        "waitingFor": {
           "type": "string"
         }
       },
@@ -1676,6 +2023,12 @@
             "number"
           ]
         },
+        "approvalBypassAllowed": {
+          "type": "boolean"
+        },
+        "approvalMode": {
+          "type": "string"
+        },
         "billingBalanceDue": {
           "type": [
             "null",
@@ -1762,6 +2115,8 @@
         "modelKeySet",
         "modelSource",
         "registryHosts",
+        "approvalMode",
+        "approvalBypassAllowed",
         "updatedAt",
         "agentModelMonthlySpendCapUsd",
         "agentModelPlanSpendCapUsd",
@@ -1825,6 +2180,9 @@
             "task"
           ],
           "type": "object"
+        },
+        "approvalMode": {
+          "type": "string"
         },
         "archivedAt": {
           "type": [
@@ -1931,6 +2289,58 @@
                 "array"
               ]
             },
+            "pendingDecision": {
+              "additionalProperties": false,
+              "properties": {
+                "answer": true,
+                "answeredAt": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "detail": true,
+                "expiresAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "turn": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "turn",
+                "kind",
+                "title",
+                "detail",
+                "state",
+                "createdAt",
+                "expiresAt"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -1964,6 +2374,9 @@
             },
             "turn": {
               "type": "integer"
+            },
+            "waitingFor": {
+              "type": "string"
             }
           },
           "required": [
@@ -2040,6 +2453,9 @@
           "type": "string"
         },
         "url": {
+          "type": "string"
+        },
+        "waitingFor": {
           "type": "string"
         }
       },
@@ -2868,6 +3284,9 @@
                 ],
                 "type": "object"
               },
+              "approvalMode": {
+                "type": "string"
+              },
               "archivedAt": {
                 "type": [
                   "null",
@@ -2973,6 +3392,58 @@
                       "array"
                     ]
                   },
+                  "pendingDecision": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "answer": true,
+                      "answeredAt": {
+                        "type": [
+                          "null",
+                          "string"
+                        ]
+                      },
+                      "createdAt": {
+                        "type": "string"
+                      },
+                      "detail": true,
+                      "expiresAt": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "sessionId": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "turn": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "sessionId",
+                      "turn",
+                      "kind",
+                      "title",
+                      "detail",
+                      "state",
+                      "createdAt",
+                      "expiresAt"
+                    ],
+                    "type": [
+                      "null",
+                      "object"
+                    ]
+                  },
                   "pullRequest": {
                     "additionalProperties": false,
                     "properties": {
@@ -3006,6 +3477,9 @@
                   },
                   "turn": {
                     "type": "integer"
+                  },
+                  "waitingFor": {
+                    "type": "string"
                   }
                 },
                 "required": [
@@ -3082,6 +3556,9 @@
                 "type": "string"
               },
               "url": {
+                "type": "string"
+              },
+              "waitingFor": {
                 "type": "string"
               }
             },
@@ -3258,6 +3735,9 @@
           ],
           "type": "object"
         },
+        "approvalMode": {
+          "type": "string"
+        },
         "archivedAt": {
           "type": [
             "null",
@@ -3363,6 +3843,58 @@
                 "array"
               ]
             },
+            "pendingDecision": {
+              "additionalProperties": false,
+              "properties": {
+                "answer": true,
+                "answeredAt": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "detail": true,
+                "expiresAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "turn": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "turn",
+                "kind",
+                "title",
+                "detail",
+                "state",
+                "createdAt",
+                "expiresAt"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -3396,6 +3928,9 @@
             },
             "turn": {
               "type": "integer"
+            },
+            "waitingFor": {
+              "type": "string"
             }
           },
           "required": [
@@ -3472,6 +4007,9 @@
           "type": "string"
         },
         "url": {
+          "type": "string"
+        },
+        "waitingFor": {
           "type": "string"
         }
       },
@@ -3633,6 +4171,9 @@
           ],
           "type": "object"
         },
+        "approvalMode": {
+          "type": "string"
+        },
         "archivedAt": {
           "type": [
             "null",
@@ -3738,6 +4279,58 @@
                 "array"
               ]
             },
+            "pendingDecision": {
+              "additionalProperties": false,
+              "properties": {
+                "answer": true,
+                "answeredAt": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "detail": true,
+                "expiresAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "turn": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "turn",
+                "kind",
+                "title",
+                "detail",
+                "state",
+                "createdAt",
+                "expiresAt"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -3771,6 +4364,9 @@
             },
             "turn": {
               "type": "integer"
+            },
+            "waitingFor": {
+              "type": "string"
             }
           },
           "required": [
@@ -3847,6 +4443,9 @@
           "type": "string"
         },
         "url": {
+          "type": "string"
+        },
+        "waitingFor": {
           "type": "string"
         }
       },
@@ -3945,6 +4544,10 @@
           ],
           "type": "object"
         },
+        "approvalMode": {
+          "description": "autonomous, risky (ask before destructive, publishing and cloud-mutating actions) or all (ask before every action that changes something); default the workspace's mode",
+          "type": "string"
+        },
         "attachmentIds": {
           "items": {
             "type": "string"
@@ -3956,6 +4559,10 @@
         },
         "branch": {
           "type": "string"
+        },
+        "bypassApproval": {
+          "description": "true runs the session autonomous, never pausing for approval (Devin's bypass_approval); refused when the workspace does not allow bypass",
+          "type": "boolean"
         },
         "egressAllowlist": {
           "items": {
@@ -4100,6 +4707,9 @@
           ],
           "type": "object"
         },
+        "approvalMode": {
+          "type": "string"
+        },
         "archivedAt": {
           "type": [
             "null",
@@ -4205,6 +4815,58 @@
                 "array"
               ]
             },
+            "pendingDecision": {
+              "additionalProperties": false,
+              "properties": {
+                "answer": true,
+                "answeredAt": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "detail": true,
+                "expiresAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "turn": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "turn",
+                "kind",
+                "title",
+                "detail",
+                "state",
+                "createdAt",
+                "expiresAt"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -4238,6 +4900,9 @@
             },
             "turn": {
               "type": "integer"
+            },
+            "waitingFor": {
+              "type": "string"
             }
           },
           "required": [
@@ -4314,6 +4979,9 @@
           "type": "string"
         },
         "url": {
+          "type": "string"
+        },
+        "waitingFor": {
           "type": "string"
         }
       },
@@ -4475,6 +5143,9 @@
           ],
           "type": "object"
         },
+        "approvalMode": {
+          "type": "string"
+        },
         "archivedAt": {
           "type": [
             "null",
@@ -4580,6 +5251,58 @@
                 "array"
               ]
             },
+            "pendingDecision": {
+              "additionalProperties": false,
+              "properties": {
+                "answer": true,
+                "answeredAt": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "detail": true,
+                "expiresAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "turn": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "turn",
+                "kind",
+                "title",
+                "detail",
+                "state",
+                "createdAt",
+                "expiresAt"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -4613,6 +5336,9 @@
             },
             "turn": {
               "type": "integer"
+            },
+            "waitingFor": {
+              "type": "string"
             }
           },
           "required": [
@@ -4689,6 +5415,9 @@
           "type": "string"
         },
         "url": {
+          "type": "string"
+        },
+        "waitingFor": {
           "type": "string"
         }
       },
@@ -4757,6 +5486,9 @@
           ],
           "type": "object"
         },
+        "approvalMode": {
+          "type": "string"
+        },
         "archivedAt": {
           "type": [
             "null",
@@ -4862,6 +5594,58 @@
                 "array"
               ]
             },
+            "pendingDecision": {
+              "additionalProperties": false,
+              "properties": {
+                "answer": true,
+                "answeredAt": {
+                  "type": [
+                    "null",
+                    "string"
+                  ]
+                },
+                "createdAt": {
+                  "type": "string"
+                },
+                "detail": true,
+                "expiresAt": {
+                  "type": "string"
+                },
+                "id": {
+                  "type": "string"
+                },
+                "kind": {
+                  "type": "string"
+                },
+                "sessionId": {
+                  "type": "string"
+                },
+                "state": {
+                  "type": "string"
+                },
+                "title": {
+                  "type": "string"
+                },
+                "turn": {
+                  "type": "integer"
+                }
+              },
+              "required": [
+                "id",
+                "sessionId",
+                "turn",
+                "kind",
+                "title",
+                "detail",
+                "state",
+                "createdAt",
+                "expiresAt"
+              ],
+              "type": [
+                "null",
+                "object"
+              ]
+            },
             "pullRequest": {
               "additionalProperties": false,
               "properties": {
@@ -4895,6 +5679,9 @@
             },
             "turn": {
               "type": "integer"
+            },
+            "waitingFor": {
+              "type": "string"
             }
           },
           "required": [
@@ -4972,6 +5759,9 @@
         },
         "url": {
           "type": "string"
+        },
+        "waitingFor": {
+          "type": "string"
         }
       },
       "required": [
@@ -5006,6 +5796,20 @@
           "type": [
             "null",
             "number"
+          ]
+        },
+        "approvalBypassAllowed": {
+          "description": "whether a session may start below the workspace's approval mode (bypassApproval); default true",
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "approvalMode": {
+          "description": "when the workspace's agents pause for approval: autonomous (never, the default), risky (before destructive, publishing and cloud-mutating actions) or all (before every action that changes something)",
+          "type": [
+            "null",
+            "string"
           ]
         },
         "clearModelApiKey": {
@@ -5089,6 +5893,12 @@
             "null",
             "number"
           ]
+        },
+        "approvalBypassAllowed": {
+          "type": "boolean"
+        },
+        "approvalMode": {
+          "type": "string"
         },
         "billingBalanceDue": {
           "type": [
@@ -5176,6 +5986,8 @@
         "modelKeySet",
         "modelSource",
         "registryHosts",
+        "approvalMode",
+        "approvalBypassAllowed",
         "updatedAt",
         "agentModelMonthlySpendCapUsd",
         "agentModelPlanSpendCapUsd",
@@ -5417,7 +6229,7 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
-    "description": "Block until cloud coding-agent sessions settle, instead of polling get_agent_session in a loop. ids: 1-20 sessions. until: all (default) returns when every session has left state working, any when the first does. timeoutSeconds: 1-25 (default 25). Returns each session's id, state and outcome, the ids that settled, and timedOut. When timedOut is true the sessions are still working: call again.",
+    "description": "Block until cloud coding-agent sessions settle, instead of polling get_agent_session in a loop. ids: 1-20 sessions. until: all (default) returns when every session has left state working, any when the first does; needs_input (paused on a decision, see outcome.pendingDecision) counts as left. timeoutSeconds: 1-25 (default 25). Returns each session's id, state and outcome, the ids that settled, and timedOut. When timedOut is true the sessions are still working: call again.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -5507,6 +6319,58 @@
                       "array"
                     ]
                   },
+                  "pendingDecision": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "answer": true,
+                      "answeredAt": {
+                        "type": [
+                          "null",
+                          "string"
+                        ]
+                      },
+                      "createdAt": {
+                        "type": "string"
+                      },
+                      "detail": true,
+                      "expiresAt": {
+                        "type": "string"
+                      },
+                      "id": {
+                        "type": "string"
+                      },
+                      "kind": {
+                        "type": "string"
+                      },
+                      "sessionId": {
+                        "type": "string"
+                      },
+                      "state": {
+                        "type": "string"
+                      },
+                      "title": {
+                        "type": "string"
+                      },
+                      "turn": {
+                        "type": "integer"
+                      }
+                    },
+                    "required": [
+                      "id",
+                      "sessionId",
+                      "turn",
+                      "kind",
+                      "title",
+                      "detail",
+                      "state",
+                      "createdAt",
+                      "expiresAt"
+                    ],
+                    "type": [
+                      "null",
+                      "object"
+                    ]
+                  },
                   "pullRequest": {
                     "additionalProperties": false,
                     "properties": {
@@ -5540,6 +6404,9 @@
                   },
                   "turn": {
                     "type": "integer"
+                  },
+                  "waitingFor": {
+                    "type": "string"
                   }
                 },
                 "required": [

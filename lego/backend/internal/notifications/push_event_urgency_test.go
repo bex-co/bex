@@ -100,6 +100,8 @@ func TestProjectedPushUrgencyIsPublished(t *testing.T) {
 		agent(store.AgentSession{Phase: "completed", PRURL: "https://github.com/o/r/pull/1"}),
 		agent(store.AgentSession{Phase: "completed"}),
 		agent(store.AgentSession{Phase: "failed"}),
+		agent(store.AgentSession{Phase: "running", PendingDecisionID: "dcs-d0abc123def456ghij78", PendingDecisionKind: store.AgentDecisionApproval}),
+		agent(store.AgentSession{Phase: "running", PendingDecisionID: "dcs-d0abc123def456ghij79", PendingDecisionKind: store.AgentDecisionQuestion}),
 	}
 	projected := map[DeliveryEvent]bool{}
 	for _, p := range projections {

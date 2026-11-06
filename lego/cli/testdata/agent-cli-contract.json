@@ -6,7 +6,11 @@
     "branch": "main",
     "title": "Fix the crash",
     "tags": ["ci"],
-    "agentConfig": { "agent": "claude", "model": "claude-sonnet-5-5", "task": "Fix the crash in crash.log" },
+    "agentConfig": {
+      "agent": "claude",
+      "model": "claude-sonnet-5-5",
+      "task": "Fix the crash in crash.log"
+    },
     "phase": "completed",
     "state": "succeeded",
     "steerable": true,
@@ -21,12 +25,35 @@
       "steerable": true,
       "turn": 1,
       "summary": "Fixed the nil dereference; tests pass.",
-      "pullRequest": { "url": "https://github.com/acme/api/pull/412", "number": 412, "headSha": "9f2c" },
+      "pullRequest": {
+        "url": "https://github.com/acme/api/pull/412",
+        "number": 412,
+        "headSha": "9f2c"
+      },
       "deliveryNote": "",
       "failureReasonCode": "",
-      "files": [{ "id": "att-d0abc123def456ghij78", "name": "report.md", "mediaType": "text/markdown", "size": 2048 }],
-      "result": { "tests_passed": true, "files_changed": 3 },
-      "cost": { "modelUSD": "0.42" }
+      "files": [
+        {
+          "id": "att-d0abc123def456ghij78",
+          "name": "report.md",
+          "mediaType": "text/markdown",
+          "size": 2048
+        }
+      ],
+      "result": {
+        "tests_passed": true,
+        "files_changed": 3
+      },
+      "cost": {
+        "modelUSD": "0.42"
+      },
+      "waitingFor": "approval",
+      "pendingDecision": {
+        "id": "dcs-d0abc123def456ghij78",
+        "kind": "approval",
+        "title": "Run (force-push): git push --force origin main",
+        "state": "pending"
+      }
     }
   },
   "attachment": {
@@ -47,7 +74,10 @@
         "seq": 7,
         "partIndex": 3,
         "turn": 1,
-        "part": { "type": "text", "text": "Done." },
+        "part": {
+          "type": "text",
+          "text": "Done."
+        },
         "partial": true,
         "createdAt": "2026-11-05T10:04:00Z"
       }
@@ -65,5 +95,10 @@
     ],
     "nextAfterSeq": 7
   },
-  "error": { "error": "agent session not found", "message": "agent session not found", "id": "not_found", "code": "AGENT_SESSION_NOT_FOUND" }
+  "error": {
+    "error": "agent session not found",
+    "message": "agent session not found",
+    "id": "not_found",
+    "code": "AGENT_SESSION_NOT_FOUND"
+  }
 }

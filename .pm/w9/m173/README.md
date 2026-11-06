@@ -102,3 +102,8 @@ The CVE gate is unchanged.
   - beancount-cms-v2 run 42162745684 was cancelled. Its `lighthouse` job had been stuck in "Production browser smoke" since 05:47, and the job has no `timeout-minutes`, so GitHub would only kill it at 6 h.
   - That repo's other jobs were left alone. bex deploy 42176650307's test jobs started within minutes.
   - The repo's owner should give `lighthouse` (`ci.yml:327`) a `timeout-minutes`. That is not done from w9.
+- **No pin from 07:15 to at least 10:35 UTC (2026-11-06).**
+  - Run 42176650307 (3310f6484) finished `success` with `build`/`deploy` skipped. Its pre-build `check-supersession` saw newer manifests (056dc079), which is the designed w4/439 path: the queued run builds the newer tree.
+  - The gap comes from duration. Runner contention, described above, stretched the run's tests to about 2.5 h, so any manifest commit in that window skips the build.
+  - Run 42196880498 (5f5af11fc) is next.
+  - For t007: if this repeats with runners free, revisit the pre-build skip on exit 4. For example, build anyway when the last pin is more than 2 h old, so a manifest burst cannot keep production unpinned.

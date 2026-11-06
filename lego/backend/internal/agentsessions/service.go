@@ -249,6 +249,14 @@ type Service struct {
 	// Skills is the ADR099 workspace skills table. nil ⇒ every skill verb
 	// answers AGENT_SKILLS_UNAVAILABLE and dispatches deliver none.
 	Skills SkillStore
+	// Decisions is the ADR100 decision table. nil ⇒ every session runs
+	// autonomous and the answer verb is unavailable. DecisionAwaitHold bounds
+	// one sandbox await (agentsession.DecisionAwaitHold when zero) and
+	// DecisionAwaitPoll its re-read without a notification (15 s when zero);
+	// tests shorten both.
+	Decisions         DecisionStore
+	DecisionAwaitHold time.Duration
+	DecisionAwaitPoll time.Duration
 	// dispatchRunner runs the slow background provisioning half of create/steer/
 	// resume (w2/m64). Left nil in production => a detached goroutine, so the
 	// mutation returns before the sandbox exists; tests inject a synchronous (or
@@ -576,6 +584,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
+	approvalMode, err := s.sessionApprovalMode(ctx, workspaceID, req.ApprovalMode, req.BypassApproval)
+	if err != nil {
+		return View{}, err
+	}
 	config, err := json.Marshal(req.AgentConfig)
 	if err != nil {
 		return View{}, err
@@ -587,7 +599,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		AgentConfig:   config,
 		InitialPrompt: strings.TrimSpace(req.AgentConfig.Task),
 		Title:         req.Title, Tags: req.Tags,
-		MaxSpendMicroUSD: ceiling, SecretNames: secrets.names,
+		MaxSpendMicroUSD: ceiling, SecretNames: secrets.names, ApprovalMode: approvalMode,
 		IdempotencyKey: idemKey, IdempotencyHash: idemHash,
 		InitialAttachments: store.AgentAttachmentBinding{
 			IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx),
@@ -923,24 +935,13 @@ func (req *ListRequest) storeQuery() (store.AgentSessionListQuery, error) {
 		}
 	}
 	q.Phases = req.Phases
-	if len(req.States) > 0 {
-		fromStates := []string{}
-		for _, state := range req.States {
-			phases, ok := phasesOfState(state)
-			if !ok {
-				return store.AgentSessionListQuery{}, core.NewBadRequestError("AGENT_SESSION_FILTER_INVALID",
-					"unknown state filter", map[string]any{"state": state})
-			}
-			fromStates = append(fromStates, phases...)
+	for _, state := range req.States {
+		if !validStates[state] {
+			return store.AgentSessionListQuery{}, core.NewBadRequestError("AGENT_SESSION_FILTER_INVALID",
+				"unknown state filter", map[string]any{"state": state})
 		}
-		if len(req.Phases) > 0 {
-			fromStates = slices.DeleteFunc(fromStates, func(p string) bool { return !slices.Contains(req.Phases, p) })
-		}
-		if len(fromStates) == 0 {
-			fromStates = []string{""} // matches no session: a state with no phase yet (needs_input) lists nothing
-		}
-		q.Phases = fromStates
 	}
+	q.States = req.States
 	q.Tag = strings.TrimSpace(req.Tag)
 	limit, err := normalizeLimit(req.Limit, defaultListLimit, maxListLimit)
 	if err != nil {
@@ -1450,7 +1451,7 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 	for name, value := range agentsession.ModelRouteEnv(record.WorkspaceID, config.Agent, byoKey) {
 		env[name] = value
 	}
-	return env
+	return s.withDecisionEnv(env, record)
 }
 
 // defaultTurnTimeout bounds one agent turn when BEX_AGENT_TURN_TIMEOUT is unset.
@@ -1840,7 +1841,8 @@ func viewOf(record store.AgentSession) (View, error) {
 	}
 	view := View{ID: record.ID, OwnerID: record.WorkspaceID, Repo: record.Repo, Branch: record.Branch, Title: record.Title, Tags: record.Tags,
 		AgentConfig: config, SandboxID: record.SandboxID, Phase: record.Phase, Status: record.Status,
-		State: stateOf(record.Phase), Steerable: steerable(record.Phase, record.ArchivedAt != nil),
+		State: sessionState(record), Steerable: steerable(record.Phase, record.ArchivedAt != nil),
+		WaitingFor: waitingForOf(record.PendingDecisionKind), ApprovalMode: record.ApprovalMode,
 		Outcome: outcomeOf(record),
 		HeadSHA: record.HeadSHA, PRURL: record.PRURL, PRNumber: record.PRNumber,
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,

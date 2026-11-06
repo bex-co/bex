@@ -65,6 +65,8 @@ type fakeAPI struct {
 	slept        []time.Duration
 	transcrQuery string
 	refreshed    []string // attachment ids re-read for a fresh download URL
+	decisionKind string   // the pending decision's kind on a needs_input session
+	answers      []capturedRequest
 }
 
 type capturedRequest struct {
@@ -115,6 +117,13 @@ func newFakeAPI(t *testing.T) *fakeAPI {
 	})
 	mux.HandleFunc("GET /v1/agent-sessions/{id}", f.get)
 	mux.HandleFunc("POST /v1/agent-sessions/{id}/steer", f.steer)
+	mux.HandleFunc("POST /v1/agent-sessions/{id}/decisions/{decisionId}", func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		f.mu.Lock()
+		f.answers = append(f.answers, capturedRequest{query: r.PathValue("id") + "/" + r.PathValue("decisionId"), body: body})
+		f.mu.Unlock()
+		writeJSON(w, http.StatusOK, map[string]any{"id": r.PathValue("decisionId"), "kind": "approval", "title": "Run: git push --force", "state": "allowed"})
+	})
 	mux.HandleFunc("POST /v1/agent-sessions/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
 		f.mu.Lock()
 		f.canceled = append(f.canceled, r.PathValue("id"))
@@ -191,6 +200,15 @@ func (f *fakeAPI) view(id, state string) map[string]any {
 	}
 	if ssh := f.ssh[id]; ssh != "" {
 		v["sshAddress"] = ssh
+	}
+	if state == stateNeedsInput {
+		kind := f.decisionKind
+		if kind == "" {
+			kind = "approval"
+		}
+		outcome := v["outcome"].(map[string]any)
+		outcome["waitingFor"] = map[string]string{"approval": "approval", "question": "user"}[kind]
+		outcome["pendingDecision"] = map[string]any{"id": "dcs-00000000000000000001", "kind": kind, "title": "Run: git push --force", "state": "pending"}
 	}
 	return v
 }
@@ -399,7 +417,7 @@ func TestRunWaitExitsByTheTurnState(t *testing.T) {
 		{stateSucceeded, 0, ""},
 		{stateFailed, exitFailed, "AGENT_TURN_FAILED: the tests did not pass"},
 		{stateCanceled, exitCanceled, "was canceled"},
-		{stateNeedsInput, exitNeedsInput, "bex agent send ags-new1"},
+		{stateNeedsInput, exitNeedsInput, "asks: Run: git push --force; answer with `bex agent answer ags-new1"},
 	} {
 		t.Run(tc.final, func(t *testing.T) {
 			f := newFakeAPI(t)
@@ -595,6 +613,35 @@ func TestSecretsReachCreateAndSteerFromNamesAndTheEnvironment(t *testing.T) {
 		if _, stderr, code := run(t, f.deps(t).deps, args...); code != 2 || len(f.creates) != creates || len(f.steers) != steers {
 			t.Fatalf("%v: exit %d (want 2, nothing sent) stderr %q", args, code, stderr)
 		}
+	}
+}
+
+// ADR099 D4: --skill NAME[:ARGUMENTS] reaches create and steer as
+// skills[{name, arguments}]; an empty name is a usage error.
+func TestSkillsReachCreateAndSteer(t *testing.T) {
+	f := newFakeAPI(t)
+	if _, stderr, code := run(t, f.deps(t).deps, "run", "--skill", "release:v1.2 staging", "--skill", "lint", "Ship", "it"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	var created createRequest
+	if err := json.Unmarshal(f.creates[0].body, &created); err != nil {
+		t.Fatal(err)
+	}
+	want := []skillInvocation{{Name: "release", Arguments: "v1.2 staging"}, {Name: "lint"}}
+	if !slices.Equal(created.Skills, want) {
+		t.Fatalf("create skills = %s", f.creates[0].body)
+	}
+	f.script["ags-s1"] = []string{stateSucceeded}
+	if _, stderr, code := run(t, f.deps(t).deps, "send", "ags-s1", "--skill", "lint", "again"); code != 0 {
+		t.Fatalf("send exit %d: %s", code, stderr)
+	}
+	var steered steerRequest
+	if err := json.Unmarshal(f.steers[0].body, &steered); err != nil || !slices.Equal(steered.Skills, []skillInvocation{{Name: "lint"}}) {
+		t.Fatalf("steer skills = %s", f.steers[0].body)
+	}
+	creates := len(f.creates)
+	if _, _, code := run(t, f.deps(t).deps, "run", "--skill", ":args", "task"); code != 2 || len(f.creates) != creates {
+		t.Fatalf("empty skill name: exit %d, creates %d", code, len(f.creates)-creates)
 	}
 }
 
@@ -964,5 +1011,68 @@ func TestADroppedConnectionIsTransient(t *testing.T) {
 	}
 	if transient(errors.New("token refresh failed")) {
 		t.Fatal("a plain error counted as transient")
+	}
+}
+
+// ADR100: --approval-mode and --bypass-approval reach the create; a needs_input
+// session is answered with `bex agent answer`, by the decision's own kind.
+func TestApprovalFlagsAndAnswer(t *testing.T) {
+	f := newFakeAPI(t)
+	if _, stderr, code := run(t, f.deps(t).deps, "run", "--approval-mode", "risky", "deploy"); code != 0 {
+		t.Fatalf("run exit %d: %s", code, stderr)
+	}
+	var created createRequest
+	if err := json.Unmarshal(f.creates[0].body, &created); err != nil || created.ApprovalMode != "risky" || created.BypassApproval {
+		t.Fatalf("create body = %s", f.creates[0].body)
+	}
+	if _, _, code := run(t, f.deps(t).deps, "run", "--bypass-approval", "deploy"); code != 0 {
+		t.Fatal("bypass run failed")
+	}
+	created = createRequest{}
+	if err := json.Unmarshal(f.creates[1].body, &created); err != nil || !created.BypassApproval || created.ApprovalMode != "" {
+		t.Fatalf("bypass create body = %s", f.creates[1].body)
+	}
+	for _, args := range [][]string{
+		{"run", "--approval-mode", "sometimes", "x"},
+		{"run", "--approval-mode", "all", "--bypass-approval", "x"},
+	} {
+		if _, _, code := run(t, f.deps(t).deps, args...); code != exitUsage {
+			t.Errorf("%v: exit %d, want usage", args, code)
+		}
+	}
+
+	f.script["ags-s1"] = []string{stateNeedsInput}
+	stdout, stderr, code := run(t, f.deps(t).deps, "answer", "ags-s1", "--allow", "--scope", "session")
+	if code != 0 || !strings.Contains(stdout, "dcs-00000000000000000001: allowed") {
+		t.Fatalf("answer exit %d stdout %q stderr %q", code, stdout, stderr)
+	}
+	if got := f.answers[0]; got.query != "ags-s1/dcs-00000000000000000001" || string(got.body) != `{"allow":true,"scope":"session"}` {
+		t.Fatalf("answer request = %s %s", got.query, got.body)
+	}
+	if _, _, code := run(t, f.deps(t).deps, "answer", "ags-s1", "--deny"); code != 0 || string(f.answers[1].body) != `{"allow":false}` {
+		t.Fatalf("deny exit %d body %s", code, f.answers[1].body)
+	}
+	// An approval is not answered with text, a question only with text.
+	if _, stderr, code := run(t, f.deps(t).deps, "answer", "ags-s1", "--text", "eu"); code != exitUsage || !strings.Contains(stderr, "--allow or --deny") {
+		t.Fatalf("text on an approval: exit %d %q", code, stderr)
+	}
+	f.decisionKind = "question"
+	if _, _, code := run(t, f.deps(t).deps, "answer", "ags-s1", "--text", "use eu"); code != 0 || string(f.answers[2].body) != `{"answer":"use eu"}` {
+		t.Fatalf("question answer exit %d body %s", code, f.answers[len(f.answers)-1].body)
+	}
+	for _, args := range [][]string{
+		{"answer", "ags-s1"},
+		{"answer", "ags-s1", "--allow", "--deny"},
+		{"answer", "ags-s1", "--deny", "--scope", "session"},
+		{"answer", "ags-s1", "--allow", "--scope", "forever"},
+	} {
+		if _, _, code := run(t, f.deps(t).deps, args...); code != exitUsage {
+			t.Errorf("%v: exit %d, want usage", args, code)
+		}
+	}
+	// A session not waiting on anything is an error, not a silent no-op.
+	f.script["ags-s2"] = []string{stateWorking}
+	if _, stderr, code := run(t, f.deps(t).deps, "answer", "ags-s2", "--allow"); code != 1 || !strings.Contains(stderr, "not waiting on a decision") {
+		t.Fatalf("answer on a working session: exit %d %q", code, stderr)
 	}
 }

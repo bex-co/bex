@@ -26,6 +26,9 @@
 //   - submit_result (when the turn carries an outputSchema, ADR094 D5)
 //     validates a structured result against that schema and posts it to the
 //     session's Pod-bound result URL.
+//   - ask_user (when the session has an approval mode, ADR100 D4) asks the
+//     person who started it a question on the Pod-bound decision URL and
+//     waits for the answer.
 // No secret is involved: the gateway authenticates the source Pod.
 //
 // The transport is newline-delimited JSON-RPC 2.0 over stdio, hand-rolled to
@@ -47,6 +50,7 @@ import {
   shareFileToolDefinition,
   shareFileToolName,
 } from "./share-file.js";
+import { askUser, askUserToolDefinition, askUserToolName } from "./ask-user.js";
 
 export const toolName = "open_or_update_draft_pr";
 export const maxTitleRunes = 256;
@@ -230,6 +234,7 @@ export function availableTools(
   if (env.BEX_RESULT_ENDPOINT && env.BEX_RESULT_SCHEMA) {
     tools.push(submitResultToolDefinition);
   }
+  if (env.BEX_DECISION_ENDPOINT) tools.push(askUserToolDefinition);
   return tools;
 }
 
@@ -243,6 +248,9 @@ function serverInstructions(env: NodeJS.ProcessEnv): string {
   }
   if (env.BEX_RESULT_ENDPOINT && env.BEX_RESULT_SCHEMA) {
     lines.push(`Use ${submitResultToolName} to hand back this task's structured result.`);
+  }
+  if (env.BEX_DECISION_ENDPOINT) {
+    lines.push(`Use ${askUserToolName} only when you are genuinely blocked on a choice the user must make.`);
   }
   return lines.join(" ");
 }
@@ -303,7 +311,9 @@ export async function handleMessage(
           ? await shareFile(args, env)
           : name === submitResultToolName
             ? await submitResult(args, env)
-            : await openOrUpdateDraftPr(args, env);
+            : name === askUserToolName
+              ? await askUser(args, env)
+              : await openOrUpdateDraftPr(args, env);
       const structured = outcome.ok ? outcome.result : { error: outcome.error };
       return rpcResult(message.id, {
         content: [{ type: "text", text: JSON.stringify(structured) }],

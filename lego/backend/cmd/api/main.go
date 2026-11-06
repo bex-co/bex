@@ -302,6 +302,7 @@ func main() {
 	platformRebuild := &lateHandler{}
 	shareFiles := &lateHandler{}
 	agentResults := &lateHandler{}
+	agentDecisions := &lateHandler{}
 	identityClaims := identityClaimsHandler(cfg, deps.Identities)
 
 	// Control plane (source of truth, w1/m2): opt-in via BEX_CP_DB_URI. When set,
@@ -391,7 +392,8 @@ func main() {
 			go backfillModelKeyFlags(ctx, deps.Secrets, st)
 		}
 
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, opsRole, identityClaims, platformRebuild, shareFiles, agentResults, ready)
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, opsRole, identityClaims,
+			controlPlaneVerbs{platformRebuild: platformRebuild, shareFiles: shareFiles, agentResults: agentResults, agentDecisions: agentDecisions}, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
@@ -429,6 +431,7 @@ func main() {
 	if srv.AgentSessions != nil && st != nil && cfg.SandboxExecSecret != "" {
 		shareFiles.set(&agentsession.ShareFileHandler{Secret: []byte(cfg.SandboxExecSecret), Files: srv.AgentSessions, Nonce: st})
 		agentResults.set(&agentsession.ResultHandler{Secret: []byte(cfg.SandboxExecSecret), Results: srv.AgentSessions, Nonce: st})
+		agentDecisions.set(&agentsession.DecisionHandler{Secret: []byte(cfg.SandboxExecSecret), Decisions: srv.AgentSessions, Nonce: st})
 	}
 	srv.OriginMetrics = originMetrics
 	srv.CLITelemetry.Metrics = originMetrics
@@ -483,6 +486,7 @@ func main() {
 	go srv.AgentSessionCompleter.Run(ctx)
 	// ADR095 D2/D7: expire unbound uploads and purge deleted attachments.
 	go agentsessions.RunAttachmentSweep(ctx, srv.AgentSessions, time.Hour)
+	go agentsessions.RunDecisionSweep(ctx, srv.AgentSessions, time.Minute)
 	// The Blueprint recovery sweep settles sync runs abandoned by process
 	// loss (w8/m37 t004). No-op unless the control-plane store is wired.
 	go srv.BlueprintRecovery.Run(ctx)
@@ -811,6 +815,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.AgentSessionStore = st    // ADR047 D3: durable agent-session lifecycle
 	deps.AgentAttachmentStore = st // ADR095: attachment metadata
 	deps.AgentSkillStore = st      // ADR099: workspace skills
+	deps.AgentDecisionStore = st   // ADR100: approval decisions
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
 	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.
@@ -1049,7 +1054,13 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, platformRebuild, shareFiles, agentResults http.Handler, ready *serve.Readiness) {
+// controlPlaneVerbs are the optional internal verbs the control-plane
+// listener mounts when configured (nil handler = not mounted).
+type controlPlaneVerbs struct {
+	platformRebuild, shareFiles, agentResults, agentDecisions http.Handler
+}
+
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, verbs controlPlaneVerbs, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -1095,10 +1106,11 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 		// attachments here. Same gateway-only HMAC + internal-only listener; the
 		// envelope names the gateway-verified session and binds the body's
 		// digest. Late-bound: the agent-session service is built after :8091.
-		internalRoot.Handle(agentsession.InternalShareFilePath, shareFiles)
+		internalRoot.Handle(agentsession.InternalShareFilePath, verbs.shareFiles)
 		// ADR094 D5: the structured result the agent submits for a turn. Same
 		// gateway-only HMAC (a `submit-result` MAC domain) and late binding.
-		internalRoot.Handle(agentsession.InternalResultPath, agentResults)
+		internalRoot.Handle(agentsession.InternalResultPath, verbs.agentResults)
+		internalRoot.Handle(agentsession.InternalDecisionPath, verbs.agentDecisions)
 		internalRoot.Handle(agentsession.InternalEgressGrantPath, &agentsession.EgressGrantHandler{
 			Secret:  []byte(cfg.SandboxExecSecret),
 			Granter: &agentsession.EgressGranter{Sessions: st, Environments: st, Audit: st},
@@ -1152,7 +1164,7 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 	identityclaims.Register(internalRoot, identityClaims)
 	// The fleet rebuild verb (platform-rebuild) shares this listener and the
 	// control-plane bearer: like the projection API it writes across tenants.
-	internalRoot.Handle("POST "+deploys.PlatformRebuildPath, platformRebuild)
+	internalRoot.Handle("POST "+deploys.PlatformRebuildPath, verbs.platformRebuild)
 	internalRoot.Handle("/", internal.Handler())
 	cpAddr := cfg.CPAddr
 	// Metered as surface="internal": the projection/mint/ops-role verbs are not

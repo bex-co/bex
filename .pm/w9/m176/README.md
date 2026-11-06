@@ -1,16 +1,16 @@
 # w9 · m176 — Approval mode: the agent asks before risky actions (needs_input)
 
-**Worker:** worker9 **Goal:** a session can pause in `needs_input` asking the user to approve or answer, and resumes when they reply — on API, MCP (state=needs_input in wait), dashboard and push. **Status:** todo
+**Worker:** worker9 **Goal:** a session can pause in `needs_input` asking the user to approve or answer, and resumes when they reply — on API, MCP (state=needs_input in wait), dashboard and push. **Status:** in progress — t001, t002, t005 done; next t003 (dashboard)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Backend needs_input lifecycle and contracts | 90m | — |
-| t002 | Approval policy and bypass | 60m | t001 |
+| t001 | Backend needs_input lifecycle and contracts — **DONE** | 90m | — |
+| t002 | Approval policy and bypass — **DONE** | 60m | t001 |
 | t003 | Dashboard: answer a pending decision | 60m | t001 |
 | t004 | Render parity (Devin reference for agent surfaces) | 25m | t002, t003 |
-| t005 | Simplify | 15m | t004 |
+| t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage | 45m | t004, t005 |
 | t007 | Closeout | 10m | t006 |
 

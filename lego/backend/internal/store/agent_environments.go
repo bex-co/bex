@@ -38,7 +38,12 @@ type AgentEnvironment struct {
 	// provider key (ADR091 D7); nil means no BYO key. The key itself lives
 	// only in OpenBao.
 	ModelKeySetAt *time.Time
-	UpdatedAt     time.Time
+	// ApprovalMode is the workspace's agent approval mode (ADR100 D3):
+	// autonomous, risky or all; ApprovalBypassAllowed lets a session start
+	// below it (bypassApproval).
+	ApprovalMode          string
+	ApprovalBypassAllowed bool
+	UpdatedAt             time.Time
 }
 
 // ModelKeySet reports whether the workspace has its own model provider key,
@@ -58,6 +63,10 @@ type AgentEnvironmentPatch struct {
 	// ModelKeySet records (true) or clears (false) the BYO model key flag;
 	// nil keeps it.
 	ModelKeySet *bool
+	// ApprovalMode and ApprovalBypassAllowed set the approval policy (ADR100
+	// D3); nil keeps each.
+	ApprovalMode          *string
+	ApprovalBypassAllowed *bool
 }
 
 // GetAgentEnvironment returns the workspace's explicit row — ErrNotFound when
@@ -113,10 +122,10 @@ func (s *PGStore) UpsertAgentEnvironmentLocked(ctx context.Context, workspaceID 
 }
 
 // agentEnvironmentColumns are the columns AgentEnvironment.dest scans.
-const agentEnvironmentColumns = `network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, updated_at`
+const agentEnvironmentColumns = `network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, approval_mode, approval_bypass_allowed, updated_at`
 
 func (e *AgentEnvironment) dest() []any {
-	return []any{&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.SpendCapOverrideMicroUSD, &e.ModelKeySetAt, &e.UpdatedAt}
+	return []any{&e.NetworkTier, &e.CustomHosts, &e.DefaultModel, &e.SpendCapOverrideMicroUSD, &e.ModelKeySetAt, &e.ApprovalMode, &e.ApprovalBypassAllowed, &e.UpdatedAt}
 }
 
 func upsertAgentEnvironment(ctx context.Context, q interface {
@@ -129,10 +138,11 @@ func upsertAgentEnvironment(ctx context.Context, q interface {
 	}
 	e := AgentEnvironment{WorkspaceID: workspaceID}
 	err := q.QueryRow(ctx, `
-		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at)
+		INSERT INTO agent_environments (workspace_id, network_tier, custom_hosts, default_model, agent_model_spend_cap_override_microusd, model_key_set_at, approval_mode, approval_bypass_allowed)
 		VALUES ($1, COALESCE($2, 'registries'), COALESCE($3::text[], '{}'), COALESCE($4, ''),
 		        CASE WHEN $6::boolean THEN NULL ELSE $5::bigint END,
-		        CASE WHEN $7::boolean THEN now() END)
+		        CASE WHEN $7::boolean THEN now() END,
+		        COALESCE($8, 'autonomous'), COALESCE($9::boolean, true))
 		ON CONFLICT (workspace_id) DO UPDATE
 			SET network_tier  = COALESCE($2, agent_environments.network_tier),
 			    custom_hosts  = COALESCE($3::text[], agent_environments.custom_hosts),
@@ -143,9 +153,12 @@ func upsertAgentEnvironment(ctx context.Context, q interface {
 			    model_key_set_at = CASE
 			        WHEN $7::boolean IS NULL THEN agent_environments.model_key_set_at
 			        WHEN $7::boolean THEN now() END,
+			    approval_mode = COALESCE($8, agent_environments.approval_mode),
+			    approval_bypass_allowed = COALESCE($9::boolean, agent_environments.approval_bypass_allowed),
 			    updated_at    = now()
 		RETURNING `+agentEnvironmentColumns,
 		workspaceID, patch.NetworkTier, hosts, patch.DefaultModel, patch.SpendCapOverrideMicroUSD, patch.ClearSpendCapOverride, patch.ModelKeySet,
+		patch.ApprovalMode, patch.ApprovalBypassAllowed,
 	).Scan(e.dest()...)
 	if err != nil {
 		return AgentEnvironment{}, classify("agent environment", err)

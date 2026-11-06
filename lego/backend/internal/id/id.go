@@ -147,12 +147,15 @@ var (
 	// AgentSkill is a workspace skill for cloud agents (ADR099): a SKILL.md
 	// document every session of the workspace can use.
 	AgentSkill = Kind{prefix: "skl", desc: "workspace agent skill"}
+	// AgentDecision is one approval or question a cloud agent session paused
+	// on (ADR100 D2).
+	AgentDecision = Kind{prefix: "dcs", desc: "agent session decision"}
 )
 
 // kinds lists every registered Kind; Kinds returns a copy. KindOf, New's
 // membership guard, and the guard test enumerate it, so it must include every
 // Kind declared above.
-var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, BuildSource, Build, AgentSkill}
+var kinds = []Kind{Workspace, Service, Postgres, KeyValue, Domain, EnvGroup, Deploy, Invite, Export, Audit, Owner, Event, CronRun, Notification, Project, RegistryCredential, Blueprint, Environment, Webhook, WebhookDelivery, WebhookReplayLease, Job, SSHKey, SSHSession, BlueprintSync, BlueprintAutoSyncIntent, AgentSession, Disk, WorkspaceCreationAttempt, CLITelemetryEvent, SandboxExecution, GitClaimSelection, Sandbox, StaticRoute, StaticHeader, AgentModelRequest, AgentAttachment, BuildSource, Build, AgentSkill, AgentDecision}
 
 // Kinds returns the registered id kinds (a copy — callers must not mutate it).
 func Kinds() []Kind { return append([]Kind(nil), kinds...) }

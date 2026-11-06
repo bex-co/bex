@@ -321,8 +321,7 @@ func newProjectedPush(event DeliveryEvent, title, body string) projectedPush {
 // pushEventUrgency is the urgency each selectable push event is delivered at.
 // The projections read it through newProjectedPush and pushEventUrgencies
 // publishes it, so the settings panel can mark a selection that the effective
-// minimum urgency drops (w4/m231). agent_needs_decision has no producer yet
-// (unsentPushEvents); its row is the agent family's.
+// minimum urgency drops (w4/m231).
 var pushEventUrgency = map[DeliveryEvent]DeliveryUrgency{
 	DeliveryEventDeployStarted:         DeliveryUrgencyRoutine,
 	DeliveryEventDeploySucceeded:       DeliveryUrgencyRoutine,
@@ -344,11 +343,10 @@ var pushEventUrgency = map[DeliveryEvent]DeliveryUrgency{
 	DeliveryEventPostgresUpgradeFailed: DeliveryUrgencyImportant,
 }
 
-// unsentPushEvents are the selectable events no producer emits yet:
-// agent_needs_decision waits on ADR048's needs-decision steering. The panel
+// unsentPushEvents are the selectable events no producer emits yet. The panel
 // labels them rather than hiding them, so a saved selection survives until
-// the producer ships (w4/349).
-var unsentPushEvents = map[DeliveryEvent]bool{DeliveryEventAgentNeedsDecision: true}
+// the producer ships (w4/349). agent_needs_decision ships with ADR100.
+var unsentPushEvents = map[DeliveryEvent]bool{}
 
 // PushEventUrgencyView is one selectable push event, the urgency it is
 // delivered at, and whether anything sends it yet.
@@ -450,7 +448,8 @@ func fanOutPush(
 	return batch, nil
 }
 
-// projectAgentSessionPush maps a terminal agent session to its push. A completed
+// projectAgentSessionPush maps a terminal agent session, or a running one paused
+// on a decision (ADR100: agent_needs_decision), to its push. A completed
 // session that opened a draft PR is "PR ready"; a completed one without a PR and
 // a failed one surface as a failure needing attention. Lock-screen text stays
 // GENERIC (ADR087, w6/m137): no repository name, PR number, prompt, or log
@@ -459,6 +458,12 @@ func fanOutPush(
 // after opening the deep link. The closed routing envelope carries the
 // session id; nothing else identifies the work.
 func projectAgentSessionPush(s store.AgentSession) (projectedPush, bool) {
+	if s.Phase == "running" && s.PendingDecisionID != "" {
+		if s.PendingDecisionKind == store.AgentDecisionQuestion {
+			return newProjectedPush(DeliveryEventAgentNeedsDecision, "Agent has a question", "An agent session is waiting for your answer."), true
+		}
+		return newProjectedPush(DeliveryEventAgentNeedsDecision, "Agent needs approval", "An agent session is waiting for your approval."), true
+	}
 	switch s.Phase {
 	case "completed":
 		if s.PRURL != "" {
@@ -505,6 +510,10 @@ func (w *PushWorker) dispatchAgentSessions(ctx context.Context, byTenant map[str
 			continue
 		}
 		sourceKey := "agent:" + session.ID + ":" + session.Phase
+		if session.PendingDecisionID != "" {
+			// One push per decision (ADR100): a session can pause many times.
+			sourceKey = "agent:" + session.ID + ":decision:" + session.PendingDecisionID
+		}
 		if session.UpdatedAt.After(newestSeen) {
 			newestSeen = session.UpdatedAt
 			boundary = map[string]bool{}
