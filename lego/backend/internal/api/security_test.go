@@ -118,3 +118,37 @@ func TestSecurityHeadersOnAllMethods(t *testing.T) {
 		}
 	}
 }
+
+// TestAPIResponsesAreNoStore is w4/522: connection info, env values and keys
+// carry credentials, and no response told a browser or intermediary not to
+// keep them. Every bex-api answer defaults to no-store; a route that sets its
+// own policy (an SSE stream's no-cache) keeps it.
+func TestAPIResponsesAreNoStore(t *testing.T) {
+	srv := matrixServer(t)
+	h, err := srv.Handler()
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, tc := range []struct{ method, path, body string }{
+		{http.MethodGet, "/v1/services?limit=1", ""},
+		{http.MethodPost, "/graphql", `{"query":"{ services { id } }"}`},
+		{http.MethodGet, "/v1/services?limit=1", "unauthenticated"},
+	} {
+		token := testToken
+		if tc.body == "unauthenticated" {
+			token, tc.body = "", ""
+		}
+		rec := do(t, h, tc.method, tc.path, token, tc.body)
+		if got := rec.Header().Get("Cache-Control"); got != "no-store" {
+			t.Errorf("%s %s (%d): Cache-Control %q, want no-store", tc.method, tc.path, rec.Code, got)
+		}
+	}
+	own := withSecurityHeaders(nil, http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		w.Header().Set("Cache-Control", "no-cache")
+	}))
+	w := httptest.NewRecorder()
+	own.ServeHTTP(w, httptest.NewRequest(http.MethodGet, "/v1/logs/subscribe", nil))
+	if got := w.Header().Values("Cache-Control"); len(got) != 1 || got[0] != "no-cache" {
+		t.Errorf("a route's own policy = %v, want [no-cache]", got)
+	}
+}

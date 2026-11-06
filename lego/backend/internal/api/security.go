@@ -22,7 +22,8 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
 
-// withSecurityHeaders adds standard hardening headers to every response.
+// withSecurityHeaders adds standard hardening headers, Cache-Control: no-store
+// included, to every response.
 //
 // HSTS is emitted only for a request that is genuinely served over TLS: either
 // the connection itself terminated TLS at this process (r.TLS != nil), or the
@@ -40,6 +41,10 @@ func withSecurityHeaders(trusted core.TrustedProxies, next http.Handler) http.Ha
 		h.Set("X-Frame-Options", "DENY")
 		// bex-api is a pure JSON/SSE API: deny all document-loading sources.
 		h.Set("Content-Security-Policy", "default-src 'none'; frame-ancestors 'none'")
+		// No API answer is for a cache to keep: connection info, env values and
+		// keys carry credentials (w4/522), as the deploy hook already said. A
+		// route with its own policy (an SSE stream's no-cache) Sets over this.
+		h.Set("Cache-Control", "no-store")
 		if requestIsHTTPS(trusted, r) {
 			h.Set("Strict-Transport-Security", "max-age=63072000; includeSubDomains")
 		}
