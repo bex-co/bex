@@ -24,7 +24,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **m175** — [Knowledge and Playbooks for cloud agents (Devin parity)](m175/README.md) (8 tasks)
 - [ ] **m176** — [Approval mode: the agent asks before risky actions (`needs_input`)](m176/README.md) (7 tasks) ← coordinates with w11/m7 (mobile client)
 - [ ] **m177** — [Cloud Agents from the terminal and the editor: `bex agent` and bex desktop MCP preconfig](m177/README.md) (7 tasks)
-- [ ] **079** — [ADR095 residuals: attachment storage metering and malware scanning](079.md) ← re-evaluate 2026-12-05 or at 10 GB stored
+- [ ] **079** — **BLOCKED (time/usage trigger: re-evaluate on 2026-12-05 or at 10 GB in `bex-agent-attachments`, whichever comes first; no user action needed)** — [ADR095 residuals: attachment storage metering and malware scanning](blocked/079.md)
 - [x] **075** — [`outcome.files`: the files the agent shared, in the session outcome](done/075.md) — **DONE 2026-11-05** (ADR095 D11 follow-up once ADR094 `outcome` shipped)
 - [x] **m168** — [ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery](done/m168/README.md) — **DONE 2026-11-05:** live acceptance passed after the dispatch-archive fix (t011): the agent read the attached log and PNG, a follow-up file reached turn 2, downloads byte-exact
 - [x] **m169** — [ADR095 phase 2 — attachments in the `/agents` dashboard](done/m169/README.md) — **DONE 2026-11-05:** live acceptance passed on production
