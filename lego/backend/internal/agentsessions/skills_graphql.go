@@ -39,8 +39,8 @@ var agentSkillGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"content":   gqlutil.OptionalStrField(func(v AgentSkill) any { return v.Content }),
 		"version":   gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(v AgentSkill) any { return v.Version }),
 		"updatedBy": gqlutil.OptionalStrField(func(v AgentSkill) any { return v.UpdatedBy }),
-		"createdAt": gqlutil.ReqStrField(func(v AgentSkill) any { return gqlTime(v.CreatedAt) }),
-		"updatedAt": gqlutil.ReqStrField(func(v AgentSkill) any { return gqlTime(v.UpdatedAt) }),
+		"createdAt": gqlutil.TimeField(func(v AgentSkill) any { return v.CreatedAt }),
+		"updatedAt": gqlutil.TimeField(func(v AgentSkill) any { return v.UpdatedAt }),
 	},
 })
 

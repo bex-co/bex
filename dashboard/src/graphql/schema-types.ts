@@ -385,14 +385,14 @@ export type AgentSkill = {
   __typename: 'AgentSkill';
   body: Maybe<Scalars['String']['output']>;
   content: Maybe<Scalars['String']['output']>;
-  createdAt: Scalars['String']['output'];
+  createdAt: Maybe<Scalars['String']['output']>;
   description: Scalars['String']['output'];
   enabled: Scalars['Boolean']['output'];
   id: Scalars['String']['output'];
   name: Scalars['String']['output'];
   ownerId: Scalars['String']['output'];
   triggers: Array<Scalars['String']['output']>;
-  updatedAt: Scalars['String']['output'];
+  updatedAt: Maybe<Scalars['String']['output']>;
   updatedBy: Maybe<Scalars['String']['output']>;
   version: Scalars['Int']['output'];
 };
