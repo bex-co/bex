@@ -198,7 +198,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
-- [ ] **106** — [Reopen of w6/087: no production pin for 12h24m on 2026-11-06; every passing deploy run was superseded](106.md) — todo (~45m) ← live `/qa-find-bugs w4` loop, 2026-11-06. 30 deploy runs after the 00:44 pin: 24 cancelled, 2 failed (fixed), 2 passed then skipped build/deploy on rule 4; bound green-main pin latency (w6/087 reopen condition met).
+- [ ] **106** — [Reopen of w6/087: no production pin for 12h24m on 2026-11-06; every passing deploy run was superseded](106.md) — fixed on main by `3344b00aa` (w9/m173 t010), pending live verification (~45m) ← live `/qa-find-bugs w4` loop, 2026-11-06. 30 deploy runs after the 00:44 pin: 24 cancelled, 2 failed (fixed), 2 passed then skipped build/deploy on rule 4; bound green-main pin latency (w6/087 reopen condition met).
 - [x] **101** — [The SSH gateway's exec drain buffer has no metrics](done/101.md) — done 2026-11-03: buffered-bytes gauge, fallback counter, `SSHGatewayDrainBudgetExhausted` alert + panel.
 - [x] **102** — [Web Shell closes before the browser's close reply](done/102.md) — done 2026-11-03: waits ≤1 s for the close reply (red/green test).
 - [x] **103** — [Argo CD reports 27 orphaned resources on bex-operator](done/103.md) — done 2026-11-03: out-of-band objects named in the AppProject ignore list; condition list empty (`e53505211`).
