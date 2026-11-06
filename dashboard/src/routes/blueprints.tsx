@@ -85,9 +85,11 @@ function BlueprintsListPage() {
 
   return (
     <DashboardLayout>
-      <div className="flex items-center justify-between border-b px-4 py-4 sm:px-6">
+      {/* Wraps below ~390 px, where the two action labels no longer fit
+          beside the title (w4/520); the pending header wraps the same way. */}
+      <div className="flex flex-wrap items-center justify-between gap-3 border-b px-4 py-4 sm:px-6">
         <h1 className="text-xl font-semibold">{t("blueprints.pageTitle")}</h1>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button
             size="sm"
             variant="outline"
