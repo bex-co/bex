@@ -27,10 +27,13 @@ import { ModelKeySection } from "@/features/agent-environment/components/model-k
 import { SpendCapSection } from "@/features/agent-environment/components/spend-cap-section";
 import {
   AgentEnvironmentCardSkeleton,
+  AgentSectionHeading,
   TIER_OPTION_CLASS,
+  TierOptionText,
 } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 import {
   MAX_CUSTOM_HOSTS,
+  TIERS,
   buildPatch,
   draftFrom,
   draftProblems,
@@ -41,24 +44,6 @@ import {
   type AgentEnvironmentView,
   type SaveError,
 } from "@/features/agent-environment/lib/environment";
-
-const TIERS = [
-  {
-    tier: AgentNetworkTier.Registries,
-    titleKey: "agentEnvironment.tierRegistriesTitle",
-    descriptionKey: "agentEnvironment.tierRegistriesDescription",
-  },
-  {
-    tier: AgentNetworkTier.Custom,
-    titleKey: "agentEnvironment.tierCustomTitle",
-    descriptionKey: "agentEnvironment.tierCustomDescription",
-  },
-  {
-    tier: AgentNetworkTier.Full,
-    titleKey: "agentEnvironment.tierFullTitle",
-    descriptionKey: "agentEnvironment.tierFullDescription",
-  },
-] as const;
 
 const TIER_VALUES = TIERS.map(({ tier }) => tier);
 
@@ -200,14 +185,10 @@ function AgentEnvironmentForm({
         ) : null}
 
         <div className="space-y-3">
-          <div className="space-y-1">
-            <h3 className="text-sm font-medium">
-              {t("agentEnvironment.networkTitle")}
-            </h3>
-            <p className="text-muted-foreground text-sm">
-              {t("agentEnvironment.networkDescription")}
-            </p>
-          </div>
+          <AgentSectionHeading
+            title={t("agentEnvironment.networkTitle")}
+            description={t("agentEnvironment.networkDescription")}
+          />
           <div
             role="radiogroup"
             aria-label={t("agentEnvironment.networkTitle")}
@@ -233,12 +214,10 @@ function AgentEnvironmentForm({
                       : "border-border",
                   )}
                 >
-                  <span className="flex items-center gap-2 text-sm font-medium">
-                    {t(titleKey)}
-                  </span>
-                  <span className="text-muted-foreground text-sm">
-                    {t(descriptionKey)}
-                  </span>
+                  <TierOptionText
+                    title={t(titleKey)}
+                    description={t(descriptionKey)}
+                  />
                 </button>
               );
             })}

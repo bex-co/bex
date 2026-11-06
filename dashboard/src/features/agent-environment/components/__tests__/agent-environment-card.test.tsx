@@ -1,5 +1,5 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { toast } from "sonner";
 import { AgentModelSource, AgentNetworkTier } from "@/graphql/definitions";
@@ -53,6 +53,63 @@ describe("AgentEnvironmentCard", () => {
     expect(
       screen.getByTestId("agent-environment-skeleton"),
     ).toBeInTheDocument();
+  });
+
+  // The static copy wraps with the viewport, so the skeleton renders it as
+  // real text (the ready card's own pieces) and skeletonizes only data, so
+  // pending and ready keep one geometry at every width.
+  it("renders the ready card's static copy in the skeleton", () => {
+    setup(null, true);
+    const skeleton = within(screen.getByTestId("agent-environment-skeleton"));
+    for (const text of [
+      "Agents",
+      /How agent sessions in this workspace reach the network/,
+      "Network access",
+      /GitHub and the model provider are always reachable/,
+      "Package registries (recommended)",
+      /install dependencies from npm, PyPI/,
+      "Custom",
+      "Package registries plus the hostnames you list below.",
+      "Full internet",
+      /Any public website over HTTP\(S\)/,
+      "Default model",
+      /Leave empty for the provider default/,
+      "Model provider",
+      /Agent sessions use the bex-provided model unless/,
+      "Model source:",
+      "Write-only: the key is stored securely and never shown again.",
+      "Agent model spend",
+      /The cap stops new model requests/,
+      "Monthly spend cap (USD)",
+    ]) {
+      expect(skeleton.getByText(text)).toBeInTheDocument();
+    }
+    for (const name of [
+      "Save key",
+      "Save cap",
+      "Reset to plan default",
+      "Save",
+    ]) {
+      expect(skeleton.getByRole("button", { name })).toBeDisabled();
+    }
+    // No radio, field or other control is live before the data arrives.
+    expect(skeleton.queryAllByRole("radio")).toHaveLength(0);
+    expect(skeleton.queryAllByRole("textbox")).toHaveLength(0);
+  });
+
+  it("holds wrapping data lines at their longest variant, hidden from assistive tech", () => {
+    setup(null, true);
+    const source = screen
+      .getByTestId("model-key-section-skeleton")
+      .querySelector("[data-slot=skeleton-text]");
+    expect(source).toHaveTextContent(
+      "bex-provided (billed at the model provider's cost + 30%)",
+    );
+    expect(source).toHaveAttribute("aria-hidden", "true");
+    expect(source).toHaveClass("text-transparent");
+    const spend = screen.getByTestId("spend-cap-section-skeleton");
+    expect(spend).toHaveTextContent(/Trust tier T0: your card is charged/);
+    expect(spend).toHaveTextContent(/A failed or disputed payment/);
   });
 
   it("renders the three selectable tiers and the registry hosts", async () => {
@@ -440,9 +497,13 @@ describe("AgentEnvironmentCard", () => {
       expect(
         skeleton.querySelectorAll(":scope > div:nth-of-type(2) > *"),
       ).toHaveLength(readyLines);
-      const buttons = skeleton.querySelectorAll(".flex > *");
-      expect(buttons[1]).toHaveClass("w-24");
-      expect(buttons[2]).toHaveClass("w-48");
+      const buttons = within(skeleton);
+      expect(buttons.getByRole("button", { name: "Save cap" })).toHaveClass(
+        "min-w-24",
+      );
+      expect(
+        buttons.getByRole("button", { name: "Reset to plan default" }),
+      ).toHaveClass("min-w-48");
     });
   });
 });

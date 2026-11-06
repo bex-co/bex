@@ -14,6 +14,25 @@ import {
   type AgentEnvironmentInput,
 } from "@/graphql/definitions";
 
+/** The network-tier options, shared by the ready card and its skeleton. */
+export const TIERS = [
+  {
+    tier: AgentNetworkTier.Registries,
+    titleKey: "agentEnvironment.tierRegistriesTitle",
+    descriptionKey: "agentEnvironment.tierRegistriesDescription",
+  },
+  {
+    tier: AgentNetworkTier.Custom,
+    titleKey: "agentEnvironment.tierCustomTitle",
+    descriptionKey: "agentEnvironment.tierCustomDescription",
+  },
+  {
+    tier: AgentNetworkTier.Full,
+    titleKey: "agentEnvironment.tierFullTitle",
+    descriptionKey: "agentEnvironment.tierFullDescription",
+  },
+] as const;
+
 export type AgentEnvironmentView = AgentEnvironmentFieldsFragment;
 
 /** The custom-host cap the backend enforces (sessionegress maxExtraDestinations). */

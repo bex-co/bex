@@ -15,6 +15,10 @@ import {
   normalizeModelKey,
   type AgentEnvironmentView,
 } from "@/features/agent-environment/lib/environment";
+import {
+  AgentSectionHeading,
+  ModelSourceLine,
+} from "@/features/agent-environment/components/agent-environment-card-skeleton";
 
 const SOURCE_KEYS: Record<AgentModelSource, string> = {
   [AgentModelSource.Platform]: "agentEnvironment.modelSourcePlatform",
@@ -69,20 +73,13 @@ export function ModelKeySection({
 
   return (
     <div className="space-y-3 border-t pt-6" data-testid="model-key-section">
-      <div className="space-y-1">
-        <h3 className="text-sm font-medium">
-          {t("agentEnvironment.modelKeyTitle")}
-        </h3>
-        <p className="text-muted-foreground text-sm">
-          {t("agentEnvironment.modelKeyDescription")}
-        </p>
-      </div>
-      <p className="text-sm" data-testid="model-source">
-        <span className="text-muted-foreground">
-          {t("agentEnvironment.modelSourceLabel")}{" "}
-        </span>
-        <span className="font-medium">{t(SOURCE_KEYS[saved.modelSource])}</span>
-      </p>
+      <AgentSectionHeading
+        title={t("agentEnvironment.modelKeyTitle")}
+        description={t("agentEnvironment.modelKeyDescription")}
+      />
+      <ModelSourceLine data-testid="model-source">
+        {t(SOURCE_KEYS[saved.modelSource])}
+      </ModelSourceLine>
       {/* Rendered for everyone, disabled for non-admins (the card's read-only
           note explains why), so the loaded card keeps its skeleton's geometry. */}
       <div className="space-y-2">

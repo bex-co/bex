@@ -18,6 +18,7 @@ import {
   parseSpendCap,
   spendPosition,
 } from "@/features/agent-environment/lib/spend";
+import { AgentSectionHeading } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 
 interface SpendCapSectionProps {
   saved: AgentEnvironmentView;
@@ -99,14 +100,10 @@ export function SpendCapSection({
 
   return (
     <div className="space-y-3 border-t pt-6" data-testid="spend-cap-section">
-      <div className="space-y-1">
-        <h3 className="text-sm font-medium">
-          {t("agentEnvironment.spendTitle")}
-        </h3>
-        <p className="text-muted-foreground text-sm">
-          {t("agentEnvironment.spendPricing")}
-        </p>
-      </div>
+      <AgentSectionHeading
+        title={t("agentEnvironment.spendTitle")}
+        description={t("agentEnvironment.spendPricing")}
+      />
       <div className="space-y-2">
         <p className="text-sm font-medium" data-testid="spend-summary">
           {position
