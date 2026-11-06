@@ -60,12 +60,15 @@ type Sheet struct {
 	// keyvalueMicroUSD is each paid Key Value tier's rate in micro-USD per
 	// second, exact, for the KeyValueCostMeter events.
 	keyvalueMicroUSD map[string]*big.Rat
-	bandwidth        float64            // $/byte for egress_bytes
-	build            float64            // $/second for build_seconds
-	storage          float64            // $/GB-second of USED datastore volume for storage_gb_seconds
-	disk             float64            // $/GB-second of PROVISIONED capacity for disk_gb_seconds
-	sandbox          float64            // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
-	workspace        map[string]float64 // plan ID → $/month licensed fee (hobby/pro/scale)
+	bandwidth        float64 // $/byte for egress_bytes
+	build            float64 // $/second for build_seconds
+	storage          float64 // $/GB-second of USED datastore volume for storage_gb_seconds
+	disk             float64 // $/GB-second of PROVISIONED capacity for disk_gb_seconds
+	sandbox          float64 // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
+	// sandboxUSD is the same rate, exact, for pricing one session's compute
+	// (SandboxComputeMicroUSD).
+	sandboxUSD *big.Rat
+	workspace  map[string]float64 // plan ID → $/month licensed fee (hobby/pro/scale)
 	// agentModelMarkup is the platform model route's price multiplier on
 	// upstream cost (ADR091 D1): every request is priced at its provider cost
 	// × markup and metered as agent_model_cost_microusd. Token meters are
@@ -127,6 +130,21 @@ func (s *Sheet) KeyValueCostMicroUSD(tier, seconds string) (string, bool) {
 		return "", false
 	}
 	return TrimDecimal(n.Mul(n, rate), 6), true
+}
+
+// SandboxComputeMicroUSD prices weighted milli-vCPU seconds of sandbox compute
+// at the sandbox_compute_seconds rate the bill uses, in micro-USD rounded to
+// the nearest unit, the unit an agent session's modelUSD is kept in (w9/m178).
+// The arithmetic is exact rational on the rate float's shortest decimal; an
+// unpriced sheet reads 0.
+func (s *Sheet) SandboxComputeMicroUSD(milliSeconds int64) int64 {
+	if s == nil || s.sandboxUSD == nil || milliSeconds <= 0 {
+		return 0
+	}
+	micro := new(big.Rat).Mul(big.NewRat(milliSeconds, 1), s.sandboxUSD)
+	micro.Mul(micro, big.NewRat(1_000_000, 1))
+	n, _ := new(big.Int).SetString(micro.FloatString(0), 10)
+	return n.Int64()
 }
 
 // TrimDecimal renders r rounded to places decimals without trailing zeros.
@@ -569,6 +587,13 @@ func parseSheet(raw []byte) (*Sheet, error) {
 		workspace: make(map[string]float64, len(f.Workspace)),
 
 		agentModelMarkup: f.AgentModel.Markup,
+	}
+	if rate := f.Sandbox.USDPerWeightedSecond; rate > 0 {
+		r, ok := new(big.Rat).SetString(strconv.FormatFloat(rate, 'f', -1, 64))
+		if !ok {
+			return nil, fmt.Errorf("sandbox has a non-finite rate")
+		}
+		s.sandboxUSD = r
 	}
 	if m := f.AgentModel.Markup; math.IsNaN(m) || m < minAgentModelMarkup || m > maxAgentModelMarkup {
 		return nil, fmt.Errorf("agentModel.markup %v must be between %d and %d", m, minAgentModelMarkup, maxAgentModelMarkup)

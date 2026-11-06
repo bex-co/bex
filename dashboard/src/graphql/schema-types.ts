@@ -235,10 +235,12 @@ export type AgentSessionConfigInput = {
   template?: InputMaybe<Scalars['String']['input']>;
 };
 
-/** What the session's platform-route model requests cost so far (ADR094 D7). */
+/** What the session has cost so far, in USD decimal strings: its platform-route model requests and its attributed sandbox compute (ADR094 D7). */
 export type AgentSessionCost = {
   __typename: 'AgentSessionCost';
+  computeUSD: Scalars['String']['output'];
   modelUSD: Scalars['String']['output'];
+  totalUSD: Scalars['String']['output'];
 };
 
 /** An approval or question a running agent turn paused on (ADR100). */

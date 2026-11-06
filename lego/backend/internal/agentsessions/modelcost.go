@@ -33,6 +33,12 @@ type ModelCostStore interface {
 	AgentSessionModelUsage(ctx context.Context, sessionID string) (store.AgentSessionModelCost, error)
 }
 
+// ComputeStore reads the weighted milli-vCPU seconds the sandbox compute meter
+// attributed to one session's sandboxes (store, migration 0206).
+type ComputeStore interface {
+	AgentSessionComputeMilliSeconds(ctx context.Context, sessionID string) (int64, error)
+}
+
 // ModelCost is what one session's platform-route model requests cost the
 // customer (ADR091 D6), in total and per turn. A session on the workspace's
 // own model key (BYO) records no requests: its provider bills it directly.

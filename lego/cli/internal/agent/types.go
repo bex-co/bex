@@ -97,8 +97,11 @@ type pullRequest struct {
 	Number int    `json:"number"`
 }
 
+// cost is outcome.cost: one total and where it went (ADR094 D7, w9/m178).
 type cost struct {
-	ModelUSD string `json:"modelUSD"`
+	ModelUSD   string `json:"modelUSD"`
+	ComputeUSD string `json:"computeUSD"`
+	TotalUSD   string `json:"totalUSD"`
 }
 
 type turnAttachment struct {

@@ -20,6 +20,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -137,6 +138,73 @@ func TestOutcomeCostMatchesTheMeterToTheMicroDollar(t *testing.T) {
 	costs.read = store.AgentSessionModelCost{}
 	if got, err := svc.Get(caller("alice"), id); err != nil || got.Outcome.Cost != nil {
 		t.Fatalf("unpriced session: cost = %+v / %v, want none", got.Outcome.Cost, err)
+	}
+}
+
+type fakeCompute struct {
+	milli map[string]int64
+	err   error
+}
+
+func (f *fakeCompute) AgentSessionComputeMilliSeconds(_ context.Context, sessionID string) (int64, error) {
+	return f.milli[sessionID], f.err
+}
+
+// w9/m178 (ADR094 D7): outcome.cost folds the session's attributed sandbox
+// compute into one USD total, Devin's single consumption figure: computeUSD
+// at the billed sandbox_compute_seconds rate, totalUSD = modelUSD +
+// computeUSD, all micro-dollar strings. Compute alone is still a cost; a
+// failed compute read never hides the model part.
+func TestOutcomeCostFoldsSandboxComputeIntoOneTotal(t *testing.T) {
+	svc, st, fga, _ := fixture()
+	id := seedSession(st, fga, func(r *store.AgentSession) { r.Phase, r.Turns = PhaseCompleted, 2 })
+	model := &fakeModelCosts{}
+	compute := &fakeCompute{milli: map[string]int64{}}
+	svc.ModelCosts, svc.Compute = model, compute
+	cost := func() *Cost {
+		t.Helper()
+		got, err := svc.Get(caller("alice"), id)
+		if err != nil {
+			t.Fatal(err)
+		}
+		return got.Outcome.Cost
+	}
+
+	if c := cost(); c != nil {
+		t.Fatalf("no model requests and no compute: cost = %+v, want none", c)
+	}
+
+	// Compute only: one vCPU-hour at the sheet's $0.0895.
+	compute.milli[id] = 3_600_000
+	if c := cost(); c == nil || *c != (Cost{ModelUSD: "0.00", ComputeUSD: "0.0895", TotalUSD: "0.0895"}) {
+		t.Fatalf("compute only: cost = %+v", c)
+	}
+
+	// Model plus compute, rounded to the micro-dollar: 40 vCPU-seconds is
+	// $0.000994 (0.00099444…).
+	compute.milli[id] = 40_000
+	model.read = store.AgentSessionModelCost{Turns: []store.AgentTurnModelUsage{{Turn: 1, Requests: 2, PriceMicroUSD: 1_200_500}}}
+	c := cost()
+	if c == nil || *c != (Cost{ModelUSD: "1.2005", ComputeUSD: "0.000994", TotalUSD: "1.201494"}) {
+		t.Fatalf("model + compute: cost = %+v", c)
+	}
+	raw, _ := json.Marshal(c)
+	if string(raw) != `{"modelUSD":"1.2005","computeUSD":"0.000994","totalUSD":"1.201494"}` {
+		t.Fatalf("wire cost = %s", raw)
+	}
+
+	// Zero compute (an unattributed, pre-migration session) reads "0.00".
+	compute.milli[id] = 0
+	if c := cost(); c == nil || c.ComputeUSD != "0.00" || c.TotalUSD != "1.2005" {
+		t.Fatalf("model only: cost = %+v", c)
+	}
+
+	// A failed compute read hides the cost rather than report a total that
+	// leaves the compute out while reading as the one number to bill against.
+	compute.err = errors.New("meter offline")
+	compute.milli[id] = 3_600_000
+	if c := cost(); c != nil {
+		t.Fatalf("compute read failure: cost = %+v, want none", c)
 	}
 }
 

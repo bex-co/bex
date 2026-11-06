@@ -109,8 +109,13 @@ func writeSession(w io.Writer, s session) {
 		row("PR", s.PRURL)
 	}
 	row("Delivery", o.DeliveryNote)
-	if o.Cost != nil && o.Cost.ModelUSD != "" {
-		row("Cost", "$"+o.Cost.ModelUSD)
+	if c := o.Cost; c != nil {
+		switch {
+		case c.TotalUSD != "":
+			row("Cost", fmt.Sprintf("$%s (model $%s, compute $%s)", c.TotalUSD, c.ModelUSD, c.ComputeUSD))
+		case c.ModelUSD != "": // a server from before computeUSD
+			row("Cost", "$"+c.ModelUSD)
+		}
 	}
 	if code := firstNonEmpty(o.FailureReasonCode, s.FailureReasonCode); code != "" || s.FailureReason != "" {
 		row("Failure", strings.TrimSpace(strings.TrimSuffix(code+": "+s.FailureReason, ": ")))

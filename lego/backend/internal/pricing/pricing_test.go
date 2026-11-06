@@ -722,3 +722,32 @@ func TestKeyValueCostMicroUSD(t *testing.T) {
 		}
 	}
 }
+
+// SandboxComputeMicroUSD prices a session's attributed compute at the billed
+// sandbox_compute_seconds rate, in micro-USD (w9/m178): one vCPU-hour is the
+// sheet's $0.0895, sub-micro-dollar usage rounds to 0, and an unpriced sheet
+// reads 0 rather than guessing.
+func TestSandboxComputeMicroUSD(t *testing.T) {
+	for _, tc := range []struct {
+		milliSeconds int64
+		want         int64
+	}{
+		{0, 0},
+		{-5, 0},
+		{1, 0},                      // $0.0000000249: below a micro-dollar
+		{40_000, 994},               // 40 seconds of a 1-vCPU sandbox
+		{3_600_000, 89_500},         // one vCPU-hour
+		{1_000_000_000, 24_861_111}, // rounded to the nearest micro-dollar
+	} {
+		if got := Default.SandboxComputeMicroUSD(tc.milliSeconds); got != tc.want {
+			t.Errorf("SandboxComputeMicroUSD(%d) = %d, want %d", tc.milliSeconds, got, tc.want)
+		}
+	}
+	var unpriced *Sheet
+	if got := unpriced.SandboxComputeMicroUSD(3_600_000); got != 0 {
+		t.Errorf("nil sheet = %d, want 0", got)
+	}
+	if got := (&Sheet{}).SandboxComputeMicroUSD(3_600_000); got != 0 {
+		t.Errorf("unpriced sheet = %d, want 0", got)
+	}
+}

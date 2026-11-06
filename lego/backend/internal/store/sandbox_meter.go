@@ -89,7 +89,7 @@ func (s *PGStore) ObserveSandboxMeter(ctx context.Context, obs SandboxMeterObser
 	// A row lock cannot serialize two concurrent first observations because the
 	// row does not exist yet. This transaction-scoped advisory lock closes that
 	// one gap without introducing a global meter lock.
-	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, obs.WorkspaceID+"|"+obs.SandboxID); err != nil {
+	if err := lockSandboxMeter(ctx, tx, obs.WorkspaceID, obs.SandboxID); err != nil {
 		return err
 	}
 
@@ -177,6 +177,9 @@ func (s *PGStore) terminateSandboxMeter(ctx context.Context, workspaceID, sandbo
 		return err
 	}
 	defer func() { _ = tx.Rollback(ctx) }()
+	if err := lockSandboxMeter(ctx, tx, workspaceID, sandboxID); err != nil {
+		return err
+	}
 	var prior sandboxMeterState
 	err = tx.QueryRow(ctx, `
 		SELECT phase, tier, weight_milli, observed_at, remainder_nanos
@@ -237,7 +240,9 @@ func sandboxIntervalChunks(weight int64, start, end time.Time, remainder int64) 
 
 func accrueSandboxInterval(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID, tier string, weight int64, start, end time.Time, remainder int64) (int64, error) {
 	chunks, remainder := sandboxIntervalChunks(weight, start, end, remainder)
+	var total int64
 	for _, chunk := range chunks {
+		total += chunk.quantity
 		_, err := tx.Exec(ctx, `
 				INSERT INTO usage_hourly
 				    (workspace_id, service_id, kind, tier, resource_kind, window_start, quantity)
@@ -250,5 +255,34 @@ func accrueSandboxInterval(ctx context.Context, tx pgx.Tx, workspaceID, sandboxI
 			return remainder, err
 		}
 	}
+	// The session that owns this sandbox, if any, carries a running total for
+	// its outcome.cost (w9/m178); a sandbox no session adopted updates nothing.
+	if total > 0 {
+		if _, err := tx.Exec(ctx, `
+			UPDATE agent_session_sandboxes
+			SET compute_milli_seconds = compute_milli_seconds + $3
+			WHERE workspace_id = $1 AND sandbox_id = $2`, workspaceID, sandboxID, total); err != nil {
+			return remainder, err
+		}
+	}
 	return remainder, nil
+}
+
+// lockSandboxMeter serializes one sandbox's accruals with each other and with
+// the agent_session_bind_sandbox trigger (migration 0206), which seeds a newly
+// adopted sandbox's session total from usage_hourly under the same key.
+func lockSandboxMeter(ctx context.Context, tx pgx.Tx, workspaceID, sandboxID string) error {
+	_, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, workspaceID+"|"+sandboxID)
+	return err
+}
+
+// AgentSessionComputeMilliSeconds is the weighted milli-vCPU seconds the meter
+// attributed to one agent session across its turns' sandboxes (w9/m178). A
+// session whose sandboxes predate attribution reads 0.
+func (s *PGStore) AgentSessionComputeMilliSeconds(ctx context.Context, sessionID string) (int64, error) {
+	var total int64
+	err := s.Pool.QueryRow(ctx, `
+		SELECT COALESCE(SUM(compute_milli_seconds), 0)::bigint
+		FROM agent_session_sandboxes WHERE session_id = $1`, sessionID).Scan(&total)
+	return total, err
 }

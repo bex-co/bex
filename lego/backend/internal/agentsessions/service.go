@@ -234,6 +234,9 @@ type Service struct {
 	// ModelCosts reads a session's platform-route model cost per turn
 	// (ADR091 D6). nil (store off) ⇒ every session reads zero cost.
 	ModelCosts ModelCostStore
+	// Compute reads the sandbox compute attributed to a session (w9/m178).
+	// nil (store off) ⇒ outcome.cost carries model cost only.
+	Compute ComputeStore
 	// RegistryHosts is the package-registry catalog session policies render
 	// (sessionegress.Manager.RegistryDomains), reported by the environment
 	// for display. Empty ⇒ the built-in catalog.

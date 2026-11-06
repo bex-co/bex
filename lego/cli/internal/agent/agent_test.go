@@ -387,7 +387,7 @@ func TestContractFixtureDecodes(t *testing.T) {
 		t.Fatalf("session fields lost: %+v", s)
 	}
 	o := s.Outcome
-	if o.Turn != 1 || o.Summary == "" || o.PullRequest == nil || o.PullRequest.URL == "" || len(o.Files) != 1 || o.Files[0].ID == "" || len(o.Result) == 0 || o.Cost == nil || o.Cost.ModelUSD != "0.42" {
+	if o.Turn != 1 || o.Summary == "" || o.PullRequest == nil || o.PullRequest.URL == "" || len(o.Files) != 1 || o.Files[0].ID == "" || len(o.Result) == 0 || o.Cost == nil || o.Cost.ModelUSD != "0.42" || o.Cost.ComputeUSD != "0.0895" || o.Cost.TotalUSD != "0.5095" {
 		t.Fatalf("outcome fields lost: %+v", o)
 	}
 	a := golden.Attachment
@@ -1074,5 +1074,22 @@ func TestApprovalFlagsAndAnswer(t *testing.T) {
 	f.script["ags-s2"] = []string{stateWorking}
 	if _, stderr, code := run(t, f.deps(t).deps, "answer", "ags-s2", "--allow"); code != 1 || !strings.Contains(stderr, "not waiting on a decision") {
 		t.Fatalf("answer on a working session: exit %d %q", code, stderr)
+	}
+}
+
+// The text view shows outcome.cost as one total with its parts (w9/m178), and
+// falls back to modelUSD from a server that predates computeUSD.
+func TestSessionTextShowsTheTotalCost(t *testing.T) {
+	var out strings.Builder
+	writeSession(&out, session{ID: "ags-c1", State: stateSucceeded, Outcome: &outcome{Turn: 1,
+		Cost: &cost{ModelUSD: "0.42", ComputeUSD: "0.0895", TotalUSD: "0.5095"}}})
+	if !strings.Contains(out.String(), "$0.5095 (model $0.42, compute $0.0895)") {
+		t.Fatalf("text view:\n%s", out.String())
+	}
+	out.Reset()
+	writeSession(&out, session{ID: "ags-c2", State: stateSucceeded, Outcome: &outcome{Turn: 1,
+		Cost: &cost{ModelUSD: "0.42"}}})
+	if !strings.Contains(out.String(), "$0.42") || strings.Contains(out.String(), "compute") {
+		t.Fatalf("text view from an older server:\n%s", out.String())
 	}
 }

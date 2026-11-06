@@ -254,9 +254,11 @@ var agentSessionPullRequestGQLType = graphql.NewObject(graphql.ObjectConfig{
 
 var agentSessionCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "AgentSessionCost",
-	Description: "What the session's platform-route model requests cost so far (ADR094 D7).",
+	Description: "What the session has cost so far, in USD decimal strings: its platform-route model requests and its attributed sandbox compute (ADR094 D7).",
 	Fields: graphql.Fields{
-		"modelUSD": gqlutil.ReqStrField(func(v Cost) any { return v.ModelUSD }),
+		"modelUSD":   gqlutil.ReqStrField(func(v Cost) any { return v.ModelUSD }),
+		"computeUSD": gqlutil.ReqStrField(func(v Cost) any { return v.ComputeUSD }),
+		"totalUSD":   gqlutil.ReqStrField(func(v Cost) any { return v.TotalUSD }),
 	},
 })
 

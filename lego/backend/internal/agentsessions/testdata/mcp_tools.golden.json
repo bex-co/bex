@@ -203,12 +203,20 @@
             "cost": {
               "additionalProperties": false,
               "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
                 "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
                   "type": "string"
                 }
               },
               "required": [
-                "modelUSD"
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
               ],
               "type": [
                 "null",
@@ -549,12 +557,20 @@
             "cost": {
               "additionalProperties": false,
               "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
                 "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
                   "type": "string"
                 }
               },
               "required": [
-                "modelUSD"
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
               ],
               "type": [
                 "null",
@@ -892,12 +908,20 @@
             "cost": {
               "additionalProperties": false,
               "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
                 "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
                   "type": "string"
                 }
               },
               "required": [
-                "modelUSD"
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
               ],
               "type": [
                 "null",
@@ -1385,12 +1409,20 @@
             "cost": {
               "additionalProperties": false,
               "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
                 "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
                   "type": "string"
                 }
               },
               "required": [
-                "modelUSD"
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
               ],
               "type": [
                 "null",
@@ -2241,12 +2273,20 @@
             "cost": {
               "additionalProperties": false,
               "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
                 "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
                   "type": "string"
                 }
               },
               "required": [
-                "modelUSD"
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
               ],
               "type": [
                 "null",
@@ -3344,12 +3384,20 @@
                   "cost": {
                     "additionalProperties": false,
                     "properties": {
+                      "computeUSD": {
+                        "type": "string"
+                      },
                       "modelUSD": {
+                        "type": "string"
+                      },
+                      "totalUSD": {
                         "type": "string"
                       }
                     },
                     "required": [
-                      "modelUSD"
+                      "modelUSD",
+                      "computeUSD",
+                      "totalUSD"
                     ],
                     "type": [
                       "null",
@@ -3795,12 +3843,20 @@
             "cost": {
               "additionalProperties": false,
               "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
                 "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
                   "type": "string"
                 }
               },
               "required": [
-                "modelUSD"
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
               ],
               "type": [
                 "null",
@@ -4231,12 +4287,20 @@
             "cost": {
               "additionalProperties": false,
               "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
                 "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
                   "type": "string"
                 }
               },
               "required": [
-                "modelUSD"
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
               ],
               "type": [
                 "null",
@@ -4767,12 +4831,20 @@
             "cost": {
               "additionalProperties": false,
               "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
                 "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
                   "type": "string"
                 }
               },
               "required": [
-                "modelUSD"
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
               ],
               "type": [
                 "null",
@@ -5203,12 +5275,20 @@
             "cost": {
               "additionalProperties": false,
               "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
                 "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
                   "type": "string"
                 }
               },
               "required": [
-                "modelUSD"
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
               ],
               "type": [
                 "null",
@@ -5546,12 +5626,20 @@
             "cost": {
               "additionalProperties": false,
               "properties": {
+                "computeUSD": {
+                  "type": "string"
+                },
                 "modelUSD": {
+                  "type": "string"
+                },
+                "totalUSD": {
                   "type": "string"
                 }
               },
               "required": [
-                "modelUSD"
+                "modelUSD",
+                "computeUSD",
+                "totalUSD"
               ],
               "type": [
                 "null",
@@ -6271,12 +6359,20 @@
                   "cost": {
                     "additionalProperties": false,
                     "properties": {
+                      "computeUSD": {
+                        "type": "string"
+                      },
                       "modelUSD": {
+                        "type": "string"
+                      },
+                      "totalUSD": {
                         "type": "string"
                       }
                     },
                     "required": [
-                      "modelUSD"
+                      "modelUSD",
+                      "computeUSD",
+                      "totalUSD"
                     ],
                     "type": [
                       "null",

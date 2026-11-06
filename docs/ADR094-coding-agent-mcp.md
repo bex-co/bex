@@ -1,6 +1,6 @@
 # ADR094 — Cloud Agents MCP: the bex cloud coding agent as a task-shaped toolset at `/mcp/cloud-agents`
 
-**Status:** Proposed, 2026-10-30. Scheduled 2026-11-03 as `w21/m257`–`m260` (one milestone per D10 phase). **Phase 1 shipped (w21/m257, 2026-11-03)**, **phase 2 shipped (w21/m258, 2026-11-03)** and **phase 3 shipped (w21/m259, 2026-11-05)**: `state`/`steerable`/`outcome`, the `create_`/`send_` names, the `/mcp/cloud-agents` mount, `bex.cloud_agents`, idempotent create, `title`/`tags`/optional `branch`, `wait_agent_sessions`, and schema-validated structured output (`outputSchema`, `submit_result`, `outcome.result`). **Phase 4 shipped (w21/m260, 2026-11-05)**: the completion webhooks, the per-session `maxSpendUSD` ceiling and `outcome.cost.modelUSD`; `outcome.cost.sandboxSeconds` is not shipped (see D7 as built). It amends [ADR025](ADR025-connect-an-agent.md) (a second, narrower MCP endpoint and one new scope) and builds on [ADR047](ADR047-cloud-coding-agent-sessions.md), [ADR051](ADR051-agent-session-transcript.md), [ADR065](ADR065-agent-session-archive.md), [ADR090](ADR090-agent-owned-delivery.md) and [ADR091](ADR091-agent-model-pricing.md). It does not change the session engine.
+**Status:** Proposed, 2026-10-30. Scheduled 2026-11-03 as `w21/m257`–`m260` (one milestone per D10 phase). **Phase 1 shipped (w21/m257, 2026-11-03)**, **phase 2 shipped (w21/m258, 2026-11-03)** and **phase 3 shipped (w21/m259, 2026-11-05)**: `state`/`steerable`/`outcome`, the `create_`/`send_` names, the `/mcp/cloud-agents` mount, `bex.cloud_agents`, idempotent create, `title`/`tags`/optional `branch`, `wait_agent_sessions`, and schema-validated structured output (`outputSchema`, `submit_result`, `outcome.result`). **Phase 4 shipped (w21/m260, 2026-11-05)**: the completion webhooks, the per-session `maxSpendUSD` ceiling and `outcome.cost.modelUSD`; sandbox compute joined it as `computeUSD`/`totalUSD` in w9/m178 (2026-11-06, see D7 as built), with no raw `sandboxSeconds`. It amends [ADR025](ADR025-connect-an-agent.md) (a second, narrower MCP endpoint and one new scope) and builds on [ADR047](ADR047-cloud-coding-agent-sessions.md), [ADR051](ADR051-agent-session-transcript.md), [ADR065](ADR065-agent-session-archive.md), [ADR090](ADR090-agent-owned-delivery.md) and [ADR091](ADR091-agent-model-pricing.md). It does not change the session engine.
 
 **Source:** user request 2026-10-30: deep-research Devin's MCP and our coding agent's APIs, then design a coding-agent MCP as part of our overall MCP offering. User decision 2026-11-02: the product line is **Cloud Agents**, at `/mcp/cloud-agents` (D1 § Naming).
 
@@ -202,6 +202,24 @@ The input is `{ ids: [ags-…] (1–20), until: "any" | "all" (default "all"), t
 - **`cost`** is null until ADR091's `agent_model_cost_microusd` meter ships. It is a decimal string, so float rounding never shows up in money.
 
 **As built (w21/m260, 2026-11-05).** `outcome.cost` is `{modelUSD}` and is absent when the session made no priced request (a workspace's own model key, or nothing run yet). `modelUSD` is the sum of the session's recorded `agent_model_usage_events.price_microusd`, the events ADR091 bills from, written as an exact decimal string with two to six fractional digits (`"0.42"`, `"0.001234"`), so it matches the meter to the micro-dollar. (`get_agent_session_model_cost` rounds the same events to the cent for display.) Like `summary` and `result`, it is computed on the single-session read, in `wait_agent_sessions` and in the webhook payload, not on list pages. GraphQL spells it `outcome { cost { modelUSD } }`. **`sandboxSeconds` is not shipped.** bex meters sandbox compute per OpenSandbox sandbox in weighted milli-vCPU seconds (`sandbox_meter_states`, keyed by sandbox id), and every turn runs in a fresh sandbox whose id is not kept per session, so there is no per-session figure to report; wall-clock turn time would not be the metered quantity. Adding it needs a durable session-to-sandbox attribution first.
+
+**As built (w9/m178, 2026-11-06; user decision 2026-11-06).** `outcome.cost` is `{modelUSD, computeUSD, totalUSD}`. Like Devin's single per-session consumption figure, `totalUSD` is the one number to compare with the bill, and the parts say where it went. No raw `sandboxSeconds` is exposed.
+
+- `computeUSD` is the sandbox compute the meter attributed to the session's sandboxes, priced at the billed `sandbox_compute_seconds` rate (`pricing.yaml` `sandbox.usdPerWeightedSecond`, exact rational, rounded to the micro-dollar).
+- `totalUSD` is `modelUSD + computeUSD`.
+- All three are micro-dollar decimal strings in the same format, so `"0.00"` is a zero part. The cost is absent when the session has neither a priced model request nor attributed compute, or when a read fails (below).
+
+**Attribution.** Migration 0206 adds `agent_session_sandboxes`, a durable sandbox → session map with a running `compute_milli_seconds` total.
+
+- **Binding.** A trigger binds a sandbox whenever `agent_sessions.sandbox_id` adopts it, on first dispatch and on re-dispatch. The binding starts from what `usage_hourly` already holds for that sandbox.
+- **Accrual.** Each meter accrual adds to the session's total under the meter's per-sandbox advisory lock, which the trigger takes too. A disappeared sandbox's final interval also counts.
+- **Why a running total.** `usage_hourly` is pruned, so the figure cannot be summed from it later.
+- **Older sessions.** Sandboxes reaped before migration 0206 are not attributed, and those sessions read `computeUSD` `"0.00"`. Two sessions live across the rollout can also undercount:
+  - a sandbox metered by a pod still running the old binary after the migration;
+  - hours already compacted out of `usage_hourly` before its binding.
+- **Read failures.** If either part's read fails, the cost is absent. A total that silently left one part out would understate the bill while reading as authoritative.
+
+GraphQL spells the fields `cost { modelUSD computeUSD totalUSD }`; REST, MCP and the webhook payload carry the same object.
 
 ### D8 — Cost and spend ceilings ride ADR091
 

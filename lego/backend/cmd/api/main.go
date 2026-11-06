@@ -822,6 +822,8 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.AgentSpendStore = st
 	// ADR091 D6: per-session, per-turn model cost from the usage events.
 	deps.AgentModelCostStore = st
+	// w9/m178: the sandbox compute each session's sandboxes accrued.
+	deps.AgentComputeStore = st
 	if writer, ok := authzChecker.(agentsessions.TupleWriter); ok {
 		deps.AgentSessionTuples = writer
 	}

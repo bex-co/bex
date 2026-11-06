@@ -387,6 +387,9 @@ type Deps struct {
 	// AgentModelCostStore reads a session's platform-route model cost per
 	// turn (ADR091 D6); nil ⇒ every session reads zero cost.
 	AgentModelCostStore agentsessions.ModelCostStore
+	// AgentComputeStore reads the sandbox compute attributed to a session
+	// (w9/m178); nil ⇒ outcome.cost carries model cost only.
+	AgentComputeStore agentsessions.ComputeStore
 	// AgentModelKeyChanged is told when a workspace's own model key is set or
 	// cleared (agentsessions.Service.ModelKeyChanged); nil ⇒ nobody listens.
 	AgentModelKeyChanged func(workspaceID string)
@@ -1067,6 +1070,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Environments:     d.AgentEnvironmentStore,
 			Spend:            d.AgentSpendStore,
 			ModelCosts:       d.AgentModelCostStore,
+			Compute:          d.AgentComputeStore,
 			ModelKeyChanged:  d.AgentModelKeyChanged,
 			RegistryHosts:    d.AgentRegistryHosts,
 			Attachments:      d.AgentAttachments,

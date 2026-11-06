@@ -332,17 +332,25 @@ type Outcome struct {
 	// computed only on the single-session read and wait. A non-final (partial)
 	// result is on the transcript turn, not here.
 	Result any `json:"result,omitempty"`
-	// Cost is what the session's platform-route model requests cost so far
-	// (ADR094 D7); absent when it made none (a workspace's own key bills at its
-	// provider). Computed only on the single-session read, wait and webhook.
+	// Cost is what the session's platform-route model requests and its
+	// sandbox compute cost so far (ADR094 D7); absent when it has neither.
+	// Computed only on the single-session read, wait and webhook.
 	Cost *Cost `json:"cost,omitempty"`
 }
 
-// Cost is the ADR091 meter's reading for one session.
+// Cost is what one session has cost so far, as decimal strings to the
+// micro-dollar ("0.42", "0.001234"), never floats. Like Devin's single
+// per-session consumption figure, TotalUSD is the one number to compare with
+// the bill; the parts say where it went (ADR094 D7, w9/m178).
 type Cost struct {
-	// ModelUSD is the session's total agent_model_cost_microusd as a decimal
-	// string to the micro-dollar ("0.42", "0.001234"), never a float.
+	// ModelUSD is the session's total agent_model_cost_microusd (ADR091).
 	ModelUSD string `json:"modelUSD"`
+	// ComputeUSD is the sandbox compute the meter attributed to the session's
+	// sandboxes, priced at the billed sandbox_compute_seconds rate. Sandboxes
+	// reaped before attribution shipped (migration 0206) are not counted.
+	ComputeUSD string `json:"computeUSD"`
+	// TotalUSD is ModelUSD + ComputeUSD.
+	TotalUSD string `json:"totalUSD"`
 }
 
 // PullRequest is the PR the agent opened for the session (ADR090).
