@@ -60,3 +60,37 @@ export function buildSecurityHeaders(
   }
   return headers;
 }
+
+/**
+ * The Nitro route rules: the security headers on every response, plus a cache
+ * policy. Pages are server-rendered for the signed-in user, so they are
+ * `private, no-cache` — no shared cache keeps them, and the browser revalidates
+ * every load (w4/526; `no-store` would also keep them out of the back/forward
+ * cache). Hashed build assets never change, so they are immutable. The two
+ * app-association documents keep their short public lifetime.
+ */
+export function buildRouteRules(
+  securityHeaders: Record<string, string>,
+): Record<string, { headers: Record<string, string> }> {
+  const association = {
+    ...securityHeaders,
+    "Content-Type": "application/json; charset=utf-8",
+    "Cache-Control": "public, max-age=300",
+  };
+  return {
+    "/**": {
+      headers: { ...securityHeaders, "Cache-Control": "private, no-cache" },
+    },
+    "/assets/**": {
+      headers: {
+        ...securityHeaders,
+        "Cache-Control": "public, max-age=31536000, immutable",
+      },
+    },
+    // Apple rejects an extensionless association document served as the
+    // dashboard's HTML fallback. Exact rules keep both verification resources
+    // JSON while preserving the global hardening headers.
+    "/.well-known/apple-app-site-association": { headers: association },
+    "/.well-known/assetlinks.json": { headers: association },
+  };
+}

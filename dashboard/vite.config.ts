@@ -10,7 +10,10 @@ import viteReact from "@vitejs/plugin-react";
 import tailwindcss from "@tailwindcss/vite";
 import { nitro } from "nitro/vite";
 import { visualizer } from "rollup-plugin-visualizer";
-import { buildSecurityHeaders } from "./server/security-headers";
+import {
+  buildRouteRules,
+  buildSecurityHeaders,
+} from "./server/security-headers";
 
 // Peel stable, rarely-changing vendor libraries into their own chunks so a
 // tenant/app source change doesn't invalidate the (large) React/Radix/Apollo
@@ -385,26 +388,7 @@ export default defineConfig(({ mode }) => {
       viteReact(),
       nitro({
         plugins: ["./server/plugins/mobile-association-content-type.ts"],
-        routeRules: {
-          "/**": { headers: securityHeaders },
-          // Apple rejects an extensionless association document served as the
-          // dashboard's HTML fallback. Exact rules keep both verification
-          // resources JSON while preserving the global hardening headers.
-          "/.well-known/apple-app-site-association": {
-            headers: {
-              ...securityHeaders,
-              "Content-Type": "application/json; charset=utf-8",
-              "Cache-Control": "public, max-age=300",
-            },
-          },
-          "/.well-known/assetlinks.json": {
-            headers: {
-              ...securityHeaders,
-              "Content-Type": "application/json; charset=utf-8",
-              "Cache-Control": "public, max-age=300",
-            },
-          },
-        },
+        routeRules: buildRouteRules(securityHeaders),
       }),
       // `ANALYZE=1 yarn build` emits a gitignored treemap of the bundle; normal
       // builds skip it (w9/m60 t005).
