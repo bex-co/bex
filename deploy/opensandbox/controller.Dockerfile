@@ -14,7 +14,8 @@
 #   docker build -f deploy/opensandbox/controller.Dockerfile \
 #     -t <registry>/opensandbox-controller:<ver> deploy/opensandbox
 
-FROM golang:1.26.9-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade AS builder
+# Cross-compiles on the build host's platform (CGO_ENABLED=0, GOARCH below).
+FROM --platform=$BUILDPLATFORM golang:1.26.9-alpine@sha256:3082400e369fa24d5fc60bca20edab3f6d604e0c5a690ec66b295eff4dd87ade AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -42,7 +43,8 @@ WORKDIR /src/opensandbox/kubernetes
 RUN n=0; until go mod download; do n=$((n+1)); [ "$n" -ge 3 ] && exit 1; sleep $((n*15)); done
 
 # Match Go's parallelism to the CI runner's CPU cap; see lego/Dockerfile.
-ENV GOMAXPROCS=4
+ARG GOMAXPROCS=4
+ENV GOMAXPROCS=${GOMAXPROCS}
 
 # Mirror upstream kubernetes/Dockerfile: static, trimmed, no VCS stamping.
 RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH}" \

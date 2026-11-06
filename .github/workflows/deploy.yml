@@ -248,6 +248,9 @@ jobs:
           context: lego
           platforms: linux/amd64
           push: true
+          # The bex-production runner's CPU limit (block-eden-mono
+          # projects/github-runner/docker-compose.yml).
+          build-args: GOMAXPROCS=12
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest
@@ -298,6 +301,8 @@ jobs:
           file: deploy/opensandbox/controller.Dockerfile
           platforms: linux/amd64
           push: true
+          # The bex-production runner's CPU limit, as for the operator image.
+          build-args: GOMAXPROCS=12
           tags: |
             ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ github.sha }}
             ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ env.OPENSANDBOX_CONTROLLER_TAG }}

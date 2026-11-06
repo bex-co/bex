@@ -370,7 +370,8 @@ printf '%s\n' "$IMAGE_GO_VERSION"
 EOF
 chmod +x "$go_fixture/bin/docker"
 release_image="golang:1.26@sha256:$(printf '%064d' 1)"
-printf 'FROM %s AS builder\n' "$release_image" >"$go_fixture/lego/Dockerfile"
+# The real builder line carries --platform=$BUILDPLATFORM (w6/m158).
+printf 'FROM --platform=$BUILDPLATFORM %s AS builder\n' "$release_image" >"$go_fixture/lego/Dockerfile"
 if (cd "$go_fixture" && PATH="$go_fixture/bin:$PATH" \
     DOCKER_ARGS="$go_fixture/docker-args" IMAGE_GO_VERSION=go1.26.8 \
     GITHUB_OUTPUT="$go_fixture/output" bash -euo pipefail -c "$resolver") \

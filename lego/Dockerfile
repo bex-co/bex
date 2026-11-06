@@ -8,7 +8,11 @@
 # /ssh-gateway), and the Key Value backup CronJob's encrypt stage runs
 # /backup-encrypt out of this same image (w7/m85 — it used to download the age
 # release into an alpine container standing next to the plaintext RDB).
-FROM golang:1.26.10@sha256:672c944cfd07599b5f1bb179869270cdc94c6254e41db4d431259693cb286b82 AS builder
+# The builder runs on the build host's own platform and cross-compiles: every
+# binary below is CGO_ENABLED=0 with GOARCH=${TARGETARCH}, so an ARM64 runner
+# no longer compiles amd64 under emulation (w6/m158). Go cross-builds are
+# byte-identical to native ones.
+FROM --platform=$BUILDPLATFORM golang:1.26.10@sha256:672c944cfd07599b5f1bb179869270cdc94c6254e41db4d431259693cb286b82 AS builder
 ARG TARGETOS
 ARG TARGETARCH
 
@@ -27,12 +31,13 @@ RUN cd backend  && n=0; until go mod download; do n=$((n+1)); [ "$n" -ge 3 ] && 
 COPY operator/ ./operator/
 COPY backend/  ./backend/
 
-# The CI runner caps CPU (4) and PIDs (512) but exposes every host CPU, and Go
-# sizes both build parallelism (-p) and per-process threads from that count;
-# uncapped, `go build` exhausted the PID cap ("failed to create new OS thread",
-# run 41987595478). Go's cgroup-aware default cannot see the runner's limit
-# from inside a BuildKit step.
-ENV GOMAXPROCS=4
+# Go sizes build parallelism (-p) and per-process threads from every host CPU,
+# and its cgroup-aware default cannot see a CI runner's CPU limit from inside a
+# BuildKit step: uncapped, `go build` once exhausted a 512-PID runner ("failed
+# to create new OS thread", run 41987595478). deploy.yml passes the runner's
+# CPU count; 4 suits a laptop or a 4-CPU runner.
+ARG GOMAXPROCS=4
+ENV GOMAXPROCS=${GOMAXPROCS}
 # Build for TARGETARCH (amd64 in deploy.yml).
 # Each module builds in its own dir; the `replace …/lego/types => ../types` in
 # each go.mod resolves the shared contract without a workspace file.

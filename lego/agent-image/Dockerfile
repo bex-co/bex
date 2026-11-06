@@ -4,7 +4,9 @@ FROM golang:1.26.10-bookworm@sha256:632dff7351799a5a9954a48dc06670ade72ee44e8c35
 
 # The driver is TypeScript; this stage compiles it to plain JS so devDependencies
 # (typescript) never reach the runtime image below.
-FROM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS driver-build
+# Platform-independent output (tsc to JS, npm ci --ignore-scripts): build it
+# natively on the build host instead of under emulation.
+FROM --platform=$BUILDPLATFORM node:22.23.4-bookworm-slim@sha256:de170b39439eb0e5a3444ad7d60b015614a381e10fecae2e30ec9e735122f38d AS driver-build
 
 WORKDIR /opt/bex-agent-driver
 COPY agent-image/driver/package.json agent-image/driver/package-lock.json ./

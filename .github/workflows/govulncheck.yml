@@ -71,7 +71,7 @@ jobs:
         # patch than its pinned digest. Never scan the newest go.dev release
         # independently of the image production compiles with.
         run: |
-          image=$(awk '$1 == "FROM" && $2 ~ /^golang:/ { print $2; exit }' lego/Dockerfile)
+          image=$(awk '$1 == "FROM" { for (i = 2; i <= NF; i++) if ($i ~ /^golang:/) { print $i; exit } }' lego/Dockerfile)
           if [[ ! "$image" =~ ^golang:[^[:space:]@]+@sha256:[a-f0-9]{64}$ ]]; then
             echo "release Go image must be digest-pinned" >&2
             exit 1
