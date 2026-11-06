@@ -238,9 +238,16 @@ jobs:
           # so a slow but progressing pull gets there across attempts. If all
           # three run out, setup-buildx pulls the image itself: run
           # 42196880498 failed its build on a Docker Hub pull that was still
-          # downloading when three 300 s attempts ended.
+          # downloading when three 300 s attempts ended. Docker Hub pulls from
+          # the runner host also stall outright at times, so each attempt falls
+          # back to Google's Docker Hub mirror and tags the result as the image
+          # buildx expects.
+          mirror="mirror.gcr.io/$image"
           for i in 1 2 3; do
             timeout 600 docker pull "$image" && exit 0
+            if timeout 300 docker pull "$mirror"; then
+              docker tag "$mirror" "$image" && exit 0
+            fi
             [ "$i" -lt 3 ] && { echo "attempt $i failed, retrying in 15s..."; sleep 15; }
           done
           echo "::warning::buildkit pre-pull did not finish; setup-buildx will pull $image itself"
