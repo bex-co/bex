@@ -1387,8 +1387,10 @@ func TestDeletingAppAnswersAsUnknownHost(t *testing.T) {
 				}
 				rr := httptest.NewRecorder()
 				newHoldingHandler(cl, cache, logr.Discard(), newHolder(cl)).ServeHTTP(rr, req)
-				if rr.Code != http.StatusNotFound || rr.Header().Get("Retry-After") != "" || rr.Header().Get(routingHeader) != routingNoServer {
-					t.Errorf("Accept %q = %d Retry-After %q: %q, want the unknown host's 404", accept, rr.Code, rr.Header().Get("Retry-After"), rr.Body.String())
+				retry, routing := rr.Header().Get("Retry-After"), rr.Header().Get(routingHeader)
+				if rr.Code != http.StatusNotFound || retry != "" || routing != routingNoServer {
+					t.Errorf("Accept %q = %d Retry-After %q routing %q: %q, want the unknown host's 404",
+						accept, rr.Code, retry, routing, rr.Body.String())
 				}
 			}
 			if got := cl.patches.Load(); got != 0 {
