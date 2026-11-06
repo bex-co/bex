@@ -32,3 +32,7 @@
 - **Source:** existing rule (cloud-agent work matches Devin's observable behavior, user preference 2026-10-30) plus verified evidence. Devin deprecated Knowledge and is migrating Playbooks to **Skills** (`SKILL.md`, the Agent Skills format); accounts created from 2026-10-24 have Skills only ([Knowledge](https://docs.devin.ai/product-guides/knowledge), [Playbooks](https://docs.devin.ai/product-guides/creating-playbooks), [Skills](https://docs.devin.ai/product-guides/skills)).
 - **Chosen:** one entity, the workspace skill ([ADR099](../../../docs/ADR099-agent-skills.md)), in place of separate notes and playbooks. Knowledge maps to an enabled skill with model triggers; a playbook maps to a skill invoked explicitly through `skills` on create/steer (the `playbook_id` equivalent).
 - **Effect on tasks:** t002 builds skill CRUD and `skills` on create/steer (in place of `playbookId`); t003 delivers per ADR099 D5 (files in `/bex/skills`, engine-folder links, an overlay index, and invocation lines); t004 adds a Skills settings page and a composer picker.
+
+## CLI follow-through (2026-11-06, from w9/m177 t004)
+
+- When this milestone adds its create/steer field, add `--skill name[:args]` on `bex agent run`/`send` (ADR099 D4) in `lego/cli/internal/agent`, with a contract test, as part of the implementation task.

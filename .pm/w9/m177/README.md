@@ -1,6 +1,6 @@
 # w9 · m177 — Cloud Agents from the terminal and the editor: `bex agent` and bex desktop MCP preconfig
 
-**Worker:** worker9 **Goal:** `bex agent run/wait/get/list/send/logs/files/cancel` drives cloud agents from CI and scripts, and bex desktop ships with `/mcp/cloud-agents` preconfigured for its signed-in user. **Status:** in progress — t001, t005 done; t002 shipped in bex-desktop and awaits its live check; t003 docs written, release pending
+**Worker:** worker9 **Goal:** `bex agent run/wait/get/list/send/logs/files/cancel` drives cloud agents from CI and scripts, and bex desktop ships with `/mcp/cloud-agents` preconfigured for its signed-in user. **Status:** in progress — t001, t004–t006 done; t002 shipped in bex-desktop and awaits its live check; t003 docs written, release pending
 
 ## Tasks (in order)
 
@@ -9,9 +9,9 @@
 | t001 | `bex agent` commands in the CLI launcher — **DONE** | 120m | — |
 | t002 | bex desktop preconfigures /mcp/cloud-agents | 60m | — |
 | t003 | Docs and release | 30m | t001, t002 |
-| t004 | Render parity (Devin reference for agent surfaces) | 25m | t003 |
+| t004 | Render parity (Devin reference for agent surfaces) — **DONE** | 25m | t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
-| t006 | Test coverage | 45m | t004, t005 |
+| t006 | Test coverage — **DONE** | 45m | t004, t005 |
 | t007 | Closeout | 10m | t006 |
 
 ## Definition of done

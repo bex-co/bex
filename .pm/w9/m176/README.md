@@ -38,3 +38,7 @@
   - t002 implements D3 and D4 (policy, bypass, `ask_user`).
   - t003 implements D6 (dashboard callout and Blocked group).
   - w11/m7 t003 can consume the D2 answer route.
+
+## CLI follow-through (2026-11-06, from w9/m177 t004)
+
+- When this milestone adds its create/steer field, add `--approval-mode` and `--bypass-approval` on `bex agent run` (ADR100 D3) in `lego/cli/internal/agent`, with a contract test, as part of the implementation task.

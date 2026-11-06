@@ -18,7 +18,8 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [ ] **076** — [Live structured-output session (ADR094 phase 3, was w21/004)](076.md) ← moved from w21 2026-11-05; runs on production as the QA user (no dev-21 needed)
 - [ ] **077** — [Live completion webhook and spend ceiling (ADR094 phase 4, was w21/007)](077.md) ← moved from w21 2026-11-05; unblocks m172 closeout
 - [ ] **m172** — [Cloud Agents MCP phase 4: completion webhooks, per-session spend ceiling, `outcome.cost` (was w21/m260)](m172/README.md) (7 tasks; t001–t006 **DONE** in w21) — **next:** closeout after 077
-- [ ] **078** — **BLOCKED (your decision: how `outcome.cost` reports sandbox compute — recommended: one USD total like Devin's single consumption figure; needs a billing-adjacent session↔sandbox attribution)** — [`outcome.cost` sandbox compute (was w21/006)](blocked/078.md)
+- [x] **078** — [`outcome.cost` sandbox compute (was w21/006)](done/078.md) — user decided 2026-11-06: one USD total; promoted to m178
+- [ ] **m178** — [`outcome.cost` reports sandbox compute in one USD total (Devin parity)](m178/README.md) (7 tasks) ← from 078
 - [ ] **m173** — [CI stability: deploys stop stalling on an overloaded self-hosted runner host](m173/README.md) (8 tasks) ← 2026-11-04/05 deploy gaps (thread exhaustion, runner drops, SBOM timeouts)
 - [ ] **m174** — [Session-scoped secrets for cloud agents (Devin parity)](m174/README.md) (8 tasks)
 - [ ] **m175** — [Knowledge and Playbooks for cloud agents (Devin parity)](m175/README.md) (8 tasks)
