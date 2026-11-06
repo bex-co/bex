@@ -809,6 +809,43 @@ describe("NewSessionComposer", () => {
     ).toBeInTheDocument();
   });
 
+  // w4/525: the picker's keys arrive through the editor, so once Tab moved
+  // focus on, the list stayed open over the next controls and Escape did not
+  // close it.
+  it("closes the picker when focus leaves the Task box, and on Escape anywhere", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await screen.findByLabelText("Task");
+
+    await user.click(attachmentControl());
+    expect(await screen.findByRole("listbox")).toBeInTheDocument();
+    await user.click(screen.getByLabelText("Task"));
+    await user.tab();
+    await waitFor(() =>
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
+    );
+    expect(screen.getByLabelText("Task")).not.toHaveFocus();
+
+    // Opened again, then Escape while focus is held elsewhere.
+    await user.click(attachmentControl());
+    expect(await screen.findByRole("listbox")).toBeInTheDocument();
+    const outside = document.createElement("div");
+    document.body.appendChild(outside);
+    outside.dispatchEvent(
+      new KeyboardEvent("keydown", { key: "Escape", bubbles: true }),
+    );
+    await waitFor(() =>
+      expect(screen.queryByRole("listbox")).not.toBeInTheDocument(),
+    );
+    outside.remove();
+
+    // Selecting with the mouse still works: an option click moves no focus.
+    await pickRepo(user);
+    expect(
+      screen.getByRole("button", { name: "Repository acme/widgets" }),
+    ).toBeInTheDocument();
+  });
+
   it("renders exactly one repository/session attachment control", async () => {
     render(<NewSessionComposer />);
     await screen.findByLabelText("Task");

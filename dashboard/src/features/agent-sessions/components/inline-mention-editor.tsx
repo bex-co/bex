@@ -14,10 +14,11 @@ import Text from "@tiptap/extension-text";
 import { Placeholder, UndoRedo } from "@tiptap/extensions";
 import { PluginKey, TextSelection } from "@tiptap/pm/state";
 import { EditorContent, ReactRenderer, useEditor } from "@tiptap/react";
-import type {
-  SuggestionKeyDownProps,
-  SuggestionOptions,
-  SuggestionProps,
+import {
+  exitSuggestion,
+  type SuggestionKeyDownProps,
+  type SuggestionOptions,
+  type SuggestionProps,
 } from "@tiptap/suggestion";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { MentionPicker } from "@/features/agent-sessions/components/mention-picker";
@@ -168,6 +169,7 @@ export const InlineMentionEditor = forwardRef<
         | ReactRenderer<MentionMenuHandle, MentionMenuProps>
         | undefined;
       let unmount: (() => void) | undefined;
+      let stopWatching: (() => void) | undefined;
 
       const menuProps = (props: BaseSuggestionProps): MentionMenuProps => ({
         ...props,
@@ -182,10 +184,35 @@ export const InlineMentionEditor = forwardRef<
             props: menuProps(props),
           });
           unmount = props.mount(component.element);
+          // The picker's keys arrive through the editor, so once keyboard focus
+          // left it the list stayed open over the controls Tab reached, and
+          // Escape no longer closed it (w4/525). Focus landing outside the
+          // editor and the picker ends the suggestion; Escape anywhere does.
+          const view = props.editor.view;
+          const outside = (target: EventTarget | null) =>
+            target instanceof Node &&
+            !view.dom.contains(target) &&
+            !component?.element.contains(target);
+          const onFocusIn = (event: FocusEvent) => {
+            if (outside(event.target)) exitSuggestion(view, mentionPluginKey);
+          };
+          const onKeyDown = (event: KeyboardEvent) => {
+            if (event.key === "Escape" && outside(event.target)) {
+              exitSuggestion(view, mentionPluginKey);
+            }
+          };
+          document.addEventListener("focusin", onFocusIn);
+          document.addEventListener("keydown", onKeyDown);
+          stopWatching = () => {
+            document.removeEventListener("focusin", onFocusIn);
+            document.removeEventListener("keydown", onKeyDown);
+          };
         },
         onUpdate: (props) => component?.updateProps(menuProps(props)),
         onKeyDown: (props) => component?.ref?.onKeyDown(props) ?? false,
         onExit: () => {
+          stopWatching?.();
+          stopWatching = undefined;
           unmount?.();
           component?.destroy();
           unmount = undefined;
