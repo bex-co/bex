@@ -1297,6 +1297,134 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "本轮使用的技能",
     description: "Accessible label of a transcript turn's skill pills",
   },
+  "agentSessions.statusPhrase.waitingForApproval": {
+    message: "等待你的审批",
+    description: "Status phrase: a turn paused on an approval (ADR100)",
+  },
+  "agentSessions.statusPhrase.waitingForAnswer": {
+    message: "等待你的回答",
+    description: "Status phrase: a turn paused on a question (ADR100)",
+  },
+  "agentSessions.blockedGroup": {
+    message: "已阻塞",
+    description: "Sessions waiting on a person (Devin's Blocked group)",
+  },
+  "agentSessions.blockedCount_other": {
+    message: "{count} 个已阻塞的会话",
+    description: "Accessible label of the Blocked group's count",
+  },
+  "agentSessions.blockedBadge": {
+    message: "已阻塞",
+    description: "Badge on a session waiting on a person",
+  },
+  "agentSessions.decision.approvalTitle": {
+    message: "智能体在执行前征求你的同意",
+    description: "Decision callout title for an approval",
+  },
+  "agentSessions.decision.questionTitle": {
+    message: "智能体有一个问题",
+    description: "Decision callout title for a question",
+  },
+  "agentSessions.decision.rule": {
+    message: "匹配的规则：{rule}",
+    description: "The risky-action rule an approval matched",
+  },
+  "agentSessions.decision.pathsLabel": {
+    message: "此操作涉及的路径",
+    description: "Accessible label of the approval's path list",
+  },
+  "agentSessions.decision.allowOnce": {
+    message: "允许一次",
+    description: "Approve this one action",
+  },
+  "agentSessions.decision.allowSession": {
+    message: "本会话内都允许",
+    description: "Approve this kind of action for the rest of the session",
+  },
+  "agentSessions.decision.deny": {
+    message: "拒绝",
+    description: "Refuse the action; the agent continues without it",
+  },
+  "agentSessions.decision.optionsLabel": {
+    message: "建议的回答",
+    description: "Accessible label of a question's suggested answers",
+  },
+  "agentSessions.decision.replyLabel": {
+    message: "你的回答",
+    description: "Accessible label of the question reply box",
+  },
+  "agentSessions.decision.replyPlaceholder": {
+    message: "输入你的回答…",
+    description: "Question reply placeholder",
+  },
+  "agentSessions.decision.reply": {
+    message: "发送回答",
+    description: "Send the typed answer",
+  },
+  "agentSessions.decision.approvalExpiry": {
+    message: "24 小时内无人回复，此操作将被拒绝，智能体会继续工作。",
+    description: "Approval expiry note",
+  },
+  "agentSessions.decision.questionExpiry": {
+    message: "24 小时内无人回复，智能体会按最合理的假设继续。",
+    description: "Question expiry note",
+  },
+  "agentSessions.decision.alreadyAnswered": {
+    message: "已有人回答了这个问题。",
+    description: "Toast when the decision was answered elsewhere",
+  },
+  "agentSessions.decision.expired": {
+    message: "此决定已关闭。",
+    description: "Toast when the decision expired or closed",
+  },
+  "agentSessions.approvalButton": {
+    message: "审批",
+    description: "Composer approval button label (workspace default)",
+  },
+  "agentSessions.approvalButtonMode": {
+    message: "审批：{mode}",
+    description: "Composer approval button label with a chosen mode",
+  },
+  "agentSessions.approvalTitle": {
+    message: "智能体何时需要询问你？",
+    description: "Composer approval popover heading",
+  },
+  "agentSessions.approvalWorkspaceDefault": {
+    message: "工作区默认（{mode}）",
+    description: "Composer approval option that follows the workspace",
+  },
+  "agentSessions.approvalLoading": {
+    message: "正在加载工作区设置…",
+    description: "Composer approval popover while the environment loads",
+  },
+  "agentSessions.approvalBypassLocked": {
+    message: "你的工作区不允许会话比其设置询问得更少。",
+    description: "Why less cautious modes are disabled",
+  },
+  "agentSessions.errors.AGENT_SESSION_DECISION_ANSWERED": {
+    message: "已有人回答了这个问题。",
+    description: "Mapped message for AGENT_SESSION_DECISION_ANSWERED",
+  },
+  "agentSessions.errors.AGENT_SESSION_DECISION_EXPIRED": {
+    message: "此决定已关闭。",
+    description: "Mapped message for AGENT_SESSION_DECISION_EXPIRED",
+  },
+  "agentSessions.errors.AGENT_SESSION_DECISION_NOT_FOUND": {
+    message: "此决定已关闭。",
+    description: "Mapped message for AGENT_SESSION_DECISION_NOT_FOUND",
+  },
+  "agentSessions.errors.AGENT_SESSION_DECISION_INVALID": {
+    message: "该回答不适用于此决定，请重试。",
+    description: "Mapped message for AGENT_SESSION_DECISION_INVALID",
+  },
+  "agentSessions.errors.AGENT_SESSION_APPROVAL_BYPASS_FORBIDDEN": {
+    message: "你的工作区不允许会话比其审批设置询问得更少。",
+    description: "Mapped message for AGENT_SESSION_APPROVAL_BYPASS_FORBIDDEN",
+  },
+  "agentSessions.errors.AGENT_SESSION_APPROVAL_UNAVAILABLE": {
+    message: "审批功能暂不可用。请不设审批模式启动会话，或稍后重试。",
+    description: "Mapped message for AGENT_SESSION_APPROVAL_UNAVAILABLE",
+  },
 };
 
 export default zhAgentSessions;

@@ -642,6 +642,50 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     message: "Couldn't save the change. Try again.",
     description: "Generic skill write failure",
   },
+  "agentEnvironment.approvalTitle": {
+    message: "Approvals",
+    description: "Settings \u2192 Agents approval section heading (ADR100)",
+  },
+  "agentEnvironment.approvalDescription": {
+    message:
+      "When agents stop to ask you before acting. A session waiting on you shows as Blocked until someone answers; after 24 hours an approval is denied and a question gets no answer.",
+    description: "Approval section description",
+  },
+  "agentEnvironment.approvalAutonomousTitle": {
+    message: "Autonomous",
+    description: "Approval mode option: never ask",
+  },
+  "agentEnvironment.approvalAutonomousDescription": {
+    message: "Agents never pause for approval.",
+    description: "Approval mode autonomous description",
+  },
+  "agentEnvironment.approvalRiskyTitle": {
+    message: "Ask before risky actions",
+    description: "Approval mode option: risky",
+  },
+  "agentEnvironment.approvalRiskyDescription": {
+    message:
+      "Agents ask before force-pushing, deleting outside the repository, publishing packages, changing infrastructure, or calling deploy APIs.",
+    description: "Approval mode risky description",
+  },
+  "agentEnvironment.approvalAllTitle": {
+    message: "Ask before every action",
+    description: "Approval mode option: all",
+  },
+  "agentEnvironment.approvalAllDescription": {
+    message:
+      "Agents ask before every command and file change; reading stays automatic.",
+    description: "Approval mode all description",
+  },
+  "agentEnvironment.approvalBypassLabel": {
+    message: "Members may start sessions that ask less",
+    description: "Approval bypass switch label",
+  },
+  "agentEnvironment.approvalBypassHelp": {
+    message:
+      "When off, a new session can only be as cautious as this setting or more.",
+    description: "Approval bypass switch help",
+  },
 };
 
 export default enAgentEnvironment;

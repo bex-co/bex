@@ -44,11 +44,15 @@ import {
   agentSessionDisplayName,
   agentSessionDurationMs,
 } from "@/features/agent-sessions/lib/mapper";
-import type {
-  AgentSessionListSearch,
-  AgentSessionView,
+import {
+  isAgentSessionBlocked,
+  type AgentSessionListSearch,
+  type AgentSessionView,
 } from "@/features/agent-sessions/types";
-import { AgentSessionPhaseChip } from "@/features/agent-sessions/components/session-list";
+import {
+  AgentSessionBlockedBadge,
+  AgentSessionPhaseChip,
+} from "@/features/agent-sessions/components/session-list";
 
 /** Compact `h/m/s` elapsed label ("1h 4m", "12m 8s", "3s"). */
 function formatDurationShort(ms: number): string {
@@ -180,6 +184,7 @@ export function SessionDetailHeader({
       <div className="min-w-0 flex-1">
         <div className="flex items-center gap-2">
           <AgentSessionPhaseChip phase={session.phase} />
+          {isAgentSessionBlocked(session) ? <AgentSessionBlockedBadge /> : null}
           <h1
             className="truncate text-sm font-semibold"
             title={displayName.full}

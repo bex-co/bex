@@ -14,6 +14,10 @@ fragment AgentEnvironmentFields on AgentEnvironment {
   modelKeySet
   modelSource
   registryHosts
+  # When agents pause for approval (ADR100 D3): autonomous | risky | all, and
+  # whether a session may start below it.
+  approvalMode
+  approvalBypassAllowed
   updatedAt
   # Agent-model spend controls (ADR091 D5, D10.1); null when the store is off.
   # agentModelMonthlySpendCapUsd is the effective cap: min(the admin override

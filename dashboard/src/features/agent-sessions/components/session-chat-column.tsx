@@ -6,6 +6,7 @@ import { DeliveryNoteCallout } from "@/features/agent-sessions/components/delive
 import { StructuredResultCallout } from "@/features/agent-sessions/components/structured-result-callout";
 import { SessionSpendNote } from "@/features/agent-sessions/components/session-spend-note";
 import { FailureCallout } from "@/features/agent-sessions/components/failure-callout";
+import { DecisionCallout } from "@/features/agent-sessions/components/decision-callout";
 import { SteeringComposer } from "@/features/agent-sessions/components/steering-composer";
 import { SessionConversation } from "@/features/agent-sessions/components/session-conversation";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
@@ -159,6 +160,12 @@ export function SessionChatColumn({
       />
 
       <div className="min-h-0 flex-1">{conversation}</div>
+
+      {/* A paused turn's decision (ADR100) docks above the composer so it is
+          in view whatever the scroll position; it renders nothing otherwise. */}
+      <div className="mx-auto w-full max-w-3xl px-4 empty:hidden">
+        <DecisionCallout session={session} onAnswered={onChanged} />
+      </div>
 
       {/* An archived session refuses steer/resume (AGENT_SESSION_ARCHIVED), so
           the composer would be a dead input — the header's Unarchive is the way

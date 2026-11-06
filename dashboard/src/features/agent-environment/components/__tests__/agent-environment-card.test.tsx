@@ -219,6 +219,77 @@ describe("AgentEnvironmentCard", () => {
     ).toBeInTheDocument();
   });
 
+  describe("approvals (ADR100)", () => {
+    it("saves a stricter approval mode and the bypass switch with the card", async () => {
+      const { user, update } = setup();
+      expect(radio(/^Autonomous/)).toHaveAttribute("aria-checked", "true");
+      const bypass = screen.getByRole("switch", {
+        name: "Members may start sessions that ask less",
+      });
+      expect(bypass).toBeChecked();
+      expect(save()).toBeDisabled();
+
+      await user.click(radio(/^Ask before risky actions/));
+      await user.click(bypass);
+      expect(save()).toBeEnabled();
+      await user.click(save());
+      expect(update).toHaveBeenCalledWith({
+        approvalMode: "risky",
+        approvalBypassAllowed: false,
+      });
+    });
+
+    it("sends nothing when a change is undone", async () => {
+      const { user } = setup({ ...ENV, approvalMode: "all" });
+      expect(radio(/^Ask before every action/)).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      await user.click(radio(/^Autonomous/));
+      expect(save()).toBeEnabled();
+      await user.click(radio(/^Ask before every action/));
+      expect(save()).toBeDisabled();
+    });
+
+    it("is read-only for a member", () => {
+      vi.mocked(useCapabilities).mockReturnValue(
+        mockCapabilities({ role: "DEVELOPER", canManage: false }),
+      );
+      setup({ ...ENV, approvalMode: "risky", approvalBypassAllowed: false });
+      expect(radio(/^Ask before risky actions/)).toHaveAttribute(
+        "aria-checked",
+        "true",
+      );
+      expect(radio(/^Autonomous/)).toBeDisabled();
+      expect(
+        screen.getByRole("switch", {
+          name: "Members may start sessions that ask less",
+        }),
+      ).toBeDisabled();
+    });
+
+    it("renders the approval section's static copy in the skeleton", () => {
+      setup(null, true);
+      const section = within(
+        screen.getByTestId("approval-mode-section-skeleton"),
+      );
+      for (const text of [
+        "Approvals",
+        /When agents stop to ask you before acting/,
+        "Autonomous",
+        "Agents never pause for approval.",
+        "Ask before risky actions",
+        /Agents ask before force-pushing/,
+        "Ask before every action",
+        /Agents ask before every command and file change/,
+        "Members may start sessions that ask less",
+        /can only be as cautious as this setting or more/,
+      ]) {
+        expect(section.getByText(text)).toBeInTheDocument();
+      }
+    });
+  });
+
   it("is read-only for a member without can_manage", async () => {
     vi.mocked(useCapabilities).mockReturnValue(
       mockCapabilities({ role: "DEVELOPER", canManage: false }),

@@ -1,5 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { fireEvent, render, screen } from "@testing-library/react";
+import { fireEvent, render, screen, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import {
   RouterProvider,
@@ -72,6 +72,39 @@ beforeEach(() => {
 // top of DashboardSidebar. The list now lives in the one rail as Devin's
 // contextual slot.
 describe("AgentSessionsNavSection (w5/m64 — one rail, contextual slot)", () => {
+  // ADR100: Devin's Blocked group leads the rail, linked to the Blocked list.
+  it("leads with a Blocked group of sessions waiting on a person", async () => {
+    sessionsState.sessions = [
+      view({ id: "as-1", title: "Running work", state: "working" }),
+      view({
+        id: "as-2",
+        title: "Needs approval",
+        state: "needs_input",
+        waitingFor: "approval",
+      }),
+    ];
+    renderAt("/agents");
+    const group = await screen.findByTestId("agent-sessions-blocked-group");
+    const link = within(group).getByRole("link", { name: /Blocked/ });
+    expect(link.getAttribute("href")).toContain("state=needs_input");
+    expect(
+      within(group).getByLabelText("1 blocked session"),
+    ).toBeInTheDocument();
+    expect(within(group).getByText("Needs approval")).toBeInTheDocument();
+    expect(
+      within(group).getByText("Waiting for your approval"),
+    ).toBeInTheDocument();
+    expect(within(group).queryByText("Running work")).toBeNull();
+    expect(screen.getByText("Running work")).toBeInTheDocument();
+  });
+
+  it("shows no Blocked group when nothing waits", async () => {
+    sessionsState.sessions = [view({ id: "as-1", state: "working" })];
+    renderAt("/agents");
+    expect(await screen.findByText("Recent")).toBeInTheDocument();
+    expect(screen.queryByTestId("agent-sessions-blocked-group")).toBeNull();
+  });
+
   it("renders the sessions slot alongside the global nav on /agents", async () => {
     sessionsState.sessions = [view()];
     renderAt("/agents");

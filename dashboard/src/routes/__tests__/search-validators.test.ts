@@ -50,8 +50,14 @@ describe.each([
   [
     "/agents",
     AgentsRoute,
-    { phase: "bogus", view: "grid", archived: "no" },
-    { view: undefined, archived: undefined, phase: undefined, tag: undefined },
+    { phase: "bogus", view: "grid", archived: "no", state: "running" },
+    {
+      view: undefined,
+      archived: undefined,
+      phase: undefined,
+      state: undefined,
+      tag: undefined,
+    },
   ],
   [
     "/agents/$agentSessionId",

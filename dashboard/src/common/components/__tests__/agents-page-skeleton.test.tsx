@@ -23,13 +23,13 @@ describe("AgentsPageSkeleton", () => {
     const box = container.querySelector(
       '[data-skeleton-region="composer-box"]',
     );
-    // Agent select + attachment chip + Secrets + Skills + Start (no
-    // Advanced trigger, w10/m17; Secrets ADR098; Skills ADR099): 3 toolbar
-    // rows below 417px, 2 below 541px, 1 above.
+    // Agent select + attachment chip + Secrets + Skills + Approval + Start
+    // (no Advanced trigger, w10/m17; Secrets ADR098; Skills ADR099; Approval
+    // ADR100): 3 toolbar rows below 453px, 2 below 577px, 1 above.
     expect(box).toHaveClass(
       "h-[14rem]",
-      "min-[26.0625rem]:h-[11.75rem]",
-      "min-[33.8125rem]:h-[9.5rem]",
+      "min-[28.3125rem]:h-[11.75rem]",
+      "min-[36.0625rem]:h-[9.5rem]",
     );
     expect(box?.className).not.toMatch(/\bsm:h-/);
   });

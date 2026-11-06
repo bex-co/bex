@@ -27,12 +27,19 @@ export const apolloCacheConfig: InMemoryCacheConfig = {
 type OutcomeRecord = Record<string, unknown> | null | undefined;
 
 // Only a single-session read fills an outcome's costly fields (ADR094: the
-// final summary, shared files, structured result and cost). A list poll of the
+// final summary, shared files, structured result and cost; ADR100: the open
+// decision a paused turn waits on). A list poll of the
 // same session then writes them as null, which would blank a detail page that
 // already showed them. While the turn and state are unchanged those fields
 // cannot have been cleared server-side, so a null incoming value keeps the
 // existing one; any change of turn or state takes the incoming outcome whole.
-const outcomeDetailFields = ["summary", "files", "result", "cost"] as const;
+const outcomeDetailFields = [
+  "summary",
+  "files",
+  "result",
+  "cost",
+  "pendingDecision",
+] as const;
 
 export function mergeAgentSessionOutcome(
   existing: OutcomeRecord,

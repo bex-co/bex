@@ -9,6 +9,8 @@ const outcome = (modelUSD: string | null) => ({
   turn: 1,
   summary: null,
   deliveryNote: null,
+  waitingFor: null,
+  pendingDecision: null,
   failureReasonCode: null,
   result: null,
   cost: modelUSD ? { modelUSD } : null,

@@ -692,6 +692,114 @@ describe("NewSessionComposer", () => {
     expect(create.mock.calls[2][0].idempotencyKey).not.toBe(first);
   });
 
+  describe("approval mode (ADR100)", () => {
+    it("follows the workspace by default and sends nothing", async () => {
+      spend.environment = agentEnvironment({ approvalMode: "risky" });
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      await typeTask(user);
+      await user.click(screen.getByRole("button", { name: "Start session" }));
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+      const input = create.mock.calls[0][0];
+      expect(input.approvalMode).toBeUndefined();
+      expect(input.bypassApproval).toBeUndefined();
+    });
+
+    it("sends a stricter mode, or bypass where the workspace allows it", async () => {
+      spend.environment = agentEnvironment({
+        approvalMode: "risky",
+        approvalBypassAllowed: true,
+      });
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      await typeTask(user);
+      await user.click(screen.getByRole("button", { name: "Approvals" }));
+      expect(
+        screen.getByRole("radio", {
+          name: /^Workspace default \(Ask before risky actions\)/,
+        }),
+      ).toHaveAttribute("aria-checked", "true");
+      await user.click(
+        screen.getByRole("radio", { name: /^Ask before every action/ }),
+      );
+      await user.keyboard("{Escape}");
+      const start = screen.getByRole("button", { name: "Start session" });
+      await user.click(start);
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+      expect(create.mock.calls[0][0]).toMatchObject({ approvalMode: "all" });
+      expect(create.mock.calls[0][0].bypassApproval).toBeUndefined();
+
+      // Sent once: the choice resets with the create.
+      expect(
+        screen.getByRole("button", { name: "Approvals" }),
+      ).toBeInTheDocument();
+      await typeTask(user);
+      await user.click(screen.getByRole("button", { name: "Approvals" }));
+      await user.click(screen.getByRole("radio", { name: /^Autonomous/ }));
+      await user.keyboard("{Escape}");
+      expect(
+        screen.getByRole("button", { name: "Approvals: Autonomous" }),
+      ).toBeInTheDocument();
+      await user.click(start);
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+      expect(create.mock.calls[1][0]).toMatchObject({ bypassApproval: true });
+      expect(create.mock.calls[1][0].approvalMode).toBeUndefined();
+    });
+
+    it("disables less cautious modes when the workspace forbids lowering", async () => {
+      spend.environment = agentEnvironment({
+        approvalMode: "risky",
+        approvalBypassAllowed: false,
+      });
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      // Let the composer settle (its focus moves to the task box) before
+      // opening the popover, or that focus move closes it.
+      await typeTask(user);
+      await user.click(screen.getByRole("button", { name: "Approvals" }));
+      // The workspace setting loads asynchronously and can briefly show a
+      // previous one: wait until the default option names this workspace's
+      // mode before asserting what it allows.
+      await screen.findByRole("radio", {
+        name: /^Workspace default \(Ask before risky actions\)/,
+      });
+      expect(screen.getByRole("radio", { name: /^Autonomous/ })).toBeDisabled();
+      expect(
+        screen.getByRole("radio", { name: /^Ask before every action/ }),
+      ).toBeEnabled();
+      expect(
+        await screen.findByText(
+          "Your workspace doesn't let sessions ask less than its setting.",
+        ),
+      ).toBeInTheDocument();
+    });
+
+    it("mints a new idempotency key when the approval choice changes", async () => {
+      spend.environment = agentEnvironment({ approvalMode: "autonomous" });
+      create.mockRejectedValueOnce(new Error("network down"));
+      create.mockRejectedValueOnce(new Error("network down"));
+      const user = userEvent.setup();
+      render(<NewSessionComposer />);
+      await typeTask(user);
+      const start = screen.getByRole("button", { name: "Start session" });
+      await user.click(start);
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+      await user.click(start);
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+      const first = create.mock.calls[0][0].idempotencyKey;
+      expect(create.mock.calls[1][0].idempotencyKey).toBe(first);
+      await user.click(screen.getByRole("button", { name: "Approvals" }));
+      await user.click(
+        screen.getByRole("radio", { name: /^Ask before risky actions/ }),
+      );
+      await user.keyboard("{Escape}");
+      await user.click(start);
+      await waitFor(() => expect(create).toHaveBeenCalledTimes(3));
+      expect(create.mock.calls[2][0].idempotencyKey).not.toBe(first);
+      expect(create.mock.calls[2][0]).toMatchObject({ approvalMode: "risky" });
+    });
+  });
+
   it("blocks submit on an out-of-range spend limit", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);

@@ -58,14 +58,14 @@ export function AgentsPageSkeleton({
             data-skeleton-region="composer"
           >
             {/* The prompt box: a 112px editor over a toolbar (agent select,
-                attachment chip, Secrets, Skills, Start) that wraps by viewport.
-                Measured in Chromium (en) once the Advanced trigger left the
-                toolbar (w10/m17): three rows (224px) below 345px, two (188px)
-                below 469px, one (152px) from there on; the 32px Secrets
-                (ADR098) and Skills (ADR099) buttons, each with its 4px gap,
-                move both breaks up by 72px. */}
+                attachment chip, Secrets, Skills, Approval, Start) that wraps by
+                viewport. Measured in Chromium (en) once the Advanced trigger
+                left the toolbar (w10/m17): three rows (224px) below 345px, two
+                (188px) below 469px, one (152px) from there on; the 32px
+                Secrets (ADR098), Skills (ADR099) and Approval (ADR100)
+                buttons, each with its 4px gap, move both breaks up by 108px. */}
             <Skeleton
-              className="h-[14rem] w-full rounded-xl min-[26.0625rem]:h-[11.75rem] min-[33.8125rem]:h-[9.5rem]"
+              className="h-[14rem] w-full rounded-xl min-[28.3125rem]:h-[11.75rem] min-[36.0625rem]:h-[9.5rem]"
               data-skeleton-region="composer-box"
             />
             <Skeleton

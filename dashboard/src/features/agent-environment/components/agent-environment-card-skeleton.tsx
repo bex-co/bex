@@ -13,10 +13,17 @@ import { Skeleton } from "@/common/components/ui/skeleton";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils";
 import { TIERS } from "@/features/agent-environment/lib/environment";
+import {
+  APPROVAL_MODES,
+  APPROVAL_MODE_COPY,
+} from "@/features/agent-environment/lib/approval";
 
 /** One network-tier option's frame, shared by the ready card and this skeleton. */
 export const TIER_OPTION_CLASS =
   "flex min-h-20 w-full flex-col gap-1 rounded-lg border p-4";
+
+/** The approval section's switch row frame, shared by the card and skeleton. */
+export const APPROVAL_BYPASS_ROW_CLASS = "flex items-start gap-3";
 
 /** A section's heading and description (network, model provider, spend). */
 export function AgentSectionHeading({
@@ -141,6 +148,40 @@ export function AgentEnvironmentCardSkeleton() {
               {t("agentEnvironment.registryHostsSummary", { count: 99 })}
             </SkeletonText>
           </p>
+        </div>
+        <div
+          className="space-y-3 border-t pt-6"
+          data-testid="approval-mode-section-skeleton"
+        >
+          <AgentSectionHeading
+            title={t("agentEnvironment.approvalTitle")}
+            description={t("agentEnvironment.approvalDescription")}
+          />
+          <div className="grid grid-cols-1 gap-3">
+            {APPROVAL_MODES.map((mode) => (
+              <div
+                key={mode}
+                className={cn(TIER_OPTION_CLASS, "border-border")}
+              >
+                <TierOptionText
+                  title={t(APPROVAL_MODE_COPY[mode].titleKey)}
+                  description={t(APPROVAL_MODE_COPY[mode].descriptionKey)}
+                />
+              </div>
+            ))}
+          </div>
+          <div className={APPROVAL_BYPASS_ROW_CLASS}>
+            {/* The switch's 20px × 36px track, its state unknown yet. */}
+            <Skeleton className="h-5 w-9 shrink-0 rounded-full" />
+            <div className="space-y-1">
+              <StaticLabel>
+                {t("agentEnvironment.approvalBypassLabel")}
+              </StaticLabel>
+              <p className="text-muted-foreground text-xs">
+                {t("agentEnvironment.approvalBypassHelp")}
+              </p>
+            </div>
+          </div>
         </div>
         <div className="space-y-2 border-t pt-6">
           <StaticLabel>{t("agentEnvironment.modelLabel")}</StaticLabel>

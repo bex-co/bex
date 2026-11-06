@@ -31,7 +31,15 @@ describe("agent-session filter search contracts", () => {
       view: undefined,
       archived: undefined,
       phase: undefined,
+      state: undefined,
       tag: undefined,
+    });
+    // ADR100: the rail's Blocked link filters by state; any other is dropped.
+    expect(validateList({ state: "needs_input" })).toMatchObject({
+      state: "needs_input",
+    });
+    expect(validateList({ state: "working" })).toMatchObject({
+      state: undefined,
     });
     // w21/002: a tag filter is kept; an empty or non-string one is dropped.
     expect(validateList({ tag: "release" })).toMatchObject({ tag: "release" });
