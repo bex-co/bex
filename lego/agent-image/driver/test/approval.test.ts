@@ -32,7 +32,12 @@ import {
 } from "../src/approval.js";
 import { askUser } from "../src/ask-user.js";
 import { availableTools } from "../src/mcp-bex.js";
-import { bexMcpServers } from "../src/acp.js";
+import {
+  bexMcpServers,
+  completePermissionToolCall,
+  rememberToolCall,
+  type KnownToolCall,
+} from "../src/acp.js";
 import { platformOverlay } from "../src/overlay.js";
 import { loadConfig } from "../src/config.js";
 import { runHeadlessTurn } from "../src/session.js";
@@ -383,6 +388,97 @@ test("a turn waiting on approval outlives its turn timeout and gets the answer",
       (open.detail as Record<string, unknown>).rule,
       "git-force-push",
     );
+  } finally {
+    await gateway.close();
+  }
+});
+
+// w9/m176 production finding (2026-11-06): claude-agent-acp sends an
+// AIR-capable client a permission request of only {toolCallId, title,
+// rawInput}; the kind lives on the earlier tool_call. Read alone, `sudo true`
+// was an "other" call and ran ungated.
+test("a permission request missing its kind is completed from the announced call", () => {
+  const known = new Map<string, KnownToolCall>();
+  rememberToolCall(known, {
+    sessionUpdate: "tool_call",
+    toolCallId: "c1",
+    title: "Terminal",
+    kind: "edit",
+    status: "pending",
+    locations: [{ path: "/etc/hosts" }],
+  } as never);
+  rememberToolCall(known, {
+    sessionUpdate: "tool_call_update",
+    toolCallId: "c1",
+    title: "Edit /etc/hosts",
+  } as never);
+  const request = {
+    sessionId: "s",
+    toolCall: { toolCallId: "c1", title: "Edit hosts" },
+    options: [],
+  } as unknown as RequestPermissionRequest;
+  const completed = completePermissionToolCall(request, known);
+  assert.equal(completed.toolCall.kind, "edit");
+  assert.equal(completed.toolCall.title, "Edit hosts"); // the request's own field wins
+  assert.deepEqual(completed.toolCall.locations, [{ path: "/etc/hosts" }]);
+  assert.ok(gateFor(completed.toolCall as never, "risky", "/workspace"));
+  // A finished call is forgotten; an unknown id leaves the request as sent.
+  rememberToolCall(known, {
+    sessionUpdate: "tool_call_update",
+    toolCallId: "c1",
+    status: "completed",
+  } as never);
+  assert.equal(completePermissionToolCall(request, known), request);
+});
+
+test("a kindless call carrying a shell command is gated as one", () => {
+  const sudo = {
+    toolCallId: "x",
+    title: "sudo true",
+    rawInput: { command: "sudo true" },
+  };
+  assert.equal(gateFor(sudo as never, "risky", "/workspace")?.rule, "sudo");
+  assert.equal(
+    gateFor({ ...sudo, rawInput: "sudo true" } as never, "risky", "/workspace")
+      ?.rule,
+    "sudo",
+  );
+  assert.equal(
+    gateFor({ toolCallId: "y", title: "Read" } as never, "risky", "/workspace"),
+    undefined,
+  );
+});
+
+test("an AIR-shaped permission request still opens a decision", async () => {
+  const gateway = await fakeGateway({
+    pendingAwaits: 0,
+    holdMs: 10,
+    final: { state: "denied", answer: { allow: false } },
+  });
+  try {
+    const config = await tempConfig({
+      approvalMode: "risky",
+      decisionUrl: gateway.url,
+    });
+    config.agentEnv = {
+      ACP_FIXTURE_ANNOUNCE_TOOL_CALL: JSON.stringify({
+        kind: "execute",
+        title: "Terminal",
+        rawInput: { command: "sudo true" },
+      }),
+      // Only the changed fields, no kind: what claude-agent-acp sends an AIR client.
+      ACP_FIXTURE_REQUEST_PERMISSION: JSON.stringify({ title: "sudo true" }),
+    };
+    const hub = new UIMessageStreamHub();
+    const result = await runHeadlessTurn(config, childEnv(config), hub);
+    assert.equal(result.state, "succeeded", JSON.stringify(result));
+    const text = hub.history
+      .filter((part) => part.type === "text-delta")
+      .map((part) => String(part.delta))
+      .join("");
+    assert.match(text, /permission: reject/);
+    const open = gateway.bodies[0].body as Record<string, unknown>;
+    assert.equal((open.detail as Record<string, unknown>).rule, "sudo");
   } finally {
     await gateway.close();
   }

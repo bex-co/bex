@@ -164,3 +164,37 @@ Backend, gateway, driver and CLI shipped together. Where this differs from the d
 - **Notifications.** Webhook `agent_session_needs_input` fires once per decision. Push `agent_needs_decision` is generic lock-screen text, deduped per decision; its "not sent yet" flag is gone.
 - **CLI.** `bex agent answer <ags-id> (--allow [--scope session] | --deny | --text …)`. `wait` exits 5 on `needs_input` and names the pending decision.
 - **Not covered yet:** a resume of a sleeping session does not re-check the mode. The session keeps the mode it was created with, so a later workspace change does not reach running sessions. The dashboard (D6) is a separate task.
+
+### Production finding and fix (2026-11-06, w9/m176)
+
+**Symptom.** On production (24a9203ee), a `risky` session ran `sudo true` and an `all` session ran `echo` with no decision, while `ask_user` paused correctly.
+
+**Root cause.** The permission request reached the driver, but without its `kind`.
+
+- The driver advertises the JetBrains AIR client extension (`typedSessionFailureCapabilities`, for codex-acp's typed failures).
+- Toward an AIR client, claude-agent-acp 0.94.0 sends a permission request's toolCall as only `{toolCallId, title, rawInput}`. The rest, including `kind`, is on the `tool_call` it announced earlier (`dist/tool-calls/renderer.js` `permissionToolCall`: "The client already holds the rest").
+- `gateFor` read the request alone, treated the missing kind as `other`, and granted `sudo true` with `allow_once`.
+- The fixture agent always sent a full toolCall, so the tests missed it. A real-adapter run through the driver reproduced it: the command executed, and no decision was opened.
+
+**Fix.**
+
+- `acp.ts` remembers each announced tool call (`kind`, `title`, `rawInput`, `locations`) from `session/update`, keyed by `toolCallId`, and completes a permission request's missing fields from it before the policy runs (`completePermissionToolCall`). A finished call is forgotten.
+- As a second line of defence, `gateFor` reads a kindless call that carries a shell command (`rawInput` string or `{command}`) as `execute`.
+- Regression tests:
+  - Unit tests and an AIR-shaped fixture test (`ACP_FIXTURE_ANNOUNCE_TOOL_CALL`). It fails without the fix.
+  - An opt-in real-adapter test, `driver/test/real-adapter-approval.test.ts`, which runs when `BEX_REAL_CLAUDE_ACP` points at the pinned adapter. It uses a fake Anthropic API and a fake decision gateway. With the fix, `sudo true` opens decision rule `sudo` and is refused, and `touch out.txt` in `all` mode opens `all:execute:touch out.txt`.
+
+**What `all` means with Claude.** Claude Code auto-allows commands it classifies as read-only (`echo hi`, `ls`) before asking any client, so they never reach the gate. That matches D3's "every non-read-only tool call". The production `echo` observation is that classification, not a bypass.
+
+**Codex limitation.** codex-acp 1.4.0 runs every turn with its session mode's approval policy:
+
+- default `agent` is `on-request` with a workspace-write sandbox;
+- `read-only` is `on-request` with a read-only sandbox;
+- `agent-full-access` is `never`.
+
+The policy is passed per turn, and `CODEX_CONFIG` cannot override it. Codex therefore asks only when it wants to escalate out of its own sandbox. In-sandbox commands such as `sudo true` reach no permission request, so risky mode gates Codex only on escalations. Codex needs a workspace model key, so this does not affect the platform-routed claude sessions.
+
+**Follow-ups:**
+
+- an `untrusted`-equivalent Codex mode, which needs codex-acp support;
+- verifying Gemini's `--acp` permission requests.

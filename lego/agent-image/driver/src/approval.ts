@@ -551,8 +551,25 @@ const ownTools = new Set([
 
 type ToolCall = RequestPermissionRequest["toolCall"];
 
+// kindOf is the call's ACP kind. A request missing one but carrying a shell
+// command (an adapter that sent only the changed fields, and no announcement
+// the driver saw) is an execute call: reading it as "other" would let any
+// command run ungated.
+function kindOf(toolCall: ToolCall): string {
+  if (toolCall.kind) return toolCall.kind;
+  const raw = toolCall.rawInput as unknown;
+  if (typeof raw === "string") return "execute";
+  if (
+    raw &&
+    typeof raw === "object" &&
+    "command" in (raw as Record<string, unknown>)
+  )
+    return "execute";
+  return "other";
+}
+
 export function isOwnTool(toolCall: ToolCall): boolean {
-  const kind = toolCall.kind ?? "other";
+  const kind = kindOf(toolCall);
   if (kind === "edit" || kind === "delete" || kind === "move") return false;
   const raw = toolCall.rawInput as unknown;
   if (raw && typeof raw === "object" && !Array.isArray(raw)) {
@@ -699,7 +716,7 @@ export function gateFor(
   cwd: string,
 ): Gate | undefined {
   if (mode === "autonomous" || isOwnTool(toolCall)) return undefined;
-  const kind = toolCall.kind ?? "other";
+  const kind = kindOf(toolCall);
   const title = (toolCall.title ?? "").trim() || kind;
   if (kind === "execute") {
     const command = commandOf(toolCall);

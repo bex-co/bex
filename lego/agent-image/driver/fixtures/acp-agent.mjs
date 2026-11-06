@@ -139,7 +139,10 @@ function resultBehavior(promptIndex) {
   const mode = process.env.ACP_FIXTURE_RESULT;
   const record = bexEnv("BEX_RESULT_RECORD_PATH");
   if (!mode || !record) return;
-  if ((mode === "first" && promptIndex === 0) || (mode === "on-reminder" && promptIndex === 1)) {
+  if (
+    (mode === "first" && promptIndex === 0) ||
+    (mode === "on-reminder" && promptIndex === 1)
+  ) {
     writeFileSync(record, JSON.stringify({ final: true }));
   }
 }
@@ -414,16 +417,35 @@ lines.on("line", async (line) => {
       // ADR100: ask the client's permission for a tool call, the way an
       // engine does before running it, and report the chosen option.
       if (process.env.ACP_FIXTURE_REQUEST_PERMISSION) {
+        // An engine announces the call first; an AIR-capable client then gets
+        // a permission request carrying only the changed fields
+        // (claude-agent-acp 0.94.0 permissionToolCall).
+        if (process.env.ACP_FIXTURE_ANNOUNCE_TOOL_CALL) {
+          update(sessionId, {
+            sessionUpdate: "tool_call",
+            toolCallId: "perm-call",
+            status: "pending",
+            ...JSON.parse(process.env.ACP_FIXTURE_ANNOUNCE_TOOL_CALL),
+          });
+        }
         const answer = await request("session/request_permission", {
           sessionId,
-          toolCall: { toolCallId: "perm-call", ...JSON.parse(process.env.ACP_FIXTURE_REQUEST_PERMISSION) },
+          toolCall: {
+            toolCallId: "perm-call",
+            ...JSON.parse(process.env.ACP_FIXTURE_REQUEST_PERMISSION),
+          },
           options: [
             { optionId: "allow-once", name: "Allow", kind: "allow_once" },
-            { optionId: "allow-always", name: "Always allow", kind: "allow_always" },
+            {
+              optionId: "allow-always",
+              name: "Always allow",
+              kind: "allow_always",
+            },
             { optionId: "reject", name: "Reject", kind: "reject_once" },
           ],
         });
-        const chosen = answer?.outcome?.optionId ?? answer?.outcome?.outcome ?? "none";
+        const chosen =
+          answer?.outcome?.optionId ?? answer?.outcome?.outcome ?? "none";
         update(sessionId, {
           sessionUpdate: "agent_message_chunk",
           content: { type: "text", text: `permission: ${chosen}` },

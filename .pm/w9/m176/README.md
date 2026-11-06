@@ -70,3 +70,12 @@ QA user in the `bex` workspace, Playwright at 1440×900 and 375×812. Fixtures u
   - This matches the API check: the claude engine never sends `request_permission`. Likely cause: `permissionPolicy: sandbox-auto-approve` in `agent-profiles.json`.
   - The callout's Deny path and the Blocked group could not be exercised.
 - **Skeleton (session page): minor.** The header is 98px pending against 104px ready, a 6px shift. The composer bar matches.
+
+## Production finding fixed (2026-11-06)
+
+- **Cause:** approvals never fired for claude on 24a9203ee. claude-agent-acp sends a client advertising the AIR extension a slim permission `toolCall` without `kind`; `kind` lives only on the earlier `tool_call` update (`dist/tool-calls/renderer.js` `permissionToolCall`). The driver read the missing kind as "other" and allowed `sudo true` once.
+- **Fix:** the driver now remembers each announced tool call and completes the permission request before gating. A call with no kind but a shell command reads as execute.
+- **Verification:** reproduced and verified with the real adapter (opt-in `test/real-adapter-approval.test.ts`).
+- **Not a bug:** `echo` in `all` mode is Claude Code's own read-only auto-allow, which ADR100's "every non-read-only action" permits.
+- **Follow-up, codex:** codex-acp 1.4.0 applies its own on-request/workspace-write policy per turn and asks only for out-of-sandbox requests, so in-sandbox risky commands are not gated. Recorded in ADR100.
+- **Next:** a live recheck after the fix deploys, then closeout.

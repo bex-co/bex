@@ -96,6 +96,59 @@ export interface CreateSessionOptions {
   ) => Promise<RequestPermissionResponse>;
 }
 
+// A permission request's toolCall is an update of a call the agent already
+// announced in session/update, and adapters may send only what changed.
+// claude-agent-acp sends a client that advertises the AIR extension (which
+// this driver does, for codex's typed failures) just {toolCallId, title,
+// rawInput}: kind, locations and content live on the earlier tool_call
+// (claude-agent-acp 0.94.0 dist/tool-calls/renderer.js permissionToolCall).
+// The approval policy needs the kind, or `sudo true` reads as an "other"
+// call and runs ungated (ADR100, w9/m176 production finding 2026-11-06).
+export type KnownToolCall = Pick<
+  RequestPermissionRequest["toolCall"],
+  "kind" | "title" | "rawInput" | "locations"
+>;
+
+export function rememberToolCall(
+  known: Map<string, KnownToolCall>,
+  update: SessionUpdate,
+): void {
+  if (
+    update.sessionUpdate !== "tool_call" &&
+    update.sessionUpdate !== "tool_call_update"
+  )
+    return;
+  if (update.status === "completed" || update.status === "failed") {
+    known.delete(update.toolCallId);
+    return;
+  }
+  const previous = known.get(update.toolCallId) ?? {};
+  const next: KnownToolCall = { ...previous };
+  if (update.kind != null) next.kind = update.kind;
+  if (update.title != null) next.title = update.title;
+  if (update.rawInput !== undefined) next.rawInput = update.rawInput;
+  if (update.locations != null) next.locations = update.locations;
+  known.set(update.toolCallId, next);
+}
+
+export function completePermissionToolCall(
+  request: RequestPermissionRequest,
+  known: Map<string, KnownToolCall>,
+): RequestPermissionRequest {
+  const previous = known.get(request.toolCall.toolCallId);
+  if (!previous) return request;
+  const toolCall = { ...request.toolCall };
+  if (toolCall.kind == null && previous.kind != null)
+    toolCall.kind = previous.kind;
+  if (toolCall.title == null && previous.title != null)
+    toolCall.title = previous.title;
+  if (toolCall.rawInput === undefined && previous.rawInput !== undefined)
+    toolCall.rawInput = previous.rawInput;
+  if (toolCall.locations == null && previous.locations != null)
+    toolCall.locations = previous.locations;
+  return { ...request, toolCall };
+}
+
 // bexMcpServerScript is the compiled `bex` MCP server next to this module
 // (dist/mcp-bex.js in the image; the .ts source under the test loader).
 export function bexMcpServerScript(): string {
@@ -118,7 +171,11 @@ export function bexMcpServers(
     Partial<
       Pick<
         AgentDriverConfig,
-        "resultUrl" | "outputSchema" | "resultRecordPath" | "decisionUrl" | "decisionClockPath"
+        | "resultUrl"
+        | "outputSchema"
+        | "resultRecordPath"
+        | "decisionUrl"
+        | "decisionClockPath"
       >
     >,
 ): McpServer[] {
@@ -145,7 +202,10 @@ export function bexMcpServers(
   if (config.decisionUrl) {
     env.push(
       { name: "BEX_DECISION_ENDPOINT", value: config.decisionUrl },
-      { name: "BEX_DECISION_CLOCK_PATH", value: config.decisionClockPath ?? "" },
+      {
+        name: "BEX_DECISION_CLOCK_PATH",
+        value: config.decisionClockPath ?? "",
+      },
     );
   }
   if (env.length === 0) return [];
@@ -258,7 +318,6 @@ function withTimeout<T>(
   });
   return Promise.race([promise, timeout]).finally(() => clearTimeout(timer));
 }
-
 
 class SessionStateUnavailable extends Error {}
 
@@ -417,11 +476,13 @@ async function createSessionAttempt(
   options.abortSignal?.addEventListener("abort", onAbort, { once: true });
   if (options.abortSignal?.aborted) onAbort();
 
+  const knownToolCalls = new Map<string, KnownToolCall>();
   const app = client({ name: "bex-agent-driver" })
     .onNotification(methods.client.session.update, ({ params }) => {
       // Native load replays the old conversation to ACP clients. bex already
       // owns that history; mapping it here would charge it to the new turn.
       if (loadingSession) return;
+      rememberToolCall(knownToolCalls, params.update);
       if (promptInFlight) {
         promptFailure ??= typedSessionFailure(params.update);
       }
@@ -430,9 +491,12 @@ async function createSessionAttempt(
     // The sandbox is the security boundary (ADR047 D5 egress + fs
     // confinement), so an autonomous run grants every request; an approval
     // mode routes it through the session's policy (ADR100).
-    .onRequest(methods.client.session.requestPermission, ({ params }) =>
-      options.requestPermission ? options.requestPermission(params) : grant(params),
-    );
+    .onRequest(methods.client.session.requestPermission, ({ params }) => {
+      const request = completePermissionToolCall(params, knownToolCalls);
+      return options.requestPermission
+        ? options.requestPermission(request)
+        : grant(request);
+    });
 
   // Writable.toWeb logs some pipe-write failures without propagating them to
   // the ChildProcess stream's `error` event. Own each write callback so an
