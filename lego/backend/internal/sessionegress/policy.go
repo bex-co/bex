@@ -379,6 +379,18 @@ func (m *Manager) Delete(ctx context.Context, namespace, sessionID string) error
 	return nil
 }
 
+// RenderPolicy returns the exact CiliumNetworkPolicy a Manager with config
+// applies for the session, without a Kubernetes client. The ADR042 sandbox
+// isolation matrix renders its fixture with it (cmd/render-policy), so the
+// fixture cannot drift from what bex-api creates (w6/m162).
+func RenderPolicy(config Config, namespace, sessionID string, phase Phase, modelEndpoint string, egress Egress) (*unstructured.Unstructured, error) {
+	normalized, err := config.normalized()
+	if err != nil {
+		return nil, err
+	}
+	return (&Manager{Config: normalized}).policy(namespace, sessionID, phase, modelEndpoint, egress)
+}
+
 func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint string, egress Egress) (*unstructured.Unstructured, error) {
 	modelHost, err := ModelEndpointHost(modelEndpoint)
 	if err != nil {

@@ -626,3 +626,30 @@ func legacyIdentityHash(t *testing.T, model string, extra []string) string {
 	digest := sha256.Sum256(raw)
 	return hex.EncodeToString(digest[:])
 }
+
+// RenderPolicy is what scripts/verify-sandbox-isolation.sh applies (through
+// cmd/render-policy): it must be the Manager's own policy, in the shape
+// bex-api-session-egress admits (w6/m162).
+func TestRenderPolicyIsTheManagersPolicy(t *testing.T) {
+	policy, err := RenderPolicy(Config{ModelProxyPort: 8084}, "tea-x", "run-1-agent-session", PhaseSetup,
+		"https://api.anthropic.com", Egress{Hosts: []string{"example.com"}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, want := policy.GetName(), policyName("run-1-agent-session"); got != want {
+		t.Fatalf("name = %q, want %q", got, want)
+	}
+	if got := policy.GetLabels()[SessionLabel]; got != "run-1-agent-session" {
+		t.Fatalf("session label = %q", got)
+	}
+	if got := policy.GetAnnotations()[modelAnnotation]; got != "api.anthropic.com" {
+		t.Fatalf("model endpoint annotation = %q, want the provider host", got)
+	}
+	rules, _, _ := unstructured.NestedSlice(policy.Object, "spec", "egress")
+	if len(rules) != 4 {
+		t.Fatalf("egress rules = %d, want DNS, FQDN and the 8082/8084 gateway hops", len(rules))
+	}
+	if _, err := RenderPolicy(Config{}, "tea-x", "s", PhaseSetup, "not a url", Egress{}); err == nil {
+		t.Fatal("an invalid model endpoint rendered a policy")
+	}
+}
