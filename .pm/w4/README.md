@@ -353,6 +353,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **515** — [Regression of w4/493: a static site with a missing publish directory now never closes its deploy (stuck `update_in_progress` forever)](515.md) — todo (~40m) ← live `/qa-find-bugs w4` loop round 117, 2026-11-06 UTC (pin `92ff0029334d`; **major**). `store/deploy_lifecycle.go:111` refuses `update_in_progress → build_failed`; 483/484/495/497/498/500/501 replays passed.
 - [ ] **514** — [An environment group's metadata shows its Owner as a raw `tea-…` id instead of the workspace name](514.md) — todo (~15m) ← live `/qa-find-bugs w4` loop round 114, 2026-11-06 UTC (pin `cc3c51e12952`; minor, UX). `env-group-metadata.tsx:26` renders `group.ownerId`.
 - [x] **513** — [A Postgres disk card says "Capacity 1 GiB" beside "1 GB current · 16384 GB max"](done/513.md) — DONE 2026-11-05 — todo (~15m) ← live `/qa-find-bugs w4` loop round 112, 2026-11-05 UTC (pin `cc3c51e12952`; minor, units). `datastore-metrics-panel.tsx:175-176` formats binary; `databases.diskAutoscalingSize` says GB.
 - [x] **508** — [Regression of w4/m230: a user Resume can be recorded as `service_woken` (an idle wake) instead of `service_resumed`](done/508.md) — DONE 2026-11-05 — todo (~45m) ← live `/qa-find-bugs w4` loop round 109, 2026-11-05 UTC (pin `cc3c51e12952`; major, events/notifications). `store/event_facts.go:546-551` drops the suspend reason while still Hibernated.
