@@ -41,27 +41,27 @@ ENV GOMAXPROCS=${GOMAXPROCS}
 # Build for TARGETARCH (amd64 in deploy.yml).
 # Each module builds in its own dir; the `replace …/lego/types => ../types` in
 # each go.mod resolves the shared contract without a workspace file.
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/manager ./cmd/manager
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/activator ./cmd/activator
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/staticserver ./cmd/staticserver
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/pg-sni-proxy ./cmd/pg-sni-proxy
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/kv-sni-proxy ./cmd/kv-sni-proxy
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/kv-internal-proxy ./cmd/kv-internal-proxy
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/egress-meter ./cmd/egress-meter
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/edge-cache ./cmd/edge-cache
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/backup-encrypt ./cmd/backup-encrypt
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/manager ./cmd/manager
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/activator ./cmd/activator
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/staticserver ./cmd/staticserver
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/pg-sni-proxy ./cmd/pg-sni-proxy
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/kv-sni-proxy ./cmd/kv-sni-proxy
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/kv-internal-proxy ./cmd/kv-internal-proxy
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/egress-meter ./cmd/egress-meter
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/edge-cache ./cmd/edge-cache
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/backup-encrypt ./cmd/backup-encrypt
 # The no-redirect health probe a service's init container installs into its pod (w8/m133).
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags='-s -w' -o /workspace/health-probe ./cmd/health-probe
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/native-resolve ./cmd/native-resolve
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags='-s -w' -o /workspace/health-probe ./cmd/health-probe
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/native-resolve ./cmd/native-resolve
 # native-init ships inside every native Node tenant image (w8/m88): stripped
 # and path-free so each release adds one small, reproducible layer.
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags='-s -w' -o /workspace/native-init ./cmd/native-init
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/disk-snapshot ./cmd/disk-snapshot
-RUN cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/drain-guard ./cmd/drain-guard
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -trimpath -ldflags='-s -w' -o /workspace/native-init ./cmd/native-init
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/disk-snapshot ./cmd/disk-snapshot
+RUN --mount=type=cache,target=/root/.cache/go-build cd operator && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/drain-guard ./cmd/drain-guard
 # Output name must not be "api" — that collides with the cmd/api source dir, so
 # go build would write the binary INTO that directory.
-RUN cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/bexapi ./cmd/api
-RUN cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/ssh-gateway ./cmd/ssh-gateway
+RUN --mount=type=cache,target=/root/.cache/go-build cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/bexapi ./cmd/api
+RUN --mount=type=cache,target=/root/.cache/go-build cd backend  && CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -o /workspace/ssh-gateway ./cmd/ssh-gateway
 
 # Use distroless as minimal base image to package the binaries
 # Refer to https://github.com/GoogleContainerTools/distroless for more details

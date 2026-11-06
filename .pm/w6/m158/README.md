@@ -1,13 +1,13 @@
 # w6 · m158 — Platform build in minutes on the existing runners: native compile, cached and parallel image builds
 
-**Worker:** worker6 **Goal:** the `build` job of `deploy.yml` finishes in ≤ 30 min (from 60–187 min) on the existing self-hosted runners, so a green main reaches production in about an hour. **Status:** todo (t001 done)
+**Worker:** worker6 **Goal:** the `build` job of `deploy.yml` finishes in ≤ 30 min (from 60–187 min) on the existing self-hosted runners, so a green main reaches production in about an hour. **Status:** todo (t001–t002 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | [Cross-compile the Go/Node build stages from `$BUILDPLATFORM`](done/t001.md) — **DONE** | 45m | — |
-| t002 | [Registry layer cache and cache mounts for every platform image](t002.md) | 60m | t001 |
+| t002 | [Registry layer cache and cache mounts for every platform image](done/t002.md) — **DONE** | 60m | t001 |
 | t003 | [Build the five images, and sign + SBOM them, in parallel](t003.md) | 90m | t002 |
 | t004 | [Start the build with the tests; gate only the pin on them](t004.md) | 45m | t003 |
 | t005 | [Measure five main deploys against the baseline](t005.md) | 30m | t004 |

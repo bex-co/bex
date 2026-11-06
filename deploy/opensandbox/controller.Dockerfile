@@ -47,7 +47,8 @@ ARG GOMAXPROCS=4
 ENV GOMAXPROCS=${GOMAXPROCS}
 
 # Mirror upstream kubernetes/Dockerfile: static, trimmed, no VCS stamping.
-RUN CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH}" \
+RUN --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 GOOS="${TARGETOS:-linux}" GOARCH="${TARGETARCH}" \
     go build -trimpath -buildvcs=false \
     -ldflags "-buildid= -B none -X main.commitID=${OPENSANDBOX_COMMIT}-bex-snapshot-job-ns-terminal-pod" \
     -o server ./cmd/controller

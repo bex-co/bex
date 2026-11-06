@@ -255,6 +255,17 @@ jobs:
           # The bex-production runner's CPU limit (block-eden-mono
           # projects/github-runner/docker-compose.yml).
           build-args: GOMAXPROCS=12
+          # Layer cache in GHCR (w6/m158 t002): unchanged layers and module
+          # downloads come from the previous main build. Only main-only, reviewed
+          # workflows hold write access to these packages, so a cache layer is as
+          # trusted as the pinned image; a failed export never fails the deploy.
+          # The go build cache lives in a cache mount, so the exported layers
+          # carry only binaries. Only images
+          # whose shipped layers install no OS packages are cached (operator,
+          # controller): a cached apt/apk layer would stop picking up security
+          # fixes and then trip the CVE gate.
+          cache-from: type=registry,ref=${{ env.IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.IMAGE }}:buildcache,mode=max,ignore-error=true
           tags: |
             ${{ env.IMAGE }}:${{ github.sha }}
             ${{ env.IMAGE }}:latest
@@ -310,6 +321,8 @@ jobs:
           push: true
           # The bex-production runner's CPU limit, as for the operator image.
           build-args: GOMAXPROCS=12
+          cache-from: type=registry,ref=${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:buildcache
+          cache-to: type=registry,ref=${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:buildcache,mode=max,ignore-error=true
           tags: |
             ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ github.sha }}
             ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}:${{ env.OPENSANDBOX_CONTROLLER_TAG }}
