@@ -1,6 +1,6 @@
 # w9 · m175 — Knowledge and Playbooks for cloud agents (Devin parity)
 
-**Worker:** worker9 **Goal:** a workspace can save reusable instructions (knowledge notes and playbooks) that agent sessions apply automatically or on request. **Status:** in progress — t001–t006 done; next t007 (CLI `--skill`, tests) and the live checks after deploy
+**Worker:** worker9 **Goal:** a workspace can save reusable instructions (knowledge notes and playbooks) that agent sessions apply automatically or on request. **Status:** done (2026-11-06)
 
 ## Tasks (in order)
 
@@ -12,8 +12,8 @@
 | t004 | Dashboard: manage notes/playbooks, pick a playbook — **DONE** | 60m | t002 |
 | t005 | Render parity (Devin reference for agent surfaces) — **DONE** | 25m | t003, t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
-| t007 | Test coverage | 45m | t005, t006 |
-| t008 | Closeout | 10m | t007 |
+| t007 | Test coverage — **DONE** | 45m | t005, t006 |
+| t008 | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
@@ -78,3 +78,15 @@ Production pin b8370c30c (gitops `ca9b90b8f`, deploy run 42238432288 success). S
   - That is a 0px delta at every width. The previous 36px desktop jump is fixed.
 - **PASS — Agent skills card header:** the static title and description are present while pending.
 - **Remaining delta:** with zero skills the ready card is +20px at 375 and +4px at 1440 (skeleton 303/263, ready 323/267). Same empty-state cause as the secrets card; minor.
+
+## Final skeleton check (2026-11-06, production 4bb463510)
+
+In-app navigation with `/graphql` held, pending vs ready (QA user, workspace `bex`, no fixtures created). Every w9 surface reads **0 px**:
+
+- **Settings → Agents cards**, height pending = ready. Both lists were empty.
+  - Agents card (includes Default model): 2267 / 1757 at 375 / 1440.
+  - Agent secrets: 347 / 247.
+  - Agent skills: 323 / 267.
+- **Session page header** (`ags-dbijobqt5fis7381jmv0`, read-only): 57 px high and conversation at y=105, pending and ready, at both 375 and 1440. The 18 px narrow-screen delta is gone.
+- **`/agents` composer box:** top/height 64/224 at 375 and 72/188 at 768, 1440 and 1920, the same pending and ready.
+- **Outside w9, recorded for whoever owns Settings:** the cards above Agents shift on load because the Team card skeleton is shorter than its ready state (174 → 379 px at 1440, 234 → 741 px at 375), and the skeleton has no "Leave workspace" card.

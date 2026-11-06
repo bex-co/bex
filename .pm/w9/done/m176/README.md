@@ -1,6 +1,6 @@
 # w9 · m176 — Approval mode: the agent asks before risky actions (needs_input)
 
-**Worker:** worker9 **Goal:** a session can pause in `needs_input` asking the user to approve or answer, and resumes when they reply — on API, MCP (state=needs_input in wait), dashboard and push. **Status:** in progress — t001–t003, t005 done; next t004 parity, then the live pass
+**Worker:** worker9 **Goal:** a session can pause in `needs_input` asking the user to approve or answer, and resumes when they reply — on API, MCP (state=needs_input in wait), dashboard and push. **Status:** done (2026-11-06)
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | t001 | Backend needs_input lifecycle and contracts — **DONE** | 90m | — |
 | t002 | Approval policy and bypass — **DONE** | 60m | t001 |
 | t003 | Dashboard: answer a pending decision — **DONE** | 60m | t001 |
-| t004 | Render parity (Devin reference for agent surfaces) | 25m | t002, t003 |
+| t004 | Render parity (Devin reference for agent surfaces) — **DONE** | 25m | t002, t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
-| t006 | Test coverage | 45m | t004, t005 |
-| t007 | Closeout | 10m | t006 |
+| t006 | Test coverage — **DONE** | 45m | t004, t005 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -94,3 +94,20 @@ Production pin b8370c30c (gitops `ca9b90b8f`, deploy run 42238432288 success). S
   - The first REST session also showed the callout and the Blocked group while pending.
 - **Seen, out of scope:** the session page logs React error #418 (hydration text mismatch) on load.
 - The production finding is fixed: approval mode now gates claude tool calls in risky and all modes. The m176 DoD (pause, needs_input on REST/MCP, answer from the dashboard, continue) holds live.
+
+## Live check: wait and bypass (2026-11-06, production 4bb463510)
+
+QA user (admin of `bex`), API via the browser-cookie session.
+
+- **PASS, wait settles on needs_input.** Session `ags-dbn0f400nq5s73ekpe4g` (`approvalMode: risky`) was told to run `sudo true`.
+  - MCP `wait_agent_sessions` on `/mcp/cloud-agents` (25 s holds; the tool caps `timeoutSeconds` at 25) returned `timedOut: false` with `state: needs_input` about 77 s after create.
+  - `outcome.pendingDecision` was `dcs-dbn0fng0nq5s73ekped0`, kind `approval`, title "Run (run as root): sudo true", rule `sudo`. REST GET showed `waitingFor: approval`.
+  - REST deny answered 200 `denied`. The turn ended `succeeded`: "It did not run — the command was refused by the permission prompt."
+  - Contract note: a wait entry carries `{id, state, outcome}` only, so `waitingFor` is not on it, although `outcome.pendingDecision.kind` says the same.
+- **PASS, bypassApproval skips approval.** The workspace was set to `approvalMode: risky`, `approvalBypassAllowed: true`.
+  - Session `ags-dbn0g2lae93c73caibag` with `bypassApproval: true` was stored as `approvalMode: autonomous`. It never entered `needs_input` and had no `pendingDecision`. It ran the command: "Exit code: 127 (`sudo: command not found`)".
+  - With `approvalBypassAllowed: false`, create with `bypassApproval: true` was refused `403 AGENT_SESSION_APPROVAL_BYPASS_FORBIDDEN` ("this workspace requires approval mode risky and does not allow sessions to lower it"). No session was created.
+- **Cleanup.**
+  - The workspace environment was restored to its recorded values (`approvalMode: autonomous`, `approvalBypassAllowed: true`) and verified by GET.
+  - Both sessions were deleted (204, then 404).
+  - The Kratos session was logged out with its jar, and the state file, jar and run dir were removed. No CLI grant was minted.

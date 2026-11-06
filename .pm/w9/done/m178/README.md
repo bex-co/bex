@@ -1,6 +1,6 @@
 # w9 · m178 — `outcome.cost` reports sandbox compute in one USD total (Devin parity)
 
-**Worker:** worker9 **Goal:** a session's `outcome.cost` carries `computeUSD` (its sandbox compute, priced like the bill) and `totalUSD` (model + compute) next to `modelUSD`, so a customer sees one number per session that matches their invoice. **Status:** in progress — t001–t003, t005 done; next t004 parity and the live check after deploy
+**Worker:** worker9 **Goal:** a session's `outcome.cost` carries `computeUSD` (its sandbox compute, priced like the bill) and `totalUSD` (model + compute) next to `modelUSD`, so a customer sees one number per session that matches their invoice. **Status:** done (2026-11-06)
 
 ## Tasks (in order)
 
@@ -9,10 +9,10 @@
 | t001 | Attribute sandbox compute to its session — **DONE** | 60m | — |
 | t002 | Price per-session compute into `outcome.cost` — **DONE** | 60m | t001 |
 | t003 | Dashboard shows the session's total cost — **DONE** | 30m | t002 |
-| t004 | Render parity (Devin reference for agent surfaces) | 20m | t002, t003 |
+| t004 | Render parity (Devin reference for agent surfaces) — **DONE** | 20m | t002, t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
-| t006 | Test coverage | 45m | t004, t005 |
-| t007 | Closeout | 10m | t006 |
+| t006 | Test coverage — **DONE** | 45m | t004, t005 |
+| t007 | Closeout — **DONE** | 10m | t006 |
 
 ## Definition of done
 
@@ -62,3 +62,15 @@ Production pin b8370c30c (gitops `ca9b90b8f`, deploy run 42238432288 success). S
 - **Session header skeleton:**
   - 1440×900: the header block is 57px in both states and the body starts at y=105 in both (body 714 vs 713px). The previous 6px shift is fixed.
   - **375×812, remaining +18px:** the ready header is 75px vs the 57px skeleton. At narrow width the ready header wraps to a second line, likely the new "total cost" button, and the skeleton reserves one line.
+
+## Final skeleton check (2026-11-06, production 4bb463510)
+
+In-app navigation with `/graphql` held, pending vs ready (QA user, workspace `bex`, no fixtures created). Every w9 surface reads **0 px**:
+
+- **Settings → Agents cards**, height pending = ready. Both lists were empty.
+  - Agents card (includes Default model): 2267 / 1757 at 375 / 1440.
+  - Agent secrets: 347 / 247.
+  - Agent skills: 323 / 267.
+- **Session page header** (`ags-dbijobqt5fis7381jmv0`, read-only): 57 px high and conversation at y=105, pending and ready, at both 375 and 1440. The 18 px narrow-screen delta is gone.
+- **`/agents` composer box:** top/height 64/224 at 375 and 72/188 at 768, 1440 and 1920, the same pending and ready.
+- **Outside w9, recorded for whoever owns Settings:** the cards above Agents shift on load because the Team card skeleton is shorter than its ready state (174 → 379 px at 1440, 234 → 741 px at 375), and the skeleton has no "Leave workspace" card.

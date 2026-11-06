@@ -1,6 +1,6 @@
 # w9 · m174 — Session-scoped secrets for cloud agents (Devin parity)
 
-**Worker:** worker9 **Goal:** a customer can give an agent session the API keys it needs (e.g. for integration tests or third-party APIs) without putting them in the repo or prompt, and they never land in the sandbox in plaintext beyond the session. **Status:** in progress — t001–t007 done; t008 closes after the live check on production (secret env var used by the agent, value absent from transcript/API reads) and the composer skeleton check at desktop and narrow-mobile widths
+**Worker:** worker9 **Goal:** a customer can give an agent session the API keys it needs (e.g. for integration tests or third-party APIs) without putting them in the repo or prompt, and they never land in the sandbox in plaintext beyond the session. **Status:** done (2026-11-06)
 
 ## Tasks (in order)
 
@@ -13,7 +13,7 @@
 | t005 | Render parity (Devin reference for agent surfaces) — **DONE** | 25m | t003, t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 45m | t005, t006 |
-| t008 | Closeout | 10m | t007 |
+| t008 | Closeout — **DONE** | 10m | t007 |
 
 ## Definition of done
 
@@ -58,3 +58,15 @@ Production pin b8370c30c (gitops `ca9b90b8f`, deploy run 42238432288 success). S
 - **Skeleton recheck (Settings → Agents, client navigation with `/graphql` held 8 s):**
   - **PASS:** the Agent secrets card skeleton now shows its static title and description (9 static texts shared by both states).
   - **Remaining delta:** with zero secrets the ready card is +20px at 375×812 and +4px at 1440×900 (skeleton 327/243px, ready 347/247px). The ready empty state is taller than the one-row skeleton. It is minor and depends on the data: the skeleton cannot know the count.
+
+## Final skeleton check (2026-11-06, production 4bb463510)
+
+In-app navigation with `/graphql` held, pending vs ready (QA user, workspace `bex`, no fixtures created). Every w9 surface reads **0 px**:
+
+- **Settings → Agents cards**, height pending = ready. Both lists were empty.
+  - Agents card (includes Default model): 2267 / 1757 at 375 / 1440.
+  - Agent secrets: 347 / 247.
+  - Agent skills: 323 / 267.
+- **Session page header** (`ags-dbijobqt5fis7381jmv0`, read-only): 57 px high and conversation at y=105, pending and ready, at both 375 and 1440. The 18 px narrow-screen delta is gone.
+- **`/agents` composer box:** top/height 64/224 at 375 and 72/188 at 768, 1440 and 1920, the same pending and ready.
+- **Outside w9, recorded for whoever owns Settings:** the cards above Agents shift on load because the Team card skeleton is shorter than its ready state (174 → 379 px at 1440, 234 → 741 px at 375), and the skeleton has no "Leave workspace" card.
