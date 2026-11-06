@@ -59,25 +59,12 @@ jobs:
       - name: Open or update the tracking issue
         if: steps.probe.outputs.slow == 'true'
         run: |
-          . scripts/lib/gh-retry.sh
-          gh_retry gh label create runner-link-slow --repo "$GITHUB_REPOSITORY" \
-            --color B60205 --description "The CI runner host's internet link is degraded" --force
           body="$(printf 'Two readings two minutes apart were below %s MB/s. Every CI job and deploy is network-bound until this clears (w6/m160).\n\n```\n%s\n```\n\nSee scripts/runner-link-probe.sh.' "$RUNNER_LINK_MIN_MBPS" "$(cat link.txt)")"
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label runner-link-slow --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
-          else
-            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
-              --title "The CI runner host's internet link is slow" \
-              --label runner-link-slow \
-              --body "$body"
-          fi
+          printf '%s\n' "$body" > issue-body.md
+          bash scripts/lib/tracking-issue.sh open --label runner-link-slow \
+            --color B60205 --description "The CI runner host's internet link is degraded" \
+            --title "The CI runner host's internet link is slow" --body-file issue-body.md
       - name: Close the tracking issue once the link recovers
         if: steps.probe.outputs.slow == 'false'
         run: |
-          . scripts/lib/gh-retry.sh
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label runner-link-slow --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
-              --comment "$(printf 'Recovered:\n\n```\n%s\n```' "$(cat link.txt)")"
-          fi
+          bash scripts/lib/tracking-issue.sh close --label runner-link-slow --comment "$(printf 'Recovered:\n\n```\n%s\n```' "$(cat link.txt)")"

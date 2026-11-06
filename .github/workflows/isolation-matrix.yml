@@ -127,29 +127,17 @@ jobs:
       - name: Open or update the tenant-isolation issue
         if: always() && steps.tenant.outputs.down == 'true'
         run: |
-          . scripts/lib/gh-retry.sh
-          gh_retry gh label create tenant-isolation-down --repo "$GITHUB_REPOSITORY" \
-            --color B60205 --description "A tenant-isolation DENY stopped denying (ADR043, w3/m83)" --force
           body="The weekly ADR043 tenant-isolation matrix failed on production (exit ${{ steps.tenant.outputs.code }}). The failing probe names are in the output below."$'\n\n'
           body+="Probe output:"$'\n\n```\n'"$(cat tenant-isolation.txt)"$'\n```\n\n'
           body+="A failed DENY probe means one tenant can reach something it must not — treat as a live isolation breach, not a flaky test. First suspect is a policy whose selector no longer matches the pods it names (the CEL-vs-native-selector class found in w3/m35): compare the CiliumNetworkPolicy/NetworkPolicy selectors against the labels the operator actually stamps on tenant pods. A failed ALLOW probe is the opposite failure and breaks working tenants."
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label tenant-isolation-down --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
-          else
-            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
-              --title "Tenant isolation matrix is red on production" \
-              --label tenant-isolation-down --body "$body"
-          fi
+          printf '%s\n' "$body" > issue-body.md
+          bash scripts/lib/tracking-issue.sh open --label tenant-isolation-down \
+            --color B60205 --description "A tenant-isolation DENY stopped denying (ADR043, w3/m83)" \
+            --title "Tenant isolation matrix is red on production" --body-file issue-body.md
       - name: Close the tenant-isolation issue after recovery
         if: always() && steps.tenant.outputs.down == 'false'
         run: |
-          . scripts/lib/gh-retry.sh
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label tenant-isolation-down --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
-              --comment "The ADR043 reachability matrix is compliant again on production."
-          fi
+          bash scripts/lib/tracking-issue.sh close --label tenant-isolation-down --comment "The ADR043 reachability matrix is compliant again on production."
       # The sandbox leg provisions four disposable machine principals through the
       # real Hydra/tenant-store/OpenFGA paths, runs the boundary matrix, and
       # removes every credential, tuple, workspace, and local file. BEX_LIVE_VERIFY=1
@@ -186,29 +174,17 @@ jobs:
       - name: Open or update the sandbox-isolation issue
         if: always() && steps.sandbox.outputs.down == 'true'
         run: |
-          . scripts/lib/gh-retry.sh
-          gh_retry gh label create sandbox-isolation-down --repo "$GITHUB_REPOSITORY" \
-            --color B60205 --description "A sandbox boundary check failed on production (ADR042, w3/m83)" --force
           body="The weekly sandbox isolation matrix failed on production (exit ${{ steps.sandbox.outputs.code }})."$'\n\n'
           body+="Probe output:"$'\n\n```\n'"$(cat sandbox-isolation.txt)"$'\n```\n\n'
           body+="These are adversarial checks across the owner/member/admin/cross-workspace matrix (docs/ADR042-sandbox-cluster-substrate.md, w3/m35). A failure means a principal reached a sandbox or credential outside its authorization. The wrapper removes its own fixtures on every exit path; if the run died mid-provision, confirm no \`m35-a-*\`/\`m35-b-*\` workspace or bootstrap client survives before closing."
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label sandbox-isolation-down --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
-          else
-            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
-              --title "Sandbox isolation matrix is red on production" \
-              --label sandbox-isolation-down --body "$body"
-          fi
+          printf '%s\n' "$body" > issue-body.md
+          bash scripts/lib/tracking-issue.sh open --label sandbox-isolation-down \
+            --color B60205 --description "A sandbox boundary check failed on production (ADR042, w3/m83)" \
+            --title "Sandbox isolation matrix is red on production" --body-file issue-body.md
       - name: Close the sandbox-isolation issue after recovery
         if: always() && steps.sandbox.outputs.down == 'false'
         run: |
-          . scripts/lib/gh-retry.sh
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label sandbox-isolation-down --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
-              --comment "The sandbox boundary matrix passed again on production."
-          fi
+          bash scripts/lib/tracking-issue.sh close --label sandbox-isolation-down --comment "The sandbox boundary matrix passed again on production."
       # Both probes promise to clean up; this is the audit on that promise. It
       # reports rather than fails, because a leftover fixture is a hygiene
       # problem and must not be confused with an isolation breach.

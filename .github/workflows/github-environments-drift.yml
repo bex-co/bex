@@ -54,25 +54,12 @@ jobs:
       - name: Open or update the tracking issue
         if: steps.check.outputs.drift == 'true'
         run: |
-          . scripts/lib/gh-retry.sh
-          gh_retry gh label create github-environment-drift --repo "$GITHUB_REPOSITORY" \
-            --color B60205 --description "A production GitHub environment no longer allows main only" --force
           body="$(printf '%s\n\n%s\n' "$(cat drift.txt)" "Fix in repository Settings → Environments, or with scripts/gh-secrets.sh after reviewing scripts/production-secrets.txt (w3/m173)." )"
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label github-environment-drift --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
-          else
-            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
-              --title "A production GitHub environment is not restricted to main" \
-              --label github-environment-drift \
-              --body "$body"
-          fi
+          printf '%s\n' "$body" > issue-body.md
+          bash scripts/lib/tracking-issue.sh open --label github-environment-drift \
+            --color B60205 --description "A production GitHub environment no longer allows main only" \
+            --title "A production GitHub environment is not restricted to main" --body-file issue-body.md
       - name: Close the tracking issue once every environment is main-only
         if: steps.check.outputs.drift == 'false'
         run: |
-          . scripts/lib/gh-retry.sh
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label github-environment-drift --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
-              --comment "Every production environment allows deployments from main only again."
-          fi
+          bash scripts/lib/tracking-issue.sh close --label github-environment-drift --comment "Every production environment allows deployments from main only again."

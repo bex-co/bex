@@ -112,30 +112,17 @@ jobs:
       - name: Open or update the tracking issue
         if: steps.probe.outputs.down == 'true'
         run: |
-          . scripts/lib/gh-retry.sh
-          gh_retry gh label create deploy-canary-down --repo "$GITHUB_REPOSITORY" \
-            --color B60205 --description "Deploy-from-git or clean deletion is broken in production (w3/m83)" --force
           body="The weekly deploy canary failed at **${{ steps.probe.outputs.stage }}** (exit ${{ steps.probe.outputs.code }})."$'\n\n'
           body+="Probe output (carries the service and deploy ids):"$'\n\n```\n'"$(cat deploy-canary.txt)"$'\n```\n\n'
           body+="Stages 1-3 red means a repo no longer becomes a running URL — the promise the platform exists to keep. Stage 4 red is the w3/m81 delete-timing split (docs/ADR006 § Reads while a deletion finalizes): one read surface reports the service gone while another still serves it. The fixture is torn down unconditionally by the probe's trap, so no cleanup is owed unless stage 4 itself is the failure — in which case confirm the canary workspace is empty before closing."
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label deploy-canary-down --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
-          else
-            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
-              --title "Deploy canary is red: ${{ steps.probe.outputs.stage }}" \
-              --label deploy-canary-down \
-              --body "$body"
-          fi
+          printf '%s\n' "$body" > issue-body.md
+          bash scripts/lib/tracking-issue.sh open --label deploy-canary-down \
+            --color B60205 --description "Deploy-from-git or clean deletion is broken in production (w3/m83)" \
+            --title "Deploy canary is red: ${{ steps.probe.outputs.stage }}" --body-file issue-body.md
       - name: Close the tracking issue once the deploy canary recovers
         if: steps.probe.outputs.down == 'false'
         run: |
-          . scripts/lib/gh-retry.sh
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label deploy-canary-down --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
-              --comment "A repo became a running HTTPS service and then disappeared from every read surface within the delete window."
-          fi
+          bash scripts/lib/tracking-issue.sh close --label deploy-canary-down --comment "A repo became a running HTTPS service and then disappeared from every read surface within the delete window."
       - name: Fail the run when the deploy canary is red
         if: steps.probe.outputs.down == 'true'
         run: |

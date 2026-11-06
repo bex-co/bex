@@ -1,17 +1,17 @@
 # w6 · m161 — One tracking-issue helper for every scheduled monitor
 
-**Worker:** worker6 **Goal:** every scheduled monitor opens, updates and closes its tracking issue through one tested helper that cannot open a duplicate on a retried create. **Status:** todo
+**Worker:** worker6 **Goal:** every scheduled monitor opens, updates and closes its tracking issue through one tested helper that cannot open a duplicate on a retried create. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [`scripts/lib/tracking-issue.sh open/close <label> <title> <body-file>`](t001.md) | 45m | — |
-| t002 | [Migrate the scheduled monitors to the helper](t002.md) | 60m | t001 |
-| t003 | [Self-test with a stubbed gh, including a create whose response is lost](t003.md) | 30m | t001 |
-| t004 | [Simplify](t004.md) | 15m | t002, t003 |
-| t005 | [Test coverage](t005.md) | 20m | t004 |
-| t006 | [Closeout](t006.md) | 10m | t005 |
+| t001 | [`scripts/lib/tracking-issue.sh open/close <label> <title> <body-file>`](done/t001.md) — **DONE** | 45m | — |
+| t002 | [Migrate the scheduled monitors to the helper](done/t002.md) — **DONE** | 60m | t001 |
+| t003 | [Self-test with a stubbed gh, including a create whose response is lost](done/t003.md) — **DONE** | 30m | t001 |
+| t004 | [Simplify](done/t004.md) — **DONE** | 15m | t002, t003 |
+| t005 | [Test coverage](done/t005.md) — **DONE** | 20m | t004 |
+| t006 | [Closeout](done/t006.md) — **DONE** | 10m | t005 |
 
 ## Definition of done
 

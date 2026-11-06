@@ -63,6 +63,14 @@ assert "41-hex ref fails" 1 "$(body "      - uses: actions/checkout@${SHA40}a")"
 assert "node 20 fails" 1 "$(body "      - uses: $PINNED
         with:
           node-version: '20'")"
+# RED: a direct `gh issue create`/`gh issue edit` fails, named by file:line;
+# GREEN: the helper call and a commented mention pass (w6/m161).
+assert "direct gh issue create fails" 1 "$(body "      - uses: $PINNED
+      - run: gh issue create --title t --body b")" "ci.yml:5"
+assert "direct gh issue edit fails" 1 "$(body "      - run: gh issue edit 1 --body b")" "ci.yml:4"
+assert "tracking-issue helper passes" 0 "$(body "      # gh issue create is not called directly
+      - uses: $PINNED
+      - run: bash scripts/lib/tracking-issue.sh open --label l --title t --body-file f")"
 
 # --- ADR083 / #CI-RUNNERS: self-hosted runner custody -----------------------
 job_body() {

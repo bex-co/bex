@@ -85,6 +85,18 @@ if grep -REn "node-version:[[:space:]]*['\"]?20(['\"]|$)" "$WORKFLOWS_DIR"; then
   exit 1
 fi
 
+# 3b. One tracking-issue path (w6/m161). Every scheduled monitor opens, updates
+# and closes its issue through scripts/lib/tracking-issue.sh, which retries a
+# lost create only after re-listing; a hand-rolled `gh issue create` or
+# `gh issue edit` can open a duplicate or skip the label.
+direct_issue_writes="$(grep -HnE 'gh issue (create|edit)([^[:alnum:]_-]|$)' "$WORKFLOWS_DIR"/*.yml 2>/dev/null \
+  | grep -vE '^[^:]+:[0-9]+:[[:space:]]*#' | cut -d: -f1,2 || true)"
+if [ -n "$direct_issue_writes" ]; then
+  echo "FAIL: workflows must open/update tracking issues with scripts/lib/tracking-issue.sh, not gh issue create/edit:" >&2
+  printf '  %s\n' $direct_issue_writes >&2
+  exit 1
+fi
+
 # 4. Host-key pin coverage (w1/m68 F3). scripts/lib/ssh-hostkey.sh falls back to
 # StrictHostKeyChecking=accept-new when no pin is supplied, so a workflow that
 # fetches /etc/kubernetes/admin.conf over SSH without wiring BEX_SSH_KNOWN_HOSTS

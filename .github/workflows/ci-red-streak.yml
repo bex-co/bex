@@ -65,25 +65,12 @@ jobs:
       - name: Open or update the tracking issue
         if: steps.check.outputs.red == 'true'
         run: |
-          . scripts/lib/gh-retry.sh
-          gh_retry gh label create ci-red-streak --repo "$GITHUB_REPOSITORY" \
-            --color B60205 --description "A workflow has been failing on main for N runs in a row" --force
           body="$(cat streak.txt)"
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label ci-red-streak --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
-          else
-            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
-              --title "A workflow is persistently red on main" \
-              --label ci-red-streak \
-              --body "$body"
-          fi
+          printf '%s\n' "$body" > issue-body.md
+          bash scripts/lib/tracking-issue.sh open --label ci-red-streak \
+            --color B60205 --description "A workflow has been failing on main for N runs in a row" \
+            --title "A workflow is persistently red on main" --body-file issue-body.md
       - name: Close the tracking issue once every workflow recovers
         if: steps.check.outputs.red == 'false'
         run: |
-          . scripts/lib/gh-retry.sh
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label ci-red-streak --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
-              --comment "No workflow is failing persistently on main any more."
-          fi
+          bash scripts/lib/tracking-issue.sh close --label ci-red-streak --comment "No workflow is failing persistently on main any more."

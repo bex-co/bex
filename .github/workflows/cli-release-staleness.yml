@@ -42,26 +42,13 @@ jobs:
       - name: Open or update the tracking issue
         if: steps.check.outputs.stale == 'true'
         run: |
-          . scripts/lib/gh-retry.sh
-          gh_retry gh label create cli-release-stale --repo "$GITHUB_REPOSITORY" \
-            --color FBCA04 --description "The CLI has unreleased commits (w4/032.md)" --force
           body="$(cat staleness.txt)"
           body+=$'\n\nRun `/release cli` to cut a release and close this out.'
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label cli-release-stale --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
-          else
-            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
-              --title "CLI release is stale" \
-              --label cli-release-stale \
-              --body "$body"
-          fi
+          printf '%s\n' "$body" > issue-body.md
+          bash scripts/lib/tracking-issue.sh open --label cli-release-stale \
+            --color FBCA04 --description "The CLI has unreleased commits (w4/032.md)" \
+            --title "CLI release is stale" --body-file issue-body.md
       - name: Close the tracking issue once caught up
         if: steps.check.outputs.stale == 'false'
         run: |
-          . scripts/lib/gh-retry.sh
-          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label cli-release-stale --state open --json number --jq '.[0].number // empty')"
-          if [[ -n "$existing" ]]; then
-            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
-              --comment "The CLI is caught up with the latest \`bex-cli/v*\` tag."
-          fi
+          bash scripts/lib/tracking-issue.sh close --label cli-release-stale --comment "The CLI is caught up with the latest \`bex-cli/v*\` tag."

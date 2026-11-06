@@ -37,7 +37,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 - [x] **m159** — [Ship gates catch dashboard red before it reaches main](done/m159/README.md) — **done 2026-11-06** (7 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 1
 - [x] **m160** — [Runner-host link probe: a slow internet link opens an issue by itself](done/m160/README.md) — **done 2026-11-06** (#131 opened and closed by dispatch) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 2
-- [ ] **m161** — [One tracking-issue helper for every scheduled monitor](m161/README.md) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 3
+- [x] **m161** — [One tracking-issue helper for every scheduled monitor](done/m161/README.md) — **done 2026-11-06** (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 3
 - [ ] **m162** — [Sandbox isolation fixtures come from the real session-egress generator](m162/README.md) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 4
 - [ ] **m163** — [Native image workflows install Syft and Trivy with retries](m163/README.md) (7 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 5
 - [x] **m151** — [`render-v1` runtime pods run in a pod user namespace (`hostUsers: false`)](done/m151/README.md) (7 tasks) ← promoted from w6/086 (2026-10-21) — **done 2026-10-21**, live in every workspace
