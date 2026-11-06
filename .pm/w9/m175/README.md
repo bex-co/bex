@@ -68,3 +68,13 @@ QA user in the `bex` workspace, Playwright at 1440×900 and 375×812. Fixtures u
   - Delete removed the skill.
 - **PASS — composer and transcript.** The Skills popover listed the enabled skill with an Arguments field, and the chip read "qa-ui-echo UIX1". Session `ags-dbmu4366kvbs738fl6qg` replied exactly `UI-SKILL-OK-UIX1`, and the user turn showed the pill "qa-ui-echo UIX1".
 - **FAIL — `/agents` composer skeleton at desktop widths.** `common/components/detail-skeletons.tsx:62-70` sizes the box by viewport breakpoints, giving one toolbar row (152px) from 577px. The ready composer (max-w 640) wraps its toolbar to two rows at 1440, 1920 and 768 (Start session at y=221), so the hint jumps from y=236 to y=272, a 36px shift. At 375 the two match (hint y=300). The breakpoints ignore the sidebar and the 640px cap, so the box should be 188px wherever the composer is 640px wide.
+
+## Recheck (2026-11-06, production b8370c30c)
+
+Production pin b8370c30c (gitops `ca9b90b8f`, deploy run 42238432288 success). Signed in as the QA user in the browser; API calls were made from it with the session cookie (REST, and MCP over `/mcp/cloud-agents`). The CLI device flow stopped at a Kratos reauthentication prompt, so no CLI grant was issued. Every fixture was deleted (DELETE 204, then GET 404), the Kratos session was logged out with this run's jar, and the run dir was removed.
+
+- **PASS — `/agents` composer skeleton.** Navigation from Blueprints with `/graphql` held 8 s.
+  - Skeleton and ready both measure: composer box top 64 / 224px tall with the hint at y=300 at 375; top 72 / 188px with the hint at y=272 at 768, 1440 and 1920.
+  - That is a 0px delta at every width. The previous 36px desktop jump is fixed.
+- **PASS — Agent skills card header:** the static title and description are present while pending.
+- **Remaining delta:** with zero skills the ready card is +20px at 375 and +4px at 1440 (skeleton 303/263, ready 323/267). Same empty-state cause as the secrets card; minor.

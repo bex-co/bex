@@ -79,3 +79,18 @@ QA user in the `bex` workspace, Playwright at 1440×900 and 375×812. Fixtures u
 - **Not a bug:** `echo` in `all` mode is Claude Code's own read-only auto-allow, which ADR100's "every non-read-only action" permits.
 - **Follow-up, codex:** codex-acp 1.4.0 applies its own on-request/workspace-write policy per turn and asks only for out-of-sandbox requests, so in-sandbox risky commands are not gated. Recorded in ADR100.
 - **Next:** a live recheck after the fix deploys, then closeout.
+
+## Recheck (2026-11-06, production b8370c30c)
+
+Production pin b8370c30c (gitops `ca9b90b8f`, deploy run 42238432288 success). Signed in as the QA user in the browser; API calls were made from it with the session cookie (REST, and MCP over `/mcp/cloud-agents`). The CLI device flow stopped at a Kratos reauthentication prompt, so no CLI grant was issued. Every fixture was deleted (DELETE 204, then GET 404), the Kratos session was logged out with this run's jar, and the run dir was removed.
+
+- **PASS — risky approval over REST.** `ags-dbmvh67uqs1c73d5q0pg` (`approvalMode: risky`, "run `sudo true`") paused at `needs_input`, `waitingFor: approval`. Its `outcome.pendingDecision` was `dcs-dbmvhkvuqs1c73d5q100`: "Run (run as root): sudo true", rule `sudo`, `toolKind` execute, `policyVersion` 2. A REST deny (`POST …/decisions/dcs-…`, `{allow:false}`) returned 200 with state `denied`. The turn then succeeded with "The command `sudo true` was not run — the permission prompt was refused". The transcript shows the refusal and no `sudo` output.
+- **PASS — all-mode approval over MCP.** `ags-dbmvi4hpc2us73bhtdg0` (`approvalMode: all`, `touch qa-re.txt && ls -l qa-re.txt`) opened `dcs-dbmvi7nuqs1c73d5q1h0` with rule `all:execute:touch qa-re.txt` and paths `/workspace/qa-re.txt`. MCP `answer_agent_session_decision` (`allow: true, scope: session`) returned 200. The turn succeeded, and `ls -l` showed the new 0-byte file.
+- **PASS — dashboard.**
+  - The composer approval picker set "Approvals: Ask before risky actions". The session `ags-dbmvit7uqs1c73d5q1o0` paused.
+  - The callout showed "Run (run as root): sudo true", the command and "Matched rule: sudo", with Allow once / Allow for this session / Deny.
+  - The nav showed "Blocked 1" with that session, and the header showed a Blocked badge.
+  - Clicking Deny removed the callout. The turn succeeded with "The command `sudo true` was refused by the permission system, so it did not run."
+  - The first REST session also showed the callout and the Blocked group while pending.
+- **Seen, out of scope:** the session page logs React error #418 (hydration text mismatch) on load.
+- The production finding is fixed: approval mode now gates claude tool calls in risky and all modes. The m176 DoD (pause, needs_input on REST/MCP, answer from the dashboard, continue) holds live.

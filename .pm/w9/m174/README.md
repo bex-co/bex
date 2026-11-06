@@ -50,3 +50,11 @@ QA user in the `bex` workspace, Playwright at 1440×900 and 375×812. Fixtures u
 - **PASS — Secrets card.** Adding `QA_UI_SECRET` and replacing its value (same name) both saved. The value never appeared in the DOM, before or after reload, and the name was listed. Delete removed it.
 - **PASS — composer.** The Secrets popover listed the workspace secret, and choosing it showed "Secrets (1 attached)". Session `ags-dbmu4366kvbs738fl6qg` showed "1 secret" in its header, and the value appeared nowhere on the session page. The agent was asked to `printf %s "$QA_UI_SECRET" | wc -c`; its transcript did not show the count.
 - **Skeleton (the Settings card): minor.** The pending Agent secrets card shows placeholder bars without its static "Agent secrets" heading and description. AGENTS.md asks a skeleton to keep the headings.
+
+## Recheck (2026-11-06, production b8370c30c)
+
+Production pin b8370c30c (gitops `ca9b90b8f`, deploy run 42238432288 success). Signed in as the QA user in the browser; API calls were made from it with the session cookie (REST, and MCP over `/mcp/cloud-agents`). The CLI device flow stopped at a Kratos reauthentication prompt, so no CLI grant was issued. Every fixture was deleted (DELETE 204, then GET 404), the Kratos session was logged out with this run's jar, and the run dir was removed.
+
+- **Skeleton recheck (Settings → Agents, client navigation with `/graphql` held 8 s):**
+  - **PASS:** the Agent secrets card skeleton now shows its static title and description (9 static texts shared by both states).
+  - **Remaining delta:** with zero secrets the ready card is +20px at 375×812 and +4px at 1440×900 (skeleton 327/243px, ready 347/247px). The ready empty state is taller than the one-row skeleton. It is minor and depends on the data: the skeleton cannot know the count.

@@ -53,3 +53,12 @@ QA user in the `bex` workspace, Playwright at 1440×900 and 375×812. Fixtures u
   - The line is absent right after a fast turn and appears on a later read, once compute has accrued.
   - Compute keeps growing after the turn ends while the sandbox sits in its idle grace ($0.002853 → $0.003833 on the same session).
   - The page header still reads "$0.01 model cost", which is model cost only and differs from the total below it.
+
+## Recheck (2026-11-06, production b8370c30c)
+
+Production pin b8370c30c (gitops `ca9b90b8f`, deploy run 42238432288 success). Signed in as the QA user in the browser; API calls were made from it with the session cookie (REST, and MCP over `/mcp/cloud-agents`). The CLI device flow stopped at a Kratos reauthentication prompt, so no CLI grant was issued. Every fixture was deleted (DELETE 204, then GET 404), the Kratos session was logged out with this run's jar, and the run dir was removed.
+
+- **PASS — header cost.** On `ags-dbmvit7uqs1c73d5q1o0` the header button reads "$0.017958 total cost". Its popover shows "Model $0.016638 · compute $0.00132", matching the spend line "Cost $0.017958 · model $0.016638, compute $0.00132". Session `ags-dbmvi4hpc2us73bhtdg0` had `outcome.cost` `{modelUSD 0.000457, computeUSD 0.001831, totalUSD 0.002288}` (sum exact).
+- **Session header skeleton:**
+  - 1440×900: the header block is 57px in both states and the body starts at y=105 in both (body 714 vs 713px). The previous 6px shift is fixed.
+  - **375×812, remaining +18px:** the ready header is 75px vs the 57px skeleton. At narrow width the ready header wraps to a second line, likely the new "total cost" button, and the skeleton reserves one line.
