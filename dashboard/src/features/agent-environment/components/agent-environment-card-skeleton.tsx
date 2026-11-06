@@ -102,6 +102,8 @@ function StaticLabel({ children }: { children: ReactNode }) {
 // realistic cap or charge point, never shown.
 const WIDE_USD = "$1,000.00";
 const WIDER_USD = "$10,000.00";
+// A realistic platform-pinned model id, for the pinned help text's length.
+const PINNED_MODEL = "deepseek/deepseek-v4.1-flash-1017";
 
 const longest = (...texts: string[]) =>
   texts.reduce((a, b) => (b.length > a.length ? b : a));
@@ -186,8 +188,15 @@ export function AgentEnvironmentCardSkeleton() {
         <div className="space-y-2 border-t pt-6">
           <StaticLabel>{t("agentEnvironment.modelLabel")}</StaticLabel>
           <Skeleton className="h-9 w-full max-w-sm" />
+          {/* The help line depends on whether the platform route pins the
+              model, and the pinned variant names it, so hold the longer one. */}
           <p className="text-muted-foreground text-xs">
-            {t("agentEnvironment.modelHelp")}
+            <SkeletonText>
+              {longest(
+                t("agentEnvironment.modelHelp"),
+                t("agentEnvironment.modelPinnedHelp", { model: PINNED_MODEL }),
+              )}
+            </SkeletonText>
           </p>
         </div>
         <div

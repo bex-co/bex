@@ -73,7 +73,6 @@ describe("AgentEnvironmentCard", () => {
       "Full internet",
       /Any public website over HTTP\(S\)/,
       "Default model",
-      /Leave empty for the provider default/,
       "Model provider",
       /Agent sessions use the bex-provided model unless/,
       "Model source:",
@@ -99,6 +98,13 @@ describe("AgentEnvironmentCard", () => {
 
   it("holds wrapping data lines at their longest variant, hidden from assistive tech", () => {
     setup(null, true);
+    // The default-model help is the platform-pinned variant when a route pins
+    // the model, which is longer than the editable variant (measured +16px).
+    expect(
+      screen.getByText(
+        /This workspace runs agents on the platform model, so every session uses deepseek\/deepseek-v4\.1-flash-1017/,
+      ),
+    ).toHaveAttribute("aria-hidden", "true");
     const source = screen
       .getByTestId("model-key-section-skeleton")
       .querySelector("[data-slot=skeleton-text]");
