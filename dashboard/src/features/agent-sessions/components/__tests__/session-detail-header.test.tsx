@@ -3,6 +3,7 @@ import { render, screen, waitFor } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { SessionDetailHeader } from "@/features/agent-sessions/components/session-detail-header";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
+import { hydrateAcrossBoundary } from "@/test/hydration";
 import {
   agentSessionView,
   repoLessAgentSessionView,
@@ -101,6 +102,29 @@ describe("SessionDetailHeader", () => {
     const row = screen.getByText("1 turn").parentElement!;
     expect(row).toHaveClass("h-4", "whitespace-nowrap", "overflow-x-auto");
     expect(row).not.toHaveClass("flex-wrap");
+  });
+
+  // w9/080: the running-session duration ticks off Date.now(), so the SSR
+  // pass and hydration read different clocks. The text must hydrate without
+  // React error #418 (the client clock takes over after mount).
+  it("hydrates a running session's ticking duration without a mismatch", () => {
+    const createdAt = "2026-11-06T10:00:00Z";
+    const session = view({
+      phase: "running",
+      isTerminal: false,
+      createdAt,
+      updatedAt: createdAt,
+      canceledAt: null,
+    });
+    const { html, recovered } = hydrateAcrossBoundary(
+      <SessionDetailHeader session={session} />,
+      {
+        serverNow: Date.parse(createdAt) + 61_000,
+        clientNow: Date.parse(createdAt) + 64_000,
+      },
+    );
+    expect(html).toContain("1m 1s");
+    expect(recovered).toEqual([]);
   });
 
   it("shows plural turns for multi-turn sessions", () => {

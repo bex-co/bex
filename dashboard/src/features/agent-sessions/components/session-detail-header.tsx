@@ -205,7 +205,12 @@ export function SessionDetailHeader({
               {session.branch}
             </span>
           ) : null}
-          <span>{t("agentSessions.metaDuration", { duration })}</span>
+          {/* The duration ticks off Date.now(), which the SSR pass and
+              hydration read at different moments; the client clock replaces
+              it on the next tick (w9/080, the RelativeAge convention). */}
+          <span suppressHydrationWarning>
+            {t("agentSessions.metaDuration", { duration })}
+          </span>
           <span>{t("agentSessions.metaTurns", { count: session.turns })}</span>
           <SessionModelCost session={session} />
           {session.secretNames.length > 0 ? (
