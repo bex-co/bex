@@ -15,6 +15,16 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 
 ## Milestones
 
+- [ ] **076** — [Live structured-output session (ADR094 phase 3, was w21/004)](076.md) ← moved from w21 2026-11-05; runs on production as the QA user (no dev-21 needed)
+- [ ] **077** — [Live completion webhook and spend ceiling (ADR094 phase 4, was w21/007)](077.md) ← moved from w21 2026-11-05; unblocks m172 closeout
+- [ ] **m172** — [Cloud Agents MCP phase 4: completion webhooks, per-session spend ceiling, `outcome.cost` (was w21/m260)](m172/README.md) (7 tasks; t001–t006 **DONE** in w21) — **next:** closeout after 077
+- [ ] **078** — **BLOCKED (your decision: how `outcome.cost` reports sandbox compute — recommended: one USD total like Devin's single consumption figure; needs a billing-adjacent session↔sandbox attribution)** — [`outcome.cost` sandbox compute (was w21/006)](blocked/078.md)
+- [ ] **m173** — [CI stability: deploys stop stalling on an overloaded self-hosted runner host](m173/README.md) (7 tasks) ← 2026-11-04/05 deploy gaps (thread exhaustion, runner drops, SBOM timeouts)
+- [ ] **m174** — [Session-scoped secrets for cloud agents (Devin parity)](m174/README.md) (8 tasks)
+- [ ] **m175** — [Knowledge and Playbooks for cloud agents (Devin parity)](m175/README.md) (8 tasks)
+- [ ] **m176** — [Approval mode: the agent asks before risky actions (`needs_input`)](m176/README.md) (7 tasks) ← coordinates with w11/m7 (mobile client)
+- [ ] **m177** — [Cloud Agents from the terminal and the editor: `bex agent` and bex desktop MCP preconfig](m177/README.md) (7 tasks)
+- [ ] **079** — [ADR095 residuals: attachment storage metering and malware scanning](079.md) ← re-evaluate 2026-12-05 or at 10 GB stored
 - [x] **075** — [`outcome.files`: the files the agent shared, in the session outcome](done/075.md) — **DONE 2026-11-05** (ADR095 D11 follow-up once ADR094 `outcome` shipped)
 - [x] **m168** — [ADR095 phase 1 — attachment storage, upload, binding and sandbox delivery](done/m168/README.md) — **DONE 2026-11-05:** live acceptance passed after the dispatch-archive fix (t011): the agent read the attached log and PNG, a follow-up file reached turn 2, downloads byte-exact
 - [x] **m169** — [ADR095 phase 2 — attachments in the `/agents` dashboard](done/m169/README.md) — **DONE 2026-11-05:** live acceptance passed on production
