@@ -381,6 +381,38 @@ func (s *Service) modelAPIKey(ctx context.Context, workspaceID string) (string, 
 	return data[sandbox.ModelAPIKeyEnvVar], nil
 }
 
+// workspaceHasModelKey reports whether the workspace set its own model key:
+// its recorded flag, else (a key stored before the flag existed) the key in
+// OpenBao.
+func (s *Service) workspaceHasModelKey(ctx context.Context, workspaceID string) (bool, error) {
+	env, err := s.workspaceEnvironment(ctx, workspaceID)
+	if err != nil || env.ModelKeySet() {
+		return err == nil, err
+	}
+	key, err := s.modelAPIKey(ctx, workspaceID)
+	return key != "", err
+}
+
+// requireModelCredential refuses a turn whose agent has no model credential:
+// the platform route serves only the claude profile, so any other profile on a
+// workspace without its own key would start, sit in a sandbox and fail minutes
+// later on the model proxy. Devin likewise refuses to start without a usable
+// model. The refusal names the agent and where to set the key.
+func (s *Service) requireModelCredential(ctx context.Context, workspaceID, agent string, env store.AgentEnvironment) error {
+	if env.ModelKeySet() || agentsession.PlatformRouteServes(workspaceID, agent) || s.ModelKeys == nil {
+		return nil
+	}
+	// An unreadable key store defers to the model proxy, which reads the key
+	// at request time: an OpenBao outage must not strand a create. So does a
+	// deployment without the store, whose own refusals name that cause.
+	if key, err := s.modelAPIKey(ctx, workspaceID); err != nil || key != "" {
+		return nil
+	}
+	return core.NewBadRequestError(ModelKeyRequiredCode,
+		fmt.Sprintf("the %s agent needs this workspace's own model API key, which is not set; add one in Settings → Agents, or choose an agent this workspace can already run", agent),
+		map[string]any{"field": "agentConfig.agent", "agent": agent})
+}
+
 func (s *Service) enabled() bool {
 	return s.Store != nil && s.Tuples != nil && s.Sandbox != nil
 }
@@ -506,6 +538,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	// hosts and the default model; the request's explicit fields still win.
 	env, err := s.workspaceEnvironment(ctx, workspaceID)
 	if err != nil {
+		return View{}, err
+	}
+	if err := s.requireModelCredential(ctx, workspaceID, req.AgentConfig.Agent, env); err != nil {
 		return View{}, err
 	}
 	if req.AgentConfig.Model, err = sessionModel(workspaceID, req.AgentConfig, env, true); err != nil {
@@ -760,24 +795,23 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	// A workspace on the platform model route (ADR090) is ready through the
 	// platform key or, once it set its own, through that. Any other workspace
 	// is ready through its recorded key flag, else its key in OpenBao, read
-	// alongside the GitHub readiness.
-	var keyReady bool
+	// alongside the GitHub readiness. The route serves only the claude
+	// profile, so each profile reports its own readiness: the others need the
+	// workspace's key even on a routed workspace.
+	var ownKey bool
 	var connection github.Connection
 	var group errgroup.Group
-	if agentsession.PlatformModelKeyReady(workspaceID, false) {
-		keyReady = true
-	} else {
-		group.Go(func() error {
-			env, err := s.workspaceEnvironment(ctx, workspaceID)
-			if err != nil || env.ModelKeySet() {
-				keyReady = err == nil
-				return err
-			}
-			key, err := s.modelAPIKey(ctx, workspaceID)
-			keyReady = key != ""
-			return err
-		})
-	}
+	routed := agentsession.PlatformModelKeyReady(workspaceID, false)
+	group.Go(func() error {
+		var err error
+		ownKey, err = s.workspaceHasModelKey(ctx, workspaceID)
+		if err != nil && routed {
+			// The routed profile is ready without the key store; only the
+			// others' readiness is unknown, and reported as not ready.
+			return nil
+		}
+		return err
+	})
 	if s.GitHub != nil {
 		group.Go(func() error {
 			var err error
@@ -792,7 +826,10 @@ func (s *Service) Capabilities(ctx context.Context, ownerID string) (Capabilitie
 	if err := group.Wait(); err != nil {
 		return Capabilities{}, err
 	}
-	caps.ModelKeyReady = keyReady
+	caps.ModelKeyReady = ownKey || routed
+	for i := range caps.Agents {
+		caps.Agents[i].ModelKeyReady = ownKey || agentsession.PlatformRouteServes(workspaceID, caps.Agents[i].ID)
+	}
 	if s.GitHub != nil {
 		caps.GitHub = GitHubReadinessView{
 			Connected:    connection.Connected,
@@ -1523,6 +1560,9 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	// changed default.
 	workspaceEnv, err := s.workspaceEnvironment(ctx, record.WorkspaceID)
 	if err != nil {
+		return View{}, err
+	}
+	if err := s.requireModelCredential(ctx, record.WorkspaceID, config.Agent, workspaceEnv); err != nil {
 		return View{}, err
 	}
 	if err := s.enforceTrustConcurrency(ctx, record.WorkspaceID, record.ID, config.Agent, workspaceEnv.ModelKeySet()); err != nil {

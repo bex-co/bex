@@ -162,3 +162,32 @@ func TestCapabilitiesCountPlatformRouteAsModelKeyReady(t *testing.T) {
 		t.Fatalf("non-allowlisted workspace without a BYO key reported ready: %#v", capsB)
 	}
 }
+
+// The platform route serves only the claude profile, so a routed workspace
+// without its own key reports claude ready and the other profiles not;
+// setting a key makes every profile ready (076 live run: codex was offered as
+// ready and failed on the model proxy).
+func TestCapabilitiesReportModelReadinessPerAgent(t *testing.T) {
+	enablePlatformRoute(t, "tea-a")
+	svc, _, _, _ := fixture()
+	ready := func() map[string]bool {
+		t.Helper()
+		caps, err := svc.Capabilities(caller("alice"), "")
+		if err != nil {
+			t.Fatal(err)
+		}
+		out := map[string]bool{}
+		for _, p := range caps.Agents {
+			out[p.ID] = p.ModelKeyReady
+		}
+		return out
+	}
+	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{}}
+	if got := ready(); !got["claude"] || got["codex"] || got["gemini"] {
+		t.Fatalf("routed workspace without its own key: %v, want only claude ready", got)
+	}
+	svc.ModelKeys = fixtureModelKeys("tea-a")
+	if got := ready(); !got["claude"] || !got["codex"] || !got["gemini"] {
+		t.Fatalf("workspace with its own key: %v, want every profile ready", got)
+	}
+}

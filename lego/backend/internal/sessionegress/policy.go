@@ -371,7 +371,9 @@ func (m *Manager) Delete(ctx context.Context, namespace, sessionID string) error
 	if labels[managedByLabel] != managedByValue || labels[SessionLabel] != sessionID {
 		return errors.New("delete session egress policy: existing object is not owned by this session")
 	}
-	if err := m.Client.Delete(ctx, obj); err != nil {
+	// A concurrent teardown (the terminate path and the reaper both run Delete)
+	// can remove the policy between the Get and here; gone is the goal.
+	if err := m.Client.Delete(ctx, obj); err != nil && !apierrors.IsNotFound(err) {
 		return fmt.Errorf("delete session egress policy: %w", err)
 	}
 	return nil

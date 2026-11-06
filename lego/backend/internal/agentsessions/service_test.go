@@ -877,8 +877,21 @@ func fixture() (*Service, *fakeStore, *fakeFGA, *fakeLifecycle) {
 		// side effects (sandbox lifecycle, final phase) are settled by the time the
 		// verb returns — deterministic asserts without sleeps (w2/m64).
 		dispatchRunner: func(fn func()) { fn() },
+		// Both workspaces hold their own model key, so every agent profile can
+		// start (requireModelCredential); tests of a keyless workspace swap
+		// ModelKeys.
+		ModelKeys: fixtureModelKeys("tea-a", "tea-b"),
 	}
 	return svc, st, fga, lifecycle
+}
+
+// fixtureModelKeys is a model-key store holding a BYO key for each workspace.
+func fixtureModelKeys(workspaces ...string) *fakeModelKeys {
+	keys := &fakeModelKeys{data: map[string]map[string]string{}}
+	for _, ws := range workspaces {
+		keys.data[modelKeySecretPath(ws)] = map[string]string{sandbox.ModelAPIKeyEnvVar: "sk-fixture-" + ws}
+	}
+	return keys
 }
 
 func caller(subject string) context.Context {
@@ -1344,16 +1357,34 @@ func TestCreateKeepsWorkspaceModelKeyBehindProxy(t *testing.T) {
 	}
 }
 
-// The proxy fetches credentials lazily, so provisioning state does not block
-// sandbox creation.
-func TestCreateWithNoProvisionedModelKeyStartsAnyway(t *testing.T) {
-	svc, _, _, lifecycle := fixture()
+// An agent the platform route does not serve needs the workspace's own model
+// key. Without one, create is refused up front instead of starting a sandbox
+// whose first model call fails minutes later on the proxy (076 live run: a
+// codex session in a workspace with no OpenAI key). Steer re-checks, since a
+// key can be cleared between turns.
+func TestCreateRefusesAnAgentWithoutAModelCredential(t *testing.T) {
+	svc, st, _, lifecycle := fixture()
 	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{}}
-	if _, err := svc.Create(caller("alice"), createInput()); err != nil {
+	_, err := svc.Create(caller("alice"), createInput())
+	var coded *core.CodedError
+	if !errors.Is(err, core.ErrBadRequest) || !errors.As(err, &coded) || coded.Code != ModelKeyRequiredCode || coded.Params["agent"] != createInput().AgentConfig.Agent {
+		t.Fatalf("create without a model key = %#v, want %s naming the agent", err, ModelKeyRequiredCode)
+	}
+	if len(st.rows) != 0 || lifecycle.created != 0 {
+		t.Fatalf("a refused create still created a session (rows=%d sandboxes=%d)", len(st.rows), lifecycle.created)
+	}
+
+	svc.ModelKeys = fixtureModelKeys("tea-a")
+	view, err := svc.Create(caller("alice"), createInput())
+	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.HasPrefix(lifecycle.modelAPIKey, "bex-model-proxy-placeholder-") {
-		t.Fatalf("modelAPIKey = %q, want proxy placeholder", lifecycle.modelAPIKey)
+	row := st.rows[view.ID]
+	row.Phase = PhaseCompleted
+	st.rows[view.ID] = row
+	svc.ModelKeys = &fakeModelKeys{data: map[string]map[string]string{}}
+	if _, err := svc.Steer(caller("alice"), SteerRequest{SessionID: view.ID, Prompt: "again"}); !isCode(err, ModelKeyRequiredCode) {
+		t.Fatalf("steer after the key was cleared = %v, want %s", err, ModelKeyRequiredCode)
 	}
 }
 

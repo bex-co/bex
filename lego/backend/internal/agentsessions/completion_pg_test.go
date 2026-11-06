@@ -404,6 +404,7 @@ func TestIdleClosedSessionFollowUpPG(t *testing.T) {
 
 	svc, _, _, slc := fixture()
 	svc.Store = pg
+	svc.ModelKeys = fixtureModelKeys(tenant.ID)
 	svc.Base.Authz = checkerFunc(func(context.Context, string, string, string) (bool, error) { return true, nil })
 	view, err := svc.Steer(caller("alice"), SteerRequest{SessionID: session.ID, Prompt: "now add a regression test"})
 	if err != nil {

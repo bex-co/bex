@@ -271,6 +271,7 @@ export type AgentSessionProfile = {
   __typename: 'AgentSessionProfile';
   id: Scalars['String']['output'];
   label: Scalars['String']['output'];
+  modelKeyReady: Scalars['Boolean']['output'];
 };
 
 export type AgentSessionPullRequest = {

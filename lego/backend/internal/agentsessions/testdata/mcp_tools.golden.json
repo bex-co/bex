@@ -1897,11 +1897,15 @@
               },
               "label": {
                 "type": "string"
+              },
+              "modelKeyReady": {
+                "type": "boolean"
               }
             },
             "required": [
               "id",
-              "label"
+              "label",
+              "modelKeyReady"
             ],
             "type": "object"
           },

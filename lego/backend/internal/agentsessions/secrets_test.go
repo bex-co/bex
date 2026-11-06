@@ -168,9 +168,8 @@ func TestAgentSecretNamesAndLimits(t *testing.T) {
 func secretSessionFixture(t *testing.T) (*Service, *fakeStore, *fakeLifecycle, *fakeModelKeys) {
 	t.Helper()
 	svc, st, _, lc := fixture()
-	keys := &fakeModelKeys{data: map[string]map[string]string{
-		workspaceSecretPath("tea-a", "STRIPE_KEY"): {agentSecretValueField: stripeValue},
-	}}
+	keys := fixtureModelKeys("tea-a", "tea-b")
+	keys.data[workspaceSecretPath("tea-a", "STRIPE_KEY")] = map[string]string{agentSecretValueField: stripeValue}
 	svc.ModelKeys = keys
 	return svc, st, lc, keys
 }

@@ -728,7 +728,7 @@ func (s *PGStore) ScheduleAgentSessionSandboxReap(ctx context.Context, id string
 	_, err := s.Pool.Exec(ctx, `
 		UPDATE agent_sessions
 		SET sandbox_reap_attempts = sandbox_reap_attempts + 1,
-		    sandbox_reap_after = $2 + make_interval(mins => LEAST(60, (1 << LEAST(sandbox_reap_attempts, 6))::int)),
+		    sandbox_reap_after = $2::timestamptz + make_interval(mins => LEAST(60, (1 << LEAST(sandbox_reap_attempts, 6))::int)),
 		    updated_at = updated_at
 		WHERE id = $1 AND sandbox_id <> ''`, id, now)
 	return err

@@ -215,6 +215,14 @@ func platformRouteCovers(workspaceID, agent string) bool {
 	return PinnedAgent(agent) && activePlatformModelRoute.Load().covers(workspaceID)
 }
 
+// PlatformRouteServes reports whether the platform route supplies agent's
+// model credential in workspaceID when the workspace has no key of its own.
+// Only the claude profile is routed, so every other profile needs the
+// workspace's key (ModelKeySecretPath) to run at all.
+func PlatformRouteServes(workspaceID, agent string) bool {
+	return platformRouteCovers(workspaceID, agent)
+}
+
 // PlatformModelKeyReady reports whether workspaceID's model credential is the
 // platform route's key, so readiness need not (and must not) consult the
 // workspace's BYO key. The platform route only serves the claude profile, and

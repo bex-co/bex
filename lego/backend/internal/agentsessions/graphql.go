@@ -88,8 +88,9 @@ var attachmentLimitsGQLType = graphql.NewObject(graphql.ObjectConfig{
 var agentProfileGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSessionProfile",
 	Fields: graphql.Fields{
-		"id":    gqlutil.ReqStrField(func(v AgentProfile) any { return v.ID }),
-		"label": gqlutil.ReqStrField(func(v AgentProfile) any { return v.Label }),
+		"id":            gqlutil.ReqStrField(func(v AgentProfile) any { return v.ID }),
+		"label":         gqlutil.ReqStrField(func(v AgentProfile) any { return v.Label }),
+		"modelKeyReady": gqlutil.ReqBoolField(func(v AgentProfile) any { return v.ModelKeyReady }),
 	},
 })
 

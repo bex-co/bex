@@ -34,6 +34,7 @@ import (
 
 	"github.com/bex-co/bex/lego/backend/internal/api/openapi"
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/webhooks"
 	"github.com/bex-co/bex/lego/types/tiers"
 )
 
@@ -460,6 +461,9 @@ func applyRenderSchemaCompatibility(operationID string, schema *openapi3.Schema)
 			}
 		}
 	}
+	if operationID == "create-webhook" || operationID == "update-webhook" {
+		widenWebhookEventFilter(schema)
+	}
 	if operationID != "create-service" && operationID != "update-service" {
 		return
 	}
@@ -499,6 +503,27 @@ func nullableBuildFilterLists(schema *openapi3.Schema) {
 		filter.Properties[name] = &openapi3.SchemaRef{Value: &nullable}
 	}
 	schema.Properties["buildFilter"] = &openapi3.SchemaRef{Value: &filter}
+}
+
+// widenWebhookEventFilter accepts every subscribable bex event type in the
+// webhook writes' eventFilter. Render pins the list to its own event enum, so
+// the bex extensions (agent session turn outcomes) were refused on REST with
+// "invalid request body at /eventFilter/0" while GraphQL and MCP accepted them
+// and GET /v1/webhooks/event-types advertised them. The domain still validates
+// each value. The array and its items are cloned because the item component is
+// the event type every events response shares.
+func widenWebhookEventFilter(schema *openapi3.Schema) {
+	ref := schema.Properties["eventFilter"]
+	if ref == nil || ref.Value == nil || ref.Value.Items == nil || ref.Value.Items.Value == nil {
+		return
+	}
+	item := *ref.Value.Items.Value
+	item.Enum = slices.Clone(item.Enum)
+	widened := &openapi3.SchemaRef{Value: &item}
+	extendSchemaEnum(widened, webhooks.AcceptedEventTypes())
+	list := *ref.Value
+	list.Items = widened
+	schema.Properties["eventFilter"] = &openapi3.SchemaRef{Value: &list}
 }
 
 // withHyphenatedEnum is ref's enum widened with each value's hyphenated

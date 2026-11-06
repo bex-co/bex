@@ -120,6 +120,11 @@ type AgentConfig struct {
 type AgentProfile struct {
 	ID    string `json:"id"`
 	Label string `json:"label"`
+	// ModelKeyReady is whether this profile can reach its model in the
+	// workspace: through the platform route (the claude profile on a routed
+	// workspace) or the workspace's own model key. A profile that is not ready
+	// is refused at create with AGENT_SESSION_MODEL_KEY_REQUIRED.
+	ModelKeyReady bool `json:"modelKeyReady"`
 }
 
 // GitHubReadinessView is the mobile-safe slice of a workspace's GitHub App

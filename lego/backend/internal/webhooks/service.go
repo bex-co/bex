@@ -221,6 +221,14 @@ var legacyEventTypeAliases = map[string]string{
 	"disk_detached": "disk_deleted",
 }
 
+// AcceptedEventTypes is every spelling a subscription filter may name: the
+// vocabulary plus the legacy aliases normalizeEventTypes rewrites. REST's
+// request validator widens Render's pinned event enum with it, so the bex
+// extensions (agent session turns) subscribe on REST as on GraphQL and MCP.
+func AcceptedEventTypes() []string {
+	return append(slices.Clone(EventTypes), slices.Sorted(maps.Keys(legacyEventTypeAliases))...)
+}
+
 const autoDeployVerb = core.AuditVerbSetAutoDeploy
 
 var factEvents = map[string]string{

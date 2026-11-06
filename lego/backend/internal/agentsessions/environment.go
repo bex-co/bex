@@ -145,6 +145,10 @@ const ModelKeyAuditTarget = "model-key"
 // echoes the value.
 const ModelKeyInvalidCode = "AGENT_ENVIRONMENT_MODEL_KEY_INVALID"
 
+// ModelKeyRequiredCode refuses a session whose agent the workspace cannot run:
+// not served by the platform model route and no model key of its own.
+const ModelKeyRequiredCode = "AGENT_SESSION_MODEL_KEY_REQUIRED"
+
 // maxModelKeyBytes bounds a model key (provider keys and OAuth tokens are
 // well under 1 KB).
 const maxModelKeyBytes = 4096

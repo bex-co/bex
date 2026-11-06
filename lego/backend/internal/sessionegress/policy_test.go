@@ -20,10 +20,13 @@ import (
 	"strings"
 	"testing"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/apis/meta/v1/unstructured"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime/schema"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 )
@@ -309,6 +312,38 @@ func TestDeleteRefusesAnObjectOutsideSessionOwnership(t *testing.T) {
 	}
 	if err := m.Delete(ctx, "tea-test-sandbox", "ags-test"); err == nil {
 		t.Fatal("Delete removed a policy whose durable session identity disagreed")
+	}
+}
+
+// The terminate path and the reaper can both tear a session down; when the
+// other one deletes the policy between Delete's Get and its Delete, the
+// policy is gone as intended and Delete succeeds (076/077 live run: "delete
+// session egress policy: ... not found" failed the terminate).
+func TestDeleteToleratesAConcurrentDelete(t *testing.T) {
+	scheme := runtime.NewScheme()
+	scheme.AddKnownTypeWithName(ciliumPolicyGVK, &unstructured.Unstructured{})
+	scheme.AddKnownTypeWithName(ciliumPolicyGVK.GroupVersion().WithKind("CiliumNetworkPolicyList"), &unstructured.UnstructuredList{})
+	deletes := 0
+	cl := fake.NewClientBuilder().WithScheme(scheme).WithInterceptorFuncs(interceptor.Funcs{
+		Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+			deletes++
+			if err := c.Delete(ctx, obj, opts...); err != nil {
+				return err
+			}
+			// Report what the API server answers to the loser of the race.
+			return apierrors.NewNotFound(schema.GroupResource{Group: ciliumPolicyGVK.Group, Resource: "ciliumnetworkpolicies"}, obj.GetName())
+		},
+	}).Build()
+	m := &Manager{Client: cl}
+	ctx := context.Background()
+	if err := m.PrepareSetup(ctx, "tea-test-sandbox", "ags-test", "https://models.example.com/v1", Egress{}); err != nil {
+		t.Fatalf("PrepareSetup: %v", err)
+	}
+	if err := m.Delete(ctx, "tea-test-sandbox", "ags-test"); err != nil {
+		t.Fatalf("Delete after a concurrent delete = %v", err)
+	}
+	if deletes != 1 {
+		t.Fatalf("Delete calls = %d, want 1", deletes)
 	}
 }
 
