@@ -38,6 +38,8 @@ export function useKeyValueInstanceTypes(): UseKeyValueInstanceTypesResult {
           memory: t.memory ?? "",
           storageGB: t.storageGB ?? 0,
           monthlyUsd: t.monthlyUsd ?? "",
+          available: t.available,
+          unavailableReason: t.unavailableReason,
         })),
     [data],
   );

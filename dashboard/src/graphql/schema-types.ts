@@ -1409,12 +1409,14 @@ export type KeyValueConnectionInfo = {
 
 export type KeyValueInstanceType = {
   __typename: 'KeyValueInstanceType';
+  available: Scalars['Boolean']['output'];
   cpu: Maybe<Scalars['String']['output']>;
   id: Maybe<Scalars['String']['output']>;
   memory: Maybe<Scalars['String']['output']>;
   monthlyUsd: Maybe<Scalars['String']['output']>;
   name: Maybe<Scalars['String']['output']>;
   storageGB: Maybe<Scalars['Int']['output']>;
+  unavailableReason: Scalars['String']['output'];
 };
 
 export type KeyValueLogEntry = {

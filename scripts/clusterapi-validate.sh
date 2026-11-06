@@ -723,6 +723,12 @@ for pool in $serving_pools; do
     [ -n "$id" ] || continue
     tier_fits "$id" "$cpu" "$mem" "$disk" "its serving pool" "$md" "$type"
   done < <(yq -N ".compute.tiers[] | select(.servingPool == \"$pool\") | .id + \" \" + .cpu + \" \" + .memory + \" \" + .ephemeralStorage" "$TIERS_FILE")
+  # Key Value tiers route by the same pools (w5/m266); their Valkey container
+  # is sized by the tier and carries no ephemeral-storage bound.
+  while read -r id cpu mem; do
+    [ -n "$id" ] || continue
+    tier_fits "valkey:$id" "$cpu" "$mem" "" "its serving pool" "$md" "$type"
+  done < <(yq -N ".valkey.tiers[] | select(.servingPool == \"$pool\") | .id + \" \" + .cpu + \" \" + .memory" "$TIERS_FILE")
 done
 
 # A pool no tier names would only be idle spend headroom; a serving-tainted
@@ -746,6 +752,10 @@ while read -r id cpu mem disk; do
   [ -n "$id" ] || continue
   tier_fits "$id" "$cpu" "$mem" "" "the standard serving pool" bex-tenant-0 "$tenant0_type"
 done < <(yq -N '.compute.tiers[] | select((.servingPool // "") == "") | .id + " " + .cpu + " " + .memory + " " + .ephemeralStorage' "$TIERS_FILE")
+while read -r id cpu mem; do
+  [ -n "$id" ] || continue
+  tier_fits "valkey:$id" "$cpu" "$mem" "" "the standard serving pool" bex-tenant-0 "$tenant0_type"
+done < <(yq -N '.valkey.tiers[] | select((.servingPool // "") == "") | .id + " " + .cpu + " " + .memory' "$TIERS_FILE")
 
 # The build pools' bootstrap is held to the same sync contract.
 if [ -z "$tenant_core" ] || [ "$(kct_core bex-tenant-build)" != "$tenant_core" ]; then

@@ -18,11 +18,12 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 User decision 2026-11-05: all five items of the sixth `/pm-brainstorm w5` proposal, in priority order, followed by `/loopx w5`. Render parity is included for m265–m268. The m266 interim refusal for 20g/40g is **not** signed; m266 t006 records the outcome.
 
 - [x] **m265** — [Postgres credential rotation: a new user becomes the default, as on Render](done/m265/README.md) (10 tasks; 8h20m total) ← round 6 item 1; ADR018 unsigned `—` omission row — **DONE 2026-11-05**: rotation live on production (202 create, connection info follows the new default, owner retired with its login refused)
-- [ ] **m266** — [Key Value Pro, Pro Plus and size-named plans create, as on Render](m266/README.md) (10 tasks; 7h30m total) ← round 6 item 2; valkey tiers stop at standard — **unblocked 2026-11-05 (D1–D3): next — tiers + prices, then live Stripe catalog before deploy**
+- [ ] **m266** — [Key Value Pro, Pro Plus and size-named plans create, as on Render](m266/README.md) (10 tasks; 7h30m total) ← round 6 item 2; valkey tiers stop at standard — **t001–t004 + t008 shipped; Stripe `key_value_cost_microusd` live 2026-11-06; next — t005 live walk after deploy**
 - [x] **m267** — [Render's workspace member mutations: PATCH and DELETE /owners/{ownerId}/members/{userId}](done/m267/README.md) (8 tasks; 4h45m total) ← round 6 item 3; ADR018 unsigned `—` omission row — **DONE 2026-11-05**: Render member PATCH/DELETE served through the members verbs; follow-up w5/179 (`usr-` user ids)
 - [x] **m268** — [Key Value "Enable Internal Authentication", as on Render](done/m268/README.md) (9 tasks; 6h45m total) ← round 6 item 4; w8/204 follow-up — **DONE 2026-11-05**: live on production (probe PONG → NOAUTH, internal URL carries the password)
 - [x] **178** — [`BUN_VERSION=canary` builds, as on Render](done/178.md) (~1h, may promote) ← round 6 item 5; Render changelog 2026-10-16
 - [x] **179** — [Render user ids are `usr-`; bex answers `own-`](done/179.md) ← found by w5/m267 — promoted to m277
+- [ ] **180** — [Remove the retired per-tier Key Value items from live Subscriptions after 2026-11-16](blocked/180.md) ← w5/m266 D5 — **BLOCKED (date gate: the 2026-11-16 invoices finalize; then a worker removes the items per the note — no user action)**
 - [x] **m277** — [One `usr-` user id on every surface, as on Render](done/m277/README.md) (8 tasks; 5h15m total) ← promoted from w5/179 — **DONE 2026-11-05**: members, whoami, audit-log and events user ids answer `usr-`; mutations accept both spellings
 
 ## Approved queue — 2026-10-20 (brainstorm round 5, parity-first)

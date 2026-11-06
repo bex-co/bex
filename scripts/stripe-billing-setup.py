@@ -15,6 +15,7 @@
 #
 # Model (why these event_names / units):
 #   instance_seconds → per-(resource_kind, tier) meter  event=instance_seconds.<rk>.<tier>
+#                      (Key Value: one key_value_cost_microusd meter, w5/m266)
 #                      value = seconds, price = usdPerSecond×100 cents/sec (paid tiers only)
 #   egress_bytes     → re-based to per-GiB               event=egress_gib
 #                      value = bytes/2^30, price = 1.5 cents/GiB  (Stripe's 12-decimal
@@ -105,7 +106,12 @@ def plain(d):
 # ADR091 D3: the one agent-model meter; a unit is one micro-USD of customer
 # price, so it rates at $0.000001 = 0.0001 cents.
 AGENT_MODEL_COST_METER = "agent_model_cost_microusd"
-AGENT_MODEL_COST_CENTS = Decimal("0.0001")
+MICRO_USD_CENTS = Decimal("0.0001")
+
+# w5/m266 D5: every paid Key Value tier bills on one meter in micro-USD
+# (bex-api rates each tier's seconds at its pricing.yaml rate), so the catalog
+# stays under Stripe's 20 items per Subscription.
+KEY_VALUE_COST_METER = "key_value_cost_microusd"
 
 
 def parse_pricing(text=None):
@@ -127,7 +133,7 @@ def parse_pricing(text=None):
         elif section == "agentModel" and stripped.startswith("markup:"):
             if dec(stripped.split(":", 1)[1]) > 0:
                 dims.append((AGENT_MODEL_COST_METER, "bex agent model usage (micro-USD)",
-                             q12(AGENT_MODEL_COST_CENTS)))
+                             q12(MICRO_USD_CENTS)))
         elif ":" in stripped:
             key, val = (x.strip() for x in stripped.split(":", 1))
             if key == "tier":
@@ -136,7 +142,11 @@ def parse_pricing(text=None):
             if key not in ("usdPerSecond", "usdPerByte", "usdPerGBSecond", "usdPerWeightedSecond"):
                 continue  # skip version:, workspace usdPerMonth (licensed SKU, not a meter), etc.
             rate = dec(val)
-            rk = {"compute": "service", "postgres": "postgres", "keyvalue": "key_value"}.get(section)
+            if section == "keyvalue":  # one cost meter for every paid tier
+                if rate > 0 and tier and tier != "free" and KEY_VALUE_COST_METER not in [d[0] for d in dims]:
+                    dims.append((KEY_VALUE_COST_METER, "bex Key Value (micro-USD)", q12(MICRO_USD_CENTS)))
+                continue
+            rk = {"compute": "service", "postgres": "postgres"}.get(section)
             if rk is not None:  # instance_seconds, per tier
                 if rate > 0 and tier and tier != "free":
                     dims.append((f"instance_seconds.{rk}.{tier}",

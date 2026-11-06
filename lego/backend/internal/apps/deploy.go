@@ -3280,7 +3280,7 @@ func parseKeyValue(k bexService) (parsedKeyValue, error) {
 	k.Plan = tiers.Valkey.CanonicalID(k.Plan)
 	if k.Plan != "" {
 		if _, ok := tiers.Valkey.ByID(k.Plan); !ok {
-			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q plan %q is not a bex Key Value plan (one of %s)", core.ErrBadRequest, k.Name, k.Plan, strings.Join(tiers.Valkey.IDs(), "|"))
+			return parsedKeyValue{}, fmt.Errorf("%w: key-value %q plan %q is not a bex Key Value plan (one of %s)", core.ErrBadRequest, k.Name, k.Plan, strings.Join(tiers.Valkey.SelectableIDs(), "|"))
 		}
 	}
 	allow, err := parseBlueprintIPAllowList("key-value", k.Name, k.IPAllowList)
@@ -4160,6 +4160,13 @@ func (s *Service) applyKeyValue(ctx context.Context, kv parsedKeyValue, assignme
 	existing, duplicate := uniqueKeyValueByDisplayName(keyValues, scoped, tenantID, kv.name)
 	if duplicate {
 		return StackKeyValueView{}, fmt.Errorf("%w: key-value name %q is already used more than once in this workspace; run the key-value name migration before applying this Blueprint", core.ErrConflict, kv.name)
+	}
+	current := ""
+	if existing != nil {
+		current = existing.Spec.Plan
+	}
+	if err := keyvalue.ErrPausedPlan(kv.spec.Plan, current); err != nil {
+		return StackKeyValueView{}, err
 	}
 	if existing != nil {
 		specChanged := blueprintKeyValueSpecChanged(existing.Spec, kv.spec, kv.fields)

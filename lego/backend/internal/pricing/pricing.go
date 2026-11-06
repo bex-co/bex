@@ -32,6 +32,7 @@ import (
 	_ "embed"
 	"fmt"
 	"math"
+	"math/big"
 	"sort"
 	"strconv"
 	"strings"
@@ -53,15 +54,18 @@ var Default = mustLoad(sheetYAML)
 // Sheet maps metering dimensions to per-unit USD rates. It is immutable after
 // construction.
 type Sheet struct {
-	compute   map[string]float64 // tier ID → $/second for instance_seconds (service)
-	postgres  map[string]float64 // tier ID → $/second for instance_seconds (postgres)
-	keyvalue  map[string]float64 // tier ID → $/second for instance_seconds (key_value)
-	bandwidth float64            // $/byte for egress_bytes
-	build     float64            // $/second for build_seconds
-	storage   float64            // $/GB-second of USED datastore volume for storage_gb_seconds
-	disk      float64            // $/GB-second of PROVISIONED capacity for disk_gb_seconds
-	sandbox   float64            // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
-	workspace map[string]float64 // plan ID → $/month licensed fee (hobby/pro/scale)
+	compute  map[string]float64 // tier ID → $/second for instance_seconds (service)
+	postgres map[string]float64 // tier ID → $/second for instance_seconds (postgres)
+	keyvalue map[string]float64 // tier ID → $/second for instance_seconds (key_value)
+	// keyvalueMicroUSD is each paid Key Value tier's rate in micro-USD per
+	// second, exact, for the KeyValueCostMeter events.
+	keyvalueMicroUSD map[string]*big.Rat
+	bandwidth        float64            // $/byte for egress_bytes
+	build            float64            // $/second for build_seconds
+	storage          float64            // $/GB-second of USED datastore volume for storage_gb_seconds
+	disk             float64            // $/GB-second of PROVISIONED capacity for disk_gb_seconds
+	sandbox          float64            // $/milli-vCPU-equivalent-second for sandbox_compute_seconds
+	workspace        map[string]float64 // plan ID → $/month licensed fee (hobby/pro/scale)
 	// agentModelMarkup is the platform model route's price multiplier on
 	// upstream cost (ADR091 D1): every request is priced at its provider cost
 	// × markup and metered as agent_model_cost_microusd. Token meters are
@@ -102,6 +106,38 @@ func (s *Sheet) AgentModelMarkup() float64 {
 	return s.agentModelMarkup
 }
 
+// KeyValueCostMeter is the single Stripe dimension every paid Key Value tier
+// bills on: the tier's instance seconds rated at its pricing.yaml rate, in
+// micro-USD (one unit is $0.000001), like agent_model_cost_microusd (ADR091).
+// One dimension instead of one per tier keeps the catalog under Stripe's 20
+// items per Subscription (w5/m266 D5, ADR040).
+const KeyValueCostMeter = "key_value_cost_microusd"
+
+// KeyValueCostMicroUSD rates seconds (an integer string) of Key Value tier as
+// micro-USD, rounded to six decimals; ok is false for a free or unpriced tier.
+// The arithmetic is exact rational on the rate's shortest decimal spelling (its
+// pricing.yaml literal), never a float product.
+func (s *Sheet) KeyValueCostMicroUSD(tier, seconds string) (string, bool) {
+	rate := s.keyvalueMicroUSD[tier]
+	if rate == nil {
+		return "", false
+	}
+	n, ok := new(big.Rat).SetString(seconds)
+	if !ok {
+		return "", false
+	}
+	return TrimDecimal(n.Mul(n, rate), 6), true
+}
+
+// TrimDecimal renders r rounded to places decimals without trailing zeros.
+func TrimDecimal(r *big.Rat, places int) string {
+	out := strings.TrimRight(strings.TrimRight(r.FloatString(places), "0"), ".")
+	if out == "" || out == "-0" {
+		return "0"
+	}
+	return out
+}
+
 // BillableMeterNames returns the Stripe lookup/event names represented by this
 // price sheet. Free/zero-rate instance tiers are omitted because no charge is
 // due and therefore no Stripe meter or subscription item exists. The stable
@@ -117,7 +153,14 @@ func (s *Sheet) BillableMeterNames() []string {
 	}
 	appendTiers(store.ResourceKindService, s.compute)
 	appendTiers(store.ResourceKindPostgres, s.postgres)
-	appendTiers(store.ResourceKindKeyValue, s.keyvalue)
+	// Key Value is one cost-denominated dimension, not one per tier: Stripe
+	// caps a Subscription at 20 items (w5/m266 D5).
+	for _, rate := range s.keyvalue {
+		if rate > 0 {
+			names = append(names, KeyValueCostMeter)
+			break
+		}
+	}
 	if s.bandwidth > 0 {
 		names = append(names, "egress_gib")
 	}
@@ -550,6 +593,16 @@ func parseSheet(raw []byte) (*Sheet, error) {
 			return nil, fmt.Errorf("keyvalue entry has empty tier")
 		}
 		s.keyvalue[e.Tier] = e.USDPerSecond
+		if e.USDPerSecond > 0 {
+			r, ok := new(big.Rat).SetString(strconv.FormatFloat(e.USDPerSecond, 'f', -1, 64))
+			if !ok {
+				return nil, fmt.Errorf("keyvalue tier %s has a non-finite rate", e.Tier)
+			}
+			if s.keyvalueMicroUSD == nil {
+				s.keyvalueMicroUSD = map[string]*big.Rat{}
+			}
+			s.keyvalueMicroUSD[e.Tier] = r.Mul(r, big.NewRat(1_000_000, 1))
+		}
 	}
 	for _, e := range f.Workspace {
 		if e.Plan == "" {

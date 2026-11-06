@@ -78,14 +78,14 @@ beforeEach(() => {
 describe("KeyValuePlanSection", () => {
   // w4/m208: while the catalog loads, the card keeps three tier slots in the
   // ready grid instead of an empty radio group.
-  it("reserves three tier slots while the catalog loads", () => {
+  it("reserves a slot per catalog tier while the catalog loads", () => {
     catalog.loading = true;
     const { container } = render(
       <KeyValuePlanSection keyValue={KEY_VALUE} onChanged={vi.fn()} />,
     );
     expect(screen.queryByRole("radiogroup")).toBeNull();
     const slots = container.querySelector('[aria-hidden="true"]');
-    expect(slots?.children).toHaveLength(3);
+    expect(slots?.children).toHaveLength(9); // Render's ladder (w5/m266)
     expect(screen.getByRole("button", { name: "Save" })).toBeDisabled();
   });
 

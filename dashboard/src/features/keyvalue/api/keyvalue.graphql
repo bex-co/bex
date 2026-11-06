@@ -78,6 +78,9 @@ query KeyValueInstanceTypes {
     storageGB
     # The price from bex-api's one price sheet (w4/156).
     monthlyUsd
+    # A paused tier is listed but not selectable (w5/m266).
+    available
+    unavailableReason
   }
 }
 

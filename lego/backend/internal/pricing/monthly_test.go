@@ -29,7 +29,7 @@ func TestInstanceMonthlyUSD(t *testing.T) {
 	}{
 		{name: "free service", tier: "free", kind: store.ResourceKindService, want: "0.00", listed: true},
 		{name: "starter service", tier: "starter", kind: store.ResourceKindService, want: "4.90", listed: true},
-		{name: "standard key value", tier: "standard", kind: store.ResourceKindKeyValue, want: "21.00", listed: true},
+		{name: "standard key value", tier: "standard", kind: store.ResourceKindKeyValue, want: "14.00", listed: true},
 		{name: "unknown tier", tier: "gold", kind: store.ResourceKindService},
 		{name: "unknown kind", tier: "starter", kind: "mystery"},
 	}
@@ -55,7 +55,7 @@ func TestMonthlyEstimateTierFamilies(t *testing.T) {
 	wantLines := []struct{ name, monthly, instance, storage string }{
 		{"web", "17.50", "17.50", ""},
 		{"db", "14.35", "13.30", "1.05"},
-		{"cache", "22.05", "21.00", "1.05"},
+		{"cache", "15.05", "14.00", "1.05"},
 	}
 	for i, w := range wantLines {
 		l := got.Lines[i]
@@ -63,8 +63,8 @@ func TestMonthlyEstimateTierFamilies(t *testing.T) {
 			t.Errorf("line %d = %+v, want %+v", i, l, w)
 		}
 	}
-	if got.TotalUSD != "53.90" {
-		t.Errorf("TotalUSD = %s, want 53.90", got.TotalUSD)
+	if got.TotalUSD != "46.90" {
+		t.Errorf("TotalUSD = %s, want 46.90", got.TotalUSD)
 	}
 	if len(got.Variable) != 0 {
 		t.Errorf("Variable = %+v, want empty", got.Variable)

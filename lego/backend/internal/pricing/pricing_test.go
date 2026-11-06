@@ -19,6 +19,7 @@ package pricing
 import (
 	"fmt"
 	"math"
+	"sort"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -101,8 +102,6 @@ func TestBillableMeterNamesArePinned(t *testing.T) {
 		"build_seconds",
 		"disk_gb_hours",
 		"egress_gib",
-		"instance_seconds.key_value.standard",
-		"instance_seconds.key_value.starter",
 		"instance_seconds.postgres.1c-2g",
 		"instance_seconds.postgres.basic-1gb",
 		"instance_seconds.postgres.basic-256mb",
@@ -114,9 +113,11 @@ func TestBillableMeterNamesArePinned(t *testing.T) {
 		"instance_seconds.service.pro-ultra",
 		"instance_seconds.service.standard",
 		"instance_seconds.service.starter",
+		"key_value_cost_microusd", // every Key Value tier, in micro-USD (w5/m266 D5)
 		"sandbox_compute_seconds",
 		"storage_gb_hours",
 	}
+	sort.Strings(want)
 	got := Default.BillableMeterNames()
 	if fmt.Sprint(got) != fmt.Sprint(want) {
 		t.Fatalf("BillableMeterNames = %v, want %v\n"+
@@ -317,7 +318,9 @@ func TestEstimatePaidTierMonthlyPricesMatchCatalog(t *testing.T) {
 		{"postgres pro 4gb", "pro-4gb", store.ResourceKindPostgres, "38.50"},
 		{"postgres basic 4gb", "basic-4gb", store.ResourceKindPostgres, "52.50"},
 		{"key value starter", "starter", store.ResourceKindKeyValue, "7.00"},
-		{"key value standard", "standard", store.ResourceKindKeyValue, "21.00"},
+		{"key value standard", "standard", store.ResourceKindKeyValue, "14.00"},
+		{"key value pro (Render 5g)", "pro", store.ResourceKindKeyValue, "70.00"},
+		{"key value 50g", "50g", store.ResourceKindKeyValue, "525.00"},
 	}
 
 	for _, tt := range tests {
@@ -693,6 +696,29 @@ func TestFreeDatastoreStorageIsIncluded(t *testing.T) {
 		paid := Default.Estimate([]store.UsageSummaryRow{{Kind: store.UsageKindStorageGBSeconds, ResourceKind: rk, Tier: "basic-256mb", Total: gbMonth}})
 		if free.TotalUSD != "0.00" || paid.TotalUSD != "0.21" {
 			t.Errorf("%s storage: free=%s paid=%s, want 0.00 and 0.21", rk, free.TotalUSD, paid.TotalUSD)
+		}
+	}
+}
+
+// w5/m266 D5: a Key Value hour is billed as its tier's price in micro-USD on
+// the one Key Value meter; exact for every tier, nothing for free.
+func TestKeyValueCostMicroUSD(t *testing.T) {
+	for _, tc := range []struct{ tier, seconds, want string }{
+		// Exact from the rounded pricing.yaml rate literals, as the per-tier
+		// Stripe prices were: a 730-hour pro month is $69.999999...
+		{"starter", "3600", "9589.041096"},
+		{"standard", "3600", "19178.082192"},
+		{"pro", "2628000", "69999999.999999"},
+		{"50g", "1", "199.771689"},
+	} {
+		got, ok := Default.KeyValueCostMicroUSD(tc.tier, tc.seconds)
+		if !ok || got != tc.want {
+			t.Errorf("KeyValueCostMicroUSD(%s, %s) = %q,%v want %q", tc.tier, tc.seconds, got, ok, tc.want)
+		}
+	}
+	for _, tier := range []string{"free", "unknown"} {
+		if _, ok := Default.KeyValueCostMicroUSD(tier, "3600"); ok {
+			t.Errorf("%s must not bill", tier)
 		}
 	}
 }

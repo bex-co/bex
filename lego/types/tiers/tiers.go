@@ -116,10 +116,12 @@ type ValkeyTier struct {
 	StorageGB int32 `json:"storageGB"`
 	// Instances is the Valkey StatefulSet size (1 for MVP).
 	Instances int32 `json:"instances"`
-	// ServingPool means what it means on ComputeTier: a store larger than a
-	// standard bex-tenant-0 node runs on the dedicated pool the compute ladder
-	// already names.
+	// ServingPool and Paused mean what they mean on ComputeTier: a store
+	// larger than a standard bex-tenant-0 node runs on the dedicated pool the
+	// compute ladder already names, and a paused tier is refused for new
+	// selections while stores already on it keep running (w5/m266).
 	ServingPool string `json:"servingPool,omitempty"`
+	Paused      bool   `json:"paused,omitempty"`
 }
 
 // ComputeCatalog is the parsed, validated compute ladder with O(1) lookups
@@ -362,11 +364,29 @@ func (c ValkeyCatalog) ByID(id string) (ValkeyTier, bool) {
 	return t, ok
 }
 
+// Paused reports whether Key Value tier id is temporarily refused for new
+// selections (ValkeyTier.Paused). An empty or unknown id is never paused.
+func (c ValkeyCatalog) Paused(id string) bool {
+	return c.byID[id].Paused
+}
+
 // IDs returns every valid spec.plan id, in catalog order.
 func (c ValkeyCatalog) IDs() []string {
 	ids := make([]string, len(c.tiers))
 	for i, t := range c.tiers {
 		ids[i] = t.ID
+	}
+	return ids
+}
+
+// SelectableIDs returns the ids a new selection may choose — IDs without the
+// paused tiers — in catalog order, so the last is the largest selectable plan.
+func (c ValkeyCatalog) SelectableIDs() []string {
+	ids := make([]string, 0, len(c.tiers))
+	for _, t := range c.tiers {
+		if !t.Paused {
+			ids = append(ids, t.ID)
+		}
 	}
 	return ids
 }
@@ -506,6 +526,9 @@ func parseValkey(entries []ValkeyTier, defaultID string, pools []string) (Valkey
 	}
 	if err := validateDefault(defaultID, func(id string) bool { _, ok := byID[id]; return ok }); err != nil {
 		return ValkeyCatalog{}, err
+	}
+	if byID[defaultID].Paused {
+		return ValkeyCatalog{}, fmt.Errorf("default tier %q is paused", defaultID)
 	}
 	return ValkeyCatalog{tiers: entries, byID: byID, defaultID: defaultID}, nil
 }

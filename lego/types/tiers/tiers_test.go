@@ -64,6 +64,34 @@ var wantValkey = map[string]struct {
 	"free":     {"100m", "128Mi", 1, 1},
 	"starter":  {"100m", "256Mi", 1, 1},
 	"standard": {"500m", "1Gi", 5, 1},
+	// w5/m266: Render's larger plans.
+	"3g":        {"1", "3Gi", 6, 1},
+	"pro":       {"1", "5Gi", 10, 1},
+	"pro_plus":  {"2", "10Gi", 20, 1},
+	"pro_max":   {"4", "20Gi", 40, 1},
+	"pro_ultra": {"4", "40Gi", 80, 1},
+	"50g":       {"8", "50Gi", 100, 1},
+}
+
+// w5/m266: the stores a standard node cannot hold name the pool that can,
+// and the xxl tiers share Pro Ultra's pause (user decision D3, 2026-11-05).
+func TestValkeyLargeTiersPlacementAndPause(t *testing.T) {
+	for id, want := range map[string]struct {
+		pool   string
+		paused bool
+	}{
+		"free": {}, "starter": {}, "standard": {}, "3g": {}, "pro": {},
+		"pro_plus": {"xl", false}, "pro_max": {"xl", false},
+		"pro_ultra": {"xxl", true}, "50g": {"xxl", true},
+	} {
+		got, _ := Valkey.ByID(id)
+		if got.ServingPool != want.pool || Valkey.Paused(id) != want.paused {
+			t.Errorf("%s: pool %q paused %v, want %q %v", id, got.ServingPool, Valkey.Paused(id), want.pool, want.paused)
+		}
+	}
+	if Compute.Paused("pro-ultra") != Valkey.Paused("pro_ultra") {
+		t.Error("Key Value pro_ultra must share the compute Pro Ultra pause")
+	}
 }
 
 func TestComputeCatalogMatchesFormerOperatorLadder(t *testing.T) {
@@ -331,6 +359,20 @@ valkey:
   tiers:
     - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1}
     - {id: huge, cpu: "4", memory: 40Gi, storageGB: 40, instances: 1, servingPool: xxl}
+`,
+		"paused default valkey tier": `
+compute:
+  default: starter
+  tiers:
+    - {id: starter, renderPlan: starter, cpu: 500m, memory: 512Mi, ephemeralStorage: 1Gi}
+postgres:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 256Mi, storageGB: 1, instances: 1}
+valkey:
+  default: free
+  tiers:
+    - {id: free, cpu: 100m, memory: 128Mi, storageGB: 1, instances: 1, paused: true}
 `,
 		"empty postgres family": `
 compute:

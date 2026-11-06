@@ -55,7 +55,7 @@ type suspendKeyValueArgs struct {
 type createKeyValueArgs struct {
 	EnvironmentID string   `json:"environmentId,omitempty" jsonschema:"an environment id (evm-...; legacy env-... accepted) in the target workspace; assignment also joins its project"`
 	Name          string   `json:"name" jsonschema:"the key-value store name"`
-	Plan          string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard"`
+	Plan          string   `json:"plan,omitempty" jsonschema:"the instance plan, e.g. free, starter, standard, 3g, pro, pro_plus, pro_max (Render's size ids 256mb, 1g, 5g, 10g, 20g also work; pro_ultra/40g and 50g are temporarily unavailable: INSTANCE_TYPE_UNAVAILABLE)"`
 	Region        string   `json:"region,omitempty" jsonschema:"Render region (frankfurt, ohio, oregon, singapore, virginia); accepted for Render compatibility and normalized: bex runs one region, so the resource is placed in the platform region (BEX_REGION); readback reports its public Render region alias. Any other value is refused"`
 	Version       string   `json:"version,omitempty" jsonschema:"the major Valkey version, e.g. 8 (omit for the default)"`
 	StorageGB     int32    `json:"storageGB,omitempty" jsonschema:"disk size in GB (omit for the plan default)"`
@@ -82,7 +82,7 @@ type updateKeyValueArgs struct {
 	// (w1/m74): both are KeyValuePatch fields REST carries in this same PATCH
 	// body, and dryRun — which both had — is already this tool's preview path.
 	Name             *string                  `json:"name,omitempty" jsonschema:"the new name: a free-form label of at most 100 characters, no control characters, not blank or padded. A rename changes only the label — the id, connection details, and data plane stay put"`
-	Plan             *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, starter, standard). Applying it RESTARTS the store (unavailable for a minute or two; persistenceMode off loses every key), and it CHANGES WHAT THE WORKSPACE IS BILLED"`
+	Plan             *string                  `json:"plan,omitempty" jsonschema:"the target instance plan (free, starter, standard, 3g, pro, pro_plus, pro_max, or Render's size ids; pro_ultra/40g and 50g are temporarily unavailable). Applying it RESTARTS the store (unavailable for a minute or two; persistenceMode off loses every key), and it CHANGES WHAT THE WORKSPACE IS BILLED"`
 	MaxmemoryPolicy  *string                  `json:"maxmemoryPolicy,omitempty" jsonschema:"the eviction policy at the memory budget, e.g. noeviction (job queue) or allkeys-lru (cache); underscore or hyphen forms both accepted"`
 	PersistenceMode  *string                  `json:"persistenceMode,omitempty" jsonschema:"the durability setting: journal-snapshot (AOF + RDB, durable), snapshot (RDB only), or off (in-memory cache, lost on restart); underscore or hyphen forms both accepted"`
 	IPAllowList      *[]core.IPAllowListEntry `json:"ipAllowList,omitempty" jsonschema:"replaces the external-endpoint CIDR allowlist with these {cidrBlock, description} entries; [] disables external connections, a nonempty list enables matching sources, omission preserves intent; an explicit public value wins"`

@@ -81,7 +81,19 @@ keyvalue:
   - tier: starter
     usdPerSecond: 0.000002663622526636   # $7.00/mo  (Render $10.00 × 0.70)
   - tier: standard
-    usdPerSecond: 0.000007990867579909   # $21.00/mo (Render $30.00 × 0.70)
+    usdPerSecond: 0.000005327245053272   # $14.00/mo (Render 1g $20.00 × 0.70)
+  - tier: 3g
+    usdPerSecond: 0.000015981735159817   # $42.00/mo (Render 3g $60.00 × 0.70)
+  - tier: pro
+    usdPerSecond: 0.000026636225266362   # $70.00/mo (Render 5g $100.00 × 0.70)
+  - tier: pro_plus
+    usdPerSecond: 0.000053272450532725   # $140.00/mo (Render 10g $200.00 × 0.70)
+  - tier: pro_max
+    usdPerSecond: 0.000093226788432268   # $245.00/mo (Render 20g $350.00 × 0.70)
+  - tier: pro_ultra
+    usdPerSecond: 0.000159817351598174   # $420.00/mo (Render 40g $600.00 × 0.70)
+  - tier: 50g
+    usdPerSecond: 0.000199771689497717   # $525.00/mo (Render 50g $750.00 × 0.70)
 
 # Composed public outbound egress_bytes rate: $0.015/GiB
 # (Render's current $0.15/GB × 0.10 = 90% off; bex's transparent meter uses

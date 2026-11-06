@@ -25,6 +25,7 @@ import { useOverviewShape } from "@/features/onboarding/hooks/use-overview-shape
 import { proFeaturesPlan } from "@/features/workspaces/types";
 import {
   DatastorePlanPreview,
+  KEY_VALUE_PLAN_SLOTS,
   PlanTierSlots,
 } from "@/common/components/datastore-plan-preview";
 import { servicePlanSlotCount } from "@/features/services/lib/instance-type";
@@ -1190,7 +1191,7 @@ export function KeyValueCreatePageSkeleton() {
             </Region>
             <Region name="plan-picker" className="space-y-2">
               <Skeleton className="h-4 w-28" />
-              <PlanTierSlots />
+              <PlanTierSlots count={KEY_VALUE_PLAN_SLOTS} />
             </Region>
             <Region name="version">
               <FieldRowSkeleton />

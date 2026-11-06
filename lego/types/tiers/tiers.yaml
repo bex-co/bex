@@ -160,7 +160,8 @@ valkey:
   # web-service ladder — NOT the Postgres family's basic-* names. (Render's KV
   # free tier is 25MB / no persistence; bex's is more generous at 128Mi.) When a
   # spelling-divergent tier is added (pro_plus ↔ pro-plus), introduce a
-  # renderPlan field here like the compute family has.
+  # renderPlan field here like the compute family has. The Key Value ids keep
+  # Render's own underscore spellings, so none is needed.
   default: free
   tiers:
     - id: free
@@ -178,3 +179,45 @@ valkey:
       memory: 1Gi
       storageGB: 5
       instances: 1
+    # w5/m266: Render's larger Key Value plans (render.com/docs/compute-plans,
+    # read 2026-11-05) — memory is the plan's RAM like the rungs above, storage
+    # twice it for snapshot + AOF rewrite headroom. pro_plus and pro_max need
+    # the xl pool; pro_ultra and 50g the xxl pool, paused with Pro Ultra until
+    # the Hetzner dedicated-vCPU limit is raised (user decision D3,
+    # 2026-11-05; ADR018). Size names alias in aliases.go.
+    - id: 3g
+      cpu: "1"
+      memory: 3Gi
+      storageGB: 6
+      instances: 1
+    - id: pro
+      cpu: "1"
+      memory: 5Gi
+      storageGB: 10
+      instances: 1
+    - id: pro_plus
+      cpu: "2"
+      memory: 10Gi
+      storageGB: 20
+      instances: 1
+      servingPool: xl
+    - id: pro_max
+      cpu: "4"
+      memory: 20Gi
+      storageGB: 40
+      instances: 1
+      servingPool: xl
+    - id: pro_ultra
+      cpu: "4"
+      memory: 40Gi
+      storageGB: 80
+      instances: 1
+      servingPool: xxl
+      paused: true
+    - id: 50g
+      cpu: "8"
+      memory: 50Gi
+      storageGB: 100
+      instances: 1
+      servingPool: xxl
+      paused: true

@@ -258,8 +258,8 @@ func TestResourceQuotaCarriesStoragePVCandLBCaps(t *testing.T) {
 		// The plan budget (5Ti / 200 on every plan since w2/062; Hobby had
 		// 120Gi / 8) plus room for every datastore the count caps allow at its
 		// largest shape (w2/056): 1875Gi / 200.
-		{free.ID, "6995Gi", 400},
-		{paid.ID, "6995Gi", 400},
+		{free.ID, "9370Gi", 400},
+		{paid.ID, "9370Gi", 400},
 	} {
 		q := quotaFor(tc.nsID)
 		if got := hard(q, corev1.ResourceRequestsStorage); got.String() != tc.wantStorage {

@@ -1370,8 +1370,8 @@ func TestKVInstanceTypesArePricedFromTheSheet(t *testing.T) {
 		}
 		byID[it.ID] = it.MonthlyUSD
 	}
-	if byID["free"] != "0.00" || byID["starter"] != "7.00" || byID["standard"] != "21.00" {
-		t.Errorf("free/starter/standard = %q/%q/%q, want 0.00/7.00/21.00 (bex.co/pricing)", byID["free"], byID["starter"], byID["standard"])
+	if byID["free"] != "0.00" || byID["starter"] != "7.00" || byID["standard"] != "14.00" || byID["pro"] != "70.00" {
+		t.Errorf("free/starter/standard/pro = %q/%q/%q/%q, want 0.00/7.00/14.00/70.00 (bex.co/pricing)", byID["free"], byID["starter"], byID["standard"], byID["pro"])
 	}
 }
 

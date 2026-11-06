@@ -55,6 +55,9 @@ export interface KeyValueInstanceTypeView {
   storageGB: number;
   /** Always-on monthly price ("7.00"), "" when the sheet lists none (w4/156). */
   monthlyUsd: string;
+  /** False for a temporarily paused tier ; its card is disabled. */
+  available?: boolean;
+  unavailableReason?: string;
 }
 
 /** A resolved status key (i18n label) + the badge variant it renders as. */

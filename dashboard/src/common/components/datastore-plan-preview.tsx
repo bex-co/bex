@@ -48,7 +48,8 @@ export function PlanTierSlots({
  * on a phone.
  */
 export const POSTGRES_PLAN_SLOTS = 6;
-const KEY_VALUE_PLAN_SLOTS = 3;
+/** One slot per Key Value catalog tier, paused ones included. */
+export const KEY_VALUE_PLAN_SLOTS = 9;
 
 const PLAN_COPY = {
   postgres: {

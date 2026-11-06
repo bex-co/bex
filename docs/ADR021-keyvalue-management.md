@@ -134,7 +134,7 @@ Only bytes copied from the TLS backend to the public client increment `bex_kv_pr
 
 ### 4. Plans — Render's Key Value vocabulary
 
-The `valkey` tier family uses Render's **Key Value** plan vocabulary (`free` / `starter` / `standard` / `pro` / `pro_plus` / …) — the same names Render's Key Value product shares with its web-service ladder, _not_ the Postgres `basic-*` names. MVP ships the first three:
+The `valkey` tier family uses Render's **Key Value** plan vocabulary (`free` / `starter` / `standard` / `pro` / `pro_plus` / …) — the same names Render's Key Value product shares with its web-service ladder, _not_ the Postgres `basic-*` names. MVP shipped the first three; **since w5/m266 (2026-11-05) the ladder is Render's**: `free`, `starter` (`256mb`), `standard` (`1g`), `3g`, `pro` (`5g`), `pro_plus` (`10g`), `pro_max` (`20g`), `pro_ultra` (`40g`) and `50g`. Each tier's memory is the plan's RAM, and its volume is twice that. `pro_plus` and `pro_max` run on the `xl` serving pool, while `pro_ultra` and `50g` need the `xxl` pool and share Pro Ultra's temporary pause (refused `INSTANCE_TYPE_UNAVAILABLE`, shown unavailable). Render's size ids alias the legacy-named rungs. The original three were:
 
 | plan | compute (requests==limits) | storage | instances | Render KV equivalent |
 | --- | --- | --- | --- | --- |

@@ -37,12 +37,13 @@ class StripeBillingSetupTest(TestCase):
     def test_pricing_catalog_has_expected_paid_dimensions(self):
         dimensions = SETUP.parse_pricing()
         names = {name for name, _, _ in dimensions}
-        self.assertEqual(19, len(dimensions))
+        self.assertEqual(18, len(dimensions))
         self.assertIn("instance_seconds.service.starter", names)
         self.assertIn("instance_seconds.postgres.basic-1gb", names)
         for tier in ("1c-2g", "pro-4gb", "basic-4gb"):  # w2/m171 HA-eligible plans
             self.assertIn(f"instance_seconds.postgres.{tier}", names)
-        self.assertIn("instance_seconds.key_value.standard", names)
+        self.assertIn("key_value_cost_microusd", names)  # every KV tier (w5/m266 D5)
+        self.assertFalse(any(name.startswith("instance_seconds.key_value.") for name in names))
         self.assertIn("egress_gib", names)
         self.assertIn("build_seconds", names)
         self.assertIn("storage_gb_hours", names)
@@ -59,9 +60,13 @@ class StripeBillingSetupTest(TestCase):
         unpriced = sheet.replace("  markup: 1.30\n", "  markup: 0\n")
         self.assertFalse(any(name.startswith("agent_model_") for name, _, _ in SETUP.parse_pricing(unpriced)))
 
+    def test_key_value_bills_through_one_cost_meter(self):
+        dims = {name: cents for name, _, cents in SETUP.parse_pricing() if "key_value" in name}
+        self.assertEqual({"key_value_cost_microusd": Decimal("0.000100000000")}, dims)
+
     def test_workspace_plan_fees_are_not_usage_meters(self):
         names = {name for name, _, _ in SETUP.parse_pricing()}
-        self.assertEqual(19, len(names))
+        self.assertEqual(18, len(names))
         self.assertTrue(all("workspace" not in name for name in names))
         sheet = SETUP.PRICING.read_text()
         self.assertIn("usdPerMonth: 17.50", sheet)
@@ -82,8 +87,6 @@ class StripeBillingSetupTest(TestCase):
             "instance_seconds.postgres.1c-2g": "28.00",
             "instance_seconds.postgres.pro-4gb": "38.50",
             "instance_seconds.postgres.basic-4gb": "52.50",
-            "instance_seconds.key_value.starter": "7.00",
-            "instance_seconds.key_value.standard": "21.00",
         }
         for name, want in monthly.items():
             with self.subTest(name=name):

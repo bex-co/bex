@@ -16,7 +16,10 @@ import { useKeyValueInstanceTypes } from "@/features/keyvalue/hooks/use-key-valu
 import { useSetKeyValuePersistenceMode } from "@/features/keyvalue/hooks/use-set-key-value-persistence-mode";
 import { useUpdateKeyValuePlan } from "@/features/keyvalue/hooks/use-update-key-value-plan";
 import { PlanCardGrid } from "@/common/components/plan-card-grid";
-import { PlanTierSlots } from "@/common/components/datastore-plan-preview";
+import {
+  KEY_VALUE_PLAN_SLOTS,
+  PlanTierSlots,
+} from "@/common/components/datastore-plan-preview";
 import type { KeyValueView } from "@/features/keyvalue/types";
 
 export interface KeyValuePlanSectionProps {
@@ -75,7 +78,7 @@ export function KeyValuePlanSection({
           </p>
         ) : null}
         {loading && instanceTypes.length === 0 ? (
-          <PlanTierSlots />
+          <PlanTierSlots count={KEY_VALUE_PLAN_SLOTS} />
         ) : instanceTypes.length === 0 ? (
           // A settled failed or empty catalog, not an empty choice (w4/m218).
           <PlanCatalogUnavailable

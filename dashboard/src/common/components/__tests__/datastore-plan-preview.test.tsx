@@ -1,7 +1,10 @@
 import { readFileSync } from "node:fs";
 import { describe, expect, it } from "vitest";
 import { render, within } from "@testing-library/react";
-import { POSTGRES_PLAN_SLOTS } from "../datastore-plan-preview";
+import {
+  KEY_VALUE_PLAN_SLOTS,
+  POSTGRES_PLAN_SLOTS,
+} from "../datastore-plan-preview";
 import {
   DatabaseOverviewSkeleton,
   KeyValueOverviewSkeleton,
@@ -10,7 +13,7 @@ import { CREATE_PLAN_CARD_GRID_CLASS } from "../plan-card-grid";
 
 // w4/m208: a datastore plan region keeps the ready card's anatomy while its
 // resource or catalog loads — title, description, one 70px tier slot per
-// catalog tier in the ready grid (six Postgres plans since w2/m171, three Key
+// catalog tier in the ready grid (six Postgres plans since w2/m171, nine Key
 // Value), and the bordered Cancel/Save footer — and stays inert.
 function planRegion(container: HTMLElement) {
   const region = container.querySelector('[data-skeleton-region="plan"]');
@@ -36,14 +39,14 @@ function catalogSize(family: string): number {
 describe("datastore plan slot counts", () => {
   it("match the Postgres and Key Value catalogs", () => {
     expect(POSTGRES_PLAN_SLOTS).toBe(catalogSize("postgres"));
-    expect(catalogSize("valkey")).toBe(3);
+    expect(KEY_VALUE_PLAN_SLOTS).toBe(catalogSize("valkey"));
   });
 });
 
 describe("datastore plan preview", () => {
   for (const [name, Skeleton, title, save, tiers] of [
     ["Postgres", DatabaseOverviewSkeleton, "Instance type", "Save", 6],
-    ["Key Value", KeyValueOverviewSkeleton, "Instance type", "Save", 3],
+    ["Key Value", KeyValueOverviewSkeleton, "Instance type", "Save", 9],
   ] as const) {
     it(`${name} detail skeleton previews the ready plan card`, () => {
       const { container } = render(<Skeleton />);

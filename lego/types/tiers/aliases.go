@@ -33,11 +33,17 @@ var postgresInputAliases = map[string]string{
 	"basic_4gb":   "basic-4gb",
 }
 
-// valkeyInputAliases: Render Key Value size spellings that match bex's
-// starter/standard rungs (free/starter/standard ids already identical).
+// valkeyInputAliases: Render's Key Value size plan ids onto bex's rungs, which
+// keep Render's legacy names (render.com/docs/compute-plans: "Legacy plan
+// names remain valid across all Render tooling"). 3g and 50g have no legacy
+// name and are ids themselves (w5/m266).
 var valkeyInputAliases = map[string]string{
 	"256mb": "starter",
 	"1g":    "standard",
+	"5g":    "pro",
+	"10g":   "pro_plus",
+	"20g":   "pro_max",
+	"40g":   "pro_ultra",
 }
 
 // computeInputAliases: Render's spec-based compute plan IDs (render.com/docs/

@@ -586,7 +586,10 @@ func (s *Service) CreateKeyValue(ctx context.Context, req CreateKeyValueRequest)
 	req.Plan = tiers.Valkey.CanonicalID(req.Plan)
 	if req.Plan != "" {
 		if _, ok := tiers.Valkey.ByID(req.Plan); !ok {
-			return KeyValueView{}, fmt.Errorf("%w: unknown plan %q (valid: %v)", core.ErrBadRequest, req.Plan, tiers.Valkey.IDs())
+			return KeyValueView{}, fmt.Errorf("%w: unknown plan %q (valid: %v)", core.ErrBadRequest, req.Plan, tiers.Valkey.SelectableIDs())
+		}
+		if err := ErrPausedPlan(req.Plan, ""); err != nil {
+			return KeyValueView{}, err
 		}
 	}
 	if err := core.ValidateAllowList(req.IPAllowList); err != nil {
@@ -975,7 +978,10 @@ func (s *Service) setPlan(ctx context.Context, name, plan string, dryRun bool) (
 	}
 	plan = tiers.Valkey.CanonicalID(plan)
 	if _, ok := tiers.Valkey.ByID(plan); !ok {
-		return KeyValueView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
+		return KeyValueView{}, fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.SelectableIDs(), "|"))
+	}
+	if err := ErrPausedPlan(plan, kv.Spec.Plan); err != nil {
+		return KeyValueView{}, err
 	}
 	if err := s.RequirePlanBilling(ctx, kv.Labels[core.LabelTenant], plan); err != nil {
 		return KeyValueView{}, err
@@ -1075,7 +1081,7 @@ func (patch KeyValuePatch) validate() error {
 	}
 	if patch.Plan != nil {
 		if _, ok := tiers.Valkey.ByID(tiers.Valkey.CanonicalID(*patch.Plan)); !ok {
-			return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.IDs(), "|"))
+			return fmt.Errorf("%w: plan must be one of %s", core.ErrBadRequest, strings.Join(tiers.Valkey.SelectableIDs(), "|"))
 		}
 	}
 	if patch.MaxmemoryPolicy != nil && !maxmemoryPolicyKnown(*patch.MaxmemoryPolicy) {
@@ -1181,6 +1187,11 @@ func (s *Service) updateKeyValue(ctx context.Context, name string, patch KeyValu
 	}
 	if err := patch.validate(); err != nil {
 		return KeyValueView{}, err
+	}
+	if patch.Plan != nil {
+		if err := ErrPausedPlan(tiers.Valkey.CanonicalID(*patch.Plan), kv.Spec.Plan); err != nil {
+			return KeyValueView{}, err
+		}
 	}
 	// Protection reaches durability, eviction and identity (w4/m127).
 	if verb := protectedKeyValuePatchVerb(patch); verb != "" {

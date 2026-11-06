@@ -76,6 +76,9 @@ var keyValueInstanceTypeGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"memory":     gqlutil.StrField(func(t KeyValueInstanceType) any { return t.Memory }),
 		"storageGB":  gqlutil.IntField(func(t KeyValueInstanceType) any { return t.StorageGB }),
 		"monthlyUsd": gqlutil.StrField(func(t KeyValueInstanceType) any { return t.MonthlyUSD }),
+		// A paused tier is listed but not selectable.
+		"available":         gqlutil.ReqBoolField(func(t KeyValueInstanceType) any { return t.Available }),
+		"unavailableReason": gqlutil.ReqStrField(func(t KeyValueInstanceType) any { return t.UnavailableReason }),
 	},
 })
 

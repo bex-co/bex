@@ -156,6 +156,23 @@ Existing state is never silently removed: a Hobby workspace keeps its third envi
 
 **Decided 2026-11-02 (user, w2/m250).** Pro Ultra (8 CPU / 32 GB) runs only on a Hetzner `ccx43` node, and the Hetzner project's dedicated vCPU limit refuses to create one ("dedicated core limit exceeded"). Until that limit is raised, `pro-ultra` carries `paused: true` in `lego/types/tiers/tiers.yaml`. A new selection is refused with 400 `INSTANCE_TYPE_UNAVAILABLE` on every create and plan-change path. Services already on it keep running, and their own plan can be re-sent unchanged. Its `pricing.yaml` price stays, so those services are still estimated and billed. The dashboard lists it disabled, and no unknown-plan hint names it. This is a temporary divergence from Render, recorded in [ADR018](ADR018-render-parity.md). **Release:** once Hetzner raises the dedicated vCPU limit, delete the `paused` field.
 
+### 12. Key Value follows Render's 2026-10-01 ladder (w5/m266, 2026-11-05)
+
+On 2026-10-01 Render added 3 GB and 50 GB Key Value plans and cut prices for the plans with 1 GB or more. Its current size plans are 256mb $10, 1g $20, 3g $60, 5g $100, 10g $200, 20g $350, 40g $600 and 50g $750 per month ([render.com/pricing](https://render.com/pricing#key-value), read 2026-11-05). bex sells the same ladder at Render × 0.70, under Render's legacy names where they exist:
+
+| Plan        | bex $/mo                                           |
+| ----------- | -------------------------------------------------- |
+| `starter`   | $7                                                 |
+| `standard`  | **$14** (was $21, priced against Render's old $30) |
+| `3g`        | $42                                                |
+| `pro`       | $70                                                |
+| `pro_plus`  | $140                                               |
+| `pro_max`   | $245                                               |
+| `pro_ultra` | $420                                               |
+| `50g`       | $525                                               |
+
+Existing `standard` subscriptions move at their next billing period (user decision D2). `pro_ultra` and `50g` share Pro Ultra's temporary pause (§11, user decision D3). All Key Value tiers bill through one cost-denominated Stripe dimension ([ADR040](ADR040-billing-metronome.md), D5).
+
 ## Consequences
 
 - **Backend:** `internal/pricing` is an operator-independent package. `internal/usage.Service.monthToDateAt` calls `pricing.Default.Estimate` and attaches the result to `Summary.EstimatedCost`; `storage_gb_seconds` contributes at the embedded per-GB-second rate for Postgres and Key Value rows.

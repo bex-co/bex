@@ -1,19 +1,19 @@
 # w5 · m266 — Key Value Pro, Pro Plus and size-named plans create, as on Render
 
-**Worker:** worker5 **Goal:** a customer can create and upgrade to Key Value stores larger than 1 GB using Render's plan names on every surface. **Status:** todo (t001 findings and the t002 placement plumbing shipped; user decisions D1–D3 recorded 2026-11-05)
+**Worker:** worker5 **Goal:** a customer can create and upgrade to Key Value stores larger than 1 GB using Render's plan names on every surface. **Status:** todo (t001–t004 and t008 done: tiers, placement, admission, prices, the one Key Value cost meter (D5) and the dashboard; Stripe meter live 2026-11-06; next — t005 live walk after deploy)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Verify Render's Key Value plan specs and add the tiers | 45m | — |
-| t002 | Operator schedules large Key Value stores onto pools that fit them | 1h30m | t001 |
-| t003 | Backend admission and price sheet accept the new plans on REST, GraphQL, MCP and Blueprints | 1h | t001 |
-| t004 | Dashboard plan picker and ADR updates | 1h | t003 |
+| t001 | Verify Render's Key Value plan specs and add the tiers — **DONE** | 45m | — |
+| t002 | Operator schedules large Key Value stores onto pools that fit them — **DONE** | 1h30m | t001 |
+| t003 | Backend admission and price sheet accept the new plans on REST, GraphQL, MCP and Blueprints — **DONE** | 1h | t001 |
+| t004 | Dashboard plan picker and ADR updates — **DONE** | 1h | t003 |
 | t005 | Live: create a pro store in production and upgrade standard → pro | 1h | t002, t004 |
 | t006 | Dated widen task: 20g and 40g go live once w2/m250's large pools exist | 30m | t005 |
 | t007 | Render parity | 30m | t006 |
-| t008 | Simplify | 20m | t007 |
+| t008 | Simplify — **DONE** | 20m | t007 |
 | t009 | Test coverage | 45m | t007, t008 |
 | t010 | Closeout | 10m | t009 |
 
@@ -81,3 +81,17 @@ Affects w5/m266 t001–t006. Source: **explicit user decisions** (D1=A, D2=A, D3
 7. Track the `xl` and `xxl` release in t006.
 
 **Acceptance:** the milestone's DoD is unchanged.
+
+## Decision D5 — 2026-11-05 (user, raised during `/loopx w5`)
+
+**Finding:** every billable dimension is one item on the workspace's single Stripe Subscription, and Stripe caps a Subscription at 20 items. The catalog had 19, and six new Key Value tiers would make 25 (`billing/contracts_sync_test.go` `TestCatalogFitsOneSubscription`).
+
+**Decision (user, recommended option):** Key Value becomes **one cost-denominated dimension**. Every Key Value tier's instance seconds are rated at that tier's `pricing.yaml` rate and metered in micro-USD on a single Key Value Price, the way `agent_model_cost_microusd` already works (ADR091). The catalog goes from 19 to 18 dimensions. The invoice shows one "Key Value" line instead of a line per tier; per-instance detail stays on bex's Billing page. The retired `instance_seconds.key_value.starter` / `.standard` subscription items move at their next period, together with D2's `standard` repricing (w2/058 pattern). ADR040 records the change.
+
+### D5 Stripe provisioning — 2026-11-06 (`/loopx w5`)
+
+- Created with the setup script's own `ensure_meter`/`ensure_price` for this one dimension only (the `agent_model_cost_microusd` Price stays with w10/m14 t007), each run twice to confirm idempotence (`exists` on the second run):
+  - test: meter `mtr_test_61Vi6z6Qg4SgyFK8341EqsEqs2tLVV8K`, Price `price_1UYj1yEqsEqs2tLVGmbPJI9m` (0.0001¢ per unit).
+  - live: meter `mtr_61Vi702MFL0MyL33741EqsEqs2tLVV3o`, Price `price_1UYj2nEqsEqs2tLVQhG81soo` (0.0001¢ per unit).
+- Read-only catalog diff: live matches `pricing.yaml` on every other dimension. Test mode carries older rounding on the six service Prices and egress/build/storage, so a full test-mode run of the script refuses at `instance_seconds.service.starter`; that drift predates m266 and is unrelated.
+- Migration: 11 active live Subscriptions carry `instance_seconds.key_value.starter` and `.standard` items (15–18 items each; all periods end 2026-11-16). After the deploy, `syncContractItems` adds the cost item (≤ 19 items) and the old items receive no further usage, so the D2 price cut takes effect from the deploy rather than the next period — a cut only, so nobody is overcharged. The old items are removed after the 2026-11-16 invoices finalize: [w5/180](../blocked/180.md).

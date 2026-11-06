@@ -148,13 +148,20 @@ spec:
               plan:
                 default: free
                 description: |-
-                  Plan selects the resource allocation (compute + storage). MVP plans are
-                  single-instance and fit one node. Names follow Render's Key Value product
-                  (free / starter / standard — the web-service vocabulary, not Postgres).
+                  Plan selects the resource allocation (compute + storage). Plans are
+                  single-instance. Names follow Render's Key Value product (free / starter
+                  / standard / pro / pro_plus / … — the web-service vocabulary, not
+                  Postgres), plus Render's size-only 3g and 50g (w5/m266).
                 enum:
                 - free
                 - starter
                 - standard
+                - 3g
+                - pro
+                - pro_plus
+                - pro_max
+                - pro_ultra
+                - 50g
                 type: string
               public:
                 description: |-

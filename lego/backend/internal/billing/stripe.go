@@ -478,6 +478,15 @@ func stripeMeterEvent(e Event) (eventName, value string, skip bool) {
 			return "", "", true
 		}
 		rk := store.NormalizeResourceKind(e.Properties["resource_kind"])
+		if rk == store.ResourceKindKeyValue {
+			// Every Key Value tier bills on one cost meter, so the
+			// catalog fits Stripe's 20 items per Subscription.
+			cost, ok := pricing.Default.KeyValueCostMicroUSD(tier, e.Properties["value"])
+			if !ok {
+				return "", "", true
+			}
+			return pricing.KeyValueCostMeter, cost, false
+		}
 		name := fmt.Sprintf("instance_seconds.%s.%s", rk, tier)
 		if _, ok := billableMeterNames[name]; !ok {
 			return "", "", true // unknown/zero-rate tier: same policy as pricing estimate
@@ -524,12 +533,7 @@ func scaleDown(intStr string, divisor int64) string {
 	if !ok || divisor <= 0 {
 		return "0"
 	}
-	value := new(big.Rat).SetFrac(n, big.NewInt(divisor)).FloatString(12)
-	value = strings.TrimRight(strings.TrimRight(value, "0"), ".")
-	if value == "" || value == "-0" {
-		return "0"
-	}
-	return value
+	return pricing.TrimDecimal(new(big.Rat).SetFrac(n, big.NewInt(divisor)), 12)
 }
 
 // permanentStripeError reports whether err is a non-retryable client error

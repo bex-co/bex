@@ -225,7 +225,9 @@ func TestDatastoreQuotaRoomCoversLargestShape(t *testing.T) {
 	if got, want := postgresFootprint(), (datastoreFootprint{pvcs: 7, storageGi: 70, ephemeralRequestsGi: 20, ephemeralLimitsGi: 200, jobs: 8}); got != want {
 		t.Errorf("Postgres footprint = %+v, want %+v", got, want)
 	}
-	if got, want := keyValueFootprint(), (datastoreFootprint{pvcs: 1, storageGi: 5, ephemeralRequestsGi: 15, ephemeralLimitsGi: 51, jobs: 7}); got != want {
+	// The 50g plan is the largest Key Value shape since w5/m266 (100Gi volume,
+	// and the backup Job's scratch sized from it).
+	if got, want := keyValueFootprint(), (datastoreFootprint{pvcs: 1, storageGi: 100, ephemeralRequestsGi: 205, ephemeralLimitsGi: 241, jobs: 7}); got != want {
 		t.Errorf("Key Value footprint = %+v, want %+v", got, want)
 	}
 	for _, tc := range []struct {
@@ -233,8 +235,8 @@ func TestDatastoreQuotaRoomCoversLargestShape(t *testing.T) {
 		pvcs, jobs                          int64
 		storage, ephemeralReq, ephemeralLim string
 	}{
-		{PlanHobby, 400, 400, "6995Gi", "2923Gi", "10371Gi"},
-		{PlanPro, 400, 625, "6995Gi", "2923Gi", "10371Gi"},
+		{PlanHobby, 400, 400, "9370Gi", "7673Gi", "15121Gi"},
+		{PlanPro, 400, 625, "9370Gi", "7673Gi", "15121Gi"},
 	} {
 		quota := quotaForPlan(tc.plan)
 		for key, want := range map[corev1.ResourceName]resource.Quantity{

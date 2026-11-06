@@ -52,7 +52,13 @@ func TestValkeyCanonicalIDAcceptsRenderAliases(t *testing.T) {
 		"256mb":    "starter",
 		"1g":       "standard",
 		"standard": "standard",
-		"5g":       "5g",
+		"5g":       "pro",
+		"10g":      "pro_plus",
+		"20g":      "pro_max",
+		"40g":      "pro_ultra",
+		"3g":       "3g",
+		"50g":      "50g",
+		"100g":     "100g",
 	}
 	for in, want := range cases {
 		if got := Valkey.CanonicalID(in); got != want {
@@ -62,8 +68,14 @@ func TestValkeyCanonicalIDAcceptsRenderAliases(t *testing.T) {
 	if _, ok := Valkey.ByID(Valkey.CanonicalID("1g")); !ok {
 		t.Fatal("1g must resolve to standard")
 	}
-	if _, ok := Valkey.ByID(Valkey.CanonicalID("5g")); ok {
-		t.Fatal("5g must not resolve to a catalog tier")
+	// Every Render size id lands on a rung whose memory is that size (w5/m266).
+	for size, mem := range map[string]string{"5g": "5Gi", "10g": "10Gi", "20g": "20Gi", "40g": "40Gi", "3g": "3Gi", "50g": "50Gi"} {
+		if tier, ok := Valkey.ByID(Valkey.CanonicalID(size)); !ok || tier.Memory != mem {
+			t.Errorf("%s resolves to %+v, want a %s rung", size, tier, mem)
+		}
+	}
+	if _, ok := Valkey.ByID(Valkey.CanonicalID("100g")); ok {
+		t.Fatal("a size Render does not sell must not resolve to a catalog tier")
 	}
 }
 
