@@ -1348,3 +1348,52 @@ func TestPlatformResponsesCarryRenderRouting(t *testing.T) {
 		}
 	}
 }
+
+// TestDeletingAppAnswersAsUnknownHost is w4/516: once an App carries a
+// deletionTimestamp (its finalizer still running), its hosts answer the unknown
+// host's 404 no-server, and no request wakes it, holds, or claims its hosts.
+func TestDeletingAppAnswersAsUnknownHost(t *testing.T) {
+	deleting := func(app *appv1alpha1.App) *appv1alpha1.App {
+		now := metav1.Now()
+		app.DeletionTimestamp = &now
+		app.Finalizers = []string{"app.bex.co/finalizer"}
+		return app
+	}
+	sleeping, sleepingDep := sleepingApp()
+	suspended, suspendedDep := suspendedApp()
+	static := firstDeployApp()
+	static.Spec.Type = appv1alpha1.TypeStaticSite
+	for _, tc := range []struct {
+		name string
+		host string
+		objs []client.Object
+	}{
+		{"sleeping web", "sleeping.onbex.co", []client.Object{deleting(sleeping), sleepingDep}},
+		{"suspended", "suspended.onbex.co", []client.Object{deleting(suspended), suspendedDep}},
+		{"maintenance", "custom.example.com", []client.Object{deleting(maintenanceApp(""))}},
+		{"static site", "first.onbex.co", []client.Object{deleting(static)}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			cl := &countingClient{Client: fake.NewClientBuilder().WithScheme(scheme).WithObjects(tc.objs...).Build()}
+			cache := newHostCache(cl, logr.Discard(), "onbex.co")
+			cache.refreshOnce(context.Background())
+			if cache.claims(tc.host) {
+				t.Errorf("a deleting App still claims %s", tc.host)
+			}
+			for _, accept := range []string{"application/json", ""} {
+				req := httptest.NewRequest(http.MethodGet, "https://"+tc.host+"/", nil)
+				if accept != "" {
+					req.Header.Set("Accept", accept)
+				}
+				rr := httptest.NewRecorder()
+				newHoldingHandler(cl, cache, logr.Discard(), newHolder(cl)).ServeHTTP(rr, req)
+				if rr.Code != http.StatusNotFound || rr.Header().Get("Retry-After") != "" || rr.Header().Get(routingHeader) != routingNoServer {
+					t.Errorf("Accept %q = %d Retry-After %q: %q, want the unknown host's 404", accept, rr.Code, rr.Header().Get("Retry-After"), rr.Body.String())
+				}
+			}
+			if got := cl.patches.Load(); got != 0 {
+				t.Fatalf("a deleting App was written: %d patches", got)
+			}
+		})
+	}
+}

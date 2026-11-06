@@ -815,6 +815,12 @@ func (h *hostCache) refreshOnce(ctx context.Context) {
 	next := make(map[string]*appv1alpha1.App, len(list.Items))
 	for i := range list.Items {
 		app := &list.Items[i]
+		// A deleted App lingers under its finalizer while the operator reclaims
+		// its artifacts. It is gone for the public: its hosts answer as unknown
+		// (404 no-server) and nothing wakes it (w4/516).
+		if !app.DeletionTimestamp.IsZero() {
+			continue
+		}
 		for host := range appHosts(app) {
 			next[host] = app
 		}
