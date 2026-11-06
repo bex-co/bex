@@ -1,6 +1,6 @@
 # w9 · m172 — Cloud Agents MCP phase 4: completion webhooks, per-session spend ceiling, `outcome.cost`
 
-**Worker:** worker9 **Goal:** Orchestrators are pushed completion events instead of polling and can cap spend per task, with cost visible on `outcome`. **Status:** todo — t001–t006 done (shipped in w21); t007 closeout after the live checks in w9/077 (and w9/076 for m259)
+**Worker:** worker9 **Goal:** Orchestrators are pushed completion events instead of polling and can cap spend per task, with cost visible on `outcome`. **Status:** done (2026-11-06; live checks in w9/077)
 
 ## Tasks (in order)
 
@@ -12,7 +12,7 @@
 | t004 | Render parity (vs Devin): REST, GraphQL, MCP and dashboard consistency — **DONE** | 30m | t001, t002, t003 |
 | t005 | Simplify — **DONE** | 20m | t004 |
 | t006 | Test coverage — **DONE** | 45m | t004 |
-| t007 | Closeout | 10m | t005, t006 |
+| t007 | Closeout — **DONE** | 10m | t005, t006 |
 
 ## Definition of done
 

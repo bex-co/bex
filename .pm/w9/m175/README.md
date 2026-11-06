@@ -44,3 +44,27 @@
 ## Live check (2026-11-06)
 
 - **Live check attempt 2026-11-06 ~13:10 UTC: NOT RUN.** Production bex-api is still on the 92ff00293 pin (gitops `bab5d417e`). `GET /v1/agent-skills` and `GET /v1/agent-secrets` answer 404, and capabilities has no per-profile `modelKeyReady`. Every deploy run since then (379af6c08, 3310f6484, 8c498d33c) ended `success` with `build`/`deploy` skipped by supersession, so none of this work is live yet. Rerun after a real pin.
+
+## Live check (2026-11-06, production 24a9203ee)
+
+- Production pin 24a9203ee (gitops `d65dc2f2b`). An authenticated `GET /v1/agent-skills` and `GET /v1/agent-secrets` answered 200. QA user via CLI device login, workspace `bex` (QA user is an admin there). Every fixture was deleted and verified 404; the CLI grant was revoked (204, then 401) and the Kratos session logged out.
+- **PASS — CRUD on every surface.**
+  - REST create: `qa-api-echo` (`skl-dbmu1427qbhc7397040g`, triggers `[user]`) and `qa-api-codeword` (`skl-dbmu14e6kvbs738fl5qg`, defaults `[user, model]`), both 201.
+  - The REST list carries metadata only (no body), and the REST get by name carries body and content.
+  - GraphQL `agentSkills { skills { name triggers enabled } }` and MCP `list_agent_skills`/`get_agent_skill` (with `workspaceId`) return both.
+- **PASS — explicit invocation (the playbook case).** Session `ags-dbmu1c27qbhc7397046g`, created with `skills: [{name: qa-api-echo, arguments: "42"}]`, replied exactly `SKILL-OK-42`. Its transcript turn records `skills: [{name: qa-api-echo, arguments: "42"}]`.
+- **PASS — model-triggered (the knowledge case).** Session `ags-dbmu1c66kvbs738fl5tg` was asked "What is the bex QA codeword?" with no invocation and replied `TEAL-HERON`.
+- Both skills were deleted (204, then 404).
+- **Not run:** the dashboard Skills card and skeleton check (browser).
+
+## Browser check (2026-11-06, production 24a9203ee)
+
+QA user in the `bex` workspace, Playwright at 1440×900 and 375×812. Fixtures used the `qa-ui-` prefix and were all deleted; the Kratos session was logged out.
+
+- **PASS — Skills card.** Created `qa-ui-echo` (fields mode, "Only when I ask") and the list showed "Only when asked". Then:
+  - Edit as SKILL.md showed the frontmatter `triggers: [user]`, and the edit saved and persisted across reload.
+  - The enable switch toggled off and back on.
+  - Download produced `qa-ui-echo-SKILL.md`.
+  - Delete removed the skill.
+- **PASS — composer and transcript.** The Skills popover listed the enabled skill with an Arguments field, and the chip read "qa-ui-echo UIX1". Session `ags-dbmu4366kvbs738fl6qg` replied exactly `UI-SKILL-OK-UIX1`, and the user turn showed the pill "qa-ui-echo UIX1".
+- **FAIL — `/agents` composer skeleton at desktop widths.** `common/components/detail-skeletons.tsx:62-70` sizes the box by viewport breakpoints, giving one toolbar row (152px) from 577px. The ready composer (max-w 640) wraps its toolbar to two rows at 1440, 1920 and 768 (Start session at y=221), so the hint jumps from y=236 to y=272, a 36px shift. At 375 the two match (hint y=300). The breakpoints ignore the sidebar and the 640px cap, so the box should be 188px wherever the composer is 640px wide.

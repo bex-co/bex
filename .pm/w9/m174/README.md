@@ -30,3 +30,23 @@
 ## Live check (2026-11-06)
 
 - **Live check attempt 2026-11-06 ~13:10 UTC: NOT RUN.** Production bex-api is still on the 92ff00293 pin (gitops `bab5d417e`). `GET /v1/agent-skills` and `GET /v1/agent-secrets` answer 404, and capabilities has no per-profile `modelKeyReady`. Every deploy run since then (379af6c08, 3310f6484, 8c498d33c) ended `success` with `build`/`deploy` skipped by supersession, so none of this work is live yet. Rerun after a real pin.
+
+## Live check (2026-11-06, production 24a9203ee)
+
+- Production pin 24a9203ee (gitops `d65dc2f2b`). An authenticated `GET /v1/agent-skills` and `GET /v1/agent-secrets` answered 200. QA user via CLI device login, workspace `bex` (QA user is an admin there). Every fixture was deleted and verified 404; the CLI grant was revoked (204, then 401) and the Kratos session logged out.
+- **PASS — secret used, value never shown.** A workspace secret `QA_API_WS_SECRET` (PUT 200) and an inline `QA_SECRET`, each 31 random characters, were attached to the repo-less claude session `ags-dbmu0pa7qbhc739703q0`. The turn reported `ws_len=31` and `in_len=31`, and SHA-256 prefixes `bf760005352a`/`f607c224d25b`, matching the values the verifier computed locally. Neither raw value appeared in:
+  - the transcript (2 pages, 5 parts);
+  - the REST session read;
+  - the GraphQL `agentSession` (which lists `secretNames` only);
+  - the MCP `get_agent_session`;
+  - the REST or MCP secret lists.
+- The workspace secret was deleted (204) and the session deleted.
+- **Not run:** the composer skeleton check at desktop and narrow-mobile widths (browser; another fork's scope).
+
+## Browser check (2026-11-06, production 24a9203ee)
+
+QA user in the `bex` workspace, Playwright at 1440×900 and 375×812. Fixtures used the `qa-ui-` prefix and were all deleted; the Kratos session was logged out.
+
+- **PASS — Secrets card.** Adding `QA_UI_SECRET` and replacing its value (same name) both saved. The value never appeared in the DOM, before or after reload, and the name was listed. Delete removed it.
+- **PASS — composer.** The Secrets popover listed the workspace secret, and choosing it showed "Secrets (1 attached)". Session `ags-dbmu4366kvbs738fl6qg` showed "1 secret" in its header, and the value appeared nowhere on the session page. The agent was asked to `printf %s "$QA_UI_SECRET" | wc -c`; its transcript did not show the count.
+- **Skeleton (the Settings card): minor.** The pending Agent secrets card shows placeholder bars without its static "Agent secrets" heading and description. AGENTS.md asks a skeleton to keep the headings.

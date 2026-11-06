@@ -35,3 +35,21 @@
   - Price it from the existing `sandbox_compute_seconds` meter with the same rate as the bill (`pricing.sandbox`).
 - **Basis:** Devin shows one consumption figure per session (ACUs), with no separate compute seconds.
 - **Accepted cost:** a billing-adjacent schema change that attributes each sandbox meter row to its session (t001).
+
+## Live check (2026-11-06, production 24a9203ee)
+
+- Production pin 24a9203ee (gitops `d65dc2f2b`). An authenticated `GET /v1/agent-skills` and `GET /v1/agent-secrets` answered 200. QA user via CLI device login, workspace `bex` (QA user is an admin there). Every fixture was deleted and verified 404; the CLI grant was revoked (204, then 401) and the Kratos session logged out.
+- **PASS — one total.** The finished session `ags-dbmu0pa7qbhc739703q0`, whose sandbox ran after the deploy, has `outcome.cost = {modelUSD "0.002913", computeUSD "0.001293", totalUSD "0.004206"}`. `totalUSD` equals model + compute, and `computeUSD` is greater than 0.
+- **Not run:** the read-only SQL cross-check against `agent_session_sandboxes`/`usage_hourly` (no read-only DB path in this run), and the dashboard cost line (browser).
+
+## Browser check (2026-11-06, production 24a9203ee)
+
+QA user in the `bex` workspace, Playwright at 1440×900 and 375×812. Fixtures used the `qa-ui-` prefix and were all deleted; the Kratos session was logged out.
+
+- **PASS — cost line.** Session pages read, for example:
+  - "Cost $0.011215 · model $0.008902, compute $0.002313" (`ags-dbmu4366kvbs738fl6qg`);
+  - "Cost $0.005133 · model $0.00228, compute $0.002853" (`ags-dbmu6qu6kvbs738fl8cg`).
+- **Observations, not failures:**
+  - The line is absent right after a fast turn and appears on a later read, once compute has accrued.
+  - Compute keeps growing after the turn ends while the sandbox sits in its idle grace ($0.002853 → $0.003833 on the same session).
+  - The page header still reads "$0.01 model cost", which is model cost only and differs from the total below it.
