@@ -1,6 +1,6 @@
 # w5 · m266 — Key Value Pro, Pro Plus and size-named plans create, as on Render
 
-**Worker:** worker5 **Goal:** a customer can create and upgrade to Key Value stores larger than 1 GB using Render's plan names on every surface. **Status:** todo (t001–t004, t007–t009 done: tiers, placement, admission, prices, the one Key Value cost meter (D5) and the dashboard; Stripe meter live 2026-11-06; next — t005 live walk after deploy)
+**Worker:** worker5 **Goal:** a customer can create and upgrade to Key Value stores larger than 1 GB using Render's plan names on every surface. **Status:** todo (all but t005/t010 done: tiers, placement, admission, prices, the one Key Value cost meter (D5) and the dashboard; Stripe meter live 2026-11-06; next — t005 live walk after deploy)
 
 ## Tasks (in order)
 
@@ -11,7 +11,7 @@
 | t003 | Backend admission and price sheet accept the new plans on REST, GraphQL, MCP and Blueprints — **DONE** | 1h | t001 |
 | t004 | Dashboard plan picker and ADR updates — **DONE** | 1h | t003 |
 | t005 | Live: create a pro store in production and upgrade standard → pro | 1h | t002, t004 |
-| t006 | Dated widen task: 20g and 40g go live once w2/m250's large pools exist | 30m | t005 |
+| t006 | Dated widen task: 20g and 40g go live once w2/m250's large pools exist — **DONE** | 30m | t005 |
 | t007 | Render parity — **DONE** | 30m | t006 |
 | t008 | Simplify — **DONE** | 20m | t007 |
 | t009 | Test coverage — **DONE** | 45m | t007, t008 |
@@ -106,3 +106,9 @@ Affects w5/m266 t001–t006. Source: **explicit user decisions** (D1=A, D2=A, D3
 ### t009 Test coverage — 2026-11-06
 
 DoD behavior → test: aliases and paused refusals on create/SetPlan/Update and instance-type availability (`keyvalue/large_plans_test.go`); Blueprint size/spaced names, paused refusal, and the current-plan re-sync (`apps/blueprint_kv_plans_test.go`); tier shapes, pools and paused-default parse refusal (`types/tiers`); cost-meter emission and free-tier skip (`billing/keyvalue_meter_test.go`); exact micro-USD rating (`pricing_test.go` `TestKeyValueCostMicroUSD`); catalog under 20 items (`TestCatalogFitsOneSubscription`); picker slots and disabled paused cards (dashboard). The upgrade PVC growth is the t005 live check.
+
+### t006 xl/xxl status — checked 2026-11-06
+
+- `pro_plus`/`10g` and `pro_max`/`20g` run on `bex-tenant-xl` (cx53). That pool waits on Hetzner cx53 stock in fsn1, the gate w2/m250 t003 already owns (user decision 2026-11-02: wait rather than use cpx62; the w2 worker re-probes). Until then a new 10g/20g store is admitted and priced, and stays Pending with the scheduler's stall reason, exactly as compute Pro Plus/Pro Max services do (ADR018 "Change instance plan / type" row). They need no separate sign-off: they are sold, not refused.
+- `pro_ultra`/`40g` and `50g` run on `bex-tenant-xxl` and are paused (D3, signed in ADR018). They are released with compute Pro Ultra when the account owner raises Hetzner's dedicated-vCPU limit to ≥ 32 (w2/m250 t003). Releasing them is deleting `paused: true` from both tiers in `lego/types/tiers/tiers.yaml`; the w2/m250 release should do that for both catalogs.
+- Owner of the remaining gate: w2/m250 (Hetzner stock for xl; the account owner for xxl). Live verification of 10g/20g/40g/50g happens there.
