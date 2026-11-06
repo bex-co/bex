@@ -353,6 +353,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **516** — [A deleted web service answers `503 service not ready, retryAfter 5` for ~20 s, and its request runs the wake path, before the host turns into a 404](516.md) — todo (~30m) ← live `/qa-find-bugs w4` loop round 124, 2026-11-06 UTC (pin `92ff0029334d`; minor). `cmd/activator/main.go` indexes and wakes an App whose `deletionTimestamp` is set; target: a deleting App's hosts answer the unknown-host 404 no-server and nothing is written.
 - [ ] **515** — [Regression of w4/493: a static site with a missing publish directory now never closes its deploy (stuck `update_in_progress` forever)](515.md) — todo (~40m) ← live `/qa-find-bugs w4` loop round 117, 2026-11-06 UTC (pin `92ff0029334d`; **major**). `store/deploy_lifecycle.go:111` refuses `update_in_progress → build_failed`; 483/484/495/497/498/500/501 replays passed.
 - [ ] **514** — [An environment group's metadata shows its Owner as a raw `tea-…` id instead of the workspace name](514.md) — todo (~15m) ← live `/qa-find-bugs w4` loop round 114, 2026-11-06 UTC (pin `cc3c51e12952`; minor, UX). `env-group-metadata.tsx:26` renders `group.ownerId`.
 - [x] **513** — [A Postgres disk card says "Capacity 1 GiB" beside "1 GB current · 16384 GB max"](done/513.md) — DONE 2026-11-05 — todo (~15m) ← live `/qa-find-bugs w4` loop round 112, 2026-11-05 UTC (pin `cc3c51e12952`; minor, units). `datastore-metrics-panel.tsx:175-176` formats binary; `databases.diskAutoscalingSize` says GB.
