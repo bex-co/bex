@@ -469,7 +469,7 @@ describe("EnvGroupDetailPage", () => {
       ),
     ).toBeInTheDocument();
     expect(screen.getByText("Group Metadata")).toBeInTheDocument();
-    expect(screen.getByText("tea-1")).toBeInTheDocument();
+    expect(screen.getByText("Tea One")).toBeInTheDocument();
     // Timestamps render through the shared formatter ("July 15, 2026 at …"),
     // not as raw ISO — computed via the helper so the assertion holds in any
     // test-runner timezone.

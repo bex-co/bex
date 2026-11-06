@@ -2,6 +2,7 @@ import { cn } from "@/common/lib/utils/utils";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { LocalDateTime } from "@/common/components/local-time";
 import type { EnvGroupView } from "@/features/env-groups/types";
+import { useWorkspace } from "@/features/workspaces/context";
 
 /** An Environment lookup that has not produced a name: still loading, or the
  *  scope read failed. Neither may be rendered as "Unknown Environment" — that
@@ -21,9 +22,18 @@ export function EnvGroupMetadata({
   className?: string;
 }) {
   const { t } = useTranslations();
+  const { workspaces } = useWorkspace();
+  // The owner reads as its workspace name, as every other surface names it;
+  // the id stays in the tooltip, and is the fallback while the name is
+  // unknown (w4/514).
+  const ownerName = workspaces.find((w) => w.id === group.ownerId)?.name;
   return (
     <dl className={cn("grid gap-3 text-sm sm:grid-cols-4", className)}>
-      <MetadataItem label={t("envGroups.ownerLabel")} value={group.ownerId} />
+      <MetadataItem
+        label={t("envGroups.ownerLabel")}
+        value={ownerName || group.ownerId}
+        title={group.ownerId}
+      />
       <MetadataItem
         label={t("envGroups.environmentLabel")}
         value={
@@ -64,11 +74,13 @@ function MetadataItem({
   value,
   timestamp = false,
   status,
+  title,
 }: {
   label: string;
   value: string | null;
   timestamp?: boolean;
   status?: EnvironmentLookupStatus;
+  title?: string;
 }) {
   return (
     <div className="min-w-0">
@@ -80,7 +92,7 @@ function MetadataItem({
           "truncate font-mono text-xs",
           status && "text-muted-foreground",
         )}
-        title={value ?? undefined}
+        title={title ?? value ?? undefined}
         data-lookup-status={status}
       >
         {status === "loading" ? (
