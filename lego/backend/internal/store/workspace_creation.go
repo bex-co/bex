@@ -119,6 +119,9 @@ func (s *PGStore) CreateWorkspaceCreationAttempt(ctx context.Context, subject, n
 // GetWorkspaceCreationAttempt returns not-found for an unknown OR foreign id,
 // keeping attempt existence and provider state undiscoverable across subjects.
 func (s *PGStore) GetWorkspaceCreationAttempt(ctx context.Context, id, subject string) (WorkspaceCreationAttempt, error) {
+	if !textBindable(id) {
+		return WorkspaceCreationAttempt{}, ErrNotFound // no such attempt (w4/519)
+	}
 	a, err := scanWorkspaceCreationAttempt(s.Pool.QueryRow(ctx, `
 		SELECT `+workspaceCreationColumns+`
 		FROM workspace_creation_attempts WHERE id=$1 AND owner_subject=$2`, id, subject))

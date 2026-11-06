@@ -96,6 +96,9 @@ func mcpBindCallWorkspace(ctx context.Context, base *core.Base, method string, r
 	if !ok || call.Params == nil {
 		return next(ctx, method, req)
 	}
+	if name, bad := invalidMCPText(call.Params.Arguments); bad {
+		return mcpCallError(ctx, core.NewInvalidTextError("argument", name)), nil
+	}
 	if _, callerScoped := mcpCallerScopedTools[call.Params.Name]; callerScoped {
 		if err := mcpRequireScope(ctx, checkScope, call.Params.Name); err != nil {
 			return mcpCallError(ctx, err), nil

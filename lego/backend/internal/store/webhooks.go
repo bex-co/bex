@@ -242,6 +242,9 @@ func (s *PGStore) ListWebhookEndpoints(ctx context.Context, tenantIDs []string, 
 // tenantID so a caller can never fetch another workspace's row by guessing
 // its id.
 func (s *PGStore) GetWebhookEndpoint(ctx context.Context, tenantID, id string) (WebhookEndpoint, error) {
+	if !textBindable(id) {
+		return WebhookEndpoint{}, fmt.Errorf("webhook endpoint: %w", ErrNotFound) // no such endpoint (w4/519)
+	}
 	e, err := scanWebhookEndpointWithLatest(s.Pool.QueryRow(ctx,
 		`SELECT `+webhookEndpointColumnsQualified+`, `+webhookEndpointLatestColumns+`
 		 FROM webhook_endpoints e`+webhookEndpointLatestJoin+`

@@ -2293,7 +2293,28 @@ func HostsFromURLs(urls []string) []string {
 // UTF-8, and refusing it there surfaced as a 503 (w4/481). It looks only at
 // the string, never at membership, so it is no existence oracle.
 func validWorkspaceName(name string) bool {
-	return utf8.ValidString(name) && !strings.ContainsRune(name, 0)
+	return ValidText(name)
+}
+
+// ValidText reports whether s is text every store can hold: valid UTF-8 with
+// no NUL. PostgreSQL refuses anything else at bind time (SQLSTATE 22021),
+// which surfaced as a server fault on route after route (w4/481-492, w4/518).
+func ValidText(s string) bool {
+	return utf8.ValidString(s) && !strings.ContainsRune(s, 0)
+}
+
+// InvalidTextCode marks a caller string refused at the API boundary because it
+// is not valid UTF-8 or contains NUL (w4/519).
+const InvalidTextCode = "INVALID_TEXT"
+
+// NewInvalidTextError is the boundary's 400 for a request string that is not
+// ValidText. kind is "query parameter" (REST) or "argument" (GraphQL); name is
+// the parameter, argument or variable that carried it. It depends only on the
+// string, never on membership or existence, so it is no existence oracle.
+func NewInvalidTextError(kind, name string) *CodedError {
+	return NewBadRequestError(InvalidTextCode,
+		fmt.Sprintf("invalid %s %q: text must be valid UTF-8 and must not contain NUL", kind, name),
+		map[string]any{"name": name})
 }
 
 // validFGAObject reports whether object ("type:id") is one OpenFGA accepts:

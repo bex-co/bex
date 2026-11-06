@@ -16,7 +16,10 @@ limitations under the License.
 
 package store
 
-import "testing"
+import (
+	"strings"
+	"testing"
+)
 
 func TestDeployStatusVocabularyAndTransitionTable(t *testing.T) {
 	want := []string{
@@ -113,5 +116,19 @@ func TestDeployStatusStampingSplit(t *testing.T) {
 	}
 	if !DeployStatusStartsExecution(DeployLive) {
 		t.Error("live still means work happened, even when its start is unknown")
+	}
+}
+
+// w4/519: a keyset cursor Postgres text cannot hold is an empty page, never a
+// bind (which raised SQLSTATE 22021 as a server fault on every keyset list).
+func TestPageKeysetNeverBindsUnbindableCursor(t *testing.T) {
+	for _, cursor := range []string{"\x00", "a\xffb"} {
+		q, args := pageKeyset("SELECT 1 FROM t WHERE w = $1", []any{"ws"}, "t", "at", cursor, 10, false)
+		if !strings.Contains(q, "AND false") || len(args) != 2 {
+			t.Fatalf("cursor %q => %q %v, want an empty page and no cursor bind", cursor, q, args)
+		}
+	}
+	if q, args := pageKeyset("SELECT 1 FROM t WHERE w = $1", []any{"ws"}, "t", "at", "evt-1", 10, false); strings.Contains(q, "AND false") || len(args) != 3 {
+		t.Fatalf("real cursor => %q %v", q, args)
 	}
 }

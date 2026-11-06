@@ -2610,7 +2610,13 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	if oldestFirst {
 		cmp, ord = ">", "ASC"
 	}
-	if cursor != "" {
+	switch {
+	case cursor == "":
+	case !textBindable(cursor):
+		// No row has such an id: the empty page an unknown cursor gets, not a
+		// bind fault (w4/519).
+		query += " AND false"
+	default:
 		args = append(args, cursor)
 		query += fmt.Sprintf(" AND (%s, id) %s (SELECT %s, id FROM %s WHERE id = $%d)", sortCol, cmp, sortCol, table, len(args))
 	}

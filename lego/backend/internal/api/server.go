@@ -1412,7 +1412,7 @@ func (s *Server) composedMuxes() (serverMuxes, error) {
 	// wrappers outside it clone the request, so reading r.Pattern after the
 	// fact would only ever see the outer `/v1/` mount, not the specific route
 	// the telemetry needs (w3/m84).
-	mux.Handle(restMountPattern, auth(rl(restBodyLimit(bodyLimit)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, rest)))))))
+	mux.Handle(restMountPattern, auth(rl(withValidQueryText(restBodyLimit(bodyLimit)(s.withScopeClassREST(restMux, s.withCLIWorkspace(recordRoutePattern(restMux, rest))))))))
 	// GraphQL is body-bearing JSON and supports POST only. A method-qualified
 	// pattern makes ServeMux return 405 before auth/body decoding for GET (whose
 	// generic body limiter intentionally skips bodies).
@@ -1729,6 +1729,10 @@ func (s *Server) executeGraphQL(parent context.Context, body graphqlRequestBody)
 			return operation, opType, gqlOutcomeInvalid, graphqlErrorResult(err)
 		}
 		if err := s.requireGraphQLScopeFrom(parent, fragments, ops, body.OperationName); err != nil {
+			return operation, opType, graphqlOutcome(err), graphqlErrorResult(err)
+		}
+		if name, bad := invalidGraphQLText(fragments, ops, body.Variables); bad {
+			err := core.NewInvalidTextError("argument", name)
 			return operation, opType, graphqlOutcome(err), graphqlErrorResult(err)
 		}
 	}
