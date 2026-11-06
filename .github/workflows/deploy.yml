@@ -220,13 +220,22 @@ jobs:
       # The runner's Docker Hub pulls intermittently hit registry-1.docker.io
       # context deadlines (run 39470664194: buildkit bootstrap pull timed
       # out). Pre-pull with retries so setup-buildx boots from the local
-      # image cache instead of one network attempt.
+      # image cache instead of one network attempt. A pull that hangs rather
+      # than errors held run 42141509773 for 28 minutes, so each attempt is
+      # bounded, and a host that already has the image only warns when the
+      # refresh fails.
       - name: pre-pull buildkit image
         run: |
+          image=moby/buildkit:buildx-stable-1
+          if docker image inspect "$image" >/dev/null 2>&1; then
+            timeout 120 docker pull "$image" || echo "::warning::buildkit refresh failed; using the cached $image"
+            exit 0
+          fi
           for i in 1 2 3; do
-            docker pull moby/buildkit:buildx-stable-1 && break
+            timeout 300 docker pull "$image" && exit 0
             [ "$i" -lt 3 ] && { echo "attempt $i failed, retrying in 15s..."; sleep 15; }
           done
+          exit 1
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:

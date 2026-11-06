@@ -1,6 +1,6 @@
 # w9 · m173 — CI stability: deploys stop stalling on an overloaded self-hosted runner host
 
-**Worker:** worker9 **Goal:** main deploys land within one run of a push again; image builds, SBOM and CVE steps finish inside their budgets on the existing runner host. **Status:** in progress — t001–t006 done; t007 closes after 3 consecutive main deploys pass the sign/SBOM step (watch #129 close)
+**Worker:** worker9 **Goal:** main deploys land within one run of a push again; image builds, SBOM and CVE steps finish inside their budgets on the existing runner host. **Status:** in progress — t001–t006, t008 done; t007 closes after 3 consecutive main deploys pass the sign/SBOM step and the bounded buildkit pre-pull (watch #129 close)
 
 ## Tasks (in order)
 
@@ -12,7 +12,8 @@
 | t004 | Deploy latency watchdog reports stalls early — **DONE** | 30m | t002, t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage — **DONE** | 45m | t005 |
-| t007 | Closeout | 10m | t006 |
+| t008 | Bound the buildkit pre-pull — **DONE** | 15m | t006 |
+| t007 | Closeout | 10m | t006, t008 |
 
 ## Definition of done
 
