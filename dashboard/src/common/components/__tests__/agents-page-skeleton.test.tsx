@@ -18,20 +18,47 @@ describe("AgentsPageSkeleton", () => {
     expect(container.querySelector(".lg\\:grid-cols-3")).toBeNull();
   });
 
-  it("sizes the prompt box to the measured toolbar wrap of the ready composer", () => {
+  // The toolbar wraps by the composer's own width, not the viewport: the
+  // ready composer is capped at 40rem inside the app shell, so viewport
+  // breakpoints predicted one row at desktop widths where it shows two (36px
+  // drop on load, w9 browser check 2026-11-06). Same container classes and one
+  // same-sized placeholder per control make it wrap like the ready toolbar.
+  it("mirrors the ready composer's toolbar so it wraps at the same widths", () => {
     const { container } = render(<AgentsPageSkeleton />);
     const box = container.querySelector(
       '[data-skeleton-region="composer-box"]',
     );
-    // Agent select + attachment chip + Secrets + Skills + Approval + Start
-    // (no Advanced trigger, w10/m17; Secrets ADR098; Skills ADR099; Approval
-    // ADR100): 3 toolbar rows below 453px, 2 below 577px, 1 above.
-    expect(box).toHaveClass(
-      "h-[14rem]",
-      "min-[28.3125rem]:h-[11.75rem]",
-      "min-[36.0625rem]:h-[9.5rem]",
+    expect(box).toHaveClass("rounded-xl", "border");
+    expect(box?.className).not.toMatch(/min-\[[^\]]+\]:h-/);
+    expect(box?.firstElementChild).toHaveClass("min-h-28");
+    const toolbar = container.querySelector(
+      '[data-skeleton-region="composer-toolbar"]',
     );
-    expect(box?.className).not.toMatch(/\bsm:h-/);
+    expect(toolbar).toHaveClass(
+      "flex",
+      "flex-wrap",
+      "items-center",
+      "gap-1",
+      "px-1.5",
+      "pb-1.5",
+    );
+    const controls = Array.from(toolbar?.children ?? []);
+    // Agent select, attach, Secrets, Skills, Approvals, spend limit, the
+    // repository mention and Start: the ready toolbar's eight controls.
+    expect(controls).toHaveLength(8);
+    expect(controls[0]).toHaveClass("h-8", "w-[7.5rem]");
+    for (const icon of controls.slice(1, 5)) expect(icon).toHaveClass("size-8");
+    expect(controls[5]).toHaveClass("h-8", "w-28");
+    // The text controls size to their real labels, drawn invisibly.
+    expect(controls[6]).toHaveTextContent("Add repository or session");
+    expect(controls[6]).toHaveClass(
+      "max-w-56",
+      "px-2",
+      "text-xs",
+      "text-transparent",
+    );
+    expect(controls[7]).toHaveClass("ml-auto", "h-8", "text-transparent");
+    expect(controls[7]?.textContent?.length).toBeGreaterThan(0);
   });
 
   it("matches filtered history without inventing the composer or tabs", () => {

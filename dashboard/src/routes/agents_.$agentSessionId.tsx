@@ -193,11 +193,14 @@ function DetailSkeleton() {
       >
         <Skeleton className="size-9 shrink-0 rounded-md lg:hidden" />
         <div className="min-w-0 flex-1">
+          {/* The phase chip is a 22px Badge (border + py-0.5 + a 16px text-xs
+              line) and the meta row a 16px text-xs line: the bars sit in
+              boxes of those heights so the header doesn't shift on load. */}
           <div className="flex items-center gap-2">
-            <Skeleton className="h-5 w-20 rounded-md" />
+            <Skeleton className="h-[1.375rem] w-20 rounded-md" />
             <Skeleton className="h-4 w-40 max-w-[45vw]" />
           </div>
-          <div className="mt-0.5 flex items-center gap-3">
+          <div className="mt-0.5 flex h-4 items-center gap-3">
             <Skeleton className="h-3 w-24" />
             <Skeleton className="h-3 w-16" />
             <Skeleton className="h-3 w-12" />

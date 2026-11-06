@@ -1144,6 +1144,16 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "模型费用 {amount}",
     description: "Session header: the session's model cost (ADR091 D6)",
   },
+  "agentSessions.costTotalAll": {
+    message: "总费用 {amount}",
+    description:
+      "Session header: the session's total cost so far, model plus sandbox compute (outcome.cost.totalUSD, w9/m178)",
+  },
+  "agentSessions.costBreakdown": {
+    message: "模型 {model} · 计算 {compute}",
+    description:
+      "Session header cost popover: the model and sandbox compute parts of the total",
+  },
   "agentSessions.costByo": {
     message: "由你的模型提供方计费",
     description: "Session header: a BYO-key session has no bex model cost",

@@ -313,6 +313,94 @@ describe("SessionDetailHeader model cost (ADR091 D6)", () => {
     expect(screen.getByText("$0.00 model cost")).toBeInTheDocument();
   });
 
+  // w9/m178: once the session reports outcome.cost.totalUSD the header shows
+  // that total (model + sandbox compute), like the session page's spend line,
+  // and the popover splits it; an older server keeps the model-only label.
+  const withTotal = (cost: {
+    modelUSD: string;
+    computeUSD: string | null;
+    totalUSD: string | null;
+  }) => {
+    const base = view({ turns: 2 });
+    return { ...base, outcome: { ...base.outcome!, cost } } as AgentSessionView;
+  };
+
+  it("shows the total cost with its model and compute split", async () => {
+    modelCost.cost = {
+      __typename: "AgentSessionModelCost",
+      sessionId: "ags-1",
+      modelSource: AgentModelSource.Platform,
+      costUsd: "0.42",
+      requests: 4,
+      turns: [turn(1, "0.42")],
+    };
+    const user = userEvent.setup();
+    render(
+      <SessionDetailHeader
+        session={withTotal({
+          modelUSD: "0.42",
+          computeUSD: "0.0712",
+          totalUSD: "0.4912",
+        })}
+      />,
+    );
+    const trigger = screen.getByRole("button", {
+      name: /\$0\.4912 total cost/,
+    });
+    expect(screen.queryByText(/model cost/)).toBeNull();
+    await user.click(trigger);
+    expect(
+      await screen.findByText("Model $0.42 · compute $0.0712"),
+    ).toBeInTheDocument();
+  });
+
+  it("shows the total for a session on the workspace's own key once compute is billed", () => {
+    modelCost.cost = {
+      __typename: "AgentSessionModelCost",
+      sessionId: "ags-1",
+      modelSource: AgentModelSource.Byo,
+      costUsd: "0.00",
+      requests: 0,
+      turns: [],
+    };
+    render(
+      <SessionDetailHeader
+        session={withTotal({
+          modelUSD: "0.00",
+          computeUSD: "0.0031",
+          totalUSD: "0.0031",
+        })}
+      />,
+    );
+    expect(screen.getByTestId("session-cost-label")).toHaveTextContent(
+      "$0.0031 total cost",
+    );
+    expect(screen.queryByText("Billed by your provider")).toBeNull();
+  });
+
+  it("keeps the model-only label for a server without totalUSD", () => {
+    modelCost.cost = {
+      __typename: "AgentSessionModelCost",
+      sessionId: "ags-1",
+      modelSource: AgentModelSource.Platform,
+      costUsd: "0.42",
+      requests: 4,
+      turns: [turn(1, "0.42")],
+    };
+    render(
+      <SessionDetailHeader
+        session={withTotal({
+          modelUSD: "0.42",
+          computeUSD: null,
+          totalUSD: null,
+        })}
+      />,
+    );
+    expect(
+      screen.getByRole("button", { name: /\$0\.42 model cost/ }),
+    ).toBeInTheDocument();
+  });
+
   it("holds the cost slot with a skeleton while it loads", () => {
     modelCost.loading = true;
     render(<SessionDetailHeader session={view()} />);

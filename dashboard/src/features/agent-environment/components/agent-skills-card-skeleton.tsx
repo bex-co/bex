@@ -1,18 +1,28 @@
-import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardHeader,
+  CardTitle,
+} from "@/common/components/ui/card";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
- * The Settings → Agent skills card while its list loads: header, the
+ * The Settings → Agent skills card while its list loads: the static header, the
  * empty-or-first skill row, and the New / Import actions with their help line,
  * at the ready card's geometry (dashboard/AGENTS.md skeleton rule). Further
  * skill rows are data-dependent and omitted.
  */
 export function AgentSkillsCardSkeleton() {
+  const { t } = useTranslations();
   return (
     <Card data-testid="agent-skills-skeleton">
       <CardHeader>
-        <Skeleton className="h-5 w-28" />
-        <Skeleton className="h-4 w-[28rem] max-w-full" />
+        <CardTitle>{t("agentEnvironment.skills.title")}</CardTitle>
+        <CardDescription>
+          {t("agentEnvironment.skills.description")}
+        </CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <Skeleton className="h-14 w-full" data-skeleton-region="skill-row" />

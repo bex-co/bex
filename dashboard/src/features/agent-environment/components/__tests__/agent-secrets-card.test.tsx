@@ -49,6 +49,18 @@ describe("AgentSecretsCard (ADR098)", () => {
     expect(screen.getByTestId("agent-secrets-skeleton")).toBeInTheDocument();
   });
 
+  // The header is static copy: the skeleton renders it, so it sits where the
+  // ready card puts it instead of two bars of a different height.
+  it("keeps the static header while loading", () => {
+    setup([], true);
+    const skeleton = screen.getByTestId("agent-secrets-skeleton");
+    expect(skeleton).toHaveTextContent("Agent secrets");
+    expect(skeleton.querySelector("[data-slot=card-title]")).not.toBeNull();
+    expect(
+      skeleton.querySelector("[data-slot=card-description]"),
+    ).not.toBeNull();
+  });
+
   it("lists names only and saves a masked value, then empties the field", async () => {
     const { user, set } = setup();
     expect(screen.getByText("STRIPE_KEY")).toBeInTheDocument();

@@ -1211,6 +1211,16 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "{amount} model cost",
     description: "Session header: the session's model cost (ADR091 D6)",
   },
+  "agentSessions.costTotalAll": {
+    message: "{amount} total cost",
+    description:
+      "Session header: the session's total cost so far, model plus sandbox compute (outcome.cost.totalUSD, w9/m178)",
+  },
+  "agentSessions.costBreakdown": {
+    message: "Model {model} · compute {compute}",
+    description:
+      "Session header cost popover: the model and sandbox compute parts of the total",
+  },
   "agentSessions.costByo": {
     message: "Billed by your provider",
     description: "Session header: a BYO-key session has no bex model cost",

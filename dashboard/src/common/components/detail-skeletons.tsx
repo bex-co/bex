@@ -1,5 +1,8 @@
+import { AtSign } from "lucide-react";
 import { Skeleton } from "@/common/components/ui/skeleton";
+import { buttonVariants } from "@/common/components/ui/button";
 import { Card, CardContent, CardHeader } from "@/common/components/ui/card";
+import { useTranslations } from "@/common/hooks/use-translations";
 
 /**
  * Composable, presentation-only loading skeletons for the resource detail pages
@@ -57,17 +60,7 @@ export function AgentsPageSkeleton({
             className="mx-auto w-full max-w-[40rem] space-y-3"
             data-skeleton-region="composer"
           >
-            {/* The prompt box: a 112px editor over a toolbar (agent select,
-                attachment chip, Secrets, Skills, Approval, Start) that wraps by
-                viewport. Measured in Chromium (en) once the Advanced trigger
-                left the toolbar (w10/m17): three rows (224px) below 345px, two
-                (188px) below 469px, one (152px) from there on; the 32px
-                Secrets (ADR098), Skills (ADR099) and Approval (ADR100)
-                buttons, each with its 4px gap, move both breaks up by 108px. */}
-            <Skeleton
-              className="h-[14rem] w-full rounded-xl min-[28.3125rem]:h-[11.75rem] min-[36.0625rem]:h-[9.5rem]"
-              data-skeleton-region="composer-box"
-            />
+            <ComposerBoxSkeleton />
             <Skeleton
               className="h-4 w-64 max-w-full"
               data-skeleton-region="composer-hint"
@@ -94,6 +87,51 @@ export function AgentsPageSkeleton({
             </div>
           </>
         )}
+      </div>
+    </div>
+  );
+}
+
+/**
+ * The new-session prompt box while `/agents` loads: the ready composer's own
+ * chrome (bordered box, 112px editor) over a toolbar with the same flex-wrap,
+ * gap and padding, holding one placeholder per control at that control's size.
+ * The two text controls (the repository mention and Start) carry their real
+ * label invisibly, so the toolbar wraps at exactly the ready composer's widths,
+ * in every locale and whatever width the page gives the composer. Wrapping by
+ * viewport breakpoints drifted 36px on desktop, where the composer is capped
+ * at 40rem inside the app shell (w9 browser check, 2026-11-06).
+ */
+function ComposerBoxSkeleton() {
+  const { t } = useTranslations();
+  // Ghost sizing carries no background, so the Skeleton's own pulse shows.
+  const textControl = buttonVariants({ variant: "ghost", size: "sm" });
+  return (
+    <div
+      className="rounded-xl border shadow-sm"
+      data-skeleton-region="composer-box"
+    >
+      <div className="min-h-28" />
+      <div
+        className="flex flex-wrap items-center gap-1 px-1.5 pb-1.5"
+        data-skeleton-region="composer-toolbar"
+      >
+        {/* Agent select, attach, Secrets, Skills, Approvals, spend limit. */}
+        <Skeleton className="h-8 w-[7.5rem]" />
+        <Skeleton className="size-8" />
+        <Skeleton className="size-8" />
+        <Skeleton className="size-8" />
+        <Skeleton className="size-8" />
+        <Skeleton className="h-8 w-28" />
+        <Skeleton
+          className={`${textControl} h-8 max-w-56 gap-1.5 px-2 text-xs font-normal text-transparent`}
+        >
+          <AtSign className="size-3.5" />
+          <span className="truncate">{t("agentSessions.mentionButton")}</span>
+        </Skeleton>
+        <Skeleton className={`${textControl} ml-auto h-8 text-transparent`}>
+          {t("agentSessions.submit")}
+        </Skeleton>
       </div>
     </div>
   );
