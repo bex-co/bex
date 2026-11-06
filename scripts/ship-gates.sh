@@ -14,7 +14,11 @@
 #      (scripts/backend-test-deps.sh), which local `go test` otherwise skips.
 #      This one blocks: a failure here is the push's own defect, fixed before
 #      it ships.
-#   3. A commit in the push adds a build artifact or evidence dump: a blob over
+#   3. The push changes dashboard/ (markdown excluded) and the dashboard's own
+#      CI checks fail: `yarn lint` (typecheck, eslint, knip) and `yarn test`,
+#      about two minutes locally. Blocks: four red mains in two days were
+#      dashboard pushes nothing checked before CI (w6/m159).
+#   4. A commit in the push adds a build artifact or evidence dump: a blob over
 #      1 MiB or a binary/archive under .pm/ (scripts/repo-artifact-guard.sh,
 #      w6/100 D10). Blocks; this is also what stops a stale checkout from
 #      replaying pre-rewrite history.
@@ -82,5 +86,16 @@ if [ -n "$changed" ]; then
   (cd lego/backend && env -u KUBECONFIG GOWORK=off BEX_TEST_REQUIRE_DEPS=1 go test -p 1 ./...)
   # Only on success: a failed suite leaves its database up to inspect.
   bash scripts/backend-test-deps.sh down
+fi
+dashboard_changed=$(git diff --name-only "$base"..HEAD -- dashboard ':(exclude)*.md')
+if [ -n "$dashboard_changed" ]; then
+  echo "ship-gates: dashboard changed — running its lint (typecheck, eslint, knip) and tests" >&2
+  install_log=$(mktemp)
+  (cd dashboard && yarn install --immutable >"$install_log" 2>&1) || {
+    cat "$install_log" >&2
+    exit 1
+  }
+  rm -f "$install_log"
+  (cd dashboard && yarn lint && yarn test)
 fi
 echo "ship-gates: ok" >&2

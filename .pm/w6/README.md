@@ -35,7 +35,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 ## Milestones
 
-- [ ] **m159** — [Ship gates catch dashboard red before it reaches main](m159/README.md) (7 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 1
+- [x] **m159** — [Ship gates catch dashboard red before it reaches main](done/m159/README.md) — **done 2026-11-06** (7 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 1
 - [ ] **m160** — [Runner-host link probe: a slow internet link opens an issue by itself](m160/README.md) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 2
 - [ ] **m161** — [One tracking-issue helper for every scheduled monitor](m161/README.md) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 3
 - [ ] **m162** — [Sandbox isolation fixtures come from the real session-egress generator](m162/README.md) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 4

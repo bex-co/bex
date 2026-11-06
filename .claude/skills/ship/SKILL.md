@@ -111,6 +111,7 @@ They report main's CI status and gate this push's own code:
   2. **If it cannot be fixed now, ship anyway.** That covers a fix that needs credentials, runner or host access, or a user decision; a red signal that is stale (already fixed, later runs cancelled); or an infra flake (rerun the failed jobs in the background, but do not wait for them). Say in the report what was red and what you tried.
   3. **Never wait for CI and never hold commits locally because main is red.**
 - **The real-DB backend suite fails: a stop.** For a push touching `lego/backend/**`, `lego/types/**` or the seeded authz model (markdown excluded), the gate brings up the CI-pinned Postgres + OpenFGA + OpenBao (`scripts/backend-test-deps.sh`) and runs `go test -p 1 ./...` with `BEX_TEST_REQUIRE_DEPS=1`. Locally those tests otherwise skip, and only CI ran them. A failure here is this push's own defect: fix it properly, commit the fix, and run the gate again before pushing. If it cannot be fixed in this session, stop and report it.
+- **The dashboard checks fail: a stop.** For a push touching `dashboard/**` (markdown excluded), the gate runs the dashboard's own CI checks, `yarn lint` (typecheck, eslint, knip) and `yarn test`, in about two minutes. A failure here is this push's own defect, handled like the backend suite (w6/m159).
 
 ```bash
 git push origin main
