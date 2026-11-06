@@ -6,6 +6,7 @@ import type {
 } from "@ory/elements-react";
 import { Eye, EyeOff } from "lucide-react";
 import { oryHideCardLogo } from "@/common/lib/ory/config";
+import { useTranslations } from "@/common/hooks/use-translations";
 import { cn } from "@/common/lib/utils/utils.ts";
 
 const emailNodeNames = new Set(["identifier", "email", "traits.email"]);
@@ -27,6 +28,7 @@ const textInputClassName = cn(
  * ambiguous `label[for]` / `getElementById`).
  */
 export function UniqueIdPasswordInput({ inputProps }: OryNodeInputProps) {
+  const { t } = useTranslations();
   const [visible, setVisible] = useState(false);
   const { id, ...rest } = inputProps;
   const toggleId = id ? `${id}-visibility` : undefined;
@@ -54,7 +56,7 @@ export function UniqueIdPasswordInput({ inputProps }: OryNodeInputProps) {
       <button
         type="button"
         id={toggleId}
-        aria-label={visible ? "Hide password" : "Show password"}
+        aria-label={t(visible ? "auth.hidePassword" : "auth.showPassword")}
         aria-controls={id}
         className="cursor-pointer bg-transparent px-2 py-[13px] text-input-foreground-primary"
         onClick={() => setVisible((v) => !v)}

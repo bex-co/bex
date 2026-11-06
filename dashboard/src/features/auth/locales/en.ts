@@ -528,6 +528,16 @@ const enAuth: Record<string, TranslationEntry> = {
     description:
       "Device success page: quiet link to the dashboard home for users staying in the browser",
   },
+  "auth.showPassword": {
+    message: "Show password",
+    description:
+      "Accessible name of the password field toggle while the password is hidden",
+  },
+  "auth.hidePassword": {
+    message: "Hide password",
+    description:
+      "Accessible name of the password field toggle while the password is shown",
+  },
 };
 
 export default enAuth;

@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
 import { fireEvent, render, screen } from "@testing-library/react";
 import type { OryNodeInputProps } from "@ory/elements-react";
 import {
@@ -7,6 +7,7 @@ import {
   OtpCodeInput,
   UniqueIdPasswordInput,
 } from "../auth-form-overrides";
+import i18n from "@/i18n/init";
 
 function passwordProps(
   overrides: Partial<OryNodeInputProps["inputProps"]> = {},
@@ -68,6 +69,23 @@ describe("UniqueIdPasswordInput", () => {
     expect(
       document.querySelector<HTMLInputElement>("#password")?.required,
     ).toBe(true);
+  });
+});
+
+// w4/521: the toggle's name followed no language, so a zh form read English.
+describe("UniqueIdPasswordInput toggle name follows the language", () => {
+  afterEach(async () => {
+    await i18n.changeLanguage("en");
+  });
+
+  it.each([
+    ["en", "Show password", "Hide password"],
+    ["zh", "显示密码", "隐藏密码"],
+  ])("%s", async (lng, show, hide) => {
+    await i18n.changeLanguage(lng);
+    render(<UniqueIdPasswordInput {...passwordProps()} />);
+    fireEvent.click(screen.getByRole("button", { name: show }));
+    expect(screen.getByRole("button", { name: hide })).toBeInTheDocument();
   });
 });
 

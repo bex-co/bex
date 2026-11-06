@@ -515,6 +515,16 @@ const zhAuth: Record<string, TranslationEntry> = {
     description:
       "Device success page: quiet link to the dashboard home for users staying in the browser",
   },
+  "auth.showPassword": {
+    message: "显示密码",
+    description:
+      "Accessible name of the password field toggle while the password is hidden",
+  },
+  "auth.hidePassword": {
+    message: "隐藏密码",
+    description:
+      "Accessible name of the password field toggle while the password is shown",
+  },
 };
 
 export default zhAuth;
