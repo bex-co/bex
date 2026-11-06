@@ -234,11 +234,16 @@ jobs:
             timeout 120 docker pull "$image" || echo "::warning::buildkit refresh failed; using the cached $image"
             exit 0
           fi
+          # Each attempt is bounded, and layers an attempt finished are kept,
+          # so a slow but progressing pull gets there across attempts. If all
+          # three run out, setup-buildx pulls the image itself: run
+          # 42196880498 failed its build on a Docker Hub pull that was still
+          # downloading when three 300 s attempts ended.
           for i in 1 2 3; do
-            timeout 300 docker pull "$image" && exit 0
+            timeout 600 docker pull "$image" && exit 0
             [ "$i" -lt 3 ] && { echo "attempt $i failed, retrying in 15s..."; sleep 15; }
           done
-          exit 1
+          echo "::warning::buildkit pre-pull did not finish; setup-buildx will pull $image itself"
       - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
       - uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
         with:
