@@ -86,3 +86,18 @@ func TestAttachmentTarIsAcceptedByTheGatewayExtractor(t *testing.T) {
 		}
 	}
 }
+
+// The skills archive goes through the same gateway extractor (ADR099 D5).
+func TestSkillTarIsAcceptedByTheGatewayExtractor(t *testing.T) {
+	skills := []deliveredSkill{
+		{manifest: skillManifestSkill{Name: "deploy"}, document: "---\nname: deploy\n---\nbody\n"},
+		{manifest: skillManifestSkill{Name: "release"}, document: "---\nname: release\n---\nother\n"},
+	}
+	var buf bytes.Buffer
+	if err := writeSkillTar(&buf, skills, time.Now()); err != nil {
+		t.Fatal(err)
+	}
+	if err := sandboxfiles.ValidateArchive(bytes.NewReader(buf.Bytes())); err != nil {
+		t.Fatalf("gateway rejects the skills archive: %v", err)
+	}
+}

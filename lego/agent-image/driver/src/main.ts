@@ -18,6 +18,7 @@
 import { agentEnvironment } from "./credentials.js";
 import { loadConfig } from "./config.js";
 import { waitForAttachments } from "./attachments.js";
+import { installSkills } from "./skills.js";
 import { ensureRepo } from "./git-setup.js";
 import { describeError } from "./errors.js";
 import { markTurnFailed, runHeadlessTurn } from "./session.js";
@@ -41,6 +42,9 @@ async function main(): Promise<void> {
     // bex-api copies the session's attachments in while the sandbox starts;
     // the turn must not begin on a partial copy (ADR095 D4).
     if (config.attachments) await waitForAttachments(config.attachments);
+    // The workspace's skills arrive the same way (ADR099 D5); linking them
+    // before the turn lets each engine's own loader find them.
+    if (config.skills) await installSkills(config.skills);
   })();
   // main awaits setup below; attaching immediately also prevents a fast setup
   // rejection from becoming an unhandled promise while the listener starts.

@@ -50,7 +50,9 @@ func idempotencyOf(workspaceID string, req CreateRequest, output store.AgentTurn
 		MaxSpendUSD *float64 `json:"m,omitempty"`
 		// Attached secret names (ADR098), never their values; omitted when none.
 		Secrets []string `json:"s,omitempty"`
-	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required, req.MaxSpendUSD, secretNamesOf(req.SessionSecretsInput)})
+		// Invoked skills and their arguments (ADR099 D4); omitted when none.
+		Skills []SkillInvocation `json:"k,omitempty"`
+	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required, req.MaxSpendUSD, secretNamesOf(req.SessionSecretsInput), req.Skills})
 	if err != nil {
 		return "", "", err
 	}

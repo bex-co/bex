@@ -98,16 +98,21 @@ func Verify(secret []byte, token string, now time.Time) (Claims, error) {
 func (c Claims) NonceExpiry() time.Time { return hmacticket.NonceExpiry(c.ExpiresAt) }
 
 // AgentAttachmentsPath is where dispatch extracts an agent session's attached
-// files (ADR095 D4); the sandbox image links /attachments to it. It is the one
-// destination a platform-initiated file ticket may name.
-const AgentAttachmentsPath = "/var/lib/bex-agent/attachments"
+// files (ADR095 D4); the sandbox image links /attachments to it.
+// AgentSkillsPath is where it extracts the workspace's skills (ADR099 D5);
+// the image links /bex/skills to it. They are the only destinations a
+// platform-initiated file ticket may name.
+const (
+	AgentAttachmentsPath = "/var/lib/bex-agent/attachments"
+	AgentSkillsPath      = "/var/lib/bex-agent/skills"
+)
 
 // PlatformUploadAllowed reports whether a ticket minted for platformSubject (a
-// subject no user can hold) is the one transfer the platform makes: an upload
-// into an agent session's attachments directory.
+// subject no user can hold) is one of the transfers the platform makes: an
+// upload into an agent session's attachments or skills directory.
 func (c Claims) PlatformUploadAllowed(platformSubject string) bool {
 	return c.Subject != platformSubject ||
-		(c.Operation == OperationUpload && c.AgentSessionID != "" && c.Path == AgentAttachmentsPath)
+		(c.Operation == OperationUpload && c.AgentSessionID != "" && (c.Path == AgentAttachmentsPath || c.Path == AgentSkillsPath))
 }
 
 // LimitKey is the concurrency-limiter key: the user for a user's transfer,

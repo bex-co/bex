@@ -54,10 +54,12 @@ RUN chmod 0755 dist/main.js \
 # (ADR095 D4). bex-api extracts them through the gateway as one new directory,
 # /var/lib/bex-agent/attachments, which must not exist beforehand; the link
 # dangles until then. It sits outside /workspace so the files are never
-# committed.
+# committed. /bex/skills is the workspace's skills (ADR099 D5), extracted the
+# same way into /var/lib/bex-agent/skills.
 RUN useradd --create-home --home-dir /home/bex --uid 10001 --shell /bin/bash bex \
-    && mkdir -p /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent \
+    && mkdir -p /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /bex \
     && ln -s /var/lib/bex-agent/attachments /attachments \
+    && ln -s /var/lib/bex-agent/skills /bex/skills \
     && chown -R bex:bex /workspace /var/lib/bex-agent /run/bex-agent /var/log/bex-agent /var/run/bex-agent /home/bex
 
 # Neither listener has an edge route. OpenSandbox supplies the remaining

@@ -29,9 +29,10 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/sandboxfiles"
 )
 
-// UploadAgentSessionFiles extracts one tar archive at
-// sandboxfiles.AgentAttachmentsPath in an agent session's own sandbox
-// (ADR095 D4), over the gateway's /sandbox-files path. It is platform-initiated
+// UploadAgentSessionFiles extracts one tar archive at path, which must be
+// sandboxfiles.AgentAttachmentsPath (ADR095 D4) or sandboxfiles.AgentSkillsPath
+// (ADR099 D5), in an agent session's own sandbox over the gateway's
+// /sandbox-files path. It is platform-initiated
 // like the Completer's status read: the ticket carries
 // sandboxexec.SystemSubject, whose authority is the HMAC only bex-api holds,
 // and the gateway admits that subject for this one destination only.
@@ -39,7 +40,7 @@ import (
 // The archive is read once, so a gateway that sheds the transfer as busy
 // (429) before reading it gets it again; the caller supplies a fresh archive
 // per attempt through open.
-func (l *AgentSessionLifecycle) UploadAgentSessionFiles(ctx context.Context, workspaceID, sessionID, sandboxID string, open func() io.ReadCloser) error {
+func (l *AgentSessionLifecycle) UploadAgentSessionFiles(ctx context.Context, workspaceID, sessionID, sandboxID, path string, open func() io.ReadCloser) error {
 	s := l.service
 	if err := s.fileAvailabilityError(); err != nil {
 		return err
@@ -54,7 +55,7 @@ func (l *AgentSessionLifecycle) UploadAgentSessionFiles(ctx context.Context, wor
 	}
 	const attempts = 4
 	for attempt := 1; ; attempt++ {
-		status, err := s.putAgentSessionArchive(ctx, workspaceID, raw, open)
+		status, err := s.putAgentSessionArchive(ctx, workspaceID, raw, path, open)
 		if err != nil {
 			return err
 		}
@@ -68,15 +69,15 @@ func (l *AgentSessionLifecycle) UploadAgentSessionFiles(ctx context.Context, wor
 			case <-time.After(time.Duration(attempt) * 2 * time.Second):
 			}
 		default:
-			log.Printf("agent attachments: sandbox file gateway answered %d (session=%s)", status, sessionID)
+			log.Printf("agent session files: sandbox file gateway answered %d (session=%s path=%s)", status, sessionID, path)
 			return fmt.Errorf("%w: sandbox file gateway answered %d", core.ErrSandboxesUnavailable, status)
 		}
 	}
 }
 
-func (s *Service) putAgentSessionArchive(ctx context.Context, workspaceID string, raw osSandbox, open func() io.ReadCloser) (int, error) {
+func (s *Service) putAgentSessionArchive(ctx context.Context, workspaceID string, raw osSandbox, path string, open func() io.ReadCloser) (int, error) {
 	ticket, gateway, err := s.gatewayFileTicket(sandboxexec.SystemSubject, workspaceID, raw,
-		sandboxfiles.OperationUpload, sandboxfiles.AgentAttachmentsPath)
+		sandboxfiles.OperationUpload, path)
 	if err != nil {
 		return 0, err
 	}
@@ -90,7 +91,7 @@ func (s *Service) putAgentSessionArchive(ctx context.Context, workspaceID string
 	req.Header.Set("Content-Type", "application/x-tar")
 	resp, err := s.gatewayClient().Do(req)
 	if err != nil {
-		log.Printf("agent attachments: sandbox file gateway unreachable: %v", err)
+		log.Printf("agent session files: sandbox file gateway unreachable: %v", err)
 		return 0, core.ErrSandboxesUnavailable
 	}
 	_ = resp.Body.Close()

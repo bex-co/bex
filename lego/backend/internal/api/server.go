@@ -394,6 +394,9 @@ type Deps struct {
 	// bucket and table; either nil ⇒ attachments are unavailable.
 	AgentAttachments     agentsessions.AttachmentObjects
 	AgentAttachmentStore agentsessions.AttachmentStore
+	// AgentSkillStore is the ADR099 workspace skills table; nil ⇒ skills
+	// unavailable.
+	AgentSkillStore agentsessions.SkillStore
 	// AgentRegistryHosts is the session-egress package-registry catalog,
 	// reported by the agent environment for display.
 	AgentRegistryHosts       []string
@@ -1066,6 +1069,7 @@ func NewServer(base *core.Base, d Deps) *Server {
 			Attachments:      d.AgentAttachments,
 			AttachmentRows:   d.AgentAttachmentStore,
 			AttachmentCopier: agentCopier,
+			Skills:           d.AgentSkillStore,
 		},
 		BlueprintRecovery:  &apps.BlueprintRecoverer{Store: d.BlueprintsStore},
 		PostgresExpiry:     &postgres.FreeExpirySweeper{Service: pg, Notifier: notifications.DatabaseExpiryNotifier{Service: notificationsSvc}},

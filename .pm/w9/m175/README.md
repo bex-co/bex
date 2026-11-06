@@ -1,17 +1,17 @@
 # w9 · m175 — Knowledge and Playbooks for cloud agents (Devin parity)
 
-**Worker:** worker9 **Goal:** a workspace can save reusable instructions (knowledge notes and playbooks) that agent sessions apply automatically or on request. **Status:** todo (t001 done)
+**Worker:** worker9 **Goal:** a workspace can save reusable instructions (knowledge notes and playbooks) that agent sessions apply automatically or on request. **Status:** in progress — t001–t003, t006 done; next t004 (dashboard)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
 | t001 | Design: knowledge notes + playbooks model — **DONE** | 45m | — |
-| t002 | CRUD API for notes and playbooks | 90m | t001 |
-| t003 | Apply in the prompt overlay | 60m | t002 |
+| t002 | CRUD API for notes and playbooks — **DONE** | 90m | t001 |
+| t003 | Apply in the prompt overlay — **DONE** | 60m | t002 |
 | t004 | Dashboard: manage notes/playbooks, pick a playbook | 60m | t002 |
 | t005 | Render parity (Devin reference for agent surfaces) | 25m | t003, t004 |
-| t006 | Simplify | 15m | t005 |
+| t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage | 45m | t005, t006 |
 | t008 | Closeout | 10m | t007 |
 

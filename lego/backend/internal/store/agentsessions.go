@@ -118,6 +118,8 @@ type AgentSessionTurn struct {
 	OutputRequired bool
 	Result         json.RawMessage
 	ResultFinal    bool
+	// Skills are the skills this turn invoked explicitly (ADR099 D4).
+	Skills []TurnSkill
 }
 
 // AgentTurnOutput is the structured-output contract a turn is accepted with
@@ -125,6 +127,15 @@ type AgentSessionTurn struct {
 type AgentTurnOutput struct {
 	Schema   json.RawMessage
 	Required bool
+}
+
+// turnSkillsJSON is the turn's skills column value, never null.
+func turnSkillsJSON(skills []TurnSkill) []byte {
+	if len(skills) == 0 {
+		return []byte("[]")
+	}
+	encoded, _ := json.Marshal(skills)
+	return encoded
 }
 
 // nullable is the argument for a jsonb column: SQL NULL for an empty value.
@@ -203,6 +214,8 @@ type AgentSession struct {
 	InitialAttachments AgentAttachmentBinding
 	// InitialOutput is create-only input stored on turn 1 (ADR094 D5); never scanned.
 	InitialOutput AgentTurnOutput
+	// InitialSkills is create-only input stored on turn 1 (ADR099 D4); never scanned.
+	InitialSkills []TurnSkill
 	// AdmissionLimit is create-only input: when positive, the insert is
 	// refused with ErrAgentSessionAdmissionLimit if the workspace already has
 	// that many active sessions matching AdmissionCount. The count and the
@@ -313,8 +326,8 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 		}
 		if in.InitialPrompt != "" {
 			_, err = tx.Exec(ctx, `
-				INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode, output_schema, output_required)
-				VALUES ($1, 1, $2, '', $3, $4)`, in.ID, in.InitialPrompt, in.InitialOutput.nullable(), in.InitialOutput.Required)
+				INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode, output_schema, output_required, skills)
+				VALUES ($1, 1, $2, '', $3, $4, $5)`, in.ID, in.InitialPrompt, in.InitialOutput.nullable(), in.InitialOutput.Required, turnSkillsJSON(in.InitialSkills))
 			if err == nil {
 				err = bindAgentAttachments(ctx, tx, in.WorkspaceID, in.ID, 1, in.InitialAttachments)
 			}
@@ -370,8 +383,9 @@ func (s *PGStore) GetAgentSession(ctx context.Context, id string) (AgentSession,
 // advances here, with prompt acceptance, so provisioning failure cannot erase
 // or renumber what the user submitted. A non-nil secretNames replaces the
 // session's attached secret names with the turn (ADR098 D1: steer computes the
-// union), so a refused turn attaches none; nil leaves them unchanged.
-func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string) (AgentSession, error) {
+// union), so a refused turn attaches none; nil leaves them unchanged. skills
+// are the skills the turn invokes explicitly (ADR099 D4).
+func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliveryMode, phase, status string, attachments AgentAttachmentBinding, output AgentTurnOutput, secretNames []string, skills []TurnSkill) (AgentSession, error) {
 	var out AgentSession
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
 		var turns int
@@ -389,8 +403,8 @@ func (s *PGStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, deliver
 			return err
 		}
 		if _, err := tx.Exec(ctx, `
-			INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode, output_schema, output_required)
-			VALUES ($1, $2, $3, $4, $5, $6)`, id, turns+1, prompt, deliveryMode, output.nullable(), output.Required); err != nil {
+			INSERT INTO agent_session_turns (session_id, turn, prompt, delivery_mode, output_schema, output_required, skills)
+			VALUES ($1, $2, $3, $4, $5, $6, $7)`, id, turns+1, prompt, deliveryMode, output.nullable(), output.Required, turnSkillsJSON(skills)); err != nil {
 			return err
 		}
 		if err := bindAgentAttachments(ctx, tx, workspaceID, id, turns+1, attachments); err != nil {
@@ -442,7 +456,7 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		SELECT session_id, turn, prompt, delivery_mode,
 		       transcript_complete, transcript_truncated, truncation_reason,
 		       created_at, started_at, completed_at, attachments,
-		       output_schema, output_required, result, result_final
+		       output_schema, output_required, result, result_final, skills
 		FROM agent_session_turns WHERE session_id=$1 ORDER BY turn`, sessionID)
 	if err != nil {
 		return nil, err
@@ -454,7 +468,7 @@ func (s *PGStore) AgentSessionTurns(ctx context.Context, sessionID string) ([]Ag
 		if err := rows.Scan(&turn.SessionID, &turn.Turn, &turn.Prompt, &turn.DeliveryMode,
 			&turn.TranscriptComplete, &turn.TranscriptTruncated, &turn.TruncationReason,
 			&turn.CreatedAt, &turn.StartedAt, &turn.CompletedAt, &turn.Attachments,
-			&turn.OutputSchema, &turn.OutputRequired, &turn.Result, &turn.ResultFinal); err != nil {
+			&turn.OutputSchema, &turn.OutputRequired, &turn.Result, &turn.ResultFinal, &turn.Skills); err != nil {
 			return nil, err
 		}
 		out = append(out, turn)

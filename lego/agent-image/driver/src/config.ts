@@ -23,11 +23,15 @@ import { describeError } from "./errors.js";
 import { loadAgentProfiles, lookupAgentProfile } from "./profiles.js";
 import { isDeepStrictEqual } from "node:util";
 import { secretValuesFromEnv } from "./redact.js";
+import { parseSkillManifest, type SkillManifest } from "./skills.js";
 
 export interface AgentDriverConfig {
   // Files the user attached to the session (ADR095): what setup waits for and
   // the turn presents to the agent. Undefined when none.
   attachments?: AttachmentManifest;
+  // The workspace's skills (ADR099): what setup waits for, links into the
+  // engines' skills folders and lists in the overlay. Undefined when none.
+  skills?: SkillManifest;
   command: string;
   args: string[];
   // Release-profile id (agent-profiles.json): selects the overlay channel for
@@ -354,6 +358,7 @@ export function loadConfig(
     modelBaseUrlEnvName,
     networkTier: networkTier(env.BEX_AGENT_NETWORK_TIER),
     attachments: parseAttachmentManifest(env.BEX_AGENT_ATTACHMENTS),
+    skills: parseSkillManifest(env.BEX_AGENT_SKILLS),
     secretValues: secretValuesFromEnv(env),
   };
 }

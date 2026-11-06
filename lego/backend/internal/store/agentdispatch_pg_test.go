@@ -111,7 +111,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if _, err := s.RecordAgentSessionDispatch(ctx, row.ID, "late-old", "running", "running", "", row.Turns); !errors.Is(err, ErrNotFound) {
 			t.Fatalf("abandoned bind: %v", err)
 		}
-		retry, err := s.BeginAgentSessionTurn(ctx, row.ID, "retry", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil)
+		retry, err := s.BeginAgentSessionTurn(ctx, row.ID, "retry", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -153,7 +153,7 @@ func TestPGAgentDispatchRecovery(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		row, err = s.BeginAgentSessionTurn(ctx, row.ID, "followup", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil)
+		row, err = s.BeginAgentSessionTurn(ctx, row.ID, "followup", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil)
 		if err != nil {
 			t.Fatal(err)
 		}

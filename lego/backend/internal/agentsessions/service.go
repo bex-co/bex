@@ -62,7 +62,7 @@ type Store interface {
 	SetAgentSessionFailure(context.Context, string, string, string) (store.AgentSession, error)
 	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
-	BeginAgentSessionTurn(context.Context, string, string, string, string, string, store.AgentAttachmentBinding, store.AgentTurnOutput, []string) (store.AgentSession, error)
+	BeginAgentSessionTurn(context.Context, string, string, string, string, string, store.AgentAttachmentBinding, store.AgentTurnOutput, []string, []store.TurnSkill) (store.AgentSession, error)
 	// RecordAgentSessionResult stores the structured result submitted for the
 	// session's current turn (ADR094 D5); false when the turn takes none.
 	RecordAgentSessionResult(ctx context.Context, sessionID string, turn int, result json.RawMessage, final bool) (bool, error)
@@ -244,8 +244,11 @@ type Service struct {
 	Attachments    AttachmentObjects
 	AttachmentRows AttachmentStore
 	// AttachmentCopier puts a dispatch's input files into its sandbox; nil ⇒
-	// attachments are unavailable too.
+	// attachments are unavailable too. Skills are copied the same way.
 	AttachmentCopier AttachmentCopier
+	// Skills is the ADR099 workspace skills table. nil ⇒ every skill verb
+	// answers AGENT_SKILLS_UNAVAILABLE and dispatches deliver none.
+	Skills SkillStore
 	// dispatchRunner runs the slow background provisioning half of create/steer/
 	// resume (w2/m64). Left nil in production => a detached goroutine, so the
 	// mutation returns before the sandbox exists; tests inject a synchronous (or
@@ -515,6 +518,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := validateSecretInput(req.SecretNames, req.Secrets); err != nil {
 		return View{}, err
 	}
+	if err := validateSkillInvocations(req.Skills); err != nil {
+		return View{}, err
+	}
 	output, err := parseTurnOutput(req.OutputSchema, req.OutputRequired)
 	if err != nil {
 		return View{}, err
@@ -566,6 +572,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
+	skills, err := s.resolveSkillInvocations(ctx, workspaceID, req.Skills)
+	if err != nil {
+		return View{}, err
+	}
 	config, err := json.Marshal(req.AgentConfig)
 	if err != nil {
 		return View{}, err
@@ -583,6 +593,7 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 			IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx),
 		},
 		InitialOutput:  output,
+		InitialSkills:  skills,
 		AdmissionLimit: admission.limit, AdmissionCount: admission.count,
 	})
 	if errors.Is(err, store.ErrAgentSessionAdmissionLimit) {
@@ -678,13 +689,28 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 	// Every dispatch is a fresh sandbox (ADR059), so each one receives all of
 	// the session's input files (ADR095 D4). The driver waits for the manifest
 	// before its turn, so the copy below cannot race the agent.
-	inputs, current, err := s.dispatchAttachments(ctx, record.ID, spec.turn)
+	currentTurn := s.turnLoader(ctx, record.ID, spec.turn)
+	inputs, current, err := s.dispatchAttachments(ctx, record.ID, currentTurn)
 	if err != nil {
 		log.Printf("agent-session dispatch: list attachments failed (session=%s): %v", record.ID, err)
 		return s.failDispatch(ctx, record, spec.turn, attachmentListFailure, err)
 	}
 	if len(inputs) > 0 {
 		spec.env = withAttachmentManifest(spec.env, current, inputs)
+	}
+	// Skills are snapshotted per dispatch too (ADR099 D5): an edit applies
+	// from the next turn.
+	skills, err := s.dispatchSkills(ctx, record, currentTurn)
+	if err != nil {
+		log.Printf("agent-session dispatch: list skills failed (session=%s): %v", record.ID, err)
+		failure := skillListFailure
+		if errors.Is(err, errSkillExpansion) {
+			failure = skillTooLargeFailure
+		}
+		return s.failDispatch(ctx, record, spec.turn, failure, err)
+	}
+	if len(skills) > 0 {
+		spec.env = withSkillManifest(spec.env, skills)
 	}
 	// Secrets are resolved per dispatch (ADR098 D5), so a rotated workspace
 	// secret applies from the next turn and a deleted one fails it.
@@ -722,6 +748,10 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 	if err := s.copyAttachments(ctx, ws, record.ID, sb.ID, inputs); err != nil {
 		log.Printf("agent-session dispatch: attachment copy failed (session=%s): %v", record.ID, err)
 		return s.failDispatch(ctx, record, spec.turn, attachmentCopyFailure, err)
+	}
+	if err := s.copySkills(ctx, ws, record.ID, sb.ID, skills); err != nil {
+		log.Printf("agent-session dispatch: skill copy failed (session=%s): %v", record.ID, err)
+		return s.failDispatch(ctx, record, spec.turn, skillCopyFailure, err)
 	}
 	if err := s.Sandbox.EnterAgentSessionPhase(ctx, ws, record.ID, sb.ID, spec.modelEndpoint, spec.egress); err != nil {
 		log.Printf("agent-session dispatch: egress phase transition failed (session=%s): %v", record.ID, err)
@@ -1118,6 +1148,7 @@ func (s *Service) Transcript(ctx context.Context, sessionID string, afterSeq int
 			CompletedAt: turn.CompletedAt, Attachments: turnAttachments(turn.Attachments),
 			OutputSchema: jsonValue(turn.OutputSchema), OutputRequired: turn.OutputRequired,
 			Result: jsonValue(turn.Result), ResultFinal: turn.ResultFinal,
+			Skills: turnSkills(turn.Skills),
 		})
 	}
 	for _, p := range parts {
@@ -1529,6 +1560,9 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err := validateSecretInput(req.SecretNames, req.Secrets); err != nil {
 		return View{}, err
 	}
+	if err := validateSkillInvocations(req.Skills); err != nil {
+		return View{}, err
+	}
 	output, err := parseTurnOutput(req.OutputSchema, req.OutputRequired)
 	if err != nil {
 		return View{}, err
@@ -1583,13 +1617,17 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
+	skills, err := s.resolveSkillInvocations(ctx, record.WorkspaceID, req.Skills)
+	if err != nil {
+		return View{}, err
+	}
 	secretNames, err := s.attachSteerSecrets(ctx, record, req.SessionSecretsInput)
 	if err != nil {
 		return View{}, err
 	}
 	previousSandboxID := record.SandboxID
 	record, err = s.Store.BeginAgentSessionTurn(ctx, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching",
-		store.AgentAttachmentBinding{IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx)}, output, secretNames)
+		store.AgentAttachmentBinding{IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx)}, output, secretNames, skills)
 	if err != nil {
 		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
 	}

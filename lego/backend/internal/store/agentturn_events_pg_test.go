@@ -61,7 +61,7 @@ func TestPGAgentSessionTurnEventsFeedTheWebhookQuery(t *testing.T) {
 	}
 	set(ended.ID, "completed")
 	set(ended.ID, "completed") // an unchanged phase is not a second event
-	if _, err := s.BeginAgentSessionTurn(ctx, ended.ID, "two", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil); err != nil {
+	if _, err := s.BeginAgentSessionTurn(ctx, ended.ID, "two", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil); err != nil {
 		t.Fatal(err)
 	}
 	set(ended.ID, "failed")

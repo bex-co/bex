@@ -141,6 +141,7 @@ var neverEmptyArrayRoutes = map[string]string{
 // session). Each entry cites the construction that makes its empty answer
 // non-nil, so the claim is checkable by reading rather than by running.
 var unreachableArrayRoutes = map[string]string{
+	"GET /v1/agent-skills":                               "the agent_skills table (Service.Skills); make([]AgentSkill, 0, …) (agentsessions/skills.go AgentSkills)",
 	"GET /v1/postgres/{id}/top-queries":                  "live datastore connection; topQueryViews make (postgres/insights.go)",
 	"GET /v1/postgres/{id}/query/top-queries":            "live datastore connection; topQueryViews make (postgres/insights.go)",
 	"GET /v1/blueprints":                                 "BEX_CP_DB_URI; make([]BlueprintView, len(bs)) (apps/blueprint.go)",
@@ -195,6 +196,7 @@ var unreachableArrayRoutes = map[string]string{
 
 // scalarRoutes are the GETs whose 200 body contains no JSON array at all.
 var scalarRoutes = map[string]bool{
+	"GET /v1/agent-skills/{ref}":                                     true,
 	"GET /v1/agent-attachments/{id}":                                 true,
 	"GET /v1/agent-attachments/{id}/content":                         true, // a redirect, no body
 	"GET /v1/services/{id}":                                          true,

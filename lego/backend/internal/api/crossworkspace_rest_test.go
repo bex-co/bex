@@ -168,6 +168,10 @@ var callerScopedRoutes = map[string]bool{
 	// Workspace agent secrets (ADR098): addressed by ownerId like the
 	// environment; the list gates on can_create of that exact workspace.
 	"GET /v1/agent-secrets": true,
+	// Workspace skills (ADR099): the list and create are addressed by
+	// ownerId; the by-ref routes route a skl- id by its row.
+	"GET /v1/agent-skills":  true,
+	"POST /v1/agent-skills": true,
 	// The caller's OWN effective permissions (w9/m84): scoped by the ownerId
 	// query param, addresses no resource by path; its own can_view gate denies
 	// an ownerId naming a workspace the caller isn't in.

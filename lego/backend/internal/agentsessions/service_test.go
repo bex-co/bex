@@ -452,6 +452,12 @@ func (f *fakeStore) setTurnOutput(id string, turn int, output store.AgentTurnOut
 	f.turns[id][turn] = row
 }
 
+func (f *fakeStore) setTurnSkills(id string, turn int, skills []store.TurnSkill) {
+	row := f.turns[id][turn]
+	row.Skills = slices.Clone(skills)
+	f.turns[id][turn] = row
+}
+
 // RecordAgentSessionResult mirrors the store: only a live session's current
 // turn that carries a schema takes a result, and a non-final submission is
 // accepted but never replaces a final one.
@@ -512,6 +518,7 @@ func (f *fakeStore) CreateAgentSession(ctx context.Context, in store.AgentSessio
 	if prompt != "" {
 		f.recordTurn(in.ID, 1, prompt, "")
 		f.setTurnOutput(in.ID, 1, in.InitialOutput)
+		f.setTurnSkills(in.ID, 1, in.InitialSkills)
 		in.Turns = 1
 		f.rows[in.ID] = in
 	}
@@ -519,7 +526,7 @@ func (f *fakeStore) CreateAgentSession(ctx context.Context, in store.AgentSessio
 	return in, nil
 }
 
-func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, delivery, phase, status string, _ store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string) (store.AgentSession, error) {
+func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, delivery, phase, status string, _ store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill) (store.AgentSession, error) {
 	row, ok := f.rows[id]
 	if !ok {
 		return store.AgentSession{}, store.ErrNotFound
@@ -527,6 +534,7 @@ func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, deliver
 	previousSandboxID := row.SandboxID
 	f.recordTurn(id, row.Turns+1, prompt, delivery)
 	f.setTurnOutput(id, row.Turns+1, output)
+	f.setTurnSkills(id, row.Turns+1, skills)
 	row.Turns++
 	row.SandboxID, row.Phase, row.Status = "", phase, status
 	row.FailureReason, row.FailureReasonCode = "", ""

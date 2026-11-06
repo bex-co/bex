@@ -264,7 +264,7 @@ func assertAgentSessionRetryClearsFailure(ctx context.Context, t *testing.T, s *
 	if _, _, err := s.FinalizeAgentSession(ctx, record.ID, "failed", "", "", "old push failure"); err != nil {
 		t.Fatalf("fail retry session: %v", err)
 	}
-	record, err = s.BeginAgentSessionTurn(ctx, record.ID, "retry", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil)
+	record, err = s.BeginAgentSessionTurn(ctx, record.ID, "retry", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil)
 	if err != nil || record.FailureReason != "" {
 		t.Fatalf("accepted retry retained failure = %+v err=%v", record, err)
 	}
@@ -301,7 +301,7 @@ func assertAgentSessionPromptQuota(ctx context.Context, t *testing.T, s *PGStore
 	if _, err := s.Pool.Exec(ctx, `UPDATE agent_sessions SET turns=84 WHERE id=$1`, record.ID); err != nil {
 		t.Fatalf("advance prompt quota session: %v", err)
 	}
-	if _, err := s.BeginAgentSessionTurn(ctx, record.ID, strings.Repeat("y", 100000), "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil); !errors.Is(err, ErrAgentSessionPromptQuota) {
+	if _, err := s.BeginAgentSessionTurn(ctx, record.ID, strings.Repeat("y", 100000), "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil); !errors.Is(err, ErrAgentSessionPromptQuota) {
 		t.Fatalf("prompt quota error = %v, want ErrAgentSessionPromptQuota", err)
 	}
 	got, err := s.GetAgentSession(ctx, record.ID)
@@ -328,7 +328,7 @@ func assertAgentSessionTurnAcceptanceCAS(ctx context.Context, t *testing.T, s *P
 		prompt := prompt
 		go func() {
 			<-start
-			_, err := s.BeginAgentSessionTurn(ctx, record.ID, prompt, "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil)
+			_, err := s.BeginAgentSessionTurn(ctx, record.ID, prompt, "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil)
 			errs <- err
 		}()
 	}

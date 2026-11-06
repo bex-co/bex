@@ -86,3 +86,19 @@ The CVE gate is unchanged.
   - the SBOMs run two at a time.
 
   `scripts/github-actions-validate.sh` passes.
+
+## Observation (2026-11-06 07:55 UTC): shared `bex-ci` runners starved by another repo
+
+- The deploy of 3310f6484 (run 42176650307) sat `queued` from 06:47 because all seven online `bex-ci` org runners were busy.
+- Most were held by `bex-co/beancount-cms-v2` jobs carrying the same `bex-ci` label:
+  - `lighthouse` (run 42162745684), on runner 0eafd29d58ea since 05:05, so about 3 h and likely hung;
+  - `build`, `submit` and `gitleaks`.
+- bex's deploy-gating test jobs queue behind them.
+- This worker did not cancel another project's jobs. The options are for the owner:
+  - a job `timeout-minutes` in that repo;
+  - a separate label for it.
+- Neither is a runner host split (`DO_NOT_DO` #RUNNER-HOSTS). The t007 three-green-deploys check waits on this.
+- **Resolved 2026-11-06 08:05 UTC (user decision: cancel only the hung run).**
+  - beancount-cms-v2 run 42162745684 was cancelled. Its `lighthouse` job had been stuck in "Production browser smoke" since 05:47, and the job has no `timeout-minutes`, so GitHub would only kill it at 6 h.
+  - That repo's other jobs were left alone. bex deploy 42176650307's test jobs started within minutes.
+  - The repo's owner should give `lighthouse` (`ci.yml:327`) a `timeout-minutes`. That is not done from w9.

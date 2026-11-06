@@ -36,6 +36,11 @@ var CloudAgentsTools = []string{
 	"list_agent_secrets",
 	"set_agent_secret",
 	"delete_agent_secret",
+	"list_agent_skills",
+	"get_agent_skill",
+	"create_agent_skill",
+	"update_agent_skill",
+	"delete_agent_skill",
 }
 
 type listArgs struct {
@@ -113,6 +118,7 @@ type steerArgs struct {
 	OutputSchema   map[string]any `json:"outputSchema,omitempty" jsonschema:"a JSON Schema 2020-12 object (at most 64 KiB, no external $ref) the turn's result must satisfy; read it from outcome.result"`
 	OutputRequired *bool          `json:"outputRequired,omitempty" jsonschema:"default true when outputSchema is set: a turn that ends without a final valid result fails STRUCTURED_OUTPUT_MISSING"`
 	SessionSecretsInput
+	Skills []SkillInvocation `json:"skills,omitempty" jsonschema:"workspace skills (list_agent_skills) this turn must follow, at most 5, each with optional arguments for $ARGUMENTS"`
 }
 
 type agentSecretArgs struct {
@@ -124,6 +130,22 @@ type setAgentSecretArgs struct {
 	OwnerID string `json:"ownerId,omitempty"`
 	Name    string `json:"name" jsonschema:"the env var name the agent reads: [A-Za-z_][A-Za-z0-9_]* (at most 128), not a platform-reserved name such as BEX_* or PATH"`
 	Value   string `json:"value" jsonschema:"the secret value, 1 B to 32 KiB; write-only, never returned"`
+}
+
+type agentSkillArgs struct {
+	OwnerID string `json:"ownerId,omitempty"`
+	Skill   string `json:"skill" jsonschema:"the skill's skl- id or its name"`
+}
+
+type createAgentSkillArgs struct {
+	OwnerID string `json:"ownerId,omitempty"`
+	AgentSkillInput
+}
+
+type updateAgentSkillArgs struct {
+	OwnerID string `json:"ownerId,omitempty"`
+	Skill   string `json:"skill" jsonschema:"the skill's skl- id or its name"`
+	AgentSkillInput
 }
 
 type uploadAttachmentArgs struct {
@@ -159,7 +181,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 		out, err := s.Create(ctx, in)
 		return nil, out, err
 	}
-	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_session", Description: "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING. Pass secretNames (workspace agent secrets) and secrets (inline, this session only) to give the agent API keys as env vars; values are redacted from the transcript."}, createSession)
+	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_session", Description: "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING. Pass secretNames (workspace agent secrets) and secrets (inline, this session only) to give the agent API keys as env vars; values are redacted from the transcript. Pass skills to make the turn follow workspace skills (list_agent_skills)."}, createSession)
 	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_agent_session", Description: "Alias of create_agent_session. Start a cloud coding-agent session on a repository; it does not return an attach ticket (call attach_agent_session for one)."}, createSession)
 	s.registerWaitMCP(server)
 	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_sessions", Description: "List cloud coding-agent sessions in a workspace: one filtered page, newest first. Defaults to the unarchived working set; archived selects false|true|all; cursor is the prior page's last session id (a shorter/empty page is the end)."},
@@ -257,13 +279,45 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	// send_agent_session_message is the canonical name for a follow-up turn
 	// (ADR094 D2); steer_agent_session stays as an alias.
 	sendMessage := func(ctx context.Context, _ *mcp.CallToolRequest, in steerArgs) (*mcp.CallToolResult, View, error) {
-		out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist, AttachmentIDs: in.AttachmentIDs, OutputSchema: in.OutputSchema, OutputRequired: in.OutputRequired, SessionSecretsInput: in.SessionSecretsInput})
+		out, err := s.Steer(ctx, SteerRequest{SessionID: in.ID, Prompt: in.Prompt, EgressAllowlist: in.EgressAllowlist, AttachmentIDs: in.AttachmentIDs, OutputSchema: in.OutputSchema, OutputRequired: in.OutputRequired, SessionSecretsInput: in.SessionSecretsInput, Skills: in.Skills})
 		return nil, out, err
 	}
 	mcputil.AddTool(server, &mcp.Tool{Name: "send_agent_session_message", Description: "Send a follow-up message to a cloud coding-agent session: it runs a new turn, re-dispatches the sandbox on the same branch and updates the same draft PR. The session must be steerable (state succeeded or failed, not archived or canceled). Pass outputSchema to require a machine-readable result for this turn, read from outcome.result."}, sendMessage)
 	mcputil.AddTool(server, &mcp.Tool{Name: "steer_agent_session", Description: "Alias of send_agent_session_message. Run a follow-up prompt turn on a cloud coding-agent session; it re-dispatches the sandbox on the same branch and updates the same draft PR."}, sendMessage)
 	s.registerAttachmentMCP(server)
 	s.registerSecretMCP(server)
+	s.registerSkillMCP(server)
+}
+
+// registerSkillMCP adds the ADR099 D3 workspace skill tools.
+func (s *Service) registerSkillMCP(server *mcp.Server) {
+	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_skills", Description: "List a workspace's skills for cloud agents: reusable SKILL.md instructions (the Agent Skills format) every session receives. Shows name, description, triggers and enabled; read one with get_agent_skill. Pass names in skills to create_agent_session or send_agent_session_message to make a turn follow one."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in environmentArgs) (*mcp.CallToolResult, AgentSkillList, error) {
+			out, err := s.AgentSkills(ctx, in.OwnerID)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_skill", Description: "Read one workspace skill by skl- id or name, with its body and its whole SKILL.md (content)."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in agentSkillArgs) (*mcp.CallToolResult, AgentSkill, error) {
+			out, err := s.AgentSkill(ctx, in.OwnerID, in.Skill)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_skill", Description: "Add a workspace skill (workspace admins only): name, description and body, or a whole SKILL.md as content. Skills are instructions, not secrets: every member can read them. triggers [\"user\"] applies it only when invoked. At most 100 per workspace; enabled skills total at most 1 MiB."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in createAgentSkillArgs) (*mcp.CallToolResult, AgentSkill, error) {
+			out, err := s.CreateAgentSkill(ctx, in.OwnerID, in.AgentSkillInput)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "update_agent_skill", Description: "Change a workspace skill (workspace admins only); omitted fields keep their value. Pass ifVersion to refuse the write if someone changed it since you read it. Sessions use the new version from their next turn."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in updateAgentSkillArgs) (*mcp.CallToolResult, AgentSkill, error) {
+			out, err := s.UpdateAgentSkill(ctx, in.OwnerID, in.Skill, in.AgentSkillInput)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "delete_agent_skill", Description: "Delete a workspace skill (workspace admins only)."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in agentSkillArgs) (*mcp.CallToolResult, deleteResult, error) {
+			if err := s.DeleteAgentSkill(ctx, in.OwnerID, in.Skill); err != nil {
+				return nil, deleteResult{}, err
+			}
+			return nil, deleteResult{Deleted: true}, nil
+		})
 }
 
 // registerSecretMCP adds the ADR098 D4 workspace agent secret tools. Values

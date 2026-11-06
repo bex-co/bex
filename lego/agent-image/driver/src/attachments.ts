@@ -21,10 +21,11 @@
 // and, for the files this turn attached, images inline when the agent says it
 // takes images.
 
-import { readFile, stat } from "node:fs/promises";
+import { readFile } from "node:fs/promises";
 import path from "node:path";
-import { setTimeout as sleep } from "node:timers/promises";
 import type { ContentBlock } from "@agentclientprotocol/sdk/unstable";
+
+import { manifestWaitMs, waitForFiles } from "./fs-util.js";
 
 export const attachmentsRoot = "/attachments";
 
@@ -54,7 +55,6 @@ export const maxImageBlockBytes = 5 << 20;
 // maxInlineImageBytes bounds one prompt's inline images together; the rest
 // still arrive as links.
 export const maxInlineImageBytes = 20 << 20;
-const defaultWaitMs = 7 * 60_000;
 
 // parseAttachmentManifest validates BEX_AGENT_ATTACHMENTS. A manifest that
 // names a file outside /attachments is refused rather than trusted.
@@ -79,10 +79,7 @@ export function parseAttachmentManifest(
     }
     file.current = file.current === true;
   }
-  parsed.waitMs =
-    Number.isInteger(parsed.waitMs) && parsed.waitMs > 0
-      ? parsed.waitMs
-      : defaultWaitMs;
+  parsed.waitMs = manifestWaitMs(parsed.waitMs);
   return parsed;
 }
 
@@ -92,21 +89,14 @@ export async function waitForAttachments(
   manifest: AttachmentManifest,
   options: { intervalMs?: number } = {},
 ): Promise<void> {
-  const deadline = Date.now() + manifest.waitMs;
-  const pending = new Set(manifest.files);
-  while (pending.size > 0) {
-    for (const file of [...pending]) {
-      const info = await stat(file.path).catch(() => undefined);
-      if (info?.isFile() && info.size === file.size) pending.delete(file);
-    }
-    if (pending.size === 0) return;
-    if (Date.now() >= deadline) {
-      throw new Error(
-        `attached files did not arrive in the sandbox: ${[...pending].map((f) => f.name).join(", ")}`,
-      );
-    }
-    await sleep(options.intervalMs ?? 250);
-  }
+  await waitForFiles(manifest.files, {
+    waitMs: manifest.waitMs,
+    file: (file) => file.path,
+    ready: (info, file) => Number(info.size) === file.size,
+    label: (file) => file.name,
+    what: "attached files",
+    intervalMs: options.intervalMs,
+  });
 }
 
 // attachmentBlocks builds the ACP blocks that follow the prompt text: a link to

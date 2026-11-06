@@ -855,7 +855,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING. Pass secretNames (workspace agent secrets) and secrets (inline, this session only) to give the agent API keys as env vars; values are redacted from the transcript.",
+    "description": "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING. Pass secretNames (workspace agent secrets) and secrets (inline, this session only) to give the agent API keys as env vars; values are redacted from the transcript. Pass skills to make the turn follow workspace skills (list_agent_skills).",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -963,6 +963,30 @@
             "required": [
               "name",
               "value"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "skills": {
+          "description": "workspace skills (list_agent_skills) this turn must follow, at most 5, each with optional arguments for $ARGUMENTS",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                "type": "string"
+              },
+              "name": {
+                "description": "a workspace skill name (list_agent_skills)",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
             ],
             "type": "object"
           },
@@ -1250,6 +1274,136 @@
   },
   {
     "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Add a workspace skill (workspace admins only): name, description and body, or a whole SKILL.md as content. Skills are instructions, not secrets: every member can read them. triggers [\"user\"] applies it only when invoked. At most 100 per workspace; enabled skills total at most 1 MiB.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "description": "the instructions, markdown, 1 B to 64 KiB; $ARGUMENTS and $1-$9 take the invocation's arguments",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "content": {
+          "description": "a whole SKILL.md (YAML frontmatter with name and description, then the body), instead of the separate fields",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "description": {
+          "description": "when to use the skill, one line of 1-1024 characters; the agent sees it on every turn",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "enabled": {
+          "description": "default true; a disabled skill is not delivered to sessions",
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "ifVersion": {
+          "description": "update only: refuse with AGENT_SKILL_CONFLICT unless the skill is still at this version",
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "name": {
+          "description": "lowercase letters, digits and single hyphens, at most 64 (the Agent Skills name)",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "triggers": {
+          "description": "[\"user\",\"model\"] (default: the agent may apply it on its own) or [\"user\"] (only when invoked)",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "type": "object"
+    },
+    "name": "create_agent_skill",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "triggers": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "updatedBy": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "description",
+        "triggers",
+        "enabled",
+        "version",
+        "createdAt",
+        "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
       "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": true,
@@ -1341,6 +1495,44 @@
       "type": "object"
     },
     "name": "delete_agent_session",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "deleted"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Delete a workspace skill (workspace admins only).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        },
+        "skill": {
+          "description": "the skill's skl- id or its name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "skill"
+      ],
+      "type": "object"
+    },
+    "name": "delete_agent_skill",
     "outputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -2283,6 +2475,29 @@
               "resultFinal": {
                 "type": "boolean"
               },
+              "skills": {
+                "items": {
+                  "additionalProperties": false,
+                  "properties": {
+                    "arguments": {
+                      "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                      "type": "string"
+                    },
+                    "name": {
+                      "description": "a workspace skill name (list_agent_skills)",
+                      "type": "string"
+                    }
+                  },
+                  "required": [
+                    "name"
+                  ],
+                  "type": "object"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
               "transcriptComplete": {
                 "type": "boolean"
               },
@@ -2303,7 +2518,8 @@
               "transcriptComplete",
               "transcriptTruncated",
               "createdAt",
-              "attachments"
+              "attachments",
+              "skills"
             ],
             "type": "object"
           },
@@ -2317,6 +2533,91 @@
         "parts",
         "turns",
         "nextAfterSeq"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Read one workspace skill by skl- id or name, with its body and its whole SKILL.md (content).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        },
+        "skill": {
+          "description": "the skill's skl- id or its name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "skill"
+      ],
+      "type": "object"
+    },
+    "name": "get_agent_skill",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "triggers": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "updatedBy": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "description",
+        "triggers",
+        "enabled",
+        "version",
+        "createdAt",
+        "updatedAt"
       ],
       "type": "object"
     }
@@ -2813,6 +3114,103 @@
   },
   {
     "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "List a workspace's skills for cloud agents: reusable SKILL.md instructions (the Agent Skills format) every session receives. Shows name, description, triggers and enabled; read one with get_agent_skill. Pass names in skills to create_agent_session or send_agent_session_message to make a turn follow one.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "list_agent_skills",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        },
+        "skills": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "body": {
+                "type": "string"
+              },
+              "content": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "description": {
+                "type": "string"
+              },
+              "enabled": {
+                "type": "boolean"
+              },
+              "id": {
+                "type": "string"
+              },
+              "name": {
+                "type": "string"
+              },
+              "ownerId": {
+                "type": "string"
+              },
+              "triggers": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "updatedBy": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "id",
+              "ownerId",
+              "name",
+              "description",
+              "triggers",
+              "enabled",
+              "version",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "ownerId",
+        "skills"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
       "destructiveHint": true,
       "idempotentHint": false,
       "openWorldHint": true,
@@ -3167,6 +3565,30 @@
             "required": [
               "name",
               "value"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "skills": {
+          "description": "workspace skills (list_agent_skills) this turn must follow, at most 5, each with optional arguments for $ARGUMENTS",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                "type": "string"
+              },
+              "name": {
+                "description": "a workspace skill name (list_agent_skills)",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
             ],
             "type": "object"
           },
@@ -3610,6 +4032,30 @@
             "array"
           ]
         },
+        "skills": {
+          "description": "workspace skills (list_agent_skills) this turn must follow, at most 5, each with optional arguments for $ARGUMENTS",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                "type": "string"
+              },
+              "name": {
+                "description": "a workspace skill name (list_agent_skills)",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "tags": {
           "items": {
             "type": "string"
@@ -3961,6 +4407,30 @@
             "required": [
               "name",
               "value"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "skills": {
+          "description": "workspace skills (list_agent_skills) this turn must follow, at most 5, each with optional arguments for $ARGUMENTS",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "arguments": {
+                "description": "substituted for $ARGUMENTS (and its words for $1-$9) in the skill, at most 4 KiB",
+                "type": "string"
+              },
+              "name": {
+                "description": "a workspace skill name (list_agent_skills)",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
             ],
             "type": "object"
           },
@@ -4717,6 +5187,143 @@
         "trustTierLocked",
         "agentModelSpendCapTierLimited",
         "billingBalanceDue"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Change a workspace skill (workspace admins only); omitted fields keep their value. Pass ifVersion to refuse the write if someone changed it since you read it. Sessions use the new version from their next turn.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "description": "the instructions, markdown, 1 B to 64 KiB; $ARGUMENTS and $1-$9 take the invocation's arguments",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "content": {
+          "description": "a whole SKILL.md (YAML frontmatter with name and description, then the body), instead of the separate fields",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "description": {
+          "description": "when to use the skill, one line of 1-1024 characters; the agent sees it on every turn",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "enabled": {
+          "description": "default true; a disabled skill is not delivered to sessions",
+          "type": [
+            "null",
+            "boolean"
+          ]
+        },
+        "ifVersion": {
+          "description": "update only: refuse with AGENT_SKILL_CONFLICT unless the skill is still at this version",
+          "type": [
+            "null",
+            "integer"
+          ]
+        },
+        "name": {
+          "description": "lowercase letters, digits and single hyphens, at most 64 (the Agent Skills name)",
+          "type": [
+            "null",
+            "string"
+          ]
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "skill": {
+          "description": "the skill's skl- id or its name",
+          "type": "string"
+        },
+        "triggers": {
+          "description": "[\"user\",\"model\"] (default: the agent may apply it on its own) or [\"user\"] (only when invoked)",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "skill"
+      ],
+      "type": "object"
+    },
+    "name": "update_agent_skill",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "body": {
+          "type": "string"
+        },
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "description": {
+          "type": "string"
+        },
+        "enabled": {
+          "type": "boolean"
+        },
+        "id": {
+          "type": "string"
+        },
+        "name": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "triggers": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "updatedAt": {
+          "type": "string"
+        },
+        "updatedBy": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "name",
+        "description",
+        "triggers",
+        "enabled",
+        "version",
+        "createdAt",
+        "updatedAt"
       ],
       "type": "object"
     }

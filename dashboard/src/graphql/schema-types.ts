@@ -288,6 +288,18 @@ export type AgentSessionSecretInput = {
   value: Scalars['String']['input'];
 };
 
+export type AgentSessionSkill = {
+  __typename: 'AgentSessionSkill';
+  arguments: Maybe<Scalars['String']['output']>;
+  name: Scalars['String']['output'];
+};
+
+/** A workspace skill a turn must follow (ADR099), with optional arguments for $ARGUMENTS. */
+export type AgentSessionSkillInput = {
+  arguments?: InputMaybe<Scalars['String']['input']>;
+  name: Scalars['String']['input'];
+};
+
 export type AgentSessionToolOutput = {
   __typename: 'AgentSessionToolOutput';
   /** One entry per stored field, sorted by field. */
@@ -337,6 +349,8 @@ export type AgentSessionTranscriptTurn = {
   result: Maybe<Scalars['String']['output']>;
   /** The agent declared result final; only a final result becomes outcome.result. */
   resultFinal: Scalars['Boolean']['output'];
+  /** The workspace skills this turn invoked (ADR099). */
+  skills: Array<AgentSessionSkill>;
   transcriptComplete: Scalars['Boolean']['output'];
   transcriptTruncated: Scalars['Boolean']['output'];
   truncationReason: Scalars['String']['output'];
@@ -364,6 +378,43 @@ export type AgentSessionTurnModelCost = {
   outputTokens: Scalars['Float']['output'];
   requests: Scalars['Int']['output'];
   turn: Scalars['Int']['output'];
+};
+
+/** A workspace skill for cloud agents (ADR099): a SKILL.md every session of the workspace receives. body and content are on single reads only. */
+export type AgentSkill = {
+  __typename: 'AgentSkill';
+  body: Maybe<Scalars['String']['output']>;
+  content: Maybe<Scalars['String']['output']>;
+  createdAt: Scalars['String']['output'];
+  description: Scalars['String']['output'];
+  enabled: Scalars['Boolean']['output'];
+  id: Scalars['String']['output'];
+  name: Scalars['String']['output'];
+  ownerId: Scalars['String']['output'];
+  triggers: Array<Scalars['String']['output']>;
+  updatedAt: Scalars['String']['output'];
+  updatedBy: Maybe<Scalars['String']['output']>;
+  version: Scalars['Int']['output'];
+};
+
+/** A workspace skill's fields, or a whole SKILL.md as content. On update, omitted fields keep their value. */
+export type AgentSkillInput = {
+  body?: InputMaybe<Scalars['String']['input']>;
+  /** A whole SKILL.md, instead of name, description, triggers and body. */
+  content?: InputMaybe<Scalars['String']['input']>;
+  description?: InputMaybe<Scalars['String']['input']>;
+  enabled?: InputMaybe<Scalars['Boolean']['input']>;
+  /** Update only: refuse unless the skill is still at this version. */
+  ifVersion?: InputMaybe<Scalars['Int']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
+  /** ["user","model"] (default) or ["user"] (only when invoked). */
+  triggers?: InputMaybe<Array<Scalars['String']['input']>>;
+};
+
+export type AgentSkillList = {
+  __typename: 'AgentSkillList';
+  ownerId: Scalars['String']['output'];
+  skills: Array<AgentSkill>;
 };
 
 export type ApiKey = {
@@ -1521,6 +1572,8 @@ export type Mutation = {
   cloneEnvGroup: Maybe<EnvGroup>;
   connectGit: Maybe<GitConnection>;
   createAgentSession: Maybe<AgentSession>;
+  /** Add a workspace skill (admins only). */
+  createAgentSkill: AgentSkill;
   createApiKey: Maybe<ApiKey>;
   createBillingCheckoutSession: Maybe<BillingHostedSession>;
   createBillingPortalSession: Maybe<BillingHostedSession>;
@@ -1551,6 +1604,8 @@ export type Mutation = {
   /** Delete a workspace agent secret (admins only). */
   deleteAgentSecret: Maybe<Scalars['Boolean']['output']>;
   deleteAgentSession: Maybe<Scalars['Boolean']['output']>;
+  /** Delete a workspace skill (admins only). */
+  deleteAgentSkill: Maybe<Scalars['Boolean']['output']>;
   deleteBuildSource: Maybe<Scalars['Boolean']['output']>;
   deleteCustomDomain: Maybe<Scalars['Boolean']['output']>;
   deleteDatabase: Maybe<Scalars['Boolean']['output']>;
@@ -1684,6 +1739,8 @@ export type Mutation = {
   unregisterNotificationDeviceSubscription: Maybe<Scalars['Boolean']['output']>;
   unregisterNotificationWebPushSubscription: Maybe<Scalars['Boolean']['output']>;
   updateAgentEnvironment: AgentEnvironment;
+  /** Change a workspace skill (admins only). */
+  updateAgentSkill: AgentSkill;
   updateBlueprint: Maybe<Blueprint>;
   updateBuildSource: Maybe<BuildSource>;
   updateCronJob: Maybe<Service>;
@@ -1817,8 +1874,15 @@ export type MutationCreateAgentSessionArgs = {
   repo: Scalars['String']['input'];
   secretNames?: InputMaybe<Array<Scalars['String']['input']>>;
   secrets?: InputMaybe<Array<AgentSessionSecretInput>>;
+  skills?: InputMaybe<Array<AgentSessionSkillInput>>;
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
   title?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationCreateAgentSkillArgs = {
+  input: AgentSkillInput;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2076,6 +2140,12 @@ export type MutationDeleteAgentSecretArgs = {
 
 export type MutationDeleteAgentSessionArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteAgentSkillArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  skill: Scalars['String']['input'];
 };
 
 
@@ -2854,6 +2924,7 @@ export type MutationSteerAgentSessionArgs = {
   prompt: Scalars['String']['input'];
   secretNames?: InputMaybe<Array<Scalars['String']['input']>>;
   secrets?: InputMaybe<Array<AgentSessionSecretInput>>;
+  skills?: InputMaybe<Array<AgentSessionSkillInput>>;
 };
 
 
@@ -2933,6 +3004,13 @@ export type MutationUnregisterNotificationWebPushSubscriptionArgs = {
 export type MutationUpdateAgentEnvironmentArgs = {
   input: AgentEnvironmentInput;
   ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type MutationUpdateAgentSkillArgs = {
+  input: AgentSkillInput;
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  skill: Scalars['String']['input'];
 };
 
 
@@ -3303,6 +3381,10 @@ export type Query = {
   agentSessionToolOutput: AgentSessionToolOutput;
   agentSessionTranscript: AgentSessionTranscriptPage;
   agentSessions: Array<AgentSession>;
+  /** One workspace skill by skl- id or name, with its body and SKILL.md. */
+  agentSkill: AgentSkill;
+  /** The workspace's skills for cloud agents, without bodies. */
+  agentSkills: AgentSkillList;
   apiKeys: Maybe<Array<Maybe<ApiKey>>>;
   auditLogs: Maybe<Array<Maybe<AuditLog>>>;
   autoscalingConfig: Maybe<Autoscaling>;
@@ -3490,6 +3572,17 @@ export type QueryAgentSessionsArgs = {
   repo?: InputMaybe<Scalars['String']['input']>;
   states?: InputMaybe<Array<Scalars['String']['input']>>;
   tag?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAgentSkillArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  skill: Scalars['String']['input'];
+};
+
+
+export type QueryAgentSkillsArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 

@@ -206,6 +206,64 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 	})
 	s.registerAttachmentREST(mux)
 	s.registerSecretREST(mux)
+	s.registerSkillREST(mux)
+}
+
+// registerSkillREST mounts the ADR099 D3 workspace skills. {ref} is a skl-
+// id (its workspace comes from the row) or a name in ownerId's workspace.
+func (s *Service) registerSkillREST(mux *http.ServeMux) {
+	decode := func(w http.ResponseWriter, r *http.Request) (AgentSkillInput, bool) {
+		var in AgentSkillInput
+		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		if err := core.DecodeJSON(r, &in); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+			return in, false
+		}
+		return in, true
+	}
+	mux.HandleFunc("GET /v1/agent-skills", func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.AgentSkills(r.Context(), r.URL.Query().Get("ownerId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("POST /v1/agent-skills", func(w http.ResponseWriter, r *http.Request) {
+		in, ok := decode(w, r)
+		if !ok {
+			return
+		}
+		out, err := s.CreateAgentSkill(r.Context(), r.URL.Query().Get("ownerId"), in)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusCreated, out)
+	})
+	mux.HandleFunc("GET /v1/agent-skills/{ref}", func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.AgentSkill(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("ref"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("PATCH /v1/agent-skills/{ref}", func(w http.ResponseWriter, r *http.Request) {
+		in, ok := decode(w, r)
+		if !ok {
+			return
+		}
+		out, err := s.UpdateAgentSkill(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("ref"), in)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("DELETE /v1/agent-skills/{ref}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteAgentSkill(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("ref"))
+	}))
 }
 
 // registerSecretREST mounts the ADR098 D4 workspace agent secrets: reads

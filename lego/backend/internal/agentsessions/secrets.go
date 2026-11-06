@@ -422,10 +422,7 @@ func (s *Service) withSessionSecrets(ctx context.Context, record store.AgentSess
 	if err != nil {
 		return nil, err
 	}
-	out := maps.Clone(env)
-	if out == nil {
-		out = map[string]string{}
-	}
+	out := withEnv(env, secretNamesEnv, strings.Join(record.SecretNames, ","))
 	for _, name := range record.SecretNames {
 		value, ok := inline[name]
 		if !ok {
@@ -437,7 +434,6 @@ func (s *Service) withSessionSecrets(ctx context.Context, record store.AgentSess
 		}
 		out[name] = value
 	}
-	out[secretNamesEnv] = strings.Join(record.SecretNames, ",")
 	return out, nil
 }
 

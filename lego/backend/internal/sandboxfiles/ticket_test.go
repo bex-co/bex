@@ -93,6 +93,11 @@ func TestPlatformUploadAllowed(t *testing.T) {
 		t.Fatal("the platform rule constrained a user's ticket")
 	}
 	elsewhere := copyIn
+	skills := copyIn
+	skills.Path = AgentSkillsPath
+	if !skills.PlatformUploadAllowed(platform) {
+		t.Fatal("the platform skills copy was refused")
+	}
 	elsewhere.Path = AgentAttachmentsPath + "/x"
 	if elsewhere.PlatformUploadAllowed(platform) {
 		t.Fatal("a platform ticket reached a path other than the attachments directory")

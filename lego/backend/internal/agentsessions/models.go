@@ -197,7 +197,10 @@ type CreateRequest struct {
 	// refused 400 AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE rather than left
 	// unbounded.
 	SessionSecretsInput
-	MaxSpendUSD *float64 `json:"maxSpendUSD,omitempty" jsonschema:"a ceiling on this session's platform model spend in USD (more than 0, at most 100000); the turn fails AGENT_MODEL_SPEND_CAP_REACHED with scope session once reached. Needs the platform model route; a session on the workspace's own model key is refused AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE"`
+	// Skills are workspace skills the first turn must use (ADR099 D4), at
+	// most 5: Devin's playbook_id.
+	Skills      []SkillInvocation `json:"skills,omitempty" jsonschema:"workspace skills (list_agent_skills) this turn must follow, at most 5, each with optional arguments for $ARGUMENTS"`
+	MaxSpendUSD *float64          `json:"maxSpendUSD,omitempty" jsonschema:"a ceiling on this session's platform model spend in USD (more than 0, at most 100000); the turn fails AGENT_MODEL_SPEND_CAP_REACHED with scope session once reached. Needs the platform model route; a session on the workspace's own model key is refused AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE"`
 }
 
 // SteerRequest is a follow-up prompt turn on an existing session (ADR047 D8
@@ -214,6 +217,8 @@ type SteerRequest struct {
 	OutputSchema   map[string]any `json:"outputSchema,omitempty"`
 	OutputRequired *bool          `json:"outputRequired,omitempty"`
 	SessionSecretsInput
+	// Skills are workspace skills this turn must use (ADR099 D4).
+	Skills []SkillInvocation `json:"skills,omitempty"`
 }
 
 // SessionSecretsInput attaches secrets to a session (ADR098 D1), Devin's
@@ -432,6 +437,8 @@ type TranscriptTurn struct {
 	OutputRequired bool `json:"outputRequired,omitempty"`
 	Result         any  `json:"result,omitempty"`
 	ResultFinal    bool `json:"resultFinal,omitempty"`
+	// Skills are the workspace skills this turn invoked (ADR099 D4); never null.
+	Skills []SkillInvocation `json:"skills"`
 }
 
 // TurnAttachment is one file of a turn: an input it attached, or a file the

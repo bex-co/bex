@@ -44,7 +44,7 @@ func TestPGAgentSessionSecretNames(t *testing.T) {
 	if _, err := pool.Exec(ctx, `UPDATE agent_sessions SET phase='completed' WHERE id=$1`, row.ID); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := s.BeginAgentSessionTurn(ctx, row.ID, "more", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, []string{"LATER", "STRIPE_KEY"}); err != nil {
+	if _, err := s.BeginAgentSessionTurn(ctx, row.ID, "more", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, []string{"LATER", "STRIPE_KEY"}, nil); err != nil {
 		t.Fatal(err)
 	}
 	read, err := s.GetAgentSession(ctx, row.ID)
@@ -58,12 +58,12 @@ func TestPGAgentSessionSecretNames(t *testing.T) {
 	if _, err := pool.Exec(ctx, `UPDATE agent_sessions SET phase='completed' WHERE id=$1`, row.ID); err != nil {
 		t.Fatal(err)
 	}
-	again, err := s.BeginAgentSessionTurn(ctx, row.ID, "again", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil)
+	again, err := s.BeginAgentSessionTurn(ctx, row.ID, "again", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil, nil)
 	if err != nil || !slices.Equal(again.SecretNames, read.SecretNames) {
 		t.Fatalf("names after a turn without secrets = %v / %v", again.SecretNames, err)
 	}
 	// A refused turn attaches nothing.
-	if _, err := s.BeginAgentSessionTurn(ctx, row.ID, "refused", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, []string{"NEVER"}); !errors.Is(err, ErrAgentSessionTurnState) {
+	if _, err := s.BeginAgentSessionTurn(ctx, row.ID, "refused", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, []string{"NEVER"}, nil); !errors.Is(err, ErrAgentSessionTurnState) {
 		t.Fatalf("turn while one is in flight = %v", err)
 	}
 	if read, _ := s.GetAgentSession(ctx, row.ID); slices.Contains(read.SecretNames, "NEVER") {

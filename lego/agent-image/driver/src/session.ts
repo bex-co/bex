@@ -30,6 +30,7 @@ import { describeError } from "./errors.js";
 import { writeJsonAtomic } from "./fs-util.js";
 import type { AgentDriverConfig } from "./config.js";
 import { attachmentBlocks } from "./attachments.js";
+import { withSkillInvocations } from "./skills.js";
 import { platformOverlay } from "./overlay.js";
 import { readResultRecord, resultReminder } from "./submit-result.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
@@ -253,10 +254,14 @@ export async function runHeadlessTurn(
             // same restored-vs-rebuilt hint the live stream carried; the
             // preamble (and a preamble-channel overlay) rides only the ACP
             // prompt, never the stream, so history is never double-rendered.
+            // An invoked skill rides the dispatching turn's prompt only
+            // (ADR099 D4); a later live turn names its own.
             const continuity = resolveContinuity(
               config,
               provider.resume,
-              prompt,
+              turn === config.turn
+                ? withSkillInvocations(prompt, config.skills)
+                : prompt,
               provider.overlayChannel === "preamble" ? overlay : "",
             );
             continuityRung = continuity.rung;

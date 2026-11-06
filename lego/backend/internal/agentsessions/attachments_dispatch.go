@@ -33,12 +33,13 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
-// AttachmentCopier extracts one tar archive at sandboxfiles.AgentAttachmentsPath
-// in a session's own sandbox. open returns the archive for one attempt; the
-// copier may call it again to retry. *sandbox.AgentSessionLifecycle implements
-// it over the gateway's /sandbox-files path.
+// AttachmentCopier extracts one tar archive at path (sandboxfiles.
+// AgentAttachmentsPath or AgentSkillsPath) in a session's own sandbox. open
+// returns the archive for one attempt; the copier may call it again to retry.
+// *sandbox.AgentSessionLifecycle implements it over the gateway's
+// /sandbox-files path.
 type AttachmentCopier interface {
-	UploadAgentSessionFiles(ctx context.Context, workspaceID, sessionID, sandboxID string, open func() io.ReadCloser) error
+	UploadAgentSessionFiles(ctx context.Context, workspaceID, sessionID, sandboxID, path string, open func() io.ReadCloser) error
 }
 
 // attachmentsRoot is where the agent finds the session's input files: the
@@ -89,17 +90,49 @@ func withAttachmentManifest(env map[string]string, current []string, inputs []st
 		}
 	}
 	encoded, _ := json.Marshal(manifest)
+	return withEnv(env, "BEX_AGENT_ATTACHMENTS", string(encoded))
+}
+
+// withEnv returns a copy of a dispatch env with key set; the caller's map is
+// never mutated.
+func withEnv(env map[string]string, key, value string) map[string]string {
 	out := maps.Clone(env)
 	if out == nil {
 		out = map[string]string{}
 	}
-	out["BEX_AGENT_ATTACHMENTS"] = string(encoded)
+	out[key] = value
 	return out
+}
+
+// turnLoader reads a dispatch's turn row at most once, and only when a
+// dispatch helper asks for it.
+func (s *Service) turnLoader(ctx context.Context, sessionID string, turn int) func() (store.AgentSessionTurn, error) {
+	var (
+		loaded bool
+		row    store.AgentSessionTurn
+		err    error
+	)
+	return func() (store.AgentSessionTurn, error) {
+		if loaded {
+			return row, err
+		}
+		loaded = true
+		var turns []store.AgentSessionTurn
+		if turns, err = s.Store.AgentSessionTurns(ctx, sessionID); err != nil {
+			return row, err
+		}
+		for _, t := range turns {
+			if t.Turn == turn {
+				row = t
+			}
+		}
+		return row, nil
+	}
 }
 
 // dispatchAttachments lists the inputs a dispatch must deliver and the ids its
 // turn attached; none when the feature is off.
-func (s *Service) dispatchAttachments(ctx context.Context, sessionID string, turn int) ([]store.AgentAttachment, []string, error) {
+func (s *Service) dispatchAttachments(ctx context.Context, sessionID string, currentTurn func() (store.AgentSessionTurn, error)) ([]store.AgentAttachment, []string, error) {
 	if !s.attachmentsEnabled() {
 		return nil, nil, nil
 	}
@@ -107,17 +140,13 @@ func (s *Service) dispatchAttachments(ctx context.Context, sessionID string, tur
 	if err != nil || len(inputs) == 0 {
 		return nil, nil, err
 	}
-	turns, err := s.Store.AgentSessionTurns(ctx, sessionID)
+	turn, err := currentTurn()
 	if err != nil {
 		return nil, nil, err
 	}
-	var current []string
-	for _, t := range turns {
-		if t.Turn == turn {
-			for _, a := range t.Attachments {
-				current = append(current, a.ID)
-			}
-		}
+	current := make([]string, 0, len(turn.Attachments))
+	for _, a := range turn.Attachments {
+		current = append(current, a.ID)
 	}
 	return inputs, current, nil
 }
@@ -129,7 +158,7 @@ func (s *Service) copyAttachments(ctx context.Context, workspaceID, sessionID, s
 	if len(inputs) == 0 {
 		return nil
 	}
-	return s.AttachmentCopier.UploadAgentSessionFiles(ctx, workspaceID, sessionID, sandboxID, func() io.ReadCloser {
+	return s.AttachmentCopier.UploadAgentSessionFiles(ctx, workspaceID, sessionID, sandboxID, sandboxfiles.AgentAttachmentsPath, func() io.ReadCloser {
 		reader, writer := io.Pipe()
 		go func() { writer.CloseWithError(s.writeAttachmentTar(ctx, writer, inputs)) }()
 		return reader
@@ -146,13 +175,11 @@ func (s *Service) writeAttachmentTar(ctx context.Context, w io.Writer, files []s
 	for _, a := range files {
 		if dir := strconv.Itoa(a.Turn); !dirs[dir] {
 			dirs[dir] = true
-			if err := archive.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: dir + "/",
-				Mode: 0o555, ModTime: a.CreatedAt}); err != nil {
+			if err := tarDir(archive, dir, a.CreatedAt); err != nil {
 				return err
 			}
 		}
-		if err := archive.WriteHeader(&tar.Header{Typeflag: tar.TypeReg, Name: attachmentEntry(a),
-			Mode: 0o444, Size: a.SizeBytes, ModTime: a.CreatedAt}); err != nil {
+		if err := tarFile(archive, attachmentEntry(a), a.SizeBytes, a.CreatedAt); err != nil {
 			return err
 		}
 		body, err := s.Attachments.Get(ctx, a.ObjectKey)
@@ -169,6 +196,17 @@ func (s *Service) writeAttachmentTar(ctx context.Context, w io.Writer, files []s
 		}
 	}
 	return archive.Close()
+}
+
+// tarDir and tarFile write the read-only entries the gateway's extractor
+// accepts (sandboxfiles): a directory before its children, files of an exact
+// size. Attachments and skills share them so the archive format lives here.
+func tarDir(archive *tar.Writer, name string, at time.Time) error {
+	return archive.WriteHeader(&tar.Header{Typeflag: tar.TypeDir, Name: name + "/", Mode: 0o555, ModTime: at})
+}
+
+func tarFile(archive *tar.Writer, name string, size int64, at time.Time) error {
+	return archive.WriteHeader(&tar.Header{Typeflag: tar.TypeReg, Name: name, Mode: 0o444, Size: size, ModTime: at})
 }
 
 // sweepAttachments expires unconfirmed and unattached uploads, then purges the

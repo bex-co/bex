@@ -66,6 +66,7 @@ var byIDResolutions = map[string]byIDResolution{
 	"sandboxes":             {"sandbox", "ScopeByVisibleID", "member-workspace probe of OpenSandbox", []string{"scopeSandbox"}},
 	"agent-sessions":        {"agentsessions", "sessionObject", "OpenFGA check on the session object itself", nil},
 	"agent-secrets":         {"", "", "the path segment is a secret name, not an id: authorized on the exact ownerId workspace (ADR098)", nil},
+	"agent-skills":          {"agentsessions", "ScopeByID", "agent_skills workspace routing read for a skl- id; a name is looked up in ownerId (ADR099)", []string{"scopeSkill"}},
 	"agent-attachments":     {"agentsessions", "ScopeByID", "agent_session_attachments workspace routing read (ADR095)", []string{"scopeAttachment"}},
 	"git":                   {"github", "ScopeByVisibleID", "claim selection / installation routing reads (visible-only: GitHub ids are enumerable)", []string{"scopeSelection", "scopeInstallation"}},
 	"events":                {"events", "ScopeByID", "ServiceEventWorkspaces routing read", []string{"scopeEvent"}},
@@ -260,6 +261,7 @@ var idKindRouting = map[string]struct{ family, why string }{
 	ids.StaticHeader.Prefix():             {"", "a derived rule listed under its static site; no per-rule verb yet"},
 	ids.AgentModelRequest.Prefix():        {"", "gateway-internal usage-report idempotency key, no API"},
 	ids.AgentAttachment.Prefix():          {"agent-attachments", ""},
+	ids.AgentSkill.Prefix():               {"agent-skills", ""},
 	ids.BuildSource.Prefix():              {"", "build-source routes still answer a named 404; w2/m254 t003 adds their by-id family"},
 	ids.Build.Prefix():                    {"", "a build is addressed under its build source"},
 }

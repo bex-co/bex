@@ -434,6 +434,9 @@ var transcriptTurnGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"attachments": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(turnAttachmentGQLType))),
 			Description: "The files this turn attached (ADR095), as recorded when it was accepted.",
 			Resolve:     gqlutil.Field(func(v TranscriptTurn) any { return v.Attachments })},
+		"skills": &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentSessionSkillGQLType))),
+			Description: "The workspace skills this turn invoked (ADR099).",
+			Resolve:     gqlutil.Field(func(v TranscriptTurn) any { return v.Skills })},
 		"turn":                &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.Turn })},
 		"prompt":              &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.Prompt })},
 		"deliveryMode":        &graphql.Field{Type: graphql.NewNonNull(graphql.String), Resolve: gqlutil.Field(func(v TranscriptTurn) any { return v.DeliveryMode })},
@@ -535,7 +538,7 @@ func configArg(args map[string]any) AgentConfig {
 }
 
 func (s *Service) GraphQLQuery() graphql.Fields {
-	return graphql.Fields{
+	fields := graphql.Fields{
 		"agentSessions": &graphql.Field{
 			Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentSessionGQLType))),
 			Args: graphql.FieldConfigArgument{
@@ -667,10 +670,12 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 	}
+	maps.Copy(fields, s.skillQueries())
+	return fields
 }
 
 func (s *Service) GraphQLMutation() graphql.Fields {
-	return graphql.Fields{
+	fields := graphql.Fields{
 		"createAgentSession": &graphql.Field{
 			Type: agentSessionGQLType,
 			Args: graphql.FieldConfigArgument{
@@ -688,13 +693,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"maxSpendUSD":     gqlutil.Arg(graphql.Float),
 				"secretNames":     gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"secrets":         gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSecretGQLInput))),
+				"skills":          gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSkillGQLInput))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				schema, required, err := outputArgs(p.Args)
 				if err != nil {
 					return nil, err
 				}
-				return s.Create(p.Context, CreateRequest{MaxSpendUSD: floatArg(p.Args, "maxSpendUSD"), OutputSchema: schema, OutputRequired: required, OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args)})
+				return s.Create(p.Context, CreateRequest{MaxSpendUSD: floatArg(p.Args, "maxSpendUSD"), OutputSchema: schema, OutputRequired: required, OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args), Skills: skillsArg(p.Args)})
 			},
 		},
 		"steerAgentSession": &graphql.Field{
@@ -708,13 +714,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"outputRequired":  gqlutil.Arg(graphql.Boolean),
 				"secretNames":     gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"secrets":         gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSecretGQLInput))),
+				"skills":          gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSkillGQLInput))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				schema, required, err := outputArgs(p.Args)
 				if err != nil {
 					return nil, err
 				}
-				return s.Steer(p.Context, SteerRequest{OutputSchema: schema, OutputRequired: required, SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args)})
+				return s.Steer(p.Context, SteerRequest{OutputSchema: schema, OutputRequired: required, SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args), Skills: skillsArg(p.Args)})
 			},
 		},
 		"setAgentSecret": &graphql.Field{
@@ -798,4 +805,6 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			},
 		},
 	}
+	maps.Copy(fields, s.skillMutations())
+	return fields
 }

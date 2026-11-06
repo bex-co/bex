@@ -214,13 +214,13 @@ func (b bindingStore) CreateAgentSession(ctx context.Context, in store.AgentSess
 	return out, nil
 }
 
-func (b bindingStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, delivery, phase, status string, binding store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string) (store.AgentSession, error) {
+func (b bindingStore) BeginAgentSessionTurn(ctx context.Context, id, prompt, delivery, phase, status string, binding store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string, skills []store.TurnSkill) (store.AgentSession, error) {
 	row := b.fakeStore.rows[id]
 	snapshot, err := b.rows.bind(row.WorkspaceID, id, row.Turns+1, binding, true)
 	if err != nil {
 		return store.AgentSession{}, err
 	}
-	out, err := b.fakeStore.BeginAgentSessionTurn(ctx, id, prompt, delivery, phase, status, binding, output, secretNames)
+	out, err := b.fakeStore.BeginAgentSessionTurn(ctx, id, prompt, delivery, phase, status, binding, output, secretNames, skills)
 	if err == nil {
 		b.setSnapshot(id, out.Turns, snapshot)
 	}
@@ -244,13 +244,15 @@ func (b bindingStore) setSnapshot(id string, turn int, snapshot []store.TurnAtta
 
 type fakeCopier struct {
 	calls    []map[string]string
+	paths    []string
 	modes    map[string]int64
 	err      error
 	attempts int
 }
 
-func (f *fakeCopier) UploadAgentSessionFiles(_ context.Context, _, _, _ string, open func() io.ReadCloser) error {
+func (f *fakeCopier) UploadAgentSessionFiles(_ context.Context, _, _, _, path string, open func() io.ReadCloser) error {
 	f.attempts++
+	f.paths = append(f.paths, path)
 	archive := open()
 	defer archive.Close()
 	entries := map[string]string{}

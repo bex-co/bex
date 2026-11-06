@@ -21,6 +21,7 @@
 // environment contract, whichever channel carries it (acp.ts).
 
 import type { AttachmentManifest } from "./attachments.js";
+import { skillsSection, type SkillManifest } from "./skills.js";
 import { toolName } from "./mcp-bex.js";
 import { shareFileToolName } from "./share-file.js";
 import { submitResultToolName } from "./submit-result.js";
@@ -39,6 +40,10 @@ export interface OverlayContext {
   deliveryBaseline?: { baseBranch: string };
   networkTier?: string;
   attachments?: AttachmentManifest;
+  skills?: SkillManifest;
+  // profile is the engine's release-profile id; engines with a native skill
+  // loader get a shorter skills index.
+  profile?: string;
   shareUrl?: string;
   // Structured output (ADR094 D5): the turn's JSON Schema text and its Pod-bound
   // result URL. The section appears only when both are set.
@@ -188,6 +193,6 @@ export function platformOverlay(context: OverlayContext): string {
 
 This section comes from bex, the platform hosting this session. It adds to your existing instructions and does not replace them.
 
-${body}${attachmentsSection(context)}${sharingSection(context)}${resultSection(context)}
+${body}${attachmentsSection(context)}${skillsSection(context.skills, context.profile)}${sharingSection(context)}${resultSection(context)}
 `;
 }

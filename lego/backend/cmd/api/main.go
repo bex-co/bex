@@ -810,6 +810,7 @@ func wireControlPlaneFeatures(cfg *Config, deps *api.Deps, base *core.Base, st *
 	deps.JobStore = st             // one-off jobs (Render's /services/{id}/jobs): job CRUD + k8s Job tracking
 	deps.AgentSessionStore = st    // ADR047 D3: durable agent-session lifecycle
 	deps.AgentAttachmentStore = st // ADR095: attachment metadata
+	deps.AgentSkillStore = st      // ADR099: workspace skills
 	// w10/m17: the per-workspace agent environment (network tier, hosts, model).
 	deps.AgentEnvironmentStore = st
 	// ADR091 D5, D10.1: agent-model spend caps + trust tiers.

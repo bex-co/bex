@@ -31,6 +31,14 @@ func lockSubjectMembership(ctx context.Context, tx pgx.Tx, subject string) error
 	return err
 }
 
+// lockAgentSkills serializes a workspace's skill writes, so the count and
+// enabled-bytes caps are checked against a total no concurrent write moves.
+func lockAgentSkills(ctx context.Context, tx pgx.Tx, workspaceID string) error {
+	_, err := tx.Exec(ctx,
+		`SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "agent-skills:"+workspaceID)
+	return err
+}
+
 func refuseDeletingSubject(ctx context.Context, tx pgx.Tx, subject string) error {
 	var pending bool
 	if err := tx.QueryRow(ctx,
