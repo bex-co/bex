@@ -76,20 +76,33 @@ export const Route = createFileRoute("/agents_/$agentSessionId")({
   // bounded name fields — the query still reads the whole session into Apollo's
   // cache, but the router's own dehydrated payload has no business carrying a
   // second copy of a prompt that runs to 100k chars.
-  loader: ({ context, params, cause }) =>
-    loadRouteResource(
-      () =>
-        context.client.query({
+  loader: async ({ context, params, cause }) => {
+    let failed = false;
+    const result = await loadRouteResource(
+      async () => {
+        const answer = await context.client.query({
           query: AgentSessionDocument,
           variables: { id: params.agentSessionId },
           fetchPolicy: titleLoaderFetchPolicy(cause),
           errorPolicy: "all",
-        }),
+        });
+        failed = answer.error != null;
+        return answer;
+      },
       (data) =>
         data?.agentSession?.id
           ? agentSessionNameSource(data.agentSession)
           : null,
-    ),
+    );
+    // A refused read (an unknown or foreign id answers FORBIDDEN) leaves a null
+    // session in Apollo's cache without its error, so a cache-served re-run
+    // read "no error" and titled the tab "Page not found" while the body said
+    // it couldn't load. Only an answer that said NOT_FOUND is not found here
+    // (w4/523).
+    return result.state === "not-found" && !failed
+      ? { state: "error" as const }
+      : result;
+  },
   head: ({ loaderData, match }) =>
     titleHead(
       routeResourceTitle(loaderData, (session) => [
@@ -121,9 +134,17 @@ function AgentSessionDetailPage() {
       <div className="flex min-h-0 flex-1">
         <div className="flex min-w-0 flex-1 flex-col">
           {loading && !session ? <DetailSkeleton /> : null}
-          {!loading && !session && error ? (
+          {/* No session and nothing in flight is a failed read even without
+              an error: the cache keeps a refused read's null session but not
+              its error, and the content area stayed empty until the next
+              poll, ~5 s later (w4/523). */}
+          {!loading && !session ? (
             <LoadErrorState
-              message={mutationErrorMessage(error, t("common.loadErrorRetry"))}
+              message={
+                error
+                  ? mutationErrorMessage(error, t("common.loadErrorRetry"))
+                  : t("common.loadErrorRetry")
+              }
             />
           ) : null}
           {session ? (
