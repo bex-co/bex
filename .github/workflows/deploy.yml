@@ -243,6 +243,10 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
       - id: build_operator
+        # A hung build (stalled registry or package download) must fail inside
+        # the job instead of holding the deploy queue for the 6h job default;
+        # a normal build takes at most ~15 min.
+        timeout-minutes: 45
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: lego
@@ -260,6 +264,7 @@ jobs:
       # ones use in-cluster Service DNS (the dashboard's own pod reaches
       # Kratos/bex-api directly, not back out through the public ingress).
       - id: build_dashboard
+        timeout-minutes: 45
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: dashboard
@@ -279,6 +284,7 @@ jobs:
 
       # --- 1c. build the pinned OpenSandbox lifecycle server image (w3/m35) ---
       - id: build_opensandbox
+        timeout-minutes: 45
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: deploy/opensandbox
@@ -295,6 +301,7 @@ jobs:
       # (w3/m42) and terminal-child-Pod (w5/m72) patches. The reusable envtest
       # workflow above applies both to this exact pin before any image is built.
       - id: build_opensandbox_controller
+        timeout-minutes: 45
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: deploy/opensandbox
@@ -309,6 +316,7 @@ jobs:
 
       # --- 1d. build the ADR047 agent sandbox template image (w3/m37) ---
       - id: build_agent_sandbox
+        timeout-minutes: 45
         uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
         with:
           context: lego
