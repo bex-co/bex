@@ -5,6 +5,8 @@ root=$(cd "$(dirname "$0")/.." && pwd)
 tmp=$(mktemp -d)
 trap 'rm -rf "$tmp"' EXIT
 fail() { echo "FAIL: $*" >&2; exit 1; }
+# The workflow sets these for the real probe; each case below sets its own.
+unset RUNNER_LINK_MIN_MBPS RUNNER_LINK_MAX_TIME RUNNER_LINK_TARGETS DOCKER_REGISTRY_MIRROR
 
 # The stub answers by target URL: CURL_<host-word> = "<exit> <http> <bytes/s>".
 cat >"$tmp/curl" <<'STUB'
@@ -13,7 +15,7 @@ url="${!#}"
 case "$url" in
   *github*) spec="${CURL_GITHUB:-0 200 20000000}" ;;
   *cloudflare*) spec="${CURL_CLOUDFLARE:-0 200 20000000}" ;;
-  *mirror*) spec="0 200 0" ;;
+  *registry-mirror*) printf '200'; exit 0 ;;
 esac
 read -r rc code speed <<<"$spec"
 printf '%s %s 0.05' "$code" "$speed"
@@ -36,6 +38,6 @@ CURL_GITHUB="7 000 0" CURL_CLOUDFLARE="6 000 0" expect 2 "no target answered" "n
 CURL_GITHUB="0 404 9000000" expect 1 "github unreachable (curl exit 0, HTTP 404)" "an HTTP error is not a measurement"
 RUNNER_LINK_MIN_MBPS=25 expect 1 "slow" "the threshold is configurable"
 RUNNER_LINK_MIN_MBPS=20 expect 0 "ok (>= 20 MB/s)" "exactly the threshold is ok"
-DOCKER_REGISTRY_MIRROR=http://registry-mirror-ci:5000 expect 0 "mirror http://registry-mirror-ci:5000 HTTP 200" "the mirror is reported"
+DOCKER_REGISTRY_MIRROR=http://registry-mirror-ci:5000 expect 0 "mirror http://registry-mirror-ci:5000 HTTP 200 (reachability only)" "the mirror is reported"
 RUNNER_LINK_MIN_MBPS=3x expect 2 "must be a number" "a malformed threshold is unusable, not ok"
 echo "PASS: runner-link-probe"
