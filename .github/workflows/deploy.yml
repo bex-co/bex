@@ -323,10 +323,12 @@ jobs:
         timeout-minutes: 15
         run: python3 scripts/install-syft.py
       - name: sign images + attest SBOM
-        # Five images × (sign + SBOM + attest) finish in minutes; without a
-        # bound one stalled sigstore/registry call held the production deploy
-        # group for the 6 h job default (run 41942865946, 2026-11-05).
-        timeout-minutes: 30
+        # Bounded so a stalled sigstore/registry call cannot hold the production
+        # deploy group for the 6 h job default (run 41942865946, 2026-11-05).
+        # The budget is sized for syft, which legitimately takes ~5 min
+        # (operator) and ~9 min (agent sandbox) on this runner: 8b68cbcf1 gave
+        # every call the same 300 s and failed every SBOM since (w9/m173).
+        timeout-minutes: 45
         env:
           # One content-addressed ref per line. The loop signs each image keyless
           # and records an SPDX SBOM as an in-toto attestation (cosign attest —
@@ -338,26 +340,61 @@ jobs:
             ${{ env.OPENSANDBOX_IMAGE }}@${{ steps.build_opensandbox.outputs.digest }}
             ${{ env.OPENSANDBOX_CONTROLLER_IMAGE }}@${{ steps.build_opensandbox_controller.outputs.digest }}
             ${{ env.AGENT_SANDBOX_IMAGE }}@${{ steps.build_agent_sandbox.outputs.digest }}
+          ATTESTER_IDENTITY: ^https://github\.com/${{ github.repository }}/\.github/workflows/deploy\.yml@
         run: |
           # --oidc-provider=github-actions: never fall back to the interactive
           # device flow. On 2026-10-04 one transient OIDC fetch error made
           # cosign print a sigstore device code and wait 300 s for a browser
           # nobody can open, failing an otherwise green hour-long run. Fail
           # fast and retry instead; re-signing a digest only adds a signature.
+          # retry LIMIT ATTEMPTS CMD…: a hung call is a failed attempt, not a
+          # wait for the job timeout.
           retry() {
-            local attempt
-            for attempt in 1 2 3; do
-              # A hung call is a failed attempt, not a wait for the job timeout.
-              timeout 300 "$@" && return 0
+            local limit="$1" attempts="$2" attempt
+            shift 2
+            for attempt in $(seq "$attempts"); do
+              timeout "$limit" "$@" && return 0
               echo "::warning::attempt $attempt failed: $*"
-              [ "$attempt" -lt 3 ] && sleep $((attempt * 15))
+              [ "$attempt" -lt "$attempts" ] && sleep $((attempt * 15))
             done
             return 1
           }
+          # A digest that already carries this workflow's SBOM attestation (a
+          # re-run of the same build) needs no new SBOM.
+          attested() {
+            timeout 120 cosign verify-attestation --type spdxjson \
+              --certificate-identity-regexp "$ATTESTER_IDENTITY" \
+              --certificate-oidc-issuer https://token.actions.githubusercontent.com \
+              "$1" >/dev/null 2>&1
+          }
+          todo=()
           for ref in $REFS; do
-            retry cosign sign --yes --oidc-provider=github-actions "$ref"
-            retry syft "$ref" -o spdx-json=/tmp/sbom.spdx.json
-            retry cosign attest --yes --oidc-provider=github-actions --type spdxjson --predicate /tmp/sbom.spdx.json "$ref"
+            retry 300 3 cosign sign --yes --oidc-provider=github-actions "$ref"
+            if attested "$ref"; then
+              echo "SBOM attestation already present for $ref; skipping"
+            else
+              todo+=("$ref")
+            fi
+          done
+          # SBOMs run two at a time: the slowest image sets the wall clock
+          # instead of the sum, inside the runner's CPU and PID caps.
+          sbom() { retry 1200 2 syft "$1" -o "spdx-json=/tmp/sbom-$2.spdx.json"; }
+          pids=()
+          for i in "${!todo[@]}"; do
+            if [ "${#pids[@]}" -ge 2 ]; then
+              wait -n || { echo "::error::an SBOM run failed"; exit 1; }
+              live=()
+              for pid in "${pids[@]}"; do kill -0 "$pid" 2>/dev/null && live+=("$pid"); done
+              pids=("${live[@]}")
+            fi
+            sbom "${todo[$i]}" "$i" & pids+=("$!")
+          done
+          for pid in "${pids[@]}"; do
+            wait "$pid" || { echo "::error::an SBOM run failed"; exit 1; }
+          done
+          for i in "${!todo[@]}"; do
+            retry 300 3 cosign attest --yes --oidc-provider=github-actions --type spdxjson \
+              --predicate "/tmp/sbom-$i.spdx.json" "${todo[$i]}"
           done
 
       # --- 1f. CVE scan: CRITICAL fails CI, HIGH warns (w7/m10 t001) ---
