@@ -1,6 +1,6 @@
 # w6 · m158 — Platform build in minutes on the existing runners: native compile, cached and parallel image builds
 
-**Worker:** worker6 **Goal:** the `build` job of `deploy.yml` finishes in ≤ 30 min (from 60–187 min) on the existing self-hosted runners, so a green main reaches production in about an hour. **Status:** todo (t001, t002, t004 done)
+**Worker:** worker6 **Goal:** the `build` job of `deploy.yml` finishes in ≤ 30 min (from 60–187 min) on the existing self-hosted runners, so a green main reaches production in about an hour. **Status:** blocked (t001, t002, t004 done; t003 part 1 done; t005 waits for a normal host link)
 
 ## Tasks (in order)
 
@@ -53,3 +53,9 @@
 - **Finding:** at ~08:20Z the host's link delivered ~1 MB/s in total (GitHub release download 68 KB/s, Cloudflare speed test 160 KB/s), shared by every runner. `bex-ci` sat 7/7 busy at ~0 % CPU on `git clone` (32 min), `docker pull valkey` and a GitHub release `curl` (10 min); the deploy slot holder's 1-minute `check-supersession` waited 49 min for a runner (the fixed watchdog reported it). Build optimisations cannot show while this holds; t005's measurement waits for a normal link.
 - **block-eden-mono `47827d2027`:** each pool gets a Go module cache volume (`/home/docker/go/pkg/mod`) and its own `registry:3` pull-through Docker Hub cache (`registry-mirror-<pool>`, push refused); the nested Docker Engine starts with `--registry-mirror`. Verified on a replaced `bex-build` runner: `alpine:3.20` was served and cached by `registry-mirror-build`. All runners are being replaced idle-only.
 - **Shipped in this run:** t003 part 1 `056dc0796` (sign/SBOM/attest concurrently; also fixes an SBOM failure the old pool could lose). Part 2, building the five images concurrently, waits for t005's numbers.
+
+## BLOCKED — 2026-11-06: t005 needs the host's internet link back to normal
+
+- **Gate (user / host network):** the runner host's link has delivered ~1 MB/s in total since at least 08:20Z (GitHub 65 KB/s, Cloudflare 157 KB/s at 09:10Z, re-measured). Every CI job is network-bound, so a deploy's timings measure the link, not t001–t004. **Release condition:** a `curl` of `https://speed.cloudflare.com/__down?bytes=30000000` from the host sustains ≥ 10 MB/s, or the user confirms the link is fixed.
+- **Done:** t001, t002, t004; t003 part 1 (sign/SBOM/attest concurrently). Runner caches (Go modules, per-pool Docker Hub mirror) are live and cut what each job downloads.
+- **Worker next:** once the link is normal, take t005 on the first deploy run whose build ran (`python3 scripts/deploy_latency.py` and per-step job timings), compare with 61.6 / 136.0 / 186.9 min, then decide t003 part 2 (concurrent image builds) from where the time goes, then t006–t008.
