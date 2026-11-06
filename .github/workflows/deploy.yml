@@ -191,7 +191,10 @@ jobs:
       contents: read
       packages: write
       id-token: write
-    needs: [test-backend, test-operator, test-dashboard, test-opensandbox-controller, secret-scan, check-supersession]
+    # Builds alongside the test suites (w6/m158 t004): only the deploy job,
+    # which pins, waits for them, so their 10-30 min leave the critical path.
+    # The secret scan still gates the build: these images are public.
+    needs: [secret-scan, check-supersession]
     # A run superseded before its build starts is skipped here (neutral, no
     # build). A run superseded DURING its build is caught by the write-back guard
     # in the deploy job (it concludes neutral instead). w1/m59.
@@ -596,7 +599,8 @@ jobs:
     permissions:
       contents: write
       packages: write
-    needs: [build]
+    # Every test suite must pass before a pin; the build no longer waits for them.
+    needs: [build, test-backend, test-operator, test-dashboard, test-opensandbox-controller]
     if: github.ref == 'refs/heads/main'
     runs-on: [self-hosted, Linux, ARM64, bex-production]
     environment: production-deploy
