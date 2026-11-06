@@ -77,11 +77,38 @@ describe("StructuredResultCallout", () => {
     expect(screen.queryByText("Draft result")).not.toBeInTheDocument();
   });
 
-  it("does not show a final turn value as a draft before outcome catches up", () => {
+  // 076 live check: a list read carries no outcome.result, so a succeeded
+  // session's final result must come from its transcript turn.
+  it("shows the turn's final result when the cached outcome lacks it", () => {
     turnResult.mockReturnValue({ turn: 1, result: '{"n":1}', final: true });
-    const { container } = render(
-      <StructuredResultCallout session={agentSessionView()} />,
+    render(
+      <StructuredResultCallout
+        session={agentSessionView({
+          phase: "completed",
+          outcome: withResult(null),
+        })}
+      />,
     );
-    expect(container).toBeEmptyDOMElement();
+    const block = screen.getByTestId("agent-session-result");
+    expect(block).toHaveAttribute("data-result-state", "final");
+    expect(screen.getByText("Result")).toBeInTheDocument();
+    expect(screen.queryByText(/Not final yet/)).not.toBeInTheDocument();
+    expect(block.querySelector("pre")?.textContent).toBe('{\n  "n": 1\n}');
+  });
+
+  it("keeps a non-final value a draft after the turn ends", () => {
+    turnResult.mockReturnValue({ turn: 1, result: '{"n":1}', final: false });
+    render(
+      <StructuredResultCallout
+        session={agentSessionView({
+          phase: "completed",
+          outcome: withResult(null),
+        })}
+      />,
+    );
+    expect(screen.getByTestId("agent-session-result")).toHaveAttribute(
+      "data-result-state",
+      "draft",
+    );
   });
 });

@@ -10,9 +10,9 @@ import type { AgentSessionView } from "@/features/agent-sessions/types";
 /**
  * The turn's schema-validated structured result (ADR094 D5, w21/003) as a
  * collapsible JSON block under the conversation. The final value is
- * `outcome.result`; while the turn runs (or if it ended without declaring one
- * final) the agent's latest saved value shows as a labelled "draft" read from
- * the transcript turn. Renders nothing for a free-form turn, so like the
+ * `outcome.result`, or the transcript turn's result once the agent declared it
+ * final; while the turn runs (or if it ended without declaring one final) the
+ * agent's latest saved value shows as a labelled "draft". Renders nothing for a free-form turn, so like the
  * failure callout it adds no region to the loading skeleton.
  */
 export function StructuredResultCallout({
@@ -21,12 +21,14 @@ export function StructuredResultCallout({
   session: AgentSessionView;
 }) {
   const { t } = useTranslations();
-  const finalResult = session.outcome?.result ?? null;
-  const draft = useAgentSessionTurnResult(session.id, !session.isTerminal);
-  // outcome.result describes the latest turn only; a stale final value from an
-  // earlier turn never reaches here because the server resets it per turn.
+  const turnResult = useAgentSessionTurnResult(session.id, !session.isTerminal);
+  // outcome.result is computed only on single-session reads, so the latest
+  // turn's own final result stands in when the cached outcome lacks it. Both
+  // describe the latest turn only: the server resets them per turn.
+  const finalResult =
+    session.outcome?.result ?? (turnResult?.final ? turnResult.result : null);
   const isDraft = finalResult == null;
-  const text = finalResult ?? (draft && !draft.final ? draft.result : null);
+  const text = finalResult ?? turnResult?.result ?? null;
   if (text == null) return null;
   const json = formatResultJson(text);
 

@@ -18,5 +18,39 @@ export const apolloCacheConfig: InMemoryCacheConfig = {
     // One notification policy per workspace (w3/m271): keyed by its owner so a
     // save refreshes the settings card and every service page's default label.
     OwnerNotificationSettings: { keyFields: ["ownerId"] },
+    AgentSession: {
+      fields: { outcome: { merge: mergeAgentSessionOutcome } },
+    },
   },
 };
+
+type OutcomeRecord = Record<string, unknown> | null | undefined;
+
+// Only a single-session read fills an outcome's costly fields (ADR094: the
+// final summary, shared files, structured result and cost). A list poll of the
+// same session then writes them as null, which would blank a detail page that
+// already showed them. While the turn and state are unchanged those fields
+// cannot have been cleared server-side, so a null incoming value keeps the
+// existing one; any change of turn or state takes the incoming outcome whole.
+const outcomeDetailFields = ["summary", "files", "result", "cost"] as const;
+
+export function mergeAgentSessionOutcome(
+  existing: OutcomeRecord,
+  incoming: OutcomeRecord,
+): OutcomeRecord {
+  if (
+    !existing ||
+    !incoming ||
+    existing.turn !== incoming.turn ||
+    existing.state !== incoming.state
+  ) {
+    return incoming;
+  }
+  const merged = { ...incoming };
+  for (const field of outcomeDetailFields) {
+    if (merged[field] == null && existing[field] != null) {
+      merged[field] = existing[field];
+    }
+  }
+  return merged;
+}

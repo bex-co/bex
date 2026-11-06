@@ -14,9 +14,10 @@ export interface AgentSessionTurnResult {
 }
 
 /**
- * The latest turn's in-flight structured result, for the "draft" block. Only a
- * non-final value matters here (the final one rides `outcome.result`), so the
- * read polls while the session is live and settles to one read once terminal.
+ * The latest turn's structured result: the "draft" block while it is not final,
+ * and the final value when the cached `outcome.result` lacks it (a list read
+ * carries none). The read polls while the session is live and settles to one
+ * read once terminal.
  * One more read lands when the session settles, so the draft shown is the one
  * the turn ended with. Parts are never fetched.
  */
