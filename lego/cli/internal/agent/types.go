@@ -35,6 +35,9 @@ const (
 	stateCanceled   = "canceled"
 )
 
+// sessionStates are the states `bex agent list --state` filters on.
+var sessionStates = []string{stateWorking, stateNeedsInput, stateSucceeded, stateFailed, stateCanceled}
+
 type session struct {
 	ID                string      `json:"id"`
 	OwnerID           string      `json:"ownerId"`
@@ -43,9 +46,7 @@ type session struct {
 	Title             string      `json:"title"`
 	Tags              []string    `json:"tags"`
 	AgentConfig       agentConfig `json:"agentConfig"`
-	Phase             string      `json:"phase"`
 	State             string      `json:"state"`
-	Steerable         bool        `json:"steerable"`
 	Turns             int         `json:"turns"`
 	PRURL             string      `json:"prUrl"`
 	FailureReason     string      `json:"failureReason"`
@@ -62,8 +63,6 @@ type agentConfig struct {
 }
 
 type outcome struct {
-	State             string           `json:"state"`
-	Steerable         bool             `json:"steerable"`
 	Turn              int              `json:"turn"`
 	Summary           string           `json:"summary"`
 	PullRequest       *pullRequest     `json:"pullRequest"`
@@ -84,10 +83,9 @@ type cost struct {
 }
 
 type turnAttachment struct {
-	ID        string `json:"id"`
-	Name      string `json:"name"`
-	MediaType string `json:"mediaType"`
-	Size      int64  `json:"size"`
+	ID   string `json:"id"`
+	Name string `json:"name"`
+	Size int64  `json:"size"`
 }
 
 // attachment is an uploaded input or an agent-shared output (ADR095).
@@ -97,7 +95,6 @@ type attachment struct {
 	Turn        int    `json:"turn"`
 	Direction   string `json:"direction"`
 	Name        string `json:"name"`
-	MediaType   string `json:"mediaType"`
 	Size        int64  `json:"size"`
 	SHA256      string `json:"sha256"`
 	DownloadURL string `json:"downloadUrl"`
@@ -152,7 +149,6 @@ type transcriptPart struct {
 	raw json.RawMessage
 }
 
-// UnmarshalJSON keeps the row's own bytes beside the decoded fields.
 func (p *transcriptPart) UnmarshalJSON(data []byte) error {
 	type fields transcriptPart
 	var f fields

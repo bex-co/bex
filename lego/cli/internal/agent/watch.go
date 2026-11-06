@@ -19,18 +19,21 @@ package agent
 import (
 	"context"
 	"errors"
+	"io"
 	"net"
+	"net/url"
 	"time"
+
+	"github.com/render-oss/cli/pkg/command"
 )
 
 // Poll pacing. REST has no blocking wait (wait_agent_sessions is MCP-only,
 // ADR094 D6), so the CLI reads the session itself: quickly at first, when a
-// short turn is likeliest to settle, then backing off.
+// short turn is likeliest to settle, then backing off. A follow resets to
+// pollFirst whenever new transcript parts arrive.
 const (
 	pollFirst = 2 * time.Second
 	pollMax   = 15 * time.Second
-	// followPoll is the transcript cadence while output is streaming.
-	followPoll = 2 * time.Second
 	// transientLimit is how many consecutive failed reads a wait survives: a
 	// rolling bex-api or a dropped connection should not fail a CI job whose
 	// session is still running.
@@ -46,26 +49,64 @@ func nextPoll(d time.Duration) time.Duration {
 
 func settled(s session) bool { return s.State != stateWorking }
 
-// transient reports a read failure worth retrying while waiting.
+// errInterrupted ends a wait the user (Ctrl-C) or the CI runner (SIGTERM)
+// stopped. It is not --timeout: that is a deadline, exit 124.
+var errInterrupted = command.NewExitError(exitInterrupted, errors.New("interrupted"))
+
+// stopped is why ctx ended a wait: true for the --timeout deadline, which is
+// a timedOut result; otherwise the caller returns errInterrupted.
+func stopped(ctx context.Context) bool { return errors.Is(ctx.Err(), context.DeadlineExceeded) }
+
+// transient reports a failure worth repeating the request for: a rate limit,
+// a gateway hiccup, or the connection failing. The http client wraps every
+// failure in *url.Error, which itself satisfies net.Error, so the cause is
+// what decides; a malformed URL or a failed token refresh is not transient.
 func transient(err error) bool {
 	var apiErr *apiError
 	if errors.As(err, &apiErr) {
 		return apiErr.retryable()
 	}
+	var urlErr *url.Error
+	if errors.As(err, &urlErr) {
+		err = urlErr.Err
+	}
 	var netErr net.Error
-	return errors.As(err, &netErr) || errors.Is(err, context.DeadlineExceeded)
+	return errors.As(err, &netErr) || errors.Is(err, context.DeadlineExceeded) ||
+		errors.Is(err, io.EOF) || errors.Is(err, io.ErrUnexpectedEOF)
+}
+
+// poller counts consecutive transient read failures across reads and keeps
+// the last one's Retry-After for the next sleep.
+type poller struct {
+	failures int
+	backoff  time.Duration
+}
+
+// tolerate reports whether err is a transient failure the wait survives.
+func (p *poller) tolerate(ctx context.Context, err error) bool {
+	if ctx.Err() != nil || !transient(err) || p.failures >= transientLimit {
+		return false
+	}
+	p.failures++
+	p.backoff = retryAfter(err, 0)
+	return true
+}
+
+// sleep waits at least d, longer when the last failure asked for it.
+func (p *poller) sleep(ctx context.Context, a *api, d time.Duration) error {
+	d, p.backoff = max(d, p.backoff), 0
+	return a.sleep(ctx, d)
 }
 
 // readSession is a session read that tolerates transientLimit consecutive
-// transient failures; failures counts them across calls.
-func (a *api) readSession(ctx context.Context, id string, failures *int) (session, []byte, bool, error) {
+// transient failures: ok is false for a tolerated one.
+func (a *api) readSession(ctx context.Context, id string, p *poller) (session, []byte, bool, error) {
 	s, raw, err := a.session(ctx, id)
 	if err == nil {
-		*failures = 0
+		p.failures = 0
 		return s, raw, true, nil
 	}
-	if ctx.Err() == nil && transient(err) && *failures < transientLimit {
-		*failures++
+	if p.tolerate(ctx, err) {
 		return session{}, nil, false, nil
 	}
 	return session{}, nil, false, err
@@ -83,8 +124,14 @@ type waitResult struct {
 func (a *api) wait(ctx context.Context, ids []string, first bool) (waitResult, error) {
 	sessions := make([]session, len(ids))
 	raws := make([][]byte, len(ids))
-	failures := 0
+	var p poller
 	delay := pollFirst
+	end := func() (waitResult, error) {
+		if stopped(ctx) {
+			return collect(sessions, raws, true), nil
+		}
+		return waitResult{}, errInterrupted
+	}
 	for {
 		done := 0
 		for i, id := range ids {
@@ -92,10 +139,10 @@ func (a *api) wait(ctx context.Context, ids []string, first bool) (waitResult, e
 				done++
 				continue
 			}
-			s, raw, ok, err := a.readSession(ctx, id, &failures)
+			s, raw, ok, err := a.readSession(ctx, id, &p)
 			if err != nil {
 				if ctx.Err() != nil {
-					return a.finish(ids, sessions, raws), nil
+					return end()
 				}
 				return waitResult{}, err
 			}
@@ -107,19 +154,19 @@ func (a *api) wait(ctx context.Context, ids []string, first bool) (waitResult, e
 			}
 		}
 		if done == len(ids) || (first && done > 0) {
-			return waitResult{sessions: sessions, raws: raws}, nil
+			return collect(sessions, raws, false), nil
 		}
-		if err := a.sleep(ctx, delay); err != nil {
-			return a.finish(ids, sessions, raws), nil
+		if err := p.sleep(ctx, a, delay); err != nil {
+			return end()
 		}
 		delay = nextPoll(delay)
 	}
 }
 
-// finish is a timed-out wait; a session never read is left out.
-func (a *api) finish(ids []string, sessions []session, raws [][]byte) waitResult {
-	out := waitResult{timedOut: true}
-	for i := range ids {
+// collect is the sessions read so far; one never read is left out.
+func collect(sessions []session, raws [][]byte, timedOut bool) waitResult {
+	out := waitResult{timedOut: timedOut}
+	for i := range raws {
 		if raws[i] != nil {
 			out.sessions = append(out.sessions, sessions[i])
 			out.raws = append(out.raws, raws[i])
@@ -130,48 +177,41 @@ func (a *api) finish(ids []string, sessions []session, raws [][]byte) waitResult
 
 // follow streams the transcript of id from fromTurn on into p until the
 // session settles, then returns its final read. A deadline on ctx ends it
-// as timedOut.
+// as timedOut. While the agent is quiet, polling backs off to pollMax.
 func (a *api) follow(ctx context.Context, id string, fromTurn int, p *partPrinter) (waitResult, error) {
 	afterSeq := int64(-1)
-	failures := 0
-	var last session
-	var lastRaw []byte
-	drain := func() (int, error) {
-		n := 0
-		for {
-			page, err := a.transcript(ctx, id, afterSeq)
-			if err != nil {
-				return n, err
-			}
-			p.turns(page.Turns)
-			for _, part := range page.Parts {
-				if part.Turn >= fromTurn {
-					p.add(part)
-				}
-			}
-			n += len(page.Parts)
-			if len(page.Parts) == 0 || page.NextAfterSeq <= afterSeq {
-				return n, nil
-			}
-			afterSeq = page.NextAfterSeq
+	var (
+		poll    poller
+		last    session
+		lastRaw []byte
+	)
+	end := func() (waitResult, error) {
+		if !stopped(ctx) {
+			return waitResult{}, errInterrupted
 		}
+		if lastRaw == nil {
+			return waitResult{timedOut: true}, nil
+		}
+		return waitResult{sessions: []session{last}, raws: [][]byte{lastRaw}, timedOut: true}, nil
 	}
+	delay := pollFirst
 	for {
-		n, err := drain()
+		n, err := a.drain(ctx, id, &afterSeq, fromTurn, p)
 		if err != nil {
 			if ctx.Err() != nil {
-				return a.timedOutFollow(last, lastRaw), nil
+				return end()
 			}
-			if !transient(err) || failures >= transientLimit {
+			if !poll.tolerate(ctx, err) {
 				return waitResult{}, err
 			}
-			failures++
 		}
-		if n == 0 {
-			s, raw, ok, err := a.readSession(ctx, id, &failures)
+		if n > 0 {
+			delay = pollFirst
+		} else {
+			s, raw, ok, err := a.readSession(ctx, id, &poll)
 			if err != nil {
 				if ctx.Err() != nil {
-					return a.timedOutFollow(last, lastRaw), nil
+					return end()
 				}
 				return waitResult{}, err
 			}
@@ -180,7 +220,7 @@ func (a *api) follow(ctx context.Context, id string, fromTurn int, p *partPrinte
 				if settled(s) {
 					// One more pass: the turn's last parts may land with the
 					// state change.
-					if _, err := drain(); err != nil && ctx.Err() == nil {
+					if _, err := a.drain(ctx, id, &afterSeq, fromTurn, p); err != nil && ctx.Err() == nil {
 						return waitResult{}, err
 					}
 					p.flush()
@@ -188,15 +228,11 @@ func (a *api) follow(ctx context.Context, id string, fromTurn int, p *partPrinte
 				}
 			}
 		}
-		if err := a.sleep(ctx, followPoll); err != nil {
-			return a.timedOutFollow(last, lastRaw), nil
+		if err := poll.sleep(ctx, a, delay); err != nil {
+			return end()
+		}
+		if n == 0 {
+			delay = nextPoll(delay)
 		}
 	}
-}
-
-func (a *api) timedOutFollow(last session, raw []byte) waitResult {
-	if raw == nil {
-		return waitResult{timedOut: true}
-	}
-	return waitResult{sessions: []session{last}, raws: [][]byte{raw}, timedOut: true}
 }

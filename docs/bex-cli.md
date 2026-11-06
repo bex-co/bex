@@ -161,11 +161,11 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 | `bex agent get <ags-id>` | Show a session and its outcome: state, summary, PR, shared files, result, model cost. |
 | `bex agent list` | List the workspace's sessions (`--state`, `--tag`, `--repo`, `--archived`, `--limit`, `--cursor`). |
 | `bex agent logs <ags-id>` | Print the transcript: the agent's messages and one line per tool call (`--turn N`, `--reasoning`; `-o json` prints one transcript row per line). `--follow` streams until the turn ends. |
-| `bex agent files <ags-id>` | List the files the agent shared (`--direction input` or `all` for the attached ones; `--turn N`). `--download DIR` saves them, checks each SHA-256, and never overwrites without `--force`. |
+| `bex agent files <ags-id>` | List the files the agent shared (`--direction input` or `all` for the attached ones; `--turn N`). `--download DIR` saves them, checks each SHA-256, never overwrites without `--force`, asks for a new link when a 15-minute download link has expired, and still lists the files that landed when one fails. |
 | `bex agent cancel <ags-id>` | Stop the running turn and close the session. |
 | `bex agent open <ags-id>` | Open the running sandbox in bex desktop (like `bex edit ags-…`), or else print and open the session's dashboard page (`--dashboard` forces it). |
 
-- **Waiting.** `run` and `send` return as soon as the turn starts. `--wait` polls until it ends; `--follow` streams the transcript while it runs. `--timeout 30m` bounds either one. REST has no blocking wait (`wait_agent_sessions` is MCP-only), so the CLI polls the session with backoff (2 s rising to 15 s) and survives up to five consecutive transient failures (a gateway 5xx or a dropped connection).
+- **Waiting.** `run` and `send` return as soon as the turn starts. `--wait` polls until it ends; `--follow` streams the transcript while it runs. `--timeout 30m` bounds either one. REST has no blocking wait (`wait_agent_sessions` is MCP-only), so the CLI polls the session with backoff (2 s rising to 15 s; `--follow` backs off the same way while the agent is quiet) and survives up to five consecutive transient failures (a 429, a gateway 5xx or a dropped connection), waiting at least as long as a `Retry-After` asks.
 - **Exit codes.** These apply to `run`/`send` with `--wait` or `--follow`, to `wait`, and to `logs --follow`. With several sessions, a failure wins over a cancel, which wins over needs-input. A plain `get` always exits 0.
 
   | Code  | Meaning                                                      |
@@ -177,9 +177,10 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
   | `4`   | the session was canceled                                     |
   | `5`   | the agent needs input; reply with `bex agent send`           |
   | `124` | `--timeout` elapsed while the session was still working      |
+  | `130` | interrupted (Ctrl-C or SIGTERM)                              |
 
 - **Output.** `-o json` (or `yaml`) prints the API's own answer on stdout: the session view, a JSON array for several sessions or for `files`. While `--follow` streams, the transcript goes to stderr so stdout stays parseable.
-- **Idempotent create.** Each `run` sends one `Idempotency-Key` and repeats the create, with the same key, after a transport error or a gateway 5xx. A retry can therefore never start a second session. Pass `--idempotency-key` to make re-running the whole command safe as well, for example keyed on the CI run id.
+- **Idempotent create.** Each `run` sends one `Idempotency-Key` and repeats the create, with the same key, after a dropped connection, a 429 or a gateway 5xx. A retry can therefore never start a second session. Pass `--idempotency-key` to make re-running the whole command safe as well, for example keyed on the CI run id.
 
 ```bash
 # In CI: fix a failure, wait for the outcome, and keep the agent's report.

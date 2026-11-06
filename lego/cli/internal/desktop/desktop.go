@@ -137,9 +137,15 @@ func Available() bool {
 }
 
 // OpenSession is `bex edit <ags-id>`: it replaces this process with the
-// launcher opening the session sandbox's /workspace over SSH.
-func OpenSession(ctx context.Context, id string, beforeExec func()) error {
-	return run(ctx, osSystem(), []string{id}, beforeExec)
+// launcher opening the session sandbox's /workspace over SSH. A caller that
+// already read the session passes its sshAddress so it is not read again;
+// "" looks it up.
+func OpenSession(ctx context.Context, id, sshAddress string, beforeExec func()) error {
+	sys := osSystem()
+	if sshAddress != "" {
+		sys.session = func(context.Context, string) (string, error) { return sshAddress, nil }
+	}
+	return run(ctx, sys, []string{id}, beforeExec)
 }
 
 // run resolves the launcher and any session target, then replaces this

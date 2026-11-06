@@ -91,11 +91,13 @@ func sleepCtx(ctx context.Context, d time.Duration) error {
 	}
 }
 
-// apiError is a non-2xx answer in bex's error envelope.
+// apiError is a non-2xx answer in bex's error envelope. RetryAfter is the
+// answer's Retry-After, when it named a delay in seconds.
 type apiError struct {
-	Status  int
-	Code    string
-	Message string
+	Status     int
+	Code       string
+	Message    string
+	RetryAfter time.Duration
 }
 
 func (e *apiError) Error() string {
@@ -109,12 +111,26 @@ func (e *apiError) Error() string {
 	return fmt.Sprintf("%d %s", e.Status, text)
 }
 
-// retryable is a gateway hiccup worth repeating an idempotent request for.
+// retryable is a rate limit or a gateway hiccup worth repeating an
+// idempotent request for.
 func (e *apiError) retryable() bool {
-	return e.Status == http.StatusBadGateway || e.Status == http.StatusServiceUnavailable || e.Status == http.StatusGatewayTimeout
+	switch e.Status {
+	case http.StatusTooManyRequests, http.StatusBadGateway, http.StatusServiceUnavailable, http.StatusGatewayTimeout:
+		return true
+	}
+	return false
 }
 
-func decodeAPIError(status int, body []byte) error {
+// retryAfter is how long err asks a retry to wait, at least d.
+func retryAfter(err error, d time.Duration) time.Duration {
+	var apiErr *apiError
+	if errors.As(err, &apiErr) && apiErr.RetryAfter > d {
+		return apiErr.RetryAfter
+	}
+	return d
+}
+
+func decodeAPIError(status int, body []byte) *apiError {
 	var envelope struct {
 		Message string `json:"message"`
 		Error   string `json:"error"`
@@ -139,16 +155,21 @@ type request struct {
 	length      int64
 	contentType string
 	header      http.Header
+	// stream marks an upload, bounded only by the caller's context rather
+	// than by requestTimeout.
+	stream bool
 }
 
 // requestTimeout bounds one JSON exchange. The upstream client sets none, and
-// a stalled poll must not hold a CI job until its own timeout. Uploads stream
-// up to the attachment cap and are bounded only by the caller's context.
+// a stalled poll must not hold a CI job until its own timeout.
 const requestTimeout = 2 * time.Minute
 
-// do sends r and returns the response body of a 2xx answer.
+// errResponseTooLarge refuses an answer over maxResponseBytes rather than
+// decoding a truncated one.
+var errResponseTooLarge = fmt.Errorf("the API answer is larger than %d MiB", maxResponseBytes>>20)
+
 func (a *api) do(ctx context.Context, r request) ([]byte, error) {
-	if r.length == 0 {
+	if !r.stream {
 		var cancel context.CancelFunc
 		ctx, cancel = context.WithTimeout(ctx, requestTimeout)
 		defer cancel()
@@ -184,12 +205,19 @@ func (a *api) do(ctx context.Context, r request) ([]byte, error) {
 		return nil, err
 	}
 	defer func() { _ = resp.Body.Close() }()
-	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes))
+	body, err := io.ReadAll(io.LimitReader(resp.Body, maxResponseBytes+1))
 	if err != nil {
 		return nil, err
 	}
+	if len(body) > maxResponseBytes {
+		return nil, errResponseTooLarge
+	}
 	if resp.StatusCode < 200 || resp.StatusCode > 299 {
-		return nil, decodeAPIError(resp.StatusCode, body)
+		e := decodeAPIError(resp.StatusCode, body)
+		if seconds, err := strconv.Atoi(resp.Header.Get("Retry-After")); err == nil && seconds > 0 {
+			e.RetryAfter = time.Duration(seconds) * time.Second
+		}
+		return nil, e
 	}
 	return body, nil
 }
@@ -198,18 +226,17 @@ func (a *api) getJSON(ctx context.Context, query url.Values, path ...string) ([]
 	return a.do(ctx, request{method: http.MethodGet, path: path, query: query})
 }
 
-func (a *api) postJSON(ctx context.Context, payload any, header http.Header, query url.Values, path ...string) ([]byte, error) {
-	var body io.Reader
-	contentType := ""
+// post sends r as a POST with payload, when not nil, as its JSON body.
+func (a *api) post(ctx context.Context, r request, payload any) ([]byte, error) {
+	r.method = http.MethodPost
 	if payload != nil {
 		encoded, err := json.Marshal(payload)
 		if err != nil {
 			return nil, err
 		}
-		body = bytes.NewReader(encoded)
-		contentType = "application/json"
+		r.body, r.contentType = bytes.NewReader(encoded), "application/json"
 	}
-	return a.do(ctx, request{method: http.MethodPost, path: path, query: query, body: body, contentType: contentType, header: header})
+	return a.do(ctx, r)
 }
 
 // session reads one session; raw is the API's answer, verbatim.
@@ -235,26 +262,22 @@ func decodeSession(raw []byte) (session, []byte, error) {
 const createAttempts = 3
 
 func (a *api) create(ctx context.Context, owner string, in createRequest) (session, []byte, error) {
-	query := url.Values{}
-	if owner != "" {
-		query.Set("ownerId", owner)
+	r := request{
+		path:   []string{"agent-sessions"},
+		query:  url.Values{"ownerId": {owner}},
+		header: http.Header{"Idempotency-Key": {in.IdempotencyKey}},
 	}
-	header := http.Header{"Idempotency-Key": {in.IdempotencyKey}}
 	var lastErr error
 	for attempt := 1; attempt <= createAttempts; attempt++ {
-		raw, err := a.postJSON(ctx, in, header, query, "agent-sessions")
+		raw, err := a.post(ctx, r, in)
 		if err == nil {
 			return decodeSession(raw)
 		}
 		lastErr = err
-		var apiErr *apiError
-		if errors.As(err, &apiErr) && !apiErr.retryable() {
+		if !transient(err) || ctx.Err() != nil || attempt == createAttempts {
 			break
 		}
-		if ctx.Err() != nil || attempt == createAttempts {
-			break
-		}
-		if err := a.sleep(ctx, time.Duration(attempt)*time.Second); err != nil {
+		if err := a.sleep(ctx, retryAfter(err, time.Duration(attempt)*time.Second)); err != nil {
 			break
 		}
 	}
@@ -262,7 +285,7 @@ func (a *api) create(ctx context.Context, owner string, in createRequest) (sessi
 }
 
 func (a *api) steer(ctx context.Context, id string, in steerRequest) (session, []byte, error) {
-	raw, err := a.postJSON(ctx, in, nil, nil, "agent-sessions", id, "steer")
+	raw, err := a.post(ctx, request{path: []string{"agent-sessions", id, "steer"}}, in)
 	if err != nil {
 		return session{}, nil, fmt.Errorf("send to agent session %s: %w", id, err)
 	}
@@ -270,7 +293,7 @@ func (a *api) steer(ctx context.Context, id string, in steerRequest) (session, [
 }
 
 func (a *api) cancel(ctx context.Context, id string) (session, []byte, error) {
-	raw, err := a.postJSON(ctx, nil, nil, nil, "agent-sessions", id, "cancel")
+	raw, err := a.post(ctx, request{path: []string{"agent-sessions", id, "cancel"}}, nil)
 	if err != nil {
 		return session{}, nil, fmt.Errorf("cancel agent session %s: %w", id, err)
 	}
@@ -296,13 +319,10 @@ func (a *api) upload(ctx context.Context, owner, path string) (attachment, error
 	if info.Size() == 0 {
 		return attachment{}, fmt.Errorf("attach %s: the file is empty", path)
 	}
-	query := url.Values{"name": {filepath.Base(path)}}
-	if owner != "" {
-		query.Set("ownerId", owner)
-	}
 	raw, err := a.do(ctx, request{
-		method: http.MethodPost, path: []string{"agent-attachments"}, query: query,
-		body: f, length: info.Size(), contentType: "application/octet-stream",
+		method: http.MethodPost, path: []string{"agent-attachments"},
+		query: url.Values{"name": {filepath.Base(path)}, "ownerId": {owner}},
+		body:  f, length: info.Size(), contentType: "application/octet-stream", stream: true,
 	})
 	if err != nil {
 		return attachment{}, fmt.Errorf("attach %s: %w", path, err)
@@ -358,9 +378,12 @@ func (a *api) attachments(ctx context.Context, id, direction string, turn int) (
 	}
 }
 
+// transcriptPageSize is the largest page the API serves (default 200).
+const transcriptPageSize = 1000
+
 // transcript reads one page after afterSeq (-1: from the start).
 func (a *api) transcript(ctx context.Context, id string, afterSeq int64) (transcriptPage, error) {
-	query := url.Values{}
+	query := url.Values{"limit": {strconv.Itoa(transcriptPageSize)}}
 	if afterSeq >= 0 {
 		query.Set("afterSeq", strconv.FormatInt(afterSeq, 10))
 	}
@@ -375,6 +398,13 @@ func (a *api) transcript(ctx context.Context, id string, afterSeq int64) (transc
 	return page, nil
 }
 
+// downloadError is a storage answer other than 200.
+type downloadError struct{ status int }
+
+func (e *downloadError) Error() string {
+	return fmt.Sprintf("download: %d %s", e.status, http.StatusText(e.status))
+}
+
 // fetch downloads a signed storage URL into w.
 func (a *api) fetch(ctx context.Context, signed string, w io.Writer) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, signed, nil)
@@ -387,8 +417,31 @@ func (a *api) fetch(ctx context.Context, signed string, w io.Writer) error {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("download: %s", resp.Status)
+		return &downloadError{status: resp.StatusCode}
 	}
 	_, err = io.Copy(w, resp.Body)
 	return err
+}
+
+// drain prints every transcript part after *afterSeq, from fromTurn on, into
+// p, advancing *afterSeq, and returns how many parts arrived.
+func (a *api) drain(ctx context.Context, id string, afterSeq *int64, fromTurn int, p *partPrinter) (int, error) {
+	n := 0
+	for {
+		page, err := a.transcript(ctx, id, *afterSeq)
+		if err != nil {
+			return n, err
+		}
+		p.turns(page.Turns)
+		for _, part := range page.Parts {
+			if part.Turn >= fromTurn {
+				p.add(part)
+			}
+		}
+		n += len(page.Parts)
+		if len(page.Parts) == 0 || page.NextAfterSeq <= *afterSeq {
+			return n, nil
+		}
+		*afterSeq = page.NextAfterSeq
+	}
 }

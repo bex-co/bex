@@ -31,8 +31,10 @@ import (
 	"net/url"
 	"os"
 	"os/signal"
+	"slices"
 	"strconv"
 	"strings"
+	"syscall"
 	"time"
 
 	"github.com/render-oss/cli/pkg/command"
@@ -56,6 +58,8 @@ const (
 	exitCanceled   = 4 // the session was canceled
 	exitNeedsInput = 5 // the agent is waiting for a reply (`bex agent send`)
 	exitTimeout    = 124
+	// exitInterrupted is SIGINT or SIGTERM ending a wait, the shell's 128+2.
+	exitInterrupted = 130
 )
 
 // defaultAgent is the dashboard composer's default agent.
@@ -70,7 +74,7 @@ type deps struct {
 	dashboard   func() string
 	openURL     func(string) error
 	canDesktop  func() bool
-	openDesktop func(ctx context.Context, id string, beforeExec func()) error
+	openDesktop func(ctx context.Context, id, sshAddress string, beforeExec func()) error
 	newKey      func() string
 	lookupEnv   func(string) (string, bool)
 }
@@ -111,7 +115,8 @@ func newCommand(d deps) *cobra.Command {
 			"  3    the turn failed (failureReasonCode says why)\n" +
 			"  4    the session was canceled\n" +
 			"  5    the agent needs input — reply with `bex agent send`\n" +
-			"  124  --timeout elapsed while the session was still working\n\n" +
+			"  124  --timeout elapsed while the session was still working\n" +
+			"  130  interrupted (Ctrl-C or SIGTERM)\n\n" +
 			"Use -o json (or yaml) for the API's own answer on stdout; streamed\n" +
 			"transcript output then goes to stderr.",
 		Example: "  bex agent run --repo acme/api --attach crash.log --wait -o json \"Fix the crash in crash.log\"\n" +
@@ -183,9 +188,19 @@ type invocation struct {
 	errOut io.Writer
 }
 
-func (d deps) start(c *cobra.Command) (*invocation, context.CancelFunc, error) {
+// resolveFormat is the command's --output. The root pre-run resolves it with
+// RENDER_OUTPUT and the terminal check, like every other command; the raw
+// flag is the fallback when no pre-run ran.
+func resolveFormat(c *cobra.Command) (format, error) {
 	value, _ := c.Flags().GetString("output")
-	f, err := parseFormat(value)
+	if resolved := command.GetFormatFromContext(c.Context()); resolved != nil {
+		value = string(*resolved)
+	}
+	return parseFormat(value)
+}
+
+func (d deps) start(c *cobra.Command) (*invocation, context.CancelFunc, error) {
+	f, err := resolveFormat(c)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -197,7 +212,7 @@ func (d deps) start(c *cobra.Command) (*invocation, context.CancelFunc, error) {
 	if parent == nil {
 		parent = context.Background()
 	}
-	ctx, cancel := signal.NotifyContext(parent, os.Interrupt)
+	ctx, cancel := signal.NotifyContext(parent, os.Interrupt, syscall.SIGTERM)
 	return &invocation{ctx: ctx, api: a, format: f, out: c.OutOrStdout(), errOut: c.ErrOrStderr()}, cancel, nil
 }
 
@@ -213,7 +228,7 @@ func (d deps) owner() (string, error) {
 	return id, nil
 }
 
-// waitFlags are the shared --wait/--follow/--timeout flags.
+// waitFlags are the shared --wait/--follow/--timeout/--reasoning flags.
 type waitFlags struct {
 	wait      bool
 	follow    bool
@@ -221,14 +236,32 @@ type waitFlags struct {
 	reasoning bool
 }
 
-func (w *waitFlags) bind(c *cobra.Command, withWait bool) {
-	if withWait {
-		c.Flags().BoolVar(&w.wait, "wait", false, "wait until the turn ends and exit by its state")
-		c.Flags().BoolVar(&w.follow, "follow", false, "stream the transcript until the turn ends, then exit by its state")
-	}
+// bindTimeout binds --timeout, for every command that waits.
+func (w *waitFlags) bindTimeout(c *cobra.Command) {
 	c.Flags().DurationVar(&w.timeout, "timeout", 0, "stop waiting after this long (exit 124), e.g. 30m; 0 waits indefinitely")
-	c.Flags().BoolVar(&w.reasoning, "reasoning", false, "also show the agent's reasoning when streaming")
 }
+
+// bindFollow binds --follow and what streaming takes, for logs.
+func (w *waitFlags) bindFollow(c *cobra.Command, usage string) {
+	c.Flags().BoolVar(&w.follow, "follow", false, usage)
+	c.Flags().BoolVar(&w.reasoning, "reasoning", false, "also show the agent's reasoning when streaming")
+	w.bindTimeout(c)
+}
+
+// bindTurn binds --wait and --follow, for the commands that start a turn.
+func (w *waitFlags) bindTurn(c *cobra.Command) {
+	c.Flags().BoolVar(&w.wait, "wait", false, "wait until the turn ends and exit by its state")
+	w.bindFollow(c, "stream the transcript until the turn ends, then exit by its state")
+}
+
+func (w waitFlags) validate() error {
+	if w.wait && w.follow {
+		return usageError("use --wait or --follow, not both")
+	}
+	return nil
+}
+
+func (w waitFlags) blocking() bool { return w.wait || w.follow }
 
 func (w waitFlags) context(ctx context.Context) (context.Context, context.CancelFunc) {
 	if w.timeout > 0 {
@@ -329,15 +362,53 @@ func (s *secretFlags) resolve(d deps) (sessionSecrets, error) {
 	return out, nil
 }
 
+// turnFlags are what a new turn carries, on run and send: the prompt, files
+// to attach, an output schema and secrets.
+type turnFlags struct {
+	prompt  promptFlags
+	attach  []string
+	schema  string
+	secrets secretFlags
+}
+
+func (t *turnFlags) bind(c *cobra.Command) {
+	c.Flags().StringArrayVar(&t.attach, "attach", nil, "file to attach to this turn; repeatable")
+	c.Flags().StringVar(&t.schema, "output-schema", "", "JSON Schema file this turn's result must satisfy")
+	t.secrets.bind(c)
+	t.prompt.bind(c)
+}
+
+// turnInput is a turn's parsed flags; the files are uploaded once the API
+// client exists.
+type turnInput struct {
+	prompt  string
+	schema  json.RawMessage
+	secrets sessionSecrets
+}
+
+func (t *turnFlags) resolve(d deps, args []string) (turnInput, error) {
+	var (
+		in  turnInput
+		err error
+	)
+	if in.prompt, err = t.prompt.read(d, args); err != nil {
+		return turnInput{}, err
+	}
+	if in.schema, err = readSchema(t.schema); err != nil {
+		return turnInput{}, err
+	}
+	if in.secrets, err = t.secrets.resolve(d); err != nil {
+		return turnInput{}, err
+	}
+	return in, nil
+}
+
 func runCommand(d deps) *cobra.Command {
 	var (
 		in      createRequest
-		prompt  promptFlags
-		attach  []string
-		schema  string
+		turn    turnFlags
 		spend   float64
 		key     string
-		secrets secretFlags
 		waiting waitFlags
 	)
 	c := &cobra.Command{
@@ -352,19 +423,14 @@ func runCommand(d deps) *cobra.Command {
 			"  bex agent run --attach screenshot.png --wait -o json \"Fix the layout bug in the screenshot\"\n" +
 			"  bex agent run --output-schema schema.json --max-spend 2 --follow -f task.md",
 		RunE: func(c *cobra.Command, args []string) error {
-			task, err := prompt.read(d, args)
+			if err := waiting.validate(); err != nil {
+				return err
+			}
+			t, err := turn.resolve(d, args)
 			if err != nil {
 				return err
 			}
-			if waiting.wait && waiting.follow {
-				return usageError("use --wait or --follow, not both")
-			}
-			if in.OutputSchema, err = readSchema(schema); err != nil {
-				return err
-			}
-			if in.sessionSecrets, err = secrets.resolve(d); err != nil {
-				return err
-			}
+			in.AgentConfig.Task, in.OutputSchema, in.sessionSecrets = t.prompt, t.schema, t.secrets
 			if c.Flags().Changed("max-spend") {
 				if spend <= 0 {
 					return usageError("--max-spend must be more than 0 (USD)")
@@ -375,7 +441,6 @@ func runCommand(d deps) *cobra.Command {
 				key = d.newKey()
 			}
 			in.IdempotencyKey = key
-			in.AgentConfig.Task = task
 			owner, err := d.owner()
 			if err != nil {
 				return err
@@ -385,14 +450,14 @@ func runCommand(d deps) *cobra.Command {
 				return err
 			}
 			defer cancel()
-			if in.AttachmentIDs, err = uploadAll(inv, owner, attach); err != nil {
+			if in.AttachmentIDs, err = uploadAll(inv, owner, turn.attach); err != nil {
 				return err
 			}
 			created, raw, err := inv.api.create(inv.ctx, owner, in)
 			if err != nil {
 				return err
 			}
-			if !waiting.wait && !waiting.follow {
+			if !waiting.blocking() {
 				return inv.show(created, raw)
 			}
 			_, _ = fmt.Fprintf(inv.errOut, "Started %s\n", created.ID)
@@ -406,22 +471,16 @@ func runCommand(d deps) *cobra.Command {
 	f.StringVar(&in.AgentConfig.Model, "model", "", "model id (default: the workspace default)")
 	f.StringVar(&in.Title, "title", "", "display title (default: the task's first line)")
 	f.StringArrayVar(&in.Tags, "tag", nil, "label for filtering and cost attribution; repeatable")
-	f.StringArrayVar(&attach, "attach", nil, "file to attach; repeatable")
-	f.StringVar(&schema, "output-schema", "", "JSON Schema file the agent's result must satisfy")
 	f.Float64Var(&spend, "max-spend", 0, "ceiling on this session's platform model spend, in USD")
 	f.StringVar(&key, "idempotency-key", "", "reuse a key to make re-running this command safe (default: one per invocation)")
-	secrets.bind(c)
-	prompt.bind(c)
-	waiting.bind(c, true)
+	turn.bind(c)
+	waiting.bindTurn(c)
 	return c
 }
 
 func sendCommand(d deps) *cobra.Command {
 	var (
-		prompt  promptFlags
-		attach  []string
-		schema  string
-		secrets secretFlags
+		turn    turnFlags
 		waiting waitFlags
 	)
 	c := &cobra.Command{
@@ -432,31 +491,25 @@ func sendCommand(d deps) *cobra.Command {
 		Args: sessionArgs(-1),
 		RunE: func(c *cobra.Command, args []string) error {
 			id := args[0]
-			message, err := prompt.read(d, args[1:])
+			if err := waiting.validate(); err != nil {
+				return err
+			}
+			t, err := turn.resolve(d, args[1:])
 			if err != nil {
 				return err
 			}
-			if waiting.wait && waiting.follow {
-				return usageError("use --wait or --follow, not both")
-			}
-			in := steerRequest{Prompt: message}
-			if in.OutputSchema, err = readSchema(schema); err != nil {
-				return err
-			}
-			if in.sessionSecrets, err = secrets.resolve(d); err != nil {
-				return err
-			}
+			in := steerRequest{Prompt: t.prompt, OutputSchema: t.schema, sessionSecrets: t.secrets}
 			inv, cancel, err := d.start(c)
 			if err != nil {
 				return err
 			}
 			defer cancel()
-			if len(attach) > 0 {
+			if len(turn.attach) > 0 {
 				current, _, err := inv.api.session(inv.ctx, id)
 				if err != nil {
 					return err
 				}
-				if in.AttachmentIDs, err = uploadAll(inv, current.OwnerID, attach); err != nil {
+				if in.AttachmentIDs, err = uploadAll(inv, current.OwnerID, turn.attach); err != nil {
 					return err
 				}
 			}
@@ -464,17 +517,14 @@ func sendCommand(d deps) *cobra.Command {
 			if err != nil {
 				return err
 			}
-			if !waiting.wait && !waiting.follow {
+			if !waiting.blocking() {
 				return inv.show(steered, raw)
 			}
 			return inv.await(steered, steered.Turns, waiting)
 		},
 	}
-	c.Flags().StringArrayVar(&attach, "attach", nil, "file to attach to this turn; repeatable")
-	c.Flags().StringVar(&schema, "output-schema", "", "JSON Schema file this turn's result must satisfy")
-	secrets.bind(c)
-	prompt.bind(c)
-	waiting.bind(c, true)
+	turn.bind(c)
+	waiting.bindTurn(c)
 	return c
 }
 
@@ -506,7 +556,7 @@ func waitCommand(d deps) *cobra.Command {
 		},
 	}
 	c.Flags().BoolVar(&first, "any", false, "return when the first session settles")
-	waiting.bind(c, false)
+	waiting.bindTimeout(c)
 	return c
 }
 
@@ -546,6 +596,11 @@ func listCommand(d deps) *cobra.Command {
 			"--cursor set to the last id of the previous page.",
 		Args: cobra.NoArgs,
 		RunE: func(c *cobra.Command, _ []string) error {
+			for _, state := range states {
+				if !slices.Contains(sessionStates, state) {
+					return usageError("--state must be one of %s, not %q", strings.Join(sessionStates, ", "), state)
+				}
+			}
 			owner, err := d.owner()
 			if err != nil {
 				return err
@@ -580,7 +635,7 @@ func listCommand(d deps) *cobra.Command {
 		},
 	}
 	f := c.Flags()
-	f.StringArrayVar(&states, "state", nil, "only sessions in this state (working, needs_input, succeeded, failed, canceled); repeatable")
+	f.StringArrayVar(&states, "state", nil, "only sessions in this state ("+strings.Join(sessionStates, ", ")+"); repeatable")
 	f.StringVar(&tag, "tag", "", "only sessions with this tag")
 	f.StringVar(&repo, "repo", "", "only sessions on this repository")
 	f.StringVar(&archived, "archived", "", "true for archived sessions only, all for both")
@@ -592,7 +647,6 @@ func listCommand(d deps) *cobra.Command {
 func logsCommand(d deps) *cobra.Command {
 	var (
 		waiting waitFlags
-		follow  bool
 		turn    int
 	)
 	c := &cobra.Command{
@@ -603,16 +657,19 @@ func logsCommand(d deps) *cobra.Command {
 			"state. -o json prints one transcript row per line.",
 		Args: sessionArgs(0),
 		RunE: func(c *cobra.Command, args []string) error {
+			if f, err := resolveFormat(c); err != nil || f == formatYAML {
+				if err != nil {
+					return err
+				}
+				return usageError("logs prints text or JSON lines (-o json)")
+			}
 			inv, cancel, err := d.start(c)
 			if err != nil {
 				return err
 			}
 			defer cancel()
-			if inv.format == formatYAML {
-				return usageError("logs prints text or JSON lines (-o json)")
-			}
 			p := newPartPrinter(inv.out, inv.format == formatJSON, waiting.reasoning)
-			if follow {
+			if waiting.follow {
 				ctx, stop := waiting.context(inv.ctx)
 				defer stop()
 				result, err := inv.api.follow(ctx, args[0], turn, p)
@@ -622,28 +679,15 @@ func logsCommand(d deps) *cobra.Command {
 				return stateExit(result, waiting.timeout)
 			}
 			afterSeq := int64(-1)
-			for {
-				page, err := inv.api.transcript(inv.ctx, args[0], afterSeq)
-				if err != nil {
-					return err
-				}
-				p.turns(page.Turns)
-				for _, part := range page.Parts {
-					if part.Turn >= turn {
-						p.add(part)
-					}
-				}
-				if len(page.Parts) == 0 || page.NextAfterSeq <= afterSeq {
-					p.flush()
-					return nil
-				}
-				afterSeq = page.NextAfterSeq
+			if _, err := inv.api.drain(inv.ctx, args[0], &afterSeq, turn, p); err != nil {
+				return err
 			}
+			p.flush()
+			return nil
 		},
 	}
-	c.Flags().BoolVar(&follow, "follow", false, "keep streaming until the turn ends, then exit by its state")
 	c.Flags().IntVar(&turn, "turn", 0, "start at this turn")
-	waiting.bind(c, false)
+	waiting.bindFollow(c, "keep streaming until the turn ends, then exit by its state")
 	return c
 }
 
@@ -690,7 +734,7 @@ func openCommand(d deps) *cobra.Command {
 			}
 			if !inDashboard && s.SSHAddress != "" && d.canDesktop() {
 				startedAt := time.Now()
-				return d.openDesktop(inv.ctx, id, func() {
+				return d.openDesktop(inv.ctx, id, s.SSHAddress, func() {
 					telemetry.EmitLaunch(c.CommandPath(), startedAt, c.ErrOrStderr())
 				})
 			}
@@ -706,7 +750,6 @@ func openCommand(d deps) *cobra.Command {
 	return c
 }
 
-// show prints one session as the format asks.
 func (inv *invocation) show(s session, raw []byte) error {
 	if inv.format != formatText {
 		return writeRaw(inv.out, inv.format, raw)

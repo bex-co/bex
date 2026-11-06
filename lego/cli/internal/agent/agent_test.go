@@ -52,15 +52,19 @@ type fakeAPI struct {
 	ssh        map[string]string
 	failGets   map[string]int // transient 503s before the next GET succeeds
 	createErrs []int          // statuses the next creates answer before succeeding
+	retryAfter string         // Retry-After sent with a createErrs answer
 	transcript map[string][]string
 	files      map[string][]attachmentFixture
 
-	creates    []capturedRequest
-	steers     []capturedRequest
-	uploads    []capturedRequest
-	lastList   string
-	canceled   []string
-	transcrGet int
+	creates      []capturedRequest
+	steers       []capturedRequest
+	uploads      []capturedRequest
+	lastList     string
+	canceled     []string
+	transcrGet   int
+	slept        []time.Duration
+	transcrQuery string
+	refreshed    []string // attachment ids re-read for a fresh download URL
 }
 
 type capturedRequest struct {
@@ -83,6 +87,10 @@ func newFakeAPI(t *testing.T) *fakeAPI {
 	f.storage = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if r.Header.Get("Authorization") != "" {
 			t.Errorf("the storage origin saw a bearer: %q", r.Header.Get("Authorization"))
+		}
+		if strings.Contains(r.URL.Path, "/expired/") {
+			http.Error(w, "signature expired", http.StatusForbidden)
+			return
 		}
 		f.mu.Lock()
 		defer f.mu.Unlock()
@@ -124,6 +132,23 @@ func newFakeAPI(t *testing.T) *fakeAPI {
 			}
 		}
 		writeJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("GET /v1/agent-attachments/{id}", func(w http.ResponseWriter, r *http.Request) {
+		id := r.PathValue("id")
+		f.mu.Lock()
+		defer f.mu.Unlock()
+		f.refreshed = append(f.refreshed, id)
+		for _, list := range f.files {
+			for _, file := range list {
+				if file.att.ID == id {
+					fresh := file.att
+					fresh.DownloadURL = f.storage.URL + "/fresh/" + id
+					writeJSON(w, http.StatusOK, fresh)
+					return
+				}
+			}
+		}
+		writeAPIError(w, http.StatusNotFound, "AGENT_ATTACHMENT_NOT_FOUND", "agent attachment not found")
 	})
 	mux.HandleFunc("POST /v1/agent-attachments", func(w http.ResponseWriter, r *http.Request) {
 		body, _ := io.ReadAll(r.Body)
@@ -180,6 +205,9 @@ func (f *fakeAPI) create(w http.ResponseWriter, r *http.Request) {
 	}
 	f.mu.Unlock()
 	if status != 0 {
+		if f.retryAfter != "" {
+			w.Header().Set("Retry-After", f.retryAfter)
+		}
 		writeAPIError(w, status, "AGENT_SESSION_INPUT_INVALID", "refused")
 		return
 	}
@@ -222,6 +250,7 @@ func (f *fakeAPI) steer(w http.ResponseWriter, r *http.Request) {
 func (f *fakeAPI) transcriptPage(w http.ResponseWriter, r *http.Request) {
 	f.mu.Lock()
 	f.transcrGet++
+	f.transcrQuery = r.URL.RawQuery
 	rows := f.transcript[r.PathValue("id")]
 	f.mu.Unlock()
 	after := int64(-1)
@@ -256,7 +285,10 @@ func (f *fakeAPI) deps(t *testing.T) *testDeps {
 		api: func() (*api, error) {
 			return &api{
 				server: f.srv.URL + "/v1/", http: f.srv.Client(), download: f.storage.Client(),
-				sleep: func(ctx context.Context, _ time.Duration) error {
+				sleep: func(ctx context.Context, d time.Duration) error {
+					f.mu.Lock()
+					f.slept = append(f.slept, d)
+					f.mu.Unlock()
 					select {
 					case <-ctx.Done():
 						return ctx.Err()
@@ -272,7 +304,7 @@ func (f *fakeAPI) deps(t *testing.T) *testDeps {
 		dashboard:   func() string { return "https://dashboard.bex.co" },
 		openURL:     func(u string) error { td.opened = append(td.opened, u); return nil },
 		canDesktop:  func() bool { return false },
-		openDesktop: func(_ context.Context, id string, before func()) error {
+		openDesktop: func(_ context.Context, id, _ string, before func()) error {
 			td.desktops = append(td.desktops, id)
 			return nil
 		},
@@ -758,3 +790,179 @@ func TestNoWorkspaceIsExplained(t *testing.T) {
 }
 
 var errNoWorkspaceForTest = errors.New("no-workspace")
+
+// A wait the user interrupts is not a --timeout: Ctrl-C or SIGTERM exits 130,
+// the deadline exits 124 with where the session stood.
+func TestWaitTellsAnInterruptFromATimeout(t *testing.T) {
+	f := newFakeAPI(t)
+	f.script["ags-w1"] = []string{stateWorking}
+	a, _ := f.deps(t).api()
+
+	interrupted, stop := context.WithCancel(context.Background())
+	stop()
+	if _, err := a.wait(interrupted, []string{"ags-w1"}, false); exitCode(err) != exitInterrupted {
+		t.Fatalf("canceled wait = %v (exit %d), want exit %d", err, exitCode(err), exitInterrupted)
+	}
+	if _, err := a.follow(interrupted, "ags-w1", 1, newPartPrinter(io.Discard, false, false)); exitCode(err) != exitInterrupted {
+		t.Fatalf("canceled follow = %v, want exit %d", err, exitInterrupted)
+	}
+
+	deadline, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	result, err := a.wait(deadline, []string{"ags-w1"}, false)
+	if err != nil || !result.timedOut || exitCode(stateExit(result, time.Second)) != exitTimeout {
+		t.Fatalf("deadline wait = %+v, %v", result, err)
+	}
+}
+
+// --any returns at the first settled session even while a sibling's read is
+// failing, and its JSON is still one valid array of the sessions it read.
+func TestWaitAnyPrintsValidJSONWhenASiblingReadFailed(t *testing.T) {
+	f := newFakeAPI(t)
+	f.script["ags-a1"] = []string{stateSucceeded}
+	f.script["ags-b1"] = []string{stateWorking}
+	f.failGets["ags-b1"] = 3
+	stdout, stderr, code := run(t, f.deps(t).deps, "wait", "--any", "-o", "json", "ags-a1", "ags-b1")
+	if code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	var sessions []map[string]any
+	if err := json.Unmarshal([]byte(stdout), &sessions); err != nil || len(sessions) != 1 || sessions[0]["id"] != "ags-a1" {
+		t.Fatalf("--any JSON = %q (%v)", stdout, err)
+	}
+}
+
+// A 429 is retried with the same key after at least its Retry-After; a
+// non-transient failure (here a bad server URL) is not retried at all.
+func TestCreateHonorsRetryAfterAndRetriesOnlyTransientErrors(t *testing.T) {
+	f := newFakeAPI(t)
+	f.createErrs = []int{http.StatusTooManyRequests}
+	f.retryAfter = "7"
+	if _, stderr, code := run(t, f.deps(t).deps, "run", "task"); code != 0 {
+		t.Fatalf("exit %d: %s", code, stderr)
+	}
+	if len(f.creates) != 2 || f.creates[0].header.Get("Idempotency-Key") != f.creates[1].header.Get("Idempotency-Key") {
+		t.Fatalf("creates = %d", len(f.creates))
+	}
+	if len(f.slept) != 1 || f.slept[0] < 7*time.Second {
+		t.Fatalf("slept %v before the retry, want at least the 7s Retry-After", f.slept)
+	}
+
+	a, _ := f.deps(t).api()
+	a.server = "http://[::1]:namedport/v1/"
+	f.slept = nil
+	if _, _, err := a.create(context.Background(), "tea-ws", createRequest{IdempotencyKey: "k"}); err == nil || len(f.slept) != 0 {
+		t.Fatalf("a non-transient error was retried: %v, slept %v", err, f.slept)
+	}
+}
+
+// --follow backs off while the agent is quiet instead of polling every 2s,
+// and sleeps no longer than pollMax.
+func TestFollowBacksOffWhileQuiet(t *testing.T) {
+	f := newFakeAPI(t)
+	f.script["ags-q1"] = []string{stateWorking, stateWorking, stateWorking, stateWorking, stateWorking, stateWorking, stateWorking, stateSucceeded}
+	a, _ := f.deps(t).api()
+	result, err := a.follow(context.Background(), "ags-q1", 1, newPartPrinter(io.Discard, false, false))
+	if err != nil || len(result.sessions) != 1 || result.sessions[0].State != stateSucceeded {
+		t.Fatalf("follow = %+v, %v", result, err)
+	}
+	if len(f.slept) < 3 || f.slept[0] != pollFirst || f.slept[1] <= f.slept[0] {
+		t.Fatalf("quiet follow slept %v, want a backoff from %s", f.slept, pollFirst)
+	}
+	for _, d := range f.slept {
+		if d > pollMax {
+			t.Fatalf("slept %s, over pollMax", d)
+		}
+	}
+	if got := f.transcrQuery; !strings.Contains(got, "limit=1000") {
+		t.Fatalf("transcript query %q does not ask for the largest page", got)
+	}
+}
+
+// An expired signed URL (403) is re-read once for a fresh one; names that
+// differ only in case do not collide on a case-insensitive disk; and a
+// failure still lists, in -o json, the files that did land.
+func TestDownloadRefreshesExpiredURLsAndReportsPartialResults(t *testing.T) {
+	f := newFakeAPI(t)
+	sum := func(s string) string { h := sha256.Sum256([]byte(s)); return hex.EncodeToString(h[:]) }
+	f.files["ags-x1"] = []attachmentFixture{
+		{attachment{ID: "att-1", Turn: 1, Direction: "output", Name: "A.txt", SHA256: sum("one"), DownloadURL: f.storage.URL + "/expired/att-1"}, "one"},
+		{attachment{ID: "att-2", Turn: 1, Direction: "output", Name: "a.txt", SHA256: sum("two"), DownloadURL: f.storage.URL + "/b/att-2"}, "two"},
+		{attachment{ID: "att-3", Turn: 1, Direction: "output", Name: "c.txt", SHA256: sum("not this"), DownloadURL: f.storage.URL + "/b/att-3"}, "three"},
+	}
+	dir := t.TempDir()
+	stdout, stderr, code := run(t, f.deps(t).deps, "files", "ags-x1", "--download", dir, "-o", "json")
+	if code != 1 || !strings.Contains(stderr, "SHA-256") {
+		t.Fatalf("exit %d stderr %q", code, stderr)
+	}
+	if !slices.Equal(f.refreshed, []string{"att-1"}) {
+		t.Fatalf("refreshed %v, want only the expired att-1", f.refreshed)
+	}
+	var saved []savedFile
+	if err := json.Unmarshal([]byte(stdout), &saved); err != nil || len(saved) != 2 {
+		t.Fatalf("partial result = %q (%v)", stdout, err)
+	}
+	for name, want := range map[string]string{"A.txt": "one", "a-att-2.txt": "two"} {
+		if got, err := os.ReadFile(filepath.Join(dir, name)); err != nil || string(got) != want {
+			t.Fatalf("%s = %q, %v", name, got, err)
+		}
+	}
+}
+
+// Without --force, a file that appears at the destination while the download
+// runs is never replaced.
+func TestPlaceNeverReplacesAFileThatAppeared(t *testing.T) {
+	dir := t.TempDir()
+	tmp, path := filepath.Join(dir, ".tmp"), filepath.Join(dir, "out.txt")
+	for name, body := range map[string]string{tmp: "new", path: "theirs"} {
+		if err := os.WriteFile(name, []byte(body), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := place(tmp, path, false); err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("place over an existing file = %v", err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != "theirs" {
+		t.Fatalf("the existing file was replaced: %q", got)
+	}
+	if err := place(tmp, path, true); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := os.ReadFile(path); string(got) != "new" {
+		t.Fatalf("--force did not replace: %q", got)
+	}
+}
+
+// An answer over the cap is refused, not decoded from a truncated body.
+func TestOversizedAnswerIsRefused(t *testing.T) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		_, _ = w.Write(bytes.Repeat([]byte(" "), maxResponseBytes+1))
+	}))
+	t.Cleanup(srv.Close)
+	a := &api{server: srv.URL + "/v1/", http: srv.Client()}
+	if _, err := a.getJSON(context.Background(), nil, "agent-sessions"); !errors.Is(err, errResponseTooLarge) {
+		t.Fatalf("oversized answer = %v", err)
+	}
+}
+
+// A dropped connection (the client sees EOF inside *url.Error) is transient.
+func TestADroppedConnectionIsTransient(t *testing.T) {
+	var calls int
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		conn, _, err := w.(http.Hijacker).Hijack()
+		if err != nil {
+			t.Fatal(err)
+		}
+		_ = conn.Close()
+	}))
+	t.Cleanup(srv.Close)
+	a := &api{server: srv.URL + "/v1/", http: srv.Client()}
+	_, err := a.getJSON(context.Background(), nil, "agent-sessions", "ags-x")
+	if err == nil || !transient(err) {
+		t.Fatalf("dropped connection = %v, transient %v", err, transient(err))
+	}
+	if transient(errors.New("token refresh failed")) {
+		t.Fatal("a plain error counted as transient")
+	}
+}
