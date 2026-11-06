@@ -523,12 +523,6 @@ describe("production route heads", () => {
       { webhookId: "whk-missing" },
       { webhookEndpoint: {} },
     ],
-    [
-      "agent session",
-      AgentSessionRoute,
-      { agentSessionId: "as-missing" },
-      { agentSession: {} },
-    ],
   ] as Array<
     [string, LoaderOwner, Record<string, string>, Record<string, unknown>]
   >)(
@@ -538,4 +532,16 @@ describe("production route heads", () => {
       expect(result).toEqual({ state: "not-found" });
     },
   );
+
+  it("does not treat an empty agent session adapter object as a ready named resource", async () => {
+    // Without an answered NOT_FOUND an empty session is a load error, not a
+    // missing page: a refused read is cached as a null session without its
+    // error (w4/523).
+    const { result } = await runRouteLoader(
+      AgentSessionRoute,
+      { agentSessionId: "as-missing" },
+      { agentSession: {} },
+    );
+    expect(result).toEqual({ state: "error" });
+  });
 });
