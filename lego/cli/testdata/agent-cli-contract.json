@@ -1,0 +1,69 @@
+{
+  "session": {
+    "id": "ags-d0abc123def456ghij78",
+    "ownerId": "tea-d0abc123def456ghij78",
+    "repo": "acme/api",
+    "branch": "main",
+    "title": "Fix the crash",
+    "tags": ["ci"],
+    "agentConfig": { "agent": "claude", "model": "claude-sonnet-5-5", "task": "Fix the crash in crash.log" },
+    "phase": "completed",
+    "state": "succeeded",
+    "steerable": true,
+    "turns": 1,
+    "prUrl": "https://github.com/acme/api/pull/412",
+    "failureReason": "",
+    "failureReasonCode": "",
+    "sshAddress": "ags-d0abc123def456ghij78@ssh.bex.co",
+    "createdAt": "2026-11-05T10:00:00Z",
+    "outcome": {
+      "state": "succeeded",
+      "steerable": true,
+      "turn": 1,
+      "summary": "Fixed the nil dereference; tests pass.",
+      "pullRequest": { "url": "https://github.com/acme/api/pull/412", "number": 412, "headSha": "9f2c" },
+      "deliveryNote": "",
+      "failureReasonCode": "",
+      "files": [{ "id": "att-d0abc123def456ghij78", "name": "report.md", "mediaType": "text/markdown", "size": 2048 }],
+      "result": { "tests_passed": true, "files_changed": 3 },
+      "cost": { "modelUSD": "0.42" }
+    }
+  },
+  "attachment": {
+    "id": "att-d0abc123def456ghij78",
+    "sessionId": "ags-d0abc123def456ghij78",
+    "turn": 1,
+    "direction": "output",
+    "name": "report.md",
+    "mediaType": "text/markdown",
+    "size": 2048,
+    "sha256": "0000000000000000000000000000000000000000000000000000000000000000",
+    "createdAt": "2026-11-05T10:05:00Z",
+    "downloadUrl": "https://s3.example.test/agent-attachments/att-d0abc123def456ghij78?X-Amz-Signature=x"
+  },
+  "transcriptPage": {
+    "parts": [
+      {
+        "seq": 7,
+        "partIndex": 3,
+        "turn": 1,
+        "part": { "type": "text", "text": "Done." },
+        "partial": true,
+        "createdAt": "2026-11-05T10:04:00Z"
+      }
+    ],
+    "turns": [
+      {
+        "turn": 1,
+        "prompt": "Fix the crash in crash.log",
+        "deliveryMode": "pr",
+        "transcriptComplete": true,
+        "transcriptTruncated": false,
+        "createdAt": "2026-11-05T10:00:00Z",
+        "attachments": []
+      }
+    ],
+    "nextAfterSeq": 7
+  },
+  "error": { "error": "agent session not found", "message": "agent session not found", "id": "not_found", "code": "AGENT_SESSION_NOT_FOUND" }
+}

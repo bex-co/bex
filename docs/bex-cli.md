@@ -149,6 +149,46 @@ Each launcher starts a [Claude Code](https://claude.com/claude-code) instance co
 - **Interactive only:** with no terminal on stdout or stderr, or with `CI` set, both forms fail fast instead of launching a GUI. Scripts can call `bex-desktop` directly.
 - **Telemetry:** one launch event with the command path `bex edit`, as for `bex code`. It never includes the paths or other arguments.
 
+### Cloud Agents: `bex agent`
+
+`bex agent` drives Cloud Agents, bex's cloud coding agents, from a terminal or a CI job. It is a thin client of the agent-session REST contract ([ADR094](ADR094-coding-agent-mcp.md), attachments [ADR095](ADR095-agent-attachments.md)) and authenticates like every other command (`bex login`, or `BEX_ACCESS_TOKEN` in CI). Sessions are created in the active workspace (`bex workspace set` or `BEX_WORKSPACE`).
+
+| Command | What it does |
+| --- | --- |
+| `bex agent run [flags] <task…>` | Start a session. `--repo`, `--branch`, `--agent` (default `claude`), `--model`, `--title`, `--tag` (repeatable), `--attach FILE` (repeatable; uploaded first, found under `/attachments`), `--output-schema FILE` (read the result from `outcome.result`), `--max-spend USD`, `--secret NAME` (a workspace agent secret, repeatable) and `--secret-from-env NAME[=VAR]` (sends the local env var `VAR`, default `NAME`, as an inline secret for this session only; values are never taken on the command line, [ADR098](ADR098-agent-session-secrets.md)). `-f FILE` reads the task from a file (`-` for stdin). |
+| `bex agent send <ags-id> <message…>` | Start the next turn, with `--attach`, `--output-schema`, `--secret` and `--secret-from-env` for that turn. |
+| `bex agent wait <ags-id>…` | Wait until up to 20 sessions end their turn (`--any`: the first one). |
+| `bex agent get <ags-id>` | Show a session and its outcome: state, summary, PR, shared files, result, model cost. |
+| `bex agent list` | List the workspace's sessions (`--state`, `--tag`, `--repo`, `--archived`, `--limit`, `--cursor`). |
+| `bex agent logs <ags-id>` | Print the transcript: the agent's messages and one line per tool call (`--turn N`, `--reasoning`; `-o json` prints one transcript row per line). `--follow` streams until the turn ends. |
+| `bex agent files <ags-id>` | List the files the agent shared (`--direction input` or `all` for the attached ones; `--turn N`). `--download DIR` saves them, checks each SHA-256, and never overwrites without `--force`. |
+| `bex agent cancel <ags-id>` | Stop the running turn and close the session. |
+| `bex agent open <ags-id>` | Open the running sandbox in bex desktop (like `bex edit ags-…`), or else print and open the session's dashboard page (`--dashboard` forces it). |
+
+- **Waiting.** `run` and `send` return as soon as the turn starts. `--wait` polls until it ends; `--follow` streams the transcript while it runs. `--timeout 30m` bounds either one. REST has no blocking wait (`wait_agent_sessions` is MCP-only), so the CLI polls the session with backoff (2 s rising to 15 s) and survives up to five consecutive transient failures (a gateway 5xx or a dropped connection).
+- **Exit codes.** These apply to `run`/`send` with `--wait` or `--follow`, to `wait`, and to `logs --follow`. With several sessions, a failure wins over a cancel, which wins over needs-input. A plain `get` always exits 0.
+
+  | Code  | Meaning                                                      |
+  | ----- | ------------------------------------------------------------ |
+  | `0`   | the turn succeeded                                           |
+  | `1`   | the CLI or the API failed (network, auth, a refused request) |
+  | `2`   | usage error                                                  |
+  | `3`   | the turn failed; stderr names its `failureReasonCode`        |
+  | `4`   | the session was canceled                                     |
+  | `5`   | the agent needs input; reply with `bex agent send`           |
+  | `124` | `--timeout` elapsed while the session was still working      |
+
+- **Output.** `-o json` (or `yaml`) prints the API's own answer on stdout: the session view, a JSON array for several sessions or for `files`. While `--follow` streams, the transcript goes to stderr so stdout stays parseable.
+- **Idempotent create.** Each `run` sends one `Idempotency-Key` and repeats the create, with the same key, after a transport error or a gateway 5xx. A retry can therefore never start a second session. Pass `--idempotency-key` to make re-running the whole command safe as well, for example keyed on the CI run id.
+
+```bash
+# In CI: fix a failure, wait for the outcome, and keep the agent's report.
+bex agent run --repo acme/api --attach test-output.txt --output-schema schema.json \
+  --max-spend 5 --timeout 45m --wait -o json \
+  "Make the failing test in test-output.txt pass" > outcome.json
+bex agent files "$(jq -r .id outcome.json)" --download ./agent-files
+```
+
 ### Self-update: `bex upgrade`
 
 `bex upgrade` updates a raw-binary install in place. It resolves the newest `bex-cli/v*` GitHub release, downloads the archive for the running OS/arch, **verifies it before installing** — the release's cosign keyless signature over `checksums.txt` (pinned to the bex-cli release workflow's Fulcio identity), then the archive's SHA-256 against that signed `checksums.txt` — and atomically replaces the running binary (a failure at any step leaves the original untouched).

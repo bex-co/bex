@@ -125,6 +125,23 @@ func newCommand(sys system) *cobra.Command {
 	}
 }
 
+// Available reports whether `bex edit` can open bex desktop here: an
+// interactive terminal and an installed launcher.
+func Available() bool {
+	sys := osSystem()
+	if !sys.interactive() {
+		return false
+	}
+	_, err := locate(sys)
+	return err == nil
+}
+
+// OpenSession is `bex edit <ags-id>`: it replaces this process with the
+// launcher opening the session sandbox's /workspace over SSH.
+func OpenSession(ctx context.Context, id string, beforeExec func()) error {
+	return run(ctx, osSystem(), []string{id}, beforeExec)
+}
+
 // run resolves the launcher and any session target, then replaces this
 // process with the launcher. beforeExec runs immediately before that
 // replacement.

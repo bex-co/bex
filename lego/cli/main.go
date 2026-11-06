@@ -15,6 +15,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/bex-co/bex/lego/cli/internal/agent"
 	"github.com/bex-co/bex/lego/cli/internal/branding"
 	"github.com/bex-co/bex/lego/cli/internal/bridge"
 	"github.com/bex-co/bex/lego/cli/internal/code"
@@ -53,6 +54,7 @@ func main() {
 	cmd.RootCmd.AddCommand(code.Commands()...)
 	cmd.RootCmd.AddCommand(upgrade.Command(bexVersion))
 	cmd.RootCmd.AddCommand(desktop.Command())
+	cmd.RootCmd.AddCommand(agent.Command())
 	// Upstream's `skills` installs Render's skills (w8/m143); bex's own tree
 	// takes its place with the same subcommands and flags.
 	replaceCommand(cmd.RootCmd, skills.Command())
@@ -297,7 +299,8 @@ var workspaceIndependent = []string{
 var typedResourceID = regexp.MustCompile(`^[a-z]{3}-[0-9a-z]{20}$`)
 
 // opensDashboard reports whether args invoke a hosting command with a
-// Dashboard action: the services list (alias service) and deploys list.
+// Dashboard action: the services list (alias service), deploys list and
+// `agent open`, which falls back to the session's dashboard page.
 // cobra's own lookup resolves aliases, so no second parser can disagree.
 func opensDashboard(root *cobra.Command, args []string) bool {
 	target, _, err := root.Find(args)
@@ -305,7 +308,7 @@ func opensDashboard(root *cobra.Command, args []string) bool {
 		return false
 	}
 	switch strings.TrimPrefix(target.CommandPath(), root.Name()+" ") {
-	case "services", "deploys list":
+	case "services", "deploys list", "agent open":
 		return true
 	}
 	return false
