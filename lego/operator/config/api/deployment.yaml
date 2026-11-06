@@ -132,7 +132,7 @@ spec:
             # cannot choose these fixed IDs, and Hydra metadata is never
             # consulted as a trust anchor.
             - name: BEX_OAUTH_PLATFORM_CLIENTS
-              value: 429024F5E608930E2A65EF92591A25CC,bex-mobile
+              value: 429024F5E608930E2A65EF92591A25CC,bex-mobile,bex-desktop
             # Round-14 #1 (docs/ADR069-security-review-round14.md): the
             # control-plane capability scope — an API-audience HUMAN token
             # must carry it (identity-only scopes never are API authority).
