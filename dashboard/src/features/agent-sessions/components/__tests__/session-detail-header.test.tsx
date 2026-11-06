@@ -94,6 +94,15 @@ describe("SessionDetailHeader", () => {
     expect(screen.queryByText("1 turns")).not.toBeInTheDocument();
   });
 
+  // The route skeleton draws the metadata as one 16px line; the loaded row
+  // scrolls sideways on a narrow screen instead of wrapping (w9 browser check).
+  it("keeps the metadata on one line that scrolls instead of wrapping", () => {
+    render(<SessionDetailHeader session={view({ turns: 1 })} />);
+    const row = screen.getByText("1 turn").parentElement!;
+    expect(row).toHaveClass("h-4", "whitespace-nowrap", "overflow-x-auto");
+    expect(row).not.toHaveClass("flex-wrap");
+  });
+
   it("shows plural turns for multi-turn sessions", () => {
     render(<SessionDetailHeader session={view({ turns: 3 })} />);
     expect(screen.getByText("3 turns")).toBeInTheDocument();

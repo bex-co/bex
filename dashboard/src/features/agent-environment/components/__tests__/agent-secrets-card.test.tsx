@@ -61,6 +61,20 @@ describe("AgentSecretsCard (ADR098)", () => {
     ).not.toBeNull();
   });
 
+  // The help line wraps on narrow screens: the skeleton reserves it as real
+  // text, both variants in one cell, so the loaded card doesn't grow.
+  it("reserves the help line as text at its taller variant", () => {
+    setup([], true);
+    const help = screen.getByTestId("secrets-help-skeleton");
+    expect(help).toHaveClass("grid", "text-xs");
+    expect(help).toHaveAttribute("aria-hidden");
+    const [admin, member] = Array.from(help.children);
+    expect(admin).toHaveClass("col-start-1", "row-start-1");
+    expect(member).toHaveClass("invisible", "col-start-1", "row-start-1");
+    expect(admin.textContent).not.toBe("");
+    expect(member.textContent).not.toBe("");
+  });
+
   it("lists names only and saves a masked value, then empties the field", async () => {
     const { user, set } = setup();
     expect(screen.getByText("STRIPE_KEY")).toBeInTheDocument();

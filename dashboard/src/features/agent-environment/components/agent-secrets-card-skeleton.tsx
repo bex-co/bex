@@ -32,7 +32,21 @@ export function AgentSecretsCardSkeleton() {
             <Skeleton className="h-9 min-w-48 flex-1" />
             <Skeleton className="h-9 w-20" />
           </div>
-          <Skeleton className="h-3 w-80 max-w-full" />
+          {/* The help line is real text (it wraps on narrow screens): both the
+              admin and read-only variants share one cell, so the reserved
+              height is the taller one's. */}
+          <div
+            className="text-muted-foreground grid text-xs"
+            data-testid="secrets-help-skeleton"
+            aria-hidden
+          >
+            <p className="col-start-1 row-start-1 text-transparent">
+              {t("agentEnvironment.secrets.help")}
+            </p>
+            <p className="invisible col-start-1 row-start-1">
+              {t("agentEnvironment.secrets.readOnly")}
+            </p>
+          </div>
         </div>
       </CardContent>
     </Card>
