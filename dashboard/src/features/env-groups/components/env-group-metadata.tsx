@@ -32,7 +32,7 @@ export function EnvGroupMetadata({
       <MetadataItem
         label={t("envGroups.ownerLabel")}
         value={ownerName || group.ownerId}
-        title={group.ownerId}
+        title={group.ownerId ?? undefined}
       />
       <MetadataItem
         label={t("envGroups.environmentLabel")}
