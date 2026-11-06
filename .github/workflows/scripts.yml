@@ -117,6 +117,8 @@ jobs:
         run: bash scripts/ship-gates.test.sh
       - name: gh retry helper self-test
         run: bash scripts/gh-retry.test.sh
+      - name: Runner link probe self-test
+        run: bash scripts/runner-link-probe.test.sh
       - name: Repo artifact guard self-test
         run: bash scripts/repo-artifact-guard.test.sh
       # w3/042. Its sibling for a probe that is green but late. Two things are
