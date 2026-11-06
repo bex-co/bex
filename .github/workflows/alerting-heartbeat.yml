@@ -88,23 +88,25 @@ jobs:
       - name: Open or update the heartbeat issue
         if: steps.check.outputs.down == 'true'
         run: |
-          gh label create alerting-heartbeat --repo "$GITHUB_REPOSITORY" \
+          . scripts/lib/gh-retry.sh
+          gh_retry gh label create alerting-heartbeat --repo "$GITHUB_REPOSITORY" \
             --color B60205 --description "The alert pipeline or the public edge failed its out-of-cluster heartbeat" --force
           body="$(printf '%s\n\n%s\n' "$(cat heartbeat.txt)" "While this is open, in-cluster alerts may not be reaching anyone. Runbook: docs/ADR010-observability.md#alerting-heartbeat")"
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label alerting-heartbeat --state open --json number --jq '.[0].number // empty')"
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label alerting-heartbeat --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
-            gh issue create --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "Alerting heartbeat failed: alerts may be firing unseen" \
               --label alerting-heartbeat --body "$body"
           fi
       - name: Close the heartbeat issue after recovery
         if: steps.check.outputs.down == 'false'
         run: |
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label alerting-heartbeat --state open --json number --jq '.[0].number // empty')"
+          . scripts/lib/gh-retry.sh
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label alerting-heartbeat --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "The alert pipeline and public edge pass the heartbeat again."
           fi
       - name: Scrub app kubeconfig

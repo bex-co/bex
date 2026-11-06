@@ -57,14 +57,15 @@ jobs:
       - name: Open or update the tracking issue
         if: steps.check.outputs.late == 'true'
         run: |
-          gh label create ci-schedule-drift --repo "$GITHUB_REPOSITORY" \
+          . scripts/lib/gh-retry.sh
+          gh_retry gh label create ci-schedule-drift --repo "$GITHUB_REPOSITORY" \
             --color D93F0B --description "A scheduled workflow ran outside its drift window" --force
           body="$(cat drift.txt)"
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-schedule-drift --state open --json number --jq '.[0].number // empty')"
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label ci-schedule-drift --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
-            gh issue create --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "A scheduled workflow is not running on time" \
               --label ci-schedule-drift \
               --body "$body"
@@ -72,8 +73,9 @@ jobs:
       - name: Close the tracking issue once every workflow is back inside its window
         if: steps.check.outputs.late == 'false'
         run: |
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label ci-schedule-drift --state open --json number --jq '.[0].number // empty')"
+          . scripts/lib/gh-retry.sh
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label ci-schedule-drift --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "Every scheduled workflow is back inside its drift window."
           fi

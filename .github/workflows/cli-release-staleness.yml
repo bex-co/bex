@@ -42,15 +42,16 @@ jobs:
       - name: Open or update the tracking issue
         if: steps.check.outputs.stale == 'true'
         run: |
-          gh label create cli-release-stale --repo "$GITHUB_REPOSITORY" \
+          . scripts/lib/gh-retry.sh
+          gh_retry gh label create cli-release-stale --repo "$GITHUB_REPOSITORY" \
             --color FBCA04 --description "The CLI has unreleased commits (w4/032.md)" --force
           body="$(cat staleness.txt)"
           body+=$'\n\nRun `/release cli` to cut a release and close this out.'
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label cli-release-stale --state open --json number --jq '.[0].number // empty')"
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label cli-release-stale --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
-            gh issue create --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "CLI release is stale" \
               --label cli-release-stale \
               --body "$body"
@@ -58,8 +59,9 @@ jobs:
       - name: Close the tracking issue once caught up
         if: steps.check.outputs.stale == 'false'
         run: |
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label cli-release-stale --state open --json number --jq '.[0].number // empty')"
+          . scripts/lib/gh-retry.sh
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label cli-release-stale --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "The CLI is caught up with the latest \`bex-cli/v*\` tag."
           fi

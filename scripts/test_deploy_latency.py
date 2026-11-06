@@ -149,5 +149,20 @@ class Measure(unittest.TestCase):
         self.assertEqual((wait.state, wait.commit, wait.run_id, wait.subject), ("cancelled", waiting[:12], 2, "fix: waits"))
 
 
+
+class GhJson(unittest.TestCase):
+    def test_transient_gh_failure_is_retried_then_raised(self):
+        ok = subprocess.CompletedProcess(["gh"], 0, stdout='{"a": 1}', stderr="")
+        fail = subprocess.CalledProcessError(1, ["gh"], stderr="net/http: TLS handshake timeout")
+        with mock.patch.dict("os.environ", {"GH_RETRY_DELAY": "0"}):
+            with mock.patch.object(dl.subprocess, "run", side_effect=[fail, ok]) as run:
+                self.assertEqual(dl.gh_json("api", "x"), {"a": 1})
+                self.assertEqual(run.call_count, 2)
+            with mock.patch.object(dl.subprocess, "run", side_effect=[fail, fail, fail]) as run:
+                with self.assertRaises(subprocess.CalledProcessError):
+                    dl.gh_json("api", "x")
+                self.assertEqual(run.call_count, 3)
+
+
 if __name__ == "__main__":
     unittest.main()

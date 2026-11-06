@@ -41,10 +41,12 @@ from __future__ import annotations
 import argparse
 import datetime as dt
 import json
+import os
 import pathlib
 import re
 import subprocess
 import sys
+import time
 from dataclasses import asdict, dataclass
 
 PIN_SUBJECT = re.compile(r"^chore\(deploy\): pin platform images to ([0-9a-f]{7,40})")
@@ -128,8 +130,17 @@ def is_ancestor(repo: pathlib.Path, ancestor: str, descendant: str) -> bool:
 
 
 def gh_json(*args: str):
-    out = subprocess.run(["gh", *args], check=True, capture_output=True, text=True).stdout
-    return json.loads(out or "null")
+    # Three attempts: one api.github.com TLS timeout would otherwise make the
+    # hourly watchdog unusable (exit 2) and its run red.
+    delay = float(os.environ.get("GH_RETRY_DELAY", "10"))
+    for attempt in range(3):
+        try:
+            out = subprocess.run(["gh", *args], check=True, capture_output=True, text=True).stdout
+            return json.loads(out or "null")
+        except subprocess.CalledProcessError:
+            if attempt == 2:
+                raise
+            time.sleep(delay * (attempt + 1))
 
 
 def measure(repo: pathlib.Path, now: dt.datetime | None = None) -> Wait:

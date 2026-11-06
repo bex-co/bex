@@ -51,13 +51,19 @@ fetch() {
   fi
   path="repos/$repo/environments/$env"
   [ "$kind" = env ] || path="$path/deployment-branch-policies"
-  if out="$(gh api "$path" 2>&1)"; then
-    printf '%s' "$out"
-  elif printf '%s' "$out" | grep -q 'HTTP 404'; then
-    return 0
-  else
-    unusable "GitHub API $path: $out"
-  fi
+  # A missing environment answers 404; anything else (a TLS timeout, a 5xx)
+  # is retried before the check gives up as unusable.
+  local attempt
+  for attempt in 1 2 3; do
+    if out="$(gh api "$path" 2>&1)"; then
+      printf '%s' "$out"
+      return 0
+    elif printf '%s' "$out" | grep -q 'HTTP 404'; then
+      return 0
+    fi
+    [ "$attempt" = 3 ] || sleep $((attempt * ${GH_RETRY_DELAY:-10}))
+  done
+  unusable "GitHub API $path: $out"
 }
 
 # allowed_tags <env> — the tag rules an environment may carry besides `main`,

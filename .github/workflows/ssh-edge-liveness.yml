@@ -108,7 +108,8 @@ jobs:
       - name: Open or update the tracking issue
         if: steps.probe.outputs.down == 'true'
         run: |
-          gh label create ssh-edge-down --repo "$GITHUB_REPOSITORY" \
+          . scripts/lib/gh-retry.sh
+          gh_retry gh label create ssh-edge-down --repo "$GITHUB_REPOSITORY" \
             --color B60205 --description "ssh.bex.co is not completing the SSH handshake (w6/m132)" --force
           class="${{ steps.probe.outputs.class }}"
           body="$SSH_EDGE failed the SSH liveness probe on every attempt: $class."$'\n\n'
@@ -118,11 +119,11 @@ jobs:
           else
             body+="No SSH conversation happened, so this is reachability, not the gateway's handshake. Check the load balancer's targets and Traefik's ssh entrypoint, and whether the runner host itself lost network (the self-hosted pool shares one host) before changing the gateway."
           fi
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label ssh-edge-down --state open --json number --jq '.[0].number // empty')"
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label ssh-edge-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
-            gh issue create --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "SSH edge is down at $SSH_EDGE: $class" \
               --label ssh-edge-down \
               --body "$body"
@@ -130,9 +131,10 @@ jobs:
       - name: Close the tracking issue once the edge recovers
         if: steps.probe.outputs.down == 'false'
         run: |
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label ssh-edge-down --state open --json number --jq '.[0].number // empty')"
+          . scripts/lib/gh-retry.sh
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label ssh-edge-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "$SSH_EDGE completed the version exchange and sent KEXINIT again."
           fi
       - name: Probe trusted wildcard TLS and intentional 404
@@ -153,9 +155,10 @@ jobs:
         env:
           ONBEX_PROBE_HOST: ${{ github.event.inputs.host || 'notfound.onbex.co' }}
         run: |
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label onbex-fallback-tls-down --state open --json number --jq '.[0].number // empty')"
+          . scripts/lib/gh-retry.sh
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label onbex-fallback-tls-down --state open --json number --jq '.[0].number // empty')"
           if [[ -z "$existing" ]]; then
-            gh label create onbex-fallback-tls-down --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh label create onbex-fallback-tls-down --repo "$GITHUB_REPOSITORY" \
               --color B60205 --description "Unknown onbex.co hosts lack trusted fallback TLS" --force
             class="${{ steps.tls_probe.outputs.class }}"
             . scripts/edge-probe.sh
@@ -168,7 +171,7 @@ jobs:
                 printf 'The certificate is not what failed, so rotating it would not help. Check the load balancer targets and the Traefik default route, and whether the runner host itself lost network (the self-hosted pool shares one host).\n'
               fi
             } > issue-body.md
-            gh issue create --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "onbex.co fallback edge failed: $class" \
               --label onbex-fallback-tls-down --body-file issue-body.md
           fi
@@ -177,9 +180,10 @@ jobs:
         env:
           ONBEX_PROBE_HOST: ${{ github.event.inputs.host || 'notfound.onbex.co' }}
         run: |
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label onbex-fallback-tls-down --state open --json number --jq '.[0].number // empty')"
+          . scripts/lib/gh-retry.sh
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label onbex-fallback-tls-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "$ONBEX_PROBE_HOST again has trusted wildcard TLS and returns the intentional 404."
           fi
       - name: Probe the Web Shell WS edge for refusal-shape
@@ -195,16 +199,17 @@ jobs:
       - name: Open or update the Web Shell WS tracking issue
         if: always() && steps.shell_ws_probe.outputs.down == 'true'
         run: |
-          gh label create shell-ws-edge-down --repo "$GITHUB_REPOSITORY" \
+          . scripts/lib/gh-retry.sh
+          gh_retry gh label create shell-ws-edge-down --repo "$GITHUB_REPOSITORY" \
             --color B60205 --description "wss://ssh.bex.co/shell is not returning the 401 missing-ticket refusal (w2/m90)" --force
           body="$SHELL_WS_URL did not return the deterministic 401 \"missing ticket\" refusal — the Web Shell edge is dead, misrouted, or unactivated."$'\n\n'
           body+="Probe output:"$'\n\n```\n'"$(cat shell-ws-probe.txt)"$'\n```\n\n'
           body+="Alive-but-refusing (401 missing ticket) is healthy; timeout/refused/TLS/wrong-route/503 are not. Confirm Ingress \`bex-ssh-shell\`, cert \`bex-ssh-shell-tls\`, gateway listener on :8080, and Secret \`bex-shell-ticket\` (scripts/shell-ticket-secret.sh)."
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label shell-ws-edge-down --state open --json number --jq '.[0].number // empty')"
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label shell-ws-edge-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
-            gh issue create --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "Web Shell WS edge is down: no 401 refusal from $SHELL_WS_URL" \
               --label shell-ws-edge-down \
               --body "$body"
@@ -212,9 +217,10 @@ jobs:
       - name: Close the Web Shell WS tracking issue once the edge recovers
         if: always() && steps.shell_ws_probe.outputs.down == 'false'
         run: |
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label shell-ws-edge-down --state open --json number --jq '.[0].number // empty')"
+          . scripts/lib/gh-retry.sh
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label shell-ws-edge-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "$SHELL_WS_URL again returns 401 missing ticket (alive-but-refusing)."
           fi
       - name: Fail the run when a public edge is unhealthy
@@ -330,16 +336,17 @@ jobs:
       - name: Open or update the request-log tracking issue
         if: steps.probe.outputs.request == 'dark'
         run: |
-          gh label create request-logs-down --repo "$GITHUB_REPOSITORY" \
+          . scripts/lib/gh-retry.sh
+          gh_retry gh label create request-logs-down --repo "$GITHUB_REPOSITORY" \
             --color B60205 --description "type=request is producing no tenant lines (w6/m131)" --force
           body="The Traefik request-log pipeline is not attributing lines to tenant namespaces, so \`type=request\` is silently empty for every service — a 200 with no rows, indistinguishable from a quiet service."$'\n\n'
           body+="Probe output:"$'\n\n```\n'"$(cat logs-probe.txt)"$'\n```\n\n'
           body+="First suspect is the ServiceName attribution regex in \`deploy/gitops/base/log-shipper.yaml\` drifting from where App CRs actually live (ADR043 \`tea-<xid>\` namespaces) — the w6/m131 root cause. \`TestShipperRegexAttributesTenantNamespaceServices\` guards the regex in CI; this checks the live pipeline."
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label request-logs-down --state open --json number --jq '.[0].number // empty')"
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label request-logs-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
-            gh issue create --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "Request logs are dark: no type=request streams for any tenant" \
               --label request-logs-down \
               --body "$body"
@@ -347,24 +354,26 @@ jobs:
       - name: Close the request-log tracking issue once it recovers
         if: steps.probe.outputs.request == 'live'
         run: |
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label request-logs-down --state open --json number --jq '.[0].number // empty')"
+          . scripts/lib/gh-retry.sh
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label request-logs-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "type=request streams are being attributed to tenant namespaces again."
           fi
       - name: Open or update the app-log tracking issue
         if: always() && steps.probe.outputs.app == 'dark'
         run: |
-          gh label create app-logs-down --repo "$GITHUB_REPOSITORY" \
+          . scripts/lib/gh-retry.sh
+          gh_retry gh label create app-logs-down --repo "$GITHUB_REPOSITORY" \
             --color B60205 --description "type=app is producing no tenant lines (w3/m36, w3/m83)" --force
           body="The App container-log pipeline is not attributing lines to tenant namespaces, so \`type=app\` — the default log view for every service — is silently empty. A 200 with no rows reads as a quiet service, which is how w3/m36 stayed hidden."$'\n\n'
           body+="Probe output:"$'\n\n```\n'"$(cat logs-probe.txt)"$'\n```\n\n'
           body+="This pipeline reads the namespace straight from pod metadata, so an attribution regex is NOT the suspect (that is the request-log failure mode). Check the Alloy DaemonSet instead: it must be running on every tenant node (\`kubectl -n monitoring get ds\`), its \`app.bex.co/app\` pod selector must still match what the operator stamps, and Loki must be accepting its pushes. Config: \`deploy/gitops/base/log-shipper.yaml\` (\`app_pods\` pipeline)."
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label app-logs-down --state open --json number --jq '.[0].number // empty')"
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label app-logs-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
-            gh issue create --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "App logs are dark: no type=app streams for any tenant" \
               --label app-logs-down \
               --body "$body"
@@ -372,9 +381,10 @@ jobs:
       - name: Close the app-log tracking issue once it recovers
         if: always() && steps.probe.outputs.app == 'live'
         run: |
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label app-logs-down --state open --json number --jq '.[0].number // empty')"
+          . scripts/lib/gh-retry.sh
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label app-logs-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "type=app streams are being attributed to tenant namespaces again."
           fi
       - name: Fail the run when a tenant log pipeline is dark
@@ -489,16 +499,17 @@ jobs:
       - name: Open or update the tracking issue
         if: steps.probe.outputs.down == 'true'
         run: |
-          gh label create tenant-view-down --repo "$GITHUB_REPOSITORY" \
+          . scripts/lib/gh-retry.sh
+          gh_retry gh label create tenant-view-down --repo "$GITHUB_REPOSITORY" \
             --color B60205 --description "The tenant view of a running service is broken (w3/m83)" --force
           body="The production canary service is not answering a tenant correctly. Failing stage: **${{ steps.probe.outputs.stage }}** (exit ${{ steps.probe.outputs.code }})."$'\n\n'
           body+="Probe output:"$'\n\n```\n'"$(cat tenant-view.txt)"$'\n```\n\n'
           body+="Read the stage before the pipeline: stage 1 red is a hosting/activator failure, stages 2-4 red with stage 1 green mean the service IS serving and bex-api is answering wrongly — the w6/m110 class, where the series exist and the query names them wrong. Cross-check \`request-logs-liveness\` in this same workflow: green there plus red here isolates the fault to bex-api's query rather than the shipper."
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label tenant-view-down --state open --json number --jq '.[0].number // empty')"
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label tenant-view-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
+            gh_retry gh issue edit "$existing" --repo "$GITHUB_REPOSITORY" --body "$body"
           else
-            gh issue create --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue create --repo "$GITHUB_REPOSITORY" \
               --title "Tenant view is broken: ${{ steps.probe.outputs.stage }}" \
               --label tenant-view-down \
               --body "$body"
@@ -506,9 +517,10 @@ jobs:
       - name: Close the tracking issue once the tenant view recovers
         if: steps.probe.outputs.down == 'false'
         run: |
-          existing="$(gh issue list --repo "$GITHUB_REPOSITORY" --label tenant-view-down --state open --json number --jq '.[0].number // empty')"
+          . scripts/lib/gh-retry.sh
+          existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label tenant-view-down --state open --json number --jq '.[0].number // empty')"
           if [[ -n "$existing" ]]; then
-            gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
+            gh_retry gh issue close "$existing" --repo "$GITHUB_REPOSITORY" \
               --comment "The canary served this probe's request and bex-api reported it back through logs, metrics, and events."
           fi
       - name: Fail the run when the tenant view is broken

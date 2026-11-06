@@ -143,6 +143,9 @@ if [ -n "${BEX_CI_DRIFT_RUNS_JSON:-}" ]; then
     || unusable "run data is not a JSON object keyed by workflow file"
 else
   command -v gh >/dev/null || unusable "missing required command: gh"
+  # One failed list call made the whole check unusable; retry each.
+  # shellcheck source=lib/gh-retry.sh
+  . "$(dirname "${BASH_SOURCE[0]}")/lib/gh-retry.sh"
 fi
 
 runs_for() { # runs_for <workflow file> — its newest runs, newest first
@@ -157,7 +160,7 @@ runs_for() { # runs_for <workflow file> — its newest runs, newest first
     # scheduled, 18 pushes), the weekly workflows hold 12 runs or fewer in all,
     # and the check needs about 10 scheduled verdicts at most
     # (ssh-edge-liveness's 12h window plus the 48h lookback).
-    gh run list --workflow "$1" --limit "$LIMIT" \
+    gh_retry gh run list --workflow "$1" --limit "$LIMIT" \
       --json conclusion,status,event,createdAt,url 2>/dev/null \
       || unusable "could not list runs of $1"
   fi
