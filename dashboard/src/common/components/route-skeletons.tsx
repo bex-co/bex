@@ -57,6 +57,10 @@ import { LogPanelSkeleton } from "@/features/logs/components/log-panel-skeleton"
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 import { AgentSecretsCardSkeleton } from "@/features/agent-environment/components/agent-secrets-card-skeleton";
 import { AgentSkillsCardSkeleton } from "@/features/agent-environment/components/agent-skills-card-skeleton";
+import {
+  LeaveWorkspaceCardSkeleton,
+  TeamPanelSkeleton,
+} from "@/features/team/components/team-panel-skeleton";
 import { AgentModelCardSkeleton } from "@/features/usage/components/agent-model-card-skeleton";
 import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
 import { CHART_FRAME_STYLE } from "@/features/metrics/components/chart-layout";
@@ -1275,7 +1279,7 @@ export function WorkspaceSettingsPageSkeleton() {
             <CardSkeleton rows={5} />
           </Region>
           <Region name="team">
-            <TableCardSkeleton rows={3} columns={4} />
+            <TeamPanelSkeleton />
           </Region>
           <Region name="notifications">
             <WorkspaceNotificationsCardSkeleton />
@@ -1286,7 +1290,7 @@ export function WorkspaceSettingsPageSkeleton() {
             <AgentSkillsCardSkeleton />
           </Region>
           <Region name="danger-zone">
-            <CardSkeleton rows={2} />
+            <LeaveWorkspaceCardSkeleton />
           </Region>
         </div>
       </div>

@@ -89,6 +89,27 @@ function lastWorkspaceId(spy: typeof useTeamSpy): unknown {
 }
 
 describe("TeamPanel", () => {
+  // w9/082: the first load draws the loaded card's structure — search box,
+  // table header and one row shaped like the caller's own — not two bars.
+  it("shows the loaded structure with one member-shaped row while loading", () => {
+    teamState.members = [];
+    teamState.loading = true;
+    render(<TeamPanel />);
+    const skeleton = screen.getByTestId("team-members-skeleton");
+    expect(
+      within(skeleton).getByRole("searchbox", { hidden: true }),
+    ).toBeDisabled();
+    expect(
+      within(skeleton).getAllByRole("columnheader", { hidden: true }),
+    ).toHaveLength(3);
+    const rows = skeleton.querySelectorAll("[data-skeleton-region=member-row]");
+    expect(rows).toHaveLength(1);
+    expect(rows[0]).toHaveTextContent("You");
+    expect(rows[0]).toHaveTextContent("Owner");
+    expect(rows[0].querySelector(".font-mono.text-xs")).not.toBeNull();
+    teamState.loading = false;
+  });
+
   it("lists members with their roles (w4/m12/t004)", () => {
     teamState.members = [
       {

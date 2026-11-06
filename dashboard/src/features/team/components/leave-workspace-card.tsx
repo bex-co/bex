@@ -18,6 +18,7 @@ import { PermissionTooltip } from "@/features/capabilities/components/permission
 import { useTranslations } from "@/common/hooks/use-translations";
 import { useWorkspace } from "@/features/workspaces/context/hooks";
 import { useTeam } from "@/features/team/hooks/use-team";
+import { LeaveWorkspaceCardSkeleton } from "@/features/team/components/team-panel-skeleton";
 import { useLeaveWorkspace } from "@/features/team/hooks/use-leave-workspace";
 import { leaveEligibility } from "@/features/team/lib/leave-eligibility";
 import type { WorkspaceView } from "@/features/workspaces/types";
@@ -49,10 +50,15 @@ export function LeaveWorkspaceCard({ workspace }: LeaveWorkspaceCardProps) {
   const { t } = useTranslations();
   const navigate = useNavigate();
   const { workspaces, setCurrentWorkspaceId, refetch } = useWorkspace();
-  const { members } = useTeam(workspace.id);
+  const { members, loading } = useTeam(workspace.id);
   const { leave, busy, error } = useLeaveWorkspace(workspace.id);
 
   const { isMember, blockedReason } = leaveEligibility(members);
+  // Until the members arrive, hold the card's place rather than render nothing
+  // and pop in (w9/082): almost every caller here is a member.
+  if (loading && members.length === 0) {
+    return <LeaveWorkspaceCardSkeleton workspaceName={workspace.name} />;
+  }
   if (!isMember) return null;
 
   async function handleLeave() {

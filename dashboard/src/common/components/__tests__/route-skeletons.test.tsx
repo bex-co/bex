@@ -190,6 +190,32 @@ describe("route-shaped skeleton geometry (w5/m79)", () => {
     expect(repositories?.children).toHaveLength(3);
   });
 
+  // w9/082: the Team region is TeamPanel's own structure (static header,
+  // Invite action, search, table header, one member-shaped row) and the danger
+  // zone holds the Leave workspace card, so neither grows nor pops in on load.
+  it("draws the Settings Team card and Leave workspace card in their loaded shapes", () => {
+    const { container, unmount } = render(<WorkspaceSettingsPageSkeleton />);
+    const team = container.querySelector('[data-skeleton-region="team"]')!;
+    const card = team.querySelector('[data-testid="team-panel-skeleton"]')!;
+    expect(card).not.toBeNull();
+    expect(card.querySelector("[data-slot=card-title]")).toHaveTextContent(
+      "Team",
+    );
+    expect(card.querySelector("[data-slot=card-action]")).toHaveTextContent(
+      "Invite",
+    );
+    expect(
+      card.querySelectorAll("[data-skeleton-region=member-row]"),
+    ).toHaveLength(1);
+    const danger = container.querySelector(
+      '[data-skeleton-region="danger-zone"]',
+    )!;
+    expect(
+      danger.querySelector('[data-testid="leave-workspace-skeleton"]'),
+    ).toHaveTextContent("Leave workspace");
+    unmount();
+  });
+
   it.each([
     [<DatabaseOverviewSkeleton key="database" />, 10],
     [<KeyValueOverviewSkeleton key="keyvalue" />, 7],

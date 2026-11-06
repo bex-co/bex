@@ -10,6 +10,10 @@ import { DeleteWorkspaceCard } from "@/features/workspaces/components/delete-wor
 import { WorkspaceSettingsNavigation } from "@/features/workspaces/components/workspace-settings-navigation";
 import { TeamPanel } from "@/features/team/components/team-panel";
 import { LeaveWorkspaceCard } from "@/features/team/components/leave-workspace-card";
+import {
+  LeaveWorkspaceCardSkeleton,
+  TeamPanelSkeleton,
+} from "@/features/team/components/team-panel-skeleton";
 import { AgentEnvironmentCard } from "@/features/agent-environment/components/agent-environment-card";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 import { AgentSecretsCard } from "@/features/agent-environment/components/agent-secrets-card";
@@ -94,7 +98,7 @@ function WorkspaceSettingsPage() {
                   <CardSkeleton rows={5} />
                 </section>
                 <section data-skeleton-region="team">
-                  <CardSkeleton rows={5} />
+                  <TeamPanelSkeleton />
                 </section>
                 <section data-skeleton-region="notifications">
                   <WorkspaceNotificationsCardSkeleton />
@@ -104,8 +108,11 @@ function WorkspaceSettingsPage() {
                   <AgentSecretsCardSkeleton />
                   <AgentSkillsCardSkeleton />
                 </section>
-                <section data-skeleton-region="danger-zone">
-                  <CardSkeleton rows={2} />
+                <section
+                  data-skeleton-region="danger-zone"
+                  className="space-y-6"
+                >
+                  <LeaveWorkspaceCardSkeleton />
                   {hasMultipleWorkspaces ? <CardSkeleton rows={2} /> : null}
                 </section>
               </>

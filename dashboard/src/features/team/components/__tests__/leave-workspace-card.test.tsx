@@ -5,9 +5,13 @@ import { LeaveWorkspaceCard } from "@/features/team/components/leave-workspace-c
 import type { MemberView } from "@/features/team/types";
 import type { WorkspaceView } from "@/features/workspaces/types";
 
-const members: { value: MemberView[] } = { value: [] };
+const members: { value: MemberView[]; loading?: boolean } = { value: [] };
 vi.mock("@/features/team/hooks/use-team", () => ({
-  useTeam: () => ({ members: members.value, refetch: vi.fn() }),
+  useTeam: () => ({
+    members: members.value,
+    loading: members.loading ?? false,
+    refetch: vi.fn(),
+  }),
 }));
 
 const leave = vi.fn();
@@ -137,6 +141,18 @@ describe("LeaveWorkspaceCard (w5/m102)", () => {
     members.value = [member({ subject: "someone-else" })];
     const { container } = renderCard();
     expect(container).toBeEmptyDOMElement();
+  });
+
+  // w9/082: while the members load the card holds its place (same header,
+  // disabled button) instead of rendering nothing and popping in.
+  it("holds the card's place while the members load", () => {
+    members.value = [];
+    members.loading = true;
+    renderCard();
+    const card = screen.getByTestId("leave-workspace-skeleton");
+    expect(card).toHaveTextContent("Leave workspace");
+    expect(within(card).getByRole("button", { hidden: true })).toBeDisabled();
+    members.loading = false;
   });
 
   it("renders the server's refusal inline", () => {

@@ -21,7 +21,6 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import {
   PanelCenteredState,
-  PanelTableSkeleton,
   TableActionsHead,
 } from "@/common/components/panel-states";
 import { useTranslations } from "@/common/hooks/use-translations";
@@ -33,6 +32,7 @@ import { useResendInvite } from "@/features/team/hooks/use-resend-invite";
 import { MemberRow } from "@/features/team/components/member-row";
 import type { Role } from "@/features/team/types";
 import { InviteMemberDialog } from "@/features/team/components/invite-member-dialog";
+import { TeamMembersSkeleton } from "@/features/team/components/team-panel-skeleton";
 
 /**
  * Settings → Team (w4/m12): the workspace's members and their roles, plus (for
@@ -126,7 +126,7 @@ export function TeamPanel() {
             body={t("team.errorBody")}
           />
         ) : initialLoading ? (
-          <PanelTableSkeleton />
+          <TeamMembersSkeleton canManage={canManage} />
         ) : (
           <>
             <div className="relative max-w-sm">
