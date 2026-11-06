@@ -25,8 +25,8 @@ deploy runs that carry the commit:
   not-triggered          no deploy run includes the commit yet
   queued                 a run waits for the bex-production-deploy slot
   waiting-for-runner     a job has waited over 5 min for a runner
-  in-progress            a run is executing
-  failed                 the newest run carrying it failed (job/step named)
+  in-progress            a run is executing (its running jobs and minutes named)
+  failed                 the newest run carrying it failed or timed out (job/step named)
   cancelled              the newest run carrying it was cancelled while pending
   superseded             the newest run succeeded but did not pin (superseded)
 
@@ -87,32 +87,43 @@ def parse_time(value: str) -> dt.datetime:
     return dt.datetime.fromisoformat(value.replace("Z", "+00:00"))
 
 
-def classify(runs: list[dict], jobs: dict[int, list[dict]], now: dt.datetime) -> tuple[str, int, str]:
-    """The waiting commit's state from the deploy runs that carry it, newest first."""
+FAILED = {"failure", "timed_out", "startup_failure"}
+
+
+def classify(runs: list[dict], jobs, now: dt.datetime) -> tuple[str, int, str]:
+    """The waiting commit's state from the deploy runs that carry it, newest first.
+
+    jobs maps a run id to its jobs; a missing id reads as no jobs."""
     if not runs:
         return "not-triggered", 0, ""
-    for run in runs:
-        if run.get("status") in ACTIVE:
-            run_id = run["databaseId"]
-            for job in jobs.get(run_id, []):
-                if job.get("status") == "queued" and not job.get("runner_name") and job.get("created_at"):
-                    waited = now - parse_time(job["created_at"])
-                    if waited > RUNNER_WAIT:
-                        return "waiting-for-runner", run_id, f"{job.get('name')} queued {int(waited.total_seconds() // 60)} min"
-            if run.get("status") == "in_progress":
-                return "in-progress", run_id, ""
-            if run.get("status") == "waiting":
-                return "queued", run_id, "waiting on an environment protection rule"
-            return "queued", run_id, "waiting for the bex-production-deploy slot"
+    active = [r for r in runs if r.get("status") in ACTIVE]
+    # The newest carrying run is usually the one pending behind the slot; the
+    # run that holds the slot is older, so look at every active run.
+    for run in active:
+        for job in jobs.get(run["databaseId"], []):
+            if job.get("status") == "queued" and not job.get("runner_name") and job.get("created_at"):
+                waited = now - parse_time(job["created_at"])
+                if waited > RUNNER_WAIT:
+                    return "waiting-for-runner", run["databaseId"], f"{job.get('name')} queued {int(waited.total_seconds() // 60)} min"
+    for run in active:
+        if run.get("status") == "in_progress":
+            running = [j for j in jobs.get(run["databaseId"], []) if j.get("status") == "in_progress" and j.get("started_at")]
+            detail = ", ".join(f"{j.get('name')} running {int((now - parse_time(j['started_at'])).total_seconds() // 60)} min" for j in running)
+            return "in-progress", run["databaseId"], detail
+    if active:
+        run = active[0]
+        if run.get("status") == "waiting":
+            return "queued", run["databaseId"], "waiting on an environment protection rule"
+        return "queued", run["databaseId"], "waiting for the bex-production-deploy slot"
     run = runs[0]
     run_id = run["databaseId"]
     conclusion = run.get("conclusion")
-    if conclusion == "failure":
+    if conclusion in FAILED:
         for job in jobs.get(run_id, []):
-            if job.get("conclusion") == "failure":
-                steps = [s.get("name", "") for s in job.get("steps", []) if s.get("conclusion") == "failure"]
-                return "failed", run_id, f"{job.get('name')}: {', '.join(steps) or 'failed'}"
-        return "failed", run_id, ""
+            if job.get("conclusion") in FAILED:
+                steps = [s.get("name", "") for s in job.get("steps", []) if s.get("conclusion") in FAILED]
+                return "failed", run_id, f"{job.get('name')}: {', '.join(steps) or conclusion}"
+        return "failed", run_id, conclusion
     if conclusion == "cancelled":
         return "cancelled", run_id, "cancelled while pending or superseded in the queue"
     if conclusion == "success":
@@ -120,18 +131,23 @@ def classify(runs: list[dict], jobs: dict[int, list[dict]], now: dt.datetime) ->
     return conclusion or "unknown", run_id, ""
 
 
+class RunJobs(dict):
+    """Run id → jobs, fetched from the API only when classify asks."""
+
+    def get(self, run_id, default=None):
+        if run_id not in self:
+            data = gh_json("api", f"repos/{{owner}}/{{repo}}/actions/runs/{run_id}/jobs")
+            self[run_id] = (data or {}).get("jobs", [])
+        return self[run_id]
+
+
 def git(repo: pathlib.Path, *args: str) -> str:
     return subprocess.run(["git", "-C", str(repo), *args], check=True, capture_output=True, text=True).stdout.strip()
 
 
-def is_ancestor(repo: pathlib.Path, ancestor: str, descendant: str) -> bool:
-    return subprocess.run(["git", "-C", str(repo), "merge-base", "--is-ancestor", ancestor, descendant],
-                          capture_output=True).returncode == 0
-
-
 def gh_json(*args: str):
-    # Three attempts: one api.github.com TLS timeout would otherwise make the
-    # hourly watchdog unusable (exit 2) and its run red.
+    # Three attempts, as scripts/lib/gh-retry.sh: one api.github.com TLS
+    # timeout would otherwise make the hourly watchdog unusable (exit 2).
     delay = float(os.environ.get("GH_RETRY_DELAY", "10"))
     for attempt in range(3):
         try:
@@ -152,27 +168,25 @@ def measure(repo: pathlib.Path, now: dt.datetime | None = None) -> Wait:
         raise ValueError("no pin commit on origin/main")
     pinned = git(repo, "rev-parse", match.group(1))
     include, exclude = push_paths((repo / ".github/workflows/deploy.yml").read_text())
-    pathspec = include + [f":(exclude){glob}" for glob in exclude]
-    pending = git(repo, "rev-list", "--reverse", "--no-merges", f"{pinned}..{head}", "--", *pathspec).split()
-    pending = [c for c in pending if not PIN_SUBJECT.match(git(repo, "log", "-1", "--format=%s", c))]
+    # glob magic: `*` stops at `/`, as in GitHub's push filter.
+    pathspec = [f":(glob){g}" for g in include] + [f":(exclude,glob){g}" for g in exclude]
+    log = git(repo, "log", "--reverse", "--no-merges", "--format=%H%x09%ct%x09%s", f"{pinned}..{head}", "--", *pathspec)
+    pending = [line.split("\t", 2) for line in log.splitlines()]
+    pending = [entry for entry in pending if not PIN_SUBJECT.match(entry[2])]
     if not pending:
         return Wait("deployed")
-    oldest = pending[0]
-    committed = dt.datetime.fromtimestamp(int(git(repo, "log", "-1", "--format=%ct", oldest)), dt.timezone.utc)
+    oldest, committed_at, subject = pending[0]
+    committed = dt.datetime.fromtimestamp(int(committed_at), dt.timezone.utc)
+    carrier_shas = set(git(repo, "rev-list", "--ancestry-path", f"{oldest}..{head}").split()) | {oldest}
     # No --branch: that filter goes through a lagging search and can miss the
     # newest runs (as in ci-red-streak.sh), and the listing order is not a
     # contract, so filter and sort here.
     runs = gh_json("run", "list", "--workflow=deploy.yml", "--limit", "60",
                    "--json", "databaseId,headSha,headBranch,status,conclusion,createdAt") or []
     runs = sorted((r for r in runs if r.get("headBranch") == "main"), key=lambda r: r["createdAt"], reverse=True)
-    carrying = [r for r in runs if is_ancestor(repo, oldest, r["headSha"])]
-    jobs = {}
-    for run in carrying[:3]:
-        data = gh_json("api", f"repos/{{owner}}/{{repo}}/actions/runs/{run['databaseId']}/jobs")
-        jobs[run["databaseId"]] = (data or {}).get("jobs", [])
-    state, run_id, detail = classify(carrying, jobs, now)
-    return Wait(state, oldest[:12], git(repo, "log", "-1", "--format=%s", oldest),
-                round((now - committed).total_seconds() / 3600, 1), run_id, detail)
+    carrying = [r for r in runs if r["headSha"] in carrier_shas]
+    state, run_id, detail = classify(carrying, RunJobs(), now)
+    return Wait(state, oldest[:12], subject, round((now - committed).total_seconds() / 3600, 1), run_id, detail)
 
 
 def main(argv: list[str]) -> int:

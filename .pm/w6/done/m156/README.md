@@ -1,6 +1,6 @@
 # w6 · m156 — Deploy latency watchdog: a green main never waits half a day to deploy
 
-**Worker:** worker6 **Goal:** when a deployable commit on main waits more than 6 h for its production pin, an issue opens automatically, naming why, and the remaining starvation cause is fixed. **Status:** todo (t001–t002 done; t003 unblocked by D8 = (a), 2026-11-04)
+**Worker:** worker6 **Goal:** when a deployable commit on main waits more than 6 h for its production pin, an issue opens automatically, naming why, and the remaining starvation cause is fixed. **Status:** done
 
 ## Tasks (in order)
 
@@ -8,10 +8,10 @@
 | --- | --- | --- | --- |
 | t001 | [Measure the oldest undeployed deployable commit and classify why it waits](done/t001.md) — **DONE** | 75m | — |
 | t002 | [Scheduled watchdog: open an issue past 6 h, close it on recovery](done/t002.md) — **DONE** | 60m | w6/m156/t001 |
-| t003 | [Replay the last week's long gaps and fix the remaining starvation cause](t003.md) | 75m | w6/m156/t001 |
-| t004 | [Simplify](t004.md) | 15m | w6/m156/t002, w6/m156/t003 |
-| t005 | [Test coverage](t005.md) | 20m | w6/m156/t004 |
-| t006 | [Closeout](t006.md) | 10m | w6/m156/t005 |
+| t003 | [Replay the last week's long gaps and fix the remaining starvation cause](done/t003.md) — **DONE** | 75m | w6/m156/t001 |
+| t004 | [Simplify](done/t004.md) — **DONE** | 15m | w6/m156/t002, w6/m156/t003 |
+| t005 | [Test coverage](done/t005.md) — **DONE** | 20m | w6/m156/t004 |
+| t006 | [Closeout](done/t006.md) — **DONE** | 10m | w6/m156/t005 |
 
 ## Definition of done
 
@@ -70,3 +70,10 @@ t001/t002 do not depend on this and are shipped. t004–t006 follow the decision
   3. Tests in `scripts/deploy-superseded.test.sh`: allowlisted-only diff pins; a CRD/RBAC/operator-config change in the same diff still discards; an empty or unparseable diff discards (fail closed).
   4. Update w6/087's record with the decision and the outcome.
 - **Acceptance:** the unit tests above pass; the next live supersession whose newer diff is allowlisted-only pins instead of being discarded (cite the run); `scripts/deploy_latency.py` over the following 7 days shows no gap over 10 h caused by `superseded`.
+
+## Closeout — 2026-11-06
+
+- **t003, already met.** D8 = (a) asked that a run superseded at write-back still pin when the newer manifests are safe for its images. `8f322344f` (w4/439, 2026-10-31 21:11Z, after this replay's window) went further: a run that already built pins its images whenever only newer manifests moved (`scripts/deploy-superseded.sh` exit 4), because Argo already runs those manifests on the older pinned images. Only a reshaped generated digest field or a commit older than the current pin still discards. The reviewed allowlist is therefore unnecessary; the structural cause in the replay (finished runs discarded at write-back) is gone.
+- **What still starves main** (issue #129, 2026-11-06): run duration. One run held the single `bex-production-deploy` slot for 2-4 h (`in-progress 5.7h … build running 113 min`), so later commits queued. That is w6/m158's work (native compile, GOMAXPROCS 12, parallel build/sign).
+- **t004/t005:** the watchdog now inspects every active run carrying the commit (the slot holder, not only the pending run behind it), names the running job and its minutes for `in-progress`, reports `timed_out`/`startup_failure` as `failed`, matches GitHub's glob semantics for the push filter, fetches run jobs lazily, and reads the waiting commits in one `git log`. 16 tests (`scripts/test_deploy_latency.py`), including the slot holder, the running-job detail, a timeout and a real unusable exit.
+- w6/087 updated with this outcome.

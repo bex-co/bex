@@ -51,7 +51,8 @@ class Classify(unittest.TestCase):
         self.assertEqual(dl.classify([run(7, "in_progress")], jobs, NOW)[0], "in-progress")
 
     def test_a_run_waiting_for_the_concurrency_slot(self):
-        self.assertEqual(dl.classify([run(7, "pending")], {}, NOW)[:3:2], ("queued", "waiting for the bex-production-deploy slot"))
+        state, _, detail = dl.classify([run(7, "pending")], {}, NOW)
+        self.assertEqual((state, detail), ("queued", "waiting for the bex-production-deploy slot"))
 
     def test_a_run_waiting_on_an_environment_gate_names_it(self):
         self.assertEqual(dl.classify([run(7, "waiting")], {}, NOW)[2], "waiting on an environment protection rule")
@@ -69,6 +70,24 @@ class Classify(unittest.TestCase):
 
     def test_an_active_run_wins_over_an_older_failure(self):
         self.assertEqual(dl.classify([run(10, "in_progress"), run(9, conclusion="failure")], {}, NOW)[0], "in-progress")
+
+    def test_the_slot_holder_is_inspected_behind_a_pending_run(self):
+        # Newest first: run 11 pends behind the slot, run 10 holds it and waits
+        # for a runner. The holder's wait is the real cause.
+        jobs = {10: [{"name": "build", "status": "queued", "runner_name": None, "created_at": "2026-11-02T11:00:00Z"}]}
+        state, run_id, detail = dl.classify([run(11, "pending"), run(10, "in_progress")], jobs, NOW)
+        self.assertEqual((state, run_id, detail), ("waiting-for-runner", 10, "build queued 60 min"))
+
+    def test_in_progress_names_the_running_job(self):
+        jobs = {10: [{"name": "test-backend", "status": "completed"},
+                     {"name": "build", "status": "in_progress", "started_at": "2026-11-02T10:30:00Z"}]}
+        self.assertEqual(dl.classify([run(11, "pending"), run(10, "in_progress")], jobs, NOW),
+                         ("in-progress", 10, "build running 90 min"))
+
+    def test_a_timeout_is_a_failure(self):
+        jobs = {9: [{"name": "build", "conclusion": "timed_out", "steps": [{"name": "sign images + attest SBOM", "conclusion": "timed_out"}]}]}
+        self.assertEqual(dl.classify([run(9, conclusion="timed_out")], jobs, NOW),
+                         ("failed", 9, "build: sign images + attest SBOM"))
 
 
 class PushPaths(unittest.TestCase):
@@ -114,15 +133,13 @@ class Measure(unittest.TestCase):
         self.sh("git", "update-ref", "refs/remotes/origin/main", "HEAD")
 
     def test_no_pin_commit_is_unusable_not_late(self):
-        self.sh("git", "commit", "-q", "--allow-empty", "-m", "unrelated")
         fresh = tempfile.TemporaryDirectory()
         self.addCleanup(fresh.cleanup)
         repo = pathlib.Path(fresh.name)
         subprocess.run(["git", "init", "-q", "-b", "main"], cwd=repo, check=True)
         subprocess.run(["git", "-c", "user.email=t@example.com", "-c", "user.name=t", "commit", "-q", "--allow-empty", "-m", "init"], cwd=repo, check=True)
         subprocess.run(["git", "update-ref", "refs/remotes/origin/main", "HEAD"], cwd=repo, check=True)
-        with mock.patch.object(dl, "measure", side_effect=ValueError("no pin commit on origin/main")):
-            self.assertEqual(dl.main(["--repo", str(repo), "--threshold-hours", "1"]), 2)
+        self.assertEqual(dl.main(["--repo", str(repo), "--threshold-hours", "1"]), 2)
 
     def test_nothing_waits_after_the_pin(self):
         self.commit("lego/cli/x.go", "feat(cli): launcher only")
@@ -147,7 +164,6 @@ class Measure(unittest.TestCase):
         with mock.patch.object(dl, "gh_json", side_effect=fake_gh):
             wait = dl.measure(self.repo, NOW)
         self.assertEqual((wait.state, wait.commit, wait.run_id, wait.subject), ("cancelled", waiting[:12], 2, "fix: waits"))
-
 
 
 class GhJson(unittest.TestCase):
