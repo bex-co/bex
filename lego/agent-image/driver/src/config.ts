@@ -22,6 +22,7 @@ import path from "node:path";
 import { describeError } from "./errors.js";
 import { loadAgentProfiles, lookupAgentProfile } from "./profiles.js";
 import { isDeepStrictEqual } from "node:util";
+import { secretValuesFromEnv } from "./redact.js";
 
 export interface AgentDriverConfig {
   // Files the user attached to the session (ADR095): what setup waits for and
@@ -105,6 +106,10 @@ export interface AgentDriverConfig {
   // custom or full), only for the overlay's wording. "" when absent or
   // unknown (an older bex-api); the network itself is enforced outside.
   networkTier: string;
+  // Session secrets (ADR098): name → value of each env var bex-api named in
+  // BEX_AGENT_SECRET_NAMES. Used only to scrub published parts; the agent
+  // reads the values from its own inherited env.
+  secretValues: Map<string, string>;
 }
 
 // modelProxyPlaceholder mirrors agentsession.ModelKeyPlaceholder (Go). The
@@ -349,5 +354,6 @@ export function loadConfig(
     modelBaseUrlEnvName,
     networkTier: networkTier(env.BEX_AGENT_NETWORK_TIER),
     attachments: parseAttachmentManifest(env.BEX_AGENT_ATTACHMENTS),
+    secretValues: secretValuesFromEnv(env),
   };
 }

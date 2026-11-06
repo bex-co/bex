@@ -312,6 +312,111 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "无法保存支出上限，请重试。",
     description: "Generic cap write failure",
   },
+  "agentEnvironment.secrets.title": {
+    message: "智能体密钥",
+    description: "Settings \u2192 Agent secrets card title (ADR098)",
+  },
+  "agentEnvironment.secrets.description": {
+    message:
+      "可以作为环境变量提供给会话的 API 密钥和令牌。值只能写入：任何人都无法读回，并会从对话记录中隐去。",
+    description: "Agent secrets card description",
+  },
+  "agentEnvironment.secrets.loadFailed": {
+    message: "无法加载智能体密钥。",
+    description: "Agent secrets card error when the list query fails",
+  },
+  "agentEnvironment.secrets.empty": {
+    message: "还没有智能体密钥。",
+    description: "Agent secrets card empty state",
+  },
+  "agentEnvironment.secrets.deleteLabel": {
+    message: "删除 {name}",
+    description: "Accessible label of a secret's delete button",
+  },
+  "agentEnvironment.secrets.deleteTitle": {
+    message: "删除 {name}？",
+    description: "Delete-secret confirmation title",
+  },
+  "agentEnvironment.secrets.deleteBody": {
+    message: "使用此密钥的会话在重新设置之前，下一轮将会失败。",
+    description: "Delete-secret confirmation body",
+  },
+  "agentEnvironment.secrets.deleteConfirm": {
+    message: "删除密钥",
+    description: "Delete-secret confirmation button",
+  },
+  "agentEnvironment.secrets.nameLabel": {
+    message: "密钥名称",
+    description: "Agent secrets card: name field label",
+  },
+  "agentEnvironment.secrets.namePlaceholder": {
+    message: "STRIPE_API_KEY",
+    description: "Agent secrets card: name field placeholder (an env var name)",
+  },
+  "agentEnvironment.secrets.valueLabel": {
+    message: "密钥值",
+    description: "Agent secrets card: value field label",
+  },
+  "agentEnvironment.secrets.valuePlaceholder": {
+    message: "值",
+    description: "Agent secrets card: value field placeholder",
+  },
+  "agentEnvironment.secrets.save": {
+    message: "保存",
+    description: "Agent secrets card: save (create or replace) button",
+  },
+  "agentEnvironment.secrets.help": {
+    message: "保存已有名称会替换其值。会话从下一轮开始读取新值。",
+    description: "Agent secrets card help line for admins",
+  },
+  "agentEnvironment.secrets.readOnly": {
+    message: "只有工作区管理员可以添加或删除智能体密钥。",
+    description: "Agent secrets card help line for non-admins",
+  },
+  "agentEnvironment.secrets.saved": {
+    message: "已保存 {name}",
+    description: "Toast after a secret is saved",
+  },
+  "agentEnvironment.secrets.deleted": {
+    message: "已删除 {name}",
+    description: "Toast after a secret is deleted",
+  },
+  "agentEnvironment.secrets.nameInvalid": {
+    message: "请使用字母、数字和 _，并以字母或 _ 开头（最多 128 个字符）。",
+    description: "Secret name validation error",
+  },
+  "agentEnvironment.secrets.nameReserved": {
+    message: "bex 会自行设置此环境变量，因此密钥不能使用该名称。",
+    description: "Secret name reserved error",
+  },
+  "agentEnvironment.secrets.valueRequired": {
+    message: "请输入值。",
+    description: "Secret value required error",
+  },
+  "agentEnvironment.secrets.valueInvalid": {
+    message: "值最多为 32 KiB。",
+    description: "Secret value too long (or contains a NUL byte)",
+  },
+  "agentEnvironment.secrets.limitExceeded": {
+    message: "已达到智能体密钥数量上限。",
+    description: "Secret count or size limit error",
+  },
+  "agentEnvironment.secrets.notFound": {
+    message: "该密钥已不存在，可能刚被其他人删除。",
+    description: "AGENT_SECRET_NOT_FOUND error (deleted concurrently)",
+  },
+  "agentEnvironment.secrets.unavailable": {
+    message: "此部署不支持智能体密钥。",
+    description: "AGENT_SECRETS_UNAVAILABLE error",
+  },
+  "agentEnvironment.secrets.forbidden": {
+    message: "只有工作区管理员可以更改智能体密钥。",
+    description: "Secret write refused for a non-admin",
+  },
+  "agentEnvironment.secrets.saveFailed": {
+    message: "无法保存更改，请重试。",
+    description: "Generic secret write failure",
+  },
 };
 
 export default zhAgentEnvironment;

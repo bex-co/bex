@@ -397,6 +397,30 @@ lines.on("line", async (line) => {
       }
       const delay = Number(process.env.ACP_FIXTURE_DELAY_MS || 0);
       if (delay) await new Promise((resolve) => setTimeout(resolve, delay));
+      // ADR098: echo a session secret the way an agent would leak it, split
+      // across two text chunks and whole in a tool output.
+      const echoed = process.env.ACP_FIXTURE_ECHO_SECRET;
+      if (echoed && process.env[echoed]) {
+        const value = process.env[echoed];
+        const half = Math.floor(value.length / 2);
+        update(sessionId, {
+          sessionUpdate: "agent_message_chunk",
+          content: { type: "text", text: `the key is ${value.slice(0, half)}` },
+        });
+        update(sessionId, {
+          sessionUpdate: "agent_message_chunk",
+          content: { type: "text", text: `${value.slice(half)} ok` },
+        });
+        update(sessionId, {
+          sessionUpdate: "tool_call",
+          toolCallId: "echo-secret",
+          title: "printenv",
+          kind: "execute",
+          status: "completed",
+          rawInput: { command: `printenv ${echoed}` },
+          rawOutput: { stdout: `${value}\n` },
+        });
+      }
       update(sessionId, {
         sessionUpdate: "available_commands_update",
         availableCommands: [

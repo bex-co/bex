@@ -319,6 +319,7 @@ var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"title":       gqlutil.StrField(func(v View) any { return v.Title }),
 		"maxSpendUSD": gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
 		"tags":        &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
+		"secretNames": &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
 		"agentConfig": gqlutil.Typed(graphql.NewNonNull(agentConfigGQLType), func(v View) any { return v.AgentConfig }),
 		"sandboxId":   gqlutil.StrField(func(v View) any { return v.SandboxID }),
 		"sshAddress":  gqlutil.StrField(func(v View) any { return v.SSHAddress }),
@@ -491,6 +492,42 @@ var transcriptPageGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var agentSessionSecretGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name:        "AgentSessionSecretInput",
+	Description: "An inline secret for one agent session (ADR098): the agent reads it as the env var name. Write-only.",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"name":  &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"value": &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String), Description: "1 B to 32 KiB; never returned, redacted from the transcript."},
+	},
+})
+
+var agentSecretGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentSecret",
+	Description: "A workspace agent secret. Only its name is readable.",
+	Fields: graphql.Fields{
+		"name": gqlutil.ReqStrField(func(v AgentSecret) any { return v.Name }),
+	},
+})
+
+var agentSecretListGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSecretList",
+	Fields: graphql.Fields{
+		"ownerId": gqlutil.ReqStrField(func(v AgentSecretList) any { return v.OwnerID }),
+		"secrets": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentSecretGQLType))), func(v AgentSecretList) any { return v.Secrets }),
+	},
+})
+
+// secretsArg reads the ADR098 attach arguments shared by create and steer.
+func secretsArg(args map[string]any) SessionSecretsInput {
+	out := SessionSecretsInput{SecretNames: gqlutil.StringList(args["secretNames"])}
+	raw, _ := args["secrets"].([]any)
+	for _, item := range raw {
+		m, _ := item.(map[string]any)
+		out.Secrets = append(out.Secrets, SecretInput{Name: gqlutil.Str(m, "name"), Value: gqlutil.Str(m, "value")})
+	}
+	return out
+}
+
 func configArg(args map[string]any) AgentConfig {
 	raw, _ := args["agentConfig"].(map[string]any)
 	return AgentConfig{Agent: gqlutil.Str(raw, "agent"), Model: gqlutil.Str(raw, "model"), ModelEndpoint: gqlutil.Str(raw, "modelEndpoint"), Task: gqlutil.Str(raw, "task"), Template: gqlutil.Str(raw, "template")}
@@ -613,6 +650,14 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				return s.Environment(p.Context, gqlutil.Str(p.Args, "ownerId"))
 			},
 		},
+		"agentSecrets": &graphql.Field{
+			Type:        graphql.NewNonNull(agentSecretListGQLType),
+			Description: "The workspace's agent secrets, names only.",
+			Args:        graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.AgentSecrets(p.Context, gqlutil.Str(p.Args, "ownerId"))
+			},
+		},
 		"agentSessionCapabilities": &graphql.Field{
 			Type: graphql.NewNonNull(agentCapabilitiesGQLType),
 			Args: graphql.FieldConfigArgument{"ownerId": gqlutil.Arg(graphql.String)},
@@ -640,13 +685,15 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"outputSchema":    gqlutil.Arg(graphql.String),
 				"outputRequired":  gqlutil.Arg(graphql.Boolean),
 				"maxSpendUSD":     gqlutil.Arg(graphql.Float),
+				"secretNames":     gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"secrets":         gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSecretGQLInput))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				schema, required, err := outputArgs(p.Args)
 				if err != nil {
 					return nil, err
 				}
-				return s.Create(p.Context, CreateRequest{MaxSpendUSD: floatArg(p.Args, "maxSpendUSD"), OutputSchema: schema, OutputRequired: required, OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"])})
+				return s.Create(p.Context, CreateRequest{MaxSpendUSD: floatArg(p.Args, "maxSpendUSD"), OutputSchema: schema, OutputRequired: required, OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args)})
 			},
 		},
 		"steerAgentSession": &graphql.Field{
@@ -658,13 +705,41 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"attachmentIds":   gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"outputSchema":    gqlutil.Arg(graphql.String),
 				"outputRequired":  gqlutil.Arg(graphql.Boolean),
+				"secretNames":     gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"secrets":         gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSecretGQLInput))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				schema, required, err := outputArgs(p.Args)
 				if err != nil {
 					return nil, err
 				}
-				return s.Steer(p.Context, SteerRequest{OutputSchema: schema, OutputRequired: required, SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"])})
+				return s.Steer(p.Context, SteerRequest{OutputSchema: schema, OutputRequired: required, SessionID: gqlutil.Str(p.Args, "id"), Prompt: gqlutil.Str(p.Args, "prompt"), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args)})
+			},
+		},
+		"setAgentSecret": &graphql.Field{
+			Type:        graphql.NewNonNull(agentSecretGQLType),
+			Description: "Create or rotate a workspace agent secret (admins only). The value is write-only.",
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+				"name":    gqlutil.ReqArg(graphql.String),
+				"value":   gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.SetAgentSecret(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "name"), gqlutil.Str(p.Args, "value"))
+			},
+		},
+		"deleteAgentSecret": &graphql.Field{
+			Type:        graphql.Boolean,
+			Description: "Delete a workspace agent secret (admins only).",
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+				"name":    gqlutil.ReqArg(graphql.String),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				if err := s.DeleteAgentSecret(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "name")); err != nil {
+					return nil, err
+				}
+				return true, nil
 			},
 		},
 		"updateAgentEnvironment": &graphql.Field{

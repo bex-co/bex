@@ -3,6 +3,7 @@ import { usePaymentRequiredGate } from "@/features/usage/context/payment-require
 import { useApolloClient, useMutation } from "@apollo/client/react";
 import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import type { AgentSessionFieldsFragment } from "@/graphql/definitions";
+import type { AgentSessionSecretInput } from "@/graphql/schema-types";
 import {
   CreateAgentSessionDocument,
   SteerAgentSessionDocument,
@@ -51,6 +52,10 @@ export interface CreateAgentSessionInput {
    * that runs its own model key, so it is sent only when the user set one.
    */
   maxSpendUSD?: number | null;
+  /** Workspace agent secrets exposed to the agent as env vars (ADR098). */
+  secretNames?: string[];
+  /** Inline secrets for this session only; values are write-only. */
+  secrets?: AgentSessionSecretInput[];
   // No model / egressAllowlist: the dashboard leaves both to the workspace's
   // agent environment (w10/m17). The API still accepts them for CLI/MCP.
 }
@@ -210,6 +215,10 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
                 : undefined,
               idempotencyKey: input.idempotencyKey || undefined,
               maxSpendUSD: input.maxSpendUSD ?? undefined,
+              secretNames: input.secretNames?.length
+                ? input.secretNames
+                : undefined,
+              secrets: input.secrets?.length ? input.secrets : undefined,
             },
             fetchPolicy: "no-cache",
           }),

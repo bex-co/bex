@@ -62,7 +62,7 @@ type Store interface {
 	SetAgentSessionFailure(context.Context, string, string, string) (store.AgentSession, error)
 	// Archive (ADR065 D1): the orthogonal list-state flag; never touches phase.
 	SetAgentSessionArchived(context.Context, string, bool) (store.AgentSession, error)
-	BeginAgentSessionTurn(context.Context, string, string, string, string, string, store.AgentAttachmentBinding, store.AgentTurnOutput) (store.AgentSession, error)
+	BeginAgentSessionTurn(context.Context, string, string, string, string, string, store.AgentAttachmentBinding, store.AgentTurnOutput, []string) (store.AgentSession, error)
 	// RecordAgentSessionResult stores the structured result submitted for the
 	// session's current turn (ADR094 D5); false when the turn takes none.
 	RecordAgentSessionResult(ctx context.Context, sessionID string, turn int, result json.RawMessage, final bool) (bool, error)
@@ -480,6 +480,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err := s.validateAttachmentIDs(req.AttachmentIDs); err != nil {
 		return View{}, err
 	}
+	if err := validateSecretInput(req.SecretNames, req.Secrets); err != nil {
+		return View{}, err
+	}
 	output, err := parseTurnOutput(req.OutputSchema, req.OutputRequired)
 	if err != nil {
 		return View{}, err
@@ -524,6 +527,10 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
+	secrets, err := s.attachSecrets(ctx, workspaceID, nil, nil, req.SessionSecretsInput)
+	if err != nil {
+		return View{}, err
+	}
 	config, err := json.Marshal(req.AgentConfig)
 	if err != nil {
 		return View{}, err
@@ -535,8 +542,8 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		AgentConfig:   config,
 		InitialPrompt: strings.TrimSpace(req.AgentConfig.Task),
 		Title:         req.Title, Tags: req.Tags,
-		MaxSpendMicroUSD: ceiling,
-		IdempotencyKey:   idemKey, IdempotencyHash: idemHash,
+		MaxSpendMicroUSD: ceiling, SecretNames: secrets.names,
+		IdempotencyKey: idemKey, IdempotencyHash: idemHash,
 		InitialAttachments: store.AgentAttachmentBinding{
 			IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx),
 		},
@@ -557,10 +564,22 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
 	}
+	// Inline values need the session id, so they are stored only now, before
+	// the grant: a failed write removes the row while nothing references it.
+	if len(secrets.inline) > 0 {
+		if err := s.putSessionInline(ctx, record, secrets.inline, 0); err != nil {
+			_ = s.Store.DeleteAgentSession(ctx, record.ID)
+			return View{}, err
+		}
+	}
 	// The row is not a reachable resource until this edge exists. If OpenFGA is
-	// unavailable, compensate the row and refuse before any sandbox is started.
+	// unavailable, compensate the row (and its inline document) and refuse
+	// before any sandbox is started.
 	if err := s.Tuples.GrantAgentSessionWorkspace(ctx, record.ID, workspaceID); err != nil {
 		_ = s.Store.DeleteAgentSession(ctx, record.ID)
+		if len(secrets.inline) > 0 {
+			s.deleteSessionSecrets(ctx, record)
+		}
 		log.Printf("agent-session create: establish authorization failed (session=%s workspace=%s): %v", record.ID, workspaceID, err)
 		return View{}, core.NewAgentSessionDependencyUnavailableError()
 	}
@@ -631,6 +650,15 @@ func (s *Service) dispatch(ctx context.Context, record store.AgentSession, spec 
 	}
 	if len(inputs) > 0 {
 		spec.env = withAttachmentManifest(spec.env, current, inputs)
+	}
+	// Secrets are resolved per dispatch (ADR098 D5), so a rotated workspace
+	// secret applies from the next turn and a deleted one fails it.
+	if spec.env, err = s.withSessionSecrets(ctx, record, spec.env); err != nil {
+		failure := store.AgentSessionFailure{Reason: "the session's secrets could not be read"}
+		if errors.Is(err, errSessionSecretUnavailable) {
+			failure = secretUnavailableFailure
+		}
+		return s.failDispatch(ctx, record, spec.turn, failure, err)
 	}
 	provisionStart := time.Now()
 	sb, err := s.Sandbox.CreateAgentSessionSandbox(ctx, ws, spec.template, record.ID, record.Repo, record.Branch, spec.modelEndpoint, spec.modelAPIKey, spec.egress, spec.env)
@@ -985,6 +1013,7 @@ func (s *Service) Delete(ctx context.Context, sessionID string) error {
 	if err := s.Store.DeleteAgentSession(ctx, sessionID); err != nil {
 		return mapStoreError(sessionID, err)
 	}
+	s.deleteSessionSecrets(ctx, record) // ADR098 D7: inline secrets go with the session
 	return nil
 }
 
@@ -1460,6 +1489,9 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err := s.validateAttachmentIDs(req.AttachmentIDs); err != nil {
 		return View{}, err
 	}
+	if err := validateSecretInput(req.SecretNames, req.Secrets); err != nil {
+		return View{}, err
+	}
 	output, err := parseTurnOutput(req.OutputSchema, req.OutputRequired)
 	if err != nil {
 		return View{}, err
@@ -1511,9 +1543,13 @@ func (s *Service) Steer(ctx context.Context, req SteerRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
+	secretNames, err := s.attachSteerSecrets(ctx, record, req.SessionSecretsInput)
+	if err != nil {
+		return View{}, err
+	}
 	previousSandboxID := record.SandboxID
 	record, err = s.Store.BeginAgentSessionTurn(ctx, record.ID, prompt, DeliveryRedispatch, PhaseRedispatching, "redispatching",
-		store.AgentAttachmentBinding{IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx)}, output)
+		store.AgentAttachmentBinding{IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx)}, output, secretNames)
 	if err != nil {
 		return View{}, mapStoreError(record.ID, mapAttachmentError(err))
 	}
@@ -1732,7 +1768,7 @@ func viewOf(record store.AgentSession) (View, error) {
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
-		ArchivedAt: record.ArchivedAt}
+		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames}
 	if record.MaxSpendMicroUSD != nil {
 		view.MaxSpendUSD = microUSDDecimal(*record.MaxSpendMicroUSD)
 	}

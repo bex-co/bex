@@ -243,6 +243,31 @@ test("one headless turn maps every fixture update and commits in the worktree", 
   }
 });
 
+test("a session secret never reaches a published part or the turn log (ADR098)", async () => {
+  const secret = "sk_live_DRIVER-REDACTION-0123456789";
+  const config = await tempConfig({
+    secretValues: new Map([["STRIPE_KEY", secret]]),
+  });
+  config.agentEnv = {
+    ACP_FIXTURE_ECHO_SECRET: "STRIPE_KEY",
+    STRIPE_KEY: secret,
+  };
+  const hub = new UIMessageStreamHub();
+  const result = await runHeadlessTurn(config, childEnv(config), hub);
+  assert.equal(result.state, "succeeded");
+  const history = JSON.stringify(hub.history);
+  assert.ok(!history.includes(secret), "hub history leaked the value");
+  assert.ok(!history.includes(secret.slice(0, 12)), "a split half leaked");
+  assert.match(history, /\[redacted:STRIPE_KEY\]/);
+  const text = hub.history
+    .filter((part) => part.type === "text-delta")
+    .map((part) => String(part.delta))
+    .join("");
+  assert.match(text, /the key is \[redacted:STRIPE_KEY\] ok/);
+  const log = await readFile(config.sessionLogPath, "utf8");
+  assert.ok(!log.includes(secret), "the turn log leaked the value");
+});
+
 test("Codex binds its provider to the session proxy and fails on typed transport errors", async () => {
   const config = await tempConfig({
     credentialEnvName: "OPENAI_API_KEY",

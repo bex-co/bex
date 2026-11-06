@@ -111,6 +111,7 @@ var emptyListCases = []emptyListCase{
 	{route: "GET /v1/key-value/{id}/ip-allow-list", path: "/v1/key-value/kv1/ip-allow-list", field: "cidrs", withApp: true},
 	{route: "GET /v1/agent-sessions/capabilities", path: "/v1/agent-sessions/capabilities", field: "agents"},
 	{route: "GET /v1/agent-environment", path: "/v1/agent-environment", field: "customHosts"},
+	{route: "GET /v1/agent-secrets", path: "/v1/agent-secrets", field: "secrets"},
 }
 
 // neverEmptyArrayRoutes are array routes whose contents are a build-time

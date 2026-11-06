@@ -47,3 +47,23 @@ export function goReasonSentences(
     ),
   );
 }
+
+/** The quoted strings of a Go `name = []string{...}` literal in path. */
+export function goStringSlice(path: string, name: string): string[] {
+  const source = readFileSync(`${REPO_ROOT}/${path}`, "utf8");
+  const literal = new RegExp(`${name}\\s*=\\s*\\[\\]string\\{([^}]*)\\}`).exec(
+    source,
+  );
+  if (!literal) throw new Error(`${name} not found in ${path}`);
+  return [...literal[1]!.matchAll(/"([^"]*)"/g)].map((m) => m[1]!);
+}
+
+/** The pattern of a Go `name = regexp.MustCompile(\`...\`)` in path. */
+export function goRegexp(path: string, name: string): string {
+  const source = readFileSync(`${REPO_ROOT}/${path}`, "utf8");
+  const match = new RegExp(
+    `${name}\\s*=\\s*regexp\\.MustCompile\\(\`([^\`]*)\`\\)`,
+  ).exec(source);
+  if (!match) throw new Error(`${name} not found in ${path}`);
+  return match[1]!;
+}

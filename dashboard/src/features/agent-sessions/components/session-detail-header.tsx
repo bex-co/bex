@@ -10,6 +10,7 @@ import {
   GitBranch,
   GitPullRequest,
   Loader2,
+  KeyRound,
   MoreHorizontal,
   Terminal,
   Trash2,
@@ -199,6 +200,18 @@ export function SessionDetailHeader({
           <span>{t("agentSessions.metaDuration", { duration })}</span>
           <span>{t("agentSessions.metaTurns", { count: session.turns })}</span>
           <SessionModelCost session={session} />
+          {session.secretNames.length > 0 ? (
+            <span
+              className="inline-flex items-center gap-1"
+              title={session.secretNames.join(", ")}
+              data-testid="session-secret-names"
+            >
+              <KeyRound className="size-3" />
+              {t("agentSessions.metaSecrets", {
+                count: session.secretNames.length,
+              })}
+            </span>
+          ) : null}
           {session.isArchived ? (
             <Badge variant="secondary" className="gap-1">
               <Archive className="size-3" />

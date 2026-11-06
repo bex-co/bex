@@ -131,6 +131,18 @@ vi.mock("@/features/agent-environment/hooks/use-agent-environment", () => ({
   }),
 }));
 
+vi.mock("@/features/agent-environment/hooks/use-agent-secrets", () => ({
+  useAgentSecrets: () => ({
+    names: ["STRIPE_KEY", "SENTRY_DSN"],
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+    set: vi.fn(),
+    remove: vi.fn(),
+    saving: false,
+  }),
+}));
+
 beforeEach(() => {
   spend.environment = null;
   vi.mocked(useCapabilities).mockReturnValue(mockCapabilities());
@@ -529,6 +541,32 @@ describe("NewSessionComposer", () => {
     await user.click(screen.getByRole("button", { name: "Start session" }));
     await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
     expect(create.mock.calls[0][0].maxSpendUSD).toBe(2.5);
+  });
+
+  it("sends picked workspace secrets and inline secrets, then forgets them (ADR098)", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.click(screen.getByRole("button", { name: "Secrets" }));
+    await user.click(await screen.findByLabelText("STRIPE_KEY"));
+    await user.type(screen.getByLabelText("Secret name"), "TEST_TOKEN");
+    const value = screen.getByLabelText("Secret value");
+    expect(value).toHaveAttribute("type", "password");
+    await user.type(value, "tok-123{enter}");
+    expect(
+      screen.getByTestId("agent-composer-inline-secrets"),
+    ).toHaveTextContent("TEST_TOKEN");
+    expect(screen.queryByDisplayValue("tok-123")).toBeNull();
+    await user.keyboard("{Escape}");
+    expect(
+      screen.getByRole("button", { name: "Secrets (2 attached)" }),
+    ).toBeInTheDocument();
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].secretNames).toEqual(["STRIPE_KEY"]);
+    expect(create.mock.calls[0][0].secrets).toEqual([
+      { name: "TEST_TOKEN", value: "tok-123" },
+    ]);
   });
 
   it("blocks submit on an out-of-range spend limit", async () => {

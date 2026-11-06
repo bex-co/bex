@@ -1224,6 +1224,98 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     message: "Billed at the model provider's cost + 30%.",
     description: "Pricing statement in the cost popover",
   },
+  "agentSessions.secretsButton": {
+    message: "Secrets",
+    description: "Composer toolbar: the Secrets button label/tooltip (ADR098)",
+  },
+  "agentSessions.secretsButtonCount_one": {
+    message: "Secrets ({count} attached)",
+    description:
+      "Composer Secrets button accessible label when secrets are attached",
+  },
+  "agentSessions.secretsButtonCount_other": {
+    message: "Secrets ({count} attached)",
+    description:
+      "Composer Secrets button accessible label when secrets are attached",
+  },
+  "agentSessions.secretsTitle": {
+    message: "Secrets for this session",
+    description: "Composer Secrets popover heading",
+  },
+  "agentSessions.secretsDescription": {
+    message:
+      "The agent reads each one as an environment variable. Values are never shown again and are redacted from the transcript.",
+    description: "Composer Secrets popover description",
+  },
+  "agentSessions.secretsWorkspace": {
+    message: "Workspace secrets",
+    description:
+      "Composer Secrets popover: workspace agent secrets list heading",
+  },
+  "agentSessions.secretsWorkspaceLoadFailed": {
+    message: "Couldn't load the workspace's agent secrets.",
+    description:
+      "Composer secrets panel error when the workspace secret list fails to load",
+  },
+  "agentSessions.secretsWorkspaceEmpty": {
+    message: "No workspace secrets yet.",
+    description: "Composer Secrets popover: no workspace agent secrets",
+  },
+  "agentSessions.secretsManage": {
+    message: "Manage in Settings",
+    description: "Composer Secrets popover: link to Settings \u2192 Agents",
+  },
+  "agentSessions.secretsInline": {
+    message: "Only for this session",
+    description: "Composer Secrets popover: inline secrets heading",
+  },
+  "agentSessions.secretsRemove": {
+    message: "Remove {name}",
+    description:
+      "Composer Secrets popover: remove an inline secret (accessible label)",
+  },
+  "agentSessions.secretsNamePlaceholder": {
+    message: "NAME",
+    description: "Composer Secrets popover: inline secret name placeholder",
+  },
+  "agentSessions.secretsNameLabel": {
+    message: "Secret name",
+    description: "Composer Secrets popover: inline secret name field label",
+  },
+  "agentSessions.secretsValuePlaceholder": {
+    message: "Value",
+    description: "Composer Secrets popover: inline secret value placeholder",
+  },
+  "agentSessions.secretsValueLabel": {
+    message: "Secret value",
+    description: "Composer Secrets popover: inline secret value field label",
+  },
+  "agentSessions.secretsAdd": {
+    message: "Add",
+    description: "Composer Secrets popover: add an inline secret",
+  },
+  "agentSessions.secretsHint": {
+    message: "Deleted with the session.",
+    description: "Composer Secrets popover: inline secret lifetime hint",
+  },
+  "agentSessions.secretsFull": {
+    message: "A session takes at most 20 secrets.",
+    description: "Composer Secrets popover: session secret limit reached",
+  },
+  "agentSessions.secretsDuplicate": {
+    message: "This session already has a secret with that name.",
+    description: "Composer Secrets popover: duplicate inline secret name",
+  },
+  "agentSessions.metaSecrets_one": {
+    message: "{count} secret",
+    description:
+      "Detail header \u2014 number of attached secrets (singular, ADR098)",
+  },
+  "agentSessions.metaSecrets_other": {
+    message: "{count} secrets",
+    description:
+      "Detail header \u2014 number of attached secrets (plural, ADR098)",
+  },
 };
 
 export default enAgentSessions;

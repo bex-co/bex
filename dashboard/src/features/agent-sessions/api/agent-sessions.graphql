@@ -16,6 +16,8 @@ fragment AgentSessionFields on AgentSession {
   title
   tags
   maxSpendUSD
+  # Names of the attached secrets (ADR098); values are never readable.
+  secretNames
   agentConfig {
     agent
     model
@@ -130,6 +132,8 @@ mutation CreateAgentSession(
   $attachmentIds: [String!]
   $idempotencyKey: String
   $maxSpendUSD: Float
+  $secretNames: [String!]
+  $secrets: [AgentSessionSecretInput!]
 ) {
   createAgentSession(
     ownerId: $ownerId
@@ -140,6 +144,8 @@ mutation CreateAgentSession(
     attachmentIds: $attachmentIds
     idempotencyKey: $idempotencyKey
     maxSpendUSD: $maxSpendUSD
+    secretNames: $secretNames
+    secrets: $secrets
   ) {
     ...AgentSessionFields
     ...AgentSessionMintFields

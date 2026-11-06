@@ -205,6 +205,39 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		core.WriteJSON(w, http.StatusOK, view)
 	})
 	s.registerAttachmentREST(mux)
+	s.registerSecretREST(mux)
+}
+
+// registerSecretREST mounts the ADR098 D4 workspace agent secrets: reads
+// return names only.
+func (s *Service) registerSecretREST(mux *http.ServeMux) {
+	mux.HandleFunc("GET /v1/agent-secrets", func(w http.ResponseWriter, r *http.Request) {
+		out, err := s.AgentSecrets(r.Context(), r.URL.Query().Get("ownerId"))
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("PUT /v1/agent-secrets/{name}", func(w http.ResponseWriter, r *http.Request) {
+		var body struct {
+			Value string `json:"value"`
+		}
+		r = r.WithContext(core.WithStrictJSONDecoding(r.Context()))
+		if err := core.DecodeJSON(r, &body); err != nil {
+			core.WriteErrStatus(w, http.StatusBadRequest, err.Error())
+			return
+		}
+		out, err := s.SetAgentSecret(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("name"), body.Value)
+		if err != nil {
+			core.WriteErr(w, err)
+			return
+		}
+		core.WriteJSON(w, http.StatusOK, out)
+	})
+	mux.HandleFunc("DELETE /v1/agent-secrets/{name}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
+		return s.DeleteAgentSecret(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("name"))
+	}))
 }
 
 // AttachmentUploadPath is the streaming upload route; the REST mount exempts

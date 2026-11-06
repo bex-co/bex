@@ -65,6 +65,7 @@ var byIDResolutions = map[string]byIDResolution{
 	"registrycredentials":   {"registrycreds", "ScopeByID", "GetRegistryCredentialByID routing read", []string{"scopeCredential"}},
 	"sandboxes":             {"sandbox", "ScopeByVisibleID", "member-workspace probe of OpenSandbox", []string{"scopeSandbox"}},
 	"agent-sessions":        {"agentsessions", "sessionObject", "OpenFGA check on the session object itself", nil},
+	"agent-secrets":         {"", "", "the path segment is a secret name, not an id: authorized on the exact ownerId workspace (ADR098)", nil},
 	"agent-attachments":     {"agentsessions", "ScopeByID", "agent_session_attachments workspace routing read (ADR095)", []string{"scopeAttachment"}},
 	"git":                   {"github", "ScopeByVisibleID", "claim selection / installation routing reads (visible-only: GitHub ids are enumerable)", []string{"scopeSelection", "scopeInstallation"}},
 	"events":                {"events", "ScopeByID", "ServiceEventWorkspaces routing read", []string{"scopeEvent"}},

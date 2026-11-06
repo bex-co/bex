@@ -12,6 +12,8 @@ import { TeamPanel } from "@/features/team/components/team-panel";
 import { LeaveWorkspaceCard } from "@/features/team/components/leave-workspace-card";
 import { AgentEnvironmentCard } from "@/features/agent-environment/components/agent-environment-card";
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
+import { AgentSecretsCard } from "@/features/agent-environment/components/agent-secrets-card";
+import { AgentSecretsCardSkeleton } from "@/features/agent-environment/components/agent-secrets-card-skeleton";
 import { WorkspaceNotificationsCard } from "@/features/notifications/components/workspace-notifications-card";
 import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
 import { WorkspaceSettingsPageSkeleton } from "@/common/components/route-skeletons";
@@ -95,8 +97,9 @@ function WorkspaceSettingsPage() {
                 <section data-skeleton-region="notifications">
                   <WorkspaceNotificationsCardSkeleton />
                 </section>
-                <section data-skeleton-region="agents">
+                <section data-skeleton-region="agents" className="space-y-6">
                   <AgentEnvironmentCardSkeleton />
+                  <AgentSecretsCardSkeleton />
                 </section>
                 <section data-skeleton-region="danger-zone">
                   <CardSkeleton rows={2} />
@@ -139,9 +142,11 @@ function WorkspaceSettingsPage() {
                 </section>
                 <section
                   id="agents"
-                  className={SECTION_NAVIGATION_TARGET_CLASS}
+                  className={cn(SECTION_NAVIGATION_TARGET_CLASS, "space-y-6")}
                 >
                   <AgentEnvironmentCard ownerId={currentWorkspace.id} />
+                  {/* Workspace agent secrets (ADR098 D8): names only. */}
+                  <AgentSecretsCard ownerId={currentWorkspace.id} />
                 </section>
                 {/* The danger zone is now always present: Leave workspace
                     (w5/m102) lives here for every member, while Delete stays

@@ -191,6 +191,7 @@ type CreateRequest struct {
 	// session on the platform model route is metered; any other session is
 	// refused 400 AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE rather than left
 	// unbounded.
+	SessionSecretsInput
 	MaxSpendUSD *float64 `json:"maxSpendUSD,omitempty" jsonschema:"a ceiling on this session's platform model spend in USD (more than 0, at most 100000); the turn fails AGENT_MODEL_SPEND_CAP_REACHED with scope session once reached. Needs the platform model route; a session on the workspace's own model key is refused AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE"`
 }
 
@@ -207,6 +208,16 @@ type SteerRequest struct {
 	// (ADR094 D5), exactly as on CreateRequest; a turn without a schema is free-form.
 	OutputSchema   map[string]any `json:"outputSchema,omitempty"`
 	OutputRequired *bool          `json:"outputRequired,omitempty"`
+	SessionSecretsInput
+}
+
+// SessionSecretsInput attaches secrets to a session (ADR098 D1), Devin's
+// secret_ids and session_secrets: references to workspace agent secrets and
+// inline values for this session only. Both reach the agent as env vars from
+// the next dispatch; values are write-only and redacted from the transcript.
+type SessionSecretsInput struct {
+	SecretNames []string      `json:"secretNames,omitempty" jsonschema:"names of workspace agent secrets (list_agent_secrets) to expose to the agent as env vars of the same name"`
+	Secrets     []SecretInput `json:"secrets,omitempty" jsonschema:"inline secrets for this session only, deleted with it; an inline name wins over a workspace secret of the same name. At most 20 secrets per session in total"`
 }
 
 // View is byte-for-byte the same domain shape projected by REST, GraphQL, and
@@ -229,13 +240,16 @@ type View struct {
 	Steerable bool   `json:"steerable"`
 	// MaxSpendUSD is the session's maxSpendUSD ceiling as a decimal string, or
 	// absent when it has none (ADR094 D8).
-	MaxSpendUSD  string `json:"maxSpendUSD,omitempty"`
-	Status       string `json:"status"`
-	HeadSHA      string `json:"headSha,omitempty"`
-	PRURL        string `json:"prUrl,omitempty"`
-	PRNumber     int    `json:"prNumber,omitempty"`
-	Turns        int    `json:"turns,omitempty"`
-	DeliveryMode string `json:"deliveryMode,omitempty"`
+	MaxSpendUSD string `json:"maxSpendUSD,omitempty"`
+	// SecretNames are the names of the secrets attached to the session
+	// (ADR098); a value is never returned.
+	SecretNames  []string `json:"secretNames,omitempty"`
+	Status       string   `json:"status"`
+	HeadSHA      string   `json:"headSha,omitempty"`
+	PRURL        string   `json:"prUrl,omitempty"`
+	PRNumber     int      `json:"prNumber,omitempty"`
+	Turns        int      `json:"turns,omitempty"`
+	DeliveryMode string   `json:"deliveryMode,omitempty"`
 	// DeliveryNote is the driver's plain-language account of what a completed
 	// turn left undelivered (ADR090): uncommitted changes, unpushed commits, or
 	// a pushed branch with no pull request. The work stays in the sandbox only

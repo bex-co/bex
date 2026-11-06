@@ -1,18 +1,18 @@
 # w9 · m174 — Session-scoped secrets for cloud agents (Devin parity)
 
-**Worker:** worker9 **Goal:** a customer can give an agent session the API keys it needs (e.g. for integration tests or third-party APIs) without putting them in the repo or prompt, and they never land in the sandbox in plaintext beyond the session. **Status:** todo
+**Worker:** worker9 **Goal:** a customer can give an agent session the API keys it needs (e.g. for integration tests or third-party APIs) without putting them in the repo or prompt, and they never land in the sandbox in plaintext beyond the session. **Status:** in progress — t001–t007 done; t008 closes after the live check on production (secret env var used by the agent, value absent from transcript/API reads) and the composer skeleton check at desktop and narrow-mobile widths
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Design note in ADR047/ADR094: session secrets model | 45m | — |
-| t002 | Store and attach secrets (API) | 90m | t001 |
-| t003 | Deliver into the sandbox and redact | 90m | t002 |
-| t004 | Dashboard: add secrets when starting a session | 60m | t002 |
-| t005 | Render parity (Devin reference for agent surfaces) | 25m | t003, t004 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 45m | t005, t006 |
+| t001 | Design note in ADR047/ADR094: session secrets model — **DONE** | 45m | — |
+| t002 | Store and attach secrets (API) — **DONE** | 90m | t001 |
+| t003 | Deliver into the sandbox and redact — **DONE** | 90m | t002 |
+| t004 | Dashboard: add secrets when starting a session — **DONE** | 60m | t002 |
+| t005 | Render parity (Devin reference for agent surfaces) — **DONE** | 25m | t003, t004 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 45m | t005, t006 |
 | t008 | Closeout | 10m | t007 |
 
 ## Definition of done

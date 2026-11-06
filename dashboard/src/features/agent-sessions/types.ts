@@ -130,6 +130,8 @@ export interface AgentSessionView {
   title: string | null;
   /** The caller's tags, for the list's tag filter. */
   tags: string[];
+  /** Names of the secrets attached to the session (ADR098); never values. */
+  secretNames: string[];
   /**
    * The per-session model spend ceiling in USD as a decimal string (ADR094 D8,
    * w21/m260); null when the caller set none.

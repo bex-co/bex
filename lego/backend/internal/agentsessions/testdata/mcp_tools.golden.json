@@ -216,6 +216,15 @@
         "sandboxId": {
           "type": "string"
         },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "sshAddress": {
           "type": "string"
         },
@@ -492,6 +501,15 @@
         "sandboxId": {
           "type": "string"
         },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "sshAddress": {
           "type": "string"
         },
@@ -765,6 +783,15 @@
         "sandboxId": {
           "type": "string"
         },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "sshAddress": {
           "type": "string"
         },
@@ -828,7 +855,7 @@
       "openWorldHint": true,
       "readOnlyHint": false
     },
-    "description": "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING.",
+    "description": "Start a cloud coding-agent session on a repository. Returns the new session in phase creating; it does not return an attach ticket (call attach_agent_session for one). Pass outputSchema (a JSON Schema) to get a machine-readable result: the agent submits one that validates against it and outcome.result carries it, or the turn fails with failureReasonCode STRUCTURED_OUTPUT_MISSING. Pass secretNames (workspace agent secrets) and secrets (inline, this session only) to give the agent API keys as env vars; values are redacted from the transcript.",
     "inputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -908,6 +935,41 @@
         },
         "resumeSessionId": {
           "type": "string"
+        },
+        "secretNames": {
+          "description": "names of workspace agent secrets (list_agent_secrets) to expose to the agent as env vars of the same name",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "secrets": {
+          "description": "inline secrets for this session only, deleted with it; an inline name wins over a workspace secret of the same name. At most 20 secrets per session in total",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "the env var name the agent reads: [A-Za-z_][A-Za-z0-9_]* (at most 128), not a platform-reserved name such as BEX_* or PATH",
+                "type": "string"
+              },
+              "value": {
+                "description": "the secret value, 1 B to 32 KiB; write-only, redacted from the transcript",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "tags": {
           "items": {
@@ -1121,6 +1183,15 @@
         "sandboxId": {
           "type": "string"
         },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "sshAddress": {
           "type": "string"
         },
@@ -1198,6 +1269,44 @@
       "type": "object"
     },
     "name": "delete_agent_attachment",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "deleted": {
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "deleted"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Delete a workspace agent secret (workspace admins only). A session that still references it fails its next turn with failureReasonCode AGENT_SESSION_SECRET_UNAVAILABLE.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "the secret's env var name",
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
+      ],
+      "type": "object"
+    },
+    "name": "delete_agent_secret",
     "outputSchema": {
       "additionalProperties": false,
       "properties": {
@@ -1692,6 +1801,15 @@
         },
         "sandboxId": {
           "type": "string"
+        },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "sshAddress": {
           "type": "string"
@@ -2206,6 +2324,56 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
+    "description": "List a workspace's agent secrets by name (values are never returned). Pass names in secretNames to create_agent_session or send_agent_session_message to expose them to the agent as env vars.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        }
+      },
+      "type": "object"
+    },
+    "name": "list_agent_secrets",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        },
+        "secrets": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "name"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "ownerId",
+        "secrets"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
     "description": "List a cloud coding-agent session's files, oldest first: inputs the users attached and outputs the agent shared, each with a downloadUrl valid for 15 minutes. Filter by direction (input or output) and turn; page with cursor (the previous page's last id) until a shorter page.",
     "inputSchema": {
       "additionalProperties": false,
@@ -2563,6 +2731,15 @@
               "sandboxId": {
                 "type": "string"
               },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
               "sshAddress": {
                 "type": "string"
               },
@@ -2847,6 +3024,15 @@
         "sandboxId": {
           "type": "string"
         },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "sshAddress": {
           "type": "string"
         },
@@ -2949,6 +3135,41 @@
         },
         "prompt": {
           "type": "string"
+        },
+        "secretNames": {
+          "description": "names of workspace agent secrets (list_agent_secrets) to expose to the agent as env vars of the same name",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "secrets": {
+          "description": "inline secrets for this session only, deleted with it; an inline name wins over a workspace secret of the same name. At most 20 secrets per session in total",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "the env var name the agent reads: [A-Za-z_][A-Za-z0-9_]* (at most 128), not a platform-reserved name such as BEX_* or PATH",
+                "type": "string"
+              },
+              "value": {
+                "description": "the secret value, 1 B to 32 KiB; write-only, redacted from the transcript",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         }
       },
       "required": [
@@ -3154,6 +3375,15 @@
         "sandboxId": {
           "type": "string"
         },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "sshAddress": {
           "type": "string"
         },
@@ -3206,6 +3436,49 @@
         "status",
         "createdAt",
         "updatedAt"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": true,
+      "idempotentHint": false,
+      "openWorldHint": true,
+      "readOnlyHint": false
+    },
+    "description": "Create or rotate a workspace agent secret (workspace admins only). The value is write-only: no read returns it, and it is redacted from session transcripts. Sessions that reference the name read the new value from their next turn. At most 50 per workspace.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "description": "the env var name the agent reads: [A-Za-z_][A-Za-z0-9_]* (at most 128), not a platform-reserved name such as BEX_* or PATH",
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "value": {
+          "description": "the secret value, 1 B to 32 KiB; write-only, never returned",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "value"
+      ],
+      "type": "object"
+    },
+    "name": "set_agent_secret",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "name"
       ],
       "type": "object"
     }
@@ -3297,6 +3570,41 @@
         },
         "resumeSessionId": {
           "type": "string"
+        },
+        "secretNames": {
+          "description": "names of workspace agent secrets (list_agent_secrets) to expose to the agent as env vars of the same name",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "secrets": {
+          "description": "inline secrets for this session only, deleted with it; an inline name wins over a workspace secret of the same name. At most 20 secrets per session in total",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "the env var name the agent reads: [A-Za-z_][A-Za-z0-9_]* (at most 128), not a platform-reserved name such as BEX_* or PATH",
+                "type": "string"
+              },
+              "value": {
+                "description": "the secret value, 1 B to 32 KiB; write-only, redacted from the transcript",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "tags": {
           "items": {
@@ -3510,6 +3818,15 @@
         "sandboxId": {
           "type": "string"
         },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
         "sshAddress": {
           "type": "string"
         },
@@ -3612,6 +3929,41 @@
         },
         "prompt": {
           "type": "string"
+        },
+        "secretNames": {
+          "description": "names of workspace agent secrets (list_agent_secrets) to expose to the agent as env vars of the same name",
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        },
+        "secrets": {
+          "description": "inline secrets for this session only, deleted with it; an inline name wins over a workspace secret of the same name. At most 20 secrets per session in total",
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "name": {
+                "description": "the env var name the agent reads: [A-Za-z_][A-Za-z0-9_]* (at most 128), not a platform-reserved name such as BEX_* or PATH",
+                "type": "string"
+              },
+              "value": {
+                "description": "the secret value, 1 B to 32 KiB; write-only, redacted from the transcript",
+                "type": "string"
+              }
+            },
+            "required": [
+              "name",
+              "value"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         }
       },
       "required": [
@@ -3816,6 +4168,15 @@
         },
         "sandboxId": {
           "type": "string"
+        },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "sshAddress": {
           "type": "string"
@@ -4089,6 +4450,15 @@
         },
         "sandboxId": {
           "type": "string"
+        },
+        "secretNames": {
+          "items": {
+            "type": "string"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
         },
         "sshAddress": {
           "type": "string"

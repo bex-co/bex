@@ -321,6 +321,115 @@ const enAgentEnvironment: Record<string, TranslationEntry> = {
     message: "Couldn't save the spend cap. Try again.",
     description: "Generic cap write failure",
   },
+  "agentEnvironment.secrets.title": {
+    message: "Agent secrets",
+    description: "Settings \u2192 Agent secrets card title (ADR098)",
+  },
+  "agentEnvironment.secrets.description": {
+    message:
+      "API keys and tokens a session can be given as environment variables. Values are write-only: no one can read them back, and they are redacted from transcripts.",
+    description: "Agent secrets card description",
+  },
+  "agentEnvironment.secrets.loadFailed": {
+    message: "Couldn't load the agent secrets.",
+    description: "Agent secrets card error when the list query fails",
+  },
+  "agentEnvironment.secrets.empty": {
+    message: "No agent secrets yet.",
+    description: "Agent secrets card empty state",
+  },
+  "agentEnvironment.secrets.deleteLabel": {
+    message: "Delete {name}",
+    description: "Accessible label of a secret's delete button",
+  },
+  "agentEnvironment.secrets.deleteTitle": {
+    message: "Delete {name}?",
+    description: "Delete-secret confirmation title",
+  },
+  "agentEnvironment.secrets.deleteBody": {
+    message:
+      "Sessions that use this secret fail their next turn until it is set again.",
+    description: "Delete-secret confirmation body",
+  },
+  "agentEnvironment.secrets.deleteConfirm": {
+    message: "Delete secret",
+    description: "Delete-secret confirmation button",
+  },
+  "agentEnvironment.secrets.nameLabel": {
+    message: "Secret name",
+    description: "Agent secrets card: name field label",
+  },
+  "agentEnvironment.secrets.namePlaceholder": {
+    message: "STRIPE_API_KEY",
+    description: "Agent secrets card: name field placeholder (an env var name)",
+  },
+  "agentEnvironment.secrets.valueLabel": {
+    message: "Secret value",
+    description: "Agent secrets card: value field label",
+  },
+  "agentEnvironment.secrets.valuePlaceholder": {
+    message: "Value",
+    description: "Agent secrets card: value field placeholder",
+  },
+  "agentEnvironment.secrets.save": {
+    message: "Save",
+    description: "Agent secrets card: save (create or replace) button",
+  },
+  "agentEnvironment.secrets.help": {
+    message:
+      "Saving an existing name replaces its value. Sessions read the new value from their next turn.",
+    description: "Agent secrets card help line for admins",
+  },
+  "agentEnvironment.secrets.readOnly": {
+    message: "Only workspace admins can add or delete agent secrets.",
+    description: "Agent secrets card help line for non-admins",
+  },
+  "agentEnvironment.secrets.saved": {
+    message: "Saved {name}",
+    description: "Toast after a secret is saved",
+  },
+  "agentEnvironment.secrets.deleted": {
+    message: "Deleted {name}",
+    description: "Toast after a secret is deleted",
+  },
+  "agentEnvironment.secrets.nameInvalid": {
+    message:
+      "Use letters, digits and _, starting with a letter or _ (at most 128).",
+    description: "Secret name validation error",
+  },
+  "agentEnvironment.secrets.nameReserved": {
+    message:
+      "bex sets this environment variable itself, so a secret can't use the name.",
+    description: "Secret name reserved error",
+  },
+  "agentEnvironment.secrets.valueRequired": {
+    message: "Enter a value.",
+    description: "Secret value required error",
+  },
+  "agentEnvironment.secrets.valueInvalid": {
+    message: "A value can be at most 32 KiB.",
+    description: "Secret value too long (or contains a NUL byte)",
+  },
+  "agentEnvironment.secrets.limitExceeded": {
+    message: "This reached the limit on agent secrets.",
+    description: "Secret count or size limit error",
+  },
+  "agentEnvironment.secrets.notFound": {
+    message: "This secret no longer exists; someone may have just deleted it.",
+    description: "AGENT_SECRET_NOT_FOUND error (deleted concurrently)",
+  },
+  "agentEnvironment.secrets.unavailable": {
+    message: "Agent secrets aren't available on this deployment.",
+    description: "AGENT_SECRETS_UNAVAILABLE error",
+  },
+  "agentEnvironment.secrets.forbidden": {
+    message: "Only workspace admins can change agent secrets.",
+    description: "Secret write refused for a non-admin",
+  },
+  "agentEnvironment.secrets.saveFailed": {
+    message: "Couldn't save the change. Try again.",
+    description: "Generic secret write failure",
+  },
 };
 
 export default enAgentEnvironment;

@@ -34,6 +34,7 @@ import { platformOverlay } from "./overlay.js";
 import { readResultRecord, resultReminder } from "./submit-result.js";
 import type { UIMessageStreamHub, UIMessagePart } from "./stream-hub.js";
 import { TurnLogSink } from "./turn-log.js";
+import { SecretRedactor } from "./redact.js";
 
 interface RunTurnOptions {
   prompt?: string;
@@ -84,7 +85,9 @@ export async function markTurnFailed(
 ): Promise<void> {
   await writeStatus(config.statusPath, {
     state: "failed",
-    error: describeError(error),
+    error: new SecretRedactor(config.secretValues).redactString(
+      describeError(error),
+    ),
   });
 }
 
@@ -145,6 +148,9 @@ export async function runHeadlessTurn(
   const closeHub = options.closeHub ?? true;
   const onPart = options.onPart;
   const turn = options.turn ?? config.turn;
+  // Secret values are scrubbed before the choke point and from the failure
+  // verdict (ADR098 D6), so no subscriber or status reader ever sees one.
+  const redactor = new SecretRedactor(config.secretValues);
   let logBytes = 0;
   try {
     logBytes = (await stat(config.sessionLogPath)).size;
@@ -307,8 +313,13 @@ export async function runHeadlessTurn(
         onError: (error) => describeError(error),
       });
       for await (const chunk of stream) {
-        const published = publish(chunk as UIMessagePart);
-        await turnLog.appendPart(published);
+        for (const part of redactor.apply(chunk as Record<string, unknown>)) {
+          const published = publish(part as UIMessagePart);
+          await turnLog.appendPart(published);
+        }
+      }
+      for (const part of redactor.flush()) {
+        await turnLog.appendPart(publish(part as UIMessagePart));
       }
       if (turnError) throw turnError;
     };
@@ -351,7 +362,7 @@ export async function runHeadlessTurn(
     }
     await writeStatus(config.statusPath, {
       state: "failed",
-      error: describeError(terminalError),
+      error: redactor.redactString(describeError(terminalError)),
     });
     throw terminalError;
   } finally {

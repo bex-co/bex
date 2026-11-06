@@ -60,6 +60,11 @@ import { parseSpendLimit } from "@/features/agent-sessions/lib/spend-limit";
 import { ComposerSpendBanner } from "@/features/agent-sessions/components/composer-spend-banner";
 import { useComposerSpendGate } from "@/features/agent-sessions/hooks/use-composer-spend-gate";
 import { blocksCreate } from "@/features/agent-environment/lib/spend";
+import { ComposerSecrets } from "@/features/agent-sessions/components/composer-secrets";
+import {
+  EMPTY_COMPOSER_SECRETS,
+  type ComposerSecretsValue,
+} from "@/features/agent-sessions/lib/composer-secrets";
 
 const EXAMPLE_KEYS = [
   "agentSessions.exampleFixTests",
@@ -101,6 +106,10 @@ export function NewSessionComposer() {
   // The optional per-session model spend ceiling (ADR094 D8), kept as typed.
   const [spendLimitText, setSpendLimitText] = useState("");
   const spendLimit = parseSpendLimit(spendLimitText);
+  // Session secrets (ADR098): workspace refs and inline values, sent once.
+  const [secrets, setSecrets] = useState<ComposerSecretsValue>(
+    EMPTY_COMPOSER_SECRETS,
+  );
   const editorRef = useRef<InlineMentionEditorHandle | null>(null);
   const { task, repo, sessionIds } = composerDocument;
   const noRepos = !reposLoading && repos.length === 0;
@@ -188,6 +197,10 @@ export function NewSessionComposer() {
       prompt,
       sentAttachmentIds,
       spendLimit.value,
+      // Values too, though the server's digest covers names only (ADR098 D2):
+      // a corrected value is a new request. The fingerprint never leaves memory.
+      [...secrets.secretNames].sort(),
+      [...secrets.secrets].sort((a, b) => a.name.localeCompare(b.name)),
     ]);
     if (submitKey.current?.fingerprint !== fingerprint) {
       submitKey.current = { fingerprint, key: crypto.randomUUID() };
@@ -202,8 +215,11 @@ export function NewSessionComposer() {
         task: prompt,
         attachmentIds: sentAttachmentIds,
         maxSpendUSD: spendLimit.value,
+        secretNames: secrets.secretNames,
+        secrets: secrets.secrets,
       });
       uploads.clear(sentAttachmentIds);
+      setSecrets(EMPTY_COMPOSER_SECRETS);
       submitKey.current = null;
       await navigate({
         to: "/agents/$agentSessionId",
@@ -345,6 +361,13 @@ export function NewSessionComposer() {
               {attachmentLimits?.enabled ? (
                 <AttachButton onFiles={uploads.add} disabled={isSubmitting} />
               ) : null}
+
+              <ComposerSecrets
+                ownerId={currentWorkspaceId}
+                value={secrets}
+                onChange={setSecrets}
+                disabled={isSubmitting}
+              />
 
               <Input
                 type="text"

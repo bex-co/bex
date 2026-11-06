@@ -48,7 +48,9 @@ func idempotencyOf(workspaceID string, req CreateRequest, output store.AgentTurn
 		OutputRequired bool            `json:"q,omitempty"`
 		// The per-session spend ceiling (ADR094 D8), omitted when unset.
 		MaxSpendUSD *float64 `json:"m,omitempty"`
-	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required, req.MaxSpendUSD})
+		// Attached secret names (ADR098), never their values; omitted when none.
+		Secrets []string `json:"s,omitempty"`
+	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required, req.MaxSpendUSD, secretNamesOf(req.SessionSecretsInput)})
 	if err != nil {
 		return "", "", err
 	}
@@ -78,4 +80,14 @@ func (s *Service) replayCreate(ctx context.Context, workspaceID, key, hash strin
 	created := false
 	view.Created = &created
 	return view, true, nil
+}
+
+// secretNamesOf is the sorted, distinct names a request attaches.
+func secretNamesOf(in SessionSecretsInput) []string {
+	names := slices.Clone(in.SecretNames)
+	for _, secret := range in.Secrets {
+		names = append(names, secret.Name)
+	}
+	slices.Sort(names)
+	return slices.Compact(names)
 }

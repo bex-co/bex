@@ -150,6 +150,18 @@ export enum AgentNetworkTier {
   Registries = 'REGISTRIES'
 }
 
+/** A workspace agent secret. Only its name is readable. */
+export type AgentSecret = {
+  __typename: 'AgentSecret';
+  name: Scalars['String']['output'];
+};
+
+export type AgentSecretList = {
+  __typename: 'AgentSecretList';
+  ownerId: Scalars['String']['output'];
+  secrets: Array<AgentSecret>;
+};
+
 export type AgentSession = {
   __typename: 'AgentSession';
   agentConfig: AgentSessionConfig;
@@ -173,6 +185,8 @@ export type AgentSession = {
   prUrl: Maybe<Scalars['String']['output']>;
   repo: Scalars['String']['output'];
   sandboxId: Maybe<Scalars['String']['output']>;
+  /** Names of the secrets attached to the session; values are never returned. */
+  secretNames: Maybe<Array<Scalars['String']['output']>>;
   sshAddress: Maybe<Scalars['String']['output']>;
   state: Scalars['String']['output'];
   status: Scalars['String']['output'];
@@ -264,6 +278,13 @@ export type AgentSessionPullRequest = {
   headSha: Maybe<Scalars['String']['output']>;
   number: Maybe<Scalars['Int']['output']>;
   url: Scalars['String']['output'];
+};
+
+/** An inline secret for one agent session (ADR098): the agent reads it as the env var name. Write-only. */
+export type AgentSessionSecretInput = {
+  name: Scalars['String']['input'];
+  /** 1 B to 32 KiB; never returned, redacted from the transcript. */
+  value: Scalars['String']['input'];
 };
 
 export type AgentSessionToolOutput = {
@@ -1526,6 +1547,8 @@ export type Mutation = {
   deleteAccount: Maybe<AccountDeletion>;
   /** Deletes your own upload that no turn has attached yet. */
   deleteAgentAttachment: Maybe<Scalars['Boolean']['output']>;
+  /** Delete a workspace agent secret (admins only). */
+  deleteAgentSecret: Maybe<Scalars['Boolean']['output']>;
   deleteAgentSession: Maybe<Scalars['Boolean']['output']>;
   deleteBuildSource: Maybe<Scalars['Boolean']['output']>;
   deleteCustomDomain: Maybe<Scalars['Boolean']['output']>;
@@ -1594,6 +1617,8 @@ export type Mutation = {
   runCronJob: Maybe<CronRun>;
   scaleService: Maybe<Service>;
   selectGitClaim: Maybe<GitConnection>;
+  /** Create or rotate a workspace agent secret (admins only). The value is write-only. */
+  setAgentSecret: AgentSecret;
   setAutoDeploy: Maybe<Service>;
   setAutoDeployTrigger: Maybe<Service>;
   setAutoscaling: Maybe<Autoscaling>;
@@ -1789,6 +1814,8 @@ export type MutationCreateAgentSessionArgs = {
   outputSchema?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   repo: Scalars['String']['input'];
+  secretNames?: InputMaybe<Array<Scalars['String']['input']>>;
+  secrets?: InputMaybe<Array<AgentSessionSecretInput>>;
   tags?: InputMaybe<Array<Scalars['String']['input']>>;
   title?: InputMaybe<Scalars['String']['input']>;
 };
@@ -2037,6 +2064,12 @@ export type MutationDeleteAccountArgs = {
 
 export type MutationDeleteAgentAttachmentArgs = {
   id: Scalars['String']['input'];
+};
+
+
+export type MutationDeleteAgentSecretArgs = {
+  name: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 
 
@@ -2453,6 +2486,13 @@ export type MutationSelectGitClaimArgs = {
 };
 
 
+export type MutationSetAgentSecretArgs = {
+  name: Scalars['String']['input'];
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+  value: Scalars['String']['input'];
+};
+
+
 export type MutationSetAutoDeployArgs = {
   enabled: Scalars['Boolean']['input'];
   id: Scalars['String']['input'];
@@ -2811,6 +2851,8 @@ export type MutationSteerAgentSessionArgs = {
   outputRequired?: InputMaybe<Scalars['Boolean']['input']>;
   outputSchema?: InputMaybe<Scalars['String']['input']>;
   prompt: Scalars['String']['input'];
+  secretNames?: InputMaybe<Array<Scalars['String']['input']>>;
+  secrets?: InputMaybe<Array<AgentSessionSecretInput>>;
 };
 
 
@@ -3249,6 +3291,8 @@ export type Query = {
   /** One agent attachment with a fresh 15-minute downloadUrl (ADR095). */
   agentAttachment: Maybe<AgentAttachment>;
   agentEnvironment: AgentEnvironment;
+  /** The workspace's agent secrets, names only. */
+  agentSecrets: AgentSecretList;
   agentSession: Maybe<AgentSession>;
   /** A session's attachments oldest first; cursor is the previous page's last id. */
   agentSessionAttachments: Array<AgentAttachment>;
@@ -3387,6 +3431,11 @@ export type QueryAgentAttachmentArgs = {
 
 
 export type QueryAgentEnvironmentArgs = {
+  ownerId?: InputMaybe<Scalars['String']['input']>;
+};
+
+
+export type QueryAgentSecretsArgs = {
   ownerId?: InputMaybe<Scalars['String']['input']>;
 };
 

@@ -59,7 +59,7 @@ func TestPGAgentTurnStructuredOutput(t *testing.T) {
 		if _, err := pool.Exec(ctx, `UPDATE agent_sessions SET phase='completed' WHERE id=$1`, row.ID); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := s.BeginAgentSessionTurn(ctx, row.ID, "free", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}); err != nil {
+		if _, err := s.BeginAgentSessionTurn(ctx, row.ID, "free", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{}, nil); err != nil {
 			t.Fatal(err)
 		}
 		if free := turn(t, row.ID, 2); free.OutputSchema != nil || free.OutputRequired {
@@ -126,7 +126,7 @@ func TestPGAgentTurnStructuredOutput(t *testing.T) {
 		if _, err := pool.Exec(ctx, `UPDATE agent_sessions SET phase='completed' WHERE id=$1`, row.ID); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := s.BeginAgentSessionTurn(ctx, row.ID, "again", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{Schema: schema, Required: true}); err != nil {
+		if _, err := s.BeginAgentSessionTurn(ctx, row.ID, "again", "redispatch", "redispatching", "redispatching", AgentAttachmentBinding{}, AgentTurnOutput{Schema: schema, Required: true}, nil); err != nil {
 			t.Fatal(err)
 		}
 		if ok, _ := s.RecordAgentSessionResult(ctx, row.ID, 1, json.RawMessage(`{"n":1}`), true); ok {

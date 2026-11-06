@@ -1158,6 +1158,88 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     message: "按模型提供方成本 + 30% 计费。",
     description: "Pricing statement in the cost popover",
   },
+  "agentSessions.secretsButton": {
+    message: "密钥",
+    description: "Composer toolbar: the Secrets button label/tooltip (ADR098)",
+  },
+  "agentSessions.secretsButtonCount_other": {
+    message: "密钥（已附加 {count} 个）",
+    description:
+      "Composer Secrets button accessible label when secrets are attached",
+  },
+  "agentSessions.secretsTitle": {
+    message: "此会话的密钥",
+    description: "Composer Secrets popover heading",
+  },
+  "agentSessions.secretsDescription": {
+    message:
+      "智能体以环境变量的形式读取每个密钥。值不会再次显示，并会从对话记录中隐去。",
+    description: "Composer Secrets popover description",
+  },
+  "agentSessions.secretsWorkspace": {
+    message: "工作区密钥",
+    description:
+      "Composer Secrets popover: workspace agent secrets list heading",
+  },
+  "agentSessions.secretsWorkspaceLoadFailed": {
+    message: "无法加载工作区的智能体密钥。",
+    description:
+      "Composer secrets panel error when the workspace secret list fails to load",
+  },
+  "agentSessions.secretsWorkspaceEmpty": {
+    message: "还没有工作区密钥。",
+    description: "Composer Secrets popover: no workspace agent secrets",
+  },
+  "agentSessions.secretsManage": {
+    message: "在设置中管理",
+    description: "Composer Secrets popover: link to Settings \u2192 Agents",
+  },
+  "agentSessions.secretsInline": {
+    message: "仅用于此会话",
+    description: "Composer Secrets popover: inline secrets heading",
+  },
+  "agentSessions.secretsRemove": {
+    message: "移除 {name}",
+    description:
+      "Composer Secrets popover: remove an inline secret (accessible label)",
+  },
+  "agentSessions.secretsNamePlaceholder": {
+    message: "名称",
+    description: "Composer Secrets popover: inline secret name placeholder",
+  },
+  "agentSessions.secretsNameLabel": {
+    message: "密钥名称",
+    description: "Composer Secrets popover: inline secret name field label",
+  },
+  "agentSessions.secretsValuePlaceholder": {
+    message: "值",
+    description: "Composer Secrets popover: inline secret value placeholder",
+  },
+  "agentSessions.secretsValueLabel": {
+    message: "密钥值",
+    description: "Composer Secrets popover: inline secret value field label",
+  },
+  "agentSessions.secretsAdd": {
+    message: "添加",
+    description: "Composer Secrets popover: add an inline secret",
+  },
+  "agentSessions.secretsHint": {
+    message: "随会话一起删除。",
+    description: "Composer Secrets popover: inline secret lifetime hint",
+  },
+  "agentSessions.secretsFull": {
+    message: "一个会话最多可附加 20 个密钥。",
+    description: "Composer Secrets popover: session secret limit reached",
+  },
+  "agentSessions.secretsDuplicate": {
+    message: "此会话已有同名密钥。",
+    description: "Composer Secrets popover: duplicate inline secret name",
+  },
+  "agentSessions.metaSecrets_other": {
+    message: "{count} 个密钥",
+    description:
+      "Detail header \u2014 number of attached secrets (plural, ADR098)",
+  },
 };
 
 export default zhAgentSessions;

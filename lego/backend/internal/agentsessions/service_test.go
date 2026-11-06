@@ -519,7 +519,7 @@ func (f *fakeStore) CreateAgentSession(ctx context.Context, in store.AgentSessio
 	return in, nil
 }
 
-func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, delivery, phase, status string, _ store.AgentAttachmentBinding, output store.AgentTurnOutput) (store.AgentSession, error) {
+func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, delivery, phase, status string, _ store.AgentAttachmentBinding, output store.AgentTurnOutput, secretNames []string) (store.AgentSession, error) {
 	row, ok := f.rows[id]
 	if !ok {
 		return store.AgentSession{}, store.ErrNotFound
@@ -530,6 +530,9 @@ func (f *fakeStore) BeginAgentSessionTurn(_ context.Context, id, prompt, deliver
 	row.Turns++
 	row.SandboxID, row.Phase, row.Status = "", phase, status
 	row.FailureReason, row.FailureReasonCode = "", ""
+	if secretNames != nil {
+		row.SecretNames = slices.Clone(secretNames)
+	}
 	f.rows[id] = row
 	if phase == PhaseRedispatching {
 		f.addDispatch(row)

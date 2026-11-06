@@ -15,6 +15,7 @@ import {
   normalizeModelKey,
   type AgentEnvironmentView,
 } from "@/features/agent-environment/lib/environment";
+import { SECRET_INPUT_PROPS } from "@/common/lib/secret-input";
 import {
   AgentSectionHeading,
   ModelSourceLine,
@@ -103,13 +104,7 @@ export function ModelKeySection({
                 : t("agentEnvironment.modelKeyPlaceholder")
             }
             disabled={!canManage}
-            // A provider key is not a login password: keep browsers and
-            // password managers from offering, saving or filling it.
-            autoComplete="new-password"
-            data-1p-ignore
-            data-lpignore="true"
-            data-bwignore
-            spellCheck={false}
+            {...SECRET_INPUT_PROPS}
             autoCapitalize="off"
             aria-invalid={shownError != null}
             aria-describedby={`${inputId}-help`}
