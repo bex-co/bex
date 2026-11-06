@@ -1,6 +1,6 @@
 # w5 · m266 — Key Value Pro, Pro Plus and size-named plans create, as on Render
 
-**Worker:** worker5 **Goal:** a customer can create and upgrade to Key Value stores larger than 1 GB using Render's plan names on every surface. **Status:** blocked — t001 findings and the t002 placement plumbing shipped; the tiers, prices and live checks wait on three user decisions (below)
+**Worker:** worker5 **Goal:** a customer can create and upgrade to Key Value stores larger than 1 GB using Render's plan names on every surface. **Status:** todo (t001 findings and the t002 placement plumbing shipped; user decisions D1–D3 recorded 2026-11-05)
 
 ## Tasks (in order)
 
@@ -62,3 +62,22 @@ Total: **10 tasks, about 7h30m**.
 3. **Confirm how the `xxl`-pool tiers behave** while the Hetzner dedicated-core limit blocks w2/m250: (a) extend the signed Pro Ultra pause to Key Value `pro_ultra`/`40g` and `50g` (refused by name, shown unavailable) — recommended, same pool and release condition; or (b) accept them and let them sit Pending. `pro_plus`/`pro_max` follow your w2/m250 decision for the `xl` pool (accepted, Pending until cx53 restocks).
 
 **Next steps once decided:** add the tiers + aliases to `tiers.yaml` / `aliases.go` / the KeyValue CRD enum (t001), size their pods and PVCs (t002 envtest), prices + admission + Blueprint (t003), dashboard picker (t004), run the Stripe catalog script live, then deploy and run the t005 live checks; t006 then tracks the `xxl` release.
+
+## Unblock decisions — 2026-11-05 (user, `/unblock w5`)
+
+Affects w5/m266 t001–t006. Source: **explicit user decisions** (D1=A, D2=A, D3=A), checked on main `9c487a399`.
+
+- **D1 — live Stripe prices: authorized.** Create the new Key Value Prices at Render size-plan × 0.70 (ADR030): `3g` $42, `pro`/`5g` $70, `pro_plus`/`10g` $140, `pro_max`/`20g` $245, `pro_ultra`/`40g` $420, `50g` $525 per month. Additive only. Run `scripts/stripe-billing-setup.py` in test mode, then `--live`, **before** the deploy that adds the tiers, because billing refuses all contract work while a catalog Price is missing. Reference: render.com/pricing#key-value, read 2026-11-05 (256mb $10, 1g $20, 3g $60, 5g $100, 10g $200, 20g $350, 40g $600, 50g $750).
+- **D2 — reprice `standard` from $21.00 to $14.00/mo (Render 1g is $20 since 2026-10-01).** Existing subscriptions move at their next billing period, following the w2/058 pattern (`docs/runbooks/stripe-billing-setup.md` § Repricing a dimension): create the new Price, retire the old one, then swap the live subscription items with `proration_behavior=none` after each subscription's current period ends. If that boundary is still in the future when the code ships, the swap is a dated follow-up inbox note with that date as its only gate, like w2/058.
+- **D3 — `pro_ultra`/`40g` and `50g` share the signed Pro Ultra pause** (w2/m250, user sign-off 2026-11-02; same `xxl` pool, same release condition: the Hetzner dedicated-vCPU limit raised to ≥32). Mark them `paused: true` in the valkey family, and add the backend refusal across REST, GraphQL, MCP, Blueprints and the dashboard picker, mirroring compute's `INSTANCE_TYPE_UNAVAILABLE`. Record the divergence and this sign-off in ADR018. Release them together with Pro Ultra. `pro_plus`/`10g` and `pro_max`/`20g` follow the w2/m250 `xl` decision: accepted, Pending until cx53 stock returns.
+
+**Worker next steps:**
+1. Add the tiers and aliases to `tiers.yaml`, `aliases.go` and the KeyValue CRD enum, re-adding `ValkeyTier.paused` with its enforcement.
+2. Size the pods and PVCs, with an envtest for an `xl` tier.
+3. Add the prices to `pricing.yaml`, including the `standard` repricing.
+4. Wire admission, Blueprint and the dashboard picker.
+5. Run the Stripe catalog in test mode, then live.
+6. Ship, then run the t005 live checks: a `pro` store Ready and connectable, and a standard → pro upgrade that grows the PVC.
+7. Track the `xl` and `xxl` release in t006.
+
+**Acceptance:** the milestone's DoD is unchanged.

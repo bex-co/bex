@@ -18,7 +18,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 User decision 2026-11-05: all five items of the sixth `/pm-brainstorm w5` proposal, in priority order, followed by `/loopx w5`. Render parity is included for m265–m268. The m266 interim refusal for 20g/40g is **not** signed; m266 t006 records the outcome.
 
 - [x] **m265** — [Postgres credential rotation: a new user becomes the default, as on Render](done/m265/README.md) (10 tasks; 8h20m total) ← round 6 item 1; ADR018 unsigned `—` omission row — **DONE 2026-11-05**: rotation live on production (202 create, connection info follows the new default, owner retired with its login refused)
-- [ ] **m266** — [Key Value Pro, Pro Plus and size-named plans create, as on Render](blocked/m266/README.md) (10 tasks; 7h30m total) ← round 6 item 2; valkey tiers stop at standard — **BLOCKED (user: authorize the live Stripe Key Value prices, reprice `standard` $21→$14, and confirm pausing the `xxl`-pool tiers; placement plumbing shipped)**
+- [ ] **m266** — [Key Value Pro, Pro Plus and size-named plans create, as on Render](m266/README.md) (10 tasks; 7h30m total) ← round 6 item 2; valkey tiers stop at standard — **unblocked 2026-11-05 (D1–D3): next — tiers + prices, then live Stripe catalog before deploy**
 - [x] **m267** — [Render's workspace member mutations: PATCH and DELETE /owners/{ownerId}/members/{userId}](done/m267/README.md) (8 tasks; 4h45m total) ← round 6 item 3; ADR018 unsigned `—` omission row — **DONE 2026-11-05**: Render member PATCH/DELETE served through the members verbs; follow-up w5/179 (`usr-` user ids)
 - [x] **m268** — [Key Value "Enable Internal Authentication", as on Render](done/m268/README.md) (9 tasks; 6h45m total) ← round 6 item 4; w8/204 follow-up — **DONE 2026-11-05**: live on production (probe PONG → NOAUTH, internal URL carries the password)
 - [x] **178** — [`BUN_VERSION=canary` builds, as on Render](done/178.md) (~1h, may promote) ← round 6 item 5; Render changelog 2026-10-16
@@ -40,7 +40,7 @@ User decision 2026-10-20: all five items of the fifth `/pm-brainstorm for w5` pr
 - [x] **174** — [Widen public image registries to every workspace once the node pools carry the containerd deny](done/174.md) ← w5/171's production gate
 - [x] **175** — [A WAL archive that hangs, instead of failing, is never reported](done/175.md) (~1–2h, may promote) ← found by w5/m141's live walk
 - [x] **176** — [Docker Hub's anonymous pull limit fails tenant image deploys](done/176.md) (~1h+, may promote) ← found by w5/m114's live replay; already fixed by `e3e0f9eea` (429 retried, not failed)
-- [ ] **177** — [Authenticate anonymous Docker Hub reads with a platform account](blocked/177.md) ← w5/176 residual — **BLOCKED (user: a platform Docker Hub account + access token, and pull-secret vs authenticated Zot mirror; parity behavior already live)**
+- [x] **177** — [Authenticate anonymous Docker Hub reads with a platform account](done/177.md) ← w5/176 residual — **retired to FUTURE-MAYBE 2026-11-05 (user D4): parity already live (429 retry + workspace credentials); promote on the trigger there**
 - [x] **172** — [A Blueprint `dockerContext: /` means the repository root, as on Render](done/172.md) (~30m) ← found by w5/m149's corpus run
 
 ## Approved queue — 2026-10-20 (parity-only set)
