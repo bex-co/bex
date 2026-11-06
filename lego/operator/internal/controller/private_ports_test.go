@@ -39,6 +39,7 @@ func privateScanFixture(scanner *cannedScanner, ready bool, every time.Duration)
 	app := &appv1alpha1.App{
 		ObjectMeta: metav1.ObjectMeta{Name: "db", Namespace: "tea-a"},
 		Spec:       appv1alpha1.AppSpec{Type: appv1alpha1.TypePrivateService, Image: "ghcr.io/example/db:1", Port: 5432},
+		Status:     appv1alpha1.AppStatus{Phase: appv1alpha1.PhaseRunning},
 	}
 	labels := map[string]string{labelApp: "db", labelRevision: "rev-2"}
 	dep := &appsv1.Deployment{
@@ -140,6 +141,31 @@ func TestScanPrivatePortsSpacing(t *testing.T) {
 	}).Build()
 	if got := r.scanPrivatePorts(context.Background(), app, dep); got == nil || got.Revision != "rev-3" || scanner.calls != 2 {
 		t.Fatalf("new revision: %+v after %d calls, want an immediate scan", got, scanner.calls)
+	}
+}
+
+// w4/517: a due rescan of a revision already scanned waits while the App is not
+// Running — a wake keeps its revision, and the sweep held Running back while the
+// woken pod served — and runs once it is. A new revision is still scanned at once.
+func TestScanPrivatePortsWaitsForRunningOnAKnownRevision(t *testing.T) {
+	scanner := &cannedScanner{open: []int{5432}}
+	r, app, dep := privateScanFixture(scanner, true, time.Nanosecond)
+	app.Status.RuntimePorts = &appv1alpha1.RuntimePortsStatus{Revision: "rev-2", Ports: []int32{5432}}
+	r.privatePortScanned.Store(app.Namespace+"/"+app.Name, time.Now().Add(-time.Hour))
+	for _, phase := range []appv1alpha1.AppPhase{appv1alpha1.PhaseDeploying, appv1alpha1.PhaseHibernated} {
+		app.Status.Phase = phase
+		if got := r.scanPrivatePorts(context.Background(), app, dep); got != nil || scanner.calls != 0 {
+			t.Fatalf("%s: scan = %+v after %d calls, want none", phase, got, scanner.calls)
+		}
+	}
+	app.Status.Phase = appv1alpha1.PhaseRunning
+	if got := r.scanPrivatePorts(context.Background(), app, dep); got == nil || scanner.calls != 1 {
+		t.Fatalf("Running: scan = %+v after %d calls, want one", got, scanner.calls)
+	}
+	app.Status.Phase = appv1alpha1.PhaseDeploying
+	app.Status.RuntimePorts.Revision = "rev-1"
+	if got := r.scanPrivatePorts(context.Background(), app, dep); got == nil || got.Revision != "rev-2" || scanner.calls != 2 {
+		t.Fatalf("new revision while Deploying: scan = %+v after %d calls, want one", got, scanner.calls)
 	}
 }
 
@@ -255,6 +281,43 @@ func TestWithPrivateNetworkPorts(t *testing.T) {
 				if want, ok := tc.want[p.Port]; !ok || p.TargetPort != want || p.Protocol != corev1.ProtocolTCP {
 					t.Fatalf("port %d -> %v (%s), want %v", p.Port, p.TargetPort, p.Protocol, tc.want)
 				}
+			}
+		})
+	}
+}
+
+// w4/517: the Ready=True that ends a park is stamped when the woken pod became
+// Ready, not when the pass that noticed it wrote status; any other Ready flip,
+// and a pod with no usable time, keeps the write's own clock.
+func TestWakeReadyIsStampedFromThePod(t *testing.T) {
+	parkedAt := metav1.NewTime(time.Now().Add(-10 * time.Minute).Truncate(time.Second))
+	podReadyAt := metav1.NewTime(time.Now().Add(-30 * time.Second).Truncate(time.Second))
+	for name, tc := range map[string]struct {
+		reason  string
+		status  metav1.ConditionStatus
+		podTime metav1.Time
+		want    metav1.Time
+	}{
+		"auto-hibernated":         {reasonAutoHibernated, metav1.ConditionFalse, podReadyAt, podReadyAt},
+		"suspended":               {reasonSuspended, metav1.ConditionFalse, podReadyAt, podReadyAt},
+		"a rollout, not a park":   {reasonRolloutProgressing, metav1.ConditionFalse, podReadyAt, metav1.Time{}},
+		"already ready":           {"Deployed", metav1.ConditionTrue, podReadyAt, metav1.Time{}},
+		"a pod ready before park": {reasonAutoHibernated, metav1.ConditionFalse, metav1.NewTime(parkedAt.Add(-time.Minute)), metav1.Time{}},
+	} {
+		t.Run(name, func(t *testing.T) {
+			r, app, dep := privateScanFixture(&cannedScanner{}, true, time.Hour)
+			var pods corev1.PodList
+			if err := r.List(context.Background(), &pods); err != nil || len(pods.Items) != 1 {
+				t.Fatalf("pods = %v (%v)", pods.Items, err)
+			}
+			pod := &pods.Items[0]
+			pod.Status.Conditions[0].LastTransitionTime = tc.podTime
+			if err := r.Status().Update(context.Background(), pod); err != nil {
+				t.Fatal(err)
+			}
+			app.Status.Conditions = []metav1.Condition{{Type: appv1alpha1.ConditionReady, Status: tc.status, Reason: tc.reason, LastTransitionTime: parkedAt}}
+			if got := r.wakeReadySince(context.Background(), app, dep); !got.Equal(&tc.want) {
+				t.Fatalf("wakeReadySince = %v, want %v", got, tc.want)
 			}
 		})
 	}

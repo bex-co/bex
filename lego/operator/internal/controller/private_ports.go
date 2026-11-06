@@ -26,6 +26,8 @@ import (
 	appsv1 "k8s.io/api/apps/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
+	"k8s.io/apimachinery/pkg/api/meta"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/intstr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -98,6 +100,13 @@ func (r *AppReconciler) scanPrivatePorts(ctx context.Context, app *appv1alpha1.A
 		every = r.portDetectEvery
 	}
 	if last, ok := r.privatePortScanned.Load(key); ok && sameRevision && time.Since(last.(time.Time)) < every {
+		return nil
+	}
+	// A rescan of a revision already scanned waits until the App is Running: a
+	// wake keeps its revision, and the sweep (up to portDetectTimeout) on the
+	// pass that first sees the woken pod Ready held Running and Ready=True back
+	// while that pod was already serving (w4/517). The known listeners stand.
+	if sameRevision && app.Status.Phase != appv1alpha1.PhaseRunning {
 		return nil
 	}
 	ip := r.readyPodIP(ctx, dep, revision)
@@ -186,6 +195,45 @@ func (r *AppReconciler) readyPodIP(ctx context.Context, dep *appsv1.Deployment, 
 		}
 	}
 	return ""
+}
+
+// wakeReadySince is when a parked App came back: the earliest Ready time of a
+// Ready pod of its current revision, for an App whose Ready condition is about
+// to flip from AutoHibernated or Suspended. The woken pod serves held requests
+// from that moment, and the pass that writes Ready=True can land well after it
+// (w4/517), so bex-api's woken/resumed event is stamped from this time. Zero
+// (SetStatusCondition then stamps now) for any other transition, or with no
+// such pod.
+func (r *AppReconciler) wakeReadySince(ctx context.Context, app *appv1alpha1.App, dep *appsv1.Deployment) metav1.Time {
+	cur := meta.FindStatusCondition(app.Status.Conditions, appv1alpha1.ConditionReady)
+	if dep == nil || cur == nil || cur.Status != metav1.ConditionFalse ||
+		(cur.Reason != reasonAutoHibernated && cur.Reason != reasonSuspended) ||
+		dep.Spec.Selector == nil || len(dep.Spec.Selector.MatchLabels) == 0 {
+		return metav1.Time{}
+	}
+	revision := dep.Spec.Template.Labels[labelRevision]
+	var pods corev1.PodList
+	if err := r.List(ctx, &pods, client.InNamespace(dep.Namespace), client.MatchingLabels(dep.Spec.Selector.MatchLabels)); err != nil {
+		return metav1.Time{}
+	}
+	var since metav1.Time
+	for i := range pods.Items {
+		p := &pods.Items[i]
+		if p.DeletionTimestamp != nil || p.Labels[labelRevision] != revision {
+			continue
+		}
+		for _, c := range p.Status.Conditions {
+			if c.Type == corev1.PodReady && c.Status == corev1.ConditionTrue && !c.LastTransitionTime.IsZero() &&
+				(since.IsZero() || c.LastTransitionTime.Before(&since)) {
+				since = c.LastTransitionTime
+			}
+		}
+	}
+	// Never after the write itself, nor before the park it ends.
+	if now := metav1.Now(); since.IsZero() || now.Before(&since) || since.Before(&cur.LastTransitionTime) {
+		return metav1.Time{}
+	}
+	return since
 }
 
 // withPrivateNetworkPorts adds what a stable Service serves on the private

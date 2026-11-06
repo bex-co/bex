@@ -3385,6 +3385,7 @@ func (r *AppReconciler) settleReady(ctx context.Context, app *appv1alpha1.App, d
 	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
 		Type: appv1alpha1.ConditionReady, Status: metav1.ConditionTrue, Reason: reason,
 		Message: message, ObservedGeneration: app.Generation,
+		LastTransitionTime: r.wakeReadySince(ctx, app, dep),
 	})
 	if statusUnchanged(ctx, r.Client, app) {
 		return false, nil
