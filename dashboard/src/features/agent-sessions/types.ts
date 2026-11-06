@@ -54,8 +54,17 @@ export interface AgentSessionOutcome {
    * D5, w21/003); null for a free-form turn or before the agent declared one.
    */
   result: string | null;
-  /** The session's priced model spend so far (ADR094 D7); null when unpriced. */
-  cost: { modelUSD: string } | null;
+  /**
+   * What the session has cost so far (ADR094 D7, w9/m178): model spend plus
+   * sandbox compute, with totalUSD the one figure to compare with the bill.
+   * computeUSD/totalUSD are null from a server that predates them; the whole
+   * cost is null when nothing is priced yet or a part could not be read.
+   */
+  cost: {
+    modelUSD: string;
+    computeUSD: string | null;
+    totalUSD: string | null;
+  } | null;
 }
 
 /**

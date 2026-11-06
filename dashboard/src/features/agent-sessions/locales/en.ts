@@ -1164,6 +1164,17 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Session page — model spend so far beside the session's spend limit",
   },
+  "agentSessions.costNote": {
+    message: "Cost {total} · model {model}, compute {compute}",
+    description:
+      "Session page — the session's total cost so far (outcome.cost.totalUSD) with its model and sandbox compute parts",
+  },
+  "agentSessions.costNoteWithLimit": {
+    message:
+      "Cost {total} · model {model} of the {limit} session limit, compute {compute}",
+    description:
+      "Session page — total cost with its parts; the session spend limit caps the model part",
+  },
   "agentSessions.resultTitle": {
     message: "Result",
     description:

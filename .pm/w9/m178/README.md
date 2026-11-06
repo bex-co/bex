@@ -1,6 +1,6 @@
 # w9 · m178 — `outcome.cost` reports sandbox compute in one USD total (Devin parity)
 
-**Worker:** worker9 **Goal:** a session's `outcome.cost` carries `computeUSD` (its sandbox compute, priced like the bill) and `totalUSD` (model + compute) next to `modelUSD`, so a customer sees one number per session that matches their invoice. **Status:** in progress — t001, t002, t005 done; next t003 (dashboard)
+**Worker:** worker9 **Goal:** a session's `outcome.cost` carries `computeUSD` (its sandbox compute, priced like the bill) and `totalUSD` (model + compute) next to `modelUSD`, so a customer sees one number per session that matches their invoice. **Status:** in progress — t001–t003, t005 done; next t004 parity and the live check after deploy
 
 ## Tasks (in order)
 
@@ -8,7 +8,7 @@
 | --- | --- | --- | --- |
 | t001 | Attribute sandbox compute to its session — **DONE** | 60m | — |
 | t002 | Price per-session compute into `outcome.cost` — **DONE** | 60m | t001 |
-| t003 | Dashboard shows the session's total cost | 30m | t002 |
+| t003 | Dashboard shows the session's total cost — **DONE** | 30m | t002 |
 | t004 | Render parity (Devin reference for agent surfaces) | 20m | t002, t003 |
 | t005 | Simplify — **DONE** | 15m | t004 |
 | t006 | Test coverage | 45m | t004, t005 |

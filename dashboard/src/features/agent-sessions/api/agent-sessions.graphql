@@ -56,6 +56,8 @@ fragment AgentSessionFields on AgentSession {
     result
     cost {
       modelUSD
+      computeUSD
+      totalUSD
     }
     pullRequest {
       url

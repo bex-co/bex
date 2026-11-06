@@ -1098,6 +1098,16 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Session page — model spend so far beside the session's spend limit",
   },
+  "agentSessions.costNote": {
+    message: "费用 {total} · 模型 {model}，计算 {compute}",
+    description:
+      "Session page — the session's total cost so far (outcome.cost.totalUSD) with its model and sandbox compute parts",
+  },
+  "agentSessions.costNoteWithLimit": {
+    message: "费用 {total} · 模型 {model}（会话上限 {limit}），计算 {compute}",
+    description:
+      "Session page — total cost with its parts; the session spend limit caps the model part",
+  },
   "agentSessions.resultTitle": {
     message: "结果",
     description:

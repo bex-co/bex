@@ -36,7 +36,9 @@ describe("stoppedAtSessionSpendLimit", () => {
   const base = {
     failureReasonCode: "AGENT_MODEL_SPEND_CAP_REACHED",
     maxSpendUSD: "5",
-    outcome: { cost: { modelUSD: "5.000100" } },
+    outcome: {
+      cost: { modelUSD: "5.000100", computeUSD: null, totalUSD: null },
+    },
   };
   it("is true once recorded spend reaches the ceiling", () => {
     expect(stoppedAtSessionSpendLimit(base)).toBe(true);
@@ -45,7 +47,7 @@ describe("stoppedAtSessionSpendLimit", () => {
     expect(
       stoppedAtSessionSpendLimit({
         ...base,
-        outcome: { cost: { modelUSD: "1" } },
+        outcome: { cost: { modelUSD: "1", computeUSD: null, totalUSD: null } },
       }),
     ).toBe(false);
     expect(stoppedAtSessionSpendLimit({ ...base, maxSpendUSD: null })).toBe(

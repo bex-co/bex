@@ -70,7 +70,7 @@ describe("FailureCallout", () => {
       pendingDecision: null,
       failureReasonCode: "AGENT_MODEL_SPEND_CAP_REACHED",
       result: null,
-      cost: { modelUSD },
+      cost: { modelUSD, computeUSD: null, totalUSD: null },
     });
     const { rerender } = render(
       <FailureCallout

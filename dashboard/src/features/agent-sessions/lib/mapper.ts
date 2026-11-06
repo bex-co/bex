@@ -172,7 +172,11 @@ export function toAgentSessionView(
           failureReasonCode: wire.outcome.failureReasonCode ?? null,
           result: wire.outcome.result ?? null,
           cost: wire.outcome.cost
-            ? { modelUSD: wire.outcome.cost.modelUSD }
+            ? {
+                modelUSD: wire.outcome.cost.modelUSD,
+                computeUSD: wire.outcome.cost.computeUSD ?? null,
+                totalUSD: wire.outcome.cost.totalUSD ?? null,
+              }
             : null,
         }
       : null,
