@@ -55,6 +55,8 @@ func TestDeployStatusVocabularyAndTransitionTable(t *testing.T) {
 		{DeployBuildInProgress, DeployPreDeployFailed},
 		{DeployCreated, DeployUpdateFailed},
 		{DeployCreated, DeployCanceled},
+		// A static site's publish step fails the build (w4/515).
+		{DeployUpdateInProgress, DeployBuildFailed},
 	}
 	for _, edge := range valid {
 		if !CanTransitionDeploy(edge[0], edge[1]) {

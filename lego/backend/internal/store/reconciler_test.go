@@ -3176,3 +3176,82 @@ func TestStaticSiteBuildEndedWaitsForThePublish(t *testing.T) {
 		t.Errorf("non-static, entering update = %v, want [succeeded]", got)
 	}
 }
+
+// TestStaticSitePublishFailureClosesTheDeploy is w4/515, the w4/493 regression:
+// a static site's missing publish directory fails after the row reached
+// update_in_progress (the publish window), and build_failed had no edge from
+// there, so the row stayed open forever while build_ended already said failed.
+func TestStaticSitePublishFailureClosesTheDeploy(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	row, _ := st.CreateApp(ctx, App{
+		TenantID: ten.ID, Name: "web", Type: appv1alpha1.TypeStaticSite,
+		Repo: "https://example.com/acme/site.git", Branch: "main", Port: 80, Replicas: 1, Tier: "free",
+	})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("create projection: %v", err)
+	}
+	observe := func(phase appv1alpha1.AppPhase, reason string, status metav1.ConditionStatus, msg string) {
+		t.Helper()
+		app := getApp(t, cl)
+		app.Status.Phase = phase
+		app.Status.ReleaseGeneration = app.Generation
+		app.Status.Conditions = []metav1.Condition{{
+			Type: appv1alpha1.ConditionReady, Status: status,
+			Reason: reason, Message: msg, ObservedGeneration: app.Generation,
+		}}
+		if err := cl.Status().Update(ctx, app); err != nil {
+			t.Fatal(err)
+		}
+		if err := rec.ReconcileOnce(ctx); err != nil {
+			t.Fatalf("reconcile %s: %v", phase, err)
+		}
+	}
+	buildEnded := func(id string) (ServiceEventFact, bool) {
+		st.mu.Lock()
+		defer st.mu.Unlock()
+		f, ok := st.eventFacts["deploy:"+id+":build_ended"]
+		return f, ok
+	}
+
+	observe(appv1alpha1.PhaseBuilding, "Building", metav1.ConditionFalse, "")
+	observe(appv1alpha1.PhaseDeploying, "Deploying", metav1.ConditionFalse, "")
+	history, _ := st.ListDeploys(ctx, row.ID, DeployFilter{})
+	dep := history[0]
+	if dep.Status != DeployUpdateInProgress {
+		t.Fatalf("publishing status = %q, want update_in_progress", dep.Status)
+	}
+	if _, ok := buildEnded(dep.ID); ok {
+		t.Fatal("build_ended emitted while still publishing")
+	}
+
+	const reason = `publish directory "does-not-exist" was not found`
+	observe(appv1alpha1.PhaseFailed, appv1alpha1.ReasonBuildFailedUserError, metav1.ConditionFalse, reason)
+	dep, _ = st.GetDeploy(ctx, row.ID, dep.ID)
+	if dep.Status != DeployBuildFailed || dep.FailureReason != reason {
+		t.Fatalf("after publish failure: status=%q reason=%q, want build_failed with %q", dep.Status, dep.FailureReason, reason)
+	}
+	if f, ok := buildEnded(dep.ID); !ok || f.Status != EventStatusFailed {
+		t.Fatalf("build_ended = %+v (present %v), want failed", f, ok)
+	}
+}
+
+// w4/515: a status the row refuses is not where the deploy has reached, so no
+// terminal build_ended is minted for it while the row stays open.
+func TestLifecycleFactsIgnoreARefusedTransition(t *testing.T) {
+	ctx := context.Background()
+	rec, st, _ := newTestReconciler(t)
+	// A static site still publishing: build_ended waits for the outcome. A
+	// computed pre_deploy_failed has no edge from update_in_progress, so the row
+	// stays open and so must the build.
+	started := time.Now()
+	open := Deploy{ID: "dep-x", AppID: "srv-x", Status: DeployUpdateInProgress, CreatedAt: started, StartedAt: &started}
+	d := DesiredApp{App: App{Repo: "https://example.com/r.git", Type: appv1alpha1.TypeStaticSite}}
+	rec.recordLifecycleFacts(ctx, d, open, &appv1alpha1.App{}, DeployPreDeployFailed)
+	st.mu.Lock()
+	defer st.mu.Unlock()
+	if f, ok := st.eventFacts["deploy:dep-x:build_ended"]; ok {
+		t.Fatalf("refused transition minted build_ended: %+v", f)
+	}
+}

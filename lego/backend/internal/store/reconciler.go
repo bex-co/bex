@@ -1131,6 +1131,12 @@ func recordedPreDeployFailure(app *appv1alpha1.App, generation int64) string {
 // phase) and a deploy with no pre-deploy step each emit neither. newStatus is the
 // deploy status observedDeployStatus resolved this pass ("" when nothing moved).
 func (r *Reconciler) recordLifecycleFacts(ctx context.Context, d DesiredApp, open Deploy, cur *appv1alpha1.App, newStatus string) {
+	// A status the row cannot move to is not where the deploy has reached: the
+	// TransitionDeploy that follows refuses it, so a terminal build_ended keyed
+	// on it would close a build the row still shows open (w4/515).
+	if newStatus != "" && !CanTransitionDeploy(open.Status, newStatus) {
+		newStatus = ""
+	}
 	var facts []ServiceEventFact
 	if d.Repo != "" {
 		build := buildLifecycleFacts(open, newStatus, buildRunStart(cur, open))

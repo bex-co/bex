@@ -106,9 +106,14 @@ func IsTerminalDeployStatus(status string) bool {
 // backend samples Kubernetes state rather than receiving every operator edge;
 // nothing consumes a terminal state, so those have no successors.
 var deployTransitionPredecessors = map[string][]string{
-	DeployQueued:              {DeployCreated},
-	DeployBuildInProgress:     {DeployCreated, DeployQueued},
-	DeployBuildFailed:         {DeployCreated, DeployQueued, DeployBuildInProgress},
+	DeployQueued:          {DeployCreated},
+	DeployBuildInProgress: {DeployCreated, DeployQueued},
+	// A static site publishes its build (stages and uploads the publish
+	// directory) in update_in_progress, and that step is part of the build as
+	// Render counts it: a missing publish directory closes the row build_failed
+	// from there (w4/493, w4/515). No other service reports a build failure for
+	// a release whose rollout has begun.
+	DeployBuildFailed:         {DeployCreated, DeployQueued, DeployBuildInProgress, DeployUpdateInProgress},
 	DeployPreDeployInProgress: {DeployCreated, DeployQueued, DeployBuildInProgress},
 	DeployPreDeployFailed:     {DeployCreated, DeployQueued, DeployBuildInProgress, DeployPreDeployInProgress},
 	DeployUpdateInProgress:    openDeployStatuses,
