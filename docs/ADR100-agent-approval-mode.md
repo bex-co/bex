@@ -186,15 +186,28 @@ Backend, gateway, driver and CLI shipped together. Where this differs from the d
 
 **What `all` means with Claude.** Claude Code auto-allows commands it classifies as read-only (`echo hi`, `ls`) before asking any client, so they never reach the gate. That matches D3's "every non-read-only tool call". The production `echo` observation is that classification, not a bypass.
 
-**Codex limitation.** codex-acp 1.4.0 runs every turn with its session mode's approval policy:
+**Codex: gated through its exec policy (w9/081, 2026-11-06).** codex-acp 1.4.0 runs every turn with its session mode's approval policy, and `CODEX_CONFIG` cannot override it (`AgentMode` in `dist/index.js`):
 
 - default `agent` is `on-request` with a workspace-write sandbox;
 - `read-only` is `on-request` with a read-only sandbox;
 - `agent-full-access` is `never`.
 
-The policy is passed per turn, and `CODEX_CONFIG` cannot override it. Codex therefore asks only when it wants to escalate out of its own sandbox. In-sandbox commands such as `sudo true` reach no permission request, so risky mode gates Codex only on escalations. Codex needs a workspace model key, so this does not affect the platform-routed claude sessions.
+There is no `untrusted` mode, so under `on-request` codex asks only for commands the model escalates out of its own sandbox, and an in-sandbox `sudo true` reached no permission request. codex's exec policy closes the gap: a `prefix_rule(..., decision = "prompt")` makes codex ask before a matching command whatever the turn's policy, and the ask arrives as an ordinary ACP permission request that the driver's gate answers.
+
+- For a non-autonomous codex session the driver writes `$CODEX_HOME/rules/bex-approval.rules` before codex starts (`driver/src/codex-rules.ts`); an autonomous session gets none, and a stale file is removed.
+- `risky` prompts every program the approval table inspects (git, sudo, rm, package managers, cluster and cloud CLIs, curl/wget, shells …). The rules are broad by design: the gate still decides each request, so a prompted `git status` is allowed once at once and only a risky command reaches a person.
+- `all` prompts every executable on the sandbox's `PATH` except a short read-only list (`ls`, `cat`, `grep`, `echo` …), the codex counterpart of Claude Code's read-only auto-allow.
+- Verified against the real codex-acp 1.4.0 and codex 0.147.0 with a fake Responses API:
+
+  - in risky mode, `sudo true` and `/usr/bin/sudo true` open a decision, and a denial reaches codex as "rejected by user";
+  - also in risky mode, `echo ok > ok.txt` runs ungated and writes the workspace;
+  - in all mode, `touch` opens a decision, and an allow writes the workspace;
+  - an autonomous session asks nothing.
+
+  These are the opt-in tests `driver/test/real-codex-approval.test.ts` and `driver/test/codex-rules.test.ts`.
+
+- Limits: a program that is not on `PATH` at session start, or is invoked by a path to a file the session created, is not prompted in `all` mode. In `risky` mode only the listed programs are prompted, which covers every rule in the table.
 
 **Follow-ups:**
 
-- an `untrusted`-equivalent Codex mode, which needs codex-acp support;
 - verifying Gemini's `--acp` permission requests.

@@ -37,6 +37,7 @@ import {
 } from "@agentclientprotocol/sdk/unstable";
 import type { AgentDriverConfig } from "./config.js";
 import { grant } from "./approval.js";
+import { installCodexApprovalRules } from "./codex-rules.js";
 import { describeError } from "./errors.js";
 
 const maximumConnectTimeoutMs = 60_000;
@@ -377,6 +378,10 @@ async function createSessionAttempt(
   // channel is decided before spawn because CODEX_CONFIG is read at startup.
   const codexOverlay = overlay !== "" && config.profile === "codex";
   const childEnv = { ...process.env, ...agentEnv };
+  // Approval mode for codex goes through its exec policy (codex-rules.ts):
+  // written before spawn, because codex reads its rules at startup.
+  if (config.profile === "codex")
+    await installCodexApprovalRules(config.approvalMode, childEnv);
   const spawnEnv = codexOverlay
     ? { ...childEnv, ...codexOverlayEnv(overlay, childEnv.CODEX_CONFIG) }
     : childEnv;
