@@ -64,3 +64,9 @@ The actual PG14 arm64 job124586881316 in run41196538568 fails at ordinary-owner 
 ## Hosted re-check — 2026-11-01 (`/qa-find-bugs-cli` loop sweep 3093, pin `ea5a901daf6b`)
 
 A fresh Free PG18 (`qa-20261101-3093-pgx`, `dpg-dbjbcjluhrks73c4dong`) still runs the stock operand (`PostgreSQL 18.6 (Debian 18.6-1.pgdg11+2)`, `shared_preload_libraries = pg_stat_statements`): 48 available extensions, `vector` 0.8.6 works, and `CREATE EXTENSION postgis` / `timescaledb` → `extension … is not available`. Consistent with t008's unadopted image (ADR092 D4 rolling restart pending); nothing new to file. Fixture deleted by ID (`GET` 404).
+
+## CI sweep — 2026-11-05 (from w6, `/loopx`-independent)
+
+- `pg-operand-image` has never passed on main. `acde09993` fixed the gate's extension order (`timescaledb` before `pg_duckdb`, duckdb/pg_duckdb#934), so PG 16/17/18 no longer fail on `time_bucket`.
+- Run 42019084199: PG 13/14/15 stop at the fatal ordinary-owner restore check as intended (this milestone's upstream gate, left fatal on purpose); PG 16/17/18 now crash the server right after creating all extensions — filed as [w8/234](../../234.md).
+- The images are still unreferenced (`bexOperandImages` is empty), so production Postgres is unaffected.
