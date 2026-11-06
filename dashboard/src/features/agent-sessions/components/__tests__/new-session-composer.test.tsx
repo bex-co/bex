@@ -252,6 +252,30 @@ describe("NewSessionComposer", () => {
     );
   });
 
+  // w4/524: an invalid ceiling disabled Send with an unannounced, unlinked
+  // message; the message line is a live region and describes both controls.
+  it("describes and announces an invalid spend limit", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await user.type(await screen.findByLabelText("Task"), "do a thing");
+    const limit = screen.getByLabelText("Spend limit (USD)");
+    const send = screen.getByRole("button", { name: "Start session" });
+    const invalid =
+      "Enter an amount more than $0 and at most $100,000, or leave it blank.";
+
+    await user.type(limit, "-5");
+    expect(limit).toHaveAccessibleDescription(invalid);
+    expect(send).toBeDisabled();
+    expect(send).toHaveAccessibleDescription(invalid);
+    expect(screen.getByRole("status")).toHaveTextContent(invalid);
+
+    await user.clear(limit);
+    await user.type(limit, "5");
+    expect(limit).not.toHaveAccessibleDescription(invalid);
+    expect(send).toBeEnabled();
+    expect(send).not.toHaveAccessibleDescription();
+  });
+
   it("keeps Send disabled until the task text is non-empty", async () => {
     const user = userEvent.setup();
     render(<NewSessionComposer />);

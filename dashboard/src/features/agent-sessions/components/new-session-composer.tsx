@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from "react";
+import { useId, useMemo, useRef, useState } from "react";
 import { isPaymentOnboardingCancelled } from "@/features/usage/context/payment-required-error";
 import { useForm } from "react-hook-form";
 import { Link, useNavigate } from "@tanstack/react-router";
@@ -105,6 +105,9 @@ export function NewSessionComposer() {
   const [submitError, setSubmitError] = useState<string | null>(null);
   // The optional per-session model spend ceiling (ADR094 D8), kept as typed.
   const [spendLimitText, setSpendLimitText] = useState("");
+  // The composer's message line: the ceiling's error is announced and
+  // described on the field and the disabled send button (w4/524).
+  const messageId = useId();
   const spendLimit = parseSpendLimit(spendLimitText);
   // Session secrets (ADR098): workspace refs and inline values, sent once.
   const [secrets, setSecrets] = useState<ComposerSecretsValue>(
@@ -379,6 +382,7 @@ export function NewSessionComposer() {
                 aria-label={t("agentSessions.spendLimitLabel")}
                 title={t("agentSessions.spendLimitHint")}
                 aria-invalid={!spendLimit.ok}
+                aria-describedby={messageId}
                 data-testid="agent-composer-spend-limit"
                 className="h-8 w-28 border-0 bg-transparent px-2 text-xs shadow-none"
               />
@@ -405,6 +409,7 @@ export function NewSessionComposer() {
                 type="submit"
                 size="sm"
                 className="ml-auto h-8"
+                aria-describedby={spendLimit.ok ? undefined : messageId}
                 disabled={
                   isSubmitting ||
                   capabilitiesLoading ||
@@ -430,6 +435,9 @@ export function NewSessionComposer() {
       </Form>
 
       <p
+        id={messageId}
+        role="status"
+        aria-live="polite"
         className={cn(
           "px-1 text-xs",
           spendLimit.ok ? "text-muted-foreground" : "text-destructive",
