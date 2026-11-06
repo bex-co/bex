@@ -131,6 +131,48 @@ vi.mock("@/features/agent-environment/hooks/use-agent-environment", () => ({
   }),
 }));
 
+vi.mock("@/features/agent-environment/hooks/use-agent-skills", () => ({
+  useAgentSkills: () => ({
+    skills: [
+      {
+        __typename: "AgentSkill",
+        id: "skl-1",
+        name: "run-tests",
+        description: "Run the integration suite",
+        triggers: ["user", "model"],
+        enabled: true,
+        version: 1,
+      },
+      {
+        __typename: "AgentSkill",
+        id: "skl-2",
+        name: "release",
+        description: "Cut a release",
+        triggers: ["user"],
+        enabled: true,
+        version: 3,
+      },
+      {
+        __typename: "AgentSkill",
+        id: "skl-3",
+        name: "retired",
+        description: "Disabled skill",
+        triggers: ["user", "model"],
+        enabled: false,
+        version: 1,
+      },
+    ],
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+    read: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    saving: false,
+  }),
+}));
+
 vi.mock("@/features/agent-environment/hooks/use-agent-secrets", () => ({
   useAgentSecrets: () => ({
     names: ["STRIPE_KEY", "SENTRY_DSN"],
@@ -591,6 +633,63 @@ describe("NewSessionComposer", () => {
     expect(create.mock.calls[0][0].secrets).toEqual([
       { name: "TEST_TOKEN", value: "tok-123" },
     ]);
+  });
+
+  it("sends the chosen skills with their arguments and lists only enabled ones (ADR099)", async () => {
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.click(screen.getByRole("button", { name: "Skills" }));
+    const list = await screen.findByTestId("agent-composer-skill-list");
+    expect(list).toHaveTextContent("run-tests");
+    expect(list).toHaveTextContent("Only when asked");
+    expect(list).not.toHaveTextContent("retired");
+    await user.click(screen.getByLabelText(/^release/));
+    await user.type(
+      screen.getByLabelText("Arguments for release"),
+      "v2.0{enter}",
+    );
+    await user.click(screen.getByLabelText(/^run-tests/));
+    await user.keyboard("{Escape}");
+    expect(
+      screen.getByRole("button", { name: "Skills (2 chosen)" }),
+    ).toBeInTheDocument();
+    expect(screen.getByTestId("agent-composer-skill-chips")).toHaveTextContent(
+      "release v2.0",
+    );
+    expect(create).not.toHaveBeenCalled();
+    await user.click(screen.getByRole("button", { name: "Start session" }));
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    expect(create.mock.calls[0][0].skills).toEqual([
+      { name: "release", arguments: "v2.0" },
+      { name: "run-tests" },
+    ]);
+    // Sent once: the chips clear with the create.
+    expect(screen.queryByTestId("agent-composer-skill-chips")).toBeNull();
+  });
+
+  it("keeps the idempotency key on a retry and mints a new one when the skills change", async () => {
+    create.mockRejectedValueOnce(new Error("network down"));
+    create.mockRejectedValueOnce(new Error("network down"));
+    const user = userEvent.setup();
+    render(<NewSessionComposer />);
+    await typeTask(user);
+    await user.click(screen.getByRole("button", { name: "Skills" }));
+    await user.click(await screen.findByLabelText(/^release/));
+    await user.keyboard("{Escape}");
+    const start = screen.getByRole("button", { name: "Start session" });
+    await user.click(start);
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(1));
+    await user.click(start);
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(2));
+    const first = create.mock.calls[0][0].idempotencyKey;
+    expect(create.mock.calls[1][0].idempotencyKey).toBe(first);
+    await user.click(screen.getByRole("button", { name: "Skills (1 chosen)" }));
+    await user.type(screen.getByLabelText("Arguments for release"), "v3");
+    await user.keyboard("{Escape}");
+    await user.click(start);
+    await waitFor(() => expect(create).toHaveBeenCalledTimes(3));
+    expect(create.mock.calls[2][0].idempotencyKey).not.toBe(first);
   });
 
   it("blocks submit on an out-of-range spend limit", async () => {

@@ -417,6 +417,213 @@ const zhAgentEnvironment: Record<string, TranslationEntry> = {
     message: "无法保存更改，请重试。",
     description: "Generic secret write failure",
   },
+  "agentEnvironment.skills.title": {
+    message: "智能体技能",
+    description: "Settings → Agent skills card title (ADR099)",
+  },
+  "agentEnvironment.skills.description": {
+    message:
+      "以 SKILL.md 文件形式保存的可复用指令，本工作区的每个智能体会话都会收到。智能体会在任务合适时自动使用技能，或只在被要求时使用。",
+    description: "Agent skills card description",
+  },
+  "agentEnvironment.skills.loadFailed": {
+    message: "无法加载智能体技能。",
+    description: "Agent skills card error when the list query fails",
+  },
+  "agentEnvironment.skills.empty": {
+    message: "还没有智能体技能。",
+    description: "Agent skills card empty state",
+  },
+  "agentEnvironment.skills.onlyWhenAsked": {
+    message: "仅在要求时",
+    description:
+      "Badge on a skill the agent applies only when a prompt invokes it",
+  },
+  "agentEnvironment.skills.enabledLabel": {
+    message: "启用 {name}",
+    description: "Accessible label of a skill's enabled switch",
+  },
+  "agentEnvironment.skills.editLabel": {
+    message: "编辑 {name}",
+    description: "Accessible label of a skill's edit button",
+  },
+  "agentEnvironment.skills.viewLabel": {
+    message: "查看 {name}",
+    description: "Accessible label of a skill's view button (non-admins)",
+  },
+  "agentEnvironment.skills.exportLabel": {
+    message: "将 {name} 下载为 SKILL.md",
+    description: "Accessible label of a skill's export button",
+  },
+  "agentEnvironment.skills.deleteLabel": {
+    message: "删除 {name}",
+    description: "Accessible label of a skill's delete button",
+  },
+  "agentEnvironment.skills.deleteTitle": {
+    message: "删除技能 {name}？",
+    description: "Delete skill confirm title",
+  },
+  "agentEnvironment.skills.deleteBody": {
+    message: "新的智能体轮次将不再收到它。已运行的会话保留其记录。",
+    description: "Delete skill confirm body",
+  },
+  "agentEnvironment.skills.deleteConfirm": {
+    message: "删除技能",
+    description: "Delete skill confirm button",
+  },
+  "agentEnvironment.skills.new": {
+    message: "新建技能",
+    description: "Button that opens the create-skill dialog",
+  },
+  "agentEnvironment.skills.import": {
+    message: "导入 SKILL.md",
+    description: "Button that imports a SKILL.md file",
+  },
+  "agentEnvironment.skills.help": {
+    message: "成员可以使用技能；只有管理员可以添加或修改。",
+    description: "Agent skills help line for admins",
+  },
+  "agentEnvironment.skills.readOnly": {
+    message: "只有工作区管理员可以添加或修改智能体技能。",
+    description: "Agent skills help line for non-admins",
+  },
+  "agentEnvironment.skills.createTitle": {
+    message: "新建技能",
+    description: "Create-skill dialog title",
+  },
+  "agentEnvironment.skills.editTitle": {
+    message: "编辑 {name}",
+    description: "Edit-skill dialog title",
+  },
+  "agentEnvironment.skills.viewTitle": {
+    message: "{name}",
+    description: "View-skill dialog title (read-only)",
+  },
+  "agentEnvironment.skills.dialogDescription": {
+    message: "智能体根据描述判断何时适用该技能，并在适用时按指令执行。",
+    description: "Skill dialog description",
+  },
+  "agentEnvironment.skills.nameLabel": {
+    message: "名称",
+    description: "Skill name field label",
+  },
+  "agentEnvironment.skills.namePlaceholder": {
+    message: "run-integration-tests",
+    description: "Skill name field placeholder",
+  },
+  "agentEnvironment.skills.descriptionLabel": {
+    message: "描述",
+    description: "Skill description field label",
+  },
+  "agentEnvironment.skills.descriptionPlaceholder": {
+    message: "一句话说明何时使用该技能",
+    description: "Skill description field placeholder",
+  },
+  "agentEnvironment.skills.onlyWhenAskedLabel": {
+    message: "仅在我要求时使用",
+    description: "Toggle: the agent applies the skill only when invoked",
+  },
+  "agentEnvironment.skills.onlyWhenAskedHint": {
+    message: "可在输入框中选择，或在提示中写 @skills:名称 来调用。",
+    description: "Hint under the only-when-asked toggle",
+  },
+  "agentEnvironment.skills.bodyLabel": {
+    message: "指令",
+    description: "Skill body field label",
+  },
+  "agentEnvironment.skills.bodyPlaceholder": {
+    message: "智能体要执行的步骤（Markdown）。",
+    description: "Skill body field placeholder",
+  },
+  "agentEnvironment.skills.contentLabel": {
+    message: "SKILL.md",
+    description: "Whole-file editor label",
+  },
+  "agentEnvironment.skills.editAsFile": {
+    message: "以 SKILL.md 编辑",
+    description: "Switch the dialog to the whole-file editor",
+  },
+  "agentEnvironment.skills.editAsFields": {
+    message: "按字段编辑",
+    description: "Switch the dialog back to separate fields",
+  },
+  "agentEnvironment.skills.save": {
+    message: "保存技能",
+    description: "Skill dialog save button",
+  },
+  "agentEnvironment.skills.cancel": {
+    message: "取消",
+    description: "Skill dialog cancel button",
+  },
+  "agentEnvironment.skills.close": {
+    message: "关闭",
+    description: "Skill dialog close button (read-only)",
+  },
+  "agentEnvironment.skills.saved": {
+    message: "已保存 {name}",
+    description: "Toast after a skill is saved",
+  },
+  "agentEnvironment.skills.deleted": {
+    message: "已删除 {name}",
+    description: "Toast after a skill is deleted",
+  },
+  "agentEnvironment.skills.readFailed": {
+    message: "无法打开该技能，请重试。",
+    description: "Error when a single skill read fails",
+  },
+  "agentEnvironment.skills.importFailed": {
+    message: "无法读取该文件。",
+    description: "Error when an imported file can't be read",
+  },
+  "agentEnvironment.skills.nameRequired": {
+    message: "请输入名称。",
+    description: "Skill name empty",
+  },
+  "agentEnvironment.skills.nameInvalid": {
+    message: "请使用小写字母、数字和单个连字符，最多 64 个字符。",
+    description: "Skill name fails the Agent Skills format",
+  },
+  "agentEnvironment.skills.descriptionRequired": {
+    message: "请输入一行描述。",
+    description: "Skill description empty",
+  },
+  "agentEnvironment.skills.descriptionInvalid": {
+    message: "描述须为一行，最多 1,024 个字符。",
+    description: "Skill description too long or multi-line",
+  },
+  "agentEnvironment.skills.bodyInvalid": {
+    message: "指令最多 64 KiB。",
+    description: "Skill body too large",
+  },
+  "agentEnvironment.skills.invalid": {
+    message: "技能无效，请检查名称、描述和指令。",
+    description: "AGENT_SKILL_INVALID error",
+  },
+  "agentEnvironment.skills.limitExceeded": {
+    message: "已达到智能体技能上限（每个工作区 100 个，启用总量 1 MiB）。",
+    description: "AGENT_SKILL_LIMIT_EXCEEDED error",
+  },
+  "agentEnvironment.skills.conflict": {
+    message:
+      "该技能在你打开后已被修改，或名称已被占用。请关闭后重新打开查看最新内容。",
+    description: "AGENT_SKILL_CONFLICT error",
+  },
+  "agentEnvironment.skills.notFound": {
+    message: "该技能已不存在。",
+    description: "AGENT_SKILL_NOT_FOUND error",
+  },
+  "agentEnvironment.skills.unavailable": {
+    message: "此部署不支持智能体技能。",
+    description: "AGENT_SKILLS_UNAVAILABLE error",
+  },
+  "agentEnvironment.skills.forbidden": {
+    message: "只有工作区管理员可以修改智能体技能。",
+    description: "Skill write refused for a non-admin",
+  },
+  "agentEnvironment.skills.saveFailed": {
+    message: "无法保存更改，请重试。",
+    description: "Generic skill write failure",
+  },
 };
 
 export default zhAgentEnvironment;

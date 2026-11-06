@@ -14,6 +14,8 @@ import { AgentEnvironmentCard } from "@/features/agent-environment/components/ag
 import { AgentEnvironmentCardSkeleton } from "@/features/agent-environment/components/agent-environment-card-skeleton";
 import { AgentSecretsCard } from "@/features/agent-environment/components/agent-secrets-card";
 import { AgentSecretsCardSkeleton } from "@/features/agent-environment/components/agent-secrets-card-skeleton";
+import { AgentSkillsCard } from "@/features/agent-environment/components/agent-skills-card";
+import { AgentSkillsCardSkeleton } from "@/features/agent-environment/components/agent-skills-card-skeleton";
 import { WorkspaceNotificationsCard } from "@/features/notifications/components/workspace-notifications-card";
 import { WorkspaceNotificationsCardSkeleton } from "@/features/notifications/components/workspace-notifications-card-skeleton";
 import { WorkspaceSettingsPageSkeleton } from "@/common/components/route-skeletons";
@@ -100,6 +102,7 @@ function WorkspaceSettingsPage() {
                 <section data-skeleton-region="agents" className="space-y-6">
                   <AgentEnvironmentCardSkeleton />
                   <AgentSecretsCardSkeleton />
+                  <AgentSkillsCardSkeleton />
                 </section>
                 <section data-skeleton-region="danger-zone">
                   <CardSkeleton rows={2} />
@@ -147,6 +150,9 @@ function WorkspaceSettingsPage() {
                   <AgentEnvironmentCard ownerId={currentWorkspace.id} />
                   {/* Workspace agent secrets (ADR098 D8): names only. */}
                   <AgentSecretsCard ownerId={currentWorkspace.id} />
+                  {/* Workspace skills (ADR099 D6): SKILL.md documents every
+                      agent session receives. */}
+                  <AgentSkillsCard ownerId={currentWorkspace.id} />
                 </section>
                 {/* The danger zone is now always present: Leave workspace
                     (w5/m102) lives here for every member, while Delete stays

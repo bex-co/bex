@@ -20,6 +20,15 @@ import {
   DropOverlay,
 } from "@/features/agent-sessions/components/attachment-chips";
 import { useAttachmentDropTarget } from "@/features/agent-sessions/hooks/use-attachment-drop-target";
+import {
+  ComposerSkillChips,
+  ComposerSkills,
+} from "@/features/agent-sessions/components/composer-skills";
+import {
+  composerSkillsInput,
+  composerSkillsValid,
+  type ComposerSkill,
+} from "@/features/agent-sessions/lib/composer-skills";
 import { agentSessionErrorMessage } from "@/features/agent-sessions/lib/errors";
 import type { AgentSessionView } from "@/features/agent-sessions/types";
 import type { ConversationChatHandle } from "@/features/agent-sessions/components/session-conversation";
@@ -78,6 +87,8 @@ export function SteeringComposer({
   const limits = capabilities?.attachments ?? null;
   const uploads = useAttachmentUploads(limits, session.ownerId);
   const [value, setValue] = useState("");
+  // Workspace skills the follow-up turn must follow (ADR099 D4).
+  const [skills, setSkills] = useState<ComposerSkill[]>([]);
   const [pending, setPending] = useState(false);
   const [submitError, setSubmitError] = useState<string | null>(null);
 
@@ -114,8 +125,13 @@ export function SteeringComposer({
   // and not while a send is in flight: a file added then would miss it.
   const canAttach = Boolean(limits?.enabled) && !hardDisabled && !pending;
   const attachmentsBlock = uploads.uploading || uploads.hasErrors;
+  const skillsInvalid = !composerSkillsValid(skills);
   const submitDisabled =
-    hardDisabled || busy || attachmentsBlock || value.trim().length === 0;
+    hardDisabled ||
+    busy ||
+    attachmentsBlock ||
+    skillsInvalid ||
+    value.trim().length === 0;
   const drop = useAttachmentDropTarget(uploads.add, canAttach);
 
   const attachmentHint = uploads.hasErrors
@@ -135,7 +151,8 @@ export function SteeringComposer({
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     const prompt = value.trim();
-    if (!prompt || hardDisabled || busy || attachmentsBlock) return;
+    if (!prompt || hardDisabled || busy || attachmentsBlock || skillsInvalid)
+      return;
     setSubmitError(null);
     setPending(true);
     try {
@@ -145,8 +162,12 @@ export function SteeringComposer({
         // immediately rather than after the round trip.
         onOptimisticSteer?.(prompt);
         const sent = uploads.readyIds;
-        await steer(session.id, prompt, { attachmentIds: sent });
+        await steer(session.id, prompt, {
+          attachmentIds: sent,
+          ...(skills.length > 0 ? { skills: composerSkillsInput(skills) } : {}),
+        });
         uploads.clear(sent);
+        setSkills([]);
         toast.success(t("agentSessions.steerSuccess"));
         onSteered?.();
       } else {
@@ -196,9 +217,22 @@ export function SteeringComposer({
           >
             <DropOverlay visible={drop.dragging} />
             <AttachmentChips uploads={uploads} limits={limits} />
+            <ComposerSkillChips
+              value={skills}
+              onChange={setSkills}
+              disabled={pending}
+            />
             <div className="flex items-end gap-2 px-2.5 py-1.5">
               {canAttach ? (
                 <AttachButton onFiles={uploads.add} disabled={pending} />
+              ) : null}
+              {route === "redispatch" && !hardDisabled ? (
+                <ComposerSkills
+                  ownerId={session.ownerId}
+                  value={skills}
+                  onChange={setSkills}
+                  disabled={pending}
+                />
               ) : null}
               {/* `field-sizing-content` (base Textarea) auto-grows the input to
                 fit; the max-height + overflow bound it for a long follow-up. */}

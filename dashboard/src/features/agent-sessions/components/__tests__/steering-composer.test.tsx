@@ -51,6 +51,30 @@ vi.mock("@/features/agent-sessions/lib/attachments", async (orig) => ({
 }));
 
 const toastSuccess = vi.fn();
+vi.mock("@/features/agent-environment/hooks/use-agent-skills", () => ({
+  useAgentSkills: () => ({
+    skills: [
+      {
+        __typename: "AgentSkill",
+        id: "skl-1",
+        name: "run-tests",
+        description: "Run the integration suite",
+        triggers: ["user", "model"],
+        enabled: true,
+        version: 1,
+      },
+    ],
+    loading: false,
+    error: undefined,
+    refetch: vi.fn(),
+    read: vi.fn(),
+    create: vi.fn(),
+    update: vi.fn(),
+    remove: vi.fn(),
+    saving: false,
+  }),
+}));
+
 vi.mock("sonner", () => ({
   toast: { success: (m: string) => toastSuccess(m) },
 }));
@@ -94,6 +118,32 @@ describe("SteeringComposer state routing", () => {
     expect(chat.sendMessage).not.toHaveBeenCalled();
     expect(toastSuccess).toHaveBeenCalled();
     expect(onSteered).toHaveBeenCalled();
+  });
+
+  it("sends chosen skills with the follow-up and clears them (ADR099)", async () => {
+    const user = userEvent.setup();
+    render(<SteeringComposer session={view("completed")} chat={null} />);
+    await user.click(screen.getByRole("button", { name: "Skills" }));
+    await user.click(await screen.findByLabelText(/^run-tests/));
+    await user.type(
+      screen.getByLabelText("Arguments for run-tests"),
+      "--only api",
+    );
+    await user.keyboard("{Escape}");
+    await user.type(screen.getByRole("textbox"), "and now the API");
+    await user.click(screen.getByRole("button", { name: "Send" }));
+    await waitFor(() =>
+      expect(steer).toHaveBeenCalledWith("as-1", "and now the API", {
+        attachmentIds: [],
+        skills: [{ name: "run-tests", arguments: "--only api" }],
+      }),
+    );
+    expect(screen.queryByTestId("agent-composer-skill-chips")).toBeNull();
+  });
+
+  it("offers no skill picker while a turn cannot be steered", () => {
+    render(<SteeringComposer session={view("running")} chat={null} />);
+    expect(screen.queryByRole("button", { name: "Skills" })).toBeNull();
   });
 
   it("live (running) session refuses non-durable POST turns until it settles", async () => {

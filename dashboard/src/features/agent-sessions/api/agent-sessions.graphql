@@ -134,6 +134,7 @@ mutation CreateAgentSession(
   $maxSpendUSD: Float
   $secretNames: [String!]
   $secrets: [AgentSessionSecretInput!]
+  $skills: [AgentSessionSkillInput!]
 ) {
   createAgentSession(
     ownerId: $ownerId
@@ -146,6 +147,7 @@ mutation CreateAgentSession(
     maxSpendUSD: $maxSpendUSD
     secretNames: $secretNames
     secrets: $secrets
+    skills: $skills
   ) {
     ...AgentSessionFields
     ...AgentSessionMintFields
@@ -158,12 +160,14 @@ mutation SteerAgentSession(
   $prompt: String!
   $egressAllowlist: [String!]
   $attachmentIds: [String!]
+  $skills: [AgentSessionSkillInput!]
 ) {
   steerAgentSession(
     id: $id
     prompt: $prompt
     egressAllowlist: $egressAllowlist
     attachmentIds: $attachmentIds
+    skills: $skills
   ) {
     ...AgentSessionFields
     ...AgentSessionMintFields
@@ -244,6 +248,21 @@ query AgentSessionTurnResults($id: String!) {
       outputSchema
       result
       resultFinal
+    }
+  }
+}
+
+# The workspace skills each turn invoked (ADR099 D4), for the transcript's
+# pills. Like AgentSessionTurnResults, the afterSeq past every part keeps the
+# page to its turns.
+query AgentSessionTurnSkills($id: String!) {
+  agentSessionTranscript(id: $id, afterSeq: 2147483647, limit: 1) {
+    turns {
+      turn
+      skills {
+        name
+        arguments
+      }
     }
   }
 }

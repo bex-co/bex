@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { act, render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import type { UIMessageChunk } from "ai";
@@ -8,6 +8,15 @@ import {
   makeFixtureFetch,
   makeManualStream,
 } from "@/features/agent-sessions/lib/mock-stream";
+
+// The turn-skill pills read GraphQL (ADR099); these suites replay the stream
+// without an Apollo client and cover no skills.
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-turn-skills",
+  () => ({
+    useAgentSessionTurnSkills: () => [],
+  }),
+);
 
 // The ADR051 item-model replay end to end (w10/005): the gateway expands every
 // stored item into its minimal standard chunks (agenttranscript.Expand) —

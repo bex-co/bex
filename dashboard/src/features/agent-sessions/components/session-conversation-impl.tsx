@@ -21,6 +21,8 @@ import { ConversationSkeleton } from "@/features/agent-sessions/components/conve
 import { MarkdownRenderer } from "@/common/components/markdown-renderer";
 import { cn } from "@/common/lib/utils/utils";
 import { TurnAttachments } from "@/features/agent-sessions/components/turn-attachments";
+import { TurnSkills } from "@/features/agent-sessions/components/turn-skills";
+import { useAgentSessionTurnSkills } from "@/features/agent-sessions/hooks/use-agent-session-turn-skills";
 import { AgentAttachmentDocument } from "@/graphql/definitions";
 import {
   sharedFileIdFrom,
@@ -638,6 +640,8 @@ type DisplayBlock =
   | {
       type: "user";
       key: string;
+      /** The durable turn this prompt opened, when the part carries it. */
+      turn: number | null;
       text: string;
       incomplete: boolean;
       reason: string;
@@ -693,6 +697,7 @@ function buildBlocks(parts: PartLike[]): DisplayBlock[] {
       blocks.push({
         type: "user",
         key: `user-${index}`,
+        turn: Number.isSafeInteger(data.turn) ? (data.turn as number) : null,
         text: capText(str(data.text)),
         incomplete:
           data.truncated === true ||
@@ -935,6 +940,8 @@ const MessageRow = memo(function MessageRow({
             return (
               <DurableUserTurn
                 key={block.key}
+                sessionId={sessionId}
+                turn={block.turn}
                 text={block.text}
                 incomplete={block.incomplete}
                 reason={block.reason}
@@ -1039,17 +1046,22 @@ function TurnErrorNote({
 }
 
 function DurableUserTurn({
+  sessionId,
+  turn,
   text,
   incomplete,
   reason,
   attachments,
 }: {
+  sessionId: string;
+  turn: number | null;
   text: string;
   incomplete: boolean;
   reason: string;
   attachments: AttachmentView[];
 }) {
   const { t } = useTranslations();
+  const skills = useAgentSessionTurnSkills(sessionId, turn);
   return (
     <div className="my-2 flex w-full justify-end gap-2 pl-8">
       <div className="max-w-[92%] sm:max-w-md">
@@ -1057,6 +1069,7 @@ function DurableUserTurn({
           <MarkdownRenderer content={text} />
         </div>
         <TurnAttachments items={attachments} />
+        <TurnSkills skills={skills} />
         {incomplete ? (
           <p className="text-muted-foreground mt-1 text-right text-xs">
             {t("agentSessions.conversationIncomplete")}

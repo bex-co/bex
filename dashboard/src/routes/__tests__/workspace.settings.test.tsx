@@ -58,6 +58,12 @@ vi.mock("@/features/agent-environment/components/agent-secrets-card", () => ({
   ),
 }));
 
+vi.mock("@/features/agent-environment/components/agent-skills-card", () => ({
+  AgentSkillsCard: ({ ownerId }: { ownerId: string }) => (
+    <div>Agent skills card {ownerId}</div>
+  ),
+}));
+
 vi.mock(
   "@/features/notifications/components/workspace-notifications-card",
   () => ({
@@ -141,6 +147,10 @@ describe("WorkspaceSettingsPage", () => {
     // ADR098 D8: the workspace agent secrets sit in the same section.
     expect(
       screen.getByText("Agent secrets card tea-primary"),
+    ).toBeInTheDocument();
+    // ADR099 D6: and the workspace skills.
+    expect(
+      screen.getByText("Agent skills card tea-primary"),
     ).toBeInTheDocument();
     expect(screen.getByRole("link", { name: "Agents" })).toHaveAttribute(
       "href",

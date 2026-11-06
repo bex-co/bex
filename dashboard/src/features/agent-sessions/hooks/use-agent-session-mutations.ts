@@ -3,7 +3,10 @@ import { usePaymentRequiredGate } from "@/features/usage/context/payment-require
 import { useApolloClient, useMutation } from "@apollo/client/react";
 import type { TypedDocumentNode } from "@graphql-typed-document-node/core";
 import type { AgentSessionFieldsFragment } from "@/graphql/definitions";
-import type { AgentSessionSecretInput } from "@/graphql/schema-types";
+import type {
+  AgentSessionSecretInput,
+  AgentSessionSkillInput,
+} from "@/graphql/schema-types";
 import {
   CreateAgentSessionDocument,
   SteerAgentSessionDocument,
@@ -56,6 +59,8 @@ export interface CreateAgentSessionInput {
   secretNames?: string[];
   /** Inline secrets for this session only; values are write-only. */
   secrets?: AgentSessionSecretInput[];
+  /** Workspace skills the first turn must follow (ADR099 D4). */
+  skills?: AgentSessionSkillInput[];
   // No model / egressAllowlist: the dashboard leaves both to the workspace's
   // agent environment (w10/m17). The API still accepts them for CLI/MCP.
 }
@@ -65,6 +70,8 @@ export interface SteerOptions {
   egressAllowlist?: string[];
   /** Uploaded `att-` ids bound to the follow-up turn (ADR095 D3). */
   attachmentIds?: string[];
+  /** Workspace skills the follow-up turn must follow (ADR099 D4). */
+  skills?: AgentSessionSkillInput[];
 }
 
 export interface UseAgentSessionMutationsResult {
@@ -219,6 +226,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
                 ? input.secretNames
                 : undefined,
               secrets: input.secrets?.length ? input.secrets : undefined,
+              skills: input.skills?.length ? input.skills : undefined,
             },
             fetchPolicy: "no-cache",
           }),
@@ -253,6 +261,7 @@ export function useAgentSessionMutations(): UseAgentSessionMutationsResult {
               attachmentIds: options?.attachmentIds?.length
                 ? options.attachmentIds
                 : undefined,
+              skills: options?.skills?.length ? options.skills : undefined,
             },
             fetchPolicy: "no-cache",
           }),

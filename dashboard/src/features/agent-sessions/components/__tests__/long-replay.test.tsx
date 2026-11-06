@@ -18,6 +18,15 @@ import {
   makeManualStream,
 } from "@/features/agent-sessions/lib/mock-stream";
 
+// The turn-skill pills read GraphQL (ADR099); these suites replay the stream
+// without an Apollo client and cover no skills.
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-turn-skills",
+  () => ({
+    useAgentSessionTurnSkills: () => [],
+  }),
+);
+
 // The recorded production replay of ags-dbf8nggkbcjs73a5r3u0 (w10/m16 t001):
 // 5,602 raw AI-SDK chunks (3,835 reasoning deltas, 299 tool calls, 13 text
 // blocks). Tool outputs and ACP info payloads are clipped to keep the fixture

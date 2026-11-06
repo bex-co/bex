@@ -1240,6 +1240,63 @@ const zhAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Detail header \u2014 number of attached secrets (plural, ADR098)",
   },
+  "agentSessions.skillsButton": {
+    message: "技能",
+    description: "Composer toolbar: the Skills button label/tooltip (ADR099)",
+  },
+  "agentSessions.skillsButtonCount_other": {
+    message: "技能（已选 {count} 个）",
+    description:
+      "Composer Skills button accessible label when skills are chosen",
+  },
+  "agentSessions.skillsTitle": {
+    message: "本轮使用的技能",
+    description: "Composer Skills popover heading",
+  },
+  "agentSessions.skillsDescription": {
+    message: "智能体会执行所选的每个技能；已启用的技能它也可能自行使用。",
+    description: "Composer Skills popover description",
+  },
+  "agentSessions.skillsLoadFailed": {
+    message: "无法加载工作区技能。",
+    description: "Composer Skills popover: list failed",
+  },
+  "agentSessions.skillsEmpty": {
+    message: "此工作区还没有技能。",
+    description: "Composer Skills popover: none exist",
+  },
+  "agentSessions.skillsManage": {
+    message: "管理技能",
+    description: "Composer Skills popover link to Settings → Agents",
+  },
+  "agentSessions.skillsArgumentsLabel": {
+    message: "{name} 的参数",
+    description: "Composer Skills popover: argument field label",
+  },
+  "agentSessions.skillsArgumentsPlaceholder": {
+    message: "参数（可选）",
+    description: "Composer Skills popover: argument field placeholder",
+  },
+  "agentSessions.skillsArgumentsInvalid": {
+    message: "参数须为一行，最多 4 KiB。",
+    description: "Composer Skills popover: invalid arguments",
+  },
+  "agentSessions.skillsFull": {
+    message: "每轮最多使用 5 个技能。",
+    description: "Composer Skills popover: limit reached",
+  },
+  "agentSessions.skillsHint": {
+    message: "参数会填入技能中的 $ARGUMENTS。",
+    description: "Composer Skills popover hint",
+  },
+  "agentSessions.skillsRemove": {
+    message: "移除 {name}",
+    description: "Accessible label of a chosen skill chip's remove button",
+  },
+  "agentSessions.turnSkills": {
+    message: "本轮使用的技能",
+    description: "Accessible label of a transcript turn's skill pills",
+  },
 };
 
 export default zhAgentSessions;

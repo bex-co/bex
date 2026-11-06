@@ -19,6 +19,15 @@ import {
 } from "@/features/agent-sessions/lib/mock-stream";
 import type { UIMessageChunk } from "ai";
 
+// The turn-skill pills read GraphQL (ADR099); these suites replay the stream
+// without an Apollo client and cover no skills.
+vi.mock(
+  "@/features/agent-sessions/hooks/use-agent-session-turn-skills",
+  () => ({
+    useAgentSessionTurnSkills: () => [],
+  }),
+);
+
 const mintTicket = async () => ({ ticket: "fixture-ticket" });
 
 describe("SessionConversationImpl", () => {

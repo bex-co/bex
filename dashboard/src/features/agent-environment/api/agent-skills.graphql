@@ -1,0 +1,54 @@
+# Workspace skills for cloud agents (ADR099): SKILL.md documents every session
+# of the workspace receives. Members list, read and invoke them; only admins
+# (can_manage) create, update or delete. The list carries no bodies.
+query AgentSkills($ownerId: String!) {
+  agentSkills(ownerId: $ownerId) {
+    ownerId
+    skills {
+      id
+      name
+      description
+      triggers
+      enabled
+      version
+    }
+  }
+}
+
+query AgentSkill($ownerId: String!, $skill: String!) {
+  agentSkill(ownerId: $ownerId, skill: $skill) {
+    id
+    name
+    description
+    triggers
+    enabled
+    version
+    body
+    content
+  }
+}
+
+mutation CreateAgentSkill($ownerId: String!, $input: AgentSkillInput!) {
+  createAgentSkill(ownerId: $ownerId, input: $input) {
+    id
+    name
+    version
+  }
+}
+
+mutation UpdateAgentSkill(
+  $ownerId: String!
+  $skill: String!
+  $input: AgentSkillInput!
+) {
+  updateAgentSkill(ownerId: $ownerId, skill: $skill, input: $input) {
+    id
+    name
+    enabled
+    version
+  }
+}
+
+mutation DeleteAgentSkill($ownerId: String!, $skill: String!) {
+  deleteAgentSkill(ownerId: $ownerId, skill: $skill)
+}

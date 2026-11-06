@@ -1316,6 +1316,69 @@ const enAgentSessions: Record<string, TranslationEntry> = {
     description:
       "Detail header \u2014 number of attached secrets (plural, ADR098)",
   },
+  "agentSessions.skillsButton": {
+    message: "Skills",
+    description: "Composer toolbar: the Skills button label/tooltip (ADR099)",
+  },
+  "agentSessions.skillsButtonCount_one": {
+    message: "Skills ({count} chosen)",
+    description:
+      "Composer Skills button accessible label when skills are chosen",
+  },
+  "agentSessions.skillsButtonCount_other": {
+    message: "Skills ({count} chosen)",
+    description:
+      "Composer Skills button accessible label when skills are chosen",
+  },
+  "agentSessions.skillsTitle": {
+    message: "Skills for this turn",
+    description: "Composer Skills popover heading",
+  },
+  "agentSessions.skillsDescription": {
+    message:
+      "The agent follows each chosen skill. Enabled skills it may also apply on its own.",
+    description: "Composer Skills popover description",
+  },
+  "agentSessions.skillsLoadFailed": {
+    message: "Couldn't load the workspace skills.",
+    description: "Composer Skills popover: list failed",
+  },
+  "agentSessions.skillsEmpty": {
+    message: "No skills in this workspace yet.",
+    description: "Composer Skills popover: none exist",
+  },
+  "agentSessions.skillsManage": {
+    message: "Manage skills",
+    description: "Composer Skills popover link to Settings → Agents",
+  },
+  "agentSessions.skillsArgumentsLabel": {
+    message: "Arguments for {name}",
+    description: "Composer Skills popover: argument field label",
+  },
+  "agentSessions.skillsArgumentsPlaceholder": {
+    message: "Arguments (optional)",
+    description: "Composer Skills popover: argument field placeholder",
+  },
+  "agentSessions.skillsArgumentsInvalid": {
+    message: "Arguments are one line, up to 4 KiB.",
+    description: "Composer Skills popover: invalid arguments",
+  },
+  "agentSessions.skillsFull": {
+    message: "A turn can use at most 5 skills.",
+    description: "Composer Skills popover: limit reached",
+  },
+  "agentSessions.skillsHint": {
+    message: "Arguments fill $ARGUMENTS in the skill.",
+    description: "Composer Skills popover hint",
+  },
+  "agentSessions.skillsRemove": {
+    message: "Remove {name}",
+    description: "Accessible label of a chosen skill chip's remove button",
+  },
+  "agentSessions.turnSkills": {
+    message: "Skills used in this turn",
+    description: "Accessible label of a transcript turn's skill pills",
+  },
 };
 
 export default enAgentSessions;
