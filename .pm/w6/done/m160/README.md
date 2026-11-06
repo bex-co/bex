@@ -1,17 +1,17 @@
 # w6 · m160 — Runner-host link probe: a slow internet link opens an issue by itself
 
-**Worker:** worker6 **Goal:** a degraded runner-host internet link is reported automatically within an hour, with measured throughput, and the report closes itself on recovery. **Status:** todo
+**Worker:** worker6 **Goal:** a degraded runner-host internet link is reported automatically within an hour, with measured throughput, and the report closes itself on recovery. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Probe script: download throughput and connect time to GitHub, Cloudflare and the pool's Docker Hub mirror](t001.md) | 50m | — |
-| t002 | [Scheduled workflow: open/update `runner-link-slow` after two slow readings, close on recovery](t002.md) | 40m | t001 |
-| t003 | [Self-test the probe with a stubbed curl](t003.md) | 30m | t001 |
-| t004 | [Simplify](t004.md) | 15m | t002, t003 |
-| t005 | [Test coverage](t005.md) | 20m | t004 |
-| t006 | [Closeout](t006.md) | 10m | t005 |
+| t001 | [Probe script: download throughput and connect time to GitHub, Cloudflare and the pool's Docker Hub mirror](done/t001.md) — **DONE** | 50m | — |
+| t002 | [Scheduled workflow: open/update `runner-link-slow` after two slow readings, close on recovery](done/t002.md) — **DONE** | 40m | t001 |
+| t003 | [Self-test the probe with a stubbed curl](done/t003.md) — **DONE** | 30m | t001 |
+| t004 | [Simplify](done/t004.md) — **DONE** | 15m | t002, t003 |
+| t005 | [Test coverage](done/t005.md) — **DONE** | 20m | t004 |
+| t006 | [Closeout](done/t006.md) — **DONE** | 10m | t005 |
 
 ## Definition of done
 
