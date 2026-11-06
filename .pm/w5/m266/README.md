@@ -1,6 +1,6 @@
 # w5 · m266 — Key Value Pro, Pro Plus and size-named plans create, as on Render
 
-**Worker:** worker5 **Goal:** a customer can create and upgrade to Key Value stores larger than 1 GB using Render's plan names on every surface. **Status:** todo (t001–t004 and t008 done: tiers, placement, admission, prices, the one Key Value cost meter (D5) and the dashboard; Stripe meter live 2026-11-06; next — t005 live walk after deploy)
+**Worker:** worker5 **Goal:** a customer can create and upgrade to Key Value stores larger than 1 GB using Render's plan names on every surface. **Status:** todo (t001–t004, t007–t009 done: tiers, placement, admission, prices, the one Key Value cost meter (D5) and the dashboard; Stripe meter live 2026-11-06; next — t005 live walk after deploy)
 
 ## Tasks (in order)
 
@@ -12,9 +12,9 @@
 | t004 | Dashboard plan picker and ADR updates — **DONE** | 1h | t003 |
 | t005 | Live: create a pro store in production and upgrade standard → pro | 1h | t002, t004 |
 | t006 | Dated widen task: 20g and 40g go live once w2/m250's large pools exist | 30m | t005 |
-| t007 | Render parity | 30m | t006 |
+| t007 | Render parity — **DONE** | 30m | t006 |
 | t008 | Simplify — **DONE** | 20m | t007 |
-| t009 | Test coverage | 45m | t007, t008 |
+| t009 | Test coverage — **DONE** | 45m | t007, t008 |
 | t010 | Closeout | 10m | t009 |
 
 Total: **10 tasks, about 7h30m**.
@@ -95,3 +95,14 @@ Affects w5/m266 t001–t006. Source: **explicit user decisions** (D1=A, D2=A, D3
   - live: meter `mtr_61Vi702MFL0MyL33741EqsEqs2tLVV3o`, Price `price_1UYj2nEqsEqs2tLVQhG81soo` (0.0001¢ per unit).
 - Read-only catalog diff: live matches `pricing.yaml` on every other dimension. Test mode carries older rounding on the six service Prices and egress/build/storage, so a full test-mode run of the script refuses at `instance_seconds.service.starter`; that drift predates m266 and is unrelated.
 - Migration: 11 active live Subscriptions carry `instance_seconds.key_value.starter` and `.standard` items (15–18 items each; all periods end 2026-11-16). After the deploy, `syncContractItems` adds the cost item (≤ 19 items) and the old items receive no further usage, so the D2 price cut takes effect from the deploy rather than the next period — a cut only, so nobody is overcharged. The old items are removed after the 2026-11-16 invoices finalize: [w5/180](../blocked/180.md).
+
+### t007 Render parity — 2026-11-06
+
+- **Plan input:** REST, GraphQL, MCP and Blueprints all resolve plans through `tiers.Valkey.CanonicalID`: bex ids, Render size ids (`5g`…`40g`) and, since this check, the Blueprint schema's spaced legacy names (`pro plus`, `pro max`, `pro ultra`). Responses answer bex's canonical id (`pro_plus`), the w8/011 precedent for `256mb`→`starter`.
+- **Drift found and fixed in this task:** the Blueprint capability registry still classed `3g`…`50g` as unsupported (`plan names a Render compute plan size that bex does not offer`), and `pro plus` failed the plan lookup. Both are now translated (`schema/capabilities.json`, `aliases.go`), covered by `TestBlueprintKeyValueLargePlans`; ADR049 updated.
+- **Paused refusal:** one `keyvalue.ErrPausedPlan` serves the API and Blueprint paths with 400 `INSTANCE_TYPE_UNAVAILABLE` and the same message; GraphQL/REST/MCP `instanceTypes` list paused tiers with `available: false` and the reason, and the dashboard disables them.
+- **Divergences, both signed:** `pro_ultra`/`40g`/`50g` paused (D3); one Key Value invoice line (D5). Both recorded in ADR018.
+
+### t009 Test coverage — 2026-11-06
+
+DoD behavior → test: aliases and paused refusals on create/SetPlan/Update and instance-type availability (`keyvalue/large_plans_test.go`); Blueprint size/spaced names, paused refusal, and the current-plan re-sync (`apps/blueprint_kv_plans_test.go`); tier shapes, pools and paused-default parse refusal (`types/tiers`); cost-meter emission and free-tier skip (`billing/keyvalue_meter_test.go`); exact micro-USD rating (`pricing_test.go` `TestKeyValueCostMicroUSD`); catalog under 20 items (`TestCatalogFitsOneSubscription`); picker slots and disabled paused cards (dashboard). The upgrade PVC growth is the t005 live check.

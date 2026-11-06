@@ -125,12 +125,12 @@ func TestDirectPlanWritesAcceptRenderComputePlanIDs(t *testing.T) {
 }
 
 // A compute plan ID with no same-size bex rung is refused by name at its
-// plan field, never rounded to a neighbouring rung (w8/011's rule).
+// plan field, never rounded to a neighbouring rung (w8/011's rule). Every
+// keyValuePlan value has a rung since w5/m266 (TestBlueprintKeyValueLargePlans).
 func TestBlueprintRejectsComputePlanSizesBexDoesNotOffer(t *testing.T) {
 	for _, tc := range []struct{ name, manifest, path string }{
 		{"web", "services:\n  - type: web\n    name: web\n    runtime: image\n    image: {url: nginx:1.27}\n    plan: 2c-8g\n", "#/services/0/plan"},
 		{"cron", "services:\n  - type: cron\n    name: c\n    runtime: image\n    image: {url: nginx:1.27}\n    schedule: '* * * * *'\n    plan: 8c-64g\n", "#/services/0/plan"},
-		{"keyvalue", "services:\n  - type: keyvalue\n    name: kv\n    plan: 10g\n    ipAllowList: []\n", "#/services/0/plan"},
 		{"postgres", "databases:\n  - name: db\n    plan: 2c-8g\n", "#/databases/0/plan"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

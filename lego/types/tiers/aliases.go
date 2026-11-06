@@ -16,6 +16,8 @@ limitations under the License.
 
 package tiers
 
+import "strings"
+
 // Input aliases map Render CLI/help spellings onto bex's catalog IDs (w8/011).
 // Only unambiguous overlaps are accepted — no "nearest larger tier" guesses
 // that would mis-size or misprice. Spec-based names with no bex rung stay 400.
@@ -77,13 +79,17 @@ func (c PostgresCatalog) CanonicalID(id string) string {
 }
 
 // CanonicalID maps a Key Value plan input (bex id or accepted Render alias) to
-// the KeyValue CRD's spec.plan spelling.
+// the KeyValue CRD's spec.plan spelling. Render's Blueprint schema spells the
+// legacy names with a space ("pro plus"), its API with an underscore.
 func (c ValkeyCatalog) CanonicalID(id string) string {
 	if id == "" {
 		return id
 	}
 	if _, ok := c.byID[id]; ok {
 		return id
+	}
+	if underscored := strings.ReplaceAll(id, " ", "_"); c.byID[underscored].ID != "" {
+		return underscored
 	}
 	if canon, ok := valkeyInputAliases[id]; ok {
 		return canon

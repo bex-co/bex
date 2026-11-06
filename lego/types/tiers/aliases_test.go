@@ -57,6 +57,8 @@ func TestValkeyCanonicalIDAcceptsRenderAliases(t *testing.T) {
 		"20g":      "pro_max",
 		"40g":      "pro_ultra",
 		"3g":       "3g",
+		"pro plus": "pro_plus", // Render's Blueprint schema spelling
+		"pro max":  "pro_max",
 		"50g":      "50g",
 		"100g":     "100g",
 	}

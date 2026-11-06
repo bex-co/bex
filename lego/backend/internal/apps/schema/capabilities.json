@@ -140,7 +140,7 @@
       "state": "translated",
       "handler": "parseCompiledStack",
       "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintRegistryCredential",
-      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId \u2014 the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
+      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId — the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
     },
     "#/definitions/cronService/properties/repo": {
       "state": "translated",
@@ -280,7 +280,7 @@
       "state": "translated",
       "handler": "parseService",
       "fixture": "internal/apps/blueprint_disk_test.go:TestBlueprintDiskSemantics",
-      "reason": "provisioned capacity, default 10 and grow-only \u2014 a sync that would shrink a disk fails before any write"
+      "reason": "provisioned capacity, default 10 and grow-only — a sync that would shrink a disk fails before any write"
     },
     "#/definitions/envVarFromDatabase/properties/fromDatabase": {
       "state": "translated",
@@ -440,7 +440,7 @@
       "state": "translated",
       "handler": "parseCompiledStack",
       "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintRegistryCredential",
-      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId \u2014 the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
+      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId — the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
     },
     "#/definitions/image/properties/url": {
       "state": "translated",
@@ -528,13 +528,13 @@
       "state": "translated",
       "handler": "parseCompiledStack",
       "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintRegistryCredential",
-      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId \u2014 the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
+      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId — the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
     },
     "#/definitions/registryCredential/properties/fromRegistryCreds/properties/name": {
       "state": "translated",
       "handler": "parseCompiledStack",
       "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintRegistryCredential",
-      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId \u2014 the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
+      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId — the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
     },
     "#/definitions/resources/properties/databases": {
       "state": "translated",
@@ -740,7 +740,7 @@
       "state": "translated",
       "handler": "parseCompiledStack",
       "fixture": "internal/apps/blueprint_test.go:TestValidateBlueprintRegistryCredential",
-      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId \u2014 the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
+      "reason": "fromRegistryCreds.name resolves to the workspace registry credential (the /v1/registrycredentials objects) and binds App.spec.registryCredentialId — the same per-App pull-secret machinery the service API uses (w2/m14, w6/m34; w8/m19 t005)"
     },
     "#/definitions/serverService/properties/renderSubdomainPolicy": {
       "state": "translated",
@@ -1152,51 +1152,51 @@
     },
     "#/definitions/workflowService/properties/autoDeployTrigger": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     },
     "#/definitions/workflowService/properties/branch": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     },
     "#/definitions/workflowService/properties/buildCommand": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     },
     "#/definitions/workflowService/properties/buildFilter": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     },
     "#/definitions/workflowService/properties/envVars": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     },
     "#/definitions/workflowService/properties/name": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     },
     "#/definitions/workflowService/properties/region": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     },
     "#/definitions/workflowService/properties/repo": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     },
     "#/definitions/workflowService/properties/rootDir": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     },
     "#/definitions/workflowService/properties/runtime": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     },
     "#/definitions/workflowService/properties/startCommand": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     },
     "#/definitions/workflowService/properties/type": {
       "state": "unsupported",
-      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+      "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
     }
   },
   "enumValues": {
@@ -1494,28 +1494,40 @@
         "reason": "Render compute plan ID for the same CPU/RAM as bex's 'standard' rung; resolved by the tier catalog's input aliases (w8/011, w1/m170)"
       },
       "\"3g\"": {
-        "state": "unsupported",
-        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_kv_plans_test.go:TestBlueprintKeyValueLargePlans",
+        "reason": "Render Key Value size plan; resolved by the tier catalog to bex's '3g' rung (w5/m266)"
       },
       "\"5g\"": {
-        "state": "unsupported",
-        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_kv_plans_test.go:TestBlueprintKeyValueLargePlans",
+        "reason": "Render Key Value size plan; resolved by the tier catalog to bex's 'pro' rung (w5/m266)"
       },
       "\"10g\"": {
-        "state": "unsupported",
-        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_kv_plans_test.go:TestBlueprintKeyValueLargePlans",
+        "reason": "Render Key Value size plan; resolved by the tier catalog to bex's 'pro_plus' rung (w5/m266)"
       },
       "\"20g\"": {
-        "state": "unsupported",
-        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_kv_plans_test.go:TestBlueprintKeyValueLargePlans",
+        "reason": "Render Key Value size plan; resolved by the tier catalog to bex's 'pro_max' rung (w5/m266)"
       },
       "\"40g\"": {
-        "state": "unsupported",
-        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_kv_plans_test.go:TestBlueprintKeyValueLargePlans",
+        "reason": "Render Key Value size plan; resolved by the tier catalog to bex's 'pro_ultra' rung (w5/m266); while it is paused (user decision 2026-11-05) a new selection is refused with 400 INSTANCE_TYPE_UNAVAILABLE"
       },
       "\"50g\"": {
-        "state": "unsupported",
-        "reason": "Render compute plan ID with no bex rung of the same CPU/RAM; per w8/011, spec-based names are aliased only onto an exact-size bex tier, never a nearest-size guess that would mis-size or misprice (w1/m170)"
+        "state": "translated",
+        "handler": "parseCompiledStack",
+        "fixture": "internal/apps/blueprint_kv_plans_test.go:TestBlueprintKeyValueLargePlans",
+        "reason": "Render Key Value size plan; resolved by the tier catalog to bex's '50g' rung (w5/m266); while it is paused (user decision 2026-11-05) a new selection is refused with 400 INSTANCE_TYPE_UNAVAILABLE"
       }
     },
     "#/definitions/postgresPlan/enum": {
@@ -2189,7 +2201,7 @@
       },
       "\"workflow\"": {
         "state": "unsupported",
-        "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+        "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
       },
       "\"static\"": {
         "state": "translated",
@@ -2203,7 +2215,7 @@
       },
       "\"job\"": {
         "state": "unsupported",
-        "reason": "one-off jobs are a deliberate non-goal (ADR018 \u2014 row, execution products beyond running services); a fromService reference to a job target cannot resolve"
+        "reason": "one-off jobs are a deliberate non-goal (ADR018 — row, execution products beyond running services); a fromService reference to a job target cannot resolve"
       },
       "\"redis\"": {
         "state": "translated",
@@ -2279,11 +2291,11 @@
     "#/definitions/workflowService/properties/runtime/enum": {
       "\"node\"": {
         "state": "unsupported",
-        "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+        "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
       },
       "\"python\"": {
         "state": "unsupported",
-        "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '\u2014' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
+        "reason": "Render Workflows are a recorded non-goal (DO_NOT_DO.md 'Workflows & tasks'; ADR018 '—' row): a type: workflow service is rejected with a named error rather than deployed as something else (w1/m170)"
       }
     }
   },
