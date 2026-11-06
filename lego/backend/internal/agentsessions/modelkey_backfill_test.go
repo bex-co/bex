@@ -50,6 +50,9 @@ func (f *flagMarks) MarkAgentModelKeySet(_ context.Context, ws string) (bool, er
 // The startup backfill flags every workspace whose model key sits in
 // OpenBao without a flag (a hand-provisioned key), leaves flagged ones,
 // workspaces without a key and deleted workspaces alone, and counts failures.
+// A workspace the platform route covers is never flagged: the route never
+// read its hand-put key, and flagging it would move its claude sessions onto
+// that stale key (the 2026-11-06 workspace bex incident).
 func TestBackfillModelKeyFlags(t *testing.T) {
 	key := func(v string) map[string]string { return map[string]string{agentsession.ModelKeyField: v} }
 	keys := &fakeModelKeys{data: map[string]map[string]string{
@@ -58,14 +61,16 @@ func TestBackfillModelKeyFlags(t *testing.T) {
 		agentsession.ModelKeySecretPath("tea-gone"):    key("sk-ant-api03-GONE"),
 		agentsession.ModelKeySecretPath("tea-broken"):  key("sk-ant-api03-BROKEN"),
 		agentsession.ModelKeySecretPath("tea-empty"):   key(""),
+		agentsession.ModelKeySecretPath("tea-routed"):  key("sk-ant-api03-STALE"),
 		"agent-sessions/tea-other/github":              {"token": "x"},
 	}}
+	enablePlatformRoute(t, "tea-routed")
 	marks := &flagMarks{flagged: map[string]bool{"tea-flagged": true}, gone: map[string]bool{"tea-gone": true}, failing: "tea-broken"}
 	got, err := BackfillModelKeyFlags(context.Background(), keys, marks)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := (ModelKeyBackfill{Workspaces: 6, Keys: 4, Marked: 1, Failed: 1}); got != want {
+	if want := (ModelKeyBackfill{Workspaces: 7, Keys: 5, Marked: 1, PlatformRouted: 1, Failed: 1}); got != want {
 		t.Fatalf("backfill = %+v, want %+v", got, want)
 	}
 	if want := map[string]bool{"tea-flagged": true, "tea-hand": true}; !reflect.DeepEqual(marks.flagged, want) {

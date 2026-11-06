@@ -1727,5 +1727,5 @@ func backfillModelKeyFlags(ctx context.Context, keys core.SecretKV, st *store.PG
 	if err != nil {
 		log.Printf("bex-api: agent model key flag backfill failed (retrying next start): %v", err)
 	}
-	log.Printf("bex-api: agent model key flag backfill: workspaces=%d keys=%d flags_set=%d failed=%d", r.Workspaces, r.Keys, r.Marked, r.Failed)
+	log.Printf("bex-api: agent model key flag backfill: workspaces=%d keys=%d flags_set=%d platform_routed=%d failed=%d", r.Workspaces, r.Keys, r.Marked, r.PlatformRouted, r.Failed)
 }

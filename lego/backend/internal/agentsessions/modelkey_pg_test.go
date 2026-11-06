@@ -204,6 +204,77 @@ func TestModelKeyPG(t *testing.T) {
 	}
 }
 
+// The 2026-11-06 workspace bex incident against the real store: a workspace
+// the platform route covers still holds a key put in OpenBao by hand before
+// ADR091 D7. The startup backfill must not flag it (the route never read that
+// key), so the next mint is still the platform key on OpenRouter, not the
+// stale vendor key Anthropic rejected — which failed the session as
+// vendor-auth-rejected and denied every later mint.
+func TestModelKeyBackfillKeepsPlatformRoutePG(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatal(err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	pg := store.NewPGStore(pool)
+	routed, err := pg.CreateTenant(ctx, "agent-model-key-backfill-routed", store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = pg.DeleteTenant(ctx, routed.ID) })
+	other, err := pg.CreateTenant(ctx, "agent-model-key-backfill-other", store.PlanPro)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = pg.DeleteTenant(ctx, other.ID) })
+	enablePlatformRoute(t, routed.ID)
+
+	const stale = "sk-ant-api03-STALE-HAND-PUT"
+	keys := &fakeModelKeys{data: map[string]map[string]string{
+		agentsession.ModelKeySecretPath(routed.ID): {agentsession.ModelKeyField: stale},
+		agentsession.ModelKeySecretPath(other.ID):  {agentsession.ModelKeyField: "sk-ant-api03-OTHER"},
+	}}
+	got, err := BackfillModelKeyFlags(ctx, keys, pg)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Keys != 2 || got.Marked != 1 || got.PlatformRouted != 1 || got.Failed != 0 {
+		t.Fatalf("backfill = %+v, want the routed workspace skipped and the other flagged", got)
+	}
+	flagged := func(ws string) bool {
+		row, err := pg.GetAgentEnvironment(ctx, ws)
+		if err != nil && !errors.Is(err, store.ErrNotFound) {
+			t.Fatal(err)
+		}
+		return row.ModelKeySet()
+	}
+	if flagged(routed.ID) || !flagged(other.ID) {
+		t.Fatalf("flags: routed=%v other=%v, want false/true", flagged(routed.ID), flagged(other.ID))
+	}
+
+	config, _ := json.Marshal(map[string]string{"agent": "claude", "modelEndpoint": "https://openrouter.ai/api"})
+	minter := &agentsession.ModelMinter{
+		Keys: keys, Spend: pg, Audit: pg,
+		Sessions: oneSession{store.AgentSession{ID: "ags-pg-backfill", WorkspaceID: routed.ID, SandboxID: "sbx-1", Phase: PhaseRunning, AgentConfig: config}},
+	}
+	mint, err := minter.Mint(ctx, agentsession.ModelMintRequest{SessionID: "ags-pg-backfill", Workspace: routed.ID, PodName: "sbx-1-0", PodUID: "uid-one"})
+	if err != nil {
+		t.Fatalf("mint after backfill: %v", err)
+	}
+	if mint.Credential != platformKey || mint.EndpointHost != agentsession.OpenRouterHost {
+		t.Fatalf("mint after backfill = host %q platformKey=%v stale=%v, want the platform key on OpenRouter",
+			mint.EndpointHost, mint.Credential == platformKey, mint.Credential == stale)
+	}
+}
+
 // gatedKV holds each Put until released, announcing the key it carries.
 type gatedKV struct {
 	*fakeModelKeys

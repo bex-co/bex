@@ -33,10 +33,11 @@ type ModelKeyFlagMarker interface {
 }
 
 // ModelKeyBackfill counts one BackfillModelKeyFlags pass: workspace entries
-// under agent-sessions/, those holding a model key, flags newly set, and
+// under agent-sessions/, those holding a model key, flags newly set, keys
+// left unflagged because the platform route covers their workspace, and
 // entries whose key or flag could not be read or written.
 type ModelKeyBackfill struct {
-	Workspaces, Keys, Marked, Failed int
+	Workspaces, Keys, Marked, PlatformRouted, Failed int
 }
 
 // BackfillModelKeyFlags sets model_key_set_at for every workspace whose model
@@ -45,6 +46,13 @@ type ModelKeyBackfill struct {
 // otherwise ignore. It never clears a flag, and a workspace that no longer
 // exists is skipped. bex-api runs it once at startup, in the background;
 // only counts are reported, never a workspace's key.
+//
+// A workspace the platform route covers is skipped too: the route never read
+// its hand-put key, so that key was never in effect and is no admin's choice.
+// Flagging it would move the workspace off the platform key onto a stale
+// vendor key — every claude session then fails its first model call as
+// vendor-auth-rejected (the 2026-11-06 workspace bex incident). An admin
+// opts such a workspace into its own key through modelApiKey.
 func BackfillModelKeyFlags(ctx context.Context, keys core.SecretKV, flags ModelKeyFlagMarker) (ModelKeyBackfill, error) {
 	var out ModelKeyBackfill
 	workspaces, err := keys.List(ctx, "agent-sessions")
@@ -65,6 +73,10 @@ func BackfillModelKeyFlags(ctx context.Context, keys core.SecretKV, flags ModelK
 			continue
 		}
 		out.Keys++
+		if agentsession.PlatformModelKeyReady(workspaceID, false) {
+			out.PlatformRouted++
+			continue
+		}
 		marked, err := flags.MarkAgentModelKeySet(ctx, workspaceID)
 		switch {
 		case errors.Is(err, store.ErrNotFound):
