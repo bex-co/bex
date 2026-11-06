@@ -40,3 +40,7 @@
 ## CLI `--skill` (2026-11-06)
 
 - `bex agent run|send --skill NAME[:ARGUMENTS]` (repeatable) sends `skills` on create and steer, tested by `TestSkillsReachCreateAndSteer` and documented in `docs/bex-cli.md`. It ships with w9/m176.
+
+## Live check (2026-11-06)
+
+- **Live check attempt 2026-11-06 ~13:10 UTC: NOT RUN.** Production bex-api is still on the 92ff00293 pin (gitops `bab5d417e`). `GET /v1/agent-skills` and `GET /v1/agent-secrets` answer 404, and capabilities has no per-profile `modelKeyReady`. Every deploy run since then (379af6c08, 3310f6484, 8c498d33c) ended `success` with `build`/`deploy` skipped by supersession, so none of this work is live yet. Rerun after a real pin.
