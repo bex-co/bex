@@ -77,17 +77,25 @@ export function TeamMembersSkeleton({ canManage }: { canManage: boolean }) {
               </div>
             </TableCell>
             <TableCell>
+              {/* The caller can't change their own role or remove themselves,
+                  so MemberRow wraps both controls in PermissionTooltip's
+                  inline-flex span, whose line box is ~4px taller than the
+                  control alone: the skeleton wraps them the same way. */}
               {canManage ? (
-                <Skeleton className="h-8 w-[150px]" />
+                <span className="inline-flex">
+                  <Skeleton className="h-8 w-[150px]" />
+                </span>
               ) : (
                 <span className="text-transparent">{t("team.role.ADMIN")}</span>
               )}
             </TableCell>
             <TableCell className="text-right">
               {canManage ? (
-                <Button variant="ghost" size="icon" disabled tabIndex={-1}>
-                  <Trash2 className="text-transparent" />
-                </Button>
+                <span className="inline-flex">
+                  <Button variant="ghost" size="icon" disabled tabIndex={-1}>
+                    <Trash2 className="text-transparent" />
+                  </Button>
+                </span>
               ) : null}
             </TableCell>
           </TableRow>
