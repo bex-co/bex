@@ -52,3 +52,8 @@
 Everything implementable is shipped. What remains is the production walk, and production is still pinned to `c8bbc07cbeeb`, which predates this work. Every later deploy run is superseded at write-back: run `0505f4532` succeeded its tests, then skipped build and deploy. That starvation is owned by **w6/m156** (t003, decision (a)).
 
 **Release condition:** the `chore(deploy): pin platform images to <sha>` commit on main reaches a revision containing `eaf967d80` (m269). Then the worker runs the walk listed above as the next step.
+
+## 解阻复核（2026-11-05，来源：复核证据）
+
+- **卡点已消失：** 生产固定版本已推进到 `92ff0029334d`（`bab5d417e`）。它包含 t018（`c071550db`）、m269（`eaf967d80`）和 m263（`21175a4d2`）。以 QA 会话调用 `GET /v1/blueprints` 返回的已是 `exs-…`。
+- **worker 下一步：** 按上文的生产验收步骤直接执行，无需用户决定。
