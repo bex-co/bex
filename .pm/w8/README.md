@@ -409,6 +409,8 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **235** — [A static site with a missing publish directory emits `build_ended: failed` but its deploy never closes](235.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-06: `update_in_progress` 24+ min after the failed build, no reason or `deploy_ended`; major, ~60m.
+
 - [ ] **227** — [Lift the three signed-off edge-compression differences once Traefik can](blocked/227.md) — **BLOCKED (upstream Traefik: a release whose Brotli writer skips 206 bodies, or `compress` options for no-transform/ETag, or a Flusher-preserving Yaegi writer; an upstream issue/PR needs user authorization)**
 - [x] **230** — [A web service whose name contains `--` deploys `live` but its URL answers 503 `no-server` forever](done/230.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-02: reproduced twice, single-hyphen control serves 200; major, ~60m.
 - [x] **231** — [A Blueprint naming the paused Pro Ultra plan points its error at `type` (line 2), not `plan`](done/231.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-03: `blueprintErrorField` maps "instance type" to `.type`; minor, ~15m.
