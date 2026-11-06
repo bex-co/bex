@@ -353,6 +353,7 @@ Completed: **m7 → (m10 ∥ m11) → m13 → m12.** m7 gates m12 (invites need 
 
 ## Inbox
 
+- [ ] **514** — [An environment group's metadata shows its Owner as a raw `tea-…` id instead of the workspace name](514.md) — todo (~15m) ← live `/qa-find-bugs w4` loop round 114, 2026-11-06 UTC (pin `cc3c51e12952`; minor, UX). `env-group-metadata.tsx:26` renders `group.ownerId`.
 - [x] **513** — [A Postgres disk card says "Capacity 1 GiB" beside "1 GB current · 16384 GB max"](done/513.md) — DONE 2026-11-05 — todo (~15m) ← live `/qa-find-bugs w4` loop round 112, 2026-11-05 UTC (pin `cc3c51e12952`; minor, units). `datastore-metrics-panel.tsx:175-176` formats binary; `databases.diskAutoscalingSize` says GB.
 - [x] **508** — [Regression of w4/m230: a user Resume can be recorded as `service_woken` (an idle wake) instead of `service_resumed`](done/508.md) — DONE 2026-11-05 — todo (~45m) ← live `/qa-find-bugs w4` loop round 109, 2026-11-05 UTC (pin `cc3c51e12952`; major, events/notifications). `store/event_facts.go:546-551` drops the suspend reason while still Hibernated.
 - [x] **507** — [REST/MCP `cron_job_run_ended` reports `status: succeeded|failed` where the same run object says `successful|unsuccessful`](done/507.md) — DONE 2026-11-05 — todo (~35m) ← live `/qa-find-bugs w4` loop round 108, 2026-11-05 UTC (pin `cc3c51e12952`; minor, Render parity). `events/rest.go:218` copies the lifecycle status; ADR038:147 divergence has no ADR018 sign-off.
