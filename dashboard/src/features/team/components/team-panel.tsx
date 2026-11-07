@@ -94,7 +94,7 @@ export function TeamPanel() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex min-h-5 items-center gap-2">
           {t("team.title")}
           {seats ? (
             <span className="text-sm font-normal text-muted-foreground tabular-nums">

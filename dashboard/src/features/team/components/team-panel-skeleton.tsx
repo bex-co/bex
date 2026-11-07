@@ -115,7 +115,7 @@ export function TeamPanelSkeleton() {
   return (
     <Card data-testid="team-panel-skeleton">
       <CardHeader>
-        <CardTitle className="flex items-center gap-2">
+        <CardTitle className="flex min-h-5 items-center gap-2">
           {t("team.title")}
         </CardTitle>
         <CardDescription>{t("team.description")}</CardDescription>
