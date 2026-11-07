@@ -409,7 +409,7 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
-- [ ] **236** — [pg_duckdb segfaults Postgres in a database that also has TimescaleDB](236.md) ← w8/234 2026-11-06: upstream duckdb/pg_duckdb#845, recorded in ADR092; adopt an upstream fix or patch pg_duckdb to plan through `planner()`; major.
+- [ ] **236** — [pg_duckdb segfaults Postgres in a database that also has TimescaleDB](blocked/236.md) ← w8/234 2026-11-06 — **BLOCKED (upstream duckdb/pg_duckdb#845 fix release — v1.2.0 still has it — or a user decision to carry the unmerged lnicho/pg_duckdb#1 patch as a from-source pg_duckdb in the operand image; an upstream comment/PR needs user authorization). No customer exposure: no operand is adopted.**
 - [x] **235** — [A static site with a missing publish directory emits `build_ended: failed` but its deploy never closes](done/235.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-06: `update_in_progress` 24+ min after the failed build, no reason or `deploy_ended`; major, ~60m.
 
 - [ ] **227** — [Lift the three signed-off edge-compression differences once Traefik can](blocked/227.md) — **BLOCKED (upstream Traefik: a release whose Brotli writer skips 206 bodies, or `compress` options for no-transform/ETag, or a Flusher-preserving Yaegi writer; an upstream issue/PR needs user authorization)**
