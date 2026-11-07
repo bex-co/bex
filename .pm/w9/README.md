@@ -24,7 +24,7 @@ Develop against `.pm/w9/dev-9/`, this worker's own isolated stack on the shared 
 - [x] **m174** — [Session-scoped secrets for cloud agents (Devin parity)](done/m174/README.md) (8 tasks)
 - [x] **m175** — [Knowledge and Playbooks for cloud agents (Devin parity)](done/m175/README.md) (8 tasks)
 - [x] **m176** — [Approval mode: the agent asks before risky actions (`needs_input`)](done/m176/README.md) (7 tasks) ← coordinates with w11/m7 (mobile client)
-- [ ] **m177** — [Cloud Agents from the terminal and the editor: `bex agent` and bex desktop MCP preconfig](m177/README.md) (7 tasks)
+- [ ] **m177** — **BLOCKED (your actions: check a signed-in bex-desktop shows the cloud-agents tools; authorize the CLI release — implementation done)** — [Cloud Agents from the terminal and the editor: `bex agent` and bex desktop MCP preconfig](blocked/m177/README.md) (7 tasks)
 - [ ] **079** — **BLOCKED (time/usage trigger: re-evaluate on 2026-12-05 or at 10 GB in `bex-agent-attachments`, whichever comes first; no user action needed)** — [ADR095 residuals: attachment storage metering and malware scanning](blocked/079.md)
 - [x] **080** — [Session page logs React hydration error #418 on load](done/080.md) ← w9 browser recheck 2026-11-06
 - [ ] **081** — **BLOCKED (your resource: a QA workspace with an OpenAI model key for the live codex check; code shipped in 5ffbe82b3)** — [Approval mode for codex sessions: gate in-sandbox risky commands](blocked/081.md)
