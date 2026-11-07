@@ -980,8 +980,10 @@ pathlib.Path(result).write_text(json.dumps({'caught':caught,'handlers_restored':
             if not line.startswith("            "):break
             patterns.append(line[12:])
         raw = ("\n".join(patterns) + "\n").encode()
-        self.assertEqual(qualification.hashlib.sha256(raw).hexdigest(), "52c70ba4a04060a8e884eccff7148810b82741447f01e826a9b68b9bdc0c689f")
-        self.assertEqual(len(patterns), 21)
+        self.assertEqual(qualification.hashlib.sha256(raw).hexdigest(), "49fa4c08811fb87a712fc3e0f877b04a3b645bc1ab7bdf227d8458d237e42270")
+        self.assertEqual(len(patterns), 22)
+        # w6/m163: the qualify job installs Syft with scripts/install-syft.py.
+        self.assertIn("/scripts/install-syft.py", patterns)
         self.assertEqual(patterns[0], "!/**")
         self.assertEqual(sum(p.endswith('/**') and not p.startswith('!') for p in patterns), 13)
         self.assertIn('/lego/operator/internal/build/**', patterns)
@@ -1448,7 +1450,7 @@ class ProfileRoutingControls(unittest.TestCase):
         self.assertIn("timeout-minutes: 180", original)
         self.assertIn("BEX_NATIVE_TEST_PREPARE_WHEELS:", original)
         self.assertIn("BEX_NATIVE_TEST_SYFT:", original)
-        self.assertIn("syft-version: v1.55.0", original)
+        self.assertIn("python3 scripts/install-syft.py 1.55.0", original)
         command = self.run_block(original, "actual generated offline builds, original replays and exact-default SPDX")
         self.assertIn("-timeout 150m", command)
         self.assertIn("-run '^(TestNativeUtilityGeneratedImages|TestNativeOriginalReplayHTTPOracles)$'", command)

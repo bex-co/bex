@@ -17,6 +17,7 @@ on:
     paths:
       - "deploy/pg-operand/**"
       - ".github/workflows/pg-operand-image.yml"
+      - "scripts/install-syft.py"
   workflow_dispatch: {}
 
 permissions:
@@ -147,9 +148,9 @@ jobs:
       - uses: sigstore/cosign-installer@6f9f17788090df1f26f669e9d70d6ae9567deba6 # v4.1.2
         with:
           cosign-release: v3.1.4
-      - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
-        with:
-          syft-version: v1.55.0
+      - name: Install reviewed Syft with bounded transport retries
+        timeout-minutes: 15
+        run: python3 scripts/install-syft.py 1.55.0
       - name: sign image + attest SBOM
         env:
           REF: ${{ env.OPERAND_IMAGE }}@${{ steps.build.outputs.digest }}

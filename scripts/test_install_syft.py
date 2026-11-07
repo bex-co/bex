@@ -95,7 +95,7 @@ class InstallerTests(unittest.TestCase):
     def install_fixture(self, folder, payload, content=None, path_file=None):
         root = Path(folder)
         entry = ("arm64", len(payload), hashlib.sha256(payload).hexdigest())
-        with patch.object(syft.platform, "system", return_value="Linux"), patch.object(syft.platform, "machine", return_value="aarch64"), patch.dict(syft.RELEASES, {"aarch64": entry}), patch.object(syft, "download", return_value=payload if content is None else content) as download:
+        with patch.object(syft.platform, "system", return_value="Linux"), patch.object(syft.platform, "machine", return_value="aarch64"), patch.dict(syft.RELEASES[syft.VERSION], {"aarch64": entry}), patch.object(syft, "download", return_value=payload if content is None else content) as download:
             syft.install(root, path_file or root / "github-path")
             download.assert_called_once_with(URL, len(payload))
 
@@ -135,6 +135,23 @@ class InstallerTests(unittest.TestCase):
             with self.assertRaises(FileNotFoundError):
                 self.install_fixture(folder, archive_bytes(), path_file=Path(folder) / "absent/github-path")
             self.assertEqual(list(Path(folder).iterdir()), [])
+
+    def test_an_unreviewed_version_is_refused_before_any_download(self):
+        with tempfile.TemporaryDirectory() as folder, patch.object(syft, "download") as download:
+            with self.assertRaisesRegex(RuntimeError, "not a reviewed release"):
+                syft.install(Path(folder), Path(folder) / "github-path", "9.9.9")
+            download.assert_not_called()
+
+    def test_a_reviewed_version_downloads_its_own_archive(self):
+        with tempfile.TemporaryDirectory() as folder:
+            root = Path(folder)
+            with patch.object(syft.platform, "system", return_value="Linux"), \
+                    patch.object(syft.platform, "machine", return_value="x86_64"), \
+                    patch.object(syft, "download", side_effect=RuntimeError("stop")) as download:
+                with self.assertRaisesRegex(RuntimeError, "stop"):
+                    syft.install(root, root / "github-path", "1.55.0")
+            download.assert_called_once_with(
+                "https://github.com/anchore/syft/releases/download/v1.55.0/syft_1.55.0_linux_amd64.tar.gz", 31198534)
 
 
 if __name__ == "__main__":

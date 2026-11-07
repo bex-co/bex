@@ -82,6 +82,7 @@ jobs:
             /lego/Dockerfile
             /lego/.dockerignore
             /scripts/lib/toolchain-freshness.py
+            /scripts/install-syft.py
       - name: materialize only complete candidate evidence packets
         timeout-minutes: 12
         env:
@@ -164,6 +165,7 @@ jobs:
             /lego/Dockerfile
             /lego/.dockerignore
             /scripts/lib/toolchain-freshness.py
+            /scripts/install-syft.py
       - name: materialize only complete candidate evidence packets
         timeout-minutes: 12
         env:
@@ -210,9 +212,9 @@ jobs:
           # The action's post cleanup also removes shared certificate files.
           # Our always step removes only the exact assigned builder instead.
           cleanup: false
-      - uses: anchore/sbom-action/download-syft@3ad7283483fc7af8ff2b4ea19663c2d5ca935e26 # v0.24.2
-        with:
-          syft-version: v1.55.0
+      - name: Install reviewed Syft with bounded transport retries
+        timeout-minutes: 15
+        run: python3 scripts/install-syft.py 1.55.0
       - name: actual generated offline builds, original replays and exact-default SPDX
         working-directory: lego/operator
         env:
@@ -311,6 +313,7 @@ jobs:
             /lego/Dockerfile
             /lego/.dockerignore
             /scripts/lib/toolchain-freshness.py
+            /scripts/install-syft.py
       - name: materialize only complete candidate evidence packets
         timeout-minutes: 12
         env:

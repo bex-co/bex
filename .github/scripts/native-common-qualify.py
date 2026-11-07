@@ -134,7 +134,7 @@ SOURCE_FILES = (
     ".github/workflows/native-common-image.yml", ".github/scripts/native-common-qualify.py",
     ".github/scripts/test_native_oci_common_qualification.py", ".github/scripts/native-oci-stage.py",
     ".github/scripts/native-oci-mirror.py", "deploy/native-common/matrix.py", "deploy/native-common/upstream.json",
-    "scripts/lib/toolchain-freshness.py",
+    "scripts/lib/toolchain-freshness.py", "scripts/install-syft.py",
 )
 # These are the common publisher's actual local execution inputs, independent
 # of the generator/qualification code whose baseline may need requalification.
