@@ -38,8 +38,8 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 - [x] **m159** — [Ship gates catch dashboard red before it reaches main](done/m159/README.md) — **done 2026-11-06** (7 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 1
 - [x] **m160** — [Runner-host link probe: a slow internet link opens an issue by itself](done/m160/README.md) — **done 2026-11-06** (#131 opened and closed by dispatch) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 2
 - [x] **m161** — [One tracking-issue helper for every scheduled monitor](done/m161/README.md) — **done 2026-11-06** (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 3
-- [ ] **m162** — [Sandbox isolation fixtures come from the real session-egress generator](m162/README.md) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 4
-- [ ] **m163** — [Native image workflows install Syft and Trivy with retries](m163/README.md) (7 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 5
+- [x] **m162** — [Sandbox isolation fixtures come from the real session-egress generator](done/m162/README.md) — **done 2026-11-06** (isolation-matrix 42314737232 green with the generated policy) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 4
+- [ ] **m163** — **BLOCKED (w8: native-base-image.yml is byte-pinned by w8/m91's D3 custody; re-pin or retire the legacy 0941 transition. t001 done; pg-operand + native-common use install-syft.py 1.55.0)** — [Native image workflows install Syft and Trivy with retries](blocked/m163/README.md) (7 tasks)
 - [x] **m151** — [`render-v1` runtime pods run in a pod user namespace (`hostUsers: false`)](done/m151/README.md) (7 tasks) ← promoted from w6/086 (2026-10-21) — **done 2026-10-21**, live in every workspace
 - [x] **m152** — [A disk owner sees when nightly snapshots are not running](done/m152/README.md) (6 tasks) ← promoted from 094 (w6/089 finding, 2026-10-22)
 - [x] **m157** — [CI checkouts skip the `.pm` tree, so a short job never holds a runner for half an hour](done/m157/README.md) (7 tasks) — **done 2026-11-03**: 54 checkouts blobless + sparse (`1a31d5022`); production checkout 99 s vs 31 min, main `scripts` green at 113 s

@@ -1,17 +1,17 @@
 # w6 · m162 — Sandbox isolation fixtures come from the real session-egress generator
 
-**Worker:** worker6 **Goal:** the ADR042 sandbox matrix's agent-session egress policy is rendered by `lego/backend/internal/sessionegress`, so it cannot drift from what bex-api creates. **Status:** todo
+**Worker:** worker6 **Goal:** the ADR042 sandbox matrix's agent-session egress policy is rendered by `lego/backend/internal/sessionegress`, so it cannot drift from what bex-api creates. **Status:** done
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | [Go helper that prints the real session-egress policy for a phase and allowlist](t001.md) | 45m | — |
-| t002 | [`render_session_policy` calls the helper instead of hand-written YAML](t002.md) | 30m | t001 |
-| t003 | [Test that the generated policy satisfies bex-api-session-egress](t003.md) | 30m | t001 |
-| t004 | [Simplify](t004.md) | 15m | t002, t003 |
-| t005 | [Test coverage](t005.md) | 20m | t004 |
-| t006 | [Closeout](t006.md) | 10m | t005 |
+| t001 | [Go helper that prints the real session-egress policy for a phase and allowlist](done/t001.md) — **DONE** | 45m | — |
+| t002 | [`render_session_policy` calls the helper instead of hand-written YAML](done/t002.md) — **DONE** | 30m | t001 |
+| t003 | [Test that the generated policy satisfies bex-api-session-egress](done/t003.md) — **DONE** | 30m | t001 |
+| t004 | [Simplify](done/t004.md) — **DONE** | 15m | t002, t003 |
+| t005 | [Test coverage](done/t005.md) — **DONE** | 20m | t004 |
+| t006 | [Closeout](done/t006.md) — **DONE** | 10m | t005 |
 
 ## Definition of done
 
