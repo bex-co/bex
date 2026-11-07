@@ -202,7 +202,7 @@ jobs:
           QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
         run: python3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"
       - id: buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         timeout-minutes: 5
         with:
           name: ${{ steps.owned.outputs.owner }}
@@ -353,7 +353,7 @@ jobs:
           QUALIFICATION_ROOT: ${{ steps.owned.outputs.root }}
         run: python3 .github/scripts/native-common-qualify.py bootstrap "$QUALIFICATION_ROOT"
       - id: buildx
-        uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+        uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
         timeout-minutes: 5
         with:
           name: ${{ steps.owned.outputs.owner }}
@@ -423,7 +423,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
-      - uses: docker/setup-buildx-action@37fe631027851001ddb9b187196cc803df7f5f0e # v4.3.0
+      - uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
       - name: log in to GHCR with bounded transport retries
         env:
           GHCR_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -436,7 +436,7 @@ jobs:
             sleep "$((attempt * 5))"
           done
       - id: build
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: deploy
           file: deploy/native-common/Dockerfile
@@ -452,7 +452,7 @@ jobs:
             co.bex.native-scope=local-arm64-unqualified-for-production
           tags: ghcr.io/bex-co/bex-cnb-run:native-common-bookworm-arm64-local-candidate-${{ github.sha }}
       - name: check common ARM64 startup and core tools only
-        uses: docker/build-push-action@53b7df96c91f9c12dcc8a07bcb9ccacbed38856a # v7.3.0
+        uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
         with:
           context: deploy/native-common
           file: deploy/native-common/check-local.Dockerfile
