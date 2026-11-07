@@ -275,6 +275,18 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 				t.Fatalf("original PostGIS migration = %v %q", err, out)
 			}
 
+			// DuckDB executes before TimescaleDB exists in this database, then
+			// leaves: a forced DuckDB scan in a database that also has
+			// TimescaleDB segfaults the server (duckdb/pg_duckdb#845, ADR092),
+			// and pg_duckdb created first would take TimescaleDB's time_bucket.
+			if major == "16" || major == "17" || major == "18" {
+				if out, err := asOwner("CREATE EXTENSION pg_duckdb; CREATE TABLE duck_values AS SELECT generate_series(1,100000) AS v; SET duckdb.force_execution=true; SELECT sum(v) FROM duck_values"); err != nil || !strings.HasSuffix(out, "5000050000") {
+					t.Fatalf("actual Free DuckDB execution: %v %s", err, out)
+				}
+				if out, err := asOwner("DROP EXTENSION pg_duckdb"); err != nil {
+					t.Fatalf("drop pg_duckdb before TimescaleDB: %v %s", err, out)
+				}
+			}
 			steps := []struct{ sql, want string }{
 				{"SELECT rolsuper FROM pg_roles WHERE rolname = current_user", "f"},
 				{"SHOW extwlist.extensions", strings.Join(pgExtensionAllowlist[major], ",")},
@@ -299,11 +311,6 @@ func TestApplicationDatabaseExtensionsOnCNPG(t *testing.T) {
 			for _, step := range steps {
 				if out, err := asOwner(step.sql); err != nil || !strings.HasSuffix(out, step.want) {
 					t.Fatalf("%s = %v %q, want suffix %q", step.sql, err, out, step.want)
-				}
-			}
-			if major == "16" || major == "17" || major == "18" {
-				if out, err := asOwner("CREATE EXTENSION pg_duckdb; CREATE TABLE duck_values AS SELECT generate_series(1,100000) AS v; SET duckdb.force_execution=true; SELECT sum(v) FROM duck_values"); err != nil || !strings.HasSuffix(out, "5000050000") {
-					t.Fatalf("actual Free DuckDB execution: %v %s", err, out)
 				}
 			}
 			if out, err := asOwner("CREATE EXTENSION pg_ivm; CREATE TABLE ivm_base (id int PRIMARY KEY,v int); INSERT INTO ivm_base VALUES (1,10),(2,20); SELECT pgivm.create_immv('ivm_sum','SELECT sum(v) AS s FROM ivm_base'); INSERT INTO ivm_base VALUES (3,30); SELECT s FROM ivm_sum"); err != nil || !strings.HasSuffix(out, "60") {

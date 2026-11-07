@@ -409,12 +409,13 @@ Develop against `.pm/w8/dev-8/`, this worker's own isolated stack on the shared 
 
 ## Inbox
 
+- [ ] **236** — [pg_duckdb segfaults Postgres in a database that also has TimescaleDB](236.md) ← w8/234 2026-11-06: upstream duckdb/pg_duckdb#845, recorded in ADR092; adopt an upstream fix or patch pg_duckdb to plan through `planner()`; major.
 - [x] **235** — [A static site with a missing publish directory emits `build_ended: failed` but its deploy never closes](done/235.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-06: `update_in_progress` 24+ min after the failed build, no reason or `deploy_ended`; major, ~60m.
 
 - [ ] **227** — [Lift the three signed-off edge-compression differences once Traefik can](blocked/227.md) — **BLOCKED (upstream Traefik: a release whose Brotli writer skips 206 bodies, or `compress` options for no-transform/ETag, or a Flusher-preserving Yaegi writer; an upstream issue/PR needs user authorization)**
 - [x] **230** — [A web service whose name contains `--` deploys `live` but its URL answers 503 `no-server` forever](done/230.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-02: reproduced twice, single-hyphen control serves 200; major, ~60m.
 - [x] **231** — [A Blueprint naming the paused Pro Ultra plan points its error at `type` (line 2), not `plan`](done/231.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-03: `blueprintErrorField` maps "instance type" to `.type`; minor, ~15m.
-- [ ] **234** — [The PG 16/17/18 operand gate crashes Postgres after every extension is created](234.md) ← w6 CI sweep 2026-11-05 (run 42019084199): after the `time_bucket` order fix, 16–18 crash before the restore gate; m92/t008 stays blocked on upstream for 13–15.
+- [x] **234** — [The PG 16/17/18 operand gate crashes Postgres after every extension is created](done/234.md) ← w6 CI sweep 2026-11-05 (run 42019084199): after the `time_bucket` order fix, 16–18 crash before the restore gate; m92/t008 stays blocked on upstream for 13–15.
 - [x] **233** — [The bex skills pack tells agents to require "bex CLI v2.7.0+", a version that does not exist](done/233.md) ← `/qa-find-bugs-cli` loop sweep 3093 2026-11-04: Render CLI floor carried into the bex pack (bex is v0.4.0); minor, ~20m.
 - [x] **232** — [`POST /v1/build-sources` answers 500 `internal error` but creates the build source anyway](done/232.md) — **DONE 2026-11-03** (201 with a `bds-` id on pin `f81152fbde11`, fixed by `480bf71d1`)
 

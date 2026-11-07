@@ -112,18 +112,26 @@ if has pg_duckdb; then
   refused app appdb "SET duckdb.postgres_role = 'other'" 'cannot be changed without restarting the server'
   [ "$(super 'SHOW duckdb.postgres_role')" = app ] || fail 'owner changed DuckDB role'
   refused app appdb "SET duckdb.enable_external_access = true" 'permission denied'
-  as app appdb 'CREATE TABLE duck_values AS SELECT generate_series(1,100000) AS v' >/dev/null
-  expect 5000050000 'SET duckdb.force_execution = true; SELECT sum(v) FROM duck_values'
-  refused other appdb 'SET duckdb.force_execution = true; SELECT sum(g) FROM generate_series(1,10) g' 'permission denied\|not allowed'
+  # DuckDB execution runs in a database without TimescaleDB. pg_duckdb plans
+  # its Postgres scans with standard_planner(), skipping the planner hook that
+  # sets up TimescaleDB's per-query state, so with both extensions in one
+  # database the scan segfaults inside ts_classify_relation (duckdb/pg_duckdb#845,
+  # open upstream; ADR092 records the limitation, w8/236 the follow-up).
+  super "CREATE DATABASE duckdb_scans OWNER app"
+  as app duckdb_scans 'CREATE EXTENSION pg_duckdb' >/dev/null
+  as app duckdb_scans 'CREATE TABLE duck_values AS SELECT generate_series(1,100000) AS v' >/dev/null
+  [ "$(as app duckdb_scans 'SET duckdb.force_execution = true; SELECT sum(v) FROM duck_values')" = 5000050000 ] ||
+    fail 'forced DuckDB scan returned the wrong sum'
+  refused other duckdb_scans 'SET duckdb.force_execution = true; SELECT sum(g) FROM generate_series(1,10) g' 'permission denied\|not allowed'
   # Both instances live inside the same actual Free-plan cgroup. Observe only
   # these two controlled sessions after a real forced DuckDB scan.
-  PGAPPNAME=operand-scan-a as app appdb 'SET duckdb.force_execution=true; SELECT sum(v) FROM duck_values; SET duckdb.force_execution=false; SELECT pg_sleep(5)' >"$data/../scan-a" &
+  PGAPPNAME=operand-scan-a as app duckdb_scans 'SET duckdb.force_execution=true; SELECT sum(v) FROM duck_values; SET duckdb.force_execution=false; SELECT pg_sleep(5)' >"$data/../scan-a" &
   scan_a=$!
-  PGAPPNAME=operand-scan-b as app appdb 'SET duckdb.force_execution=true; SELECT sum(v) FROM duck_values; SET duckdb.force_execution=false; SELECT pg_sleep(5)' >"$data/../scan-b" &
+  PGAPPNAME=operand-scan-b as app duckdb_scans 'SET duckdb.force_execution=true; SELECT sum(v) FROM duck_values; SET duckdb.force_execution=false; SELECT pg_sleep(5)' >"$data/../scan-b" &
   scan_b=$!
   backends=''
   for ((attempt=0; attempt<100; attempt++)); do
-    backends="$(as app appdb "SELECT pid FROM pg_stat_activity WHERE application_name IN ('operand-scan-a','operand-scan-b') AND wait_event='PgSleep'")"
+    backends="$(as app duckdb_scans "SELECT pid FROM pg_stat_activity WHERE application_name IN ('operand-scan-a','operand-scan-b') AND wait_event='PgSleep'")"
     [ "$(wc -w <<<"$backends")" -ne 2 ] || break
     sleep 0.1
   done
