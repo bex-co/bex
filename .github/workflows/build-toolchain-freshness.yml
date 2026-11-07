@@ -33,7 +33,16 @@ jobs:
         run: |
           . scripts/lib/gh-retry.sh
           python3 scripts/lib/toolchain-freshness.py validate
-          python3 scripts/lib/toolchain-freshness.py resolve > "$RUNNER_TEMP/resolve.json"
+          # Three attempts: one upstream 504 once failed the weekly check (run
+          # 42046392479). The retry lives here, not in toolchain-freshness.py:
+          # that file is a native-common image input (IMAGE_POLICY_FILES), so
+          # changing its bytes stales the qualified candidate (w6/m163).
+          for attempt in 1 2 3; do
+            python3 scripts/lib/toolchain-freshness.py resolve > "$RUNNER_TEMP/resolve.json" && break
+            [ "$attempt" -lt 3 ] || exit 1
+            echo "::warning::resolve attempt $attempt failed; retrying in $((attempt * 30)) s"
+            sleep $((attempt * 30))
+          done
           existing="$(gh_retry gh issue list --repo "$GITHUB_REPOSITORY" --label build-toolchain-stale --state open --json number --jq '.[0].number // empty')"
           action="$(EXISTING_ISSUE="$existing" python3 scripts/lib/toolchain-freshness.py issue-action "$RUNNER_TEMP/resolve.json")"
           echo "action=$action" >> "$GITHUB_OUTPUT"

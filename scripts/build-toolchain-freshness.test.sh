@@ -356,39 +356,6 @@ else
   fails=$((fails + 1))
 fi
 
-# RED/GREEN: a 5xx or transport error is retried (GitHub releases answered 504
-# in run 42046392479); a 4xx is a real answer and fails at once.
-if retry_out="$(FRESHNESS_RETRY_DELAY=0 python3 - "$here/lib/toolchain-freshness.py" <<'PY' 2>&1
-import importlib.util, sys, urllib.error, urllib.request
-spec = importlib.util.spec_from_file_location("freshness", sys.argv[1])
-m = importlib.util.module_from_spec(spec)
-spec.loader.exec_module(m)
-calls = []
-def flaky(req, timeout):
-    calls.append(1)
-    if len(calls) < 3:
-        raise urllib.error.HTTPError(req.full_url, 504, "Gateway Time-out", {}, None)
-    return "ok"
-urllib.request.urlopen = flaky
-assert m.urlopen_retrying(urllib.request.Request("https://example.test"), 1) == "ok" and len(calls) == 3
-calls.clear()
-def gone(req, timeout):
-    calls.append(1)
-    raise urllib.error.HTTPError(req.full_url, 404, "Not Found", {}, None)
-urllib.request.urlopen = gone
-try:
-    m.urlopen_retrying(urllib.request.Request("https://example.test"), 1)
-    raise SystemExit("a 404 did not raise")
-except urllib.error.HTTPError:
-    assert len(calls) == 1, calls
-PY
-)"; then
-  echo "ok: 5xx retried three times, 4xx fails at once"
-else
-  echo "FAIL: upstream retry policy: $retry_out" >&2
-  fails=$((fails + 1))
-fi
-
 if [ "$fails" -ne 0 ]; then
   echo "FAIL: $fails build-toolchain freshness checks" >&2
   exit 1
