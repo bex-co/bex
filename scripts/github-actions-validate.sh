@@ -690,7 +690,14 @@ unbounded_ci_jobs="$(python3 - .github/workflows <<'PY'
 import pathlib, re, sys
 # Text scan (no YAML library on the runners): jobs sit at two-space indent
 # under `jobs:`, their keys at four.
+# native-base-image.yml is byte-pinned by w8/m91's D3 custody transition
+# (native-common-qualify.py D3_LEGACY_0941 "after"; test_d3_transition_pin_*):
+# a timeout added there broke native-common (run of 759e447ff). Changing those
+# bytes is w8's custody decision, as for check 6b.
+EXEMPT = {"native-base-image.yml"}
 for path in sorted(pathlib.Path(sys.argv[1]).glob("*.yml")):
+    if path.name in EXEMPT:
+        continue
     job, in_jobs, ci, bounded = None, False, False, False
     def report():
         if job and ci and not bounded:
