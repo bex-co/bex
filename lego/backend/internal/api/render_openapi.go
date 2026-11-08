@@ -192,6 +192,10 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	// handler filter as a deliberate extension so REST matches the documented
 	// w2/m53 list shape (w5/060).
 	"list-key-value": {"suspended": {}},
+	// Render's live list-sandboxes (2026-11, after this pin) adds the exact
+	// `name` filter (Render CLI v2.36 `sandboxes list --name`, w5/m287) and
+	// cursor/limit paging (w32/m284); drop with the next re-pin.
+	"list-sandboxes": {"name": {}, "cursor": {}, "limit": {}},
 
 	"create-postgres": {"dryRun": {}},
 	// confirm arms a protected rename or major-version upgrade, and a

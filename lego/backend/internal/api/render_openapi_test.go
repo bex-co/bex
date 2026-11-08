@@ -1032,3 +1032,27 @@ func TestRetiredPublicRESTAliasesAnswerJSONNotFound(t *testing.T) {
 		}
 	}
 }
+
+// TestSandboxListQueryExtensionsPassTheGate admits Render's live
+// list-sandboxes `name` (CLI v2.36 `sandboxes list --name`, w5/m287) and
+// cursor/limit past the gate, which the pin predates; the production walk
+// found `name` refused there while handler tests passed.
+func TestSandboxListQueryExtensionsPassTheGate(t *testing.T) {
+	mux := http.NewServeMux()
+	mux.HandleFunc("GET /v1/sandboxes", func(w http.ResponseWriter, _ *http.Request) { w.WriteHeader(http.StatusOK) })
+	h, err := newRenderRequestValidator(mux)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for query, want := range map[string]int{
+		"?ownerId=tea-a&name=my%20agent":       http.StatusOK,
+		"?ownerId=tea-a&cursor=sbx-1&limit=20": http.StatusOK,
+		"?ownerId=tea-a&nonsense=1":            http.StatusBadRequest,
+	} {
+		rec := httptest.NewRecorder()
+		h.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, "/v1/sandboxes"+query, nil))
+		if rec.Code != want {
+			t.Errorf("GET /v1/sandboxes%s = %d %s, want %d", query, rec.Code, rec.Body, want)
+		}
+	}
+}
