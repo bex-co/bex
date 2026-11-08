@@ -48,6 +48,7 @@
 #          BEX_CANARY_EVENT_WINDOW  seconds an event may be older than (default 3600)
 #          BEX_CANARY_WOKEN_BUDGET  seconds stage 4 polls the events feed (default 120)
 #          BEX_CANARY_WAKE_THRESHOLD stage 1 seconds that count as a wake (default 3)
+#          BEX_CANARY_POLL_INTERVAL seconds between polls in stages 2-4 (default 5)
 #          BEX_CANARY_REQUIRE_NONCE 1 (default) = stage 2 must find THIS run's
 #                       request line. The nonce rides in the URL PATH, never in a
 #                       query parameter: the edge drops every query parameter
@@ -90,6 +91,7 @@ REQUIRE_NONCE="${BEX_CANARY_REQUIRE_NONCE:-1}"
 # wake is measured by elapsed time, not by retries: anything this slow was not
 # served by an already-running pod.
 WAKE_THRESHOLD="${BEX_CANARY_WAKE_THRESHOLD:-3}"
+POLL="${BEX_CANARY_POLL_INTERVAL:-5}"
 
 canary_require_tools
 
@@ -148,14 +150,12 @@ echo "==> 1/4 wake: request the public host (budget ${WAKE_BUDGET}s)"
 WAKE_START="$(date -u -d '-30 seconds' +%Y-%m-%dT%H:%M:%SZ 2>/dev/null \
   || date -u -v-30S +%Y-%m-%dT%H:%M:%SZ)"
 status=000
-waited=0
 wake_t0="$(date -u +%s)"
-while [ "$waited" -lt "$WAKE_BUDGET" ]; do
+while [ $(($(date -u +%s) - wake_t0)) -lt "$WAKE_BUDGET" ]; do
   status="$(curl -sS -o /dev/null -w '%{http_code}' \
     --connect-timeout 5 --max-time 30 "$CANARY_URL$PROBE_PATH" 2>/dev/null || echo 000)"
   [ "$status" = "200" ] && break
   sleep 3
-  waited=$((waited + 3))
 done
 if [ "$status" != "200" ]; then
   echo "FAIL(1/4 wake): $CANARY_URL answered $status, not 200, within ${WAKE_BUDGET}s."
@@ -199,8 +199,8 @@ while [ "$waited" -lt "$LOG_BUDGET" ]; do
     fi
   fi
   [ -n "$request_hit" ] && [ -n "$app_hit" ] && break
-  sleep 5
-  waited=$((waited + 5))
+  sleep "$POLL"
+  waited=$((waited + POLL))
 done
 if [ -z "$request_hit" ] || [ -z "$app_hit" ]; then
   echo "FAIL(2/4 logs): after ${waited}s bex-api still does not report this service's own traffic."
@@ -251,8 +251,8 @@ while [ "$waited" -lt "$METRIC_BUDGET" ]; do
     fi
   done
   [ -n "$cpu_hit" ] && [ -n "$mem_hit" ] && break
-  sleep 5
-  waited=$((waited + 5))
+  sleep "$POLL"
+  waited=$((waited + POLL))
 done
 if [ -z "$cpu_hit" ] || [ -z "$mem_hit" ]; then
   echo "FAIL(3/4 metrics): after ${waited}s a serving service still has no samples."
@@ -283,21 +283,28 @@ fetch_events() {
     exit 6
   fi
 }
+# poll_events <jq args…> — re-reads the feed until the jq program prints a
+# timestamp or WOKEN_BUDGET runs out; leaves it in $hit and the wait in $waited.
+poll_events() {
+  waited=0
+  while :; do
+    fetch_events
+    hit="$(jq -r "$@" "$TMP_DIR/events.json")"
+    if [ -n "$hit" ] || [ "$waited" -ge "$WOKEN_BUDGET" ]; then return; fi
+    sleep "$POLL"
+    waited=$((waited + POLL))
+  done
+}
 if [ "$wake_seconds" -ge "$WAKE_THRESHOLD" ]; then
   # A service this probe had to wake must report that wake as service_woken
   # (w1/m173): any recent event would also pass while the projection had
   # stopped recording wakes.
   echo "==> 4/4 events: this run's wake must appear as service_woken (budget ${WOKEN_BUDGET}s)"
-  waited=0
-  while :; do
-    fetch_events
-    woken="$(jq -r --arg since "$WAKE_START" '[.[]? | objects | (.event // .)
-      | select(.type == "service_woken" and .timestamp >= $since) | .timestamp]
-      | sort | last // empty' "$TMP_DIR/events.json")"
-    if [ -n "$woken" ] || [ "$waited" -ge "$WOKEN_BUDGET" ]; then break; fi
-    sleep 5
-    waited=$((waited + 5))
-  done
+  # shellcheck disable=SC2016 # $since is a jq variable
+  poll_events --arg since "$WAKE_START" '[.[]? | objects | (.event // .)
+    | select(.type == "service_woken" and .timestamp >= $since) | .timestamp]
+    | sort | last // empty'
+  woken="$hit"
   if [ -z "$woken" ]; then
     echo "FAIL(4/4 events): the service took ${wake_seconds}s to answer, so this run"
     echo "      woke it, but no service_woken since $WAKE_START appeared within"
@@ -312,14 +319,8 @@ else
   # wake just under the threshold still lands its service_woken on the
   # projection's next ~30s pass, so poll instead of reading once.
   echo "==> 4/4 events: the newest event must be within ${EVENT_WINDOW}s (budget ${WOKEN_BUDGET}s)"
-  waited=0
-  while :; do
-    fetch_events
-    newest="$(jq -r '[.[]? | (.event // .).timestamp] | sort | last // empty' "$TMP_DIR/events.json")"
-    if [ -n "$newest" ] || [ "$waited" -ge "$WOKEN_BUDGET" ]; then break; fi
-    sleep 5
-    waited=$((waited + 5))
-  done
+  poll_events '[.[]? | objects | (.event // .).timestamp] | sort | last // empty'
+  newest="$hit"
   if [ -z "$newest" ]; then
     # Events come only from state edges (store/event_facts.go): a service that
     # stayed up for the whole window has an empty feed, as on Render. w1/m173:

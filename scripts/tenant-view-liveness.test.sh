@@ -55,7 +55,7 @@ run() {
   out="$(env PATH="$tmp/bin:$PATH" STUB_STATE="$tmp/state" \
     BEX_CANARY_API_KEY=token BEX_CANARY_SERVICE_ID=srv-test \
     BEX_CANARY_URL=https://canary.example BEX_CANARY_REQUIRE_NONCE=0 \
-    BEX_CANARY_WAKE_THRESHOLD=2 "$@" bash "$SCRIPT" 2>&1)"
+    BEX_CANARY_WAKE_THRESHOLD=1 BEX_CANARY_POLL_INTERVAL=1 "$@" bash "$SCRIPT" 2>&1)"
   got=$?
   set -e
   if [ "$got" -ne "$want" ]; then
@@ -71,15 +71,15 @@ run() {
 
 # #134: one held 200 is a wake; its service_woken lands after the first read.
 run "held 200 counts as a wake and polls for service_woken" 0 "ok: service_woken" \
-  STUB_HOLD=3 STUB_EVENTS_EMPTY=1 STUB_EVENT_TYPE=service_woken BEX_CANARY_WOKEN_BUDGET=10
+  STUB_HOLD=1 STUB_EVENTS_EMPTY=1 STUB_EVENT_TYPE=service_woken BEX_CANARY_WOKEN_BUDGET=10
 # A wake whose projection never records it is still the failure it always was.
 run "held 200 with no service_woken fails" 6 "no service_woken since" \
-  STUB_HOLD=3 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=service_woken BEX_CANARY_WOKEN_BUDGET=5
+  STUB_HOLD=1 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=service_woken BEX_CANARY_WOKEN_BUDGET=2
 # A fast answer polls too, so a late-landing event is not a false red.
 run "fast 200 polls for a recent event" 0 "ok: newest event" \
   STUB_HOLD=0 STUB_EVENTS_EMPTY=1 STUB_EVENT_TYPE=server_available BEX_CANARY_WOKEN_BUDGET=10
-run "fast 200 with an empty feed fails after polling" 6 "after 5s of polling" \
-  STUB_HOLD=0 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=5
+run "fast 200 with an empty feed fails after polling" 6 "after 2s of polling" \
+  STUB_HOLD=0 STUB_EVENTS_EMPTY=99 STUB_EVENT_TYPE=x BEX_CANARY_WOKEN_BUDGET=2
 
 [ "$fails" -eq 0 ] || exit 1
 echo "PASS: tenant-view-liveness stage 4"
