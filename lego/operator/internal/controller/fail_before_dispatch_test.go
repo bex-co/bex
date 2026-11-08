@@ -19,6 +19,8 @@ package controller
 import (
 	"context"
 	"errors"
+	"fmt"
+	"strings"
 	"testing"
 
 	appsv1 "k8s.io/api/apps/v1"
@@ -27,6 +29,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 
+	"github.com/bex-co/bex/lego/operator/internal/registry"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
 
@@ -88,4 +91,39 @@ func TestImageRefusedBeforeDispatchKeepsThePriorReleaseServing(t *testing.T) {
 			t.Fatalf("phase = %q, want Failed for a first release", got.Status.Phase)
 		}
 	})
+}
+
+// w4/534: a missing tag failed with the registry client's "image metadata
+// request returned status 404", naming neither the image nor the fix.
+func TestImageRefusalNamesTheImageAndTheFix(t *testing.T) {
+	const image = "docker.io/traefik/whoami:qa-no-such-tag"
+	for _, tc := range []struct {
+		name   string
+		err    error
+		want   []string
+		absent string
+	}{
+		{"missing tag", &registry.RefusedError{Status: 404}, []string{image, "was not found", "repository or tag does not exist"}, "returned status"},
+		{"refused access", &registry.RefusedError{Status: 401}, []string{image, "refused access", "registry credential for docker.io"}, "returned status"},
+		{"forbidden on another host", &registry.RefusedError{Status: 403}, []string{"registry credential for ghcr.io"}, ""},
+		{"other refusal", &registry.RefusedError{Status: 400}, []string{image, "HTTP 400"}, ""},
+	} {
+		ref := image
+		if tc.name == "forbidden on another host" {
+			ref = "ghcr.io/acme/private:1"
+		}
+		got := imageRefusalError(ref, fmt.Errorf("wrapped: %w", tc.err)).Error()
+		for _, want := range tc.want {
+			if !strings.Contains(got, want) {
+				t.Errorf("%s: %q, want it to contain %q", tc.name, got, want)
+			}
+		}
+		if tc.absent != "" && strings.Contains(got, tc.absent) {
+			t.Errorf("%s: %q still carries %q", tc.name, got, tc.absent)
+		}
+	}
+	other := errors.New("image port discovery cannot parse image")
+	if got := imageRefusalError(image, other); got != other {
+		t.Errorf("a non-refusal = %v, want it unchanged", got)
+	}
 }

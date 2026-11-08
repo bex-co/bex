@@ -464,3 +464,31 @@ const (
 	imageRegistryRetry    = 30 * time.Second
 	imageRegistryRetryMax = 5 * time.Minute
 )
+
+// imageRefusalError says in plain words why the registry refused an image's
+// metadata read, naming the image and what to check, in the style of the
+// startup diagnosis (w4/534); the raw "image metadata request returned status
+// 404" named neither. Registry bodies and tokens never reach it. Any other
+// error is returned unchanged.
+func imageRefusalError(image string, err error) error {
+	var refused *registry.RefusedError
+	if !errors.As(err, &refused) {
+		return err
+	}
+	switch refused.Status {
+	case http.StatusNotFound:
+		return fmt.Errorf("the image %s was not found in its registry: the repository or tag does not exist. Check the image URL and tag, or deploy a digest that exists", image)
+	case http.StatusUnauthorized, http.StatusForbidden:
+		return fmt.Errorf("the registry refused access to the image %s. If the image is private, add a registry credential for %s to this service", image, imageRegistryHost(image))
+	}
+	return fmt.Errorf("the registry refused to read the image %s (HTTP %d). Check the image URL and tag", image, refused.Status)
+}
+
+// imageRegistryHost is the registry an image reference names: its first path
+// segment when that looks like a host, else Docker Hub.
+func imageRegistryHost(image string) string {
+	if host, _, ok := strings.Cut(image, "/"); ok && (strings.ContainsAny(host, ".:") || host == "localhost") {
+		return host
+	}
+	return "docker.io"
+}

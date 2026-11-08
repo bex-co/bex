@@ -705,12 +705,13 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 		return ctrl.Result{}, r.markBuilt(ctx, &app, image)
 	}
 	if app.Spec.HasImagePorts() {
+		requested := image
 		image, port, err = r.resolveImageNetwork(ctx, &app, image)
 		if res, waiting := r.imageRegistryWait(ctx, &app, err); waiting {
 			return res, nil
 		}
 		if err != nil {
-			return r.failBeforeDispatch(ctx, &app, "ImageMetadataUnavailable", err, "the latest image could not be read")
+			return r.failBeforeDispatch(ctx, &app, "ImageMetadataUnavailable", imageRefusalError(requested, err), "the latest image could not be read")
 		}
 	}
 	return r.dispatchRuntime(ctx, &app, image, port)

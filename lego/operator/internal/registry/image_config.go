@@ -59,12 +59,24 @@ type TransientError struct {
 func (e *TransientError) Error() string { return e.err.Error() }
 func (e *TransientError) Unwrap() error { return e.err }
 
+// RefusedError is the registry's definitive refusal: a status that is neither
+// a rate limit nor a server error, such as 404 for a repository or tag that
+// does not exist, or 401/403 for an image it will not serve without a
+// credential. Callers name the image and the fix from Status (w4/534).
+type RefusedError struct {
+	Status int
+	err    error
+}
+
+func (e *RefusedError) Error() string { return e.err.Error() }
+func (e *RefusedError) Unwrap() error { return e.err }
+
 // statusFailure classifies a non-200 registry answer: 429 and 5xx are
 // transient, anything else is the registry's definitive refusal.
 func statusFailure(what string, status int, header http.Header) error {
 	err := fmt.Errorf("%s returned status %d", what, status)
 	if status != http.StatusTooManyRequests && status < 500 {
-		return err
+		return &RefusedError{Status: status, err: err}
 	}
 	retryAfter := time.Duration(0)
 	value := strings.TrimSpace(header.Get("Retry-After"))
