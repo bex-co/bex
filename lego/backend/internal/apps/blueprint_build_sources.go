@@ -356,14 +356,18 @@ func (s *Service) applyStackBuildSource(ctx context.Context, b parsedBuildSource
 		}
 		return carrier, s.seedBuildSourceEnv(ctx, b, carrier)
 	}
-	if b.project != "" {
-		scope, err := s.buildSourceScope(ctx, current)
-		if err != nil {
-			return nil, err
-		}
-		if scope != projectID {
-			return nil, fmt.Errorf("%w: build source %q is not scoped to project %q; a build source's project cannot change", core.ErrBadRequest, b.name, b.project)
-		}
+	// A build source's project cannot change (ADR097 Blueprints §2), either
+	// way: a projects[] entry naming an unscoped or other-project source, or a
+	// root/ungrouped entry naming a project-scoped one (w9/m180 t004).
+	scope, err := s.buildSourceScope(ctx, current)
+	if err != nil {
+		return nil, err
+	}
+	switch {
+	case scope != projectID && b.project != "":
+		return nil, fmt.Errorf("%w: build source %q is not scoped to project %q; a build source's project cannot change", core.ErrBadRequest, b.name, b.project)
+	case scope != projectID:
+		return nil, fmt.Errorf("%w: build source %q is scoped to a project; declare it under that project's buildSources, since a build source's project cannot change", core.ErrBadRequest, b.name)
 	}
 	desired, err := specFromCreate(req)
 	if err != nil {
@@ -464,7 +468,7 @@ func (s *Service) blueprintServiceLink(ctx context.Context, req CreateRequest, f
 		command := linkStartCommand(existing.Spec.Type, req.StartCommand, req.Command)
 		start = &command
 	}
-	link, _, err := s.buildSourceLink(ctx, existing.Labels[core.LabelTenant], req.BuildSourceID, existing.Spec.Type, start, current)
+	link, _, _, err := s.buildSourceLink(ctx, existing.Labels[core.LabelTenant], req.BuildSourceID, existing.Spec.Type, start, current)
 	if err != nil {
 		return nil, fmt.Errorf("service %q: %w", req.Name, err)
 	}

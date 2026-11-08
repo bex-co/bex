@@ -1188,6 +1188,14 @@ func isVerbMethod(recv reflect.Type, m reflect.Method) bool {
 	if recv == reflect.TypeFor[*apps.Service]() && m.Name == "MigrateContainerPolicy" {
 		return false
 	}
+	// The store reconciler's build fan-out hook (ADR097 §5): it runs when a
+	// build source build goes live, as the platform, never for a transport
+	// caller, and returns an error only so an incomplete fan-out is retried
+	// (w9/m180 t002). Its contracts live in deploys/build_sources_test.go and
+	// store/build_fanout_pg_test.go.
+	if recv == reflect.TypeFor[*deploys.Service]() && m.Name == "BuildSucceeded" {
+		return false
+	}
 	// The fleet rebuild (`/api platform-rebuild`) is the platform's own action,
 	// served only on the cluster-internal :8091 listener behind the
 	// control-plane bearer, so it has no caller identity to authorize either.

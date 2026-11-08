@@ -39,6 +39,11 @@ type buildSourceStore struct {
 	links    map[string][]store.App
 	linked   []string
 	carriers int
+	// failLinkCall fails the nth SetAppBuildSource call (1-based; 0 never),
+	// as a transient store error would.
+	failLinkCall int
+	linkCalls    int
+	projectReads int
 }
 
 func newBuildSourceStore() *buildSourceStore {
@@ -49,6 +54,14 @@ func newBuildSourceStore() *buildSourceStore {
 // gets a fresh one.
 func (b *buildSourceStore) CreateApp(ctx context.Context, a store.App) (store.App, error) {
 	id := a.ID
+	if a.Type == store.TypeBuildSource {
+		// PGStore refuses a taken build source name under its lock.
+		for _, row := range b.rows {
+			if row.Type == store.TypeBuildSource && row.TenantID == a.TenantID && row.DisplayName == a.DisplayName {
+				return store.App{}, store.ErrBuildSourceNameTaken
+			}
+		}
+	}
 	row, err := b.recordingStore.CreateApp(ctx, a)
 	if err != nil {
 		return row, err
@@ -205,22 +218,28 @@ func TestBuildSourceSurfaceRefusesServicesAndBadInput(t *testing.T) {
 	both.Image = &BuildSourceImage{ImageURL: "nginx"}
 	badRuntime := monorepoSource
 	badRuntime.Git = &BuildSourceGit{RepoURL: "https://github.com/acme/mono", Runtime: "static"}
-	withServices := monorepoSource
-	withServices.EnvGroupIDs = []string{"evg-1"}
+	// Render: the build-time environment is only valid for git sources.
+	imageWithEnv := CreateBuildSourceRequest{OwnerID: "tea-a", Name: "img", Image: &BuildSourceImage{ImageURL: "nginx"},
+		EnvGroupIDs: []string{"evg-1"}}
+	unknownService := monorepoSource
+	unknownService.Name, unknownService.ServiceIDs = "Mono2", []string{"srv-missing"}
+	before := len(st.rows)
 	for name, req := range map[string]CreateBuildSourceRequest{
-		"no name":     {OwnerID: "tea-a", Git: monorepoSource.Git},
-		"both":        both,
-		"neither":     {OwnerID: "tea-a", Name: "x"},
-		"bad runtime": badRuntime,
+		"no name":            {OwnerID: "tea-a", Git: monorepoSource.Git},
+		"both":               both,
+		"neither":            {OwnerID: "tea-a", Name: "x"},
+		"bad runtime":        badRuntime,
+		"image with env":     imageWithEnv,
+		"unknown service id": unknownService,
 	} {
-		if _, err := svc.CreateBuildSource(ctx, req); !errors.Is(err, core.ErrBadRequest) {
-			t.Errorf("%s: err = %v, want bad request", name, err)
+		if _, err := svc.CreateBuildSource(ctx, req); err == nil {
+			t.Errorf("%s: created, want a refusal", name)
 		}
 	}
-	var coded *core.CodedError
-	if _, err := svc.CreateBuildSource(ctx, withServices); !errors.As(err, &coded) || coded.Code != "BUILD_SOURCE_FIELD_UNSUPPORTED" {
-		t.Errorf("serviceIds on create: err = %v, want BUILD_SOURCE_FIELD_UNSUPPORTED", err)
+	if len(st.rows) != before {
+		t.Fatalf("a refused create wrote a carrier: %d rows, had %d", len(st.rows), before)
 	}
+	var coded *core.CodedError
 	st.carriers = int(store.QuotaCapsForPlan(store.PlanHobby).BuildSources)
 	if _, err := svc.CreateBuildSource(ctx, monorepoSource); !errors.As(err, &coded) || coded.Code != BuildSourceLimitCode {
 		t.Errorf("past the ceiling: err = %v, want %s", err, BuildSourceLimitCode)
@@ -228,8 +247,9 @@ func TestBuildSourceSurfaceRefusesServicesAndBadInput(t *testing.T) {
 }
 
 func (b *buildSourceStore) GetProject(_ context.Context, id string) (store.Project, error) {
+	b.projectReads++
 	if id == "prj-a" {
-		return store.Project{ID: id, TenantID: "tea-a"}, nil
+		return store.Project{ID: id, TenantID: "tea-a", Name: "p"}, nil
 	}
 	return store.Project{ID: id, TenantID: "tea-other"}, nil
 }
@@ -338,8 +358,18 @@ func TestServiceCreateLinksABuildSource(t *testing.T) {
 }
 
 func (b *buildSourceStore) SetAppBuildSource(_ context.Context, id, carrierID, image string) error {
+	b.linkCalls++
+	if b.linkCalls == b.failLinkCall {
+		return errors.New("connection reset")
+	}
 	b.linked = append(b.linked, id+"→"+carrierID)
 	return nil
+}
+
+// DeleteApp forgets the row, so its name is free again, as in PGStore.
+func (b *buildSourceStore) DeleteApp(ctx context.Context, id string) error {
+	delete(b.rows, id)
+	return b.recordingStore.DeleteApp(ctx, id)
 }
 
 // t005: PATCH buildSourceId links an existing service — only startCommand may

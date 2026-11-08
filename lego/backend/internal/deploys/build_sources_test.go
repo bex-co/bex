@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"errors"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/graphql-go/graphql"
@@ -393,5 +394,68 @@ func TestBuildViewCarriesTheCommitURL(t *testing.T) {
 	image := buildView(sampleBuildSource("bds-img", ""), "bds-img", DeployView{ID: "dep-3", CommitID: "abc123"})
 	if image.BuildRun != nil {
 		t.Fatalf("an image-source build has a buildRun: %+v", image.BuildRun)
+	}
+}
+
+// w9/m180: two fan-outs of one build (a resync overlapping a slow first run
+// whose lease expired) race for the same services. The build is selected
+// under each service's trigger lock, so between them every linked auto-deploy
+// service gets exactly one deploy.
+func TestConcurrentFanoutsOfOneBuildDeployEachServiceOnce(t *testing.T) {
+	const tenant, built = "tea-a", "zot/src@sha256:new"
+	cr := func(name string) string { return store.CRName(tenant, name) }
+	ds := newFakeStore()
+	ds.links = []store.App{
+		{ID: "srv-1", TenantID: tenant, Name: "web", BuildSourceID: "bds-1", BuildSourceImage: "zot/src@sha256:old"},
+		{ID: "srv-2", TenantID: tenant, Name: "api", BuildSourceID: "bds-1", BuildSourceImage: "zot/src@sha256:old"},
+	}
+	svc, _ := newService(ds, builtCarrier("bds-1", built),
+		linkedService(cr("web"), "srv-1", "bds-1", "zot/src@sha256:old", true),
+		linkedService(cr("api"), "srv-2", "bds-1", "zot/src@sha256:old", true))
+	b := store.BuiltSource{TenantID: tenant, CarrierID: "bds-1", DeployID: "dep-carrier", Namespace: "default", Carrier: "bds-1", Image: built}
+	var wg sync.WaitGroup
+	errs := make(chan error, 2)
+	for range 2 {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			errs <- svc.BuildSucceeded(context.Background(), b)
+		}()
+	}
+	wg.Wait()
+	close(errs)
+	for err := range errs {
+		if err != nil {
+			t.Fatalf("fan-out: %v", err)
+		}
+	}
+	for _, id := range []string{"srv-1", "srv-2"} {
+		if n := len(ds.byApp[id]); n != 1 {
+			t.Errorf("%s got %d deploys from two fan-outs of one build, want 1", id, n)
+		}
+	}
+}
+
+// w9/m180: a refusal a retry would meet again completes the fan-out instead
+// of failing it (which the reconciler would re-run every lease period): a
+// linked service whose CR is gone, and a workspace under billing enforcement.
+func TestFanoutCompletesPastPermanentRefusals(t *testing.T) {
+	const tenant, built = "tea-a", "zot/src@sha256:new"
+	cr := func(name string) string { return store.CRName(tenant, name) }
+	ds := newFakeStore()
+	ds.links = []store.App{
+		{ID: "srv-1", TenantID: tenant, Name: "web", BuildSourceID: "bds-1", BuildSourceImage: "zot/src@sha256:old"},
+		{ID: "srv-9", TenantID: tenant, Name: "gone", BuildSourceID: "bds-1", BuildSourceImage: "zot/src@sha256:old"},
+	}
+	svc, _ := newService(ds, builtCarrier("bds-1", built), linkedService(cr("web"), "srv-1", "bds-1", "zot/src@sha256:old", true))
+	b := store.BuiltSource{TenantID: tenant, CarrierID: "bds-1", DeployID: "dep-carrier", Namespace: "default", Carrier: "bds-1", Image: built}
+	if err := svc.BuildSucceeded(context.Background(), b); err != nil {
+		t.Fatalf("a missing linked service failed the fan-out: %v", err)
+	}
+	if len(ds.byApp["srv-1"]) != 1 {
+		t.Fatalf("web deploys = %d, want 1 beside the missing service", len(ds.byApp["srv-1"]))
+	}
+	if !permanentFanoutError(core.NewBillingEnforcedError()) || permanentFanoutError(errors.New("connection reset")) {
+		t.Fatal("billing enforcement must complete the fan-out and a transport error must retry it")
 	}
 }

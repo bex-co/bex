@@ -2135,6 +2135,7 @@ export type MutationCreateBlueprintArgs = {
 
 
 export type MutationCreateBuildSourceArgs = {
+  envGroupIds?: InputMaybe<Array<Scalars['String']['input']>>;
   envVars?: InputMaybe<Array<InputMaybe<EnvVarInput>>>;
   git?: InputMaybe<BuildSourceGitInput>;
   image?: InputMaybe<BuildSourceImageInput>;
@@ -2142,6 +2143,7 @@ export type MutationCreateBuildSourceArgs = {
   ownerId: Scalars['String']['input'];
   projectId?: InputMaybe<Scalars['String']['input']>;
   secretFiles?: InputMaybe<Array<InputMaybe<SecretFileInput>>>;
+  serviceIds?: InputMaybe<Array<Scalars['String']['input']>>;
 };
 
 
@@ -2269,6 +2271,7 @@ export type MutationCreateSshKeyArgs = {
 
 export type MutationCreateSandboxArgs = {
   idleTimeoutSeconds?: InputMaybe<Scalars['Int']['input']>;
+  name?: InputMaybe<Scalars['String']['input']>;
   networkPolicy?: InputMaybe<SandboxNetworkPolicyInput>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   plan?: InputMaybe<Scalars['String']['input']>;
@@ -4420,6 +4423,7 @@ export type QuerySandboxArgs = {
 
 
 export type QuerySandboxesArgs = {
+  name?: InputMaybe<Scalars['String']['input']>;
   ownerId?: InputMaybe<Scalars['String']['input']>;
   status?: InputMaybe<Array<Scalars['String']['input']>>;
 };
@@ -4710,6 +4714,7 @@ export type Sandbox = {
   id: Scalars['String']['output'];
   idleTimeoutSeconds: Maybe<Scalars['Int']['output']>;
   image: Maybe<Scalars['String']['output']>;
+  name: Maybe<Scalars['String']['output']>;
   networkPolicy: Maybe<SandboxNetworkPolicy>;
   owner: Maybe<Scalars['String']['output']>;
   plan: Maybe<Scalars['String']['output']>;

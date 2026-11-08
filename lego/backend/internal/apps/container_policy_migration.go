@@ -64,7 +64,11 @@ func (s *Service) MigrateContainerPolicy(ctx context.Context, serviceID string, 
 		plan.NoOp = true
 		return plan, nil
 	}
-	if err := containerPolicyMigratable(a); err != nil {
+	carrier, err := s.linkedCarrier(ctx, a)
+	if err != nil {
+		return plan, err
+	}
+	if err := containerPolicyMigratable(a, carrier); err != nil {
 		return plan, err
 	}
 	if !apply {
@@ -78,7 +82,7 @@ func (s *Service) MigrateContainerPolicy(ctx context.Context, serviceID string, 
 		return plan, err
 	}
 	err = s.rollouts().PatchLocked(ctx, s.Client, a, store.TriggerSettingsChange, func(a *appv1alpha1.App) error {
-		if err := containerPolicyMigratable(a); err != nil {
+		if err := containerPolicyMigratable(a, carrier); err != nil {
 			return err
 		}
 		a.Spec.ContainerPolicy = appv1alpha1.ContainerPolicyRenderV1
@@ -111,11 +115,25 @@ func (s *Service) appByServiceID(ctx context.Context, serviceID string) (*appv1a
 	return nil, fmt.Errorf("%w: service %s not found", core.ErrNotFound, serviceID)
 }
 
+// linkedCarrier is the build source carrier a linked service deploys from, in
+// the service's own namespace; nil for a service that builds itself.
+func (s *Service) linkedCarrier(ctx context.Context, a *appv1alpha1.App) (*appv1alpha1.App, error) {
+	if a.Spec.BuildSource == nil {
+		return nil, nil
+	}
+	var carrier appv1alpha1.App
+	if err := s.Client.Get(ctx, client.ObjectKey{Namespace: a.Namespace, Name: a.Spec.BuildSource.Name}, &carrier); err != nil {
+		return nil, fmt.Errorf("build source of %s: %w", a.Name, err)
+	}
+	return &carrier, nil
+}
+
 // containerPolicyMigratable refuses what the creation default would not have
 // given render-v1, and a service whose rollout, pending change or suspension
-// would race the policy change.
-func containerPolicyMigratable(a *appv1alpha1.App) error {
-	if !runsContainerPolicy(a.Spec) {
+// would race the policy change. A linked service is judged by its build
+// source's runtime (sourceForImageRules).
+func containerPolicyMigratable(a, carrier *appv1alpha1.App) error {
+	if !runsContainerPolicy(sourceForImageRules(a.Spec, carrier)) {
 		return fmt.Errorf("%w: only Docker and image services run a container policy", core.ErrBadRequest)
 	}
 	if a.Spec.Suspended {

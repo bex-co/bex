@@ -810,7 +810,7 @@ WITH feed AS (
            0::int                              AS agent_turn
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
-    WHERE a.tenant_id = ANY($5)
+    WHERE a.tenant_id = ANY($5) AND ` + serviceAppsOnly + `
   UNION ALL
     SELECT d.finished_at,
            d.id || ':` + EventPhaseEnded + `',
@@ -829,7 +829,7 @@ WITH feed AS (
            0::int
     FROM deploys d
     JOIN apps a ON a.id = d.app_id
-    WHERE d.finished_at IS NOT NULL AND a.tenant_id = ANY($5)
+    WHERE d.finished_at IS NOT NULL AND a.tenant_id = ANY($5) AND ` + serviceAppsOnly + `
   UNION ALL
     SELECT e.at,
            e.id || ':',

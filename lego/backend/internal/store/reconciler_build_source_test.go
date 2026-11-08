@@ -18,6 +18,7 @@ package store
 
 import (
 	"context"
+	"errors"
 	"sync"
 	"testing"
 	"time"
@@ -51,14 +52,17 @@ func TestProjectorCarriesTheBuildSourceLink(t *testing.T) {
 type fakeBuildFanout struct {
 	mu    sync.Mutex
 	calls []string
+	err   error // what BuildSucceeded returns
 	c     chan struct{}
 }
 
-func (f *fakeBuildFanout) BuildSucceeded(_ context.Context, b BuiltSource) {
+func (f *fakeBuildFanout) BuildSucceeded(_ context.Context, b BuiltSource) error {
 	f.mu.Lock()
 	f.calls = append(f.calls, b.Namespace+"/"+b.Carrier+"@"+b.Image+"#"+b.Commit.Hash)
+	err := f.err
 	f.mu.Unlock()
 	f.c <- struct{}{}
+	return err
 }
 
 // A carrier's deploy closing live fans its build out exactly once; a
@@ -112,5 +116,73 @@ func TestRecordDeployFansOutACarrierBuildOnce(t *testing.T) {
 	defer fanout.mu.Unlock()
 	if len(fanout.calls) != 1 || fanout.calls[0] != carrier {
 		t.Fatalf("fan-out calls = %v, want exactly [%s]", fanout.calls, carrier)
+	}
+}
+
+// w9/m180 t002: a fan-out that did not complete (a failed service, or a
+// bex-api restart mid run, which leaves the claim without a completion) is
+// re-run by the resync once its lease expires, exactly once, and a live lease
+// keeps the resync away.
+func TestResyncFinishesAnInterruptedFanoutOnce(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	fanout := &fakeBuildFanout{c: make(chan struct{}, 16), err: errors.New("service web: transient")}
+	rec.BuildFanout = fanout
+	rec.FanoutLease = time.Hour
+	ten, _ := st.CreateTenant(ctx, "acme", "free")
+	_, _ = st.CreateApp(ctx, App{TenantID: ten.ID, Name: "bds-1", Type: TypeBuildSource, Image: "img:1", Branch: "main", Port: 80, Replicas: 1, Tier: "free"})
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	var list appv1alpha1.AppList
+	if err := cl.List(ctx, &list); err != nil || len(list.Items) != 1 {
+		t.Fatalf("apps = %d, %v; want 1", len(list.Items), err)
+	}
+	carrier := &list.Items[0]
+	carrier.Status.Phase = appv1alpha1.PhaseRunning
+	carrier.Status.Image = "zot/src@sha256:built"
+	if err := cl.Status().Update(ctx, carrier); err != nil {
+		t.Fatal(err)
+	}
+	calls := func() int {
+		rec.fanouts.Wait()
+		fanout.mu.Lock()
+		defer fanout.mu.Unlock()
+		return len(fanout.calls)
+	}
+	for range 2 {
+		if err := rec.ReconcileOnce(ctx); err != nil {
+			t.Fatalf("reconcile: %v", err)
+		}
+	}
+	if n := calls(); n != 1 {
+		t.Fatalf("the closing pass fanned out %d times, want 1", n)
+	}
+
+	// The failed run left the build open but its lease is live: no re-run.
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatalf("reconcile: %v", err)
+	}
+	if n := calls(); n != 1 {
+		t.Fatalf("the resync re-ran under a live lease: %d calls", n)
+	}
+
+	// The lease expires (as after a restart): the resync re-runs it once, the
+	// run completes, and later passes leave it alone.
+	fanout.mu.Lock()
+	fanout.err = nil
+	fanout.mu.Unlock()
+	rec.FanoutLease = time.Nanosecond
+	for range 3 {
+		if err := rec.ReconcileOnce(ctx); err != nil {
+			t.Fatalf("reconcile: %v", err)
+		}
+		rec.fanouts.Wait()
+	}
+	fanout.mu.Lock()
+	defer fanout.mu.Unlock()
+	want := carrier.Namespace + "/" + carrier.Name + "@zot/src@sha256:built#"
+	if len(fanout.calls) != 2 || fanout.calls[1] != want {
+		t.Fatalf("fan-out calls = %v, want the failed run then exactly one re-run of %s", fanout.calls, want)
 	}
 }

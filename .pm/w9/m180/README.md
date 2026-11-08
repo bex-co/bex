@@ -1,20 +1,20 @@
 # w9 · m180 — Build Sources: close the gaps between ADR097 and the code
 
-**Worker:** worker9 **Goal:** Build Sources behave as ADR097 and Render say on every path. A create can link services, a successful build always reaches every auto-deploy linked service, linked image/Docker services get the right port and container policy, and Blueprints and the API agree on names, scope and export. **Status:** todo
+**Worker:** worker9 **Goal:** Build Sources behave as ADR097 and Render say on every path. A create can link services, a successful build always reaches every auto-deploy linked service, linked image/Docker services get the right port and container policy, and Blueprints and the API agree on names, scope and export. **Status:** in progress — t001–t009 done; t010 after the production check
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | Create accepts `serviceIds` and `envGroupIds`, as on Render | 45m | — |
-| t002 | Durable build fan-out: no linked service misses a build across a bex-api restart | 60m | — |
-| t003 | A service linked to a Docker or image source gets the carrier's port mode and container policy | 45m | — |
-| t004 | Build source names are unique on every surface; Blueprint scope and export keep project and `fromGroup` | 60m | — |
-| t005 | Close the service-vs-carrier quota race | 45m | — |
-| t006 | Guard SQL enumerations of `apps` against carriers; fix ADR097 and ADR018 text drift | 30m | — |
-| t007 | Render parity: REST, GraphQL, MCP and dashboard against Render's Build Sources | 20m | t001, t002, t003, t004, t005, t006 |
-| t008 | Simplify | 15m | t007 |
-| t009 | Test coverage | 45m | t007, t008 |
+| t001 | Create accepts `serviceIds` and `envGroupIds`, as on Render — **DONE** | 45m | — |
+| t002 | Durable build fan-out: no linked service misses a build across a bex-api restart — **DONE** | 60m | — |
+| t003 | A service linked to a Docker or image source gets the carrier's port mode and container policy — **DONE** | 45m | — |
+| t004 | Build source names are unique on every surface; Blueprint scope and export keep project and `fromGroup` — **DONE** | 60m | — |
+| t005 | Close the service-vs-carrier quota race — **DONE** | 45m | — |
+| t006 | Guard SQL enumerations of `apps` against carriers; fix ADR097 and ADR018 text drift — **DONE** | 30m | — |
+| t007 | Render parity: REST, GraphQL, MCP and dashboard against Render's Build Sources — **DONE** | 20m | t001, t002, t003, t004, t005, t006 |
+| t008 | Simplify — **DONE** | 15m | t007 |
+| t009 | Test coverage — **DONE** | 45m | t007, t008 |
 | t010 | Closeout | 10m | t009 |
 
 ## Definition of done

@@ -1085,6 +1085,11 @@ func (s *PGStore) CreateApp(ctx context.Context, a App) (App, error) {
 			if err := refuseTakenServiceName(ctx, tx, a.TenantID, a.ID, a.Name); err != nil {
 				return err
 			}
+			if a.Type == TypeBuildSource {
+				if err := refuseTakenBuildSourceName(ctx, tx, a.TenantID, a.ID, a.DisplayName); err != nil {
+					return err
+				}
+			}
 			if err := tx.QueryRow(ctx,
 				`INSERT INTO apps (id, tenant_id, name, slug, type, repo, image, registry_credential_id, branch, port, replicas, tier, idle_ttl_seconds, suspended, project_id, environment_id, container_policy, port_mode, creation_pending,
 				   build_source_id, build_source_image, scope_project_id, display_name)
@@ -1165,6 +1170,31 @@ func (s *PGStore) SetAppBuildSourceImage(ctx context.Context, id, carrierID, ima
 		return fmt.Errorf("app %s: %w", id, ErrNotFound)
 	}
 	return nil
+}
+
+// SelectAppBuildSourceImage records image as linked service id's build only
+// when it is not already the service's build (ADR097 §5, w9/m180). False when
+// the row already has it, so of two fan-outs of one build racing for the same
+// service, only one deploys it. ErrNotFound when the row no longer links
+// carrierID.
+func (s *PGStore) SelectAppBuildSourceImage(ctx context.Context, id, carrierID, image string) (bool, error) {
+	var linked, changed bool
+	err := s.Pool.QueryRow(ctx, `
+		WITH linked AS (
+		  SELECT id FROM apps WHERE id = $1 AND build_source_id = $2
+		), changed AS (
+		  UPDATE apps SET build_source_image = $3, updated_at = now()
+		  WHERE id IN (SELECT id FROM linked) AND build_source_image IS DISTINCT FROM $3
+		  RETURNING id
+		)
+		SELECT EXISTS (SELECT 1 FROM linked), EXISTS (SELECT 1 FROM changed)`, id, carrierID, image).Scan(&linked, &changed)
+	if err != nil {
+		return false, classify("app", err)
+	}
+	if !linked {
+		return false, fmt.Errorf("app %s: %w", id, ErrNotFound)
+	}
+	return changed, nil
 }
 
 // ListBuildSourceLinks returns the services linked to build source carrierID,
@@ -2128,6 +2158,11 @@ func (s *PGStore) SetAppDisplayName(ctx context.Context, id string, displayName 
 				return err
 			}
 		}
+		if appType == TypeBuildSource {
+			if err := refuseTakenBuildSourceName(ctx, tx, tenantID, id, displayName); err != nil {
+				return err
+			}
+		}
 		if _, err := tx.Exec(ctx,
 			`UPDATE apps SET display_name = $2, updated_at = now() WHERE id = $1`,
 			id, displayName); err != nil {
@@ -2193,6 +2228,36 @@ func refuseTakenServiceName(ctx context.Context, tx pgx.Tx, tenantID, selfID, na
 	}
 	if taken {
 		return fmt.Errorf("service name %q: %w", name, ErrConflict)
+	}
+	return nil
+}
+
+// ErrBuildSourceNameTaken refuses a build source name another build source in
+// the workspace already has. Render's Blueprint schema makes a build source's
+// name unique in the workspace, and a sync finds a carrier by it, so the API
+// enforces the same rule (w9/m180 t004). It wraps ErrConflict.
+var ErrBuildSourceNameTaken = fmt.Errorf("build source name: %w", ErrConflict)
+
+// refuseTakenBuildSourceName is ErrBuildSourceNameTaken when another build
+// source in tenantID (not selfID) is named name, checked under a per-workspace
+// lock so two concurrent creates or renames cannot both take it. A build
+// source's name is its display_name, or its public name when that is empty
+// (as the API reads it); service names are a separate space.
+func refuseTakenBuildSourceName(ctx context.Context, tx pgx.Tx, tenantID, selfID, name string) error {
+	if name == "" {
+		return nil
+	}
+	if _, err := tx.Exec(ctx, `SELECT pg_advisory_xact_lock(hashtextextended($1, 0))`, "build-source-names:"+tenantID); err != nil {
+		return err
+	}
+	var taken bool
+	if err := tx.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM apps a WHERE a.tenant_id = $1 AND a.id <> $2 AND (a.display_name = $3 OR (a.display_name = '' AND a.name = $3)) AND `+buildSourcesOnly+`)`,
+		tenantID, selfID, name).Scan(&taken); err != nil {
+		return err
+	}
+	if taken {
+		return ErrBuildSourceNameTaken
 	}
 	return nil
 }

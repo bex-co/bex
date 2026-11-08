@@ -126,10 +126,11 @@ type CreateBuildSourceRequest struct {
 	// create seeds its own (w2/m254 t004).
 	EnvVars     []envVarInput     `json:"envVars,omitempty"`
 	SecretFiles []secretFileInput `json:"secretFiles,omitempty"`
-	// ServiceIDs and EnvGroupIDs are refused by name until linking at create
-	// is served (w2/m254 t005); link afterwards.
-	ServiceIDs  []string `json:"serviceIds,omitempty"`
-	EnvGroupIDs []string `json:"envGroupIds,omitempty"`
+	// ServiceIDs are linked to the new build source, and EnvGroupIDs linked
+	// into its build-time environment (git sources only), as Render's create
+	// does (w9/m180 t001). Every link is checked before anything is written.
+	ServiceIDs  []string `json:"serviceIds,omitempty" jsonschema:"service ids (srv-…) to link to the new build source; each is checked as a PATCH buildSourceId is, and none deploys until the deploy API is called"`
+	EnvGroupIDs []string `json:"envGroupIds,omitempty" jsonschema:"environment group ids (evg-…) to link into the build-time environment; git sources only, and not groups scoped to an environment"`
 }
 
 // UpdateBuildSourceRequest is Render's update-build-source body: each
@@ -146,6 +147,41 @@ var buildSourceRuntimes = []string{"docker", "elixir", "go", "node", "python", "
 // BuildSourceLimitCode refuses a build source past the workspace's ceiling.
 const BuildSourceLimitCode = "BUILD_SOURCE_LIMIT"
 
+// BuildSourceNameTakenCode refuses a name another build source in the
+// workspace has: Render's Blueprint schema makes it unique, and a sync finds a
+// carrier by it (ADR097 Blueprints §1, w9/m180 t004). A 409 conflict, as an
+// env group's ENV_GROUP_NAME_EXISTS is; Render's create and update document
+// no code for it.
+const BuildSourceNameTakenCode = "BUILD_SOURCE_NAME_TAKEN"
+
+// BuildSourcePartiallyLinkedCode reports a create that wrote its build source
+// and linked some of its serviceIds before a later link failed.
+const BuildSourcePartiallyLinkedCode = "BUILD_SOURCE_PARTIALLY_LINKED"
+
+func errBuildSourceNameTaken(name string) error {
+	return core.NewConflictError(BuildSourceNameTakenCode,
+		fmt.Sprintf("a build source named %q already exists in this workspace", name), map[string]any{"name": name})
+}
+
+// checkBuildSourceName refuses name when another build source than selfID in
+// the acting workspace has it, so a rename is refused before its CR patch. A
+// create relies on the store's locked check (store.ErrBuildSourceNameTaken),
+// which refuses before the row is written.
+func (s *Service) checkBuildSourceName(ctx context.Context, name, selfID string) error {
+	tenantID, _ := s.Tenant(ctx)
+	var list appv1alpha1.AppList
+	if err := s.ListByTenant(ctx, &list, tenantID); err != nil {
+		return err
+	}
+	for i := range list.Items {
+		a := &list.Items[i]
+		if core.IsBuildSource(a) && core.NotFoundIfDeleting(a) == nil && a.Name != selfID && buildSourceName(a) == name {
+			return errBuildSourceNameTaken(name)
+		}
+	}
+	return nil
+}
+
 // CreateBuildSource is Render's create: a carrier built from git or named by
 // an image. It builds once it exists, as a new service does.
 func (s *Service) CreateBuildSource(ctx context.Context, req CreateBuildSourceRequest) (BuildSourceView, error) {
@@ -159,9 +195,10 @@ func (s *Service) CreateBuildSource(ctx context.Context, req CreateBuildSourceRe
 		return BuildSourceView{}, fmt.Errorf("%w: name is required", core.ErrBadRequest)
 	case (req.Git == nil) == (req.Image == nil):
 		return BuildSourceView{}, fmt.Errorf("%w: exactly one of git or image is required", core.ErrBadRequest)
-	case len(req.ServiceIDs) > 0 || len(req.EnvGroupIDs) > 0:
-		return BuildSourceView{}, core.NewBadRequestError("BUILD_SOURCE_FIELD_UNSUPPORTED",
-			"serviceIds and envGroupIds are not supported on create yet; create the build source, then link services and env groups", nil)
+	case req.Image != nil && (len(req.EnvVars) > 0 || len(req.SecretFiles) > 0 || len(req.EnvGroupIDs) > 0):
+		// Render: the build-time environment is only valid for git sources;
+		// the request fails if any is provided with image.
+		return BuildSourceView{}, fmt.Errorf("%w: envVars, secretFiles and envGroupIds are only valid for git build sources", core.ErrBadRequest)
 	}
 	env, err := toEnvVars(req.EnvVars)
 	if err != nil {
@@ -193,11 +230,126 @@ func (s *Service) CreateBuildSource(ctx context.Context, req CreateBuildSourceRe
 		}
 		create.Image, create.RegistryCredentialID = req.Image.ImageURL, req.Image.RegistryCredentialID
 	}
+	native := req.Git != nil && blueprintNativeRuntime(req.Git.Runtime)
+	links, err := s.checkBuildSourceCreateLinks(ctx, req.ServiceIDs, native)
+	if err != nil {
+		return BuildSourceView{}, err
+	}
+	groups, err := s.buildSourceCreateGroups(ctx, req.EnvGroupIDs)
+	if err != nil {
+		return BuildSourceView{}, err
+	}
 	id, err := s.createBuildSourceCarrier(ctx, create, req.Name, req.ProjectID)
 	if err != nil {
 		return BuildSourceView{}, err
 	}
+	// The group links only touch the carrier: a refusal there (an env group
+	// scoped to an environment, which Render refuses) deletes it again, so the
+	// create writes nothing. The service links were checked above.
+	for _, g := range groups {
+		if err := s.EnvGroups.LinkEnvGroup(core.WithBuildSources(ctx), g, id); err != nil {
+			if undo := s.DeleteBuildSource(ctx, id); undo != nil {
+				log.Printf("apps: delete build source %s after a refused env group link: %v", id, undo)
+			}
+			return BuildSourceView{}, fmt.Errorf("linking env group %q: %w", g, err)
+		}
+	}
+	// Every service link was checked above, so a failure here is transient.
+	// Before any link lands, the carrier is deleted again and a retry starts
+	// clean; a link rewrites the service's own source, which no undo can
+	// restore, so after one the source stays and the error names what linked.
+	for i, service := range links {
+		if _, err := s.LinkBuildSource(ctx, service, id, nil, false); err != nil {
+			if i == 0 {
+				if undo := s.DeleteBuildSource(ctx, id); undo != nil {
+					log.Printf("apps: delete build source %s after a failed service link: %v", id, undo)
+				}
+				return BuildSourceView{}, fmt.Errorf("linking service %s: %w", service, err)
+			}
+			return BuildSourceView{}, core.NewConflictError(BuildSourcePartiallyLinkedCode,
+				fmt.Sprintf("build source %s was created and linked to %s; linking service %s failed: %v", id, strings.Join(links[:i], ", "), service, err),
+				map[string]any{"buildSourceId": id, "linkedServiceIds": links[:i], "failedServiceId": service})
+		}
+	}
 	return s.GetBuildSource(ctx, id)
+}
+
+// checkBuildSourceCreateLinks checks each service a create links before the
+// carrier exists, so a refused link writes nothing: linkableService's checks,
+// plus Render's start-command rule for a source that is native or not.
+func (s *Service) checkBuildSourceCreateLinks(ctx context.Context, serviceIDs []string, native bool) ([]string, error) {
+	seen := map[string]bool{}
+	for _, id := range serviceIDs {
+		if seen[id] {
+			return nil, fmt.Errorf("%w: serviceIds lists %s twice", core.ErrBadRequest, id)
+		}
+		seen[id] = true
+		a, err := s.linkableService(ctx, id)
+		if err != nil {
+			return nil, err
+		}
+		existing := linkStartCommand(a.Spec.Type, a.Spec.StartCommand, a.Spec.Command)
+		if _, err := buildSourceLinkCommand(native, nil, existing, "being created"); err != nil {
+			return nil, fmt.Errorf("service %s: %w", id, err)
+		}
+	}
+	return serviceIDs, nil
+}
+
+// linkableService authorizes linking service name to a build source and
+// checks what every link requires of it: it is not in a protected
+// environment (linking repoints what it runs, the rule a repo or image change
+// follows, w4/m126, w8/187) and its type builds from a build source.
+func (s *Service) linkableService(ctx context.Context, name string) (*appv1alpha1.App, error) {
+	a, err := s.AuthorizeApp(core.WithDeferredAllowedWriteAudit(ctx), core.RelCanCreate, name)
+	if err != nil {
+		return nil, err
+	}
+	if err := s.requireUnprotected(ctx, a, "repoint"); err != nil {
+		return nil, err
+	}
+	if err := linkableType(a.Spec.Type); err != nil {
+		return nil, err
+	}
+	return a, nil
+}
+
+func linkableType(svcType string) error {
+	if !slices.Contains(buildSourceLinkTypes, svcType) {
+		return fmt.Errorf("%w: a %s cannot build from a build source", core.ErrBadRequest, svcType)
+	}
+	return nil
+}
+
+// buildSourceCreateGroups resolves a create's envGroupIds to the names the
+// link writes by, refusing an id that names no env group in the workspace
+// before anything is written.
+func (s *Service) buildSourceCreateGroups(ctx context.Context, groupIDs []string) ([]string, error) {
+	if len(groupIDs) == 0 {
+		return nil, nil
+	}
+	if s.EnvGroups == nil {
+		return nil, fmt.Errorf("%w: env groups need the secret store", core.ErrUnavailable)
+	}
+	byName, err := s.EnvGroups.GroupIDsByName(ctx)
+	if err != nil {
+		return nil, err
+	}
+	names := make(map[string]string, len(byName))
+	for name, id := range byName {
+		names[id] = name
+	}
+	var out []string
+	for _, id := range groupIDs {
+		name, ok := names[id]
+		if !ok {
+			return nil, fmt.Errorf("%w: envGroupIds: env group %s is not in this workspace", core.ErrBadRequest, id)
+		}
+		if !slices.Contains(out, name) {
+			out = append(out, name)
+		}
+	}
+	return out, nil
 }
 
 // createBuildSourceCarrier creates the carrier of build source name, scoped to
@@ -213,6 +365,9 @@ func (s *Service) createBuildSourceCarrier(ctx context.Context, create CreateReq
 		return "", err
 	}
 	if _, err := s.create(ctx, create); err != nil {
+		if errors.Is(err, store.ErrBuildSourceNameTaken) {
+			return "", errBuildSourceNameTaken(name)
+		}
 		return "", err
 	}
 	return id, nil
@@ -422,6 +577,11 @@ func (s *Service) UpdateBuildSource(ctx context.Context, id string, req UpdateBu
 		if name = strings.TrimSpace(*req.Name); name == "" {
 			return BuildSourceView{}, fmt.Errorf("%w: name cannot be empty", core.ErrBadRequest)
 		}
+		if name != buildSourceName(a) {
+			if err := s.checkBuildSourceName(ctx, name, a.Name); err != nil {
+				return BuildSourceView{}, err
+			}
+		}
 	}
 	patch, build, err := buildSourcePatch(a, req)
 	if err != nil {
@@ -458,6 +618,9 @@ func (s *Service) UpdateBuildSource(ctx context.Context, id string, req UpdateBu
 		}
 		if name != "" {
 			if err := s.Store.SetAppDisplayName(ctx, id, name); err != nil {
+				if errors.Is(err, store.ErrBuildSourceNameTaken) {
+					return BuildSourceView{}, errBuildSourceNameTaken(name)
+				}
 				return BuildSourceView{}, err
 			}
 		}
@@ -692,21 +855,40 @@ var buildSourceLinkTypes = []string{"", appv1alpha1.TypeWebService, appv1alpha1.
 // none until it has built) and the service's start command. start nil keeps
 // existing for a native source and drops it for a Docker or image one, which
 // takes none; a native source requires one (Render).
-func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType string, start *string, existing string) (*appv1alpha1.BuildSourceLink, string, error) {
-	if !slices.Contains(buildSourceLinkTypes, svcType) {
-		return nil, "", fmt.Errorf("%w: a %s cannot build from a build source", core.ErrBadRequest, svcType)
+//
+// It also returns the carrier, whose source fields the image rules read for
+// the linked service (sourceForImageRules).
+func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType string, start *string, existing string) (*appv1alpha1.BuildSourceLink, string, *appv1alpha1.App, error) {
+	if err := linkableType(svcType); err != nil {
+		return nil, "", nil, err
 	}
 	_, carrier, err := s.buildSourceApp(ctx, core.RelCanView, id)
 	if errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrForbidden) {
-		return nil, "", fmt.Errorf("%w: buildSourceId %s names no build source in this workspace", core.ErrBadRequest, id)
+		return nil, "", nil, fmt.Errorf("%w: buildSourceId %s names no build source in this workspace", core.ErrBadRequest, id)
 	}
 	if err != nil {
-		return nil, "", err
+		return nil, "", nil, err
 	}
 	if tenantID != "" && carrier.Labels[core.LabelTenant] != tenantID {
-		return nil, "", fmt.Errorf("%w: buildSourceId %s names no build source in this workspace", core.ErrBadRequest, id)
+		return nil, "", nil, fmt.Errorf("%w: buildSourceId %s names no build source in this workspace", core.ErrBadRequest, id)
 	}
-	native := carrier.Spec.Image == "" && blueprintNativeRuntime(carrier.Spec.Runtime)
+	command, err := buildSourceLinkCommand(buildSourceNative(carrier.Spec), start, existing, id)
+	if err != nil {
+		return nil, "", nil, err
+	}
+	return core.BuildSourceLinkTo(carrier), command, carrier, nil
+}
+
+// buildSourceNative reports whether a carrier builds with a native runtime,
+// which needs each linked service's start command (Render).
+func buildSourceNative(carrier appv1alpha1.AppSpec) bool {
+	return carrier.Image == "" && blueprintNativeRuntime(carrier.Runtime)
+}
+
+// buildSourceLinkCommand is the start command a service linked to build
+// source ref runs: start when given, else existing for a native source and
+// none for a Docker or image one, checked against Render's start-command rule.
+func buildSourceLinkCommand(native bool, start *string, existing, ref string) (string, error) {
 	command := ""
 	switch {
 	case start != nil:
@@ -714,10 +896,25 @@ func (s *Service) buildSourceLink(ctx context.Context, tenantID, id, svcType str
 	case native:
 		command = existing
 	}
-	if err := buildSourceStartRule(native, command, id); err != nil {
-		return nil, "", err
+	if err := buildSourceStartRule(native, command, ref); err != nil {
+		return "", err
 	}
-	return core.BuildSourceLinkTo(carrier), command, nil
+	return command, nil
+}
+
+// sourceForImageRules is the spec whose source fields (repo, image, runtime,
+// builder) decide a service's image port mode and container policy: the
+// carrier's for a service linked to a build source, whose own spec has them
+// cleared (linkBuildSourceSpec), and the service's own otherwise (w9/m180
+// t003).
+func sourceForImageRules(spec appv1alpha1.AppSpec, carrier *appv1alpha1.App) appv1alpha1.AppSpec {
+	if carrier == nil {
+		return spec
+	}
+	source := spec
+	source.Repo, source.Image = carrier.Spec.Repo, carrier.Spec.Image
+	source.Runtime, source.Builder = carrier.Spec.Runtime, carrier.Spec.Builder
+	return source
 }
 
 // buildSourceStartRule is Render's start-command rule for a service linked to
@@ -777,20 +974,13 @@ func buildSourceLinkImage(link *appv1alpha1.BuildSourceLink) string {
 // the link is saved without deploying: a deploy picks it up. dryRun runs every
 // check and writes nothing.
 func (s *Service) LinkBuildSource(ctx context.Context, name, buildSourceID string, startCommand *string, dryRun bool) (AppView, error) {
-	authCtx := core.WithDeferredAllowedWriteAudit(ctx)
-	a, err := s.AuthorizeApp(authCtx, core.RelCanCreate, name)
+	a, err := s.linkableService(ctx, name)
 	if err != nil {
 		return AppView{}, err
 	}
 	cron := a.Spec.Type == appv1alpha1.TypeCronJob
 	existing := linkStartCommand(a.Spec.Type, a.Spec.StartCommand, a.Spec.Command)
-	// Linking repoints what the service runs: the same protected-environment
-	// rule as a repo or image change (w4/m126, w8/187), checked first as
-	// setSource does.
-	if err := s.requireUnprotected(ctx, a, "repoint"); err != nil {
-		return AppView{}, err
-	}
-	link, start, err := s.buildSourceLink(ctx, a.Labels[core.LabelTenant], buildSourceID, a.Spec.Type, startCommand, existing)
+	link, start, _, err := s.buildSourceLink(ctx, a.Labels[core.LabelTenant], buildSourceID, a.Spec.Type, startCommand, existing)
 	if err != nil {
 		return AppView{}, err
 	}

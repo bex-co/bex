@@ -57,7 +57,8 @@ type memStore struct {
 	datastoreFacts       map[string]DatastoreEventFact
 	datastoreCheckpoints map[string]ObservedDatastoreState
 	datastoreExtras      map[string]datastoreCheckpointExtras
-	billingExcluded      map[string]bool // tenantID -> excluded (ADR040 §7)
+	billingExcluded      map[string]bool       // tenantID -> excluded (ADR040 §7)
+	fanouts              map[string]*memFanout // deploy id -> BuildFanoutLedger state
 }
 
 // memberKey is the composite key of a tenant_members row.

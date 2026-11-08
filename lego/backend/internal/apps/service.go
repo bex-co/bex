@@ -2107,9 +2107,6 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if req.buildSource != nil {
 		req.buildSource.shape(&desired)
 	}
-	if err := s.configureNewImageCompatibility(ctx, &desired, req.Port > 0); err != nil {
-		return AppView{}, err
-	}
 	if err := s.validateNewSpecMaintenanceMode(ctx, req.Name, desired); err != nil {
 		return AppView{}, err
 	}
@@ -2121,16 +2118,22 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (AppView, error
 	if err := s.requireServiceInboundRules(ctx, tenantID, req.IPAllowList, nil); err != nil {
 		return AppView{}, err
 	}
+	var carrier *appv1alpha1.App
 	if req.BuildSourceID != "" {
 		start := req.StartCommand
 		if desired.Type == appv1alpha1.TypeCronJob {
 			start = req.Command
 		}
-		link, _, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, desired.Type, &start, "")
+		link, _, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, desired.Type, &start, "")
 		if err != nil {
 			return AppView{}, err
 		}
-		desired.BuildSource = link
+		desired.BuildSource, carrier = link, linked
+	}
+	// After the link: a linked service's image rules read its build source
+	// (sourceForImageRules).
+	if err := s.configureNewImageCompatibility(ctx, &desired, sourceForImageRules(desired, carrier), req.Port > 0); err != nil {
+		return AppView{}, err
 	}
 	environment, err := core.ResolveEnvironmentForCreate(ctx, s.Environments, req.EnvironmentID, tenantID)
 	if err != nil {
@@ -2443,9 +2446,6 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 	if err := s.validateNewSpecMaintenanceMode(ctx, req.Name, desired); err != nil {
 		return stackAppPlan{}, err
 	}
-	if err := s.configureNewImageCompatibility(ctx, &desired, req.Port > 0); err != nil {
-		return stackAppPlan{}, err
-	}
 	a := &appv1alpha1.App{}
 	a.Name = req.Name
 	a.Namespace = s.Namespace
@@ -2480,13 +2480,17 @@ func (s *Service) planStackApp(ctx context.Context, req CreateRequest, desired a
 	// A Blueprint service's buildSource, resolved by the apply before any
 	// write; a preview leaves a link to a build source the apply has yet to
 	// create unresolved (its rules were checked at parse).
+	var carrier *appv1alpha1.App
 	if req.BuildSourceID != "" {
 		start := linkStartCommand(a.Spec.Type, req.StartCommand, req.Command)
-		link, _, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, a.Spec.Type, &start, "")
+		link, _, linked, err := s.buildSourceLink(ctx, tenantID, req.BuildSourceID, a.Spec.Type, &start, "")
 		if err != nil {
 			return stackAppPlan{}, err
 		}
-		a.Spec.BuildSource = link
+		a.Spec.BuildSource, carrier = link, linked
+	}
+	if err := s.configureNewImageCompatibility(ctx, &a.Spec, sourceForImageRules(a.Spec, carrier), req.Port > 0); err != nil {
+		return stackAppPlan{}, err
 	}
 	// Persist the initialDeployHook command for echo-back on reads (w2/m45).
 	// The ran-once annotation is added by applyCreate once the first pre-deploy
@@ -2571,6 +2575,11 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 			CreationPending:   len(req.initialEnvGroups) > 0,
 		})
 		if err != nil {
+			// A build source's taken name keeps its own sentinel for
+			// createBuildSourceCarrier's refusal (w9/m180 t004).
+			if errors.Is(err, store.ErrBuildSourceNameTaken) {
+				return "", "", err
+			}
 			if errors.Is(err, store.ErrConflict) {
 				return "", "", errServiceNameInUse(req.Name)
 			}
@@ -2609,14 +2618,18 @@ func (s *Service) provisionAppIdentity(ctx context.Context, req CreateRequest, a
 // Docker private service — Git-built or prebuilt (w6/095) — publishes its
 // image's TCP ports in every workspace unless BEX_PRIVATE_IMAGE_PORTS=off,
 // while the render-v1 container policy follows BEX_IMAGE_COMPATIBILITY_WORKSPACES.
-func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv1alpha1.AppSpec, explicitPort bool) error {
-	if !runsContainerPolicy(*spec) {
+//
+// source carries the fields that decide it (repo, image, runtime, builder):
+// spec itself, or for a service linked to a build source its carrier's
+// (sourceForImageRules).
+func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv1alpha1.AppSpec, source appv1alpha1.AppSpec, explicitPort bool) error {
+	if !runsContainerPolicy(source) {
 		return nil
 	}
 	if s.imageCompatibilityAdmits(ctx) {
 		spec.ContainerPolicy = appv1alpha1.ContainerPolicyRenderV1
 	}
-	if spec.Type == appv1alpha1.TypePrivateService && (spec.Repo != "" || spec.Image != "") && !s.PrivateImagePortsDisabled {
+	if spec.Type == appv1alpha1.TypePrivateService && (source.Repo != "" || source.Image != "") && !s.PrivateImagePortsDisabled {
 		spec.PortMode = appv1alpha1.PortModeImageV1
 		if explicitPort {
 			spec.PortMode = appv1alpha1.PortModeImageConfiguredV1
@@ -2629,7 +2642,7 @@ func (s *Service) configureNewImageCompatibility(ctx context.Context, spec *appv
 	// on Render (w4/m243): the operator resolves it from image metadata.
 	// Git-built and prebuilt images both qualify; a PORT env still wins at
 	// reconcile, and an explicit port selects the configured variant.
-	if spec.Type == appv1alpha1.TypeWebService && (spec.Repo != "" || spec.Image != "") && !s.PrivateImagePortsDisabled {
+	if spec.Type == appv1alpha1.TypeWebService && (source.Repo != "" || source.Image != "") && !s.PrivateImagePortsDisabled {
 		spec.PortMode = appv1alpha1.PortModeWebImageV1
 		if explicitPort {
 			spec.PortMode = appv1alpha1.PortModeWebImageConfiguredV1
@@ -2657,7 +2670,34 @@ func (s *Service) imageCompatibilityAdmits(ctx context.Context) bool {
 	return ok && s.ImageCompatibilityWorkspaces[tenantID]
 }
 
+// workspaceCreateLeaser serializes the service and build source creates of
+// one workspace (store.PGStore.WithWorkspaceCreateLease).
+type workspaceCreateLeaser interface {
+	WithWorkspaceCreateLease(ctx context.Context, tenantID string, fn func() error) error
+}
+
+// materializeNewApp writes a new service or build source holding the
+// workspace's create lease. A build source widens the namespace's App quota
+// and then writes its App; a service create racing in between could otherwise
+// take that slot and land one over the plan cap (ADR097 quota residual,
+// w9/m180 t005). The lease is a row, not a Postgres lock, so a create holds no
+// pooled connection while it waits or works, and Postgres and Key Value
+// creates in the workspace do not queue behind it.
 func (s *Service) materializeNewApp(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment, seed createSeed) (AppView, error) {
+	leaser, ok := s.Store.(workspaceCreateLeaser)
+	if !ok || tenantID == "" {
+		return s.materializeNewAppLocked(ctx, req, a, tenantID, environment, seed)
+	}
+	var view AppView
+	err := leaser.WithWorkspaceCreateLease(ctx, tenantID, func() error {
+		var err error
+		view, err = s.materializeNewAppLocked(ctx, req, a, tenantID, environment, seed)
+		return err
+	})
+	return view, err
+}
+
+func (s *Service) materializeNewAppLocked(ctx context.Context, req CreateRequest, a *appv1alpha1.App, tenantID string, environment core.EnvironmentAssignment, seed createSeed) (AppView, error) {
 	// A freshly minted workspace's tea-* namespace may not exist yet (the
 	// NamespaceReconciler only converges it on its resync tick) — ensure it
 	// before any write below (projection Secrets included) lands there (w2/026).

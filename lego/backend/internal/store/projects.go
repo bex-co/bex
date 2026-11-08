@@ -152,8 +152,12 @@ func placementChanges(before, after []servicePlacement) []core.ServicePlacementC
 // (w4/m232).
 func placementDiffAround(ctx context.Context, tx pgx.Tx, pivotColumn, pivotID, tenantID string, serviceIDs []string, mutate func(locked []string) error, exit core.EnvironmentExitGuard) ([]core.ServicePlacementChange, error) {
 	before, err := queryServicePlacements(ctx, tx,
+		// A build source carrier is never a project or environment member
+		// (ADR097): a caller naming one by id or name must not move it, and
+		// every UPDATE below is limited to the rows locked here.
 		`SELECT id, name, project_id, environment_id FROM apps
 		 WHERE tenant_id = $1 AND (`+pivotColumn+` = $2 OR id = ANY($3) OR name = ANY($3))
+		   AND type <> '`+TypeBuildSource+`'
 		 ORDER BY name FOR UPDATE`,
 		tenantID, pivotID, serviceIDs)
 	if err != nil {

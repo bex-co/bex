@@ -185,6 +185,9 @@ func buildView(carrier *appv1alpha1.App, sourceID string, d DeployView) BuildVie
 type sourceBuild struct {
 	link *appv1alpha1.BuildSourceLink
 	id   string
+	// fanout marks a build source fan-out's deploy: it ships only when the
+	// service is not already on this build, decided under the trigger lock.
+	fanout bool
 	// commit is what the build built, so the service's deploy reports the
 	// build's commit as Render's does.
 	commit store.CommitInfo
@@ -263,13 +266,36 @@ func (s *Service) buildSourceStore() (buildSourceStore, error) {
 	return st, nil
 }
 
+// errAlreadyOnBuild skips a fan-out deploy of a service already on the build:
+// another fan-out of the same build got there first.
+var errAlreadyOnBuild = errors.New("the service is already on this build")
+
+// linkedBuildSelector is the store's conditional build write (PGStore): it
+// reports whether the row changed, so a fan-out deploys a service once.
+type linkedBuildSelector interface {
+	SelectAppBuildSourceImage(ctx context.Context, id, carrierID, image string) (bool, error)
+}
+
 // selectLinkedBuild records image as the build linked service appID deploys,
 // in the row the projector owns spec.buildSource from. The write holds only
 // while the row still links carrierID, so a deploy racing a re-link can never
-// pair one source's build with another source.
-func (s *Service) selectLinkedBuild(ctx context.Context, appID, carrierID, image string) error {
+// pair one source's build with another source. A fan-out's write (onlyNew)
+// runs under the trigger lock and returns errAlreadyOnBuild when the row is
+// already on image: two fan-outs of one build, a resync overlapping a slow
+// first run, open one deploy per service between them.
+func (s *Service) selectLinkedBuild(ctx context.Context, appID, carrierID, image string, onlyNew bool) error {
 	st, err := s.buildSourceStore()
 	if err != nil {
+		return err
+	}
+	if sel, ok := s.Store.(linkedBuildSelector); ok && onlyNew {
+		changed, err := sel.SelectAppBuildSourceImage(ctx, appID, carrierID, image)
+		if errors.Is(err, store.ErrNotFound) {
+			return fmt.Errorf("%w: the service's build source changed during the deploy; deploy again", core.ErrConflict)
+		}
+		if err == nil && !changed {
+			return errAlreadyOnBuild
+		}
 		return err
 	}
 	err = st.SetAppBuildSourceImage(ctx, appID, carrierID, image)
@@ -284,33 +310,42 @@ func (s *Service) selectLinkedBuild(ctx context.Context, appID, carrierID, image
 // autodeploy enabled are deployed with the result"), and to any linked service
 // still waiting for the source's first build, whose first deploy this
 // completes. The reconciler calls it when a carrier deploy goes live, with no
-// caller identity; failures are logged per service, never returned. Every
-// service ships b.Image, even if a newer build lands mid fan-out (that build
-// fans out itself); a service already on b.Image is left alone.
-func (s *Service) BuildSucceeded(ctx context.Context, b store.BuiltSource) {
-	fail := func(target string, err error) {
-		log.Printf("deploys: fan out build of %s to %s: %v", b.Carrier, target, err)
-	}
+// caller identity. Every service ships b.Image, even if a newer build lands
+// mid fan-out (that build fans out itself); a service already on b.Image is
+// left alone, checked again under its trigger lock, so a re-run of an
+// interrupted fan-out, or one overlapping it, opens no second deploy. The
+// error joins every service that failed transiently, so the reconciler
+// retries the fan-out (store.BuildFanoutLedger); a refusal that a retry would
+// meet again (billing enforcement, a missing or re-linked service) is logged
+// and the fan-out completes without it.
+func (s *Service) BuildSucceeded(ctx context.Context, b store.BuiltSource) error {
 	if b.Image == "" {
-		return
+		return nil
+	}
+	wrap := func(target string, err error) error {
+		log.Printf("deploys: fan out build of %s to %s: %v", b.Carrier, target, err)
+		return fmt.Errorf("fan out build of %s to %s: %w", b.Carrier, target, err)
 	}
 	st, err := s.buildSourceStore()
 	if err != nil {
-		fail("its services", err)
-		return
+		return wrap("its services", err)
 	}
 	links, err := st.ListBuildSourceLinks(ctx, b.CarrierID)
-	if err != nil || len(links) == 0 {
-		if err != nil {
-			fail("its services", err)
-		}
-		return
+	if err != nil {
+		return wrap("its services", err)
+	}
+	if len(links) == 0 {
+		return nil
 	}
 	if err := s.RequireBillingMutation(ctx, b.TenantID); err != nil {
-		fail("its services", err)
-		return
+		if permanentFanoutError(err) {
+			log.Printf("deploys: fan out build of %s skipped: %v", b.Carrier, err)
+			return nil
+		}
+		return wrap("its services", err)
 	}
-	build := &sourceBuild{link: &appv1alpha1.BuildSourceLink{Name: b.Carrier, Image: b.Image}, id: BuildID(b.DeployID), commit: b.Commit}
+	build := &sourceBuild{link: &appv1alpha1.BuildSourceLink{Name: b.Carrier, Image: b.Image}, id: BuildID(b.DeployID), commit: b.Commit, fanout: true}
+	var errs []error
 	for _, row := range links {
 		waiting := row.BuildSourceImage == ""
 		if row.Suspended || row.BuildSourceImage == b.Image {
@@ -318,16 +353,38 @@ func (s *Service) BuildSucceeded(ctx context.Context, b store.BuiltSource) {
 		}
 		var a appv1alpha1.App
 		if err := s.Client.Get(ctx, client.ObjectKey{Namespace: b.Namespace, Name: store.CRName(row.TenantID, row.Name)}, &a); err != nil {
-			fail(row.ID, err)
+			errs = append(errs, fanoutFailure(wrap(row.ID, err)))
 			continue
 		}
 		if (!a.Spec.AutoDeploy && !waiting) || a.Spec.Suspended || a.DeletionTimestamp != nil {
 			continue
 		}
-		if _, err := s.triggerFetched(ctx, core.AppPublicName(&a), &a, TriggerParams{build: build}, store.TriggerNewCommit); err != nil {
-			fail(row.ID, err)
+		_, err := s.triggerFetched(ctx, core.AppPublicName(&a), &a, TriggerParams{build: build}, store.TriggerNewCommit)
+		if err != nil && !errors.Is(err, errAlreadyOnBuild) {
+			errs = append(errs, fanoutFailure(wrap(row.ID, err)))
 		}
 	}
+	return errors.Join(errs...)
+}
+
+// fanoutFailure is err when a retry could succeed, nil when it would meet the
+// same refusal: the fan-out then completes without that service (logged by
+// wrap), instead of re-running every lease period until a newer build lands.
+func fanoutFailure(err error) error {
+	if permanentFanoutError(err) {
+		return nil
+	}
+	return err
+}
+
+// permanentFanoutError reports a refusal that does not change on retry: the
+// service or its CR is gone, it was re-linked, a request-shape refusal, or the
+// workspace's billing is enforced (its owner deploys by hand once settled).
+func permanentFanoutError(err error) bool {
+	return apierrors.IsNotFound(err) ||
+		errors.Is(err, core.ErrNotFound) || errors.Is(err, core.ErrConflict) || errors.Is(err, core.ErrBadRequest) ||
+		errors.Is(err, core.ErrForbidden) || errors.Is(err, core.ErrGone) ||
+		errors.Is(err, core.ErrBillingEnforced) || errors.Is(err, core.ErrPaymentRequired)
 }
 
 type buildWithCursor struct {

@@ -112,6 +112,28 @@ func (f *fakeStore) SetAppBuildSourceImage(_ context.Context, id, _, image strin
 	return nil
 }
 
+// SelectAppBuildSourceImage follows PGStore: it writes only a changed build.
+func (f *fakeStore) SelectAppBuildSourceImage(_ context.Context, id, _, image string) (bool, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	current, ok := f.builds[id]
+	if !ok {
+		for _, a := range f.links {
+			if a.ID == id {
+				current = a.BuildSourceImage
+			}
+		}
+	}
+	if current == image {
+		return false, nil
+	}
+	if f.builds == nil {
+		f.builds = map[string]string{}
+	}
+	f.builds[id] = image
+	return true, nil
+}
+
 func (f *fakeStore) ListBuildSourceLinks(_ context.Context, carrierID string) ([]store.App, error) {
 	var out []store.App
 	for _, a := range f.links {

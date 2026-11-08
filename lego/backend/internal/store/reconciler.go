@@ -26,6 +26,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -206,10 +207,12 @@ type DeployNotifier interface {
 // BuildFanout is called by the Reconciler when a build source carrier's
 // deploy goes live (ADR097 §5): it deploys the new build to the linked
 // services with auto-deploy on. *deploys.Service satisfies it (deploys
-// imports store, so the dependency runs this way). Best-effort, like
-// DeployNotifier.
+// imports store, so the dependency runs this way). It returns an error when
+// any service could not be considered, so a durable fan-out stays open and the
+// resync retries it (BuildFanoutLedger); a re-run skips services already on
+// the build.
 type BuildFanout interface {
-	BuildSucceeded(ctx context.Context, b BuiltSource)
+	BuildSucceeded(ctx context.Context, b BuiltSource) error
 }
 
 // BuiltSource is the carrier build BuildFanout deploys.
@@ -264,6 +267,11 @@ type Reconciler struct {
 	// BuildFanout, when non-nil, deploys a carrier's live build to its linked
 	// services — see BuildFanout.
 	BuildFanout BuildFanout
+	// FanoutLease bounds how long one fan-out run holds a build before the
+	// resync may take it over (BuildFanoutLedger). Zero means 10 minutes.
+	FanoutLease time.Duration
+	// fanouts counts the fan-out runs startFanout has in flight.
+	fanouts sync.WaitGroup
 
 	// Metrics, when non-nil, counts the conclusions rejectStaleUnhealthy
 	// refuses (w6/m41). nil => rejections are logged but not metered.
@@ -681,6 +689,8 @@ func (r *Reconciler) ReconcileOnce(ctx context.Context) error {
 		openByApp[d.AppID] = append(openByApp[d.AppID], d)
 	}
 
+	r.resyncBuildFanouts(ctx, desired, byID)
+
 	var errs []error
 	seen := make(map[string]bool, len(desired))
 	for _, d := range desired {
@@ -1002,10 +1012,11 @@ func (r *Reconciler) recordDeploy(ctx context.Context, d DesiredApp, open Deploy
 		log.Printf("controlplane: transition deploy %s to %s: %v", open.ID, status, err)
 		return
 	}
-	// Only the pass that closed the row fans out, so one build deploys each
-	// linked service once. Backgrounded: it does API and store I/O per service.
+	// The pass that closed the row starts the fan-out at once; the resync
+	// (resyncBuildFanouts) finishes one a restart interrupted. Backgrounded: it
+	// does API and store I/O per service.
 	if ok && status == DeployLive && d.Type == TypeBuildSource && r.BuildFanout != nil {
-		go r.BuildFanout.BuildSucceeded(context.WithoutCancel(ctx), BuiltSource{
+		r.startFanout(ctx, BuiltSource{
 			TenantID: d.TenantID, CarrierID: d.ID, DeployID: open.ID, Commit: open.CommitInfo(), Namespace: cur.Namespace, Carrier: cur.Name, Image: cur.Status.Image,
 		})
 	}

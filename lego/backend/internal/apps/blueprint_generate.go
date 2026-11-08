@@ -41,6 +41,7 @@ import (
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/postgres"
 	"github.com/bex-co/bex/lego/backend/internal/resourcemeta"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/bex-co/bex/lego/types/tiers"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -233,15 +234,37 @@ func (s *Service) GenerateBlueprint(ctx context.Context, req GenerateBlueprintRe
 		doc["services"] = services
 	}
 	if len(carriers) > 0 {
-		var out []map[string]any
+		// An unscoped build source goes at the root; a project-scoped one under
+		// its project's buildSources, the only place a sync accepts it (ADR097
+		// Blueprints §2, w9/m180 t004).
+		var root []map[string]any
+		scoped := map[string][]map[string]any{}
+		projectNames := map[string]string{} // scope project id -> name
 		for _, name := range slices.Sorted(maps.Keys(carriers)) {
-			entry, err := s.generateBuildSourceEntry(ctx, carriers[name])
+			entry, err := s.generateBuildSourceEntry(ctx, carriers[name], dbDisplayByID, kvDisplayByID, selectedGroups, groupCache)
 			if err != nil {
 				return GenerateBlueprintResult{}, err
 			}
-			out = append(out, entry)
+			project, err := s.buildSourceProjectName(ctx, carriers[name], projectNames)
+			if err != nil {
+				return GenerateBlueprintResult{}, err
+			}
+			if project == "" {
+				root = append(root, entry)
+			} else {
+				scoped[project] = append(scoped[project], entry)
+			}
 		}
-		doc["buildSources"] = out
+		if len(root) > 0 {
+			doc["buildSources"] = root
+		}
+		if len(scoped) > 0 {
+			var projects []map[string]any
+			for _, name := range slices.Sorted(maps.Keys(scoped)) {
+				projects = append(projects, map[string]any{"name": name, "buildSources": scoped[name]})
+			}
+			doc["projects"] = projects
+		}
 	}
 	if len(databases) > 0 {
 		var out []map[string]any
@@ -485,10 +508,11 @@ var buildSourceGitFields = []string{"repo", "branch", "runtime", "buildCommand",
 	"dockerContext", "dockerfilePath", "registryCredential"}
 
 // generateBuildSourceEntry exports a build source carrier: its source fields
-// as the service export writes them, under git (or image), and its literal
-// build-time env vars. A value held only in the env store has no Blueprint
-// form on a build source and is left out.
-func (s *Service) generateBuildSourceEntry(ctx context.Context, carrier *appv1alpha1.App) (map[string]any, error) {
+// as the service export writes them, under git (or image), and its build-time
+// env vars in every form a service's export uses (generateEnvVars): literals,
+// datastore references, sync: false for a stored value, and fromGroup for a
+// selected linked env group (ADR097 Blueprints §4, w9/m180 t004).
+func (s *Service) generateBuildSourceEntry(ctx context.Context, carrier *appv1alpha1.App, dbDisplayByID, kvDisplayByID map[string]string, selectedGroups map[string]exportedEnvGroup, groupCache map[string]exportedEnvGroup) (map[string]any, error) {
 	source := map[string]any{}
 	if err := s.generateServiceSource(ctx, carrier, source, appv1alpha1.TypeBackgroundWorker); err != nil {
 		return nil, err
@@ -504,17 +528,39 @@ func (s *Service) generateBuildSourceEntry(ctx context.Context, carrier *appv1al
 			git[name] = value
 		}
 	}
-	var env []map[string]any
-	for _, e := range carrier.Spec.Env {
-		if e.ValueFrom == nil {
-			env = append(env, map[string]any{"key": e.Name, "value": e.Value})
-		}
+	env, err := s.generateEnvVars(core.WithBuildSources(ctx), carrier, dbDisplayByID, kvDisplayByID, selectedGroups, groupCache)
+	if err != nil {
+		return nil, err
 	}
 	if len(env) > 0 {
 		git["envVars"] = env
 	}
 	entry["git"] = git
 	return entry, nil
+}
+
+// buildSourceProjectName is the name of the project a carrier is scoped to,
+// "" for an unscoped one; names caches it by project id across one export.
+func (s *Service) buildSourceProjectName(ctx context.Context, carrier *appv1alpha1.App, names map[string]string) (string, error) {
+	scope, err := s.buildSourceScope(ctx, carrier)
+	if err != nil || scope == "" {
+		return "", err
+	}
+	if name, ok := names[scope]; ok {
+		return name, nil
+	}
+	getter, ok := s.Store.(interface {
+		GetProject(ctx context.Context, id string) (store.Project, error)
+	})
+	if !ok {
+		return "", fmt.Errorf("%w: build source %s is scoped to project %s, which cannot be read without the control plane", core.ErrUnavailable, core.AppPublicID(carrier), scope)
+	}
+	p, err := getter.GetProject(ctx, scope)
+	if err != nil {
+		return "", err
+	}
+	names[scope] = p.Name
+	return p.Name, nil
 }
 
 // generateServiceSource writes an App's own source and build fields onto its

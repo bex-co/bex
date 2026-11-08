@@ -837,7 +837,7 @@ func (s *Service) triggerFetched(ctx context.Context, service string, a *appv1al
 			}
 		}
 		if build != nil {
-			return s.selectLinkedBuild(ctx, appID, core.BuildSourceIDOf(a), build.link.Image)
+			return s.selectLinkedBuild(ctx, appID, core.BuildSourceIDOf(a), build.link.Image, build.fanout)
 		}
 		return nil
 	}

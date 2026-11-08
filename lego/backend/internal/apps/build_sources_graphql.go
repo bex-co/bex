@@ -175,6 +175,8 @@ func (s *Service) buildSourceGQLMutationFields() graphql.Fields {
 				"image":       gqlutil.Arg(buildSourceImageInputType),
 				"envVars":     gqlutil.Arg(graphql.NewList(gqlutil.EnvVarInputType)),
 				"secretFiles": gqlutil.Arg(graphql.NewList(secretFileInputType)),
+				"serviceIds":  gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"envGroupIds": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				git, image, err := source(p)
@@ -189,9 +191,18 @@ func (s *Service) buildSourceGQLMutationFields() graphql.Fields {
 				if err != nil {
 					return nil, err
 				}
+				serviceIDs, err := gqlDecodeArg[[]string](p.Args, "serviceIds")
+				if err != nil {
+					return nil, err
+				}
+				envGroupIDs, err := gqlDecodeArg[[]string](p.Args, "envGroupIds")
+				if err != nil {
+					return nil, err
+				}
 				return s.CreateBuildSource(p.Context, CreateBuildSourceRequest{
 					OwnerID: p.Args["ownerId"].(string), Name: p.Args["name"].(string), ProjectID: gqlutil.Str(p.Args, "projectId"),
 					Git: git, Image: image, EnvVars: envVars, SecretFiles: secretFiles,
+					ServiceIDs: serviceIDs, EnvGroupIDs: envGroupIDs,
 				})
 			},
 		},
@@ -301,7 +312,7 @@ func (s *Service) registerBuildSourceTools(srv *mcp.Server) {
 	})
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_build_source",
-		Description: "Create a git- or image-backed build source (exactly one of git or image), optionally seeding its build-time envVars and secretFiles. Change them later with the env-var tools, passing the build source id as serviceId; link services by creating or updating them with buildSourceId. bex extension over Render's MCP.",
+		Description: "Create a git- or image-backed build source (exactly one of git or image), optionally seeding its build-time envVars, secretFiles and envGroupIds (git sources only) and linking serviceIds, as Render's create does. Change the environment later with the env-var tools, passing the build source id as serviceId; link more services by creating or updating them with buildSourceId. bex extension over Render's MCP.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in CreateBuildSourceRequest) (*mcp.CallToolResult, BuildSourceView, error) {
 		v, err := s.CreateBuildSource(ctx, in)
 		return nil, v, err
