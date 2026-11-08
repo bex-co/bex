@@ -3470,6 +3470,85 @@
       "openWorldHint": false,
       "readOnlyHint": true
     },
+    "description": "Read one saved version of a workspace skill: its whole SKILL.md (content) and a unified line diff against the previous version. To restore a version, pass its content to update_agent_skill with ifVersion set to the skill's current version; that writes a new version.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "ownerId": {
+          "type": "string"
+        },
+        "skill": {
+          "description": "the skill's skl- id or its name",
+          "type": "string"
+        },
+        "version": {
+          "description": "a version number from list_agent_skill_versions",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "skill",
+        "version"
+      ],
+      "type": "object"
+    },
+    "name": "get_agent_skill_version",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "type": "string"
+        },
+        "createdAt": {
+          "type": "string"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "current": {
+          "type": "boolean"
+        },
+        "diff": {
+          "type": "string"
+        },
+        "message": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "previousVersion": {
+          "type": "integer"
+        },
+        "shortId": {
+          "type": "string"
+        },
+        "skillId": {
+          "type": "string"
+        },
+        "version": {
+          "type": "integer"
+        }
+      },
+      "required": [
+        "skillId",
+        "ownerId",
+        "version",
+        "shortId",
+        "message",
+        "createdAt",
+        "current"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
     "description": "List an agent automation's runs, newest first: fire time, outcome, the session it started and any missed ticks. Page with cursor (the previous nextCursor).",
     "inputSchema": {
       "additionalProperties": false,
@@ -4356,6 +4435,114 @@
       },
       "required": [
         "agentSessions"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "List a workspace skill's saved versions, newest first: version, short id, message, author, time and which one is current. Every save of the skill keeps a version (at most the newest 200). Read one with get_agent_skill_version; page with cursor (the previous nextCursor).",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "cursor": {
+          "description": "the previous page's nextCursor",
+          "type": "string"
+        },
+        "limit": {
+          "description": "versions per page, default 50, at most 200",
+          "type": "integer"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "skill": {
+          "description": "the skill's skl- id or its name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "skill"
+      ],
+      "type": "object"
+    },
+    "name": "list_agent_skill_versions",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "nextCursor": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "skillId": {
+          "type": "string"
+        },
+        "versions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "content": {
+                "type": "string"
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "createdBy": {
+                "type": "string"
+              },
+              "current": {
+                "type": "boolean"
+              },
+              "diff": {
+                "type": "string"
+              },
+              "message": {
+                "type": "string"
+              },
+              "ownerId": {
+                "type": "string"
+              },
+              "previousVersion": {
+                "type": "integer"
+              },
+              "shortId": {
+                "type": "string"
+              },
+              "skillId": {
+                "type": "string"
+              },
+              "version": {
+                "type": "integer"
+              }
+            },
+            "required": [
+              "skillId",
+              "ownerId",
+              "version",
+              "shortId",
+              "message",
+              "createdAt",
+              "current"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "skillId",
+        "ownerId",
+        "versions"
       ],
       "type": "object"
     }

@@ -118,6 +118,8 @@ type SkillInvocation struct {
 // SkillStore is the agent_skills table.
 type SkillStore interface {
 	ListAgentSkills(ctx context.Context, workspaceID string) ([]store.AgentSkill, error)
+	ListAgentSkillVersions(ctx context.Context, skillID string, before, limit int) ([]store.AgentSkillVersion, error)
+	GetAgentSkillVersion(ctx context.Context, skillID string, version int) (store.AgentSkillVersion, error)
 	AgentSkillsForDispatch(ctx context.Context, workspaceID string, invoked []string) ([]store.AgentSkill, error)
 	GetAgentSkill(ctx context.Context, id string) (store.AgentSkill, error)
 	GetAgentSkillByName(ctx context.Context, workspaceID, name string) (store.AgentSkill, error)
@@ -222,6 +224,7 @@ func (s *Service) CreateAgentSkill(ctx context.Context, ownerID string, in Agent
 		return AgentSkill{}, err
 	}
 	row.ID, row.UpdatedBy = ids.New(ids.AgentSkill), core.SubjectFrom(ctx)
+	stampSkillVersion(&row, true)
 	created, err := s.Skills.CreateAgentSkill(ctx, row, skillLimits)
 	switch {
 	case errors.Is(err, store.ErrAgentSkillLimit):
@@ -253,6 +256,7 @@ func (s *Service) UpdateAgentSkill(ctx context.Context, ownerID, ref string, in 
 		return AgentSkill{}, err
 	}
 	row.UpdatedBy = core.SubjectFrom(ctx)
+	stampSkillVersion(&row, false)
 	updated, err := s.Skills.UpdateAgentSkill(ctx, row, version, skillLimits)
 	switch {
 	case errors.Is(err, store.ErrAgentSkillBytes):

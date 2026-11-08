@@ -41,6 +41,14 @@ type AgentSkill struct {
 	UpdatedBy   string
 	CreatedAt   time.Time
 	UpdatedAt   time.Time
+
+	// VersionContent is the whole rendered SKILL.md this write saves, and
+	// VersionMessage its commit-like message. They are inputs of
+	// CreateAgentSkill and UpdateAgentSkill only: the write stores them as
+	// the skill's next version (agentskillversions.go) in its own
+	// transaction. They are never read back into this struct.
+	VersionContent string
+	VersionMessage string
 }
 
 // TurnSkill is one skill a turn invoked explicitly (ADR099 D4).
@@ -168,7 +176,8 @@ func checkEnabledSkillBytes(ctx context.Context, tx pgx.Tx, in AgentSkill, limit
 // limits.Count of them (ErrAgentSkillLimit) or its enabled skills would pass
 // limits.EnabledBytes (ErrAgentSkillBytes). The checks and the insert share
 // a transaction under lockAgentSkills, so concurrent creates cannot
-// overshoot. A taken name is ErrConflict.
+// overshoot. It writes version 1 in the same transaction. A taken name is
+// ErrConflict.
 func (s *PGStore) CreateAgentSkill(ctx context.Context, in AgentSkill, limits AgentSkillLimits) (AgentSkill, error) {
 	var out AgentSkill
 	err := s.withTx(ctx, func(tx pgx.Tx) error {
@@ -191,7 +200,10 @@ func (s *PGStore) CreateAgentSkill(ctx context.Context, in AgentSkill, limits Ag
 			VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9)
 			RETURNING `+agentSkillColumns,
 			in.ID, in.WorkspaceID, in.Name, in.Description, in.Triggers, in.Enabled, in.Body, in.Extra, in.UpdatedBy))
-		return err
+		if err != nil {
+			return err
+		}
+		return saveAgentSkillVersion(ctx, tx, out, in)
 	})
 	if errors.Is(err, ErrAgentSkillLimit) || errors.Is(err, ErrAgentSkillBytes) {
 		return AgentSkill{}, err
@@ -204,7 +216,8 @@ func (s *PGStore) CreateAgentSkill(ctx context.Context, in AgentSkill, limits Ag
 
 // UpdateAgentSkill replaces a skill's editable fields when its version is
 // still ifVersion, and bumps the version, under the same lock and
-// enabled-bytes check as a create. A stale version is ErrAgentSkillVersion,
+// enabled-bytes check as a create, and writes the next version row in the
+// same transaction. A stale version is ErrAgentSkillVersion,
 // a missing row ErrNotFound and a taken name ErrConflict.
 func (s *PGStore) UpdateAgentSkill(ctx context.Context, in AgentSkill, ifVersion int, limits AgentSkillLimits) (AgentSkill, error) {
 	var out AgentSkill
@@ -234,7 +247,10 @@ func (s *PGStore) UpdateAgentSkill(ctx context.Context, in AgentSkill, ifVersion
 			}
 			return ErrAgentSkillVersion
 		}
-		return err
+		if err != nil {
+			return err
+		}
+		return saveAgentSkillVersion(ctx, tx, out, in)
 	})
 	switch {
 	case errors.Is(err, ErrAgentSkillBytes), errors.Is(err, ErrAgentSkillVersion), errors.Is(err, ErrNotFound):

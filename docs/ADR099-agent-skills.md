@@ -62,7 +62,29 @@ A breach answers `400 AGENT_SKILL_LIMIT_EXCEEDED` with the limit in `details`. A
 
 Skills are instructions, not secrets: they are stored in Postgres and readable by any workspace member. Credentials belong in session secrets ([ADR098](ADR098-agent-session-secrets.md)); the dashboard says so next to the editor.
 
-Version history is out of scope. `version` gives optimistic concurrency (`ifVersion` on update → `409` on mismatch) and an audit trail through the existing audit log. Devin keeps per-save history for playbooks; that is filed as a follow-up.
+**Version history.** Every save keeps an immutable version, so a bad edit to instructions that agents load automatically can be found and undone. This is Devin's playbook history (Preview, Edit and Version history tabs; each version has a commit-like message, author, time and short id, with a Changes diff and a Content view). `agent_skills.version` stays the optimistic-concurrency counter (`ifVersion` on update → `409` on mismatch); the history table records what each number was.
+
+```sql
+agent_skill_versions (
+  skill_id    text not null references agent_skills (id) on delete cascade,
+  version     int  not null,         -- the agent_skills.version this save produced
+  content     text not null,         -- the whole SKILL.md, rendered as renderSkill does (D1)
+  message     text not null,         -- "Add skills/<name>/SKILL.md", then "Update skills/<name>/SKILL.md"
+  created_by  text not null,         -- the saving subject (agent_skills.updated_by at that save)
+  created_at  timestamptz not null,
+  short_id    text not null,         -- first 7 hex of sha256(skill_id|version|content)
+  primary key (skill_id, version)
+)
+```
+
+- **Written in the same transaction as the save.** `CreateAgentSkill` inserts version 1 and `UpdateAgentSkill` inserts version N+1 after its `UPDATE` matched. A refused or rolled-back save (stale `ifVersion`, a taken name, a cap breach) writes no version. A save that changes nothing still writes one: each save is a version, as in Devin.
+- **`content` is the full rendered SKILL.md**, including its frontmatter (`name`, `description`, `triggers` when user-only, other keys). `enabled` is a workspace setting, not part of the document, so a toggle-only save writes a version whose content equals the previous one and whose diff is empty.
+- **Messages** are generated, not typed: `Add skills/<name>/SKILL.md` on create, `Update skills/<name>/SKILL.md` on every later save (the name at that save, so a rename shows the new path). No API takes a message in this milestone.
+- **`short_id`** is the first 7 hex characters of `sha256(skill_id|version|content)`: stable, not a secret, and different for two saves of the same text. It is a display handle; `version` is the key.
+- **Retention.** The newest 200 versions of a skill are kept. The save that writes version N deletes versions `<= N-200` in the same transaction, so the history never grows without bound and the oldest are dropped first. The newest version is never dropped.
+- **Delete.** Versions go with the skill (`ON DELETE CASCADE`), and with the workspace through it. Deleting a skill and recreating its name starts a new history at version 1. `created_by` is anonymized on account deletion like `agent_skills.updated_by`.
+- **Backfill.** The migration gives every existing skill one version row for its current `version`, with `content` rendered in SQL from the stored fields, `created_by = updated_by` and `created_at = updated_at`. Earlier versions were never kept and cannot be recovered. The SQL render quotes YAML scalars slightly differently from the Go renderer in edge cases, so the API always shows the current version's `content` rendered from the live row.
+- **Restore is a read plus an ordinary update.** There is no restore endpoint. A client reads a version's `content` and sends it as `content` to the update operation, with `ifVersion` set to the current version. That writes a new version (`Update …`) on top; history is never rewritten and no version is mutated. The dashboard's "Load into editor" then Save is exactly this.
 
 ### D3 — API: one core, three thin adapters
 
@@ -73,8 +95,12 @@ Version history is out of scope. `version` gives optimistic concurrency (`ifVers
 | create | `POST /v1/agent-skills?ownerId=` | `createAgentSkill(ownerId, input)` | `create_agent_skill` |
 | update | `PATCH /v1/agent-skills/{ref}` | `updateAgentSkill(ownerId, skill, input)` | `update_agent_skill` |
 | delete | `DELETE /v1/agent-skills/{ref}` | `deleteAgentSkill(ownerId, skill)` | `delete_agent_skill` |
+| list versions | `GET /v1/agent-skills/{ref}/versions?cursor=&limit=` | `agentSkillVersions(ownerId, id, cursor, limit)` | `list_agent_skill_versions` |
+| get version | `GET /v1/agent-skills/{ref}/versions/{version}` | `agentSkillVersion(ownerId, id, version)` | `get_agent_skill_version` |
 
 `{ref}` (GraphQL and MCP `skill`) is a `skl-` id or a name. An id finds its workspace from the row, like Render's by-id routes; a name is looked up in `ownerId` (or the caller's workspace). A skill of another workspace reads as not found.
+
+**Version operations.** A version list is newest first and carries the metadata only (`version`, `shortId`, `message`, `createdBy`, `createdAt`, `current`), paged by `cursor` (the previous page's `nextCursor`) and `limit` (default 50, at most 200). A single version adds `content` (the whole SKILL.md at that save) and `diff`, a unified line diff against the previous version computed by the server (`@@ -a,b +c,d @@` hunks of ` `, `-` and `+` lines with 3 lines of context, no file headers). Version 1 has no previous version, so its diff is every line added (`previousVersion` is absent). If the previous version was dropped by retention, the diff is likewise all additions. `current` marks the version equal to `agent_skills.version`. An unknown skill answers `404 AGENT_SKILL_NOT_FOUND` and an unknown version `404 AGENT_SKILL_VERSION_NOT_FOUND`. There are no write operations: restore is read plus update (D2).
 
 A list carries the metadata only (name, description, triggers, enabled, version). `body` and `content` are on single reads, so a list of 100 skills stays small. A write takes either the fields or `content`, not both; `enabled` combines with either.
 
@@ -82,6 +108,7 @@ A list carries the metadata only (name, description, triggers, enabled, version)
 
 - Members with `can_create` on the workspace list, read and use skills, the same relation as creating a session.
 - `can_manage` (admins) create, update and delete them. This mirrors Devin's "Manage Knowledge" permission and bex's model-key and secrets rules.
+- Reading versions needs `can_create` on the workspace, like reading the skill; no one can write one except by saving the skill.
 - The MCP read tools sit in the `bex.cloud_agents` scope; write tools need the workspace-admin scope used by the agent-environment tools.
 
 ### D4 — Explicit invocation on create and steer
@@ -117,6 +144,8 @@ The snapshot is taken per dispatch, so an edit applies from the next turn. A run
 
 The new-session composer gains a skill picker next to secrets and attachments. The chosen skills appear as pills on the composer and on the turn in the transcript.
 
+Each skill's editor has **Preview**, **Edit** and **Version history** tabs, as in Devin. Version history lists the saved versions newest first, each with its message, author, time, short id and a **Current** badge on the newest; selecting one shows **Changes** (the server's diff against the previous version) or **Content** (the full text). **Load into editor** puts that version's content into the Edit tab; the normal Save then writes a new version (D2).
+
 Skeletons match the ready geometry (AGENTS.md rule).
 
 ## Consequences
@@ -126,7 +155,6 @@ Skeletons match the ready geometry (AGENTS.md rule).
 - Every enabled skill costs prompt tokens for its index line on every turn. The 8 KiB index cap bounds this, engines with native loaders get names only, and disabled skills cost nothing.
 - Dispatch failure codes: `SKILL_LIST_FAILED` (the skills could not be read), `SKILL_COPY_FAILED` (the copy into the sandbox failed) and `SKILL_TOO_LARGE` (D4).
 - **Follow-ups, not gates:**
-  - per-save version history (Devin playbooks keep one);
   - "Devin writes a skill from this session" (suggested skills);
   - enterprise or cross-workspace skills and plugins;
   - the `allowed-tools` and `permissions` frontmatter. bex stores them in `content` but does not enforce them; sessions are unattended, so there is no approval mode to apply them to (`.pm/DO_NOT_DO.md` #APPROVAL-MODE, ADR100 withdrawn).

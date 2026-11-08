@@ -143,6 +143,7 @@ var neverEmptyArrayRoutes = map[string]string{
 var unreachableArrayRoutes = map[string]string{
 	"GET /v1/agent-automations":                          "the agent_automations table (Service.Automations); make([]AgentAutomation, 0, …) (agentsessions/automations.go AgentAutomations)",
 	"GET /v1/agent-automations/{id}/runs":                "the agent_automation_runs table (Service.Automations); the runs page is made non-nil (agentsessions/automation_run.go AgentAutomationRuns)",
+	"GET /v1/agent-skills/{ref}/versions":                "the agent_skill_versions table (Service.Skills); make([]AgentSkillVersion, 0, …) (agentsessions/skills_versions.go AgentSkillVersions)",
 	"GET /v1/agent-skills":                               "the agent_skills table (Service.Skills); make([]AgentSkill, 0, …) (agentsessions/skills.go AgentSkills)",
 	"GET /v1/postgres/{id}/top-queries":                  "live datastore connection; topQueryViews make (postgres/insights.go)",
 	"GET /v1/postgres/{id}/query/top-queries":            "live datastore connection; topQueryViews make (postgres/insights.go)",
@@ -199,6 +200,7 @@ var unreachableArrayRoutes = map[string]string{
 // scalarRoutes are the GETs whose 200 body contains no JSON array at all.
 var scalarRoutes = map[string]bool{
 	"GET /v1/agent-skills/{ref}":                                     true,
+	"GET /v1/agent-skills/{ref}/versions/{version}":                  true,
 	"GET /v1/agent-automations/{id}":                                 true, // triggers always holds the one stored trigger
 	"GET /v1/agent-attachments/{id}":                                 true,
 	"GET /v1/agent-attachments/{id}/content":                         true, // a redirect, no body

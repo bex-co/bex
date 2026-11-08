@@ -41,6 +41,8 @@ var CloudAgentsTools = []string{
 	"create_agent_skill",
 	"update_agent_skill",
 	"delete_agent_skill",
+	"list_agent_skill_versions",
+	"get_agent_skill_version",
 	"list_agent_automations",
 	"get_agent_automation",
 	"create_agent_automation",
@@ -145,6 +147,19 @@ type setAgentSecretArgs struct {
 type agentSkillArgs struct {
 	OwnerID string `json:"ownerId,omitempty"`
 	Skill   string `json:"skill" jsonschema:"the skill's skl- id or its name"`
+}
+
+type listAgentSkillVersionsArgs struct {
+	OwnerID string `json:"ownerId,omitempty"`
+	Skill   string `json:"skill" jsonschema:"the skill's skl- id or its name"`
+	Cursor  string `json:"cursor,omitempty" jsonschema:"the previous page's nextCursor"`
+	Limit   int    `json:"limit,omitempty" jsonschema:"versions per page, default 50, at most 200"`
+}
+
+type getAgentSkillVersionArgs struct {
+	OwnerID string `json:"ownerId,omitempty"`
+	Skill   string `json:"skill" jsonschema:"the skill's skl- id or its name"`
+	Version int    `json:"version" jsonschema:"a version number from list_agent_skill_versions"`
 }
 
 type createAgentSkillArgs struct {
@@ -310,6 +325,16 @@ func (s *Service) registerSkillMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_skill", Description: "Read one workspace skill by skl- id or name, with its body and its whole SKILL.md (content)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in agentSkillArgs) (*mcp.CallToolResult, AgentSkill, error) {
 			out, err := s.AgentSkill(ctx, in.OwnerID, in.Skill)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "list_agent_skill_versions", Description: "List a workspace skill's saved versions, newest first: version, short id, message, author, time and which one is current. Every save of the skill keeps a version (at most the newest 200). Read one with get_agent_skill_version; page with cursor (the previous nextCursor)."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in listAgentSkillVersionsArgs) (*mcp.CallToolResult, AgentSkillVersionList, error) {
+			out, err := s.AgentSkillVersions(ctx, in.OwnerID, in.Skill, in.Cursor, in.Limit)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_skill_version", Description: "Read one saved version of a workspace skill: its whole SKILL.md (content) and a unified line diff against the previous version. To restore a version, pass its content to update_agent_skill with ifVersion set to the skill's current version; that writes a new version."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in getAgentSkillVersionArgs) (*mcp.CallToolResult, AgentSkillVersion, error) {
+			out, err := s.AgentSkillVersion(ctx, in.OwnerID, in.Skill, in.Version)
 			return nil, out, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "create_agent_skill", Description: "Add a workspace skill (workspace admins only): name, description and body, or a whole SKILL.md as content. Skills are instructions, not secrets: every member can read them. triggers [\"user\"] applies it only when invoked. At most 100 per workspace; enabled skills total at most 1 MiB."},

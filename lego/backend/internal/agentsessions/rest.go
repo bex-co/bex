@@ -250,6 +250,21 @@ func (s *Service) registerSkillREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, out)
 	})
+	mux.HandleFunc("GET /v1/agent-skills/{ref}/versions", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		q := r.URL.Query()
+		limit, err := core.QueryLimit(q)
+		if err != nil {
+			return nil, err
+		}
+		return s.AgentSkillVersions(r.Context(), q.Get("ownerId"), r.PathValue("ref"), q.Get("cursor"), limit)
+	}))
+	mux.HandleFunc("GET /v1/agent-skills/{ref}/versions/{version}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
+		version, err := strconv.Atoi(r.PathValue("version"))
+		if err != nil || version < 1 {
+			return nil, skillInvalid("version", "version is a positive whole number")
+		}
+		return s.AgentSkillVersion(r.Context(), r.URL.Query().Get("ownerId"), r.PathValue("ref"), version)
+	}))
 	mux.HandleFunc("PATCH /v1/agent-skills/{ref}", func(w http.ResponseWriter, r *http.Request) {
 		in, ok := decode(w, r)
 		if !ok {

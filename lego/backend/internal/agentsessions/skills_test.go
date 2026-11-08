@@ -41,10 +41,45 @@ import (
 // count and enabled-bytes caps checked at write, version-checked updates, a
 // metadata-only list and a whole-row dispatch read.
 type fakeSkills struct {
-	rows map[string]store.AgentSkill
+	rows     map[string]store.AgentSkill
+	versions map[string][]store.AgentSkillVersion // by skill, oldest first
 }
 
-func newFakeSkills() *fakeSkills { return &fakeSkills{rows: map[string]store.AgentSkill{}} }
+func newFakeSkills() *fakeSkills {
+	return &fakeSkills{rows: map[string]store.AgentSkill{}, versions: map[string][]store.AgentSkillVersion{}}
+}
+
+// saveVersion records the version a successful write produced, as the store
+// does in the write's transaction.
+func (f *fakeSkills) saveVersion(row, in store.AgentSkill) {
+	f.versions[row.ID] = append(f.versions[row.ID], store.AgentSkillVersion{
+		SkillID: row.ID, Version: row.Version, Content: in.VersionContent, Message: in.VersionMessage,
+		CreatedBy: row.UpdatedBy, CreatedAt: time.Unix(int64(row.Version), 0),
+		ShortID: store.AgentSkillVersionShortID(row.ID, row.Version, in.VersionContent),
+	})
+}
+
+func (f *fakeSkills) ListAgentSkillVersions(_ context.Context, id string, before, limit int) ([]store.AgentSkillVersion, error) {
+	out := []store.AgentSkillVersion{}
+	all := f.versions[id]
+	for i := len(all) - 1; i >= 0 && len(out) < limit; i-- {
+		if before <= 0 || all[i].Version < before {
+			v := all[i]
+			v.Content = ""
+			out = append(out, v)
+		}
+	}
+	return out, nil
+}
+
+func (f *fakeSkills) GetAgentSkillVersion(_ context.Context, id string, version int) (store.AgentSkillVersion, error) {
+	for _, v := range f.versions[id] {
+		if v.Version == version {
+			return v, nil
+		}
+	}
+	return store.AgentSkillVersion{}, store.ErrNotFound
+}
 
 func (f *fakeSkills) workspaceRows(ws string, keep func(store.AgentSkill) bool) []store.AgentSkill {
 	out := []store.AgentSkill{}
@@ -116,8 +151,11 @@ func (f *fakeSkills) CreateAgentSkill(ctx context.Context, in store.AgentSkill, 
 	if f.nameTaken(in) {
 		return store.AgentSkill{}, store.ErrConflict
 	}
+	version := in
 	in.Version, in.CreatedAt, in.UpdatedAt = 1, time.Unix(1, 0), time.Unix(1, 0)
+	in.VersionContent, in.VersionMessage = "", ""
 	f.rows[in.ID] = in
+	f.saveVersion(in, version)
 	return in, nil
 }
 
@@ -135,8 +173,11 @@ func (f *fakeSkills) UpdateAgentSkill(_ context.Context, in store.AgentSkill, if
 	if f.nameTaken(in) {
 		return store.AgentSkill{}, store.ErrConflict
 	}
+	version := in
 	in.Version = row.Version + 1
+	in.VersionContent, in.VersionMessage = "", ""
 	f.rows[in.ID] = in
+	f.saveVersion(in, version)
 	return in, nil
 }
 
@@ -145,6 +186,7 @@ func (f *fakeSkills) DeleteAgentSkill(_ context.Context, id string) error {
 		return store.ErrNotFound
 	}
 	delete(f.rows, id)
+	delete(f.versions, id)
 	return nil
 }
 

@@ -52,6 +52,43 @@ var agentSkillListGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var agentSkillVersionGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentSkillVersion",
+	Description: "One saved version of a workspace skill (ADR099 D2). content, previousVersion and diff are on a single version read only; diff is a unified line diff against the previous version.",
+	Fields: graphql.Fields{
+		"skillId":         gqlutil.ReqStrField(func(v AgentSkillVersion) any { return v.SkillID }),
+		"ownerId":         gqlutil.ReqStrField(func(v AgentSkillVersion) any { return v.OwnerID }),
+		"version":         gqlutil.Typed(graphql.NewNonNull(graphql.Int), func(v AgentSkillVersion) any { return v.Version }),
+		"shortId":         gqlutil.ReqStrField(func(v AgentSkillVersion) any { return v.ShortID }),
+		"message":         gqlutil.ReqStrField(func(v AgentSkillVersion) any { return v.Message }),
+		"createdBy":       gqlutil.OptionalStrField(func(v AgentSkillVersion) any { return v.CreatedBy }),
+		"createdAt":       gqlutil.TimeField(func(v AgentSkillVersion) any { return v.CreatedAt }),
+		"current":         gqlutil.ReqBoolField(func(v AgentSkillVersion) any { return v.Current }),
+		"content":         gqlutil.OptionalStrField(func(v AgentSkillVersion) any { return v.Content }),
+		"previousVersion": gqlutil.Typed(graphql.Int, func(v AgentSkillVersion) any { return optionalInt(v.PreviousVersion) }),
+		"diff":            gqlutil.OptionalStrField(func(v AgentSkillVersion) any { return v.Diff }),
+	},
+})
+
+var agentSkillVersionListGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "AgentSkillVersionList",
+	Fields: graphql.Fields{
+		"skillId": gqlutil.ReqStrField(func(v AgentSkillVersionList) any { return v.SkillID }),
+		"ownerId": gqlutil.ReqStrField(func(v AgentSkillVersionList) any { return v.OwnerID }),
+		"versions": gqlutil.Typed(graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentSkillVersionGQLType))),
+			func(v AgentSkillVersionList) any { return v.Versions }),
+		"nextCursor": gqlutil.OptionalStrField(func(v AgentSkillVersionList) any { return v.NextCursor }),
+	},
+})
+
+// optionalInt maps 0 (absent) to null.
+func optionalInt(n int) any {
+	if n == 0 {
+		return nil
+	}
+	return n
+}
+
 var agentSkillGQLInput = graphql.NewInputObject(graphql.InputObjectConfig{
 	Name:        "AgentSkillInput",
 	Description: "A workspace skill's fields, or a whole SKILL.md as content. On update, omitted fields keep their value.",
@@ -130,6 +167,35 @@ func (s *Service) skillQueries() graphql.Fields {
 			Args:        skillRefArgs(),
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				return s.AgentSkill(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "skill"))
+			},
+		},
+		"agentSkillVersions": &graphql.Field{
+			Type:        graphql.NewNonNull(agentSkillVersionListGQLType),
+			Description: "A workspace skill's saved versions, newest first, without content. id is a skl- id or name.",
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+				"id":      gqlutil.ReqArg(graphql.String),
+				"cursor":  gqlutil.Arg(graphql.String),
+				"limit":   gqlutil.Arg(graphql.Int),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				limit, err := automationLimitArg(p.Args)
+				if err != nil {
+					return nil, err
+				}
+				return s.AgentSkillVersions(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "id"), gqlutil.Str(p.Args, "cursor"), limit)
+			},
+		},
+		"agentSkillVersion": &graphql.Field{
+			Type:        graphql.NewNonNull(agentSkillVersionGQLType),
+			Description: "One saved version of a workspace skill with its content and the diff against the previous version.",
+			Args: graphql.FieldConfigArgument{
+				"ownerId": gqlutil.Arg(graphql.String),
+				"id":      gqlutil.ReqArg(graphql.String),
+				"version": gqlutil.ReqArg(graphql.Int),
+			},
+			Resolve: func(p graphql.ResolveParams) (any, error) {
+				return s.AgentSkillVersion(p.Context, gqlutil.Str(p.Args, "ownerId"), gqlutil.Str(p.Args, "id"), gqlutil.Int(p.Args, "version"))
 			},
 		},
 	}
