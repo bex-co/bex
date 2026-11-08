@@ -710,7 +710,7 @@ func (r *AppReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.R
 			return res, nil
 		}
 		if err != nil {
-			return r.fail(ctx, &app, "ImageMetadataUnavailable", err)
+			return r.failBeforeDispatch(ctx, &app, "ImageMetadataUnavailable", err, "the latest image could not be read")
 		}
 	}
 	return r.dispatchRuntime(ctx, &app, image, port)
@@ -6600,6 +6600,24 @@ func (r *AppReconciler) fail(ctx context.Context, app *appv1alpha1.App, reason s
 	}
 	app.Status.Phase = appv1alpha1.PhaseFailed
 	setNotReadyCondition(ctx, r.Client, app, &app.Status.Conditions, reason, err)
+	return ctrl.Result{}, err
+}
+
+// failBeforeDispatch is fail for a release refused before any of its pods
+// were dispatched, such as an image whose metadata the registry refuses
+// (w4/533). Over a release that has served, nothing stopped: the prior
+// release keeps serving, so the phase and Ready keep describing it, as for a
+// failed build, and the release's Rollout verdict carries the failure to its
+// deploy row. Without a served release it is an ordinary failure.
+func (r *AppReconciler) failBeforeDispatch(ctx context.Context, app *appv1alpha1.App, reason string, err error, summary string) (ctrl.Result, error) {
+	if apierrors.IsConflict(err) || !releaseHasServed(app) {
+		return r.fail(ctx, app, reason, err)
+	}
+	meta.SetStatusCondition(&app.Status.Conditions, metav1.Condition{
+		Type: appv1alpha1.ConditionRollout, Status: metav1.ConditionFalse, Reason: reason,
+		Message: err.Error(), ObservedGeneration: releaseGeneration(app),
+	})
+	r.settleFailureOverPriorRelease(ctx, app, summary)
 	return ctrl.Result{}, err
 }
 
