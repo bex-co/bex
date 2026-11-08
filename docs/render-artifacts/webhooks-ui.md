@@ -59,9 +59,9 @@ Two sections + delete:
 
 | Surface | Render | bex | Disposition |
 | --- | --- | --- | --- |
-| Signing secret | Retrievable anytime in Settings (masked, Show/Copy) | **Mint-once**: returned only by the create verb, shown on the create page's secret step | **Keep mint-once** — user decision 2026-07-17 (w1/m49/t006): narrower exposure surface; Settings shows a "shown once at creation" note instead |
+| Signing secret | Retrievable anytime in Settings (masked, Show/Copy) | Retrievable in Settings, masked with Show/Copy, for workspace admins | **Matched (w3/m282, 2026-11-08)** — the 2026-07-17 mint-once decision (w1/m49/t006) is withdrawn under the parity-first rule |
 | Event vocabulary | 67 OpenAPI values (the dashboard/prose grouping differs slightly) | 32 truthful values: 29 API overlaps plus `branch_changed` and two prose-documented Postgres credential events | Remaining provider/anti-goal/source-bound families are enumerated in [webhooks-api.md](webhooks-api.md); the picker degrades an unknown future key to "Other" rather than hiding it |
-| Post-create landing | Straight to the detail page | In-page secret step first (consequence of mint-once), then detail | Keep — forced by the secret contract |
+| Post-create landing | Straight to the detail page | In-page secret step first, then detail | Divergent — no longer forced now the secret is re-readable; filed as `w3/058` |
 | `plan_changed` | Named "Instance Type Changed" | bex's plans replace instance types (w1/m8) | Label bex's `plan_changed` as "Plan Changed"; same semantic slot |
 | Per-webhook sidebar | Dedicated sidebar nav on the detail page | In-page tab nav (Activity/Settings), global sidebar retained | Accepted — bex's detail pages (services, env-groups) use in-page navigation |
 | Created-by identity | Email + avatar | Stored subject resolved to the authorized workspace member's email; no avatar field exists in the current member contract | Email gap closed by m70; avatar remains a small presentation divergence rather than exposing the raw subject when resolution succeeds |

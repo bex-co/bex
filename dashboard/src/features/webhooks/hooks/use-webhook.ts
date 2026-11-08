@@ -22,6 +22,7 @@ function toView(
     eventTypes: (raw.eventTypes ?? []).filter((t): t is string => !!t),
     enabled: raw.enabled ?? false,
     disabledReason: raw.disabledReason ?? "",
+    secret: raw.secret ?? "",
     createdAt: raw.createdAt,
     createdBy: raw.createdBy ?? "",
     latestStatus: "",
@@ -41,8 +42,8 @@ export interface UseWebhookResult {
 
 /**
  * One endpoint by id for the `/webhook/$webhookId` detail page (w1/m49).
- * Resolved by id in its own workspace; the signing secret is never
- * requested (mint-once contract, t006). An unknown or foreign id resolves to
+ * Resolved by id in its own workspace, with the signing secret bex-api
+ * returns to workspace admins (w3/m282). An unknown or foreign id resolves to
  * `notFound`, which the page renders as its 404 state — never a crash.
  */
 export function useWebhook(id: string): UseWebhookResult {

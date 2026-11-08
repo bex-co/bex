@@ -7,7 +7,7 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   },
   "webhooks.description": {
     message:
-      "将签名的事件通知（部署、暂停、重启、扩缩容）推送到你自己的端点——无需轮询。签名密钥仅在创建时显示一次。",
+      "将签名的事件通知（部署、暂停、重启、扩缩容）推送到你自己的端点——无需轮询。每个 Webhook 的签名密钥都在其设置中。",
     description: "Settings Webhooks section card description",
   },
   "webhooks.colEndpoint": {
@@ -217,8 +217,8 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   },
   "webhooks.createdWarning": {
     message:
-      "请立即复制签名密钥——之后将无法再次查看。用它来校验每次投递的 webhook-signature 请求头。",
-    description: "Secret-reveal step warning (shown exactly once)",
+      "用签名密钥校验每次投递的 webhook-signature 请求头。工作区管理员之后可在该 Webhook 的设置中再次查看。",
+    description: "Secret-reveal step note after create",
   },
   "webhooks.copy": {
     message: "复制签名密钥",
@@ -929,11 +929,17 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "签名密钥",
     description: "Settings signing-secret row label",
   },
-  "webhooks.secretMintOnceNote": {
-    message:
-      "签名密钥仅在创建 Webhook 时显示一次，无法再次获取。如需新密钥，请删除并重新创建 Webhook。",
-    description:
-      "Settings note documenting bex's mint-once secret contract (w1/m49/t006 decision — deliberate Render divergence)",
+  "webhooks.secretHelp": {
+    message: "用于签名和校验请求载荷的令牌。仅工作区管理员可查看。",
+    description: "Settings signing-secret row help (Render's wording)",
+  },
+  "webhooks.secretShow": {
+    message: "显示密钥",
+    description: "Settings button that reveals the masked signing secret",
+  },
+  "webhooks.secretHide": {
+    message: "隐藏密钥",
+    description: "Settings button that masks the revealed signing secret",
   },
   "webhooks.deleteSection": {
     message: "删除 Webhook",

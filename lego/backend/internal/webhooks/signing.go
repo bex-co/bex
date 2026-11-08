@@ -48,7 +48,7 @@ const secretPrefix = "whsec_"
 const secretBytes = 24
 
 // NewSecret mints an endpoint signing secret: "whsec_" + base64(24 random
-// bytes). Returned to the creating caller exactly once.
+// bytes). Returned on create and to later manager reads (w3/m282).
 func NewSecret() (string, error) {
 	raw := make([]byte, secretBytes)
 	if _, err := rand.Read(raw); err != nil {

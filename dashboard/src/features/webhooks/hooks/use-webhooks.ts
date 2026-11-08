@@ -40,6 +40,7 @@ function toViews(
       eventTypes: (e.eventTypes ?? []).filter((t): t is string => !!t),
       enabled: e.enabled ?? false,
       disabledReason: e.disabledReason ?? "",
+      secret: "", // list rows never request the secret; the detail query does
       createdAt: e.createdAt,
       createdBy: "", // list rows never request the creator; the detail query does
       latestStatus: toDeliveryStatus(e.latestStatus),
@@ -63,8 +64,8 @@ interface UseWebhooksOptions {
 
 /**
  * Reads bex-api's `webhookEndpoints` — the workspace's outbound-webhook
- * destinations (w3/m11). Signing secrets are never requested here (see the
- * feature's `.graphql` file); only the create mutation ever returns one.
+ * destinations (w3/m11). Signing secrets are not requested here (see the
+ * feature's `.graphql` file); the detail query and the create mutation do.
  * Scoped to the switcher's selected workspace, mirroring useApiKeys.
  */
 export function useWebhooks({

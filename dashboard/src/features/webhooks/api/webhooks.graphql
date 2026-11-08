@@ -1,9 +1,7 @@
 # bex-api's outbound-webhooks surface (backend/internal/webhooks/graphql.go,
 # w3/m11). Endpoints are workspace-scoped destinations bex pushes signed event
-# notifications to. The list query never requests `secret` (the server resolves
-# it empty everywhere but the create mutation anyway): the only place a signing
-# secret is ever fetched is CreateWebhookEndpoint's response, exactly once —
-# the API-key mint-once precedent.
+# notifications to. The list query never requests `secret`; the detail query
+# does, and the server resolves it for workspace admins only (w3/m282).
 
 query WebhookEndpoints($ownerId: String) {
   webhookEndpoints(ownerId: $ownerId) {
@@ -20,8 +18,8 @@ query WebhookEndpoints($ownerId: String) {
   }
 }
 
-# One endpoint by id — the /webhook/$webhookId detail page (w1/m49). Never
-# requests `secret` (the server resolves it empty on reads anyway).
+# One endpoint by id — the /webhook/$webhookId detail page (w1/m49), with the
+# signing secret for its Settings row (w3/m282).
 query WebhookEndpoint($id: String!, $ownerId: String) {
   webhookEndpoint(id: $id, ownerId: $ownerId) {
     id
@@ -30,6 +28,7 @@ query WebhookEndpoint($id: String!, $ownerId: String) {
     eventTypes
     enabled
     disabledReason
+    secret
     createdAt
     createdBy
   }

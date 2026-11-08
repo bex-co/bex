@@ -29,9 +29,9 @@ import (
 // webhook) is a sibling route registered by the webhooks-git package and is
 // unaffected by any pattern below.
 
-// endpointWire is the wire shape every surface renders. Secret is present on
-// the create response ONLY — the mint-once read; every other render omits it
-// (empty + omitempty, and no read query ever selects the column).
+// endpointWire is the wire shape every surface renders. Secret is present for
+// a caller who may manage webhooks, on create, list, get and patch as on
+// Render (w3/m282); a member read omits it (empty + omitempty).
 type endpointWire struct {
 	ID          string   `json:"id"`
 	Name        string   `json:"name"`

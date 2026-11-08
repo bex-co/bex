@@ -29,8 +29,8 @@ import (
 // official MCP server (render-oss/render-mcp-server v0.3.0, checked
 // 2026-07-12) ships no webhook tools at all, so an agent can wire up its own
 // integrations here where it couldn't against Render. The signing secret is
-// returned by create_webhook_endpoint once and never by any other tool — the
-// same mint-once rule REST/GraphQL hold.
+// returned to a caller who may manage webhooks, by every tool that returns an
+// endpoint — the same rule REST/GraphQL hold (w3/m282).
 
 type listEndpointsResult struct {
 	Endpoints []endpointWire `json:"endpoints"`
@@ -85,7 +85,7 @@ type deletedResult struct {
 func (s *Service) RegisterMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "list_webhook_endpoints",
-		Description: "List the workspace's outbound webhook endpoints (URL, subscribed event types, enabled state — never the signing secret) plus the subscribable event-type vocabulary. bex extension — Render's own MCP server has no webhook tools.",
+		Description: "List the workspace's outbound webhook endpoints (URL, subscribed event types, enabled state, and the signing secret when the caller may manage webhooks) plus the subscribable event-type vocabulary. bex extension — Render's own MCP server has no webhook tools.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, _ struct{}) (*mcp.CallToolResult, listEndpointsResult, error) {
 		views, err := s.List(ctx, core.NamedWorkspace(ctx))
 		if err != nil {
@@ -96,7 +96,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_webhook_endpoint",
-		Description: "Register an outbound webhook: bex will POST a signed, thin JSON payload ({type, timestamp, data}) to the URL whenever a subscribed event happens (deploys, service lifecycle, scaling, cron runs, and sourceable Postgres/Key Value changes). The response includes the Standard-Webhooks signing secret exactly once — store it; it is not retrievable afterwards.",
+		Description: "Register an outbound webhook: bex will POST a signed, thin JSON payload ({type, timestamp, data}) to the URL whenever a subscribed event happens (deploys, service lifecycle, scaling, cron runs, and sourceable Postgres/Key Value changes). The response includes the Standard-Webhooks signing secret; list_webhook_endpoints returns it again to callers who may manage webhooks.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createEndpointArgs) (*mcp.CallToolResult, endpointWire, error) {
 		v, err := s.Create(ctx, CreateRequest{
 			OwnerID: core.NamedWorkspace(ctx),

@@ -41,11 +41,10 @@ import (
 // fires for a transition no matter which path performed it (API verb, git
 // push, reconciler close).
 
-// WebhookEndpoint is a row of `webhook_endpoints`. Secret is populated only
-// by CreateWebhookEndpoint (the mint-once read) and by the sender's
-// DueWebhookDeliveries join (it signs with it) — every caller-facing read
-// (List/Get) leaves it "", structurally: those queries never select the
-// column.
+// WebhookEndpoint is a row of `webhook_endpoints`. Secret is populated by
+// every read, as Render's webhook object carries it on create, list, get and
+// patch (w3/m282); internal/webhooks shows it only to a caller who may manage
+// the workspace's webhooks.
 type WebhookEndpoint struct {
 	ID             string
 	TenantID       string
@@ -71,12 +70,12 @@ type WebhookEndpoint struct {
 	LatestParentStatus  string
 }
 
-// webhookEndpointColumns deliberately omits `secret` — see WebhookEndpoint.
-const webhookEndpointColumns = `id, tenant_id, name, url, event_types, enabled, disabled_reason, created_by, created_at, updated_at`
+// webhookEndpointColumns is every caller-facing column, secret included.
+const webhookEndpointColumns = `id, tenant_id, name, url, secret, event_types, enabled, disabled_reason, created_by, created_at, updated_at`
 
 // webhookEndpointColumnsQualified is the same list against an aliased `e`, for
 // the reads that join the latest-delivery lateral below.
-const webhookEndpointColumnsQualified = `e.id, e.tenant_id, e.name, e.url, e.event_types, e.enabled, e.disabled_reason, e.created_by, e.created_at, e.updated_at`
+const webhookEndpointColumnsQualified = `e.id, e.tenant_id, e.name, e.url, e.secret, e.event_types, e.enabled, e.disabled_reason, e.created_by, e.created_at, e.updated_at`
 
 // webhookEndpointLatestColumns and webhookEndpointLatestJoin compute the newest
 // completed attempt for an endpoint and the state of that attempt's logical
@@ -110,7 +109,7 @@ const webhookEndpointLatestJoin = `
 
 func webhookEndpointScanTargets(e *WebhookEndpoint) []any {
 	return []any{
-		&e.ID, &e.TenantID, &e.Name, &e.URL, &e.EventTypes, &e.Enabled,
+		&e.ID, &e.TenantID, &e.Name, &e.URL, &e.Secret, &e.EventTypes, &e.Enabled,
 		&e.DisabledReason, &e.CreatedBy, &e.CreatedAt, &e.UpdatedAt,
 	}
 }
@@ -164,8 +163,8 @@ var ErrWebhookEndpointNotFound = fmt.Errorf("webhook endpoint not found: %w", Er
 
 // CreateWebhookEndpoint mints a new endpoint row (id.New(id.Webhook)) and
 // inserts it. The secret is minted by the caller (internal/webhooks owns the
-// format) and returned on this one response only. Name is already validated by
-// the service and is stored verbatim.
+// format) and no verb changes it. Name is already validated by the service and
+// is stored verbatim.
 //
 // The count check and the insert share ONE transaction, and the count takes a
 // row-level lock over the workspace's existing endpoints, so two concurrent
@@ -214,7 +213,7 @@ func (s *PGStore) CreateWebhookEndpoint(ctx context.Context, tenantID, name, url
 }
 
 // ListWebhookEndpoints returns the requested workspaces' endpoints, newest
-// first, keyset-paged on immutable (created_at,id); secrets are omitted.
+// first, keyset-paged on immutable (created_at,id).
 func (s *PGStore) ListWebhookEndpoints(ctx context.Context, tenantIDs []string, afterAt time.Time, afterKey string, limit int) ([]WebhookEndpoint, error) {
 	limit = core.PageLimitOrAbsent(limit)
 	rows, err := s.Pool.Query(ctx,
@@ -239,7 +238,7 @@ func (s *PGStore) ListWebhookEndpoints(ctx context.Context, tenantIDs []string, 
 	return out, rows.Err()
 }
 
-// GetWebhookEndpoint returns one endpoint (secret omitted), scoped to
+// GetWebhookEndpoint returns one endpoint, scoped to
 // tenantID so a caller can never fetch another workspace's row by guessing
 // its id.
 func (s *PGStore) GetWebhookEndpoint(ctx context.Context, tenantID, id string) (WebhookEndpoint, error) {

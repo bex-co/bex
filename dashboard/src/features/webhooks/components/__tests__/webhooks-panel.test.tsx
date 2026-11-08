@@ -55,6 +55,7 @@ function endpoint(
     ],
     enabled: true,
     disabledReason: "",
+    secret: "",
     createdAt: "2026-08-17T00:00:00Z",
     createdBy: "",
     latestStatus: "",
@@ -240,9 +241,9 @@ it("previews a Hobby workspace's plan-gate card, not the Pro list (w4/432)", asy
   expect(container.querySelector('[data-slot="card-action"]')).toBeNull();
   expect(container.querySelector("th")).toBeNull();
   expect(container.querySelector("input, [type=search]")).toBeNull();
-  expect(
-    text(container.querySelector('[data-slot="card-description"]')),
-  ).toBe(readyDescription);
+  expect(text(container.querySelector('[data-slot="card-description"]'))).toBe(
+    readyDescription,
+  );
   expect(text(container.querySelector('[data-slot="card-content"]'))).toBe(
     readyBody,
   );

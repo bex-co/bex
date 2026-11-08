@@ -27,6 +27,7 @@ function endpoint(
     eventTypes: ["deploy_started"],
     enabled: true,
     disabledReason: "",
+    secret: "",
     // Zone-less input parses as local time, so the long-form date holds in
     // any runner TZ.
     createdAt: "2026-07-16T12:00:00",

@@ -2448,8 +2448,8 @@ function ReservedHelp({
 
 /**
  * Mirrors `WebhookSettingsCard` (w4/295): the plain status row (label + help
- * beside the switch), Name and Destination URL as label → help → input, and
- * the mint-once secret note — each static string reserved with its own
+ * beside the switch), Name, Destination URL and the masked signing secret as
+ * label → help → input (w3/m282) — each static string reserved with its own
  * translated copy so it wraps as the ready page does. No endpoint value shows.
  */
 export function WebhookSettingsSkeleton() {
@@ -2490,9 +2490,10 @@ export function WebhookSettingsSkeleton() {
                 <Skeleton className="h-9 w-full" />
               </div>
             ))}
-            <div data-skeleton-region="settings-secret" className="space-y-1">
+            <div data-skeleton-region="settings-secret" className="space-y-2">
               <ReservedLabel>{t("webhooks.secretLabel")}</ReservedLabel>
-              <ReservedHelp>{t("webhooks.secretMintOnceNote")}</ReservedHelp>
+              <ReservedHelp>{t("webhooks.secretHelp")}</ReservedHelp>
+              <Skeleton className="h-9 w-full" />
             </div>
           </CardContent>
         </Card>

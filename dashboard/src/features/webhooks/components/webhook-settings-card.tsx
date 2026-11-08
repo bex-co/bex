@@ -1,6 +1,6 @@
 import { useMemo, useState } from "react";
 import { useNavigate } from "@tanstack/react-router";
-import { Loader2 } from "lucide-react";
+import { Eye, EyeOff, Loader2 } from "lucide-react";
 import { Button } from "@/common/components/ui/button";
 import {
   Card,
@@ -13,6 +13,7 @@ import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
 import { ConfirmDialog } from "@/common/components/confirm-dialog";
+import { CopyButton } from "@/common/components/copy-button";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { WebhookEventPickerField } from "@/features/webhooks/components/webhook-event-picker-field";
 import { useDeleteWebhook } from "@/features/webhooks/hooks/use-delete-webhook";
@@ -24,6 +25,66 @@ import { hasFieldErrors } from "@/features/webhooks/lib/validation";
 import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import type { WebhookEndpointView } from "@/features/webhooks/types";
+
+const MASKED_SECRET = "••••••••••••••••••••••••••••••••";
+
+/**
+ * The signing secret, masked with Show/Copy as on Render's webhook settings
+ * (w3/m282). bex-api returns it only to workspace admins; anyone else sees the
+ * mask with both controls disabled, so the row's geometry never depends on
+ * the caller's role.
+ */
+function WebhookSecretField({ secret }: { secret: string }) {
+  const { t } = useTranslations();
+  const [revealed, setRevealed] = useState(false);
+  const shown = revealed && secret !== "";
+  return (
+    <div className="space-y-2">
+      <Label htmlFor="webhook-settings-secret">
+        {t("webhooks.secretLabel")}
+      </Label>
+      <p className="text-muted-foreground text-sm">
+        {t("webhooks.secretHelp")}
+      </p>
+      <div className="flex items-center gap-2">
+        <Input
+          id="webhook-settings-secret"
+          value={shown ? secret : MASKED_SECRET}
+          readOnly
+          className="font-mono text-xs"
+        />
+        <Button
+          type="button"
+          variant="outline"
+          size="icon"
+          disabled={!secret}
+          aria-label={
+            shown ? t("webhooks.secretHide") : t("webhooks.secretShow")
+          }
+          onClick={() => setRevealed((value) => !value)}
+        >
+          {shown ? <EyeOff /> : <Eye />}
+        </Button>
+        {secret ? (
+          <CopyButton
+            value={secret}
+            label={t("webhooks.copy")}
+            successText={t("webhooks.copied")}
+            errorText={t("webhooks.copyError")}
+          />
+        ) : (
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon-sm"
+            disabled
+            aria-label={t("webhooks.copy")}
+          />
+        )}
+      </div>
+    </div>
+  );
+}
 
 function sameSet(a: Set<string>, b: string[]): boolean {
   return a.size === b.length && b.every((item) => a.has(item));
@@ -224,15 +285,7 @@ export function WebhookSettingsCard({
               </p>
             ) : null}
           </div>
-          <div className="space-y-1">
-            <Label>{t("webhooks.secretLabel")}</Label>
-            {/* Mint-once contract kept by the t006 decision — deliberate
-                divergence from Render's anytime-reveal, recorded in
-                docs/render-artifacts/webhooks-ui.md + ADR018. */}
-            <p className="text-muted-foreground text-sm">
-              {t("webhooks.secretMintOnceNote")}
-            </p>
-          </div>
+          <WebhookSecretField secret={endpoint.secret} />
         </CardContent>
       </Card>
 

@@ -27,6 +27,8 @@ import (
 	"github.com/graphql-go/graphql"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/core/coretest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -242,5 +244,39 @@ func TestMCPWebhookDeliveryDiagnosticsAndValidation(t *testing.T) {
 	content, _ := json.Marshal(bad.Content)
 	if !bad.IsError || !strings.Contains(string(content), WebhookURLInvalidCode) {
 		t.Fatalf("MCP lost coded core refusal: %+v content=%s", bad, content)
+	}
+}
+
+// w3/m282: GraphQL reads return the signing secret to a workspace manager and
+// null to a member, the same rule REST and MCP render from the core view.
+func TestGraphQLWebhookSecretFollowsTheManagerBoundary(t *testing.T) {
+	st := newFakeEndpointStore()
+	svc := &Service{Base: &core.Base{
+		Namespace: "default", Workspace: coretest.Workspaces{"tea-a"}, Authz: manageChecker{admin: "id-admin"},
+	}, Store: st}
+	adminCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-admin", Method: "session"})
+	memberCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-member", Method: "session"})
+	created, err := svc.Create(adminCtx, CreateRequest{Name: "hook", URL: "https://hooks.example.com/x", EventTypes: []string{}, Enabled: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	schema := webhookGraphQLSchema(t, svc)
+	secretOf := func(ctx context.Context) (one, listed any) {
+		t.Helper()
+		res := graphql.Do(graphql.Params{
+			Schema: schema, Context: ctx,
+			RequestString: fmt.Sprintf(`{ webhookEndpoint(id:%q) { secret } webhookEndpoints { secret } }`, created.ID),
+		})
+		if len(res.Errors) != 0 {
+			t.Fatalf("errors: %v", res.Errors)
+		}
+		data := res.Data.(map[string]any)
+		return data["webhookEndpoint"].(map[string]any)["secret"], data["webhookEndpoints"].([]any)[0].(map[string]any)["secret"]
+	}
+	if one, listed := secretOf(adminCtx); one != created.Secret || listed != created.Secret {
+		t.Fatalf("manager secret = %v / %v, want %q", one, listed, created.Secret)
+	}
+	if one, listed := secretOf(memberCtx); one != nil || listed != nil {
+		t.Fatalf("member secret = %v / %v, want null", one, listed)
 	}
 }

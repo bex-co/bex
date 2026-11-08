@@ -26,13 +26,10 @@ export interface UseCreateWebhookResult {
 
 /**
  * Wires the create dialog to bex-api's `createWebhookEndpoint`.
- * `fetchPolicy: "no-cache"` is deliberate and load-bearing: the signing
- * secret is returned exactly once by design, and Apollo's normalized cache
- * would otherwise hold it under `WebhookEndpoint:<id>` indefinitely —
- * reachable by any later cache read even after the dialog dismisses it.
- * no-cache means the response only ever exists in this hook's return value
- * and the dialog's own state, both cleared on dismiss (the API-key mint
- * pattern, w4/m8).
+ * `fetchPolicy: "no-cache"` keeps the create response's signing secret out of
+ * Apollo's normalized cache: it lives only in this hook's return value and the
+ * page's own state, cleared on dismiss. The detail query fetches it again for
+ * admins when Settings shows it (w3/m282).
  */
 export function useCreateWebhook(): UseCreateWebhookResult {
   const { t } = useTranslations();

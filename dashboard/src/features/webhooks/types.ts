@@ -1,8 +1,7 @@
 // bex-native projections of bex-api's outbound-webhook surface
-// (backend/internal/webhooks, w3/m11). An endpoint's signing secret is never a
-// field on WebhookEndpointView — the list/get queries don't even request it;
-// the only place a secret ever exists client-side is CreatedWebhookEndpoint,
-// returned by the create mutation exactly once and held in dialog-local state.
+// (backend/internal/webhooks, w3/m11). The detail query requests an endpoint's
+// signing secret, which bex-api returns to workspace admins only, as Render
+// does on create, list, get and patch (w3/m282); the list query never asks.
 
 export interface WebhookEndpointView {
   id: string;
@@ -13,6 +12,9 @@ export interface WebhookEndpointView {
   /** Why the endpoint is disabled — "" while enabled; the delivery worker's
    * auto-disable writes its own reason here. */
   disabledReason: string;
+  /** Signing secret — "" unless the caller is a workspace admin, and on list
+   * rows, which never request it. */
+  secret: string;
   createdAt: string | null;
   /** Stored creator subject — resolved through the workspace member API for
    * display; "" when none was recorded. List rows leave it empty. */
@@ -24,7 +26,7 @@ export interface WebhookEndpointView {
   latestParentStatus?: WebhookDeliveryStatus | "";
 }
 
-/** A freshly registered endpoint — the one and only time its secret is available. */
+/** A freshly registered endpoint and its signing secret. */
 export interface CreatedWebhookEndpoint {
   id: string;
   name: string;

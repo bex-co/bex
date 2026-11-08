@@ -329,9 +329,8 @@ type Service struct {
 }
 
 // EndpointView is the neutral shape every adapter renders. Secret is
-// populated only by Create — the mint-once read (the api-key precedent);
-// every other verb's view leaves it empty because the store's read queries
-// never select the column.
+// populated for a caller who may manage the workspace's webhooks and empty
+// for anyone else (toView).
 type EndpointView struct {
 	ID                 string
 	Name               string
@@ -390,12 +389,15 @@ type DeliveryView struct {
 // workspaceID is the store key for the caller's endpoints: the caller's
 // tenant when resolvable, else the single-workspace default (mirrors
 // registrycreds.Service.workspaceID).
-// toView projects a stored endpoint for a caller. exactURL is true only for
+// toView projects a stored endpoint for a caller. manager is true only for
 // the admin-gated verbs (Create/Update/SetEnabled) and for read callers that
-// hold can_manage on the endpoint's workspace: the destination URL carries the
-// integration capability, so ordinary member reads get the redacted origin
-// (round-13 #7).
-func toView(e store.WebhookEndpoint, exactURL bool) EndpointView {
+// hold can_manage on the endpoint's workspace. They see the exact destination
+// and the signing secret, as Render returns `secret` on create, list, get and
+// patch (w3/m282). The destination URL carries the integration capability and
+// the secret forges deliveries, so ordinary member reads get the redacted
+// origin (round-13 #7) and no secret. The secret adds nothing a manager lacks:
+// a manager may already repoint the destination.
+func toView(e store.WebhookEndpoint, manager bool) EndpointView {
 	v := EndpointView{
 		ID:                 e.ID,
 		Name:               e.Name,
@@ -404,7 +406,6 @@ func toView(e store.WebhookEndpoint, exactURL bool) EndpointView {
 		EventTypes:         e.EventTypes,
 		Enabled:            e.Enabled,
 		DisabledReason:     e.DisabledReason,
-		Secret:             e.Secret,
 		CreatedBy:          e.CreatedBy,
 		CreatedAt:          e.CreatedAt.UTC().Format(time.RFC3339),
 		UpdatedAt:          e.UpdatedAt.UTC().Format(time.RFC3339),
@@ -415,7 +416,9 @@ func toView(e store.WebhookEndpoint, exactURL bool) EndpointView {
 	if e.LatestAttemptAt != nil {
 		v.LatestSentAt = e.LatestAttemptAt.UTC().Format(time.RFC3339)
 	}
-	if !exactURL {
+	if manager {
+		v.Secret = e.Secret
+	} else {
 		v.URL = RedactedURL(e.URL)
 	}
 	return v
@@ -491,18 +494,17 @@ type CreateRequest struct {
 }
 
 // Create registers a new endpoint and returns it WITH its freshly minted
-// signing secret — the only response that ever carries it (store it; it is
-// not retrievable). Admin-only (RelCanManage) plus AuthorizeMintClass: an
-// endpoint exports the workspace's whole activity stream to an external URL
-// and the signing secret is a durable show-once credential, so a delegated
-// OAuth bex.write token cannot create one (w4/079). Sessions and platform
-// clients still pass.
+// signing secret, which later manager reads return too (w3/m282). Admin-only
+// (RelCanManage) plus AuthorizeMintClass: an endpoint exports the workspace's
+// whole activity stream to an external URL under a durable signing secret, so
+// a delegated OAuth bex.write token cannot create one (w4/079). Sessions and
+// platform clients still pass.
 func (s *Service) Create(ctx context.Context, req CreateRequest) (EndpointView, error) {
 	ctx = core.WithWorkspace(ctx, req.OwnerID)
 	if err := s.Authorize(ctx, core.RelCanManage); err != nil {
 		return EndpointView{}, err
 	}
-	// Show-once signing secret — same durable-credential gate as API-key
+	// Durable signing secret — same durable-credential gate as API-key
 	// mint so a delegated (OAuth) bex.write token cannot create webhook
 	// endpoints (w4/079). Sessions and platform clients still pass.
 	if err := s.AuthorizeMintClass(ctx); err != nil {
@@ -599,7 +601,7 @@ func mapCreateErr(err error) error {
 	return mapStoreErr(err)
 }
 
-// List returns the workspace's endpoints (secrets never included). ownerID
+// List returns the workspace's endpoints (secrets only for managers). ownerID
 // optionally names the workspace (Render's `ownerId` filter); empty means the
 // caller's own resolved default. Member read.
 func (s *Service) List(ctx context.Context, ownerID string) ([]EndpointView, error) {
@@ -677,7 +679,7 @@ func (s *Service) scopeEndpoint(ctx context.Context, ownerID, id string) (contex
 	return s.ScopeByID(ctx, ownerID, owner)
 }
 
-// Get returns one endpoint (secret never included). ownerID optionally names
+// Get returns one endpoint. ownerID optionally names
 // the workspace to look in; empty means the endpoint's own (scopeEndpoint).
 // The store lookup is scoped to the acting workspace, so a named workspace
 // without the endpoint reads 404, and one the caller is outside 403 (ADR072's

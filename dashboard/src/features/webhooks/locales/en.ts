@@ -7,7 +7,7 @@ const enWebhooks: Record<string, TranslationEntry> = {
   },
   "webhooks.description": {
     message:
-      "Push signed event notifications (deploys, suspends, restarts, scaling) to your own endpoints — no polling. The signing secret is shown once at creation.",
+      "Push signed event notifications (deploys, suspends, restarts, scaling) to your own endpoints — no polling. Each webhook's signing secret is in its settings.",
     description: "Settings Webhooks section card description",
   },
   "webhooks.colEndpoint": {
@@ -223,8 +223,8 @@ const enWebhooks: Record<string, TranslationEntry> = {
   },
   "webhooks.createdWarning": {
     message:
-      "Copy the signing secret now — you won't be able to see it again. Use it to verify the webhook-signature header on every delivery.",
-    description: "Secret-reveal step warning (shown exactly once)",
+      "Use the signing secret to verify the webhook-signature header on every delivery. Workspace admins can view it again in the webhook's settings.",
+    description: "Secret-reveal step note after create",
   },
   "webhooks.copy": {
     message: "Copy signing secret",
@@ -944,11 +944,18 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Signing secret",
     description: "Settings signing-secret row label",
   },
-  "webhooks.secretMintOnceNote": {
+  "webhooks.secretHelp": {
     message:
-      "The signing secret was shown once when this webhook was created and can't be retrieved again. Delete and recreate the webhook to mint a new one.",
-    description:
-      "Settings note documenting bex's mint-once secret contract (w1/m49/t006 decision — deliberate Render divergence)",
+      "A token used to sign and verify request payloads. Only workspace admins can view it.",
+    description: "Settings signing-secret row help (Render's wording)",
+  },
+  "webhooks.secretShow": {
+    message: "Show secret",
+    description: "Settings button that reveals the masked signing secret",
+  },
+  "webhooks.secretHide": {
+    message: "Hide secret",
+    description: "Settings button that masks the revealed signing secret",
   },
   "webhooks.deleteSection": {
     message: "Delete webhook",

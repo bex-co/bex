@@ -56,11 +56,6 @@ func newFakeEndpointStore() *fakeEndpointStore {
 }
 
 // redact mirrors the real store's reads, which never select the secret column.
-func redact(e store.WebhookEndpoint) store.WebhookEndpoint {
-	e.Secret = ""
-	return e
-}
-
 func (f *fakeEndpointStore) CreateWebhookEndpoint(_ context.Context, tenantID, name, url, secret string, eventTypes []string, enabled bool, createdBy string) (store.WebhookEndpoint, error) {
 	for _, existing := range f.rows {
 		if existing.TenantID == tenantID && strings.EqualFold(existing.Name, name) {
@@ -80,7 +75,7 @@ func (f *fakeEndpointStore) ListWebhookEndpoints(_ context.Context, tenantIDs []
 	var out []store.WebhookEndpoint
 	for _, e := range f.rows {
 		if slices.Contains(tenantIDs, e.TenantID) {
-			out = append(out, redact(e))
+			out = append(out, e)
 		}
 	}
 	slices.SortFunc(out, func(a, b store.WebhookEndpoint) int {
@@ -107,7 +102,7 @@ func (f *fakeEndpointStore) GetWebhookEndpoint(_ context.Context, tenantID, id s
 	if !ok || e.TenantID != tenantID {
 		return store.WebhookEndpoint{}, store.ErrNotFound
 	}
-	return redact(e), nil
+	return e, nil
 }
 
 func (f *fakeEndpointStore) WebhookEndpointWorkspace(_ context.Context, id string) (string, error) {
@@ -130,7 +125,7 @@ func (f *fakeEndpointStore) SetWebhookEndpointEnabled(_ context.Context, tenantI
 	e.DisabledReason = reason
 	e.UpdatedAt = time.Now().UTC()
 	f.rows[id] = e
-	return redact(e), nil
+	return e, nil
 }
 
 func (f *fakeEndpointStore) UpdateWebhookEndpoint(_ context.Context, tenantID, id, name, url string, eventTypes []string, enabled bool) (store.WebhookEndpoint, error) {
@@ -152,7 +147,7 @@ func (f *fakeEndpointStore) UpdateWebhookEndpoint(_ context.Context, tenantID, i
 	e.Enabled = enabled
 	e.UpdatedAt = time.Now().UTC()
 	f.rows[id] = e
-	return redact(e), nil
+	return e, nil
 }
 
 func (f *fakeEndpointStore) DeleteWebhookEndpoint(_ context.Context, tenantID, id string) error {
@@ -243,7 +238,9 @@ func newTestService() (*Service, *fakeEndpointStore) {
 
 // --- tests ---
 
-func TestCreateReturnsTheSecretOnceAndReadsNeverDo(t *testing.T) {
+// With authz off nobody is distinguished as a manager, so reads carry no
+// secret (as they carry no exact URL); create still returns it.
+func TestCreateReturnsTheSecretAndAuthzOffReadsDoNot(t *testing.T) {
 	s, _ := newTestService()
 	ctx := context.Background()
 
@@ -349,6 +346,29 @@ func TestDestinationURLRedactedForNonAdminReaders(t *testing.T) {
 	} else if got.URL != exact {
 		t.Fatalf("admin Get URL = %q, want the exact destination", got.URL)
 	}
+
+	// w3/m282: the secret follows the same boundary. Render returns it on
+	// list and get; a member read never carries it.
+	if created.Secret == "" {
+		t.Fatal("Create returned no secret")
+	}
+	if got, _ := viewer.Get(viewerCtx, "", created.ID); got.Secret != "" {
+		t.Fatalf("viewer Get carried the secret")
+	}
+	if list[0].Secret != "" {
+		t.Fatalf("viewer List carried the secret")
+	}
+	if got, _ := admin.Get(adminCtx, "", created.ID); got.Secret != created.Secret {
+		t.Fatalf("admin Get secret = %q, want the minted %q", got.Secret, created.Secret)
+	}
+	adminList, err := admin.List(adminCtx, "")
+	if err != nil || len(adminList) != 1 || adminList[0].Secret != created.Secret {
+		t.Fatalf("admin List = %+v (err %v), want the minted secret", adminList, err)
+	}
+	patched, err := admin.Update(adminCtx, "", created.ID, UpdateRequest{})
+	if err != nil || patched.Secret != created.Secret {
+		t.Fatalf("admin Update = %+v (err %v), want the minted secret", patched, err)
+	}
 }
 
 // TestDestinationURLRedactedForReadOnlyOAuthAdmin (capability composition on
@@ -402,6 +422,16 @@ func TestDestinationURLRedactedForReadOnlyOAuthAdmin(t *testing.T) {
 		t.Fatalf("write-scoped admin Get: %v", err)
 	} else if got.URL != exact {
 		t.Fatalf("write-scoped admin Get URL = %q, want the exact destination", got.URL)
+	} else if got.Secret != created.Secret {
+		// w3/m282: the secret follows the exact URL — a manager may already
+		// repoint the destination, so the secret grants nothing more.
+		t.Fatalf("write-scoped admin Get secret = %q, want the minted secret", got.Secret)
+	}
+	if got, _ := s.Get(readOnly, "", created.ID); got.Secret != "" {
+		t.Fatalf("read-only OAuth admin Get carried the secret")
+	}
+	if got, _ := s.Get(sessionAdmin, "", created.ID); got.Secret != created.Secret {
+		t.Fatalf("session admin Get secret = %q, want the minted secret", got.Secret)
 	}
 }
 

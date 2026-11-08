@@ -26,6 +26,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/rendertest"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -65,8 +67,27 @@ func decodeObject(t *testing.T, rr *httptest.ResponseRecorder) map[string]any {
 	return got
 }
 
-func TestRenderRESTCreateReadPatchDeleteAndMintOnceFixture(t *testing.T) {
+// w3/m282: Render's webhook object carries `secret` on create, list, get and
+// patch; a workspace manager reads back the secret create minted.
+func TestRenderRESTCreateReadPatchDeleteReturnTheSecret(t *testing.T) {
 	svc, _ := newTestService()
+	svc.Authz = manageChecker{admin: "id-admin"}
+	adminCtx := core.WithIdentity(context.Background(), core.Identity{Subject: "id-admin", Method: "session"})
+	// Every response is checked against the pinned Render schema, which
+	// requires `secret` on the webhook object.
+	mux := http.NewServeMux()
+	svc.RegisterREST(mux)
+	handler := rendertest.Wrap(t, mux, rendertest.Load(t).MuxMatcher(mux))
+	webhookREST := func(t *testing.T, _ *Service, method, target, body string) *httptest.ResponseRecorder {
+		t.Helper()
+		req := httptest.NewRequestWithContext(adminCtx, method, target, strings.NewReader(body))
+		if body != "" {
+			req.Header.Set("Content-Type", "application/json")
+		}
+		rr := httptest.NewRecorder()
+		handler.ServeHTTP(rr, req)
+		return rr
+	}
 	missingOwner := webhookREST(t, svc, http.MethodPost, "/v1/webhooks",
 		`{"name":"missing-owner","url":"https://hooks.example.com/missing","enabled":true,"eventFilter":[]}`)
 	if missingOwner.Code != http.StatusBadRequest || !strings.Contains(missingOwner.Body.String(), "WEBHOOK_OWNER_REQUIRED") {
@@ -84,7 +105,7 @@ func TestRenderRESTCreateReadPatchDeleteAndMintOnceFixture(t *testing.T) {
 		}
 	}
 	if len(created) != 6 || created["enabled"] != false || created["secret"] == "" {
-		t.Fatalf("create response = %v, want exact Render fields + one-time secret", created)
+		t.Fatalf("create response = %v, want exact Render fields + secret", created)
 	}
 	id := created["id"].(string)
 
@@ -93,8 +114,15 @@ func TestRenderRESTCreateReadPatchDeleteAndMintOnceFixture(t *testing.T) {
 		t.Fatalf("get = %d %s", getRR.Code, getRR.Body.String())
 	}
 	got := decodeObject(t, getRR)
-	if _, leaked := got["secret"]; leaked || len(got) != 5 {
-		t.Fatalf("get response = %v, secret must remain mint-once", got)
+	if got["secret"] != created["secret"] || len(got) != 6 {
+		t.Fatalf("get response = %v, want the created secret", got)
+	}
+	listRR := webhookREST(t, svc, http.MethodGet, "/v1/webhooks?ownerId=default", "")
+	var list []struct {
+		Webhook map[string]any `json:"webhook"`
+	}
+	if err := json.Unmarshal(listRR.Body.Bytes(), &list); err != nil || len(list) != 1 || list[0].Webhook["secret"] != created["secret"] {
+		t.Fatalf("list = %d %s, want the created secret", listRR.Code, listRR.Body.String())
 	}
 
 	patchRR := webhookREST(t, svc, http.MethodPatch, "/v1/webhooks/"+id,
@@ -103,7 +131,7 @@ func TestRenderRESTCreateReadPatchDeleteAndMintOnceFixture(t *testing.T) {
 		t.Fatalf("patch = %d %s", patchRR.Code, patchRR.Body.String())
 	}
 	patched := decodeObject(t, patchRR)
-	if patched["name"] != "deploys-renamed" || patched["enabled"] != true || len(patched) != 5 {
+	if patched["name"] != "deploys-renamed" || patched["enabled"] != true || patched["secret"] != created["secret"] || len(patched) != 6 {
 		t.Fatalf("patch response = %v", patched)
 	}
 

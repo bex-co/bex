@@ -63,6 +63,7 @@ const ENDPOINT: WebhookEndpointView = {
   eventTypes: ["deploy_started"],
   enabled: true,
   disabledReason: "",
+  secret: "whsec_test-signing-secret",
   createdAt: "2026-07-17T00:00:00Z",
   createdBy: "user@example.com",
 };
@@ -232,12 +233,29 @@ describe("WebhookSettingsCard (w1/m49/t005)", () => {
     expect(await screen.findByTestId("list-page")).toBeInTheDocument();
   });
 
-  it("shows the mint-once signing-secret note (t006 decision) — no reveal affordance", async () => {
+  // w3/m282: as on Render, an admin reveals and copies the signing secret.
+  it("masks the signing secret until an admin reveals it", async () => {
+    const user = userEvent.setup();
     renderCard();
+    const field = await screen.findByLabelText("Signing secret");
+    expect(field).not.toHaveValue(ENDPOINT.secret);
+    await user.click(screen.getByRole("button", { name: "Show secret" }));
+    expect(field).toHaveValue(ENDPOINT.secret);
     expect(
-      await screen.findByText(/shown once when this webhook was created/i),
-    ).toBeInTheDocument();
-    expect(screen.queryByText(/show secret/i)).not.toBeInTheDocument();
+      screen.getByRole("button", { name: "Copy signing secret" }),
+    ).toBeEnabled();
+    await user.click(screen.getByRole("button", { name: "Hide secret" }));
+    expect(field).not.toHaveValue(ENDPOINT.secret);
+  });
+
+  it("keeps the secret row's shape but no controls when the API withholds it", async () => {
+    renderCard({ ...ENDPOINT, secret: "" });
+    const field = await screen.findByLabelText("Signing secret");
+    expect(field).toHaveValue("••••••••••••••••••••••••••••••••");
+    expect(screen.getByRole("button", { name: "Show secret" })).toBeDisabled();
+    expect(
+      screen.getByRole("button", { name: "Copy signing secret" }),
+    ).toBeDisabled();
   });
 
   it("renders a read-only inspection surface without mutation controls", async () => {

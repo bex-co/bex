@@ -24,8 +24,8 @@ import (
 )
 
 // graphql.go mirrors the REST wire shapes (rest.go) — same fields, same
-// mint-once secret rule: only createWebhookEndpoint's result ever carries
-// `secret` (populated on that view alone; every read leaves it null).
+// secret rule: `secret` is set for a caller who may manage webhooks and null
+// for anyone else (w3/m282).
 
 var endpointGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "WebhookEndpoint",
@@ -37,9 +37,9 @@ var endpointGQLType = graphql.NewObject(graphql.ObjectConfig{
 		"eventTypes":     gqlutil.StrsField(func(v EndpointView) any { return v.EventTypes }),
 		"enabled":        gqlutil.BoolField(func(v EndpointView) any { return v.Enabled }),
 		"disabledReason": gqlutil.StrField(func(v EndpointView) any { return v.DisabledReason }),
-		// secret is non-null only on the create mutation's result — the
-		// mint-once rule (see rest.go's endpointWire).
-		"secret":             gqlutil.StrField(func(v EndpointView) any { return v.Secret }),
+		// secret is null for a caller who may not manage webhooks (see
+		// rest.go's endpointWire).
+		"secret":             gqlutil.OptionalStrField(func(v EndpointView) any { return v.Secret }),
 		"createdBy":          gqlutil.StrField(func(v EndpointView) any { return v.CreatedBy }),
 		"createdAt":          gqlutil.StrField(func(v EndpointView) any { return v.CreatedAt }),
 		"updatedAt":          gqlutil.StrField(func(v EndpointView) any { return v.UpdatedAt }),
