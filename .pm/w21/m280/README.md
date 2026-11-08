@@ -27,6 +27,6 @@
 - **Source:** User request 2026-11-07 (`/pm-brainstorm w21`, then `/pm them all to w21`; this explicitly places the items in w21 despite the 2026-11-05 default of following w21 work in w9). Closes the "per-save version history" follow-up in [ADR099](../../docs/ADR099-agent-skills.md). Reference: Devin, verified live in the Devin dashboard on 2026-11-06; docs.devin.ai Creating Playbooks (each save creates a version that can be viewed and restored).
 - **Goal linkage:** ADR008 pillar 5 (cloud coding agents); Devin parity. Customers can safely edit instructions that agents load automatically, and recover from a bad edit.
 - **Expected outcome:** A broken skill edit can be found and undone in the dashboard without anyone keeping their own copy.
-- **Why now:** Skills load into agent sessions automatically, so a bad edit changes what every later session does; history is the only way back. The design is small and settled by Devin's behavior, but it needs w9/m175 to land the skill store, API and editor first.
+- **Why now:** Skills load into agent sessions automatically, so a bad edit changes what every later session does; history is the only way back. The design is small and settled by Devin's behavior, and w9/m175 has landed the skill store, API and editor it extends.
 - **Render parity:** included. This milestone changes REST, GraphQL, MCP and dashboard surfaces for cloud coding agents; the reference product is Devin.
-- **Sequence:** starts after w9/m175 (Knowledge and Playbooks / skills) lands; t001 can be done earlier.
+- **Sequence:** none. w9/m175 (skills) is done, so the skill store, API and editor this builds on exist.

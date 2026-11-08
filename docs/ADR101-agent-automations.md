@@ -1,6 +1,6 @@
 # ADR101 — Agent Automations: scheduled cloud-agent sessions (Devin parity)
 
-**Status:** proposed (design) · **Date:** 2026-11-07 · **Extends:** [ADR047](ADR047-cloud-coding-agent-sessions.md) (sessions), [ADR094](ADR094-coding-agent-mcp.md) D4 (idempotent create), [ADR098](ADR098-agent-session-secrets.md) (secrets), [ADR099](ADR099-agent-skills.md) (skills), [ADR100](ADR100-agent-approval-mode.md) (approval mode) · **Parity:** Devin Automations (no Render equivalent; see [Parity](#parity)).
+**Status:** proposed (design) · **Date:** 2026-11-07 · **Extends:** [ADR047](ADR047-cloud-coding-agent-sessions.md) (sessions), [ADR094](ADR094-coding-agent-mcp.md) D4 (idempotent create), [ADR098](ADR098-agent-session-secrets.md) (secrets), [ADR099](ADR099-agent-skills.md) (skills) · **Parity:** Devin Automations (no Render equivalent; see [Parity](#parity)).
 
 ![ADR101 agent automations architecture](ADR101-agent-automations.svg)
 
@@ -21,7 +21,7 @@ Every bex agent session starts because a person pressed a button or called the A
 
 **Naming across the industry** (secondary sources, 2026, to be re-checked against vendor docs before quoting details): Cursor and Codex also say "automations"; only Claude Code says "routines"; Warp says "scheduled agents"; Render says "cron jobs" for a scheduled _service_ and "workflows" for multi-step tasks. Customers arriving from Render already have a meaning for "cron job" (a container on a schedule, which bex ships as a service type), so the new feature must not reuse that word.
 
-**What bex has to build on.** `agentsessions.Service.Create` already does authorization (`can_create`), input validation, egress, secrets, skills, approval mode, billing admission, spend ceilings and idempotency (`idempotencyKey`, ADR094 D4). The webhook worker (`internal/webhooks/worker.go`) already shows the multi-replica pattern: durable rows, `FOR UPDATE SKIP LOCKED` claims, at-least-once delivery. `robfig/cron/v3` is already a dependency of `internal/apps`.
+**What bex has to build on.** `agentsessions.Service.Create` already does authorization (`can_create`), input validation, egress, secrets, skills, billing admission, spend ceilings and idempotency (`idempotencyKey`, ADR094 D4). The webhook worker (`internal/webhooks/worker.go`) already shows the multi-replica pattern: durable rows, `FOR UPDATE SKIP LOCKED` claims, at-least-once delivery. `robfig/cron/v3` is already a dependency of `internal/apps`.
 
 ## Decision
 
@@ -115,7 +115,7 @@ Why not the alternatives:
 | `maxSpendUSD` | **required** when the model is platform-metered (D7) |
 | `secretNames` | names only (ADR098). Values are resolved from the workspace at fire time |
 | `skills` | `[{name, arguments}]` (ADR099 D4) |
-| `outputSchema`, `approvalMode` | as ADR094 / ADR100. A run never gets a weaker mode than the workspace allows |
+| `outputSchema` | as ADR094 |
 | `egressAllowlist` | as on create |
 
 Not allowed in a template: `resumeSessionId`, attachments (a one-off upload does not belong in a recurring definition) and `idempotencyKey` (the scheduler sets it).
@@ -126,7 +126,7 @@ The session row gains a nullable `automation_id`. The session list takes an `aut
 
 ### D6 — Overlap: skip
 
-If the previous run's session is still active, the new fire is recorded as `skipped_overlap` and nothing starts. A session is active until it is `succeeded`, `failed` or `canceled`. One in `needs_input` counts as active until its decision expires (ADR100's 24 h), so an unattended automation that is waiting for approval blocks its own next run for at most a day instead of piling up. `queue` and `allow` are follow-ups.
+If the previous run's session is still active, the new fire is recorded as `skipped_overlap` and nothing starts. A session is active until it is `succeeded`, `failed` or `canceled`. Cloud sessions run unattended and never pause for a person (`.pm/DO_NOT_DO.md` #APPROVAL-MODE), so an overlap lasts only as long as the run itself and the next fire is skipped rather than piling up. `queue` and `allow` are follow-ups.
 
 ### D7 — Cost and failure controls
 
@@ -167,7 +167,7 @@ A new **Automations** entry in the agents nav section (`agent-sessions-nav-secti
 
 ## Consequences
 
-- Recurring agent work needs no customer-side scheduler or long-lived API key. Because runs go through `Create`, they inherit every later change to sessions (secrets, skills, approval, cost) for free.
+- Recurring agent work needs no customer-side scheduler or long-lived API key. Because runs go through `Create`, they inherit every later change to sessions (secrets, skills, cost) for free.
 - bex-api gains a loop and two tables. The hot query is one indexed range scan per replica every 15 s.
 - The worst failure modes are bounded: a double fire is prevented by the idempotency key, a lost fire by the recovery pass, a runaway bill by the required ceiling, the live-session limit and auto-pause.
 - Runs execute under a member's authority. A departing member silently stops their automations, and admins can take over. The cost is that an automation made by someone who later loses access pauses and needs a human to adopt it.

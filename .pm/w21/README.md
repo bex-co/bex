@@ -9,8 +9,8 @@
 - [x] **m259** — Cloud Agents MCP phase 3: schema-validated structured output (`submit_result`) (9 tasks) → [`done/m259/`](done/m259/README.md) ← from ADR094 D10 phase 3; after m258 — DONE 2026-11-05
 - [ ] **m260** — moved to **w9/m172** (2026-11-05, user decision: w9 follows up all w21 work) → [`../w9/m172/`](../w9/m172/README.md)
 - [ ] **m278** — [Agent Automations: scheduled cloud-agent sessions (Devin parity)](m278/README.md) (12 tasks) ← from [ADR101](../../docs/ADR101-agent-automations.md)
-- [ ] **m279** — [Agent child sessions: an agent can spawn and track child sessions (Devin parity)](m279/README.md) (11 tasks) ← from [ADR094](../../docs/ADR094-coding-agent-mcp.md) deferral; start after w9/m176
-- [ ] **m280** — [Skill version history: every save keeps a version you can read, diff and restore (Devin parity)](m280/README.md) (8 tasks) ← from [ADR099](../../docs/ADR099-agent-skills.md) follow-up; start after w9/m175
+- [ ] **m279** — [Agent child sessions: an agent can spawn and track child sessions (Devin parity)](m279/README.md) (11 tasks) ← from [ADR094](../../docs/ADR094-coding-agent-mcp.md) deferral; t002–t003 after w9/m179
+- [ ] **m280** — [Skill version history: every save keeps a version you can read, diff and restore (Devin parity)](m280/README.md) (8 tasks) ← from [ADR099](../../docs/ADR099-agent-skills.md) follow-up
 
 ## Inbox
 
@@ -21,4 +21,3 @@
 - [x] **005** — Dashboard `/agents` creates with a `maxSpendUSD` ceiling and shows `outcome.cost` → [`005.md`](done/005.md)
 - [ ] **006** — moved to **w9/078** (2026-11-05, user decision pending) → [`../w9/blocked/078.md`](../w9/blocked/078.md)
 - [ ] **007** — moved to **w9/077** (2026-11-05) → [`../w9/077.md`](../w9/077.md)
-- [ ] **008** — Approval rules: edit them rule by rule in the dashboard (after w9/m176) → [`008.md`](008.md)

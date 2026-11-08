@@ -93,13 +93,13 @@
   <text x="434" y="470" class="t">④ Overlap check</text>
   <text x="434" y="490" class="m">previous session still active?</text>
   <text x="434" y="508" class="m">yes → skipped_overlap (policy: skip)</text>
-  <text x="434" y="526" class="s">needs_input counts until 24 h expiry</text>
+  <text x="434" y="526" class="s">sessions run unattended, no pause</text>
 
   <rect class="b met" x="780" y="448" width="620" height="88"/>
   <text x="794" y="470" class="t">⑤ agentsessions.Service.Create</text>
   <text x="794" y="490" class="m">idempotencyKey = "aut:&lt;id&gt;:&lt;fire_at&gt;" → replay, never a 2nd sandbox</text>
   <text x="794" y="508" class="m">re-validates the template · resolves secretNames (ADR098) now</text>
-  <text x="794" y="526" class="s">authz, egress, skills, approval mode, billing admission, spend ceiling: unchanged</text>
+  <text x="794" y="526" class="s">authz, egress, secrets, skills, billing admission, spend ceiling: unchanged</text>
 
   <path class="ln" d="M280 354 L340 354"/>
   <path class="ln" d="M660 354 L720 354"/>
@@ -134,7 +134,7 @@
   <text x="804" y="622" class="t">Agent session (existing path)</text>
   <text x="804" y="646" class="m">accept fast, provision async (ADR047)</text>
   <text x="804" y="664" class="m">phase creating → running</text>
-  <text x="804" y="682" class="m">needs_input → push (ADR100)</text>
+  <text x="804" y="682" class="m">runs unattended, never waits</text>
   <text x="804" y="700" class="m">draft PR delivery (ADR090)</text>
   <text x="804" y="724" class="s">billed under ADR091 · automation adds no fee</text>
 

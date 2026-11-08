@@ -21,7 +21,7 @@
 ## Definition of done
 
 - On production, a parent session spawns two children; each child records `parentSessionId`; the dashboard shows child cards, a status-grouped Agents panel and nested sidebar rows; the children's spend rolls up into the parent's total; cancelling the parent cancels both.
-- A child cannot exceed the parent's remaining spend ceiling, the depth or fan-out limit (also under concurrent inserts), or loosen the parent's secrets or approval mode.
+- A child cannot exceed the parent's remaining spend ceiling, the depth or fan-out limit (also under concurrent inserts), or take secrets the parent does not have.
 - A sandbox cannot spawn using another session's token and holds no bex API credential.
 - ADR102 is accepted and ADR094's deferral points at it.
 
@@ -30,7 +30,7 @@
 - **Source:** User request 2026-11-07 (`/pm-brainstorm w21`, then `/pm them all to w21`; this explicitly places the items in w21 despite the 2026-11-05 default of following w21 work in w9). Closes the deferral in [ADR094](../../docs/ADR094-coding-agent-mcp.md) ("Parent and child sessions (Devin `parent_session_id`)"). Reference: Devin, verified live in the Devin dashboard on 2026-11-06; docs.devin.ai advanced capabilities.
 - **Goal linkage:** ADR008 pillar 5 (cloud coding agents); Devin parity. Customers can let an agent split a large task across child sessions and still see and bound the whole tree.
 - **Expected outcome:** Larger tasks can be decomposed by the agent itself, with one place to see progress and one ceiling on cost.
-- **Why now:** ADR094 deferred it as the one structural gap left after the MCP phases. It should start after w9/m176 (approval mode), because both change the session state machine and the child's approval inheritance depends on it; the Automations milestone (m278) later benefits from the same lineage for runs that spawn children.
+- **Why now:** ADR094 deferred it as the one structural gap left after the MCP phases. Secrets (w9/m174) and structured results (ADR094 phase 3) have shipped, so the pieces a child needs exist; the Automations milestone (m278) later benefits from the same lineage for runs that spawn children.
 - **Render parity:** included. This milestone changes REST, GraphQL, MCP and dashboard surfaces for cloud coding agents; the reference product is Devin.
-- **Sequence:** start after w9/m176 lands, to avoid two workers changing the session state machine at once. t001 (the ADR) can start earlier.
-- **Decision with the user (t001):** auto-start approval default. Devin's default is on; bex's recommendation is to require approval, which would be a recorded difference needing sign-off.
+- **Sequence:** t001 (the ADR) can start at once. Start t002 and t003 after w9/m179 (removing approval mode) lands, because it edits the same session state machine and store code.
+- **Approval:** none. Cloud sessions run unattended (`.pm/DO_NOT_DO.md` #APPROVAL-MODE), so a child starts without asking anyone; Devin's "Allow auto-start of child sessions" switch (default on) has no bex counterpart, and that is not a divergence to sign off, it is the existing anti-goal.
