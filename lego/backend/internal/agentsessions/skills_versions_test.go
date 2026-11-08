@@ -26,6 +26,8 @@ import (
 	"testing"
 
 	"github.com/graphql-go/graphql"
+
+	"github.com/bex-co/bex/lego/backend/internal/store"
 	"github.com/modelcontextprotocol/go-sdk/mcp"
 )
 
@@ -40,6 +42,12 @@ func TestUnifiedLineDiff(t *testing.T) {
 		{"distant changes are two hunks", "a\n1\n2\n3\n4\n5\n6\n7\n8\nz\n", "A\n1\n2\n3\n4\n5\n6\n7\n8\nZ\n",
 			"@@ -1,4 +1,4 @@\n-a\n+A\n 1\n 2\n 3\n@@ -7,4 +7,4 @@\n 6\n 7\n 8\n-z\n+Z\n"},
 		{"no trailing newline compares by lines", "a\nb", "a\nb\nc", "@@ -1,2 +1,3 @@\n a\n b\n+c\n"},
+		{"adding only a trailing newline is no change", "a\nb", "a\nb\n", ""},
+		{"a single line from nothing without newline", "", "a", "@@ -0,0 +1,1 @@\n+a\n"},
+		{"CRLF line endings are part of the line", "a\r\nb\r\n", "a\r\nB\r\n", "@@ -1,2 +1,2 @@\n a\r\n-b\r\n+B\r\n"},
+		{"CRLF against LF differs on every line", "a\r\nb\r\n", "a\nb\n", "@@ -1,2 +1,2 @@\n-a\r\n-b\r\n+a\n+b\n"},
+		{"a blank line is a line", "a\n\nb\n", "a\nb\n", "@@ -1,3 +1,2 @@\n a\n-\n b\n"},
+		{"frontmatter fences diff like any line", "---\nx\n---\n", "---\ny\n---\n", "@@ -1,3 +1,3 @@\n ---\n-x\n+y\n ---\n"},
 	}
 	for _, c := range cases {
 		if got := unifiedLineDiff(c.old, c.new); got != c.want {
@@ -48,6 +56,22 @@ func TestUnifiedLineDiff(t *testing.T) {
 	}
 	// A middle too large for the matching table is still a correct (whole
 	// replacement) diff.
+	// Common lines around a too-large middle stay context; only the middle is
+	// replaced.
+	huge := func(c string) string { return "head\n" + strings.Repeat(c+"\n", 2500) + "tail\n" }
+	got := unifiedLineDiff(huge("p"), huge("q"))
+	if !strings.HasPrefix(got, "@@ -1,2502 +1,2502 @@\n head\n-p\n") {
+		t.Errorf("large middle diff = %.80q", got)
+	}
+	if !strings.HasSuffix(got, "+q\n tail\n") || strings.Count(got, "\n-p") != 2500 || strings.Count(got, "\n+q") != 2500 {
+		t.Errorf("large middle diff: %d removed, %d added, tail %q", strings.Count(got, "\n-p"), strings.Count(got, "\n+q"), got[len(got)-12:])
+	}
+	// Just under the table limit the real LCS runs: an inserted line among 2000
+	// shows as one addition, not a replacement.
+	many := strings.Repeat("l\n", 1000) + "m\n" + strings.Repeat("l\n", 1000)
+	if d := unifiedLineDiff(many, strings.Repeat("l\n", 1000)+"m\nX\n"+strings.Repeat("l\n", 1000)); strings.Count(d, "\n+") != 1 || strings.Count(d, "\n-") != 0 {
+		t.Errorf("a single insertion among 2000 lines = %.120q", d)
+	}
 	big := strings.Repeat("x\n", 3000)
 	other := strings.Repeat("y\n", 3000)
 	if got := unifiedLineDiff(big, other); !strings.HasPrefix(got, "@@ -1,3000 +1,3000 @@\n-x\n") {
@@ -356,5 +380,77 @@ func TestRefusedSkillSaveKeepsNoVersion(t *testing.T) {
 	list, err := s.svc.AgentSkillVersions(ctx, "tea-a", created.ID, "", 0)
 	if err != nil || len(list.Versions) != 1 || !list.Versions[0].Current {
 		t.Fatalf("history after a refused save = %+v err=%v", list, err)
+	}
+}
+
+// A viewer is refused on GraphQL like on REST, the service and MCP (reading
+// the history needs can_create), and a developer reads the same record there.
+func TestAgentSkillVersionsDeniedToViewersOnEverySurface(t *testing.T) {
+	s := newSkillVersionSurfaces(t)
+	created, err := s.svc.CreateAgentSkill(caller("admin"), "tea-a", AgentSkillInput{Content: str(deploySkill)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	list := fmt.Sprintf(`{ agentSkillVersions(ownerId: "tea-a", id: %q) { versions { version } } }`, created.ID)
+	one := fmt.Sprintf(`{ agentSkillVersion(ownerId: "tea-a", id: %q, version: 1) { content } }`, created.ID)
+	for _, q := range []string{list, one} {
+		if data, code := s.gql(q, "viewer"); data != nil || code == "" || code == "AGENT_SKILL_NOT_FOUND" {
+			t.Errorf("a viewer's GraphQL read of %.40s = %v code=%q, want a refusal", q, data, code)
+		}
+		if data, code := s.gql(q, "dev"); data == nil || code != "" {
+			t.Errorf("a developer's GraphQL read of %.40s = %v code=%q", q, data, code)
+		}
+	}
+	if _, msg := s.mcp("list_agent_skill_versions", map[string]any{"ownerId": "tea-a", "skill": created.ID}, "viewer"); msg == "" {
+		t.Error("a viewer listed versions over MCP")
+	}
+	// A refusal and a "not found" must not be confused: the same viewer gets
+	// the same answer for a version that does not exist.
+	_, realCode := s.gql(one, "viewer")
+	_, missingCode := s.gql(fmt.Sprintf(`{ agentSkillVersion(ownerId: "tea-a", id: %q, version: 99) { content } }`, created.ID), "viewer")
+	if realCode != missingCode {
+		t.Errorf("a viewer learns whether version 99 exists: %q vs %q", realCode, missingCode)
+	}
+}
+
+// The current version always reads as the live skill, and a refused or empty
+// save changes nothing the history shows: a toggle-only save is a version with
+// an empty diff.
+func TestAgentSkillToggleIsAVersionWithAnEmptyDiff(t *testing.T) {
+	s := newSkillVersionSurfaces(t)
+	ctx := caller("admin")
+	created, err := s.svc.CreateAgentSkill(ctx, "tea-a", AgentSkillInput{Content: str(deploySkill)})
+	if err != nil {
+		t.Fatal(err)
+	}
+	off := false
+	if _, err := s.svc.UpdateAgentSkill(ctx, "tea-a", created.ID, AgentSkillInput{Enabled: &off}); err != nil {
+		t.Fatal(err)
+	}
+	status, v2 := s.rest("/v1/agent-skills/"+created.ID+"/versions/2?ownerId=tea-a", "dev")
+	if status != http.StatusOK || v2["current"] != true || v2["previousVersion"] != float64(1) || v2["diff"] != nil || v2["content"] == "" {
+		t.Fatalf("toggle version = %d %v", status, v2)
+	}
+	if _, v1 := s.rest("/v1/agent-skills/"+created.ID+"/versions/1?ownerId=tea-a", "dev"); v1["content"] != v2["content"] || v1["shortId"] == v2["shortId"] {
+		t.Fatalf("toggle changed the content or kept the short id: %v vs %v", v1, v2)
+	}
+}
+
+// Where the Go renderer and the 0210 backfill agree, a skill's description is
+// written identically; where they differ the difference is the documented one
+// (store.backfillDescriptions pins the SQL side of this table).
+func TestRenderedDescriptionsMatchTheMigrationBackfill(t *testing.T) {
+	for _, c := range []struct{ description, want string }{
+		{"How to deploy", "How to deploy"},
+		{"Deploy (prod), v2.0", "Deploy (prod), v2.0"},
+		{"n/a", "n/a"},
+		{"Deploy: staging", "'Deploy: staging'"}, // SQL: "Deploy: staging"
+		{"Fix #12", "'Fix #12'"},                 // SQL: "Fix #12"
+		{"yes", "yes"},                           // SQL: "yes"
+	} {
+		got := renderSkill(store.AgentSkill{Name: "d", Description: c.description, Triggers: []string{"user", "model"}, Body: "x\n"}, "")
+		if want := "---\nname: d\ndescription: " + c.want + "\n---\nx\n"; got != want {
+			t.Errorf("description %q rendered %q, want %q", c.description, got, want)
+		}
 	}
 }

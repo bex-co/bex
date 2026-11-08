@@ -10,6 +10,7 @@ import type {
   UseAgentSkillVersionResult,
   UseAgentSkillVersionsResult,
 } from "@/features/agent-environment/hooks/use-agent-skill-versions";
+import { codedGraphQLError } from "@/test/mocks/apollo";
 import type { AgentSkillDetail } from "@/features/agent-environment/hooks/use-agent-skills";
 
 const hooks = vi.hoisted(() => ({
@@ -65,6 +66,7 @@ function setList(patch: Partial<UseAgentSkillVersionsResult> = {}) {
     retry: vi.fn(),
     hasMore: false,
     loadingMore: false,
+    loadMoreFailed: false,
     loadMore: vi.fn(async () => undefined),
     ...patch,
   };
@@ -152,6 +154,54 @@ describe("AgentSkillHistory", () => {
     const { user } = renderHistory();
     await user.click(screen.getByRole("button", { name: "Load more" }));
     expect(hooks.list.loadMore).toHaveBeenCalledTimes(1);
+  });
+
+  it("marks Current on the one version the server flags, however many pages are loaded", () => {
+    setList({
+      versions: [summary(5, true), summary(4), summary(3), summary(2)],
+      hasMore: true,
+    });
+    renderHistory();
+    const badged = screen
+      .getAllByTestId(/^version-/)
+      .filter((row) => within(row).queryByText("Current"));
+    expect(badged).toHaveLength(1);
+    expect(badged[0]).toHaveAttribute("data-testid", "version-5");
+  });
+
+  it("says so when Load more fails and keeps the loaded versions", () => {
+    setList({ hasMore: true, loadMoreFailed: true });
+    renderHistory();
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't load the version history.",
+    );
+    expect(screen.getAllByTestId(/^version-/)).toHaveLength(3);
+    expect(screen.getByRole("button", { name: "Load more" })).toBeEnabled();
+  });
+
+  it("shows an empty Content view as no lines and an error with retry when a version fails to load", async () => {
+    const retry = vi.fn();
+    hooks.one = (n) =>
+      n === 2
+        ? { version: null, loading: false, error: new Error("boom"), retry }
+        : {
+            version: { ...detailFor(n ?? 3), content: "" },
+            loading: false,
+            error: undefined,
+            retry: vi.fn(),
+          };
+    const { user } = renderHistory();
+    await user.click(screen.getByRole("button", { name: "Content" }));
+    expect(screen.getByTestId("agent-skill-content")).toBeEmptyDOMElement();
+    expect(
+      screen.getByRole("button", { name: "Load into editor" }),
+    ).toBeDisabled();
+    await user.click(screen.getByTestId("version-2"));
+    expect(screen.getByRole("alert")).toHaveTextContent(
+      "Couldn't load this version.",
+    );
+    await user.click(screen.getByRole("button", { name: "Retry" }));
+    expect(retry).toHaveBeenCalled();
   });
 
   it("hides Load more on the last page", () => {
@@ -271,6 +321,29 @@ describe("AgentSkillDialog version history", () => {
       content: "one\ntwo\n",
       ifVersion: 3,
     });
+  });
+
+  it("shows the conflict message when saving a loaded version races a newer save, and keeps the loaded text", async () => {
+    const { user, onSave } = open("edit");
+    onSave.mockRejectedValueOnce(codedGraphQLError("AGENT_SKILL_CONFLICT"));
+    await user.click(screen.getByRole("tab", { name: "Version history" }));
+    await user.click(screen.getByTestId("version-2"));
+    await user.click(screen.getByRole("button", { name: "Load into editor" }));
+    const dialog = screen.getByTestId("agent-skill-dialog");
+    await user.click(
+      within(dialog).getByRole("button", { name: "Save skill" }),
+    );
+    expect(await within(dialog).findByRole("alert")).toHaveTextContent(
+      "This skill changed since you opened it",
+    );
+    expect(within(dialog).getByLabelText("SKILL.md")).toHaveValue("one\ntwo\n");
+    expect(screen.getByTestId("agent-skill-loaded-notice")).toBeInTheDocument();
+  });
+
+  it("cannot save from the history tab", async () => {
+    const { user } = open("edit");
+    await user.click(screen.getByRole("tab", { name: "Version history" }));
+    expect(screen.getByRole("button", { name: "Save skill" })).toBeDisabled();
   });
 
   it("lets a member browse history read-only", async () => {

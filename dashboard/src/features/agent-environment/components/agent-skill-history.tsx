@@ -225,6 +225,11 @@ export function AgentSkillHistory({
           </ul>
           {list.hasMore ? (
             <div className="p-2">
+              {list.loadMoreFailed ? (
+                <p className="text-destructive pb-2 text-xs" role="alert">
+                  {t("agentEnvironment.skills.history.loadFailed")}
+                </p>
+              ) : null}
               <Button
                 type="button"
                 variant="outline"

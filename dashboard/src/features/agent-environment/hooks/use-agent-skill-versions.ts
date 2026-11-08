@@ -25,6 +25,8 @@ export interface UseAgentSkillVersionsResult {
   retry: () => void;
   hasMore: boolean;
   loadingMore: boolean;
+  /** The last Load more failed; clicking it again retries the same page. */
+  loadMoreFailed: boolean;
   loadMore: () => Promise<void>;
 }
 
@@ -46,6 +48,7 @@ export function useAgentSkillVersions(
     cursor: string | null;
   } | null>(null);
   const [loadingMore, setLoadingMore] = useState(false);
+  const [loadMoreFailed, setLoadMoreFailed] = useState(false);
 
   const first = data?.agentSkillVersions;
   const cursor = more ? more.cursor : (first?.nextCursor ?? null);
@@ -53,6 +56,7 @@ export function useAgentSkillVersions(
   const loadMore = useCallback(async () => {
     if (cursor == null) return;
     setLoadingMore(true);
+    setLoadMoreFailed(false);
     try {
       const res = await client.query({
         query: AgentSkillVersionsDocument,
@@ -66,6 +70,8 @@ export function useAgentSkillVersions(
           cursor: page.nextCursor ?? null,
         }));
       }
+    } catch {
+      setLoadMoreFailed(true);
     } finally {
       setLoadingMore(false);
     }
@@ -73,6 +79,7 @@ export function useAgentSkillVersions(
 
   const retry = useCallback(() => {
     setMore(null);
+    setLoadMoreFailed(false);
     void refetch();
   }, [refetch]);
 
@@ -83,6 +90,7 @@ export function useAgentSkillVersions(
     retry,
     hasMore: cursor != null,
     loadingMore,
+    loadMoreFailed,
     loadMore,
   };
 }

@@ -24,3 +24,4 @@
 - [ ] **008** — Document the "Deploy to bex" button in the public docs → [`008.md`](008.md)
 - [ ] **009** — Check the Deploy-to-bex link survives sign-up and the payment gate for a new account → [`009.md`](009.md)
 - [ ] **010** — Automations: count a workspace's automations in the database, and read the previous run's phase with one query → [`010.md`](010.md)
+- [ ] **011** — Skill versions saved before migration 0210 read with SQL-style YAML quoting, so their next diff shows one spurious description line → [`011.md`](011.md)

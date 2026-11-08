@@ -83,7 +83,7 @@ agent_skill_versions (
 - **`short_id`** is the first 7 hex characters of `sha256(skill_id|version|content)`: stable, not a secret, and different for two saves of the same text. It is a display handle; `version` is the key.
 - **Retention.** The newest 200 versions of a skill are kept. The save that writes version N deletes versions `<= N-200` in the same transaction, so the history never grows without bound and the oldest are dropped first. The newest version is never dropped.
 - **Delete.** Versions go with the skill (`ON DELETE CASCADE`), and with the workspace through it. Deleting a skill and recreating its name starts a new history at version 1. `created_by` is anonymized on account deletion like `agent_skills.updated_by`.
-- **Backfill.** The migration gives every existing skill one version row for its current `version`, with `content` rendered in SQL from the stored fields, `created_by = updated_by` and `created_at = updated_at`. Earlier versions were never kept and cannot be recovered. The SQL render quotes YAML scalars slightly differently from the Go renderer in edge cases, so the API always shows the current version's `content` rendered from the live row.
+- **Backfill.** The migration gives every existing skill one version row for its current `version`, with `content` rendered in SQL from the stored fields, `created_by = updated_by` and `created_at = updated_at`. Earlier versions were never kept and cannot be recovered. The SQL render quotes YAML scalars slightly differently from the Go renderer in edge cases (the SQL writes a double-quoted JSON string where the Go encoder writes single quotes, for example for a description such as `Deploy: staging` or `Fix #12`, and it quotes words like `yes` that Go leaves plain), so the API renders the current version's `content` from the live row and nothing shows the SQL text while the version is current. Once a later save makes it a past version, it reads as stored (the SQL text) and its `shortId` was always hashed from the stored text; the next version's diff is taken against that stored text, so for such a skill it can show the description line as changed once. This is accepted: it affects only skills saved before the migration whose description needs quoting, the content is semantically identical YAML, and history is never rewritten. Two tests pin the behavior: one asserts the descriptions both renderers write identically, the other the known quoting differences, so a change to either renderer fails a test.
 - **Restore is a read plus an ordinary update.** There is no restore endpoint. A client reads a version's `content` and sends it as `content` to the update operation, with `ifVersion` set to the current version. That writes a new version (`Update …`) on top; history is never rewritten and no version is mutated. The dashboard's "Load into editor" then Save is exactly this.
 
 ### D3 — API: one core, three thin adapters
@@ -147,6 +147,19 @@ The new-session composer gains a skill picker next to secrets and attachments. T
 Each skill's editor has **Preview**, **Edit** and **Version history** tabs, as in Devin. Version history lists the saved versions newest first, each with its message, author, time, short id and a **Current** badge on the newest; selecting one shows **Changes** (the server's diff against the previous version) or **Content** (the full text). **Load into editor** puts that version's content into the Edit tab; the normal Save then writes a new version (D2).
 
 Skeletons match the ready geometry (AGENTS.md rule).
+
+### Parity with Devin (version history)
+
+Reference: docs.devin.ai Creating Playbooks ("Each time you edit and save a playbook, a new version is created"; revert to an earlier version) and Skills ("each save keeps a version history"), plus the live dashboard recorded on 2026-11-06 (Preview, Edit and Version history tabs; per version a message, author, time and short hash, a Current badge, Changes and Content views, Load into editor). bex matches all of these. Recorded differences:
+
+- **Restore is Load into editor then Save**, which writes a new version. Devin's docs say "revert"; whether its Revert rewrites history or adds a version is not documented. bex never rewrites history, and has no restore endpoint on REST, GraphQL or MCP; restore is a read plus an update with `ifVersion`.
+- **Messages are generated** (`Add skills/<name>/SKILL.md`, `Update skills/<name>/SKILL.md`); the author cannot write one. Devin shows commit-like messages whose origin (generated or typed) was not verifiable.
+- **Retention is the newest 200 versions**; Devin documents no limit.
+- **Skills only.** bex keeps versions of workspace skills; repo skills have git history, and bex has no Playbook entity (D1).
+- **History starts at the migration** for skills that existed before it: one backfilled version.
+- **A save that changes nothing still writes a version**, and `enabled` is not part of `content`, so a toggle writes a version with an empty diff. Devin's behavior for a no-op save was not verified.
+- **Reads are an API too**: `agentSkillVersions`, `agentSkillVersion`, `list_agent_skill_versions`, `get_agent_skill_version` and the REST routes have no documented Devin counterpart (Devin's Playbooks API reads and writes the skill, not its versions as far as the docs say). They are bex's own cross-surface discipline.
+- **Diff**: a server-computed unified line diff against the previous version, three lines of context. Devin's exact diff granularity and whether it is computed server-side were not verified. Reading history needs `can_create`; whether Devin lets read-only members see playbook history was not verified.
 
 ## Consequences
 

@@ -1,6 +1,6 @@
 # w21 · m280 — Skill version history: every save keeps a version you can read, diff and restore (Devin parity)
 
-**Worker:** worker21 **Goal:** every save of a workspace skill is kept as a version with message, author, time and short id, viewable and diffable on every surface, and restorable. **Status:** todo (t001, t002, t003, t004 done)
+**Worker:** worker21 **Goal:** every save of a workspace skill is kept as a version with message, author, time and short id, viewable and diffable on every surface, and restorable. **Status:** todo (t001, t002, t003, t004, t005, t006, t007 done)
 
 ## Tasks (in order)
 
@@ -10,9 +10,9 @@
 | t002 | Version store: write on every save — **DONE** | 75m | t001 |
 | t003 | REST, GraphQL and MCP: list and read versions — **DONE** | 60m | t002 |
 | t004 | Dashboard: Version history tab — **DONE** | 75m | t003 |
-| t005 | Render parity (Devin reference for agent surfaces) | 25m | t004 |
-| t006 | Simplify | 15m | t005 |
-| t007 | Test coverage | 45m | t005, t006 |
+| t005 | Render parity (Devin reference for agent surfaces) — **DONE** | 25m | t004 |
+| t006 | Simplify — **DONE** | 15m | t005 |
+| t007 | Test coverage — **DONE** | 45m | t005, t006 |
 | t008 | Closeout | 10m | t007 |
 
 ## Definition of done

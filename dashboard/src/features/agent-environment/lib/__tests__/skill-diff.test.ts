@@ -56,9 +56,56 @@ describe("parseSkillDiff", () => {
   });
 });
 
+describe("parseSkillDiff edge cases", () => {
+  it("never mistakes file content for a header or a marker", () => {
+    // A removed "---" fence reads "----"; a removed "@@" line reads "-@@ ...".
+    const rows = parseSkillDiff(
+      "@@ -1,3 +1,2 @@\n----\n-@@ -9 +9 @@\n+++ b\n x\n",
+    );
+    expect(rows.map((r) => r.kind)).toEqual([
+      "hunk",
+      "remove",
+      "remove",
+      "add",
+      "context",
+    ]);
+    expect(rows.map((r) => r.text).slice(1)).toEqual([
+      "---",
+      "@@ -9 +9 @@",
+      "++ b",
+      "x",
+    ]);
+  });
+
+  it("keeps a carriage return as part of the line", () => {
+    const rows = parseSkillDiff("@@ -1,1 +1,1 @@\n-a\r\n+b\r\n");
+    expect(rows.map((r) => r.text).slice(1)).toEqual(["a\r", "b\r"]);
+  });
+
+  it("numbers an empty old file from line 1 and an emptied file with no new lines", () => {
+    const added = parseSkillDiff("@@ -0,0 +1,2 @@\n+a\n+b\n");
+    expect(added.slice(1)).toMatchObject([
+      { kind: "add", oldLine: null, newLine: 1 },
+      { kind: "add", oldLine: null, newLine: 2 },
+    ]);
+    const removed = parseSkillDiff("@@ -1,2 +0,0 @@\n-a\n-b\n");
+    expect(removed.slice(1)).toMatchObject([
+      { kind: "remove", oldLine: 1, newLine: null },
+      { kind: "remove", oldLine: 2, newLine: null },
+    ]);
+  });
+
+  it("gives a diff with no hunk header no rows", () => {
+    expect(parseSkillDiff("+a\n-b\n")).toEqual([]);
+  });
+});
+
 describe("skillContentLines", () => {
   it("splits a file without the empty tail", () => {
     expect(skillContentLines("a\n\nb\n")).toEqual(["a", "", "b"]);
     expect(skillContentLines(null)).toEqual([]);
+    expect(skillContentLines("")).toEqual([]);
+    expect(skillContentLines("no newline")).toEqual(["no newline"]);
+    expect(skillContentLines("a\r\nb\r\n")).toEqual(["a\r", "b\r"]);
   });
 });
