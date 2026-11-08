@@ -114,7 +114,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_project",
-		Description: "Delete a project and all of its services, as Render does (databases and key-value stores become unassigned, not deleted). bex extension.",
+		Description: "Delete a project and all of its environments, services, databases and key-value stores, as Render's dashboard does (env groups are detached, not deleted). bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in projectIDArgs) (*mcp.CallToolResult, struct {
 		ID string `json:"id"`
 	}, error) {

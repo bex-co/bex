@@ -4,7 +4,10 @@ import { toast } from "sonner";
 import { DeleteEnvironmentDocument } from "@/graphql/definitions";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
-import { publishEnvironments } from "@/features/environments/lib/refresh-environments";
+import {
+  DELETED_RESOURCE_QUERIES,
+  publishEnvironments,
+} from "@/features/environments/lib/refresh-environments";
 
 export interface UseDeleteEnvironmentResult {
   /**
@@ -22,8 +25,8 @@ export interface UseDeleteEnvironmentResult {
 
 /**
  * Wires an environment's Delete action to bex-api's `deleteEnvironment` — its
- * services keep their project membership, they just lose the environment label
- * (docs/ADR032-environments.md).
+ * services, databases and key value stores are deleted with it; env groups just
+ * lose the environment label (docs/ADR032-environments.md, w6/m290).
  *
  * The list is re-read through `publishEnvironments`, not a named refetch: that
  * dedupes onto an Environments read already in flight, which answers with the
@@ -49,6 +52,9 @@ export function useDeleteEnvironment(
           );
           return false;
         }
+        client
+          .refetchQueries({ include: DELETED_RESOURCE_QUERIES })
+          .catch(() => undefined);
         await publishEnvironments(client, projectId, {
           succeeded: t("environments.deleteSuccess", { name }),
           refreshFailed: t("environments.deleteRefreshFailed", { name }),

@@ -167,11 +167,27 @@ export function EnvironmentCard({
     items: StrandedGroupPromptItem[];
   } | null>(null);
 
-  // Deleting an environment deletes its services, as Render does (w4/m264).
-  const doomedServiceNames = useMemo(() => {
-    const byId = new Map(services.map((s) => [s.id, s.name]));
-    return environment.serviceIds.map((id) => byId.get(id) ?? id);
-  }, [environment.serviceIds, services]);
+  // Deleting an environment deletes its services, databases and key value
+  // stores, as Render's dashboard deletes all its services (w4/m264, w6/m290).
+  const doomedNames = useMemo(() => {
+    const names = new Map<string, string>([
+      ...services.map((s): [string, string] => [s.id, s.name]),
+      ...databases.map((d): [string, string] => [d.id, d.name]),
+      ...keyValues.map((k): [string, string] => [k.id, k.name]),
+    ]);
+    return [
+      ...environment.serviceIds,
+      ...environment.databaseIds,
+      ...environment.keyValueIds,
+    ].map((id) => names.get(id) ?? id);
+  }, [
+    environment.serviceIds,
+    environment.databaseIds,
+    environment.keyValueIds,
+    services,
+    databases,
+    keyValues,
+  ]);
 
   const rows = useMemo((): ResourceRow[] => {
     const serviceById = new Map(services.map((s) => [s.id, s]));
@@ -546,14 +562,14 @@ export function EnvironmentCard({
         onOpenChange={setDeleteOpen}
         title={t("environments.deleteConfirmTitle", { name: environment.name })}
         description={
-          doomedServiceNames.length > 0
-            ? t("environments.deleteConfirmBodyServices", {
-                services: doomedServiceNames.join(", "),
+          doomedNames.length > 0
+            ? t("environments.deleteConfirmBodyResources", {
+                resources: doomedNames.join(", "),
               })
             : t("environments.deleteConfirmBody")
         }
         phrase={
-          doomedServiceNames.length > 0
+          doomedNames.length > 0
             ? `sudo delete environment ${environment.name}`
             : undefined
         }

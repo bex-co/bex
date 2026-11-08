@@ -5,6 +5,8 @@ import { EnvironmentCard } from "@/features/environments/components/environment-
 import type { EnvironmentView } from "@/features/environments/hooks/use-environments";
 import type { EnvGroupView } from "@/features/env-groups/types";
 import type { ServiceView } from "@/features/services/types";
+import type { DatabaseView } from "@/features/databases/types";
+import type { KeyValueView } from "@/features/keyvalue/types";
 
 const rename = vi.fn();
 
@@ -538,6 +540,47 @@ describe("EnvironmentCard", () => {
     expect(
       within(dialog).getByText('Delete environment "staging"?'),
     ).toBeInTheDocument();
+    await user.click(within(dialog).getByRole("button", { name: "Delete" }));
+
+    expect(remove).toHaveBeenCalledWith("env-1", "staging");
+  });
+
+  // w6/m290: the environment's databases and key value stores are deleted with
+  // it, as Render's dashboard deletes all of its services, so the typed
+  // confirmation names them; env groups stay.
+  it("names the databases and key value stores a delete removes", async () => {
+    const user = userEvent.setup();
+    renderCard({
+      environment: {
+        ...env,
+        databaseIds: ["dpg-1"],
+        keyValueIds: ["red-1"],
+        envGroupIds: [],
+      },
+      databases: [
+        { id: "dpg-1", name: "orders-db" } as unknown as DatabaseView,
+      ],
+      keyValues: [
+        { id: "red-1", name: "sessions-kv" } as unknown as KeyValueView,
+      ],
+    });
+
+    await user.click(screen.getByRole("button", { name: "More actions" }));
+    await user.click(await screen.findByRole("menuitem", { name: "Delete" }));
+
+    const dialog = await screen.findByRole("alertdialog");
+    expect(
+      within(dialog).getByText(
+        /deletes all of its services, databases, and key value stores: orders-db, sessions-kv\. Its environment groups stay/,
+      ),
+    ).toBeInTheDocument();
+    expect(
+      within(dialog).getByRole("button", { name: "Delete" }),
+    ).toBeDisabled();
+    await user.type(
+      within(dialog).getByRole("textbox"),
+      "sudo delete environment staging",
+    );
     await user.click(within(dialog).getByRole("button", { name: "Delete" }));
 
     expect(remove).toHaveBeenCalledWith("env-1", "staging");

@@ -63,8 +63,12 @@ export function ProjectSettingsPage() {
   const { remove, deleting } = useDeleteProject();
   const [deleteOpen, setDeleteOpen] = useState(false);
   const deletingThis = deleting === projectId;
-  // Deleting a project deletes its services, as Render does (w4/m264).
-  const doomedServiceCount = project?.serviceIds.length ?? 0;
+  // Services, databases and key value stores are deleted with the project
+  // (w4/m264, w6/m290).
+  const doomedResourceCount =
+    (project?.serviceIds.length ?? 0) +
+    (project?.databaseIds.length ?? 0) +
+    (project?.keyValueIds.length ?? 0);
 
   function startEdit() {
     setDraft(project?.name ?? "");
@@ -198,14 +202,14 @@ export function ProjectSettingsPage() {
         onOpenChange={setDeleteOpen}
         title={t("projects.deleteConfirmTitle", { name: project?.name ?? "" })}
         description={
-          doomedServiceCount > 0
-            ? t("projects.deleteConfirmBodyServices", {
-                count: doomedServiceCount,
+          doomedResourceCount > 0
+            ? t("projects.deleteConfirmBodyResources", {
+                count: doomedResourceCount,
               })
             : t("projects.deleteConfirmBody")
         }
         phrase={
-          doomedServiceCount > 0
+          doomedResourceCount > 0
             ? `sudo delete project ${project?.name ?? ""}`
             : undefined
         }

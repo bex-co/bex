@@ -48,6 +48,19 @@ type ServiceDeleter interface {
 	Delete(ctx context.Context, name string) error
 }
 
+// PostgresDeleter and KeyValueDeleter are the datastores' normal delete verbs
+// (authorization, protected-environment gate, fresh can_create, CR delete),
+// which the cascading environment and project deletes call for each contained
+// datastore (w6/m290).
+type PostgresDeleter interface {
+	DeletePostgres(ctx context.Context, name string) error
+}
+
+// KeyValueDeleter is PostgresDeleter's Key Value counterpart.
+type KeyValueDeleter interface {
+	DeleteKeyValue(ctx context.Context, name string) error
+}
+
 // environments.Service is the single implementation wired by the composition
 // root. Unknown ids return ErrNotFound; ids in another workspace return
 // ErrForbidden.

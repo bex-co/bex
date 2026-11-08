@@ -116,7 +116,7 @@ func (s *Service) RegisterMCP(srv *mcp.Server) {
 
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "delete_environment",
-		Description: "Delete an environment and all of its services, as Render does (databases, key-value stores and env groups are detached, not deleted). bex extension.",
+		Description: "Delete an environment and all of its services, databases and key-value stores, as Render's dashboard does (env groups are detached, not deleted). bex extension.",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in environmentIDArgs) (*mcp.CallToolResult, struct {
 		ID string `json:"id"`
 	}, error) {

@@ -1,6 +1,21 @@
 import type { ApolloClient } from "@apollo/client";
 import { toast } from "sonner";
-import { EnvironmentsDocument } from "@/graphql/definitions";
+import {
+  DatabasesDocument,
+  EnvironmentsDocument,
+  KeyValuesDocument,
+  ServicesDocument,
+} from "@/graphql/definitions";
+
+/**
+ * The workspace lists an environment or project delete removes rows from: its
+ * services, databases and key value stores go with it (w4/m264, w6/m290).
+ */
+export const DELETED_RESOURCE_QUERIES = [
+  ServicesDocument,
+  DatabasesDocument,
+  KeyValuesDocument,
+];
 
 /**
  * Re-read a project's environments after a write so the list shows it — a

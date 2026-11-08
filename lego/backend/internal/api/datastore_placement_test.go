@@ -298,6 +298,14 @@ func TestDatastorePlacementAcrossComposedSurfaces(t *testing.T) {
 						callTool[map[string]any](t, cs, "delete_"+kind, map[string]any{"id": target})
 					}
 					request(http.MethodGet, "/v1/"+kind+"s/"+target, "", http.StatusNotFound)
+					if surface != "REST" {
+						// The confirmed teardown deletes the datastores with it, as
+						// Render's dashboard deletes all of an environment's services
+						// (w6/m290).
+						request(http.MethodGet, "/v1/postgres/"+db.Name, "", http.StatusNotFound)
+						request(http.MethodGet, "/v1/key-value/"+kv.Name, "", http.StatusNotFound)
+						return
+					}
 				} else {
 					pgIDs, kvIDs := []string{db.Name}, []string{kv.Name}
 					if empty {

@@ -915,6 +915,9 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Databases: pg,
 		KeyValues: kv,
 		EnvGroups: environmentEnvGroups,
+		// Environment deletes remove contained datastores (w6/m290).
+		PostgresDeleter: pg,
+		KeyValueDeleter: kv,
 		// The direct-create grouping quota shares the Blueprint bound
 		// (codex-security round 12, finding 5).
 		MaxGroupings: d.MaxBlueprintGroupings,
@@ -1122,14 +1125,16 @@ func NewServer(base *core.Base, d Deps) *Server {
 		Billing:       billingSvc,
 		Notifications: notificationsSvc,
 		Projects: &projects.Service{
-			Base:         base,
-			Store:        d.ProjectsStore,
-			Databases:    pg,
-			KeyValues:    kv,
-			Environments: &environments.ProjectMemberClearer{Service: environmentsSvc},
-			Services:     appsSvc,
-			ExitGuards:   environments.ExitGuards(environmentsSvc),
-			Owners:       workspaceSvc,
+			Base:            base,
+			Store:           d.ProjectsStore,
+			Databases:       pg,
+			KeyValues:       kv,
+			Environments:    &environments.ProjectMemberClearer{Service: environmentsSvc},
+			Services:        appsSvc,
+			PostgresDeleter: pg,
+			KeyValueDeleter: kv,
+			ExitGuards:      environments.ExitGuards(environmentsSvc),
+			Owners:          workspaceSvc,
 			// The direct-create grouping quota shares the Blueprint bound
 			// (codex-security round 12, finding 5).
 			MaxGroupings: d.MaxBlueprintGroupings,

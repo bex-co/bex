@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import { useMutation } from "@apollo/client/react";
 import { toast } from "sonner";
 import { DeleteProjectDocument } from "@/graphql/definitions";
+import { DELETED_RESOURCE_QUERIES } from "@/features/environments/lib/refresh-environments";
 import { useTranslations } from "@/common/hooks/use-translations";
 import { mutationErrorMessage } from "@/common/lib/graphql-error";
 
@@ -14,11 +15,14 @@ export interface UseDeleteProjectResult {
 
 /**
  * Wires the project "•••" menu's Delete action to bex-api's `deleteProject` —
- * its services/databases/key-values become unassigned, never deleted.
+ * its services, databases and key value stores are deleted with it, as Render's
+ * dashboard does; env groups become unassigned (w6/m290).
  */
 export function useDeleteProject(): UseDeleteProjectResult {
   const { t } = useTranslations();
-  const [mutate] = useMutation(DeleteProjectDocument);
+  const [mutate] = useMutation(DeleteProjectDocument, {
+    refetchQueries: DELETED_RESOURCE_QUERIES,
+  });
   const [deleting, setDeleting] = useState<string | null>(null);
 
   const remove = useCallback(

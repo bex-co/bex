@@ -127,6 +127,12 @@ type Service struct {
 	// deleted, as Render's dashboard does (w4/m264). nil keeps the former
 	// detach-only behavior (test fakes).
 	Services core.ServiceDeleter
+	// PostgresDeleter and KeyValueDeleter delete the environment's datastores
+	// with it, as Render's dashboard deletes all its services (w6/m290). nil
+	// keeps the detach-only behavior (test fakes). Env groups are always
+	// detached: Render lists them apart from services.
+	PostgresDeleter core.PostgresDeleter
+	KeyValueDeleter core.KeyValueDeleter
 	// MaxGroupings is the workspace's durable grouping quota
 	// (BEX_MAX_BLUEPRINT_GROUPINGS, default 1000) — the same abuse bound the
 	// Blueprint apply loop enforces, applied to DIRECT environment creates too
@@ -959,11 +965,10 @@ func (s *Service) clearMembersForProject(ctx context.Context, projectID string) 
 	return nil
 }
 
-// Delete deletes the environment's services (Render: "Deleting an environment
-// deletes all of its associated services", w4/m264), then clears the remaining
-// members' environment membership and inherited rules before removing the
-// environment. Databases, key-value stores and env groups are detached, not
-// deleted; their project membership and own rules survive.
+// Delete deletes the environment's services and datastores (Render: "Deleting
+// an environment deletes all of its associated services", w4/m264, w6/m290),
+// then clears the remaining members' environment membership and inherited
+// rules before removing the environment. Env groups are detached, not deleted.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	ctx, e, err := s.authorizedForDelete(ctx, id)
 	if err != nil {
@@ -986,16 +991,26 @@ func (s *Service) authorizedForDelete(ctx context.Context, id string) (context.C
 
 func (s *Service) deleteEnvironment(ctx context.Context, e store.Environment, deleteServices bool) error {
 	var doomed []string
-	if deleteServices && s.Services != nil {
-		var err error
-		if doomed, err = s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID); err != nil {
+	if deleteServices {
+		if s.Services != nil {
+			var err error
+			if doomed, err = s.Store.ListEnvironmentServices(ctx, e.ID, e.ProjectID); err != nil {
+				return err
+			}
+		}
+		// The administrator gate is hoisted ahead of the first irreversible
+		// delete. Datastores go before the membership clear: a failed delete
+		// leaves them in the environment, so a retry still finds them.
+		if err := s.authorizeACLBearingMutation(ctx, e); err != nil {
+			return err
+		}
+		if err := s.deleteDatastores(ctx, e); err != nil {
 			return err
 		}
 	}
 	if err := s.clearEnvironmentMembers(ctx, e); err != nil {
 		return err
 	}
-	// The administrator gate above ran before the first irreversible delete.
 	// A failure leaves the environment row, so a retry finishes the teardown.
 	for _, name := range doomed {
 		if err := s.Services.Delete(ctx, name); err != nil && !errors.Is(err, core.ErrNotFound) {
@@ -1003,6 +1018,30 @@ func (s *Service) deleteEnvironment(ctx context.Context, e store.Environment, de
 		}
 	}
 	return store.MapError(s.Store.DeleteEnvironment(ctx, e.ID))
+}
+
+// deleteDatastores deletes every Postgres and Key Value currently in e through
+// its own delete verb. A kind whose deleter is nil is left for the membership
+// clear to detach.
+func (s *Service) deleteDatastores(ctx context.Context, e store.Environment) error {
+	if idx := s.databases(); idx != nil && s.PostgresDeleter != nil {
+		if err := forEachMember(ctx, idx, e, ignoreNotFound(s.PostgresDeleter.DeletePostgres)); err != nil {
+			return err
+		}
+	}
+	if idx := s.keyValues(); idx != nil && s.KeyValueDeleter != nil {
+		return forEachMember(ctx, idx, e, ignoreNotFound(s.KeyValueDeleter.DeleteKeyValue))
+	}
+	return nil
+}
+
+func ignoreNotFound(del func(context.Context, string) error) func(context.Context, string) error {
+	return func(ctx context.Context, id string) error {
+		if err := del(ctx, id); err != nil && !errors.Is(err, core.ErrNotFound) {
+			return err
+		}
+		return nil
+	}
 }
 
 // DeleteIfEmpty is Render's delete (w8/188): the environment must hold no
@@ -1094,6 +1133,14 @@ func (s *Service) clearEnvironmentMembers(ctx context.Context, e store.Environme
 
 // leaveEnvironment removes every current idx member of e from it.
 func leaveEnvironment(ctx context.Context, idx resourceIndex, e store.Environment) error {
+	return forEachMember(ctx, idx, e, func(ctx context.Context, id string) error {
+		return idx.leave(ctx, id, e.ID)
+	})
+}
+
+// forEachMember calls fn for every current idx member of e, stopping at the
+// first error.
+func forEachMember(ctx context.Context, idx resourceIndex, e store.Environment, fn func(context.Context, string) error) error {
 	members, err := idx.list(ctx, e.TenantID)
 	if err != nil {
 		return err
@@ -1102,7 +1149,7 @@ func leaveEnvironment(ctx context.Context, idx resourceIndex, e store.Environmen
 		if member.environmentID != e.ID {
 			continue
 		}
-		if err := idx.leave(ctx, member.id, e.ID); err != nil {
+		if err := fn(ctx, member.id); err != nil {
 			return err
 		}
 	}

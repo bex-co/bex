@@ -304,7 +304,7 @@ const enProjects: Record<string, TranslationEntry> = {
   },
   "projects.deleteCardDescription": {
     message:
-      "Its environments and their configuration are deleted with it. Its services, databases, and key value stores are not deleted — they become unassigned. This action cannot be undone.",
+      "Its environments and all of their services, databases, and key value stores are deleted with it. Its environment groups become unassigned. This action cannot be undone.",
     description: "Project settings page's danger-zone card description",
   },
   "projects.deleteCardButton": {
@@ -318,20 +318,20 @@ const enProjects: Record<string, TranslationEntry> = {
   },
   "projects.deleteConfirmBody": {
     message:
-      "Its environments and their configuration are deleted. Its databases and key value stores become unassigned, not deleted.",
+      "Its environments and their configuration are deleted. Its environment groups become unassigned, not deleted.",
     description: "Delete-project confirmation dialog body",
   },
-  "projects.deleteConfirmBodyServices_one": {
+  "projects.deleteConfirmBodyResources_one": {
     message:
-      "Deleting this project deletes all of its environments and its one service. Its databases and key value stores become unassigned, not deleted. This action cannot be undone.",
+      "Deleting this project deletes all of its environments and the one service, database, or key value store in it. Its environment groups become unassigned, not deleted. This action cannot be undone.",
     description:
-      "Delete-project confirmation body when services would be deleted (w4/m264, Render parity)",
+      "Delete-project confirmation body when services, databases or key value stores would be deleted (w4/m264, w6/m290, Render parity)",
   },
-  "projects.deleteConfirmBodyServices_other": {
+  "projects.deleteConfirmBodyResources_other": {
     message:
-      "Deleting this project deletes all of its environments and its {count} services. Its databases and key value stores become unassigned, not deleted. This action cannot be undone.",
+      "Deleting this project deletes all of its environments and the {count} services, databases, and key value stores in it. Its environment groups become unassigned, not deleted. This action cannot be undone.",
     description:
-      "Delete-project confirmation body when services would be deleted (w4/m264, Render parity)",
+      "Delete-project confirmation body when services, databases or key value stores would be deleted (w4/m264, w6/m290, Render parity)",
   },
   "projects.deleteSuccess": {
     message: 'Project "{name}" deleted.',

@@ -217,7 +217,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 
 	// Render requires an empty environment to delete it and answers 409
 	// otherwise (w8/188); the dashboard and GraphQL keep the confirmed
-	// detach-and-delete flow through s.Delete.
+	// cascading delete through s.Delete (w6/m290).
 	mux.HandleFunc("DELETE /v1/environments/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteIfEmpty(r.Context(), r.PathValue("id"))
 	}))

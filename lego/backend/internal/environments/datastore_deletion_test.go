@@ -22,6 +22,7 @@ import (
 	"reflect"
 	"testing"
 
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -193,5 +194,85 @@ func TestSetACLPreservesDatastoreReassignmentAfterList(t *testing.T) {
 	}
 	for _, obj := range []client.Object{&appv1alpha1.Database{}, &appv1alpha1.KeyValue{}} {
 		assertDatastorePlacement(t, cl, obj, "member", "prj-1", "evm-other", []string{"203.0.113.0/24"})
+	}
+}
+
+// w6/m290: the cascading Delete (dashboard, GraphQL, MCP) deletes the
+// environment's own Postgres and Key Value through their normal delete verbs,
+// as Render's dashboard deletes all of an environment's services; members of
+// another environment or workspace survive, and REST's DeleteIfEmpty never
+// deletes one.
+func TestDeleteDeletesTheEnvironmentsDatastores(t *testing.T) {
+	svc, cl, st := datastorePlacementService(t, interceptor.Funcs{})
+	svc.PostgresDeleter = &postgres.Service{Base: svc.Base}
+	svc.KeyValueDeleter = &keyvalue.Service{Base: svc.Base}
+	if err := svc.Delete(ctxAs("user-a"), "evm-delete"); err != nil {
+		t.Fatal(err)
+	}
+	for _, obj := range []client.Object{&appv1alpha1.Database{}, &appv1alpha1.KeyValue{}} {
+		err := cl.Get(t.Context(), client.ObjectKey{Namespace: "default", Name: "member"}, obj)
+		if !apierrors.IsNotFound(err) {
+			t.Errorf("%T member still exists after its environment's delete: %v", obj, err)
+		}
+		assertDatastorePlacement(t, cl, obj, "other", "prj-1", "evm-other", []string{"10.0.0.0/8"})
+		assertDatastorePlacement(t, cl, obj, "foreign", "prj-1", "evm-delete", []string{"10.0.0.0/8"})
+	}
+	if _, err := st.GetEnvironment(t.Context(), "evm-delete"); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("deleted environment still exists: %v", err)
+	}
+}
+
+func TestDeleteDatastoreFailureKeepsItInTheEnvironmentForRetry(t *testing.T) {
+	boom := errors.New("injected database delete failure")
+	fail := true
+	svc, cl, st := datastorePlacementService(t, interceptor.Funcs{
+		Delete: func(ctx context.Context, c client.WithWatch, obj client.Object, opts ...client.DeleteOption) error {
+			if _, ok := obj.(*appv1alpha1.Database); ok && fail {
+				fail = false
+				return boom
+			}
+			return c.Delete(ctx, obj, opts...)
+		},
+	})
+	svc.PostgresDeleter = &postgres.Service{Base: svc.Base}
+	if err := svc.Delete(ctxAs("user-a"), "evm-delete"); !errors.Is(err, boom) {
+		t.Fatalf("Delete = %v, want delete failure", err)
+	}
+	if _, err := st.GetEnvironment(t.Context(), "evm-delete"); err != nil {
+		t.Fatalf("failed delete removed the environment: %v", err)
+	}
+	assertDatastorePlacement(t, cl, &appv1alpha1.Database{}, "member", "prj-1", "evm-delete", []string{"10.0.0.0/8"})
+	if err := svc.Delete(ctxAs("user-a"), "evm-delete"); err != nil {
+		t.Fatalf("retry Delete: %v", err)
+	}
+	if err := cl.Get(t.Context(), client.ObjectKey{Namespace: "default", Name: "member"}, &appv1alpha1.Database{}); !apierrors.IsNotFound(err) {
+		t.Errorf("retry left the database: %v", err)
+	}
+}
+
+func TestDeleteIfEmptyNeverDeletesDatastores(t *testing.T) {
+	svc, cl, _ := datastorePlacementService(t, interceptor.Funcs{})
+	svc.PostgresDeleter = &postgres.Service{Base: svc.Base}
+	_ = svc.DeleteIfEmpty(ctxAs("user-a"), "evm-delete")
+	if err := cl.Get(t.Context(), client.ObjectKey{Namespace: "default", Name: "member"}, &appv1alpha1.Database{}); err != nil {
+		t.Errorf("DeleteIfEmpty touched the database: %v", err)
+	}
+}
+
+// A developer's delete of a protected environment is refused before any of its
+// datastores is deleted.
+func TestProtectedEnvironmentDeleteRefusalDeletesNoDatastore(t *testing.T) {
+	svc, cl, st := datastorePlacementService(t, interceptor.Funcs{})
+	e := st.envs["evm-delete"]
+	e.ProtectedStatus = ProtectedStatusProtected
+	st.envs["evm-delete"] = e
+	svc.Authz = developerChecker{}
+	svc.PostgresDeleter = &postgres.Service{Base: svc.Base}
+	svc.KeyValueDeleter = &keyvalue.Service{Base: svc.Base}
+	if err := svc.Delete(ctxAs("user-a"), "evm-delete"); !errors.Is(err, core.ErrForbidden) {
+		t.Fatalf("developer Delete of a protected environment = %v, want ErrForbidden", err)
+	}
+	for _, obj := range []client.Object{&appv1alpha1.Database{}, &appv1alpha1.KeyValue{}} {
+		assertDatastorePlacement(t, cl, obj, "member", "prj-1", "evm-delete", []string{"10.0.0.0/8"})
 	}
 }

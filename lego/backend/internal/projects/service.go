@@ -114,6 +114,10 @@ type Service struct {
 	// Services deletes the project's services when the project is deleted, as
 	// Render does (w4/m264). nil keeps the former detach-only behavior.
 	Services core.ServiceDeleter
+	// PostgresDeleter and KeyValueDeleter delete the project's datastores with
+	// it (w6/m290); nil unassigns them instead (test fakes).
+	PostgresDeleter core.PostgresDeleter
+	KeyValueDeleter core.KeyValueDeleter
 	// ExitGuards authorizes taking resources out of the environments a write
 	// leaves: each ACL-bearing one needs a fresh can_manage (w4/m232). The
 	// composition root wires environments.ExitGuards; nil (environments
@@ -576,11 +580,10 @@ func (s *Service) Rename(ctx context.Context, id, name string) (ProjectView, err
 	return s.view(ctx, p)
 }
 
-// Delete deletes the project's services (Render: "Deleting a project deletes
-// all of its associated environments and services", w4/m264), clears inherited
-// environment rules and datastore placement, then removes the project. The
-// store cascade removes child environments; datastores retain their own rules
-// and remain unassigned.
+// Delete deletes the project's services and datastores (Render: "Deleting a
+// project deletes all of its associated environments and services", w4/m264,
+// w6/m290), clears inherited environment rules, then removes the project. The
+// store cascade removes child environments; env groups are detached.
 func (s *Service) Delete(ctx context.Context, id string) error {
 	p, err := s.authorizedProject(ctx, core.RelCanCreate, id)
 	if err != nil {
@@ -611,11 +614,21 @@ func (s *Service) deleteProject(ctx context.Context, p store.Project, deleteServ
 			return err
 		}
 	}
-	for _, idx := range []resourceIndex{s.databases(), s.keyValues()} {
-		if idx == nil {
+	kinds := []struct {
+		idx resourceIndex
+		del func(context.Context, string) error
+	}{{idx: s.databases()}, {idx: s.keyValues()}}
+	if deleteServices && s.PostgresDeleter != nil {
+		kinds[0].del = s.PostgresDeleter.DeletePostgres
+	}
+	if deleteServices && s.KeyValueDeleter != nil {
+		kinds[1].del = s.KeyValueDeleter.DeleteKeyValue
+	}
+	for _, k := range kinds {
+		if k.idx == nil {
 			continue
 		}
-		members, err := idx.list(ctx, p.TenantID)
+		members, err := k.idx.list(ctx, p.TenantID)
 		if err != nil {
 			return err
 		}
@@ -623,7 +636,15 @@ func (s *Service) deleteProject(ctx context.Context, p store.Project, deleteServ
 			if member.projectID != p.ID {
 				continue
 			}
-			if err := idx.ClearProjectID(ctx, member.id, p.ID); err != nil {
+			// A datastore keeps its project label until it is deleted, so a
+			// failure leaves the project row and a retry finds it again.
+			if k.del != nil {
+				if err := k.del(ctx, member.id); err != nil && !errors.Is(err, core.ErrNotFound) {
+					return err
+				}
+				continue
+			}
+			if err := k.idx.ClearProjectID(ctx, member.id, p.ID); err != nil {
 				return err
 			}
 		}

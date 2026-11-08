@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/modelcontextprotocol/go-sdk/mcp"
+	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client/interceptor"
@@ -131,18 +132,17 @@ func TestProjectDeleteSurvivesDatastoreLockConflicts(t *testing.T) {
 						return string(raw)
 					}
 				}
-				detached := func() {
+				// The confirmed teardown deletes the project's datastores with it
+				// (w6/m290).
+				deleted := func() {
 					t.Helper()
 					for _, obj := range []client.Object{&appv1alpha1.Database{}, &appv1alpha1.KeyValue{}} {
 						name := db.Name
 						if _, isKV := obj.(*appv1alpha1.KeyValue); isKV {
 							name = kv.Name
 						}
-						if err := cl.Get(context.Background(), client.ObjectKey{Namespace: db.Namespace, Name: name}, obj); err != nil {
-							t.Fatal(err)
-						}
-						if labels := obj.GetLabels(); labels[core.LabelProject] != "" || labels[core.LabelEnvironment] != "" {
-							t.Fatalf("%s placement after delete = %v, want detached", name, labels)
+						if err := cl.Get(context.Background(), client.ObjectKey{Namespace: db.Namespace, Name: name}, obj); !apierrors.IsNotFound(err) {
+							t.Fatalf("%s after project delete: %v, want deleted", name, err)
 						}
 					}
 					if rec := do(t, h, http.MethodGet, "/v1/projects/"+projectID, testToken, ""); rec.Code != http.StatusNotFound {
@@ -155,11 +155,7 @@ func TestProjectDeleteSurvivesDatastoreLockConflicts(t *testing.T) {
 					if refusal != "" {
 						t.Fatalf("delete after one unrelated write = %q, want success", refusal)
 					}
-					detached()
-					var current appv1alpha1.Database
-					if err := cl.Get(context.Background(), client.ObjectKeyFromObject(db), &current); err != nil || current.Annotations["unrelated"] != "kept" {
-						t.Fatalf("unrelated write lost: %v %v", current.Annotations, err)
-					}
+					deleted()
 					return
 				}
 				if !strings.Contains(refusal, core.CodePlacementCleanupConflict) || !strings.Contains(refusal, "reload the current placement") ||
@@ -173,7 +169,7 @@ func TestProjectDeleteSurvivesDatastoreLockConflicts(t *testing.T) {
 				if retried := deleteProject(); retried != "" {
 					t.Fatalf("delete once contention ended = %q, want success", retried)
 				}
-				detached()
+				deleted()
 			})
 		}
 	}
