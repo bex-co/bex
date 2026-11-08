@@ -121,6 +121,7 @@ var neverEmptyArrayRoutes = map[string]string{
 	"GET /v1/objects/{ownerId}/{region}/{key...}":                    "answers 404 not offered (ADR018, w6/097)",
 	"GET /v1/sandbox-groups":                                         "answers 404 SANDBOX_GROUPS_UNSUPPORTED, never a list (ADR018, w2/m263)",
 	"GET /v1/sandbox-groups/{sandboxGroupId}":                        "answers 404 SANDBOX_GROUPS_UNSUPPORTED (ADR018, w2/m263)",
+	"GET /v1/sandbox-groups/{sandboxGroupId}/builds":                 "answers 404 SANDBOX_IMAGES_UNSUPPORTED, never a list (ADR018 round-6 drift)",
 	"GET /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}":       "answers 404 SANDBOX_IMAGES_UNSUPPORTED (ADR018, w2/m263)",
 	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots":              "answers 404 SANDBOX_SNAPSHOTS_UNSUPPORTED, never a list (ADR018, w2/m263)",
 	"GET /v1/sandbox-groups/{sandboxGroupId}/snapshots/{snapshotId}": "answers 404 SANDBOX_SNAPSHOTS_UNSUPPORTED (ADR018, w2/m263)",

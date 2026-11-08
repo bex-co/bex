@@ -39,6 +39,7 @@ var NotOfferedRoutes = map[string]core.NotOffered{
 	"POST /v1/sandbox-groups":                                        {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
 	"GET /v1/sandbox-groups/{sandboxGroupId}":                        {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
 	"PATCH /v1/sandbox-groups/{sandboxGroupId}":                      {Code: CodeSandboxGroupsUnsupported, Message: groupsNotOffered},
+	"GET /v1/sandbox-groups/{sandboxGroupId}/builds":                 {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
 	"POST /v1/sandbox-groups/{sandboxGroupId}/builds":                {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
 	"GET /v1/sandbox-groups/{sandboxGroupId}/builds/{buildId}":       {Code: CodeSandboxImagesUnsupported, Message: imagesNotOffered},
 	"POST /v1/sandboxes/{id}/snapshots":                              {Code: codeSandboxSnapshotsUnsupported, Message: snapshotsNotOffered},

@@ -42,17 +42,17 @@ func TestRenderOpenAPIPinGuards(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := len(renderOpenAPISource); got != 432906 {
-		t.Fatalf("snapshot size = %d, want 432906", got)
+	if got := len(renderOpenAPISource); got != 441623 {
+		t.Fatalf("snapshot size = %d, want 441623", got)
 	}
 	if got := contract.document.OpenAPI; got != "3.0.2" {
 		t.Fatalf("OpenAPI = %q, want 3.0.2", got)
 	}
-	if got := contract.document.Paths.Len(); got != 158 {
-		t.Fatalf("paths = %d, want 158", got)
+	if got := contract.document.Paths.Len(); got != 160 {
+		t.Fatalf("paths = %d, want 160", got)
 	}
-	if got := len(contract.document.Components.Schemas); got != 169 {
-		t.Fatalf("schemas = %d, want 169", got)
+	if got := len(contract.document.Components.Schemas); got != 170 {
+		t.Fatalf("schemas = %d, want 170", got)
 	}
 	operations, requestBodies := 0, 0
 	for _, item := range contract.document.Paths.Map() {
@@ -63,8 +63,8 @@ func TestRenderOpenAPIPinGuards(t *testing.T) {
 			}
 		}
 	}
-	if operations != 252 || requestBodies != 70 {
-		t.Fatalf("operations/request bodies = %d/%d, want 252/70", operations, requestBodies)
+	if operations != 255 || requestBodies != 71 {
+		t.Fatalf("operations/request bodies = %d/%d, want 255/71", operations, requestBodies)
 	}
 	if len(contract.document.Servers) != 0 {
 		t.Fatalf("runtime contract retained upstream servers: %#v", contract.document.Servers)

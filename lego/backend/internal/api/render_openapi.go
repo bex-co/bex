@@ -39,13 +39,14 @@ import (
 )
 
 const (
-	renderOpenAPISHA256 = "6ac5d3d473625d5e8d921e3a008f500afa400c1f14e25c1f55efc657f6fdbf44"
+	renderOpenAPISHA256 = "98b0ce65994172dd30ba4be596e96c2e9aa72f34f694e29d98198afe8af10b44"
 	renderAPIPrefix     = "/v1"
 )
 
 // renderOpenAPISource is Render's complete, unversioned public contract,
-// fetched on 2026-11-02 (round-5 drift, w2/m251: 208 -> 252 operations; the
-// previous 2026-09-11 pin came from w6/073). It is embedded by the leaf asset
+// fetched on 2026-11-08 (round-6 drift: 252 -> 255 operations, Render's
+// sandbox builds; round 5 on 2026-11-02 was w2/m251: 208 -> 252, and the
+// 2026-09-11 pin came from w6/073). It is embedded by the leaf asset
 // package so the test-only response validator (internal/rendertest) reads the
 // very same bytes.
 var renderOpenAPISource = openapi.RenderPublicAPI
@@ -192,10 +193,6 @@ var renderQueryExtensions = map[string]map[string]struct{}{
 	// handler filter as a deliberate extension so REST matches the documented
 	// w2/m53 list shape (w5/060).
 	"list-key-value": {"suspended": {}},
-	// Render's live list-sandboxes (2026-11, after this pin) adds the exact
-	// `name` filter (Render CLI v2.36 `sandboxes list --name`, w5/m287) and
-	// cursor/limit paging (w32/m284); drop with the next re-pin.
-	"list-sandboxes": {"name": {}, "cursor": {}, "limit": {}},
 
 	"create-postgres": {"dryRun": {}},
 	// confirm arms a protected rename or major-version upgrade, and a
