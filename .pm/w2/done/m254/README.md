@@ -1,6 +1,6 @@
 # w2 · m254 — Build Sources: one build feeding several services, as on Render
 
-**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** todo — t001–t008, t013–t015, t017 done; t016 implemented
+**Worker:** worker2 **Goal:** bex serves Render's `/build-sources` contract (git- or image-backed, build-time env, linked services, builds list and trigger) and `buildSourceId` on service create, PATCH and GET, on every surface. **Status:** done (2026-11-08)
 
 ## Tasks (in order)
 
@@ -17,13 +17,13 @@
 | t013 | Deploys report buildId; deploy and rollback accept a build — **DONE** | 45m | t006 |
 | t014 | POST /v1/build-sources answers 500 after creating the source: PGStore.CreateApp overwrites the bds- id with a srv- id — **DONE** | 45m | t003 |
 | t015 | Meter build source build minutes — **DONE** | 1h | t006 |
-| t016 | A native-runtime git build source never builds: the operator requires a startCommand the carrier never has — implemented, awaiting production verification | 1h | t006 |
+| t016 | A native-runtime git build source never builds: the operator requires a startCommand the carrier never has — **DONE** | 1h | t006 |
 | t017 | A service linked to a native build source starts like a native service: native-init and bash — **DONE** | 1h | t016 |
-| t018 | A service linked to a build source never deploys: the operator gates it on a pull credential it never mints — implemented 2026-11-05, awaiting production verification | 45m | t016 |
+| t018 | A service linked to a build source never deploys: the operator gates it on a pull credential it never mints — **DONE** | 45m | t016 |
 | t009 | Render parity — **DONE** | 15m | t008, t013, t014, t015, t016, t017 |
 | t010 | Simplify — **DONE** | 15m | t009 |
 | t011 | Test coverage — **DONE** | 30m | t009 |
-| t012 | Closeout | 10m | t010, t011, t018 |
+| t012 | Closeout — **DONE** | 10m | t010, t011, t018 |
 
 ## Definition of done
 
@@ -81,3 +81,7 @@ Everything implementable is shipped. What remains is the production walk, and pr
 
 - **卡点已消失：** 生产固定版本已推进到 `92ff0029334d`（`bab5d417e`）。它包含 t018（`c071550db`）、m269（`eaf967d80`）和 m263（`21175a4d2`）。以 QA 会话调用 `GET /v1/blueprints` 返回的已是 `exs-…`。
 - **worker 下一步：** 按上文的生产验收步骤直接执行，无需用户决定。
+
+## Closed — 2026-11-08
+
+The production walk (t016, t018) met the first DoD point: one triggered build deployed both linked services to `live`. The other DoD points shipped in t003–t013.
