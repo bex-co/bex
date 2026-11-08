@@ -36,7 +36,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 ## Milestones
 
 - [ ] **m164** — **BLOCKED (user: make the GHCR package `bex-evidence` public in Package settings; t001–t003 done, evidence pinned at `ghcr.io/bex-co/bex-evidence@sha256:1203a4e7…`)** — [Native-common qualification evidence restored from the pre-purge bundle into object storage](blocked/m164/README.md) (7 tasks)
-- [ ] **m165** — [The bex-ci pool serves bex only; other repositories get their own runner pool](m165/README.md) (6 tasks) ← `/pm-brainstorm w6` 2026-11-07
+- [ ] **m165** — **BLOCKED (time: the 24 h placement window ends 2026-11-09 07:57Z; t001–t005 done, other-ci live and bex-ci grants only bex)** — [The bex-ci pool serves bex only; other repositories get their own runner pool](blocked/m165/README.md) (6 tasks) ← `/pm-brainstorm w6` 2026-11-07
 - [x] **m159** — [Ship gates catch dashboard red before it reaches main](done/m159/README.md) — **done 2026-11-06** (7 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 1
 - [x] **m160** — [Runner-host link probe: a slow internet link opens an issue by itself](done/m160/README.md) — **done 2026-11-06** (#131 opened and closed by dispatch) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 2
 - [x] **m161** — [One tracking-issue helper for every scheduled monitor](done/m161/README.md) — **done 2026-11-06** (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 3
@@ -207,7 +207,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 - [x] **107** — [Ship gates run the native custody tests when a custody-pinned file changes](done/107.md) — done 2026-11-07 ← `/pm-brainstorm w6` 2026-11-07
 - [x] **108** — [Runner-pool docs match the three pools, their limits and caches](done/108.md) — done 2026-11-07 ← `/pm-brainstorm w6` 2026-11-07
-- [ ] **109** — [pg-operand verifies its image before pushing it](109.md) ← `/pm-brainstorm w6` 2026-11-07
+- [x] **109** — [pg-operand verifies its image before pushing it](done/109.md) — done 2026-11-08 ← `/pm-brainstorm w6` 2026-11-07
 - [x] **106** — [Reopen of w6/087: no production pin for 12h24m on 2026-11-06; every passing deploy run was superseded](done/106.md) — **done 2026-11-06**: fixed by `3344b00aa` (w9/m173); six override runs pinned live from 15:14 UTC
 - [x] **101** — [The SSH gateway's exec drain buffer has no metrics](done/101.md) — done 2026-11-03: buffered-bytes gauge, fallback counter, `SSHGatewayDrainBudgetExhausted` alert + panel.
 - [x] **102** — [Web Shell closes before the browser's close reply](done/102.md) — done 2026-11-03: waits ≤1 s for the close reply (red/green test).

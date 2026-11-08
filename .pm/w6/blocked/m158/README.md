@@ -56,6 +56,6 @@
 
 ## BLOCKED — 2026-11-06: t005 needs the host's internet link back to normal
 
-- **Gate (user / host network):** the runner host's link has delivered ~1 MB/s in total since at least 08:20Z (GitHub 65 KB/s, Cloudflare 157 KB/s at 09:10Z, re-measured). Every CI job is network-bound, so a deploy's timings measure the link, not t001–t004. **Release condition:** a `curl` of `https://speed.cloudflare.com/__down?bytes=30000000` from the host sustains ≥ 10 MB/s, or the user confirms the link is fixed.
+- **Gate (user / host network):** the runner host's link has delivered ~1 MB/s in total since at least 08:20Z (GitHub 65 KB/s, Cloudflare 157 KB/s at 09:10Z, re-measured). Every CI job is network-bound, so a deploy's timings measure the link, not t001–t004. **Release condition:** a `curl` of `https://speed.cloudflare.com/__down?bytes=30000000` from the host sustains ≥ 10 MB/s, or the user confirms the link is fixed. Re-measured 2026-11-07 ~07:00Z: 3.6 MB/s (Cloudflare 30 MB), 2.4 MB/s from proxy.golang.org — better, still below the release condition.
 - **Done:** t001, t002, t004; t003 part 1 (sign/SBOM/attest concurrently). Runner caches (Go modules, per-pool Docker Hub mirror) are live and cut what each job downloads.
 - **Worker next:** once the link is normal, take t005 on the first deploy run whose build ran (`python3 scripts/deploy_latency.py` and per-step job timings), compare with 61.6 / 136.0 / 186.9 min, then decide t003 part 2 (concurrent image builds) from where the time goes, then t006–t008.
