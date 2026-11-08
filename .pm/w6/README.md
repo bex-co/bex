@@ -206,7 +206,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 ## Inbox
 
 - [x] **107** — [Ship gates run the native custody tests when a custody-pinned file changes](done/107.md) — done 2026-11-07 ← `/pm-brainstorm w6` 2026-11-07
-- [ ] **108** — [Runner-pool docs match the three pools, their limits and caches](108.md) ← `/pm-brainstorm w6` 2026-11-07
+- [x] **108** — [Runner-pool docs match the three pools, their limits and caches](done/108.md) — done 2026-11-07 ← `/pm-brainstorm w6` 2026-11-07
 - [ ] **109** — [pg-operand verifies its image before pushing it](109.md) ← `/pm-brainstorm w6` 2026-11-07
 - [x] **106** — [Reopen of w6/087: no production pin for 12h24m on 2026-11-06; every passing deploy run was superseded](done/106.md) — **done 2026-11-06**: fixed by `3344b00aa` (w9/m173); six override runs pinned live from 15:14 UTC
 - [x] **101** — [The SSH gateway's exec drain buffer has no metrics](done/101.md) — done 2026-11-03: buffered-bytes gauge, fallback counter, `SSHGatewayDrainBudgetExhausted` alert + panel.
