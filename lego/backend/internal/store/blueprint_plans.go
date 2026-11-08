@@ -150,12 +150,48 @@ func (s *PGStore) InsertPlannedBlueprintSync(ctx context.Context, p PlannedBluep
 	return p, nil
 }
 
-// LatestBlueprintPlan returns the Blueprint's newest planning attempt —
-// planned, failed, or since approved — or ErrNotFound when it has none.
-// Ordinary sync runs (and busy refusals) are not planning attempts.
+// LatestBlueprintPlan returns the newest planning attempt of the Blueprint's
+// current connection — planned, failed, or since approved — or ErrNotFound
+// when it has none. Ordinary sync runs (and busy refusals) are not planning
+// attempts, and neither are an earlier connection's: a revived row keeps its
+// history, but the connection that wrote it ended at the disconnect (its
+// created_at is reset at every reconnect), so its applied plan must not
+// answer for the new one (w2/m256 t014).
 func (s *PGStore) LatestBlueprintPlan(ctx context.Context, blueprintID string) (PlannedBlueprintSync, error) {
 	return s.scanPlannedSync(ctx, `WHERE blueprint_id = $1 AND plan_path IS NOT NULL
+		AND created_at >= (SELECT b.created_at FROM blueprints b WHERE b.id = $1)
 		ORDER BY created_at DESC, id DESC LIMIT 1`, blueprintID)
+}
+
+// SettleNoChangesPlan records a plan that found nothing to change: a waiting
+// plan is superseded (approval applies the newest plan, and the newest needs
+// nothing), and a Blueprint still `created` is in sync with manifest — its
+// resources already match the file, which on Render needs no approval — so it
+// leaves `created`, takes manifest as its stored file and stamps last_sync_at.
+// A Blueprint in any other status keeps it. It returns the Blueprint as it
+// now stands.
+func (s *PGStore) SettleNoChangesPlan(ctx context.Context, blueprintID, tenantID, manifest string) (Blueprint, error) {
+	tx, err := s.Pool.Begin(ctx)
+	if err != nil {
+		return Blueprint{}, err
+	}
+	defer func() { _ = tx.Rollback(ctx) }()
+	if _, err := tx.Exec(ctx, `
+		UPDATE blueprint_syncs SET state = 'error', completed_at = now(),
+			error_message = 'superseded: a newer plan found no changes to apply'
+		WHERE blueprint_id = $1 AND state = 'created' AND plan_path IS NOT NULL
+		  AND EXISTS (SELECT 1 FROM blueprints WHERE id = $1 AND tenant_id = $2)`, blueprintID, tenantID); err != nil {
+		return Blueprint{}, err
+	}
+	if _, err := tx.Exec(ctx, `
+		UPDATE blueprints SET status = 'in_sync', manifest = $3, last_sync_at = now(), updated_at = now()
+		WHERE id = $1 AND tenant_id = $2 AND status = 'created' AND active_run_id IS NULL`, blueprintID, tenantID, manifest); err != nil {
+		return Blueprint{}, err
+	}
+	if err := tx.Commit(ctx); err != nil {
+		return Blueprint{}, err
+	}
+	return s.GetBlueprint(ctx, blueprintID, tenantID)
 }
 
 // BlueprintPlannedSync returns one sync by id within its Blueprint.

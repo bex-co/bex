@@ -86,6 +86,9 @@ type fakeBlueprintStore struct {
 	// an unreadable blueprint table refuses the create instead of reading as
 	// "nothing is connected".
 	getByRepoErr error
+	// connectionStart is, per revived Blueprint, the insertedSyncs index its
+	// current connection's history starts at (the PG store resets created_at).
+	connectionStart map[string]int
 }
 
 func newFakeBlueprintStore(bs ...store.Blueprint) *fakeBlueprintStore {

@@ -51,6 +51,10 @@ func (f *fakeBlueprintStore) CreatePlannedBlueprint(_ context.Context, b store.B
 			}
 			// The PG store revives the disconnected row under its id.
 			b.ID, revived = existing.ID, true
+			if f.connectionStart == nil {
+				f.connectionStart = map[string]int{}
+			}
+			f.connectionStart[b.ID] = len(f.insertedSyncs)
 		}
 	}
 	if b.ID == "" {
@@ -95,7 +99,7 @@ func (f *fakeBlueprintStore) InsertPlannedBlueprintSync(_ context.Context, p sto
 func (f *fakeBlueprintStore) LatestBlueprintPlan(_ context.Context, blueprintID string) (store.PlannedBlueprintSync, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	for i := len(f.insertedSyncs) - 1; i >= 0; i-- {
+	for i := len(f.insertedSyncs) - 1; i >= f.connectionStart[blueprintID]; i-- {
 		id := f.insertedSyncs[i].ID
 		p, planned := f.planned[id]
 		run := f.syncs[id]
@@ -106,6 +110,29 @@ func (f *fakeBlueprintStore) LatestBlueprintPlan(_ context.Context, blueprintID 
 		return p, nil
 	}
 	return store.PlannedBlueprintSync{}, fmt.Errorf("blueprint_sync: %w", store.ErrNotFound)
+}
+
+func (f *fakeBlueprintStore) SettleNoChangesPlan(_ context.Context, blueprintID, tenantID, manifest string) (store.Blueprint, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	b, ok := f.blueprints[blueprintID]
+	if !ok || b.TenantID != tenantID || b.Status == "disconnected" {
+		return store.Blueprint{}, fmt.Errorf("blueprint: %w", store.ErrNotFound)
+	}
+	for id, p := range f.planned {
+		if run := f.syncs[id]; run.BlueprintID == blueprintID && run.State == store.BlueprintSyncStateCreated {
+			msg := "superseded: a newer plan found no changes to apply"
+			run.State, run.ErrorMessage = store.BlueprintSyncStateError, &msg
+			f.syncs[id], p.BlueprintSync = run, run
+			f.planned[id] = p
+		}
+	}
+	if b.Status == store.BlueprintStatusCreated && b.ActiveRunID == "" {
+		now := time.Now()
+		b.Status, b.Manifest, b.LastSyncAt = store.BlueprintStatusInSync, manifest, &now
+		f.blueprints[blueprintID] = b
+	}
+	return b, nil
 }
 
 func (f *fakeBlueprintStore) BlueprintPlannedSync(_ context.Context, blueprintID, syncID string) (store.PlannedBlueprintSync, error) {

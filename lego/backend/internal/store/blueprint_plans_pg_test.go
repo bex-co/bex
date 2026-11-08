@@ -256,3 +256,94 @@ func TestCreateNewBlueprintSuffixPG(t *testing.T) {
 		t.Fatalf("legacy connect kept mode %q suffix %q, want adopt and no suffix", replaced.ExistingResources, replaced.ResourceSuffix)
 	}
 }
+
+// TestBlueprintPlanConnectionAndNoChangesPG pins w2/m256 t014's storage: a
+// revived Blueprint's newest plan is its own connection's (the earlier
+// connection's applied plan does not answer), and a no_changes plan
+// supersedes a waiting plan and takes a created Blueprint to in_sync — while
+// a Blueprint in any other status keeps it.
+func TestBlueprintPlanConnectionAndNoChangesPG(t *testing.T) {
+	uri := os.Getenv("BEX_TEST_DB_URI")
+	if uri == "" {
+		testenv.Skip(t, "BEX_TEST_DB_URI not set")
+	}
+	if err := store.Migrate(uri); err != nil {
+		t.Fatalf("migrate: %v", err)
+	}
+	ctx := context.Background()
+	pool, err := pgxpool.New(ctx, uri)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer pool.Close()
+	st := store.NewPGStore(pool)
+	stamp := fmt.Sprintf("%d", time.Now().UnixNano())
+	ws, err := st.CreateWorkspace(ctx, "bp-conn-"+stamp, store.PlanHobby, "bp-conn-"+stamp)
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = st.DeleteTenant(context.Background(), ws.ID) })
+	repo := "https://github.com/acme/conn-" + stamp
+	commit := "0123456789abcdef0123456789abcdef01234567"
+	plan := func(bpID string) store.PlannedBlueprintSync {
+		t.Helper()
+		p, err := st.InsertPlannedBlueprintSync(ctx, store.PlannedBlueprintSync{
+			BlueprintSync: store.BlueprintSync{BlueprintID: bpID, CommitID: commit, State: store.BlueprintSyncStateCreated, StartedAt: time.Now().UTC()},
+			Path:          "render.yaml", PlanActions: json.RawMessage(`[{"operation":"create","kind":"service","name":"api"}]`),
+		})
+		if err != nil {
+			t.Fatal(err)
+		}
+		return p
+	}
+
+	b, _, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	applied := plan(b.ID)
+	if _, _, err := st.AdmitBlueprintSyncRun(ctx, b.ID, ws.ID, store.BlueprintSync{ID: applied.ID, CommitID: commit, State: store.BlueprintSyncStateRunning, StartedAt: time.Now().UTC()}); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE blueprint_syncs SET state = 'success', completed_at = now() WHERE id = $1`, applied.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE blueprints SET active_run_id = NULL, status = 'in_sync', last_sync_at = now() WHERE id = $1`, b.ID); err != nil {
+		t.Fatal(err)
+	}
+	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); err != nil || latest.ID != applied.ID {
+		t.Fatalf("latest before the reconnect = %+v err=%v, want %s", latest, err, applied.ID)
+	}
+
+	// An in_sync Blueprint keeps its status through a no_changes plan, which
+	// still supersedes its waiting plan.
+	waiting := plan(b.ID)
+	settled, err := st.SettleNoChangesPlan(ctx, b.ID, ws.ID, "changed: manifest")
+	if err != nil || settled.Status != store.BlueprintStatusInSync || settled.Manifest == "changed: manifest" {
+		t.Fatalf("settle on in_sync = %+v err=%v, want in_sync with its manifest kept", settled, err)
+	}
+	if got, err := st.BlueprintPlannedSync(ctx, b.ID, waiting.ID); err != nil || got.State != store.BlueprintSyncStateError ||
+		got.ErrorMessage == nil || !strings.Contains(*got.ErrorMessage, "superseded") {
+		t.Fatalf("waiting plan after a no_changes plan = %+v err=%v, want superseded", got, err)
+	}
+
+	if err := st.DisconnectBlueprint(ctx, b.ID, ws.ID); err != nil {
+		t.Fatal(err)
+	}
+	revived, wasRevived, err := st.CreatePlannedBlueprint(ctx, store.Blueprint{TenantID: ws.ID, Name: "s", Repo: repo, Branch: "main", Path: "render.yaml"})
+	if err != nil || !wasRevived || revived.ID != b.ID {
+		t.Fatalf("reconnect = %+v revived=%v err=%v", revived, wasRevived, err)
+	}
+	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); !errors.Is(err, store.ErrNotFound) {
+		t.Fatalf("latest plan of the new connection = %+v err=%v, want ErrNotFound (the earlier connection's do not count)", latest, err)
+	}
+	const manifest = "services: []\n"
+	settled, err = st.SettleNoChangesPlan(ctx, b.ID, ws.ID, manifest)
+	if err != nil || settled.Status != store.BlueprintStatusInSync || settled.LastSyncAt == nil || settled.Manifest != manifest {
+		t.Fatalf("settle on created = %+v err=%v, want in_sync with last_sync_at and the manifest", settled, err)
+	}
+	own := plan(b.ID)
+	if latest, err := st.LatestBlueprintPlan(ctx, b.ID); err != nil || latest.ID != own.ID {
+		t.Fatalf("latest plan = %+v err=%v, want this connection's %s", latest, err, own.ID)
+	}
+}

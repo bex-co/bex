@@ -41,7 +41,8 @@ import (
 // sync without applying it, a sync can be re-planned at the branch head, and
 // approving applies the newest planned sync — with the values of the
 // sync:false env vars it creates. A Blueprint stays `created`, and auto-sync
-// does not run, until a sync is approved.
+// does not run, until a sync is approved — or until a plan finds nothing to
+// change, which needs no approval (w2/m256 t014).
 
 // Render's planning outcomes.
 const (
@@ -58,6 +59,7 @@ type blueprintPlanStore interface {
 	InsertPlannedBlueprintSync(ctx context.Context, p store.PlannedBlueprintSync) (store.PlannedBlueprintSync, error)
 	LatestBlueprintPlan(ctx context.Context, blueprintID string) (store.PlannedBlueprintSync, error)
 	BlueprintPlannedSync(ctx context.Context, blueprintID, syncID string) (store.PlannedBlueprintSync, error)
+	SettleNoChangesPlan(ctx context.Context, blueprintID, tenantID, manifest string) (store.Blueprint, error)
 }
 
 // RenderBlueprintSource is Render's createBlueprintRequest.source.
@@ -225,7 +227,7 @@ func (s *Service) CreatePlannedBlueprint(ctx context.Context, req RenderCreateBl
 	if revived {
 		note = reconnectionNote(req.Source.Repo, branch)
 	}
-	result, err := s.planBlueprintSync(ctx, plans, b, contents, commitSHA, note)
+	result, err := s.planBlueprintSync(ctx, plans, &b, contents, commitSHA, note)
 	if err != nil {
 		return BlueprintPlanResult{}, err
 	}
@@ -266,14 +268,18 @@ func (s *Service) PlanBlueprint(ctx context.Context, bpID, ownerID string) (Blue
 		_, message := classifyBlueprintFetchError(fetchErr, b.Path, b.Branch)
 		return s.recordFailedPlan(ctx, plans, b, commitSHA, "", []BlueprintNotice{{Severity: "error", Message: message}})
 	}
-	return s.planBlueprintSync(ctx, plans, b, contents, commitSHA, "")
+	return s.planBlueprintSync(ctx, plans, &b, contents, commitSHA, "")
 }
 
-// planBlueprintSync validates manifest against the workspace and persists the
-// outcome: a planned sync awaiting approval, nothing when no resource would
-// change, or an error sync carrying the validation notices.
+// planBlueprintSync validates manifest against the resources the workspace has
+// now — never against an earlier sync, so a defined resource deleted since is
+// planned as a create, as on Render — and persists the outcome: a planned sync
+// awaiting approval, an error sync carrying the validation notices, or, when
+// no resource would change, nothing to approve: a waiting plan is superseded
+// and a `created` Blueprint is in sync (*b is updated to match), so a manual
+// sync or auto-sync can run it from then on (w2/m256 t014).
 // note is recorded on the sync row it writes ("" for none).
-func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStore, b store.Blueprint, manifest, commitSHA, note string) (BlueprintPlanResult, error) {
+func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStore, b *store.Blueprint, manifest, commitSHA, note string) (BlueprintPlanResult, error) {
 	validation, err := s.blueprintValidationFor(ctx, b.Repo, b.Branch, manifest, b.ID)
 	if err != nil {
 		return BlueprintPlanResult{}, err
@@ -283,7 +289,7 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 		for _, e := range validation.Errors {
 			notices = append(notices, BlueprintNotice{Severity: "error", Message: e.Error, Path: e.Path, Line: e.Line, Column: e.Column})
 		}
-		return s.recordFailedPlan(ctx, plans, b, commitSHA, note, notices)
+		return s.recordFailedPlan(ctx, plans, *b, commitSHA, note, notices)
 	}
 	// Only a plan against the workspace's current resources can say what
 	// would change; a structural plan (state unreadable) cannot.
@@ -293,9 +299,23 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 	}
 	actions := validation.Plan.Actions
 	if !planChangesAnything(actions) {
+		if b.Status == store.BlueprintStatusCreated {
+			// Leaving created makes the name an approved Blueprint's, which
+			// approval would have checked.
+			if taken, err := plans.BlueprintNameTaken(ctx, b.TenantID, b.Name, b.ID); err != nil {
+				return BlueprintPlanResult{}, err
+			} else if taken {
+				return BlueprintPlanResult{}, errBlueprintNameTakenAtApproval(b.Name)
+			}
+		}
+		settled, err := plans.SettleNoChangesPlan(ctx, b.ID, b.TenantID, manifest)
+		if err != nil {
+			return BlueprintPlanResult{}, store.MapError(err)
+		}
+		*b = settled
 		return BlueprintPlanResult{PlanningOutcome: PlanningNoChanges, Notices: []BlueprintNotice{}}, nil
 	}
-	required, err := requiredManualEnvVars(b, manifest, actions)
+	required, err := requiredManualEnvVars(*b, manifest, actions)
 	if err != nil {
 		return BlueprintPlanResult{}, err
 	}
@@ -315,7 +335,7 @@ func (s *Service) planBlueprintSync(ctx context.Context, plans blueprintPlanStor
 	if err != nil {
 		return BlueprintPlanResult{}, err
 	}
-	return BlueprintPlanResult{PlanningOutcome: PlanningPlanned, Notices: []BlueprintNotice{}, Sync: s.syncWithPlan(b, planned, actions, required)}, nil
+	return BlueprintPlanResult{PlanningOutcome: PlanningPlanned, Notices: []BlueprintNotice{}, Sync: s.syncWithPlan(*b, planned, actions, required)}, nil
 }
 
 // recordFailedPlan persists a planning failure as an error sync.
@@ -461,8 +481,7 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID string, su
 	if taken, err := plans.BlueprintNameTaken(ctx, tenantID, b.Name, b.ID); err != nil {
 		return ApprovedSync{}, err
 	} else if taken {
-		return ApprovedSync{}, core.NewConflictError("BLUEPRINT_NAME_TAKEN",
-			fmt.Sprintf("another Blueprint named %q was approved in this workspace; rename this one before approving", b.Name), map[string]any{"name": b.Name})
+		return ApprovedSync{}, errBlueprintNameTakenAtApproval(b.Name)
 	}
 	latest, err := plans.LatestBlueprintPlan(ctx, b.ID)
 	if errors.Is(err, store.ErrNotFound) {
@@ -471,9 +490,14 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID string, su
 	if err != nil {
 		return ApprovedSync{}, err
 	}
-	switch latest.State {
-	case store.BlueprintSyncStateCreated:
-	case store.BlueprintSyncStateError:
+	switch {
+	case latest.State == store.BlueprintSyncStateCreated:
+	case latest.State == store.BlueprintSyncStateError && len(latest.PlanActions) > 0:
+		// A plan that was approved (or superseded) and then failed: there is
+		// nothing left to approve, and the next plan is the way forward.
+		return ApprovedSync{}, core.NewConflictError("BLUEPRINT_NOTHING_TO_APPROVE",
+			fmt.Sprintf("the newest sync %s is no longer awaiting approval (%s); plan a new sync first", latest.ID, planErrorSummary(latest)), map[string]any{"syncId": latest.ID})
+	case latest.State == store.BlueprintSyncStateError:
 		return ApprovedSync{}, core.NewConflictError("BLUEPRINT_SYNC_PLANNING_FAILED",
 			fmt.Sprintf("the newest sync %s failed planning and cannot be approved; fix the Blueprint file and re-plan", latest.ID), map[string]any{"syncId": latest.ID})
 	default:
@@ -498,6 +522,21 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID string, su
 		ID: applied.ID, Commit: BlueprintCommitRef{ID: applied.CommitID}, CommitID: applied.CommitID, State: applied.State,
 		DashboardURL: s.Metadata.DashboardURL("blueprints", ids.BlueprintPublicID(b.ID)), StartedAt: &started, CompletedAt: applied.CompletedAt,
 	}, nil
+}
+
+// errBlueprintNameTakenAtApproval refuses taking a Blueprint out of `created`
+// under a name another approved Blueprint in the workspace has since taken.
+func errBlueprintNameTakenAtApproval(name string) error {
+	return core.NewConflictError("BLUEPRINT_NAME_TAKEN",
+		fmt.Sprintf("another Blueprint named %q was approved in this workspace; rename this one before approving", name), map[string]any{"name": name})
+}
+
+// planErrorSummary is a failed planned sync's recorded reason, or "failed".
+func planErrorSummary(p store.PlannedBlueprintSync) string {
+	if p.ErrorMessage != nil && *p.ErrorMessage != "" {
+		return *p.ErrorMessage
+	}
+	return "failed"
 }
 
 // approvalEnvVarValues checks the supplied manual env vars against the plan's
@@ -734,7 +773,7 @@ type approveBlueprintArgs struct {
 func (s *Service) registerOnboardingMCP(srv *mcp.Server) {
 	mcputil.AddTool(srv, &mcp.Tool{
 		Name:        "create_planned_blueprint",
-		Description: "Create a Blueprint and plan its first sync without applying it (Render's Blueprint onboarding). Returns {blueprint, planningOutcome: planned|no_changes|failed, notices, sync}; approve the planned sync with approve_blueprint. bex extension (w2/m256).",
+		Description: "Create a Blueprint and plan its first sync without applying it (Render's Blueprint onboarding). Returns {blueprint, planningOutcome: planned|no_changes|failed, notices, sync}; approve the planned sync with approve_blueprint. A no_changes plan needs no approval: the Blueprint is in sync. bex extension (w2/m256).",
 	}, func(ctx context.Context, _ *mcp.CallToolRequest, in createPlannedBlueprintArgs) (*mcp.CallToolResult, BlueprintPlanResult, error) {
 		res, err := s.CreatePlannedBlueprint(ctx, RenderCreateBlueprintRequest{Name: in.Name, OwnerID: core.NamedWorkspace(ctx),
 			Source: RenderBlueprintSource{Repo: in.Repo, Branch: in.Branch, Path: in.Path}, AutoSync: in.AutoSync, ExistingResources: in.ExistingResources})

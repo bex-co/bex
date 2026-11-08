@@ -116,8 +116,10 @@ func TestM125_SecondConnectIsRefusedAndChangesNothing(t *testing.T) {
 	if coded.Params["blueprintId"] != a.ID || coded.Params["confirm"] != BlueprintTakeoverConfirmation(a.ID) {
 		t.Fatalf("conflict params = %+v, want blueprintId=%s and its takeover phrase", coded.Params, a.ID)
 	}
-	if !strings.Contains(err.Error(), "updateBlueprint") {
-		t.Errorf("the refusal should name the verb that repoints a blueprint: %v", err)
+	// It says how to repoint the blueprint without naming one surface's verb:
+	// REST, GraphQL and MCP all answer it (w2/m256 t014).
+	if !strings.Contains(err.Error(), "edit the path of that Blueprint") || strings.Contains(err.Error(), "updateBlueprint") {
+		t.Errorf("the refusal should say how to repoint a blueprint, in no one surface's words: %v", err)
 	}
 
 	// The live bug in one assertion: A must still be A.

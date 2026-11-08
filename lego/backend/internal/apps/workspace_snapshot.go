@@ -21,6 +21,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"slices"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
@@ -37,6 +38,14 @@ import (
 // that follows writes is a Blueprint create's resources view: the ownership
 // stamp, the apply's last write, re-reads the workspace through the apply's
 // snapshot (forget), and the view reads what it listed (w5/141).
+//
+// A resource whose deletion Kubernetes has accepted (a DeletionTimestamp, kept
+// alive only by its finalizer's teardown) is not listed: every by-id read
+// already answers 404 for it (core.NotFoundIfDeleting, w3/m81), and on Render
+// a deleted resource the Blueprint defines is missing, so the next plan
+// recreates it (render.com/docs/infrastructure-as-code). Counting it made a
+// re-created Blueprint plan no_changes against a service the customer had
+// just deleted (w2/m256 t014).
 type workspaceSnapshot struct {
 	s        *Service
 	tenantID string
@@ -49,6 +58,10 @@ type workspaceSnapshot struct {
 	keyValueList *appv1alpha1.KeyValueList
 	// buildSourceMap is the workspace's build source carriers by name.
 	buildSourceMap map[string]*appv1alpha1.App
+	// deletingServices are the manifest-facing names of the workspace's
+	// services still being torn down: absent from every map above, but their
+	// App object still holds the name a re-create would write.
+	deletingServices map[string]bool
 }
 
 func (s *Service) newWorkspaceSnapshot(ctx context.Context) *workspaceSnapshot {
@@ -60,6 +73,7 @@ func (s *Service) newWorkspaceSnapshot(ctx context.Context) *workspaceSnapshot {
 // workspace as it is now.
 func (snap *workspaceSnapshot) forget() {
 	snap.rawApps, snap.appList, snap.serviceMap, snap.databaseList, snap.keyValueList, snap.buildSourceMap = nil, nil, nil, nil, nil, nil
+	snap.deletingServices = nil
 }
 
 // apps lists the workspace's Apps the way its datastores are listed: by tenant
@@ -88,13 +102,35 @@ func (snap *workspaceSnapshot) apps(ctx context.Context) (*appv1alpha1.AppList, 
 // once for services and build sources alike.
 func (snap *workspaceSnapshot) allApps(ctx context.Context) (*appv1alpha1.AppList, error) {
 	if snap.rawApps == nil {
-		list := &appv1alpha1.AppList{}
-		if err := snap.s.Client.List(ctx, list, snap.s.DatastoreListOptions(snap.tenantID)...); err != nil {
+		listed := &appv1alpha1.AppList{}
+		if err := snap.s.Client.List(ctx, listed, snap.s.DatastoreListOptions(snap.tenantID)...); err != nil {
 			return nil, err
 		}
-		snap.rawApps = list
+		list := &appv1alpha1.AppList{}
+		deleting := map[string]bool{}
+		for i := range listed.Items {
+			app := &listed.Items[i]
+			if app.DeletionTimestamp.IsZero() {
+				list.Items = append(list.Items, *app)
+				continue
+			}
+			if app.Labels[core.LabelTenant] == snap.tenantID && !core.IsBuildSource(app) {
+				deleting[core.AppPublicName(app)] = true
+			}
+		}
+		snap.rawApps, snap.deletingServices = list, deleting
 	}
 	return snap.rawApps, nil
+}
+
+// serviceDeleting reports whether a service the workspace no longer has (it
+// is not in services) is still being torn down under name, so a create of
+// that name would collide with its App object until the teardown finishes.
+func (snap *workspaceSnapshot) serviceDeleting(ctx context.Context, name string) (bool, error) {
+	if _, err := snap.allApps(ctx); err != nil {
+		return false, err
+	}
+	return snap.deletingServices[name], nil
 }
 
 // services keys the workspace's Apps by the name a manifest declares them
@@ -162,6 +198,7 @@ func (snap *workspaceSnapshot) databases(ctx context.Context) (*appv1alpha1.Data
 		if err != nil {
 			return nil, err
 		}
+		list.Items = slices.DeleteFunc(list.Items, func(d appv1alpha1.Database) bool { return !d.DeletionTimestamp.IsZero() })
 		snap.databaseList = list
 	}
 	return snap.databaseList, nil
@@ -173,6 +210,7 @@ func (snap *workspaceSnapshot) keyValues(ctx context.Context) (*appv1alpha1.KeyV
 		if err != nil {
 			return nil, err
 		}
+		list.Items = slices.DeleteFunc(list.Items, func(kv appv1alpha1.KeyValue) bool { return !kv.DeletionTimestamp.IsZero() })
 		snap.keyValueList = list
 	}
 	return snap.keyValueList, nil

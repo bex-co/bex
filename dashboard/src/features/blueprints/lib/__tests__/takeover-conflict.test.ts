@@ -12,7 +12,7 @@ describe("isTakeoverOnlyConflict", () => {
   const connection = {
     code: "BLUEPRINT_CONNECTION_CONFLICT",
     error:
-      'blueprint blp-1 ("bpA") already tracks https://github.com/o/r@main from "a.yaml"; update it with updateBlueprint to change its path, or retry with confirm="takeover blueprint blp-1" to replace it',
+      'blueprint blp-1 ("bpA") already tracks https://github.com/o/r@main from "a.yaml"; edit the path of that Blueprint to point it at another file, or retry with confirm="takeover blueprint blp-1" to replace it',
   };
   const resource = {
     code: "BLUEPRINT_RESOURCE_CONFLICT",

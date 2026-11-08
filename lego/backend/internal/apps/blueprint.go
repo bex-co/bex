@@ -222,13 +222,16 @@ func matchReviewedBlueprintSource(b store.Blueprint, reviewed *ReviewedBlueprint
 // coded conflict, the owning id, and BlueprintTakeoverConfirmation as the
 // phrase — because it is the same guarantee applied to the row rather than to
 // the resources: bex refuses instead of clobbering (ADR018 Blueprint row). The
-// message names updateBlueprint because repointing the existing blueprint is
-// what a caller attempting a second connect usually wants.
+// message points at editing the existing blueprint's path, because repointing
+// it is what a caller attempting a second connect usually wants. It names no
+// one surface's verb: REST (PATCH /v1/blueprints/{id}), GraphQL
+// (updateBlueprint), MCP (update_blueprint) and the dashboard all answer it
+// (w2/m256 t014).
 func errBlueprintAlreadyConnected(existing store.Blueprint) error {
 	phrase := BlueprintTakeoverConfirmation(existing.ID)
 	public := ids.BlueprintPublicID(existing.ID)
 	return core.NewConflictError("BLUEPRINT_CONNECTION_CONFLICT",
-		fmt.Sprintf("blueprint %s (%q) already tracks %s@%s from %q; update it with updateBlueprint to change its path, or retry with confirm=%q to replace it",
+		fmt.Sprintf("blueprint %s (%q) already tracks %s@%s from %q; edit the path of that Blueprint to point it at another file, or retry with confirm=%q to replace it",
 			public, existing.Name, existing.Repo, existing.Branch, existing.Path, phrase),
 		map[string]any{
 			"blueprintId":   public,

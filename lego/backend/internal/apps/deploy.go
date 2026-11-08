@@ -829,6 +829,33 @@ func (s *Service) listWorkspaceKeyValues(ctx context.Context, tenantID string) (
 	return list, nil
 }
 
+// ServiceStillDeletingCode refuses a Blueprint apply that would re-create a
+// service whose deletion is still finishing (w2/m256 t014).
+const ServiceStillDeletingCode = "BLUEPRINT_SERVICE_STILL_DELETING"
+
+// refuseServicesStillDeleting refuses, before any write, an apply that would
+// create a declared service under a name whose deleted App is still being torn
+// down: the plan rightly calls it a create (the service is gone), but its App
+// object holds the name until the teardown finishes, so the write would fail
+// half-way. Planning again once the deletion finishes applies it.
+func refuseServicesStillDeleting(ctx context.Context, st parsedStack, existing map[string]*appv1alpha1.App, snap *workspaceSnapshot) error {
+	for _, svc := range st.services {
+		if existing[svc.req.Name] != nil {
+			continue
+		}
+		deleting, err := snap.serviceDeleting(ctx, svc.req.Name)
+		if err != nil {
+			return err
+		}
+		if deleting {
+			return core.NewConflictError(ServiceStillDeletingCode,
+				fmt.Sprintf("service %q was deleted and its cleanup is still finishing; retry in a minute to re-create it", svc.req.Name),
+				map[string]any{"service": svc.req.Name})
+		}
+	}
+	return nil
+}
+
 // deployParsedStack applies the exact validated stack produced by compileStack.
 // It is deliberately separate from deployStack for flows (Blueprint create and
 // sync) that must preflight before recording state, then apply that same result.
@@ -882,6 +909,9 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	}
 	if refused := hostReferenceProblems(st, existingServices); len(refused) > 0 {
 		return StackResult{}, refused[0].err
+	}
+	if err := refuseServicesStillDeleting(ctx, st, existingServices, snap); err != nil {
+		return StackResult{}, err
 	}
 	// Pre-flight the env-groups + env-vars seams BEFORE any write (all-or-nothing):
 	// a manifest that uses envVarGroups/fromGroup or sync:false/generateValue but
