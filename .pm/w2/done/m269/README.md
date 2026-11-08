@@ -1,6 +1,6 @@
 # w2 · m269 — Blueprint ids answer as `exs-`, Render's prefix, so the v2.35 CLI can address them
 
-**Worker:** worker2 **Goal:** every surface shows a Blueprint as `exs-<xid>`, Render's form, and accepts both `exs-` and the durable `blp-`. The pinned Render CLI v2.35.0 then works on a bex Blueprint: `ea blueprints approve|plan|update`, and the `blp-…` ids it shows. **Status:** todo — t001–t008 done; t009 waits for the deployed v2.35 CLI walk (w2/m256 t007)
+**Worker:** worker2 **Goal:** every surface shows a Blueprint as `exs-<xid>`, Render's form, and accepts both `exs-` and the durable `blp-`. The pinned Render CLI v2.35.0 then works on a bex Blueprint: `ea blueprints approve|plan|update`, and the `blp-…` ids it shows. **Status:** done (2026-11-08)
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity — **DONE**                                                                          | 15m | t003, t004, t005       |
 | t007 | Simplify — **DONE**                                                                               | 15m | t006                   |
 | t008 | Test coverage — **DONE**                                                                          | 30m | t006                   |
-| t009 | Closeout                                                                               | 10m | t007, t008             |
+| t009 | Closeout — **DONE**                                                                               | 10m | t007, t008             |
 
 ## Definition of done
 
@@ -57,3 +57,7 @@ Everything implementable is shipped. What remains is the production walk, and pr
 
 - **卡点已消失：** 生产固定版本已推进到 `92ff0029334d`（`bab5d417e`）。它包含 t018（`c071550db`）、m269（`eaf967d80`）和 m263（`21175a4d2`）。以 QA 会话调用 `GET /v1/blueprints` 返回的已是 `exs-…`。
 - **worker 下一步：** 按上文的生产验收步骤直接执行，无需用户决定。
+
+## Closed — 2026-11-08
+
+Production is pinned to `92ff0029334d`, which contains `eaf967d80`. `GET /v1/blueprints` returns `exs-…`. With the v2.35 CLI, `ea blueprints approve exs-db136288mmqc73d4hpug`, `plan` and `update --branch main` each exited 0 against production (w2/m256 t007, 2026-11-08). Every DoD point is met.
