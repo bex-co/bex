@@ -129,10 +129,11 @@ func scanWebhookEndpointWithLatest(row pgx.Row) (WebhookEndpoint, error) {
 // of its workspace by a worker SHARED with every other tenant, so an unbounded
 // endpoint count is an unbounded multiplier on shared memory and database work —
 // growable persistently, by an ordinary workspace admin, at no cost to them.
-// The value is far above any real integration topology (Render's own docs
-// describe a handful of endpoints per workspace); it exists to stop the
-// pathological case, not to shape normal use.
-const MaxWebhookEndpointsPerWorkspace = 25
+// It equals the highest plan's destination limit (core.WebhookDestinationLimit:
+// Render allows up to 100 on Scale and Enterprise), so the plan gate is the
+// refusal a customer meets and this cap only backstops it (w3/056; it was 25,
+// which made Scale's 26th–100th destination unreachable).
+const MaxWebhookEndpointsPerWorkspace = 100
 
 // MaxWebhookURLBytes is the destination length cap (codex round-15 #2). The
 // shared worker reloads every enabled endpoint every two seconds, so an

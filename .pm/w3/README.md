@@ -92,7 +92,7 @@ implementation serves every workstream since `w1/m72`; `.pm/w3/dev-3/` keeps onl
 
 - [x] **055** — **done 2026-11-07** ([done/055.md](done/055.md)): moving a Key Value into an environment no longer fails its reconcile — the `bex-operator-pod-labels` admission policy admits the `environment-id` relabel the operator has made since w4/451, covered by an envtest against the production manifest.
 - [ ] **057** — [ADR018 ledger carries stale claims](057.md) ← from `/pm-brainstorm w3` 2026-11-07
-- [ ] **056** — [Scale and Enterprise workspaces are capped at 25 webhook endpoints; Render allows 100](056.md) ← from `/pm-brainstorm w3` 2026-11-07
+- [x] **056** — **done 2026-11-08** ([done/056.md](done/056.md)): Scale and Enterprise workspaces reach 100 webhook destinations, as on Render — the store cap was raised from 25 to the top plan's 100.
 - [ ] **054** — **BLOCKED (your decision: how private traffic reaches pods for any protocol — (a) headless private Service (recommended, Render's any-port/any-protocol with no discovery), (b) exec-based UDP discovery, (c) image-declared UDP only)** — [Private network for any protocol (UDP included): design the routing](blocked/054.md). Run `/unblock w3`.
 - [x] **053** — **done 2026-11-05** ([done/053.md](done/053.md)): REST `serviceDetails.disk.id` from the disk row, MCP `list_logs` without `container`, and `dryRun`'s 200 recorded as a bex extension.
 - [x] **052** — **split 2026-11-05**: the TCP gaps were promoted to [`m276`](m276/README.md), UDP/any-protocol to `054`; the scan-observability point was dropped, since Render documents no scan to match ([done/052.md](done/052.md)).
