@@ -19,8 +19,13 @@ package github
 import (
 	"context"
 	"errors"
+	"net/http"
+	"net/http/httptest"
 	"reflect"
+	"strconv"
+	"strings"
 	"testing"
+	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
 	"github.com/bex-co/bex/lego/backend/internal/store"
@@ -203,4 +208,72 @@ func TestValidateRepoReportsTheRepositoryDefaultBranch(t *testing.T) {
 			t.Fatalf("ValidateRepo with GitHub off = %q, %v; want \"\", nil", got, err)
 		}
 	})
+}
+
+// TestValidateRepoClassifiesGitHubRefusals is w4/528: a GitHub refusal while
+// checking a repository was an unclassified 500 "internal error". A rate limit
+// or an outage is now a coded 503 (with Retry-After when GitHub gave one), an
+// installation GitHub no longer authorizes a coded 400, and no upstream text
+// reaches the client.
+func TestValidateRepoClassifiesGitHubRefusals(t *testing.T) {
+	for _, tc := range []struct {
+		name       string
+		repo       string
+		client     fakeClient
+		status     int
+		code       string
+		retryAfter string
+	}{
+		{name: "anonymous rate limit", repo: "https://github.com/stranger/app", client: fakeClient{repoErr: &APIError{Status: 403, RateLimited: true, RetryAfter: 120, Body: "API rate limit exceeded for 1.2.3.4"}}, status: 503, code: CodeGitHubRateLimited, retryAfter: "120"},
+		{name: "secondary rate limit", repo: "https://github.com/stranger/app", client: fakeClient{repoErr: &APIError{Status: 429, RateLimited: true}}, status: 503, code: CodeGitHubRateLimited},
+		{name: "anonymous 403 without budget headers", repo: "https://github.com/stranger/app", client: fakeClient{repoErr: &APIError{Status: 403}}, status: 503, code: CodeGitHubUnavailable},
+		{name: "upstream 502", repo: "https://github.com/stranger/app", client: fakeClient{repoErr: &APIError{Status: 502, Body: "bad gateway"}}, status: 503, code: CodeGitHubUnavailable},
+		{name: "transport error", repo: "https://github.com/stranger/app", client: fakeClient{repoErr: errors.New("dial tcp: i/o timeout")}, status: 503, code: CodeGitHubUnavailable},
+		{name: "installation no longer authorized", repo: "https://github.com/octo/app", client: fakeClient{token: "installation", repoErr: &APIError{Status: 401}}, status: 400, code: CodeGitHubAccessDenied},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			st := newFakeStore()
+			st.conns = append(st.conns, store.GitConnection{WorkspaceID: "default", InstallationID: 7, AccountLogin: "octo"})
+			svc := &Service{Base: &core.Base{Namespace: "default"}, Store: st, GitHub: &tc.client}
+			_, err := svc.DeployTokenSource().ValidateRepo(context.Background(), "default", tc.repo)
+			rec := httptest.NewRecorder()
+			core.WriteErr(rec, err)
+			body := rec.Body.String()
+			if rec.Code != tc.status || !strings.Contains(body, tc.code) || strings.Contains(body, "github:") ||
+				strings.Contains(body, "rate limit exceeded") || strings.Contains(body, "bad gateway") {
+				t.Fatalf("WriteErr = %d %s, want %d %s with no upstream text", rec.Code, body, tc.status, tc.code)
+			}
+			if got := rec.Header().Get("Retry-After"); got != tc.retryAfter {
+				t.Errorf("Retry-After = %q, want %q", got, tc.retryAfter)
+			}
+		})
+	}
+}
+
+func TestNewAPIErrorReadsRateLimitHeaders(t *testing.T) {
+	resp := func(status int, headers map[string]string) *http.Response {
+		r := &http.Response{StatusCode: status, Header: http.Header{}}
+		for k, v := range headers {
+			r.Header.Set(k, v)
+		}
+		return r
+	}
+	reset := strconv.FormatInt(time.Now().Add(10*time.Minute).Unix(), 10)
+	for _, tc := range []struct {
+		name    string
+		resp    *http.Response
+		limited bool
+		wait    bool
+	}{
+		{"primary limit", resp(403, map[string]string{"X-Ratelimit-Remaining": "0", "X-Ratelimit-Reset": reset}), true, true},
+		{"secondary limit", resp(403, map[string]string{"Retry-After": "60"}), true, true},
+		{"429", resp(429, nil), true, false},
+		{"plain forbidden", resp(403, map[string]string{"X-Ratelimit-Remaining": "42"}), false, false},
+		{"server error", resp(502, nil), false, false},
+	} {
+		e := newAPIError(tc.resp, nil)
+		if e.RateLimited != tc.limited || (e.RetryAfter > 0) != tc.wait {
+			t.Errorf("%s: %+v, want limited=%v wait=%v", tc.name, e, tc.limited, tc.wait)
+		}
+	}
 }

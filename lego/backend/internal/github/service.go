@@ -1142,13 +1142,17 @@ func (t tokenSource) ValidateRepo(ctx context.Context, workspaceID, repoURL stri
 	}
 	_, meta, granted, err := t.s.grantedRepo(ctx, workspaceID, repoURL)
 	if err != nil {
+		var coded *core.CodedError
+		if errors.As(err, &coded) {
+			return "", coded
+		}
 		return "", fmt.Errorf("checking repository access: %w", err)
 	}
 	if !granted {
 		var public bool
 		meta, public, err = t.s.GitHub.LookupRepo(ctx, "", owner, repo)
 		if err != nil {
-			return "", fmt.Errorf("checking public repository access: %w", err)
+			return "", classifyRepoCheckError(err, false)
 		}
 		if !public {
 			return "", fmt.Errorf("%w: repository is not accessible through this workspace's GitHub connections or as public Git; connect its owner and grant repository access, or use a public repository", core.ErrBadRequest)
@@ -1218,11 +1222,11 @@ func (s *Service) grantedRepo(ctx context.Context, workspaceID, repoURL string) 
 	// the grant" (LookupRepo reports ok=false, no error).
 	tok, err := s.GitHub.MintInstallationToken(ctx, row.InstallationID)
 	if err != nil {
-		return "", Repo{}, false, err
+		return "", Repo{}, false, classifyRepoCheckError(err, true)
 	}
 	meta, inGrant, err := s.GitHub.LookupRepo(ctx, tok.Token, owner, repo)
 	if err != nil {
-		return "", Repo{}, false, err
+		return "", Repo{}, false, classifyRepoCheckError(err, true)
 	}
 	if !inGrant {
 		return "", Repo{}, false, nil
@@ -1577,4 +1581,39 @@ func classifyBlueprintCommitLookup(err error) error {
 		return fmt.Errorf("%w: %w", ErrBranchNotFound, err)
 	}
 	return fmt.Errorf("%w: %w", ErrRepoNotFoundOrNoAccess, err)
+}
+
+// Codes for a repository check GitHub refused or could not answer (w4/528).
+const (
+	CodeGitHubRateLimited  = "GITHUB_RATE_LIMITED"
+	CodeGitHubUnavailable  = "GITHUB_UNAVAILABLE"
+	CodeGitHubAccessDenied = "GITHUB_ACCESS_DENIED"
+)
+
+// classifyRepoCheckError turns a GitHub failure while checking a repository
+// into a coded bex error, as APIError's contract asks, instead of an
+// unclassified 500 (w4/528). A rate limit or an outage is a 503 the caller
+// can retry; an installation GitHub no longer authorizes is a 400 naming the
+// fix (installation is false for the anonymous public-repo lookup, where a
+// refusal names no app of ours). The wording matches the Blueprint fetch classifier (w2/m97), and no
+// upstream text reaches the client (w6/005).
+func classifyRepoCheckError(err error, installation bool) error {
+	var apiErr *APIError
+	if errors.As(err, &apiErr) {
+		switch {
+		case apiErr.RateLimited:
+			var params map[string]any
+			if apiErr.RetryAfter > 0 {
+				params = map[string]any{"retryAfterSeconds": apiErr.RetryAfter}
+			}
+			return core.NewUnavailableError(CodeGitHubRateLimited,
+				"GitHub is rate-limiting bex right now. Try again in a few minutes.", params)
+		case installation && (apiErr.Status == http.StatusUnauthorized || apiErr.Status == http.StatusForbidden):
+			return core.NewBadRequestError(CodeGitHubAccessDenied,
+				"bex's GitHub app is not authorized to read this repository. Re-check the installation and its repository access.", nil)
+		}
+	}
+	log.Printf("github: repository check failed: %v", err)
+	return core.NewUnavailableError(CodeGitHubUnavailable,
+		"Could not reach GitHub to check the repository. Try again in a few minutes.", nil)
 }

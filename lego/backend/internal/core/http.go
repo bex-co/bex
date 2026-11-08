@@ -27,6 +27,7 @@ import (
 	"net/http"
 	"reflect"
 	"regexp"
+	"strconv"
 	"strings"
 	"sync"
 	"time"
@@ -332,6 +333,10 @@ func WriteErr(w http.ResponseWriter, err error) {
 	msg := err.Error()
 	var ce *CodedError
 	if errors.As(err, &ce) {
+		// A refusal that knows how long to wait says so (w4/528).
+		if seconds, ok := ce.Params["retryAfterSeconds"].(int); ok && seconds > 0 {
+			w.Header().Set("Retry-After", strconv.Itoa(seconds))
+		}
 		WriteJSON(w, code, map[string]any{"error": msg, "message": msg, "id": statusErrID(code), "code": ce.Code, "params": ce.Params})
 		return
 	}

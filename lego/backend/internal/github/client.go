@@ -184,6 +184,29 @@ type RepoTreeEntry struct {
 type APIError struct {
 	Status int
 	Body   string
+	// RateLimited is GitHub refusing for budget, not permission: a 429, or a
+	// 403 that carries x-ratelimit-remaining: 0 or Retry-After (w4/528).
+	RateLimited bool
+	// RetryAfter is GitHub's Retry-After in seconds, or the wait until
+	// x-ratelimit-reset; 0 when it gave neither.
+	RetryAfter int
+}
+
+// newAPIError records a non-2xx response, keeping the rate-limit headers that
+// tell a budget refusal from a permission one.
+func newAPIError(resp *http.Response, body []byte) *APIError {
+	e := &APIError{Status: resp.StatusCode, Body: string(body)}
+	retryAfter, _ := strconv.Atoi(strings.TrimSpace(resp.Header.Get("Retry-After")))
+	exhausted := resp.Header.Get("X-Ratelimit-Remaining") == "0"
+	if exhausted && retryAfter <= 0 {
+		if reset, err := strconv.ParseInt(resp.Header.Get("X-Ratelimit-Reset"), 10, 64); err == nil {
+			retryAfter = int(time.Until(time.Unix(reset, 0)).Seconds())
+		}
+	}
+	e.RetryAfter = max(retryAfter, 0)
+	e.RateLimited = resp.StatusCode == http.StatusTooManyRequests ||
+		(resp.StatusCode == http.StatusForbidden && (exhausted || retryAfter > 0))
+	return e
 }
 
 func (e *APIError) Error() string {
@@ -269,7 +292,7 @@ func (c *Client) mintInstallationToken(ctx context.Context, installationID int64
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode != http.StatusCreated {
-		return InstallationToken{}, &APIError{Status: resp.StatusCode, Body: string(body)}
+		return InstallationToken{}, newAPIError(resp, body)
 	}
 	var out struct {
 		Token     string    `json:"token"`
@@ -315,7 +338,7 @@ func (c *Client) GetInstallation(ctx context.Context, installationID int64) (Ins
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode != http.StatusOK {
-		return Installation{}, &APIError{Status: resp.StatusCode, Body: string(body)}
+		return Installation{}, newAPIError(resp, body)
 	}
 	var out struct {
 		ID         int64    `json:"id"`
@@ -475,7 +498,7 @@ func (c *Client) exchangeUserCode(ctx context.Context, code string) (string, err
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode != http.StatusOK {
-		return "", &APIError{Status: resp.StatusCode, Body: string(raw)}
+		return "", newAPIError(resp, raw)
 	}
 	var out struct {
 		AccessToken string `json:"access_token"`
@@ -527,7 +550,7 @@ func (c *Client) getAsUser(ctx context.Context, userToken, path string, out any)
 	defer resp.Body.Close()
 	raw, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode != http.StatusOK {
-		return &APIError{Status: resp.StatusCode, Body: string(raw)}
+		return newAPIError(resp, raw)
 	}
 	if err := json.Unmarshal(raw, out); err != nil {
 		return fmt.Errorf("github: decode user authority: %w", err)
@@ -564,7 +587,7 @@ func (c *Client) LookupRepo(ctx context.Context, token, owner, repo string) (Rep
 		}
 		return r.toRepo(), true, nil
 	default:
-		return Repo{}, false, &APIError{Status: resp.StatusCode, Body: string(body)}
+		return Repo{}, false, newAPIError(resp, body)
 	}
 }
 
@@ -619,7 +642,7 @@ func (c *Client) ListCheckRuns(ctx context.Context, token, owner, repo, sha stri
 		body, _ := io.ReadAll(io.LimitReader(resp.Body, 4<<20))
 		resp.Body.Close()
 		if resp.StatusCode != http.StatusOK {
-			return nil, &APIError{Status: resp.StatusCode, Body: string(body)}
+			return nil, newAPIError(resp, body)
 		}
 		var out struct {
 			TotalCount int        `json:"total_count"`
@@ -664,7 +687,7 @@ func (c *Client) GetCommit(ctx context.Context, token, owner, repo, ref string) 
 	defer resp.Body.Close()
 	body, _ := io.ReadAll(io.LimitReader(resp.Body, 1<<20))
 	if resp.StatusCode != http.StatusOK {
-		return Commit{}, &APIError{Status: resp.StatusCode, Body: string(body)}
+		return Commit{}, newAPIError(resp, body)
 	}
 	var out struct {
 		SHA    string `json:"sha"`
@@ -770,7 +793,7 @@ func (c *Client) pagedGet(ctx context.Context, url, authorization, opDesc string
 		}
 		totalBytes += len(body)
 		if resp.StatusCode != http.StatusOK {
-			return &APIError{Status: resp.StatusCode, Body: string(body)}
+			return newAPIError(resp, body)
 		}
 		if err := onPage(body); err != nil {
 			return err
@@ -858,7 +881,7 @@ func (c *Client) ListRepoTree(ctx context.Context, token, owner, repo, path, ref
 		return nil, errRepoTreeBound
 	}
 	if resp.StatusCode != http.StatusOK {
-		return nil, &APIError{Status: resp.StatusCode, Body: string(body)}
+		return nil, newAPIError(resp, body)
 	}
 	var entries []RepoTreeEntry
 	if err := json.Unmarshal(body, &entries); err != nil {
@@ -947,7 +970,7 @@ func (c *Client) GetFileContents(ctx context.Context, token, owner, repo, path, 
 		return FileContents{}, fmt.Errorf("github: rate limited fetching file %q at ref %q: %w", path, ref, &APIError{Status: resp.StatusCode})
 	}
 	if resp.StatusCode != http.StatusOK {
-		return FileContents{}, &APIError{Status: resp.StatusCode, Body: string(body)}
+		return FileContents{}, newAPIError(resp, body)
 	}
 	if len(body) > maxBlueprintFileBytes {
 		return FileContents{}, fmt.Errorf("%w: file %q at ref %q", errFileTooLarge, path, ref)
@@ -976,7 +999,7 @@ func (c *Client) GetRepoCommitSHA(ctx context.Context, token, owner, repo, branc
 		return "", fmt.Errorf("github: get branch: read response: %w", err)
 	}
 	if resp.StatusCode != http.StatusOK {
-		return "", &APIError{Status: resp.StatusCode, Body: string(body)}
+		return "", newAPIError(resp, body)
 	}
 	var out struct {
 		Commit struct {
