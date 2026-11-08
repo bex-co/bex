@@ -217,15 +217,6 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message: "Couldn't create the webhook",
     description: "Toast after a failed create",
   },
-  "webhooks.createdTitle": {
-    message: "Webhook created",
-    description: "Secret-reveal step title",
-  },
-  "webhooks.createdWarning": {
-    message:
-      "Use the signing secret to verify the webhook-signature header on every delivery. Workspace admins can view it again in the webhook's settings.",
-    description: "Secret-reveal step note after create",
-  },
   "webhooks.copy": {
     message: "Copy signing secret",
     description: "Copy-secret button label",
@@ -237,10 +228,6 @@ const enWebhooks: Record<string, TranslationEntry> = {
   "webhooks.copyError": {
     message: "Couldn't copy — select the text and copy it manually",
     description: "Toast when clipboard write fails",
-  },
-  "webhooks.createdDone": {
-    message: "Done",
-    description: "Secret-reveal step dismiss button",
   },
   "webhooks.toggle": {
     message: "Enabled",
@@ -812,10 +799,6 @@ const enWebhooks: Record<string, TranslationEntry> = {
     message:
       "Choose which events in your workspace will trigger a webhook notification.",
     description: "Create page events-field helper copy",
-  },
-  "webhooks.createdView": {
-    message: "View webhook",
-    description: "Secret step button that opens the new webhook's page",
   },
   // --- /webhook/$id detail page (w1/m49/t004) ---
   "webhooks.detailKicker": {

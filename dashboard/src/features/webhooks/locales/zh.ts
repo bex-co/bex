@@ -211,15 +211,6 @@ const zhWebhooks: Record<string, TranslationEntry> = {
     message: "无法创建 Webhook",
     description: "Toast after a failed create",
   },
-  "webhooks.createdTitle": {
-    message: "Webhook 已创建",
-    description: "Secret-reveal step title",
-  },
-  "webhooks.createdWarning": {
-    message:
-      "用签名密钥校验每次投递的 webhook-signature 请求头。工作区管理员之后可在该 Webhook 的设置中再次查看。",
-    description: "Secret-reveal step note after create",
-  },
   "webhooks.copy": {
     message: "复制签名密钥",
     description: "Copy-secret button label",
@@ -231,10 +222,6 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   "webhooks.copyError": {
     message: "复制失败——请手动选中文本复制",
     description: "Toast when clipboard write fails",
-  },
-  "webhooks.createdDone": {
-    message: "完成",
-    description: "Secret-reveal step dismiss button",
   },
   "webhooks.toggle": {
     message: "启用",
@@ -798,10 +785,6 @@ const zhWebhooks: Record<string, TranslationEntry> = {
   "webhooks.fieldEventsHelp": {
     message: "选择工作区中哪些事件会触发 Webhook 通知。",
     description: "Create page events-field helper copy",
-  },
-  "webhooks.createdView": {
-    message: "查看 Webhook",
-    description: "Secret step button that opens the new webhook's page",
   },
   // --- /webhook/$id detail page (w1/m49/t004) ---
   "webhooks.detailKicker": {

@@ -52,11 +52,6 @@ vi.mock("@/features/workspaces/context", () => ({
   }),
 }));
 
-const copy = vi.fn();
-vi.mock("@/common/hooks/use-copy-to-clipboard", () => ({
-  useCopyToClipboard: () => ({ copied: false, copy }),
-}));
-
 function renderPage() {
   const rootRoute = createRootRoute();
   const newRoute = createRoute({
@@ -84,7 +79,6 @@ beforeEach(() => {
   existingNames = [];
   clearError.mockReset();
   create.mockReset();
-  copy.mockReset();
 });
 
 async function fillAndSubmit(user: ReturnType<typeof userEvent.setup>) {
@@ -160,7 +154,7 @@ describe("NewWebhookPage — /webhooks/new (w1/m49/t003)", () => {
     expect(screen.getByLabelText("Name")).toHaveFocus();
   });
 
-  it("shows the signing secret exactly once after create, with a copy affordance", async () => {
+  it("a successful create lands on the webhook's detail page with no secret step, as on Render", async () => {
     create.mockResolvedValue({
       id: "whk-1",
       name: "slack-bot",
@@ -172,37 +166,17 @@ describe("NewWebhookPage — /webhooks/new (w1/m49/t003)", () => {
 
     await fillAndSubmit(user);
 
-    expect(await screen.findByText("whsec_s3cret")).toBeInTheDocument();
     expect(create).toHaveBeenCalledWith(
       "slack-bot",
       "https://example.com/hook",
       ["deploy_started"],
       true,
     );
-
-    await user.click(screen.getByLabelText("Copy signing secret"));
-    expect(copy).toHaveBeenCalledWith("whsec_s3cret");
-  });
-
-  it("'View webhook' leaves the secret step for the detail page — the secret is gone", async () => {
-    create.mockResolvedValue({
-      id: "whk-1",
-      name: "slack-bot",
-      secret: "whsec_s3cret",
-    });
-    const user = userEvent.setup();
-    renderPage();
-    await screen.findByRole("button", { name: "Create webhook" });
-
-    await fillAndSubmit(user);
-    await screen.findByText("whsec_s3cret");
-
-    await user.click(screen.getByRole("button", { name: "View webhook" }));
     expect(await screen.findByTestId("detail-page")).toBeInTheDocument();
     expect(screen.queryByText("whsec_s3cret")).not.toBeInTheDocument();
   });
 
-  it("a create failure (null from the hook) keeps the form step", async () => {
+  it("a create failure (null from the hook) stays on the form", async () => {
     create.mockResolvedValue(null);
     const user = userEvent.setup();
     renderPage();
@@ -211,9 +185,7 @@ describe("NewWebhookPage — /webhooks/new (w1/m49/t003)", () => {
     await fillAndSubmit(user);
 
     expect(screen.getByLabelText("Destination URL")).toBeInTheDocument();
-    expect(
-      screen.queryByText(/won't be able to see it again/i),
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId("detail-page")).not.toBeInTheDocument();
   });
 
   it("does not expose the create form to a read-only member", async () => {

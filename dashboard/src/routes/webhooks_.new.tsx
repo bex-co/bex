@@ -16,7 +16,6 @@ import { Button } from "@/common/components/ui/button";
 import { Input } from "@/common/components/ui/input";
 import { Label } from "@/common/components/ui/label";
 import { Switch } from "@/common/components/ui/switch";
-import { CopyButton } from "@/common/components/copy-button";
 import { PlanBillingLink } from "@/common/components/plan-billing-link";
 import { WebhookEventPickerField } from "@/features/webhooks/components/webhook-event-picker-field";
 import { useCreateWebhook } from "@/features/webhooks/hooks/use-create-webhook";
@@ -27,7 +26,6 @@ import { useWebhooks } from "@/features/webhooks/hooks/use-webhooks";
 import { useCapabilities } from "@/features/capabilities/hooks/use-capabilities";
 import { useWorkspace } from "@/features/workspaces/context";
 import { proFeaturesPlan } from "@/features/workspaces/types";
-import type { CreatedWebhookEndpoint } from "@/features/webhooks/types";
 import { translatedTitleHead } from "@/common/lib/document-head";
 
 // The trailing underscore deliberately escapes the /webhooks list route's
@@ -65,7 +63,6 @@ export function NewWebhookPage() {
   const [url, setUrl] = useState("");
   const [checked, setChecked] = useState<Set<string>>(() => new Set());
   const [enabled, setEnabled] = useState(true);
-  const [created, setCreated] = useState<CreatedWebhookEndpoint | null>(null);
   const {
     errors,
     nameRef,
@@ -102,7 +99,13 @@ export function NewWebhookPage() {
       eventFilter,
       enabled,
     );
-    if (endpoint) setCreated(endpoint);
+    // Render lands a new webhook on its detail page with no secret step; an
+    // admin reads the signing secret in Settings (w3/m282).
+    if (endpoint)
+      void navigate({
+        to: "/webhook/$webhookId",
+        params: { webhookId: endpoint.id },
+      });
   }
 
   return (
@@ -117,239 +120,193 @@ export function NewWebhookPage() {
       </div>
       <div className="flex-1 overflow-auto p-4 sm:p-6">
         <div className="mx-auto w-full max-w-2xl space-y-6">
-          {created ? (
-            <SecretStep
-              created={created}
-              onView={() =>
-                void navigate({
-                  to: "/webhook/$webhookId",
-                  params: { webhookId: created.id },
-                })
-              }
-            />
-          ) : (
-            <Card>
-              <CardHeader>
-                <CardTitle>{t("webhooks.createTitle")}</CardTitle>
-                <CardDescription>
-                  {t("webhooks.createDescription")}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                {!proPlan ? (
+          <Card>
+            <CardHeader>
+              <CardTitle>{t("webhooks.createTitle")}</CardTitle>
+              <CardDescription>
+                {t("webhooks.createDescription")}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {!proPlan ? (
+                <p className="text-muted-foreground text-sm" role="status">
+                  {t("webhooks.planGate")} <PlanBillingLink />
+                </p>
+              ) : !canManage ? (
+                capabilitiesLoaded ? (
                   <p className="text-muted-foreground text-sm" role="status">
-                    {t("webhooks.planGate")} <PlanBillingLink />
+                    {t("webhooks.manageRequired")}
                   </p>
-                ) : !canManage ? (
-                  capabilitiesLoaded ? (
-                    <p className="text-muted-foreground text-sm" role="status">
-                      {t("webhooks.manageRequired")}
+                ) : null
+              ) : (
+                <form
+                  className="space-y-6"
+                  noValidate
+                  onSubmit={(event) => {
+                    event.preventDefault();
+                    void handleSubmit();
+                  }}
+                >
+                  {hasFieldErrors(errors) ? (
+                    <p className="text-destructive text-sm" role="alert">
+                      {t("webhooks.formErrorsSummary")}
                     </p>
-                  ) : null
-                ) : (
-                  <form
-                    className="space-y-6"
-                    noValidate
-                    onSubmit={(event) => {
-                      event.preventDefault();
-                      void handleSubmit();
-                    }}
-                  >
-                    {hasFieldErrors(errors) ? (
-                      <p className="text-destructive text-sm" role="alert">
-                        {t("webhooks.formErrorsSummary")}
-                      </p>
-                    ) : null}
-                    <div className="space-y-2">
-                      <Label htmlFor="webhook-name">
-                        {t("webhooks.fieldName")}
-                      </Label>
-                      <p
-                        id="webhook-name-help"
-                        className="text-muted-foreground text-sm"
-                      >
-                        {t("webhooks.fieldNameHelp")}
-                      </p>
-                      <Input
-                        id="webhook-name"
-                        ref={nameRef}
-                        value={name}
-                        onChange={(e) => {
-                          setName(e.target.value);
-                          clearField("name");
-                        }}
-                        placeholder={t("webhooks.fieldNamePlaceholder")}
-                        autoComplete="off"
-                        autoFocus
-                        aria-invalid={!!errors.name}
-                        aria-describedby={`webhook-name-help${errors.name ? " webhook-name-error" : ""}`}
-                      />
-                      {errors.name ? (
-                        <p
-                          id="webhook-name-error"
-                          className="text-destructive text-sm"
-                        >
-                          {errors.name}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="space-y-2">
-                      <Label htmlFor="webhook-url">
-                        {t("webhooks.fieldUrl")}
-                      </Label>
-                      <p
-                        id="webhook-url-help"
-                        className="text-muted-foreground text-sm"
-                      >
-                        {t("webhooks.fieldUrlHelp")}
-                      </p>
-                      <Input
-                        id="webhook-url"
-                        ref={urlRef}
-                        value={url}
-                        onChange={(e) => {
-                          setUrl(e.target.value);
-                          clearField("url");
-                        }}
-                        placeholder={t("webhooks.fieldUrlPlaceholder")}
-                        autoComplete="off"
-                        inputMode="url"
-                        aria-invalid={!!errors.url}
-                        aria-describedby={`webhook-url-help${errors.url ? " webhook-url-error" : ""}`}
-                      />
-                      {errors.url ? (
-                        <p
-                          id="webhook-url-error"
-                          className="text-destructive text-sm"
-                        >
-                          {errors.url}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div
-                      ref={eventsRef}
-                      className="space-y-2"
-                      tabIndex={-1}
-                      aria-invalid={!!errors.events}
+                  ) : null}
+                  <div className="space-y-2">
+                    <Label htmlFor="webhook-name">
+                      {t("webhooks.fieldName")}
+                    </Label>
+                    <p
+                      id="webhook-name-help"
+                      className="text-muted-foreground text-sm"
                     >
-                      <Label id="webhook-events-label">
-                        {t("webhooks.fieldEvents")}
-                      </Label>
+                      {t("webhooks.fieldNameHelp")}
+                    </p>
+                    <Input
+                      id="webhook-name"
+                      ref={nameRef}
+                      value={name}
+                      onChange={(e) => {
+                        setName(e.target.value);
+                        clearField("name");
+                      }}
+                      placeholder={t("webhooks.fieldNamePlaceholder")}
+                      autoComplete="off"
+                      autoFocus
+                      aria-invalid={!!errors.name}
+                      aria-describedby={`webhook-name-help${errors.name ? " webhook-name-error" : ""}`}
+                    />
+                    {errors.name ? (
                       <p
-                        id="webhook-events-help"
-                        className="text-muted-foreground text-sm"
-                      >
-                        {t("webhooks.fieldEventsHelp")}
-                      </p>
-                      <WebhookEventPickerField
-                        eventTypes={eventTypes}
-                        loading={typesLoading}
-                        error={typesError}
-                        retry={retryTypes}
-                        value={checked}
-                        onChange={(next) => {
-                          setChecked(next);
-                          clearField("events");
-                        }}
-                        disabled={busy}
-                        describedBy={`webhook-events-help${errors.events ? " webhook-events-error" : ""}`}
-                      />
-                      {errors.events ? (
-                        <p
-                          id="webhook-events-error"
-                          className="text-destructive text-sm"
-                        >
-                          {errors.events}
-                        </p>
-                      ) : null}
-                    </div>
-                    <div className="flex items-start justify-between gap-4">
-                      <div>
-                        <Label htmlFor="webhook-create-enabled">
-                          {t("webhooks.settingsStatus")}
-                        </Label>
-                        <p className="text-muted-foreground text-sm">
-                          {t("webhooks.createEnabledHelp")}
-                        </p>
-                      </div>
-                      <Switch
-                        id="webhook-create-enabled"
-                        checked={enabled}
-                        onCheckedChange={setEnabled}
-                        disabled={busy}
-                      />
-                    </div>
-                    <div className="flex justify-end">
-                      <Button
-                        type="submit"
-                        disabled={!catalogReady || !mutationAllowed}
-                        aria-describedby={
-                          !catalogReady ? "webhook-create-disabled" : undefined
-                        }
-                      >
-                        {busy ? <Loader2 className="animate-spin" /> : null}
-                        {t("webhooks.createSubmit")}
-                      </Button>
-                    </div>
-                    {!catalogReady ? (
-                      <p
-                        id="webhook-create-disabled"
-                        className="text-muted-foreground text-right text-xs"
-                      >
-                        {t("webhooks.formUnavailableEvents")}
-                      </p>
-                    ) : null}
-                    {errors.form ? (
-                      <p
-                        ref={formErrorRef}
-                        tabIndex={-1}
+                        id="webhook-name-error"
                         className="text-destructive text-sm"
-                        role="alert"
                       >
-                        {errors.form}
+                        {errors.name}
                       </p>
                     ) : null}
-                  </form>
-                )}
-              </CardContent>
-            </Card>
-          )}
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="webhook-url">
+                      {t("webhooks.fieldUrl")}
+                    </Label>
+                    <p
+                      id="webhook-url-help"
+                      className="text-muted-foreground text-sm"
+                    >
+                      {t("webhooks.fieldUrlHelp")}
+                    </p>
+                    <Input
+                      id="webhook-url"
+                      ref={urlRef}
+                      value={url}
+                      onChange={(e) => {
+                        setUrl(e.target.value);
+                        clearField("url");
+                      }}
+                      placeholder={t("webhooks.fieldUrlPlaceholder")}
+                      autoComplete="off"
+                      inputMode="url"
+                      aria-invalid={!!errors.url}
+                      aria-describedby={`webhook-url-help${errors.url ? " webhook-url-error" : ""}`}
+                    />
+                    {errors.url ? (
+                      <p
+                        id="webhook-url-error"
+                        className="text-destructive text-sm"
+                      >
+                        {errors.url}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div
+                    ref={eventsRef}
+                    className="space-y-2"
+                    tabIndex={-1}
+                    aria-invalid={!!errors.events}
+                  >
+                    <Label id="webhook-events-label">
+                      {t("webhooks.fieldEvents")}
+                    </Label>
+                    <p
+                      id="webhook-events-help"
+                      className="text-muted-foreground text-sm"
+                    >
+                      {t("webhooks.fieldEventsHelp")}
+                    </p>
+                    <WebhookEventPickerField
+                      eventTypes={eventTypes}
+                      loading={typesLoading}
+                      error={typesError}
+                      retry={retryTypes}
+                      value={checked}
+                      onChange={(next) => {
+                        setChecked(next);
+                        clearField("events");
+                      }}
+                      disabled={busy}
+                      describedBy={`webhook-events-help${errors.events ? " webhook-events-error" : ""}`}
+                    />
+                    {errors.events ? (
+                      <p
+                        id="webhook-events-error"
+                        className="text-destructive text-sm"
+                      >
+                        {errors.events}
+                      </p>
+                    ) : null}
+                  </div>
+                  <div className="flex items-start justify-between gap-4">
+                    <div>
+                      <Label htmlFor="webhook-create-enabled">
+                        {t("webhooks.settingsStatus")}
+                      </Label>
+                      <p className="text-muted-foreground text-sm">
+                        {t("webhooks.createEnabledHelp")}
+                      </p>
+                    </div>
+                    <Switch
+                      id="webhook-create-enabled"
+                      checked={enabled}
+                      onCheckedChange={setEnabled}
+                      disabled={busy}
+                    />
+                  </div>
+                  <div className="flex justify-end">
+                    <Button
+                      type="submit"
+                      disabled={!catalogReady || !mutationAllowed}
+                      aria-describedby={
+                        !catalogReady ? "webhook-create-disabled" : undefined
+                      }
+                    >
+                      {busy ? <Loader2 className="animate-spin" /> : null}
+                      {t("webhooks.createSubmit")}
+                    </Button>
+                  </div>
+                  {!catalogReady ? (
+                    <p
+                      id="webhook-create-disabled"
+                      className="text-muted-foreground text-right text-xs"
+                    >
+                      {t("webhooks.formUnavailableEvents")}
+                    </p>
+                  ) : null}
+                  {errors.form ? (
+                    <p
+                      ref={formErrorRef}
+                      tabIndex={-1}
+                      className="text-destructive text-sm"
+                      role="alert"
+                    >
+                      {errors.form}
+                    </p>
+                  ) : null}
+                </form>
+              )}
+            </CardContent>
+          </Card>
         </div>
       </div>
     </DashboardLayout>
-  );
-}
-
-function SecretStep({
-  created,
-  onView,
-}: {
-  created: CreatedWebhookEndpoint;
-  onView: () => void;
-}) {
-  const { t } = useTranslations();
-  return (
-    <Card>
-      <CardHeader>
-        <CardTitle>{t("webhooks.createdTitle")}</CardTitle>
-        <CardDescription>{t("webhooks.createdWarning")}</CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-4">
-        <div className="bg-muted/50 flex items-center gap-2 rounded-md border p-3">
-          <code className="flex-1 overflow-x-auto font-mono text-sm break-all">
-            {created.secret}
-          </code>
-          <CopyButton
-            value={created.secret}
-            label={t("webhooks.copy")}
-            successText={t("webhooks.copied")}
-            errorText={t("webhooks.copyError")}
-          />
-        </div>
-        <div className="flex justify-end">
-          <Button onClick={onView}>{t("webhooks.createdView")}</Button>
-        </div>
-      </CardContent>
-    </Card>
   );
 }
