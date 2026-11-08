@@ -57,16 +57,18 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			return
 		}
 		views, err := s.List(r.Context(), ListRequest{
-			OwnerID:       q.Get("ownerId"),
-			Archived:      q.Get("archived"),
-			Phases:        core.QueryList(q, "phase"),
-			States:        core.QueryList(q, "state"),
-			Tag:           q.Get("tag"),
-			Repo:          q.Get("repo"),
-			CreatedBefore: window.Before,
-			CreatedAfter:  window.After,
-			Cursor:        q.Get("cursor"),
-			Limit:         limit,
+			OwnerID:         q.Get("ownerId"),
+			Archived:        q.Get("archived"),
+			Phases:          core.QueryList(q, "phase"),
+			States:          core.QueryList(q, "state"),
+			Tag:             q.Get("tag"),
+			Repo:            q.Get("repo"),
+			AutomationID:    q.Get("automationId"),
+			ParentSessionID: q.Get("parentSessionId"),
+			CreatedBefore:   window.Before,
+			CreatedAfter:    window.After,
+			Cursor:          q.Get("cursor"),
+			Limit:           limit,
 		})
 		if err != nil {
 			core.WriteErr(w, err)
@@ -124,6 +126,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 		}
 		core.WriteJSON(w, http.StatusOK, view)
 	})
+	// The tree the session belongs to (ADR102 D8), whichever node the id names.
+	mux.HandleFunc("GET /v1/agent-sessions/{id}/tree", core.HandleByID(s.Tree))
 	mux.HandleFunc("GET /v1/agent-sessions/{id}/model-cost", core.HandleByID(s.ModelCost))
 	mux.HandleFunc("POST /v1/agent-sessions/{id}/cancel", func(w http.ResponseWriter, r *http.Request) {
 		view, err := s.Cancel(r.Context(), r.PathValue("id"))

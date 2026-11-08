@@ -118,6 +118,15 @@ type SessionSpendStore interface {
 	AgentSessionModelSpendMicroUSD(ctx context.Context, workspaceID, sessionID string) (int64, error)
 }
 
+// SessionTreeSpendStore reads the spend headroom of a session's tree (ADR102
+// D3): what the tightest maxSpendUSD ceiling on the session and its ancestors
+// leaves after the spend of the session and everything below the ceiling's
+// owner. A SessionSpendStore that also implements it gets the tree check;
+// *store.PGStore does.
+type SessionTreeSpendStore interface {
+	AgentSessionCeilingHeadroom(ctx context.Context, workspaceID, sessionID string) (headroom int64, bounded bool, err error)
+}
+
 // SpendStatus is one workspace's agent-model spend position. Every amount is
 // micro-USD.
 type SpendStatus struct {

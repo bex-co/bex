@@ -81,6 +81,9 @@
         "deliveryNote": {
           "type": "string"
         },
+        "depth": {
+          "type": "integer"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -212,6 +215,9 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "type": "string"
+        },
         "phase": {
           "type": "string"
         },
@@ -222,6 +228,9 @@
           "type": "string"
         },
         "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
           "type": "string"
         },
         "sandboxId": {
@@ -377,6 +386,9 @@
         "deliveryNote": {
           "type": "string"
         },
+        "depth": {
+          "type": "integer"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -508,6 +520,9 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "type": "string"
+        },
         "phase": {
           "type": "string"
         },
@@ -518,6 +533,9 @@
           "type": "string"
         },
         "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
           "type": "string"
         },
         "sandboxId": {
@@ -670,6 +688,9 @@
         "deliveryNote": {
           "type": "string"
         },
+        "depth": {
+          "type": "integer"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -801,6 +822,9 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "type": "string"
+        },
         "phase": {
           "type": "string"
         },
@@ -811,6 +835,9 @@
           "type": "string"
         },
         "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
           "type": "string"
         },
         "sandboxId": {
@@ -1436,6 +1463,10 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "description": "start this session as a child of the active session with this id (same workspace; you need to be able to operate it): at most 3 levels deep and 5 live children per parent. The child's spend counts against the parent's maxSpendUSD ceiling and may not exceed what is left of it; the child inherits the parent's secrets, and secretNames may only narrow them (inline secrets are refused)",
+          "type": "string"
+        },
         "repo": {
           "type": "string"
         },
@@ -1578,6 +1609,9 @@
         "deliveryNote": {
           "type": "string"
         },
+        "depth": {
+          "type": "integer"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -1709,6 +1743,9 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "type": "string"
+        },
         "phase": {
           "type": "string"
         },
@@ -1719,6 +1756,9 @@
           "type": "string"
         },
         "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
           "type": "string"
         },
         "sandboxId": {
@@ -2689,6 +2729,9 @@
         "deliveryNote": {
           "type": "string"
         },
+        "depth": {
+          "type": "integer"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -2820,6 +2863,9 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "type": "string"
+        },
         "phase": {
           "type": "string"
         },
@@ -2830,6 +2876,9 @@
           "type": "string"
         },
         "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
           "type": "string"
         },
         "sandboxId": {
@@ -3374,6 +3423,327 @@
         "parts",
         "turns",
         "nextAfterSeq"
+      ],
+      "type": "object"
+    }
+  },
+  {
+    "annotations": {
+      "destructiveHint": false,
+      "idempotentHint": true,
+      "openWorldHint": false,
+      "readOnlyHint": true
+    },
+    "description": "Read the whole tree of cloud coding-agent sessions a session belongs to (ADR102): pass any session id in the tree, get its root (rootSessionId) and every session below it (sessions), the root first and then by depth and creation time, each with its parentSessionId, depth, phase, state and outcome. Use it to see every child a session started in one call; list_agent_sessions with parentSessionId lists just the direct children.",
+    "inputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "type": "string"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "type": "object"
+    },
+    "name": "get_agent_session_tree",
+    "outputSchema": {
+      "additionalProperties": false,
+      "properties": {
+        "rootSessionId": {
+          "type": "string"
+        },
+        "sessions": {
+          "items": {
+            "additionalProperties": false,
+            "properties": {
+              "agentConfig": {
+                "additionalProperties": false,
+                "properties": {
+                  "agent": {
+                    "type": "string"
+                  },
+                  "model": {
+                    "type": "string"
+                  },
+                  "modelEndpoint": {
+                    "type": "string"
+                  },
+                  "task": {
+                    "type": "string"
+                  },
+                  "template": {
+                    "type": "string"
+                  }
+                },
+                "required": [
+                  "agent",
+                  "task"
+                ],
+                "type": "object"
+              },
+              "archivedAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "automationId": {
+                "type": "string"
+              },
+              "branch": {
+                "type": "string"
+              },
+              "canceledAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "created": {
+                "type": [
+                  "null",
+                  "boolean"
+                ]
+              },
+              "createdAt": {
+                "type": "string"
+              },
+              "deliveryMode": {
+                "type": "string"
+              },
+              "deliveryNote": {
+                "type": "string"
+              },
+              "depth": {
+                "type": "integer"
+              },
+              "expiresAt": {
+                "type": [
+                  "null",
+                  "string"
+                ]
+              },
+              "failureReason": {
+                "type": "string"
+              },
+              "failureReasonCode": {
+                "type": "string"
+              },
+              "headSha": {
+                "type": "string"
+              },
+              "id": {
+                "type": "string"
+              },
+              "maxSpendUSD": {
+                "type": "string"
+              },
+              "outcome": {
+                "additionalProperties": false,
+                "properties": {
+                  "cost": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "computeUSD": {
+                        "type": "string"
+                      },
+                      "modelUSD": {
+                        "type": "string"
+                      },
+                      "totalUSD": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "modelUSD",
+                      "computeUSD",
+                      "totalUSD"
+                    ],
+                    "type": [
+                      "null",
+                      "object"
+                    ]
+                  },
+                  "deliveryNote": {
+                    "type": "string"
+                  },
+                  "failureReasonCode": {
+                    "type": "string"
+                  },
+                  "files": {
+                    "items": {
+                      "additionalProperties": false,
+                      "properties": {
+                        "id": {
+                          "type": "string"
+                        },
+                        "mediaType": {
+                          "type": "string"
+                        },
+                        "name": {
+                          "type": "string"
+                        },
+                        "size": {
+                          "type": "integer"
+                        }
+                      },
+                      "required": [
+                        "id",
+                        "name",
+                        "mediaType",
+                        "size"
+                      ],
+                      "type": "object"
+                    },
+                    "type": [
+                      "null",
+                      "array"
+                    ]
+                  },
+                  "pullRequest": {
+                    "additionalProperties": false,
+                    "properties": {
+                      "headSha": {
+                        "type": "string"
+                      },
+                      "number": {
+                        "type": "integer"
+                      },
+                      "url": {
+                        "type": "string"
+                      }
+                    },
+                    "required": [
+                      "url"
+                    ],
+                    "type": [
+                      "null",
+                      "object"
+                    ]
+                  },
+                  "result": true,
+                  "state": {
+                    "type": "string"
+                  },
+                  "steerable": {
+                    "type": "boolean"
+                  },
+                  "summary": {
+                    "type": "string"
+                  },
+                  "turn": {
+                    "type": "integer"
+                  }
+                },
+                "required": [
+                  "state",
+                  "steerable",
+                  "turn"
+                ],
+                "type": [
+                  "null",
+                  "object"
+                ]
+              },
+              "ownerId": {
+                "type": "string"
+              },
+              "parentSessionId": {
+                "type": "string"
+              },
+              "phase": {
+                "type": "string"
+              },
+              "prNumber": {
+                "type": "integer"
+              },
+              "prUrl": {
+                "type": "string"
+              },
+              "repo": {
+                "type": "string"
+              },
+              "rootSessionId": {
+                "type": "string"
+              },
+              "sandboxId": {
+                "type": "string"
+              },
+              "secretNames": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "sshAddress": {
+                "type": "string"
+              },
+              "state": {
+                "type": "string"
+              },
+              "status": {
+                "type": "string"
+              },
+              "steerable": {
+                "type": "boolean"
+              },
+              "streamUrl": {
+                "type": "string"
+              },
+              "tags": {
+                "items": {
+                  "type": "string"
+                },
+                "type": [
+                  "null",
+                  "array"
+                ]
+              },
+              "ticket": {
+                "type": "string"
+              },
+              "title": {
+                "type": "string"
+              },
+              "turns": {
+                "type": "integer"
+              },
+              "updatedAt": {
+                "type": "string"
+              },
+              "url": {
+                "type": "string"
+              }
+            },
+            "required": [
+              "id",
+              "ownerId",
+              "repo",
+              "branch",
+              "agentConfig",
+              "phase",
+              "state",
+              "steerable",
+              "status",
+              "createdAt",
+              "updatedAt"
+            ],
+            "type": "object"
+          },
+          "type": [
+            "null",
+            "array"
+          ]
+        }
+      },
+      "required": [
+        "rootSessionId",
+        "sessions"
       ],
       "type": "object"
     }
@@ -4109,6 +4479,10 @@
         "archived": {
           "type": "string"
         },
+        "automationId": {
+          "description": "only the sessions this agent automation (aut-…) started",
+          "type": "string"
+        },
         "createdAfter": {
           "type": "string"
         },
@@ -4122,6 +4496,10 @@
           "type": "integer"
         },
         "ownerId": {
+          "type": "string"
+        },
+        "parentSessionId": {
+          "description": "only the direct children of this session (ags-…); read the whole tree with get_agent_session_tree",
           "type": "string"
         },
         "phases": {
@@ -4216,6 +4594,9 @@
               },
               "deliveryNote": {
                 "type": "string"
+              },
+              "depth": {
+                "type": "integer"
               },
               "expiresAt": {
                 "type": [
@@ -4348,6 +4729,9 @@
               "ownerId": {
                 "type": "string"
               },
+              "parentSessionId": {
+                "type": "string"
+              },
               "phase": {
                 "type": "string"
               },
@@ -4358,6 +4742,9 @@
                 "type": "string"
               },
               "repo": {
+                "type": "string"
+              },
+              "rootSessionId": {
                 "type": "string"
               },
               "sandboxId": {
@@ -5276,6 +5663,9 @@
         "deliveryNote": {
           "type": "string"
         },
+        "depth": {
+          "type": "integer"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -5407,6 +5797,9 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "type": "string"
+        },
         "phase": {
           "type": "string"
         },
@@ -5417,6 +5810,9 @@
           "type": "string"
         },
         "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
           "type": "string"
         },
         "sandboxId": {
@@ -5728,6 +6124,9 @@
         "deliveryNote": {
           "type": "string"
         },
+        "depth": {
+          "type": "integer"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -5859,6 +6258,9 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "type": "string"
+        },
         "phase": {
           "type": "string"
         },
@@ -5869,6 +6271,9 @@
           "type": "string"
         },
         "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
           "type": "string"
         },
         "sandboxId": {
@@ -6064,6 +6469,10 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "description": "start this session as a child of the active session with this id (same workspace; you need to be able to operate it): at most 3 levels deep and 5 live children per parent. The child's spend counts against the parent's maxSpendUSD ceiling and may not exceed what is left of it; the child inherits the parent's secrets, and secretNames may only narrow them (inline secrets are refused)",
+          "type": "string"
+        },
         "repo": {
           "type": "string"
         },
@@ -6206,6 +6615,9 @@
         "deliveryNote": {
           "type": "string"
         },
+        "depth": {
+          "type": "integer"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -6337,6 +6749,9 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "type": "string"
+        },
         "phase": {
           "type": "string"
         },
@@ -6347,6 +6762,9 @@
           "type": "string"
         },
         "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
           "type": "string"
         },
         "sandboxId": {
@@ -6592,6 +7010,9 @@
         "deliveryNote": {
           "type": "string"
         },
+        "depth": {
+          "type": "integer"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -6723,6 +7144,9 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "type": "string"
+        },
         "phase": {
           "type": "string"
         },
@@ -6733,6 +7157,9 @@
           "type": "string"
         },
         "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
           "type": "string"
         },
         "sandboxId": {
@@ -7160,6 +7587,9 @@
         "deliveryNote": {
           "type": "string"
         },
+        "depth": {
+          "type": "integer"
+        },
         "expiresAt": {
           "type": [
             "null",
@@ -7291,6 +7721,9 @@
         "ownerId": {
           "type": "string"
         },
+        "parentSessionId": {
+          "type": "string"
+        },
         "phase": {
           "type": "string"
         },
@@ -7301,6 +7734,9 @@
           "type": "string"
         },
         "repo": {
+          "type": "string"
+        },
+        "rootSessionId": {
           "type": "string"
         },
         "sandboxId": {

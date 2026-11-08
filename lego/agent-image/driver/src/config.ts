@@ -78,6 +78,10 @@ export interface AgentDriverConfig {
   // The session's Pod-bound share URL (ADR095 D6) the bex MCP server's
   // share_file posts to; empty when the deployment has no attachments store.
   shareUrl: string;
+  // The session's Pod-bound spawn URL (ADR102 D9) the bex MCP server's
+  // spawn_session and get_child_session call; empty when the session cannot
+  // spawn (depth limit, older bex-api). It carries no credential.
+  spawnUrl: string;
   // Structured output (ADR094 D5): the session's Pod-bound result URL, the
   // turn's JSON Schema text and whether the turn must end with a final result.
   // Empty when the turn is free-form (no submit_result tool, no reminder).
@@ -340,6 +344,7 @@ export function loadConfig(
     statusPath,
     prRecordPath: path.join(path.dirname(statusPath), "pull-request.json"),
     shareUrl: env.BEX_AGENT_SHARE_URL || "",
+    spawnUrl: env.BEX_AGENT_SPAWN_URL || "",
     ...outputContract(env),
     resultRecordPath: path.join(path.dirname(statusPath), "result.json"),
     existingPrUrl: env.BEX_AGENT_PR_URL || "",

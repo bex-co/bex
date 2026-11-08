@@ -148,6 +148,9 @@ type Broker struct {
 	// Results is the bex-api structured-result verb (ADR094 D5) behind
 	// ResultProxyPath. nil ⇒ the route answers unavailable.
 	Results ResultForwarder
+	// Spawns is the bex-api child-session verbs (ADR102 D9) behind
+	// SpawnProxyPath. nil ⇒ the route answers unavailable.
+	Spawns SpawnForwarder
 	// MaxResponseBytes bounds one streamed upstream response body; 0 means
 	// defaultMaxResponseBodyBytes. Exceeding it aborts the exchange loudly.
 	MaxResponseBytes int64

@@ -81,6 +81,7 @@ export async function tempConfig(
     sessionLogPath: path.join(root, "session.jsonl"),
     statusPath: path.join(root, "status.json"),
     prRecordPath: path.join(root, "pull-request.json"),
+    spawnUrl: "",
     existingPrUrl: "",
     existingPrNumber: null,
     turn: 1,

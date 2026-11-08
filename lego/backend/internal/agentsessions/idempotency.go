@@ -52,7 +52,11 @@ func idempotencyOf(workspaceID string, req CreateRequest, output store.AgentTurn
 		Secrets []string `json:"s,omitempty"`
 		// Invoked skills and their arguments (ADR099 D4); omitted when none.
 		Skills []SkillInvocation `json:"k,omitempty"`
-	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required, req.MaxSpendUSD, secretNamesOf(req.SessionSecretsInput), req.Skills})
+		// The parent (ADR102) and whether the child inherits all its parent's
+		// secrets (no secretNames given); omitted for a top-level session.
+		Parent  string `json:"p,omitempty"`
+		Inherit bool   `json:"i,omitempty"`
+	}{workspaceID, req.Repo, req.Branch, req.AgentConfig, egress, req.Title, req.Tags, req.AttachmentIDs, output.Schema, output.Required, req.MaxSpendUSD, secretNamesOf(req.SessionSecretsInput), req.Skills, req.ParentSessionID, req.ParentSessionID != "" && req.SecretNames == nil && len(req.Secrets) == 0})
 	if err != nil {
 		return "", "", err
 	}

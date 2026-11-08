@@ -26,6 +26,9 @@
 //   - submit_result (when the turn carries an outputSchema, ADR094 D5)
 //     validates a structured result against that schema and posts it to the
 //     session's Pod-bound result URL.
+//   - spawn_session and get_child_session (when the session can still start
+//     children, ADR102 D9) start a child session and read the sessions this
+//     one started, through the session's Pod-bound spawn URL.
 // No secret is involved: the gateway authenticates the source Pod.
 //
 // The transport is newline-delimited JSON-RPC 2.0 over stdio, hand-rolled to
@@ -42,6 +45,14 @@ import {
   submitResultToolDefinition,
   submitResultToolName,
 } from "./submit-result.js";
+import {
+  getChildSession,
+  getChildSessionToolDefinition,
+  getChildSessionToolName,
+  spawnSession,
+  spawnSessionToolDefinition,
+  spawnSessionToolName,
+} from "./spawn-session.js";
 import {
   shareFile,
   shareFileToolDefinition,
@@ -230,6 +241,9 @@ export function availableTools(
   if (env.BEX_RESULT_ENDPOINT && env.BEX_RESULT_SCHEMA) {
     tools.push(submitResultToolDefinition);
   }
+  if (env.BEX_SPAWN_ENDPOINT) {
+    tools.push(spawnSessionToolDefinition, getChildSessionToolDefinition);
+  }
   return tools;
 }
 
@@ -243,6 +257,9 @@ function serverInstructions(env: NodeJS.ProcessEnv): string {
   }
   if (env.BEX_RESULT_ENDPOINT && env.BEX_RESULT_SCHEMA) {
     lines.push(`Use ${submitResultToolName} to hand back this task's structured result.`);
+  }
+  if (env.BEX_SPAWN_ENDPOINT) {
+    lines.push(`Use ${spawnSessionToolName} to hand a separate task to a child session and ${getChildSessionToolName} to read its outcome.`);
   }
   return lines.join(" ");
 }
@@ -303,7 +320,11 @@ export async function handleMessage(
           ? await shareFile(args, env)
           : name === submitResultToolName
             ? await submitResult(args, env)
-            : await openOrUpdateDraftPr(args, env);
+            : name === spawnSessionToolName
+              ? await spawnSession(args, env)
+              : name === getChildSessionToolName
+                ? await getChildSession(args, env)
+                : await openOrUpdateDraftPr(args, env);
       const structured = outcome.ok ? outcome.result : { error: outcome.error };
       return rpcResult(message.id, {
         content: [{ type: "text", text: JSON.stringify(structured) }],

@@ -72,6 +72,16 @@ type Store interface {
 	// just failed with exactly that reason.
 	StampAgentSessionFailureCode(ctx context.Context, id, reason, code string) error
 	DeleteAgentSession(context.Context, string) error
+	// Parent and child sessions (ADR102): the direct children, the live-children
+	// count, a whole tree, the sessions a cancel must cancel, the recorded cancel
+	// cause, and the spend headroom of a session's tree.
+	ListAgentSessionChildren(ctx context.Context, workspaceID, parentID string) ([]store.AgentSession, error)
+	CountLiveAgentSessionChildren(ctx context.Context, workspaceID, parentID string) (int, error)
+	AgentSessionSubtree(ctx context.Context, workspaceID, rootID string) ([]store.AgentSession, error)
+	IsAgentSessionDescendant(ctx context.Context, workspaceID, ancestorID, sessionID string) (bool, error)
+	ListUnfinishedAgentSessionDescendants(ctx context.Context, workspaceID, sessionID string) ([]store.AgentSession, error)
+	SetAgentSessionCancelCause(ctx context.Context, id, reason, code string) error
+	AgentSessionCeilingHeadroom(ctx context.Context, workspaceID, sessionID string) (headroom int64, bounded bool, err error)
 	// Deferred-teardown reaping (ADR054 D6, generalized by w2/m67 / w10/m15):
 	// the Completer defers a finished session's sandbox teardown while an editor
 	// SSH session is open AND for the idle grace after the last
@@ -569,6 +579,14 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if !ok {
 		return View{}, core.ErrForbidden
 	}
+	// A child needs can_operate on its parent as well (ADR102 D5), checked
+	// before anything about the parent is read or an idempotent replay returns.
+	req.ParentSessionID = strings.TrimSpace(req.ParentSessionID)
+	if req.ParentSessionID != "" {
+		if err := s.authorizeParent(ctx, req.ParentSessionID); err != nil {
+			return View{}, err
+		}
+	}
 	// Idempotent create (ADR094 D4): a retry with the same key replays the first
 	// session before anything is admitted, provisioned or billed.
 	idemKey, idemHash, err := idempotencyOf(workspaceID, req, output)
@@ -595,6 +613,16 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	if err != nil {
 		return View{}, err
 	}
+	var parent *childContext
+	if req.ParentSessionID != "" {
+		if parent, err = s.resolveParent(ctx, workspaceID, req); err != nil {
+			return View{}, err
+		}
+		if err := parent.capCeiling(req.MaxSpendUSD, ceiling); err != nil {
+			return View{}, err
+		}
+		req.SessionSecretsInput = parent.secrets
+	}
 	secrets, err := s.attachSecrets(ctx, workspaceID, nil, nil, req.SessionSecretsInput)
 	if err != nil {
 		return View{}, err
@@ -616,7 +644,8 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 		Title:         req.Title, Tags: req.Tags,
 		MaxSpendMicroUSD: ceiling, SecretNames: secrets.names,
 		IdempotencyKey: idemKey, IdempotencyHash: idemHash,
-		AutomationID: req.AutomationID,
+		AutomationID: req.AutomationID, ParentSessionID: req.ParentSessionID,
+		CreatedBy: core.SubjectFrom(ctx),
 		InitialAttachments: store.AgentAttachmentBinding{
 			IDs: req.AttachmentIDs, Caller: core.SubjectFrom(ctx),
 		},
@@ -626,6 +655,9 @@ func (s *Service) Create(ctx context.Context, req CreateRequest) (View, error) {
 	})
 	if errors.Is(err, store.ErrAgentSessionAdmissionLimit) {
 		return View{}, admission.refusal(admission.limit)
+	}
+	if lineageErr := lineageRefusal(req.ParentSessionID, err); lineageErr != nil {
+		return View{}, lineageErr
 	}
 	if errors.Is(err, store.ErrAgentSessionIdempotencyKey) {
 		// Lost the race for the key to a concurrent identical create.
@@ -928,11 +960,12 @@ func normalizeLimit(limit, def, max int) (int, error) {
 // or phase is a named 400, never a silent full (or empty) list.
 func (req *ListRequest) storeQuery() (store.AgentSessionListQuery, error) {
 	q := store.AgentSessionListQuery{
-		Repo:          strings.TrimSpace(req.Repo),
-		AutomationID:  req.AutomationID,
-		CreatedBefore: req.CreatedBefore,
-		CreatedAfter:  req.CreatedAfter,
-		Cursor:        strings.TrimSpace(req.Cursor),
+		Repo:            strings.TrimSpace(req.Repo),
+		AutomationID:    strings.TrimSpace(req.AutomationID),
+		ParentSessionID: strings.TrimSpace(req.ParentSessionID),
+		CreatedBefore:   req.CreatedBefore,
+		CreatedAfter:    req.CreatedAfter,
+		Cursor:          strings.TrimSpace(req.Cursor),
 	}
 	switch req.Archived {
 	case "", ArchivedFalse:
@@ -971,6 +1004,9 @@ func (req *ListRequest) storeQuery() (store.AgentSessionListQuery, error) {
 		q.Phases = fromStates
 	}
 	q.Tag = strings.TrimSpace(req.Tag)
+	if err := validateLineageFilters(q); err != nil {
+		return store.AgentSessionListQuery{}, err
+	}
 	limit, err := normalizeLimit(req.Limit, defaultListLimit, maxListLimit)
 	if err != nil {
 		return store.AgentSessionListQuery{}, err
@@ -1358,24 +1394,42 @@ func (s *Service) Cancel(ctx context.Context, sessionID string) (View, error) {
 	if err != nil {
 		return View{}, mapStoreError(sessionID, err)
 	}
+	// ADR102 D6: with the parent canceling it can start no new child, so the
+	// descendants listed now are the whole set. They are canceled before the
+	// parent finishes, so a failure leaves the parent canceling and a retry
+	// of this verb converges the rest.
+	if err := s.cancelDescendants(ctx, record); err != nil {
+		return View{}, err
+	}
+	record, err = s.finishCancel(ctx, record)
+	if err != nil {
+		return View{}, err
+	}
+	return s.toView(record)
+}
+
+// finishCancel takes a canceling session to canceled: its sandbox is torn
+// down (a failure leaves it canceling so a retry converges), then the row is
+// terminalized. A concurrent finisher that got there first is not an error.
+func (s *Service) finishCancel(ctx context.Context, record store.AgentSession) (store.AgentSession, error) {
 	if record.SandboxID != "" {
 		if err := s.Sandbox.CancelAgentSessionSandbox(ctx, record.WorkspaceID, record.ID, record.SandboxID); err != nil {
-			return View{}, err // leave canceling: a retry converges it
+			return store.AgentSession{}, err
 		}
 	}
-	record, fact, err := s.Store.SetAgentSessionCanceled(ctx, sessionID)
-	if err != nil {
-		if errors.Is(err, store.ErrNotFound) {
-			record, err = s.Store.GetAgentSession(ctx, sessionID)
-			if err != nil {
-				return View{}, mapStoreError(sessionID, err)
-			}
-			return s.toView(record)
+	canceled, fact, err := s.Store.SetAgentSessionCanceled(ctx, record.ID)
+	if errors.Is(err, store.ErrNotFound) {
+		current, err := s.Store.GetAgentSession(ctx, record.ID)
+		if err != nil {
+			return store.AgentSession{}, mapStoreError(record.ID, err)
 		}
-		return View{}, mapStoreError(sessionID, err)
+		return current, nil
+	}
+	if err != nil {
+		return store.AgentSession{}, mapStoreError(record.ID, err)
 	}
 	s.Metrics.observeTerminalTurn(turnOutcomeCanceled, fact)
-	return s.toView(record)
+	return canceled, nil
 }
 
 func agentCommand(agent string) string {
@@ -1448,6 +1502,8 @@ func (s *Service) driverEnv(config AgentConfig, record store.AgentSession, byoKe
 			env["BEX_AGENT_SHARE_URL"] = url
 		}
 	}
+	// ADR102 D9: a session that can still spawn gets its Pod-bound spawn URL.
+	s.withSpawnEnv(env, record)
 	argsJSON, childEnvJSON := agentRuntimeConfig(config.Agent)
 	if argsJSON != "" {
 		env["BEX_AGENT_ARGS"] = argsJSON
@@ -1875,7 +1931,8 @@ func viewOf(record store.AgentSession) (View, error) {
 		Turns: record.Turns, DeliveryMode: record.DeliveryMode, DeliveryNote: record.DeliveryNote,
 		FailureReason: record.FailureReason, FailureReasonCode: record.FailureReasonCode,
 		CreatedAt: record.CreatedAt, UpdatedAt: record.UpdatedAt, CanceledAt: record.CanceledAt,
-		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AutomationID: record.AutomationID}
+		ArchivedAt: record.ArchivedAt, SecretNames: record.SecretNames, AutomationID: record.AutomationID,
+		ParentSessionID: record.ParentSessionID, RootSessionID: record.RootSessionID, Depth: record.Depth}
 	if record.MaxSpendMicroUSD != nil {
 		view.MaxSpendUSD = microUSDDecimal(*record.MaxSpendMicroUSD)
 	}

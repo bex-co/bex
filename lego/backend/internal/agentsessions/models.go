@@ -202,8 +202,13 @@ type CreateRequest struct {
 	SessionSecretsInput
 	// Skills are workspace skills the first turn must use (ADR099 D4), at
 	// most 5: Devin's playbook_id.
-	Skills      []SkillInvocation `json:"skills,omitempty" jsonschema:"workspace skills (list_agent_skills) this turn must follow, at most 5, each with optional arguments for $ARGUMENTS"`
-	MaxSpendUSD *float64          `json:"maxSpendUSD,omitempty" jsonschema:"a ceiling on this session's platform model spend in USD (more than 0, at most 100000); the turn fails AGENT_MODEL_SPEND_CAP_REACHED with scope session once reached. Needs the platform model route; a session on the workspace's own model key is refused AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE"`
+	Skills []SkillInvocation `json:"skills,omitempty" jsonschema:"workspace skills (list_agent_skills) this turn must follow, at most 5, each with optional arguments for $ARGUMENTS"`
+	// ParentSessionID makes this session a child of an existing, active
+	// session of the same workspace (ADR102): the caller needs can_operate on
+	// the parent, the child's spend counts against the parent's ceiling, and it
+	// inherits (and may narrow) the parent's secrets.
+	ParentSessionID string   `json:"parentSessionId,omitempty" jsonschema:"start this session as a child of the active session with this id (same workspace; you need to be able to operate it): at most 3 levels deep and 5 live children per parent. The child's spend counts against the parent's maxSpendUSD ceiling and may not exceed what is left of it; the child inherits the parent's secrets, and secretNames may only narrow them (inline secrets are refused)"`
+	MaxSpendUSD     *float64 `json:"maxSpendUSD,omitempty" jsonschema:"a ceiling on this session's platform model spend in USD (more than 0, at most 100000); the turn fails AGENT_MODEL_SPEND_CAP_REACHED with scope session once reached. Needs the platform model route; a session on the workspace's own model key is refused AGENT_SESSION_SPEND_LIMIT_UNAVAILABLE"`
 }
 
 // SteerRequest is a follow-up prompt turn on an existing session (ADR047 D8
@@ -260,12 +265,18 @@ type View struct {
 	// AutomationID is the agent automation that started the session (ADR101
 	// D5); absent for a session started by a person or client.
 	AutomationID string `json:"automationId,omitempty"`
-	Status       string `json:"status"`
-	HeadSHA      string `json:"headSha,omitempty"`
-	PRURL        string `json:"prUrl,omitempty"`
-	PRNumber     int    `json:"prNumber,omitempty"`
-	Turns        int    `json:"turns,omitempty"`
-	DeliveryMode string `json:"deliveryMode,omitempty"`
+	// ParentSessionID, RootSessionID and Depth are the ADR102 lineage: the
+	// session that spawned this one (absent on a top-level session), the top
+	// of its tree and its distance from it.
+	ParentSessionID string `json:"parentSessionId,omitempty"`
+	RootSessionID   string `json:"rootSessionId,omitempty"`
+	Depth           int    `json:"depth,omitempty"`
+	Status          string `json:"status"`
+	HeadSHA         string `json:"headSha,omitempty"`
+	PRURL           string `json:"prUrl,omitempty"`
+	PRNumber        int    `json:"prNumber,omitempty"`
+	Turns           int    `json:"turns,omitempty"`
+	DeliveryMode    string `json:"deliveryMode,omitempty"`
 	// DeliveryNote is the driver's plain-language account of what a completed
 	// turn left undelivered (ADR090): uncommitted changes, unpushed commits, or
 	// a pushed branch with no pull request. The work stays in the sandbox only
@@ -391,13 +402,15 @@ type ListRequest struct {
 	States []string
 	Tag    string
 	Repo   string
-	// AutomationID keeps the sessions one automation started (ADR101 D5). The
-	// REST, GraphQL and MCP list filters do not carry it yet.
-	AutomationID  string `json:"-"`
-	CreatedBefore time.Time
-	CreatedAfter  time.Time
-	Cursor        string
-	Limit         int
+	// AutomationID keeps the sessions one automation started (ADR101 D5);
+	// ParentSessionID keeps the direct children of one session (ADR102). Both
+	// must be ids of their kind, or the list is a 400 AGENT_SESSION_FILTER_INVALID.
+	AutomationID    string
+	ParentSessionID string
+	CreatedBefore   time.Time
+	CreatedAfter    time.Time
+	Cursor          string
+	Limit           int
 }
 
 // TranscriptPart is one durable conversation part in the poll-shaped transcript

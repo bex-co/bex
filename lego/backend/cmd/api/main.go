@@ -302,6 +302,7 @@ func main() {
 	platformRebuild := &lateHandler{}
 	shareFiles := &lateHandler{}
 	agentResults := &lateHandler{}
+	agentSpawns := &lateHandler{}
 	identityClaims := identityClaimsHandler(cfg, deps.Identities)
 
 	// Control plane (source of truth, w1/m2): opt-in via BEX_CP_DB_URI. When set,
@@ -391,7 +392,7 @@ func main() {
 			go backfillModelKeyFlags(ctx, deps.Secrets, st)
 		}
 
-		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, opsRole, identityClaims, platformRebuild, shareFiles, agentResults, ready)
+		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, opsRole, identityClaims, platformRebuild, shareFiles, agentResults, agentSpawns, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
 		// so a configured ops-role verb gets its own minimal cluster-internal
@@ -429,6 +430,7 @@ func main() {
 	if srv.AgentSessions != nil && st != nil && cfg.SandboxExecSecret != "" {
 		shareFiles.set(&agentsession.ShareFileHandler{Secret: []byte(cfg.SandboxExecSecret), Files: srv.AgentSessions, Nonce: st})
 		agentResults.set(&agentsession.ResultHandler{Secret: []byte(cfg.SandboxExecSecret), Results: srv.AgentSessions, Nonce: st})
+		agentSpawns.set(&agentsession.SpawnHandler{Secret: []byte(cfg.SandboxExecSecret), Spawns: srv.AgentSessions, Nonce: st})
 	}
 	srv.OriginMetrics = originMetrics
 	srv.CLITelemetry.Metrics = originMetrics
@@ -1060,7 +1062,7 @@ func wireStripeBilling(ctx context.Context, cfg *Config, deps *api.Deps, base *c
 // unauthenticated. Fail closed at startup when BEX_CP_TOKEN is empty (w1/m53:
 // the token was set nowhere in prod, so the API had been serving open behind
 // the NetworkPolicy alone). BEX_CP_INSECURE=1 is a loud local-dev override.
-func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, platformRebuild, shareFiles, agentResults http.Handler, ready *serve.Readiness) {
+func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore, rec *store.Reconciler, granter store.MembershipGranter, stripeBillingAdmin store.BillingAdmin, metricRegistry *prometheus.Registry, originMetrics *api.OriginMetrics, agentMetrics *agentsessions.CompletionMetrics, ghClient *github.Client, modelMinter *agentsession.ModelMinter, opsRole *opsrole.Handler, identityClaims *identityclaims.Handler, platformRebuild, shareFiles, agentResults, agentSpawns http.Handler, ready *serve.Readiness) {
 	// requireCPAuth ran in loadConfig — before migrations — so an empty
 	// BEX_CP_TOKEN (without the loud BEX_CP_INSECURE=1 local-dev override)
 	// never reaches this point.
@@ -1110,6 +1112,9 @@ func startControlPlaneServer(ctx context.Context, cfg *Config, st *store.PGStore
 		// ADR094 D5: the structured result the agent submits for a turn. Same
 		// gateway-only HMAC (a `submit-result` MAC domain) and late binding.
 		internalRoot.Handle(agentsession.InternalResultPath, agentResults)
+		// ADR102 D9: a running agent starts and reads its child sessions. Same
+		// gateway-only HMAC (a `spawn-session` MAC domain) and late binding.
+		internalRoot.Handle(agentsession.InternalSpawnPath, agentSpawns)
 		internalRoot.Handle(agentsession.InternalEgressGrantPath, &agentsession.EgressGrantHandler{
 			Secret:  []byte(cfg.SandboxExecSecret),
 			Granter: &agentsession.EgressGranter{Sessions: st, Environments: st, Audit: st},

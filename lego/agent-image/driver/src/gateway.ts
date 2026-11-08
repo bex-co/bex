@@ -46,16 +46,22 @@ export type GatewayReply =
 // otherwise fallbackCode with what went wrong. It never throws.
 export async function postToGateway(
   endpoint: string,
-  init: { headers: Record<string, string>; body: string | Uint8Array },
-  options: { label: string; fallbackCode: string; timeoutMs: number },
+  init: { headers: Record<string, string>; body?: string | Uint8Array },
+  options: {
+    label: string;
+    fallbackCode: string;
+    timeoutMs: number;
+    // POST unless a read-only verb says otherwise.
+    method?: "GET" | "POST";
+  },
 ): Promise<GatewayReply> {
   let response: Response;
   let text: string;
   try {
     response = await fetch(endpoint, {
-      method: "POST",
+      method: options.method ?? "POST",
       headers: init.headers,
-      body: init.body,
+      ...(init.body === undefined ? {} : { body: init.body }),
       signal: AbortSignal.timeout(options.timeoutMs),
     });
     text = await response.text();

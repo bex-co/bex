@@ -207,6 +207,16 @@ type AgentSession struct {
 	// AutomationID is the agent automation (ADR101) that started the session;
 	// empty for a session a person or client started. Set only by the scheduler.
 	AutomationID string
+	// ParentSessionID, RootSessionID and Depth are the ADR102 lineage: the
+	// session that spawned this one, the top of its tree and the distance from
+	// it. All zero for a top-level session. On create only ParentSessionID is
+	// input; the store derives the other two under a lock on the parent.
+	ParentSessionID string
+	RootSessionID   string
+	Depth           int
+	// CreatedBy is the subject that created the session (ADR102 D9): the
+	// authority its in-sandbox spawn acts with. Empty for older rows.
+	CreatedBy string
 	// IdempotencyKey and IdempotencyHash are create-only input (ADR094 D4): the
 	// client's key and the digest of its normalized request. Not scanned by
 	// scanAgentSession; FindAgentSessionByIdempotencyKey reads the hash back.
@@ -267,14 +277,16 @@ const AgentSessionIdempotencyWindow = 24 * time.Hour
 const agentSessionColumns = `id, workspace_id, repo, branch, agent_config, sandbox_id,
 	phase, status, head_sha, pr_url, pr_number, turns, delivery_mode, delivery_note,
 	failure_reason, failure_reason_code, created_at, updated_at, canceled_at,
-	archived_at, title, tags, max_spend_microusd, secret_names, coalesce(automation_id, '')`
+	archived_at, title, tags, max_spend_microusd, secret_names, coalesce(automation_id, ''),
+	coalesce(parent_session_id, ''), coalesce(root_session_id, ''), depth, created_by`
 
 func scanAgentSession(row pgx.Row) (AgentSession, error) {
 	var s AgentSession
 	err := row.Scan(&s.ID, &s.WorkspaceID, &s.Repo, &s.Branch, &s.AgentConfig,
 		&s.SandboxID, &s.Phase, &s.Status, &s.HeadSHA, &s.PRURL, &s.PRNumber,
 		&s.Turns, &s.DeliveryMode, &s.DeliveryNote, &s.FailureReason, &s.FailureReasonCode,
-		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames, &s.AutomationID)
+		&s.CreatedAt, &s.UpdatedAt, &s.CanceledAt, &s.ArchivedAt, &s.Title, &s.Tags, &s.MaxSpendMicroUSD, &s.SecretNames, &s.AutomationID,
+		&s.ParentSessionID, &s.RootSessionID, &s.Depth, &s.CreatedBy)
 	return s, err
 }
 
@@ -306,6 +318,13 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 				return ErrAgentSessionAdmissionLimit
 			}
 		}
+		if in.ParentSessionID != "" {
+			lineage, err := lockParentLineage(ctx, tx, in.WorkspaceID, in.ParentSessionID)
+			if err != nil {
+				return err
+			}
+			in.RootSessionID, in.Depth = lineage.root, lineage.depth
+		}
 		if in.IdempotencyKey != "" {
 			// Release a key past its window so it can bind to this new session.
 			if _, err = tx.Exec(ctx, `
@@ -316,10 +335,10 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 			}
 		}
 		row, err = scanAgentSession(tx.QueryRow(ctx, `
-			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags, max_spend_microusd, secret_names, automation_id)
-			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10, $11, $12, NULLIF($13, ''))
+			INSERT INTO agent_sessions (id, workspace_id, repo, branch, agent_config, phase, status, turns, idempotency_key, idempotency_hash, title, tags, max_spend_microusd, secret_names, automation_id, parent_session_id, root_session_id, depth, created_by)
+			VALUES ($1, $2, $3, $4, $5, 'creating', '', CASE WHEN $6 <> '' THEN 1 ELSE 0 END, NULLIF($7, ''), NULLIF($8, ''), $9, $10, $11, $12, NULLIF($13, ''), NULLIF($14, ''), NULLIF($15, ''), $16, $17)
 			RETURNING `+agentSessionColumns,
-			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags), in.MaxSpendMicroUSD, nonNil(in.SecretNames), in.AutomationID))
+			in.ID, in.WorkspaceID, in.Repo, in.Branch, in.AgentConfig, in.InitialPrompt, in.IdempotencyKey, in.IdempotencyHash, in.Title, nonNil(in.Tags), in.MaxSpendMicroUSD, nonNil(in.SecretNames), in.AutomationID, in.ParentSessionID, in.RootSessionID, in.Depth, in.CreatedBy))
 		if err != nil {
 			var pgErr *pgconn.PgError
 			if errors.As(err, &pgErr) && pgErr.Code == "23505" && pgErr.ConstraintName == "agent_sessions_idempotency_key_idx" {
@@ -340,7 +359,7 @@ func (s *PGStore) CreateAgentSession(ctx context.Context, in AgentSession) (Agen
 		}
 		return insertAgentDispatch(ctx, tx, row, "")
 	})
-	if errors.Is(err, ErrAgentSessionIdempotencyKey) || errors.Is(err, ErrAgentSessionAdmissionLimit) {
+	if errors.Is(err, ErrAgentSessionIdempotencyKey) || errors.Is(err, ErrAgentSessionAdmissionLimit) || isAgentSessionLineageRefusal(err) {
 		return AgentSession{}, err
 	}
 	if err != nil {
@@ -365,7 +384,8 @@ func (s *PGStore) FindAgentSessionByIdempotencyKey(ctx context.Context, workspac
 	err := row.Scan(&out.ID, &out.WorkspaceID, &out.Repo, &out.Branch, &out.AgentConfig,
 		&out.SandboxID, &out.Phase, &out.Status, &out.HeadSHA, &out.PRURL, &out.PRNumber,
 		&out.Turns, &out.DeliveryMode, &out.DeliveryNote, &out.FailureReason, &out.FailureReasonCode,
-		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &out.SecretNames, &out.AutomationID, &hash)
+		&out.CreatedAt, &out.UpdatedAt, &out.CanceledAt, &out.ArchivedAt, &out.Title, &out.Tags, &out.MaxSpendMicroUSD, &out.SecretNames, &out.AutomationID,
+		&out.ParentSessionID, &out.RootSessionID, &out.Depth, &out.CreatedBy, &hash)
 	if err != nil {
 		return AgentSession{}, "", classify("agent session", err)
 	}
@@ -541,11 +561,13 @@ type AgentSessionListQuery struct {
 	Tag  string
 	Repo string
 	// AutomationID keeps only the sessions an agent automation started (ADR101 D5).
-	AutomationID  string
-	CreatedBefore time.Time
-	CreatedAfter  time.Time
-	Cursor        string
-	Limit         int
+	AutomationID string
+	// ParentSessionID keeps only the direct children of this session (ADR102).
+	ParentSessionID string
+	CreatedBefore   time.Time
+	CreatedAfter    time.Time
+	Cursor          string
+	Limit           int
 }
 
 // ListAgentSessions returns one filtered page of a workspace's sessions,
@@ -557,7 +579,7 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 	}
 	// A filter text cannot hold matches nothing, like any unknown value
 	// (w4/518): binding it would raise SQLSTATE 22021, a server fault.
-	if !textBindable(q.Tag) || !textBindable(q.Repo) || !textBindable(q.Cursor) || !textBindable(q.AutomationID) {
+	if !textBindable(q.Tag) || !textBindable(q.Repo) || !textBindable(q.Cursor) || !textBindable(q.AutomationID) || !textBindable(q.ParentSessionID) {
 		return []AgentSession{}, nil
 	}
 	sql := `SELECT ` + agentSessionColumns + ` FROM agent_sessions WHERE workspace_id=$1`
@@ -584,6 +606,9 @@ func (s *PGStore) ListAgentSessions(ctx context.Context, workspaceID string, q A
 	}
 	if q.AutomationID != "" {
 		sql += ` AND automation_id = ` + arg(q.AutomationID)
+	}
+	if q.ParentSessionID != "" {
+		sql += ` AND parent_session_id = ` + arg(q.ParentSessionID)
 	}
 	if !q.CreatedBefore.IsZero() {
 		sql += ` AND created_at < ` + arg(q.CreatedBefore)

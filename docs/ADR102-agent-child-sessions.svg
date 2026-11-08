@@ -1,0 +1,146 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1440" height="900" viewBox="0 0 1440 900" font-family="-apple-system, Segoe UI, Helvetica, Arial, sans-serif" font-size="13" fill="#1f2328">
+  <defs>
+    <marker id="a" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#57606a"/>
+    </marker>
+    <marker id="r" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="7" markerHeight="7" orient="auto-start-reverse">
+      <path d="M0,0 L10,5 L0,10 z" fill="#cf222e"/>
+    </marker>
+    <style>
+      .t { font-weight: 600; font-size: 14px; }
+      .s { fill: #57606a; font-size: 12px; }
+      .m { font-family: SFMono-Regular, Menlo, Consolas, monospace; font-size: 12px; }
+      .lane { font-weight: 700; font-size: 12px; letter-spacing: .08em; fill: #57606a; }
+      .ln { stroke: #57606a; stroke-width: 1.6; fill: none; marker-end: url(#a); }
+      .dash { stroke-dasharray: 6 4; }
+      .red { stroke: #cf222e; marker-end: url(#r); }
+      .req { fill: #ddf4ff; stroke: #54aeff; }
+      .met { fill: #dafbe1; stroke: #4ac26b; }
+      .bil { fill: #fff8c5; stroke: #d4a72c; }
+      .ui  { fill: #f6f8fa; stroke: #8c959f; }
+      .ext { fill: #fbefff; stroke: #c297ff; }
+      .bad { fill: #ffebe9; stroke: #ff8182; }
+      rect.b { stroke-width: 1.5; rx: 8; }
+    </style>
+  </defs>
+
+  <text x="20" y="34" font-size="20" font-weight="700">ADR102 — Agent child sessions architecture</text>
+  <text x="20" y="56" class="s">a child is an ordinary session with a parent · every rule runs in Service.Create and the store's insert transaction · spend and cancel follow the tree</text>
+
+  <!-- lane 1 -->
+  <rect x="10" y="72" width="1420" height="250" fill="#f6fbff" rx="10"/>
+  <text x="22" y="90" class="lane">1 · SPAWN (parentSessionId on create; an agent reaches it through ssh-gateway, t004)</text>
+
+  <rect class="b ui" x="30" y="108" width="230" height="64"/>
+  <text x="44" y="132" class="t">REST · GraphQL · MCP</text>
+  <text x="44" y="152" class="s">create with parentSessionId</text>
+
+  <rect class="b ext" x="30" y="188" width="230" height="110"/>
+  <text x="44" y="212" class="t">Sandbox (parent turn)</text>
+  <text x="44" y="232" class="s">bex MCP tool spawn_session</text>
+  <text x="44" y="250" class="s">no bex API credential held</text>
+  <text x="44" y="268" class="s">ssh-gateway signs, bex-api</text>
+  <text x="44" y="284" class="s">re-reads the session (t004)</text>
+
+  <rect class="b req" x="330" y="108" width="470" height="190"/>
+  <text x="344" y="132" class="t">agentsessions.Service.Create</text>
+  <text x="344" y="154" class="m">can_create (workspace) + can_operate (parent)</text>
+  <text x="344" y="172" class="m">parent: same workspace, phase working</text>
+  <text x="344" y="190" class="m">child maxSpendUSD ≤ parent tree headroom</text>
+  <text x="344" y="208" class="m">secrets: inherit all, or secretNames ⊆ parent's</text>
+  <text x="344" y="226" class="m">no inline secrets · idempotency key + parent</text>
+  <text x="344" y="244" class="m">workspace live-sandbox + trust limits as ever</text>
+  <text x="344" y="266" class="s">refusals are named: AGENT_SESSION_PARENT_NOT_ACTIVE,</text>
+  <text x="344" y="282" class="s">_DEPTH_LIMIT, _CHILD_LIMIT, _CHILD_SPEND_EXCEEDS_PARENT</text>
+
+  <rect class="b met" x="870" y="108" width="530" height="190"/>
+  <text x="884" y="132" class="t">Postgres · one insert transaction</text>
+  <text x="884" y="154" class="m">SELECT parent … FOR NO KEY UPDATE   (serializes siblings)</text>
+  <text x="884" y="172" class="m">workspace match · phase active · depth+1 ≤ 3</text>
+  <text x="884" y="190" class="m">live children &lt; 5   (finished ones do not count)</text>
+  <text x="884" y="208" class="m">INSERT parent_session_id, root_session_id, depth</text>
+  <text x="884" y="232" class="s">parent FK ON DELETE SET NULL: deleting a parent keeps</text>
+  <text x="884" y="248" class="s">its children (they become top-level, root and depth kept)</text>
+  <text x="884" y="270" class="s">root_session_id has no FK · depth CHECK 0..3</text>
+  <text x="884" y="286" class="s">indexes: parent (children), root (subtree)</text>
+
+  <path class="ln" d="M260 140 L330 160"/>
+  <path class="ln" d="M260 240 L330 240"/>
+  <path class="ln" d="M800 200 L870 200"/>
+
+  <!-- lane 2 -->
+  <rect x="10" y="334" width="1420" height="228" fill="#fffdf2" rx="10"/>
+  <text x="22" y="352" class="lane">2 · SPEND (the model proxy refuses a request when any ceiling on the chain is used up by its whole subtree)</text>
+
+  <rect class="b ext" x="30" y="370" width="250" height="170"/>
+  <text x="44" y="392" class="t">Model proxy (ssh-gateway)</text>
+  <text x="44" y="414" class="s">every model request asks the</text>
+  <text x="44" y="430" class="s">credential mint first; over the</text>
+  <text x="44" y="446" class="s">tree → 429 AGENT_MODEL_SPEND</text>
+  <text x="44" y="462" class="s">_CAP_REACHED (scope session),</text>
+  <text x="44" y="478" class="s">the turn fails with that code</text>
+
+  <rect class="b req" x="340" y="370" width="340" height="170"/>
+  <text x="354" y="392" class="t">ModelMinter.checkSessionCeiling</text>
+  <text x="354" y="414" class="m">child, or session with a ceiling?</text>
+  <text x="354" y="432" class="m">→ AgentSessionCeilingHeadroom</text>
+  <text x="354" y="450" class="m">headroom ≤ 0 → refuse</text>
+  <text x="354" y="472" class="s">plain session: no read, as before</text>
+  <text x="354" y="488" class="s">child + store unwired: fail closed</text>
+  <text x="354" y="504" class="s">overshoot ≤ requests in flight</text>
+
+  <rect class="b bil" x="740" y="370" width="660" height="170"/>
+  <text x="754" y="392" class="t">headroom = min over self + ancestors with a ceiling of</text>
+  <text x="754" y="414" class="m">ceiling(X) − Σ price(X and every session below X)</text>
+  <text x="754" y="438" class="m">root $5   ├ child A $3   ├ grandchild (no ceiling)</text>
+  <text x="754" y="456" class="m">          └ child B (none)</text>
+  <text x="754" y="480" class="s">A and its grandchild spend $2 → A has $1 left, root has $3</text>
+  <text x="754" y="498" class="s">B then spends $3 → root is at $5: A, B, grandchild and root all refused</text>
+  <text x="754" y="518" class="s">a child ceiling above the parent's headroom is refused at create</text>
+
+  <path class="ln" d="M280 455 L340 455"/>
+  <path class="ln" d="M680 455 L740 455"/>
+
+  <!-- lane 3 -->
+  <rect x="10" y="574" width="1420" height="226" fill="#f7fff9" rx="10"/>
+  <text x="22" y="592" class="lane">3 · CANCEL (deepest first; the parent finishes last)</text>
+
+  <rect class="b req" x="30" y="610" width="300" height="168"/>
+  <text x="44" y="632" class="t">Service.Cancel(parent)</text>
+  <text x="44" y="656" class="m">① phase → canceling</text>
+  <text x="44" y="674" class="s">   (no new child can be inserted)</text>
+  <text x="44" y="696" class="m">② cancel every unfinished descendant</text>
+  <text x="44" y="718" class="m">③ tear down the parent's sandbox</text>
+  <text x="44" y="740" class="m">④ phase → canceled</text>
+  <text x="44" y="762" class="s">①–② failing leaves canceling; retry converges</text>
+
+  <rect class="b met" x="390" y="610" width="440" height="168"/>
+  <text x="404" y="632" class="t">Recursive query on parent_session_id</text>
+  <text x="404" y="656" class="m">descendants in creating/running/resuming/</text>
+  <text x="404" y="674" class="m">redispatching/canceling, ORDER BY depth DESC</text>
+  <text x="404" y="698" class="s">completed, failed and canceled ones are left alone</text>
+  <text x="404" y="716" class="s">each cancel: canceling → sandbox → canceled</text>
+  <text x="404" y="734" class="s">cause kept: failureReasonCode</text>
+  <text x="404" y="750" class="m">AGENT_SESSION_PARENT_CANCELED</text>
+
+  <rect class="b bad" x="890" y="610" width="510" height="168"/>
+  <text x="904" y="632" class="t">What does not cascade</text>
+  <text x="904" y="656" class="s">A parent that completes or fails on its own: its children are</text>
+  <text x="904" y="674" class="s">independent work and keep running.</text>
+  <text x="904" y="698" class="s">A parent that spends its whole ceiling stops its children anyway,</text>
+  <text x="904" y="716" class="s">because they share the ceiling.</text>
+  <text x="904" y="740" class="s">Deleting a finished parent keeps children; they lose its ceiling.</text>
+
+  <path class="ln" d="M330 694 L390 694"/>
+  <path class="ln red" d="M830 694 L890 694"/>
+
+  <!-- footer -->
+  <text x="22" y="824" class="lane">LEGEND</text>
+  <rect class="b req" x="22" y="836" width="16" height="16"/><text x="46" y="849" class="s">bex-api logic</text>
+  <rect class="b met" x="150" y="836" width="16" height="16"/><text x="174" y="849" class="s">durable state / query</text>
+  <rect class="b bil" x="330" y="836" width="16" height="16"/><text x="354" y="849" class="s">spend enforcement</text>
+  <rect class="b bad" x="500" y="836" width="16" height="16"/><text x="524" y="849" class="s">limits of the design</text>
+  <rect class="b ext" x="680" y="836" width="16" height="16"/><text x="704" y="849" class="s">sandbox / gateway</text>
+  <rect class="b ui" x="860" y="836" width="16" height="16"/><text x="884" y="849" class="s">client</text>
+  <text x="22" y="882" class="s">Limits: depth 3, 5 live children per parent, plus the workspace's live-session limit. A child never starts unapproved (no approval mode). The in-sandbox spawn (lane 1, left) is designed here and built in t004.</text>
+</svg>

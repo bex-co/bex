@@ -103,7 +103,8 @@ export function bexMcpServerScript(): string {
 // Pod-bound Git proxy path plus /pull-request) and share_file when the
 // deployment stores attachments (the Pod-bound share URL, ADR095 D6) and
 // submit_result when the turn carries an outputSchema (the Pod-bound result
-// URL, ADR094 D5). The
+// URL, ADR094 D5) and spawn_session and get_child_session when the session can
+// still start children (the Pod-bound spawn URL, ADR102 D9). The
 // gateway authenticates the source Pod, so no secret is passed.
 export function bexMcpServers(
   config: Pick<
@@ -111,7 +112,10 @@ export function bexMcpServers(
     "deliver" | "repoUrl" | "prRecordPath" | "shareUrl"
   > &
     Partial<
-      Pick<AgentDriverConfig, "resultUrl" | "outputSchema" | "resultRecordPath">
+      Pick<
+        AgentDriverConfig,
+        "resultUrl" | "outputSchema" | "resultRecordPath" | "spawnUrl"
+      >
     >,
 ): McpServer[] {
   const env: Array<{ name: string; value: string }> = [];
@@ -133,6 +137,9 @@ export function bexMcpServers(
       { name: "BEX_RESULT_SCHEMA", value: config.outputSchema },
       { name: "BEX_RESULT_RECORD_PATH", value: config.resultRecordPath ?? "" },
     );
+  }
+  if (config.spawnUrl) {
+    env.push({ name: "BEX_SPAWN_ENDPOINT", value: config.spawnUrl });
   }
   if (env.length === 0) return [];
   return [

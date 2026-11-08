@@ -1,16 +1,16 @@
 # w21 · m279 — Agent child sessions: an agent can spawn and track child sessions (Devin parity)
 
-**Worker:** worker21 **Goal:** a running agent can start child sessions through a controlled path, their lineage, spend and cancellation are tracked, and the dashboard shows the tree. **Status:** todo
+**Worker:** worker21 **Goal:** a running agent can start child sessions through a controlled path, their lineage, spend and cancellation are tracked, and the dashboard shows the tree. **Status:** todo (t001, t002, t003, t004, t005 done)
 
 ## Tasks (in order)
 
 | id | title | est | depends_on |
 | --- | --- | --- | --- |
-| t001 | ADR102: parent and child sessions | 60m | — |
-| t002 | Lineage schema and store | 60m | t001 |
-| t003 | Create with a parent: limits, spend roll-up, cancel cascade | 90m | t002 |
-| t004 | Spawn from inside the sandbox (through ssh-gateway) | 90m | t003 |
-| t005 | REST, GraphQL and MCP: lineage and children | 60m | t003 |
+| t001 | ADR102: parent and child sessions — **DONE** | 60m | — |
+| t002 | Lineage schema and store — **DONE** | 60m | t001 |
+| t003 | Create with a parent: limits, spend roll-up, cancel cascade — **DONE** | 90m | t002 |
+| t004 | Spawn from inside the sandbox (through ssh-gateway) — **DONE** | 90m | t003 |
+| t005 | REST, GraphQL and MCP: lineage and children — **DONE** | 60m | t003 |
 | t006 | Dashboard: child cards, Agents panel, sidebar tree | 90m | t005 |
 | t007 | Live end-to-end on production as the QA user | 45m | t004, t006 |
 | t008 | Render parity (Devin reference for agent surfaces) | 25m | t007 |

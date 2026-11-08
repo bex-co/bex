@@ -315,24 +315,27 @@ func jsonTextField[T any](description string, value func(T) any) *graphql.Field 
 var agentSessionGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "AgentSession",
 	Fields: graphql.Fields{
-		"id":           gqlutil.ReqStrField(func(v View) any { return v.ID }),
-		"ownerId":      gqlutil.ReqStrField(func(v View) any { return v.OwnerID }),
-		"repo":         gqlutil.ReqStrField(func(v View) any { return v.Repo }),
-		"branch":       gqlutil.ReqStrField(func(v View) any { return v.Branch }),
-		"title":        gqlutil.StrField(func(v View) any { return v.Title }),
-		"maxSpendUSD":  gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
-		"tags":         &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
-		"secretNames":  &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
-		"automationId": &graphql.Field{Type: graphql.String, Description: "The agent automation (aut-…) that started this session, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.AutomationID })},
-		"agentConfig":  gqlutil.Typed(graphql.NewNonNull(agentConfigGQLType), func(v View) any { return v.AgentConfig }),
-		"sandboxId":    gqlutil.StrField(func(v View) any { return v.SandboxID }),
-		"sshAddress":   gqlutil.StrField(func(v View) any { return v.SSHAddress }),
-		"phase":        gqlutil.ReqStrField(func(v View) any { return v.Phase }),
-		"state":        gqlutil.ReqStrField(func(v View) any { return v.State }),
-		"steerable":    &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v View) any { return v.Steerable })},
-		"status":       gqlutil.ReqStrField(func(v View) any { return v.Status }),
-		"headSha":      gqlutil.StrField(func(v View) any { return v.HeadSHA }),
-		"prUrl":        gqlutil.StrField(func(v View) any { return v.PRURL }),
+		"id":              gqlutil.ReqStrField(func(v View) any { return v.ID }),
+		"ownerId":         gqlutil.ReqStrField(func(v View) any { return v.OwnerID }),
+		"repo":            gqlutil.ReqStrField(func(v View) any { return v.Repo }),
+		"branch":          gqlutil.ReqStrField(func(v View) any { return v.Branch }),
+		"title":           gqlutil.StrField(func(v View) any { return v.Title }),
+		"maxSpendUSD":     gqlutil.StrField(func(v View) any { return v.MaxSpendUSD }),
+		"tags":            &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Resolve: gqlutil.Field(func(v View) any { return v.Tags })},
+		"secretNames":     &graphql.Field{Type: graphql.NewList(graphql.NewNonNull(graphql.String)), Description: "Names of the secrets attached to the session; values are never returned.", Resolve: gqlutil.Field(func(v View) any { return v.SecretNames })},
+		"automationId":    &graphql.Field{Type: graphql.String, Description: "The agent automation (aut-…) that started this session, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.AutomationID })},
+		"parentSessionId": &graphql.Field{Type: graphql.String, Description: "The agent session (ags-…) that spawned this one, when one did.", Resolve: gqlutil.Field(func(v View) any { return v.ParentSessionID })},
+		"rootSessionId":   &graphql.Field{Type: graphql.String, Description: "The top of this session's tree, absent on a top-level session.", Resolve: gqlutil.Field(func(v View) any { return v.RootSessionID })},
+		"depth":           &graphql.Field{Type: graphql.NewNonNull(graphql.Int), Description: "Distance from the root of the session's tree; 0 for a top-level session.", Resolve: gqlutil.Field(func(v View) any { return v.Depth })},
+		"agentConfig":     gqlutil.Typed(graphql.NewNonNull(agentConfigGQLType), func(v View) any { return v.AgentConfig }),
+		"sandboxId":       gqlutil.StrField(func(v View) any { return v.SandboxID }),
+		"sshAddress":      gqlutil.StrField(func(v View) any { return v.SSHAddress }),
+		"phase":           gqlutil.ReqStrField(func(v View) any { return v.Phase }),
+		"state":           gqlutil.ReqStrField(func(v View) any { return v.State }),
+		"steerable":       &graphql.Field{Type: graphql.NewNonNull(graphql.Boolean), Resolve: gqlutil.Field(func(v View) any { return v.Steerable })},
+		"status":          gqlutil.ReqStrField(func(v View) any { return v.Status }),
+		"headSha":         gqlutil.StrField(func(v View) any { return v.HeadSHA }),
+		"prUrl":           gqlutil.StrField(func(v View) any { return v.PRURL }),
 		"prNumber": &graphql.Field{Type: graphql.Int, Resolve: gqlutil.Field(func(v View) any {
 			if v.PRNumber == 0 {
 				return nil
@@ -478,6 +481,15 @@ var turnModelCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 	},
 })
 
+var agentSessionTreeGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name:        "AgentSessionTree",
+	Description: "The tree of agent sessions a session belongs to (ADR102): its root and every session below it.",
+	Fields: graphql.Fields{
+		"rootSessionId": gqlutil.ReqStrField(func(v Tree) any { return v.RootSessionID }),
+		"sessions":      &graphql.Field{Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentSessionGQLType))), Description: "The root first, then by depth and creation time.", Resolve: gqlutil.Field(func(v Tree) any { return v.Sessions })},
+	},
+})
+
 var modelCostGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name:        "AgentSessionModelCost",
 	Description: "What a session's platform-route model requests cost (provider cost + 30%), in total and per turn (ADR091 D6). A session on the workspace's own model key records none.",
@@ -545,16 +557,18 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 		"agentSessions": &graphql.Field{
 			Type: graphql.NewNonNull(graphql.NewList(graphql.NewNonNull(agentSessionGQLType))),
 			Args: graphql.FieldConfigArgument{
-				"ownerId":       gqlutil.Arg(graphql.String),
-				"archived":      &graphql.ArgumentConfig{Type: graphql.String, Description: "Archive membership: false (default, the working set), true (archived only), all."},
-				"phases":        gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
-				"states":        gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
-				"tag":           gqlutil.Arg(graphql.String),
-				"repo":          gqlutil.Arg(graphql.String),
-				"createdBefore": gqlutil.Arg(graphql.String),
-				"createdAfter":  gqlutil.Arg(graphql.String),
-				"cursor":        &graphql.ArgumentConfig{Type: graphql.String, Description: "The prior page's last session id; a shorter/empty page signals the end."},
-				"limit":         gqlutil.Arg(graphql.Int),
+				"ownerId":         gqlutil.Arg(graphql.String),
+				"archived":        &graphql.ArgumentConfig{Type: graphql.String, Description: "Archive membership: false (default, the working set), true (archived only), all."},
+				"phases":          gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"states":          gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				"tag":             gqlutil.Arg(graphql.String),
+				"repo":            gqlutil.Arg(graphql.String),
+				"automationId":    &graphql.ArgumentConfig{Type: graphql.String, Description: "Only the sessions this agent automation (aut-…) started."},
+				"parentSessionId": &graphql.ArgumentConfig{Type: graphql.String, Description: "Only the direct children of this session (ags-…)."},
+				"createdBefore":   gqlutil.Arg(graphql.String),
+				"createdAfter":    gqlutil.Arg(graphql.String),
+				"cursor":          &graphql.ArgumentConfig{Type: graphql.String, Description: "The prior page's last session id; a shorter/empty page signals the end."},
+				"limit":           gqlutil.Arg(graphql.Int),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				before, err := core.ParseTime("createdBefore", gqlutil.Str(p.Args, "createdBefore"))
@@ -570,16 +584,18 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 					return nil, err
 				}
 				return s.List(p.Context, ListRequest{
-					OwnerID:       gqlutil.Str(p.Args, "ownerId"),
-					Archived:      gqlutil.Str(p.Args, "archived"),
-					Phases:        gqlutil.StringList(p.Args["phases"]),
-					States:        gqlutil.StringList(p.Args["states"]),
-					Tag:           gqlutil.Str(p.Args, "tag"),
-					Repo:          gqlutil.Str(p.Args, "repo"),
-					CreatedBefore: before,
-					CreatedAfter:  after,
-					Cursor:        gqlutil.Str(p.Args, "cursor"),
-					Limit:         limit,
+					OwnerID:         gqlutil.Str(p.Args, "ownerId"),
+					Archived:        gqlutil.Str(p.Args, "archived"),
+					Phases:          gqlutil.StringList(p.Args["phases"]),
+					States:          gqlutil.StringList(p.Args["states"]),
+					Tag:             gqlutil.Str(p.Args, "tag"),
+					Repo:            gqlutil.Str(p.Args, "repo"),
+					AutomationID:    gqlutil.Str(p.Args, "automationId"),
+					ParentSessionID: gqlutil.Str(p.Args, "parentSessionId"),
+					CreatedBefore:   before,
+					CreatedAfter:    after,
+					Cursor:          gqlutil.Str(p.Args, "cursor"),
+					Limit:           limit,
 				})
 			},
 		},
@@ -616,6 +632,8 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 			},
 		},
 		"agentSession": gqlutil.IDVerb(agentSessionGQLType, s.Get),
+		// agentSessionTree is the tree the session belongs to, any node's id (ADR102 D8).
+		"agentSessionTree": gqlutil.IDVerb(graphql.NewNonNull(agentSessionTreeGQLType), s.Tree),
 		// agentSessionModelCost is the session's platform-route model cost in
 		// total and per turn (ADR091 D6).
 		"agentSessionModelCost": gqlutil.IDVerb(graphql.NewNonNull(modelCostGQLType), s.ModelCost),
@@ -698,13 +716,14 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				"secretNames":     gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
 				"secrets":         gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSecretGQLInput))),
 				"skills":          gqlutil.Arg(graphql.NewList(graphql.NewNonNull(agentSessionSkillGQLInput))),
+				"parentSessionId": &graphql.ArgumentConfig{Type: graphql.String, Description: "Start the session as a child of this active session (ags-…): at most 3 levels deep and 5 live children per parent; its spend counts against the parent's ceiling; it inherits the parent's secrets (secretNames may only narrow them)."},
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				schema, required, err := outputArgs(p.Args)
 				if err != nil {
 					return nil, err
 				}
-				return s.Create(p.Context, CreateRequest{MaxSpendUSD: floatArg(p.Args, "maxSpendUSD"), OutputSchema: schema, OutputRequired: required, OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args), Skills: skillsArg(p.Args)})
+				return s.Create(p.Context, CreateRequest{MaxSpendUSD: floatArg(p.Args, "maxSpendUSD"), OutputSchema: schema, OutputRequired: required, OwnerID: gqlutil.Str(p.Args, "ownerId"), Repo: gqlutil.Str(p.Args, "repo"), Branch: gqlutil.Str(p.Args, "branch"), AgentConfig: configArg(p.Args), EgressAllowlist: gqlutil.StringList(p.Args["egressAllowlist"]), IdempotencyKey: gqlutil.Str(p.Args, "idempotencyKey"), Title: gqlutil.Str(p.Args, "title"), Tags: gqlutil.StringList(p.Args["tags"]), AttachmentIDs: gqlutil.StringList(p.Args["attachmentIds"]), SessionSecretsInput: secretsArg(p.Args), Skills: skillsArg(p.Args), ParentSessionID: gqlutil.Str(p.Args, "parentSessionId")})
 			},
 		},
 		"steerAgentSession": &graphql.Field{

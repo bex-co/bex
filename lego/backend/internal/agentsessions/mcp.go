@@ -59,15 +59,17 @@ type listArgs struct {
 	OwnerID string `json:"ownerId,omitempty"`
 	// ADR065 D3 filters + keyset pagination (cursor = the prior page's last
 	// session id; a shorter/empty page signals the end).
-	Archived      string   `json:"archived,omitempty"`
-	Phases        []string `json:"phases,omitempty"`
-	States        []string `json:"states,omitempty"`
-	Tag           string   `json:"tag,omitempty"`
-	Repo          string   `json:"repo,omitempty"`
-	CreatedBefore string   `json:"createdBefore,omitempty"`
-	CreatedAfter  string   `json:"createdAfter,omitempty"`
-	Cursor        string   `json:"cursor,omitempty"`
-	Limit         int      `json:"limit,omitempty"`
+	Archived        string   `json:"archived,omitempty"`
+	Phases          []string `json:"phases,omitempty"`
+	States          []string `json:"states,omitempty"`
+	Tag             string   `json:"tag,omitempty"`
+	Repo            string   `json:"repo,omitempty"`
+	AutomationID    string   `json:"automationId,omitempty" jsonschema:"only the sessions this agent automation (aut-…) started"`
+	ParentSessionID string   `json:"parentSessionId,omitempty" jsonschema:"only the direct children of this session (ags-…); read the whole tree with get_agent_session_tree"`
+	CreatedBefore   string   `json:"createdBefore,omitempty"`
+	CreatedAfter    string   `json:"createdAfter,omitempty"`
+	Cursor          string   `json:"cursor,omitempty"`
+	Limit           int      `json:"limit,omitempty"`
 }
 
 type capabilitiesArgs struct {
@@ -221,7 +223,7 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 			}
 			out, err := s.List(ctx, ListRequest{
 				OwnerID: in.OwnerID, Archived: in.Archived, Phases: in.Phases, States: in.States, Tag: in.Tag,
-				Repo: in.Repo, CreatedBefore: before, CreatedAfter: after,
+				Repo: in.Repo, AutomationID: in.AutomationID, ParentSessionID: in.ParentSessionID, CreatedBefore: before, CreatedAfter: after,
 				Cursor: in.Cursor, Limit: in.Limit,
 			})
 			return nil, listResult{AgentSessions: out}, err
@@ -229,6 +231,11 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session", Description: "Inspect one cloud coding-agent session."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, View, error) {
 			out, err := s.Get(ctx, in.ID)
+			return nil, out, err
+		})
+	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session_tree", Description: "Read the whole tree of cloud coding-agent sessions a session belongs to (ADR102): pass any session id in the tree, get its root (rootSessionId) and every session below it (sessions), the root first and then by depth and creation time, each with its parentSessionId, depth, phase, state and outcome. Use it to see every child a session started in one call; list_agent_sessions with parentSessionId lists just the direct children."},
+		func(ctx context.Context, _ *mcp.CallToolRequest, in idArgs) (*mcp.CallToolResult, Tree, error) {
+			out, err := s.Tree(ctx, in.ID)
 			return nil, out, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "get_agent_session_model_cost", Description: "Read what a cloud coding-agent session's bex-provided model requests cost: the model source (platform = bex-billed, byo = billed by the workspace's own provider), the total in USD rounded to the cent (billed at the model provider's cost + 30%) and each turn's cost, request count, input/output/cache tokens and models. A session on the workspace's own model key has no requests here; its provider bills it."},

@@ -133,3 +133,64 @@ func TestModelAuthFailerFailsTheSessionAtItsCeiling(t *testing.T) {
 		t.Fatalf("finalize phase=%q reason=%q finalized=%v", st.finPhase, st.finReason, st.finalized)
 	}
 }
+
+// treeSpend is a SessionSpendStore that also reads a tree's headroom (ADR102 D3).
+type treeSpend struct {
+	sessionSpend
+	headroom int64
+	bounded  bool
+	asked    []string
+}
+
+func (s *treeSpend) AgentSessionCeilingHeadroom(_ context.Context, _, id string) (int64, bool, error) {
+	s.asked = append(s.asked, id)
+	return s.headroom, s.bounded, s.err
+}
+
+// ADR102 D3: a child, and a session with a ceiling, are checked against the
+// tree's headroom; an unbounded tree and a session outside any tree are not.
+func TestMintChecksTheTreeHeadroom(t *testing.T) {
+	enablePlatformRoute(t, "tea-allow")
+	config, _ := json.Marshal(map[string]string{"agent": "claude"})
+	ceiling := int64(5_000_000)
+	mint := func(session store.AgentSession, spend SessionSpendStore) error {
+		session.ID, session.WorkspaceID, session.SandboxID, session.Phase, session.AgentConfig = "ags-one", "tea-allow", "sbx-1", "running", config
+		minter := &ModelMinter{Keys: &recordingKV{memoryKV: memoryKV{}}, Sessions: fakeSessions{session: session}, Spend: &spendLedger{plan: store.PlanPro}, SessionSpend: spend}
+		_, err := minter.Mint(context.Background(), ModelMintRequest{SessionID: "ags-one", Workspace: "tea-allow", PodName: "sbx-1-0", PodUID: "uid-one"})
+		return err
+	}
+	child := store.AgentSession{ParentSessionID: "ags-parent"}
+
+	if err := mint(child, &treeSpend{headroom: 0, bounded: true}); !errors.Is(err, ErrModelSessionSpendCapReached) {
+		t.Fatalf("a child whose tree spent its ceiling = %v", err)
+	}
+	if err := mint(child, &treeSpend{headroom: -1, bounded: true}); !errors.Is(err, ErrModelSessionSpendCapReached) {
+		t.Fatalf("an overspent tree = %v", err)
+	}
+	if err := mint(child, &treeSpend{headroom: 1, bounded: true}); err != nil {
+		t.Fatalf("a child with headroom left = %v", err)
+	}
+	if err := mint(child, &treeSpend{headroom: 0, bounded: false}); err != nil {
+		t.Fatalf("a child in a tree with no ceiling = %v", err)
+	}
+	// A parent with a ceiling is bounded by its children's spend too.
+	if err := mint(store.AgentSession{MaxSpendMicroUSD: &ceiling}, &treeSpend{headroom: 0, bounded: true}); !errors.Is(err, ErrModelSessionSpendCapReached) {
+		t.Fatalf("a ceiling-bearing parent whose children spent it = %v", err)
+	}
+	// A session in no tree and with no ceiling never reads anything.
+	plain := &treeSpend{headroom: 0, bounded: true}
+	if err := mint(store.AgentSession{}, plain); err != nil || len(plain.asked) != 0 {
+		t.Fatalf("a plain session = %v after %d reads", err, len(plain.asked))
+	}
+	// A store failure is a plain error, never a cap refusal; an unwired store
+	// fails a child closed.
+	if err := mint(child, &treeSpend{sessionSpend: sessionSpend{err: errors.New("db down")}}); err == nil || errors.Is(err, ErrModelSpendCapReached) {
+		t.Fatalf("read failure = %v", err)
+	}
+	if err := mint(child, nil); !errors.Is(err, errSpendStoreUnwired) {
+		t.Fatalf("a child with no spend store = %v, want it failed closed", err)
+	}
+	if err := mint(child, &sessionSpend{}); !errors.Is(err, errSpendStoreUnwired) {
+		t.Fatalf("a child whose store cannot read trees = %v, want it failed closed", err)
+	}
+}

@@ -412,13 +412,29 @@ func (m *ModelMinter) Mint(ctx context.Context, req ModelMintRequest) (response 
 // price has reached its own maxSpendUSD ceiling (ADR094 D8). Together with the
 // monthly cap above it, the lower of the two binds. Spend is read per request
 // (one indexed sum), not through the 20 s workspace cache, so a ceiling is
-// overshot by at most the exchanges in flight and not yet reported.
+// overshot by at most the exchanges in flight and not yet reported. A child,
+// or a session with a ceiling that may have children, is checked against its
+// whole tree (ADR102 D3): the smallest ceiling on its ancestor chain against
+// the recorded price of that ceiling's whole subtree.
 func (m *ModelMinter) checkSessionCeiling(ctx context.Context, session store.AgentSession) error {
-	if session.MaxSpendMicroUSD == nil {
+	if session.MaxSpendMicroUSD == nil && session.ParentSessionID == "" {
 		return nil
 	}
 	if m.SessionSpend == nil {
 		return errSpendStoreUnwired
+	}
+	if tree, ok := m.SessionSpend.(SessionTreeSpendStore); ok {
+		headroom, bounded, err := tree.AgentSessionCeilingHeadroom(ctx, session.WorkspaceID, session.ID)
+		if err != nil {
+			return fmt.Errorf("agent session model spend: %w", err)
+		}
+		if bounded && headroom <= 0 {
+			return ErrModelSessionSpendCapReached
+		}
+		return nil
+	}
+	if session.MaxSpendMicroUSD == nil {
+		return errSpendStoreUnwired // a child's ancestors cannot be read: fail closed
 	}
 	spent, err := m.SessionSpend.AgentSessionModelSpendMicroUSD(ctx, session.WorkspaceID, session.ID)
 	if err != nil {
