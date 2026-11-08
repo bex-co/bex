@@ -37,6 +37,8 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m263** — [Sandbox flags the Render CLI v2.35 sends: honor or refuse each by name](done/m263/README.md) — **DONE 2026-11-08**: every v2.35 sandbox flag works as on Render or is refused by name; timeout 0 = none on paid; CLI runtime copy names bex; idle suspension → m278
 - [x] **m269** — [Blueprint ids answer as `exs-`, Render's prefix, so the v2.35 CLI can address them](done/m269/README.md) — **DONE 2026-11-08**: production serves exs-; the v2.35 CLI approve/plan/update pass
 - [ ] **m278** — [Idle sandboxes suspend and wake on exec, as on Render](blocked/m278/README.md) (9 tasks) ← from w2/m263 t001, user decision D2=A 2026-11-07; Render parity included — **BLOCKED (user: sign off memory/process loss on suspension or fund checkpointing — `/unblock w2`; plus the production walk once 9cb1c257a deploys)**; t001–t008, t010 done
+- [ ] **m288** — [Blueprint sync ids answer as `exe-`, Render's prefix](m288/README.md) (8 tasks) ← from `/pm-brainstorm for w2` 2026-11-08; Render parity included
+- [ ] **m289** — [A fresh local cluster runs dev-N end to end](m289/README.md) (7 tasks) ← from `/pm-brainstorm for w2` 2026-11-08; Render parity omitted (local tooling)
 - [x] **m261** — [Blueprint create with `existingResources: create_new`](done/m261/README.md) (8 tasks) — **DONE 2026-11-03** ← promoted from w2/069 2026-11-03; Render parity included (REST/GraphQL/MCP Blueprint create)
 - [x] [064 — Emit Render's `disk_snapshot_restored` instead of bex's `disk_restored`](done/064.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
 - [x] [065 — Blueprint responses carry `ownerId`; Blueprint PATCH accepts `branch`](done/065.md) ← w2/m251 round-5 drift — **DONE 2026-11-03**
@@ -46,6 +48,9 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] [069 — Blueprint create with `existingResources: create_new`](done/069.md) ← w2/m256 (variant of the shipped `adopt`) — **PROMOTED 2026-11-03** to m261
 - [ ] [070 — Audit payment-method changes made in the Stripe-hosted portal](blocked/070.md) — **BLOCKED (user: run `python3 scripts/stripe-billing-setup.py --live --webhook-url https://api.bex.co/v1/webhooks/stripe --add-missing-webhook-events` — the classifier denied the agent this live Stripe write; handler already shipped)**
 - [x] [071 — Build Sources follow-ups from the w2/m254 parity pass](done/071.md) ← w2/m254 t009 — **PROMOTED 2026-11-03** to m262
+- [ ] [072 — A missing image tag raises `image_pull_failed`, as Render does](072.md) ← `/pm-brainstorm for w2` 2026-11-08
+- [ ] [073 — Rebrand the remaining run-time CLI prose that names Render (extends D4)](073.md) ← `/pm-brainstorm for w2` 2026-11-08
+- [ ] [074 — Blueprint Sync History repeats the reconnection note on every row](074.md) ← `/pm-brainstorm for w2` 2026-11-08
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
 
