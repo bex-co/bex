@@ -118,6 +118,12 @@ type ReleaseRecordSpec struct {
 	// so a cancel can tell a retained change from an identical redeploy (the
 	// operator's releaseSettingsFingerprint). Empty in older records.
 	SettingsFingerprint string `json:"settingsFingerprint,omitempty"`
+	// ImageSource is the reference the release's image digest was resolved
+	// from, such as an image-port service's tag. A rollback or Restart serves
+	// the digest itself and inherits this from the release it selects, so a
+	// release serving the saved tag's digest is not an undeployed change
+	// (w4/531). Empty in older records and for images run as written.
+	ImageSource string `json:"imageSource,omitempty"`
 }
 
 // StaticPublicationRecordName is the per-release record of where a static_site

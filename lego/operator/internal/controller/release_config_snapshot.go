@@ -502,6 +502,7 @@ func (r *AppReconciler) recordReleasePodTemplate(ctx context.Context, app *appv1
 		// adopted with.
 		spec := releaseRecordSpec(adopted.projectRuntimeApp(app, gen))
 		spec.SavedReplicas, spec.SettingsFingerprint = adopted.spec.SavedReplicas, adopted.spec.SettingsFingerprint
+		spec.ImageSource = r.releaseImageSource(ctx, app, tmpl)
 		return r.persistRuntimeConfigRecord(ctx, app, gen, &runtimeConfigRecord{spec: spec, template: tmpl})
 	}
 	runtime, err := r.selectedRuntimeApp(ctx, app)
@@ -509,6 +510,7 @@ func (r *AppReconciler) recordReleasePodTemplate(ctx context.Context, app *appv1
 		return err
 	}
 	record := &runtimeConfigRecord{spec: releaseRecordSpec(runtime), template: tmpl}
+	record.spec.ImageSource = r.releaseImageSource(ctx, app, tmpl)
 	// The release's spec, for a later save to be held against
 	// (pendingReleaseView): kept once recorded, and taken only while the spec
 	// still is this release's, never from a pass that renders a newer save.
@@ -780,4 +782,38 @@ func (r *AppReconciler) cronJobTemplate(ctx context.Context, app *appv1alpha1.Ap
 		return corev1.PodTemplateSpec{}, nil
 	}
 	return cj.Spec.JobTemplate.Spec.Template, err
+}
+
+// releaseImageSource is the reference the template's app image was resolved
+// from (w4/531): the image network's Source when it resolved a tag to this
+// digest, or, for a rollback or Restart that runs a selected release's digest
+// as written, that release's recorded source. Empty when neither is known.
+func (r *AppReconciler) releaseImageSource(ctx context.Context, app *appv1alpha1.App, tmpl corev1.PodTemplateSpec) string {
+	image := appContainerImage(tmpl)
+	if image == "" {
+		return ""
+	}
+	for _, network := range []*appv1alpha1.ImageNetworkStatus{app.Status.ImageNetwork, app.Status.ServingNetwork} {
+		if network != nil && network.Image == image && network.Source != "" && network.Source != image {
+			return network.Source
+		}
+	}
+	ref := app.ActiveReleaseConfig()
+	if ref == nil || ref.SourceGeneration <= 0 {
+		return ""
+	}
+	rec, err := r.readRuntimeConfigRecord(ctx, app, ref.SourceGeneration)
+	if err != nil || appContainerImage(rec.template) != image {
+		return ""
+	}
+	return rec.spec.ImageSource
+}
+
+func appContainerImage(tmpl corev1.PodTemplateSpec) string {
+	for _, container := range tmpl.Spec.Containers {
+		if container.Name == appContainerName {
+			return container.Image
+		}
+	}
+	return ""
 }

@@ -567,3 +567,39 @@ func TestInFlightReleaseCarriesSavedConfiguration(t *testing.T) {
 		check(t, r, app, true)
 	})
 }
+
+// w4/531: a release record keeps the tag its digest was resolved from, and a
+// rollback or Restart that runs a selected release's digest inherits it, so a
+// release serving the saved tag's digest is not an undeployed change.
+func TestReleaseImageSourceFollowsTheSelectedRelease(t *testing.T) {
+	ctx := context.Background()
+	const digest = "registry.example/api@sha256:aaaa"
+	r, app := selectedReleaseFixture(t)
+	tmplFor := func(image string) corev1.PodTemplateSpec {
+		return corev1.PodTemplateSpec{Spec: corev1.PodSpec{Containers: []corev1.Container{{Name: appContainerName, Image: image}}}}
+	}
+
+	// Release 1 resolved the saved tag to the digest.
+	first := app.DeepCopy()
+	first.Spec.ReleaseConfig = nil
+	first.Status.ReleaseGeneration = 1
+	first.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: digest, Source: "image:A"}
+	if got := r.releaseImageSource(ctx, first, tmplFor(digest)); got != "image:A" {
+		t.Fatalf("a tag-resolved release's source = %q, want image:A", got)
+	}
+	if err := r.recordReleasePodTemplate(ctx, first, tmplFor(digest)); err != nil {
+		t.Fatal(err)
+	}
+
+	// Release 3 rolls back to it: its network records the digest as its own
+	// source, and the record inherits release 1's tag.
+	app.Spec.ReleaseConfig = &appv1alpha1.ReleaseConfigReference{Generation: 3, SourceGeneration: 1, Image: digest}
+	app.Status.ImageNetwork = &appv1alpha1.ImageNetworkStatus{Image: digest, Source: digest}
+	if got := r.releaseImageSource(ctx, app, tmplFor(digest)); got != "image:A" {
+		t.Fatalf("a rollback's source = %q, want image:A", got)
+	}
+	// Another image than the selected release ran knows no source.
+	if got := r.releaseImageSource(ctx, app, tmplFor("registry.example/api@sha256:bbbb")); got != "" {
+		t.Fatalf("an unrelated digest's source = %q, want none", got)
+	}
+}

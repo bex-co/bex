@@ -212,7 +212,7 @@ func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *ap
 	imageDiffers := false
 	if app.Spec.Repo == "" {
 		for _, container := range rec.template.Spec.Containers {
-			if container.Name == appContainerName && !servesSavedImage(app, container.Image) {
+			if container.Name == appContainerName && !servesSavedImage(app, container.Image, rec.spec.ImageSource) {
 				imageDiffers = true
 				different = true
 			}
@@ -239,12 +239,17 @@ func (r *AppReconciler) servingConfigurationDiffers(ctx context.Context, app *ap
 // digest as resolved from exactly spec.image (w4/m243 t014). An override
 // resolves from another reference and still differs. A tag the registry
 // re-points is not a saved change: Render re-pulls a tag on each deploy.
-func servesSavedImage(app *appv1alpha1.App, served string) bool {
+func servesSavedImage(app *appv1alpha1.App, served, recordedSource string) bool {
 	if served == app.Spec.Image {
 		return true
 	}
 	if !app.Spec.HasImagePorts() {
 		return false
+	}
+	// A rollback or Restart serves a release's digest as written; its record
+	// keeps the tag that digest was resolved from (w4/531).
+	if recordedSource != "" && recordedSource == app.Spec.Image {
+		return true
 	}
 	// The candidate network counts too: a first release is recorded as the
 	// active revision once its pods are Ready (w4/405), a few seconds before

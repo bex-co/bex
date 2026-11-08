@@ -243,7 +243,26 @@ func TestServedDigestOfTheSavedTagIsTheSavedImage(t *testing.T) {
 	} {
 		a := app.DeepCopy()
 		tc.mutate(a)
-		if got := servesSavedImage(a, tc.served); got != tc.want {
+		if got := servesSavedImage(a, tc.served, ""); got != tc.want {
+			t.Errorf("%s: servesSavedImage = %v, want %v", tc.name, got, tc.want)
+		}
+	}
+
+	// w4/531: a rollback (or a Restart of it) serves a release's digest as
+	// written, so its network records the digest as its own source; the
+	// release record keeps the tag that digest came from.
+	rolledBack := app.DeepCopy()
+	rolledBack.Status.ServingNetwork.Source = digest
+	for _, tc := range []struct {
+		name     string
+		recorded string
+		want     bool
+	}{
+		{"a rollback to the saved tag's deploy", "docker.io/mendhak/http-https-echo:latest", true},
+		{"a rollback to an override deploy", "docker.io/mendhak/http-https-echo:canary", false},
+		{"a record from before the source was kept", "", false},
+	} {
+		if got := servesSavedImage(rolledBack, digest, tc.recorded); got != tc.want {
 			t.Errorf("%s: servesSavedImage = %v, want %v", tc.name, got, tc.want)
 		}
 	}
