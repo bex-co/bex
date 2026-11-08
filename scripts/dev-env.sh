@@ -84,6 +84,9 @@ derive() {
   OPENFGA_PORT=$((63000 + off))
   OPENBAO_PORT=$((64000 + off))
   SANDBOX_EXEC_PORT=$((65000 + off))
+  # The 1000-blocks above run out at 65535, so Prometheus takes the free block
+  # below them.
+  PROM_PORT=$((48000 + off))
   AGENT_HOST_API_HOST="bex-dev-host-api.kube-system.svc.cluster.local"
   AGENT_HOST_API_PORT=8091
   KUBECONFIG_FILE="$ENVDIR/.kubeconfig"
@@ -121,6 +124,7 @@ BEX_API_PORT=$BEX_API_PORT
 BEX_DB_PORT=$BEX_DB_PORT
 BEX_CP_PORT=$BEX_CP_PORT
 LOKI_PORT=$LOKI_PORT
+PROM_PORT=$PROM_PORT
 OPENSANDBOX_PORT=$OPENSANDBOX_PORT
 AGENT_ATTACH_PORT=$AGENT_ATTACH_PORT
 OPENFGA_PORT=$OPENFGA_PORT
@@ -461,6 +465,43 @@ ensure_observability() {
     { echo "error: Loki did not become ready — dev-$N's log store is down ('kubectl -n monitoring describe pod loki-0'; an unbound PVC means no default StorageClass)." >&2; exit 1; }
 }
 
+# ensure_prometheus — a minimal shared Prometheus in `monitoring` (w2/m255
+# t009), so bex-api's BEX_PROM_URL-gated readers run on dev-N; above all the
+# service-disk usage sweeper, which reads kubelet_volume_stats_used_bytes. The
+# mock's local-path volumes publish no kubelet volume stats, so a small
+# DaemonSet supplies that series from du (scripts/dev-env/prometheus/
+# volume-usage.sh says why). Shared like Loki and behind the same switch.
+ensure_prometheus() {
+  if [ "${DEV_ENV_OBSERVABILITY:-1}" != "1" ]; then
+    echo "==> prometheus skipped (DEV_ENV_OBSERVABILITY=0)"
+    return
+  fi
+  echo "==> prometheus (shared, monitoring) + local-path volume usage"
+  # With the local GitOps platform up, Argo owns monitoring/prometheus-server;
+  # reuse it (same Service name). Its kubelet job sees no local-path volume,
+  # so the disk-usage sweeper stays silent on that shape.
+  if [ -n "$(kubectl -n monitoring get deploy prometheus-server \
+    -o jsonpath='{.metadata.annotations.argocd\.argoproj\.io/tracking-id}' 2>/dev/null)" ]; then
+    echo "    Argo-managed Prometheus present — reusing it (local-path volumes report no usage there)"
+  else
+    kubectl create namespace monitoring --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+    # Restart both workloads only when their config or script changed.
+    local revision
+    revision="$(cat "$TEMPLATES/prometheus/prometheus.yaml" "$TEMPLATES/prometheus/volume-usage.sh" |
+      openssl dgst -sha256 | awk '{print substr($NF, 1, 12)}')"
+    CONFIG_REVISION="$revision" render "$TEMPLATES/prometheus/prometheus.yaml" | kubectl apply -f - >/dev/null
+    kubectl -n local-path-volume-usage create configmap local-path-volume-usage \
+      --from-file=volume-usage.sh="$TEMPLATES/prometheus/volume-usage.sh" \
+      --dry-run=client -o yaml | kubectl apply -f - >/dev/null
+  fi
+  kubectl -n monitoring rollout status deploy/prometheus-server --timeout=180s ||
+    { echo "error: Prometheus did not become ready ('kubectl -n monitoring describe pod -l app.kubernetes.io/name=prometheus')." >&2; exit 1; }
+  if kubectl -n local-path-volume-usage get daemonset local-path-volume-usage >/dev/null 2>&1; then
+    kubectl -n local-path-volume-usage rollout status daemonset/local-path-volume-usage --timeout=180s ||
+      { echo "error: the local-path volume-usage DaemonSet did not become ready." >&2; exit 1; }
+  fi
+}
+
 # agent_enabled — has `agent-up` provisioned the ADR047 leg for this dev-N?
 # The marker is what makes `up` idempotent across the two shapes: re-running `up`
 # on an agent-enabled environment must restart bex-api with the agent variables
@@ -536,6 +577,12 @@ start_api() {
     # fixed local-only bearer; the printed dashboard command passes the same.
     BEX_OPS_ROLE_TOKEN="dev-$N-internal"
   )
+  # Prometheus-backed readers, the disk-usage sweeper among them, start only
+  # with BEX_PROM_URL; set it only when ensure_prometheus ran, because a set
+  # but dead Prometheus turns metrics reads into errors instead of fallbacks.
+  if [ "${DEV_ENV_OBSERVABILITY:-1}" = "1" ]; then
+    env_args+=(BEX_PROM_URL="http://localhost:$PROM_PORT")
+  fi
 
   if agent_enabled; then
     # The agent-session leg replaces both insecure overrides with the real
@@ -731,6 +778,7 @@ cmd_up() {
     -f deploy/gitops/base/values/hydra.values.yaml -f "$ENVDIR/.rendered-hydra.values.yaml" --wait --timeout 5m
 
   ensure_observability
+  ensure_prometheus
 
   echo "==> port-forwards (self-healing)"
   forward kratos kratos-public "$KRATOS_PUBLIC_PORT:80"
@@ -744,6 +792,7 @@ cmd_up() {
   forward bex-db bex-db-rw "$BEX_DB_PORT:5432"
   if [ "${DEV_ENV_OBSERVABILITY:-1}" = "1" ]; then
     forward loki loki "$LOKI_PORT:3100" monitoring
+    forward prometheus prometheus-server "$PROM_PORT:80" monitoring
   fi
   sleep 3
 
@@ -772,6 +821,7 @@ dev-$N (workstream w$N) is up:
   hydra:       admin http://localhost:$HYDRA_ADMIN_PORT | public/issuer http://localhost:$HYDRA_PUBLIC_PORT
   mailpit UI:  http://localhost:$MAILPIT_HTTP_PORT (SMTP on :$MAILPIT_SMTP_PORT)
   loki:        http://localhost:$LOKI_PORT (bex-api BEX_LOKI_URL — log store)
+  prometheus:  http://localhost:$PROM_PORT (bex-api BEX_PROM_URL — metrics, disk-usage sweeper)
   bex-api:     http://localhost:$BEX_API_PORT (log: $ENVDIR/logs/bex-api.log, truncated on each up)
 
 start the dashboard against it:
@@ -890,6 +940,23 @@ cmd_status() {
         ok "Loki ready"
       else
         no "Loki not ready (check 'kubectl -n monitoring describe pod loki-0')"
+      fi
+      local prom_ready volume_series
+      prom_ready="$(curl -s -o /dev/null -w '%{http_code}' "http://localhost:$PROM_PORT/-/ready" 2>/dev/null || true)"
+      if [ "$prom_ready" = "200" ]; then
+        ok "Prometheus ready (:$PROM_PORT, bex-api BEX_PROM_URL)"
+      else
+        no "Prometheus not ready (:$PROM_PORT /-/ready=$prom_ready; check 'kubectl -n monitoring get pods' and the pf-prometheus forward)"
+      fi
+      # dev-N's own CNPG databases sit on local-path volumes, so an empty answer
+      # means the disk-usage sweeper would see no disk at all.
+      volume_series="$(curl -fsS "http://localhost:$PROM_PORT/api/v1/query" \
+        --data-urlencode "query=count(kubelet_volume_stats_used_bytes{namespace=\"$DEV_AUTH_NS\"})" 2>/dev/null |
+        sed -n 's/.*"value":\[[^,]*,"\([0-9]*\)"\].*/\1/p')"
+      if [ "${volume_series:-0}" -ge 1 ]; then
+        ok "kubelet_volume_stats_used_bytes reports $volume_series $DEV_AUTH_NS volume(s) (disk-usage sweeper input)"
+      else
+        no "kubelet_volume_stats_used_bytes has no $DEV_AUTH_NS volume (check the local-path-volume-usage DaemonSet in its namespace)"
       fi
     fi
   fi

@@ -1,6 +1,6 @@
 # w2 · m255 — Disk usage over 80% notifies, as on Render
 
-**Worker:** worker2 **Goal:** when a service's persistent disk usage exceeds 80% of its allocated size, and when it drops back below, owners get exactly one notice each way. **Status:** todo — t001–t003, t005–t007 done; t009 then t004 (D1=A, 2026-11-07)
+**Worker:** worker2 **Goal:** when a service's persistent disk usage exceeds 80% of its allocated size, and when it drops back below, owners get exactly one notice each way. **Status:** done (2026-11-08, D1=A)
 
 ## Tasks (in order)
 
@@ -9,12 +9,12 @@
 | t001 | Disk usage evaluator with hysteresis — **DONE** | 1.5h | — |
 | t002 | Durable crossing facts in the service events feed — **DONE** | 1h | t001 |
 | t003 | Email both directions plus push — **DONE** | 45m | t002, w2/m252/t005 |
-| t009 | dev-env runs Prometheus so the disk-usage sweeper runs on dev-N | 1h | t003 |
-| t004 | dev-2 walk (D1=A: dev-2 + tests are the acceptance) | 30m | t009 |
+| t009 | dev-env runs Prometheus so the disk-usage sweeper runs on dev-N — **DONE** | 1h | t003 |
+| t004 | dev-2 walk (D1=A: dev-2 + tests are the acceptance) — **DONE** | 30m | t009 |
 | t005 | Render parity — **DONE** | 15m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 30m | t005 |
-| t008 | Closeout | 10m | t004, t006, t007 |
+| t008 | Closeout — **DONE** | 10m | t004, t006, t007 |
 
 ## Definition of done
 
@@ -91,3 +91,16 @@ Run `/unblock w2`.
   2. 确认 local-path 卷能产出 `kubelet_volume_stats_used_bytes`；如果不能，选用等价的指标来源，并记录理由。
   3. 走查 t004 的 dev-2 部分。
 - **对标依据：** Render 在磁盘超过 80% 时会通知，代码已经对齐。这个决定只关系到验收证据。
+
+## dev-2 walk — 2026-11-08 (`/loopx w2`): passed; closed (D1=A)
+
+- **t009:**
+  - `dev-env.sh up` now runs a shared Prometheus in `monitoring` (production image, the production `kubernetes-kubelet` job verbatim) and sets dev-N's `BEX_PROM_URL` (dev-2 on :48020). `status` checks that it is ready and that volume series exist.
+  - **Finding:** local-path (hostPath) volumes publish no `kubelet_volume_stats_used_bytes`. Zero series were found on all three CAPD kubelets. A `du` DaemonSet (`scripts/dev-env/prometheus/volume-usage.sh`) therefore publishes the same series and labels on dev, and the production query and behavior are unchanged.
+- **t004 walk:** workspace `tea-dbo1091jg4r0tg69b330`; `background_worker` `srv-dbo10b1jg4r0tg69b34g` with a 1 GB disk `dsk-dbo10b1jg4r0tg69b35g` at `/data`, set to `notificationsToSend: all`.
+  - **Over 80%:** filled to 85% at 06:03:08Z. Event `evt-9l7v2vq70q6c74kbjtf8` `service_disk_usage_high` fired at 06:09:56Z, with `{diskId, diskName walk-data, mountPath /data, usagePercent 85, thresholdPercent 80}`. Mailpit received "Disk usage high: m255-disk-walk" at 06:10:02Z.
+  - **No repeats:** six 78%/85% oscillations (06:10:58–06:12:39Z), then a one-sweep dip, produced no extra event or email.
+  - **Back below:** dropped to 50% at 06:20:38Z. Event `evt-e5bu4uiofk7rrc2e60ve` `service_disk_usage_recovered` fired at 06:29:56Z, and "Disk usage back to normal" arrived at 06:30:02Z.
+  - **Surfaces:** REST `GET /v1/services/{id}/events` and `GET /v1/events/{id}`, GraphQL `serviceEvent`/`serviceEvents`, and MCP `list_events`/`get_service_event` all show both events with Render's exact `details`.
+  - **Cleanup:** the service and disk were deleted (PVC and PV gone).
+- **Acceptance (D1=A, 2026-11-07):** dev-2 plus tests. Every DoD point holds; no finding contradicts it.

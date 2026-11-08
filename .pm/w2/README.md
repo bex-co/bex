@@ -31,7 +31,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [x] **m252** — [Failure alerts reach email, as on Render](done/m252/README.md) — **DONE 2026-11-07** (D1=A: dev-2 walk + tests accepted)
 - [x] **m253** — [A service that crash-loops for 24 hours is suspended with `stuck_crashlooping`, as on Render](done/m253/README.md) — **DONE 2026-11-07** (D1=A: dev-2 walk + envtest accepted)
 - [x] **m254** — [Build Sources: one build feeding several services, as on Render](done/m254/README.md) — **DONE 2026-11-08**: on production one build deploys two linked services
-- [ ] **m255** — [Disk usage over 80% notifies, as on Render](m255/README.md) (9 tasks) — 2026-11-07 D1=A: next t009 (Prometheus in dev-env), then the dev-2 walk
+- [x] **m255** — [Disk usage over 80% notifies, as on Render](done/m255/README.md) — **DONE 2026-11-08** (D1=A): dev-2 walk with Prometheus in dev-env — high and recovered emails, no repeats, events on every surface
 - [ ] **m256** — [Blueprint onboarding: create, plan and approve a Blueprint as the Render CLI does](m256/README.md) — t007 production walk passed 2026-11-08; next t014 (stuck re-created Blueprint), t012 dashboard check, t011
 - [x] **m262** — [Build Sources follow-ups: dryRun, picker paging, linked-service settings, linked crons, deploy provenance](done/m262/README.md) (9 tasks) — **DONE 2026-11-03** ← promoted from w2/071 2026-11-03; Render parity included
 - [x] **m263** — [Sandbox flags the Render CLI v2.35 sends: honor or refuse each by name](done/m263/README.md) — **DONE 2026-11-08**: every v2.35 sandbox flag works as on Render or is refused by name; timeout 0 = none on paid; CLI runtime copy names bex; idle suspension → m278

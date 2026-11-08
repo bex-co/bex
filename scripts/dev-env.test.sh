@@ -28,7 +28,7 @@ echo "==> per-N derivation is distinct for N=1..10"
 for key in DEV_NS DEV_AUTH_NS BEX_CP_IDENTITY KUBECONFIG_FILE \
   DASHBOARD_PORT KRATOS_PUBLIC_PORT KRATOS_ADMIN_PORT HYDRA_ADMIN_PORT \
   HYDRA_PUBLIC_PORT MAILPIT_HTTP_PORT MAILPIT_SMTP_PORT BEX_API_PORT \
-  BEX_DB_PORT BEX_CP_PORT LOKI_PORT \
+  BEX_DB_PORT BEX_CP_PORT LOKI_PORT PROM_PORT \
   OPENSANDBOX_PORT AGENT_ATTACH_PORT OPENFGA_PORT OPENBAO_PORT SANDBOX_EXEC_PORT; do
   values=""
   for n in 1 2 3 4 5 6 7 8 9 10; do values+="$(value_of "$n" "$key")"$'\n'; done
@@ -86,6 +86,46 @@ assert "agent-down removes model-stub resources" \
   "sed -n '/cmd_agent_down()/,/entrypoint/p' scripts/dev-env.sh | grep -q 'deploy/model-stub'"
 assert "the live verifier supports the local gateway stream origin" \
   "grep -q 'BEX_VERIFY_STREAM_URL' scripts/agent-session-verify.sh"
+
+echo "==> Prometheus feeds the disk-usage sweeper (w2/m255 t009)"
+prom_tmpl="scripts/dev-env/prometheus/prometheus.yaml"
+assert "every port stays a valid TCP port (dev-10's highest)" \
+  "[ \"\$(devenv 10 env | sed -n 's/^[A-Z_]*PORT=//p' | sort -n | tail -1)\" -le 65535 ]"
+assert "up installs Prometheus after Loki" \
+  "sed -n '/^cmd_up()/,/^}/p' scripts/dev-env.sh | grep -A1 '^  ensure_observability$' | grep -q '^  ensure_prometheus$'"
+assert "up forwards the shared prometheus-server to the per-N port" \
+  "grep -q 'forward prometheus prometheus-server \"\$PROM_PORT:80\" monitoring' scripts/dev-env.sh"
+assert "bex-api gets BEX_PROM_URL on the per-N forward" \
+  "sed -n '/^start_api()/,/^}/p' scripts/dev-env.sh | grep -q 'BEX_PROM_URL=\"http://localhost:\$PROM_PORT\"'"
+assert "BEX_PROM_URL follows the observability switch" \
+  "sed -n '/^start_api()/,/^}/p' scripts/dev-env.sh | grep -B4 'BEX_PROM_URL=' | grep -q 'DEV_ENV_OBSERVABILITY'"
+for needle in "Prometheus ready" "kubelet_volume_stats_used_bytes reports"; do
+  assert "status checks $needle" "sed -n '/^cmd_status()/,/^}/p' scripts/dev-env.sh | grep -q '$needle'"
+done
+assert "the kubelet job is production's apiserver-proxy scrape" \
+  "grep -q 'replacement: /api/v1/nodes/\${1}/proxy/metrics' $prom_tmpl && grep -q 'replacement: /api/v1/nodes/\${1}/proxy/metrics' deploy/gitops/base/prometheus.yaml"
+prom_tag="$(sed -n 's|^ *image: quay.io/prometheus/prometheus:||p' "$prom_tmpl")"
+assert "Prometheus runs production's reviewed server image" \
+  "[ -n '$prom_tag' ] && grep -qF 'tag: $prom_tag' deploy/gitops/base/prometheus.yaml"
+assert "the shared Prometheus template carries no per-N value" \
+  "! grep -Eq '__(N|DEV_NS|DEV_AUTH_NS|[A-Z_]*_PORT)__' $prom_tmpl"
+assert "the Service keeps production's prometheus-server name" \
+  "grep -q 'name: prometheus-server # production' $prom_tmpl"
+# The local-path stand-in for the kubelet series: the exact series and labels
+# NewPrometheusDiskUsageSource queries, one per claim directory, in bytes.
+vu_root="$(mktemp -d)"
+mkdir -p "$vu_root/pvc-1111_dev-2_srv-abc-disk" "$vu_root/pvc-2222_dev-2-auth_bex-db-1" "$vu_root/not-a-claim"
+dd if=/dev/zero of="$vu_root/pvc-1111_dev-2_srv-abc-disk/fill" bs=1024 count=2048 2>/dev/null
+vu_out="$(sh scripts/dev-env/prometheus/volume-usage.sh once "$vu_root")"
+vu_used="$(printf '%s\n' "$vu_out" | sed -n 's/^kubelet_volume_stats_used_bytes{namespace="dev-2",persistentvolumeclaim="srv-abc-disk"} //p')"
+assert "volume usage names the namespace and claim from the directory, in bytes (2 MiB written)" \
+  "[ '${vu_used:-0}' -ge 2097152 ]"
+assert "a hyphenated namespace splits cleanly" \
+  "printf '%s' '$vu_out' | grep -q '{namespace=\"dev-2-auth\",persistentvolumeclaim=\"bex-db-1\"}'"
+assert "a non-claim directory is ignored" "! printf '%s' '$vu_out' | grep -q 'not-a-claim'"
+assert "an empty root still yields a valid exposition" \
+  "sh scripts/dev-env/prometheus/volume-usage.sh once '$vu_root/absent' | grep -q '^# TYPE kubelet_volume_stats_used_bytes gauge$'"
+rm -rf "$vu_root"
 
 echo "==> the identity every prune is scoped by is per-N"
 for n in 1 2 3 4 5 6 7 8 9 10; do

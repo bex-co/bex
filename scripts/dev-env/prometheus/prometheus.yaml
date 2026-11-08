@@ -1,0 +1,191 @@
+# Minimal shared Prometheus for every dev-N on the CAPD mock (w2/m255 t009),
+# the local counterpart of deploy/gitops/base/prometheus.yaml at the scale one
+# feature needs: the service-disk usage sweeper (lego/backend/internal/diskusage)
+# only starts when bex-api has BEX_PROM_URL, and it reads
+#   kubelet_volume_stats_used_bytes{namespace=…,persistentvolumeclaim=~…}
+# Shared in `monitoring` like Loki (one cluster-wide scrape serves every dev-N);
+# each dev-N's host bex-api reaches it through its own port-forward
+# (BEX_PROM_URL=http://localhost:$PROM_PORT). Not per-N: nothing here may carry
+# a per-N value, since every `up` re-applies the same objects.
+#
+# Two jobs:
+#   - kubernetes-kubelet: production's job verbatim (apiserver node proxy). It
+#     yields nothing for local-path volumes — hostPath PVs have no kubelet
+#     volume stats — but it keeps the production scrape path exercised.
+#   - local-path-volume-usage: the volume-usage DaemonSet below, which publishes
+#     the same series from `du` of each claim's directory (why: volume-usage.sh).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: prometheus-server
+  namespace: monitoring
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: dev-env-prometheus
+rules:
+  - apiGroups: [""]
+    resources: [nodes, nodes/proxy, nodes/metrics]
+    verbs: [get, list, watch]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: dev-env-prometheus
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: dev-env-prometheus
+subjects:
+  - kind: ServiceAccount
+    name: prometheus-server
+    namespace: monitoring
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-server
+  namespace: monitoring
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 30s
+    scrape_configs:
+      - job_name: kubernetes-kubelet
+        scrape_interval: 60s
+        scheme: https
+        kubernetes_sd_configs:
+          - role: node
+        tls_config:
+          ca_file: /var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+        authorization:
+          credentials_file: /var/run/secrets/kubernetes.io/serviceaccount/token
+        relabel_configs:
+          - target_label: __address__
+            replacement: kubernetes.default.svc:443
+          - source_labels: [__meta_kubernetes_node_name]
+            regex: (.+)
+            target_label: __metrics_path__
+            replacement: /api/v1/nodes/${1}/proxy/metrics
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: node
+        metric_relabel_configs:
+          - source_labels: [__name__]
+            regex: kubelet_volume_stats_(used|capacity|available)_bytes
+            action: keep
+      - job_name: local-path-volume-usage
+        # busybox httpd serves the exposition without a text/plain type.
+        fallback_scrape_protocol: PrometheusText0.0.4
+        kubernetes_sd_configs:
+          - role: node
+        relabel_configs:
+          - source_labels: [__meta_kubernetes_node_address_InternalIP]
+            regex: (.+)
+            target_label: __address__
+            replacement: ${1}:19101
+          - source_labels: [__meta_kubernetes_node_name]
+            target_label: node
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prometheus-server
+  namespace: monitoring
+  labels: { app.kubernetes.io/name: prometheus, app.kubernetes.io/part-of: dev-env }
+spec:
+  replicas: 1
+  strategy: { type: Recreate }
+  selector:
+    matchLabels: { app.kubernetes.io/name: prometheus, app.kubernetes.io/part-of: dev-env }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: prometheus, app.kubernetes.io/part-of: dev-env }
+      annotations:
+        dev-env/config-revision: "__CONFIG_REVISION__" # restarts on a config change
+    spec:
+      serviceAccountName: prometheus-server
+      # Node SD needs the apiserver, which worker-node pods cannot reach on the
+      # CAPD mock (same pin as the CNPG manager in dev-env.sh).
+      nodeSelector: { node-role.kubernetes.io/control-plane: "" }
+      tolerations:
+        - { key: node-role.kubernetes.io/control-plane, effect: NoSchedule }
+      containers:
+        - name: prometheus
+          # Production's reviewed server image (deploy/gitops/base/prometheus.yaml).
+          image: quay.io/prometheus/prometheus:v3.13.5@sha256:aafa9d694e6a883c02db516d9f6e5b84e14195f49a2a6456a4cca815edda72b9
+          args:
+            - --config.file=/etc/prometheus/prometheus.yml
+            - --storage.tsdb.path=/prometheus
+            - --storage.tsdb.retention.time=1d
+          ports: [{ name: http, containerPort: 9090 }]
+          readinessProbe:
+            httpGet: { path: /-/ready, port: http }
+            periodSeconds: 5
+          resources:
+            requests: { cpu: 50m, memory: 128Mi }
+            limits: { cpu: 500m, memory: 512Mi }
+          volumeMounts:
+            - { name: config, mountPath: /etc/prometheus }
+            - { name: data, mountPath: /prometheus }
+      volumes:
+        - name: config
+          configMap: { name: prometheus-server }
+        # The sweeper looks back ten minutes; history across a restart is not
+        # worth a PVC on a disposable cluster.
+        - name: data
+          emptyDir: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus-server # production's name, so the forward target matches
+  namespace: monitoring
+spec:
+  selector: { app.kubernetes.io/name: prometheus, app.kubernetes.io/part-of: dev-env }
+  ports: [{ name: http, port: 80, targetPort: http }]
+---
+# Its own namespace: the DaemonSet needs hostPath + hostNetwork, which the
+# cluster's default baseline Pod Security forbids, and `monitoring` keeps that
+# default rather than being widened for one local-only helper.
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: local-path-volume-usage
+  labels: { pod-security.kubernetes.io/enforce: privileged }
+---
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: local-path-volume-usage
+  namespace: local-path-volume-usage
+  labels: { app.kubernetes.io/name: local-path-volume-usage, app.kubernetes.io/part-of: dev-env }
+spec:
+  selector:
+    matchLabels: { app.kubernetes.io/name: local-path-volume-usage }
+  template:
+    metadata:
+      labels: { app.kubernetes.io/name: local-path-volume-usage, app.kubernetes.io/part-of: dev-env }
+      annotations:
+        dev-env/config-revision: "__CONFIG_REVISION__"
+    spec:
+      # Host network: Prometheus scrapes <node InternalIP>:19101, which needs
+      # no cross-node pod routing on the mock.
+      hostNetwork: true
+      tolerations: [{ operator: Exists }] # every node local-path can place a volume on
+      containers:
+        - name: volume-usage
+          image: busybox:1.37
+          command: [sh, /script/volume-usage.sh, serve, /data]
+          ports: [{ name: http, containerPort: 19101 }]
+          resources:
+            requests: { cpu: 10m, memory: 16Mi }
+            limits: { cpu: 200m, memory: 64Mi }
+          volumeMounts:
+            - { name: script, mountPath: /script }
+            - { name: local-path, mountPath: /data, readOnly: true }
+      volumes:
+        - name: script
+          configMap: { name: local-path-volume-usage }
+        - name: local-path
+          hostPath: { path: /opt/local-path-provisioner, type: DirectoryOrCreate }
