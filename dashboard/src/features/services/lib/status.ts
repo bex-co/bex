@@ -247,6 +247,11 @@ const PENDING: ServiceStatus = { key: "pending", variant: "outline" };
 // lower-cased phase so a change in the operator's casing can't silently fall
 // through to "unknown".
 const PHASE_STATUS: Record<string, ServiceStatus> = {
+  // No phase yet: the operator has not finished its first reconcile of a
+  // service just created. That is the start of its first deploy, as
+  // CONVERGING_PHASES already counts it — never the alarming "Unknown"
+  // (w4/530).
+  "": PENDING,
   running: { key: "running", variant: "default" },
   deploying: { key: "deploying", variant: "outline" },
   building: { key: "building", variant: "outline" },

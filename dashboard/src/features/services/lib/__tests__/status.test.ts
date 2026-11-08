@@ -554,6 +554,15 @@ describe("deriveStatus", () => {
     ).toBe(false);
   });
 
+  // w4/530: a just-created service read "Unknown" (and its project "needs
+  // attention") until the first reconcile wrote a phase.
+  it("reads a service with no phase yet as pending", () => {
+    expect(deriveStatus(svc({ phase: "" }))).toEqual({
+      key: "pending",
+      variant: "outline",
+    });
+  });
+
   it("falls back to unknown for an unrecognized phase", () => {
     expect(deriveStatus(svc({ phase: "WeirdNewPhase" })).key).toBe("unknown");
   });

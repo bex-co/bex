@@ -3,6 +3,7 @@ import { classifyResourceHealth } from "../resource-health";
 import type { ResourceRow } from "../../types";
 import type { DatabaseView } from "@/features/databases/types";
 import type { KeyValueView } from "@/features/keyvalue/types";
+import type { ServiceView } from "@/features/services/types";
 
 function row(over: Partial<ResourceRow>): ResourceRow {
   return {
@@ -37,6 +38,34 @@ describe("classifyResourceHealth for a restarting datastore", () => {
     } as KeyValueView;
     expect(classifyResourceHealth(row({ kind: "keyvalue", keyValue }))).toBe(
       "converging",
+    );
+  });
+});
+
+// w4/530: a service created seconds ago has no phase yet; its project said
+// "1 resource needs attention" until the first reconcile landed.
+describe("classifyResourceHealth for a just-created service", () => {
+  it("treats a service with no phase yet as converging", () => {
+    const service = {
+      phase: "",
+      suspended: false,
+      type: "web_service",
+      plan: "free",
+    } as ServiceView;
+    expect(classifyResourceHealth(row({ kind: "service", service }))).toBe(
+      "converging",
+    );
+  });
+
+  it("still flags an unrecognized phase", () => {
+    const service = {
+      phase: "WeirdNewPhase",
+      suspended: false,
+      type: "web_service",
+      plan: "free",
+    } as ServiceView;
+    expect(classifyResourceHealth(row({ kind: "service", service }))).toBe(
+      "attention",
     );
   });
 });
