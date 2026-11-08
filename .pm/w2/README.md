@@ -49,7 +49,7 @@ Develop against `.pm/w2/dev-2/`, this worker's own isolated stack on the shared 
 - [ ] [070 — Audit payment-method changes made in the Stripe-hosted portal](blocked/070.md) — **BLOCKED (user: run `python3 scripts/stripe-billing-setup.py --live --webhook-url https://api.bex.co/v1/webhooks/stripe --add-missing-webhook-events` — the classifier denied the agent this live Stripe write; handler already shipped)**
 - [x] [071 — Build Sources follow-ups from the w2/m254 parity pass](done/071.md) ← w2/m254 t009 — **PROMOTED 2026-11-03** to m262
 - [ ] [072 — A missing image tag raises `image_pull_failed`, as Render does](072.md) ← `/pm-brainstorm for w2` 2026-11-08
-- [ ] [073 — Rebrand the remaining run-time CLI prose that names Render (extends D4)](073.md) ← `/pm-brainstorm for w2` 2026-11-08
+- [ ] [073 — Rebrand the remaining run-time CLI prose that names Render (extends D4)](blocked/073.md) — **BLOCKED (user: confirm extending D4 to product-name prose; `/unblock w2`)**
 - [ ] [074 — Blueprint Sync History repeats the reconnection note on every row](074.md) ← `/pm-brainstorm for w2` 2026-11-08
 - [x] [056 — Hobby workspaces hit the PVC and Pod count caps long before the 25-database cap](done/056.md) — **DONE 2026-10-30** (`7a4df5737`): `pods` moved into the scoped compute quota; PVC/storage/ephemeral/Jobs sized so the 25/25 datastore count caps bind first
 - [x] [057 — Datastore backup and export Jobs are charged to the services' compute quota](done/057.md) — **DONE 2026-10-30** (`25b99d8a3`): datastore Jobs carry `bex-datastore`; admission allows it only on datastore-owned Jobs
