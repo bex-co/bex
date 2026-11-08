@@ -31,6 +31,7 @@ import (
 	"net/http/httptest"
 	"reflect"
 	"regexp"
+	"slices"
 	"sort"
 	"strings"
 	"sync"
@@ -44,6 +45,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 	appv1alpha1 "github.com/bex-co/bex/lego/types/v1alpha1"
 )
@@ -75,6 +77,8 @@ type fakeBlueprintStore struct {
 	// syncsToReturn, when set, is what ListBlueprintSyncs returns — the wire
 	// round-trip tests need a canned row rather than a live-recorded one.
 	syncsToReturn []store.BlueprintSync
+	// gotSyncCursor is the cursor ListBlueprintSyncs was last called with.
+	gotSyncCursor string
 	// insertedSyncs records every InsertBlueprintSync call in order, so tests
 	// can assert a run was (or was not) recorded and with what provenance.
 	insertedSyncs []store.BlueprintSync
@@ -458,11 +462,11 @@ func (f *fakeBlueprintStore) UpdateBlueprintSync(_ context.Context, id, state st
 	return out, nil
 }
 
-func (f *fakeBlueprintStore) ListBlueprintSyncs(_ context.Context, blueprintID, _ string, limit int) ([]store.BlueprintSync, error) {
+func (f *fakeBlueprintStore) ListBlueprintSyncs(_ context.Context, blueprintID, cursor string, limit int) ([]store.BlueprintSync, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	_ = blueprintID
-	f.gotSyncLimit = limit
+	f.gotSyncLimit, f.gotSyncCursor = limit, cursor
 	return f.syncsToReturn, nil
 }
 
@@ -3341,8 +3345,10 @@ func TestRESTValidateBlueprintBadYAML(t *testing.T) {
 
 func TestRESTListBlueprints(t *testing.T) {
 	ws := fakeWorkspace{"user-a": "tea-a"}
+	durable := ids.New(ids.Blueprint)
+	public := ids.BlueprintPublicID(durable)
 	fs := newFakeBlueprintStore(store.Blueprint{
-		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		ID: durable, TenantID: "tea-a", Repo: "https://github.com/a/app",
 		Branch: "main", Status: "active", Name: "app",
 	})
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
@@ -3365,8 +3371,8 @@ func TestRESTListBlueprints(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 		t.Fatalf("unmarshal: %v", err)
 	}
-	if len(out) != 1 || out[0].Blueprint["id"] != "blp-1" || out[0].Cursor != "blp-1" {
-		t.Fatalf("list blueprints: want [{blueprint: blp-1, cursor: blp-1}], got %+v", out)
+	if len(out) != 1 || out[0].Blueprint["id"] != public || out[0].Cursor != public {
+		t.Fatalf("list blueprints: want [{blueprint: %s, cursor: %[1]s}], got %+v", public, out)
 	}
 	for _, key := range []string{"id", "name", "status", "autoSync", "repo", "branch", "path"} {
 		if _, ok := out[0].Blueprint[key]; !ok {
@@ -3382,10 +3388,11 @@ func TestRESTListBlueprints(t *testing.T) {
 // bex list.
 func TestRESTListBlueprintsPagesByCursor(t *testing.T) {
 	ws := fakeWorkspace{"user-a": "tea-a"}
+	minted := []string{ids.New(ids.Blueprint), ids.New(ids.Blueprint), ids.New(ids.Blueprint)}
 	fs := newFakeBlueprintStore(
-		store.Blueprint{ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/one", Branch: "main", Status: "active", Name: "one"},
-		store.Blueprint{ID: "blp-2", TenantID: "tea-a", Repo: "https://github.com/a/two", Branch: "main", Status: "active", Name: "two"},
-		store.Blueprint{ID: "blp-3", TenantID: "tea-a", Repo: "https://github.com/a/three", Branch: "main", Status: "active", Name: "three"},
+		store.Blueprint{ID: minted[0], TenantID: "tea-a", Repo: "https://github.com/a/one", Branch: "main", Status: "active", Name: "one"},
+		store.Blueprint{ID: minted[1], TenantID: "tea-a", Repo: "https://github.com/a/two", Branch: "main", Status: "active", Name: "two"},
+		store.Blueprint{ID: minted[2], TenantID: "tea-a", Repo: "https://github.com/a/three", Branch: "main", Status: "active", Name: "three"},
 	)
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
 	mux := http.NewServeMux()
@@ -3420,8 +3427,9 @@ func TestRESTListBlueprintsPagesByCursor(t *testing.T) {
 		seen = append(seen, out[0].Blueprint.ID)
 		cursor = out[0].Cursor
 	}
-	if strings.Join(seen, ",") != "blp-1,blp-2,blp-3" {
-		t.Fatalf("paged walk = %v, want each blueprint exactly once", seen)
+	want := []string{ids.BlueprintPublicID(minted[0]), ids.BlueprintPublicID(minted[1]), ids.BlueprintPublicID(minted[2])}
+	if !slices.Equal(seen, want) {
+		t.Fatalf("paged walk = %v, want each blueprint exactly once: %v", seen, want)
 	}
 }
 
@@ -3431,19 +3439,20 @@ func TestRESTListBlueprintsPagesByCursor(t *testing.T) {
 func TestRESTListBlueprintSyncsIncludesErrorMessage(t *testing.T) {
 	ws := fakeWorkspace{"user-a": "tea-a"}
 	errMsg := "quota exceeded: workspace at service limit"
+	bp := ids.New(ids.Blueprint)
 	fs := newFakeBlueprintStore(store.Blueprint{
-		ID: "blp-1", TenantID: "tea-a", Repo: "https://github.com/a/app",
+		ID: bp, TenantID: "tea-a", Repo: "https://github.com/a/app",
 		Branch: "main", Status: "active", Name: "app",
 	})
 	fs.syncsToReturn = []store.BlueprintSync{
-		{ID: "bsr-1", BlueprintID: "blp-1", State: store.BlueprintSyncStateError, ErrorMessage: &errMsg},
-		{ID: "bsr-2", BlueprintID: "blp-1", State: store.BlueprintSyncStateSuccess},
+		{ID: ids.New(ids.BlueprintSync), BlueprintID: bp, State: store.BlueprintSyncStateError, ErrorMessage: &errMsg},
+		{ID: ids.New(ids.BlueprintSync), BlueprintID: bp, State: store.BlueprintSyncStateSuccess},
 	}
 	svc := &Service{Base: &core.Base{Client: fakeClient(), Namespace: "default", Workspace: ws}, Blueprints: fs}
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	req := httptest.NewRequest("GET", "/v1/blueprints/blp-1/syncs?ownerId=tea-a", nil)
+	req := httptest.NewRequest("GET", "/v1/blueprints/"+bp+"/syncs?ownerId=tea-a", nil)
 	req = req.WithContext(core.WithIdentity(req.Context(), core.Identity{Subject: "user-a", Method: "oauth2"}))
 	rec := httptest.NewRecorder()
 	validated(t, mux).ServeHTTP(rec, req)

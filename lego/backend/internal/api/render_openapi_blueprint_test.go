@@ -319,18 +319,12 @@ func TestBlueprintIDRoutesPassTheRenderOpenAPIGate(t *testing.T) {
 		if err := json.Unmarshal(rec.Body.Bytes(), &out); err != nil {
 			t.Fatalf("unmarshal: %v", err)
 		}
-		if len(out) != 1 || out[0].Sync.ID == "" || out[0].Cursor != out[0].Sync.ID {
-			t.Errorf("syncs = %+v, want the one run recorded for this blueprint, with its cursor", out)
+		// The sync answers as Render's exe- spelling of its stored bsr- key
+		// (w2/m288), so the whole body, sync id included, matches the schema.
+		if want := ids.BlueprintSyncPublicID(fixture.syncs[0].ID); len(out) != 1 || out[0].Sync.ID != want || out[0].Cursor != want {
+			t.Errorf("syncs = %+v, want the one run recorded for this blueprint as %s, with its cursor", out, want)
 		}
-		// The one accepted divergence: a sync id is bex's bsr- id, not Render's
-		// exe- pattern (ADR020 keeps bex's own id prefixes).
-		var problems []string
-		for _, p := range loadRenderSpec(t).validate("list-blueprint-syncs", rec.Body.Bytes()) {
-			if !strings.Contains(p, "/sync/id: string doesn't match the regular expression") {
-				problems = append(problems, p)
-			}
-		}
-		if len(problems) > 0 {
+		if problems := loadRenderSpec(t).validate("list-blueprint-syncs", rec.Body.Bytes()); len(problems) > 0 {
 			t.Errorf("GET syncs does not match Render's pinned schema: %v", problems)
 		}
 	})
@@ -445,12 +439,36 @@ var renderIDPathParameters = map[string]ids.Kind{
 
 // bexIDSpellings is every spelling bex accepts for a minted id. A Blueprint
 // answers as its exs- public alias and still resolves by its durable blp- key
-// (w2/m269), so both must clear the gate.
+// (w2/m269), and a Blueprint sync answers as exe- over its durable bsr- key
+// (w2/m288), so both spellings must clear the gate.
 func bexIDSpellings(kind ids.Kind, minted string) []string {
-	if kind == ids.Blueprint {
+	switch kind {
+	case ids.Blueprint:
 		return []string{minted, ids.BlueprintPublicID(minted)}
+	case ids.BlueprintSync:
+		return []string{minted, ids.BlueprintSyncPublicID(minted)}
 	}
 	return []string{minted}
+}
+
+// No pinned path parameter addresses a Blueprint sync yet, so the gate test
+// above cannot reach the sync kind. This pins what it would check: the public
+// spelling satisfies Render's own sync id pattern (the response schema's), and
+// both spellings name the same durable key (w2/m288).
+func TestBlueprintSyncSpellingsMatchRendersPattern(t *testing.T) {
+	re := regexp.MustCompile(`^exe-[0-9a-z]{20}$`)
+	for range 8 {
+		minted := ids.New(ids.BlueprintSync)
+		spellings := bexIDSpellings(ids.BlueprintSync, minted)
+		if len(spellings) != 2 || !re.MatchString(spellings[1]) {
+			t.Fatalf("sync spellings %v: want the durable key and an exe- id matching Render's pattern", spellings)
+		}
+		for _, spelling := range spellings {
+			if ids.BlueprintSyncStorageID(spelling) != minted {
+				t.Fatalf("spelling %q does not resolve to the stored %q", spelling, minted)
+			}
+		}
+	}
 }
 
 // TestEveryConstrainedIDPathParameterAcceptsItsBexID is the guard that turns

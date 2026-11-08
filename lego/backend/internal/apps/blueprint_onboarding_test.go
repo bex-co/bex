@@ -84,7 +84,7 @@ func (f *fakeBlueprintStore) InsertPlannedBlueprintSync(_ context.Context, p sto
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if p.ID == "" {
-		p.ID = fmt.Sprintf("exe-fake%016d", len(f.insertedSyncs))
+		p.ID = ids.New(ids.BlueprintSync)
 	}
 	if f.planned == nil {
 		f.planned = map[string]store.PlannedBlueprintSync{}
@@ -560,7 +560,7 @@ func TestPlannedCreateMarksARevivedConnection(t *testing.T) {
 	if first.Sync == nil {
 		t.Fatal("a first create planned no sync")
 	}
-	if note := st.syncs[first.Sync.ID].Note; note != "" {
+	if note := st.syncs[ids.BlueprintSyncStorageID(first.Sync.ID)].Note; note != "" {
 		t.Fatalf("a first create's planned sync note = %q, want none", note)
 	}
 	if err := st.DisconnectBlueprint(ctx, ids.BlueprintStorageID(first.Blueprint.ID), "tea-a"); err != nil {
@@ -573,7 +573,7 @@ func TestPlannedCreateMarksARevivedConnection(t *testing.T) {
 	if again.Blueprint.ID != first.Blueprint.ID || again.Sync == nil {
 		t.Fatalf("re-create = %+v, want the revived row %s with a planned sync", again, first.Blueprint.ID)
 	}
-	if note := st.syncs[again.Sync.ID].Note; note != reconnectionNote("https://github.com/a/app", DefaultBlueprintBranch) {
+	if note := st.syncs[ids.BlueprintSyncStorageID(again.Sync.ID)].Note; note != reconnectionNote("https://github.com/a/app", DefaultBlueprintBranch) {
 		t.Errorf("revived planned sync note = %q, want the reconnection note", note)
 	}
 }

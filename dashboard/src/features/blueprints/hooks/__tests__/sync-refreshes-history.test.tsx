@@ -41,8 +41,8 @@ const syncsQuery = {
 // read, the sync, then the history read the sync's refetch must issue.
 describe("Blueprint sync → Sync History", () => {
   it("re-reads history after a successful sync, so the new run is the top row", async () => {
-    const older = run("bsr-older", "2026-09-25T05:00:00Z");
-    const newest = run("bsr-newest", "2026-09-25T05:33:04Z");
+    const older = run("exe-older", "2026-09-25T05:00:00Z");
+    const newest = run("exe-newest", "2026-09-25T05:33:04Z");
     const link = new MockLink([
       { request: syncsQuery, result: { data: { blueprintSyncs: [older] } } },
       {
@@ -101,8 +101,8 @@ describe("Blueprint sync → Sync History", () => {
 
     await waitFor(() =>
       expect(result.current.history.syncs.map((s) => s.id)).toEqual([
-        "bsr-newest",
-        "bsr-older",
+        "exe-newest",
+        "exe-older",
       ]),
     );
   });
@@ -110,7 +110,7 @@ describe("Blueprint sync → Sync History", () => {
   it("polls history on the shared cadence for runs recorded elsewhere", async () => {
     vi.useFakeTimers({ shouldAdvanceTime: true });
     try {
-      const pushed = run("bsr-autosync", "2026-09-25T06:00:00Z");
+      const pushed = run("exe-autosync", "2026-09-25T06:00:00Z");
       const link = new MockLink([
         { request: syncsQuery, result: { data: { blueprintSyncs: [] } } },
         {
@@ -132,7 +132,7 @@ describe("Blueprint sync → Sync History", () => {
         await vi.advanceTimersByTimeAsync(RESOURCE_POLL_INTERVAL_MS);
       });
       await waitFor(() =>
-        expect(result.current.syncs.map((s) => s.id)).toEqual(["bsr-autosync"]),
+        expect(result.current.syncs.map((s) => s.id)).toEqual(["exe-autosync"]),
       );
     } finally {
       vi.useRealTimers();

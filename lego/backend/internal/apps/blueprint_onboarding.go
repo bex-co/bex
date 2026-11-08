@@ -412,7 +412,7 @@ func (s *Service) syncWithPlan(b store.Blueprint, p store.PlannedBlueprintSync, 
 		rawPlan = map[string]any{"actions": actions}
 	}
 	return &SyncWithPlan{
-		ID: p.ID, Commit: BlueprintCommitRef{ID: p.CommitID}, CommitID: p.CommitID, RawPlanJSON: rawPlanJSON(rawPlan), State: p.State,
+		ID: ids.BlueprintSyncPublicID(p.ID), Commit: BlueprintCommitRef{ID: p.CommitID}, CommitID: p.CommitID, RawPlanJSON: rawPlanJSON(rawPlan), State: p.State,
 		StartedAt: &started, CompletedAt: p.CompletedAt,
 		DashboardURL: s.Metadata.DashboardURL("blueprints", ids.BlueprintPublicID(b.ID)),
 		RawPlan:      rawPlan, RequiredManualEnvVars: required, Actions: actions,
@@ -490,19 +490,20 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID string, su
 	if err != nil {
 		return ApprovedSync{}, err
 	}
+	syncID := ids.BlueprintSyncPublicID(latest.ID)
 	switch {
 	case latest.State == store.BlueprintSyncStateCreated:
 	case latest.State == store.BlueprintSyncStateError && len(latest.PlanActions) > 0:
 		// A plan that was approved (or superseded) and then failed: there is
 		// nothing left to approve, and the next plan is the way forward.
 		return ApprovedSync{}, core.NewConflictError("BLUEPRINT_NOTHING_TO_APPROVE",
-			fmt.Sprintf("the newest sync %s is no longer awaiting approval (%s); plan a new sync first", latest.ID, planErrorSummary(latest)), map[string]any{"syncId": latest.ID})
+			fmt.Sprintf("the newest sync %s is no longer awaiting approval (%s); plan a new sync first", syncID, planErrorSummary(latest)), map[string]any{"syncId": syncID})
 	case latest.State == store.BlueprintSyncStateError:
 		return ApprovedSync{}, core.NewConflictError("BLUEPRINT_SYNC_PLANNING_FAILED",
-			fmt.Sprintf("the newest sync %s failed planning and cannot be approved; fix the Blueprint file and re-plan", latest.ID), map[string]any{"syncId": latest.ID})
+			fmt.Sprintf("the newest sync %s failed planning and cannot be approved; fix the Blueprint file and re-plan", syncID), map[string]any{"syncId": syncID})
 	default:
 		return ApprovedSync{}, core.NewConflictError("BLUEPRINT_NOTHING_TO_APPROVE",
-			fmt.Sprintf("the newest sync %s is %s, not awaiting approval; plan a new sync first", latest.ID, latest.State), map[string]any{"syncId": latest.ID})
+			fmt.Sprintf("the newest sync %s is %s, not awaiting approval; plan a new sync first", syncID, latest.State), map[string]any{"syncId": syncID})
 	}
 	values, err := approvalEnvVarValues(latest.RequiredManualEnvVars, supplied)
 	if err != nil {
@@ -519,7 +520,7 @@ func (s *Service) ApproveBlueprint(ctx context.Context, bpID, ownerID string, su
 	}
 	started := applied.StartedAt
 	return ApprovedSync{
-		ID: applied.ID, Commit: BlueprintCommitRef{ID: applied.CommitID}, CommitID: applied.CommitID, State: applied.State,
+		ID: ids.BlueprintSyncPublicID(applied.ID), Commit: BlueprintCommitRef{ID: applied.CommitID}, CommitID: applied.CommitID, State: applied.State,
 		DashboardURL: s.Metadata.DashboardURL("blueprints", ids.BlueprintPublicID(b.ID)), StartedAt: &started, CompletedAt: applied.CompletedAt,
 	}, nil
 }

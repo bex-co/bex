@@ -50,7 +50,6 @@ const (
 	RowMetadata       = "Resource metadata omitted when unknown"
 	RowServiceDetails = "Partial serviceDetails projection"
 	RowEvents         = "Service event types and details"
-	RowBlueprintIDs   = "Blueprint and Blueprint sync id prefixes"
 	RowDryRun         = "Dry-run previews"
 )
 
@@ -120,10 +119,6 @@ var Allowlist = map[string][]Divergence{
 		{Contains: `event/details: does not match the documented union`, ADR018: RowEvents, Suite: SuiteAPI},
 	},
 	"retrieve-event": {{Contains: `/details: does not match the documented union`, ADR018: RowEvents, Suite: SuiteAPI}},
-
-	// Blueprints keep bex's blp-/bsr- ids where Render mints exs-/exe-.
-	"list-blueprints":      {{Contains: `/blueprint/id: string doesn't match the regular expression "^exs-`, ADR018: RowBlueprintIDs, Suite: SuiteApps}},
-	"list-blueprint-syncs": {{Contains: `/sync/id: string doesn't match the regular expression "^exe-`, ADR018: RowBlueprintIDs, Suite: SuiteApps}},
 }
 
 // dryRun excuses a create's dry-run preview answering 200 (the bex dryRun

@@ -45,3 +45,30 @@ func TestBlueprintAliasContract(t *testing.T) {
 		t.Fatalf("public prefix %q collides with a registered kind", BlueprintPublicPrefix)
 	}
 }
+
+func TestBlueprintSyncAliasContract(t *testing.T) {
+	durable := New(BlueprintSync)
+	public := BlueprintSyncPublicID(durable)
+	// Render's blueprintSync id pattern in the pinned OpenAPI (w2/m288).
+	if !regexp.MustCompile(`^exe-[0-9a-z]{20}$`).MatchString(public) {
+		t.Fatalf("sync %q fails Render's blueprintSync id pattern", public)
+	}
+	if public[4:] != durable[4:] {
+		t.Fatalf("public %q does not keep durable %q's suffix", public, durable)
+	}
+	for _, input := range []string{public, durable} {
+		if BlueprintSyncPublicID(input) != public || BlueprintSyncStorageID(input) != durable {
+			t.Fatalf("alias %q no longer refers to %q / %q", input, public, durable)
+		}
+	}
+	for _, input := range []string{"", "run-1", "bsr-prod", "exe-prod", "bsr_" + durable[4:], "exe-" + durable[4:] + "0", "exe-0000000000000000000z", "EXE-" + durable[4:], "BSR-" + durable[4:], New(Blueprint), BlueprintPublicID(New(Blueprint))} {
+		if BlueprintSyncPublicID(input) != input || BlueprintSyncStorageID(input) != input {
+			t.Errorf("non-alias %q changed identity", input)
+		}
+	}
+	// The one kind that shares Render's exe- spelling is the sandbox
+	// execution; reading one as a sync id names a bsr- key no sync has.
+	if kind, ok := kindForPrefix(BlueprintSyncPublicPrefix); !ok || kind != SandboxExecution {
+		t.Fatalf("exe- belongs to %v (%v), want only SandboxExecution", kind, ok)
+	}
+}

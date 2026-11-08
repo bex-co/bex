@@ -34,7 +34,7 @@ import (
 // allowlistSize pins the number of Allowlist entries. Lower it when an entry
 // goes; raising it means accepting a new divergence, which this milestone's
 // rule forbids without a recorded, signed-off ADR018 row.
-const allowlistSize = 108
+const allowlistSize = 106
 
 func TestAllowlistOnlyShrinks(t *testing.T) {
 	n := 0

@@ -523,7 +523,8 @@ type BlueprintResource struct {
 	Type string `json:"type"`
 }
 
-// BlueprintSyncView is the API shape for a sync run.
+// BlueprintSyncView is the API shape for a sync run. ID is the exe- public
+// alias of the stored bsr- key (w2/m288).
 type BlueprintSyncView struct {
 	ID           string  `json:"id"`
 	CommitID     string  `json:"commitId,omitempty"`
@@ -1703,6 +1704,7 @@ func (s *Service) triggerBlueprintSync(ctx context.Context, tenantID, repo, bran
 }
 
 // ListBlueprintSyncs returns recorded sync runs for a blueprint, newest first.
+// cursor is a sync id in either spelling (exe- public, bsr- durable, w2/m288).
 func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor string, limit int) ([]BlueprintSyncView, error) {
 	ctx, bpID, err := s.blueprintScope(ctx, core.RelCanView, bpID, ownerID)
 	if err != nil {
@@ -1712,7 +1714,7 @@ func (s *Service) ListBlueprintSyncs(ctx context.Context, bpID, ownerID, cursor 
 	if _, err := s.Blueprints.GetBlueprint(ctx, bpID, tenantID); err != nil {
 		return nil, store.MapError(err)
 	}
-	runs, err := s.Blueprints.ListBlueprintSyncs(ctx, bpID, cursor, core.PageLimitOrAbsent(limit))
+	runs, err := s.Blueprints.ListBlueprintSyncs(ctx, bpID, ids.BlueprintSyncStorageID(cursor), core.PageLimitOrAbsent(limit))
 	if err != nil {
 		return nil, store.MapError(err)
 	}
@@ -2314,7 +2316,7 @@ func toBlueprintView(b store.Blueprint) BlueprintView {
 
 func toBlueprintSyncView(r store.BlueprintSync) BlueprintSyncView {
 	v := BlueprintSyncView{
-		ID:           r.ID,
+		ID:           ids.BlueprintSyncPublicID(r.ID),
 		CommitID:     r.CommitID,
 		State:        r.State,
 		StartedAt:    r.StartedAt.UTC().Format(time.RFC3339),

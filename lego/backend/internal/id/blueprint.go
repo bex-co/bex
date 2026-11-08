@@ -36,3 +36,25 @@ func BlueprintPublicID(value string) string {
 func BlueprintStorageID(value string) string {
 	return respell(value, BlueprintPublicPrefix, Blueprint.prefix)
 }
+
+// BlueprintSyncPublicPrefix is Render's spelling of a Blueprint sync id
+// (blueprintSync `id`, ^exe-[0-9a-z]{20}$). Every client-read surface projects
+// the durable bsr- key into it (w2/m288). Render spells its sandbox execution
+// ids exe- as well, and so does bex's SandboxExecution kind; the two never
+// cross, because only sync-id inputs are respelled to bsr-, and a sandbox
+// execution's xid names no sync.
+const BlueprintSyncPublicPrefix = "exe"
+
+// BlueprintSyncPublicID exposes the Render-compatible alias of a sync's
+// durable bsr- key, keeping its suffix. Names and malformed inputs are
+// returned unchanged.
+func BlueprintSyncPublicID(value string) string {
+	return respell(value, BlueprintSync.prefix, BlueprintSyncPublicPrefix)
+}
+
+// BlueprintSyncStorageID resolves the public alias to the durable bsr- key.
+// Use it on every client-supplied sync id (a list cursor) before lookup or
+// comparison; nothing is ever stored as exe-.
+func BlueprintSyncStorageID(value string) string {
+	return respell(value, BlueprintSyncPublicPrefix, BlueprintSync.prefix)
+}

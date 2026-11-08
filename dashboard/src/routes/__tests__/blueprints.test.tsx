@@ -399,7 +399,7 @@ describe("BlueprintDetailPage", () => {
       blueprintSyncsState.loading = true;
       blueprintSyncsState.syncs = [
         {
-          id: "bsr-1",
+          id: "exe-1",
           commitId: "deadbeef",
           state: "success",
           startedAt: "2026-08-20T00:00:00Z",
@@ -422,7 +422,7 @@ describe("BlueprintDetailPage", () => {
     blueprintDetailState.blueprint = bp();
     blueprintSyncsState.syncs = [
       {
-        id: "bsr-detach",
+        id: "exe-detach",
         commitId: "abc12345",
         state: "success",
         startedAt: null,
@@ -442,11 +442,51 @@ describe("BlueprintDetailPage", () => {
     ).toBeInTheDocument();
   });
 
+  // w2/074: a Blueprint reconnected twice shows the reconnection note on
+  // exactly the two rows the API marks, the first sync of each connection,
+  // and on none of the syncs around them.
+  it("shows one reconnection note per reconnection boundary", async () => {
+    const note =
+      "re-established a previously disconnected connection to https://github.com/a/app@main; earlier sync history below belongs to that connection";
+    const run = (id: string, commitId: string, boundary = false) => ({
+      id,
+      commitId,
+      state: "success",
+      startedAt: "2026-11-08T00:00:00Z",
+      completedAt: "2026-11-08T00:01:00Z",
+      errorMessage: null,
+      note: boundary ? note : null,
+    });
+    blueprintDetailState.blueprint = bp();
+    // Newest first: connection 3 (two syncs), 2 (two syncs), 1 (one sync).
+    blueprintSyncsState.syncs = [
+      run("exe-dbo4cl1jg4r0393ruu50", "c3000002"),
+      run("exe-dbo4cl1jg4r0393ruu30", "c3000001", true),
+      run("exe-dbo4cl1jg4r0393ruu20", "c2000002"),
+      run("exe-dbo4cl1jg4r0393ruu00", "c2000001", true),
+      run("exe-dbo4cl1jg4r0393rutsg", "c1000001"),
+    ];
+    renderDetailPage();
+
+    expect(await screen.findByText("c3000002")).toBeInTheDocument();
+    const rowOf = (commit: string) =>
+      screen
+        .getAllByRole("row")
+        .find((row) => row.textContent?.includes(commit)) as HTMLElement;
+    expect(screen.getAllByText(note)).toHaveLength(2);
+    for (const commit of ["c3000001", "c2000001"]) {
+      expect(within(rowOf(commit)).getByText(note)).toBeInTheDocument();
+    }
+    for (const commit of ["c3000002", "c2000002", "c1000001"]) {
+      expect(within(rowOf(commit)).queryByText(note)).not.toBeInTheDocument();
+    }
+  });
+
   it("shows the failure reason for an error-state sync row and nothing extraneous for a success row (w6/m50)", async () => {
     blueprintDetailState.blueprint = bp();
     blueprintSyncsState.syncs = [
       {
-        id: "bsr-1",
+        id: "exe-1",
         commitId: "deadbeef",
         state: "error",
         startedAt: "2026-08-20T00:00:00Z",
@@ -455,7 +495,7 @@ describe("BlueprintDetailPage", () => {
         note: null,
       },
       {
-        id: "bsr-2",
+        id: "exe-2",
         commitId: "cafef00d",
         state: "success",
         startedAt: "2026-08-21T00:00:00Z",
