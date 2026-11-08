@@ -159,6 +159,7 @@ function validPreview(
   return {
     found: true,
     commitId,
+    branch: "main",
     error: null,
     reason: null,
     retryable: false,

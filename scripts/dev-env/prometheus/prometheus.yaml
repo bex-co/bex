@@ -175,7 +175,7 @@ spec:
       tolerations: [{ operator: Exists }] # every node local-path can place a volume on
       containers:
         - name: volume-usage
-          image: busybox:1.37
+          image: busybox:1.37@sha256:9db7b59979c38555a39def84a31fb98b5296952f9e3afd4f6f11f05b07adfab0
           command: [sh, /script/volume-usage.sh, serve, /data]
           ports: [{ name: http, containerPort: 19101 }]
           resources:

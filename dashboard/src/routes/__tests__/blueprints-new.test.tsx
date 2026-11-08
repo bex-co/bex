@@ -307,6 +307,7 @@ describe("NewBlueprintPage", () => {
       previewState.preview = {
         found: false,
         commitId: null,
+        branch: null,
         reason,
         retryable,
         error: "github: unexpected status 404",
@@ -341,6 +342,7 @@ describe("NewBlueprintPage", () => {
     previewState.preview = {
       found: false,
       commitId: null,
+      branch: null,
       reason: "invalid_path",
       retryable: false,
       error: "Blueprint path must be a .yaml or .yml file",
@@ -375,6 +377,7 @@ describe("NewBlueprintPage", () => {
     previewState.preview = {
       found: false,
       commitId: null,
+      branch: null,
       reason: null,
       retryable: false,
       error: "anything",
