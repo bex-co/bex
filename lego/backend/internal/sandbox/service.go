@@ -23,6 +23,7 @@ import (
 	"errors"
 	"fmt"
 	"log"
+	"slices"
 	"strconv"
 	"strings"
 	"time"
@@ -40,6 +41,12 @@ const (
 	metadataOwner         = "bex.co/owner"
 	metadataWorkspace     = "bex.co/workspace"
 	metadataNetworkPolicy = "bex.co/network-policy"
+	// metadataEgress is the label the platform egress policies select a Render
+	// sandbox by (w32/m283). It is separate from metadataNetworkPolicy because
+	// sandboxes created before it, and agent sessions, also report deny-all but
+	// must stay off these policies (they keep the legacy allowlist or their
+	// session policy); enforcedPolicyStamp relies on that difference.
+	metadataEgress        = sessionegress.EgressLabel
 	metadataPlan          = "bex.co/plan"
 	metadataRegion        = "bex.co/region"
 	metadataTimeout       = "bex.co/timeout-seconds"
@@ -92,6 +99,15 @@ type SessionEgress interface {
 	Delete(ctx context.Context, namespace, sessionID string) error
 }
 
+// SandboxEgress is the network-mechanism seam for a Render allow-list sandbox
+// (sessionegress.SandboxManager): Apply runs before the sandbox exists, Rules
+// reads the list back for reads, Delete runs after terminate.
+type SandboxEgress interface {
+	Apply(ctx context.Context, namespace, sandboxID string, domains []string) error
+	Rules(ctx context.Context, namespace, sandboxID string) ([]string, error)
+	Delete(ctx context.Context, namespace, sandboxID string) error
+}
+
 // Service is the authorized sandbox feature. It is stateless: the per-workspace
 // tenant key scopes OpenSandbox's own list to the workspace, so OpenSandbox is
 // the source of truth and bex keeps no sandbox table (ADR042 D4). Client nil =>
@@ -115,6 +131,10 @@ type Service struct {
 	// Ordinary Render
 	// sandboxes retain the m35 compatibility policy when it is nil.
 	SessionEgress SessionEgress
+	// SandboxEgress installs a Render allow-list sandbox's per-sandbox policy
+	// (w32/m283). allow-all and deny-all need none (static platform policies
+	// select them by label). nil refuses allow-list creates by name.
+	SandboxEgress SandboxEgress
 	// Metrics reports /v1/sandboxes lifecycle outcomes (w5/m95). nil is a
 	// working no-op, so a Service built without a registry needs no guard.
 	Metrics *Metrics
@@ -164,38 +184,82 @@ func (s *Service) workspaceKey(ctx context.Context) (string, error) {
 	return s.Keys.WorkspaceKey(ctx, ws)
 }
 
+// normalizeNetworkPolicy resolves a create's network policy in Render's
+// semantics: omitted means allow-all; `type` and its deprecated `default`
+// alias must agree; allow-list requires rules and every other policy refuses
+// them. Allow-list domains are validated and canonicalized (sorted, protocol
+// `https`).
 func normalizeNetworkPolicy(policy *NetworkPolicy) (*NetworkPolicy, error) {
 	if policy == nil {
-		return &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil
+		return &NetworkPolicy{Default: NetworkPolicyAllowAll}, nil
 	}
 	if policy.Type != "" && policy.Default != "" && policy.Type != policy.Default {
 		return nil, core.NewBadRequestError(
-			"SANDBOX_NETWORK_POLICY_INVALID",
+			sessionegress.CodeSandboxPolicyInvalid,
 			fmt.Sprintf("sandbox networkPolicy.type %q and its alias networkPolicy.default %q disagree", policy.Type, policy.Default),
 			map[string]any{"field": "networkPolicy.type"},
 		)
 	}
+	kind := policy.Default
 	if policy.Type != "" {
-		policy = &NetworkPolicy{Default: policy.Type, Rules: policy.Rules}
+		kind = policy.Type
 	}
-	if policy.Rules != nil {
-		return nil, core.NewBadRequestError(
-			"SANDBOX_NETWORK_POLICY_UNSUPPORTED",
-			fmt.Sprintf("sandbox networkPolicy.rules are unsupported; only %q is enforced", NetworkPolicyDenyAll),
-			map[string]any{"field": "networkPolicy.rules", "supported": []string{string(NetworkPolicyDenyAll)}},
-		)
+	if kind == "" {
+		// Render: "Either `type` or `default` is required when `networkPolicy`
+		// is provided."
+		return nil, core.NewBadRequestError(sessionegress.CodeSandboxPolicyInvalid,
+			"sandbox networkPolicy needs a type: "+strings.Join(supportedNetworkPolicies, ", "),
+			map[string]any{"field": "networkPolicy.type", "supported": supportedNetworkPolicies})
 	}
-	if policy.Default == "" {
-		return &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil
+	switch kind {
+	case NetworkPolicyAllowAll, NetworkPolicyDenyAll:
+		if policy.Rules != nil {
+			return nil, core.NewBadRequestError(sessionegress.CodeSandboxPolicyInvalid,
+				fmt.Sprintf("sandbox networkPolicy.rules are only accepted with %q", NetworkPolicyAllowList),
+				map[string]any{"field": "networkPolicy.rules"})
+		}
+		return &NetworkPolicy{Default: kind}, nil
+	case NetworkPolicyAllowList:
+		domains := make([]string, 0, len(policy.Rules))
+		for _, rule := range policy.Rules {
+			if rule.Protocol != "" && rule.Protocol != NetworkPolicyProtocolHTTPS {
+				return nil, core.NewBadRequestError(sessionegress.CodeSandboxPolicyInvalid,
+					fmt.Sprintf("sandbox networkPolicy rule protocol %q is unsupported; only %q is accepted", rule.Protocol, NetworkPolicyProtocolHTTPS),
+					map[string]any{"field": "networkPolicy.rules", "reason": "protocol", "domain": rule.Domain})
+			}
+			domains = append(domains, rule.Domain)
+		}
+		canonical, err := sessionegress.SandboxAllowList(domains)
+		if err != nil {
+			return nil, err
+		}
+		return &NetworkPolicy{Default: NetworkPolicyAllowList, Rules: policyRules(canonical)}, nil
 	}
-	if policy.Default != NetworkPolicyDenyAll {
-		return nil, core.NewBadRequestError(
-			"SANDBOX_NETWORK_POLICY_UNSUPPORTED",
-			fmt.Sprintf("sandbox networkPolicy.default %q is unsupported; only %q is enforced", policy.Default, NetworkPolicyDenyAll),
-			map[string]any{"field": "networkPolicy.default", "supported": []string{string(NetworkPolicyDenyAll)}},
-		)
+	return nil, core.NewBadRequestError(sessionegress.CodeSandboxPolicyInvalid,
+		fmt.Sprintf("sandbox networkPolicy.type %q is not one of %s", kind, strings.Join(supportedNetworkPolicies, ", ")),
+		map[string]any{"field": "networkPolicy.type", "supported": supportedNetworkPolicies})
+}
+
+// egressCleanupTimeout bounds a best-effort policy removal that outlives its
+// request, so a hung API server cannot stall a create or terminate response.
+const egressCleanupTimeout = 10 * time.Second
+
+var supportedNetworkPolicies = []string{string(NetworkPolicyAllowAll), string(NetworkPolicyDenyAll), string(NetworkPolicyAllowList)}
+
+func policyRules(domains []string) []NetworkPolicyRule {
+	rules := make([]NetworkPolicyRule, 0, len(domains))
+	for _, domain := range domains {
+		rules = append(rules, NetworkPolicyRule{Domain: domain, Protocol: NetworkPolicyProtocolHTTPS})
 	}
-	return &NetworkPolicy{Default: NetworkPolicyDenyAll}, nil
+	return rules
+}
+
+func ruleDomains(rules []NetworkPolicyRule) []string {
+	domains := make([]string, 0, len(rules))
+	for _, rule := range rules {
+		domains = append(domains, rule.Domain)
+	}
+	return domains
 }
 
 // refuseUnsupportedCreateOptions names the create options bex does not serve, in
@@ -449,7 +513,19 @@ func validOwnedSandbox(raw osSandbox, workspace string) bool {
 		raw.Metadata[metadataOwner] != "" &&
 		raw.Metadata[metadataWorkspace] == workspace &&
 		raw.Metadata[metadataRegime] == metadataSandboxRegime &&
-		raw.Metadata[metadataNetworkPolicy] == string(NetworkPolicyDenyAll)
+		enforcedPolicyStamp(raw.Metadata)
+}
+
+// enforcedPolicyStamp reports whether a sandbox's network-policy stamp names a
+// posture the platform enforces: a w32/m283 sandbox whose egress selector
+// label equals its reported policy, or a legacy deny-all sandbox (no selector
+// label), which the legacy platform allowlist selects.
+func enforcedPolicyStamp(metadata map[string]string) bool {
+	policy, egress := metadata[metadataNetworkPolicy], metadata[metadataEgress]
+	if egress == "" {
+		return policy == string(NetworkPolicyDenyAll)
+	}
+	return policy == egress && slices.Contains(supportedNetworkPolicies, policy)
 }
 
 func (s *Service) mayAccessSandbox(ctx context.Context, workspace string, raw osSandbox) (bool, error) {
@@ -620,8 +696,51 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	}
 	// Mint the tenant-facing id here: OpenSandbox accepts no client-supplied id,
 	// so bex stamps its own and carries it as durable metadata (metadataPublicID).
-	return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, timeout, policy, nil,
-		map[string]string{metadataPublicID: ids.New(ids.Sandbox), metadataIdleTimeout: strconv.Itoa(idle)})
+	publicID := ids.New(ids.Sandbox)
+	extra := map[string]string{
+		metadataPublicID:    publicID,
+		metadataIdleTimeout: strconv.Itoa(idle),
+		metadataEgress:      string(policy.Default),
+	}
+	if policy.Default != NetworkPolicyAllowList {
+		return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, timeout, policy, nil, extra)
+	}
+	// An allow-list's per-sandbox policy exists before the Pod does, so the Pod
+	// is never selected by anything looser than its own rules.
+	if s.SandboxEgress == nil {
+		return Sandbox{}, fmt.Errorf("%w: sandbox allow-list network policies are not configured", core.ErrSandboxesUnavailable)
+	}
+	namespace := store.SandboxNamespace(ws)
+	if err := s.SandboxEgress.Apply(ctx, namespace, publicID, ruleDomains(policy.Rules)); err != nil {
+		return Sandbox{}, err
+	}
+	box, err := s.createResolved(ctx, ws, name, tmpl, plan, req.Region, timeout, policy, nil, extra)
+	if err != nil {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), egressCleanupTimeout)
+		defer cancel()
+		if cleanupErr := s.SandboxEgress.Delete(cleanupCtx, namespace, publicID); cleanupErr != nil {
+			log.Printf("sandbox: remove allow-list policy of failed create %s: %v", publicID, cleanupErr)
+		}
+		return Sandbox{}, err
+	}
+	box.NetworkPolicy = policy
+	return box, nil
+}
+
+// withRules fills an allow-list sandbox's `networkPolicy.rules` from its
+// per-sandbox policy, which is where they live (labels cannot hold them).
+func (s *Service) withRules(ctx context.Context, workspace string, box Sandbox) (Sandbox, error) {
+	if box.NetworkPolicy == nil || box.NetworkPolicy.Default != NetworkPolicyAllowList || s.SandboxEgress == nil {
+		return box, nil
+	}
+	domains, err := s.SandboxEgress.Rules(ctx, store.SandboxNamespace(workspace), box.ID)
+	if err != nil {
+		return Sandbox{}, err
+	}
+	policy := *box.NetworkPolicy
+	policy.Rules = policyRules(domains)
+	box.NetworkPolicy = &policy
+	return box, nil
 }
 
 // createResolved starts a sandbox whose timeout is already resolved in
@@ -1028,6 +1147,11 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 			out = append(out, sandboxFromOpenSandbox(r, ws))
 		}
 	}
+	for i := range out {
+		if out[i], err = s.withRules(ctx, ws, out[i]); err != nil {
+			return nil, err
+		}
+	}
 	return out, nil
 }
 
@@ -1069,7 +1193,7 @@ func (s *Service) Get(ctx context.Context, id string) (Sandbox, error) {
 	if err != nil {
 		return Sandbox{}, err
 	}
-	return sandboxFromOpenSandbox(raw, ws), nil
+	return s.withRules(ctx, ws, sandboxFromOpenSandbox(raw, ws))
 }
 
 // Suspend/Resume/Terminate are the lifecycle verbs; suspend/resume need operate,
@@ -1093,7 +1217,20 @@ func (s *Service) clientResume(ctx context.Context, key string, raw osSandbox) e
 	return s.Client.Resume(ctx, key, raw.ID)
 }
 func (s *Service) clientTerminate(ctx context.Context, key string, raw osSandbox) error {
-	return s.Client.Terminate(ctx, key, raw.ID)
+	if err := s.Client.Terminate(ctx, key, raw.ID); err != nil {
+		return err
+	}
+	// A terminated allow-list sandbox's policy selects nothing any more; remove
+	// it so the namespace does not accumulate them. Failure only leaks an inert
+	// object, so it never fails the terminate.
+	if s.SandboxEgress != nil && raw.Metadata[metadataEgress] == string(NetworkPolicyAllowList) {
+		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), egressCleanupTimeout)
+		defer cancel()
+		if err := s.SandboxEgress.Delete(cleanupCtx, store.SandboxNamespace(raw.Metadata[metadataWorkspace]), canonicalID(raw)); err != nil {
+			log.Printf("sandbox: remove allow-list policy of terminated %s: %v", canonicalID(raw), err)
+		}
+	}
+	return nil
 }
 
 func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Status, op func(context.Context, string, osSandbox) error) error {

@@ -1285,6 +1285,8 @@ func wireSandboxes(ctx context.Context, cfg *Config, deps *api.Deps, cl client.C
 			log.Fatalf("bex-api: %v", err)
 		}
 		deps.SandboxSessionEgress = egress
+		// Render allow-list sandboxes (w32/m283) share the same policy client.
+		deps.SandboxEgress = &sessionegress.SandboxManager{Client: cl}
 		deps.AgentRegistryHosts = egress.RegistryDomains()
 		// `render ea sandbox exec` (m33): bex-api authorizes can_operate and mints a
 		// signed ticket, then reverse-proxies the SSE stream from the isolated SSH

@@ -212,6 +212,13 @@ spec:
     - name: bex-api-service-account
       expression: >-
         request.userInfo.username == 'system:serviceaccount:bex-system:bex-api'
+    # A Render allow-list sandbox's policy (w32/m283) has its own, equally
+    # exact grammar in bex-api-sandbox-egress, whose match condition is the
+    # complement of this one, so every bex-api CiliumNetworkPolicy write is
+    # judged by exactly one of the two.
+    - name: not-a-sandbox-allow-list
+      expression: >-
+        (object != null ? object : oldObject).metadata.?labels['app.kubernetes.io/managed-by'].orValue('') != 'bex-sandbox-egress'
   variables:
     - name: target
       expression: >-
@@ -329,4 +336,136 @@ metadata:
     argocd.argoproj.io/sync-wave: "-2"
 spec:
   policyName: bex-api-session-egress
+  validationActions: [Deny, Audit]
+---
+# Render's sandbox `allow-list` network policy (w32/m283, ADR042 § Sandbox
+# network policies). It is the only per-sandbox egress object bex-api writes —
+# allow-all and deny-all are static platform policies selected by label — and
+# it is confined to the narrowest shape even if bex-api is compromised: one
+# canonical sandbox namespace, a name derived from one sandbox's public id, an
+# endpoint selector naming exactly that sandbox, and exactly two egress rules —
+# CoreDNS filtered to the listed names, and TLS 443 to those names with a
+# matching SNI. No CIDR/entity/service rule, no other port, no gateway hop, no
+# deny or ingress section. Names are lowercase DNS hostnames, optionally with
+# one leading `*.` label, and never a cluster-local or reserved suffix.
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicy
+metadata:
+  name: bex-api-sandbox-egress
+  annotations:
+    argocd.argoproj.io/sync-wave: "-3"
+spec:
+  failurePolicy: Fail
+  matchConstraints:
+    resourceRules:
+      - apiGroups: ["cilium.io"]
+        apiVersions: ["v2"]
+        operations: ["CREATE", "UPDATE", "DELETE"]
+        resources: ["ciliumnetworkpolicies"]
+  matchConditions:
+    - name: bex-api-service-account
+      expression: >-
+        request.userInfo.username == 'system:serviceaccount:bex-system:bex-api'
+    - name: sandbox-allow-list
+      expression: >-
+        (object != null ? object : oldObject).metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-sandbox-egress'
+  variables:
+    - name: target
+      expression: >-
+        object != null ? object : oldObject
+    - name: sandbox
+      expression: >-
+        variables.target.metadata.?labels['bex.co/sandbox-id'].orValue('')
+    - name: canonicalNamespace
+      expression: >-
+        namespaceObject != null &&
+        namespaceObject.metadata.?labels['app.kubernetes.io/managed-by'].orValue('') == 'bex-controlplane' &&
+        namespaceObject.metadata.?labels['app.kubernetes.io/part-of'].orValue('') == 'bex' &&
+        namespaceObject.metadata.?labels['app.bex.co/regime'].orValue('') == 'sandbox' &&
+        namespaceObject.metadata.?labels['app.bex.co/workspace'].orValue('').matches('^tea-[0-9a-v]{20}$') &&
+        namespaceObject.metadata.name == namespaceObject.metadata.labels['app.bex.co/workspace'] + '-sandbox'
+    - name: fqdnRules
+      expression: >-
+        has(variables.target.spec.egress) ? variables.target.spec.egress.filter(rule, has(rule.toFQDNs)) : []
+    - name: dnsRules
+      expression: >-
+        has(variables.target.spec.egress) ? variables.target.spec.egress.filter(rule, has(rule.toEndpoints)) : []
+  validations:
+    - expression: variables.canonicalNamespace
+      reason: Forbidden
+      message: sandbox egress policies are confined to canonical bex-managed sandbox namespaces
+    - expression: >-
+        variables.target.metadata.name.matches('^sandbox-egress-[a-f0-9]{16}$') &&
+        variables.sandbox.matches('^sbx-[0-9a-v]{20}$') &&
+        has(variables.target.spec.endpointSelector.matchLabels) &&
+        size(variables.target.spec.endpointSelector.matchLabels) == 1 &&
+        variables.target.spec.endpointSelector.matchLabels['bex.co/sandbox-id'] == variables.sandbox &&
+        !has(variables.target.spec.endpointSelector.matchExpressions)
+      reason: Forbidden
+      message: sandbox egress policy identity or exact endpoint selector is invalid
+    - expression: >-
+        request.operation == 'DELETE' ||
+        (has(variables.target.spec.egress) && size(variables.target.spec.egress) == 2 &&
+         !has(variables.target.spec.egressDeny) && !has(variables.target.spec.ingress) &&
+         !has(variables.target.spec.ingressDeny) && !has(variables.target.spec.enableDefaultDeny) &&
+         size(variables.fqdnRules) == 1 && size(variables.dnsRules) == 1 &&
+         variables.target.spec.egress.all(rule,
+           !has(rule.toCIDR) && !has(rule.toCIDRSet) && !has(rule.toEntities) && !has(rule.toServices) &&
+           !has(rule.toGroups) && !has(rule.toNodes) && !has(rule.toRequires) && !has(rule.icmps) &&
+           (has(rule.toFQDNs) != has(rule.toEndpoints))))
+      reason: Forbidden
+      message: sandbox egress policies may contain only one DNS rule and one exact FQDN rule
+    - expression: >-
+        request.operation == 'DELETE' ||
+        variables.fqdnRules.all(rule,
+          rule.toFQDNs.size() > 0 && rule.toFQDNs.size() <= 100 &&
+          rule.toFQDNs.all(fqdn,
+            (has(fqdn.matchName) != has(fqdn.matchPattern)) &&
+            (has(fqdn.matchName)
+              ? (size(fqdn.matchName) <= 253 && fqdn.matchName.matches('^[a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)+$') &&
+                 !fqdn.matchName.endsWith('.localhost') && !fqdn.matchName.endsWith('.local') &&
+                 !fqdn.matchName.endsWith('.internal'))
+              : (size(fqdn.matchPattern) <= 253 && fqdn.matchPattern.matches('^[*][.][a-z0-9]([-a-z0-9]*[a-z0-9])?([.][a-z0-9]([-a-z0-9]*[a-z0-9])?)+$') &&
+                 !fqdn.matchPattern.endsWith('.localhost') && !fqdn.matchPattern.endsWith('.local') &&
+                 !fqdn.matchPattern.endsWith('.internal')))) &&
+          has(rule.toPorts) && rule.toPorts.size() == 1 &&
+          rule.toPorts[0].ports.size() == 1 &&
+          rule.toPorts[0].ports[0].port == '443' && rule.toPorts[0].ports[0].protocol == 'TCP' &&
+          !has(rule.toPorts[0].rules) &&
+          has(rule.toPorts[0].serverNames) && rule.toPorts[0].serverNames.size() == rule.toFQDNs.size() &&
+          rule.toPorts[0].serverNames.all(name, rule.toFQDNs.exists(fqdn,
+            fqdn.?matchName.orValue('') == name || fqdn.?matchPattern.orValue('') == name)) &&
+          rule.toFQDNs.all(fqdn, rule.toPorts[0].serverNames.exists(name,
+            fqdn.?matchName.orValue('') == name || fqdn.?matchPattern.orValue('') == name)))
+      reason: Forbidden
+      message: sandbox allow-list egress must use lowercase public DNS names (optionally one leading *. label) with matching TLS SNI on TCP 443
+    - expression: >-
+        request.operation == 'DELETE' ||
+        variables.dnsRules.all(rule,
+          rule.toEndpoints.size() == 1 &&
+          size(rule.toEndpoints[0].matchLabels) == 2 &&
+          rule.toEndpoints[0].matchLabels['k8s:io.kubernetes.pod.namespace'] == 'kube-system' &&
+          rule.toEndpoints[0].matchLabels['k8s:k8s-app'] == 'kube-dns' &&
+          !has(rule.toEndpoints[0].matchExpressions) &&
+          has(rule.toPorts) && rule.toPorts.size() == 1 && rule.toPorts[0].ports.size() == 1 &&
+          rule.toPorts[0].ports[0].port == '53' && rule.toPorts[0].ports[0].protocol == 'ANY' &&
+          has(rule.toPorts[0].rules.dns) && rule.toPorts[0].rules.dns.size() > 0 &&
+          rule.toPorts[0].rules.dns.all(name, (has(name.matchName) != has(name.matchPattern)) &&
+            variables.fqdnRules.exists(public, public.toFQDNs.exists(fqdn,
+              fqdn.?matchName.orValue('-') == name.?matchName.orValue('') ||
+              fqdn.?matchPattern.orValue('-') == name.?matchPattern.orValue('')))) &&
+          variables.fqdnRules.all(public, public.toFQDNs.all(fqdn, rule.toPorts[0].rules.dns.exists(name,
+            fqdn.?matchName.orValue('-') == name.?matchName.orValue('') ||
+            fqdn.?matchPattern.orValue('-') == name.?matchPattern.orValue('')))))
+      reason: Forbidden
+      message: sandbox allow-list DNS is limited to CoreDNS for exactly the allowed names
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingAdmissionPolicyBinding
+metadata:
+  name: bex-api-sandbox-egress
+  annotations:
+    argocd.argoproj.io/sync-wave: "-2"
+spec:
+  policyName: bex-api-sandbox-egress
   validationActions: [Deny, Audit]

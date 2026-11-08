@@ -51,8 +51,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			// malformed request rather than an unsupported feature (w9/067).
 			// Declaring them costs nothing at runtime — neither is ever read
 			// into CreateRequest — and lets the refusal below say what bex does
-			// not support, the way SANDBOX_NETWORK_POLICY_UNSUPPORTED already
-			// does for a policy bex will not claim to enforce.
+			// not support.
 			Env        map[string]string `json:"env"`
 			SnapshotID string            `json:"snapshotId"`
 			// Render CLI v2.29's `--from <name>` sends snapshotName (an ID

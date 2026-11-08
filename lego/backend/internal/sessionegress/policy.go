@@ -439,7 +439,7 @@ func (m *Manager) policy(namespace, sessionID string, phase Phase, modelEndpoint
 		}
 		annotations[postureAnnotation] = postureFull
 		egressRules = []any{
-			dnsRule([]string{credentialGatewayHost}),
+			dnsRule(matchNames([]string{credentialGatewayHost})),
 			gatewayRule(credentialGatewayPort),
 			gatewayRule(m.Config.ModelProxyPort),
 			gatewayRule(m.egressProxyPort()),
@@ -497,8 +497,8 @@ func (m *Manager) allowlistRules(modelHost string, extra []string) []any {
 	dnsNames = uniqueSorted(dnsNames)
 
 	egressRules := []any{
-		dnsRule(dnsNames),
-		fqdnRule(domains),
+		dnsRule(matchNames(dnsNames)),
+		fqdnRule(matchNames(domains), domains),
 		gatewayRule(credentialGatewayPort),
 	}
 	if m.Config.ModelProxyPort != 0 {
@@ -517,7 +517,7 @@ func matchNames(domains []string) []any {
 	return names
 }
 
-func dnsRule(domains []string) map[string]any {
+func dnsRule(selectors []any) map[string]any {
 	return map[string]any{
 		"toEndpoints": []any{map[string]any{"matchLabels": map[string]any{
 			"k8s:io.kubernetes.pod.namespace": "kube-system",
@@ -525,18 +525,20 @@ func dnsRule(domains []string) map[string]any {
 		}}},
 		"toPorts": []any{map[string]any{
 			"ports": []any{map[string]any{"port": "53", "protocol": "ANY"}},
-			"rules": map[string]any{"dns": matchNames(domains)},
+			"rules": map[string]any{"dns": selectors},
 		}},
 	}
 }
 
-func fqdnRule(domains []string) map[string]any {
+// fqdnRule admits TCP 443 to the selected names' learned addresses only with a
+// matching TLS SNI, so a literal-IP connection cannot ride an approved answer.
+func fqdnRule(selectors []any, domains []string) map[string]any {
 	servers := make([]any, 0, len(domains))
 	for _, domain := range domains {
 		servers = append(servers, domain)
 	}
 	return map[string]any{
-		"toFQDNs": matchNames(domains),
+		"toFQDNs": selectors,
 		"toPorts": []any{map[string]any{
 			"ports":       []any{map[string]any{"port": "443", "protocol": "TCP"}},
 			"serverNames": servers,

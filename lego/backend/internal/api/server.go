@@ -375,6 +375,9 @@ type Deps struct {
 	// SandboxSessionEgress renders the namespaced Cilium policy before an agent
 	// session sandbox starts and narrows it at the setup→agent boundary.
 	SandboxSessionEgress sandbox.SessionEgress
+	// SandboxEgress installs a Render allow-list sandbox's per-sandbox Cilium
+	// policy (w32/m283); nil refuses allow-list creates.
+	SandboxEgress sandbox.SandboxEgress
 	// Agent sessions are durable control-plane resources that delegate runtime
 	// mechanism to SandboxClient. All five dependencies are mandatory: the DB
 	// row, first-class OpenFGA tuple writer, sandbox lifecycle, HMAC signer, and
@@ -1215,6 +1218,7 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		Exec:            d.SandboxExec,
 		Meter:           d.SandboxMeter,
 		SessionEgress:   d.SandboxSessionEgress,
+		SandboxEgress:   d.SandboxEgress,
 		Activity:        d.SandboxActivity,
 	}
 }

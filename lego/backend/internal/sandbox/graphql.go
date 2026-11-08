@@ -28,11 +28,35 @@ import (
 // networkPolicyTypeField resolves both `type` and its `default` alias.
 var networkPolicyTypeField = gqlutil.ReqStrField(func(p *NetworkPolicy) any { return string(p.Default) })
 
+var sandboxNetworkPolicyRuleGQLType = graphql.NewObject(graphql.ObjectConfig{
+	Name: "SandboxNetworkPolicyRule",
+	Fields: graphql.Fields{
+		"domain":   gqlutil.ReqStrField(func(r NetworkPolicyRule) any { return r.Domain }),
+		"protocol": gqlutil.ReqStrField(func(r NetworkPolicyRule) any { return r.Protocol }),
+	},
+})
+
 var sandboxNetworkPolicyGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "SandboxNetworkPolicy",
 	Fields: graphql.Fields{
 		"type":    networkPolicyTypeField,
 		"default": networkPolicyTypeField, // Render's deprecated alias of type
+		// Allow-list destinations; null for allow-all and deny-all, as REST
+		// and MCP omit them.
+		"rules": gqlutil.Typed(graphql.NewList(graphql.NewNonNull(sandboxNetworkPolicyRuleGQLType)), func(p *NetworkPolicy) any {
+			if p.Rules == nil {
+				return nil
+			}
+			return p.Rules
+		}),
+	},
+})
+
+var sandboxNetworkPolicyRuleInput = graphql.NewInputObject(graphql.InputObjectConfig{
+	Name: "SandboxNetworkPolicyRuleInput",
+	Fields: graphql.InputObjectConfigFieldMap{
+		"domain":   &graphql.InputObjectFieldConfig{Type: graphql.NewNonNull(graphql.String)},
+		"protocol": &graphql.InputObjectFieldConfig{Type: graphql.String},
 	},
 })
 
@@ -41,8 +65,24 @@ var sandboxNetworkPolicyInput = graphql.NewInputObject(graphql.InputObjectConfig
 	Fields: graphql.InputObjectConfigFieldMap{
 		"type":    &graphql.InputObjectFieldConfig{Type: graphql.String},
 		"default": &graphql.InputObjectFieldConfig{Type: graphql.String},
+		"rules":   &graphql.InputObjectFieldConfig{Type: graphql.NewList(graphql.NewNonNull(sandboxNetworkPolicyRuleInput))},
 	},
 })
+
+// networkPolicyFromArgs decodes the GraphQL input into the shared create shape:
+// an absent `rules` stays nil (so allow-all/deny-all are not refused), a
+// present one — even empty — is passed on for the shared validation.
+func networkPolicyFromArgs(raw map[string]any) *NetworkPolicy {
+	policy := &NetworkPolicy{Default: NetworkPolicyDefault(gqlutil.Str(raw, "default")), Type: NetworkPolicyDefault(gqlutil.Str(raw, "type"))}
+	if items, ok := raw["rules"].([]any); ok {
+		policy.Rules = make([]NetworkPolicyRule, 0, len(items))
+		for _, item := range items {
+			rule, _ := item.(map[string]any)
+			policy.Rules = append(policy.Rules, NetworkPolicyRule{Domain: gqlutil.Str(rule, "domain"), Protocol: gqlutil.Str(rule, "protocol")})
+		}
+	}
+	return policy
+}
 
 // sandboxGQLType is the GraphQL projection of a Sandbox, keeping the third
 // surface behavior-identical to REST/MCP (internal/api/AGENTS.md three-adapter
@@ -119,7 +159,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				var policy *NetworkPolicy
 				if raw, ok := p.Args["networkPolicy"].(map[string]any); ok {
-					policy = &NetworkPolicy{Default: NetworkPolicyDefault(gqlutil.Str(raw, "default")), Type: NetworkPolicyDefault(gqlutil.Str(raw, "type"))}
+					policy = networkPolicyFromArgs(raw)
 				}
 				return s.Create(p.Context, CreateRequest{
 					OwnerID:            gqlutil.Str(p.Args, "ownerId"),

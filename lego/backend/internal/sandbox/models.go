@@ -135,36 +135,52 @@ type Sandbox struct {
 	Image string `json:"image,omitempty"`
 }
 
-// NetworkPolicy mirrors Render's per-sandbox outbound posture. The gVisor
-// substrate currently supports only deny-all: Cilium supplies the
-// platform-managed DNS/FQDN allowlist outside the guest. Accepting allow-all
-// would claim a posture the platform intentionally cannot provide.
+// NetworkPolicy mirrors Render's per-sandbox outbound posture (w32/m283,
+// ADR042 § Sandbox network policies): `allow-all` (Render's default) reaches
+// any public destination on any protocol, `allow-list` reaches only the listed
+// hostnames over HTTPS, and `deny-all` reaches nothing. Under every policy the
+// platform floor stays denied (cluster, node, metadata, private ranges, other
+// tenants); Cilium enforces it outside the gVisor guest.
 //
 // Render renamed the field to `type` and kept `default` as a deprecated alias
 // that requests may send and responses always echo (Render CLI v2.29 sends
 // `type`). Requests may carry either; normalizeNetworkPolicy folds them into
-// Default, and MarshalJSON writes both. `rules` (allow-list destinations) is
-// decoded only to be refused by name, never applied.
+// Default, and MarshalJSON writes both.
 type NetworkPolicy struct {
 	Default NetworkPolicyDefault `json:"default,omitempty"`
 	Type    NetworkPolicyDefault `json:"type,omitempty"`
-	Rules   any                  `json:"rules,omitempty"`
+	// Rules are the allow-list destinations: required for allow-list and
+	// refused for any other policy, as on Render.
+	Rules []NetworkPolicyRule `json:"rules,omitempty"`
 }
 
-// MarshalJSON writes Render's response shape: `type` and its `default` alias.
+// NetworkPolicyRule is one Render allow-list destination. Protocol is always
+// `https` (Render accepts no other value and defaults to it).
+type NetworkPolicyRule struct {
+	Domain   string `json:"domain"`
+	Protocol string `json:"protocol,omitempty"`
+}
+
+// MarshalJSON writes Render's response shape: `type`, its `default` alias and,
+// for an allow-list, its rules.
 func (p NetworkPolicy) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Type    NetworkPolicyDefault `json:"type"`
 		Default NetworkPolicyDefault `json:"default"`
-	}{p.Default, p.Default})
+		Rules   []NetworkPolicyRule  `json:"rules,omitempty"`
+	}{p.Default, p.Default, p.Rules})
 }
 
-// NetworkPolicyDefault is Render's exact sandboxNetworkPolicy.default enum.
+// NetworkPolicyProtocolHTTPS is the only allow-list rule protocol Render accepts.
+const NetworkPolicyProtocolHTTPS = "https"
+
+// NetworkPolicyDefault is Render's exact sandboxNetworkPolicy.type enum.
 type NetworkPolicyDefault string
 
 const (
-	NetworkPolicyAllowAll NetworkPolicyDefault = "allow-all"
-	NetworkPolicyDenyAll  NetworkPolicyDefault = "deny-all"
+	NetworkPolicyAllowAll  NetworkPolicyDefault = "allow-all"
+	NetworkPolicyDenyAll   NetworkPolicyDefault = "deny-all"
+	NetworkPolicyAllowList NetworkPolicyDefault = "allow-list"
 )
 
 // SandboxEnvelope wraps a Sandbox for the Render CLI's list surface, which reads

@@ -70,10 +70,12 @@ session_label="${run_id}-agent-session"
 sandbox_a_id=""
 sandbox_b_id=""
 sandbox_c_id=""
+sandbox_d_id=""
 sandbox_agent_id=""
 cr_a=""
 cr_b=""
 cr_c=""
+cr_d=""
 cr_agent=""
 hubble_agent_pod=""
 fixtures_started=false
@@ -110,6 +112,7 @@ cleanup() {
   [ -n "$sandbox_a_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_a_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-a.json" >/dev/null
   [ -n "$sandbox_b_id" ] && api_call "$fixture_dir/member-b.curl" POST "/v1/sandboxes/$sandbox_b_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-b.json" >/dev/null
   [ -n "$sandbox_c_id" ] && api_call "$fixture_dir/owner-c.curl" POST "/v1/sandboxes/$sandbox_c_id/terminate?ownerId=$BEX_WORKSPACE_B" "$fixture_dir/cleanup-c.json" >/dev/null
+  [ -n "$sandbox_d_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_d_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-d.json" >/dev/null
   [ -n "$sandbox_agent_id" ] && api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes/$sandbox_agent_id/terminate?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/cleanup-agent.json" >/dev/null
   kubectl -n "$BEX_WORKSPACE_A" delete pod "$hosting_pod" --ignore-not-found --wait=false >/dev/null 2>&1
   kubectl -n bex-system delete pod "$platform_pod" --ignore-not-found --wait=false >/dev/null 2>&1
@@ -124,6 +127,8 @@ cleanup() {
   [ -n "$cr_a" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_a" --ignore-not-found --wait=false >/dev/null 2>&1
   [ -n "$cr_b" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_b" --ignore-not-found --wait=false >/dev/null 2>&1
   [ -n "$cr_c" ] && kubectl -n "$namespace_b" delete batchsandbox "$cr_c" --ignore-not-found --wait=false >/dev/null 2>&1
+  [ -n "$cr_d" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_d" --ignore-not-found --wait=false >/dev/null 2>&1
+  [ -n "$sandbox_d_id" ] && kubectl -n "$namespace_a" delete ciliumnetworkpolicy -l "bex.co/sandbox-id=$sandbox_d_id" --ignore-not-found >/dev/null 2>&1
   [ -n "$cr_agent" ] && kubectl -n "$namespace_a" delete batchsandbox "$cr_agent" --ignore-not-found --wait=false >/dev/null 2>&1
   rm -rf "$fixture_dir"
 }
@@ -157,6 +162,7 @@ preflight_cluster() {
   for resource in \
     ciliumclusterwidenetworkpolicy/sandbox-egress-default-deny \
     ciliumclusterwidenetworkpolicy/sandbox-egress-legacy-allowlist \
+    ciliumclusterwidenetworkpolicy/sandbox-egress-allow-all \
     ciliumclusterwidenetworkpolicy/sandbox-execd-ingress \
     ciliumclusterwidenetworkpolicy/sandbox-agent-driver-ingress \
     ciliumclusterwidenetworkpolicy/opensandbox-server-ingress \
@@ -171,7 +177,9 @@ preflight_cluster() {
     validatingadmissionpolicy/bex-api-tenant-namespace-objects \
     validatingadmissionpolicybinding/bex-api-tenant-namespace-objects \
     validatingadmissionpolicy/bex-api-session-egress \
-    validatingadmissionpolicybinding/bex-api-session-egress; do
+    validatingadmissionpolicybinding/bex-api-session-egress \
+    validatingadmissionpolicy/bex-api-sandbox-egress \
+    validatingadmissionpolicybinding/bex-api-sandbox-egress; do
     kubectl get "$resource" >/dev/null 2>&1 \
       || fail "required hardening resource $resource is not deployed"
   done
@@ -266,11 +274,13 @@ expect_status() {
   [ "$got" = "$want" ] || fail "$method $path returned $got, want $want"
 }
 
+# create_sandbox <auth> <workspace> <output> <networkPolicy JSON>: Render's
+# three postures (w32/m283) — allow-all (the default), deny-all, allow-list.
 create_sandbox() {
-  local auth_file="$1" workspace="$2" output="$3"
+  local auth_file="$1" workspace="$2" output="$3" policy="$4"
   expect_status 201 "$auth_file" POST "/v1/sandboxes" "$output" \
     --header 'Content-Type: application/json' \
-    --data "{\"ownerId\":\"$workspace\",\"plan\":\"starter\",\"networkPolicy\":{\"default\":\"deny-all\"}}"
+    --data "{\"ownerId\":\"$workspace\",\"plan\":\"starter\",\"networkPolicy\":$policy}"
   jq -er '.id' "$output"
 }
 
@@ -281,21 +291,25 @@ if [ "${BEX_PREFLIGHT_ONLY:-0}" = 1 ]; then
 fi
 fixtures_started=true
 
-echo "==> create two sandboxes in workspace A and one in workspace B"
-allow_all_status="$(api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes" "$fixture_dir/allow-all.json" \
+echo "==> create three sandboxes in workspace A and one in workspace B"
+# An allow-list needs rules; the refusal is named and precedes any runtime call.
+invalid_policy_status="$(api_call "$fixture_dir/owner-a.curl" POST "/v1/sandboxes" "$fixture_dir/invalid-policy.json" \
   --header 'Content-Type: application/json' \
-  --data "{\"ownerId\":\"$BEX_WORKSPACE_A\",\"networkPolicy\":{\"default\":\"allow-all\"}}")"
-if [ "$allow_all_status" != 400 ]; then
-  if [[ "$allow_all_status" =~ ^2 ]] && jq -e '.id' "$fixture_dir/allow-all.json" >/dev/null 2>&1; then
-    sandbox_a_id="$(jq -er '.id' "$fixture_dir/allow-all.json")"
+  --data "{\"ownerId\":\"$BEX_WORKSPACE_A\",\"networkPolicy\":{\"type\":\"allow-list\"}}")"
+if [ "$invalid_policy_status" != 400 ]; then
+  if [[ "$invalid_policy_status" =~ ^2 ]] && jq -e '.id' "$fixture_dir/invalid-policy.json" >/dev/null 2>&1; then
+    sandbox_d_id="$(jq -er '.id' "$fixture_dir/invalid-policy.json")"
   fi
-  fail "allow-all create returned $allow_all_status, want 400"
+  fail "allow-list without rules returned $invalid_policy_status, want 400"
 fi
-[ "$(jq -r '.code' "$fixture_dir/allow-all.json")" = "SANDBOX_NETWORK_POLICY_UNSUPPORTED" ] \
-  || fail "allow-all did not return SANDBOX_NETWORK_POLICY_UNSUPPORTED"
-sandbox_a_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-a.json")"
-sandbox_b_id="$(create_sandbox "$fixture_dir/member-b.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-b.json")"
-sandbox_c_id="$(create_sandbox "$fixture_dir/owner-c.curl" "$BEX_WORKSPACE_B" "$fixture_dir/sandbox-c.json")"
+[ "$(jq -r '.code' "$fixture_dir/invalid-policy.json")" = "SANDBOX_NETWORK_POLICY_INVALID" ] \
+  || fail "allow-list without rules did not return SANDBOX_NETWORK_POLICY_INVALID"
+# A is the attacker: allow-all is the most permissive tenant posture, so every
+# floor probe below runs against it. B and C are deny-all; D is an allow-list.
+sandbox_a_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-a.json" '{"type":"allow-all"}')"
+sandbox_b_id="$(create_sandbox "$fixture_dir/member-b.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-b.json" '{"type":"deny-all"}')"
+sandbox_c_id="$(create_sandbox "$fixture_dir/owner-c.curl" "$BEX_WORKSPACE_B" "$fixture_dir/sandbox-c.json" '{"type":"deny-all"}')"
+sandbox_d_id="$(create_sandbox "$fixture_dir/owner-a.curl" "$BEX_WORKSPACE_A" "$fixture_dir/sandbox-d.json" '{"type":"allow-list","rules":[{"domain":"api.github.com","protocol":"https"}]}')"
 if [ "$verify_agent_driver" = 1 ]; then
   expect_status 201 "$fixture_dir/owner-a.curl" POST "/v1/sandboxes" "$fixture_dir/sandbox-agent.json" \
     --header 'Content-Type: application/json' \
@@ -307,11 +321,17 @@ fi
 owner_a="$(jq -er '.owner' "$fixture_dir/sandbox-a.json")"
 owner_b="$(jq -er '.owner' "$fixture_dir/sandbox-b.json")"
 [ "$owner_a" != "$owner_b" ] || fail "the two workspace-A identities resolved to the same sandbox owner"
-for file in sandbox-a.json sandbox-b.json sandbox-c.json; do
-  [ "$(jq -r '.networkPolicy.default' "$fixture_dir/$file")" = "deny-all" ] \
-    || fail "$file did not return the enforced deny-all policy"
+for expectation in sandbox-a.json:allow-all sandbox-b.json:deny-all sandbox-c.json:deny-all sandbox-d.json:allow-list; do
+  file="${expectation%%:*}" want="${expectation#*:}"
+  [ "$(jq -r '.networkPolicy.type + ":" + .networkPolicy.default' "$fixture_dir/$file")" = "$want:$want" ] \
+    || fail "$file did not return the requested $want policy"
 done
-pass "public create returns durable deny-all policy for three distinct principals"
+jq -e '.networkPolicy.rules == [{"domain":"api.github.com","protocol":"https"}]' "$fixture_dir/sandbox-d.json" >/dev/null \
+  || fail "the allow-list sandbox did not echo its rules"
+expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$sandbox_d_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/get-allow-list.json"
+jq -e '.networkPolicy.rules == [{"domain":"api.github.com","protocol":"https"}]' "$fixture_dir/get-allow-list.json" >/dev/null \
+  || fail "a read of the allow-list sandbox lost its rules"
+pass "public create returns each Render network policy durably for distinct principals"
 
 echo "==> verify owner/member/admin and cross-workspace behavior"
 expect_status 200 "$fixture_dir/owner-a.curl" GET "/v1/sandboxes/$sandbox_a_id?ownerId=$BEX_WORKSPACE_A" "$fixture_dir/get-own.json"
@@ -332,9 +352,15 @@ jq -e --arg a "$sandbox_a_id" --arg b "$sandbox_b_id" \
 pass "owner isolation fails closed and can_manage is the sole override"
 
 find_batchsandbox() {
-  local namespace="$1" id="$2" owner="$3" template="$4"
+  local namespace="$1" id="$2" owner="$3" template="$4" by_label
   if kubectl -n "$namespace" get batchsandbox "$id" >/dev/null 2>&1; then
     printf '%s\n' "$id"
+    return
+  fi
+  # The public `sbx-` id rides the bex.co/sandbox-id label (ADR042 D4).
+  by_label="$(kubectl -n "$namespace" get batchsandboxes -l "bex.co/sandbox-id=$id" -o jsonpath='{.items[0].metadata.name}' 2>/dev/null)"
+  if [ -n "$by_label" ]; then
+    printf '%s\n' "$by_label"
     return
   fi
   kubectl -n "$namespace" get batchsandboxes -o json | jq -er \
@@ -350,6 +376,7 @@ cr_a="$(find_batchsandbox "$namespace_a" "$sandbox_a_id" "$owner_a" base)"
 cr_b="$(find_batchsandbox "$namespace_a" "$sandbox_b_id" "$owner_b" base)"
 owner_c="$(jq -er '.owner' "$fixture_dir/sandbox-c.json")"
 cr_c="$(find_batchsandbox "$namespace_b" "$sandbox_c_id" "$owner_c" base)"
+cr_d="$(find_batchsandbox "$namespace_a" "$sandbox_d_id" "$owner_a" base)"
 if [ "$verify_agent_driver" = 1 ]; then
   owner_agent="$(jq -er '.owner' "$fixture_dir/sandbox-agent.json")"
   cr_agent="$(find_batchsandbox "$namespace_a" "$sandbox_agent_id" "$owner_agent" agent)"
@@ -372,6 +399,7 @@ find_ready_pod() {
 pod_a="$(find_ready_pod "$namespace_a" "$cr_a")" || fail "sandbox A never reached Ready"
 pod_b="$(find_ready_pod "$namespace_a" "$cr_b")" || fail "sandbox B never reached Ready"
 pod_c="$(find_ready_pod "$namespace_b" "$cr_c")" || fail "sandbox C never reached Ready"
+pod_d="$(find_ready_pod "$namespace_a" "$cr_d")" || fail "sandbox D never reached Ready"
 if [ "$verify_agent_driver" = 1 ]; then
   pod_agent="$(find_ready_pod "$namespace_a" "$cr_agent")" \
     || fail "agent sandbox never reached Ready"
@@ -383,6 +411,7 @@ workload_container() {
 }
 container_a="$(workload_container "$namespace_a" "$pod_a")"
 container_b="$(workload_container "$namespace_a" "$pod_b")"
+container_d="$(workload_container "$namespace_a" "$pod_d")"
 if [ "$verify_agent_driver" = 1 ]; then
   container_agent="$(workload_container "$namespace_a" "$pod_agent")"
 fi
@@ -399,11 +428,13 @@ CGO_ENABLED=0 GOOS=linux GOARCH="$sandbox_arch" go build -trimpath -o "$probe_bi
 # hand-written copy drifted from it for 2.5 months unseen (d2b00c61e).
 (cd lego/backend && GOWORK=off go build -o "$fixture_dir/render-policy" ./internal/sessionegress/cmd/render-policy) \
   || fail "could not build the session egress policy renderer"
-kubectl -n "$namespace_a" exec -i "$pod_a" -c "$container_a" -- /bin/sh -c \
-  'umask 077; /bin/busybox cat > /tmp/m35-netprobe && chmod 700 /tmp/m35-netprobe' \
-  <"$probe_binary" || fail "could not install the network probe in the attacker sandbox"
+for tuple in "$pod_a:$container_a" "$pod_b:$container_b" "$pod_d:$container_d"; do
+  kubectl -n "$namespace_a" exec -i "${tuple%%:*}" -c "${tuple#*:}" -- /bin/sh -c \
+    'umask 077; /bin/busybox cat > /tmp/m35-netprobe && chmod 700 /tmp/m35-netprobe' \
+    <"$probe_binary" || fail "could not install the network probe in sandbox ${tuple%%:*}"
+done
 
-sandbox_workloads=("$namespace_a:$pod_a:$container_a" "$namespace_a:$pod_b:$container_b")
+sandbox_workloads=("$namespace_a:$pod_a:$container_a" "$namespace_a:$pod_b:$container_b" "$namespace_a:$pod_d:$container_d")
 if [ "$verify_agent_driver" = 1 ]; then
   sandbox_workloads+=("$namespace_a:$pod_agent:$container_agent")
 fi
@@ -454,6 +485,8 @@ expect_status 404 "$fixture_dir/owner-c.curl" POST \
 pass "owner/admin exec succeeds while cross-owner and cross-workspace exec hide existence"
 
 exec_a() { kubectl -n "$namespace_a" exec "$pod_a" -c "$container_a" -- "$@"; }
+exec_b() { kubectl -n "$namespace_a" exec "$pod_b" -c "$container_b" -- "$@"; }
+exec_d() { kubectl -n "$namespace_a" exec "$pod_d" -c "$container_d" -- "$@"; }
 python_tcp_probe='import socket,sys; s=socket.create_connection((sys.argv[1],int(sys.argv[2])),5); s.close()'
 
 expect_denied() {
@@ -577,17 +610,47 @@ expect_denied "sandbox to Kubernetes API" exec_a /tmp/m35-netprobe tcp "$api_ser
 expect_denied "sandbox to node/kubelet" exec_a /tmp/m35-netprobe tcp "$node_ip" 10250
 expect_denied "sandbox to cloud metadata" exec_a /tmp/m35-netprobe tcp 169.254.169.254 80
 
+# Render's three postures (w32/m283). A is allow-all: any public destination,
+# any protocol — yet the floor above (peers, hosting, platform, node, metadata)
+# held for it, and a private target stays unreachable even with a public SNI.
+expect_allowed "allow-all resolves any public name" exec_a /tmp/m35-netprobe resolve www.github.com
+expect_allowed "allow-all reaches any public HTTPS host" exec_a /tmp/m35-netprobe tls example.com 443 example.com
+expect_allowed "allow-all reaches a public non-HTTPS port" exec_a /tmp/m35-netprobe tcp 1.1.1.1 53
+expect_denied "private Kubernetes API target with approved SNI" exec_a /tmp/m35-netprobe tls "$api_server_ip" 443 api.github.com
+expect_denied "allow-all to a private-range address" exec_a /tmp/m35-netprobe tcp 10.255.255.254 443
+
+# B is deny-all: no DNS and no public destination at all.
+expect_denied "deny-all DNS resolution" exec_b /tmp/m35-netprobe resolve api.github.com
+expect_denied "deny-all public HTTPS by IP" exec_b /tmp/m35-netprobe tls 1.1.1.1 443 one.one.one.one
+expect_denied "deny-all public non-HTTPS port" exec_b /tmp/m35-netprobe tcp 1.1.1.1 53
+
+# D is an allow-list of api.github.com: that name over HTTPS and nothing else.
 # www.github.com is publicly resolvable but is intentionally absent from the
 # exact allowlist, so failure demonstrates DNS policy rather than NXDOMAIN.
-expect_denied "unapproved DNS name resolution" exec_a /tmp/m35-netprobe resolve www.github.com
-expect_denied "unique DNS-exfiltration query" exec_a /tmp/m35-netprobe resolve "${run_id}.attacker.test"
-expect_allowed "approved FQDN with TLS SNI" exec_a /tmp/m35-netprobe tls api.github.com 443 api.github.com
-expect_denied "unapproved public FQDN" exec_a /tmp/m35-netprobe tls example.com 443 example.com
-approved_ip="$(exec_a /tmp/m35-netprobe resolve api.github.com | tail -1)"
-[ -n "$approved_ip" ] || fail "could not resolve api.github.com inside the sandbox"
-expect_denied "approved destination by literal IP/wrong SNI" exec_a /tmp/m35-netprobe tls "$approved_ip" 443 example.com
-expect_allowed "learned approved public IP with approved SNI" exec_a /tmp/m35-netprobe tls "$approved_ip" 443 api.github.com
-expect_denied "private Kubernetes API target with approved SNI" exec_a /tmp/m35-netprobe tls "$api_server_ip" 443 api.github.com
+expect_denied "unapproved DNS name resolution" exec_d /tmp/m35-netprobe resolve www.github.com
+expect_denied "unique DNS-exfiltration query" exec_d /tmp/m35-netprobe resolve "${run_id}.attacker.test"
+expect_allowed "approved FQDN with TLS SNI" exec_d /tmp/m35-netprobe tls api.github.com 443 api.github.com
+expect_denied "unapproved public FQDN" exec_d /tmp/m35-netprobe tls example.com 443 example.com
+approved_ip="$(exec_d /tmp/m35-netprobe resolve api.github.com | tail -1)"
+[ -n "$approved_ip" ] || fail "could not resolve api.github.com inside the allow-list sandbox"
+expect_denied "approved destination by literal IP/wrong SNI" exec_d /tmp/m35-netprobe tls "$approved_ip" 443 example.com
+expect_allowed "learned approved public IP with approved SNI" exec_d /tmp/m35-netprobe tls "$approved_ip" 443 api.github.com
+expect_denied "allow-list non-HTTPS port to the approved address" exec_d /tmp/m35-netprobe tcp "$approved_ip" 22
+expect_denied "allow-list private Kubernetes API target with approved SNI" exec_d /tmp/m35-netprobe tls "$api_server_ip" 443 api.github.com
+expect_denied "allow-list to cloud metadata" exec_d /tmp/m35-netprobe tcp 169.254.169.254 80
+kubectl -n "$namespace_a" get ciliumnetworkpolicy -l "bex.co/sandbox-id=$sandbox_d_id" -o json \
+  | jq -e '.items | length == 1' >/dev/null \
+  || fail "the allow-list sandbox has no single per-sandbox egress policy"
+pass "each Render network policy enforces its own destinations above the platform floor"
+# bex-api wrote D's policy; even bex-api cannot widen it into a CIDR rule.
+if kubectl -n "$namespace_a" get ciliumnetworkpolicy -l "bex.co/sandbox-id=$sandbox_d_id" -o json \
+  | jq '.items[0] | .spec.egress += [{"toCIDR":["0.0.0.0/0"]}]' \
+  | kubectl replace --dry-run=server --as "$bex_api_as" -f - >"$fixture_dir/sandbox-cidr-deny.txt" 2>&1; then
+  fail "sandbox egress admission allowed a public CIDR escape hatch"
+fi
+grep -Eq 'Forbidden|one DNS rule and one exact FQDN rule' "$fixture_dir/sandbox-cidr-deny.txt" \
+  || fail "sandbox CIDR policy failed without admission-boundary evidence"
+pass "bex-api-sandbox-egress refuses to widen an allow-list"
 
 echo "==> verify agent-session setup/agent egress phases (registries open in both)"
 render_session_policy() { # <setup|agent>: the policy bex-api applies for this session
@@ -637,6 +700,9 @@ expect_eventually allowed "agent-phase GitHub baseline" exec_a /tmp/m35-netprobe
 expect_eventually allowed "agent-phase tenant allowlisted destination" exec_a /tmp/m35-netprobe tls example.com 443 example.com
 expect_eventually denied "agent-phase non-allowlisted destination" exec_a /tmp/m35-netprobe tls www.github.com 443 www.github.com
 expect_denied "agent-phase same-workspace cross-sandbox isolation" exec_a /tmp/m35-netprobe tcp "$pod_b_ip" 44772
+# Labeled into the session posture, A left allow-all: its DNS is filtered again,
+# and this unique query is the drop the Hubble evidence below looks for.
+expect_eventually denied "session-posture DNS-exfiltration query" exec_a /tmp/m35-netprobe resolve "${run_id}.attacker.test"
 pass "agent phase keeps the exact baseline, the package registries and the prepared tenant widening"
 
 kubectl -n bex-system run "$platform_pod" --image "$python_image" --restart Never \

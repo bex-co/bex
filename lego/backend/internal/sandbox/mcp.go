@@ -74,7 +74,7 @@ type execSandboxArgs struct {
 // Render `ea sandbox create` intent; sandbox_exec runs a command via the same
 // authorized gateway path the CLI uses, returning buffered output (no SSE dance).
 func (s *Service) RegisterMCP(server *mcp.Server) {
-	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: "Create a hosted agent sandbox from a registered template and return its id and status."},
+	mcputil.AddTool(server, &mcp.Tool{Name: "spawn_sandbox", Description: "Create a hosted agent sandbox from a registered template and return its id and status. networkPolicy is Render's: omitted means allow-all (any public destination); {type:\"deny-all\"} blocks all outbound traffic; {type:\"allow-list\", rules:[{domain}]} allows only HTTPS to the listed hostnames (a leading *. covers one subdomain level)."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in spawnSandboxArgs) (*mcp.CallToolResult, Sandbox, error) {
 			sb, err := s.Create(ctx, CreateRequest{
 				OwnerID:            in.OwnerID,

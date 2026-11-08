@@ -1832,10 +1832,42 @@ if [ -f "$EGRESS" ]; then
   legacy_selector="$(yq -N \
     'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-legacy-allowlist") |
       [.spec.endpointSelector.matchLabels."app.bex.co/regime",
-       (.spec.endpointSelector.matchExpressions[] | select(.key == "bex.co/agent-session") | .operator)] | join(":")' \
+       (.spec.endpointSelector.matchExpressions[] | select(.key == "bex.co/agent-session") | .operator),
+       (.spec.endpointSelector.matchExpressions[] | select(.key == "bex.co/egress") | .operator)] | join(":")' \
     "$EGRESS" | tr -d '\n')"
-  [ "$legacy_selector" = "sandbox:DoesNotExist" ] \
-    || { echo "FAIL: legacy sandbox egress policy does not exclude agent sessions: '$legacy_selector'" >&2; fail=1; }
+  [ "$legacy_selector" = "sandbox:DoesNotExist:DoesNotExist" ] \
+    || { echo "FAIL: legacy sandbox egress policy must exclude agent sessions and Render-policy sandboxes (bex.co/egress): '$legacy_selector'" >&2; fail=1; }
+
+  # Render's allow-all sandbox posture (w32/m283): any public destination, but
+  # only for Pods bex stamped allow-all, never agent sessions, never a private,
+  # loopback, link-local or reserved range, and never an entity rule (which
+  # would admit nodes or the cluster). The structural deny above still wins.
+  allow_all_shape="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-allow-all") |
+      [.spec.endpointSelector.matchLabels."app.bex.co/regime",
+       .spec.endpointSelector.matchLabels."bex.co/egress",
+       (.spec.endpointSelector.matchLabels | length | tostring),
+       (.spec.endpointSelector.matchExpressions[] | select(.key == "bex.co/agent-session") | .operator),
+       (.spec.egress | length | tostring),
+       (.spec.egress[0].toEndpoints[0].matchLabels."k8s:k8s-app"),
+       .spec.egress[0].toPorts[0].ports[0].port,
+       (.spec.egress[1].toCIDRSet | map(.cidr) | join(",")),
+       ((.spec.egressDeny // []) | length | tostring)] | join(":")' \
+    "$EGRESS" | tr -d '\n')"
+  [ "$allow_all_shape" = "sandbox:allow-all:2:DoesNotExist:2:kube-dns:53:0.0.0.0/0,::/0:0" ] \
+    || { echo "FAIL: sandbox-egress-allow-all shape is '$allow_all_shape'" >&2; fail=1; }
+  allow_all_excepts="$(yq -N \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-allow-all") |
+      .spec.egress[1].toCIDRSet[].except[]' "$EGRESS" | LC_ALL=C sort | paste -sd, -)"
+  [ "$allow_all_excepts" = "0.0.0.0/8,10.0.0.0/8,100.64.0.0/10,127.0.0.0/8,169.254.0.0/16,172.16.0.0/12,192.0.0.0/24,192.168.0.0/16,198.18.0.0/15,224.0.0.0/4,240.0.0.0/4,::1/128,fc00::/7,fe80::/10,ff00::/8" ] \
+    || { echo "FAIL: sandbox-egress-allow-all except list drifted: '$allow_all_excepts'" >&2; fail=1; }
+  if yq -e \
+    'select(.kind == "CiliumClusterwideNetworkPolicy" and .metadata.name == "sandbox-egress-allow-all") |
+      .spec.egress[] | select(has("toEntities") or has("toServices") or has("toCIDR") or has("toFQDNs"))' \
+    "$EGRESS" >/dev/null 2>&1; then
+    echo "FAIL: sandbox-egress-allow-all carries an entity/service/CIDR/FQDN rule beyond its excepted CIDR set" >&2
+    fail=1
+  fi
 
   expected_sandbox_names=$'api.anthropic.com\napi.github.com\napi.openai.com\nfiles.pythonhosted.org\ngithub.com\nobjects.githubusercontent.com\npypi.org\nraw.githubusercontent.com\nregistry.npmjs.org'
   expected_sandbox_dns_names=$'api.anthropic.com\napi.github.com\napi.openai.com\nbex-ssh-gateway.bex-system.svc.cluster.local\nfiles.pythonhosted.org\ngithub.com\nobjects.githubusercontent.com\npypi.org\nraw.githubusercontent.com\nregistry.npmjs.org'
@@ -1975,6 +2007,7 @@ if [ -f "$EGRESS" ]; then
     'select(.kind == "CiliumClusterwideNetworkPolicy" and
       (.metadata.name == "sandbox-egress-default-deny" or
        .metadata.name == "sandbox-egress-legacy-allowlist" or
+       .metadata.name == "sandbox-egress-allow-all" or
        .metadata.name == "sandbox-execd-ingress" or
        .metadata.name == "opensandbox-server-ingress" or
        .metadata.name == "sandbox-exec-gateway-ingress" or
@@ -2228,14 +2261,14 @@ expected_namespace_object_verbs=$'ciliumnetworkpolicies:create,delete,get,update
 namespace_admission_render="$(kubectl kustomize deploy/gitops/base | yq \
   'select((.kind == "ValidatingAdmissionPolicy" or .kind == "ValidatingAdmissionPolicyBinding") and
     (.metadata.name == "bex-api-tenant-namespaces" or .metadata.name == "bex-api-tenant-namespace-objects" or
-     .metadata.name == "bex-api-session-egress"))')"
+     .metadata.name == "bex-api-session-egress" or .metadata.name == "bex-api-sandbox-egress"))')"
 namespace_admission_objects="$(yq -N \
   '[.kind, .metadata.name,
     (.metadata.annotations."argocd.argoproj.io/sync-wave" // ""),
     (.spec.failurePolicy // ""),
     ((.spec.validationActions // []) | join(","))] | join(":")' \
   - <<<"$namespace_admission_render" | sort)"
-expected_namespace_admission_objects=$'ValidatingAdmissionPolicy:bex-api-session-egress:-3:Fail:\nValidatingAdmissionPolicy:bex-api-tenant-namespace-objects:-3:Fail:\nValidatingAdmissionPolicy:bex-api-tenant-namespaces:-3:Fail:\nValidatingAdmissionPolicyBinding:bex-api-session-egress:-2::Deny,Audit\nValidatingAdmissionPolicyBinding:bex-api-tenant-namespace-objects:-2::Deny,Audit\nValidatingAdmissionPolicyBinding:bex-api-tenant-namespaces:-2::Deny,Audit'
+expected_namespace_admission_objects=$'ValidatingAdmissionPolicy:bex-api-sandbox-egress:-3:Fail:\nValidatingAdmissionPolicy:bex-api-session-egress:-3:Fail:\nValidatingAdmissionPolicy:bex-api-tenant-namespace-objects:-3:Fail:\nValidatingAdmissionPolicy:bex-api-tenant-namespaces:-3:Fail:\nValidatingAdmissionPolicyBinding:bex-api-sandbox-egress:-2::Deny,Audit\nValidatingAdmissionPolicyBinding:bex-api-session-egress:-2::Deny,Audit\nValidatingAdmissionPolicyBinding:bex-api-tenant-namespace-objects:-2::Deny,Audit\nValidatingAdmissionPolicyBinding:bex-api-tenant-namespaces:-2::Deny,Audit'
 [ "$namespace_admission_objects" = "$expected_namespace_admission_objects" ] \
   || { echo "FAIL: namespace admission policy/binding shape drifted" >&2; fail=1; }
 namespace_rbac_waves="$(yq -N \
@@ -2419,7 +2452,7 @@ for required_probe in \
   'sandbox Pod admission allowed omission of the sandbox regime identity' \
   'sandbox baseline Pod Security allowed a hostPath mount' \
   'admission boundary allowed relabeling kube-system' \
-  'SANDBOX_NETWORK_POLICY_UNSUPPORTED' \
+  'SANDBOX_NETWORK_POLICY_INVALID' \
   'preflight_cluster' \
   'BEX_PREFLIGHT_ONLY' \
   'pods --subresource=exec' \
@@ -2433,6 +2466,10 @@ for required_probe in \
   'agent-phase non-allowlisted destination' \
   'agent-phase same-workspace cross-sandbox isolation' \
   'session egress admission allowed a public CIDR escape hatch' \
+  'sandbox egress admission allowed a public CIDR escape hatch' \
+  'allow-all reaches a public non-HTTPS port' \
+  'deny-all public HTTPS by IP' \
+  'allow-list non-HTTPS port to the approved address' \
   'bex-api-session-egress' \
   'Hubble drops do not contain the unique denied DNS-exfiltration query' \
   'unix:///var/run/cilium/hubble.sock' \

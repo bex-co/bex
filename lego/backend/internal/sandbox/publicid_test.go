@@ -338,7 +338,7 @@ func firstSandboxID(t *testing.T, raw []byte) string {
 // `ea sandboxes create` that bex does not serve. Strict decoding used to refuse
 // them with `unknown field "env"` — an internal wire key, not the flag the user
 // typed — which reads as a malformed request rather than an unsupported
-// feature. They now refuse by name, like SANDBOX_NETWORK_POLICY_UNSUPPORTED.
+// feature. They now refuse by name.
 func TestCreateRefusesUnsupportedOptionsByName(t *testing.T) {
 	for _, tc := range []struct {
 		name, body, wantCode, wantFlag string
@@ -347,7 +347,7 @@ func TestCreateRefusesUnsupportedOptionsByName(t *testing.T) {
 		{"snapshot", `{"plan":"starter","snapshotId":"snp-1"}`, "SANDBOX_SNAPSHOTS_UNSUPPORTED", "--snapshot-id"},
 		// Render CLI v2.29 `--from gold` sends a snapshot name (w8/m67).
 		{"snapshot name", `{"plan":"starter","snapshotName":"gold"}`, "SANDBOX_SNAPSHOTS_UNSUPPORTED", "--from"},
-		{"allow-list rules", `{"plan":"starter","networkPolicy":{"type":"deny-all","rules":[{"domain":"example.com"}]}}`, "SANDBOX_NETWORK_POLICY_UNSUPPORTED", "rules"},
+		{"rules without allow-list", `{"plan":"starter","networkPolicy":{"type":"deny-all","rules":[{"domain":"example.com"}]}}`, "SANDBOX_NETWORK_POLICY_INVALID", "allow-list"},
 		{"type disagrees with its alias", `{"plan":"starter","networkPolicy":{"type":"deny-all","default":"allow-all"}}`, "SANDBOX_NETWORK_POLICY_INVALID", "networkPolicy.default"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

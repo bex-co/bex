@@ -62,6 +62,12 @@ patches:
       apiVersion: cilium.io/v2
       kind: CiliumClusterwideNetworkPolicy
       metadata:
+        name: sandbox-egress-allow-all
+      $patch: delete
+  - patch: |-
+      apiVersion: cilium.io/v2
+      kind: CiliumClusterwideNetworkPolicy
+      metadata:
         name: sandbox-execd-ingress
       $patch: delete
   - patch: |-

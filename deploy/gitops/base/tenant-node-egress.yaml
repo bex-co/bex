@@ -213,8 +213,11 @@ spec:
             - port: "443"
               protocol: TCP
 ---
-# Compatibility allowlist for ordinary hosted sandboxes created before the
-# coding-agent session product (m35's verified posture). Agent-session pods are
+# Compatibility allowlist for ordinary hosted sandboxes created before Render's
+# network policies (w32/m283; m35's verified posture). A sandbox created since
+# carries a `bex.co/egress` selector label and is selected by exactly one of
+# the Render postures instead (allow-all below, deny-all = no allow at all, or
+# its own per-sandbox allow-list rendered by bex-api). Agent-session pods are
 # explicitly excluded: their setup/agent rules are rendered per session so a
 # tenant allowlist cannot affect any sibling sandbox in the workspace.
 apiVersion: cilium.io/v2
@@ -227,6 +230,8 @@ spec:
       app.bex.co/regime: sandbox
     matchExpressions:
       - key: bex.co/agent-session
+        operator: DoesNotExist
+      - key: bex.co/egress
         operator: DoesNotExist
   enableDefaultDeny:
     egress: true
@@ -291,6 +296,62 @@ spec:
             - files.pythonhosted.org
             - api.anthropic.com
             - api.openai.com
+---
+# Render's sandbox `allow-all` network policy (w32/m283, ADR042 § Sandbox
+# network policies), the default when a create names none: "a new sandbox
+# allows outbound network traffic to any destination using any protocol". Any
+# public destination, any port, any DNS name. It is a static platform policy
+# selected by the bex-stamped `bex.co/egress=allow-all` label, so bex-api never
+# writes a world rule (bex-api-sandbox-egress admits only exact allow-lists).
+# The platform floor still holds: sandbox-egress-default-deny's denies win over
+# this allow (host, remote nodes, kube-apiserver, link-local/metadata), the
+# except list keeps every private, shared, loopback, multicast and reserved
+# range out, and CIDR rules never select in-cluster endpoints, so other Pods,
+# Services and tenants stay unreachable. Agent-session Pods are never selected.
+apiVersion: cilium.io/v2
+kind: CiliumClusterwideNetworkPolicy
+metadata:
+  name: sandbox-egress-allow-all
+spec:
+  endpointSelector:
+    matchLabels:
+      app.bex.co/regime: sandbox
+      bex.co/egress: allow-all
+    matchExpressions:
+      - key: bex.co/agent-session
+        operator: DoesNotExist
+  egress:
+    - toEndpoints:
+        - matchLabels:
+            k8s:io.kubernetes.pod.namespace: kube-system
+            k8s:k8s-app: kube-dns
+      toPorts:
+        - ports:
+            - port: "53"
+              protocol: ANY
+          rules:
+            dns:
+              - matchPattern: "*"
+    - toCIDRSet:
+        - cidr: 0.0.0.0/0
+          except:
+            - 0.0.0.0/8
+            - 10.0.0.0/8
+            - 100.64.0.0/10
+            - 127.0.0.0/8
+            - 169.254.0.0/16
+            - 172.16.0.0/12
+            - 192.0.0.0/24
+            - 192.168.0.0/16
+            - 198.18.0.0/15
+            - 224.0.0.0/4
+            - 240.0.0.0/4
+        - cidr: ::/0
+          except:
+            - ::1/128
+            - fc00::/7
+            - fe80::/10
+            - ff00::/8
 ---
 # Execd is the only inbound path to a sandbox Pod. Kubernetes NetworkPolicy
 # cannot match a ServiceAccount, so this identity check must stay Cilium-native:

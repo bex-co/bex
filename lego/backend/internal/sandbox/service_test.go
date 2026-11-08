@@ -152,12 +152,13 @@ func TestCreateUsesTemplateImageAndEchoesPlan(t *testing.T) {
 		t.Errorf("create image = %q, want node:20", got.Image.URI)
 	}
 	if got.Metadata[metadataOwner] != "id-a" || got.Metadata[metadataWorkspace] != "tea-a" ||
-		got.Metadata[metadataNetworkPolicy] != string(NetworkPolicyDenyAll) || got.Metadata[metadataTemplate] != "node" ||
+		got.Metadata[metadataNetworkPolicy] != string(NetworkPolicyAllowAll) || got.Metadata[metadataEgress] != string(NetworkPolicyAllowAll) ||
+		got.Metadata[metadataTemplate] != "node" ||
 		got.Metadata[metadataRegime] != metadataSandboxRegime {
 		t.Errorf("security metadata = %#v", got.Metadata)
 	}
-	if sb.NetworkPolicy == nil || sb.NetworkPolicy.Default != NetworkPolicyDenyAll {
-		t.Errorf("effective network policy = %#v, want deny-all", sb.NetworkPolicy)
+	if sb.NetworkPolicy == nil || sb.NetworkPolicy.Default != NetworkPolicyAllowAll {
+		t.Errorf("effective network policy = %#v, want Render's allow-all default", sb.NetworkPolicy)
 	}
 }
 
@@ -220,25 +221,6 @@ func TestAgentSessionCreateFailurePreservesSessionPolicy(t *testing.T) {
 	}
 	if len(eg.calls) != 1 || eg.calls[0].op != "setup" {
 		t.Fatalf("egress calls = %#v, failed attempt must not delete a newer generation policy", eg.calls)
-	}
-}
-
-func TestCreateRejectsUnenforcedNetworkPolicyBeforeUpstream(t *testing.T) {
-	calls := 0
-	svc := stubServer(t, func(w http.ResponseWriter, r *http.Request) { calls++ })
-	_, err := svc.Create(callerCtx(), CreateRequest{
-		Template:      "node",
-		NetworkPolicy: &NetworkPolicy{Default: NetworkPolicyAllowAll},
-	})
-	if !errors.Is(err, core.ErrBadRequest) {
-		t.Fatalf("allow-all error = %v, want ErrBadRequest", err)
-	}
-	var coded *core.CodedError
-	if !errors.As(err, &coded) || coded.Code != "SANDBOX_NETWORK_POLICY_UNSUPPORTED" {
-		t.Fatalf("allow-all error = %#v, want named policy refusal", err)
-	}
-	if calls != 0 {
-		t.Fatalf("unsupported policy reached OpenSandbox %d time(s)", calls)
 	}
 }
 

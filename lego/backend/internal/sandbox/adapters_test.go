@@ -19,6 +19,7 @@ package sandbox
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io"
 	"net/http"
 	"net/http/httptest"
@@ -79,7 +80,8 @@ func TestGraphQLDefaultPolicyRoundTrips(t *testing.T) {
 		t.Fatalf("GraphQL create result = %#v", res.Data)
 	}
 	policy, ok := create["networkPolicy"].(map[string]any)
-	if !ok || policy["default"] != "deny-all" || policy["type"] != "deny-all" {
+	// Render: "Omitting networkPolicy defaults to allow-all" (w32/m283).
+	if !ok || policy["default"] != "allow-all" || policy["type"] != "allow-all" {
 		t.Fatalf("GraphQL networkPolicy = %#v", create["networkPolicy"])
 	}
 }
@@ -101,9 +103,36 @@ func TestNetworkPolicyTypeIsRendersFieldAndDefaultItsAlias(t *testing.T) {
 			t.Errorf("%s → %s, want type and its default alias", body, out)
 		}
 	}
-	if _, err := normalizeNetworkPolicy(&NetworkPolicy{Type: "allow-all"}); err == nil || !strings.Contains(err.Error(), "only") {
-		t.Errorf("type allow-all = %v, want the named refusal", err)
+	if got, err := normalizeNetworkPolicy(&NetworkPolicy{Type: "allow-all"}); err != nil || got.Default != NetworkPolicyAllowAll {
+		t.Errorf("type allow-all = %#v, %v; want accepted", got, err)
 	}
+	if _, err := normalizeNetworkPolicy(&NetworkPolicy{Type: "allow-some"}); !hasCode(err, "SANDBOX_NETWORK_POLICY_INVALID") {
+		t.Errorf("unknown type = %v, want SANDBOX_NETWORK_POLICY_INVALID", err)
+	}
+}
+
+func hasCode(err error, code string) bool {
+	var coded *core.CodedError
+	return errors.As(err, &coded) && coded.Code == code
+}
+
+// invalidPolicyBodies are network policies every surface refuses with
+// SANDBOX_NETWORK_POLICY_INVALID before any upstream call, as Render does:
+// rules belong only to allow-list, which needs at least one HTTPS hostname.
+var invalidPolicyBodies = []string{
+	`{"type":"deny-all","rules":[{"domain":"example.com"}]}`,
+	`{"type":"allow-all","rules":[]}`,
+	`{"type":"allow-list"}`,
+	`{"type":"allow-list","rules":[{"domain":"https://example.com"}]}`,
+	`{"type":"allow-list","rules":[{"domain":"Example.com"}]}`,
+	`{"type":"allow-list","rules":[{"domain":"api.*.example.com"}]}`,
+	`{"type":"allow-list","rules":[{"domain":"10.0.0.1"}]}`,
+	`{"type":"allow-list","rules":[{"domain":"kubernetes.default.svc.cluster.local"}]}`,
+	`{"type":"allow-list","rules":[{"domain":"example.com"},{"domain":"example.com"}]}`,
+	`{"type":"allow-list","rules":[{"domain":"example.com","protocol":"http"}]}`,
+	`{"type":"allow-some"}`,
+	`{"type":"deny-all","default":"allow-all"}`,
+	`{}`,
 }
 
 func TestRESTNetworkPolicyNamedRefusalAndStrictMetadata(t *testing.T) {
@@ -111,17 +140,19 @@ func TestRESTNetworkPolicyNamedRefusalAndStrictMetadata(t *testing.T) {
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
 
-	rec := httptest.NewRecorder()
-	req := httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(
-		`{"networkPolicy":{"default":"allow-all"}}`,
-	)).WithContext(callerCtx())
-	mux.ServeHTTP(rec, req)
-	if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "SANDBOX_NETWORK_POLICY_UNSUPPORTED") {
-		t.Fatalf("REST policy refusal = %d %s", rec.Code, rec.Body.String())
+	for _, policy := range invalidPolicyBodies {
+		rec := httptest.NewRecorder()
+		req := httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(
+			`{"networkPolicy":`+policy+`}`,
+		)).WithContext(callerCtx())
+		mux.ServeHTTP(rec, req)
+		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "SANDBOX_NETWORK_POLICY_INVALID") {
+			t.Errorf("REST policy %s = %d %s, want 400 SANDBOX_NETWORK_POLICY_INVALID", policy, rec.Code, rec.Body.String())
+		}
 	}
 
-	rec = httptest.NewRecorder()
-	req = httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(
+	rec := httptest.NewRecorder()
+	req := httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(
 		`{"metadata":{"bex.co/owner":"id-attacker"}}`,
 	)).WithContext(callerCtx())
 	mux.ServeHTTP(rec, req)
@@ -139,13 +170,22 @@ func TestGraphQLNetworkPolicyNamedRefusal(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	res := graphql.Do(graphql.Params{
-		Schema:        schema,
-		RequestString: `mutation { createSandbox(networkPolicy:{default:"allow-all"}) { id } }`,
-		Context:       callerCtx(),
-	})
-	if len(res.Errors) != 1 || res.Errors[0].Extensions["code"] != "SANDBOX_NETWORK_POLICY_UNSUPPORTED" {
-		t.Fatalf("GraphQL policy refusal = %#v", res.Errors)
+	for _, policy := range []string{
+		`{type:"deny-all", rules:[{domain:"example.com"}]}`,
+		`{type:"allow-list"}`,
+		`{type:"allow-list", rules:[]}`,
+		`{type:"allow-list", rules:[{domain:"example.com", protocol:"http"}]}`,
+		`{type:"allow-list", rules:[{domain:"*.*.example.com"}]}`,
+		`{default:"allow-some"}`,
+	} {
+		res := graphql.Do(graphql.Params{
+			Schema:        schema,
+			RequestString: `mutation { createSandbox(networkPolicy:` + policy + `) { id } }`,
+			Context:       callerCtx(),
+		})
+		if len(res.Errors) != 1 || res.Errors[0].Extensions["code"] != "SANDBOX_NETWORK_POLICY_INVALID" {
+			t.Errorf("GraphQL policy %s refusal = %#v", policy, res.Errors)
+		}
 	}
 }
 
@@ -238,13 +278,13 @@ func TestMCPNetworkPolicyNamedRefusal(t *testing.T) {
 	}
 	t.Cleanup(func() { _ = client.Close() })
 
-	// Render's renamed `type` and allow-list `rules` must pass the tool's
-	// input schema and reach the named refusal (w8/m67).
-	for _, policy := range []map[string]any{
-		{"default": "allow-all"},
-		{"type": "allow-all"},
-		{"type": "deny-all", "rules": []any{map[string]any{"domain": "example.com"}}},
-	} {
+	// Render's `type` and allow-list `rules` pass the tool's input schema and
+	// reach the shared validation.
+	for _, body := range invalidPolicyBodies {
+		var policy map[string]any
+		if err := json.Unmarshal([]byte(body), &policy); err != nil {
+			t.Fatal(err)
+		}
 		res, err := client.CallTool(ctx, &mcp.CallToolParams{
 			Name:      "spawn_sandbox",
 			Arguments: map[string]any{"networkPolicy": policy},
@@ -252,8 +292,8 @@ func TestMCPNetworkPolicyNamedRefusal(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "SANDBOX_NETWORK_POLICY_UNSUPPORTED") {
-			t.Fatalf("MCP policy %v refusal = %#v", policy, res.Content)
+		if !res.IsError || !strings.Contains(res.Content[0].(*mcp.TextContent).Text, "SANDBOX_NETWORK_POLICY_INVALID") {
+			t.Errorf("MCP policy %s refusal = %#v", body, res.Content)
 		}
 	}
 }
