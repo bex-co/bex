@@ -20,6 +20,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"maps"
 	"net/http"
 	"net/http/httptest"
 	"slices"
@@ -45,21 +46,25 @@ type fakeBox struct {
 	afterResume string // where a resume settles; default Running
 	metadata    map[string]string
 	created     time.Time
+	expires     *time.Time // BatchSandbox spec.expireTime; nil = no timeout
 }
 
 // fakeOpenSandbox is a stateful OpenSandbox lifecycle server for the idle
 // suspension flows: list/get/pause/resume with the real server's 202/409
-// answers.
+// answers, plus the metadata merge patch and renew-expiration (409 for a
+// sandbox without an expiry) the lifetime stamps use.
 type fakeOpenSandbox struct {
-	t       *testing.T
-	mu      sync.Mutex
-	boxes   map[string]*fakeBox
-	calls   []string
-	pauseOK bool
+	t        *testing.T
+	mu       sync.Mutex
+	boxes    map[string]*fakeBox
+	calls    []string
+	renewals []string // "<id> <expiresAt>", in order
+	pauseOK  bool
+	patchOK  bool
 }
 
 func newFakeOpenSandbox(t *testing.T) (*fakeOpenSandbox, *Client) {
-	f := &fakeOpenSandbox{t: t, boxes: map[string]*fakeBox{}, pauseOK: true}
+	f := &fakeOpenSandbox{t: t, boxes: map[string]*fakeBox{}, pauseOK: true, patchOK: true}
 	srv := httptest.NewServer(http.HandlerFunc(f.serve))
 	t.Cleanup(srv.Close)
 	return f, NewClient(srv.URL)
@@ -77,9 +82,28 @@ func (f *fakeOpenSandbox) add(id, state string, created time.Time, idle string, 
 	for k, v := range extra {
 		md[k] = v
 	}
+	box := &fakeBox{state: state, metadata: md, created: created}
+	if timeout := timeoutFromMetadata(md[metadataTimeout]); timeout > 0 {
+		exp := created.Add(time.Duration(openSandboxTimeout(timeout)) * time.Second)
+		box.expires = &exp
+	}
 	f.mu.Lock()
 	defer f.mu.Unlock()
-	f.boxes[id] = &fakeBox{state: state, metadata: md, created: created}
+	f.boxes[id] = box
+}
+
+func (f *fakeOpenSandbox) box(id string) fakeBox {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	b := *f.boxes[id]
+	b.metadata = maps.Clone(b.metadata)
+	return b
+}
+
+func (f *fakeOpenSandbox) renewCalls() []string {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	return slices.Clone(f.renewals)
 }
 
 func (f *fakeOpenSandbox) state(id string) string {
@@ -158,6 +182,37 @@ func (f *fakeOpenSandbox) serve(w http.ResponseWriter, r *http.Request) {
 			b.next = b.afterResume
 		}
 		w.WriteHeader(http.StatusAccepted)
+	case r.Method == http.MethodDelete && len(parts) == 1:
+		f.calls = append(f.calls, "terminate "+parts[0])
+		delete(f.boxes, parts[0])
+		w.WriteHeader(http.StatusNoContent)
+	case r.Method == http.MethodPatch && len(parts) == 2 && parts[1] == "metadata":
+		if !f.patchOK {
+			w.WriteHeader(http.StatusInternalServerError)
+			return
+		}
+		var patch map[string]string
+		if err := json.NewDecoder(r.Body).Decode(&patch); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		maps.Copy(b.metadata, patch)
+		_ = json.NewEncoder(w).Encode(f.view(parts[0], b))
+	case r.Method == http.MethodPost && len(parts) == 2 && parts[1] == "renew-expiration":
+		var body struct {
+			ExpiresAt time.Time `json:"expiresAt"`
+		}
+		if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+			w.WriteHeader(http.StatusBadRequest)
+			return
+		}
+		if b.expires == nil {
+			w.WriteHeader(http.StatusConflict) // no automatic expiration
+			return
+		}
+		f.renewals = append(f.renewals, parts[0]+" "+body.ExpiresAt.UTC().Format(time.RFC3339))
+		b.expires = &body.ExpiresAt
+		_ = json.NewEncoder(w).Encode(body)
 	default:
 		http.NotFound(w, r)
 	}
@@ -555,8 +610,16 @@ func TestFileTransferResumesAndHoldsTheSandboxActive(t *testing.T) {
 	if got := f.os.lifecycleCalls(); !slices.Equal(got, []string{"resume os-1"}) {
 		t.Fatalf("lifecycle calls = %v, want one resume", got)
 	}
-	// One touch on entry and one when the transfer ends.
-	if got := f.activity.touchCount("os-1") - before; got < 2 {
+	// One touch on entry and one when the transfer ends. The closing touch
+	// runs as the handler returns, which can trail the client reading the
+	// response, so wait briefly for it.
+	got := 0
+	for deadline := time.Now().Add(2 * time.Second); time.Now().Before(deadline); time.Sleep(5 * time.Millisecond) {
+		if got = f.activity.touchCount("os-1") - before; got >= 2 {
+			break
+		}
+	}
+	if got < 2 {
 		t.Fatalf("transfer recorded %d touches, want start and end", got)
 	}
 }
@@ -639,5 +702,143 @@ func TestExplicitLifecycleConflictIsNamed(t *testing.T) {
 	var coded *core.CodedError
 	if !errors.As(err, &coded) || coded.Code != "SANDBOX_LIFECYCLE_CONFLICT" {
 		t.Fatalf("pausing a paused sandbox = %v, want SANDBOX_LIFECYCLE_CONFLICT", err)
+	}
+}
+
+// reconcile runs one inventory pass over tea-a on the fixture's clock.
+func (f *idleFixture) reconcile(t *testing.T) InventoryCounts {
+	t.Helper()
+	counts, err := NewAgentSessionLifecycle(f.svc).ReconcileWorkspaceInventory(context.Background(), "tea-a", "key-a", f.now,
+		func(context.Context, string) (SessionClaim, error) { return SessionClaim{}, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	return counts
+}
+
+func rfc3339(t time.Time) string { return t.UTC().Format(time.RFC3339) }
+
+// TestResumeRestartsRuntimeTimeoutAndSuspensionKeepsTheSandbox is the t010
+// flow (Render's sandboxes-limits): an idle-suspended sandbox outlives its
+// runtime timeout while suspended, the OpenSandbox expiry is moved off
+// createdAt + timeout for the suspended window, and the exec that resumes it
+// restarts the timeout from the resume, on both the reconcile and the expiry.
+func TestResumeRestartsRuntimeTimeoutAndSuspensionKeepsTheSandbox(t *testing.T) {
+	f := newIdleFixture(t)
+	created := f.now.Add(-16 * time.Minute)
+	f.os.add("os-1", "Running", created, "900", map[string]string{metadataTimeout: "3600"})
+	if n := f.sweeper.Sweep(context.Background()); n != 1 {
+		t.Fatalf("sweep suspended %d, want 1", n)
+	}
+	suspendedAt := f.now
+	box := f.os.box("os-1")
+	if box.metadata[metadataSuspendedAt] != stampMetadataTime(suspendedAt) {
+		t.Fatalf("suspension stamp = %q, want %s", box.metadata[metadataSuspendedAt], stampMetadataTime(suspendedAt))
+	}
+	if box.expires == nil || !box.expires.Equal(suspendedAt.Add(suspendedRetention)) {
+		t.Fatalf("suspended expiry = %v, want suspension + 30 days", box.expires)
+	}
+
+	// Two days suspended: far past createdAt + 3600 s, still resumable.
+	f.now = f.now.Add(48 * time.Hour)
+	if c := f.reconcile(t); c.Terminated != 0 || c.LongLived != 1 {
+		t.Fatalf("reconcile of a sandbox suspended past its timeout = %+v, want kept as long_lived", c)
+	}
+	resumedAt := f.now
+	if _, err := f.svc.ExecBuffered(callerCtx(), ExecRequest{OwnerID: "tea-a", SandboxID: "os-1", Command: "true"}); err != nil {
+		t.Fatalf("exec on a sandbox suspended for 2 days: %v", err)
+	}
+	box = f.os.box("os-1")
+	if box.metadata[metadataResumedAt] != stampMetadataTime(resumedAt) {
+		t.Fatalf("resume stamp = %q, want %s", box.metadata[metadataResumedAt], stampMetadataTime(resumedAt))
+	}
+	if want := []string{"os-1 " + rfc3339(suspendedAt.Add(suspendedRetention)), "os-1 " + rfc3339(resumedAt.Add(time.Hour))}; !slices.Equal(f.os.renewCalls(), want) {
+		t.Fatalf("renewals = %v, want %v", f.os.renewCalls(), want)
+	}
+
+	// The timeout runs from the resume: kept at 59 min, reaped at 60.
+	f.now = resumedAt.Add(59 * time.Minute)
+	if c := f.reconcile(t); c.Terminated != 0 {
+		t.Fatalf("reaped %d before resume + timeout", c.Terminated)
+	}
+	f.now = resumedAt.Add(time.Hour)
+	if c := f.reconcile(t); c.Terminated != 1 {
+		t.Fatalf("reaped %d at resume + timeout, want 1", c.Terminated)
+	}
+}
+
+// TestSuspendedSandboxIsReapedAfterThirtyDays: the suspended window bounds
+// every sandbox, including one with no timeout (which has no OpenSandbox
+// expiry to move, so none is renewed).
+func TestSuspendedSandboxIsReapedAfterThirtyDays(t *testing.T) {
+	f := newIdleFixture(t)
+	f.os.add("os-1", "Running", f.now.Add(-time.Hour), "900", map[string]string{metadataTimeout: timeoutNone})
+	if err := f.svc.Suspend(callerCtx(), "os-1"); err != nil {
+		t.Fatalf("suspend: %v", err)
+	}
+	suspendedAt := f.now
+	if got := f.os.box("os-1").metadata[metadataSuspendedAt]; got != stampMetadataTime(suspendedAt) {
+		t.Fatalf("suspension stamp = %q", got)
+	}
+	if got := f.os.renewCalls(); len(got) != 0 {
+		t.Fatalf("renewed a no-timeout sandbox's expiry: %v", got)
+	}
+	f.os.set("os-1", func(b *fakeBox) { b.state, b.next = "Paused", "" })
+	f.now = suspendedAt.Add(suspendedRetention - time.Second)
+	if c := f.reconcile(t); c.Terminated != 0 {
+		t.Fatalf("reaped a sandbox suspended under 30 days")
+	}
+	f.now = suspendedAt.Add(suspendedRetention)
+	if c := f.reconcile(t); c.Terminated != 1 {
+		t.Fatalf("reaped %d at 30 days suspended, want 1", c.Terminated)
+	}
+}
+
+// TestExplicitResumeRestartsTimeout: the resume verb stamps and renews like
+// wake-on-exec, and a suspend refused for a settled phase does not restart
+// the suspended window.
+func TestExplicitResumeRestartsTimeout(t *testing.T) {
+	f := newIdleFixture(t)
+	suspendedAt := f.now.Add(-10 * 24 * time.Hour)
+	f.os.add("os-1", "Paused", f.now.Add(-11*24*time.Hour), "900", map[string]string{
+		metadataTimeout: "86400", metadataSuspendedAt: stampMetadataTime(suspendedAt),
+	})
+	if err := f.svc.Suspend(callerCtx(), "os-1"); err == nil {
+		t.Fatal("suspending a suspended sandbox succeeded")
+	}
+	if got := f.os.box("os-1").metadata[metadataSuspendedAt]; got != stampMetadataTime(suspendedAt) {
+		t.Fatalf("a refused suspend restamped the suspension: %q", got)
+	}
+	if err := f.svc.Resume(callerCtx(), "os-1"); err != nil {
+		t.Fatalf("resume: %v", err)
+	}
+	if got := f.os.box("os-1").metadata[metadataResumedAt]; got != stampMetadataTime(f.now) {
+		t.Fatalf("resume stamp = %q", got)
+	}
+	if want := []string{"os-1 " + rfc3339(f.now.Add(24*time.Hour))}; !slices.Equal(f.os.renewCalls(), want) {
+		t.Fatalf("renewals = %v, want %v", f.os.renewCalls(), want)
+	}
+}
+
+// TestLifetimeStampFailureRefusesTheTransition: the stamp is the
+// transition's precondition. Without it the sweeper leaves the sandbox
+// running (and releases its claim), and a resume is refused rather than run
+// against a timeout the reconcile would read from creation.
+func TestLifetimeStampFailureRefusesTheTransition(t *testing.T) {
+	f := newIdleFixture(t)
+	f.os.add("os-run", "Running", f.now.Add(-time.Hour), "900", nil)
+	f.os.add("os-paused", "Paused", f.now.Add(-time.Hour), "900", nil)
+	f.os.patchOK = false
+	if n := f.sweeper.Sweep(context.Background()); n != 0 {
+		t.Fatalf("suspended %d without a stamp", n)
+	}
+	if f.activity.claimed("os-run") {
+		t.Fatal("a failed stamp left the sweeper claim behind")
+	}
+	if err := f.svc.Resume(callerCtx(), "os-paused"); err == nil {
+		t.Fatal("resume without a stamp succeeded")
+	}
+	if calls := f.os.lifecycleCalls(); len(calls) != 0 {
+		t.Fatalf("lifecycle calls = %v, want none", calls)
 	}
 }

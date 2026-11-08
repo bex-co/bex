@@ -298,15 +298,24 @@ func (s *Service) ensureRunning(ctx context.Context, key, ws string, raw osSandb
 // resumeForActivity issues one resume for wake-on-exec. The billing gate is
 // the one the explicit resume verb applies: a workspace that may not start
 // compute is not resumed by a command either. A 409 means another request or
-// replica is already resuming it.
+// replica is already resuming it. Like the explicit verb, it stamps the
+// resume and restarts the runtime timeout (beforeResume, afterResume).
 func (s *Service) resumeForActivity(ctx context.Context, key, ws string, raw osSandbox) error {
 	if err := s.RequireBillingMutation(ctx, ws); err != nil {
 		return err
 	}
-	if err := s.Client.Resume(ctx, key, raw.ID); err != nil && !errors.Is(err, errOpenSandboxConflict) {
-		if errors.Is(err, errOpenSandboxNotFound) {
-			return sandboxNotFound(canonicalID(raw))
-		}
+	if err := s.beforeResume(ctx, key, raw); err != nil {
+		return err
+	}
+	switch err := s.Client.Resume(ctx, key, raw.ID); {
+	case err == nil:
+		// The runtime timeout restarts at the resume, as on Render.
+		s.afterResume(ctx, key, raw)
+	case errors.Is(err, errOpenSandboxConflict):
+		// Another request or replica is resuming it and renews the expiry.
+	case errors.Is(err, errOpenSandboxNotFound):
+		return sandboxNotFound(canonicalID(raw))
+	default:
 		return err
 	}
 	s.clearSuspendClaim(ctx, ws, raw.ID)
@@ -426,6 +435,11 @@ func (w *IdleSuspender) suspendIfIdle(ctx context.Context, key store.SandboxTena
 		return false
 	}
 	if !claimed {
+		return false
+	}
+	if err := s.beforeSuspend(ctx, key.APIKey, raw); err != nil {
+		s.clearSuspendClaim(ctx, key.WorkspaceID, raw.ID)
+		log.Printf("sandbox idle: suspend workspace=%s sandbox=%s: %v", key.WorkspaceID, raw.ID, err)
 		return false
 	}
 	if err := s.Client.Suspend(ctx, key.APIKey, raw.ID); err != nil {

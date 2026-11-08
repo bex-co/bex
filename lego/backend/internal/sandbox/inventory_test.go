@@ -195,6 +195,77 @@ func TestReconcileWorkspaceInventoryHonorsLongLifetimes(t *testing.T) {
 	}
 }
 
+// TestReconcileWorkspaceInventoryRestartsTimeoutOnResume: the reconcile reads
+// the lifetime from the last resume, never reaps a suspended sandbox before
+// 30 days suspended, and counts both as long_lived once their deadline is
+// past createdAt + 24 h (w2/m278 t010, Render's sandboxes-limits).
+func TestReconcileWorkspaceInventoryRestartsTimeoutOnResume(t *testing.T) {
+	now := time.Now().UTC().Truncate(time.Second)
+	day := 24 * time.Hour
+	box := func(id, state, timeout string, age time.Duration, stamps map[string]time.Duration) map[string]any {
+		md := map[string]string{
+			metadataWorkspace: "tea-a", metadataOwner: "id-a",
+			metadataNetworkPolicy: "deny-all", metadataRegime: metadataSandboxRegime,
+			metadataTimeout: timeout,
+		}
+		for k, ago := range stamps {
+			md[k] = stampMetadataTime(now.Add(-ago))
+		}
+		return map[string]any{
+			"id": id, "metadata": md,
+			"status":    map[string]string{"state": state},
+			"createdAt": now.Add(-age).Format(time.RFC3339Nano),
+		}
+	}
+	sandboxes := []map[string]any{
+		box("resumed-in-bound", "Running", "86400", 3*day, map[string]time.Duration{metadataSuspendedAt: 2 * day, metadataResumedAt: 2 * time.Hour}),
+		box("resumed-over", "Running", "3600", 3*day, map[string]time.Duration{metadataResumedAt: 2 * time.Hour}),
+		box("suspended-long", "Paused", "86400", 10*day, map[string]time.Duration{metadataSuspendedAt: 9 * day}),
+		box("suspended-no-timeout", "Paused", timeoutNone, 40*day, map[string]time.Duration{metadataSuspendedAt: 31 * day}),
+		box("suspended-over", "Paused", "86400", 40*day, map[string]time.Duration{metadataSuspendedAt: 31 * day}),
+		box("never-resumed", "Running", "86400", 25*time.Hour, nil),
+		box("fresh", "Running", "3600", 10*time.Minute, nil),
+	}
+	var mu sync.Mutex
+	deleted := map[string]bool{}
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		if r.Method == http.MethodDelete {
+			deleted[r.URL.Path[len("/sandboxes/"):]] = true
+			w.WriteHeader(http.StatusNoContent)
+			return
+		}
+		_ = json.NewEncoder(w).Encode(sandboxes)
+	}))
+	t.Cleanup(srv.Close)
+	svc := &Service{
+		Base:   &core.Base{Namespace: "default", Workspace: fakeWorkspace{"id-a": "tea-a"}},
+		Client: NewClient(srv.URL),
+		Keys:   staticKey("ws-key"),
+	}
+	counts, err := NewAgentSessionLifecycle(svc).ReconcileWorkspaceInventory(context.Background(), "tea-a", "ws-key", now,
+		func(context.Context, string) (SessionClaim, error) { return SessionClaim{}, nil })
+	if err != nil {
+		t.Fatal(err)
+	}
+	mu.Lock()
+	defer mu.Unlock()
+	want := map[string]bool{"resumed-over": true, "suspended-no-timeout": true, "suspended-over": true, "never-resumed": true}
+	for _, s := range sandboxes {
+		id := s["id"].(string)
+		if deleted[id] != want[id] {
+			t.Errorf("%s deleted = %v, want %v", id, deleted[id], want[id])
+		}
+	}
+	if counts.LongLived != 2 || counts.Timed != 5 || counts.Terminated != 4 {
+		t.Fatalf("counts = %+v", counts)
+	}
+	if age := counts.OldestAge[InventoryClassLongLived]; age < 9*24*3600 {
+		t.Fatalf("long_lived oldest age = %v, want the suspended sandbox's 10 days", age)
+	}
+}
+
 func TestReconcileWorkspaceInventoryListErrorTerminatesNothing(t *testing.T) {
 	var deletes int
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

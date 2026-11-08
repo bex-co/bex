@@ -1123,6 +1123,14 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 		if err := s.RequireBillingMutation(ctx, ws); err != nil {
 			return err
 		}
+		if err := s.beforeResume(ctx, key, raw); err != nil {
+			return err
+		}
+	}
+	if phase == StatusSuspended {
+		if err := s.beforeSuspend(ctx, key, raw); err != nil {
+			return err
+		}
 	}
 	if err := op(ctx, key, raw); err != nil {
 		switch {
@@ -1136,8 +1144,9 @@ func (s *Service) lifecycle(ctx context.Context, relation, id string, phase Stat
 		return err
 	}
 	if phase == StatusResuming && idleTracked(raw) {
-		// A resumed sandbox starts a fresh idle window, and any idle-sweeper
-		// claim on it is spent.
+		// A resumed sandbox restarts its runtime timeout and its idle window,
+		// and any idle-sweeper claim on it is spent.
+		s.afterResume(ctx, key, raw)
 		s.touchActivity(ctx, ws, raw.ID)
 		s.clearSuspendClaim(ctx, ws, raw.ID)
 	}

@@ -113,20 +113,57 @@ func TestOpenSandboxTimeout(t *testing.T) {
 
 func TestLifetimeExpired(t *testing.T) {
 	created := time.Date(2026, 9, 1, 0, 0, 0, 0, time.UTC)
-	if !LifetimeExpired(&created, 86400, created.Add(24*time.Hour)) {
-		t.Fatal("86400s must expire at 24h")
+	day := 24 * time.Hour
+	box := func(state, timeout string, created *time.Time, stamps map[string]time.Time) osSandbox {
+		raw := osSandbox{ID: "os-1", Created: created, Metadata: map[string]string{metadataTimeout: timeout}}
+		for k, v := range stamps {
+			raw.Metadata[k] = stampMetadataTime(v)
+		}
+		raw.Status.State = state
+		return raw
 	}
-	if LifetimeExpired(&created, 3600, created.Add(30*time.Minute)) {
-		t.Fatal("explicit 3600s must not expire early")
+	resumed := created.Add(3 * day)
+	suspended := created.Add(2 * time.Hour)
+	for _, tc := range []struct {
+		name    string
+		raw     osSandbox
+		at      time.Time
+		expired bool
+	}{
+		{"86400s expires at 24h", box("Running", "86400", &created, nil), created.Add(day), true},
+		{"3600s not early", box("Running", "3600", &created, nil), created.Add(30 * time.Minute), false},
+		{"sub-minute at its exact deadline", box("Running", "30", &created, nil), created.Add(30 * time.Second), true},
+		{"no timeout never", box("Running", timeoutNone, &created, nil), created.Add(365 * day), false},
+		{"missing createdAt conservative", box("Running", "86400", nil, nil), created.Add(2 * day), false},
+		// A resume restarts the timeout, as on Render.
+		{"resumed: timeout from the resume", box("Running", "86400", &created, map[string]time.Time{metadataResumedAt: resumed}), resumed.Add(day - time.Second), false},
+		{"resumed: expires at resume + timeout", box("Running", "86400", &created, map[string]time.Time{metadataResumedAt: resumed}), resumed.Add(day), true},
+		{"resuming counts from the resume", box("Resuming", "3600", &created, map[string]time.Time{metadataResumedAt: resumed, metadataSuspendedAt: suspended}), resumed.Add(30 * time.Minute), false},
+		{"resumed without createdAt", box("Running", "3600", nil, map[string]time.Time{metadataResumedAt: resumed}), resumed.Add(time.Hour), true},
+		// While suspended the timeout does not run; 30 days resumable.
+		{"suspended past its timeout is kept", box("Paused", "86400", &created, map[string]time.Time{metadataSuspendedAt: suspended}), created.Add(20 * day), false},
+		{"suspending is kept too", box("Pausing", "3600", &created, map[string]time.Time{metadataSuspendedAt: suspended}), created.Add(2 * day), false},
+		{"suspended 30 days is reaped", box("Paused", "86400", &created, map[string]time.Time{metadataSuspendedAt: suspended}), suspended.Add(suspendedRetention), true},
+		{"no-timeout suspended 30 days is reaped", box("Paused", timeoutNone, &created, map[string]time.Time{metadataSuspendedAt: suspended}), suspended.Add(suspendedRetention), true},
+		{"no-timeout suspended 29 days is kept", box("Paused", timeoutNone, &created, map[string]time.Time{metadataSuspendedAt: suspended}), suspended.Add(29 * day), false},
+		// A resume that failed after its stamp leaves the sandbox suspended:
+		// the window still runs from the suspension.
+		{"failed resume keeps the suspended window", box("Paused", "3600", &created, map[string]time.Time{metadataSuspendedAt: suspended, metadataResumedAt: resumed}), suspended.Add(suspendedRetention), true},
+		// An unstamped pause (before t010, or an agent-session sandbox) keeps
+		// the creation rule; a suspension stamp no longer applies once running.
+		{"unstamped paused keeps the creation rule", box("Paused", "86400", &created, nil), created.Add(day), true},
+		{"running ignores an old suspension stamp", box("Running", "86400", &created, map[string]time.Time{metadataSuspendedAt: suspended}), created.Add(day), true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := lifetimeExpired(tc.raw, tc.at); got != tc.expired {
+				t.Fatalf("lifetimeExpired = %v, want %v", got, tc.expired)
+			}
+		})
 	}
-	if !LifetimeExpired(&created, 30, created.Add(30*time.Second)) {
-		t.Fatal("a sub-minute timeout is enforced at its exact deadline")
-	}
-	if LifetimeExpired(&created, 0, created.Add(365*24*time.Hour)) {
-		t.Fatal("no timeout never expires")
-	}
-	if LifetimeExpired(nil, 86400, created.Add(48*time.Hour)) {
-		t.Fatal("missing createdAt must not expire (conservative)")
+	bad := box("Running", "86400", &created, nil)
+	bad.Metadata[metadataResumedAt] = "yesterday"
+	if !lifetimeExpired(bad, created.Add(day)) {
+		t.Fatal("a malformed resume stamp must not extend the lifetime")
 	}
 }
 

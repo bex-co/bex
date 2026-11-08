@@ -38,10 +38,12 @@ const (
 	InventoryClassTerminalOrphan = "terminal_orphan"
 	InventoryClassNoRowOrphan    = "no_row_orphan"
 	InventoryClassTimed          = "timed"
-	// InventoryClassLongLived is an ordinary EA sandbox inside a lifetime the
-	// owner chose past the 86400 s default — up to 30 days, or no timeout, on
-	// a paid workspace (w2/m263 D3=A). Its age legitimately exceeds 24 h, so
-	// SandboxOldestOverBound excludes it.
+	// InventoryClassLongLived is an ordinary EA sandbox inside a lifetime that
+	// ends more than 86400 s after its creation: a timeout the owner chose
+	// past the default — up to 30 days, or no timeout, on a paid workspace
+	// (w2/m263 D3=A) — or a deadline a suspension (30 days resumable) or a
+	// resume (timeout restarts) moved (w2/m278 t010). Its age legitimately
+	// exceeds 24 h, so SandboxOldestOverBound excludes it.
 	InventoryClassLongLived    = "long_lived"
 	InventoryClassInconclusive = "inconclusive"
 )
@@ -107,8 +109,10 @@ var completerReapedPhases = map[string]struct{}{
 
 // ReconcileWorkspaceInventory lists the workspace's live sandboxes and
 // terminates those whose agent session is terminal, absent, or past the
-// lifetime bound. Conservative: a list/lookup error terminates nothing for
-// that sandbox; a workspace list error aborts the whole pass.
+// lifetime bound (lifetimeDeadline: the timeout from the later of create and
+// last resume, or 30 days from a suspension). Conservative: a list/lookup
+// error terminates nothing for that sandbox; a workspace list error aborts the
+// whole pass.
 // Non-agent sandboxes (no LabelSession) are only reaped by the lifetime bound.
 // apiKey, when non-empty, is the OpenSandbox tenant key already listed by the
 // meter/inventory walker — avoids a second WorkspaceKey round-trip.
@@ -153,13 +157,18 @@ func (l *AgentSessionLifecycle) ReconcileWorkspaceInventory(ctx context.Context,
 		class := InventoryClassTimed
 		shouldStop := false
 
+		deadline, bounded := lifetimeDeadline(raw)
 		switch {
-		case LifetimeExpired(raw.Created, timeout, now):
+		case bounded && !now.Before(deadline):
 			class = InventoryClassTimed
 			shouldStop = true
 		case sessionID == "":
-			// Ordinary EA sandbox still inside its bound — leave it.
-			if timeout == 0 || timeout > defaultSandboxTimeout {
+			// Ordinary EA sandbox still inside its bound — leave it. Its age
+			// legitimately passes 24 h when the owner chose a longer timeout,
+			// or when a suspension or resume moved its deadline past
+			// createdAt + 24 h (w2/m278 t010).
+			if timeout == 0 || timeout > defaultSandboxTimeout ||
+				(bounded && raw.Created != nil && deadline.Sub(*raw.Created) > defaultSandboxTimeout*time.Second) {
 				class = InventoryClassLongLived
 				counts.LongLived++
 			} else {

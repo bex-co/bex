@@ -4992,7 +4992,7 @@ dashboards:
              "id": 22,
              "type": "timeseries",
              "title": "Sandbox inventory by class",
-             "description": "Live sandboxes classified by the Completer inventory reconcile (w5/m99). terminal_orphan / no_row_orphan must stay at zero — SandboxOrphansPresent warns after 2m. claimed is healthy ownership; timed is an EA sandbox inside its lifetime bound; long_lived is a paid workspace's EA sandbox with a lifetime past 24h or no timeout (w2/m263); inconclusive is a conservative skip.",
+             "description": "Live sandboxes classified by the Completer inventory reconcile (w5/m99). terminal_orphan / no_row_orphan must stay at zero — SandboxOrphansPresent warns after 2m. claimed is healthy ownership; timed is an EA sandbox inside its lifetime bound; long_lived is an EA sandbox whose deadline is more than 24h after its creation: a paid workspace's longer or no timeout (w2/m263), or a suspension (resumable for 30 days) or resume (timeout restarts) that moved it (w2/m278); inconclusive is a conservative skip.",
              "gridPos": {
                "h": 9,
                "w": 12,

@@ -17,7 +17,10 @@ limitations under the License.
 package sandbox
 
 import (
+	"context"
+	"errors"
 	"fmt"
+	"log"
 	"strconv"
 	"time"
 
@@ -35,7 +38,7 @@ const (
 	paidSandboxMaxTimeout  = 2592000
 	// osMinTimeout is OpenSandbox's own floor (CreateSandboxRequest.timeout
 	// ge=60). A shorter Render timeout is sent as this floor and enforced at
-	// its exact deadline by the inventory reconcile (LifetimeExpired).
+	// its exact deadline by the inventory reconcile (lifetimeExpired).
 	osMinTimeout = 60
 	// timeoutNone is the bex.co/timeout-seconds value of a sandbox created
 	// with no timeout. A distinct marker, not "0": pre-w5/m99 metadata "0"
@@ -108,13 +111,127 @@ func openSandboxTimeout(timeout int) int {
 	return max(timeout, osMinTimeout)
 }
 
-// LifetimeExpired reports whether now is at or past createdAt + timeoutSeconds
-// (Render semantics: 0 never expires). Missing createdAt never expires
-// (conservative — leave for the next tick once OpenSandbox supplies a create
-// time).
-func LifetimeExpired(createdAt *time.Time, timeoutSeconds int, now time.Time) bool {
-	if timeoutSeconds == 0 || createdAt == nil || createdAt.IsZero() {
-		return false
+// Runtime timeout across suspension (w2/m278 t010). Render restarts the
+// runtime timeout when a suspended sandbox resumes, does not run it while the
+// sandbox is suspended, and keeps a suspended sandbox resumable for 30 days
+// (render.com/docs/sandboxes-limits, checked 2026-11-07). bex stamps each
+// transition on the sandbox's own OpenSandbox metadata, so the inventory
+// reconcile reads it from the list it already makes, with or without a store.
+const (
+	// metadataResumedAt is the Unix second of the sandbox's last resume. The
+	// runtime timeout runs from max(createdAt, resumedAt).
+	metadataResumedAt = "bex.co/resumed-at"
+	// metadataSuspendedAt is the Unix second of the sandbox's last suspension.
+	// While it is suspended, it is reaped at suspendedAt + suspendedRetention.
+	metadataSuspendedAt = "bex.co/suspended-at"
+	// suspendedRetention is how long a suspended sandbox stays resumable.
+	suspendedRetention = 30 * 24 * time.Hour
+)
+
+func stampMetadataTime(t time.Time) string { return strconv.FormatInt(t.Unix(), 10) }
+
+// metadataTime reads a stamp written by stampMetadataTime; missing or
+// malformed reads as nil.
+func metadataTime(v string) *time.Time {
+	n, err := strconv.ParseInt(v, 10, 64)
+	if err != nil || n <= 0 {
+		return nil
 	}
-	return !now.Before(createdAt.Add(time.Duration(timeoutSeconds) * time.Second))
+	t := time.Unix(n, 0).UTC()
+	return &t
+}
+
+// lifetimeDeadline is when the inventory reconcile reaps raw; ok false means
+// never. A suspended (or suspending) sandbox stamped with its suspension is
+// kept for suspendedRetention from it, whatever its timeout, including no
+// timeout. Otherwise the timeout (Render semantics: 0 never expires) runs
+// from the later of createdAt and the last resume. A sandbox with neither
+// time never expires (conservative: leave it for a tick once OpenSandbox
+// supplies a create time). An unstamped suspended sandbox (paused before
+// t010, or an agent-session sandbox) keeps the running rule.
+func lifetimeDeadline(raw osSandbox) (time.Time, bool) {
+	switch mapOpenSandboxStatus(raw.Status.State) {
+	case StatusSuspending, StatusSuspended:
+		if at := metadataTime(raw.Metadata[metadataSuspendedAt]); at != nil {
+			return at.Add(suspendedRetention), true
+		}
+	}
+	timeout := timeoutFromMetadata(raw.Metadata[metadataTimeout])
+	if timeout == 0 {
+		return time.Time{}, false
+	}
+	start := raw.Created
+	if start != nil && start.IsZero() {
+		start = nil
+	}
+	if resumed := metadataTime(raw.Metadata[metadataResumedAt]); resumed != nil && (start == nil || resumed.After(*start)) {
+		start = resumed
+	}
+	if start == nil {
+		return time.Time{}, false
+	}
+	return start.Add(time.Duration(timeout) * time.Second), true
+}
+
+// lifetimeExpired reports whether now is at or past raw's lifetime deadline.
+func lifetimeExpired(raw osSandbox, now time.Time) bool {
+	deadline, ok := lifetimeDeadline(raw)
+	return ok && !now.Before(deadline)
+}
+
+// beforeSuspend runs ahead of every pause of an ordinary running sandbox
+// (idle sweeper or explicit verb). It stamps the suspension, then moves the
+// OpenSandbox expiry to the end of the 30-day suspended window: the
+// BatchSandbox controller deletes a sandbox at spec.expireTime whatever its
+// pause state, so without this a paused sandbox would still be deleted at
+// createdAt + timeout. Both writes come first so a failure leaves the
+// sandbox running, never paused under the old expiry. A no-timeout sandbox
+// has no expireTime to move (OpenSandbox answers 409); the reconcile reaps
+// it at the end of the window.
+func (s *Service) beforeSuspend(ctx context.Context, key string, raw osSandbox) error {
+	if !idleTracked(raw) || mapOpenSandboxStatus(raw.Status.State) != StatusRunning {
+		return nil
+	}
+	now := s.Now()
+	if err := s.Client.PatchMetadata(ctx, key, raw.ID, map[string]string{metadataSuspendedAt: stampMetadataTime(now)}); err != nil {
+		return fmt.Errorf("stamp sandbox suspension: %w", err)
+	}
+	if timeoutFromMetadata(raw.Metadata[metadataTimeout]) == 0 {
+		return nil
+	}
+	if err := s.Client.RenewExpiration(ctx, key, raw.ID, now.Add(suspendedRetention)); err != nil && !errors.Is(err, errOpenSandboxConflict) {
+		return fmt.Errorf("extend suspended sandbox expiry: %w", err)
+	}
+	return nil
+}
+
+// beforeResume stamps the resume of an ordinary suspended sandbox ahead of
+// the call, so the reconcile never reads a resumed sandbox's timeout from an
+// older start. A failed stamp refuses the resume.
+func (s *Service) beforeResume(ctx context.Context, key string, raw osSandbox) error {
+	if !idleTracked(raw) || mapOpenSandboxStatus(raw.Status.State) != StatusSuspended {
+		return nil
+	}
+	if err := s.Client.PatchMetadata(ctx, key, raw.ID, map[string]string{metadataResumedAt: stampMetadataTime(s.Now())}); err != nil {
+		return fmt.Errorf("stamp sandbox resume: %w", err)
+	}
+	return nil
+}
+
+// afterResume restarts the OpenSandbox expiry at resume time + timeout once
+// a resume is accepted. A failure is logged: the reconcile still reaps the
+// sandbox at its own deadline, and the old expiry is the end of the
+// suspended window.
+func (s *Service) afterResume(ctx context.Context, key string, raw osSandbox) {
+	if !idleTracked(raw) || mapOpenSandboxStatus(raw.Status.State) != StatusSuspended {
+		return
+	}
+	timeout := openSandboxTimeout(timeoutFromMetadata(raw.Metadata[metadataTimeout]))
+	if timeout == 0 {
+		return
+	}
+	at := s.Now().Add(time.Duration(timeout) * time.Second)
+	if err := s.Client.RenewExpiration(ctx, key, raw.ID, at); err != nil && !errors.Is(err, errOpenSandboxConflict) {
+		log.Printf("sandbox lifetime: renew expiry on resume sandbox=%s: %v", raw.ID, err)
+	}
 }

@@ -1,6 +1,6 @@
 # w2 · m278 — Idle sandboxes suspend and wake on exec, as on Render
 
-**Worker:** worker2 **Goal:** a sandbox with no activity for its idle timeout (Render's default 900 s; `--idle-timeout` 300–86400, 0 disables) suspends: it stops billing compute while keeping its filesystem and state, and the next exec or file call resumes it transparently. **Status:** todo — t001–t008 done; t010 next; then a production check of suspend → exec resume
+**Worker:** worker2 **Goal:** a sandbox with no activity for its idle timeout (Render's default 900 s; `--idle-timeout` 300–86400, 0 disables) suspends: it stops billing compute while keeping its filesystem and state, and the next exec or file call resumes it transparently. **Status:** todo — t001–t008, t010 done; t009 needs a production check of suspend → exec resume once deployed, and the user's sign-off on memory/process loss
 
 ## Tasks (in order)
 
@@ -14,7 +14,7 @@
 | t006 | Render parity — **DONE**                                                           | 15m  | t004, t005       |
 | t007 | Simplify — **DONE**                                                                | 15m  | t006             |
 | t008 | Test coverage — **DONE**                                                           | 30m  | t006             |
-| t010 | A resume restarts the runtime timeout; a suspended sandbox stays resumable for 30 days | 1h | t005 |
+| t010 | A resume restarts the runtime timeout; a suspended sandbox stays resumable for 30 days — **DONE** | 1h | t005 |
 | t009 | Closeout                                                                | 10m  | t007, t008, t010 |
 
 ## Definition of done

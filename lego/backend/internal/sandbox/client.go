@@ -247,6 +247,22 @@ func (c *Client) Resume(ctx context.Context, tenantKey, id string) error {
 	return c.expectOK(c.do(ctx, http.MethodPost, "/sandboxes/"+url.PathEscape(id)+"/resume", tenantKey, nil))
 }
 
+// PatchMetadata merges values into a sandbox's metadata (OpenSandbox's
+// RFC 7396 merge patch; absent keys are kept). It does not restart the
+// sandbox.
+func (c *Client) PatchMetadata(ctx context.Context, tenantKey, id string, values map[string]string) error {
+	return c.expectOK(c.do(ctx, http.MethodPatch, "/sandboxes/"+url.PathEscape(id)+"/metadata", tenantKey, values))
+}
+
+// RenewExpiration moves a sandbox's absolute expiry (BatchSandbox
+// spec.expireTime) to at, which must be in the future; it may be earlier
+// than the current expiry. A sandbox created without a timeout has no expiry
+// to move: the server answers 409 (errOpenSandboxConflict).
+func (c *Client) RenewExpiration(ctx context.Context, tenantKey, id string, at time.Time) error {
+	return c.expectOK(c.do(ctx, http.MethodPost, "/sandboxes/"+url.PathEscape(id)+"/renew-expiration", tenantKey,
+		map[string]string{"expiresAt": at.UTC().Format(time.RFC3339)}))
+}
+
 // Terminate deletes a sandbox.
 func (c *Client) Terminate(ctx context.Context, tenantKey, id string) error {
 	_, code, err := c.do(ctx, http.MethodDelete, "/sandboxes/"+url.PathEscape(id), tenantKey, nil)

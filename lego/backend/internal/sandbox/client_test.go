@@ -20,9 +20,13 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"slices"
+	"strings"
 	"testing"
+	"time"
 )
 
 func TestClientCreateSendsTenantKeyAndMapsStatus(t *testing.T) {
@@ -188,6 +192,43 @@ func TestClientSuspendResumeTerminate(t *testing.T) {
 		if paths[i] != w {
 			t.Errorf("call %d = %q, want %q", i, paths[i], w)
 		}
+	}
+}
+
+// TestClientLifetimeCalls pins the OpenSandbox 0.2.2 wire shape of the
+// metadata merge patch and renew-expiration (api/lifecycle.py,
+// RenewSandboxExpirationRequest.expiresAt), and the 409 a sandbox without an
+// expiry answers.
+func TestClientLifetimeCalls(t *testing.T) {
+	var calls []string
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		body, _ := io.ReadAll(r.Body)
+		calls = append(calls, r.Method+" "+r.URL.Path+" "+r.Header.Get(tenantKeyHeader)+" "+string(body))
+		if strings.HasPrefix(r.URL.Path, "/sandboxes/no-expiry/") {
+			w.WriteHeader(http.StatusConflict)
+			return
+		}
+		w.WriteHeader(http.StatusOK)
+	}))
+	defer srv.Close()
+	c := NewClient(srv.URL)
+	ctx := context.Background()
+	at := time.Date(2026, 12, 7, 12, 0, 0, 0, time.FixedZone("x", 3600))
+	if err := c.PatchMetadata(ctx, "k", "id1", map[string]string{metadataResumedAt: "1"}); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.RenewExpiration(ctx, "k", "id1", at); err != nil {
+		t.Fatal(err)
+	}
+	if err := c.RenewExpiration(ctx, "k", "no-expiry", at); !errors.Is(err, errOpenSandboxConflict) {
+		t.Fatalf("renew without an expiry = %v, want errOpenSandboxConflict", err)
+	}
+	want := []string{
+		`PATCH /sandboxes/id1/metadata k {"bex.co/resumed-at":"1"}`,
+		`POST /sandboxes/id1/renew-expiration k {"expiresAt":"2026-12-07T11:00:00Z"}`,
+	}
+	if !slices.Equal(calls[:2], want) {
+		t.Fatalf("calls = %q, want %q", calls[:2], want)
 	}
 }
 
