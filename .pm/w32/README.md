@@ -4,7 +4,9 @@
 
 ## Milestones
 
-_None yet._
+- [ ] **m283** — Sandbox network policy as on Render: allow-all by default, plus an HTTPS hostname allow-list (8 tasks) ← from `/pm-brainstorm` w32 2026-11-07 #3
+- [ ] **m284** — Render SDK v1.8.0 sandbox compatibility: the unmodified SDKs drive bex sandboxes, each method graded (7 tasks) ← from `/pm-brainstorm` w32 2026-11-07 #4
+- [ ] **m285** — Sandbox filesystem snapshots, as on Render (runtime kind refused pending sign-off) (8 tasks; starts after w2/m278 closes) ← from `/pm-brainstorm` w32 2026-11-07 #5
 
 ## Inbox
 
