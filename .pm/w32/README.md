@@ -8,6 +8,7 @@ _None yet._
 
 ## Inbox
 
+- [ ] [005](005.md) — `bex docs` opens GitHub source markdown instead of the public docs site
 - [x] [001](done/001.md) — CLI installer fails with old cosign — DONE
 - [x] [002](done/002.md) — Blueprint validate: unknown service type also reports a spurious `missing property 'ipAllowList'` — DONE
 - [x] [003](done/003.md) — Static site wedges after a failed build: next deploy stays "Build queued", ipAllowList changes never apply — DONE
