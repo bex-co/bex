@@ -1,6 +1,6 @@
 # w2 · m255 — Disk usage over 80% notifies, as on Render
 
-**Worker:** worker2 **Goal:** when a service's persistent disk usage exceeds 80% of its allocated size, and when it drops back below, owners get exactly one notice each way. **Status:** todo — t001–t003, t005–t007 done; t004 (live walk on production) next, then t008
+**Worker:** worker2 **Goal:** when a service's persistent disk usage exceeds 80% of its allocated size, and when it drops back below, owners get exactly one notice each way. **Status:** todo — t001–t003, t005–t007 done; t009 then t004 (D1=A, 2026-11-07)
 
 ## Tasks (in order)
 
@@ -9,11 +9,12 @@
 | t001 | Disk usage evaluator with hysteresis — **DONE** | 1.5h | — |
 | t002 | Durable crossing facts in the service events feed — **DONE** | 1h | t001 |
 | t003 | Email both directions plus push — **DONE** | 45m | t002, w2/m252/t005 |
-| t004 | dev-2 and production walk | 30m | t003 |
+| t009 | dev-env runs Prometheus so the disk-usage sweeper runs on dev-N | 1h | t003 |
+| t004 | dev-2 walk (D1=A: dev-2 + tests are the acceptance) | 30m | t009 |
 | t005 | Render parity — **DONE** | 15m | t004 |
 | t006 | Simplify — **DONE** | 15m | t005 |
 | t007 | Test coverage — **DONE** | 30m | t005 |
-| t008 | Closeout | 10m | t006, t007 |
+| t008 | Closeout | 10m | t004, t006, t007 |
 
 ## Definition of done
 
@@ -76,3 +77,17 @@ The production walk needs a paid disk-bearing canary, which D1=A did not approve
 - accept the unit/envtest coverage.
 
 Run `/unblock w2`.
+
+## 解阻决定（2026-11-07，来源：用户决定 D1=A）
+
+- **决定：** 不做付费金丝雀。worker 给 dev-env 加上 Prometheus（本地，零成本），让磁盘用量巡检在 dev-2 上真正运行。
+- **验收步骤：** 在 dev-2 上完整走一遍。
+  1. 写满磁盘超过 80%，收到邮件和事件。
+  2. 在阈值附近抖动，不重复发送。
+  3. 释放到阈值以下，收到恢复通知。
+  4. 验收完成后关闭。
+- **worker 下一步：**
+  1. 新增任务 t009：dev-env 部署 Prometheus 并设置 `BEX_PROM_URL`。
+  2. 确认 local-path 卷能产出 `kubelet_volume_stats_used_bytes`；如果不能，选用等价的指标来源，并记录理由。
+  3. 走查 t004 的 dev-2 部分。
+- **对标依据：** Render 在磁盘超过 80% 时会通知，代码已经对齐。这个决定只关系到验收证据。

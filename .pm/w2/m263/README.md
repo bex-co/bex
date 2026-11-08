@@ -1,12 +1,12 @@
 # w2 · m263 — Sandbox flags the Render CLI v2.35 sends: honor or refuse each by name
 
-**Worker:** worker2 **Goal:** every sandbox flag the pinned Render CLI v2.35.0 sends behaves as on render.com, or is refused by name, instead of a generic `unknown field` 400 or a silently ignored filter. **Status:** blocked — t003, t004, t006–t008 done; t001, t002, t005 await the user's sign-off
+**Worker:** worker2 **Goal:** every sandbox flag the pinned Render CLI v2.35.0 sends behaves as on render.com, or is refused by name, instead of a generic `unknown field` 400 or a silently ignored filter. **Status:** todo — t001, t003, t004, t006–t008 done; t002 (D3=A) and t005 (D4=A) next
 
 ## Tasks (in order)
 
 | id   | title                                                              | est | depends_on                   |
 | ---- | ------------------------------------------------------------------ | --- | ---------------------------- |
-| t001 | `idleTimeoutSeconds` on sandbox create and detail                  | 1h  | —                            |
+| t001 | `idleTimeoutSeconds` on sandbox create and detail — **DONE** (parity → w2/m278)                  | 1h  | —                            |
 | t002 | `--timeout=0` creates a sandbox with no timeout                    | 30m | —                            |
 | t003 | Sandbox plan names `1c-2g` … `8c-16g` — **DONE**                              | 45m | —                            |
 | t004 | Named refusals for sandbox groups and images on create and list — **DONE**    | 45m | —                            |
@@ -49,3 +49,14 @@ Three divergences, recorded in ADR018 § Sandbox create flags and § CLI runtime
 1. **t001, idle suspension:** accept "no idle suspension" as a signed-off divergence, or approve building idle tracking plus wake-on-exec (a new milestone). Render suspends after 900 s by default.
 2. **t002, `--timeout=0`:** Render means no timeout, with a 30-day maximum on paid plans. bex keeps w5/m99's 24 h cap, which exists because an orphan ran 403 h and cost $88.50. Options: allow an explicit `0` for paid workspaces, raise paid workspaces to 30 days, or sign off the cap.
 3. **t005, `ea blueprints` next steps:** the hints name `render` in text and in `meta.next`. Fixing them needs a decision to rewrite upstream run-time output with a stdout wrapper like `brandLoginOutput`, which docs/bex-cli.md currently defers for the whole class.
+
+## 解阻决定（2026-11-07，来源：用户决定 D2=A、D3=A、D4=A）
+
+- **D2=A（空闲挂起）：** 对齐 Render。新开 **w2/m278**，实现空闲检测与 exec 自动唤醒。在那之前保留现有的按名拒绝。t001 在本里程碑内以"按名拒绝已上线、对齐工作转入 m278"关闭。
+- **D3=A（`--timeout=0`）：** 对齐 Render。付费 workspace 中 `timeoutSeconds: 0` 表示不超时，最长 30 天；Hobby 维持 24 小时上限；省略时默认 24 小时。孤儿成本的风险由空闲挂起（m278）和账单承担，与 Render 相同。需要修改 w5/m99 的统一上限，并更新 ADR014 和 ADR018（这一行改为 ✅）。
+- **D4=A（运行时输出品牌化）：** 批准一条覆盖整类的规则：bex CLI 把上游运行时输出里的 `render <命令>` 改写为 `bex <命令>`，范围包括 text、JSON 和 YAML 中的 `meta.next`，以及 ``Use `render workspace set` `` 这类反引号形式。实现方式是类似 `brandLoginOutput` 的 stdout 包装，不改上游 RunE。docs/bex-cli.md 的相应规定一并修订。
+- **对标依据：**
+  - Render 的 pinned OpenAPI 规定 `timeoutSeconds` 为 0 时不超时，付费最长 30 天，Hobby 24 小时。
+  - Render 的 sandbox 默认空闲 900 秒后挂起。
+  - Render 自己的 CLI 提示 `render`；bex 用户使用 `bex`，提示也应是 `bex`。
+- **worker 下一步：** 依次完成 t002、t005，然后 t009 收尾。

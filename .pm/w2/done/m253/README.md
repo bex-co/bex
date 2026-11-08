@@ -1,6 +1,6 @@
 # w2 · m253 — A service that crash-loops for 24 hours is suspended with `stuck_crashlooping`, as on Render
 
-**Worker:** worker2 **Goal:** a service that repeatedly fails to start and become healthy over 24 hours is suspended with Render's `stuck_crashlooping` suspender, its owners are told, and a user resume brings it back. **Status:** todo — t001–t004, t006–t008 done; t005 (dev-2 walk with a short window) next, then t009
+**Worker:** worker2 **Goal:** a service that repeatedly fails to start and become healthy over 24 hours is suspended with Render's `stuck_crashlooping` suspender, its owners are told, and a user resume brings it back. **Status:** done (D1=A, 2026-11-07)
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | Operator: detect and suspend with a recorded reason — **DONE** | 1.5h | t001 |
 | t003 | Surface stuck_crashlooping on REST, GraphQL, MCP, events, webhooks and the dashboard — **DONE** | 1h | t002 |
 | t004 | Suspension notice by email and push — **DONE** | 30m | t003, w2/m252/t005 |
-| t005 | dev-2 walk with a shortened window | 45m | t002 |
+| t005 | dev-2 walk with a shortened window — **DONE** | 45m | t002 |
 | t006 | Render parity — **DONE** | 15m | t004, t005 |
 | t007 | Simplify — **DONE** | 15m | t006 |
 | t008 | Test coverage — **DONE** | 30m | t006 |
-| t009 | Closeout | 10m | t007, t008 |
+| t009 | Closeout — **DONE** | 10m | t007, t008 |
 
 ## Definition of done
 
@@ -83,3 +83,9 @@ dev-2 ran with `BEX_CRASHLOOP_SUSPEND_AFTER=5m`, since restored to the default.
 ## Blocked (2026-11-05)
 
 Implementable tasks are done. What remains is production-only: real 24 h timing and push delivery. These need a paid canary under the D1 note. **User decision:** accept dev-2 + envtest (then t005 and t009 close), or approve a production canary. Run `/unblock w2`.
+
+## 解阻决定（2026-11-07，来源：用户决定 D1=A）
+
+- **决定：** 接受 dev-2 走查（2026-11-05，证据见上文）加单元测试和 envtest 作为验收，不做付费生产金丝雀。
+- **对标依据：** Render 在这些场景都会发送邮件，代码已经对齐。这个决定只关系到验收证据，客户行为不变。
+- **结果：** 剩余任务按此关闭，里程碑移入 `done/`。

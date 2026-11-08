@@ -1,6 +1,6 @@
 # w2 · m252 — Failure alerts reach email, as on Render
 
-**Worker:** worker2 **Goal:** every failure event Render emails about — a running service becoming unhealthy, a cron run failing, an image pull failing, a Blueprint sync failing — bex emails too, under the existing `notificationsToSend` and member settings. **Status:** todo — t001–t005, t007–t009 done; t006 (dev-2 + production check) next, then t010
+**Worker:** worker2 **Goal:** every failure event Render emails about — a running service becoming unhealthy, a cron run failing, an image pull failing, a Blueprint sync failing — bex emails too, under the existing `notificationsToSend` and member settings. **Status:** done (D1=A, 2026-11-07)
 
 ## Tasks (in order)
 
@@ -11,11 +11,11 @@
 | t003 | Email for cron_failed and image_pull_failed — **DONE** | 45m | t001 |
 | t004 | Email for Blueprint sync failure — **DONE** | 45m | t001 |
 | t005 | Apply notificationsToSend and member settings per event on every surface — **DONE** | 1h | t002, t003, t004 |
-| t006 | dev-2 walk and production check | 45m | t005 |
+| t006 | dev-2 walk and production check — **DONE** | 45m | t005 |
 | t007 | Render parity — **DONE** | 15m | t006 |
 | t008 | Simplify — **DONE** | 15m | t007 |
 | t009 | Test coverage — **DONE** | 30m | t007 |
-| t010 | Closeout | 10m | t008, t009 |
+| t010 | Closeout — **DONE** | 10m | t008, t009 |
 
 ## Definition of done
 
@@ -84,3 +84,9 @@ A missing tag (`busybox:no-such-tag`) never reaches `image_pull_failed`. The ope
 ## Blocked (2026-11-05)
 
 Every implementable task is done and dev-2 evidence is above. t006's production half needs paid resources (a paid cron's failing run) and a member inbox the worker can read, which D1=A did not approve. **User decision:** accept dev-2 + unit/envtest evidence as acceptance (then t006 and t010 close), or approve a paid production canary. Run `/unblock w2`.
+
+## 解阻决定（2026-11-07，来源：用户决定 D1=A）
+
+- **决定：** 接受 dev-2 走查（2026-11-05，证据见上文）加单元测试和 envtest 作为验收，不做付费生产金丝雀。
+- **对标依据：** Render 在这些场景都会发送邮件，代码已经对齐。这个决定只关系到验收证据，客户行为不变。
+- **结果：** 剩余任务按此关闭，里程碑移入 `done/`。
