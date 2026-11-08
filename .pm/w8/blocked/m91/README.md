@@ -482,3 +482,7 @@ On 2026-11-04 main was rewritten to purge `.pm` evidence blobs (w6/100 D7/D10, `
 - Operational lesson: the runner fleet is one host with a link that fell as low as 0.02–2 MB/s this evening. Family cases must run strictly one at a time, and only when the link is healthy. Most of this run's 20+ failures came from network starvation, not from the product.
 
 Tasks t001–t007 stay open. Original DoD unchanged.
+
+## Evidence store — 2026-11-07 (from w6/m164)
+
+The gate above ("w6/100's remaining-work item 2") is built: the retained evidence of `common-current0941-20261101` and `common-d3-run100-20261104` (1,412 files, recovered from pre-rewrite objects, every candidate sha256 verified) is the GHCR artifact pinned in `.github/native-evidence.json`, and `native-common-qualify.py materialize-evidence` places it in plan/qualify/qualify-profile (`b62e7a8d3`). `validate_image_candidate` passes on it. Remaining before family cases: the package must be made public (w6/m164's user action), then a fresh utility baseline — `validate_test_candidate` reports the qualification sources changed since run 100. New evidence goes to a new artifact in the same package, recorded the same way.

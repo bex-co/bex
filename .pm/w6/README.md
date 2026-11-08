@@ -35,7 +35,7 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 
 ## Milestones
 
-- [ ] **m164** — [Native-common qualification evidence restored from the pre-purge bundle into object storage](m164/README.md) (7 tasks) ← `/pm-brainstorm w6` 2026-11-07
+- [ ] **m164** — **BLOCKED (user: make the GHCR package `bex-evidence` public in Package settings; t001–t003 done, evidence pinned at `ghcr.io/bex-co/bex-evidence@sha256:1203a4e7…`)** — [Native-common qualification evidence restored from the pre-purge bundle into object storage](blocked/m164/README.md) (7 tasks)
 - [ ] **m165** — [The bex-ci pool serves bex only; other repositories get their own runner pool](m165/README.md) (6 tasks) ← `/pm-brainstorm w6` 2026-11-07
 - [x] **m159** — [Ship gates catch dashboard red before it reaches main](done/m159/README.md) — **done 2026-11-06** (7 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 1
 - [x] **m160** — [Runner-host link probe: a slow internet link opens an issue by itself](done/m160/README.md) — **done 2026-11-06** (#131 opened and closed by dispatch) (6 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 2
