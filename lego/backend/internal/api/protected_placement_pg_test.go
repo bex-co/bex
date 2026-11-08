@@ -34,9 +34,17 @@ import (
 
 // placementRoleChecker is a workspace member whose role decides can_manage:
 // a Developer (admin false) holds every other relation, an Admin all of them.
-type placementRoleChecker struct{ admin bool }
+type placementRoleChecker struct {
+	admin bool
+	// manageChecks counts can_manage decisions, so a test can pin how many
+	// fresh Admin checks a verb runs.
+	manageChecks int
+}
 
 func (c *placementRoleChecker) Check(_ context.Context, _, relation, _ string) (bool, error) {
+	if relation == core.RelCanManage {
+		c.manageChecks++
+	}
 	return c.admin || relation != core.RelCanManage, nil
 }
 
@@ -202,8 +210,14 @@ func TestBlueprintPlacementIntoAProtectedEnvironmentNeedsAnAdminPG(t *testing.T)
 	if validation, err := srv.Apps.ValidateBlueprint(caller, owner.ID, manifest, ""); err != nil || !validation.Valid {
 		t.Fatalf("admin validation = %+v, %v; want valid", validation, err)
 	}
+	role.manageChecks = 0
 	if _, err := srv.Apps.DeployStack(caller, apps.DeployRequest{OwnerID: owner.ID, Manifest: manifest}); err != nil {
 		t.Fatalf("admin apply: %v", err)
+	}
+	// w3/m292: the whole-manifest pre-check's fresh Admin decision covers the
+	// apply's creates; they do not each repeat it.
+	if role.manageChecks != 1 {
+		t.Fatalf("admin apply ran %d can_manage checks, want 1", role.manageChecks)
 	}
 
 	// The service now lives in production; a Developer's re-apply leaves it
@@ -214,6 +228,20 @@ func TestBlueprintPlacementIntoAProtectedEnvironmentNeedsAnAdminPG(t *testing.T)
 	}
 	if _, err := srv.Apps.DeployStack(caller, apps.DeployRequest{OwnerID: owner.ID, Manifest: manifest}); err != nil {
 		t.Fatalf("developer re-apply of an in-place service: %v", err)
+	}
+
+	// w3/m292: the Blueprint-sync mark admits only the identity-less
+	// auto-sync (apps and environments tests); a member's call carrying it is
+	// still gated.
+	pushed := manifest + `          - type: web
+            name: api
+            runtime: image
+            image:
+              url: docker.io/library/nginx:alpine
+`
+	marked := core.WithBlueprintSync(caller)
+	if _, err := srv.Apps.DeployStack(marked, apps.DeployRequest{OwnerID: owner.ID, Manifest: pushed}); !isPlacementRefusal(err) {
+		t.Fatalf("a member's marked apply = %v, want %s", err, core.ProtectedPlacementCode)
 	}
 }
 

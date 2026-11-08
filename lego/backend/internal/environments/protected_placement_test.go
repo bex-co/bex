@@ -161,3 +161,34 @@ type unavailableChecker struct{}
 func (unavailableChecker) Check(context.Context, string, string, string) (bool, error) {
 	return false, errors.New("fga down")
 }
+
+// w3/m292: a Blueprint's own sync (no identity, core.WithBlueprintSync) places
+// into and out of a protected environment, as Render applies a pushed
+// render.yaml whoever pushed it; a member's call carrying the mark is gated.
+func TestABlueprintSyncPlacesInAProtectedEnvironment(t *testing.T) {
+	f := newExitFixture(t)
+	dev := f.developer()
+	sync := core.WithBlueprintSync(core.WithActingTenant(context.Background(), "tea-a"))
+	if got, err := core.ResolveEnvironmentForCreate(sync, NewCreateResolver(dev), f.prod.ID, "tea-a"); err != nil || got.ID != f.prod.ID {
+		t.Fatalf("Blueprint sync create in prod = %+v, %v; want prod", got, err)
+	}
+	guard, err := ExitGuards(dev).Load(sync, "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := guard(f.prod.ID); err != nil {
+		t.Fatalf("Blueprint sync leaving prod = %v, want admitted", err)
+	}
+
+	member := core.WithBlueprintSync(ctxAs("user-a"))
+	if _, err := core.ResolveEnvironmentForCreate(member, NewCreateResolver(dev), f.prod.ID, "tea-a"); !placementRefused(err) {
+		t.Fatalf("member's marked create in prod = %v, want %s", err, core.ProtectedPlacementCode)
+	}
+	guard, err = ExitGuards(dev).Load(member, "tea-a")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := guard(f.prod.ID); !placementRefused(err) {
+		t.Fatalf("member's marked exit from prod = %v, want %s", err, core.ProtectedPlacementCode)
+	}
+}

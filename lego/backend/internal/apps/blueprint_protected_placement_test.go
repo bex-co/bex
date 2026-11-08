@@ -17,9 +17,12 @@ limitations under the License.
 package apps
 
 import (
+	"context"
+	"reflect"
 	"testing"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
 // TestBlueprintProtectedPlacementTruthTable pins which Blueprint placements
@@ -67,5 +70,60 @@ func TestBlueprintProtectedPlacementTruthTable(t *testing.T) {
 				t.Fatalf("check(%q, ungrouped=%v, %+v) = %q, %v; want %q, %v", tc.grouping, tc.ungrouped, tc.current, env, refused, tc.wantEnv, tc.refused)
 			}
 		})
+	}
+}
+
+// workspaceEnvironmentsStore offers the workspace-wide listing and counts the
+// per-project one, which the placement read must then not use.
+type workspaceEnvironmentsStore struct {
+	*blueprintGroupingTestStore
+	perProject int
+}
+
+func (s *workspaceEnvironmentsStore) ListEnvironments(ctx context.Context, projectID string) ([]store.Environment, error) {
+	s.perProject++
+	return s.blueprintGroupingTestStore.ListEnvironments(ctx, projectID)
+}
+
+func (s *workspaceEnvironmentsStore) ListWorkspaceEnvironments(_ context.Context, tenantID string) ([]store.Environment, error) {
+	var out []store.Environment
+	for _, e := range s.environments {
+		if e.TenantID == tenantID {
+			out = append(out, e)
+		}
+	}
+	return out, nil
+}
+
+// w3/m292: the placement read lists the workspace's environments in one query
+// when the store offers it, and resolves the groupings exactly as the
+// per-project fallback does.
+func TestBlueprintEnvironmentPlacementsUseOneWorkspaceListing(t *testing.T) {
+	base := &blueprintGroupingTestStore{recordingStore: &recordingStore{},
+		projects: []store.Project{{ID: "prj-a", TenantID: "tea-a", Name: "shop"}, {ID: "prj-b", TenantID: "tea-a", Name: "blog"}},
+		environments: []store.Environment{
+			{ID: "env-prod", ProjectID: "prj-a", TenantID: "tea-a", Name: "production", ProtectedStatus: core.ProtectedStatusProtected},
+			{ID: "env-stage", ProjectID: "prj-a", TenantID: "tea-a", Name: "staging"},
+			{ID: "env-blog", ProjectID: "prj-b", TenantID: "tea-a", Name: "production"},
+		}}
+	groupings := []parsedGrouping{{projectName: "shop", environmentName: "production"}, {projectName: "blog", environmentName: "production"}, {projectName: "shop", environmentName: "new"}}
+	fallback := &Service{BlueprintGroups: base}
+	want, err := fallback.blueprintEnvironmentPlacements(context.Background(), "tea-a", groupings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	wide := &workspaceEnvironmentsStore{blueprintGroupingTestStore: base}
+	got, err := (&Service{BlueprintGroups: wide}).blueprintEnvironmentPlacements(context.Background(), "tea-a", groupings)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if wide.perProject != 0 {
+		t.Fatalf("per-project listings = %d, want 0", wide.perProject)
+	}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("placements = %+v, want %+v", got, want)
+	}
+	if !got.targets[blueprintGroupingKey("shop", "production")].protected || got.targets[blueprintGroupingKey("blog", "production")].protected {
+		t.Fatalf("targets = %+v, want only shop/production protected", got.targets)
 	}
 }

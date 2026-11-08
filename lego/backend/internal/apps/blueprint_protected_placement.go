@@ -31,19 +31,20 @@ import (
 // apply runs it before its first write, so a refusal writes nothing, and
 // validation reports each as a located entry, so the plan shows it. A resource
 // the apply leaves in place is never listed: Render lets non-Admins update
-// Blueprint-managed resources in a protected environment.
+// Blueprint-managed resources in a protected environment, and a Blueprint's
+// own (auto-)sync applies whoever pushed (core.BlueprintSync, w3/m292).
 //
 // A grouping counts as protected when its environment is protected now or the
 // manifest arms it, so a new protected environment admits no non-Admin
 // creates either — the same answer the create path's resolver gives the apply.
-func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st parsedStack, snap *workspaceSnapshot) (blueprintResourceErrors, error) {
+func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st parsedStack, snap *workspaceSnapshot) (refused blueprintResourceErrors, cleared bool, err error) {
 	tenantID, scoped := s.Tenant(ctx)
-	if !scoped || s.BlueprintGroups == nil {
-		return nil, nil
+	if !scoped || s.BlueprintGroups == nil || core.BlueprintSync(ctx) {
+		return nil, false, nil
 	}
 	placements, err := s.blueprintEnvironmentPlacements(ctx, tenantID, st.groupings)
 	if err != nil || !placements.anyProtected() {
-		return nil, err
+		return nil, false, err
 	}
 	var candidates []blueprintResourceError
 	refuse := func(kind BlueprintResourceKind, name, environmentID string) {
@@ -51,7 +52,7 @@ func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st pa
 	}
 	services, err := snap.services(ctx)
 	if err != nil {
-		return nil, err
+		return nil, false, err
 	}
 	for _, svc := range st.services {
 		current := placementOf{}
@@ -65,7 +66,7 @@ func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st pa
 	if len(st.databases) > 0 {
 		databases, err := snap.databases(ctx)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		for _, db := range st.databases {
 			current := placementOf{}
@@ -80,7 +81,7 @@ func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st pa
 	if len(st.keyValues) > 0 {
 		keyValues, err := snap.keyValues(ctx)
 		if err != nil {
-			return nil, err
+			return nil, false, err
 		}
 		for _, kv := range st.keyValues {
 			current := placementOf{}
@@ -96,7 +97,7 @@ func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st pa
 		var current map[string]string
 		if s.EnvGroupPlacements != nil {
 			if current, err = s.EnvGroupPlacements(ctx); err != nil {
-				return nil, err
+				return nil, false, err
 			}
 		}
 		for _, g := range st.envGroups {
@@ -112,26 +113,32 @@ func (s *Service) blueprintProtectedPlacementProblems(ctx context.Context, st pa
 		}
 	}
 	if len(candidates) == 0 {
-		return nil, nil
+		return nil, false, nil
 	}
 	err = s.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(tenantID))
 	if err == nil {
-		return nil, nil
+		return nil, true, nil
 	}
 	if !errors.Is(err, core.ErrForbidden) {
-		return nil, err
+		return nil, false, err
 	}
-	return candidates, nil
+	return candidates, false, nil
 }
 
 // requireBlueprintPlacement is blueprintProtectedPlacementProblems as the
-// apply's refusal: the first resource it names, as a 403.
-func (s *Service) requireBlueprintPlacement(ctx context.Context, st parsedStack, snap *workspaceSnapshot) error {
-	refused, err := s.blueprintProtectedPlacementProblems(ctx, st, snap)
-	if err != nil || len(refused) == 0 {
-		return err
+// apply's refusal: the first resource it names, as a 403. When an Admin passed
+// the check it returns ctx marked cleared, so the apply's creates skip the
+// per-resource fresh check (w3/m292).
+func (s *Service) requireBlueprintPlacement(ctx context.Context, st parsedStack, snap *workspaceSnapshot) (context.Context, error) {
+	refused, cleared, err := s.blueprintProtectedPlacementProblems(ctx, st, snap)
+	if cleared {
+		tenantID, _ := s.Tenant(ctx)
+		return core.WithPlacementCleared(ctx, tenantID), nil
 	}
-	return fmt.Errorf("%s %q: %w", refused[0].kind, refused[0].name, refused[0].err)
+	if err != nil || len(refused) == 0 {
+		return ctx, err
+	}
+	return ctx, fmt.Errorf("%s %q: %w", refused[0].kind, refused[0].name, refused[0].err)
 }
 
 // placementOf is a declared resource's current placement: whether it exists,
@@ -220,18 +227,37 @@ func (s *Service) blueprintEnvironmentPlacements(ctx context.Context, tenantID s
 	if err != nil {
 		return out, err
 	}
-	byName := map[string]map[string]store.Environment{}
-	for _, project := range projects {
-		environments, err := s.BlueprintGroups.ListEnvironments(ctx, project.ID)
-		if err != nil {
+	// One query for the whole workspace when the store offers it, rather than
+	// one per project.
+	var environments []store.Environment
+	if all, ok := s.BlueprintGroups.(interface {
+		ListWorkspaceEnvironments(ctx context.Context, tenantID string) ([]store.Environment, error)
+	}); ok {
+		if environments, err = all.ListWorkspaceEnvironments(ctx, tenantID); err != nil {
 			return out, err
 		}
-		named := make(map[string]store.Environment, len(environments))
-		for _, e := range environments {
-			out.protected[e.ID] = e.ProtectedStatus == core.ProtectedStatusProtected
-			named[e.Name] = e
+	} else {
+		for _, project := range projects {
+			listed, err := s.BlueprintGroups.ListEnvironments(ctx, project.ID)
+			if err != nil {
+				return out, err
+			}
+			environments = append(environments, listed...)
 		}
-		byName[project.Name] = named
+	}
+	byName := make(map[string]map[string]store.Environment, len(projects))
+	projectName := make(map[string]string, len(projects))
+	for _, project := range projects {
+		projectName[project.ID] = project.Name
+		byName[project.Name] = map[string]store.Environment{}
+	}
+	for _, e := range environments {
+		name, ok := projectName[e.ProjectID]
+		if !ok {
+			continue
+		}
+		out.protected[e.ID] = e.ProtectedStatus == core.ProtectedStatusProtected
+		byName[name][e.Name] = e
 	}
 	for _, g := range groupings {
 		e, exists := byName[g.projectName][g.environmentName]

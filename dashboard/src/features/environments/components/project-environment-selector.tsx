@@ -64,10 +64,15 @@ export function ProjectEnvironmentSelector({
     ]),
   );
   const projectListed = projects.some((p) => p.id === projectId);
-  const environmentListed = environments.some(
+  const selectedEnvironment = environments.find(
     (environment) =>
       environment.id === environmentId && environment.projectId === projectId,
   );
+  const environmentListed = selectedEnvironment !== undefined;
+  // A preselected protected environment a confirmed non-Admin cannot create
+  // in is cleared on load (w3/m292): the reason below names why, instead of
+  // a refusal on submit.
+  const selectionRestricted = placement.restricts(selectedEnvironment);
 
   // URL preselection is only a convenience: clear stale or foreign ids before
   // the form can submit them, then leave the ordinary selectors editable.
@@ -81,12 +86,17 @@ export function ProjectEnvironmentSelector({
       onEnvironmentChange(null);
       return;
     }
-    if (environmentsSettled && environmentId && !environmentListed) {
+    if (
+      environmentsSettled &&
+      environmentId &&
+      (!environmentListed || selectionRestricted)
+    ) {
       onEnvironmentChange(null);
     }
   }, [
     environmentId,
     environmentListed,
+    selectionRestricted,
     environmentsSettled,
     onEnvironmentChange,
     onProjectChange,

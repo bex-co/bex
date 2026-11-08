@@ -68,6 +68,46 @@ type EnvironmentResolver interface {
 	ResolveForCreate(ctx context.Context, environmentID, workspaceID string) (EnvironmentAssignment, error)
 }
 
+type blueprintSyncKey struct{}
+
+// WithBlueprintSync marks ctx as a Blueprint's own sync: the auto-sync worker
+// applying a pushed render.yaml (w3/m292). Render applies such an update in a
+// protected environment whoever pushed it ("non-Admin workspace members can
+// still modify those resources by publishing an update to the corresponding
+// render.yaml file", render.com/docs/projects), so the protected placement
+// gates admit it. Only platform code reading a durable Blueprint row may set
+// it, as with WithActingTenant.
+func WithBlueprintSync(ctx context.Context) context.Context {
+	return context.WithValue(ctx, blueprintSyncKey{}, true)
+}
+
+// BlueprintSync reports a Blueprint's own sync (WithBlueprintSync). A context
+// carrying an Identity is a member's call — a manual sync stays gated — so the
+// mark counts only without one.
+func BlueprintSync(ctx context.Context) bool {
+	if _, ok := IdentityFrom(ctx); ok {
+		return false
+	}
+	marked, _ := ctx.Value(blueprintSyncKey{}).(bool)
+	return marked
+}
+
+type placementClearedKey struct{}
+
+// WithPlacementCleared records that this request already passed a fresh
+// workspace-manage check for workspaceID's protected placements — a Blueprint
+// apply's whole-manifest pre-check — so the per-resource creates that follow
+// need not repeat it (w3/m292).
+func WithPlacementCleared(ctx context.Context, workspaceID string) context.Context {
+	return context.WithValue(ctx, placementClearedKey{}, workspaceID)
+}
+
+// PlacementCleared reports whether WithPlacementCleared covers workspaceID.
+func PlacementCleared(ctx context.Context, workspaceID string) bool {
+	cleared, _ := ctx.Value(placementClearedKey{}).(string)
+	return cleared != "" && cleared == workspaceID
+}
+
 // EnvironmentPlacementGuard is the optional half of an EnvironmentResolver
 // that authorizes placing a resource in the environment it resolved: Render
 // lets only workspace Admins create resources in a protected environment or

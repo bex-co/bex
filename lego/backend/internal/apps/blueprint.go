@@ -789,7 +789,7 @@ func (s *Service) blueprintValidationFor(ctx context.Context, repo, branch, bexY
 		// A non-Admin's create in, or move into or out of, a protected
 		// environment, which the apply refuses before any write (w3/m281).
 		var placed blueprintResourceErrors
-		if placed, err = s.blueprintProtectedPlacementProblems(ctx, st, snap); len(placed) > 0 {
+		if placed, _, err = s.blueprintProtectedPlacementProblems(ctx, st, snap); len(placed) > 0 {
 			return BlueprintValidation{Errors: blueprintResourceValidationErrors(source, ir, placed)}, nil
 		}
 	}
@@ -1699,7 +1699,7 @@ func (s *Service) triggerBlueprintSync(ctx context.Context, tenantID, repo, bran
 	// resolveWorkspace treats as no tenant at all, so the apply pipeline used to
 	// run with Tenant(ctx)=="". The acting tenant is derived from this store
 	// row, never from the push payload.
-	ctx = core.WithActingTenant(ctx, b.TenantID)
+	ctx = core.WithBlueprintSync(core.WithActingTenant(ctx, b.TenantID))
 	_, _ = s.runSync(ctx, b, "", "", nil, nil)
 }
 

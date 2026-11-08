@@ -196,7 +196,7 @@ func (r createResolver) ResolveForCreate(ctx context.Context, environmentID, wor
 // protected environment, or moving one into it, needs the workspace's fresh
 // can_manage — an Admin or Owner, as on Render (w3/m281).
 func (r createResolver) RequirePlacement(ctx context.Context, assignment core.EnvironmentAssignment) error {
-	if !assignment.Protected {
+	if !assignment.Protected || core.BlueprintSync(ctx) || core.PlacementCleared(ctx, assignment.WorkspaceID) {
 		return nil
 	}
 	return core.PlacementRefusal(assignment.ID, r.service.AuthorizeFreshOn(ctx, core.RelCanManage, core.WorkspaceObject(assignment.WorkspaceID)))
@@ -1389,8 +1389,14 @@ func (s *Service) loadExitGuard(ctx context.Context, workspaceID string) (core.E
 		for _, raw := range environmentIDs {
 			if eid := ids.EnvironmentStorageID(raw); eid != "" && !bare[eid] {
 				// Leaving a protected environment is a "move" Render restricts
-				// to Admins (w3/m281), refused with the placement code.
+				// to Admins (w3/m281), refused with the placement code — except
+				// in a Blueprint's own sync, which Render applies (w3/m292). A
+				// cleared placement (core.PlacementCleared) is not honored here:
+				// the Blueprint pre-check already covered its moves out.
 				if protected[eid] {
+					if core.BlueprintSync(ctx) {
+						continue
+					}
 					return core.PlacementRefusal(eid, admin)
 				}
 				return admin

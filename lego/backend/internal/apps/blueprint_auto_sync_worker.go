@@ -97,7 +97,7 @@ func (w *BlueprintAutoSyncWorker) process(ctx context.Context, intent store.Blue
 		_ = w.Svc.Blueprints.CompleteBlueprintAutoSyncIntent(ctx, intent.ID, intent.ClaimGeneration, "Auto Sync disabled or Blueprint path changed")
 		return
 	}
-	runCtx := core.WithActingTenant(core.WithWorkspace(ctx, b.TenantID), b.TenantID)
+	runCtx := core.WithBlueprintSync(core.WithActingTenant(core.WithWorkspace(ctx, b.TenantID), b.TenantID))
 	_, syncErr := w.Svc.runSync(runCtx, b, "", "", nil, &intent)
 	if syncErr != nil {
 		var retry *blueprintAutoSyncRetry

@@ -56,11 +56,14 @@ vi.mock("@/features/environments/hooks/use-environments", () => ({
 const REASON =
   "Only an admin can create resources in a protected environment or move them into or out of it.";
 
-function renderSelector(onEnvironmentChange = vi.fn()) {
+function renderSelector(
+  onEnvironmentChange = vi.fn(),
+  environmentId: string | null = null,
+) {
   render(
     <ProjectEnvironmentSelector
       projectId="prj-shop"
-      environmentId={null}
+      environmentId={environmentId}
       onProjectChange={vi.fn()}
       onEnvironmentChange={onEnvironmentChange}
     />,
@@ -106,5 +109,24 @@ describe("ProjectEnvironmentSelector protected placement", () => {
     await user.click(picker);
     await user.click(await screen.findByRole("option", { name: "production" }));
     expect(onEnvironmentChange).toHaveBeenCalledWith("evm-prod");
+  });
+
+  // w3/m292: a create URL that preselects a protected environment is cleared
+  // for a non-Admin on load, with the reason shown, not refused on submit.
+  it("clears a preselected protected environment for a non-admin", () => {
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    const onEnvironmentChange = renderSelector(vi.fn(), "evm-prod");
+    expect(onEnvironmentChange).toHaveBeenCalledWith(null);
+    expect(screen.getByText(REASON)).toBeInTheDocument();
+  });
+
+  it("keeps a preselected protected environment for an admin, and an unprotected one for anyone", () => {
+    expect(renderSelector(vi.fn(), "evm-prod")).not.toHaveBeenCalled();
+    vi.mocked(useCapabilities).mockReturnValue(
+      mockCapabilities({ role: "DEVELOPER", canManage: false }),
+    );
+    expect(renderSelector(vi.fn(), "evm-staging")).not.toHaveBeenCalled();
   });
 });

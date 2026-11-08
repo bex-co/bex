@@ -922,7 +922,8 @@ func (s *Service) deployParsedStack(ctx context.Context, req DeployRequest, st p
 	}
 	// Creating in, or moving into or out of, a protected environment needs an
 	// Admin (w3/m281) — refused here, before the groupings' first write.
-	if err := s.requireBlueprintPlacement(ctx, st, snap); err != nil {
+	ctx, err = s.requireBlueprintPlacement(ctx, st, snap)
+	if err != nil {
 		return StackResult{}, err
 	}
 	if err := s.requireBlueprintExecution(ctx, req); err != nil {
