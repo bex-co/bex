@@ -24,7 +24,7 @@ A cloud coding agent works on one task in one sandbox. A large task, such as "mi
 
 ### D1 — Lineage: three columns on `agent_sessions`
 
-A child is an ordinary session with a parent. `agent_sessions` (migration 0211) gains:
+A child is an ordinary session with a parent. `agent_sessions` (migration 0213) gains:
 
 | Column | Type | Meaning |
 | --- | --- | --- |
