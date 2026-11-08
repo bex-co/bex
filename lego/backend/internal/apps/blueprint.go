@@ -1777,7 +1777,10 @@ func (s *Service) UpdateBlueprint(ctx context.Context, bpID, ownerID string, req
 		}
 	}
 	var newStatus *string
-	if req.AutoSync != nil && !*req.AutoSync && b.Status != store.BlueprintStatusPaused {
+	// A Blueprint whose first sync awaits approval stays created, as on
+	// Render ("status remains created until its first sync has been
+	// approved"); approving it with autoSync off settles paused (w5/m283).
+	if req.AutoSync != nil && !*req.AutoSync && b.Status != store.BlueprintStatusPaused && b.Status != store.BlueprintStatusCreated {
 		st := store.BlueprintStatusPaused
 		newStatus = &st
 	}

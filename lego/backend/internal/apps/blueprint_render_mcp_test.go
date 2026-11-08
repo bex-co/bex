@@ -93,6 +93,15 @@ func TestRenderBlueprintMCPTools(t *testing.T) {
 		t.Errorf("existingResources = %q, want Render MCP's create_new default", mode)
 	}
 
+	// Pausing auto-sync before the first approval leaves it created, as on
+	// Render.
+	if paused, refused := call("update_blueprint", map[string]any{"blueprintId": id, "autoSync": false}); refused ||
+		paused["blueprint"].(map[string]any)["status"] != store.BlueprintStatusCreated {
+		t.Fatalf("unapproved Blueprint with autoSync off = %v, want status created", paused)
+	}
+	if _, refused := call("update_blueprint", map[string]any{"blueprintId": id, "autoSync": true}); refused {
+		t.Fatal("re-enabling autoSync was refused")
+	}
 	got, refused := call("get_blueprint", map[string]any{"blueprintId": id})
 	if refused || got["id"] != id || got["status"] != store.BlueprintStatusCreated {
 		t.Fatalf("get_blueprint = %v (refused %v)", got, refused)
@@ -134,6 +143,9 @@ func TestRenderBlueprintMCPTools(t *testing.T) {
 	renamed, refused := call("update_blueprint", map[string]any{"blueprintId": id, "name": "stack", "autoSync": false})
 	if refused || renamed["planningOutcome"] != nil || renamed["blueprint"].(map[string]any)["name"] != "stack" {
 		t.Fatalf("rename update_blueprint = %v, want renamed without a plan", renamed)
+	}
+	if got := renamed["blueprint"].(map[string]any)["status"]; got != store.BlueprintStatusPaused {
+		t.Errorf("approved Blueprint with autoSync off reads %v, want paused", got)
 	}
 	moved, refused := call("update_blueprint", map[string]any{"blueprintId": id, "branch": "dev"})
 	if refused || moved["planningOutcome"] != PlanningNoChanges || moved["blueprint"].(map[string]any)["branch"] != "dev" {

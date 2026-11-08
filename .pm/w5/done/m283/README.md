@@ -1,6 +1,6 @@
 # w5 · m283 — MCP Blueprint tools match Render's: create_blueprint plans, approve_blueprint applies
 
-**Worker:** worker5 **Goal:** an agent that calls Render's Blueprint MCP tools on bex gets Render's semantics — `create_blueprint` plans without applying, `approve_blueprint` applies — with Render's tool names and arguments. **Status:** in progress — t001–t004 and t006–t008 done (shipped); t005 is the production MCP walk once the deploy is live, then t009
+**Worker:** worker5 **Goal:** an agent that calls Render's Blueprint MCP tools on bex gets Render's semantics — `create_blueprint` plans without applying, `approve_blueprint` applies — with Render's tool names and arguments. **Status:** done
 
 ## Tasks (in order)
 
@@ -10,11 +10,11 @@
 | t002 | `create_blueprint` plans without applying, with Render's arguments — **DONE** | 1h | t001 |
 | t003 | Add `plan_blueprint`, `approve_blueprint`, `get_blueprint`, `update_blueprint` — **DONE** | 1h20m | t002 |
 | t004 | Retire or alias the bex-only planning tools and update the guards — **DONE** | 40m | t003 |
-| t005 | Live walk on dev-5: create → plan → approve through MCP | 30m | t004 |
+| t005 | Live walk on dev-5: create → plan → approve through MCP — **DONE** | 30m | t004 |
 | t006 | Render parity — **DONE** | 30m | t005 |
 | t007 | Simplify — **DONE** | 20m | t006 |
 | t008 | Test coverage — **DONE** | 45m | t006, t007 |
-| t009 | Closeout | 10m | t008 |
+| t009 | Closeout — **DONE** | 10m | t008 |
 
 Total: **9 tasks, about 5h55m**.
 
@@ -41,3 +41,14 @@ Total: **9 tasks, about 5h55m**.
 - **t007 Simplify:** one `toRenderBlueprint` and one `toBlueprintDetail` now serve REST and MCP; `update_blueprint` normalizes the path before comparing and checks the edit right even on a no-op. Not changed: a branch move fetches the file twice (once to validate the branch in `UpdateBlueprint`, once to plan), which is correct and rare.
 - **t008 tests:** `TestRenderBlueprintMCPTools` covers repoUrl refusals, create planning without resources, the `create_new` default, get, approve with and without manual env vars, plan `no_changes`, and update (refusals, no-op, rename without a plan, a branch move that plans); there is also `TestParseBlueprintRepoURL`.
 - **t005:** the dev-5 walk could not run: the shared CAPD cluster answered with a certificate the published kubeconfig does not trust (`x509: certificate signed by unknown authority`, even after republishing it). The walk moves to production MCP (`api.bex.co/mcp`) once this deploy is live.
+
+## Closeout — 2026-11-08 (loopx w5)
+
+- **t005, production MCP walk** (bex-canary, cookie-authenticated `https://api.bex.co/mcp`, production pinned to `d6666dc65`):
+  - `tools/list` serves `create_blueprint` (`repoUrl, branch, path, name, autoSync, existingResources`), `plan_blueprint`, `approve_blueprint`, `get_blueprint` and `update_blueprint` with Render's arguments. `create_planned_blueprint` and `plan_blueprint_sync` are gone.
+  - `create_blueprint {repoUrl: render-examples/sveltekit}` → Blueprint `exs-dbc79apv5vjs73b9hcmg` with status `created` and `planningOutcome: planned` (create `sveltekit-snh4`, the `create_new` suffix). No service existed at that point, and `get_blueprint` showed `resources: []`.
+  - `plan_blueprint` → `planned`. A no-op `update_blueprint` skipped planning; a rename plus `autoSync: false` skipped it too.
+  - `approve_blueprint` → sync `state: success`, and only then `get_blueprint.resources` named `srv-dboerjd88aas73ah2f70`.
+  - Cleanup: the service was deleted (204, then 404) and the Blueprint disconnected (204).
+- **Found and fixed during the walk:** turning auto-sync off before the first approval stored `paused`. Render says the status "remains created until its first sync has been approved". `UpdateBlueprint` now leaves a `created` Blueprint `created`, and approving it with auto-sync off still settles `paused`. Covered in `TestRenderBlueprintMCPTools`. w4/368's read rule (paused rows that predate stamping stay paused) is unchanged.
+- **DoD:** all three bullets hold. Follow-up `w5/181` (default branch) shipped as `eb0a341a1`.
