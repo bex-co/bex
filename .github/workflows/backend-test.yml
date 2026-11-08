@@ -133,6 +133,8 @@ jobs:
             server -dev -dev-listen-address=0.0.0.0:8200
           timeout 60 bash -c 'until curl -sf http://localhost:8200/v1/sys/health; do sleep 2; done'
       - name: install promtool # TestInstanceSecondsQueryOnPrometheus runs the billing query in Prometheus's engine (w5/m111); same 3.13 LTS line as the production server and gitops.yml
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           mkdir -p "$RUNNER_TEMP/bin"
           # Bounded, resumed and checksum-verified: a stalled download held this

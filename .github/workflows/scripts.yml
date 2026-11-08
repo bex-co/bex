@@ -191,16 +191,20 @@ jobs:
         run: bash scripts/render-mcp-drift.test.sh
       - name: Render Blueprint/webhook schema drift reporting unit tests
         run: bash scripts/render-schema-drift.test.sh
+      - name: Verified CI download fallback unit tests
+        run: bash scripts/ci-fetch-verified.test.sh
       - name: dev-N harness derivation + isolation unit tests
         run: bash scripts/dev-env.test.sh
       - name: Install ShellCheck
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           SHELLCHECK_VERSION=0.10.0
           SHELLCHECK_LINUX_ARM64_SHA256=324a7e89de8fa2aed0d0c28f3dab59cf84c6d74264022c00c22af665ed1a09bb
           archive="$RUNNER_TEMP/shellcheck.tar.xz"
-          curl -fsSLo "$archive" \
-            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz"
-          printf '%s  %s\n' "$SHELLCHECK_LINUX_ARM64_SHA256" "$archive" | sha256sum --check --strict
+          bash scripts/ci-fetch-verified.sh \
+            "https://github.com/koalaman/shellcheck/releases/download/v${SHELLCHECK_VERSION}/shellcheck-v${SHELLCHECK_VERSION}.linux.aarch64.tar.xz" \
+            "$SHELLCHECK_LINUX_ARM64_SHA256" "$archive"
           tar -xJf "$archive" -C "$RUNNER_TEMP"
           echo "$RUNNER_TEMP/shellcheck-v${SHELLCHECK_VERSION}" >> "$GITHUB_PATH"
           "$RUNNER_TEMP/shellcheck-v${SHELLCHECK_VERSION}/shellcheck" --version
