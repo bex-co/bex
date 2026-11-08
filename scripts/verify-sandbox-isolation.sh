@@ -428,10 +428,21 @@ CGO_ENABLED=0 GOOS=linux GOARCH="$sandbox_arch" go build -trimpath -o "$probe_bi
 # hand-written copy drifted from it for 2.5 months unseen (d2b00c61e).
 (cd lego/backend && GOWORK=off go build -o "$fixture_dir/render-policy" ./internal/sessionegress/cmd/render-policy) \
   || fail "could not build the session egress policy renderer"
+# Each install is one kubectl exec stream from the runner to the production
+# API server; a dropped stream (run 42481465883: `read tcp …:443: i/o
+# timeout`) is retried, since the write is idempotent.
 for tuple in "$pod_a:$container_a" "$pod_b:$container_b" "$pod_d:$container_d"; do
-  kubectl -n "$namespace_a" exec -i "${tuple%%:*}" -c "${tuple#*:}" -- /bin/sh -c \
-    'umask 077; /bin/busybox cat > /tmp/m35-netprobe && chmod 700 /tmp/m35-netprobe' \
-    <"$probe_binary" || fail "could not install the network probe in sandbox ${tuple%%:*}"
+  installed=false
+  for attempt in 1 2 3; do
+    if kubectl -n "$namespace_a" exec -i "${tuple%%:*}" -c "${tuple#*:}" -- /bin/sh -c \
+      'umask 077; /bin/busybox cat > /tmp/m35-netprobe && chmod 700 /tmp/m35-netprobe' \
+      <"$probe_binary"; then
+      installed=true
+      break
+    fi
+    sleep $((attempt * 5))
+  done
+  [ "$installed" = true ] || fail "could not install the network probe in sandbox ${tuple%%:*}"
 done
 
 sandbox_workloads=("$namespace_a:$pod_a:$container_a" "$namespace_a:$pod_b:$container_b" "$namespace_a:$pod_d:$container_d")
