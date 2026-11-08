@@ -24,7 +24,9 @@ export function AutomationCreatePage() {
   const navigate = useNavigate();
   const mutations = useAutomationMutations();
   const viewer = useAutomationViewer();
-  const initial = useMemo(() => emptyFormValues(), []);
+  // "UTC" keeps the first client render equal to the server render; the form
+  // switches to the browser's zone after mount (hydration error #418 otherwise).
+  const initial = useMemo(() => emptyFormValues("UTC"), []);
   const denied = !viewer.resolving && !viewer.canCreate;
 
   return (

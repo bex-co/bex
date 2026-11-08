@@ -1,3 +1,4 @@
+import { useWorkspaceSubjectLabel } from "@/common/hooks/use-workspace-subject-label";
 import { useState } from "react";
 import { Loader2 } from "lucide-react";
 import { Badge } from "@/common/components/ui/badge";
@@ -42,13 +43,15 @@ function formatTime(iso: string): string {
       });
 }
 
-function versionMeta(v: AgentSkillVersionSummary): string {
+/** The author's name (or the id of a removed member), then time and short id. */
+function VersionMeta({ v }: { v: AgentSkillVersionSummary }) {
+  const author = useWorkspaceSubjectLabel(v.createdBy ?? "");
   const parts = [
-    v.createdBy ?? "",
+    v.createdBy ? author : "",
     v.createdAt ? formatTime(v.createdAt) : "",
     v.shortId,
   ];
-  return parts.filter((part) => part !== "").join(" · ");
+  return <>{parts.filter((part) => part !== "").join(" · ")}</>;
 }
 
 const ROW_STYLE: Record<SkillDiffRow["kind"], string> = {
@@ -217,7 +220,7 @@ export function AgentSkillHistory({
                     ) : null}
                   </span>
                   <span className="text-muted-foreground truncate text-xs">
-                    {versionMeta(v)}
+                    <VersionMeta v={v} />
                   </span>
                 </button>
               </li>
@@ -253,7 +256,7 @@ export function AgentSkillHistory({
                 <>
                   <span className="truncate text-sm">{summary.message}</span>
                   <span className="text-muted-foreground truncate text-xs">
-                    {versionMeta(summary)}
+                    <VersionMeta v={summary} />
                   </span>
                 </>
               ) : null

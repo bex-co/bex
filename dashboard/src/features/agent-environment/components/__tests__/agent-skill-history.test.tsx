@@ -23,6 +23,11 @@ vi.mock("@/features/agent-environment/hooks/use-agent-skill-versions", () => ({
     hooks.one(n),
 }));
 
+vi.mock("@/common/hooks/use-workspace-subject-label", () => ({
+  useWorkspaceSubjectLabel: (subject: string) =>
+    subject === "usr-1" ? "ada@example.com" : subject,
+}));
+
 function summary(version: number, current = false): AgentSkillVersionSummary {
   return {
     __typename: "AgentSkillVersion",
@@ -103,7 +108,7 @@ describe("AgentSkillHistory", () => {
     ).getAllByRole("listitem");
     expect(items).toHaveLength(3);
     expect(items[0]).toHaveTextContent("Current");
-    expect(items[0]).toHaveTextContent("usr-1");
+    expect(items[0]).toHaveTextContent("ada@example.com");
     expect(items[0]).toHaveTextContent("abc0003");
     expect(items[2]).toHaveTextContent("Add skills/run/SKILL.md");
     expect(screen.getAllByText("Current")).toHaveLength(1);

@@ -26,5 +26,5 @@
 - [x] **010** — Automations: count a workspace's automations in the database, and read the previous run's phase with one query → [`done/010.md`](done/010.md)
 - [x] **011** — Skill versions saved before migration 0210 read with SQL-style YAML quoting, so their next diff shows one spurious description line → [`done/011.md`](done/011.md)
 - [ ] **012** — Blueprint deploys sit `queued` for 20-35 minutes, sync/create answer 500/502, and a missed rollout deadline is never retried → [`012.md`](012.md)
-- [ ] **013** — Automation create form logs React hydration error #418 (time zone default differs between server and browser) → [`013.md`](013.md)
-- [ ] **014** — Skill version history shows the author as a raw user id → [`014.md`](014.md)
+- [x] **013** — Automation create form logs React hydration error #418 (time zone default differs between server and browser) → [`013.md`](done/013.md)
+- [x] **014** — Skill version history shows the author as a raw user id → [`014.md`](done/014.md)

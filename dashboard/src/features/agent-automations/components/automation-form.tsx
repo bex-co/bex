@@ -1,4 +1,11 @@
-import { useId, useMemo, useRef, useState, type FormEvent } from "react";
+import {
+  useEffect,
+  useId,
+  useMemo,
+  useRef,
+  useState,
+  type FormEvent,
+} from "react";
 import { Link } from "@tanstack/react-router";
 import { Loader2 } from "lucide-react";
 import { Alert, AlertDescription } from "@/common/components/ui/alert";
@@ -41,6 +48,7 @@ import {
   type MappedError,
 } from "@/features/agent-automations/lib/form";
 import {
+  browserTimeZone,
   visibleScheduleFields,
   type ScheduleProblems,
 } from "@/features/agent-automations/lib/schedule";
@@ -79,6 +87,18 @@ export function AutomationForm({
   const { repos } = useRepos();
   const [values, setValues] = useState<AutomationFormValues>(initial);
   const [attempted, setAttempted] = useState(false);
+
+  // A create form starts on "UTC" so the server and first client render agree,
+  // then takes the browser's zone unless the person already chose one.
+  useEffect(() => {
+    if (mode !== "create") return;
+    const zone = browserTimeZone();
+    setValues((prev) =>
+      prev.schedule.timezone === "UTC" && zone !== "UTC"
+        ? { ...prev, schedule: { ...prev.schedule, timezone: zone } }
+        : prev,
+    );
+  }, [mode]);
   const [saving, setSaving] = useState(false);
   const [refusal, setRefusal] = useState<MappedError | null>(null);
 

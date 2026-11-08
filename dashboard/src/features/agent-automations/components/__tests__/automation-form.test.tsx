@@ -65,6 +65,45 @@ async function fillValid(user: ReturnType<typeof userEvent.setup>) {
   await user.type(screen.getByLabelText("Task"), "Update the dependencies");
 }
 
+function renderWithZone(mode: "create" | "edit", zone: string) {
+  render(
+    <AutomationForm
+      mode={mode}
+      initial={emptyFormValues(zone)}
+      version={mode === "edit" ? 1 : undefined}
+      onSave={vi.fn(async () => undefined)}
+      cancelTo={{ to: "/automations" }}
+    />,
+  );
+}
+
+describe("AutomationForm time zone", () => {
+  it("a create form that starts on UTC takes the browser's zone after mount", async () => {
+    const spy = vi
+      .spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+      .mockReturnValue({
+        timeZone: "Asia/Tokyo",
+      } as Intl.ResolvedDateTimeFormatOptions);
+    renderWithZone("create", "UTC");
+    await waitFor(() =>
+      expect(screen.getByText(/Runs:.*Asia\/Tokyo/)).toBeInTheDocument(),
+    );
+    spy.mockRestore();
+  });
+
+  it("an edit form keeps the saved zone even when it is UTC", async () => {
+    const spy = vi
+      .spyOn(Intl.DateTimeFormat.prototype, "resolvedOptions")
+      .mockReturnValue({
+        timeZone: "Asia/Tokyo",
+      } as Intl.ResolvedDateTimeFormatOptions);
+    renderWithZone("edit", "UTC");
+    await Promise.resolve();
+    expect(screen.queryByText(/Runs:.*Asia\/Tokyo/)).not.toBeInTheDocument();
+    spy.mockRestore();
+  });
+});
+
 describe("AutomationForm", () => {
   it("blocks an empty submit, announces each problem on its field and focuses the first", async () => {
     const { user, onSave } = setup();
