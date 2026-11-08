@@ -40,7 +40,7 @@ Materialized from all five proposals of `/pm-brainstorm for w6` 2026-11-08 plus 
 1. **[m290](m290/README.md)** — deleting an environment or project handles its datastores and env groups as Render does (10 tasks).
 2. **[m291](m291/README.md)** — build toolchain digests are fresh again and #105 closes (7 tasks).
 3. **[110](110.md)** — tenant-view probe detects an activator-held wake (#134).
-4. **[111](111.md)** — main-only branch policies on five production environments (#101), split from w3/blocked/m173 t005.
+4. **[111](done/111.md)** — **done** — main-only branch policies on five production environments (#101), split from w3/blocked/m173 t005.
 5. **[112](112.md)** — CLI staleness monitor counts from the rewritten release tag (#111).
 6. **[113](113.md)** — ADR018 rows 222 and 225 stale or unsigned claims.
 
@@ -219,7 +219,7 @@ These five are correctly filed and correctly blocked — they are not stale and 
 ## Inbox
 
 - [ ] **110** — [tenant-view probe detects an activator-held wake and polls for `service_woken` (#134)](110.md) ← `/pm-brainstorm for w6` 2026-11-08 proposal 3
-- [ ] **111** — [Main-only deployment branch policies on the five unrestricted production environments (#101)](111.md) ← proposal 4; split from w3/blocked/m173 t005
+- [x] **111** — [Main-only deployment branch policies on the five unrestricted production environments (#101)](done/111.md) — done 2026-11-08: drift script OK, #101 closes on run 42467710122 ← proposal 4; split from w3/blocked/m173 t005
 - [ ] **112** — [cli-release-staleness.sh counts from the rewritten copy of an off-main release tag (#111)](112.md) ← proposal 5
 - [ ] **113** — [ADR018 rows 222 and 225 carry stale or unsigned claims](113.md) ← proposal ledger follow-up
 - [x] **107** — [Ship gates run the native custody tests when a custody-pinned file changes](done/107.md) — done 2026-11-07 ← `/pm-brainstorm w6` 2026-11-07
