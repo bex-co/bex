@@ -316,7 +316,7 @@ The interactive-only Key Value client has a separate, opt-in full-edge verifier:
 
 ## Additional commands
 
-- [x] **`docs`** — unmodified `render docs` opens `render.com/docs` (client-side; no bex call). The `bex` launcher overrides this command to open the Bex CLI guide on GitHub (`lego/cli/internal/branding.DocsURL`); that is a launcher branding overlay, not a change to the unmodified-CLI grade above.
+- [x] **`docs`** — unmodified `render docs` opens `render.com/docs` (client-side; no bex call). The `bex` launcher overrides this command to open the public Bex docs site, `https://bex.co/docs` (`lego/cli/internal/branding.DocsURL`); that is a launcher branding overlay, not a change to the unmodified-CLI grade above.
 - [x] **`completion [bash|zsh|fish|powershell]`** — **w2/m79 / v2.24.0:** generates shell autocompletion scripts client-side (no bex call); help + local smoke on the unmodified pin
 - [~] **`ea`** — early-access surfaces: `ea blueprints` (v2.35.0) and `ea objects` (out of the compatibility target). Sandboxes and sandbox groups left `ea` for the root at v2.32.0 with no alias (see the Core `sandboxes` row); `bex ea sandboxes …` now exits 1 with `unknown command "sandboxes" for "bex ea"`. Re-diff the `ea` `Use:` names on every pin bump.
   - [~] `ea blueprints create` — Render's `CreateBlueprintRequest`; plans the first sync without applying it. The CLI always sends `existingResources`, `create_new` by default. Served since w2/m256 and w2/m261 ([ADR049 § Blueprint onboarding](ADR049-render-yaml-parity.md#blueprint-onboarding-plan-then-approve-w2m256-2026-11-03)); help-graded on the launcher at v2.35.0, production walk pending (w2/m256 t007).

@@ -230,7 +230,7 @@ The dashboard's secret-file upload refuses a non-UTF-8 file with the same hint i
 `bex` imports the pinned upstream command package; it does not fork or vendor it. A Layer-1 overlay in `lego/cli/internal/branding` mutates the exported `cmd.RootCmd` after Bex-native commands attach:
 
 - **Help chrome:** `Use` is `bex`, examples/Short/Long get safe string rewrites (backtick-, single-, and double-quoted `render …` command references, line-leading bare commands, and the `on/to/of/with/from/the/your Render` phrases), help prints `bex CLI v…`, and the ungrouped-commands header matches `CommandPath == "bex"`. Hostnames such as `render.com` are never rewritten globally; the one help page that cited `render.com/docs/one-off-jobs` (`jobs create`) carries a narrow per-command override instead (w7/045).
-- **`bex docs`:** opens the Bex CLI guide on GitHub (`branding.DocsURL`), not `render.com/docs`.
+- **`bex docs`:** opens the public Bex docs site, `https://bex.co/docs` (`branding.DocsURL`), as `render docs` opens `render.com/docs`.
 - **`bex -v`:** leads with `bex vX.Y.Z`, then a separate `compatible with Render CLI v…` line; update checks still hit this repo's `bex-cli/v*` releases.
 
 Safe rewrites preserve **`render.yaml`** (and the `bex.yml` filename alias).

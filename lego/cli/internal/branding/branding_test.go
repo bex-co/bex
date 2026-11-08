@@ -139,6 +139,14 @@ func TestApplySetsUseAndHelpChrome(t *testing.T) {
 	if docs.Example != "  # Open Bex documentation\n  bex docs" {
 		t.Errorf("docs Example = %q", docs.Example)
 	}
+	if docs.Long != "Open the Bex docs in your browser." {
+		t.Errorf("docs Long = %q", docs.Long)
+	}
+	// `render docs` opens Render's public docs site; `bex docs` opens Bex's,
+	// never a source file in the repository (w32/005).
+	if DocsURL != "https://bex.co/docs" {
+		t.Errorf("DocsURL = %q, want the public Bex docs site", DocsURL)
+	}
 }
 
 func TestHelpFuncRebrandsLateAddedCommands(t *testing.T) {

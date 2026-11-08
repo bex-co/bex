@@ -32,9 +32,10 @@ import (
 	"github.com/spf13/pflag"
 )
 
-// DocsURL is opened by the overridden `bex docs` command. There is no
-// docs.bex.co host yet; the CLI guide is the closest stable public page.
-const DocsURL = "https://github.com/bex-co/bex/blob/main/docs/bex-cli.md"
+// DocsURL is opened by the overridden `bex docs` command: the public Bex docs
+// site, as `render docs` opens render.com/docs. It is the same site the skills
+// pack points Render docs links at (internal/skills/packgen).
+const DocsURL = "https://bex.co/docs"
 
 const (
 	renderYAMLToken = "\x00RENDER_YAML\x00"
@@ -170,7 +171,7 @@ func overrideDocs(root *cobra.Command) {
 			continue
 		}
 		c.Short = "Open the Bex docs in your browser"
-		c.Long = "Open the Bex CLI guide in your browser."
+		c.Long = "Open the Bex docs in your browser."
 		c.Example = "  # Open Bex documentation\n  bex docs"
 		c.RunE = func(_ *cobra.Command, _ []string) error {
 			return dashboard.Open(DocsURL)
