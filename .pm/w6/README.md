@@ -33,8 +33,21 @@ Materialized from the three proposals in `$pm-brainstorm for w6`, approved by th
 2. **[m144 — Refresh dashboard permissions after workspace access changes](done/m144/README.md)** — **done** — ~5h, 8 tasks. Its final implementation task depends on `w6/m143/t008`; the earlier contract/refresh work can proceed independently. This approval supersedes the older permissive-while-unknown dashboard UI policy for affected actions and sensitive reads.
 3. **[073 — Refresh request-validator OpenAPI pin to include outbound-ips](done/073.md)** — **done** 2026-09-11 — ~45–60m, existing inbox note; no dependency on m143/m144. Retained as a note under the sub-hour sizing rule.
 
+## Approved queue (priority order, 2026-11-08)
+
+Materialized from all five proposals of `/pm-brainstorm for w6` 2026-11-08 plus its ledger follow-up, approved by the user's `/pm them all to w6 and then /loopx w6`. Numbers shifted from the proposal: m288/m289 were taken by w2 the same day, and w3/057 had closed, so its follow-up is 113.
+
+1. **[m290](m290/README.md)** — deleting an environment or project handles its datastores and env groups as Render does (10 tasks).
+2. **[m291](m291/README.md)** — build toolchain digests are fresh again and #105 closes (7 tasks).
+3. **[110](110.md)** — tenant-view probe detects an activator-held wake (#134).
+4. **[111](111.md)** — main-only branch policies on five production environments (#101), split from w3/blocked/m173 t005.
+5. **[112](112.md)** — CLI staleness monitor counts from the rewritten release tag (#111).
+6. **[113](113.md)** — ADR018 rows 222 and 225 stale or unsigned claims.
+
 ## Milestones
 
+- [ ] **m290** — [Deleting an environment or project handles its Postgres, Key Value and env groups as Render does](m290/README.md) (10 tasks) ← `/pm-brainstorm for w6` 2026-11-08 proposal 1
+- [ ] **m291** — [Build toolchain digests are fresh again and #105 closes](m291/README.md) (7 tasks) ← `/pm-brainstorm for w6` 2026-11-08 proposal 2
 - [ ] **m164** — **BLOCKED (user: make the GHCR package `bex-evidence` public in Package settings; t001–t003 done, evidence pinned at `ghcr.io/bex-co/bex-evidence@sha256:1203a4e7…`)** — [Native-common qualification evidence restored from the pre-purge bundle into object storage](blocked/m164/README.md) (7 tasks)
 - [ ] **m165** — **BLOCKED (time: the 24 h placement window ends 2026-11-09 07:57Z; t001–t005 done, other-ci live and bex-ci grants only bex)** — [The bex-ci pool serves bex only; other repositories get their own runner pool](blocked/m165/README.md) (6 tasks) ← `/pm-brainstorm w6` 2026-11-07
 - [x] **m159** — [Ship gates catch dashboard red before it reaches main](done/m159/README.md) — **done 2026-11-06** (7 tasks) ← `/pm-brainstorm w6` 2026-11-06 proposal 1
@@ -205,6 +218,10 @@ These five are correctly filed and correctly blocked — they are not stale and 
 
 ## Inbox
 
+- [ ] **110** — [tenant-view probe detects an activator-held wake and polls for `service_woken` (#134)](110.md) ← `/pm-brainstorm for w6` 2026-11-08 proposal 3
+- [ ] **111** — [Main-only deployment branch policies on the five unrestricted production environments (#101)](111.md) ← proposal 4; split from w3/blocked/m173 t005
+- [ ] **112** — [cli-release-staleness.sh counts from the rewritten copy of an off-main release tag (#111)](112.md) ← proposal 5
+- [ ] **113** — [ADR018 rows 222 and 225 carry stale or unsigned claims](113.md) ← proposal ledger follow-up
 - [x] **107** — [Ship gates run the native custody tests when a custody-pinned file changes](done/107.md) — done 2026-11-07 ← `/pm-brainstorm w6` 2026-11-07
 - [x] **108** — [Runner-pool docs match the three pools, their limits and caches](done/108.md) — done 2026-11-07 ← `/pm-brainstorm w6` 2026-11-07
 - [x] **109** — [pg-operand verifies its image before pushing it](done/109.md) — done 2026-11-08 ← `/pm-brainstorm w6` 2026-11-07

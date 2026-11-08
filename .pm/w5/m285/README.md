@@ -31,3 +31,10 @@ Total: **8 tasks, about 5h15m**.
 - **Why now:** the divergence was never signed off, and the parity rule says to amend the ADR rather than keep it.
 - **Decision (2026-11-07):** the user approved the round-7 proposal ("them all to w5"). The secret is returned as Render returns it, to the roles Render lets read webhooks (t001 verifies), with an audit event per read. A stricter admin-only variant would be a divergence needing sign-off.
 - **Render parity:** included.
+
+## Overlap record (2026-11-08)
+
+- **Affected:** w5/m285 (all tasks todo) and `w3/done/m282`.
+- **Source:** verified evidence at `c258f408f`. w3/m282 shipped the same row-300 change: `ade2f62aa` "the signing secret is readable on list, get and patch, as on Render" and `b8f3d90cb` (store suite). Found by `/pm-brainstorm for w6` 2026-11-08.
+- **Next step for worker5:** before t002, diff w3/m282's shipped behavior against this milestone's DoD. Keep only what m282 did not deliver (t001's Render role check, the per-read audit event, any surface m282 skipped). If nothing is left, archive m285 to `w5/done/` as superseded by w3/m282, with that diff as evidence.
+- This record does not mark any m285 task done.
