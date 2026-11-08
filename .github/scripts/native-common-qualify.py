@@ -289,6 +289,54 @@ def checkout_evidence(mode):
     print("\n".join(checkout_evidence_packets(record, custody)))
 
 
+EVIDENCE_LOCATION = ".github/native-evidence.json"
+
+
+def evidence_location(root):
+    """The one digest-pinned GHCR artifact that holds the retained evidence.
+
+    The evidence left git on 2026-11-04 (#NO-ARTIFACTS-IN-GIT); its file
+    titles are the repository paths below .pm/w8/m91/evidence (w6/m164)."""
+    location = json_file(regular_path(root, EVIDENCE_LOCATION))
+    require(isinstance(location, dict) and set(location) == {"schema", "artifact", "packets"}
+            and location["schema"] == "bex.native-evidence-location/v1"
+            and isinstance(location["artifact"], str)
+            and re.fullmatch(r"ghcr\.io/bex-co/bex-evidence@sha256:[a-f0-9]{64}", location["artifact"])
+            and isinstance(location["packets"], list) and location["packets"]
+            and all(isinstance(p, str) and checkout_packet(p + "/x") for p in location["packets"]),
+            "invalid evidence location")
+    return location
+
+
+def materialize_evidence(mode, root=None):
+    """Pull the pinned evidence artifact and place exactly the packets the
+    reviewed candidate needs; the full validators still check every byte."""
+    require(mode in ("fresh", "reviewed-candidate"), "unknown checkout source")
+    if mode == "fresh":
+        return  # No prior approval or family baseline is needed to publish fresh.
+    root = Path(root) if root is not None else Path(__file__).resolve().parents[2]
+    record = json_file(regular_path(root, CANDIDATE_PATH))
+    checkout_evidence_packets(record, {"files": {}})  # Validate every direct path first.
+    location = evidence_location(root)
+    staging = Path(tempfile.mkdtemp(prefix="bex-evidence-", dir=os.environ.get("RUNNER_TEMP")))
+    try:
+        # --keep-old-files: a title can never replace a file that exists.
+        pulled = subprocess.run(["oras", "pull", "--no-tty", "--keep-old-files", location["artifact"], "-o", str(staging)],
+                                capture_output=True, text=True, timeout=1100)
+        require(pulled.returncode == 0, "evidence artifact pull failed: " + pulled.stderr[-2000:])
+        custody = json_file(evidence_file(staging, record["candidate"]["approval"]["custody"]))
+        needed = {pattern[len("/"):-len("/**")].replace("\\", "") for pattern in checkout_evidence_packets(record, custody)}
+        require(needed <= set(location["packets"]), "the evidence artifact lacks packets: " + ", ".join(sorted(needed - set(location["packets"]))))
+        for packet in sorted(needed):
+            source, target = staging / packet, root / packet
+            require(source.is_dir() and not source.is_symlink(), "evidence artifact lacks " + packet)
+            require(not target.exists(), "evidence packet already present: " + packet)
+            target.parent.mkdir(parents=True, exist_ok=True)
+            shutil.move(str(source), str(target))
+    finally:
+        shutil.rmtree(staging, ignore_errors=True)
+
+
 def regular_path(root, relative):
     require(isinstance(relative, str) and relative and not relative.startswith("/")
             and all(x not in ("", ".", "..") for x in relative.split("/")), "invalid retained path")
@@ -1228,6 +1276,7 @@ def main():
     commands.add_parser("plan")
     commands.add_parser("profile-env")
     commands.add_parser("checkout-evidence").add_argument("source", choices=("fresh", "reviewed-candidate"))
+    commands.add_parser("materialize-evidence").add_argument("source", choices=("fresh", "reviewed-candidate"))
     for name in ("bootstrap", "cleanup", "manifest"):
         commands.add_parser(name).add_argument("root", type=Path)
     observation = commands.add_parser("capacity")
@@ -1243,6 +1292,8 @@ def main():
         profile_environment()
     elif args.command == "checkout-evidence":
         checkout_evidence(args.source)
+    elif args.command == "materialize-evidence":
+        materialize_evidence(args.source)
     elif args.command == "init":
         initialize()
     elif args.command == "bootstrap":

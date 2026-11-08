@@ -1438,8 +1438,7 @@ class ProfileRoutingControls(unittest.TestCase):
         self.assertEqual(re.findall(r"(?m)^        run: (.+)$", plan),
                          ["|", "python3 .github/scripts/native-common-qualify.py plan"])
         hydration = self.run_block(plan, "materialize only complete candidate evidence packets")
-        self.assertIn('native-common-qualify.py checkout-evidence "$CHECKOUT_SOURCE"', hydration)
-        self.assertIn('git sparse-checkout add --no-cone --stdin', hydration)
+        self.assertIn('native-common-qualify.py materialize-evidence "$CHECKOUT_SOURCE"', hydration)
         for runtime_command in ("docker ", "kubectl ", "cosign "):
             self.assertNotIn(runtime_command, hydration)
         self.assertIn("REQUESTED_PROFILE: ${{ inputs.profile || 'utilities' }}", plan)
@@ -2374,15 +2373,20 @@ class CandidateCheckoutControls(unittest.TestCase):
             self.assertEqual(actual, required | packets)
             self.assertTrue(all((root / name).read_bytes() == b"x" for name in actual))
 
+    def test_evidence_location_pins_one_artifact_by_digest(self):
+        location = json.loads((HERE.parents[1] / ".github/native-evidence.json").read_text())
+        self.assertEqual(location["schema"], "bex.native-evidence-location/v1")
+        self.assertRegex(location["artifact"], r"^ghcr\.io/bex-co/bex-evidence@sha256:[0-9a-f]{64}$")
+        self.assertTrue(location["packets"] and all(p.startswith(".pm/w8/m91/evidence/") for p in location["packets"]))
+
     def test_all_three_hydration_steps_precede_strict_validation_or_init(self):
         jobs = ProfileRoutingControls.jobs()
         for name, target in (("plan", "id: selection"), ("qualify", "id: owned"), ("qualify-profile", "id: owned")):
             job = jobs[name]
-            self.assertLess(job.index("native-common-qualify.py checkout-evidence"), job.index(target))
-            self.assertIn('git sparse-checkout add --no-cone --stdin < "$patterns"', job)
-            self.assertIn('trap \'rm -f -- "$patterns"\' EXIT', job)
+            # w6/m164: the evidence is a digest-pinned GHCR artifact, not git.
+            self.assertLess(job.index("native-common-qualify.py materialize-evidence"), job.index(target))
             self.assertNotIn("/.pm/w8/m91/evidence/**", job)
-        self.assertNotIn("checkout-evidence", jobs["common-arm64-local"])
+        self.assertNotIn("materialize-evidence", jobs["common-arm64-local"])
 
 
 if __name__ == "__main__":

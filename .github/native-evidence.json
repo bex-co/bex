@@ -1,0 +1,8 @@
+{
+  "schema": "bex.native-evidence-location/v1",
+  "artifact": "ghcr.io/bex-co/bex-evidence@sha256:1203a4e79ae834fff82aee6fcdb658b432cc8335af87a4bb4eba97fb26de9f75",
+  "packets": [
+    ".pm/w8/m91/evidence/common-current0941-20261101",
+    ".pm/w8/m91/evidence/common-d3-run100-20261104"
+  ]
+}
