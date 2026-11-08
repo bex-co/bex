@@ -509,6 +509,7 @@ func main() {
 	// the signed git webhook. No-op unless Blueprints store is wired.
 	go srv.BlueprintAutoSync.Run(ctx)
 	go srv.CheckedDeploys.Run(ctx)
+	go srv.DeferredRestarts.Run(ctx)
 	// Custom-domain verification sweep (w5/m137): promotes a pending domain
 	// once its traffic DNS propagates. No-op store-less.
 	go srv.DomainVerification.Run(ctx)

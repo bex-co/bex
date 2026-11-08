@@ -380,11 +380,16 @@ type Deploy struct {
 	// OverlapPending distinguishes the one latest-pending overlap slot from an
 	// active release that may itself report Render status queued while waiting
 	// for build capacity. It is store-internal and never exposed on a surface.
-	OverlapPending bool       `json:"-"`
-	CreatedAt      time.Time  `json:"createdAt"`
-	UpdatedAt      time.Time  `json:"updatedAt"`
-	StartedAt      *time.Time `json:"startedAt,omitempty"`
-	FinishedAt     *time.Time `json:"finishedAt,omitempty"`
+	OverlapPending bool `json:"-"`
+	// RestartDeferred marks a Restart waiting, under Render's Wait overlap
+	// policy, for the deploy in flight (w5/m284): it holds the pending slot
+	// with no release (generation 0) until the deferred-restart worker
+	// promotes it. The reconciler never projects such a row.
+	RestartDeferred bool       `json:"-"`
+	CreatedAt       time.Time  `json:"createdAt"`
+	UpdatedAt       time.Time  `json:"updatedAt"`
+	StartedAt       *time.Time `json:"startedAt,omitempty"`
+	FinishedAt      *time.Time `json:"finishedAt,omitempty"`
 	// PreDeployStatus is the pre-deploy command's outcome for this deploy
 	// (w1/m33): '' (no step) | 'running' | 'succeeded' | 'failed' | 'canceled'. The reconciler
 	// projects it from the App CR's status.preDeploy so a migration failure is
@@ -2365,6 +2370,9 @@ func (s *PGStore) CreateRestartDeploy(ctx context.Context, appID, image string, 
 // createDeploy inserts a deploy row; replaced names the cause stamped on a
 // latest-pending row the new one replaces, given the new row's id.
 func (s *PGStore) createDeploy(ctx context.Context, appID, trigger, image string, generation int64, commit CommitInfo, triggeredBy string, replaced func(id string) string, clearCache bool) (Deploy, error) {
+	if id := DeferredRestartID(ctx); id != "" && trigger == TriggerRestart {
+		return s.promoteDeferredRestart(ctx, id, appID, image, generation, commit)
+	}
 	d := Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: trigger, Image: image, Generation: generation, Commit: commit.Hash, CommitMessage: commit.Message, CommitAuthorAt: commit.AuthorAt, BuildID: commit.BuildID, TriggeredBy: triggeredBy, ClearCache: clearCache, Status: DeployCreated}
 	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
 		return insertDeploy(ctx, tx, &d, replaced(d.ID))
@@ -2388,6 +2396,191 @@ func insertDeploy(ctx context.Context, tx pgx.Tx, d *Deploy, replacedReason stri
 		 RETURNING created_at, updated_at, finished_at`,
 		d.ID, d.AppID, d.Trigger, d.Image, d.Generation, d.Commit, d.CommitMessage, d.CommitAuthorAt, d.TriggeredBy, d.Status, d.OverlapPending, DeployCanceled, d.CancelReason, d.ClearCache, d.BuildID,
 	).Scan(&d.CreatedAt, &d.UpdatedAt, &d.FinishedAt)
+}
+
+// ErrDeferredRestartGone is a deferred Restart that is no longer waiting: a
+// newer trigger replaced it, or it was canceled.
+var ErrDeferredRestartGone = fmt.Errorf("%w: the queued restart was replaced or canceled", ErrConflict)
+
+// ErrDeferredRestartNotReady is a deferred Restart whose app still has a
+// deploy in flight.
+var ErrDeferredRestartNotReady = fmt.Errorf("%w: a deploy is still in flight", ErrConflict)
+
+type deferredRestartKey struct{}
+
+// WithDeferredRestart makes the Restart deploy row opened under ctx promote
+// the waiting deferred row id rather than insert a new one, so the restart a
+// caller was answered with is the one that runs (w5/m284).
+func WithDeferredRestart(ctx context.Context, id string) context.Context {
+	return context.WithValue(ctx, deferredRestartKey{}, id)
+}
+
+// DeferredRestartID is the deferred row WithDeferredRestart named, or "".
+func DeferredRestartID(ctx context.Context) string {
+	id, _ := ctx.Value(deferredRestartKey{}).(string)
+	return id
+}
+
+// CreateDeferredRestart records a Restart that waits for appID's deploy in
+// flight, as Render's Wait overlap policy does (w5/m284). It replaces the
+// latest-pending row like any newer trigger and changes no App CR: the
+// release it restarts is chosen when it runs. deferred=false (no row) means
+// nothing is in flight and the caller restarts at once.
+func (s *PGStore) CreateDeferredRestart(ctx context.Context, appID, triggeredBy string) (d Deploy, deferred bool, err error) {
+	d = Deploy{ID: ids.New(ids.Deploy), AppID: appID, Trigger: TriggerRestart, TriggeredBy: triggeredBy,
+		Status: DeployQueued, OverlapPending: true, RestartDeferred: true}
+	err = pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := lockApp(ctx, tx, appID); err != nil {
+			return err
+		}
+		var err error
+		if deferred, err = appHasActiveDeploy(ctx, tx, appID); err != nil || !deferred {
+			return err
+		}
+		if err := cancelPendingDeploys(ctx, tx, appID, restartCanceledReason(d.ID)); err != nil {
+			return err
+		}
+		return tx.QueryRow(ctx,
+			`INSERT INTO deploys (id, app_id, trigger, image, generation, triggered_by, status, overlap_pending, restart_deferred)
+			 VALUES ($1, $2, $3, '', 0, $4, $5, true, true)
+			 RETURNING created_at, updated_at`,
+			d.ID, appID, TriggerRestart, triggeredBy, DeployQueued,
+		).Scan(&d.CreatedAt, &d.UpdatedAt)
+	})
+	if err != nil {
+		return Deploy{}, false, classify("deploy", err)
+	}
+	if !deferred {
+		return Deploy{}, false, nil
+	}
+	return d, true, nil
+}
+
+// promoteDeferredRestart turns a waiting deferred Restart into the release
+// just opened for it, keeping its id, trigger time and caller. It refuses if
+// the row stopped waiting or another deploy is in flight.
+func (s *PGStore) promoteDeferredRestart(ctx context.Context, id, appID, image string, generation int64, commit CommitInfo) (Deploy, error) {
+	var d Deploy
+	err := pgx.BeginFunc(ctx, s.Pool, func(tx pgx.Tx) error {
+		if err := lockApp(ctx, tx, appID); err != nil {
+			return err
+		}
+		if err := deferredRestartWaiting(ctx, tx, id, appID, true); err != nil {
+			return err
+		}
+		var err error
+		d, err = scanDeploy(tx.QueryRow(ctx,
+			`UPDATE deploys
+			 SET image = $2, generation = $3, commit = $4, commit_message = $5, commit_author_at = $6,
+			     build_id = NULLIF($7, ''), status = $8, overlap_pending = false, restart_deferred = false,
+			     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp())
+			 WHERE id = $1
+			 RETURNING `+deployColumns,
+			id, image, generation, commit.Hash, commit.Message, commit.AuthorAt, commit.BuildID, DeployCreated))
+		return err
+	})
+	if err != nil {
+		if errors.Is(err, ErrDeferredRestartGone) || errors.Is(err, ErrDeferredRestartNotReady) {
+			return Deploy{}, err
+		}
+		return Deploy{}, classify("deploy", err)
+	}
+	return d, nil
+}
+
+func lockApp(ctx context.Context, tx pgx.Tx, appID string) error {
+	var lockedID string
+	return tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&lockedID)
+}
+
+// appHasActiveDeploy reports a deploy executing for appID; the latest-pending
+// row is not one.
+func appHasActiveDeploy(ctx context.Context, q interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, appID string) (bool, error) {
+	var active bool
+	err := q.QueryRow(ctx,
+		`SELECT EXISTS (SELECT 1 FROM deploys WHERE app_id = $1 AND status = ANY($2) AND NOT overlap_pending)`,
+		appID, openDeployStatuses).Scan(&active)
+	return active, err
+}
+
+// deferredRestartWaiting refuses a deferred Restart that stopped waiting or
+// whose app has a deploy in flight; lock row-locks it for a promotion.
+func deferredRestartWaiting(ctx context.Context, q interface {
+	QueryRow(context.Context, string, ...any) pgx.Row
+}, id, appID string, lock bool) error {
+	query := `SELECT restart_deferred AND status = $3 FROM deploys WHERE id = $1 AND app_id = $2`
+	if lock {
+		query += ` FOR UPDATE`
+	}
+	var waiting bool
+	err := q.QueryRow(ctx, query, id, appID, DeployQueued).Scan(&waiting)
+	if errors.Is(err, pgx.ErrNoRows) || (err == nil && !waiting) {
+		return ErrDeferredRestartGone
+	}
+	if err != nil {
+		return err
+	}
+	if busy, err := appHasActiveDeploy(ctx, q, appID); err != nil {
+		return err
+	} else if busy {
+		return ErrDeferredRestartNotReady
+	}
+	return nil
+}
+
+// CheckDeferredRestart is deferredRestartWaiting outside a transaction: the
+// pre-check a Restart runs under its trigger lock before it changes the App,
+// so a restart another replica already ran is never released twice.
+func (s *PGStore) CheckDeferredRestart(ctx context.Context, id, appID string) error {
+	return deferredRestartWaiting(ctx, s.Pool, id, appID, false)
+}
+
+// CancelDeferredRestart closes a deferred Restart only while it still waits;
+// false means it already ran or closed.
+func (s *PGStore) CancelDeferredRestart(ctx context.Context, id, reason string) (bool, error) {
+	tag, err := s.Pool.Exec(ctx,
+		`UPDATE deploys
+		 SET status = $2, cancel_reason = $3, overlap_pending = false,
+		     updated_at = GREATEST(updated_at + interval '1 microsecond', clock_timestamp()),
+		     finished_at = clock_timestamp()
+		 WHERE id = $1 AND restart_deferred AND status = $4`,
+		id, DeployCanceled, reason, DeployQueued)
+	if err != nil {
+		return false, classify("deploy", err)
+	}
+	return tag.RowsAffected() == 1, nil
+}
+
+// DeferredRestart is a waiting deferred Restart; Ready means its app has no
+// other deploy in flight, so it can run now.
+type DeferredRestart struct {
+	Deploy
+	Ready bool
+}
+
+// ListDeferredRestarts returns every waiting deferred Restart, oldest first.
+func (s *PGStore) ListDeferredRestarts(ctx context.Context, limit int) ([]DeferredRestart, error) {
+	rows, err := s.Pool.Query(ctx,
+		`SELECT `+deployColumns+`, NOT EXISTS (
+			SELECT 1 FROM deploys o WHERE o.app_id = deploys.app_id AND o.status = ANY($2) AND NOT o.overlap_pending)
+		 FROM deploys WHERE restart_deferred AND status = $1
+		 ORDER BY created_at LIMIT $3`, DeployQueued, openDeployStatuses, limit)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var out []DeferredRestart
+	for rows.Next() {
+		var r DeferredRestart
+		var err error
+		if r.Deploy, err = scanDeploy(rows, &r.Ready); err != nil {
+			return nil, err
+		}
+		out = append(out, r)
+	}
+	return out, rows.Err()
 }
 
 // LatestDeployCommit returns the newest non-empty commit for appID. Rows with
@@ -2421,8 +2614,7 @@ func (s *PGStore) LatestDeployCommit(ctx context.Context, appID string) (CommitI
 // active slot is free. Partial unique indexes are the final
 // one-active-plus-one-pending guard.
 func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generation int64, replacedReason string) (status, cancelReason string, err error) {
-	var lockedID string
-	if err := tx.QueryRow(ctx, `SELECT id FROM apps WHERE id = $1 FOR UPDATE`, appID).Scan(&lockedID); err != nil {
+	if err := lockApp(ctx, tx, appID); err != nil {
 		return "", "", err
 	}
 	var newer string
@@ -2441,13 +2633,8 @@ func prepareDeployCreate(ctx context.Context, tx pgx.Tx, appID string, generatio
 	if err := cancelPendingDeploys(ctx, tx, appID, replacedReason); err != nil {
 		return "", "", err
 	}
-	var active bool
-	if err := tx.QueryRow(ctx,
-		`SELECT EXISTS (
-			SELECT 1 FROM deploys
-			WHERE app_id = $1 AND status = ANY($2) AND NOT overlap_pending
-		)`, appID, openDeployStatuses,
-	).Scan(&active); err != nil {
+	active, err := appHasActiveDeploy(ctx, tx, appID)
+	if err != nil {
 		return "", "", err
 	}
 	if active {
@@ -2628,11 +2815,12 @@ func pageKeyset(query string, args []any, table, sortCol, cursor string, limit i
 	return query, args
 }
 
-const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, detected_http_port, COALESCE(build_id, '')`
+const deployColumns = `id, app_id, trigger, image, resolved_image, image_sha, rollback_of, generation, commit, commit_message, commit_author_at, triggered_by, clear_cache, status, overlap_pending, created_at, updated_at, started_at, finished_at, pre_deploy_status, failure_reason, cancel_reason, stall_reason, detected_http_port, COALESCE(build_id, ''), restart_deferred`
 
-func scanDeploy(row pgx.Row) (Deploy, error) {
+// scanDeploy scans deployColumns, then any extra columns a query appends.
+func scanDeploy(row pgx.Row, extra ...any) (Deploy, error) {
 	var d Deploy
-	err := row.Scan(&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.DetectedHTTPPort, &d.BuildID)
+	err := row.Scan(append([]any{&d.ID, &d.AppID, &d.Trigger, &d.Image, &d.ResolvedImage, &d.ImageSHA, &d.RollbackOf, &d.Generation, &d.Commit, &d.CommitMessage, &d.CommitAuthorAt, &d.TriggeredBy, &d.ClearCache, &d.Status, &d.OverlapPending, &d.CreatedAt, &d.UpdatedAt, &d.StartedAt, &d.FinishedAt, &d.PreDeployStatus, &d.FailureReason, &d.CancelReason, &d.StallReason, &d.DetectedHTTPPort, &d.BuildID, &d.RestartDeferred}, extra...)...)
 	return d, err
 }
 

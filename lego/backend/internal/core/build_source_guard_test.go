@@ -40,6 +40,7 @@ import (
 var appEnumerationsThatMayIncludeBuildSources = map[string]string{
 	"deploys/deployhook.go:BackfillDeployHookTokenDigests":      "a carrier has no deploy hook",
 	"deploys/deployhook.go:appForDeployHookToken":               "a carrier has no deploy hook token",
+	"deploys/restart_wait.go:runDeferredRestart":                "resolves the one App a deferred restart row names",
 	"registrycreds/pullsecret.go:appBoundToCredential":          "an image-backed build source binds a credential too",
 	"diskusage/diskusage.go:SweepOnce":                          "a carrier has no disk",
 	"environments/service.go:proxiedDomainsByEnvironment":       "a carrier is never in an environment",

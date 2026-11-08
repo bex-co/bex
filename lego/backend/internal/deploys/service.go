@@ -275,6 +275,15 @@ func (s *Service) openRelease(ctx context.Context, a *appv1alpha1.App, appID str
 		if err := core.NotFoundIfDeleting(a); err != nil {
 			return err
 		}
+		// A deferred Restart is checked under the lock, before the App
+		// changes: another replica may have run it already (w5/m284).
+		if id := store.DeferredRestartID(ctx); id != "" {
+			if checker, ok := s.Store.(deferredRestartChecker); ok {
+				if err := checker.CheckDeferredRestart(ctx, id, appID); err != nil {
+					return err
+				}
+			}
+		}
 		if rowWrite != nil {
 			if err := rowWrite(); err != nil {
 				return err
@@ -593,6 +602,16 @@ func (s *Service) Restart(ctx context.Context, service string) (DeployView, erro
 	if a.Spec.Type == appv1alpha1.TypeCronJob {
 		return DeployView{}, fmt.Errorf("%w: restart is not supported for cron jobs; trigger a run instead", core.ErrBadRequest)
 	}
+	if d, deferred, err := s.deferRestart(ctx, service, a); deferred || err != nil {
+		return d, err
+	}
+	return s.restartNow(ctx, service, a)
+}
+
+// restartNow restarts the release serving now: Restart's path once no deploy
+// is in flight, and the deferred-restart worker's when one has settled.
+func (s *Service) restartNow(ctx context.Context, service string, a *appv1alpha1.App) (DeployView, error) {
+	var err error
 	if selected, err := s.restartSelectedRelease(ctx, service, a); selected != nil || err != nil {
 		if err != nil {
 			return DeployView{}, err
@@ -992,12 +1011,34 @@ func (s *Service) Cancel(ctx context.Context, service, deployID string) (DeployV
 	if d.FinishedAt != nil {
 		return DeployView{}, fmt.Errorf("%w: deploy %q is already %s", core.ErrConflict, deployID, d.Status)
 	}
-	survivor, err := s.cancelSurvivor(ctx, a, appID, d)
-	if err != nil {
-		return DeployView{}, err
+	// A deferred Restart has no release yet (w5/m284): closing its row is the
+	// whole cancel, unless the worker promoted it meanwhile.
+	if q, ok := s.Store.(DeferredRestartQueue); ok && d.RestartDeferred {
+		won, err := q.CancelDeferredRestart(ctx, deployID, "")
+		if err != nil {
+			return DeployView{}, err
+		}
+		if won {
+			if d, err = s.Store.GetDeploy(ctx, appID, deployID); err != nil {
+				return DeployView{}, err
+			}
+			return view(d), nil
+		}
+		if d, err = s.Store.GetDeploy(ctx, appID, deployID); err != nil {
+			return DeployView{}, err
+		}
+		if d.FinishedAt != nil {
+			return DeployView{}, fmt.Errorf("%w: deploy %q is already %s", core.ErrConflict, deployID, d.Status)
+		}
 	}
-	if err := store.CancelRelease(ctx, s.Client, a, d.Generation, survivor, s.BuildNamespace); err != nil {
-		return DeployView{}, err
+	if !d.RestartDeferred {
+		survivor, err := s.cancelSurvivor(ctx, a, appID, d)
+		if err != nil {
+			return DeployView{}, err
+		}
+		if err := store.CancelRelease(ctx, s.Client, a, d.Generation, survivor, s.BuildNamespace); err != nil {
+			return DeployView{}, err
+		}
 	}
 	won, err := s.Store.CloseDeploy(ctx, deployID, store.DeployCanceled, "")
 	if err != nil {

@@ -161,8 +161,9 @@ func TestReconcileOverlapKeepsTheFailedRolloutVerdictAfterTheNextIsAdopted(t *te
 	}
 }
 
-// A Restart releases the running configuration over a deploy still in flight
-// and ends it (Override, as on Render's pre-2025-07-14 workspaces). The ended
+// A Restart release opened over a deploy still in flight ends it (Override, as
+// on Render's pre-2025-07-14 workspaces). deploys.Service.Restart now waits
+// instead (w5/m284); this is the store's behavior when one is opened anyway. The ended
 // row names the restart and says its saved changes were not deployed, instead
 // of a bare "Superseded by", so the change is not silently lost (w8/m119).
 func TestReconcileNamesTheRestartThatEndedAnInFlightDeploy(t *testing.T) {
@@ -256,5 +257,29 @@ func TestSupersededRowThatServedClosesLive(t *testing.T) {
 	}
 	if got, settled := supersededDeployStatus(open, app("rev-1"), false); !settled || got != DeployCanceled {
 		t.Errorf("never served then superseded = (%q, %v), want (%q, true)", got, settled, DeployCanceled)
+	}
+}
+
+// A deferred Restart (w5/m284) has no release yet: the reconciler must leave
+// it waiting however the App's status reads, or its generation 0 would be
+// read as a release the App has long since passed and close it.
+func TestReconcileLeavesADeferredRestartWaiting(t *testing.T) {
+	ctx := context.Background()
+	rec, st, cl := newTestReconciler(t)
+	appID, _, _, _ := overlapFixture(t, ctx, rec, st, cl)
+	st.mu.Lock()
+	st.deploys["dep-deferred"] = Deploy{ID: "dep-deferred", AppID: appID, Trigger: TriggerRestart, Status: DeployQueued,
+		OverlapPending: true, RestartDeferred: true}
+	st.mu.Unlock()
+	app := getApp(t, cl)
+	app.Status.Phase, app.Status.ReleaseGeneration, app.Status.ActiveRevision = appv1alpha1.PhaseRunning, 3, "rev-3"
+	if err := cl.Status().Update(ctx, app); err != nil {
+		t.Fatal(err)
+	}
+	if err := rec.ReconcileOnce(ctx); err != nil {
+		t.Fatal(err)
+	}
+	if got, _ := st.GetDeploy(ctx, appID, "dep-deferred"); got.Status != DeployQueued || !got.RestartDeferred {
+		t.Fatalf("deferred restart = %q (deferred %v), want left waiting", got.Status, got.RestartDeferred)
 	}
 }

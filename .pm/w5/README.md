@@ -18,7 +18,7 @@ Develop against `.pm/w5/dev-5/`, this worker's own isolated stack on the shared 
 User decision 2026-11-07: all five items of the seventh `/pm-brainstorm for w5` proposal, in priority order, followed by `/loopx w5`. m284 follows Render's workspace-creation-date Wait rule and m285 returns the secret to the roles Render lets read webhooks; both are the parity-sufficient choices recorded in their READMEs. Render parity is included for all five. The git-webhook fast acknowledgement stays with `w3/blocked/m248`; m286 exempts that route.
 
 - [ ] **m283** — [MCP Blueprint tools match Render's: create_blueprint plans, approve_blueprint applies](m283/README.md) (9 tasks; 5h55m total) ← round 7 item 1; Render MCP server #205–#230 — **in progress**: shipped; production MCP walk (t005) pending deploy
-- [ ] **m284** — [Restart waits for an in-flight deploy under Render's Wait policy](m284/README.md) (9 tasks; 6h45m total) ← round 7 item 2; ADR018:95
+- [ ] **m284** — [Restart waits for an in-flight deploy under Render's Wait policy](m284/README.md) (9 tasks; 6h45m total) ← round 7 item 2; ADR018:95 — **in progress**: shipped; production restart-during-build walk (t005) pending deploy
 - [ ] **m285** — [A webhook's signing secret is readable after create, as on Render](m285/README.md) (8 tasks; 5h15m total) ← round 7 item 3; ADR018:300 unsigned ◐
 - [ ] **m286** — [REST and MCP requests have a deadline instead of a 502 that keeps running](m286/README.md) (8 tasks; 5h30m total) ← round 7 item 4; w3/m248 findings
 - [ ] **m287** — [Sandboxes have names (`--name`), as in Render CLI v2.36](m287/README.md) (7 tasks; 4h30m total) ← round 7 item 5; Render CLI v2.36.0
