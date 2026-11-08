@@ -87,10 +87,6 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, err)
 			return
 		}
-		if body.Name != "" {
-			core.WriteErr(w, sandboxNamesUnsupported())
-			return
-		}
 		// The Render CLI sends ownerId in the BODY; the query param is the REST
 		// convention. Prefer the query, fall back to the body (empty ⇒ default ws).
 		owner := r.URL.Query().Get("ownerId")
@@ -105,6 +101,7 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			TimeoutSeconds:     body.TimeoutSeconds,
 			IdleTimeoutSeconds: body.IdleTimeoutSeconds,
 			NetworkPolicy:      body.NetworkPolicy,
+			Name:               body.Name,
 		})
 		if err != nil {
 			core.WriteErr(w, err)
@@ -120,12 +117,8 @@ func (s *Service) RegisterREST(mux *http.ServeMux) {
 			core.WriteErr(w, sandboxGroupsUnsupported("sandboxGroupId"))
 			return
 		}
-		if query.Get("name") != "" {
-			core.WriteErr(w, sandboxNamesUnsupported())
-			return
-		}
 		ctx := core.WithWorkspace(r.Context(), query.Get("ownerId"))
-		out, err := s.listFiltered(ctx, core.QueryList(query, "status"))
+		out, err := s.listFiltered(ctx, core.QueryList(query, "status"), query.Get("name"))
 		if err != nil {
 			core.WriteErr(w, err)
 			return

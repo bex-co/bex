@@ -27,6 +27,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
+	"unicode/utf8"
 
 	"github.com/bex-co/bex/lego/backend/internal/agentsession"
 	"github.com/bex-co/bex/lego/backend/internal/core"
@@ -144,6 +145,9 @@ type Service struct {
 	// Activity records exec and file activity for idle suspension (w2/m278).
 	// nil (store off) disables idle suspension; wake-on-exec still works.
 	Activity ActivityStore
+	// Names holds Render sandbox names (w5/m287); nil (store off) refuses a
+	// named create and lists every sandbox unnamed.
+	Names NameStore
 	// ResumePoll and ActivityHeartbeat override the wake-on-exec poll interval
 	// and the open-stream activity heartbeat; zero uses the defaults.
 	ResumePoll        time.Duration
@@ -165,6 +169,8 @@ type CreateRequest struct {
 	TimeoutSeconds     *int
 	IdleTimeoutSeconds *int
 	NetworkPolicy      *NetworkPolicy
+	// Name is Render's sandbox name; empty means none.
+	Name string
 }
 
 func (s *Service) enabled() bool { return s.Client != nil }
@@ -330,16 +336,21 @@ func refuseGroupAndImage(sandboxGroupID string, hasImage bool) error {
 	return nil
 }
 
-// CodeSandboxNamesUnsupported refuses Render's sandbox `name` by name.
-const CodeSandboxNamesUnsupported = "SANDBOX_NAMES_UNSUPPORTED"
+// CodeInvalidSandboxName is Render's invalid_sandbox_name.
+const CodeInvalidSandboxName = "invalid_sandbox_name"
 
-// sandboxNamesUnsupported refuses Render's sandbox `name` (create input and
-// list filter) by name: a create must not fail as a malformed body, and a
-// list must never silently ignore a filter it was given.
-func sandboxNamesUnsupported() error {
-	return core.NewBadRequestError(CodeSandboxNamesUnsupported,
-		"sandbox names are not supported yet (--name): address the sandbox by its id",
-		map[string]any{"field": "name", "flags": []string{"--name"}})
+// maxSandboxName is Render's name bound, in characters.
+const maxSandboxName = 64
+
+// validateSandboxName is Render's rule: at most 64 characters and never an
+// `sbx-` id, so the id stays the unambiguous handle.
+func validateSandboxName(name string) error {
+	if utf8.RuneCountInString(name) > maxSandboxName || strings.HasPrefix(name, ids.Sandbox.Prefix()+"-") {
+		return core.NewBadRequestError(CodeInvalidSandboxName,
+			fmt.Sprintf("sandbox name must be at most %d characters and must not start with %q", maxSandboxName, ids.Sandbox.Prefix()+"-"),
+			map[string]any{"field": "name", "maxLength": maxSandboxName})
+	}
+	return nil
 }
 
 // invalidPlan is Render's invalid_sandbox_plan refusal: the message lists the
@@ -707,6 +718,12 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if err != nil {
 		return Sandbox{}, err
 	}
+	if err := validateSandboxName(req.Name); err != nil {
+		return Sandbox{}, err
+	}
+	if req.Name != "" && s.Names == nil {
+		return Sandbox{}, fmt.Errorf("%w: sandbox names need the control-plane store", core.ErrSandboxesUnavailable)
+	}
 	name := req.Template
 	if name == "" {
 		name = s.DefaultTemplate // Render CLI create sends no template — use the default.
@@ -723,13 +740,36 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	// Mint the tenant-facing id here: OpenSandbox accepts no client-supplied id,
 	// so bex stamps its own and carries it as durable metadata (metadataPublicID).
 	publicID := ids.New(ids.Sandbox)
+	if req.Name != "" {
+		// Written first, under the id about to be created, so a listed sandbox
+		// never appears without its name; a failed create removes it.
+		if err := s.Names.SetSandboxName(ctx, ws, publicID, req.Name); err != nil {
+			return Sandbox{}, err
+		}
+		box, err := s.createWithID(ctx, ws, publicID, name, tmpl, plan, req.Region, timeout, idle, policy)
+		if err != nil {
+			cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), egressCleanupTimeout)
+			defer cancel()
+			if cleanupErr := s.Names.DeleteSandboxName(cleanupCtx, ws, publicID); cleanupErr != nil {
+				log.Printf("sandbox: remove name of failed create %s: %v", publicID, cleanupErr)
+			}
+			return Sandbox{}, err
+		}
+		box.Name = &req.Name
+		return box, nil
+	}
+	return s.createWithID(ctx, ws, publicID, name, tmpl, plan, req.Region, timeout, idle, policy)
+}
+
+// createWithID creates the sandbox under the public id bex minted for it.
+func (s *Service) createWithID(ctx context.Context, ws, publicID, name string, tmpl Template, plan Plan, region string, timeout, idle int, policy *NetworkPolicy) (Sandbox, error) {
 	extra := map[string]string{
 		metadataPublicID:    publicID,
 		metadataIdleTimeout: strconv.Itoa(idle),
 		metadataEgress:      string(policy.Default),
 	}
 	if policy.Default != NetworkPolicyAllowList {
-		return s.createResolved(ctx, ws, name, tmpl, plan, req.Region, timeout, policy, nil, extra)
+		return s.createResolved(ctx, ws, name, tmpl, plan, region, timeout, policy, nil, extra)
 	}
 	// An allow-list's per-sandbox policy exists before the Pod does, so the Pod
 	// is never selected by anything looser than its own rules.
@@ -740,7 +780,7 @@ func (s *Service) create(ctx context.Context, req CreateRequest) (Sandbox, error
 	if err := s.SandboxEgress.Apply(ctx, namespace, publicID, ruleDomains(policy.Rules)); err != nil {
 		return Sandbox{}, err
 	}
-	box, err := s.createResolved(ctx, ws, name, tmpl, plan, req.Region, timeout, policy, nil, extra)
+	box, err := s.createResolved(ctx, ws, name, tmpl, plan, region, timeout, policy, nil, extra)
 	if err != nil {
 		cleanupCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), egressCleanupTimeout)
 		defer cancel()
@@ -1183,14 +1223,39 @@ func (s *Service) List(ctx context.Context) ([]Sandbox, error) {
 			return nil, err
 		}
 	}
-	return out, nil
+	return s.withNames(ctx, ws, out)
+}
+
+// NameStore is where Render sandbox names live; *store.PGStore implements it.
+type NameStore interface {
+	SetSandboxName(ctx context.Context, workspaceID, sandboxID, name string) error
+	DeleteSandboxName(ctx context.Context, workspaceID, sandboxID string) error
+	SandboxNames(ctx context.Context, workspaceID string) (map[string]string, error)
+	PruneSandboxNames(ctx context.Context, workspaceID string, live []string) error
+}
+
+// withNames fills each sandbox's Render name.
+func (s *Service) withNames(ctx context.Context, workspace string, boxes []Sandbox) ([]Sandbox, error) {
+	if s.Names == nil || len(boxes) == 0 {
+		return boxes, nil
+	}
+	names, err := s.Names.SandboxNames(ctx, workspace)
+	if err != nil {
+		return nil, err
+	}
+	for i := range boxes {
+		if name, ok := names[boxes[i].ID]; ok {
+			boxes[i].Name = &name
+		}
+	}
+	return boxes, nil
 }
 
 // listFiltered is List narrowed by Render's status filter — the one helper
 // the REST, GraphQL and MCP list adapters share, so all three apply the same
 // default and refuse the same unknown status. The filter is validated before
 // the authorized List runs.
-func (s *Service) listFiltered(ctx context.Context, status []string) ([]Sandbox, error) {
+func (s *Service) listFiltered(ctx context.Context, status []string, name string) ([]Sandbox, error) {
 	want, err := parseStatusFilter(status)
 	if err != nil {
 		return nil, err
@@ -1199,7 +1264,18 @@ func (s *Service) listFiltered(ctx context.Context, status []string) ([]Sandbox,
 	if err != nil {
 		return nil, err
 	}
-	return filterStatuses(out, want), nil
+	out = filterStatuses(out, want)
+	if name == "" {
+		return out, nil
+	}
+	// Render's exact-match name filter; names are not unique.
+	named := out[:0]
+	for _, box := range out {
+		if box.Name != nil && *box.Name == name {
+			named = append(named, box)
+		}
+	}
+	return named, nil
 }
 
 // Get returns one sandbox's status. With no workspace named in ctx it acts in
@@ -1224,7 +1300,15 @@ func (s *Service) Get(ctx context.Context, id string) (Sandbox, error) {
 	if err != nil {
 		return Sandbox{}, err
 	}
-	return s.withRules(ctx, ws, s.sandboxView(raw, ws))
+	box, err := s.withRules(ctx, ws, s.sandboxView(raw, ws))
+	if err != nil {
+		return Sandbox{}, err
+	}
+	named, err := s.withNames(ctx, ws, []Sandbox{box})
+	if err != nil {
+		return Sandbox{}, err
+	}
+	return named[0], nil
 }
 
 // Suspend/Resume/Terminate are the lifecycle verbs; suspend/resume need operate,

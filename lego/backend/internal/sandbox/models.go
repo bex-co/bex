@@ -114,10 +114,13 @@ const (
 // (docs/render-artifacts/ea-sandbox.md); bex fills what it knows and reflects the
 // rest so `render ea sandbox` renders a faithful record.
 type Sandbox struct {
-	ID     string `json:"id"`
-	Plan   Plan   `json:"plan"`
-	Status Status `json:"status"`
-	Region string `json:"region,omitempty"`
+	ID string `json:"id"`
+	// Name is Render's optional, non-unique sandbox label (w5/m287); null
+	// when the sandbox has none, as Render answers.
+	Name   *string `json:"name"`
+	Plan   Plan    `json:"plan"`
+	Status Status  `json:"status"`
+	Region string  `json:"region,omitempty"`
 	// TimeoutSeconds is the effective lifetime in seconds; 0 means no timeout,
 	// as on Render (w2/m263 D3=A). Legacy metadata without a bound reads as
 	// 86400 (w5/m99); see timeoutFromMetadata.

@@ -17,11 +17,14 @@ limitations under the License.
 package sandbox
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
 	"strings"
+	"sync"
 	"testing"
 )
 
@@ -94,18 +97,130 @@ func TestSandboxListPagesOnlyWhenAsked(t *testing.T) {
 	}
 }
 
-func TestSandboxNamesAreRefusedByName(t *testing.T) {
-	svc := policyAdapterService(t)
+// memNames is an in-memory NameStore.
+type memNames struct {
+	mu    sync.Mutex
+	names map[string]string
+}
+
+func (m *memNames) SetSandboxName(_ context.Context, _, id, name string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if m.names == nil {
+		m.names = map[string]string{}
+	}
+	m.names[id] = name
+	return nil
+}
+
+func (m *memNames) DeleteSandboxName(_ context.Context, _, id string) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	delete(m.names, id)
+	return nil
+}
+
+func (m *memNames) SandboxNames(context.Context, string) (map[string]string, error) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	out := map[string]string{}
+	for k, v := range m.names {
+		out[k] = v
+	}
+	return out, nil
+}
+
+func (m *memNames) PruneSandboxNames(context.Context, string, []string) error { return nil }
+
+// w5/m287: Render CLI v2.36 `sandboxes create --name` and `list --name` —
+// a named create answers its name, a list shows names (null when unnamed)
+// and filters on an exact one, and Render's rule refuses a bad name before
+// anything is created.
+func TestSandboxNames(t *testing.T) {
+	var mu sync.Mutex
+	var rows []string
+	failCreate := false
+	svc := stubServer(t, func(w http.ResponseWriter, r *http.Request) {
+		mu.Lock()
+		defer mu.Unlock()
+		if r.Method == http.MethodPost {
+			if failCreate {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+			var body createRequest
+			_ = json.NewDecoder(r.Body).Decode(&body)
+			id := body.Metadata[metadataPublicID]
+			rows = append(rows, fmt.Sprintf(`{"id":"os-%d","metadata":{"bex.co/owner":"id-a","bex.co/workspace":"tea-a","bex.co/network-policy":"deny-all","app.bex.co/regime":"sandbox","bex.co/sandbox-id":%q},"status":{"state":"Running"}}`, len(rows), id))
+			w.WriteHeader(http.StatusCreated)
+			_, _ = w.Write([]byte(`{"id":"os-x","status":{"state":"Running"}}`))
+			return
+		}
+		_, _ = w.Write([]byte("[" + strings.Join(rows, ",") + "]"))
+	})
+	svc.DefaultTemplate = "node"
+	names := &memNames{}
+	svc.Names = names
 	mux := http.NewServeMux()
 	svc.RegisterREST(mux)
-	for _, req := range []*http.Request{
-		httptest.NewRequest(http.MethodPost, "/v1/sandboxes", strings.NewReader(`{"name":"my-agent"}`)),
-		httptest.NewRequest(http.MethodGet, "/v1/sandboxes?name=my-agent", nil),
-	} {
+	do := func(method, path, body string) (int, string) {
 		rec := httptest.NewRecorder()
-		mux.ServeHTTP(rec, req.WithContext(callerCtx()))
-		if rec.Code != http.StatusBadRequest || !strings.Contains(rec.Body.String(), "SANDBOX_NAMES_UNSUPPORTED") || !strings.Contains(rec.Body.String(), "--name") {
-			t.Errorf("%s %s = %d %s, want the named refusal", req.Method, req.URL, rec.Code, rec.Body)
+		mux.ServeHTTP(rec, httptest.NewRequest(method, path, strings.NewReader(body)).WithContext(callerCtx()))
+		return rec.Code, rec.Body.String()
+	}
+
+	for _, bad := range []string{strings.Repeat("a", 65), "sbx-mine"} {
+		if code, body := do(http.MethodPost, "/v1/sandboxes", fmt.Sprintf(`{"name":%q}`, bad)); code != http.StatusBadRequest || !strings.Contains(body, CodeInvalidSandboxName) {
+			t.Errorf("name %q: %d %s, want invalid_sandbox_name", bad, code, body)
 		}
+	}
+	if len(rows) != 0 {
+		t.Fatal("a refused name reached OpenSandbox")
+	}
+	code, body := do(http.MethodPost, "/v1/sandboxes", `{"name":"my agent ✨"}`)
+	var created Sandbox
+	if err := json.Unmarshal([]byte(body), &created); code != http.StatusCreated || err != nil || created.Name == nil || *created.Name != "my agent ✨" {
+		t.Fatalf("named create = %d %s", code, body)
+	}
+	if code, body = do(http.MethodPost, "/v1/sandboxes", `{}`); code != http.StatusCreated || !strings.Contains(body, `"name":null`) {
+		t.Fatalf("unnamed create = %d %s, want name null", code, body)
+	}
+	if _, body = do(http.MethodPost, "/v1/sandboxes", `{"name":"my agent ✨"}`); !strings.Contains(body, `"name":"my agent ✨"`) {
+		t.Fatalf("second same-named create = %s, want accepted (names are not unique)", body)
+	}
+
+	list := func(query string) []SandboxEnvelope {
+		t.Helper()
+		code, body := do(http.MethodGet, "/v1/sandboxes"+query, "")
+		var items []SandboxEnvelope
+		if err := json.Unmarshal([]byte(body), &items); code != http.StatusOK || err != nil {
+			t.Fatalf("list %s = %d %s", query, code, body)
+		}
+		return items
+	}
+	if got := list(""); len(got) != 3 {
+		t.Fatalf("list = %d sandboxes, want 3", len(got))
+	}
+	named := list("?name=" + url.QueryEscape("my agent ✨"))
+	if len(named) != 2 || named[0].Sandbox.Name == nil || *named[0].Sandbox.Name != "my agent ✨" {
+		t.Fatalf("list --name = %+v, want the two named sandboxes", named)
+	}
+	if got := list("?name=other"); len(got) != 0 {
+		t.Fatalf("list --name other = %d, want none", len(got))
+	}
+	if code, body := do(http.MethodGet, "/v1/sandboxes/"+created.ID, ""); code != http.StatusOK || !strings.Contains(body, `"name":"my agent ✨"`) {
+		t.Fatalf("get = %d %s, want its name", code, body)
+	}
+
+	// A create that fails leaves no name behind.
+	mu.Lock()
+	failCreate = true
+	mu.Unlock()
+	before := len(names.names)
+	if code, _ := do(http.MethodPost, "/v1/sandboxes", `{"name":"doomed"}`); code < 500 {
+		t.Fatalf("failing create = %d, want a server error", code)
+	}
+	if len(names.names) != before {
+		t.Errorf("a failed create left its name: %v", names.names)
 	}
 }

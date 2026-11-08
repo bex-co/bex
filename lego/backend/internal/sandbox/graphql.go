@@ -91,7 +91,14 @@ func networkPolicyFromArgs(raw map[string]any) *NetworkPolicy {
 var sandboxGQLType = graphql.NewObject(graphql.ObjectConfig{
 	Name: "Sandbox",
 	Fields: graphql.Fields{
-		"id":        gqlutil.ReqStrField(func(s Sandbox) any { return s.ID }),
+		"id": gqlutil.ReqStrField(func(s Sandbox) any { return s.ID }),
+		// Render's optional sandbox name (w5/m287); null when unnamed.
+		"name": &graphql.Field{Type: graphql.String, Resolve: gqlutil.Field(func(s Sandbox) any {
+			if s.Name == nil {
+				return nil
+			}
+			return *s.Name
+		})},
 		"plan":      gqlutil.StrField(func(s Sandbox) any { return string(s.Plan) }),
 		"status":    gqlutil.ReqStrField(func(s Sandbox) any { return string(s.Status) }),
 		"owner":     gqlutil.StrField(func(s Sandbox) any { return s.Owner }),
@@ -123,9 +130,11 @@ func (s *Service) GraphQLQuery() graphql.Fields {
 				"ownerId": gqlutil.Arg(graphql.String),
 				// Render's list `status` filter; omitted = every status but terminated.
 				"status": gqlutil.Arg(graphql.NewList(graphql.NewNonNull(graphql.String))),
+				// Render's exact-match name filter.
+				"name": gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
-				return s.listFiltered(ownerScoped(p), gqlutil.StringList(p.Args["status"]))
+				return s.listFiltered(ownerScoped(p), gqlutil.StringList(p.Args["status"]), gqlutil.Str(p.Args, "name"))
 			},
 		},
 		"sandbox": &graphql.Field{
@@ -155,6 +164,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 				// suspension; see resolveIdleTimeout.
 				"idleTimeoutSeconds": gqlutil.Arg(graphql.Int),
 				"networkPolicy":      gqlutil.Arg(sandboxNetworkPolicyInput),
+				"name":               gqlutil.Arg(graphql.String),
 			},
 			Resolve: func(p graphql.ResolveParams) (any, error) {
 				var policy *NetworkPolicy
@@ -168,6 +178,7 @@ func (s *Service) GraphQLMutation() graphql.Fields {
 					Region:             gqlutil.Str(p.Args, "region"),
 					TimeoutSeconds:     gqlutil.IntPtr(p.Args, "timeoutSeconds"),
 					IdleTimeoutSeconds: gqlutil.IntPtr(p.Args, "idleTimeoutSeconds"),
+					Name:               gqlutil.Str(p.Args, "name"),
 					NetworkPolicy:      policy,
 				})
 			},

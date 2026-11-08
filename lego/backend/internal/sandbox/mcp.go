@@ -38,12 +38,17 @@ type spawnSandboxArgs struct {
 	// resolveIdleTimeout).
 	IdleTimeoutSeconds *int           `json:"idleTimeoutSeconds,omitempty"`
 	NetworkPolicy      *NetworkPolicy `json:"networkPolicy,omitempty"`
+	// Name is Render's optional, non-unique sandbox name (at most 64
+	// characters, never sbx-…).
+	Name string `json:"name,omitempty"`
 }
 
 // listSandboxesArgs is the MCP input for list_sandboxes: Render's list
 // `status` filter (omitted = every status but terminated).
 type listSandboxesArgs struct {
 	Status []string `json:"status,omitempty"`
+	// Name keeps only sandboxes with exactly this name.
+	Name string `json:"name,omitempty"`
 }
 
 type sandboxIDArgs struct {
@@ -84,12 +89,13 @@ func (s *Service) RegisterMCP(server *mcp.Server) {
 				TimeoutSeconds:     in.TimeoutSeconds,
 				IdleTimeoutSeconds: in.IdleTimeoutSeconds,
 				NetworkPolicy:      in.NetworkPolicy,
+				Name:               in.Name,
 			})
 			return nil, sb, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "list_sandboxes", Description: "List the caller's workspace's sandboxes with their statuses. Optional status: a list of Render sandbox statuses to keep; omitted, terminated sandboxes are hidden."},
 		func(ctx context.Context, _ *mcp.CallToolRequest, in listSandboxesArgs) (*mcp.CallToolResult, listSandboxesResult, error) {
-			out, err := s.listFiltered(ctx, in.Status)
+			out, err := s.listFiltered(ctx, in.Status, in.Name)
 			return nil, listSandboxesResult{Sandboxes: out}, err
 		})
 	mcputil.AddTool(server, &mcp.Tool{Name: "stop_sandbox", Description: "Terminate a sandbox by id."},

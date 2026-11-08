@@ -374,6 +374,8 @@ type Deps struct {
 	// SandboxActivity is the exec/file activity record behind sandbox idle
 	// suspension (w2/m278); nil (store off) disables idle suspension.
 	SandboxActivity sandbox.ActivityStore
+	// SandboxNames holds Render sandbox names (w5/m287); nil refuses --name.
+	SandboxNames sandbox.NameStore
 	// SandboxExec wires `render ea sandbox exec` (w3/m33) — bex-api authorizes and
 	// reverse-proxies the SSE from the isolated gateway; nil => the exec verb 503s.
 	SandboxExec *sandbox.ExecConfig
@@ -1235,6 +1237,7 @@ func sandboxService(base *core.Base, d Deps) *sandbox.Service {
 		SandboxEgress:   d.SandboxEgress,
 		Region:          resourcemeta.RenderRegion(d.Region),
 		Activity:        d.SandboxActivity,
+		Names:           d.SandboxNames,
 	}
 }
 

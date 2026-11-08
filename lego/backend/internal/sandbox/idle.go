@@ -412,6 +412,15 @@ func (w *IdleSuspender) sweepWorkspace(ctx context.Context, key store.SandboxTen
 	if err := s.Activity.PruneSandboxActivity(ctx, key.WorkspaceID, live); err != nil {
 		log.Printf("sandbox idle: prune workspace=%s: %v", key.WorkspaceID, err)
 	}
+	if s.Names != nil {
+		public := make([]string, 0, len(rows))
+		for _, raw := range rows {
+			public = append(public, canonicalID(raw))
+		}
+		if err := s.Names.PruneSandboxNames(ctx, key.WorkspaceID, public); err != nil {
+			log.Printf("sandbox idle: prune names workspace=%s: %v", key.WorkspaceID, err)
+		}
+	}
 	return suspended
 }
 

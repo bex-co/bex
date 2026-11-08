@@ -21,7 +21,7 @@ User decision 2026-11-07: all five items of the seventh `/pm-brainstorm for w5` 
 - [ ] **m284** — [Restart waits for an in-flight deploy under Render's Wait policy](m284/README.md) (9 tasks; 6h45m total) ← round 7 item 2; ADR018:95 — **in progress**: shipped; production restart-during-build walk (t005) pending deploy
 - [x] **m285** — [A webhook's signing secret is readable after create, as on Render](done/m285/README.md) (8 tasks; 5h15m total) ← round 7 item 3; ADR018:300 unsigned ◐ — **DONE 2026-11-08: already met by w3/m282** (secret readable for managers on every surface; no code change)
 - [x] **m286** — [REST and MCP requests have a deadline instead of a 502 that keeps running](done/m286/README.md) (8 tasks; 5h30m total) ← round 7 item 4; w3/m248 findings — **DONE 2026-11-08**: REST and MCP calls stop at 28 s with REQUEST_TIMEOUT; streaming routes and the git webhook exempt
-- [ ] **m287** — [Sandboxes have names (`--name`), as in Render CLI v2.36](m287/README.md) (7 tasks; 4h30m total) ← round 7 item 5; Render CLI v2.36.0
+- [ ] **m287** — [Sandboxes have names (`--name`), as in Render CLI v2.36](m287/README.md) (7 tasks; 4h30m total) ← round 7 item 5; Render CLI v2.36.0 — **in progress**: shipped; Render CLI v2.36 walk (t003) pending deploy
 - [ ] **181** — [Render's planned Blueprint create reads `main`, not the repository's default branch](181.md) (~45m) ← found by w5/m283
 
 ## Approved queue — 2026-11-05 (brainstorm round 6)
