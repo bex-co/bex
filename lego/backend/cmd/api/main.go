@@ -392,6 +392,8 @@ func main() {
 			go backfillModelKeyFlags(ctx, deps.Secrets, st)
 		}
 
+		go backfillSkillVersionContent(ctx, st)
+
 		startControlPlaneServer(ctx, cfg, st, rec, granter, stripeBillingAdmin, metricRegistry, originMetrics, agentMetrics, ghClient, modelMinter, opsRole, identityClaims, platformRebuild, shareFiles, agentResults, agentSpawns, ready)
 	} else if opsRole != nil && !cfg.MCPStdio {
 		// ADR088 §4: without the control plane there is no :8091 mux to share,
@@ -1756,4 +1758,16 @@ func backfillModelKeyFlags(ctx context.Context, keys core.SecretKV, st *store.PG
 		log.Printf("bex-api: agent model key flag backfill failed (retrying next start): %v", err)
 	}
 	log.Printf("bex-api: agent model key flag backfill: workspaces=%d keys=%d flags_set=%d platform_routed=%d failed=%d", r.Workspaces, r.Keys, r.Marked, r.PlatformRouted, r.Failed)
+}
+
+// backfillSkillVersionContent is the one-shot startup pass that re-renders the
+// skill versions migration 0210 backfilled in SQL with the Go renderer's YAML
+// quoting (agentsessions.BackfillSkillVersionContent). It runs in the
+// background and logs a count; a failure is retried on the next start.
+func backfillSkillVersionContent(ctx context.Context, st *store.PGStore) {
+	n, err := agentsessions.BackfillSkillVersionContent(ctx, st)
+	if err != nil {
+		log.Printf("bex-api: skill version content backfill failed (retrying next start): %v", err)
+	}
+	log.Printf("bex-api: skill version content backfill: rewritten=%d", n)
 }

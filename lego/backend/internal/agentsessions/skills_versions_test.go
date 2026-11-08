@@ -454,3 +454,78 @@ func TestRenderedDescriptionsMatchTheMigrationBackfill(t *testing.T) {
 		}
 	}
 }
+
+// A version row 0210 backfilled in SQL reads with SQL-style quoting; the
+// startup pass re-renders it, so the next save's diff shows no description line
+// (unrelated edits only), and a second pass changes nothing.
+func TestBackfilledSkillVersionsShowNoDescriptionLineInTheNextDiff(t *testing.T) {
+	for _, c := range []struct {
+		description, sql string
+		differs          bool
+	}{
+		{"How to deploy", "How to deploy", false},
+		{"Deploy (prod), v2.0", "Deploy (prod), v2.0", false},
+		{"n/a", "n/a", false},
+		{"Deploy: staging", `"Deploy: staging"`, true},
+		{"Fix #12", `"Fix #12"`, true},
+		{"yes", `"yes"`, true},
+	} {
+		t.Run(c.description, func(t *testing.T) {
+			s := newSkillVersionSurfaces(t)
+			ctx := caller("admin")
+			created, err := s.svc.CreateAgentSkill(ctx, "tea-a", AgentSkillInput{Name: str("d"), Description: str(c.description), Body: str("x\n")})
+			if err != nil {
+				t.Fatal(err)
+			}
+			// Version 1 as the 0210 SQL wrote it.
+			fake := s.svc.Skills.(*fakeSkills)
+			sqlContent := "---\nname: d\ndescription: " + c.sql + "\n---\nx\n"
+			fake.versions[created.ID][0].Content = sqlContent
+			fake.versions[created.ID][0].ShortID = store.AgentSkillVersionShortID(created.ID, 1, sqlContent)
+
+			n, err := BackfillSkillVersionContent(context.Background(), fake)
+			if want := map[bool]int{true: 1, false: 0}[c.differs]; err != nil || n != want {
+				t.Fatalf("backfill rewrote %d rows (err %v), want %d", n, err, want)
+			}
+			v1 := fake.versions[created.ID][0]
+			if v1.Content != created.Content || v1.ShortID != store.AgentSkillVersionShortID(created.ID, 1, created.Content) {
+				t.Fatalf("version 1 = %q (%s), want the Go rendering %q", v1.Content, v1.ShortID, created.Content)
+			}
+			if again, err := BackfillSkillVersionContent(context.Background(), fake); err != nil || again != 0 {
+				t.Fatalf("second backfill rewrote %d rows (err %v)", again, err)
+			}
+
+			if _, err := s.svc.UpdateAgentSkill(ctx, "tea-a", created.ID, AgentSkillInput{Body: str("y\n"), IfVersion: &created.Version}); err != nil {
+				t.Fatal(err)
+			}
+			v2, err := s.svc.AgentSkillVersion(ctx, "tea-a", created.ID, 2)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.Contains(v2.Diff, "-x\n+y\n") || strings.Contains(v2.Diff, "\n-description") || strings.Contains(v2.Diff, "\n+description") {
+				t.Fatalf("diff of the next save = %q, want only the body change", v2.Diff)
+			}
+		})
+	}
+}
+
+// Rows that are not 0210 output are left alone: a Go rendering, a row whose
+// content is not the SQL rendering of its own fields, and non-skill text.
+func TestSkillVersionBackfillLeavesOtherRowsAlone(t *testing.T) {
+	for _, content := range []string{
+		"---\nname: d\ndescription: 'Fix #12'\n---\nx\n",               // already the Go rendering
+		"---\nname: d\ndescription: \"Fix #12\"\nextra:   1\n---\nx\n", // hand-written spacing: not what 0210 emits
+		"---\nname: d\ndescription: \"Fix #12\"\ntriggers: [user, model]\n---\nx\n",
+		"not a skill",
+	} {
+		if got, ok := rerenderBackfilledSkillVersion(content); ok {
+			t.Errorf("rewrote %q to %q", content, got)
+		}
+	}
+	// A user-only skill with extra frontmatter, as 0210 writes it.
+	sql := "---\nname: d\ndescription: \"Cut: a release\"\ntriggers: [user]\nargument-hint: <tag>\n---\nSteps.\n"
+	want := "---\nname: d\ndescription: 'Cut: a release'\ntriggers: [user]\nargument-hint: <tag>\n---\nSteps.\n"
+	if got, ok := rerenderBackfilledSkillVersion(sql); !ok || got != want {
+		t.Errorf("user-only skill = %q %v, want %q", got, ok, want)
+	}
+}

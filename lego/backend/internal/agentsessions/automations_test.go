@@ -102,6 +102,18 @@ func (f *fakeAutomations) ListAgentAutomations(_ context.Context, ws, createdBy,
 	return out, nil
 }
 
+func (f *fakeAutomations) CountAgentAutomations(_ context.Context, ws string) (int, error) {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	n := 0
+	for _, row := range f.rows {
+		if row.WorkspaceID == ws {
+			n++
+		}
+	}
+	return n, nil
+}
+
 func (f *fakeAutomations) UpdateAgentAutomation(_ context.Context, in store.AgentAutomation, ifVersion int) (store.AgentAutomation, error) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -424,7 +436,8 @@ func TestAutomationPlatformMeteredTemplateNeedsSpendCeiling(t *testing.T) {
 }
 
 func TestAutomationVersionNameAndLimit(t *testing.T) {
-	svc, _ := automationTestService("tea-a", newFakeAutomations())
+	f := newFakeAutomations()
+	svc, _ := automationTestService("tea-a", f)
 	ctx := caller("dev")
 	a, err := svc.CreateAgentAutomation(ctx, "tea-a", automationInput("alpha"))
 	if err != nil {
@@ -452,6 +465,9 @@ func TestAutomationVersionNameAndLimit(t *testing.T) {
 		if _, err = svc.CreateAgentAutomation(ctx, "tea-a", automationInput(fmt.Sprintf("auto-%d", i))); err != nil {
 			t.Fatalf("create %d: %v", i, err)
 		}
+	}
+	if n, _ := f.CountAgentAutomations(ctx, "tea-a"); n != maxWorkspaceAutomations {
+		t.Fatalf("automations before the over-limit create = %d, want %d", n, maxWorkspaceAutomations)
 	}
 	if _, err = svc.CreateAgentAutomation(ctx, "tea-a", automationInput("one-too-many")); !isCode(err, CodeAutomationLimit) {
 		t.Fatalf("over the limit = %v, want %s", err, CodeAutomationLimit)

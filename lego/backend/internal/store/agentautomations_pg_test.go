@@ -458,11 +458,12 @@ func TestPGAgentAutomationStaleRunsAndSettle(t *testing.T) {
 		t.Fatalf("resume = %+v err=%v", resumed, err)
 	}
 
-	sid, found, err := s.LatestStartedSession(ctx, a.ID)
-	if err != nil || !found || sid != "ags-1" {
-		t.Fatalf("latest started = %q %v %v", sid, found, err)
+	// ags-1 has no session row: found, with an empty phase.
+	sid, phase, found, err := s.LatestStartedSessionPhase(ctx, a.ID)
+	if err != nil || !found || sid != "ags-1" || phase != "" {
+		t.Fatalf("latest started = %q %q %v %v", sid, phase, found, err)
 	}
-	if _, found, err := s.LatestStartedSession(ctx, ids.New(ids.AgentAutomation)); err != nil || found {
+	if _, _, found, err := s.LatestStartedSessionPhase(ctx, ids.New(ids.AgentAutomation)); err != nil || found {
 		t.Fatalf("latest started of nothing = %v %v", found, err)
 	}
 
@@ -605,5 +606,67 @@ func TestPGAgentSessionAutomationID(t *testing.T) {
 	}
 	if rows, err = s.ListAgentSessions(ctx, tenant.ID, AgentSessionListQuery{Limit: 10}); err != nil || len(rows) != 2 {
 		t.Fatalf("unfiltered list = %d err=%v", len(rows), err)
+	}
+}
+
+func TestPGCountAgentAutomations(t *testing.T) {
+	s, _, tenant := agentSessionPGStore(t, "automation-count")
+	ctx := context.Background()
+	if n, err := s.CountAgentAutomations(ctx, tenant.ID); err != nil || n != 0 {
+		t.Fatalf("empty count = %d err=%v", n, err)
+	}
+	for _, name := range []string{"one", "two", "three"} {
+		if _, err := s.CreateAgentAutomation(ctx, newAutomation(tenant.ID, name, nil)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if n, err := s.CountAgentAutomations(ctx, tenant.ID); err != nil || n != 3 {
+		t.Fatalf("count = %d err=%v, want 3", n, err)
+	}
+	if n, err := s.CountAgentAutomations(ctx, "tea-other"); err != nil || n != 0 {
+		t.Fatalf("other workspace count = %d err=%v", n, err)
+	}
+}
+
+func TestPGLatestStartedSessionPhase(t *testing.T) {
+	s, pool, tenant := agentSessionPGStore(t, "automation-latest-phase")
+	ctx := context.Background()
+	a, err := s.CreateAgentAutomation(ctx, newAutomation(tenant.ID, "phase", nil))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, found, err := s.LatestStartedSessionPhase(ctx, a.ID); err != nil || found {
+		t.Fatalf("no runs = %v %v", found, err)
+	}
+	base := time.Now().UTC().Truncate(time.Microsecond)
+	fire := func(i int, session string) {
+		t.Helper()
+		at := base.Add(time.Duration(i) * time.Minute)
+		if _, err := pool.Exec(ctx, `INSERT INTO agent_automation_runs (automation_id, fire_at, outcome, claimed_until) VALUES ($1,$2,'claimed',$3)`, a.ID, at, base); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := s.SettleRun(ctx, a.ID, at, AutomationRunStarted, session, ""); err != nil {
+			t.Fatal(err)
+		}
+	}
+	first, err := s.CreateAgentSession(ctx, AgentSession{WorkspaceID: tenant.ID, AutomationID: a.ID, InitialPrompt: "x"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	fire(0, first.ID)
+	sid, phase, found, err := s.LatestStartedSessionPhase(ctx, a.ID)
+	if err != nil || !found || sid != first.ID || phase != first.Phase || phase == "" {
+		t.Fatalf("latest = %q %q %v %v (session phase %q)", sid, phase, found, err, first.Phase)
+	}
+	if _, err := pool.Exec(ctx, `UPDATE agent_sessions SET phase='completed' WHERE id=$1`, first.ID); err != nil {
+		t.Fatal(err)
+	}
+	if _, phase, _, err = s.LatestStartedSessionPhase(ctx, a.ID); err != nil || phase != "completed" {
+		t.Fatalf("finished phase = %q err=%v", phase, err)
+	}
+	// A newer run whose session row is gone is still the latest: empty phase.
+	fire(1, "ags-gone")
+	if sid, phase, found, err = s.LatestStartedSessionPhase(ctx, a.ID); err != nil || !found || sid != "ags-gone" || phase != "" {
+		t.Fatalf("missing session = %q %q %v %v", sid, phase, found, err)
 	}
 }

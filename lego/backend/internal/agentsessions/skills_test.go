@@ -59,6 +59,20 @@ func (f *fakeSkills) saveVersion(row, in store.AgentSkill) {
 	})
 }
 
+// RewriteAgentSkillVersions is the store's rewrite pass over the fake versions.
+func (f *fakeSkills) RewriteAgentSkillVersions(_ context.Context, rewrite func(content string) (string, bool)) (int, error) {
+	changed := 0
+	for id, all := range f.versions {
+		for i, v := range all {
+			if next, ok := rewrite(v.Content); ok && next != v.Content {
+				all[i].Content, all[i].ShortID = next, store.AgentSkillVersionShortID(id, v.Version, next)
+				changed++
+			}
+		}
+	}
+	return changed, nil
+}
+
 func (f *fakeSkills) ListAgentSkillVersions(_ context.Context, id string, before, limit int) ([]store.AgentSkillVersion, error) {
 	out := []store.AgentSkillVersion{}
 	all := f.versions[id]

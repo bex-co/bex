@@ -153,19 +153,20 @@ type AutomationStore interface {
 	GetAgentAutomation(ctx context.Context, id string) (store.AgentAutomation, error)
 	GetAgentAutomationByName(ctx context.Context, workspaceID, name string) (store.AgentAutomation, error)
 	ListAgentAutomations(ctx context.Context, workspaceID, createdBy, cursor string, limit int) ([]store.AgentAutomation, error)
+	CountAgentAutomations(ctx context.Context, workspaceID string) (int, error)
 	UpdateAgentAutomation(ctx context.Context, in store.AgentAutomation, ifVersion int) (store.AgentAutomation, error)
 	DeleteAgentAutomation(ctx context.Context, id string) error
 	SetAgentAutomationPaused(ctx context.Context, id string, paused bool, reason string) (store.AgentAutomation, error)
 
 	// The scheduler's side (ADR101 D3): claim due automations and stale runs,
-	// settle a run, read the run history and the latest started session, and
+	// settle a run, read the run history and the latest started session's phase, and
 	// record a run-now fire.
 	ClaimDueAutomations(ctx context.Context, now time.Time, limit int, lease time.Duration,
 		advance func(a store.AgentAutomation) (fireAt time.Time, next *time.Time, missedTicks int, err error)) (store.ClaimResult, error)
 	ClaimStaleRuns(ctx context.Context, now time.Time, lease time.Duration, limit int) ([]store.ClaimedRun, error)
 	SettleRun(ctx context.Context, automationID string, fireAt time.Time, outcome, sessionID, errText string) (int, error)
 	ListRuns(ctx context.Context, automationID string, cursor time.Time, limit int) ([]store.AgentAutomationRun, error)
-	LatestStartedSession(ctx context.Context, automationID string) (string, bool, error)
+	LatestStartedSessionPhase(ctx context.Context, automationID string) (sessionID, phase string, found bool, err error)
 	InsertManualRun(ctx context.Context, automationID string, fireAt, now time.Time, lease time.Duration) (store.AgentAutomationRun, bool, error)
 }
 
@@ -296,9 +297,9 @@ func (s *Service) CreateAgentAutomation(ctx context.Context, ownerID string, in 
 		return AgentAutomation{}, err
 	}
 	// The count check is advisory: two concurrent creates at 49 may both pass.
-	if existing, err := s.Automations.ListAgentAutomations(ctx, workspaceID, "", "", maxWorkspaceAutomations); err != nil {
+	if existing, err := s.Automations.CountAgentAutomations(ctx, workspaceID); err != nil {
 		return AgentAutomation{}, err
-	} else if len(existing) >= maxWorkspaceAutomations {
+	} else if existing >= maxWorkspaceAutomations {
 		return AgentAutomation{}, core.NewConflictError(CodeAutomationLimit,
 			fmt.Sprintf("a workspace holds at most %d automations", maxWorkspaceAutomations), map[string]any{"limit": maxWorkspaceAutomations})
 	}

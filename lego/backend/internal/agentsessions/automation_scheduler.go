@@ -201,17 +201,11 @@ func (s *Service) decideAutomationRun(ctx context.Context, c store.ClaimedRun) (
 	}
 
 	// D6: skip while the previous run's session is still working.
-	if previous, found, err := s.Automations.LatestStartedSession(ctx, a.ID); err != nil {
+	// A started session whose row is gone (empty phase) no longer blocks.
+	if previous, phase, found, err := s.Automations.LatestStartedSessionPhase(ctx, a.ID); err != nil {
 		return "", "", "", err
-	} else if found {
-		record, err := s.Store.GetAgentSession(ctx, previous)
-		switch {
-		case errors.Is(err, store.ErrNotFound):
-		case err != nil:
-			return "", "", "", err
-		case stateOf(record.Phase) == StateWorking:
-			return store.AutomationRunSkippedOverlap, "", "the previous run's session " + previous + " is still working", nil
-		}
+	} else if found && phase != "" && stateOf(phase) == StateWorking {
+		return store.AutomationRunSkippedOverlap, "", "the previous run's session " + previous + " is still working", nil
 	}
 
 	view, err := s.Create(ctx, tpl.createRequest(a, key))

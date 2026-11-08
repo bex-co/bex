@@ -110,3 +110,47 @@ func (s *PGStore) GetAgentSkillVersion(ctx context.Context, skillID string, vers
 	}
 	return out, nil
 }
+
+// RewriteAgentSkillVersions walks every stored version and replaces the
+// content rewrite returns ok for, recomputing the short id from the new
+// content; version number, message, author and time stay. The update only
+// applies to the content that was read, so a concurrent run or a trim loses
+// harmlessly. It returns how many rows it changed.
+func (s *PGStore) RewriteAgentSkillVersions(ctx context.Context, rewrite func(content string) (string, bool)) (int, error) {
+	const batch = 200
+	changed, lastSkill, lastVersion := 0, "", 0
+	for {
+		rows, err := s.Pool.Query(ctx, `
+			SELECT skill_id, version, content FROM agent_skill_versions
+			WHERE (skill_id, version) > ($1, $2) ORDER BY skill_id, version LIMIT $3`, lastSkill, lastVersion, batch)
+		if err != nil {
+			return changed, err
+		}
+		page, err := pgx.CollectRows(rows, func(row pgx.CollectableRow) (AgentSkillVersion, error) {
+			var v AgentSkillVersion
+			return v, row.Scan(&v.SkillID, &v.Version, &v.Content)
+		})
+		if err != nil {
+			return changed, err
+		}
+		for _, v := range page {
+			next, ok := rewrite(v.Content)
+			if !ok || next == v.Content {
+				continue
+			}
+			tag, err := s.Pool.Exec(ctx, `
+				UPDATE agent_skill_versions SET content=$4, short_id=$5
+				WHERE skill_id=$1 AND version=$2 AND content=$3`,
+				v.SkillID, v.Version, v.Content, next, AgentSkillVersionShortID(v.SkillID, v.Version, next))
+			if err != nil {
+				return changed, err
+			}
+			changed += int(tag.RowsAffected())
+		}
+		if len(page) < batch {
+			return changed, nil
+		}
+		last := page[len(page)-1]
+		lastSkill, lastVersion = last.SkillID, last.Version
+	}
+}

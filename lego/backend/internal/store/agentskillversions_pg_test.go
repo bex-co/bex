@@ -402,3 +402,54 @@ func TestPGAgentSkillConcurrentSavesWriteOneVersion(t *testing.T) {
 		t.Fatalf("%d version rows, err=%v", n, err)
 	}
 }
+
+// RewriteAgentSkillVersions replaces only the content its callback changes,
+// recomputes the short id, keeps version, message, author and time, pages past
+// one batch, and skips a row that changed under it.
+func TestPGRewriteAgentSkillVersions(t *testing.T) {
+	s, pool, tenant := agentSessionPGStore(t, "rewrite-skill-versions")
+	ctx := context.Background()
+	lim := AgentSkillLimits{Count: 10, EnabledBytes: 1 << 20}
+	skill, err := s.CreateAgentSkill(ctx, versioned(newSkill(tenant.ID, "rw"), "old v1\n", "Add skills/rw/SKILL.md"), lim)
+	if err != nil {
+		t.Fatal(err)
+	}
+	// Enough extra versions to need a second page.
+	if _, err := pool.Exec(ctx, `
+		INSERT INTO agent_skill_versions (skill_id, version, content, message, created_by, short_id)
+		SELECT $1, v, 'keep ' || v, 'm' || v, 'dev', '0000000' FROM generate_series(2, 450) v`, skill.ID); err != nil {
+		t.Fatal(err)
+	}
+	before, err := s.GetAgentSkillVersion(ctx, skill.ID, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	rewrite := func(content string) (string, bool) {
+		if content == "old v1\n" {
+			return "new v1\n", true
+		}
+		return "", false
+	}
+	if n, err := s.RewriteAgentSkillVersions(ctx, rewrite); err != nil || n != 1 {
+		t.Fatalf("rewrite = %d err=%v, want 1", n, err)
+	}
+	after, err := s.GetAgentSkillVersion(ctx, skill.ID, 1)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if after.Content != "new v1\n" || after.ShortID != AgentSkillVersionShortID(skill.ID, 1, "new v1\n") || after.ShortID == before.ShortID ||
+		after.Message != before.Message || after.CreatedBy != before.CreatedBy || !after.CreatedAt.Equal(before.CreatedAt) {
+		t.Fatalf("rewritten version = %+v, before %+v", after, before)
+	}
+	last, err := s.GetAgentSkillVersion(ctx, skill.ID, 450)
+	if err != nil || last.Content != "keep 450" || last.ShortID != "0000000" {
+		t.Fatalf("untouched version = %+v err=%v", last, err)
+	}
+	if n, err := s.RewriteAgentSkillVersions(ctx, rewrite); err != nil || n != 0 {
+		t.Fatalf("second rewrite = %d err=%v, want 0", n, err)
+	}
+	// Every row on the second page is visited: rewrite the last one.
+	if n, err := s.RewriteAgentSkillVersions(ctx, func(c string) (string, bool) { return "tail", c == "keep 450" }); err != nil || n != 1 {
+		t.Fatalf("rewrite of the last page = %d err=%v", n, err)
+	}
+}

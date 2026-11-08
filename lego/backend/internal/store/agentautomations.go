@@ -196,6 +196,13 @@ func (s *PGStore) ListAgentAutomations(ctx context.Context, workspaceID, created
 		workspaceID, createdBy, cursor, clampLimit(limit)))
 }
 
+// CountAgentAutomations returns how many automations the workspace holds.
+func (s *PGStore) CountAgentAutomations(ctx context.Context, workspaceID string) (int, error) {
+	var n int
+	err := s.Pool.QueryRow(ctx, `SELECT count(*) FROM agent_automations WHERE workspace_id=$1`, workspaceID).Scan(&n)
+	return n, err
+}
+
 // clampLimit bounds a page: the services' largest page (200) plus the one
 // look-ahead row they fetch to know whether a next page exists.
 func clampLimit(limit int) int {
@@ -439,24 +446,26 @@ func (s *PGStore) ListRuns(ctx context.Context, automationID string, cursor time
 		automationID, nullTime(cursor), clampLimit(limit)))
 }
 
-// LatestStartedSession returns the session of the automation's most recent
-// run that started one; found is false when none did.
-func (s *PGStore) LatestStartedSession(ctx context.Context, automationID string) (string, bool, error) {
+// LatestStartedSessionPhase returns the session of the automation's most
+// recent run that started one, with that session's phase; found is false when
+// no run did. phase is empty when the session row no longer exists.
+func (s *PGStore) LatestStartedSessionPhase(ctx context.Context, automationID string) (sessionID, phase string, found bool, err error) {
 	if !textBindable(automationID) {
-		return "", false, nil
+		return "", "", false, nil
 	}
-	var id string
-	err := s.Pool.QueryRow(ctx, `
-		SELECT session_id FROM agent_automation_runs
-		WHERE automation_id=$1 AND outcome='started' AND session_id IS NOT NULL
-		ORDER BY fire_at DESC LIMIT 1`, automationID).Scan(&id)
+	err = s.Pool.QueryRow(ctx, `
+		SELECT r.session_id, coalesce(g.phase, '')
+		FROM (SELECT session_id FROM agent_automation_runs
+		      WHERE automation_id=$1 AND outcome='started' AND session_id IS NOT NULL
+		      ORDER BY fire_at DESC LIMIT 1) r
+		LEFT JOIN agent_sessions g ON g.id = r.session_id`, automationID).Scan(&sessionID, &phase)
 	if errors.Is(err, pgx.ErrNoRows) {
-		return "", false, nil
+		return "", "", false, nil
 	}
 	if err != nil {
-		return "", false, err
+		return "", "", false, err
 	}
-	return id, true, nil
+	return sessionID, phase, true, nil
 }
 
 // InsertManualRun records a run-now fire (ADR101 D8): a 'claimed' run for the
