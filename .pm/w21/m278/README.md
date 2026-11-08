@@ -1,6 +1,6 @@
 # w21 · m278 — Agent Automations: scheduled cloud-agent sessions (Devin parity)
 
-**Worker:** worker21 **Goal:** a customer defines an automation (a schedule trigger plus a session template) and bex starts an agent session at each tick, safely across replicas, as the creator, with spend and failure controls. **Status:** todo (t001, t002, t003, t004, t005, t006, t007 done)
+**Worker:** worker21 **Goal:** a customer defines an automation (a schedule trigger plus a session template) and bex starts an agent session at each tick, safely across replicas, as the creator, with spend and failure controls. **Status:** todo (t001, t002, t003, t004, t005, t006, t007, t009, t010, t011 done)
 
 ## Tasks (in order)
 
@@ -14,9 +14,9 @@
 | t006 | REST, GraphQL and MCP adapters — **DONE** | 90m | t004 |
 | t007 | Dashboard: Automations list, form and run history — **DONE** | 120m | t006 |
 | t008 | Live verification on production as the QA user | 45m | t005, t007 |
-| t009 | Render parity (Devin reference for agent surfaces) | 25m | t008 |
-| t010 | Simplify | 15m | t009 |
-| t011 | Test coverage | 45m | t009, t010 |
+| t009 | Render parity (Devin reference for agent surfaces) — **DONE** | 25m | t008 |
+| t010 | Simplify — **DONE** | 15m | t009 |
+| t011 | Test coverage — **DONE** | 45m | t009, t010 |
 | t012 | Closeout | 10m | t011 |
 
 ## Definition of done

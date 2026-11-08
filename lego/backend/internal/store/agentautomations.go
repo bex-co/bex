@@ -307,11 +307,15 @@ func (s *PGStore) ClaimDueAutomations(ctx context.Context, now time.Time, limit 
 				res.Failures = append(res.Failures, ClaimFailure{Automation: a, Err: err})
 				continue
 			}
-			tag, err := tx.Exec(ctx, `
+			// RETURNING hands back the new run row; a run that already exists
+			// (ON CONFLICT DO NOTHING) returns none and is not fired again.
+			run, err := scanAgentAutomationRun(tx.QueryRow(ctx, `
 				INSERT INTO agent_automation_runs (automation_id, fire_at, outcome, missed_ticks, claimed_until)
 				VALUES ($1, $2, 'claimed', $3, $4)
-				ON CONFLICT (automation_id, fire_at) DO NOTHING`, a.ID, fireAt, missed, now.Add(lease))
-			if err != nil {
+				ON CONFLICT (automation_id, fire_at) DO NOTHING
+				RETURNING `+agentAutomationRunColumns, a.ID, fireAt, missed, now.Add(lease)))
+			existed := errors.Is(err, pgx.ErrNoRows)
+			if err != nil && !existed {
 				return err
 			}
 			updated, err := scanAgentAutomation(tx.QueryRow(ctx, `
@@ -322,14 +326,8 @@ func (s *PGStore) ClaimDueAutomations(ctx context.Context, now time.Time, limit 
 			if err != nil {
 				return err
 			}
-			if tag.RowsAffected() == 0 {
+			if existed {
 				continue
-			}
-			run, err := scanAgentAutomationRun(tx.QueryRow(ctx,
-				`SELECT `+agentAutomationRunColumns+` FROM agent_automation_runs WHERE automation_id=$1 AND fire_at=$2`,
-				a.ID, fireAt))
-			if err != nil {
-				return err
 			}
 			res.Runs = append(res.Runs, ClaimedRun{Run: run, Automation: updated})
 		}

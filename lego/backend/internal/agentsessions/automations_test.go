@@ -29,6 +29,7 @@ import (
 	"time"
 
 	"github.com/bex-co/bex/lego/backend/internal/core"
+	ids "github.com/bex-co/bex/lego/backend/internal/id"
 	"github.com/bex-co/bex/lego/backend/internal/store"
 )
 
@@ -161,8 +162,14 @@ func automationTestService(ws string, automations AutomationStore) (*Service, *a
 	audit := &auditCapture{}
 	svc.Audit = audit
 	svc.Automations = automations
+	// A fixed instant, not the wall clock: schedules, "past" checks and
+	// nextFireAt all read it, so no test depends on when it runs.
+	svc.Clock = func() time.Time { return automationTestNow }
 	return svc, audit
 }
+
+// automationTestNow is the instant every automationTestService reads.
+var automationTestNow = time.Date(2026, time.November, 7, 10, 0, 0, 0, time.UTC)
 
 func validAutomationTemplate() *AutomationTemplate {
 	return &AutomationTemplate{
@@ -203,7 +210,7 @@ func exerciseAutomationAuthorization(t *testing.T, build func() (*Service, *audi
 		t.Fatalf("create: %v", err)
 	}
 	if !strings.HasPrefix(created.ID, "aut-") || created.CreatedBy != "dev" || !created.Enabled || created.Version != 1 ||
-		created.OverlapPolicy != "skip" || created.NextFireAt == nil || !created.NextFireAt.After(time.Now()) ||
+		created.OverlapPolicy != "skip" || created.NextFireAt == nil || !created.NextFireAt.After(automationTestNow) ||
 		len(created.Triggers) != 1 || created.Template.AgentConfig.Agent != "codex" {
 		t.Fatalf("created = %+v", created)
 	}
@@ -305,7 +312,7 @@ func TestAutomationTriggerAndTemplateValidation(t *testing.T) {
 	svc, _ := automationTestService("tea-a", newFakeAutomations())
 	ctx := caller("dev")
 	create := func(mutate func(*AgentAutomationInput)) error {
-		in := automationInput(fmt.Sprintf("auto-%d", time.Now().UnixNano()))
+		in := automationInput("auto-" + ids.New(ids.AgentAutomation))
 		mutate(&in)
 		_, err := svc.CreateAgentAutomation(ctx, "tea-a", in)
 		return err
@@ -331,7 +338,7 @@ func TestAutomationTriggerAndTemplateValidation(t *testing.T) {
 	}); !isCode(err, CodeAutomationScheduleTooFrequent) {
 		t.Errorf("every minute = %v", err)
 	}
-	past := time.Now().Add(-time.Hour)
+	past := automationTestNow.Add(-time.Hour)
 	if err := create(func(in *AgentAutomationInput) {
 		in.Triggers = []AutomationTrigger{{Type: "schedule", Schedule: &AutomationSchedule{Frequency: "once", RunAt: &past, Timezone: "UTC"}}}
 	}); !isCode(err, CodeAutomationSchedulePast) {

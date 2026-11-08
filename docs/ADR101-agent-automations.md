@@ -177,17 +177,31 @@ A new **Automations** entry in the agents nav section (`agent-sessions-nav-secti
 
 There is no Render surface for this, and the Render "Cron Jobs" service type is a different feature that stays as it is. The reference is Devin Automations. [ADR018](ADR018-render-parity.md) gets a new row (agents, Devin parity) that links here.
 
-| Devin behavior | bex |
+Checked against [Devin's Automations guide](https://docs.devin.ai/product-guides/automations) and its [v3 update-automation API](https://docs.devin.ai/api-reference/v3/automations/patch-organizations-automation) on 2026-11-08, plus the live-dashboard walk of 2026-11-06 recorded in Context. Items marked _live only_ were seen in the dashboard and are not in the public docs.
+
+| Devin behavior | bex (as shipped in m278) |
 | --- | --- |
-| Named Automations, triggers + agent definition | Same model, `triggers[]` array |
-| Schedule: hour, day, week, once, custom | Same, with required time zone and `endsAt` |
-| Mine / All tabs, list, detail, templates | Mine / All and detail in phase 1. Templates and "create with Devin" are follow-ups |
-| Run as "Default System User" | **Difference:** runs as the creator (D4) |
-| Minimum interval not found in its docs | **bex limit:** 5 minutes (D2) |
-| Preflight checks, persistent memory | Not in phase 1 |
-| Webhook, GitHub, Security scan, Snapshot triggers | Not in phase 1; the array shape reserves them |
-| Agent type "message existing session" | Not in phase 1 |
-| Network policy, MCP selection, notifications | Egress allowlist as on create; MCP and notification choices are follow-ups |
+| Named Automations, triggers + agent definition; several triggers act as OR | Same model with a `triggers[]` array, but phase 1 accepts exactly **one** `schedule` trigger (`AGENT_AUTOMATION_INVALID` otherwise) |
+| Schedule: every hour, day, week, run once, custom | Same five `frequency` values with a required IANA `timezone` and optional `endsAt` (exclusive). **Difference:** Devin's custom is "every N minutes/hours/days/weeks/months" or a raw iCalendar RRULE; bex's custom is a five-field cron expression |
+| Once fires, then disables itself | Same: the automation is disabled after the fire, with no pause reason |
+| Time zone defaults to the browser's | Same in the dashboard; the API requires it and never guesses |
+| Mine / All tabs, list, detail, activity | Mine / All (`mine=true`), detail and a paged run history (fire time, outcome, session, missed ticks, error). Devin's 30-day sparkline, templates and "create with Devin" are follow-ups |
+| Run now (bypasses preflight) | `POST …/run`, answers **201** with the settled run; it obeys authorization, overlap and spend rules, does not move the schedule, and is refused `409 AGENT_AUTOMATION_PAUSED` while the automation is paused for a reason |
+| Enable / disable toggle | `pause` / `resume`. A manual pause carries no `pausedReason`; the platform's auto-pauses carry one (`repeated_failures`, `creator_lost_access`, `template_invalid`). Resume re-validates the template and the schedule |
+| Run as: `organization` (default "Default System User"), `creator` or a `service_user` | **Difference:** always the creator, re-checked on every fire (D4); no choice and no service user. `take-over` hands an automation to an admin |
+| Agent definition: instructions, mode, MCP connectors, network policy, ACU limit | The create-session template (D5): task, repo, branch, agent/model, `secretNames`, `skills`, `outputSchema`, `egressAllowlist`, `maxSpendUSD`. It has **no `approvalMode`**: cloud sessions never wait for a person. MCP connector selection is a follow-up |
+| Per-automation ACU limit (optional) | `maxSpendUSD`, **required** when the model is platform-metered (`AGENT_AUTOMATION_SPEND_LIMIT_REQUIRED`) |
+| Overlap: "enable queueing", concurrency and queue depth | `skip` only: an overlapping fire is recorded `skipped_overlap` (D6). `queue` and `allow` are follow-ups |
+| Invocation limit per time window; default 50 runs/hour | **Minimum interval of 5 minutes** (`AGENT_AUTOMATION_SCHEDULE_TOO_FREQUENT`, one constant) and at most 50 automations per workspace (`AGENT_AUTOMATION_LIMIT`). No per-window cap |
+| Missed events while the platform is down | Only the latest missed tick fires; the run records `missedTicks` (D3) |
+| Notifications: email and Slack, always / on failure / on success | **Not shipped.** The creator gets the existing push notification when an automation auto-pauses; completion notifications are a follow-up |
+| Preflight check (LLM filter or script), persistent state (`STATE_FILE`), "message existing session" | Not in phase 1 |
+| GitHub, Slack, Linear, Jira, PagerDuty, Webhook triggers | Not in phase 1; the array shape reserves them |
+| Advanced child-session toggle (_live only_) | Not on the template. Child sessions (ADR102) exist for sessions; whether an automation's session may spawn them follows the session defaults |
+| Public API (v3 `automations`, Terraform provider) | REST, GraphQL and MCP carry the same ten operations and the same fields and error codes; no Terraform resource |
+| Errors as RFC 9457 problem+json (404, 409, 422 with field errors) | bex's own error envelope: `AGENT_AUTOMATION_INVALID` (400, with `field`), `…_NOT_FOUND` (404), `…_CONFLICT` (409; a duplicate name or a stale `ifVersion`), `…_LIMIT` (409), `…_NOT_CREATOR` (403), `…_PAUSED` (409), `…_SPEND_LIMIT_REQUIRED` (400), `…_SCHEDULE_INVALID` / `…_SCHEDULE_PAST` / `…_SCHEDULE_TOO_FREQUENT` (400), `AGENT_AUTOMATIONS_UNAVAILABLE` (503) |
+
+Not verified: Devin's own minimum interval and its "Ends on" behavior (neither is in the public docs), and whether the dashboard's "Run as" control exists beyond what the v3 API documents.
 
 ## Decisions
 

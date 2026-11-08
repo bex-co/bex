@@ -343,19 +343,17 @@ func (s *Service) UpdateAgentAutomation(ctx context.Context, ownerID, ref string
 	}
 	if in.Triggers != nil || in.Template != nil {
 		triggers, template := in.Triggers, in.Template
-		if triggers == nil {
-			var cur AgentAutomation
-			if cur, err = automationView(row); err != nil {
+		if triggers == nil || template == nil {
+			cur, err := automationView(row)
+			if err != nil {
 				return AgentAutomation{}, err
 			}
-			triggers = cur.Triggers
-		}
-		if template == nil {
-			var cur AgentAutomation
-			if cur, err = automationView(row); err != nil {
-				return AgentAutomation{}, err
+			if triggers == nil {
+				triggers = cur.Triggers
 			}
-			template = &cur.Template
+			if template == nil {
+				template = &cur.Template
+			}
 		}
 		if err := s.applyAutomationDefinition(ctx, workspaceID, &row, triggers, template); err != nil {
 			return AgentAutomation{}, err

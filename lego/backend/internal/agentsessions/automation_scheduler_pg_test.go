@@ -535,9 +535,12 @@ func TestAutomationSchedulerIdempotentReplay(t *testing.T) {
 	if err != nil || again.ID != first.ID || again.Created == nil || *again.Created {
 		t.Fatalf("replay = %+v err=%v", again, err)
 	}
-	settled, err := e.svc.fireAutomationRun(context.Background(), c)
-	if err != nil || settled.Outcome != store.AutomationRunStarted || settled.SessionID != first.ID {
-		t.Fatalf("fire of a replayed key = %+v err=%v", settled, err)
+	if err := e.svc.fireAutomationRun(context.Background(), c); err != nil {
+		t.Fatal(err)
+	}
+	settled := e.latestRun(a.ID)
+	if settled.Outcome != store.AutomationRunStarted || settled.SessionID != first.ID {
+		t.Fatalf("fire of a replayed key = %+v", settled)
 	}
 	if e.sessions(a.ID) != 1 {
 		t.Fatalf("%d sessions, want 1", e.sessions(a.ID))
@@ -695,5 +698,122 @@ func TestAutomationSchedulerUnschedulableAndRunLoop(t *testing.T) {
 	}
 	if row := e.reload(bad.ID); row.Enabled || row.PausedReason != AutomationPausedTemplateInvalid || e.runs(bad.ID, "") != 0 {
 		t.Fatalf("corrupt automation = %+v runs=%d", row, e.runs(bad.ID, ""))
+	}
+}
+
+// scheduled inserts an enabled automation with the given schedule, due at next.
+func (e *schedEnv) scheduled(name string, sched AutomationSchedule, next time.Time) store.AgentAutomation {
+	e.t.Helper()
+	triggers, _ := json.Marshal([]AutomationTrigger{{Type: "schedule", Schedule: &sched}})
+	template, _ := json.Marshal(e.template())
+	row, err := e.pg.CreateAgentAutomation(context.Background(), store.AgentAutomation{
+		ID: ids.New(ids.AgentAutomation), WorkspaceID: e.ws, Name: name, Enabled: true, CreatedBy: "alice",
+		Triggers: triggers, Template: template, NextFireAt: &next})
+	if err != nil {
+		e.t.Fatal(err)
+	}
+	return row
+}
+
+// (j) A once schedule fires exactly once and then stops; a schedule whose
+// ends-at has passed is retired without a run and without a pause reason.
+func TestAutomationSchedulerFinishedSchedules(t *testing.T) {
+	e := newSchedEnv(t, "aut-finished")
+	now := e.clock.Now()
+	runAt := now.Add(-time.Minute)
+	once := e.scheduled("once", AutomationSchedule{Frequency: "once", RunAt: &runAt, Timezone: "UTC"}, runAt)
+	endsAt := now.Add(-time.Hour)
+	ended := e.scheduled("ended", AutomationSchedule{Frequency: "custom", Cron: "*/5 * * * *", Timezone: "UTC", EndsAt: &endsAt}, now.Add(-30*time.Minute))
+
+	e.tick()
+	if e.runs(once.ID, store.AutomationRunStarted) != 1 || e.sessions(once.ID) != 1 {
+		t.Fatalf("the once schedule did not fire exactly once: runs=%d sessions=%d", e.runs(once.ID, ""), e.sessions(once.ID))
+	}
+	if row := e.reload(once.ID); row.Enabled || row.NextFireAt != nil || row.PausedReason != "" {
+		t.Fatalf("a fired once automation = %+v, want disabled with no next fire and no pause reason", row)
+	}
+	if e.runs(ended.ID, "") != 0 || e.sessions(ended.ID) != 0 {
+		t.Fatal("an automation past its ends-at fired")
+	}
+	if row := e.reload(ended.ID); row.Enabled || row.PausedReason != "" {
+		t.Fatalf("an ended automation = %+v, want disabled with no pause reason", row)
+	}
+	e.clock.Advance(time.Hour)
+	e.tick()
+	if e.runs(once.ID, "") != 1 || e.runs(ended.ID, "") != 0 {
+		t.Fatal("a finished schedule fired on a later tick")
+	}
+}
+
+// (k) The definite outcomes decideAutomationRun settles itself, and the
+// transient one it leaves undecided.
+func TestAutomationDecideRunBranches(t *testing.T) {
+	e := newSchedEnv(t, "aut-decide")
+	ctx := context.Background()
+	a := e.automation("decide", "alice", e.clock.Now().Add(time.Hour))
+	run := store.AgentAutomationRun{AutomationID: a.ID, FireAt: e.clock.Now(), Outcome: store.AutomationRunClaimed}
+
+	noCreator := a
+	noCreator.CreatedBy = ""
+	brokenTemplate := a
+	brokenTemplate.Template = json.RawMessage(`{"task": 5}`)
+	for name, tc := range map[string]struct {
+		row     store.AgentAutomation
+		outcome string
+	}{
+		"no creator":          {noCreator, store.AutomationRunDenied},
+		"unreadable template": {brokenTemplate, store.AutomationRunFailedCreate},
+	} {
+		outcome, session, errText, err := e.svc.decideAutomationRun(ctx, store.ClaimedRun{Automation: tc.row, Run: run})
+		if err != nil || outcome != tc.outcome || session != "" || errText == "" {
+			t.Errorf("%s: outcome=%q session=%q err text=%q err=%v, want %s with a reason", name, outcome, session, errText, err, tc.outcome)
+		}
+	}
+
+	// A canceled context is transient: nothing is decided, so the run stays
+	// claimed for the recovery pass.
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	if outcome, _, _, err := e.svc.decideAutomationRun(canceled, store.ClaimedRun{Automation: a, Run: run}); err == nil || outcome != "" {
+		t.Errorf("canceled context decided %q err=%v, want a transient error", outcome, err)
+	}
+
+}
+
+// The failure classification of a session create: the request's own faults
+// (4xx classes) settle the run failed_create, every other error is transient
+// and leaves the run claimed for the recovery pass.
+func TestAutomationCreateFailureClassification(t *testing.T) {
+	definite := map[string]error{
+		"bad request":      core.NewBadRequestError("X", "x", nil),
+		"forbidden":        core.NewForbiddenError("X", "x", nil),
+		"conflict":         core.NewConflictError("X", "x", nil),
+		"not found":        core.NewNotFoundError("X", "x", nil),
+		"gone":             core.NewGoneError("X", "x", nil),
+		"too large":        core.NewTooLargeError("X", "x", nil),
+		"payment required": core.NewPaymentRequiredError(),
+		"billing enforced": core.NewBillingEnforcedError(),
+		"wrapped":          fmt.Errorf("create: %w", core.ErrBadRequest),
+	}
+	transient := map[string]error{
+		"unavailable":     core.NewUnavailableError("X", "x", nil),
+		"dependency down": core.NewAgentSessionDependencyUnavailableError(),
+		"authz down":      core.ErrAuthzUnavailable,
+		"plain error":     errors.New("connection reset"),
+		"canceled":        context.Canceled,
+		"deadline":        context.DeadlineExceeded,
+	}
+	for name, err := range definite {
+		if !isDefiniteRefusal(err) {
+			t.Errorf("%s should settle the run failed_create", name)
+		}
+	}
+	for name, err := range transient {
+		if isDefiniteRefusal(err) {
+			t.Errorf("%s should leave the run claimed for retry", name)
+		}
+	}
+	if got := truncateRunError(strings.Repeat("x", maxRunErrorLen+50)); len(got) != maxRunErrorLen {
+		t.Errorf("run error length = %d, want %d", len(got), maxRunErrorLen)
 	}
 }

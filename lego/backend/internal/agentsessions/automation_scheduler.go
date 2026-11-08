@@ -98,7 +98,7 @@ func (w *AutomationScheduler) RunOnce(ctx context.Context) error {
 		go func() {
 			defer wg.Done()
 			defer func() { <-sem }()
-			if _, err := w.Service.fireAutomationRun(ctx, run); err != nil {
+			if err := w.Service.fireAutomationRun(ctx, run); err != nil {
 				log.Printf("agent-automations: %s fire_at=%s left claimed for retry: %v",
 					run.Run.AutomationID, run.Run.FireAt.UTC().Format(time.RFC3339Nano), err)
 			}
@@ -160,10 +160,10 @@ func automationIdempotencyKey(automationID string, fireAt time.Time) string {
 // transient failure (authorization or database unavailable, a 5xx-class
 // create error, a canceled context) settles nothing and is returned, so the
 // run stays claimed and the recovery pass retries it after the lease.
-func (s *Service) fireAutomationRun(ctx context.Context, c store.ClaimedRun) (store.AgentAutomationRun, error) {
+func (s *Service) fireAutomationRun(ctx context.Context, c store.ClaimedRun) error {
 	outcome, sessionID, errText, err := s.decideAutomationRun(ctx, c)
 	if err != nil {
-		return store.AgentAutomationRun{}, err
+		return err
 	}
 	return s.settleAutomationRun(ctx, c, outcome, sessionID, errText)
 }
@@ -259,16 +259,16 @@ func truncateRunError(msg string) string {
 // settleAutomationRun books the outcome and applies the D7 auto-pause: a denied
 // run pauses the automation at once (creator_lost_access) and the third
 // consecutive failed_create pauses it (repeated_failures). A run somebody else
-// already settled is returned as stored.
-func (s *Service) settleAutomationRun(ctx context.Context, c store.ClaimedRun, outcome, sessionID, errText string) (store.AgentAutomationRun, error) {
+// already settled is left as stored.
+func (s *Service) settleAutomationRun(ctx context.Context, c store.ClaimedRun, outcome, sessionID, errText string) error {
 	a, run := c.Automation, c.Run
 	failures, err := s.Automations.SettleRun(ctx, a.ID, run.FireAt, outcome, sessionID, errText)
 	if errors.Is(err, store.ErrAgentAutomationRunSettled) || errors.Is(err, store.ErrNotFound) {
 		log.Printf("agent-automations: %s fire_at=%s was already settled or deleted", a.ID, run.FireAt.UTC().Format(time.RFC3339Nano))
-		return s.storedRun(ctx, run)
+		return nil
 	}
 	if err != nil {
-		return store.AgentAutomationRun{}, err
+		return err
 	}
 	log.Printf("agent-automations: %s fire_at=%s workspace=%s outcome=%s session=%s missed=%d",
 		a.ID, run.FireAt.UTC().Format(time.RFC3339Nano), a.WorkspaceID, outcome, sessionID, run.MissedTicks)
@@ -288,17 +288,5 @@ func (s *Service) settleAutomationRun(ctx context.Context, c store.ClaimedRun, o
 			log.Printf("agent-automations: %s paused: %s", a.ID, reason)
 		}
 	}
-	return s.storedRun(ctx, run)
-}
-
-// storedRun re-reads a run row (its settled state).
-func (s *Service) storedRun(ctx context.Context, run store.AgentAutomationRun) (store.AgentAutomationRun, error) {
-	rows, err := s.Automations.ListRuns(ctx, run.AutomationID, run.FireAt.Add(time.Microsecond), 1)
-	if err != nil {
-		return store.AgentAutomationRun{}, err
-	}
-	if len(rows) == 0 || !rows[0].FireAt.Equal(run.FireAt) {
-		return run, nil
-	}
-	return rows[0], nil
+	return nil
 }

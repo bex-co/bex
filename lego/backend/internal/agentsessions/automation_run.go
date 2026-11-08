@@ -73,7 +73,10 @@ func (s *Service) RunAgentAutomationNow(ctx context.Context, ownerID, ref string
 	if !inserted {
 		return AgentAutomationRun{}, errAutomationConflict("a run for this instant already exists; try again")
 	}
-	settled, err := s.fireAutomationRun(ctx, store.ClaimedRun{Run: run, Automation: row})
+	if err := s.fireAutomationRun(ctx, store.ClaimedRun{Run: run, Automation: row}); err != nil {
+		return AgentAutomationRun{}, err
+	}
+	settled, err := s.storedRun(ctx, run)
 	if err != nil {
 		return AgentAutomationRun{}, err
 	}
@@ -117,4 +120,16 @@ func automationRunView(r store.AgentAutomationRun) AgentAutomationRun {
 		AutomationID: r.AutomationID, FireAt: r.FireAt, Outcome: r.Outcome, SessionID: r.SessionID,
 		MissedTicks: r.MissedTicks, Error: r.Error, CreatedAt: r.CreatedAt, SettledAt: r.SettledAt,
 	}
+}
+
+// storedRun re-reads a run row (its settled state).
+func (s *Service) storedRun(ctx context.Context, run store.AgentAutomationRun) (store.AgentAutomationRun, error) {
+	rows, err := s.Automations.ListRuns(ctx, run.AutomationID, run.FireAt.Add(time.Microsecond), 1)
+	if err != nil {
+		return store.AgentAutomationRun{}, err
+	}
+	if len(rows) == 0 || !rows[0].FireAt.Equal(run.FireAt) {
+		return run, nil
+	}
+	return rows[0], nil
 }

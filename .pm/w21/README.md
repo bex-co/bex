@@ -23,3 +23,4 @@
 - [ ] **007** — moved to **w9/077** (2026-11-05) → [`../w9/077.md`](../w9/077.md)
 - [ ] **008** — Document the "Deploy to bex" button in the public docs → [`008.md`](008.md)
 - [ ] **009** — Check the Deploy-to-bex link survives sign-up and the payment gate for a new account → [`009.md`](009.md)
+- [ ] **010** — Automations: count a workspace's automations in the database, and read the previous run's phase with one query → [`010.md`](010.md)

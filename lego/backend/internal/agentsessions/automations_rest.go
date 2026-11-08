@@ -33,9 +33,6 @@ const maxAutomationBodyBytes = 1 << 20
 // aut- id (its workspace comes from the row) or a name in ownerId's workspace.
 func (s *Service) registerAutomationREST(mux *http.ServeMux) {
 	owner := func(r *http.Request) string { return r.URL.Query().Get("ownerId") }
-	write := func(status int, call func(r *http.Request) (any, error)) http.HandlerFunc {
-		return core.HandleJSON(status, call)
-	}
 	input := func(r *http.Request) (AgentAutomationInput, error) {
 		var in AgentAutomationInput
 		data, err := io.ReadAll(http.MaxBytesReader(nil, r.Body, maxAutomationBodyBytes))
@@ -57,7 +54,7 @@ func (s *Service) registerAutomationREST(mux *http.ServeMux) {
 		return in, nil
 	}
 
-	mux.HandleFunc("GET /v1/agent-automations", write(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("GET /v1/agent-automations", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		mine := false
 		if raw := q.Get("mine"); raw != "" {
@@ -72,17 +69,17 @@ func (s *Service) registerAutomationREST(mux *http.ServeMux) {
 		}
 		return s.AgentAutomations(r.Context(), owner(r), mine, q.Get("cursor"), limit)
 	}))
-	mux.HandleFunc("POST /v1/agent-automations", write(http.StatusCreated, func(r *http.Request) (any, error) {
+	mux.HandleFunc("POST /v1/agent-automations", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		in, err := input(r)
 		if err != nil {
 			return nil, err
 		}
 		return s.CreateAgentAutomation(r.Context(), owner(r), in)
 	}))
-	mux.HandleFunc("GET /v1/agent-automations/{id}", write(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("GET /v1/agent-automations/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		return s.AgentAutomation(r.Context(), owner(r), r.PathValue("id"))
 	}))
-	mux.HandleFunc("PATCH /v1/agent-automations/{id}", write(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("PATCH /v1/agent-automations/{id}", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		in, err := input(r)
 		if err != nil {
 			return nil, err
@@ -92,23 +89,23 @@ func (s *Service) registerAutomationREST(mux *http.ServeMux) {
 	mux.HandleFunc("DELETE /v1/agent-automations/{id}", core.HandleNoBody(http.StatusNoContent, func(r *http.Request) error {
 		return s.DeleteAgentAutomation(r.Context(), owner(r), r.PathValue("id"))
 	}))
-	for verb, call := range map[string]func(*Service, *http.Request) (any, error){
-		"pause": func(s *Service, r *http.Request) (any, error) {
+	for verb, call := range map[string]func(*http.Request) (any, error){
+		"pause": func(r *http.Request) (any, error) {
 			return s.PauseAgentAutomation(r.Context(), owner(r), r.PathValue("id"))
 		},
-		"resume": func(s *Service, r *http.Request) (any, error) {
+		"resume": func(r *http.Request) (any, error) {
 			return s.ResumeAgentAutomation(r.Context(), owner(r), r.PathValue("id"))
 		},
-		"take-over": func(s *Service, r *http.Request) (any, error) {
+		"take-over": func(r *http.Request) (any, error) {
 			return s.TakeOverAgentAutomation(r.Context(), owner(r), r.PathValue("id"))
 		},
 	} {
-		mux.HandleFunc("POST /v1/agent-automations/{id}/"+verb, write(http.StatusOK, func(r *http.Request) (any, error) { return call(s, r) }))
+		mux.HandleFunc("POST /v1/agent-automations/{id}/"+verb, core.HandleJSON(http.StatusOK, call))
 	}
-	mux.HandleFunc("POST /v1/agent-automations/{id}/run", write(http.StatusCreated, func(r *http.Request) (any, error) {
+	mux.HandleFunc("POST /v1/agent-automations/{id}/run", core.HandleJSON(http.StatusCreated, func(r *http.Request) (any, error) {
 		return s.RunAgentAutomationNow(r.Context(), owner(r), r.PathValue("id"))
 	}))
-	mux.HandleFunc("GET /v1/agent-automations/{id}/runs", write(http.StatusOK, func(r *http.Request) (any, error) {
+	mux.HandleFunc("GET /v1/agent-automations/{id}/runs", core.HandleJSON(http.StatusOK, func(r *http.Request) (any, error) {
 		q := r.URL.Query()
 		limit, err := core.QueryLimit(q)
 		if err != nil {

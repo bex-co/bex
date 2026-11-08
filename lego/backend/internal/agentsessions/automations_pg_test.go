@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"testing"
+	"time"
 
 	"github.com/jackc/pgx/v5/pgxpool"
 
@@ -49,7 +50,7 @@ func TestAutomationsPG(t *testing.T) {
 	created := 0
 	exerciseAutomationAuthorization(t, func() (*Service, *auditCapture, string) {
 		created++
-		ws, err := pg.CreateTenant(ctx, fmt.Sprintf("agent-automations-%d", created), store.PlanPro)
+		ws, err := pg.CreateTenant(ctx, fmt.Sprintf("agent-automations-%d-%d", time.Now().UnixNano(), created), store.PlanPro)
 		if err != nil {
 			t.Fatal(err)
 		}

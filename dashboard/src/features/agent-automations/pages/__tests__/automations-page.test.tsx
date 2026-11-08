@@ -168,6 +168,35 @@ describe("AutomationsPage", () => {
     ).toBeDisabled();
   });
 
+  it("retries a failed list read instead of showing it as empty", async () => {
+    const { uncodedGraphQLError } = await import("@/test/mocks/apollo");
+    const refetch = vi.fn();
+    list.useAgentAutomations.mockReturnValue(
+      listResult({ error: uncodedGraphQLError("boom"), refetch }),
+    );
+    render(<AutomationsPage />);
+    expect(screen.queryByTestId("automations-empty")).not.toBeInTheDocument();
+    await userEvent.click(screen.getByRole("button", { name: "Retry" }));
+    expect(refetch).toHaveBeenCalledTimes(1);
+  });
+
+  it("pages with Load more only while the server has another page", async () => {
+    const loadMore = vi.fn();
+    list.useAgentAutomations.mockReturnValue(
+      listResult({ automations: [automation()], hasMore: true, loadMore }),
+    );
+    const { rerender } = render(<AutomationsPage />);
+    await userEvent.click(screen.getByRole("button", { name: "Load more" }));
+    expect(loadMore).toHaveBeenCalledTimes(1);
+    list.useAgentAutomations.mockReturnValue(
+      listResult({ automations: [automation()], hasMore: false }),
+    );
+    rerender(<AutomationsPage />);
+    expect(
+      screen.queryByRole("button", { name: "Load more" }),
+    ).not.toBeInTheDocument();
+  });
+
   it("shows the forbidden message for a member who cannot start sessions", async () => {
     const { codedGraphQLError } = await import("@/test/mocks/apollo");
     list.useAgentAutomations.mockReturnValue(

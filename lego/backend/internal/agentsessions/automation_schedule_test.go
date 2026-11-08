@@ -289,7 +289,7 @@ func TestAutomationScheduleCronSpec(t *testing.T) {
 		{AutomationSchedule{Frequency: "day", At: "09:05"}, "5 9 * * *"},
 		{AutomationSchedule{Frequency: "week", At: "18:30", Weekdays: []string{"Fri", "mon", "mon", "sun"}}, "30 18 * * 0,1,5"},
 		{AutomationSchedule{Frequency: "custom", Cron: "*/10 8-18 * * 1-5"}, "*/10 8-18 * * 1-5"},
-		{AutomationSchedule{Frequency: "once", RunAt: tp(time.Now())}, ""},
+		{AutomationSchedule{Frequency: "once", RunAt: tp(time.Date(2026, 11, 7, 10, 0, 0, 0, time.UTC))}, ""},
 	}
 	for _, tc := range cases {
 		if got := tc.s.CronSpec(); got != tc.want {

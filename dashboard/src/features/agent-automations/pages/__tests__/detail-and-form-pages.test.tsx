@@ -22,6 +22,7 @@ const state = vi.hoisted(() => ({
   admin: false,
   canCreate: true,
   resolving: false,
+  error: undefined as unknown,
 }));
 
 vi.mock("@tanstack/react-router", async (importOriginal) => {
@@ -63,7 +64,7 @@ vi.mock("@/features/agent-automations/hooks/use-agent-automation", () => ({
   useAgentAutomation: () => ({
     automation: state.automation,
     loading: state.loading,
-    error: undefined,
+    error: state.error,
     refetch: vi.fn(),
   }),
   useAutomationMutations: () => ({
@@ -115,6 +116,7 @@ beforeEach(() => {
   state.admin = false;
   state.canCreate = true;
   state.resolving = false;
+  state.error = undefined;
 });
 
 const texts = (nodes: Iterable<Element>) =>
@@ -154,6 +156,17 @@ describe("AutomationDetailPage", () => {
     expect(screen.getByRole("button", { name: "Take over" })).toBeEnabled();
     expect(screen.getByRole("button", { name: "Edit" })).toBeDisabled();
     expect(screen.getByRole("button", { name: "Delete" })).toBeEnabled();
+  });
+
+  it("says a deleted automation is gone instead of showing a blank page", async () => {
+    const { codedGraphQLError } = await import("@/test/mocks/apollo");
+    state.automation = null;
+    state.error = codedGraphQLError("AGENT_AUTOMATION_NOT_FOUND");
+    render(<AutomationDetailPage automationId="aut-gone" />);
+    expect(screen.getByTestId("automation-load-error")).toHaveTextContent(
+      "doesn't exist or was deleted",
+    );
+    expect(screen.queryByRole("button", { name: "Run now" })).toBeNull();
   });
 
   it("shows the pending skeleton while loading", () => {
